@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { inclVatFromExcl, computePricing, resolveSupplierCode } from "@/lib/pricing";
+import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMarkupPercent } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { Search, ChevronUp, ChevronDown } from "lucide-react";
@@ -91,7 +91,7 @@ export function getEffectiveUnitPrices(product: PaletteProduct, isLengthOverride
   const pq = product.pack_qty && product.pack_qty > 1 && !isLength ? product.pack_qty : 1;
 
   const listPrice = product.cost_excl_vat || 0;
-  const markupPct = product.default_markup_percent ?? product.markup_percent ?? 35;
+  const markupPct = resolveProductMarkupPercent(product);
   const supplierCode = resolveSupplierCode(product.supplier_name);
 
   // computePricing handles discount + markup; cost_price may already be discounted
@@ -301,8 +301,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         pack_qty: p.pack_qty || null,
         btu_rating: p.btu_rating || null,
         supplier_discount_percent: null,
-        markup_percent: p.default_markup_percent ?? 35,
-        default_markup_percent: p.default_markup_percent ?? 35,
+        markup_percent: resolveProductMarkupPercent(p as any),
+        default_markup_percent: resolveProductMarkupPercent(p as any),
         cost_price: p.cost_price ?? p.cost_excl_vat ?? 0,
       })) as PaletteProduct[];
     },
@@ -367,7 +367,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
             sold_in_length: sp.sold_in_length || false,
             unit_length: sp.unit_length || null,
             cost_price: sp.cost_price ?? 0,
-            default_markup_percent: sp.default_markup_percent ?? 35,
+            default_markup_percent: resolveProductMarkupPercent(sp as any),
             supplier_discount_percent: sp.supplier_discount_percent ?? null,
             markup_percent: sp.markup_percent ?? null,
             unit_type: sp.unit_type || null,

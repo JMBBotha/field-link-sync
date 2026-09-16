@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { calcSellingPrice, VAT_RATE } from "@/lib/pricing";
+import { calcSellingPrice, VAT_RATE, resolveProductMarkupPercent } from "@/lib/pricing";
 import { computeLineTotal, resolvePricingUnit, unitSuffix } from "@/lib/pricingUnits";
 import { RotateCcw, FileDown, Loader2, TrendingUp, ChevronDown, ChevronRight, Package, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -214,7 +214,7 @@ function EditBundleDialog({
 
 /** Read the product's own markup, falling back to 35% */
 function getProductMarkup(product: any): number {
-  return product?.default_markup_percent ?? 35;
+  return resolveProductMarkupPercent(product ?? {});
 }
 
 export default function PricingStep({ areas, onAreasChange, onGenerateQuote, generating }: Props) {

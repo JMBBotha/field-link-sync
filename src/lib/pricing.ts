@@ -227,6 +227,28 @@ export function normalizeMarkupPercent(markupPercent?: number | null): number {
   return markupPercent;
 }
 
+/**
+ * Resolve markup % for a catalog product. THE resolver — use this everywhere a
+ * product object (not a known non-zero number) is the source of the markup.
+ *
+ * Matches the spot-check SQL:
+ *   COALESCE(NULLIF(default_markup_percent,0), NULLIF(markup_percent,0), 35)
+ *
+ * Why this exists: `a ?? b ?? 35` does NOT skip a stored 0, and a lone 0 then
+ * falls through normalizeMarkupPercent() to 35 — which showed cost + 35%
+ * instead of the catalog default (25% / 20%) on ~254 rows.
+ */
+export function resolveProductMarkupPercent(product: {
+  default_markup_percent?: number | null;
+  markup_percent?: number | null;
+}): number {
+  const d = Number(product?.default_markup_percent);
+  if (Number.isFinite(d) && d !== 0) return normalizeMarkupPercent(d);
+  const m = Number(product?.markup_percent);
+  if (Number.isFinite(m) && m !== 0) return normalizeMarkupPercent(m);
+  return 35;
+}
+
 /** Resolve a supplier name string to a SupplierCode (display/grouping use only —
  *  no discount is looked up from this code, see file header). */
 export function resolveSupplierCode(supplierName: string | undefined | null): SupplierCode {
@@ -294,7 +316,7 @@ export function computeProductPricing(product: {
   supplier_discount_percent?: number | null;
 }): ComputedPricing {
   const listPrice = product.cost_price || product.cost_excl_vat || 0;
-  const markupPct = product.default_markup_percent ?? product.markup_percent ?? 35;
+  const markupPct = resolveProductMarkupPercent(product);
   const supplierCode = resolveSupplierCode(product.supplier_name);
   return computePricing(supplierCode, listPrice, markupPct, product.cost_price || null);
 }

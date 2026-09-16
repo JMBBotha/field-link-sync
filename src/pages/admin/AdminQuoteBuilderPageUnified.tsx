@@ -1,3 +1,4 @@
+import { resolveProductMarkupPercent } from "@/lib/pricing";
 /**
  * Unified Quote Builder Page — wraps Normal / Visual / Area builders
  * in a shared header with tabs. Each tab renders the real builder component.
@@ -313,8 +314,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         cost_excl_vat: p.cost_excl_vat ?? p.cost_price ?? 0,
         cost_incl_vat: 0,
         supplier_discount_percent: null,
-        markup_percent: p.default_markup_percent ?? 35,
-        default_markup_percent: p.default_markup_percent ?? 35,
+        markup_percent: resolveProductMarkupPercent(p as any),
+        default_markup_percent: resolveProductMarkupPercent(p as any),
       })) as PaletteProduct[];
     },
     staleTime: 60000
@@ -586,7 +587,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             sold_in_length: sp.sold_in_length || false,
             unit_length: sp.unit_length || null,
             cost_price: sp.cost_price ?? 0,
-            default_markup_percent: sp.default_markup_percent ?? 35,
+            default_markup_percent: resolveProductMarkupPercent(sp as any),
             supplier_discount_percent: sp.supplier_discount_percent ?? null,
             markup_percent: sp.markup_percent ?? null,
             unit_type: sp.unit_type || null,

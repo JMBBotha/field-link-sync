@@ -9,7 +9,7 @@ import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 import BundleItemsPopover from "@/components/catalog/quote-builder/BundleItemsPopover";
 import type { BasketItem } from "@/components/catalog/QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
-import { normalizeMarkupPercent } from "@/lib/pricing";
+import { normalizeMarkupPercent, resolveProductMarkupPercent } from "@/lib/pricing";
 import {
   resolvePricingUnit,
   computeLineTotal,
@@ -160,7 +160,7 @@ export function RegularItemCard({
   /** Measured units (m, g, kg, l, ml, roll, custom) use the length field as the entered qty. */
   const isMeasured = !["each", "box", "pack"].includes(unit.unit_type);
   const [markupAdj, setMarkupAdj] = useState(0);
-  const baseMarkup = normalizeMarkupPercent((item.product as any).default_markup_percent ?? (item.product as any).markup_percent ?? 0.35);
+  const baseMarkup = resolveProductMarkupPercent(item.product as any);
   const effectiveMarkup = baseMarkup + markupAdj;
 
   const { unitSell: rawUnitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product);

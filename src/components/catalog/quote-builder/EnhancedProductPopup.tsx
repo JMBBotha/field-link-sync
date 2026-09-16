@@ -6,11 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { getProductDisplayName } from "./productDisplayUtils";
-import { getProductPricing, resolveRowCostExVat } from "@/lib/pricing";
+import { getProductPricing, resolveRowCostExVat, resolveProductMarkupPercent } from "@/lib/pricing";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 function getPopupPricing(product: PaletteProduct, priceOverride?: number | null) {
-  const markup = product.default_markup_percent ?? 35;
+  const markup = resolveProductMarkupPercent(product);
   // The catalog cost_price is already net of the supplier trade discount, so it
   // always wins. A PDF pink-column number is a LIST price, so it only gets used
   // when there is no stored cost — and then the discount is applied first, which

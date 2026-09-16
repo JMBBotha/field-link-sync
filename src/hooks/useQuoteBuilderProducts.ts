@@ -1,3 +1,4 @@
+import { resolveProductMarkupPercent } from "@/lib/pricing";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchVisualCatalogAllowlist, filterToVisualCatalog } from "@/lib/catalogSoT";
@@ -61,7 +62,7 @@ export function useQuoteBuilderProducts() {
         is_material_favorite: p.is_material_favorite || false,
         pack_qty: p.pack_qty || null,
         cost_price: p.cost_price ?? 0,
-        default_markup_percent: p.default_markup_percent ?? 35,
+        default_markup_percent: resolveProductMarkupPercent(p as any),
       })) as unknown as PaletteProduct[];
     },
   });

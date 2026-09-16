@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Search, Check, Star, X, Zap, Package, ImageIcon, Plus, Trash2, Ruler, Hash, MousePointerClick, ChevronDown, ChevronUp, Wrench, TrendingUp } from "lucide-react";
-import { getProductPricing, stripVat } from "@/lib/pricing";
+import { getProductPricing, stripVat, resolveProductMarkupPercent } from "@/lib/pricing";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDroppable } from "@dnd-kit/core";
@@ -349,7 +349,7 @@ function AreaUnitSelector({
       {selectedUnit && (() => {
         const p = selectedUnit.product;
         const cost = p.cost_price || p.cost_excl_vat || (p.cost_incl_vat ? stripVat(p.cost_incl_vat) : 0);
-        const mkup = (p as any).default_markup_percent ?? 35;
+        const mkup = resolveProductMarkupPercent(p as any);
         const pricing = getProductPricing(cost, mkup);
         return (
         <div className="flex items-center gap-2.5 rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2.5 text-xs">
@@ -506,7 +506,7 @@ function AreaUnitSelector({
                     </div>
                     {(() => {
                       const cost = p.cost_price || p.cost_excl_vat || (p.cost_incl_vat ? stripVat(p.cost_incl_vat) : 0);
-                      const mk = (p as any).default_markup_percent ?? 35;
+                      const mk = resolveProductMarkupPercent(p as any);
                       const pr = getProductPricing(cost, mk);
                       return (
                         <div className="flex flex-col items-end shrink-0">

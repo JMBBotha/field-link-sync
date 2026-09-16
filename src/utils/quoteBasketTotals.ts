@@ -1,4 +1,4 @@
-import { computePricing, resolveSupplierCode } from "@/lib/pricing";
+import { computePricing, resolveSupplierCode, resolveProductMarkupPercent } from "@/lib/pricing";
 import type { Basket, BasketItem, PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import type { QuoteArea, QuoteItem } from "@/types/quote";
 import { computeQuoteTotals } from "@/utils/quoteTransformers";
@@ -10,7 +10,7 @@ function getEffectiveUnitPrices(product: PaletteProduct, isLengthOverride?: bool
   const isLength = isLengthOverride ?? (product.sold_in_length && !!product.price_per_metre);
   const packQty = product.pack_qty && product.pack_qty > 1 && !isLength ? product.pack_qty : 1;
   const listPrice = product.cost_excl_vat || 0;
-  const markupPct = product.default_markup_percent ?? product.markup_percent ?? 35;
+  const markupPct = resolveProductMarkupPercent(product);
   const supplierCode = resolveSupplierCode(product.supplier_name);
   const pricing = computePricing(supplierCode, listPrice, markupPct, product.cost_price || null);
 

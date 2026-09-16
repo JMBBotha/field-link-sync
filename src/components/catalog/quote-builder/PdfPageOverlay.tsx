@@ -1,5 +1,5 @@
 import { memo, useRef, useCallback, useState } from "react";
-import { computeProductPricing, resolveRowCostExVat } from "@/lib/pricing";
+import { computeProductPricing, resolveRowCostExVat, resolveProductMarkupPercent } from "@/lib/pricing";
 import { parsePdfRowSpecs } from "./parsePdfRowSpecs";
 import { Info, Circle, CheckCircle2, Star } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
@@ -136,8 +136,7 @@ const selectRegion = (
     // stored (already-discounted) cost and otherwise applies the trade
     // discount to the list price, so list x 0.80 x 1.25 lands back on list.
     const effectiveCost = resolveRowCostExVat(product, region.detected_price ?? null);
-    const markupPct = product.default_markup_percent ?? product.markup_percent ?? 35;
-    const normalizedMarkup = markupPct > 0 && markupPct <= 1 ? markupPct * 100 : markupPct;
+    const normalizedMarkup = resolveProductMarkupPercent(product);
     const sellExVat = effectiveCost > 0
       ? Math.round(effectiveCost * (1 + normalizedMarkup / 100) * 100) / 100
       : (computeProductPricing(product).sellExVat || 0);

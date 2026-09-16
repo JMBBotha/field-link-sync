@@ -1,3 +1,4 @@
+import { resolveProductMarkupPercent } from "@/lib/pricing";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
@@ -59,7 +60,7 @@ export function useQuoteBuilderBundles() {
               sold_in_length: (sp.sold_in_length as boolean) || false,
               unit_length: (sp.unit_length as number | null) || null,
               cost_price: (sp.cost_price as number | null) ?? 0,
-              default_markup_percent: (sp.default_markup_percent as number | null) ?? 35,
+              default_markup_percent: resolveProductMarkupPercent(sp as any),
               supplier_discount_percent: (sp.supplier_discount_percent as number | null) ?? null,
               markup_percent: (sp.markup_percent as number | null) ?? null,
               unit_type: (sp.unit_type as string | null) || null,

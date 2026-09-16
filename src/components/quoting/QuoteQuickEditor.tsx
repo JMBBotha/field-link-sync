@@ -1,3 +1,4 @@
+import { resolveProductMarkupPercent } from "@/lib/pricing";
 /**
  * QuoteQuickEditor — slim search bar that adds lines into the OPEN quote.
  *
@@ -90,8 +91,8 @@ export default function QuoteQuickEditor({
         supplier_name: p.suppliers?.name || "",
         supplier_type: p.suppliers?.supplier_type || "both",
         supplier_discount_percent: null,
-        markup_percent: p.default_markup_percent ?? 35,
-        default_markup_percent: p.default_markup_percent ?? 35,
+        markup_percent: resolveProductMarkupPercent(p as any),
+        default_markup_percent: resolveProductMarkupPercent(p as any),
         cost_price: p.cost_price ?? p.cost_excl_vat ?? 0,
       })) as PaletteProduct[];
     },
@@ -162,7 +163,7 @@ export default function QuoteQuickEditor({
     setAdding(p.id);
     const areaId = await resolveArea();
     const { unitCost, unitSell } = getEffectiveUnitPrices(p);
-    const markupPct = p.default_markup_percent ?? p.markup_percent ?? 35;
+    const markupPct = resolveProductMarkupPercent(p);
     await addItem({
       ...baseItem(),
       area_id: areaId,

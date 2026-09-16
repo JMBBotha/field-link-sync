@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { calcSellingPrice, resolveProductMarkupPercent } from "@/lib/pricing";
 
 export interface ProductOption {
   id: string;
   name: string;
   description: string | null;
+  /** Selling price excl VAT */
   rate: number;
+  /** Net cost excl VAT (0 for service templates) */
+  cost?: number;
   category: string;
   isFavorite: boolean;
   source: "template" | "product";
@@ -53,7 +57,7 @@ export function useProductOptions() {
         .order("name"),
       supabase
         .from("supplier_products")
-        .select("id, product_code, short_name, description, cost_price, category, is_pinned")
+        .select("id, product_code, short_name, description, cost_price, default_markup_percent, markup_percent, category, is_pinned")
         .eq("is_active", true)
         .order("is_pinned", { ascending: false })
         .order("description"),
@@ -84,7 +88,12 @@ export function useProductOptions() {
             id: p.id,
             name: p.short_name || p.description,
             description: p.description,
-            rate: Number(p.cost_price || 0),
+            // rate is the SELL price excl VAT (cost is already net of trade discount)
+            rate: calcSellingPrice(
+              Number(p.cost_price || 0),
+              resolveProductMarkupPercent(p as any),
+            ).sellingExclVat,
+            cost: Number(p.cost_price || 0),
             category: p.category,
             isFavorite: p.is_pinned ?? false,
             source: "product" as const,
