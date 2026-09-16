@@ -296,6 +296,7 @@ const EnhancedProductPopup = ({
         </div>
 
         {/* Zone list */}
+        {!noSoT && (
         <ScrollArea className="flex-1" style={{ maxHeight: "calc(80vh - 180px)" }}>
           <div className="p-3 space-y-2">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
