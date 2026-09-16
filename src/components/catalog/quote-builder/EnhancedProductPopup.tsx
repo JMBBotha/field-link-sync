@@ -377,6 +377,7 @@ const EnhancedProductPopup = ({
             </Button>
           )}
         </div>
+        )}
       </div>
     </div>
   );
