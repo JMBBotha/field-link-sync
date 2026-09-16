@@ -106,6 +106,11 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
         </div>
       </div>
 
+      {/* Sales cards (AR40) */}
+      <div className="border-t border-border pt-3">
+        <ProductSalesCards lineItemModelCodes={lineItemModelCodes} />
+      </div>
+
       {/* Brochures section */}
       <div className="border-t border-border pt-3">
         <QuoteBrochureSection quoteId={quoteId} lineItemModelCodes={lineItemModelCodes} />
