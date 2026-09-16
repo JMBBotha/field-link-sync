@@ -1639,6 +1639,7 @@ const LazyPdfPage = ({
               onHoverEnd={onHoverEnd}
               pdfSelection={pdfSelection}
               onOpenProductInfo={onProductInfoOpen}
+              supplierDiscountPercent={supplierDiscountPercent}
               favoriteIds={favoriteIds}
              />
           )}
