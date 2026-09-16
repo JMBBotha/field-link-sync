@@ -931,8 +931,8 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       )}
 
       {/* Activate Confirmation */}
-      <AlertDialog open={!!activateTarget} onOpenChange={(o) => { if (!o) { setActivateTarget(null); setActivateWarning(null); } }}>
-        <AlertDialogContent>
+      <AlertDialog open={!!activateTarget} onOpenChange={(o) => { if (!o) { setActivateTarget(null); setActivateWarning(null); setGateRows(null); setGateError(null); } }}>
+        <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Make this the active price book?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -942,9 +942,74 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
               {activateWarning ? ` ${activateWarning}` : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          <div className="rounded-md border p-3 text-sm">
+            {gateRunning && <p className="text-muted-foreground">Checking sample prices…</p>}
+            {!gateRunning && gateError && (
+              <p className="text-destructive">Price check could not run: {gateError}</p>
+            )}
+            {!gateRunning && !gateError && gateRows && gateRows.length === 0 && (
+              <p className="text-destructive">No products found on this book — activation blocked.</p>
+            )}
+            {!gateRunning && !gateError && gateRows && gateRows.length > 0 && activateOk && (
+              <p className="text-green-600 dark:text-green-500">
+                Price check passed on {gateRows.length} sampled product{gateRows.length === 1 ? "" : "s"}.
+              </p>
+            )}
+            {!gateRunning && !gateError && gateFailures.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-destructive font-medium">
+                  {gateFailures.length} of {gateRows?.length} sampled products failed — activation blocked.
+                </p>
+                <div className="max-h-56 overflow-auto">
+                  <table className="w-full text-xs">
+                    <thead className="text-muted-foreground">
+                      <tr className="text-left">
+                        <th className="py-1 pr-2">Code</th>
+                        <th className="py-1 pr-2">Pg</th>
+                        <th className="py-1 pr-2">Issue</th>
+                        <th className="py-1 pr-2 text-right">List</th>
+                        <th className="py-1 pr-2 text-right">Cost</th>
+                        <th className="py-1 pr-2 text-right">Exp cost</th>
+                        <th className="py-1 pr-2 text-right">Exp sell</th>
+                        <th className="py-1 pr-2 text-right">Δ cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {gateFailures.map((r, i) => (
+                        <tr key={`${r.product_code}-${i}`} className="border-t">
+                          <td className="py-1 pr-2 font-mono">{r.product_code || "—"}</td>
+                          <td className="py-1 pr-2">{r.page_number ?? "—"}</td>
+                          <td className="py-1 pr-2">{r.gate_flag}</td>
+                          <td className="py-1 pr-2 text-right">{r.list_ex ?? "—"}</td>
+                          <td className="py-1 pr-2 text-right">{r.cost_ex ?? "—"}</td>
+                          <td className="py-1 pr-2 text-right">{r.expected_cost ?? "—"}</td>
+                          <td className="py-1 pr-2 text-right">{r.expected_sell ?? "—"}</td>
+                          <td className="py-1 pr-2 text-right">{r.cost_delta ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={activating}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={(e) => { e.preventDefault(); handleActivateConfirm(); }} disabled={activating}>
+            {!gateRunning && (gateError || gateFailures.length > 0) && (
+              <Button
+                variant="outline"
+                onClick={() => activateTarget && runGate(activateTarget.id)}
+                disabled={activating}
+              >
+                Re-run check
+              </Button>
+            )}
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleActivateConfirm(); }}
+              disabled={activating || gateRunning || !activateOk}
+            >
               {activating ? "Activating…" : "Activate"}
             </AlertDialogAction>
           </AlertDialogFooter>
