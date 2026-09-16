@@ -96,7 +96,7 @@ export const cleanPdfRowLabel = (raw: string): string =>
 
 /** Product code as printed, minus OCR glue after an @. */
 export const cleanPdfProductCode = (raw: string): string =>
-  (raw || "").split("@")[0].trim();
+  (raw || "").split("@")[0].trim().split(/\s+/)[0].replace(/[.,;:]+$/, "").trim();
 
 /**
  * Unmatched PDF row -> throwaway, NON-SoT placeholder.

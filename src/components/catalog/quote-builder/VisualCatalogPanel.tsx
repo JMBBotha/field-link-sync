@@ -1557,6 +1557,10 @@ const LazyPdfPage = ({
     return result;
   }, [liveRegions, ocrRegions, fallbackRegions, page.id, pageIndex]);
 
+  // Leading SKU token, before OCR glue ("BZE-INV-09/A INVERTER 9000 ... R8895,56@8895").
+  const skuToken = (raw: string): string =>
+    (raw || "").split("@")[0].trim().split(/\s+/)[0].replace(/[.,;:]+$/, "").trim();
+
   // ─── DISPLAY-ONLY catalog lookup ───
   // Rows that have no live-book product still have a real catalog row (often
   // archived). We look it up by product_code purely so the hover card + info
@@ -1566,7 +1570,7 @@ const LazyPdfPage = ({
     const codes = new Set<string>();
     for (const r of overlayRegions) {
       if (r.product) continue;
-      const code = (r.product_code || "").split("@")[0].trim();
+      const code = skuToken(r.product_code || r.label || "");
       if (code.length >= 3) codes.add(code);
     }
     return Array.from(codes).slice(0, 200);
@@ -1592,7 +1596,7 @@ const LazyPdfPage = ({
     for (const row of displayCatalogRows) byNorm.set(norm(row.product_code), row);
     return overlayRegions.map((r) => {
       if (r.product) return r;
-      const row = byNorm.get(norm((r.product_code || "").split("@")[0]));
+      const row = byNorm.get(norm(skuToken(r.product_code || r.label || "")));
       if (!row) return r;
       const displayProduct = {
         id: row.id,
