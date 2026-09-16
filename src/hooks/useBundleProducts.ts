@@ -1,3 +1,4 @@
+import { resolveProductMarkupPercent } from "@/lib/pricing";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CAPACITY_TIER_CONFIGS } from "@/lib/bundleTierConfig";
@@ -51,8 +52,8 @@ const toBundleProduct = (p: SupplierProductRow): BundleProduct => ({
   pack_qty: p.pack_qty ?? null,
   btu_rating: p.btu_rating ?? null,
   supplier_discount_percent: null,
-  markup_percent: p.default_markup_percent ?? 35,
-  default_markup_percent: p.default_markup_percent ?? 35,
+  markup_percent: resolveProductMarkupPercent(p as any),
+  default_markup_percent: resolveProductMarkupPercent(p as any),
   cost_price: p.cost_price ?? p.cost_excl_vat ?? 0,
 });
 

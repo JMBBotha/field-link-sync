@@ -91,8 +91,8 @@ export default function QuoteQuickEditor({
         supplier_name: p.suppliers?.name || "",
         supplier_type: p.suppliers?.supplier_type || "both",
         supplier_discount_percent: null,
-        markup_percent: p.default_markup_percent ?? 35,
-        default_markup_percent: p.default_markup_percent ?? 35,
+        markup_percent: resolveProductMarkupPercent(p as any),
+        default_markup_percent: resolveProductMarkupPercent(p as any),
         cost_price: p.cost_price ?? p.cost_excl_vat ?? 0,
       })) as PaletteProduct[];
     },
