@@ -1557,6 +1557,73 @@ const LazyPdfPage = ({
     return result;
   }, [liveRegions, ocrRegions, fallbackRegions, page.id, pageIndex]);
 
+  // ─── DISPLAY-ONLY catalog lookup ───
+  // Rows that have no live-book product still have a real catalog row (often
+  // archived). We look it up by product_code purely so the hover card + info
+  // modal show the true cost / markup / sell instead of R0 + a blind 35%.
+  // This NEVER makes the row addable — quote-add still requires an active book.
+  const unmatchedCodes = useMemo(() => {
+    const codes = new Set<string>();
+    for (const r of overlayRegions) {
+      if (r.product) continue;
+      const code = (r.product_code || "").split("@")[0].trim();
+      if (code.length >= 3) codes.add(code);
+    }
+    return Array.from(codes).slice(0, 200);
+  }, [overlayRegions]);
+
+  const { data: displayCatalogRows = [] } = useQuery<any[]>({
+    queryKey: ["visual-panel-display-catalog", page.id, unmatchedCodes.join(",")],
+    enabled: isVisible && unmatchedCodes.length > 0,
+    queryFn: async () => {
+      const { data } = await (supabase.from("supplier_products") as any)
+        .select("id, product_code, short_name, description, brand, cost_price, cost_excl_vat, cost_incl_vat, selling_price, default_markup_percent, markup_percent, supplier_discount_percent")
+        .in("product_code", unmatchedCodes)
+        .limit(400);
+      return data || [];
+    },
+    staleTime: 300000,
+  });
+
+  const regionsForOverlay: OverlayRegion[] = useMemo(() => {
+    if (displayCatalogRows.length === 0) return overlayRegions;
+    const norm = (v: string) => (v || "").toLowerCase().replace(/[\s\-\/\._]+/g, "");
+    const byNorm = new Map<string, any>();
+    for (const row of displayCatalogRows) byNorm.set(norm(row.product_code), row);
+    return overlayRegions.map((r) => {
+      if (r.product) return r;
+      const row = byNorm.get(norm((r.product_code || "").split("@")[0]));
+      if (!row) return r;
+      const displayProduct = {
+        id: row.id,
+        product_code: row.product_code,
+        short_name: row.short_name || row.description || row.product_code,
+        brand: row.brand || "",
+        product_category: "",
+        category: "",
+        cost_excl_vat: Number(row.cost_excl_vat ?? row.cost_price ?? 0) || 0,
+        cost_incl_vat: Number(row.cost_incl_vat ?? 0) || 0,
+        cost_price: Number(row.cost_price ?? row.cost_excl_vat ?? 0) || 0,
+        selling_price: Number(row.selling_price ?? 0) || 0,
+        default_markup_percent: row.default_markup_percent ?? null,
+        markup_percent: row.markup_percent ?? null,
+        supplier_discount_percent: row.supplier_discount_percent ?? null,
+        description: row.description || row.short_name || row.product_code,
+        is_pinned: false,
+        pin_order: null,
+        supplier_name: row.brand || "",
+        supplier_type: "",
+        price_per_metre: null,
+        sold_in_length: false,
+        unit_length: null,
+        pipe_size: null,
+        is_material_favorite: false,
+        pack_qty: null,
+      } as unknown as PaletteProduct;
+      return { ...r, display_product: displayProduct };
+    });
+  }, [overlayRegions, displayCatalogRows]);
+
   // Report detected categories to parent for category→page mapping
   useEffect(() => {
     const cats = new Set<string>();
@@ -1622,9 +1689,9 @@ const LazyPdfPage = ({
             onLoad={() => onImageReady?.(pageIndex)}
           />
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
-          {overlayRegions.length > 0 && (
+          {regionsForOverlay.length > 0 && (
              <PdfPageOverlay
-              regions={overlayRegions}
+              regions={regionsForOverlay}
               baskets={baskets}
               onAddProductToBasket={onAddProductToBasket}
               basketProductCounts={basketProductCounts}
