@@ -21,6 +21,8 @@ export interface OverlayRegion {
   /** Fractional x (0-1) of this row's price cell (left edge), when known.
    *  Informational only — NEVER used to place the selection controls. */
   price_x_frac?: number | null;
+  /** Trade discount % that turns this row's PDF LIST price into our cost. */
+  supplier_discount_percent?: number | null;
 }
 
 /**
@@ -75,20 +77,33 @@ interface PdfPageOverlayProps {
   favoriteIds?: Set<string>;
   /** Kept for API compatibility; not used for control placement (see HARD LOCK). */
   priceColumnXFrac?: number | null;
+  /** This supplier's trade discount %, used only to turn an unmatched row's
+   *  PDF LIST price into cost. Never applied to a matched catalog cost. */
+  supplierDiscountPercent?: number | null;
 }
 
-const buildFallbackProduct = (region: OverlayRegion): PaletteProduct => ({
+/**
+ * Unmatched PDF row -> throwaway product.
+ * The price column on a supplier PDF is a LIST price, NEVER our cost, so cost
+ * fields stay 0 here and resolveRowCostExVat derives cost from the list price
+ * using this supplier's own trade discount. Markup fields stay null so
+ * resolveProductMarkupPercent picks the catalog default, not a baked-in 35%.
+ */
+const buildFallbackProduct = (
+  region: OverlayRegion,
+  supplierDiscountPercent?: number | null,
+): PaletteProduct => ({
   id: region.id,
   product_code: region.product_code || region.id,
   short_name: region.label || region.product_code || "PDF Item",
   brand: "",
   product_category: "",
   category: "",
-  cost_excl_vat: region.detected_price ?? 0,
-  cost_incl_vat: region.detected_price ?? 0,
-  cost_price: region.detected_price ?? 0,
-  selling_price: region.detected_price ?? 0,
-  default_markup_percent: 0.35,
+  cost_excl_vat: 0,
+  cost_incl_vat: 0,
+  cost_price: 0,
+  selling_price: 0,
+  default_markup_percent: null,
   description: region.label || region.product_code || "PDF Item",
   is_pinned: false,
   pin_order: null,
@@ -100,11 +115,15 @@ const buildFallbackProduct = (region: OverlayRegion): PaletteProduct => ({
   pipe_size: null,
   is_material_favorite: false,
   pack_qty: null,
-  supplier_discount_percent: null,
-  markup_percent: 0.35,
+  supplier_discount_percent:
+    Number(region.supplier_discount_percent ?? supplierDiscountPercent ?? 0) || null,
+  markup_percent: null,
 });
 
-const regionProduct = (region: OverlayRegion): PaletteProduct => region.product ?? buildFallbackProduct(region);
+const regionProduct = (
+  region: OverlayRegion,
+  supplierDiscountPercent?: number | null,
+): PaletteProduct => region.product ?? buildFallbackProduct(region, supplierDiscountPercent);
 
 /** Each PDF row toggles independently, even when rows share a product_code. */
 const regionSelectionCode = (region: OverlayRegion): string => region.id;
@@ -125,8 +144,9 @@ const selectRegion = (
   pdfSelection: PdfSelectionHandlers | undefined,
   baskets: Basket[],
   onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void,
+  supplierDiscountPercent?: number | null,
 ) => {
-  const product = regionProduct(region);
+  const product = regionProduct(region, supplierDiscountPercent);
   const code = regionSelectionCode(region);
   const alreadySelectedInPdf = !!pdfSelection?.selectedFromPdf.some((item) => item.code === code);
 
@@ -135,7 +155,11 @@ const selectRegion = (
     // LIST price, not our cost. resolveRowCostExVat prefers the catalog's
     // stored (already-net) cost and only otherwise applies that row's own
     // supplier discount. No quote-time discount, no hard-coded percentage.
-    const effectiveCost = resolveRowCostExVat(product, region.detected_price ?? null);
+    const effectiveCost = resolveRowCostExVat(
+      product,
+      region.detected_price ?? null,
+      region.supplier_discount_percent ?? supplierDiscountPercent ?? null,
+    );
     const normalizedMarkup = resolveProductMarkupPercent(product);
     const sellExVat = effectiveCost > 0
       ? Math.round(effectiveCost * (1 + normalizedMarkup / 100) * 100) / 100
@@ -173,6 +197,10 @@ const RegionBox = memo(({
   isInfoPressed,
   onOpenProductInfo,
   onInfoPress,
+  supplierDiscountPercent,
+  onHoverStart,
+  onHoverMove,
+  onHoverEnd,
 }: {
   region: OverlayRegion;
   isSelected: boolean;
@@ -180,6 +208,10 @@ const RegionBox = memo(({
   isInfoPressed?: boolean;
   onOpenProductInfo?: (product: PaletteProduct) => void;
   onInfoPress?: (regionId: string) => void;
+  supplierDiscountPercent?: number | null;
+  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent, priceOverride?: number | null) => void;
+  onHoverMove?: (e: React.MouseEvent) => void;
+  onHoverEnd?: () => void;
 }) => {
   const pillBackground = isFavorite
     ? "linear-gradient(to left, hsl(45 93% 47% / 0.55) 0%, hsl(45 93% 47% / 0.38) 35%, hsl(45 93% 47% / 0.18) 70%, transparent 100%)"
@@ -210,6 +242,24 @@ const RegionBox = memo(({
           borderRadius: "9999px 0 0 9999px",
         }}
       />
+
+      {/* Hover-only band over the grey wash (mouse/trackpad only — enabled via the
+          data-pdf-row-hover media rule). Opens the same pricing card as the blue i.
+          It stops short of the tap strip so touch selection is untouched. */}
+      <div
+        data-pdf-row-hover
+        className="absolute inset-y-0"
+        style={{
+          left: "40%",
+          right: `var(--pdf-strip-w, ${STRIP_W_PHONE}px)`,
+          pointerEvents: "none",
+        }}
+        onMouseEnter={(e) => onHoverStart?.(regionProduct(region, supplierDiscountPercent), e, region.detected_price ?? null)}
+        onMouseMove={(e) => onHoverMove?.(e)}
+        onMouseLeave={() => onHoverEnd?.()}
+      />
+
+
 
       {/* Favorite star badge — top-left of the row */}
       {isFavorite && (
@@ -264,7 +314,7 @@ const RegionBox = memo(({
               e.stopPropagation();
               e.preventDefault();
               onInfoPress?.(region.id);
-              onOpenProductInfo?.(regionProduct(region));
+              onOpenProductInfo?.(regionProduct(region, supplierDiscountPercent));
             }}
           />
         </span>
@@ -311,6 +361,7 @@ const MarginHitStrip = ({
   onHoverMove,
   onHoverEnd,
   onInfoPress,
+  supplierDiscountPercent,
 }: {
   regions: OverlayRegion[];
   onInfoPress?: (regionId: string) => void;
@@ -322,6 +373,7 @@ const MarginHitStrip = ({
   onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent, priceOverride?: number | null) => void;
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
+  supplierDiscountPercent?: number | null;
 }) => {
   const downRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const lastTapRef = useRef<{ regionId: string; at: number }>({ regionId: "", at: 0 });
@@ -375,7 +427,7 @@ const MarginHitStrip = ({
 
     if (isInfoZone) {
       onInfoPress?.(region.id);
-      onOpenProductInfo?.(regionProduct(region));
+      onOpenProductInfo?.(regionProduct(region, supplierDiscountPercent));
       return;
     }
 
@@ -383,10 +435,10 @@ const MarginHitStrip = ({
     const last = lastTapRef.current;
     lastTapRef.current = { regionId: region.id, at: now };
     if (last.regionId === region.id && now - last.at < DOUBLE_TAP_MS && onToggleFavorite) {
-      onToggleFavorite(regionProduct(region));
+      onToggleFavorite(regionProduct(region, supplierDiscountPercent));
       return;
     }
-    selectRegion(region, pdfSelection, baskets, onAddProductToBasket);
+    selectRegion(region, pdfSelection, baskets, onAddProductToBasket, supplierDiscountPercent);
   };
 
   const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -397,7 +449,7 @@ const MarginHitStrip = ({
     }
     if (hoverIdRef.current !== region.id) {
       hoverIdRef.current = region.id;
-      onHoverStart?.(regionProduct(region), e, region.detected_price ?? null);
+      onHoverStart?.(regionProduct(region, supplierDiscountPercent), e, region.detected_price ?? null);
     } else {
       onHoverMove?.(e);
     }
@@ -434,6 +486,7 @@ const PdfPageOverlay = ({
   onHoverMove,
   onHoverEnd,
   favoriteIds,
+  supplierDiscountPercent,
 }: PdfPageOverlayProps) => {
   const [pressedInfoId, setPressedInfoId] = useState<string | null>(null);
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -448,6 +501,9 @@ const PdfPageOverlay = ({
       <style>{`@media (min-width: 640px) {
   [data-testid="pdf-margin-hit-strip"] { --pdf-strip-w: ${STRIP_W_DESKTOP}px; }
   [data-pdf-region-box] { --pdf-pill-right: ${PILL_RIGHT_PX_DESKTOP}px; }
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-pdf-row-hover] { pointer-events: auto; }
 }`}</style>
       {regions.map((region) => {
         const productId = region.product?.id || region.id;
@@ -460,6 +516,10 @@ const PdfPageOverlay = ({
             isInfoPressed={pressedInfoId === region.id}
             onOpenProductInfo={onOpenProductInfo}
             onInfoPress={handleInfoPress}
+            supplierDiscountPercent={supplierDiscountPercent}
+            onHoverStart={onHoverStart}
+            onHoverMove={onHoverMove}
+            onHoverEnd={onHoverEnd}
           />
         );
       })}
@@ -474,7 +534,9 @@ const PdfPageOverlay = ({
         onHoverStart={onHoverStart}
         onHoverMove={onHoverMove}
         onHoverEnd={onHoverEnd}
+        supplierDiscountPercent={supplierDiscountPercent}
       />
+
     </>
   );
 };
