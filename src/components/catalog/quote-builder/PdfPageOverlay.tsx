@@ -1,5 +1,6 @@
 import { memo, useRef, useCallback, useState } from "react";
 import { computeProductPricing, resolveRowCostExVat, resolveProductMarkupPercent } from "@/lib/pricing";
+import { toast } from "@/hooks/use-toast";
 import { parsePdfRowSpecs } from "./parsePdfRowSpecs";
 import { Info, Circle, CheckCircle2, Star } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
@@ -83,11 +84,10 @@ interface PdfPageOverlayProps {
 }
 
 /**
- * Unmatched PDF row -> throwaway product.
- * The price column on a supplier PDF is a LIST price, NEVER our cost, so cost
- * fields stay 0 here and resolveRowCostExVat derives cost from the list price
- * using this supplier's own trade discount. Markup fields stay null so
- * resolveProductMarkupPercent picks the catalog default, not a baked-in 35%.
+ * Unmatched PDF row -> throwaway, NON-SoT placeholder.
+ * The price column on a supplier PDF is a LIST price, NEVER our cost, so every
+ * cost field stays 0 and no discount is guessed. A row with no active-book
+ * match is BLOCKED from a quote rather than priced from the list column.
  */
 const buildFallbackProduct = (
   region: OverlayRegion,
@@ -115,8 +115,7 @@ const buildFallbackProduct = (
   pipe_size: null,
   is_material_favorite: false,
   pack_qty: null,
-  supplier_discount_percent:
-    Number(region.supplier_discount_percent ?? supplierDiscountPercent ?? 0) || null,
+  supplier_discount_percent: null,
   markup_percent: null,
 });
 
@@ -146,6 +145,16 @@ const selectRegion = (
   onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void,
   supplierDiscountPercent?: number | null,
 ) => {
+  // No active-book match => no source of truth for cost. Block the add rather
+  // than invent cost from the printed LIST price.
+  if (!region.product) {
+    toast({
+      title: "Not in the live catalogue",
+      description: `${region.product_code || region.label || "This row"} isn't on an active price book, so it has no cost price yet.`,
+      variant: "destructive",
+    });
+    return;
+  }
   const product = regionProduct(region, supplierDiscountPercent);
   const code = regionSelectionCode(region);
   const alreadySelectedInPdf = !!pdfSelection?.selectedFromPdf.some((item) => item.code === code);
@@ -155,11 +164,9 @@ const selectRegion = (
     // LIST price, not our cost. resolveRowCostExVat prefers the catalog's
     // stored (already-net) cost and only otherwise applies that row's own
     // supplier discount. No quote-time discount, no hard-coded percentage.
-    const effectiveCost = resolveRowCostExVat(
-      product,
-      region.detected_price ?? null,
-      region.supplier_discount_percent ?? supplierDiscountPercent ?? null,
-    );
+    // Stored catalog cost is already net of that supplier's trade deal — trust
+    // it verbatim. The PDF list column is never used as cost.
+    const effectiveCost = resolveRowCostExVat(product, null);
     const normalizedMarkup = resolveProductMarkupPercent(product);
     const sellExVat = effectiveCost > 0
       ? Math.round(effectiveCost * (1 + normalizedMarkup / 100) * 100) / 100
@@ -254,7 +261,7 @@ const RegionBox = memo(({
           right: `var(--pdf-strip-w, ${STRIP_W_PHONE}px)`,
           pointerEvents: "none",
         }}
-        onMouseEnter={(e) => onHoverStart?.(regionProduct(region, supplierDiscountPercent), e, region.detected_price ?? null)}
+        onMouseEnter={(e) => onHoverStart?.(regionProduct(region, supplierDiscountPercent), e, region.product ? (region.detected_price ?? null) : null)}
         onMouseMove={(e) => onHoverMove?.(e)}
         onMouseLeave={() => onHoverEnd?.()}
       />
@@ -449,7 +456,7 @@ const MarginHitStrip = ({
     }
     if (hoverIdRef.current !== region.id) {
       hoverIdRef.current = region.id;
-      onHoverStart?.(regionProduct(region, supplierDiscountPercent), e, region.detected_price ?? null);
+      onHoverStart?.(regionProduct(region, supplierDiscountPercent), e, region.product ? (region.detected_price ?? null) : null);
     } else {
       onHoverMove?.(e);
     }
