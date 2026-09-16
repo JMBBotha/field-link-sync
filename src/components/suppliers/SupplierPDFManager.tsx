@@ -43,6 +43,23 @@ interface PDFUploadRow {
   can_activate?: boolean;
 }
 
+/** Row returned by the activate_pdf_book_gate RPC (pre-activation math check). */
+interface GateRow {
+  product_code: string | null;
+  brand: string | null;
+  page_number: number | null;
+  list_ex: number | null;
+  cost_ex: number | null;
+  discount_used: number | null;
+  markup_used: number | null;
+  expected_cost: number | null;
+  expected_sell: number | null;
+  selling_price: number | null;
+  gate_flag: string;
+  cost_delta: number | null;
+  sell_minus_list: number | null;
+}
+
 interface SupplierPDFManagerProps {
   preFilterSupplierId?: string;
 }
@@ -275,6 +292,9 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   const [activateTarget, setActivateTarget] = useState<PDFUploadRow | null>(null);
   const [activateWarning, setActivateWarning] = useState<string | null>(null);
   const [activating, setActivating] = useState(false);
+  const [gateRows, setGateRows] = useState<GateRow[] | null>(null);
+  const [gateRunning, setGateRunning] = useState(false);
+  const [gateError, setGateError] = useState<string | null>(null);
 
   const clearPreviewUrl = useCallback((url?: string | null) => {
     if (url?.startsWith("blob:")) {
@@ -305,9 +325,31 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
    * book deactivates its siblings, so SKUs dropped from the new book fall off
    * the quote picker. Warn first when those SKUs sit on open draft quotes.
    */
+  const runGate = useCallback(async (pdfId: string) => {
+    setGateRunning(true);
+    setGateError(null);
+    setGateRows(null);
+    try {
+      const { data, error } = await (supabase as any).rpc("activate_pdf_book_gate", {
+        p_pdf_upload_id: pdfId,
+        p_sample_n: 10,
+      });
+      if (error) throw error;
+      setGateRows((data || []) as GateRow[]);
+    } catch (e: any) {
+      setGateError(e?.message || "Could not run the price check");
+    } finally {
+      setGateRunning(false);
+    }
+  }, []);
+
+  const gateFailures = (gateRows || []).filter((r) => r.gate_flag !== "PASS");
+  const activateOk = !!gateRows && gateRows.length > 0 && gateFailures.length === 0;
+
   const handleActivateClick = async (pdf: PDFUploadRow) => {
     setActivateWarning(null);
     setActivateTarget(pdf);
+    void runGate(pdf.id);
     try {
       let siblings = (supabase.from("pdf_uploads") as any)
         .select("id")
@@ -342,6 +384,16 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
 
   const handleActivateConfirm = async () => {
     if (!activateTarget) return;
+    if (!activateOk) {
+      toast({
+        title: "Price check failed — not activated",
+        description: gateRows && gateRows.length === 0
+          ? "No products found on this book to check."
+          : `${gateFailures.length} sampled product${gateFailures.length === 1 ? "" : "s"} did not match the expected cost/sell maths.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setActivating(true);
     try {
       let deactivate = (supabase.from("pdf_uploads") as any)
@@ -363,6 +415,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
       setActivateTarget(null);
       setActivateWarning(null);
+      setGateRows(null);
     } catch (e: any) {
       toast({ title: "Could not activate", description: e?.message || "Unknown error", variant: "destructive" });
     } finally {
@@ -878,8 +931,8 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       )}
 
       {/* Activate Confirmation */}
-      <AlertDialog open={!!activateTarget} onOpenChange={(o) => { if (!o) { setActivateTarget(null); setActivateWarning(null); } }}>
-        <AlertDialogContent>
+      <AlertDialog open={!!activateTarget} onOpenChange={(o) => { if (!o) { setActivateTarget(null); setActivateWarning(null); setGateRows(null); setGateError(null); } }}>
+        <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Make this the active price book?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -889,9 +942,74 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
               {activateWarning ? ` ${activateWarning}` : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          <div className="rounded-md border p-3 text-sm">
+            {gateRunning && <p className="text-muted-foreground">Checking sample prices…</p>}
+            {!gateRunning && gateError && (
+              <p className="text-destructive">Price check could not run: {gateError}</p>
+            )}
+            {!gateRunning && !gateError && gateRows && gateRows.length === 0 && (
+              <p className="text-destructive">No products found on this book — activation blocked.</p>
+            )}
+            {!gateRunning && !gateError && gateRows && gateRows.length > 0 && activateOk && (
+              <p className="text-green-600 dark:text-green-500">
+                Price check passed on {gateRows.length} sampled product{gateRows.length === 1 ? "" : "s"}.
+              </p>
+            )}
+            {!gateRunning && !gateError && gateFailures.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-destructive font-medium">
+                  {gateFailures.length} of {gateRows?.length} sampled products failed — activation blocked.
+                </p>
+                <div className="max-h-56 overflow-auto">
+                  <table className="w-full text-xs">
+                    <thead className="text-muted-foreground">
+                      <tr className="text-left">
+                        <th className="py-1 pr-2">Code</th>
+                        <th className="py-1 pr-2">Pg</th>
+                        <th className="py-1 pr-2">Issue</th>
+                        <th className="py-1 pr-2 text-right">List</th>
+                        <th className="py-1 pr-2 text-right">Cost</th>
+                        <th className="py-1 pr-2 text-right">Exp cost</th>
+                        <th className="py-1 pr-2 text-right">Exp sell</th>
+                        <th className="py-1 pr-2 text-right">Δ cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {gateFailures.map((r, i) => (
+                        <tr key={`${r.product_code}-${i}`} className="border-t">
+                          <td className="py-1 pr-2 font-mono">{r.product_code || "—"}</td>
+                          <td className="py-1 pr-2">{r.page_number ?? "—"}</td>
+                          <td className="py-1 pr-2">{r.gate_flag}</td>
+                          <td className="py-1 pr-2 text-right">{r.list_ex ?? "—"}</td>
+                          <td className="py-1 pr-2 text-right">{r.cost_ex ?? "—"}</td>
+                          <td className="py-1 pr-2 text-right">{r.expected_cost ?? "—"}</td>
+                          <td className="py-1 pr-2 text-right">{r.expected_sell ?? "—"}</td>
+                          <td className="py-1 pr-2 text-right">{r.cost_delta ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={activating}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={(e) => { e.preventDefault(); handleActivateConfirm(); }} disabled={activating}>
+            {!gateRunning && (gateError || gateFailures.length > 0) && (
+              <Button
+                variant="outline"
+                onClick={() => activateTarget && runGate(activateTarget.id)}
+                disabled={activating}
+              >
+                Re-run check
+              </Button>
+            )}
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleActivateConfirm(); }}
+              disabled={activating || gateRunning || !activateOk}
+            >
               {activating ? "Activating…" : "Activate"}
             </AlertDialogAction>
           </AlertDialogFooter>
