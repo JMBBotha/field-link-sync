@@ -197,6 +197,10 @@ const RegionBox = memo(({
   isInfoPressed,
   onOpenProductInfo,
   onInfoPress,
+  supplierDiscountPercent,
+  onHoverStart,
+  onHoverMove,
+  onHoverEnd,
 }: {
   region: OverlayRegion;
   isSelected: boolean;
@@ -204,6 +208,10 @@ const RegionBox = memo(({
   isInfoPressed?: boolean;
   onOpenProductInfo?: (product: PaletteProduct) => void;
   onInfoPress?: (regionId: string) => void;
+  supplierDiscountPercent?: number | null;
+  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent, priceOverride?: number | null) => void;
+  onHoverMove?: (e: React.MouseEvent) => void;
+  onHoverEnd?: () => void;
 }) => {
   const pillBackground = isFavorite
     ? "linear-gradient(to left, hsl(45 93% 47% / 0.55) 0%, hsl(45 93% 47% / 0.38) 35%, hsl(45 93% 47% / 0.18) 70%, transparent 100%)"
