@@ -314,7 +314,7 @@ const RegionBox = memo(({
               e.stopPropagation();
               e.preventDefault();
               onInfoPress?.(region.id);
-              onOpenProductInfo?.(regionProduct(region));
+              onOpenProductInfo?.(regionProduct(region, supplierDiscountPercent));
             }}
           />
         </span>
@@ -425,7 +425,7 @@ const MarginHitStrip = ({
 
     if (isInfoZone) {
       onInfoPress?.(region.id);
-      onOpenProductInfo?.(regionProduct(region));
+      onOpenProductInfo?.(regionProduct(region, supplierDiscountPercent));
       return;
     }
 
@@ -433,10 +433,10 @@ const MarginHitStrip = ({
     const last = lastTapRef.current;
     lastTapRef.current = { regionId: region.id, at: now };
     if (last.regionId === region.id && now - last.at < DOUBLE_TAP_MS && onToggleFavorite) {
-      onToggleFavorite(regionProduct(region));
+      onToggleFavorite(regionProduct(region, supplierDiscountPercent));
       return;
     }
-    selectRegion(region, pdfSelection, baskets, onAddProductToBasket);
+    selectRegion(region, pdfSelection, baskets, onAddProductToBasket, supplierDiscountPercent);
   };
 
   const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -447,7 +447,7 @@ const MarginHitStrip = ({
     }
     if (hoverIdRef.current !== region.id) {
       hoverIdRef.current = region.id;
-      onHoverStart?.(regionProduct(region), e, region.detected_price ?? null);
+      onHoverStart?.(regionProduct(region, supplierDiscountPercent), e, region.detected_price ?? null);
     } else {
       onHoverMove?.(e);
     }
