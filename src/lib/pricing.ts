@@ -16,13 +16,12 @@
  *
  * VAT is only added at display/invoice time via VAT_RATE.
  *
- * IMPORTANT: do not re-apply a supplier trade discount here. A previous
- * version of this file kept a hardcoded SUPPLIER_DISCOUNTS table (e.g.
- * Samsung 20%) and re-applied it on top of cost_price/cost_excl_vat. Because
- * every real import/edit path already writes the fully-discounted cost into
- * both columns, that re-application silently double-discounted every
- * Samsung product by 20% everywhere computePricing/computeProductPricing
- * was used (ProductPalette, QuoteBuilderTab, quoteBasketTotals, MaterialsStep,
+ * IMPORTANT: every supplier has its own discount structure, and it is already
+ * baked into cost_price at import/admin time. Do not re-apply any trade
+ * discount here, and never hard-code a supplier percentage. A previous version
+ * kept a hardcoded SUPPLIER_DISCOUNTS table and silently double-discounted
+ * affected brands everywhere computePricing/computeProductPricing was used
+ * (ProductPalette, QuoteBuilderTab, quoteBasketTotals, MaterialsStep,
  * ACOptionsModal, ConsumablesSuggestionPanel, DragOverlayCard,
  * FallbackProductPanel, PdfPageOverlay, VisualCatalogView). See
  * docs/pricing-and-import-architecture-findings.md for the full writeup.
