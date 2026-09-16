@@ -325,9 +325,31 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
    * book deactivates its siblings, so SKUs dropped from the new book fall off
    * the quote picker. Warn first when those SKUs sit on open draft quotes.
    */
+  const runGate = useCallback(async (pdfId: string) => {
+    setGateRunning(true);
+    setGateError(null);
+    setGateRows(null);
+    try {
+      const { data, error } = await (supabase as any).rpc("activate_pdf_book_gate", {
+        p_pdf_upload_id: pdfId,
+        p_sample_n: 10,
+      });
+      if (error) throw error;
+      setGateRows((data || []) as GateRow[]);
+    } catch (e: any) {
+      setGateError(e?.message || "Could not run the price check");
+    } finally {
+      setGateRunning(false);
+    }
+  }, []);
+
+  const gateFailures = (gateRows || []).filter((r) => r.gate_flag !== "PASS");
+  const activateOk = !!gateRows && gateRows.length > 0 && gateFailures.length === 0;
+
   const handleActivateClick = async (pdf: PDFUploadRow) => {
     setActivateWarning(null);
     setActivateTarget(pdf);
+    void runGate(pdf.id);
     try {
       let siblings = (supabase.from("pdf_uploads") as any)
         .select("id")
