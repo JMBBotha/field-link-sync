@@ -243,6 +243,24 @@ const RegionBox = memo(({
         }}
       />
 
+      {/* Hover-only band over the grey wash (mouse/trackpad only — enabled via the
+          data-pdf-row-hover media rule). Opens the same pricing card as the blue i.
+          It stops short of the tap strip so touch selection is untouched. */}
+      <div
+        data-pdf-row-hover
+        className="absolute inset-y-0"
+        style={{
+          left: "40%",
+          right: `var(--pdf-strip-w, ${STRIP_W_PHONE}px)`,
+          pointerEvents: "none",
+        }}
+        onMouseEnter={(e) => onHoverStart?.(regionProduct(region, supplierDiscountPercent), e, region.detected_price ?? null)}
+        onMouseMove={(e) => onHoverMove?.(e)}
+        onMouseLeave={() => onHoverEnd?.()}
+      />
+
+
+
       {/* Favorite star badge — top-left of the row */}
       {isFavorite && (
         <div
