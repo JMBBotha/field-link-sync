@@ -196,7 +196,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 /* ─── Inner content (needs context) ─── */
 function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode }) {
   const navigate = useNavigate();
-  const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta } = useQuoteContext();
+  const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta, addItem: ctxAddItem, addArea: ctxAddArea } = useQuoteContext();
   const isCompact = useIsTabletOrBelow();
   // Phone/tablet: default to the Area Quote tab (search + areas + send), not
   // the Build/Visual PDF tabs which need desktop space.
