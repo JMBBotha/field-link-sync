@@ -328,9 +328,10 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       min_cut_length: row.min_cut_length || 0.5,
       cost_excl_vat: row.cost_excl_vat ?? null,
       cost_incl_vat: row.cost_incl_vat ?? null,
-      supplier_discount_percent: row.supplier_discount_percent || 0,
       vat_rate: row.vat_rate || 15,
+      ...bookFields(row),
     }));
+
 
     const { error: err, data } = await (supabase.from("supplier_products" as any) as any)
       .upsert(batchData as any, { onConflict: "supplier_id,product_code" })
