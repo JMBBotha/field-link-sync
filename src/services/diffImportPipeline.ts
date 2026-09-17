@@ -359,7 +359,10 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       updated_at: new Date().toISOString(),
       archived: false,
       archived_at: null,
+      is_active: true,
+      ...bookFields(row),
     };
+
     if (row.cost_excl_vat !== undefined) {
       updateData.cost_excl_vat = row.cost_excl_vat;
       updateData.cost_incl_vat = row.cost_incl_vat;
