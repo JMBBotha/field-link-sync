@@ -5604,6 +5604,7 @@ export type Database = {
           page_number: number
           pdf_filename: string
           pdf_storage_path: string | null
+          pdf_upload_id: string | null
           price_column_bbox: Json | null
           supplier_id: string
           uploaded_at: string
@@ -5615,6 +5616,7 @@ export type Database = {
           page_number: number
           pdf_filename: string
           pdf_storage_path?: string | null
+          pdf_upload_id?: string | null
           price_column_bbox?: Json | null
           supplier_id: string
           uploaded_at?: string
@@ -5626,11 +5628,20 @@ export type Database = {
           page_number?: number
           pdf_filename?: string
           pdf_storage_path?: string | null
+          pdf_upload_id?: string | null
           price_column_bbox?: Json | null
           supplier_id?: string
           uploaded_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "supplier_pdf_pages_pdf_upload_id_fkey"
+            columns: ["pdf_upload_id"]
+            isOneToOne: false
+            referencedRelation: "pdf_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       supplier_products: {
         Row: {
