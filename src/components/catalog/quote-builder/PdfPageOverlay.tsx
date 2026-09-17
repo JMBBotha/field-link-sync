@@ -201,17 +201,28 @@ const selectRegion = (
       : (computeProductPricing(product).sellExVat || 0);
 
     const specs = parsePdfRowSpecs(region.label || "");
+    const blurb =
+      (product as unknown as { ai_sales_description?: string }).ai_sales_description ||
+      product.description ||
+      region.label ||
+      "";
     pdfSelection.handleSelectProduct({
       code,
       description: product.short_name || product.description || region.label || code,
       price: String(sellExVat),
       costPrice: effectiveCost || undefined,
       markupPercent: normalizedMarkup,
+      // Real catalog identity so the quote line links to the live product.
+      productId: region.product.id,
+      productCode: product.product_code || region.product_code || undefined,
+      pdfDescription: blurb || undefined,
+      supplierName: product.supplier_name || undefined,
       indoorModel: specs.indoorModel,
       outdoorModel: specs.outdoorModel,
       btu: specs.btu,
       kw: specs.kw,
     });
+
   }
 
   if (!alreadySelectedInPdf && baskets.length > 0 && onAddProductToBasket) {

@@ -18,6 +18,8 @@ import ProductPalette from "@/components/catalog/quote-builder/ProductPalette";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+
 import { supabase } from "@/integrations/supabase/client";
 import { QuoteProvider, useQuoteContext } from "@/contexts/QuoteContext";
 import { useUnifiedClients } from "@/hooks/useUnifiedClients";
@@ -196,7 +198,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 /* ─── Inner content (needs context) ─── */
 function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode }) {
   const navigate = useNavigate();
-  const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta } = useQuoteContext();
+  const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta, addItem: ctxAddItem, addArea: ctxAddArea } = useQuoteContext();
   const isCompact = useIsTabletOrBelow();
   // Phone/tablet: default to the Area Quote tab (search + areas + send), not
   // the Build/Visual PDF tabs which need desktop space.
@@ -540,11 +542,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     });
   }, []);
 
-  const updateSelectedItem = useCallback((code: string, updates: Partial<Pick<PdfSelectedProduct, "quantity" | "unitType">>) => {
+  const updateSelectedItem = useCallback((code: string, updates: Partial<PdfSelectedProduct>) => {
     setSelectedFromPdf((prev) =>
       prev.map((item) => (item.code === code ? { ...item, ...updates } : item))
     );
   }, []);
+
 
   // Wizard trigger item from Visual tab
   const handleOpenWizardFromVisual = useCallback((item: WizardTriggerItem) => {
@@ -640,33 +643,120 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     });
   }, []);
 
-  /** Push every PDF-selected product into the shared baskets (one quote). */
+  /* ── PDF selection → the OPEN quote (area-pick + never silent wipe) ──
+     Selections stay parked in the left basket until they are successfully
+     written into a real quote area (quote_items + the matching basket, which
+     the auto-save mirrors). Nothing is cleared on failure or cancel. */
+  const [areaPickerOpen, setAreaPickerOpen] = useState(false);
+  const [newAreaName, setNewAreaName] = useState("");
+  const [committingPdf, setCommittingPdf] = useState(false);
+  const [seedPdfDescription, setSeedPdfDescription] = useState(true);
+
+  const commitSelectionToArea = useCallback(
+    async (areaId: string, areaName: string) => {
+      if (selectedFromPdf.length === 0) return;
+      setCommittingPdf(true);
+      const committed: string[] = [];
+      const failed: string[] = [];
+      let sortOrder = ctxItems.length ? Math.max(...ctxItems.map((i) => i.sort_order || 0)) + 1 : 0;
+
+      for (const item of selectedFromPdf) {
+        const product = pdfItemToPaletteProduct(item);
+        const quantity = item.quantity || 1;
+        const unitSell = parseFloat(item.price) || 0;
+        const unitCost = item.costPrice != null ? Number(item.costPrice) : 0;
+        const markupPct = item.markupPercent != null ? Number(item.markupPercent) : resolveProductMarkupPercent(product as any);
+        const row = await ctxAddItem({
+          area_id: areaId,
+          parent_item_id: null,
+          product_id: item.productId || null,
+          item_name: item.description || item.productCode || item.code,
+          item_number: item.productCode || null,
+          description: seedPdfDescription ? item.pdfDescription || item.description || null : null,
+          quantity,
+          length: null,
+          unit_price: Number(unitSell.toFixed(2)),
+          total_price: null,
+          is_bundle: false,
+          item_type: "product",
+          metadata: { unit_cost: Number(unitCost.toFixed(2)), markup_percent: markupPct },
+          sort_order: sortOrder++,
+          notes: null,
+          source: "catalog",
+          supplier: item.supplierName || null,
+        });
+        if (row) committed.push(item.code);
+        else failed.push(item.productCode || item.code);
+      }
+
+      if (committed.length > 0) {
+        const committedSet = new Set(committed);
+        const entries = selectedFromPdf
+          .filter((i) => committedSet.has(i.code))
+          .map((item) => ({ product: pdfItemToPaletteProduct(item), quantity: item.quantity || 1 }));
+        // Mirror into the basket for this area so the builder panes + auto-save
+        // (replace-all from baskets) keep the freshly committed lines.
+        setBaskets((prev) => {
+          const list = prev.some((b) => b.id === areaId)
+            ? [...prev]
+            : [...prev, { id: areaId, name: areaName, items: [] as Basket["items"] }];
+          return list.map((basket) => {
+            if (basket.id !== areaId) return basket;
+            const items = [...basket.items];
+            entries.forEach(({ product, quantity }, idx) => {
+              items.push({
+                instanceId: `${product.id}-${Date.now()}-${idx}`,
+                product,
+                quantity,
+              });
+            });
+            return { ...basket, items };
+          });
+        });
+        // Only successfully committed selections leave the basket.
+        setSelectedFromPdf((prev) => prev.filter((i) => !committedSet.has(i.code)));
+        toast({ title: `Added ${committed.length} item${committed.length === 1 ? "" : "s"} to ${areaName}` });
+      }
+
+      if (failed.length > 0) {
+        toast({
+          title: `Couldn't add ${failed.length} item${failed.length === 1 ? "" : "s"}`,
+          description: `${failed.slice(0, 3).join(", ")} stayed in your selection — try again.`,
+          variant: "destructive",
+        });
+      }
+
+      setCommittingPdf(false);
+      setAreaPickerOpen(false);
+      setNewAreaName("");
+    },
+    [selectedFromPdf, ctxItems, ctxAddItem, seedPdfDescription],
+  );
+
+  /** Entry point from the Visual PDF "Add N to quote" button. */
   const addSelectedPdfToQuote = useCallback(() => {
     if (selectedFromPdf.length === 0) return;
-    const converted = selectedFromPdf.map((item) => ({
-      product: pdfItemToPaletteProduct(item),
-      quantity: item.quantity || 1,
-    }));
-    setBaskets((prev) => {
-      const list = prev.length > 0 ? [...prev] : [{ id: "basket-1", name: "Zone 1", items: [] as Basket["items"] }];
-      const targetId = list[0].id;
-      return list.map((basket) => {
-        if (basket.id !== targetId) return basket;
-        let items = [...basket.items];
-        converted.forEach(({ product, quantity }) => {
-          const existing = items.find((i) => i.product.id === product.id);
-          if (existing) {
-            items = items.map((i) => (i.product.id === product.id ? { ...i, quantity: i.quantity + quantity } : i));
-          } else {
-            items.push({ instanceId: `${product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, product, quantity });
-          }
-        });
-        return { ...basket, items };
-      });
-    });
-    toast({ title: `Added ${selectedFromPdf.length} item(s) to the quote` });
-    setSelectedFromPdf([]);
-  }, [selectedFromPdf]);
+    if (ctxAreas.length === 1) {
+      void commitSelectionToArea(ctxAreas[0].id, ctxAreas[0].name);
+      return;
+    }
+    setAreaPickerOpen(true);
+  }, [selectedFromPdf, ctxAreas, commitSelectionToArea]);
+
+  /** Create an area inline from the picker, then commit into it. */
+  const commitSelectionToNewArea = useCallback(async () => {
+    const name = newAreaName.trim();
+    if (!name) return;
+    setCommittingPdf(true);
+    const area = await ctxAddArea(name);
+    setCommittingPdf(false);
+    if (!area) {
+      toast({ title: "Couldn't create the area", description: "Your selection was kept — try again.", variant: "destructive" });
+      return;
+    }
+    await commitSelectionToArea(area.id, area.name);
+  }, [newAreaName, ctxAddArea, commitSelectionToArea]);
+
 
   // ---- Build with voice -------------------------------------------------
   // Voice items are merged into the SAME shared baskets every tab uses, so
@@ -958,6 +1048,66 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         quoteId={quoteId}
         onConfirm={addVoiceItems}
       />
+
+      {/* Which area do these PDF selections belong to? Cancel keeps them parked. */}
+      <Dialog open={areaPickerOpen} onOpenChange={(o) => { if (!committingPdf) setAreaPickerOpen(o); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Which area?</DialogTitle>
+            <DialogDescription>
+              {selectedFromPdf.length} selected item{selectedFromPdf.length === 1 ? "" : "s"} — pick an area or add a new one.
+              Nothing is removed from your selection until it lands on the quote.
+            </DialogDescription>
+          </DialogHeader>
+
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={seedPdfDescription}
+              onChange={(e) => setSeedPdfDescription(e.target.checked)}
+              className="h-3.5 w-3.5"
+            />
+            Use the catalog / PDF description as the line description (editable after)
+          </label>
+
+          <div className="space-y-1.5 max-h-56 overflow-y-auto">
+            {ctxAreas.length === 0 && (
+              <p className="text-xs text-muted-foreground italic">No areas yet — name one below.</p>
+            )}
+            {ctxAreas.map((a) => (
+              <Button
+                key={a.id}
+                variant="outline"
+                className="w-full justify-start"
+                disabled={committingPdf}
+                onClick={() => void commitSelectionToArea(a.id, a.name)}
+              >
+                {a.name}
+              </Button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Input
+              value={newAreaName}
+              onChange={(e) => setNewAreaName(e.target.value)}
+              placeholder="New area name"
+              className="h-9"
+              onKeyDown={(e) => { if (e.key === "Enter") void commitSelectionToNewArea(); }}
+            />
+            <Button disabled={committingPdf || !newAreaName.trim()} onClick={() => void commitSelectionToNewArea()}>
+              Add area
+            </Button>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" disabled={committingPdf} onClick={() => setAreaPickerOpen(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Builder mode tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="shrink-0">
