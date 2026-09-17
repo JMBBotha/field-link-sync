@@ -119,10 +119,28 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
                     >
                       <CheckCircle2 className="h-4 w-4" style={{ color: "hsl(var(--success))" }} />
                     </button>
-                    <p className="text-[11px] font-medium text-foreground truncate flex-1">{item.code}</p>
+                    <p className="text-[11px] font-medium text-foreground truncate flex-1">{item.productCode || item.code}</p>
                   </div>
+                  <button
+                    onClick={() =>
+                      pdfSelection.setSelectedFromPdf((prev) => [
+                        ...prev,
+                        { ...item, code: `${item.code}#${Date.now().toString(36)}` },
+                      ])
+                    }
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                    title="Duplicate this item"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
                 </div>
-                <p className="text-[10px] text-muted-foreground truncate">{item.description}</p>
+                <Input
+                  value={item.pdfDescription ?? item.description ?? ""}
+                  onChange={(e) => pdfSelection.updateSelectedItem(item.code, { pdfDescription: e.target.value })}
+                  placeholder="Line description (from PDF, editable)"
+                  className="h-6 text-[10px] px-1"
+                />
+
                 {(item.indoorModel || item.outdoorModel || item.btu || item.kw) && (
                   <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-muted-foreground">
                     {item.indoorModel && (
