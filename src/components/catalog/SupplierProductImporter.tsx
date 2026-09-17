@@ -384,7 +384,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       setError("Failed to read PDF. Ensure it's a valid, non-password-protected PDF.");
       setPdfFile(null);
     } finally { setExtracting(false); }
-  }, [toast, supplierId, supplierName, queryClient]);
+  }, [toast, supplierId, supplierName, queryClient, resolveImportBrand]);
 
 
   const onDrop = useCallback((e: React.DragEvent) => {
