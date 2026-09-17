@@ -269,7 +269,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       list_price_raw: row.list_price_raw ?? deriveListPriceRaw(row.cost_price, discount),
       supplier_discount_percent: discount,
       default_markup_percent: markup,
-      selling_price: Math.round(row.cost_price * (1 + (Number(markup) || 0) / 100) * 100) / 100,
+      // selling_price is a GENERATED ALWAYS column — never written directly.
     };
   };
 
