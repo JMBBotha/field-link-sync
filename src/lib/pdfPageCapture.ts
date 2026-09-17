@@ -292,7 +292,7 @@ export async function capturePdfPages(
   if (pagesStored > 0) {
     try {
       const safePdfName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const folderKeyPdf = supplierId || supplierName;
+      const folderKeyPdf = supplierId;
       const pdfStoragePath = `${folderKeyPdf}/${safePdfName}`;
       const { error: pdfUploadErr } = await supabase.storage
         .from("supplier-pdf-pages")
@@ -304,11 +304,13 @@ export async function capturePdfPages(
         const { data: pdfUrlData } = supabase.storage
           .from("supplier-pdf-pages")
           .getPublicUrl(pdfStoragePath);
-        // Update all page records with the PDF storage path
+        // Update this book's page records with the PDF storage path
         await (supabase.from("supplier_pdf_pages") as any)
           .update({ pdf_storage_path: pdfUrlData.publicUrl })
-          .eq("supplier_id", supplierId || supplierName)
-          .eq("pdf_filename", file.name);
+          .eq("pdf_upload_id", pdfUploadId);
+        await (supabase.from("pdf_uploads") as any)
+          .update({ file_url: pdfUrlData.publicUrl })
+          .eq("id", pdfUploadId);
         console.log("[PDF Capture] Original PDF linked for live overlays");
       } else {
         console.warn("[PDF Capture] Optional PDF upload failed (non-blocking):", pdfUploadErr);
@@ -318,7 +320,12 @@ export async function capturePdfPages(
     }
   }
 
-  return { pagesStored, errors };
+  await (supabase.from("pdf_uploads") as any)
+    .update({ page_count: pagesStored, status: errors > 0 ? "partial" : "parsed" })
+    .eq("id", pdfUploadId);
+
+  return { pdfUploadId, pagesStored, errors };
+
 }
 
 /**
