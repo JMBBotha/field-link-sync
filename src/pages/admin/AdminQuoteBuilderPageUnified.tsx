@@ -18,6 +18,8 @@ import ProductPalette from "@/components/catalog/quote-builder/ProductPalette";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+
 import { supabase } from "@/integrations/supabase/client";
 import { QuoteProvider, useQuoteContext } from "@/contexts/QuoteContext";
 import { useUnifiedClients } from "@/hooks/useUnifiedClients";
@@ -1055,6 +1057,66 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         quoteId={quoteId}
         onConfirm={addVoiceItems}
       />
+
+      {/* Which area do these PDF selections belong to? Cancel keeps them parked. */}
+      <Dialog open={areaPickerOpen} onOpenChange={(o) => { if (!committingPdf) setAreaPickerOpen(o); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Which area?</DialogTitle>
+            <DialogDescription>
+              {selectedFromPdf.length} selected item{selectedFromPdf.length === 1 ? "" : "s"} — pick an area or add a new one.
+              Nothing is removed from your selection until it lands on the quote.
+            </DialogDescription>
+          </DialogHeader>
+
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={seedPdfDescription}
+              onChange={(e) => setSeedPdfDescription(e.target.checked)}
+              className="h-3.5 w-3.5"
+            />
+            Use the catalog / PDF description as the line description (editable after)
+          </label>
+
+          <div className="space-y-1.5 max-h-56 overflow-y-auto">
+            {ctxAreas.length === 0 && (
+              <p className="text-xs text-muted-foreground italic">No areas yet — name one below.</p>
+            )}
+            {ctxAreas.map((a) => (
+              <Button
+                key={a.id}
+                variant="outline"
+                className="w-full justify-start"
+                disabled={committingPdf}
+                onClick={() => void commitSelectionToArea(a.id, a.name)}
+              >
+                {a.name}
+              </Button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Input
+              value={newAreaName}
+              onChange={(e) => setNewAreaName(e.target.value)}
+              placeholder="New area name"
+              className="h-9"
+              onKeyDown={(e) => { if (e.key === "Enter") void commitSelectionToNewArea(); }}
+            />
+            <Button disabled={committingPdf || !newAreaName.trim()} onClick={() => void commitSelectionToNewArea()}>
+              Add area
+            </Button>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" disabled={committingPdf} onClick={() => setAreaPickerOpen(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Builder mode tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="shrink-0">
