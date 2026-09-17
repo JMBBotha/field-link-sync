@@ -343,8 +343,13 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       import("@/lib/pdfPageCapture").then(async ({ capturePdfPages }) => {
         try {
           console.log("[PDF Import] Capturing pages for visual catalog...");
-          const captureResult = await capturePdfPages(file, supplierName, undefined);
-          console.log(`[PDF Import] Captured ${captureResult.pagesStored} pages`);
+          const captureResult = await capturePdfPages(file, {
+            supplierId,
+            supplierName,
+            onProgress: undefined,
+          });
+          capturedBookRef.current = { fileName: file.name, pdfUploadId: captureResult.pdfUploadId };
+          console.log(`[PDF Import] Captured ${captureResult.pagesStored} pages into book ${captureResult.pdfUploadId}`);
           toast({ title: "Visual Catalog Ready", description: `Stored ${captureResult.pagesStored} page images from ${file.name}` });
           queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
           queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
@@ -358,7 +363,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       setError("Failed to read PDF. Ensure it's a valid, non-password-protected PDF.");
       setPdfFile(null);
     } finally { setExtracting(false); }
-  }, [toast]);
+  }, [toast, supplierId, supplierName, queryClient]);
+
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
