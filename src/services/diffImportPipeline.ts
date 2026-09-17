@@ -217,7 +217,17 @@ export interface ApplyDiffOptions {
    * archived.
    */
   isFullCatalogue?: boolean;
+  /**
+   * INVARIANT 2 (catalog SoT): the `pdf_uploads` book these rows came from.
+   * Every inserted / updated / restored SKU is stamped with it, so a product is
+   * never left archived=false with pdf_upload_id NULL (which the live picker
+   * treats as "not in the live catalogue").
+   */
+  pdfUploadId?: string | null;
+  /** Trade discount % for this book (0 for NETT books like Livance/Midea). */
+  tradeDiscountPercent?: number;
 }
+
 
 export interface ApplyDiffResult {
   imported: number;
