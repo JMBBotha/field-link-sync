@@ -170,6 +170,13 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
   const [detectedPriceColumns, setDetectedPriceColumns] = useState<string[]>([]);
   const [rawParsedProducts, setRawParsedProducts] = useState<any[]>([]);
   const [priceConfig, setPriceConfig] = useState<PriceConfig | null>(null);
+  /**
+   * The inactive `pdf_uploads` book created for the PDF currently being imported.
+   * Every captured page and every imported SKU is stamped with this id, so a book
+   * can later be activated by the gate — no more orphan pages / live-less SKUs.
+   */
+  const capturedBookRef = useRef<{ fileName: string; pdfUploadId: string } | null>(null);
+
 
   // Load saved supplier config
   const { data: supplierConfig } = useQuery({
