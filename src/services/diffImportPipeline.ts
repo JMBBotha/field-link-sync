@@ -48,7 +48,17 @@ export interface DiffImportRow {
   cost_incl_vat?: number | null;
   supplier_discount_percent?: number;
   vat_rate?: number;
+  /** Printed LIST price ex VAT from the price book — required by the activation gate. */
+  list_price_raw?: number | null;
 }
+
+/** cost = NETT as printed, or list × (1 − trade%) when a trade discount applies. */
+export function deriveListPriceRaw(costPrice: number, tradeDiscountPercent: number): number {
+  const d = Number(tradeDiscountPercent) || 0;
+  if (d > 0 && d < 100) return Math.round((costPrice / (1 - d / 100)) * 100) / 100;
+  return Math.round(costPrice * 100) / 100;
+}
+
 
 export type DiffAction = "new" | "update" | "archive" | "unchanged" | "restore";
 
@@ -207,7 +217,17 @@ export interface ApplyDiffOptions {
    * archived.
    */
   isFullCatalogue?: boolean;
+  /**
+   * INVARIANT 2 (catalog SoT): the `pdf_uploads` book these rows came from.
+   * Every inserted / updated / restored SKU is stamped with it, so a product is
+   * never left archived=false with pdf_upload_id NULL (which the live picker
+   * treats as "not in the live catalogue").
+   */
+  pdfUploadId?: string | null;
+  /** Trade discount % for this book (0 for NETT books like Livance/Midea). */
+  tradeDiscountPercent?: number;
 }
+
 
 export interface ApplyDiffResult {
   imported: number;
@@ -236,7 +256,23 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
     fileName = null,
     onProgress,
     isFullCatalogue = true,
+    pdfUploadId = null,
+    tradeDiscountPercent = 0,
   } = opts;
+
+  /** Per-row book/pricing columns applied on insert, update AND restore. */
+  const bookFields = (row: DiffRow) => {
+    const discount = row.supplier_discount_percent ?? tradeDiscountPercent ?? 0;
+    const markup = defaultMarkupPercent;
+    return {
+      pdf_upload_id: pdfUploadId,
+      list_price_raw: row.list_price_raw ?? deriveListPriceRaw(row.cost_price, discount),
+      supplier_discount_percent: discount,
+      default_markup_percent: markup,
+      selling_price: Math.round(row.cost_price * (1 + (Number(markup) || 0) / 100) * 100) / 100,
+    };
+  };
+
 
   const workingRows = forceAll
     ? diffRows.map((r) => (r.action === "unchanged" ? { ...r, action: "update" as DiffAction } : r))
@@ -292,9 +328,10 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       min_cut_length: row.min_cut_length || 0.5,
       cost_excl_vat: row.cost_excl_vat ?? null,
       cost_incl_vat: row.cost_incl_vat ?? null,
-      supplier_discount_percent: row.supplier_discount_percent || 0,
       vat_rate: row.vat_rate || 15,
+      ...bookFields(row),
     }));
+
 
     const { error: err, data } = await (supabase.from("supplier_products" as any) as any)
       .upsert(batchData as any, { onConflict: "supplier_id,product_code" })
@@ -322,7 +359,10 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       updated_at: new Date().toISOString(),
       archived: false,
       archived_at: null,
+      is_active: true,
+      ...bookFields(row),
     };
+
     if (row.cost_excl_vat !== undefined) {
       updateData.cost_excl_vat = row.cost_excl_vat;
       updateData.cost_incl_vat = row.cost_incl_vat;

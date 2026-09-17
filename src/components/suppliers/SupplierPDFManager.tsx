@@ -394,6 +394,14 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       });
       return;
     }
+    if (activateTarget.id.startsWith("spp-") || activateTarget.can_activate === false) {
+      toast({
+        title: "This is a legacy page set",
+        description: "It has no price book behind it, so it can only be viewed. Re-upload the PDF to make it live.",
+        variant: "destructive",
+      });
+      return;
+    }
     setActivating(true);
     try {
       let deactivate = (supabase.from("pdf_uploads") as any)
@@ -410,12 +418,30 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
         .eq("id", activateTarget.id);
       if (error) throw error;
 
+      // ── Swap the live catalogue over to this book (soft only, never deletes):
+      //    same supplier + same brand products that came from another book get
+      //    archived, and the products on this book go live.
+      let archiveOthers = (supabase.from("supplier_products") as any)
+        .update({ archived: true, archived_at: new Date().toISOString() })
+        .eq("supplier_id", activateTarget.supplier_id)
+        .neq("pdf_upload_id", activateTarget.id)
+        .eq("archived", false);
+      archiveOthers = activateTarget.brand
+        ? archiveOthers.eq("brand", activateTarget.brand)
+        : archiveOthers.is("brand", null);
+      await archiveOthers;
+
+      await (supabase.from("supplier_products") as any)
+        .update({ archived: false, archived_at: null, is_active: true })
+        .eq("pdf_upload_id", activateTarget.id);
+
       toast({ title: "Active price book updated", description: activateTarget.file_name || "" });
       queryClient.invalidateQueries({ queryKey: ["pdf-uploads-manager"] });
       queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
       setActivateTarget(null);
       setActivateWarning(null);
       setGateRows(null);
+
     } catch (e: any) {
       toast({ title: "Could not activate", description: e?.message || "Unknown error", variant: "destructive" });
     } finally {
