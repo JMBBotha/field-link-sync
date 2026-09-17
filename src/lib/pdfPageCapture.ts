@@ -28,9 +28,37 @@ export function loadPdfJs(): Promise<any> {
 }
 
 interface CaptureResult {
+  /** The `pdf_uploads` book this upload created. Never null on success. */
+  pdfUploadId: string;
   pagesStored: number;
   errors: number;
 }
+
+/**
+ * Options for a Visual PDF capture.
+ *
+ * INVARIANT (catalog SoT): a capture ALWAYS creates a `pdf_uploads` book row
+ * first (is_active = false) and stamps every `supplier_pdf_pages` row with its
+ * id. Page assets are never written without a book — that is what produced the
+ * orphan Samsung / Livance pages whose SKUs could never go live.
+ */
+export interface CapturePdfOptions {
+  /** suppliers.id UUID — required, this is the book's owner. */
+  supplierId: string;
+  supplierName: string;
+  /** Brand covered by this book (Samsung, Midea, …). Null for single-brand suppliers. */
+  brand?: string | null;
+  /** Trade discount % that turns the printed LIST price into our cost. 0 for NETT books. */
+  tradeDiscountPercent?: number | null;
+  /** Default markup % applied to cost for this book. */
+  markupPercent?: number | null;
+  /** "nett" | "list" — how the printed price column should be read. */
+  priceListType?: string | null;
+  onProgress?: (current: number, total: number) => void;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 
 /**
  * Scan a rendered page canvas for the pink-marked price column.
