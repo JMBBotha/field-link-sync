@@ -48,7 +48,17 @@ export interface DiffImportRow {
   cost_incl_vat?: number | null;
   supplier_discount_percent?: number;
   vat_rate?: number;
+  /** Printed LIST price ex VAT from the price book — required by the activation gate. */
+  list_price_raw?: number | null;
 }
+
+/** cost = NETT as printed, or list × (1 − trade%) when a trade discount applies. */
+export function deriveListPriceRaw(costPrice: number, tradeDiscountPercent: number): number {
+  const d = Number(tradeDiscountPercent) || 0;
+  if (d > 0 && d < 100) return Math.round((costPrice / (1 - d / 100)) * 100) / 100;
+  return Math.round(costPrice * 100) / 100;
+}
+
 
 export type DiffAction = "new" | "update" | "archive" | "unchanged" | "restore";
 
