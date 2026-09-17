@@ -256,7 +256,23 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
     fileName = null,
     onProgress,
     isFullCatalogue = true,
+    pdfUploadId = null,
+    tradeDiscountPercent = 0,
   } = opts;
+
+  /** Per-row book/pricing columns applied on insert, update AND restore. */
+  const bookFields = (row: DiffRow) => {
+    const discount = row.supplier_discount_percent ?? tradeDiscountPercent ?? 0;
+    const markup = defaultMarkupPercent;
+    return {
+      pdf_upload_id: pdfUploadId,
+      list_price_raw: row.list_price_raw ?? deriveListPriceRaw(row.cost_price, discount),
+      supplier_discount_percent: discount,
+      default_markup_percent: markup,
+      selling_price: Math.round(row.cost_price * (1 + (Number(markup) || 0) / 100) * 100) / 100,
+    };
+  };
+
 
   const workingRows = forceAll
     ? diffRows.map((r) => (r.action === "unchanged" ? { ...r, action: "update" as DiffAction } : r))
