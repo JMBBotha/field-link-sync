@@ -366,6 +366,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           const captureResult = await capturePdfPages(file, {
             supplierId,
             supplierName,
+            brand: resolveImportBrand(),
             onProgress: undefined,
           });
           capturedBookRef.current = { fileName: file.name, pdfUploadId: captureResult.pdfUploadId };
@@ -684,6 +685,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           const captureResult = await capturePdfPages(pdfFile, {
             supplierId,
             supplierName,
+            brand: resolveImportBrand(),
             tradeDiscountPercent: tradeDiscount,
             markupPercent: aiMarkup,
             priceListType: tradeDiscount > 0 ? "list" : "nett",
@@ -701,6 +703,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
             trade_discount_percent: tradeDiscount,
             markup_percent: aiMarkup,
             price_list_type: tradeDiscount > 0 ? "list" : "nett",
+            brand: resolveImportBrand(),
           })
           .eq("id", pdfUploadId);
       }
