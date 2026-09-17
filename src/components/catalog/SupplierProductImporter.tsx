@@ -177,6 +177,26 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
    */
   const capturedBookRef = useRef<{ fileName: string; pdfUploadId: string } | null>(null);
 
+  /**
+   * Best-effort brand for the `pdf_uploads` book: the dominant brand among the
+   * parsed rows when known, otherwise the supplier name. Keeping brand on the
+   * book lets sibling-swap on activation stay brand-scoped (a Samsung book
+   * must never deactivate Midea books).
+   */
+  const resolveImportBrand = useCallback((): string | null => {
+    const counts = new Map<string, number>();
+    for (const row of [...parsedRows, ...diffRows] as any[]) {
+      const brand = String(row?.brand || "").trim();
+      if (brand) counts.set(brand, (counts.get(brand) || 0) + 1);
+    }
+    let best: string | null = null;
+    let bestCount = 0;
+    counts.forEach((count, brand) => {
+      if (count > bestCount) { best = brand; bestCount = count; }
+    });
+    return best || supplierName?.trim() || null;
+  }, [parsedRows, diffRows, supplierName]);
+
 
   // Load saved supplier config
   const { data: supplierConfig } = useQuery({
@@ -346,6 +366,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           const captureResult = await capturePdfPages(file, {
             supplierId,
             supplierName,
+            brand: resolveImportBrand(),
             onProgress: undefined,
           });
           capturedBookRef.current = { fileName: file.name, pdfUploadId: captureResult.pdfUploadId };
@@ -363,7 +384,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       setError("Failed to read PDF. Ensure it's a valid, non-password-protected PDF.");
       setPdfFile(null);
     } finally { setExtracting(false); }
-  }, [toast, supplierId, supplierName, queryClient]);
+  }, [toast, supplierId, supplierName, queryClient, resolveImportBrand]);
 
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -664,6 +685,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           const captureResult = await capturePdfPages(pdfFile, {
             supplierId,
             supplierName,
+            brand: resolveImportBrand(),
             tradeDiscountPercent: tradeDiscount,
             markupPercent: aiMarkup,
             priceListType: tradeDiscount > 0 ? "list" : "nett",
@@ -681,6 +703,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
             trade_discount_percent: tradeDiscount,
             markup_percent: aiMarkup,
             price_list_type: tradeDiscount > 0 ? "list" : "nett",
+            brand: resolveImportBrand(),
           })
           .eq("id", pdfUploadId);
       }
