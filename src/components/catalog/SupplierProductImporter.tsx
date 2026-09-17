@@ -713,7 +713,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           try {
             const importedCodes = diffRows.filter(r => r.action === "new" || r.action === "update").map(r => r.product_code);
             if (importedCodes.length > 0) {
-              await matchProductsToPdfPages(supplierName, pdfFile.name, importedCodes);
+              await matchProductsToPdfPages(supplierId, pdfFile.name, importedCodes);
             }
           } catch (err) {
             console.error("[PDF Match] Error:", err);
