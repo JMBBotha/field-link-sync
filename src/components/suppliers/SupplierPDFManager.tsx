@@ -394,7 +394,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       });
       return;
     }
-    if (activateTarget.id.startsWith("pages:")) {
+    if (activateTarget.id.startsWith("spp-") || activateTarget.can_activate === false) {
       toast({
         title: "This is a legacy page set",
         description: "It has no price book behind it, so it can only be viewed. Re-upload the PDF to make it live.",
