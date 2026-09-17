@@ -177,6 +177,26 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
    */
   const capturedBookRef = useRef<{ fileName: string; pdfUploadId: string } | null>(null);
 
+  /**
+   * Best-effort brand for the `pdf_uploads` book: the dominant brand among the
+   * parsed rows when known, otherwise the supplier name. Keeping brand on the
+   * book lets sibling-swap on activation stay brand-scoped (a Samsung book
+   * must never deactivate Midea books).
+   */
+  const resolveImportBrand = useCallback((): string | null => {
+    const counts = new Map<string, number>();
+    for (const row of [...parsedRows, ...diffRows] as any[]) {
+      const brand = String(row?.brand || "").trim();
+      if (brand) counts.set(brand, (counts.get(brand) || 0) + 1);
+    }
+    let best: string | null = null;
+    let bestCount = 0;
+    counts.forEach((count, brand) => {
+      if (count > bestCount) { best = brand; bestCount = count; }
+    });
+    return best || supplierName?.trim() || null;
+  }, [parsedRows, diffRows, supplierName]);
+
 
   // Load saved supplier config
   const { data: supplierConfig } = useQuery({
