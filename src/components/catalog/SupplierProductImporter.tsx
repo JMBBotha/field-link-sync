@@ -651,6 +651,40 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     }
 
     try {
+      // ── INVARIANT: capture the book BEFORE writing products, so every SKU we
+      //    insert/update carries a real pdf_upload_id. A PDF import never leaves
+      //    live products without a book, and never leaves pages without one.
+      let pdfUploadId: string | null = null;
+      const tradeDiscount = priceConfig?.supplierDiscountPercent ?? 0;
+      if (pdfFile) {
+        const { capturePdfPages } = await import("@/lib/pdfPageCapture");
+        if (capturedBookRef.current?.fileName === pdfFile.name) {
+          pdfUploadId = capturedBookRef.current.pdfUploadId;
+        } else {
+          const captureResult = await capturePdfPages(pdfFile, {
+            supplierId,
+            supplierName,
+            tradeDiscountPercent: tradeDiscount,
+            markupPercent: aiMarkup,
+            priceListType: tradeDiscount > 0 ? "list" : "nett",
+          });
+          pdfUploadId = captureResult.pdfUploadId;
+          capturedBookRef.current = { fileName: pdfFile.name, pdfUploadId };
+          toast({ title: "Visual Catalog", description: `Stored ${captureResult.pagesStored} pages from ${pdfFile.name}` });
+          queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
+          queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
+          queryClient.invalidateQueries({ queryKey: ["stored-pdf-pages", supplierName] });
+        }
+        // Keep the book's pricing metadata in step with the import settings.
+        await (supabase.from("pdf_uploads") as any)
+          .update({
+            trade_discount_percent: tradeDiscount,
+            markup_percent: aiMarkup,
+            price_list_type: tradeDiscount > 0 ? "list" : "nett",
+          })
+          .eq("id", pdfUploadId);
+      }
+
       // Delegates to the shared diff-apply logic used by every safe import entry point.
       const { imported, updated, archived, errors, firstError } = await applyProductDiff({
         supplierId,
@@ -662,6 +696,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         fileName: pdfFile?.name || "AI Import",
         onProgress: setProgress,
         isFullCatalogue,
+        pdfUploadId,
+        tradeDiscountPercent: tradeDiscount,
       });
 
       if (errors > 0 && archiveRowsPreview.length > 0) {
@@ -672,25 +708,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         });
       }
 
-      // Capture PDF pages for visual catalog (only if not already captured in handlePdfFile)
-      if (pdfFile && storedPdfPages.length === 0) {
-        import("@/lib/pdfPageCapture").then(async ({ capturePdfPages, matchProductsToPdfPages }) => {
-          try {
-            const captureResult = await capturePdfPages(pdfFile, supplierName, undefined);
-            toast({ title: `Visual Catalog`, description: `Stored ${captureResult.pagesStored} pages from ${pdfFile.name}` });
-            queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
-            queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
-            queryClient.invalidateQueries({ queryKey: ["stored-pdf-pages", supplierName] });
-            const importedCodes = diffRows.filter(r => r.action === "new" || r.action === "update").map(r => r.product_code);
-            if (importedCodes.length > 0) {
-              await matchProductsToPdfPages(supplierName, pdfFile.name, importedCodes);
-            }
-          } catch (err) {
-            console.error("[PDF Capture] Error:", err);
-          }
-        });
-      } else if (pdfFile) {
-        // Pages already captured — just match products to existing pages
+      if (pdfFile) {
         import("@/lib/pdfPageCapture").then(async ({ matchProductsToPdfPages }) => {
           try {
             const importedCodes = diffRows.filter(r => r.action === "new" || r.action === "update").map(r => r.product_code);
@@ -702,6 +720,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           }
         });
       }
+
+
 
       setAiResult({ imported, updated, skipped: errors, archived });
       setShowDiff(false);
