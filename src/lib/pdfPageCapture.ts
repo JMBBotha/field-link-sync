@@ -110,55 +110,92 @@ function detectPinkColumn(
 }
 
 /**
- * Render each page of a PDF to a canvas, convert to JPEG,
- * upload to Supabase Storage, and insert rows into supplier_pdf_pages.
+ * Render each page of a PDF to a canvas, convert to JPEG, upload to Storage,
+ * and insert rows into supplier_pdf_pages — all under a freshly created
+ * `pdf_uploads` book (is_active = false until the activation gate passes).
  */
 export async function capturePdfPages(
   file: File,
-  supplierName: string,
-  onProgress?: (current: number, total: number) => void,
-  /** Optional supplierId to use as storage folder key (falls back to supplierName) */
-  supplierId?: string,
-  /** Optional brand tag (e.g. Samsung / Alliance) for multi-brand suppliers */
-  brand?: string | null,
+  opts: CapturePdfOptions,
 ): Promise<CaptureResult> {
+  const {
+    supplierId,
+    supplierName,
+    brand = null,
+    tradeDiscountPercent = null,
+    markupPercent = null,
+    priceListType = null,
+    onProgress,
+  } = opts;
+
+  if (!supplierId || !UUID_RE.test(supplierId)) {
+    throw new Error(
+      "[PDF Capture] A supplier UUID is required — page assets may never be written without a pdf_uploads book.",
+    );
+  }
+
   console.log("[PDF Capture] Loading pdfjs...");
   const pdfjsLib = await loadPdfJs();
   console.log("[PDF Capture] Reading file ArrayBuffer...");
   const arrayBuffer = await file.arrayBuffer();
-  console.log(`[PDF Capture] ArrayBuffer size: ${arrayBuffer.byteLength}`);
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   console.log(`[PDF Capture] PDF loaded, ${pdf.numPages} pages`);
   const numPages = pdf.numPages;
 
-  // ── Pre-delete: remove ALL prior page rows for this supplier so a new
-  //    upload truly replaces the old PDF. Handles both new UUID-keyed rows
-  //    and legacy rows keyed by the supplier name text (e.g. "ONE STOP SHOP").
+  // ── INVARIANT 1: create the book FIRST. Abort all page writes if it fails.
+  const safeNameForPath = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const bookStoragePath = `${supplierId}/${safeNameForPath}`;
+  const { data: bookRow, error: bookErr } = await (supabase.from("pdf_uploads") as any)
+    .insert({
+      supplier_id: supplierId,
+      brand: brand || null,
+      file_name: file.name,
+      file_path: bookStoragePath,
+      storage_path: bookStoragePath,
+      page_count: numPages,
+      status: "uploaded",
+      is_active: false,
+      trade_discount_percent: tradeDiscountPercent ?? 0,
+      markup_percent: markupPercent ?? null,
+      price_list_type: priceListType || null,
+    })
+    .select("id")
+    .single();
+
+  if (bookErr || !bookRow?.id) {
+    throw new Error(`[PDF Capture] Could not create the price book record: ${bookErr?.message || "unknown error"}`);
+  }
+  const pdfUploadId: string = bookRow.id;
+  console.log(`[PDF Capture] Book created ${pdfUploadId} for supplier ${supplierId}`);
+
+  // ── Pre-delete: only the SAME file for this supplier (a genuine re-upload).
+  //    Sibling brand books for the same supplier keep their page assets so the
+  //    old book stays viewable as history.
   try {
     const aliases = Array.from(
       new Set([supplierId, supplierName, supplierName?.trim(), supplierName?.toUpperCase()].filter(Boolean) as string[])
     );
-    if (aliases.length > 0) {
-      const { data: stale } = await (supabase.from("supplier_pdf_pages") as any)
-        .select("id, page_image_url, pdf_storage_path, supplier_id, pdf_filename")
-        .in("supplier_id", aliases);
-      const rows = (stale || []) as Array<{ id: string; page_image_url?: string | null; pdf_storage_path?: string | null; supplier_id: string; pdf_filename: string }>;
-      if (rows.length > 0) {
-        console.log(`[PDF Capture] Purging ${rows.length} stale page rows for supplier aliases`, aliases);
-        // Best-effort storage cleanup
-        const paths = new Set<string>();
-        for (const r of rows) {
-          for (const url of [r.page_image_url, r.pdf_storage_path]) {
-            if (!url) continue;
-            const m = url.match(/\/storage\/v1\/object\/(?:public|sign)\/supplier-pdf-pages\/(.+?)(?:\?|$)/);
-            if (m) paths.add(decodeURIComponent(m[1]));
-          }
+    const { data: stale } = await (supabase.from("supplier_pdf_pages") as any)
+      .select("id, page_image_url, pdf_storage_path, supplier_id, pdf_filename")
+      .in("supplier_id", aliases)
+      .eq("pdf_filename", file.name);
+    const rows = (stale || []) as Array<{ id: string; page_image_url?: string | null; pdf_storage_path?: string | null }>;
+    if (rows.length > 0) {
+      console.log(`[PDF Capture] Purging ${rows.length} stale page rows for a re-upload of ${file.name}`);
+      const paths = new Set<string>();
+      for (const r of rows) {
+        for (const url of [r.page_image_url, r.pdf_storage_path]) {
+          if (!url) continue;
+          const m = url.match(/\/storage\/v1\/object\/(?:public|sign)\/supplier-pdf-pages\/(.+?)(?:\?|$)/);
+          if (m) paths.add(decodeURIComponent(m[1]));
         }
-        if (paths.size > 0) {
-          try { await supabase.storage.from("supplier-pdf-pages").remove(Array.from(paths)); } catch (e) { console.warn("[PDF Capture] storage cleanup warn", e); }
-        }
-        await (supabase.from("supplier_pdf_pages") as any).delete().in("supplier_id", aliases);
       }
+      if (paths.size > 0) {
+        try { await supabase.storage.from("supplier-pdf-pages").remove(Array.from(paths)); } catch (e) { console.warn("[PDF Capture] storage cleanup warn", e); }
+      }
+      await (supabase.from("supplier_pdf_pages") as any)
+        .delete()
+        .in("id", rows.map((r) => r.id));
     }
   } catch (e) {
     console.warn("[PDF Capture] Pre-delete of stale pages failed (non-blocking):", e);
@@ -167,6 +204,8 @@ export async function capturePdfPages(
   let pagesStored = 0;
   let errors = 0;
   const SCALE = 2.25;
+
+
 
 
   for (let pageNum = 1; pageNum <= numPages; pageNum++) {
