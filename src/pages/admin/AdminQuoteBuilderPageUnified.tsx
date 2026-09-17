@@ -548,15 +548,6 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     );
   }, []);
 
-  /** Duplicate a parked PDF selection (same product, its own line/quantity). */
-  const duplicateSelectedItem = useCallback((code: string) => {
-    setSelectedFromPdf((prev) => {
-      const source = prev.find((p) => p.code === code);
-      if (!source) return prev;
-      return [...prev, { ...source, code: `${source.code}#${Date.now().toString(36)}` }];
-    });
-  }, []);
-
 
   // Wizard trigger item from Visual tab
   const handleOpenWizardFromVisual = useCallback((item: WizardTriggerItem) => {
