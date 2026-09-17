@@ -238,7 +238,7 @@ export async function capturePdfPages(
 
       // Upload to storage
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const folderKey = supplierId || supplierName;
+      const folderKey = supplierId;
       const storagePath = `${folderKey}/${safeName}/page-${pageNum}.jpg`;
 
       const { error: uploadError } = await supabase.storage
@@ -259,15 +259,17 @@ export async function capturePdfPages(
         .from("supplier-pdf-pages")
         .getPublicUrl(storagePath);
 
-      // Insert into supplier_pdf_pages table
+      // Insert into supplier_pdf_pages — ALWAYS stamped with the book id.
       const { error: insertError } = await (supabase.from("supplier_pdf_pages") as any).insert({
-        supplier_id: supplierId || supplierName,
+        supplier_id: supplierId,
+        pdf_upload_id: pdfUploadId,
         pdf_filename: file.name,
         page_number: pageNum,
         page_image_url: urlData.publicUrl,
         price_column_bbox: pink ? { x_frac: pink.x_frac, w_frac: pink.w_frac } : null,
         brand: brand || null,
       });
+
 
       if (insertError) {
         console.error(`[PDF Capture] DB insert error page ${pageNum}:`, insertError);
