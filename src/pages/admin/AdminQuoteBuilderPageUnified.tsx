@@ -540,11 +540,21 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     });
   }, []);
 
-  const updateSelectedItem = useCallback((code: string, updates: Partial<Pick<PdfSelectedProduct, "quantity" | "unitType">>) => {
+  const updateSelectedItem = useCallback((code: string, updates: Partial<PdfSelectedProduct>) => {
     setSelectedFromPdf((prev) =>
       prev.map((item) => (item.code === code ? { ...item, ...updates } : item))
     );
   }, []);
+
+  /** Duplicate a parked PDF selection (same product, its own line/quantity). */
+  const duplicateSelectedItem = useCallback((code: string) => {
+    setSelectedFromPdf((prev) => {
+      const source = prev.find((p) => p.code === code);
+      if (!source) return prev;
+      return [...prev, { ...source, code: `${source.code}#${Date.now().toString(36)}` }];
+    });
+  }, []);
+
 
   // Wizard trigger item from Visual tab
   const handleOpenWizardFromVisual = useCallback((item: WizardTriggerItem) => {
