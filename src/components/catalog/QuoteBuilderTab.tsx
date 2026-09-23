@@ -455,7 +455,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
           quantity: bItem.quantity,
           isLengthItem,
           isOptional: bItem.is_optional,
-          ...(isLengthItem ? { length: bItem.length_metres || bItem.product!.unit_length || 1 } : {}),
+          ...(isLengthItem ? { length: bItem.length_metres || 1 } : {}),
         };
       });
 
