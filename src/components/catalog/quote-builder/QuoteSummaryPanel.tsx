@@ -57,11 +57,7 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
     void quoteCtx.setMarkupRates({ units: u, materials: m });
   };
 
-  const markupBadgeVariant = markupLabel === "Standard" ? "default" as const
-    : markupLabel === "Low" ? "destructive" as const
-    : "secondary" as const;
-
-  const markupBadgeClass = markupLabel === "Standard"
+  const markupBadgeClass = markupLabel === "Good"
     ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800"
     : markupLabel === "Low"
       ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800"
@@ -116,7 +112,10 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
           )}
           <div className="flex justify-between"><span className="text-muted-foreground">Our cost (excl. VAT)</span><span className="tabular-nums">{formatRand(summary.totalCost)}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Gross profit</span><span className="tabular-nums font-semibold text-foreground">{formatRand(summary.profit)}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Overall markup (on cost)</span><span className="tabular-nums">{summary.avgMarkup.toFixed(1)}%</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Overall markup (on cost, incl. labour)</span><span className="tabular-nums">{summary.avgMarkup.toFixed(1)}%</span></div>
+          {summary.unitsMaterialsMarkup != null && summary.labourTotal > 0 && (
+            <div className="flex justify-between"><span className="text-muted-foreground">Units + materials markup (excl. labour)</span><span className="tabular-nums">{summary.unitsMaterialsMarkup.toFixed(1)}%</span></div>
+          )}
           <div className="flex justify-between"><span className="text-muted-foreground">Overall margin (on sell)</span><span className="tabular-nums">{summary.marginPercent.toFixed(1)}%</span></div>
           {summary.unitsMarkup != null && (
             <div className="flex justify-between"><span className="text-muted-foreground">Units markup</span><span className="tabular-nums">{summary.unitsMarkup.toFixed(0)}%</span></div>
@@ -131,8 +130,8 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
       )}
 
       {summary.noCostCount > 0 && (
-        <p className="text-[10px] text-muted-foreground">
-          {summary.noCostCount} {summary.noCostCount === 1 ? "line has" : "lines have"} no cost, so {summary.noCostCount === 1 ? "it is" : "they are"} left out of the markup and margin figures.
+        <p className="text-[10px] text-amber-700 dark:text-amber-400">
+          Markup incomplete - {summary.noCostCount} {summary.noCostCount === 1 ? "line has" : "lines have"} no cost
         </p>
       )}
 
@@ -153,7 +152,7 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
               width: `${markupPercent}%`,
               background: markupLabel === "Low"
                 ? "linear-gradient(90deg, hsl(0 84% 60%), hsl(25 95% 53%))"
-                : markupLabel === "Standard"
+                : markupLabel === "Good"
                   ? "linear-gradient(90deg, hsl(142 71% 45%), hsl(84 81% 44%))"
                   : "linear-gradient(90deg, hsl(45 93% 47%), hsl(38 92% 50%))"
             }}
@@ -162,13 +161,13 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
           <div className="absolute inset-0 flex items-center">
             <div className="absolute left-0 w-px h-full bg-border" />
             <div className="absolute left-[25%] w-px h-full bg-border/50" />
-            <div className="absolute left-[60%] w-px h-full bg-border/50" />
+            <div className="absolute left-[35%] w-px h-full bg-border/50" />
           </div>
         </div>
         <div className="relative h-3 text-[9px] text-muted-foreground">
           <span className="absolute left-0">0%</span>
           <span className="absolute left-[25%] -translate-x-1/2">25%</span>
-          <span className="absolute left-[60%] -translate-x-1/2">60%</span>
+          <span className="absolute left-[35%] -translate-x-1/2">35%</span>
           <span className="absolute right-0">100%+</span>
         </div>
       </div>

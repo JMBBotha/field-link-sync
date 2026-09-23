@@ -562,14 +562,14 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
             </div>
             <div className="relative h-2 rounded-full bg-muted overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-300 ${blendedMarkupHealth(avgMarkup) === "Low" ? "bg-red-500" : blendedMarkupHealth(avgMarkup) === "Standard" ? "bg-green-500" : "bg-amber-400"}`}
+                className={`h-full rounded-full transition-all duration-300 ${blendedMarkupHealth(avgMarkup) === "Low" ? "bg-red-500" : blendedMarkupHealth(avgMarkup) === "Good" ? "bg-green-500" : "bg-amber-400"}`}
                 style={{ width: `${Math.max(0, Math.min(100, (avgMarkup / BLENDED_MARKUP_BAR_MAX) * 100))}%` }}
               />
             </div>
             <div className="relative h-3 text-[9px] text-muted-foreground">
               <span className="absolute left-0">0%</span>
               <span className="absolute left-[25%] -translate-x-1/2">25%</span>
-              <span className="absolute left-[60%] -translate-x-1/2">60%</span>
+              <span className="absolute left-[35%] -translate-x-1/2">35%</span>
               <span className="absolute right-0">100%+</span>
             </div>
           </div>
