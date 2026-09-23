@@ -115,6 +115,7 @@ export function basketsToQuoteState(baskets: Basket[]): { areas: QuoteArea[]; it
           unit_cost: item.quantity > 0 ? totalCost / item.quantity : totalCost,
           cost_excl: item.quantity > 0 ? totalCost / item.quantity : totalCost, // compat alias
           price_locked: true,
+          ...(item.product.manual_price_override ? { manual_price: true } : {}),
           ...(item.isBundle && item.bundlePricingType
             ? {
                 kit: {
@@ -159,10 +160,27 @@ export function computeBasketsQuoteTotals(baskets: Basket[], discount?: QuoteDis
  *  - live catalogue lines: already priced by the active rates; copied so totals refresh
  *  - labour: untouched (flat rate, no markup)
  */
+/**
+ * Reprice ONE product under the quote's category rates. Precedence:
+ * manual line edit (kept) > quote Units/Materials % > company default.
+ * Labour is never marked up. Returns a new object so memoised totals refresh.
+ */
+export function repriceProductForRates(product: PaletteProduct, rates: CategoryMarkupRates, forceCategory?: "materials"): PaletteProduct {
+  if (product.manual_price_override) return product;
+  const cat = forceCategory ?? classifyQuoteCategory(product);
+  if (cat === "labour") return { ...product };
+  const lc = Number(product.locked_cost_ex_vat);
+  if (product.locked_sell_ex_vat != null && Number.isFinite(lc) && lc > 0) {
+    return { ...product, locked_sell_ex_vat: r2(lc * (1 + categoryMarkupPercent(cat, rates) / 100)) };
+  }
+  return { ...product };
+}
+
 export function applyCategoryRatesToBaskets(baskets: Basket[], rates: CategoryMarkupRates): Basket[] {
   return baskets.map((b) => ({
     ...b,
     items: b.items.map((item) => {
+      if (item.product.manual_price_override) return item;
       const cat = item.isBundle ? "materials" : classifyQuoteCategory(item.product);
       if (cat === "labour") return { ...item };
       const m = categoryMarkupPercent(cat, rates);
@@ -174,11 +192,7 @@ export function applyCategoryRatesToBaskets(baskets: Basket[], rates: CategoryMa
           product: item.product.locked_sell_ex_vat != null ? { ...item.product, locked_sell_ex_vat: sell } : item.product,
         };
       }
-      const lc = Number(item.product.locked_cost_ex_vat);
-      if (item.product.locked_sell_ex_vat != null && Number.isFinite(lc) && lc > 0) {
-        return { ...item, product: { ...item.product, locked_sell_ex_vat: r2(lc * (1 + m / 100)) } };
-      }
-      return { ...item, product: { ...item.product } };
+      return { ...item, product: repriceProductForRates(item.product, rates) };
     }),
   }));
 }

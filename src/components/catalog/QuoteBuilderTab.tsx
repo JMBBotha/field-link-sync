@@ -94,6 +94,8 @@ export interface PaletteProduct {
   locked_sell_ex_vat?: number | null;
   /** Cost that goes with locked_sell_ex_vat (for margin display only). */
   locked_cost_ex_vat?: number | null;
+  /** Staff typed this line's sell/markup by hand — quote Units/Materials % must never overwrite it. */
+  manual_price_override?: boolean;
 }
 
 /** Returns the effective per-unit prices for a product, using computePricing

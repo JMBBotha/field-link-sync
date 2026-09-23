@@ -1,3 +1,5 @@
+import { applyCategoryRatesToAreas } from "@/utils/repriceAreas";
+import { subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot } from "@/lib/pricing";
 import { costPerMetreOf } from "@/lib/pricing";
 /**
  * Inline (non-modal) version of the Area Quote Builder wizard.
@@ -5,7 +7,7 @@ import { costPerMetreOf } from "@/lib/pricing";
  * that fills its parent container.
  */
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef, useSyncExternalStore } from "react";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { ChevronLeft, ChevronRight, Check, Save, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -121,6 +123,18 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
       toast.info("Draft restored from last session");
     }
   }, []);
+
+  // Reprice existing area lines when the user edits Units % / Materials %.
+  const rateSnap = useSyncExternalStore(subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot);
+  const lastRateEditRef = useRef(rateSnap.editSeq);
+  useEffect(() => {
+    if (rateSnap.editSeq === lastRateEditRef.current) return;
+    lastRateEditRef.current = rateSnap.editSeq;
+    if (rateSnap.rates) {
+      const rates = rateSnap.rates;
+      setAreas((prev) => applyCategoryRatesToAreas(prev, rates));
+    }
+  }, [rateSnap]);
 
   // Notify parent of area changes
   useEffect(() => {

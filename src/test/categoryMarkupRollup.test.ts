@@ -10,7 +10,8 @@ describe("per-line category markup roll-up (Johan worked example)", () => {
   const items = [
     line("u", "air conditioner", 7000, 25),
     line("m", "materials", 2000, 100),
-    line("l", "labour", 1000, 100),
+    // Pure maths check: third slice priced like materials (real labour is flat, see ACCEPTANCE test)
+    line("l", "materials", 1000, 100),
   ];
   const t = computeQuoteTotals(items, []);
   it("sums line sells and costs", () => {
@@ -127,5 +128,72 @@ describe("editing quote rates reprices saved lines", () => {
     expect(out[0].items[0].product.locked_sell_ex_vat).toBe(13000);
     expect(out[0].items[1].bundleUnitPrice).toBe(450);
     expect(out[0].items[2].product.locked_sell_ex_vat).toBe(1500);
+  });
+});
+
+import { allocateQuoteDiscount, blendedMarkupHealth } from "@/utils/quoteTransformers";
+import { applyCategoryRatesToAreas } from "@/utils/repriceAreas";
+
+describe("ACCEPTANCE (Johan/Grok): unit 10000, materials 2000, labour 3000 flat", () => {
+  const lab: any = { id: "lab", item_type: "service", item_name: "Installation labour", quantity: 1, unit_price: 3000, total_price: 3000, metadata: {} };
+  const items = () => [line("u", "Air Conditioning", 10000, 25), line("m", "Consumables", 2000, 100), lab];
+  it("no discount", () => {
+    const t = computeQuoteTotals(items(), []);
+    expect(t.totalCost).toBeCloseTo(15000, 2);
+    expect(t.subtotal).toBeCloseTo(19500, 2);
+    expect(t.profit).toBeCloseTo(4500, 2);
+    expect(t.avgMarkup.toFixed(1)).toBe("30.0");
+    expect(t.marginPercent.toFixed(1)).toBe("23.1");
+    expect(t.unitsMaterialsMarkup!.toFixed(1)).toBe("37.5");
+    expect(t.labourTotal).toBe(3000);
+  });
+  it("R1000 discount before VAT", () => {
+    const t = computeQuoteTotals(items(), [], undefined, { type: "fixed", value: 1000 });
+    expect(t.subtotal - t.discountAmount).toBeCloseTo(18500, 2);
+    expect(t.profit).toBeCloseTo(3500, 2);
+    expect(t.avgMarkup.toFixed(1)).toBe("23.3");
+    expect(t.marginPercent.toFixed(1)).toBe("18.9");
+  });
+  it("discount is never allocated to labour; spread by units/materials sell", () => {
+    const share = allocateQuoteDiscount(items(), 1000);
+    expect(share.get("lab")).toBeUndefined();
+    expect(share.get("u")!).toBeCloseTo(1000 * 12500 / 16500, 6);
+    expect(share.get("m")!).toBeCloseTo(1000 * 4000 / 16500, 6);
+  });
+});
+
+describe("colour bands: green ≥35, amber 25–34.9, red <25", () => {
+  it("bands", () => {
+    expect(blendedMarkupHealth(35)).toBe("Good");
+    expect(blendedMarkupHealth(34.9)).toBe("Fair");
+    expect(blendedMarkupHealth(25)).toBe("Fair");
+    expect(blendedMarkupHealth(24.9)).toBe("Low");
+  });
+});
+
+describe("no-cost lines are never R0 cost; sell still in total", () => {
+  it("sell counted, cost not", () => {
+    const bare: any = { id: "b", item_type: "Consumables", quantity: 1, unit_price: 500, total_price: 500, metadata: {} };
+    const t = computeQuoteTotals([line("u", "Air Conditioning", 1000, 25), bare], []);
+    expect(t.subtotal).toBeCloseTo(1750, 2);
+    expect(t.totalCost).toBeCloseTo(1000, 2);
+    expect(t.noCostCount).toBe(1);
+  });
+});
+
+describe("manual line edits survive a rate change", () => {
+  it("basket + area", () => {
+    const manual = { product_category: "Air Conditioning", short_name: "Midea 24K INV", locked_sell_ex_vat: 15000, locked_cost_ex_vat: 10000, manual_price_override: true };
+    const out = applyCategoryRatesToBaskets([{ id: "a", name: "A", items: [{ instanceId: "1", quantity: 1, product: manual }] }] as any, { units: 30, materials: 80 });
+    expect(out[0].items[0].product.locked_sell_ex_vat).toBe(15000);
+    const areas: any = [{ id: "z", name: "Living", acUnits: [{ id: "u", product: manual, btu: 24000, quantity: 1 },
+      { id: "u2", product: { ...manual, manual_price_override: false }, btu: 24000, quantity: 1 }], consumables: [], brackets: [], timeHours: 0, subtotal: 0,
+      materials: [{ id: "k", product: { short_name: "kit", locked_sell_ex_vat: 493.38, locked_cost_ex_vat: 250 }, defaultLength: 2, adjustedLength: 2, costPerMeter: 493.38, totalCost: 986.76, pricingMode: "length", unitQuantity: 1,
+        kit: { name: "24K kit", pricingType: "p/meter", unitSell: 493.38, unitCost: 250, items: [] } }] }];
+    const r = applyCategoryRatesToAreas(areas, { units: 30, materials: 80 });
+    expect(r[0].acUnits[0].product.locked_sell_ex_vat).toBe(15000);
+    expect(r[0].acUnits[1].product.locked_sell_ex_vat).toBe(13000);
+    expect(r[0].materials[0].kit!.unitSell).toBe(450);
+    expect(r[0].materials[0].totalCost).toBe(900);
   });
 });
