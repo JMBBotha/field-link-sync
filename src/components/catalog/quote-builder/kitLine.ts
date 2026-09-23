@@ -182,3 +182,108 @@ export function kitFromSavedItem(it: {
   const bundleId = String(k.bundle_id || it.id);
   return materialFromKit(kit, bundleId, it.id, pricingType === "p/meter" ? (length || 1) : qty);
 }
+
+/* ─── Collapse pre-collapse (exploded) kits on hydrate ─────────────────── */
+
+interface SavedLineLike {
+  id: string;
+  item_number?: string | null;
+  item_name?: string | null;
+  is_bundle?: boolean | null;
+  length?: number | null;
+  quantity?: number | null;
+  unit_price?: number | null;
+  total_price?: number | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+interface BundleForCollapse {
+  id: string;
+  name: string;
+  items: Array<{
+    quantity?: number | null;
+    is_length_item?: boolean | null;
+    is_optional?: boolean | null;
+    product?: { product_code?: string | null; short_name?: string | null } | null;
+    supplier_product?: { product_code?: string | null; short_name?: string | null } | null;
+  }>;
+}
+
+const norm = (s?: string | null) => (s || "").trim().toUpperCase();
+
+function lineSell(l: SavedLineLike): number {
+  const t = Number(l.total_price);
+  if (Number.isFinite(t) && t > 0) return t;
+  return (Number(l.unit_price) || 0) * (Number(l.quantity) || 1);
+}
+
+function lineCost(l: SavedLineLike): number {
+  const meta = (l.metadata || {}) as Record<string, unknown>;
+  const qty = Number(l.quantity) || 1;
+  const uc = Number(meta.unit_cost ?? meta.cost_excl);
+  if (Number.isFinite(uc) && uc > 0) return uc * qty;
+  const mk = Number(meta.markup_percent);
+  const sell = lineSell(l);
+  return Number.isFinite(mk) && mk > 0 ? sell / (1 + mk / 100) : 0;
+}
+
+/**
+ * Old quotes saved a kit as N separate lines (copper, insulation, tape…).
+ * On load, replace each set that EXACTLY covers a live bundle's non-optional
+ * component codes with ONE synthetic is_bundle line (metadata.kit) so the
+ * normal kitFromSavedItem path renders a single collapsed kit.
+ *
+ * Price lock: unit_price = sum of the matched lines' saved totals, so the
+ * area total never changes. Only collapses when unambiguous: ≥2 components,
+ * every code present exactly once, and all length-bearing lines share one
+ * length. Anything else is left untouched.
+ */
+export function collapseExplodedKits<T extends SavedLineLike>(lines: T[], bundles: BundleForCollapse[]): T[] {
+  let remaining = [...lines];
+  const out: T[] = [];
+  for (const b of bundles) {
+    const req = (b.items || []).filter((i) => !i.is_optional && (i.product || i.supplier_product));
+    const codes = req.map((i) => norm((i.product || i.supplier_product)!.product_code));
+    if (codes.length < 2 || codes.some((c) => !c) || new Set(codes).size !== codes.length) continue;
+    const pool = remaining.filter((l) => !l.is_bundle);
+    const matched: T[] = [];
+    let ok = true;
+    for (const c of codes) {
+      const hits = pool.filter((l) => norm(l.item_number) === c);
+      if (hits.length !== 1) { ok = false; break; }
+      matched.push(hits[0]);
+    }
+    if (!ok) continue;
+    const lengths = [...new Set(matched.map((l) => Number(l.length) || 0).filter((n) => n > 0))];
+    if (lengths.length > 1) continue;
+    const sharedLength = lengths[0] || 1;
+    const sell = matched.reduce((s, l) => s + lineSell(l), 0);
+    const cost = matched.reduce((s, l) => s + lineCost(l), 0);
+    const first = matched[0];
+    const kitLine = {
+      ...first,
+      is_bundle: true,
+      length: sharedLength,
+      quantity: 1,
+      unit_price: sell,
+      total_price: sell,
+      metadata: {
+        ...(first.metadata || {}),
+        kit: {
+          name: b.name,
+          bundle_id: b.id,
+          pricing_type: "p/meter",
+          unit_cost: cost / sharedLength,
+          items: req.map((i) => {
+            const p = (i.product || i.supplier_product)!;
+            return { name: p.short_name || p.product_code || "Item", code: p.product_code || null, quantity: i.quantity || 1, isLengthItem: !!i.is_length_item };
+          }),
+        },
+      },
+    } as T;
+    const ids = new Set(matched.map((l) => l.id));
+    remaining = remaining.filter((l) => !ids.has(l.id));
+    out.push(kitLine);
+  }
+  return [...remaining, ...out];
+}
