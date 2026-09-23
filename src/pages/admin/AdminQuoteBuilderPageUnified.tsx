@@ -373,6 +373,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       const markup = Number((it.metadata as Record<string, unknown>)?.markup_percent);
       return Number.isFinite(markup) && markup > 0 ? markup : 0;
     };
+    const persistedCost = (it: typeof ctxItems[number]) => persistedLineCost(it.unit_price, metadataMarkup(it), it.metadata);
     const stub = (it: typeof ctxItems[number]): PaletteProduct => ({
       id: it.product_id || it.id,
       product_code: it.item_number || "",
@@ -381,8 +382,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       product_category: it.item_type || "",
       category: it.item_type || "",
       description: it.description || "",
-      cost_price: it.unit_price,
-      cost_excl_vat: it.unit_price,
+      cost_price: persistedCost(it),
+      cost_excl_vat: persistedCost(it),
       cost_incl_vat: 0,
       selling_price: it.unit_price,
       supplier_name: it.supplier || "",
@@ -392,7 +393,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       default_markup_percent: metadataMarkup(it),
       is_pinned: false,
       pin_order: null,
-      price_per_metre: it.length ? it.unit_price : null,
+      price_per_metre: it.length ? persistedCost(it) / it.length : null,
       sold_in_length: !!it.length,
       unit_length: it.length || null,
       pipe_size: null,
@@ -406,7 +407,16 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         product: stub(it), // always use stub so total = stored unit_price * qty
         quantity: it.quantity,
         ...(it.length ? { length: it.length } : {}),
-        ...(it.is_bundle ? { isBundle: true } : {}),
+        ...(it.is_bundle
+          ? {
+              isBundle: true,
+              bundleName: it.item_name,
+              bundlePricingType: (it.length ? "p/meter" : "p/qty") as "p/meter" | "p/qty",
+              // Persisted sell is kept verbatim — never re-marked-up on reopen.
+              bundleUnitPrice: it.length ? (it.total_price || it.unit_price) / it.length : it.unit_price,
+              bundleUnitCost: it.length ? persistedCost(it) / it.length : persistedCost(it),
+            }
+          : {}),
       };
     };
     const groups = new Map<string, typeof ctxItems>();
@@ -448,6 +458,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       const markup = Number((it.metadata as Record<string, unknown>)?.markup_percent);
       return Number.isFinite(markup) && markup > 0 ? markup : 0;
     };
+    const persistedCost = (it: typeof ctxItems[number]) => persistedLineCost(it.unit_price, metadataMarkup(it), it.metadata);
     const stubProduct = (it: typeof ctxItems[number]): PaletteProduct => ({
       id: it.product_id || it.id,
       product_code: it.item_number || "",
@@ -456,8 +467,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       product_category: it.item_type || "",
       category: it.item_type || "",
       description: it.description || "",
-      cost_price: it.unit_price,
-      cost_excl_vat: it.unit_price,
+      cost_price: persistedCost(it),
+      cost_excl_vat: persistedCost(it),
       cost_incl_vat: 0,
       selling_price: it.unit_price,
       supplier_name: it.supplier || "",
@@ -467,7 +478,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       default_markup_percent: metadataMarkup(it),
       is_pinned: false,
       pin_order: null,
-      price_per_metre: it.length ? it.unit_price : null,
+      price_per_metre: it.length ? persistedCost(it) / it.length : null,
       sold_in_length: !!it.length,
       unit_length: it.length || null,
       pipe_size: null,
@@ -496,7 +507,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         if (isAC) {
           base.acUnits.push({ id: it.id, product: stubProduct(it), btu: detectBTU(product), quantity: it.quantity });
         } else if (it.length && it.length > 0) {
-          const perM = it.unit_price;
+          const perM = persistedCost(it) / it.length;
           base.materials.push({
             id: it.id,
             product: stubProduct(it),
@@ -635,7 +646,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             instanceId: `${product.id}-${Date.now()}`,
             product,
             quantity: 1,
-            ...(product.sold_in_length && product.price_per_metre ? { length: product.unit_length || 1 } : {})
+            ...(product.sold_in_length && product.price_per_metre ? { length: 1 } : {})
           }]
 
         };
@@ -2041,5 +2052,15 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
     </QuoteProvider>);
 
 };
+
+/** Net cost of a persisted quote line: metadata.cost_excl when saved, else
+ *  derived from the stored SELL (unit_price) and its markup. Stored sell is
+ *  never treated as cost, so reopening never compounds markup. */
+function persistedLineCost(unitPrice: number, markup: number, metadata: unknown): number {
+  const meta = Number((metadata as Record<string, unknown> | null)?.cost_excl);
+  if (Number.isFinite(meta) && meta > 0) return meta;
+  const m = resolveProductMarkupPercent({ default_markup_percent: markup, markup_percent: markup });
+  return (Number(unitPrice) || 0) / (1 + m / 100);
+}
 
 export default AdminQuoteBuilderPageUnified;
