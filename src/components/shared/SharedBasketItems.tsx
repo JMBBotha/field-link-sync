@@ -49,6 +49,9 @@ export function CollapsibleBundleCard({
   const sliderMax = isBundleLength ? 60 : 50;
   const sliderStep = isBundleLength ? 0.5 : 1;
   const bundleDisplayPrice = multiplier * bundleUnitPx;
+  // Audit trail: blended kit markup from real kit cost vs sell (display only).
+  const kitCost = calculateBasketItemCost(item);
+  const kitMarkup = Math.round(lineMarkupPercent(item));
 
   const decrement = () =>
     isBundleLength
