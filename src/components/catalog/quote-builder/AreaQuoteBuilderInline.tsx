@@ -1,3 +1,5 @@
+import { applyCategoryRatesToAreas } from "@/utils/repriceAreas";
+import { subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot } from "@/lib/pricing";
 import { costPerMetreOf } from "@/lib/pricing";
 /**
  * Inline (non-modal) version of the Area Quote Builder wizard.
@@ -121,6 +123,18 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
       toast.info("Draft restored from last session");
     }
   }, []);
+
+  // Reprice existing area lines when the user edits Units % / Materials %.
+  const rateSnap = useSyncExternalStore(subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot);
+  const lastRateEditRef = useRef(rateSnap.editSeq);
+  useEffect(() => {
+    if (rateSnap.editSeq === lastRateEditRef.current) return;
+    lastRateEditRef.current = rateSnap.editSeq;
+    if (rateSnap.rates) {
+      const rates = rateSnap.rates;
+      setAreas((prev) => applyCategoryRatesToAreas(prev, rates));
+    }
+  }, [rateSnap]);
 
   // Notify parent of area changes
   useEffect(() => {
