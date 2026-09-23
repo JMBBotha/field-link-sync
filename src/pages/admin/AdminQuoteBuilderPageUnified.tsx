@@ -605,7 +605,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             instanceId: `${product.id}-${Date.now()}`,
             product,
             quantity: 1,
-            ...(product.sold_in_length && product.price_per_metre ? { length: product.unit_length || 1 } : {})
+            ...(product.sold_in_length && product.price_per_metre ? { length: 1 } : {})
           }]
 
         };

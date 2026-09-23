@@ -1,6 +1,6 @@
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
 import { useState, useMemo, useCallback } from "react";
-import { calcSellingPrice, VAT_RATE, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
+import { calcSellingPrice, VAT_RATE, resolveProductMarkupPercent, lockedPricing, costPerMetreOf } from "@/lib/pricing";
 import { computeLineTotal, resolvePricingUnit, unitSuffix } from "@/lib/pricingUnits";
 import { RotateCcw, FileDown, Loader2, TrendingUp, ChevronDown, ChevronRight, Package, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -323,8 +323,8 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
         if (mat.pricingMode === "unit") {
           c = computeLineTotal(mat.unitQuantity, getCost(mat.product), resolvePricingUnit(mat.product));
         } else {
-          const perM = mat.costPerMeter || getCost(mat.product);
-          c = mat.totalCost || perM * mat.adjustedLength;
+          const perM = mat.costPerMeter || costPerMetreOf(mat.product);
+          c = perM * mat.adjustedLength;
         }
         subItemsCost += c;
         subSell += c * ownRatio(mat.product);

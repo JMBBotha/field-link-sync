@@ -158,7 +158,7 @@ export function computeQuoteTotals(
     const sell = i.total_price ?? i.unit_price * i.quantity;
     const tc = Number(md.total_cost);
     if (Number.isFinite(tc) && tc > 0) return tc;
-    const uc = Number(md.unit_cost);
+    const uc = Number(md.unit_cost ?? md.cost_excl);
     if (Number.isFinite(uc) && uc > 0) return uc * (i.quantity || 1);
     const m = Number(md.markup_percent);
     if (Number.isFinite(m) && m > 0 && sell > 0) return sell / (1 + m / 100);

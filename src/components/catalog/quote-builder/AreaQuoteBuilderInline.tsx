@@ -1,3 +1,4 @@
+import { costPerMetreOf } from "@/lib/pricing";
 /**
  * Inline (non-modal) version of the Area Quote Builder wizard.
  * Renders the same stepper + steps + footer but as a permanent panel

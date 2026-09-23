@@ -32,7 +32,8 @@ export function stubProductFromQuoteItem(it: SavedQuoteItemLike): PaletteProduct
   const meta = (it.metadata || {}) as Record<string, unknown>;
   const markup = Number(meta.markup_percent);
   const hasMarkup = Number.isFinite(markup) && markup > 0;
-  const savedUnitCost = Number(meta.unit_cost);
+  // unit_cost (ours) or cost_excl (written by an interim Lovable build)
+  const savedUnitCost = Number(meta.unit_cost ?? meta.cost_excl);
   const unitPrice = Number(it.unit_price) || 0;
   // Cost per saved unit: stored unit_cost, else (pre-fix rows) back it out of
   // sell ÷ (1 + markup) so old quotes keep their real margin instead of 0%.

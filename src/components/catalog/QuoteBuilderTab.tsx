@@ -174,37 +174,6 @@ class NoDndPointerSensor extends PointerSensor {
 
 }
 
-/* Sticky collapsible summary wrapper */
-const StickyQuoteSummary = ({ baskets, totals }: { baskets: Basket[]; totals: QuoteTotals }) => {
-  const [collapsed, setCollapsed] = useState(true);
-  const totalItems = totals.itemCount;
-  const totalCost = totals.subtotal;
-
-  if (totalItems === 0) return null;
-
-  return (
-    <div className="fixed bottom-16 lg:bottom-12 left-0 right-0 z-30 md:absolute md:left-0 md:right-0">
-      <div className="bg-card border-t shadow-lg rounded-t-lg mx-auto max-w-screen-2xl">
-        {/* Toggle bar - always visible */}
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-accent/50 transition-colors">
-
-          <span className="font-semibold text-foreground">
-            Quote Summary · {totalItems} items · R{totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
-          </span>
-          {collapsed ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-        </button>
-        {/* Expandable detail */}
-        {!collapsed &&
-        <div className="px-4 pb-3 max-h-[40vh] overflow-y-auto">
-            <QuoteSummaryPanel baskets={baskets} totals={totals} />
-          </div>
-        }
-      </div>
-    </div>);
-
-};
 
 interface QuoteBuilderTabProps {
   onBasketsChange?: (baskets: Basket[]) => void;
@@ -501,7 +470,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
           quantity: bItem.quantity,
           isLengthItem,
           isOptional: bItem.is_optional,
-          ...(isLengthItem ? { length: bItem.length_metres || bItem.product!.unit_length || 1 } : {}),
+          ...(isLengthItem ? { length: bItem.length_metres || 1 } : {}),
         };
       });
 
@@ -509,6 +478,9 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     const firstProduct = subItems.find((i) => !i.isOptional)?.product || subItems[0]?.product;
     if (!firstProduct) return null;
 
+    // Synthetic bundle product: every cost field holds COST (per metre for
+    // p/meter kits); the package SELL rate lives only on bundleUnitPrice.
+    const bundleMarkup = unitCost > 0 ? ((unitPrice - unitCost) / unitCost) * 100 : 0;
     return {
       instanceId: `bundle-${bundle.id}-${Date.now()}`,
       product: {
@@ -518,10 +490,15 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         product_code: `BUNDLE-${bundle.id.slice(0, 6).toUpperCase()}`,
         product_category: firstProduct.product_category,
         selling_price: unitPrice,
+        cost_price: unitCost,
         cost_excl_vat: unitCost,
         cost_incl_vat: inclVatFromExcl(unitCost),
+        default_markup_percent: bundleMarkup,
+        markup_percent: bundleMarkup,
+        pack_qty: null,
         sold_in_length: pricingType === "p/meter",
-        price_per_metre: pricingType === "p/meter" ? unitPrice : null,
+        unit_length: pricingType === "p/meter" ? 1 : null,
+        price_per_metre: pricingType === "p/meter" ? unitCost : null,
       },
       quantity: 1,
       ...(pricingType === "p/meter" ? { length: 1 } : {}),
@@ -566,7 +543,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
             instanceId: `${product.id}-${Date.now()}`,
             product,
             quantity: 1,
-            ...(isLengthItem ? { length: product.unit_length || 1 } : {}),
+            // Metre items start at 1 m (user-entered run) — never the full coil length.
+            ...(isLengthItem ? { length: 1 } : {}),
           });
         }
 

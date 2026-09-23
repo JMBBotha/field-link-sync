@@ -1,3 +1,4 @@
+import { costPerMetreOf } from "@/lib/pricing";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Search, Check, Star, X, Zap, Package, ImageIcon, Plus, Trash2, Ruler, Hash, MousePointerClick, ChevronDown, ChevronUp, Wrench, TrendingUp } from "lucide-react";
 import { getProductPricing, stripVat, resolveProductMarkupPercent } from "@/lib/pricing";

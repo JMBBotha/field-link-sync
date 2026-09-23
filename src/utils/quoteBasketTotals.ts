@@ -113,6 +113,7 @@ export function basketsToQuoteState(baskets: Basket[]): { areas: QuoteArea[]; it
           markup_percent: lineMarkupPercent(item),
           total_cost: totalCost,
           unit_cost: item.quantity > 0 ? totalCost / item.quantity : totalCost,
+          cost_excl: item.quantity > 0 ? totalCost / item.quantity : totalCost, // compat alias
           price_locked: true,
           ...(item.isBundle && item.bundlePricingType
             ? {
