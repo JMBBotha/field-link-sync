@@ -164,6 +164,7 @@ describe("computeQuoteTotals", () => {
       labourTotal: 0,
       discountAmount: 0,
       noCostCount: 0,
+      unitsMaterialsMarkup: null,
       unitsMarkup: null,
       materialsMarkup: null,
     });

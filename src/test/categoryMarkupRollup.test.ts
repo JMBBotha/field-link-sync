@@ -10,7 +10,8 @@ describe("per-line category markup roll-up (Johan worked example)", () => {
   const items = [
     line("u", "air conditioner", 7000, 25),
     line("m", "materials", 2000, 100),
-    line("l", "labour", 1000, 100),
+    // Pure maths check: third slice priced like materials (real labour is flat, see ACCEPTANCE test)
+    line("l", "materials", 1000, 100),
   ];
   const t = computeQuoteTotals(items, []);
   it("sums line sells and costs", () => {
