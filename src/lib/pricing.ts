@@ -407,7 +407,7 @@ export function classifyQuoteCategory(p: {
   const acCat = /air ?con|aircon|\bac\b|hvac|split|heat pump/.test(cat) || p.supplier_type === "ac_units" || p.supplier_type === "ac_equipment";
   const blob = `${name} ${p.product_code || ""}`;
   const strongUnit = /\b(inv|inverter|indoor|outdoor|cassette|ducted|concealed|suspended|floor standing|rooftop|mw|wall ?mount|split|fixed speed)\b/i.test(name);
-  const accessory = ACCESSORY_RE.test(name) || /\b(knock|nails?|raw)\b/i.test(name);
+  const accessory = ACCESSORY_RE.test(name) || /\b(knock|nails?|raw)\b|tube|\be-ee\d/i.test(name);
   if (accessory && !strongUnit) return "materials";
   if (acCat || strongUnit || /\d+\s*k?\s*btu/i.test(blob)) return "units";
   return "materials";
