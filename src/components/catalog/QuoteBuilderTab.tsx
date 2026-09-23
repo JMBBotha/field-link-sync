@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect, useSyncExternalStore } from "react";
 import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
