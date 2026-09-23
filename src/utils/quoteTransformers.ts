@@ -238,3 +238,15 @@ export function computeQuoteTotals(
 export function getDefaultAreaName(): string {
   return DEFAULT_AREA_NAME;
 }
+
+/**
+ * Health band for the OVERALL (blended) quote markup. Units sit at ~25% and
+ * materials at ~100%, so a normal job blends to roughly 30–55%.
+ *   Low < 25% · Standard 25–60% · High > 60%. Bar scale is 0–100%.
+ */
+export function blendedMarkupHealth(markup: number): "Low" | "Standard" | "High" {
+  if (!Number.isFinite(markup) || markup < 25) return "Low";
+  if (markup <= 60) return "Standard";
+  return "High";
+}
+export const BLENDED_MARKUP_BAR_MAX = 100;
