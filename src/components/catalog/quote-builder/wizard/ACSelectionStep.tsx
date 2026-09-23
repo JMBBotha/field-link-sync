@@ -8,6 +8,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 import QuantityControl from "../QuantityControl";
+import { Slider } from "@/components/ui/slider";
 import type { PaletteProduct } from "../../QuoteBuilderTab";
 import type { QuoteArea, AreaACUnit, AreaConsumable, AreaMaterial } from "../quoteWizardTypes";
 import { detectBTU, getBracketSize } from "../quoteWizardTypes";
@@ -275,7 +276,7 @@ function KitLineRow({
         </button>
         <Package className="h-3 w-3 text-primary shrink-0" />
         <div className="flex-1 min-w-0">
-          <div className="font-medium truncate">{kit.name}</div>
+          <div className="font-medium truncate">{perMetre && /kit/i.test(kit.name) ? `Piping kit · ${value}m` : kit.name}</div>
           <div className="text-[10px] text-muted-foreground">
             {perMetre ? `${value}m @ ${formatZAR(kit.unitSell)}/m` : `×${value} @ ${formatZAR(kit.unitSell)}`}
             {kit.unitCost > 0 && (
@@ -289,7 +290,7 @@ function KitLineRow({
           value={value}
           onChange={onLength}
           min={perMetre ? 0.5 : 1}
-          max={perMetre ? 100 : 50}
+          max={perMetre ? 60 : 50}
           step={perMetre ? 0.5 : 1}
           showSlider={false}
           suffix={perMetre ? "m" : ""}
@@ -305,6 +306,20 @@ function KitLineRow({
           <X className="h-3 w-3 text-destructive" />
         </button>
       </div>
+      {perMetre && (
+        <div className="flex items-center gap-2 px-2 pb-2" onPointerDown={(e) => e.stopPropagation()}>
+          <Slider
+            value={[value]}
+            min={0.5}
+            max={60}
+            step={0.5}
+            onValueChange={([v]) => onLength(v)}
+            className="flex-1"
+            aria-label="Piping kit metres"
+          />
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap tabular-nums">{formatZAR(kit.unitSell)}/m</span>
+        </div>
+      )}
       {open && (
         <div className="border-t border-primary/20 px-3 py-1.5 space-y-0.5">
           {kit.items.length === 0 && <div className="text-[10px] text-muted-foreground">No contents recorded</div>}

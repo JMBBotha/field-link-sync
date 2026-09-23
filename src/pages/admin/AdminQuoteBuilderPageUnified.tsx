@@ -46,7 +46,8 @@ import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import { pdfItemToPaletteProduct } from "@/utils/pdfItemToProduct";
 import { persistQuoteFromBaskets } from "@/utils/persistQuoteFromBaskets";
 import { stubProductFromQuoteItem } from "@/utils/hydrateQuoteItem";
-import { kitBasketFields, kitFromSavedItem } from "@/components/catalog/quote-builder/kitLine";
+import { kitBasketFields, kitFromSavedItem, collapseExplodedKits } from "@/components/catalog/quote-builder/kitLine";
+import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { useUnsavedQuoteGuard } from "@/hooks/useUnsavedQuoteGuard";
@@ -354,8 +355,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
    * We build stub PaletteProducts using the stored unit_price so per-item
    * totals match `quote_items.total_price` exactly (no markup recompute).
    */
+  const { bundles: kitBundles, bundlesLoading: kitBundlesLoading } = useQuoteBuilderBundles();
   const initialBaskets = useMemo<Basket[] | null>(() => {
-    if (ctxLoading) return null;
+    if (ctxLoading || kitBundlesLoading) return null;
     // Real = non-placeholder AND has qty/rate. Zero-value non-placeholder rows
     // must not hydrate (mirrors reuse rule).
     const realItems = ctxItems.filter(
@@ -402,11 +404,11 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     const result: Basket[] = ctxAreas.map((a) => ({
       id: a.id,
       name: a.name,
-      items: (groups.get(a.id) || []).map(toItem),
+      items: collapseExplodedKits(groups.get(a.id) || [], kitBundles as any).map(toItem),
     }));
-    if (unassigned.length) result.push({ id: "unassigned", name: "General", items: unassigned.map(toItem) });
+    if (unassigned.length) result.push({ id: "unassigned", name: "General", items: collapseExplodedKits(unassigned, kitBundles as any).map(toItem) });
     return result;
-  }, [ctxLoading, ctxItems, ctxAreas, products]);
+  }, [ctxLoading, ctxItems, ctxAreas, products, kitBundles, kitBundlesLoading]);
 
 
   /**
@@ -416,7 +418,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
    * based on category and length.
    */
   const initialWizardAreas = useMemo<WizardQuoteArea[] | null>(() => {
-    if (ctxLoading) return null;
+    if (ctxLoading || kitBundlesLoading) return null;
     // Same "real item" rule as reuse/hydration guards.
     const realItems = ctxItems.filter(
       (i) =>
@@ -447,7 +449,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     const result: WizardQuoteArea[] = [];
     for (const [key, list] of buckets) {
       const base = createEmptyArea(areaNameFor(key));
-      for (const it of list) {
+      // Old quotes stored kits as separate lines — collapse them to one kit.
+      for (const it of collapseExplodedKits(list, kitBundles as any)) {
         const product = (it.product_id && productById.get(it.product_id)) || stubProduct(it);
         const cat = (product.product_category || product.category || "").toLowerCase();
         const isAC = cat.includes("air") || cat.includes(" ac") || cat === "ac" || cat.includes("hvac");
@@ -488,7 +491,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       }
     }
     return result.length > 0 ? result : null;
-  }, [ctxLoading, ctxItems, ctxAreas, products]);
+  }, [ctxLoading, ctxItems, ctxAreas, products, kitBundles, kitBundlesLoading]);
 
 
   // Refs to the inline builder's methods
