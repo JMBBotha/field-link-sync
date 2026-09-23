@@ -989,7 +989,10 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
               <p className="text-destructive">Price check could not run: {gateError}</p>
             )}
             {!gateRunning && !gateError && gateRows && gateRows.length === 0 && (
-              <p className="text-destructive">No products found on this book — activation blocked.</p>
+              <p className="text-destructive">
+                No products are linked to this book, so its prices can't be checked and it can't go live.
+                Re-import the price list PDF for this supplier — the import links each product to the book it came from.
+              </p>
             )}
             {!gateRunning && !gateError && gateRows && gateRows.length > 0 && activateOk && (
               <p className="text-green-600 dark:text-green-500">
