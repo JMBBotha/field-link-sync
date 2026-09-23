@@ -406,12 +406,10 @@ export function classifyQuoteCategory(p: {
   if (p.is_bundle || /kit|consumable|material/.test(cat)) return "materials";
   const acCat = /air ?con|aircon|\bac\b|hvac|split|heat pump/.test(cat) || p.supplier_type === "ac_units" || p.supplier_type === "ac_equipment";
   const blob = `${name} ${p.product_code || ""}`;
-  const looksLikeUnit = /\d+\s*k?\s*btu|\b(9|12|18|24|30|36|48|60)k\b|inverter|indoor|outdoor|cassette|ducted|wall ?mount|split/i.test(blob);
-  if (acCat && !ACCESSORY_RE.test(name) && (looksLikeUnit || !/\w/.test(name) || true)) {
-    // AC category rows that aren't obviously accessories are units.
-    return ACCESSORY_RE.test(blob) && !looksLikeUnit ? "materials" : "units";
-  }
-  if (looksLikeUnit && !ACCESSORY_RE.test(name)) return "units";
+  const strongUnit = /\b(inv|inverter|indoor|outdoor|cassette|ducted|concealed|suspended|floor standing|rooftop|mw|wall ?mount|split|fixed speed)\b/i.test(name);
+  const accessory = ACCESSORY_RE.test(name) || /\b(knock|nails?|raw)\b/i.test(name);
+  if (accessory && !strongUnit) return "materials";
+  if (acCat || strongUnit || /\d+\s*k?\s*btu/i.test(blob)) return "units";
   return "materials";
 }
 
