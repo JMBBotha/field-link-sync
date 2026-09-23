@@ -38,7 +38,8 @@ import { searchAndRankProducts } from "./searchSynonyms";
 import QuoteBuilderPopup from "./quote-builder/QuoteBuilderPopup";
 import type { WizardTriggerItem } from "./quote-builder/QuoteBuilderPopup";
 import { computeBundlePricing } from "./quote-builder/BundleItemsPopover";
-import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
+import { computeBasketsQuoteTotals, applyCategoryRatesToBaskets } from "@/utils/quoteBasketTotals";
+import { subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot } from "@/lib/pricing";
 import type { QuoteTotals } from "@/utils/quoteTransformers";
 
 type QuoteBuilderBundle = PaletteBundle & {
@@ -229,6 +230,19 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     setBasketsInternal(initialBaskets);
     onBasketsChange?.(initialBaskets);
   }, [initialBaskets, onBasketsChange]);
+
+  // When the user edits the quote's Units % / Materials %, reprice every line
+  // of that category (saved lines included). Loading never triggers this.
+  const rateSnap = useSyncExternalStore(subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot);
+  const lastEditSeqRef = useRef(rateSnap.editSeq);
+  useEffect(() => {
+    if (rateSnap.editSeq === lastEditSeqRef.current) return;
+    lastEditSeqRef.current = rateSnap.editSeq;
+    if (rateSnap.rates) {
+      const rates = rateSnap.rates;
+      setBaskets((prev) => applyCategoryRatesToBaskets(prev, rates));
+    }
+  }, [rateSnap, setBaskets]);
 
   const [activeProduct, setActiveProduct] = useState<PaletteProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
