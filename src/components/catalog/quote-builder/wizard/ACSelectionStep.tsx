@@ -127,7 +127,7 @@ function SuggestedBundlePanel({
 
   // Once applied, the area's Materials & Consumables list is the source of truth —
   // the item editor stays collapsed unless the user opts into adjusting the kit.
-  const [editorOpen, setEditorOpen] = useState(!isApplied);
+  const [editorOpen, setEditorOpen] = useState(false);
   useEffect(() => { if (isApplied) setEditorOpen(false); }, [isApplied]);
 
   const activeItems = bundle.items.filter((i: any) => !i.is_optional);
@@ -386,12 +386,12 @@ function AreaUnitSelector({
   const totalExtras = (area.consumables?.length || 0) + (area.materials?.length || 0);
 
   // Auto-expand when items are added
+  // Kit rows sit inside; keep them visible without forcing a re-expand on every add.
   const [expanded, setExpanded] = useState(totalExtras > 0);
   const prevExtrasRef = useRef(totalExtras);
   useEffect(() => {
-    if (totalExtras > prevExtrasRef.current) {
-      setExpanded(true);
-    }
+    // Only open when going from empty → something, so the single kit row is visible.
+    if (prevExtrasRef.current === 0 && totalExtras > 0) setExpanded(true);
     prevExtrasRef.current = totalExtras;
   }, [totalExtras]);
 
@@ -692,6 +692,10 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
       toast.success(`Auto-added: ${names}`);
     }
 
+    // Auto-apply the matching piping kit (same as basket path) — one collapsed
+    // kit line at 1 m, no "Apply Kit" confirm step.
+    const kit = findSuggestedBundle(btu, product.brand || "", bundles);
+
     onAreasChange(
       areas.map((a) => {
         if (a.id !== areaId) return a;
@@ -699,10 +703,19 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
         const existingConsumables = (a.consumables || []).filter(
           (c) => !c.isSuggested && !isWiredRemote(c.product)
         );
-        return { ...a, acUnits: [newUnit], consumables: [...existingConsumables, ...suggestedConsumables] };
+        const next = { ...a, acUnits: [newUnit], consumables: [...existingConsumables, ...suggestedConsumables] };
+        if (!kit) return next;
+        const cleanMaterials = (a.materials || []).filter((m) => !m.fromBundle);
+        return {
+          ...next,
+          consumables: next.consumables.filter((c) => !c.fromBundle),
+          appliedBundleId: kit.id,
+          materials: [...cleanMaterials, buildKitMaterial(kit, 1)],
+        };
       })
     );
-  }, [areas, onAreasChange, products]);
+    if (kit) toast.success(`Added "${kit.name}" · 1m`);
+  }, [areas, onAreasChange, products, bundles]);
 
   const handleRemove = useCallback((areaId: string, idx: number) => {
     onAreasChange(

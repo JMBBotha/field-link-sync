@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { convertQuoteToInvoice, buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
 import { generateDocumentPdf } from "@/lib/documentPdf";
+import { loadQuoteBrochuresForPdf } from "@/lib/quoteBrochuresForPdf";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import EstimateBuilder from "@/components/quoting/EstimateBuilder";
@@ -154,7 +155,9 @@ const AdminEstimateDetailPage = () => {
   const handlePdf = async () => {
     setBusy("pdf");
     try {
+      const extras = await loadQuoteBrochuresForPdf((quote as any)?.id);
       await generateDocumentPdf({
+        ...extras,
         docType: "Quote",
         docNumber: quote?.quote_number || "DRAFT",
         companyName: settings.company_name || "0800-BE-COOL",
