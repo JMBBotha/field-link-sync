@@ -98,7 +98,7 @@ export function CollapsibleBundleCard({
             <span className="font-medium truncate max-w-[100px]">{item.bundleName}</span>
           )}
           <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">
-            {item.bundleItems?.length || 0} items
+            {item.bundleItems?.length || item.kitContents?.length || 0} items
           </Badge>
         </div>
 
@@ -141,6 +141,23 @@ export function CollapsibleBundleCard({
           <span className="text-[10px] text-muted-foreground whitespace-nowrap tabular-nums">
             R{bundleUnitPx.toLocaleString("en-ZA", { maximumFractionDigits: 2 })}/m
           </span>
+        </div>
+      )}
+
+      {/* Hydrated kits may only carry kitContents — read-only name/qty peek */}
+      {bundleExpanded && !(item.bundleItems && item.bundleItems.length > 0) && (
+        <div className="border-t border-border/50 bg-muted/30 px-3 py-1.5 space-y-0.5">
+          {(item.kitContents || []).length === 0 && (
+            <div className="text-[10px] text-muted-foreground pl-4">No contents recorded</div>
+          )}
+          {(item.kitContents || []).map((k, idx) => (
+            <div key={idx} className="flex items-center justify-between text-[10px] text-muted-foreground">
+              <span className="truncate flex-1 min-w-0 pl-4">{k.name}</span>
+              <span className="shrink-0 tabular-nums">
+                {k.isLengthItem ? `${formatQty1(multiplier)}m` : `×${k.quantity * (isBundleLength ? 1 : multiplier)}`}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 
