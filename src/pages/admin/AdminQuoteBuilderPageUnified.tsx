@@ -462,10 +462,14 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         } else if (it.length && it.length > 0) {
           // unit_price on a length line is the price for the WHOLE length (qty 1),
           // so derive the true per-metre rate instead of multiplying by length twice.
-          const perM = it.length > 0 ? (Number(it.unit_price) || 0) / it.length : Number(it.unit_price) || 0;
+          // costPerMeter must be COST (the wizard applies the line's own
+          // sell/cost ratio on top) — taken from the price-locked stub.
+          const sp = stubProduct(it);
+          const lockedCost = Number(sp.locked_cost_ex_vat ?? sp.locked_sell_ex_vat) || 0;
+          const perM = lockedCost / it.length;
           base.materials.push({
             id: it.id,
-            product: stubProduct(it),
+            product: sp,
             defaultLength: it.length,
             adjustedLength: it.length,
             costPerMeter: perM,
@@ -659,7 +663,18 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         const committedSet = new Set(committed);
         const entries = selectedFromPdf
           .filter((i) => committedSet.has(i.code))
-          .map((item) => ({ product: pdfItemToPaletteProduct(item), quantity: item.quantity || 1 }));
+          .map((item) => {
+            // Lock to exactly what was committed so auto-save can't re-price it.
+            const sell = parseFloat(item.price) || 0;
+            const mk = item.markupPercent != null ? Number(item.markupPercent) : 0;
+            const cost = item.costPrice != null && Number(item.costPrice) > 0
+              ? Number(item.costPrice)
+              : mk > 0 ? sell / (1 + mk / 100) : null;
+            return {
+              product: { ...pdfItemToPaletteProduct(item), locked_sell_ex_vat: sell, locked_cost_ex_vat: cost } as PaletteProduct,
+              quantity: item.quantity || 1,
+            };
+          });
         // Mirror into the basket for this area so the builder panes + auto-save
         // (replace-all from baskets) keep the freshly committed lines.
         setBaskets((prev) => {

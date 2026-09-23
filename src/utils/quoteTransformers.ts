@@ -90,7 +90,15 @@ export interface QuoteTotals {
   subtotal: number;
   vatAmount: number;
   total: number;
+  /** Blended project markup: (Σ sell − Σ cost) / Σ cost, over lines with a known cost. */
   avgMarkup: number;
+  /** Σ cost ex VAT of lines with a known cost */
+  totalCost: number;
+  /** Σ sell − Σ cost (ex VAT) over lines with a known cost */
+  profit: number;
+  /** Blended markup split: AC units vs everything else (kits, materials, consumables) */
+  unitsMarkup: number | null;
+  materialsMarkup: number | null;
 }
 
 /**
@@ -114,8 +122,9 @@ export function isRealQuoteItem(item: QuoteItem): boolean {
  *  - `legacy_placeholder` items are excluded from counts/subtotal/VAT.
  *  - Zone count = number of areas that contain at least one real item,
  *    plus a synthetic "unassigned" bucket when top-level items lack an area.
- *  - avgMarkup = mean of metadata.markup_percent across items with a positive
- *    markup value; 0 when none available.
+ *  - avgMarkup = BLENDED project markup (Σ sell − Σ cost) / Σ cost — weighted
+ *    by rand value, not a simple mean of line percentages. e.g. R20 000 unit at
+ *    25% + R2 000 of kit at 100% ≈ 30%, not (25+100)/2 = 62.5%.
  */
 export function computeQuoteTotals(
   items: QuoteItem[],
@@ -141,11 +150,41 @@ export function computeQuoteTotals(
     else usedAreas.add("__unassigned__");
   }
 
-  const markups = topLevel
-    .map((i) => Number((i.metadata as Record<string, unknown>)?.markup_percent))
-    .filter((m) => Number.isFinite(m) && m > 0);
-  const avgMarkup =
-    markups.length > 0 ? markups.reduce((s, m) => s + m, 0) / markups.length : 0;
+  // Cost of each line: metadata.total_cost, else unit_cost × qty, else back
+  // out from sell and the stated markup. Lines with no cost info are left out
+  // of the markup maths (rather than pretending they're 0% or 100%).
+  const lineCost = (i: QuoteItem): number | null => {
+    const md = (i.metadata || {}) as Record<string, unknown>;
+    const sell = i.total_price ?? i.unit_price * i.quantity;
+    const tc = Number(md.total_cost);
+    if (Number.isFinite(tc) && tc > 0) return tc;
+    const uc = Number(md.unit_cost);
+    if (Number.isFinite(uc) && uc > 0) return uc * (i.quantity || 1);
+    const m = Number(md.markup_percent);
+    if (Number.isFinite(m) && m > 0 && sell > 0) return sell / (1 + m / 100);
+    return null;
+  };
+  // Classify by CATEGORY (item_type = product_category), never free-text name,
+  // so "AC copper pipe" isn't counted as a unit. Mirrors the builder's isAC.
+  const isUnit = (i: QuoteItem) => {
+    if (i.is_bundle) return false;
+    const c = ` ${(i.item_type || "").toLowerCase()} `;
+    return c.includes("air") || c.includes(" ac ") || c.includes("hvac");
+  };
+  const blend = (list: QuoteItem[]) => {
+    let c = 0, sl = 0;
+    for (const i of list) {
+      const cost = lineCost(i);
+      if (cost == null) continue;
+      c += cost;
+      sl += i.total_price ?? i.unit_price * i.quantity;
+    }
+    return { cost: c, sell: sl, markup: c > 0 ? ((sl - c) / c) * 100 : null };
+  };
+  const all = blend(topLevel);
+  const units = blend(topLevel.filter(isUnit));
+  const mats = blend(topLevel.filter((i) => !isUnit(i)));
+  const avgMarkup = all.markup ?? 0;
 
   return {
     itemCount: topLevel.length,
@@ -154,6 +193,10 @@ export function computeQuoteTotals(
     vatAmount,
     total,
     avgMarkup,
+    totalCost: all.cost,
+    profit: all.sell - all.cost,
+    unitsMarkup: units.cost > 0 ? units.markup : null,
+    materialsMarkup: mats.cost > 0 ? mats.markup : null,
   };
 }
 

@@ -1,5 +1,6 @@
+import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
 import { useState, useMemo, useCallback } from "react";
-import { calcSellingPrice, VAT_RATE, resolveProductMarkupPercent } from "@/lib/pricing";
+import { calcSellingPrice, VAT_RATE, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
 import { computeLineTotal, resolvePricingUnit, unitSuffix } from "@/lib/pricingUnits";
 import { RotateCcw, FileDown, Loader2, TrendingUp, ChevronDown, ChevronRight, Package, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -287,42 +288,71 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
 
     return areas.map((area) => {
       const unit = area.acUnits[0];
-      if (!unit) return { area, costPrice: 0, quantity: 1, markup: 0, sellingPrice: 0, lineTotal: 0, subItemsTotal: 0 };
+      if (!unit) return { area, costPrice: 0, quantity: 1, markup: 0, sellingPrice: 0, lineTotal: 0, subItemsTotal: 0, subItemsCost: 0, totalCost: 0 };
       const pricing = getPricing(area.id);
-      const costPrice = getCost(unit.product);
-      const { sellingExclVat } = calcSellingPrice(costPrice, pricing.markupPercent);
+      // A reopened (saved) unit is price-locked: show its saved sell, never
+      // cost × markup again — unless the user moves this area's slider.
+      const lock = lockedPricing(unit.product as any);
+      // Slider starts at the saved markup; only a real change re-prices.
+      const touched = !!lock && Math.abs(pricing.markupPercent - lock.markupPercent) > 0.5;
+      const costPrice = lock ? lock.costExVat : getCost(unit.product);
+      const sellingExclVat = lock && !touched
+        ? lock.sellExVat
+        : calcSellingPrice(costPrice, pricing.markupPercent).sellingExclVat;
       const acLineTotal = sellingExclVat * pricing.quantity;
 
-      // Sub-items: materials, consumables, brackets (apply same markup)
+      // Sub-items keep THEIR OWN markup (e.g. kits/materials at 100%), exactly
+      // as they are saved via areasToBaskets. The area slider only drives the
+      // AC unit. Previously the unit's 25% was applied to everything here, so
+      // this screen disagreed with the saved quote and hid the real markup.
+      const ownRatio = (p: any) => {
+        const { unitSell, unitCost } = getEffectiveUnitPrices(p);
+        if (unitCost > 0 && unitSell > 0) return unitSell / unitCost;
+        return 1 + resolveProductMarkupPercent(p) / 100;
+      };
       let subItemsCost = 0;
+      let subSell = 0;
       for (const mat of area.materials) {
+        if (mat.kit) {
+          const q = mat.kit.pricingType === "p/meter" ? mat.adjustedLength : mat.unitQuantity;
+          subItemsCost += mat.kit.unitCost * q;
+          subSell += mat.kit.unitSell * q;
+          continue;
+        }
+        let c: number;
         if (mat.pricingMode === "unit") {
-          subItemsCost += computeLineTotal(mat.unitQuantity, getCost(mat.product), resolvePricingUnit(mat.product));
+          c = computeLineTotal(mat.unitQuantity, getCost(mat.product), resolvePricingUnit(mat.product));
         } else {
           const perM = mat.costPerMeter || getCost(mat.product);
-          subItemsCost += mat.totalCost || perM * mat.adjustedLength;
+          c = mat.totalCost || perM * mat.adjustedLength;
         }
+        subItemsCost += c;
+        subSell += c * ownRatio(mat.product);
       }
       for (const cons of (area.consumables ?? [])) {
-        subItemsCost += computeLineTotal(cons.quantity, getCost(cons.product), resolvePricingUnit(cons.product));
+        const c = computeLineTotal(cons.quantity, getCost(cons.product), resolvePricingUnit(cons.product));
+        subItemsCost += c;
+        subSell += c * ownRatio(cons.product);
       }
       for (const br of area.brackets) {
         subItemsCost += br.price * br.quantity;
+        subSell += calcSellingPrice(br.price * br.quantity, pricing.markupPercent).sellingExclVat;
       }
-      const { sellingExclVat: subSell } = calcSellingPrice(subItemsCost, pricing.markupPercent);
       const lineTotal = acLineTotal + subSell;
+      const totalCost = costPrice * pricing.quantity + subItemsCost;
 
-      return { area, costPrice, quantity: pricing.quantity, markup: pricing.markupPercent, sellingPrice: sellingExclVat, lineTotal, subItemsTotal: subSell };
+      return { area, costPrice, quantity: pricing.quantity, markup: pricing.markupPercent, sellingPrice: sellingExclVat, lineTotal, subItemsTotal: subSell, subItemsCost, totalCost };
     });
   }, [areas, areaPricing, globalMarkup]);
 
   const subtotal = useMemo(() => lineItems.reduce((s, l) => s + l.lineTotal, 0), [lineItems]);
   const vatAmount = useMemo(() => subtotal * VAT_RATE, [subtotal]);
   const total = useMemo(() => subtotal + vatAmount, [subtotal, vatAmount]);
+  /** Blended project markup: (Σ sell − Σ cost) / Σ cost — units + kits + materials. */
   const avgMarkup = useMemo(() => {
-    const withUnits = lineItems.filter((l) => l.markup > 0);
-    return withUnits.length > 0 ? withUnits.reduce((s, l) => s + l.markup, 0) / withUnits.length : 0;
-  }, [lineItems]);
+    const cost = lineItems.reduce((s, l) => s + l.totalCost, 0);
+    return cost > 0 ? ((subtotal - cost) / cost) * 100 : 0;
+  }, [lineItems, subtotal]);
 
   const editingArea = editingAreaId ? areas.find(a => a.id === editingAreaId) : null;
 
@@ -525,7 +555,7 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
             <div className="flex items-center justify-between text-[10px] text-muted-foreground">
               <span className="flex items-center gap-1">
                 <TrendingUp className="h-3 w-3" />
-                Avg. Markup: {avgMarkup.toFixed(0)}%
+                Project Markup: {avgMarkup.toFixed(0)}%
               </span>
               <span>
                 {avgMarkup <= 20 ? "Conservative" : avgMarkup <= 35 ? "Standard" : "Aggressive"}

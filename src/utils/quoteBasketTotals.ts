@@ -55,6 +55,20 @@ export function calculateBasketItemCost(item: BasketItem): number {
   return computeLineTotal(item.quantity, unitCost, unit);
 }
 
+/**
+ * TRUE markup of a line, derived from its real cost and sell:
+ *   (sell − cost) / cost × 100
+ * This is what the badge and project totals must show. The product's stored
+ * markup field is only a fallback — for bundles/kits it belongs to the FIRST
+ * component (not the kit), which is why a 100%-markup kit showed 25–35%.
+ */
+export function lineMarkupPercent(item: BasketItem): number {
+  const sell = calculateBasketItemSell(item);
+  const cost = calculateBasketItemCost(item);
+  if (cost > 0 && sell > 0) return Math.round(((sell - cost) / cost) * 1000) / 10;
+  return itemMarkupPercent(item);
+}
+
 function itemMarkupPercent(item: BasketItem): number {
   const explicit = Number(item.product.default_markup_percent ?? item.product.markup_percent ?? 0);
   if (Number.isFinite(explicit) && explicit > 0) return explicit;
@@ -96,7 +110,8 @@ export function basketsToQuoteState(baskets: Basket[]): { areas: QuoteArea[]; it
         // unit_cost is persisted so a re-opened (price-locked) line keeps its
         // real margin; unit_price above is the FINAL sell and is never re-marked-up.
         metadata: {
-          markup_percent: itemMarkupPercent(item),
+          markup_percent: lineMarkupPercent(item),
+          total_cost: totalCost,
           unit_cost: item.quantity > 0 ? totalCost / item.quantity : totalCost,
           price_locked: true,
           ...(item.isBundle && item.bundlePricingType

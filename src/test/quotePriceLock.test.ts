@@ -79,3 +79,23 @@ describe("piping kit — collapsed line priced like the palette", () => {
     expect(total(baskets)).toBeCloseTo(perMetre * 4, 2);
   });
 });
+
+describe("Grok review regressions", () => {
+  it("pre-fix rows (markup only, no unit_cost) keep their margin on reopen", () => {
+    const p = stubProductFromQuoteItem({ id: "r1", unit_price: 1250, quantity: 1, metadata: { markup_percent: 25 } });
+    const item = { instanceId: "r1", product: p, quantity: 1 };
+    expect(calculateBasketItemSell(item)).toBeCloseTo(1250, 2);
+    const { items } = basketsToQuoteState([{ id: "a", name: "A", items: [item] }]);
+    expect(Number(items[0].metadata?.markup_percent)).toBeCloseTo(25, 1);
+  });
+
+  it("length line with quantity 2 does not shrink on reopen", () => {
+    const row = { id: "L1", unit_price: 500, quantity: 2, length: 5, metadata: { unit_cost: 250 } };
+    let baskets: Basket[] = [{ id: "a", name: "A", items: [{ instanceId: "L1", product: stubProductFromQuoteItem(row), quantity: 2, length: 5 }] }];
+    const first = total(baskets);
+    expect(first).toBeCloseTo(1000, 2);
+    for (let i = 0; i < 3; i++) baskets = reopen(baskets);
+    expect(total(baskets)).toBeCloseTo(first, 2);
+    expect(baskets[0].items[0].product.price_per_metre).toBeCloseTo(200, 2);
+  });
+});

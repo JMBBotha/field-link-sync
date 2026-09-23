@@ -277,6 +277,11 @@ function KitLineRow({
           <div className="font-medium truncate">{kit.name}</div>
           <div className="text-[10px] text-muted-foreground">
             {perMetre ? `${value}m @ ${formatZAR(kit.unitSell)}/m` : `×${value} @ ${formatZAR(kit.unitSell)}`}
+            {kit.unitCost > 0 && (
+              <span className="ml-1 text-green-600">
+                · cost {formatZAR(kit.unitCost * value)} · {Math.round(((kit.unitSell - kit.unitCost) / kit.unitCost) * 100)}% M/Up
+              </span>
+            )}
           </div>
         </div>
         <QuantityControl

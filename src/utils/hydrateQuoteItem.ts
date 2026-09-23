@@ -22,6 +22,7 @@ export interface SavedQuoteItemLike {
   item_type?: string | null;
   description?: string | null;
   unit_price?: number | null;
+  quantity?: number | null;
   length?: number | null;
   supplier?: string | null;
   metadata?: Record<string, unknown> | null;
@@ -30,8 +31,23 @@ export interface SavedQuoteItemLike {
 export function stubProductFromQuoteItem(it: SavedQuoteItemLike): PaletteProduct {
   const meta = (it.metadata || {}) as Record<string, unknown>;
   const markup = Number(meta.markup_percent);
-  const unitCost = Number(meta.unit_cost);
+  const hasMarkup = Number.isFinite(markup) && markup > 0;
+  const savedUnitCost = Number(meta.unit_cost);
   const unitPrice = Number(it.unit_price) || 0;
+  // Cost per saved unit: stored unit_cost, else (pre-fix rows) back it out of
+  // sell ÷ (1 + markup) so old quotes keep their real margin instead of 0%.
+  const unitCost =
+    Number.isFinite(savedUnitCost) && savedUnitCost > 0
+      ? savedUnitCost
+      : hasMarkup && unitPrice > 0
+        ? unitPrice / (1 + markup / 100)
+        : null;
+  // Length lines price off LENGTH, not quantity, but unit_price was saved as
+  // total ÷ quantity — lock the whole-line value so qty ≠ 1 can't shrink it.
+  const isLength = !!it.length && it.length > 0;
+  const qty = isLength ? Number(it.quantity) || 1 : 1;
+  const lockedSell = unitPrice * qty;
+  const lockedCost = unitCost != null ? unitCost * qty : null;
   return {
     id: it.product_id || it.id,
     product_code: it.item_number || "",
@@ -40,21 +56,22 @@ export function stubProductFromQuoteItem(it: SavedQuoteItemLike): PaletteProduct
     product_category: it.item_type || "",
     category: it.item_type || "",
     description: it.description || "",
-    cost_price: Number.isFinite(unitCost) && unitCost > 0 ? unitCost : unitPrice,
-    cost_excl_vat: Number.isFinite(unitCost) && unitCost > 0 ? unitCost : unitPrice,
+    cost_price: lockedCost ?? lockedSell,
+    cost_excl_vat: lockedCost ?? lockedSell,
     cost_incl_vat: 0,
-    selling_price: unitPrice,
-    locked_sell_ex_vat: unitPrice,
-    locked_cost_ex_vat: Number.isFinite(unitCost) && unitCost > 0 ? unitCost : null,
+    selling_price: lockedSell,
+    locked_sell_ex_vat: lockedSell,
+    locked_cost_ex_vat: lockedCost,
     supplier_name: it.supplier || "",
     supplier_type: "both",
     supplier_discount_percent: null,
-    markup_percent: Number.isFinite(markup) && markup > 0 ? markup : 0,
-    default_markup_percent: Number.isFinite(markup) && markup > 0 ? markup : 0,
+    markup_percent: hasMarkup ? markup : 0,
+    default_markup_percent: hasMarkup ? markup : 0,
     is_pinned: false,
     pin_order: null,
-    price_per_metre: it.length ? unitPrice : null,
-    sold_in_length: !!it.length,
+    // Per-METRE rate (was the whole-line price, so raw readers doubled it).
+    price_per_metre: isLength ? lockedSell / (it.length as number) : null,
+    sold_in_length: isLength,
     unit_length: it.length || null,
     pipe_size: null,
     is_material_favorite: false,
