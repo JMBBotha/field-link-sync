@@ -89,7 +89,7 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">
-            Project Markup: <span className="font-semibold text-foreground">{summary.avgMarkup.toFixed(0)}%</span>
+            Avg. Markup: <span className="font-semibold text-foreground">{summary.avgMarkup.toFixed(0)}%</span>
           </span>
           <Badge variant="outline" className={`text-[10px] font-medium px-1.5 py-0.5 ${markupBadgeClass}`}>
             {markupLabel}

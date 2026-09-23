@@ -280,9 +280,9 @@ function KitLineRow({
           <div className="text-[10px] text-muted-foreground">
             {perMetre ? `${value}m @ ${formatZAR(kit.unitSell)}/m` : `×${value} @ ${formatZAR(kit.unitSell)}`}
             {kit.unitCost > 0 && (
-              <span className="ml-1 text-green-600">
-                · cost {formatZAR(kit.unitCost * value)} · {Math.round(((kit.unitSell - kit.unitCost) / kit.unitCost) * 100)}% M/Up
-              </span>
+              <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 h-3.5 border-green-500/40 text-green-600">
+                {Math.round(((kit.unitSell - kit.unitCost) / kit.unitCost) * 100)}% M/Up · cost {formatZAR(kit.unitCost * value)}
+              </Badge>
             )}
           </div>
         </div>
