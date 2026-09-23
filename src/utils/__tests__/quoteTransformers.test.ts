@@ -161,6 +161,9 @@ describe("computeQuoteTotals", () => {
       totalCost: 0,
       profit: 0,
       marginPercent: 0,
+      labourTotal: 0,
+      discountAmount: 0,
+      noCostCount: 0,
       unitsMarkup: null,
       materialsMarkup: null,
     });

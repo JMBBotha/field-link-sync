@@ -1,4 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { useOptionalQuoteContext } from "@/contexts/QuoteContext";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +9,7 @@ import type { Basket } from "../QuoteBuilderTab";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import QuoteBrochureSection from "@/components/brochures/QuoteBrochureSection";
 import ProductSalesCards from "@/components/brochures/ProductSalesCards";
-import type { QuoteTotals } from "@/utils/quoteTransformers";
+import { blendedMarkupHealth, BLENDED_MARKUP_BAR_MAX, type QuoteTotals } from "@/utils/quoteTransformers";
 
 interface QuoteSummaryPanelProps {
   baskets: Basket[];
@@ -35,11 +37,25 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
     return codes;
   }, [baskets]);
 
-  const markupCapped = Math.min(summary.avgMarkup, 55);
-  const markupPercent = Math.max(0, (markupCapped / 55) * 100);
+  const markupPercent = Math.max(0, Math.min(100, (summary.avgMarkup / BLENDED_MARKUP_BAR_MAX) * 100));
+  const markupLabel = blendedMarkupHealth(summary.avgMarkup);
 
-  const markupLabel = summary.avgMarkup >= 25 && summary.avgMarkup <= 50 ? "Standard" : 
-                      summary.avgMarkup < 25 ? "Low" : "High";
+  // Quote-level Units % / Materials % (only inside an open quote)
+  const quoteCtx = useOptionalQuoteContext();
+  const [unitsDraft, setUnitsDraft] = useState<string>("");
+  const [matsDraft, setMatsDraft] = useState<string>("");
+  useEffect(() => {
+    if (!quoteCtx) return;
+    setUnitsDraft(String(quoteCtx.markupRates.units));
+    setMatsDraft(String(quoteCtx.markupRates.materials));
+  }, [quoteCtx?.markupRates.units, quoteCtx?.markupRates.materials]); // eslint-disable-line react-hooks/exhaustive-deps
+  const commitRates = () => {
+    if (!quoteCtx) return;
+    const u = Number(unitsDraft), m = Number(matsDraft);
+    if (!Number.isFinite(u) || !Number.isFinite(m)) return;
+    if (u === quoteCtx.markupRates.units && m === quoteCtx.markupRates.materials) return;
+    void quoteCtx.setMarkupRates({ units: u, materials: m });
+  };
 
   const markupBadgeVariant = markupLabel === "Standard" ? "default" as const
     : markupLabel === "Low" ? "destructive" as const
@@ -71,20 +87,53 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
         <span className="text-lg font-bold text-primary tabular-nums">{formatRand(summary.total)}</span>
       </div>
 
+      {quoteCtx && (
+        <div className="rounded-md border border-border p-2 space-y-1.5 text-xs">
+          <div className="font-medium text-foreground">Markup on cost for this quote</div>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="space-y-0.5">
+              <span className="text-muted-foreground">Units %</span>
+              <Input type="number" inputMode="decimal" className="h-8 text-xs" value={unitsDraft}
+                onChange={(e) => setUnitsDraft(e.target.value)} onBlur={commitRates}
+                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
+            </label>
+            <label className="space-y-0.5">
+              <span className="text-muted-foreground">Materials %</span>
+              <Input type="number" inputMode="decimal" className="h-8 text-xs" value={matsDraft}
+                onChange={(e) => setMatsDraft(e.target.value)} onBlur={commitRates}
+                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
+            </label>
+          </div>
+          <p className="text-[10px] text-muted-foreground">Labour is charged at its flat rate with no markup. Changing a % reprices every line of that type on this quote.</p>
+        </div>
+      )}
+
       {/* Cost & profit (ex VAT) — blended over lines with a known cost */}
       {summary.totalCost > 0 && (
         <div className="rounded-md border border-border p-2 space-y-1 text-xs">
+          {summary.discountAmount > 0 && (
+            <div className="flex justify-between"><span className="text-muted-foreground">Discount</span><span className="tabular-nums">−{formatRand(summary.discountAmount)}</span></div>
+          )}
           <div className="flex justify-between"><span className="text-muted-foreground">Our cost (excl. VAT)</span><span className="tabular-nums">{formatRand(summary.totalCost)}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Gross profit</span><span className="tabular-nums font-semibold text-foreground">{formatRand(summary.profit)}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Overall markup (on cost)</span><span className="tabular-nums">{summary.avgMarkup.toFixed(1)}%</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Overall margin (on sell)</span><span className="tabular-nums">{summary.marginPercent.toFixed(1)}%</span></div>
           {summary.unitsMarkup != null && (
-            <div className="flex justify-between"><span className="text-muted-foreground">AC units markup</span><span className="tabular-nums">{summary.unitsMarkup.toFixed(0)}%</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Units markup</span><span className="tabular-nums">{summary.unitsMarkup.toFixed(0)}%</span></div>
           )}
           {summary.materialsMarkup != null && (
-            <div className="flex justify-between"><span className="text-muted-foreground">Kits &amp; materials markup</span><span className="tabular-nums">{summary.materialsMarkup.toFixed(0)}%</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Materials markup</span><span className="tabular-nums">{summary.materialsMarkup.toFixed(0)}%</span></div>
+          )}
+          {summary.labourTotal > 0 && (
+            <div className="flex justify-between"><span className="text-muted-foreground">Labour (flat rate, no markup)</span><span className="tabular-nums">{formatRand(summary.labourTotal)}</span></div>
           )}
         </div>
+      )}
+
+      {summary.noCostCount > 0 && (
+        <p className="text-[10px] text-muted-foreground">
+          {summary.noCostCount} {summary.noCostCount === 1 ? "line has" : "lines have"} no cost, so {summary.noCostCount === 1 ? "it is" : "they are"} left out of the markup and margin figures.
+        </p>
       )}
 
       {/* Markup bar */}
@@ -112,14 +161,15 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
           {/* Tick marks */}
           <div className="absolute inset-0 flex items-center">
             <div className="absolute left-0 w-px h-full bg-border" />
-            <div className="absolute left-[45.5%] w-px h-full bg-border/50" />
-            <div className="absolute left-[90.9%] w-px h-full bg-border/50" />
+            <div className="absolute left-[25%] w-px h-full bg-border/50" />
+            <div className="absolute left-[60%] w-px h-full bg-border/50" />
           </div>
         </div>
-        <div className="flex justify-between text-[9px] text-muted-foreground">
-          <span>0%</span>
-          <span className="ml-[35%]">25%</span>
-          <span>50%+</span>
+        <div className="relative h-3 text-[9px] text-muted-foreground">
+          <span className="absolute left-0">0%</span>
+          <span className="absolute left-[25%] -translate-x-1/2">25%</span>
+          <span className="absolute left-[60%] -translate-x-1/2">60%</span>
+          <span className="absolute right-0">100%+</span>
         </div>
       </div>
 

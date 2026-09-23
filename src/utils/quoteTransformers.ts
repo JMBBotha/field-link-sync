@@ -82,6 +82,8 @@ export function computeItemsSubtotal(items: QuoteItem[]): number {
 }
 
 /** South African VAT rate used for all quote totals. */
+import { classifyQuoteCategory } from "@/lib/pricing";
+
 export const QUOTE_VAT_RATE = 0.15;
 
 export interface QuoteTotals {
@@ -101,6 +103,23 @@ export interface QuoteTotals {
   /** Blended markup split: AC units vs everything else (kits, materials, consumables) */
   unitsMarkup: number | null;
   materialsMarkup: number | null;
+  /** Labour: flat rate, no markup. Sell total of labour lines. */
+  labourTotal: number;
+  /** Discount taken off the ex-VAT subtotal (profit maths use subtotal − discount). */
+  discountAmount: number;
+  /** Lines left out of the markup maths because no cost is known. */
+  noCostCount: number;
+}
+
+export interface QuoteDiscount { type?: string | null; value?: number | null }
+
+export function quoteDiscountAmount(subtotal: number, d?: QuoteDiscount | null): number {
+  if (!d) return 0;
+  const v = Number(d.value || 0);
+  if (!Number.isFinite(v) || v <= 0) return 0;
+  const t = (d.type || "").toLowerCase();
+  const amt = t === "percentage" || t === "percent" ? (subtotal * v) / 100 : t === "fixed" || t === "amount" ? v : 0;
+  return Math.min(Math.max(0, amt), subtotal);
 }
 
 /**
@@ -131,7 +150,8 @@ export function isRealQuoteItem(item: QuoteItem): boolean {
 export function computeQuoteTotals(
   items: QuoteItem[],
   areas: QuoteArea[],
-  vatRate: number = QUOTE_VAT_RATE
+  vatRate: number = QUOTE_VAT_RATE,
+  discount?: QuoteDiscount | null
 ): QuoteTotals {
   const topLevel = items.filter(
     (i) => !i.parent_item_id && isRealQuoteItem(i)
@@ -155,6 +175,7 @@ export function computeQuoteTotals(
   // Cost of each line: metadata.total_cost, else unit_cost × qty, else back
   // out from sell and the stated markup. Lines with no cost info are left out
   // of the markup maths (rather than pretending they're 0% or 100%).
+  const isLabour = (i: QuoteItem) => classifyQuoteCategory(i) === "labour";
   const lineCost = (i: QuoteItem): number | null => {
     const md = (i.metadata || {}) as Record<string, unknown>;
     const sell = i.total_price ?? i.unit_price * i.quantity;
@@ -164,15 +185,13 @@ export function computeQuoteTotals(
     if (Number.isFinite(uc) && uc > 0) return uc * (i.quantity || 1);
     const m = Number(md.markup_percent);
     if (Number.isFinite(m) && m > 0 && sell > 0) return sell / (1 + m / 100);
+    // Labour is a flat rate with no markup: cost = sell unless a separate cost exists.
+    if (isLabour(i)) return sell;
     return null;
   };
   // Classify by CATEGORY (item_type = product_category), never free-text name,
   // so "AC copper pipe" isn't counted as a unit. Mirrors the builder's isAC.
-  const isUnit = (i: QuoteItem) => {
-    if (i.is_bundle) return false;
-    const c = ` ${(i.item_type || "").toLowerCase()} `;
-    return c.includes("air") || c.includes(" ac ") || c.includes("hvac");
-  };
+  const isUnit = (i: QuoteItem) => classifyQuoteCategory(i) === "units";
   const blend = (list: QuoteItem[]) => {
     let c = 0, sl = 0;
     for (const i of list) {
@@ -185,8 +204,15 @@ export function computeQuoteTotals(
   };
   const all = blend(topLevel);
   const units = blend(topLevel.filter(isUnit));
-  const mats = blend(topLevel.filter((i) => !isUnit(i)));
-  const avgMarkup = all.markup ?? 0;
+  const mats = blend(topLevel.filter((i) => !isUnit(i) && !isLabour(i)));
+  const labourTotal = topLevel.filter(isLabour).reduce((s2, i) => s2 + (i.total_price ?? i.unit_price * i.quantity), 0);
+  const noCostCount = topLevel.filter((i) => lineCost(i) == null).length;
+  // Discount comes off what the client pays, BEFORE VAT; profit/markup/margin use the net figure.
+  const discountAmount = quoteDiscountAmount(subtotal, discount);
+  const netSell = all.sell - (subtotal > 0 ? discountAmount * (all.sell / subtotal) : 0);
+  const profit = netSell - all.cost;
+  const avgMarkup = all.cost > 0 ? (profit / all.cost) * 100 : 0;
+  const marginPercent = netSell > 0 && all.cost > 0 ? (profit / netSell) * 100 : 0;
 
   return {
     itemCount: topLevel.length,
@@ -196,8 +222,11 @@ export function computeQuoteTotals(
     total,
     avgMarkup,
     totalCost: all.cost,
-    profit: all.sell - all.cost,
-    marginPercent: all.sell > 0 && all.cost > 0 ? ((all.sell - all.cost) / all.sell) * 100 : 0,
+    profit,
+    marginPercent,
+    labourTotal,
+    discountAmount,
+    noCostCount,
     unitsMarkup: units.cost > 0 ? units.markup : null,
     materialsMarkup: mats.cost > 0 ? mats.markup : null,
   };
@@ -209,3 +238,15 @@ export function computeQuoteTotals(
 export function getDefaultAreaName(): string {
   return DEFAULT_AREA_NAME;
 }
+
+/**
+ * Health band for the OVERALL (blended) quote markup. Units sit at ~25% and
+ * materials at ~100%, so a normal job blends to roughly 30–55%.
+ *   Low < 25% · Standard 25–60% · High > 60%. Bar scale is 0–100%.
+ */
+export function blendedMarkupHealth(markup: number): "Low" | "Standard" | "High" {
+  if (!Number.isFinite(markup) || markup < 25) return "Low";
+  if (markup <= 60) return "Standard";
+  return "High";
+}
+export const BLENDED_MARKUP_BAR_MAX = 100;

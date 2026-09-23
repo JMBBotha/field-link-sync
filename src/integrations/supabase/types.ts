@@ -669,11 +669,13 @@ export type Database = {
           default_rate: number | null
           id: string
           logo_url: string | null
+          materials_markup_percent: number
           name: string
           onboarding_completed: boolean | null
           services: string[] | null
           slug: string
           status: string
+          units_markup_percent: number
           updated_at: string | null
           vat_rate: number | null
         }
@@ -682,11 +684,13 @@ export type Database = {
           default_rate?: number | null
           id?: string
           logo_url?: string | null
+          materials_markup_percent?: number
           name: string
           onboarding_completed?: boolean | null
           services?: string[] | null
           slug?: string
           status?: string
+          units_markup_percent?: number
           updated_at?: string | null
           vat_rate?: number | null
         }
@@ -695,11 +699,13 @@ export type Database = {
           default_rate?: number | null
           id?: string
           logo_url?: string | null
+          materials_markup_percent?: number
           name?: string
           onboarding_completed?: boolean | null
           services?: string[] | null
           slug?: string
           status?: string
+          units_markup_percent?: number
           updated_at?: string | null
           vat_rate?: number | null
         }
@@ -5010,6 +5016,7 @@ export type Database = {
           lead_id: string | null
           legacy_original_total: number | null
           location_id: string | null
+          materials_markup_percent: number | null
           notes: string | null
           owner_id: string | null
           public_token: string | null
@@ -5023,6 +5030,7 @@ export type Database = {
           superseded_by: string | null
           terms_text: string | null
           total: number
+          units_markup_percent: number | null
           updated_at: string
           valid_until: string | null
           vat_amount: number
@@ -5048,6 +5056,7 @@ export type Database = {
           lead_id?: string | null
           legacy_original_total?: number | null
           location_id?: string | null
+          materials_markup_percent?: number | null
           notes?: string | null
           owner_id?: string | null
           public_token?: string | null
@@ -5061,6 +5070,7 @@ export type Database = {
           superseded_by?: string | null
           terms_text?: string | null
           total?: number
+          units_markup_percent?: number | null
           updated_at?: string
           valid_until?: string | null
           vat_amount?: number
@@ -5086,6 +5096,7 @@ export type Database = {
           lead_id?: string | null
           legacy_original_total?: number | null
           location_id?: string | null
+          materials_markup_percent?: number | null
           notes?: string | null
           owner_id?: string | null
           public_token?: string | null
@@ -5099,6 +5110,7 @@ export type Database = {
           superseded_by?: string | null
           terms_text?: string | null
           total?: number
+          units_markup_percent?: number | null
           updated_at?: string
           valid_until?: string | null
           vat_amount?: number

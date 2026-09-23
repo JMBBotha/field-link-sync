@@ -62,6 +62,10 @@ export interface QuoteMeta {
   discount_value: number | null;
   terms_text: string | null;
   reference_text: string | null;
+  company_id?: string | null;
+  /** Quote-level override of the company Units % / Materials % (null = use company default). */
+  units_markup_percent?: number | null;
+  materials_markup_percent?: number | null;
 }
 
 /** Full quote with joined areas and items */

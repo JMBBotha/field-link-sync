@@ -4,7 +4,7 @@ import { resolveProductMarkupPercent } from "@/lib/pricing";
  * in a shared header with tabs. Each tab renders the real builder component.
  */
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, useSyncExternalStore } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2, Send } from "lucide-react";
@@ -43,6 +43,7 @@ import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 import { areasToBaskets } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
 import { computeQuoteTotals } from "@/utils/quoteTransformers";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
+import { subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot } from "@/lib/pricing";
 import { pdfItemToPaletteProduct } from "@/utils/pdfItemToProduct";
 import { persistQuoteFromBaskets } from "@/utils/persistQuoteFromBaskets";
 import { stubProductFromQuoteItem } from "@/utils/hydrateQuoteItem";
@@ -264,9 +265,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
     return [...baskets, ...dedupedWizard, ...popupPreviewBaskets];
   }, [baskets, wizardBaskets, popupPreviewBaskets]);
+  // Rates snapshot in deps: live-priced lines refresh when Units %/Materials % change.
+  const rateSnap = useSyncExternalStore(subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot);
   const displayQuoteTotals = useMemo(
-    () => computeBasketsQuoteTotals(displayBaskets),
-    [displayBaskets],
+    () => computeBasketsQuoteTotals(displayBaskets, { type: meta?.discount_type, value: meta?.discount_value }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [displayBaskets, meta?.discount_type, meta?.discount_value, rateSnap],
   );
 
   // Publish live in-progress totals so the header/summary reflect unsaved

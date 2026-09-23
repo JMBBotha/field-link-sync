@@ -1,3 +1,4 @@
+import { blendedMarkupHealth, BLENDED_MARKUP_BAR_MAX } from "@/utils/quoteTransformers";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
 import { useState, useMemo, useCallback } from "react";
 import { calcSellingPrice, VAT_RATE, resolveProductMarkupPercent, lockedPricing, costPerMetreOf } from "@/lib/pricing";
@@ -555,22 +556,21 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
             <div className="flex items-center justify-between text-[10px] text-muted-foreground">
               <span className="flex items-center gap-1">
                 <TrendingUp className="h-3 w-3" />
-                Project Markup: {avgMarkup.toFixed(0)}%
+                Overall markup (on cost): {avgMarkup.toFixed(0)}%
               </span>
-              <span>
-                {avgMarkup <= 20 ? "Conservative" : avgMarkup <= 35 ? "Standard" : "Aggressive"}
-              </span>
+              <span>{blendedMarkupHealth(avgMarkup)}</span>
             </div>
             <div className="relative h-2 rounded-full bg-muted overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-300 ${getMarkupColor(avgMarkup)}`}
-                style={{ width: `${Math.min(100, (avgMarkup / 50) * 100)}%` }}
+                className={`h-full rounded-full transition-all duration-300 ${blendedMarkupHealth(avgMarkup) === "Low" ? "bg-red-500" : blendedMarkupHealth(avgMarkup) === "Standard" ? "bg-green-500" : "bg-amber-400"}`}
+                style={{ width: `${Math.max(0, Math.min(100, (avgMarkup / BLENDED_MARKUP_BAR_MAX) * 100))}%` }}
               />
             </div>
-            <div className="flex justify-between text-[9px] text-muted-foreground">
-              <span>0%</span>
-              <span>25%</span>
-              <span>50%+</span>
+            <div className="relative h-3 text-[9px] text-muted-foreground">
+              <span className="absolute left-0">0%</span>
+              <span className="absolute left-[25%] -translate-x-1/2">25%</span>
+              <span className="absolute left-[60%] -translate-x-1/2">60%</span>
+              <span className="absolute right-0">100%+</span>
             </div>
           </div>
         </CardContent>

@@ -253,6 +253,21 @@ export function normalizeMarkupPercent(markupPercent?: number | null): number {
 export function resolveProductMarkupPercent(product: {
   default_markup_percent?: number | null;
   markup_percent?: number | null;
+  product_category?: string | null;
+  category?: string | null;
+  short_name?: string | null;
+  product_code?: string | null;
+  supplier_type?: string | null;
+}): number {
+  // Inside an open quote the CATEGORY rate wins over the catalogue markup.
+  if (activeRates && product) return categoryMarkupPercent(classifyQuoteCategory(product), activeRates);
+  return resolveCatalogMarkupPercent(product);
+}
+
+/** Catalogue-only markup (ignores quote category rates). */
+export function resolveCatalogMarkupPercent(product: {
+  default_markup_percent?: number | null;
+  markup_percent?: number | null;
 }): number {
   const d = Number(product?.default_markup_percent);
   if (Number.isFinite(d) && d !== 0) return normalizeMarkupPercent(d);
@@ -360,3 +375,66 @@ export function computeProductPricing(product: {
   const supplierCode = resolveSupplierCode(product.supplier_name);
   return computePricing(supplierCode, listPrice, markupPct, product.cost_price || null);
 }
+
+// ─── CATEGORY MARKUP (Johan lock 2026-09-23) ───
+//
+// Every quote line is one of three categories, each marked up on ITS OWN cost:
+//   units     (AC units / equipment)          → quote Units %      (company default 25)
+//   materials (kits, piping, consumables, …)  → quote Materials %  (company default 100)
+//   labour    (installation / service labour) → NO markup, flat rate as entered
+// Precedence inside a quote: quote override > company category default.
+// A product's own catalogue markup is only used OUTSIDE a quote (catalog
+// browsing) or when a line can't be classified; 35 is the very last resort.
+// The overall quote markup is never chosen — it is Σ profit / Σ cost.
+
+export type QuoteCategory = "units" | "materials" | "labour";
+export interface CategoryMarkupRates { units: number; materials: number }
+export const DEFAULT_CATEGORY_MARKUPS: CategoryMarkupRates = { units: 25, materials: 100 };
+
+const LABOUR_RE = /\b(labour|labor|installation labour|install(ation)? fee|service call|call[- ]?out|workmanship|fitment)\b/i;
+const ACCESSORY_RE = /\b(pump|bolt|nail|disc|compound|washer|screw|tube|tubing|pipe|piping|copper|insulation|armaflex|tape|bracket|kit|cable|trunking|drain|gas|refrigerant|remote|controller|stand|pad|filter|clamp|duct)\b/i;
+
+export function classifyQuoteCategory(p: {
+  product_category?: string | null; category?: string | null; item_type?: string | null;
+  short_name?: string | null; item_name?: string | null; product_code?: string | null;
+  description?: string | null; supplier_type?: string | null; is_bundle?: boolean | null;
+} | null | undefined): QuoteCategory {
+  if (!p) return "materials";
+  const cat = `${p.product_category || ""} ${p.category || ""} ${p.item_type || ""}`.toLowerCase();
+  const name = `${p.short_name || ""} ${p.item_name || ""}`.toLowerCase();
+  if (/\b(service|labour|labor)\b/.test(cat) || LABOUR_RE.test(name)) return "labour";
+  if (p.is_bundle || /kit|consumable|material/.test(cat)) return "materials";
+  const acCat = /air ?con|aircon|\bac\b|hvac|split|heat pump/.test(cat) || p.supplier_type === "ac_units" || p.supplier_type === "ac_equipment";
+  const blob = `${name} ${p.product_code || ""}`;
+  const strongUnit = /\b(inv|inverter|indoor|outdoor|cassette|ducted|concealed|suspended|floor standing|rooftop|mw|wall ?mount|split|fixed speed)\b/i.test(name);
+  const accessory = ACCESSORY_RE.test(name) || /\b(knock|nails?|raw)\b|tube|\be-ee\d/i.test(name);
+  if (accessory && !strongUnit) return "materials";
+  if (acCat || strongUnit || /\d+\s*k?\s*btu/i.test(blob)) return "units";
+  return "materials";
+}
+
+/** Pure: markup % for a quote line given the quote's category rates. */
+export function categoryMarkupPercent(category: QuoteCategory, rates: CategoryMarkupRates): number {
+  if (category === "labour") return 0;
+  const v = Number(category === "units" ? rates.units : rates.materials);
+  return Number.isFinite(v) ? v : (category === "units" ? DEFAULT_CATEGORY_MARKUPS.units : DEFAULT_CATEGORY_MARKUPS.materials);
+}
+
+// Active quote rates — set by QuoteProvider while a quote is open, null otherwise.
+let activeRates: CategoryMarkupRates | null = null;
+let ratesEditSeq = 0;
+const rateListeners = new Set<() => void>();
+let rateSnapshot = { rates: activeRates, editSeq: ratesEditSeq };
+function emitRates() {
+  rateSnapshot = { rates: activeRates, editSeq: ratesEditSeq };
+  rateListeners.forEach((l) => l());
+}
+export function getActiveQuoteMarkupRates() { return activeRates; }
+/** `edited=true` only when a user changed the %s — triggers repricing of the quote's lines. */
+export function setActiveQuoteMarkupRates(rates: CategoryMarkupRates | null, edited = false) {
+  activeRates = rates;
+  if (edited) ratesEditSeq++;
+  emitRates();
+}
+export function subscribeQuoteMarkupRates(l: () => void) { rateListeners.add(l); return () => { rateListeners.delete(l); }; }
+export function getQuoteMarkupRatesSnapshot() { return rateSnapshot; }
