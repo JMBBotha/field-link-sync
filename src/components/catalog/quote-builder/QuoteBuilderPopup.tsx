@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { kitBasketFields } from "./kitLine";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Check, Wand2, X, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ export function areasToBaskets(areas: QuoteArea[]): Basket[] {
         product: m.product,
         quantity: m.pricingMode === "unit" ? m.unitQuantity : 1,
         ...(m.pricingMode === "length" ? { length: m.adjustedLength } : {}),
+        ...kitBasketFields(m),
       })),
       ...area.consumables.map((c) => ({
         instanceId: `wizard-${area.id}-con-${c.id}`,

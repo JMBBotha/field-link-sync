@@ -12,6 +12,7 @@ import type { QuoteArea, AreaACUnit, AreaConsumable, AreaMaterial } from "../quo
 import { detectBTU, getBracketSize } from "../quoteWizardTypes";
 import { findDaikinRemote, forcePerUnitPricing, isWiredRemote } from "../daikinRemoteUtils";
 import { getProductDisplayName } from "../productDisplayUtils";
+import { buildKitMaterial, withKitLength } from "../kitLine";
 import { computeLineTotal, resolvePricingUnit, formatUnitPrice } from "@/lib/pricingUnits";
 import { toast } from "sonner";
 
@@ -113,7 +114,7 @@ function SuggestedBundlePanel({
     const init: Record<string, { qty: number; mode: "unit" | "length" }> = {};
     for (const item of bundle.items) {
       const isLen = item.is_length_item;
-      init[item.id] = { qty: isLen ? (item.length_metres || 3) : (item.quantity || 1), mode: isLen ? "length" : "unit" };
+      init[item.id] = { qty: isLen ? 1 : (item.quantity || 1), mode: isLen ? "length" : "unit" };
     }
     return init;
   });
@@ -245,6 +246,75 @@ function SuggestedBundlePanel({
   );
 }
 
+/* ─── Collapsed installation-kit line: name + length, expandable contents ─── */
+function KitLineRow({
+  material,
+  onLength,
+  onRemove,
+}: {
+  material: AreaMaterial;
+  onLength: (v: number) => void;
+  onRemove: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const kit = material.kit!;
+  const perMetre = kit.pricingType === "p/meter";
+  const value = perMetre ? material.adjustedLength : material.unitQuantity;
+  const total = kit.unitSell * value;
+  return (
+    <div className="rounded border border-primary/30 bg-primary/5 text-xs" data-no-dnd="true">
+      <div className="flex items-center gap-2 px-2 py-1.5">
+        <button
+          type="button"
+          className="h-5 w-5 flex items-center justify-center rounded hover:bg-accent shrink-0"
+          onClick={() => setOpen((o) => !o)}
+          aria-label={open ? "Collapse kit" : "Expand kit"}
+        >
+          {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
+        <Package className="h-3 w-3 text-primary shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="font-medium truncate">{kit.name}</div>
+          <div className="text-[10px] text-muted-foreground">
+            {perMetre ? `${value}m @ ${formatZAR(kit.unitSell)}/m` : `×${value} @ ${formatZAR(kit.unitSell)}`}
+          </div>
+        </div>
+        <QuantityControl
+          value={value}
+          onChange={onLength}
+          min={perMetre ? 0.5 : 1}
+          max={perMetre ? 100 : 50}
+          step={perMetre ? 0.5 : 1}
+          showSlider={false}
+          suffix={perMetre ? "m" : ""}
+          size="sm"
+          className="shrink-0"
+        />
+        <span className="text-[10px] font-medium shrink-0 tabular-nums">{formatZAR(total)}</span>
+        <button
+          className="h-5 w-5 rounded-full flex items-center justify-center hover:bg-destructive/20 shrink-0"
+          onClick={onRemove}
+          aria-label="Remove kit"
+        >
+          <X className="h-3 w-3 text-destructive" />
+        </button>
+      </div>
+      {open && (
+        <div className="border-t border-primary/20 px-3 py-1.5 space-y-0.5">
+          {kit.items.length === 0 && <div className="text-[10px] text-muted-foreground">No contents recorded</div>}
+          {kit.items.map((it, idx) => (
+            <div key={idx} className="flex items-center gap-2 text-[10px] text-muted-foreground">
+              {it.isLengthItem ? <Ruler className="h-2.5 w-2.5 shrink-0" /> : <Hash className="h-2.5 w-2.5 shrink-0" />}
+              <span className="flex-1 truncate">{it.name}</span>
+              <span className="shrink-0">{it.isLengthItem ? `${value}m` : `×${it.quantity}`}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Per-area search dropdown ─── */
 function AreaUnitSelector({
   area,
@@ -253,6 +323,7 @@ function AreaUnitSelector({
   onRemove,
   onRemoveConsumable,
   onRemoveMaterial,
+  onKitLength,
   suggestedBundle,
   onApplyBundle,
   onDismissBundle,
@@ -263,6 +334,7 @@ function AreaUnitSelector({
   onRemove: (areaId: string, idx: number) => void;
   onRemoveConsumable: (areaId: string, consumableId: string) => void;
   onRemoveMaterial: (areaId: string, materialId: string) => void;
+  onKitLength?: (areaId: string, materialId: string, value: number) => void;
   suggestedBundle?: PaletteBundle | null;
   onApplyBundle: (areaId: string, bundle: PaletteBundle, overrides: Record<string, { qty: number; mode: "unit" | "length" }>) => void;
   onDismissBundle: (areaId: string) => void;
@@ -397,7 +469,14 @@ function AreaUnitSelector({
           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
             Materials & Consumables
           </div>
-          {(area.materials || []).map((m) => (
+          {(area.materials || []).map((m) => m.kit ? (
+            <KitLineRow
+              key={m.id}
+              material={m}
+              onLength={(v) => onKitLength?.(area.id, m.id, v)}
+              onRemove={() => onRemoveMaterial(area.id, m.id)}
+            />
+          ) : (
             <div key={m.id} className="flex items-center gap-2 rounded border border-border/40 bg-background/60 px-2 py-1.5 text-xs">
               <Ruler className="h-3 w-3 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
@@ -631,6 +710,15 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
     );
   }, [areas, onAreasChange]);
 
+  const handleKitLength = useCallback((areaId: string, materialId: string, value: number) => {
+    onAreasChange(
+      areas.map((a) => {
+        if (a.id !== areaId) return a;
+        return { ...a, materials: a.materials.map((m) => (m.id === materialId ? withKitLength(m, value) : m)) };
+      })
+    );
+  }, [areas, onAreasChange]);
+
   const handleApplyBundle = useCallback((areaId: string, bundle: PaletteBundle, overrides: Record<string, { qty: number; mode: "unit" | "length" }>) => {
     onAreasChange(
       areas.map((a) => {
@@ -640,52 +728,14 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
         const cleanMaterials = (a.materials || []).filter((m) => !m.fromBundle);
         const cleanConsumables = (a.consumables || []).filter((c) => !c.fromBundle);
 
-        const newMaterials: AreaMaterial[] = [];
+        // ONE collapsed kit line, priced exactly like the palette (per-metre
+        // sell × kit length). Kit length = first length override, else 1 m.
+        const firstLen = bundle.items
+          .filter((i: any) => !i.is_optional && i.is_length_item)
+          .map((i: any) => overrides[i.id]?.qty)
+          .find((q: any) => Number(q) > 0);
+        const newMaterials: AreaMaterial[] = [buildKitMaterial(bundle, Number(firstLen) || 1)];
         const newConsumables: AreaConsumable[] = [];
-        const seen = new Set<string>();
-
-        for (const item of bundle.items) {
-          if (item.is_optional) continue;
-          const product = item.product || item.supplier_product;
-          if (!product) continue;
-
-          // Guard against the same product appearing twice in one bundle definition
-          const dedupeKey = String(product.id || product.product_code || item.id);
-          if (seen.has(dedupeKey)) continue;
-          seen.add(dedupeKey);
-
-          const override = overrides[item.id] || { qty: item.quantity || 1, mode: item.is_length_item ? "length" : "unit" };
-          // Stable id derived from bundle + item so re-applying replaces instead of duplicating
-          const lineId = `bundle-${bundle.id}-${item.id}`;
-
-          if (override.mode === "length") {
-            const unit = resolvePricingUnit(product);
-            const unitPrice = product.price_per_metre || unitPriceOf(product);
-            const per = unit.price_per_unit_qty > 0 ? unit.price_per_unit_qty : 1;
-            newMaterials.push({
-              id: lineId,
-              product,
-              defaultLength: override.qty,
-              adjustedLength: override.qty,
-              costPerMeter: unitPrice / per,
-              totalCost: computeLineTotal(override.qty, unitPrice, unit),
-              pricingMode: "length",
-              unitQuantity: 1,
-              fromBundle: true,
-              bundleId: bundle.id,
-            });
-          } else {
-            newConsumables.push({
-              id: lineId,
-              product,
-              quantity: override.qty,
-              isSuggested: false,
-              fromBundle: true,
-              bundleId: bundle.id,
-            });
-          }
-        }
-
 
         toast.success(`Applied "${bundle.name}" to ${a.name}`);
         return {
@@ -733,6 +783,7 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
             onRemove={handleRemove}
             onRemoveConsumable={handleRemoveConsumable}
             onRemoveMaterial={handleRemoveMaterial}
+            onKitLength={handleKitLength}
             suggestedBundle={areaBundleSuggestions[area.id]}
             onApplyBundle={handleApplyBundle}
             onDismissBundle={handleDismissBundle}

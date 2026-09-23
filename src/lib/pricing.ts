@@ -300,6 +300,30 @@ export function computePricing(
 }
 
 /**
+ * If a product carries a price lock (re-hydrated saved quote line), return the
+ * locked pricing. Returns null when the product is not locked.
+ * See PaletteProduct.locked_sell_ex_vat.
+ */
+export function lockedPricing(product: {
+  locked_sell_ex_vat?: number | null;
+  locked_cost_ex_vat?: number | null;
+} | null | undefined): ComputedPricing | null {
+  const locked = Number(product?.locked_sell_ex_vat);
+  if (product?.locked_sell_ex_vat == null || !Number.isFinite(locked) || locked < 0) return null;
+  const sellExVat = r2(locked);
+  const rawCost = Number(product?.locked_cost_ex_vat);
+  const costExVat = Number.isFinite(rawCost) && rawCost > 0 ? r2(rawCost) : sellExVat;
+  const markupPercent = costExVat > 0 ? r2(((sellExVat - costExVat) / costExVat) * 100) : 0;
+  return {
+    costExVat,
+    sellExVat,
+    sellInclVat: r2(sellExVat * (1 + VAT_RATE)),
+    discountPercent: 0,
+    markupPercent,
+  };
+}
+
+/**
  * Convenience: compute pricing from a product-shaped object (PaletteProduct or similar).
  * Use this anywhere you'd previously write `product.selling_price || product.cost_incl_vat || 0`.
  */
@@ -312,7 +336,11 @@ export function computeProductPricing(product: {
   markup_percent?: number | null;
   supplier_name?: string;
   supplier_discount_percent?: number | null;
+  locked_sell_ex_vat?: number | null;
+  locked_cost_ex_vat?: number | null;
 }): ComputedPricing {
+  const locked = lockedPricing(product);
+  if (locked) return locked;
   const listPrice = product.cost_price || product.cost_excl_vat || 0;
   const markupPct = resolveProductMarkupPercent(product);
   const supplierCode = resolveSupplierCode(product.supplier_name);

@@ -45,6 +45,8 @@ import { computeQuoteTotals } from "@/utils/quoteTransformers";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import { pdfItemToPaletteProduct } from "@/utils/pdfItemToProduct";
 import { persistQuoteFromBaskets } from "@/utils/persistQuoteFromBaskets";
+import { stubProductFromQuoteItem } from "@/utils/hydrateQuoteItem";
+import { kitBasketFields, kitFromSavedItem } from "@/components/catalog/quote-builder/kitLine";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { useUnsavedQuoteGuard } from "@/hooks/useUnsavedQuoteGuard";
@@ -373,32 +375,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       const markup = Number((it.metadata as Record<string, unknown>)?.markup_percent);
       return Number.isFinite(markup) && markup > 0 ? markup : 0;
     };
-    const stub = (it: typeof ctxItems[number]): PaletteProduct => ({
-      id: it.product_id || it.id,
-      product_code: it.item_number || "",
-      short_name: it.item_name,
-      brand: "",
-      product_category: it.item_type || "",
-      category: it.item_type || "",
-      description: it.description || "",
-      cost_price: it.unit_price,
-      cost_excl_vat: it.unit_price,
-      cost_incl_vat: 0,
-      selling_price: it.unit_price,
-      supplier_name: it.supplier || "",
-      supplier_type: "both",
-      supplier_discount_percent: null,
-      markup_percent: metadataMarkup(it),
-      default_markup_percent: metadataMarkup(it),
-      is_pinned: false,
-      pin_order: null,
-      price_per_metre: it.length ? it.unit_price : null,
-      sold_in_length: !!it.length,
-      unit_length: it.length || null,
-      pipe_size: null,
-      is_material_favorite: false,
-      pack_qty: null,
-    } as unknown as PaletteProduct);
+    // Shared, tested helper — saved lines are PRICE-LOCKED (never re-marked-up).
+    const stub = (it: typeof ctxItems[number]): PaletteProduct => stubProductFromQuoteItem(it);
     const toItem = (it: typeof ctxItems[number]) => {
       const product = (it.product_id && productById.get(it.product_id)) || stub(it);
       return {
@@ -407,6 +385,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         quantity: it.quantity,
         ...(it.length ? { length: it.length } : {}),
         ...(it.is_bundle ? { isBundle: true } : {}),
+        ...(() => {
+          const k = kitFromSavedItem(it);
+          return k ? kitBasketFields(k) : {};
+        })(),
       };
     };
     const groups = new Map<string, typeof ctxItems>();
@@ -448,32 +430,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       const markup = Number((it.metadata as Record<string, unknown>)?.markup_percent);
       return Number.isFinite(markup) && markup > 0 ? markup : 0;
     };
-    const stubProduct = (it: typeof ctxItems[number]): PaletteProduct => ({
-      id: it.product_id || it.id,
-      product_code: it.item_number || "",
-      short_name: it.item_name,
-      brand: "",
-      product_category: it.item_type || "",
-      category: it.item_type || "",
-      description: it.description || "",
-      cost_price: it.unit_price,
-      cost_excl_vat: it.unit_price,
-      cost_incl_vat: 0,
-      selling_price: it.unit_price,
-      supplier_name: it.supplier || "",
-      supplier_type: "both",
-      supplier_discount_percent: null,
-      markup_percent: metadataMarkup(it),
-      default_markup_percent: metadataMarkup(it),
-      is_pinned: false,
-      pin_order: null,
-      price_per_metre: it.length ? it.unit_price : null,
-      sold_in_length: !!it.length,
-      unit_length: it.length || null,
-      pipe_size: null,
-      is_material_favorite: false,
-      pack_qty: null,
-    } as unknown as PaletteProduct);
+    // Shared, tested helper — saved lines are PRICE-LOCKED (never re-marked-up).
+    const stubProduct = (it: typeof ctxItems[number]): PaletteProduct => stubProductFromQuoteItem(it);
     // Group items by area_id (null → default "General" bucket)
     const buckets = new Map<string | null, typeof ctxItems>();
     for (const a of ctxAreas) buckets.set(a.id, [] as any);
@@ -493,10 +451,18 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         const product = (it.product_id && productById.get(it.product_id)) || stubProduct(it);
         const cat = (product.product_category || product.category || "").toLowerCase();
         const isAC = cat.includes("air") || cat.includes(" ac") || cat === "ac" || cat.includes("hvac");
+        const savedKit = kitFromSavedItem(it);
+        if (savedKit) {
+          base.materials.push(savedKit);
+          if (savedKit.bundleId) base.appliedBundleId = savedKit.bundleId;
+          continue;
+        }
         if (isAC) {
           base.acUnits.push({ id: it.id, product: stubProduct(it), btu: detectBTU(product), quantity: it.quantity });
         } else if (it.length && it.length > 0) {
-          const perM = it.unit_price;
+          // unit_price on a length line is the price for the WHOLE length (qty 1),
+          // so derive the true per-metre rate instead of multiplying by length twice.
+          const perM = it.length > 0 ? (Number(it.unit_price) || 0) / it.length : Number(it.unit_price) || 0;
           base.materials.push({
             id: it.id,
             product: stubProduct(it),

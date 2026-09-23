@@ -36,6 +36,17 @@ export interface AreaMaterial {
   fromBundle?: boolean;
   /** id of the bundle that generated this line */
   bundleId?: string;
+  /** Present when this line IS a collapsed installation kit (see kitLine.ts). */
+  kit?: AreaKitInfo;
+}
+
+export interface AreaKitInfo {
+  name: string;
+  pricingType: "p/meter" | "p/qty";
+  /** Selling price ex VAT per metre (p/meter) or per kit (p/qty) */
+  unitSell: number;
+  unitCost: number;
+  items: Array<{ name: string; code: string | null; quantity: number; isLengthItem: boolean }>;
 }
 
 export interface AreaBracket {
@@ -99,6 +110,7 @@ export function computeAreaSubtotal(area: QuoteArea): number {
   };
   const acCost = area.acUnits.reduce((s, u) => s + computeLineTotal(u.quantity, getCost(u.product), resolvePricingUnit(u.product)), 0);
   const matCost = area.materials.reduce((s, m) => {
+    if (m.kit) return s + m.kit.unitSell * (m.pricingMode === "length" ? m.adjustedLength : m.unitQuantity);
     if (m.pricingMode === "unit") {
       return s + computeLineTotal(m.unitQuantity, getCost(m.product), resolvePricingUnit(m.product));
     }

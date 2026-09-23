@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { computeLineTotal, resolvePricingUnit } from "@/lib/pricingUnits";
 import { hapticTap } from "@/lib/haptics";
+import { buildKitMaterial, kitBasketFields } from "./kitLine";
 import type { PaletteProduct, Basket, BasketItem } from "../QuoteBuilderTab";
 import type { QuoteArea, AreaACUnit, AreaConsumable, AreaMaterial } from "./quoteWizardTypes";
 import { WIZARD_STEPS, computeAreaSubtotal, createEmptyArea, detectBTU } from "./quoteWizardTypes";
@@ -157,56 +158,13 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
       return prev.map((a) => {
         if (a.id !== areaId) return a;
 
-        // Idempotent: drop every previously bundle-generated line first
+        // Idempotent: drop every previously bundle-generated line first.
         const cleanMaterials = (a.materials || []).filter((m) => !m.fromBundle);
         const cleanConsumables = (a.consumables || []).filter((c) => !c.fromBundle);
-
-        const newMaterials: AreaMaterial[] = [];
+        // ONE collapsed kit line priced exactly like the palette
+        // (per-metre sell × length, default 1 m). See kitLine.ts.
+        const newMaterials: AreaMaterial[] = [buildKitMaterial(bundle)];
         const newConsumables: AreaConsumable[] = [];
-        const seen = new Set<string>();
-
-        for (const item of bundle.items || []) {
-          if (item.is_optional) continue;
-          const product = item.product || item.supplier_product;
-          if (!product) continue;
-
-          const dedupeKey = String(product.id || product.product_code || item.id);
-          if (seen.has(dedupeKey)) continue;
-          seen.add(dedupeKey);
-
-          const lineId = `bundle-${bundle.id}-${item.id}`;
-
-          if (item.is_length_item) {
-            const unit = resolvePricingUnit(product);
-            // Always re-resolve from the live catalog record — never a cached bundle_item snapshot
-            const unitPrice = product.cost_price || product.cost_excl_vat || product.price_per_metre || product.selling_price || 0;
-            const per = unit.price_per_unit_qty > 0 ? unit.price_per_unit_qty : 1;
-
-            const length = item.length_metres || 3;
-            newMaterials.push({
-              id: lineId,
-              product,
-              defaultLength: length,
-              adjustedLength: length,
-              costPerMeter: unitPrice / per,
-              totalCost: computeLineTotal(length, unitPrice, unit),
-              pricingMode: "length",
-              unitQuantity: 1,
-              fromBundle: true,
-              bundleId: bundle.id,
-            });
-          } else {
-            newConsumables.push({
-              id: lineId,
-              product,
-              quantity: item.quantity || 1,
-              isSuggested: false,
-              fromBundle: true,
-              bundleId: bundle.id,
-            });
-          }
-        }
-
 
         return {
           ...a,
@@ -327,6 +285,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
           product: m.product,
           quantity: m.pricingMode === "unit" ? m.unitQuantity : 1,
           ...(m.pricingMode === "length" ? { length: m.adjustedLength } : {}),
+          ...kitBasketFields(m),
         })),
         ...area.consumables.map((c) => ({
           instanceId: `${c.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,

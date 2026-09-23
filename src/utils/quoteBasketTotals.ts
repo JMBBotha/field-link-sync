@@ -1,4 +1,4 @@
-import { computePricing, resolveSupplierCode, resolveProductMarkupPercent } from "@/lib/pricing";
+import { computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
 import type { Basket, BasketItem, PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import type { QuoteArea, QuoteItem } from "@/types/quote";
 import { computeQuoteTotals } from "@/utils/quoteTransformers";
@@ -12,7 +12,8 @@ function getEffectiveUnitPrices(product: PaletteProduct, isLengthOverride?: bool
   const listPrice = product.cost_excl_vat || 0;
   const markupPct = resolveProductMarkupPercent(product);
   const supplierCode = resolveSupplierCode(product.supplier_name);
-  const pricing = computePricing(supplierCode, listPrice, markupPct, product.cost_price || null);
+  // Saved quote lines are price-locked: never re-apply markup (see PaletteProduct.locked_sell_ex_vat).
+  const pricing = lockedPricing(product) ?? computePricing(supplierCode, listPrice, markupPct, product.cost_price || null);
 
   if (isLength) {
     const totalLength = product.unit_length || 1;
@@ -38,6 +39,22 @@ export function calculateBasketItemSell(item: BasketItem): number {
 }
 
 
+/** Ex-VAT cost for the whole line (mirrors calculateBasketItemSell). */
+export function calculateBasketItemCost(item: BasketItem): number {
+  if (item.isBundle && item.bundleUnitCost) {
+    return item.bundlePricingType === "p/meter"
+      ? item.bundleUnitCost * (item.length || 1)
+      : item.bundleUnitCost * item.quantity;
+  }
+  const unit = resolvePricingUnit(item.product);
+  if (item.product.sold_in_length && item.product.price_per_metre && item.length) {
+    const { unitCost } = getEffectiveUnitPrices(item.product, true);
+    return computeLineTotal(item.length, unitCost, unit);
+  }
+  const { unitCost } = getEffectiveUnitPrices(item.product);
+  return computeLineTotal(item.quantity, unitCost, unit);
+}
+
 function itemMarkupPercent(item: BasketItem): number {
   const explicit = Number(item.product.default_markup_percent ?? item.product.markup_percent ?? 0);
   if (Number.isFinite(explicit) && explicit > 0) return explicit;
@@ -60,6 +77,7 @@ export function basketsToQuoteState(baskets: Basket[]): { areas: QuoteArea[]; it
   const items: QuoteItem[] = baskets.flatMap((basket, basketIndex) =>
     basket.items.map((item, itemIndex) => {
       const totalPrice = calculateBasketItemSell(item);
+      const totalCost = calculateBasketItemCost(item);
       return {
         id: item.instanceId,
         quote_id: "live",
@@ -75,7 +93,29 @@ export function basketsToQuoteState(baskets: Basket[]): { areas: QuoteArea[]; it
         total_price: totalPrice,
         is_bundle: !!item.isBundle,
         item_type: item.product.product_category || item.product.category || null,
-        metadata: { markup_percent: itemMarkupPercent(item) },
+        // unit_cost is persisted so a re-opened (price-locked) line keeps its
+        // real margin; unit_price above is the FINAL sell and is never re-marked-up.
+        metadata: {
+          markup_percent: itemMarkupPercent(item),
+          unit_cost: item.quantity > 0 ? totalCost / item.quantity : totalCost,
+          price_locked: true,
+          ...(item.isBundle && item.bundlePricingType
+            ? {
+                kit: {
+                  bundle_id: item.bundleId ?? null,
+                  name: item.bundleName || item.product.short_name || "Kit",
+                  pricing_type: item.bundlePricingType,
+                  unit_cost: item.bundleUnitCost ?? 0,
+                  items: item.kitContents ?? (item.bundleItems || []).map((b) => ({
+                    name: b.product.short_name || b.product.product_code || "Item",
+                    code: b.product.product_code || null,
+                    quantity: b.quantity,
+                    isLengthItem: b.isLengthItem,
+                  })),
+                },
+              }
+            : {}),
+        },
         sort_order: basketIndex * 1000 + itemIndex,
         notes: null,
         source: "builder_live",
