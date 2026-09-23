@@ -938,6 +938,20 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
+                      {pdf.can_activate !== false && (
+                        pdf.is_active ? (
+                          <Badge variant="default" className="text-xs self-center">Active</Badge>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleActivateClick(pdf)}
+                            title="Make this the active price book"
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                          </Button>
+                        )
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
