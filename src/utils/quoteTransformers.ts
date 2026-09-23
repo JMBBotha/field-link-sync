@@ -96,6 +96,8 @@ export interface QuoteTotals {
   totalCost: number;
   /** Σ sell − Σ cost (ex VAT) over lines with a known cost */
   profit: number;
+  /** Overall margin: (Σ sell − Σ cost) / Σ sell × 100. Never equal to markup. */
+  marginPercent: number;
   /** Blended markup split: AC units vs everything else (kits, materials, consumables) */
   unitsMarkup: number | null;
   materialsMarkup: number | null;
@@ -195,6 +197,7 @@ export function computeQuoteTotals(
     avgMarkup,
     totalCost: all.cost,
     profit: all.sell - all.cost,
+    marginPercent: all.sell > 0 && all.cost > 0 ? ((all.sell - all.cost) / all.sell) * 100 : 0,
     unitsMarkup: units.cost > 0 ? units.markup : null,
     materialsMarkup: mats.cost > 0 ? mats.markup : null,
   };
