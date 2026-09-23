@@ -109,6 +109,26 @@ export interface QuoteTotals {
   discountAmount: number;
   /** Lines left out of the markup maths because no cost is known. */
   noCostCount: number;
+  /** Units + materials markup on cost, EXCLUDING labour (after discount). */
+  unitsMaterialsMarkup: number | null;
+}
+
+/**
+ * Spread a quote discount over units + materials lines in proportion to their
+ * pre-discount sell. Labour never receives any discount. Returns id → rand share.
+ */
+export function allocateQuoteDiscount(
+  items: QuoteItem[],
+  amount: number,
+  isLabour: (i: QuoteItem) => boolean = (i) => classifyQuoteCategory(i) === "labour",
+): Map<string, number> {
+  const out = new Map<string, number>();
+  if (!(amount > 0)) return out;
+  const eligible = items.filter((i) => !isLabour(i));
+  const base = eligible.reduce((s, i) => s + (i.total_price ?? i.unit_price * i.quantity), 0);
+  if (base <= 0) return out;
+  for (const i of eligible) out.set(i.id, (amount * (i.total_price ?? i.unit_price * i.quantity)) / base);
+  return out;
 }
 
 export interface QuoteDiscount { type?: string | null; value?: number | null }
@@ -179,14 +199,14 @@ export function computeQuoteTotals(
   const lineCost = (i: QuoteItem): number | null => {
     const md = (i.metadata || {}) as Record<string, unknown>;
     const sell = i.total_price ?? i.unit_price * i.quantity;
+    // Labour: flat rate, 0% markup → cost = sell. Included in overall markup on purpose.
+    if (isLabour(i)) return sell;
     const tc = Number(md.total_cost);
     if (Number.isFinite(tc) && tc > 0) return tc;
     const uc = Number(md.unit_cost ?? md.cost_excl);
     if (Number.isFinite(uc) && uc > 0) return uc * (i.quantity || 1);
     const m = Number(md.markup_percent);
     if (Number.isFinite(m) && m > 0 && sell > 0) return sell / (1 + m / 100);
-    // Labour is a flat rate with no markup: cost = sell unless a separate cost exists.
-    if (isLabour(i)) return sell;
     return null;
   };
   // Classify by CATEGORY (item_type = product_category), never free-text name,
@@ -206,13 +226,22 @@ export function computeQuoteTotals(
   const units = blend(topLevel.filter(isUnit));
   const mats = blend(topLevel.filter((i) => !isUnit(i) && !isLabour(i)));
   const labourTotal = topLevel.filter(isLabour).reduce((s2, i) => s2 + (i.total_price ?? i.unit_price * i.quantity), 0);
+  // No-cost lines are NEVER treated as R0 cost: they're left out of the markup
+  // maths (counted in noCostCount) but their sell still counts in subtotal/total.
   const noCostCount = topLevel.filter((i) => lineCost(i) == null).length;
-  // Discount comes off what the client pays, BEFORE VAT; profit/markup/margin use the net figure.
+  // Discount: before VAT, never allocated to labour — spread over units +
+  // materials in proportion to their pre-discount sell.
   const discountAmount = quoteDiscountAmount(subtotal, discount);
-  const netSell = all.sell - (subtotal > 0 ? discountAmount * (all.sell / subtotal) : 0);
+  const share = allocateQuoteDiscount(topLevel, discountAmount, isLabour);
+  const costedShare = topLevel.reduce((s2, i) => s2 + (lineCost(i) != null ? share.get(i.id) || 0 : 0), 0);
+  const netSell = all.sell - costedShare;
   const profit = netSell - all.cost;
   const avgMarkup = all.cost > 0 ? (profit / all.cost) * 100 : 0;
   const marginPercent = netSell > 0 && all.cost > 0 ? (profit / netSell) * 100 : 0;
+  // Second figure: units + materials only (labour excluded), after discount.
+  const um = blend(topLevel.filter((i) => !isLabour(i)));
+  const umProfit = um.sell - costedShare - um.cost;
+  const unitsMaterialsMarkup = um.cost > 0 ? (umProfit / um.cost) * 100 : null;
 
   return {
     itemCount: topLevel.length,
@@ -227,6 +256,7 @@ export function computeQuoteTotals(
     labourTotal,
     discountAmount,
     noCostCount,
+    unitsMaterialsMarkup,
     unitsMarkup: units.cost > 0 ? units.markup : null,
     materialsMarkup: mats.cost > 0 ? mats.markup : null,
   };
@@ -240,13 +270,13 @@ export function getDefaultAreaName(): string {
 }
 
 /**
- * Health band for the OVERALL (blended) quote markup. Units sit at ~25% and
- * materials at ~100%, so a normal job blends to roughly 30–55%.
- *   Low < 25% · Standard 25–60% · High > 60%. Bar scale is 0–100%.
+ * Colour band for the OVERALL quote markup (labour included, after discount,
+ * before VAT): Green ≥ 35% · Amber 25–34.9% · Red < 25%.
  */
-export function blendedMarkupHealth(markup: number): "Low" | "Standard" | "High" {
+export type MarkupHealth = "Good" | "Fair" | "Low";
+export function blendedMarkupHealth(markup: number): MarkupHealth {
   if (!Number.isFinite(markup) || markup < 25) return "Low";
-  if (markup <= 60) return "Standard";
-  return "High";
+  if (markup < 35) return "Fair";
+  return "Good";
 }
 export const BLENDED_MARKUP_BAR_MAX = 100;
