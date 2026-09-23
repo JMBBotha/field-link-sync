@@ -103,6 +103,11 @@ export function CollapsibleBundleCard({
           <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">
             {item.bundleItems?.length || item.kitContents?.length || 0} items
           </Badge>
+          {kitCost > 0 && (
+            <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-green-500/40 text-green-600 shrink-0">
+              {kitMarkup}% M/Up · cost {formatZAR(kitCost)}
+            </Badge>
+          )}
         </div>
 
         {/* Multiplier control */}
