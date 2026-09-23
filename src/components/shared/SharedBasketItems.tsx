@@ -11,6 +11,8 @@ import BundleItemsPopover from "@/components/catalog/quote-builder/BundleItemsPo
 import type { BasketItem } from "@/components/catalog/QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
 import { normalizeMarkupPercent, resolveProductMarkupPercent } from "@/lib/pricing";
+import { lineMarkupPercent, calculateBasketItemCost } from "@/utils/quoteBasketTotals";
+import { formatRand as formatZAR } from "@/utils/formatRand";
 import {
   resolvePricingUnit,
   computeLineTotal,
@@ -186,7 +188,10 @@ export function RegularItemCard({
   /** Measured units (m, g, kg, l, ml, roll, custom) use the length field as the entered qty. */
   const isMeasured = !["each", "box", "pack"].includes(unit.unit_type);
   const [markupAdj, setMarkupAdj] = useState(0);
-  const baseMarkup = resolveProductMarkupPercent(item.product as any);
+  // True markup from real cost vs sell (kits/bundles: component costs), not the
+  // product's stored markup field — that belonged to the first kit component.
+  const baseMarkup = Math.round(lineMarkupPercent(item) || resolveProductMarkupPercent(item.product as any));
+  const lineCost = calculateBasketItemCost(item);
   const effectiveMarkup = baseMarkup + markupAdj;
 
   const { unitSell: rawUnitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product);
@@ -214,7 +219,7 @@ export function RegularItemCard({
       <div className="flex items-center gap-1 rounded border bg-background px-1 py-0.5 text-[10px]">
         <div className="min-w-0 flex-1 truncate font-medium flex items-center gap-0.5">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
-          <Badge variant="outline" className="text-[7px] px-1 py-0 h-3 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up</Badge>
+          <Badge variant="outline" className="text-[7px] px-1 py-0 h-3 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
           <ProductInfoDialog product={item.product} />
         </div>
         {isMeasured ? (
@@ -268,7 +273,7 @@ export function RegularItemCard({
       <div className="min-w-0 flex-1">
         <p className="font-medium truncate flex items-center gap-1">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
-          <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up</Badge>
+          <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
           <ProductInfoDialog product={item.product} />
         </p>
         <div className="flex items-center gap-1.5">

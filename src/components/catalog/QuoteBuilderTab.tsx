@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMarkupPercent } from "@/lib/pricing";
+import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { Search, ChevronUp, ChevronDown } from "lucide-react";
@@ -81,6 +81,18 @@ export interface PaletteProduct {
   qty_step?: number | null;
   min_qty?: number | null;
   search_aliases?: string[] | null;
+  /**
+   * PRICE LOCK — set when a line is re-hydrated from a saved quote_item.
+   * The stored unit_price is ALREADY the final selling price (markup applied
+   * once, when the line was first added). When present, every pricing helper
+   * must return this value verbatim and never apply markup again. Without
+   * this, reopening a quote re-marked-up every line (x1.25 on Samsung, x1.35
+   * on 0-markup rows) and auto-save wrote the inflated price back — so the
+   * total grew every time the Quote Builder was opened.
+   */
+  locked_sell_ex_vat?: number | null;
+  /** Cost that goes with locked_sell_ex_vat (for margin display only). */
+  locked_cost_ex_vat?: number | null;
 }
 
 /** Returns the effective per-unit prices for a product, using computePricing
@@ -95,7 +107,8 @@ export function getEffectiveUnitPrices(product: PaletteProduct, isLengthOverride
   const supplierCode = resolveSupplierCode(product.supplier_name);
 
   // computePricing handles discount + markup; cost_price may already be discounted
-  const pricing = computePricing(supplierCode, listPrice, markupPct, product.cost_price || null);
+  // Saved quote lines are price-locked: never re-apply markup (see PaletteProduct.locked_sell_ex_vat).
+  const pricing = lockedPricing(product) ?? computePricing(supplierCode, listPrice, markupPct, product.cost_price || null);
 
   let unitSell: number;
   let unitCost: number;
@@ -135,6 +148,8 @@ export interface BasketItem {
   bundlePricingType?: "p/meter" | "p/qty";
   bundleUnitPrice?: number;
   bundleUnitCost?: number;
+  /** Contents of a collapsed installation kit (display only). */
+  kitContents?: Array<{ name: string; code: string | null; quantity: number; isLengthItem: boolean }>;
 }
 
 export interface Basket {
@@ -881,6 +896,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
 
       </DndContext>
 
+      {/* Floating "Quote Summary · N items" bar removed — the right-hand
+          Quote Summary panel already shows the same totals. */}
 
       <ACOptionsModal
         open={acModalOpen}

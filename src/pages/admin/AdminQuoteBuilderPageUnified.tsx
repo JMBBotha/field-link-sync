@@ -45,6 +45,8 @@ import { computeQuoteTotals } from "@/utils/quoteTransformers";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import { pdfItemToPaletteProduct } from "@/utils/pdfItemToProduct";
 import { persistQuoteFromBaskets } from "@/utils/persistQuoteFromBaskets";
+import { stubProductFromQuoteItem } from "@/utils/hydrateQuoteItem";
+import { kitBasketFields, kitFromSavedItem } from "@/components/catalog/quote-builder/kitLine";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { useUnsavedQuoteGuard } from "@/hooks/useUnsavedQuoteGuard";
@@ -373,33 +375,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       const markup = Number((it.metadata as Record<string, unknown>)?.markup_percent);
       return Number.isFinite(markup) && markup > 0 ? markup : 0;
     };
-    const persistedCost = (it: typeof ctxItems[number]) => persistedLineCost(it.unit_price, metadataMarkup(it), it.metadata);
-    const stub = (it: typeof ctxItems[number]): PaletteProduct => ({
-      id: it.product_id || it.id,
-      product_code: it.item_number || "",
-      short_name: it.item_name,
-      brand: "",
-      product_category: it.item_type || "",
-      category: it.item_type || "",
-      description: it.description || "",
-      cost_price: persistedCost(it),
-      cost_excl_vat: persistedCost(it),
-      cost_incl_vat: 0,
-      selling_price: it.unit_price,
-      supplier_name: it.supplier || "",
-      supplier_type: "both",
-      supplier_discount_percent: null,
-      markup_percent: metadataMarkup(it),
-      default_markup_percent: metadataMarkup(it),
-      is_pinned: false,
-      pin_order: null,
-      price_per_metre: it.length ? persistedCost(it) / it.length : null,
-      sold_in_length: !!it.length,
-      unit_length: it.length || null,
-      pipe_size: null,
-      is_material_favorite: false,
-      pack_qty: null,
-    } as unknown as PaletteProduct);
+    // Shared, tested helper — saved lines are PRICE-LOCKED (never re-marked-up).
+    const stub = (it: typeof ctxItems[number]): PaletteProduct => stubProductFromQuoteItem(it);
     const toItem = (it: typeof ctxItems[number]) => {
       const product = (it.product_id && productById.get(it.product_id)) || stub(it);
       return {
@@ -407,16 +384,11 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         product: stub(it), // always use stub so total = stored unit_price * qty
         quantity: it.quantity,
         ...(it.length ? { length: it.length } : {}),
-        ...(it.is_bundle
-          ? {
-              isBundle: true,
-              bundleName: it.item_name,
-              bundlePricingType: (it.length ? "p/meter" : "p/qty") as "p/meter" | "p/qty",
-              // Persisted sell is kept verbatim — never re-marked-up on reopen.
-              bundleUnitPrice: it.length ? (it.total_price || it.unit_price) / it.length : it.unit_price,
-              bundleUnitCost: it.length ? persistedCost(it) / it.length : persistedCost(it),
-            }
-          : {}),
+        ...(it.is_bundle ? { isBundle: true } : {}),
+        ...(() => {
+          const k = kitFromSavedItem(it);
+          return k ? kitBasketFields(k) : {};
+        })(),
       };
     };
     const groups = new Map<string, typeof ctxItems>();
@@ -458,33 +430,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       const markup = Number((it.metadata as Record<string, unknown>)?.markup_percent);
       return Number.isFinite(markup) && markup > 0 ? markup : 0;
     };
-    const persistedCost = (it: typeof ctxItems[number]) => persistedLineCost(it.unit_price, metadataMarkup(it), it.metadata);
-    const stubProduct = (it: typeof ctxItems[number]): PaletteProduct => ({
-      id: it.product_id || it.id,
-      product_code: it.item_number || "",
-      short_name: it.item_name,
-      brand: "",
-      product_category: it.item_type || "",
-      category: it.item_type || "",
-      description: it.description || "",
-      cost_price: persistedCost(it),
-      cost_excl_vat: persistedCost(it),
-      cost_incl_vat: 0,
-      selling_price: it.unit_price,
-      supplier_name: it.supplier || "",
-      supplier_type: "both",
-      supplier_discount_percent: null,
-      markup_percent: metadataMarkup(it),
-      default_markup_percent: metadataMarkup(it),
-      is_pinned: false,
-      pin_order: null,
-      price_per_metre: it.length ? persistedCost(it) / it.length : null,
-      sold_in_length: !!it.length,
-      unit_length: it.length || null,
-      pipe_size: null,
-      is_material_favorite: false,
-      pack_qty: null,
-    } as unknown as PaletteProduct);
+    // Shared, tested helper — saved lines are PRICE-LOCKED (never re-marked-up).
+    const stubProduct = (it: typeof ctxItems[number]): PaletteProduct => stubProductFromQuoteItem(it);
     // Group items by area_id (null → default "General" bucket)
     const buckets = new Map<string | null, typeof ctxItems>();
     for (const a of ctxAreas) buckets.set(a.id, [] as any);
@@ -504,13 +451,25 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         const product = (it.product_id && productById.get(it.product_id)) || stubProduct(it);
         const cat = (product.product_category || product.category || "").toLowerCase();
         const isAC = cat.includes("air") || cat.includes(" ac") || cat === "ac" || cat.includes("hvac");
+        const savedKit = kitFromSavedItem(it);
+        if (savedKit) {
+          base.materials.push(savedKit);
+          if (savedKit.bundleId) base.appliedBundleId = savedKit.bundleId;
+          continue;
+        }
         if (isAC) {
           base.acUnits.push({ id: it.id, product: stubProduct(it), btu: detectBTU(product), quantity: it.quantity });
         } else if (it.length && it.length > 0) {
-          const perM = persistedCost(it) / it.length;
+          // unit_price on a length line is the price for the WHOLE length (qty 1),
+          // so derive the true per-metre rate instead of multiplying by length twice.
+          // costPerMeter must be COST (the wizard applies the line's own
+          // sell/cost ratio on top) — taken from the price-locked stub.
+          const sp = stubProduct(it);
+          const lockedCost = Number(sp.locked_cost_ex_vat ?? sp.locked_sell_ex_vat) || 0;
+          const perM = lockedCost / it.length;
           base.materials.push({
             id: it.id,
-            product: stubProduct(it),
+            product: sp,
             defaultLength: it.length,
             adjustedLength: it.length,
             costPerMeter: perM,
@@ -704,7 +663,18 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         const committedSet = new Set(committed);
         const entries = selectedFromPdf
           .filter((i) => committedSet.has(i.code))
-          .map((item) => ({ product: pdfItemToPaletteProduct(item), quantity: item.quantity || 1 }));
+          .map((item) => {
+            // Lock to exactly what was committed so auto-save can't re-price it.
+            const sell = parseFloat(item.price) || 0;
+            const mk = item.markupPercent != null ? Number(item.markupPercent) : 0;
+            const cost = item.costPrice != null && Number(item.costPrice) > 0
+              ? Number(item.costPrice)
+              : mk > 0 ? sell / (1 + mk / 100) : null;
+            return {
+              product: { ...pdfItemToPaletteProduct(item), locked_sell_ex_vat: sell, locked_cost_ex_vat: cost } as PaletteProduct,
+              quantity: item.quantity || 1,
+            };
+          });
         // Mirror into the basket for this area so the builder panes + auto-save
         // (replace-all from baskets) keep the freshly committed lines.
         setBaskets((prev) => {
@@ -2052,15 +2022,5 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
     </QuoteProvider>);
 
 };
-
-/** Net cost of a persisted quote line: metadata.cost_excl when saved, else
- *  derived from the stored SELL (unit_price) and its markup. Stored sell is
- *  never treated as cost, so reopening never compounds markup. */
-function persistedLineCost(unitPrice: number, markup: number, metadata: unknown): number {
-  const meta = Number((metadata as Record<string, unknown> | null)?.cost_excl);
-  if (Number.isFinite(meta) && meta > 0) return meta;
-  const m = resolveProductMarkupPercent({ default_markup_percent: markup, markup_percent: markup });
-  return (Number(unitPrice) || 0) / (1 + m / 100);
-}
 
 export default AdminQuoteBuilderPageUnified;

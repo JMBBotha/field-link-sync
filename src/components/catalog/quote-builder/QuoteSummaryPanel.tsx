@@ -71,11 +71,25 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
         <span className="text-lg font-bold text-primary tabular-nums">{formatRand(summary.total)}</span>
       </div>
 
+      {/* Cost & profit (ex VAT) — blended over lines with a known cost */}
+      {summary.totalCost > 0 && (
+        <div className="rounded-md border border-border p-2 space-y-1 text-xs">
+          <div className="flex justify-between"><span className="text-muted-foreground">Our cost (excl. VAT)</span><span className="tabular-nums">{formatRand(summary.totalCost)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Gross profit</span><span className="tabular-nums font-semibold text-foreground">{formatRand(summary.profit)}</span></div>
+          {summary.unitsMarkup != null && (
+            <div className="flex justify-between"><span className="text-muted-foreground">AC units markup</span><span className="tabular-nums">{summary.unitsMarkup.toFixed(0)}%</span></div>
+          )}
+          {summary.materialsMarkup != null && (
+            <div className="flex justify-between"><span className="text-muted-foreground">Kits &amp; materials markup</span><span className="tabular-nums">{summary.materialsMarkup.toFixed(0)}%</span></div>
+          )}
+        </div>
+      )}
+
       {/* Markup bar */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">
-            Avg. Markup: <span className="font-semibold text-foreground">{summary.avgMarkup.toFixed(0)}%</span>
+            Project Markup: <span className="font-semibold text-foreground">{summary.avgMarkup.toFixed(0)}%</span>
           </span>
           <Badge variant="outline" className={`text-[10px] font-medium px-1.5 py-0.5 ${markupBadgeClass}`}>
             {markupLabel}

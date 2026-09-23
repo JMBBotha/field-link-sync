@@ -128,15 +128,20 @@ describe("computeQuoteTotals", () => {
     expect(totals.subtotal).toBe(300);
   });
 
-  it("avgMarkup averages metadata.markup_percent across items with a positive value", () => {
+  it("avgMarkup is the rand-weighted blend of real cost vs sell (not a simple mean)", () => {
     const items = [
-      item({ unit_price: 100, quantity: 1, metadata: { markup_percent: 20 } }),
-      item({ unit_price: 100, quantity: 1, metadata: { markup_percent: 40 } }),
-      item({ unit_price: 100, quantity: 1, metadata: { markup_percent: 0 } }), // excluded
-      item({ unit_price: 100, quantity: 1, metadata: {} }),                    // excluded
+      // Samsung unit: cost 18 614.40, sell 23 268 → 25%
+      item({ unit_price: 23268, quantity: 1, item_type: "Air Conditioning", metadata: { unit_cost: 18614.4, markup_percent: 25 } }),
+      // 3 m piping kit sold at R495/m with 100% markup → cost R742.50
+      item({ unit_price: 1485, quantity: 1, is_bundle: true, item_type: "bundle", metadata: { total_cost: 742.5, markup_percent: 100 } }),
+      item({ unit_price: 100, quantity: 1, metadata: {} }), // no cost info → excluded from markup
     ];
-    const totals = computeQuoteTotals(items, []);
-    expect(totals.avgMarkup).toBe(30);
+    const t = computeQuoteTotals(items, []);
+    const cost = 18614.4 + 742.5;
+    expect(t.totalCost).toBeCloseTo(cost, 2);
+    expect(t.avgMarkup).toBeCloseTo(((23268 + 1485 - cost) / cost) * 100, 4); // ≈ 27.9%
+    expect(t.unitsMarkup).toBeCloseTo(25, 4);
+    expect(t.materialsMarkup).toBeCloseTo(100, 4);
   });
 
   it("avgMarkup is 0 when no items carry a markup", () => {
@@ -153,6 +158,10 @@ describe("computeQuoteTotals", () => {
       vatAmount: 0,
       total: 0,
       avgMarkup: 0,
+      totalCost: 0,
+      profit: 0,
+      unitsMarkup: null,
+      materialsMarkup: null,
     });
   });
 
