@@ -30,3 +30,102 @@ describe("per-line category markup roll-up (Johan worked example)", () => {
     expect(computeQuoteTotals([line("b", "materials", 100, 100)], []).marginPercent).toBeCloseTo(50, 5);
   });
 });
+
+import {
+  classifyQuoteCategory, categoryMarkupPercent, resolveProductMarkupPercent,
+  setActiveQuoteMarkupRates, DEFAULT_CATEGORY_MARKUPS,
+} from "@/lib/pricing";
+import { afterEach } from "vitest";
+
+describe("Johan 2-line example (units 25%, materials 100%)", () => {
+  it("R10 000 unit + R2 000 materials → 37.5% markup, 27.3% margin", () => {
+    const t = computeQuoteTotals([line("u", "Air Conditioning", 10000, 25), line("m", "Consumables", 2000, 100)], []);
+    expect(t.subtotal).toBeCloseTo(16500, 2);
+    expect(t.totalCost).toBeCloseTo(12000, 2);
+    expect(t.profit).toBeCloseTo(4500, 2);
+    expect(t.avgMarkup).toBeCloseTo(37.5, 5);
+    expect(t.marginPercent).toBeCloseTo(27.27, 1);
+  });
+});
+
+describe("discount-aware profit (after discount, before VAT)", () => {
+  it("10% discount on the worked example", () => {
+    const items = [line("u", "Air Conditioning", 7000, 25), line("m", "Consumables", 2000, 100), line("x", "Consumables", 1000, 100)];
+    const t = computeQuoteTotals(items, [], undefined, { type: "percentage", value: 10 });
+    expect(t.discountAmount).toBeCloseTo(1475, 2);
+    expect(t.profit).toBeCloseTo(13275 - 10000, 2);
+    expect(t.avgMarkup).toBeCloseTo(32.75, 5);
+    expect(t.marginPercent).toBeCloseTo((3275 / 13275) * 100, 5);
+    // VAT behaviour unchanged by this rule
+    expect(t.subtotal).toBeCloseTo(14750, 2);
+  });
+  it("fixed discount", () => {
+    const t = computeQuoteTotals([line("u", "Air Conditioning", 10000, 25)], [], undefined, { type: "fixed", value: 500 });
+    expect(t.profit).toBeCloseTo(2000, 2);
+  });
+});
+
+describe("labour = flat rate, no markup, own line", () => {
+  const labour: any = { id: "l", item_type: "service", item_name: "Installation labour", quantity: 1, unit_price: 1500, total_price: 1500, metadata: {} };
+  it("labour adds cost = sell, zero profit, not in materials markup", () => {
+    const t = computeQuoteTotals([line("u", "Air Conditioning", 10000, 25), line("m", "Consumables", 2000, 100), labour], []);
+    expect(t.labourTotal).toBe(1500);
+    expect(t.totalCost).toBeCloseTo(13500, 2);
+    expect(t.profit).toBeCloseTo(4500, 2);
+    expect(t.materialsMarkup).toBeCloseTo(100, 5);
+    expect(t.unitsMarkup).toBeCloseTo(25, 5);
+    expect(t.noCostCount).toBe(0);
+  });
+  it("labour never gets a markup", () => {
+    expect(categoryMarkupPercent("labour", { units: 25, materials: 100 })).toBe(0);
+    expect(classifyQuoteCategory({ item_type: "service", item_name: "Service call" })).toBe("labour");
+  });
+});
+
+describe("no-cost lines are counted and left out", () => {
+  it("counts them", () => {
+    const bare: any = { id: "b", item_type: "Consumables", quantity: 1, unit_price: 100, total_price: 100, metadata: {} };
+    const t = computeQuoteTotals([line("u", "Air Conditioning", 1000, 25), bare], []);
+    expect(t.noCostCount).toBe(1);
+    expect(t.avgMarkup).toBeCloseTo(25, 5);
+  });
+});
+
+describe("category fallback + quote-level override", () => {
+  afterEach(() => setActiveQuoteMarkupRates(null));
+  const unit = { product_category: "Air Conditioning", short_name: "Midea 24K INV MW", default_markup_percent: 20 };
+  const mat = { product_category: "Consumables", short_name: "Copper pipe 3/8", default_markup_percent: 20 };
+  it("outside a quote: catalogue markup (then 35 as last resort)", () => {
+    expect(resolveProductMarkupPercent(unit)).toBe(20);
+    expect(resolveProductMarkupPercent({})).toBe(35);
+  });
+  it("inside a quote: category default wins over catalogue markup", () => {
+    setActiveQuoteMarkupRates(DEFAULT_CATEGORY_MARKUPS);
+    expect(resolveProductMarkupPercent(unit)).toBe(25);
+    expect(resolveProductMarkupPercent(mat)).toBe(100);
+  });
+  it("quote override beats the category default", () => {
+    setActiveQuoteMarkupRates({ units: 30, materials: 80 });
+    expect(resolveProductMarkupPercent(unit)).toBe(30);
+    expect(resolveProductMarkupPercent(mat)).toBe(80);
+  });
+  it("accessories in the AC category are materials", () => {
+    expect(classifyQuoteCategory({ product_category: "Air Conditioning", short_name: "M8 Raw Bolts" })).toBe("materials");
+    expect(classifyQuoteCategory({ product_category: "Air Conditioning", short_name: "Membrane pump with float switch" })).toBe("materials");
+  });
+});
+
+import { applyCategoryRatesToBaskets } from "@/utils/quoteBasketTotals";
+describe("editing quote rates reprices saved lines", () => {
+  it("locked unit + kit reprice from saved cost; labour untouched", () => {
+    const baskets: any = [{ id: "a", name: "Living", items: [
+      { instanceId: "1", quantity: 1, product: { product_category: "Air Conditioning", short_name: "Samsung 24K INV", locked_sell_ex_vat: 12000, locked_cost_ex_vat: 10000 } },
+      { instanceId: "2", quantity: 1, length: 3, isBundle: true, bundlePricingType: "p/meter", bundleUnitCost: 250, bundleUnitPrice: 493.38, product: { short_name: "24K kit", locked_sell_ex_vat: 493.38, locked_cost_ex_vat: 250 } },
+      { instanceId: "3", quantity: 1, product: { product_category: "Service", short_name: "Installation labour", locked_sell_ex_vat: 1500, locked_cost_ex_vat: 1500 } },
+    ] }];
+    const out = applyCategoryRatesToBaskets(baskets, { units: 30, materials: 80 });
+    expect(out[0].items[0].product.locked_sell_ex_vat).toBe(13000);
+    expect(out[0].items[1].bundleUnitPrice).toBe(450);
+    expect(out[0].items[2].product.locked_sell_ex_vat).toBe(1500);
+  });
+});
