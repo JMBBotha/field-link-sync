@@ -1,3 +1,4 @@
+import { costPerMetreOf } from "@/lib/pricing";
 /**
  * Inline (non-modal) version of the Area Quote Builder wizard.
  * Renders the same stepper + steps + footer but as a permanent panel
@@ -179,7 +180,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
           if (item.is_length_item) {
             const unit = resolvePricingUnit(product);
             // Always re-resolve from the live catalog record — never a cached bundle_item snapshot
-            const unitPrice = product.cost_price || product.cost_excl_vat || product.price_per_metre || product.selling_price || 0;
+            const unitPrice = costPerMetreOf(product); // COST/m, never pack cost or sell
             const per = unit.price_per_unit_qty > 0 ? unit.price_per_unit_qty : 1;
 
             const length = item.length_metres || 3;

@@ -421,7 +421,7 @@ const AdminQuoteBuilderPage = () => {
         return { ...basket, items: basket.items.map((i) => i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i) };
       }
       const isLengthItem = product.sold_in_length && !!product.price_per_metre;
-      return { ...basket, items: [...basket.items, { instanceId: `${product.id}-${Date.now()}`, product, quantity: 1, ...(isLengthItem ? { length: product.unit_length || 1 } : {}) }] };
+      return { ...basket, items: [...basket.items, { instanceId: `${product.id}-${Date.now()}`, product, quantity: 1, ...(isLengthItem ? { length: 1 } : {}) }] };
     }));
     scrollToCanvas();
   }, [trackUsage, scrollToCanvas]);

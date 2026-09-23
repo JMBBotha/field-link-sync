@@ -163,6 +163,20 @@ export function resolveRowCostExVat(
 }
 
 
+/** COST per metre for a metre-sold catalog product. price_per_metre is
+ *  stored as COST/m; fall back to pack cost / coil length. Never sell. */
+export function costPerMetreOf(product: {
+  price_per_metre?: number | null;
+  cost_price?: number | null;
+  cost_excl_vat?: number | null;
+  unit_length?: number | null;
+} | null | undefined): number {
+  const ppm = Number(product?.price_per_metre ?? 0);
+  if (ppm > 0) return ppm;
+  const pack = Number(product?.cost_price ?? 0) || Number(product?.cost_excl_vat ?? 0);
+  return pack / (Number(product?.unit_length ?? 0) || 1);
+}
+
 /** @deprecated Use stripVat */
 export const exclVatFromIncl = stripVat;
 

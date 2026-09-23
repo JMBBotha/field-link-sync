@@ -22,6 +22,21 @@ function getEffectiveUnitPrices(product: PaletteProduct, isLengthOverride?: bool
   return { unitSell: pricing.sellExVat / packQty, unitCost: pricing.costExVat / packQty };
 }
 
+export function calculateBasketItemCost(item: BasketItem): number {
+  if (item.isBundle && item.bundleUnitCost) {
+    return item.bundlePricingType === "p/meter"
+      ? item.bundleUnitCost * (item.length || 1)
+      : item.bundleUnitCost * item.quantity;
+  }
+  const unit = resolvePricingUnit(item.product);
+  if (item.product.sold_in_length && item.product.price_per_metre && item.length) {
+    const { unitCost } = getEffectiveUnitPrices(item.product, true);
+    return computeLineTotal(item.length, unitCost, unit);
+  }
+  const { unitCost } = getEffectiveUnitPrices(item.product);
+  return computeLineTotal(item.quantity, unitCost, unit);
+}
+
 export function calculateBasketItemSell(item: BasketItem): number {
   if (item.isBundle && item.bundleUnitPrice) {
     return item.bundlePricingType === "p/meter"
@@ -60,6 +75,7 @@ export function basketsToQuoteState(baskets: Basket[]): { areas: QuoteArea[]; it
   const items: QuoteItem[] = baskets.flatMap((basket, basketIndex) =>
     basket.items.map((item, itemIndex) => {
       const totalPrice = calculateBasketItemSell(item);
+      const totalCost = calculateBasketItemCost(item);
       return {
         id: item.instanceId,
         quote_id: "live",
@@ -75,7 +91,11 @@ export function basketsToQuoteState(baskets: Basket[]): { areas: QuoteArea[]; it
         total_price: totalPrice,
         is_bundle: !!item.isBundle,
         item_type: item.product.product_category || item.product.category || null,
-        metadata: { markup_percent: itemMarkupPercent(item) },
+        metadata: {
+          markup_percent: itemMarkupPercent(item),
+          // Net cost per unit_price basis — reopen uses this, never sell-as-cost.
+          cost_excl: item.quantity > 0 ? totalCost / item.quantity : totalCost,
+        },
         sort_order: basketIndex * 1000 + itemIndex,
         notes: null,
         source: "builder_live",
