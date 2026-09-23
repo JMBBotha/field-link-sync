@@ -1,10 +1,10 @@
-import { computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
+import { computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing, classifyQuoteCategory, categoryMarkupPercent, r2, type CategoryMarkupRates } from "@/lib/pricing";
 import type { Basket, BasketItem, PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import type { QuoteArea, QuoteItem } from "@/types/quote";
 import { computeQuoteTotals } from "@/utils/quoteTransformers";
 import { computeLineTotal, resolvePricingUnit } from "@/lib/pricingUnits";
 
-import type { QuoteTotals } from "@/utils/quoteTransformers";
+import type { QuoteTotals, QuoteDiscount } from "@/utils/quoteTransformers";
 
 function getEffectiveUnitPrices(product: PaletteProduct, isLengthOverride?: boolean) {
   const isLength = isLengthOverride ?? (product.sold_in_length && !!product.price_per_metre);
@@ -145,7 +145,40 @@ export function basketsToQuoteState(baskets: Basket[]): { areas: QuoteArea[]; it
   return { areas, items };
 }
 
-export function computeBasketsQuoteTotals(baskets: Basket[]): QuoteTotals {
+export function computeBasketsQuoteTotals(baskets: Basket[], discount?: QuoteDiscount | null): QuoteTotals {
   const { items, areas } = basketsToQuoteState(baskets);
-  return computeQuoteTotals(items, areas);
+  return computeQuoteTotals(items, areas, undefined, discount);
+}
+
+/**
+ * Re-apply the quote's Units % / Materials % to every line of that category.
+ * Only called when a user EDITS the quote's rates (never on load), so saved
+ * quotes keep their prices until someone deliberately changes the %s.
+ *  - kits/bundles: sell/unit = kit cost/unit × (1 + materials%)
+ *  - price-locked (saved) lines: sell = saved cost × (1 + category%)
+ *  - live catalogue lines: already priced by the active rates; copied so totals refresh
+ *  - labour: untouched (flat rate, no markup)
+ */
+export function applyCategoryRatesToBaskets(baskets: Basket[], rates: CategoryMarkupRates): Basket[] {
+  return baskets.map((b) => ({
+    ...b,
+    items: b.items.map((item) => {
+      const cat = item.isBundle ? "materials" : classifyQuoteCategory(item.product);
+      if (cat === "labour") return { ...item };
+      const m = categoryMarkupPercent(cat, rates);
+      if (item.isBundle && item.bundleUnitCost && item.bundleUnitCost > 0) {
+        const sell = r2(item.bundleUnitCost * (1 + m / 100));
+        return {
+          ...item,
+          bundleUnitPrice: sell,
+          product: item.product.locked_sell_ex_vat != null ? { ...item.product, locked_sell_ex_vat: sell } : item.product,
+        };
+      }
+      const lc = Number(item.product.locked_cost_ex_vat);
+      if (item.product.locked_sell_ex_vat != null && Number.isFinite(lc) && lc > 0) {
+        return { ...item, product: { ...item.product, locked_sell_ex_vat: r2(lc * (1 + m / 100)) } };
+      }
+      return { ...item, product: { ...item.product } };
+    }),
+  }));
 }
