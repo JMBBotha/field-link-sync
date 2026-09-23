@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { calcSellingPrice, VAT_RATE, resolveProductMarkupPercent } from "@/lib/pricing";
+import { calcSellingPrice, VAT_RATE, resolveProductMarkupPercent, costPerMetreOf } from "@/lib/pricing";
 import { computeLineTotal, resolvePricingUnit, unitSuffix } from "@/lib/pricingUnits";
 import { RotateCcw, FileDown, Loader2, TrendingUp, ChevronDown, ChevronRight, Package, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -294,22 +294,25 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
       const acLineTotal = sellingExclVat * pricing.quantity;
 
       // Sub-items: materials, consumables, brackets (apply same markup)
-      let subItemsCost = 0;
+      // Each sub-item: its OWN product markup, applied once to NET cost.
+      // Never the AC unit's/area markup on One Stop components.
+      const sellOnce = (cost: number, product: any) =>
+        cost * (1 + resolveProductMarkupPercent(product ?? {}) / 100);
+      let subSell = 0;
       for (const mat of area.materials) {
         if (mat.pricingMode === "unit") {
-          subItemsCost += computeLineTotal(mat.unitQuantity, getCost(mat.product), resolvePricingUnit(mat.product));
+          subSell += sellOnce(computeLineTotal(mat.unitQuantity, getCost(mat.product), resolvePricingUnit(mat.product)), mat.product);
         } else {
-          const perM = mat.costPerMeter || getCost(mat.product);
-          subItemsCost += mat.totalCost || perM * mat.adjustedLength;
+          const perM = mat.costPerMeter || costPerMetreOf(mat.product);
+          subSell += sellOnce(perM * mat.adjustedLength, mat.product);
         }
       }
       for (const cons of (area.consumables ?? [])) {
-        subItemsCost += computeLineTotal(cons.quantity, getCost(cons.product), resolvePricingUnit(cons.product));
+        subSell += sellOnce(computeLineTotal(cons.quantity, getCost(cons.product), resolvePricingUnit(cons.product)), cons.product);
       }
       for (const br of area.brackets) {
-        subItemsCost += br.price * br.quantity;
+        subSell += calcSellingPrice(br.price * br.quantity, pricing.markupPercent).sellingExclVat;
       }
-      const { sellingExclVat: subSell } = calcSellingPrice(subItemsCost, pricing.markupPercent);
       const lineTotal = acLineTotal + subSell;
 
       return { area, costPrice, quantity: pricing.quantity, markup: pricing.markupPercent, sellingPrice: sellingExclVat, lineTotal, subItemsTotal: subSell };

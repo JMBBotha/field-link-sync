@@ -1,3 +1,4 @@
+import { costPerMetreOf } from "@/lib/pricing";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Search, Check, Star, X, Zap, Package, ImageIcon, Plus, Trash2, Ruler, Hash, MousePointerClick, ChevronDown, ChevronUp, Wrench, TrendingUp } from "lucide-react";
 import { getProductPricing, stripVat, resolveProductMarkupPercent } from "@/lib/pricing";
@@ -660,7 +661,7 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
 
           if (override.mode === "length") {
             const unit = resolvePricingUnit(product);
-            const unitPrice = product.price_per_metre || unitPriceOf(product);
+            const unitPrice = costPerMetreOf(product); // COST/m — PricingStep adds this product's markup once
             const per = unit.price_per_unit_qty > 0 ? unit.price_per_unit_qty : 1;
             newMaterials.push({
               id: lineId,

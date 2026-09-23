@@ -3,6 +3,7 @@ import { Plus, Trash2, Minus, Package, Ruler, ChevronDown, ChevronRight } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { getCategoryIcon, getCategoryBg } from "@/components/catalog/quote-builder/ProductPalette";
 import { getProductDisplayName } from "@/components/catalog/quote-builder/productDisplayUtils";
 import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
@@ -29,6 +30,8 @@ interface SharedBasketItemProps {
   onUpdateLength: (length: number) => void;
 }
 
+const formatQty1 = (n: number) => (Math.round(n * 10) / 10).toString();
+
 /** Collapsible bundle card — shared between admin and agent builders */
 export function CollapsibleBundleCard({
   item,
@@ -41,7 +44,7 @@ export function CollapsibleBundleCard({
   const isBundleLength = item.bundlePricingType === "p/meter";
   const multiplier = isBundleLength ? (item.length || 1) : item.quantity;
   const sliderMin = isBundleLength ? 0.5 : 1;
-  const sliderMax = 50;
+  const sliderMax = isBundleLength ? 60 : 50;
   const sliderStep = isBundleLength ? 0.5 : 1;
   const bundleDisplayPrice = multiplier * bundleUnitPx;
 
@@ -79,7 +82,11 @@ export function CollapsibleBundleCard({
 
         <div className="flex items-center gap-1 min-w-0 flex-1">
           <Package className="h-3 w-3 text-primary shrink-0" />
-          {item.bundleItems && item.bundleName ? (
+          {isBundleLength ? (
+            <span className="font-medium truncate">
+              {/kit/i.test(item.bundleName || "") ? "Piping kit" : item.bundleName} · {formatQty1(multiplier)}m
+            </span>
+          ) : item.bundleItems && item.bundleName ? (
             <BundleItemsPopover bundleName={item.bundleName} items={item.bundleItems} side="top">
               <span className="font-medium truncate max-w-[100px] cursor-pointer hover:underline">
                 {item.bundleName}
@@ -115,6 +122,26 @@ export function CollapsibleBundleCard({
         </Button>
       </div>
 
+      {/* Metre run: slider + typed metres share one length value.
+          Length = charged metres (10% waste is applied once, upstream, when a
+          run is converted to charged metres — never again here). */}
+      {isBundleLength && (
+        <div className="flex items-center gap-2 px-2 pb-2" data-no-dnd="true" onPointerDown={(e) => e.stopPropagation()}>
+          <Slider
+            value={[multiplier]}
+            min={sliderMin}
+            max={sliderMax}
+            step={sliderStep}
+            onValueChange={([v]) => onUpdateLength(v)}
+            className="flex-1"
+            aria-label="Piping kit metres"
+          />
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap tabular-nums">
+            R{bundleUnitPx.toLocaleString("en-ZA", { maximumFractionDigits: 2 })}/m
+          </span>
+        </div>
+      )}
+
       {/* Expanded sub-items (read-only) */}
       {bundleExpanded && item.bundleItems && item.bundleItems.length > 0 && (
         <div className="border-t border-border/50 bg-muted/30 px-3 py-1.5 space-y-0.5">
@@ -123,9 +150,8 @@ export function CollapsibleBundleCard({
               ? (sub.length || 1) * multiplier
               : sub.quantity * multiplier;
             const subUnit = resolvePricingUnit(sub.product);
-            const subUnitPrice = sub.isLengthItem
-              ? (sub.product.price_per_metre || 0)
-              : (sub.product.selling_price || (sub.product as any).discounted_cost || sub.product.cost_excl_vat || 0);
+            // Sell per unit/metre from net cost × that product's markup, once.
+            const subUnitPrice = getEffectiveUnitPrices(sub.product, sub.isLengthItem).unitSell;
             const subPrice = computeLineTotal(subQty, subUnitPrice, subUnit);
 
             return (
@@ -169,8 +195,9 @@ export function RegularItemCard({
   const unitSell = rawUnitSell * markupMultiplier;
 
   /** Price covering unit.price_per_unit_qty of the item, markup applied. */
+  // price_per_metre is COST/m — always use the marked-up sell rate.
   const unitPrice = isMeasured && item.product.price_per_metre
-    ? (item.product.price_per_metre || 0) * unit.price_per_unit_qty * markupMultiplier
+    ? unitSell * unit.price_per_unit_qty
     : unitSell;
   const enteredQty = isMeasured ? (item.length || 1) : item.quantity;
 
