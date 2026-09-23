@@ -7,7 +7,7 @@ import { costPerMetreOf } from "@/lib/pricing";
  * that fills its parent container.
  */
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef, useSyncExternalStore } from "react";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { ChevronLeft, ChevronRight, Check, Save, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
