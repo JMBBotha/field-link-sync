@@ -25,6 +25,7 @@ interface DocumentPdfOptions {
   terms?: string;
   reference?: string;
   brochures?: BrochureAttachment[];
+  imagePages?: string[];
   captureSelector?: string;
 }
 
@@ -279,11 +280,12 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     const termsCompany = await fetchTermsCompanyInfo(opts.companyName);
     appendTermsPages(doc, termsCompany);
 
-    if (opts.brochures && opts.brochures.length > 0) {
+    if ((opts.brochures && opts.brochures.length > 0) || (opts.imagePages && opts.imagePages.length > 0)) {
       const quoteBytes = doc.output("arraybuffer");
       const merged = await assembleQuoteWithBrochures({
         mainQuotePdfBytes: new Uint8Array(quoteBytes),
-        brochures: opts.brochures,
+        brochures: opts.brochures || [],
+        imagePages: opts.imagePages,
         quoteNumber: opts.docNumber,
       });
       return new Uint8Array(merged);

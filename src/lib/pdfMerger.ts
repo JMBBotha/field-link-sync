@@ -21,6 +21,7 @@ interface AssembleOptions {
   mainQuotePdfBytes: Uint8Array;
   brochures: BrochureAttachment[];
   termsPdfBytes?: Uint8Array;
+  imagePages?: string[];
   quoteNumber?: string;
 }
 
@@ -59,6 +60,22 @@ export async function assembleQuoteWithBrochures(
         pages.forEach((p) => merged.addPage(p));
       } catch (e) {
         console.warn(`Skipping brochure "${brochure.name}":`, e);
+      }
+    }
+
+    // 2b. Sales-card image pages (fallback when no PDF brochure)
+    for (const url of opts.imagePages || []) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        const img = /\.jpe?g($|\?)/i.test(url) ? await merged.embedJpg(bytes) : await merged.embedPng(bytes);
+        const W = 595.28, H = 841.89, m = 24;
+        const s = Math.min((W - m * 2) / img.width, (H - m * 2) / img.height);
+        const page = merged.addPage([W, H]);
+        page.drawImage(img, { x: (W - img.width * s) / 2, y: (H - img.height * s) / 2, width: img.width * s, height: img.height * s });
+      } catch (e) {
+        console.warn(`Skipping sales card ${url}:`, e);
       }
     }
 

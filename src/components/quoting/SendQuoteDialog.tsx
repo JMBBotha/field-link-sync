@@ -10,6 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
 import { generateDocumentPdfBlob } from "@/lib/documentPdf";
+import { loadQuoteBrochuresForPdf } from "@/lib/quoteBrochuresForPdf";
 import EstimateDocument from "./EstimateDocument";
 import { buildClientRollup } from "@/lib/clientQuoteRollup";
 import WhatsAppShareButton from "@/components/WhatsAppShareButton";
@@ -175,7 +176,9 @@ const SendQuoteDialog = ({
 
   const buildPdf = async (): Promise<Blob> => {
     if (!quote) throw new Error("Quote not loaded yet — please wait a moment and try again.");
+    const extras = await loadQuoteBrochuresForPdf(quoteId);
     return generateDocumentPdfBlob({
+      ...extras,
       docType: "Quote",
       docNumber: quote.quote_number || quoteNumber || "DRAFT",
       companyName: settings.company_name || "0800-BE-COOL",
