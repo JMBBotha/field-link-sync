@@ -160,6 +160,7 @@ describe("computeQuoteTotals", () => {
       avgMarkup: 0,
       totalCost: 0,
       profit: 0,
+      marginPercent: 0,
       unitsMarkup: null,
       materialsMarkup: null,
     });
