@@ -76,6 +76,8 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
         <div className="rounded-md border border-border p-2 space-y-1 text-xs">
           <div className="flex justify-between"><span className="text-muted-foreground">Our cost (excl. VAT)</span><span className="tabular-nums">{formatRand(summary.totalCost)}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Gross profit</span><span className="tabular-nums font-semibold text-foreground">{formatRand(summary.profit)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Overall markup (on cost)</span><span className="tabular-nums">{summary.avgMarkup.toFixed(1)}%</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Overall margin (on sell)</span><span className="tabular-nums">{summary.marginPercent.toFixed(1)}%</span></div>
           {summary.unitsMarkup != null && (
             <div className="flex justify-between"><span className="text-muted-foreground">AC units markup</span><span className="tabular-nums">{summary.unitsMarkup.toFixed(0)}%</span></div>
           )}
@@ -89,7 +91,7 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">
-            Avg. Markup: <span className="font-semibold text-foreground">{summary.avgMarkup.toFixed(0)}%</span>
+            Overall markup: <span className="font-semibold text-foreground">{summary.avgMarkup.toFixed(0)}%</span>
           </span>
           <Badge variant="outline" className={`text-[10px] font-medium px-1.5 py-0.5 ${markupBadgeClass}`}>
             {markupLabel}
