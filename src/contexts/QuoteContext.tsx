@@ -19,6 +19,7 @@ import type {
   QuoteAreaInsert, QuoteAreaUpdate,
 } from "@/types/quote";
 import { needsDefaultArea, getDefaultAreaName } from "@/utils/quoteTransformers";
+import { DEFAULT_CATEGORY_MARKUPS, setActiveQuoteMarkupRates, type CategoryMarkupRates } from "@/lib/pricing";
 
 /* ────────────────── Types ────────────────── */
 
@@ -50,9 +51,19 @@ interface QuoteContextValue {
   ensureDefaultArea: () => Promise<QuoteArea | null>;
   getItemsByArea: (areaId: string | null) => QuoteItem[];
   getBundleChildren: (parentId: string) => QuoteItem[];
+
+  // Category markups (Units % / Materials %): quote override > company default
+  markupRates: CategoryMarkupRates;
+  companyMarkupRates: CategoryMarkupRates;
+  setMarkupRates: (rates: CategoryMarkupRates) => Promise<void>;
 }
 
 const QuoteContext = createContext<QuoteContextValue | null>(null);
+
+/** Same as useQuoteContext but returns null outside a QuoteProvider. */
+export function useOptionalQuoteContext() {
+  return useContext(QuoteContext);
+}
 
 export function useQuoteContext() {
   const ctx = useContext(QuoteContext);
@@ -98,7 +109,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     try {
       setLoading(true);
       const [quoteRes, areasRes, itemsRes] = await Promise.all([
-        supabase.from("quotes").select("id, quote_number, customer_id, customer_name, status, subtotal, vat_rate, vat_amount, total, notes, valid_until, discount_type, discount_value, terms_text, reference_text").eq("id", quoteId).single(),
+        supabase.from("quotes").select("id, quote_number, customer_id, customer_name, status, subtotal, vat_rate, vat_amount, total, notes, valid_until, discount_type, discount_value, terms_text, reference_text, company_id, units_markup_percent, materials_markup_percent").eq("id", quoteId).single(),
         supabase.from("quote_areas").select("*").eq("quote_id", quoteId).order("sort_order"),
         supabase.from("quote_items").select("*").eq("quote_id", quoteId).order("sort_order"),
       ]);
@@ -179,6 +190,50 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   /* ── Derived ── */
   const canSave = !!meta?.customer_id;
+
+  /* ── Category markup rates ── */
+  const [companyMarkupRates, setCompanyMarkupRates] = useState<CategoryMarkupRates>(DEFAULT_CATEGORY_MARKUPS);
+  const companyId = meta?.company_id ?? null;
+  useEffect(() => {
+    if (!companyId) return;
+    let cancelled = false;
+    void (supabase.from("companies") as any)
+      .select("units_markup_percent, materials_markup_percent")
+      .eq("id", companyId)
+      .maybeSingle()
+      .then(({ data }: { data: { units_markup_percent: number | null; materials_markup_percent: number | null } | null }) => {
+        if (cancelled || !data) return;
+        setCompanyMarkupRates({
+          units: Number(data.units_markup_percent ?? DEFAULT_CATEGORY_MARKUPS.units),
+          materials: Number(data.materials_markup_percent ?? DEFAULT_CATEGORY_MARKUPS.materials),
+        });
+      });
+    return () => { cancelled = true; };
+  }, [companyId]);
+
+  const markupRates = useMemo<CategoryMarkupRates>(() => ({
+    units: meta?.units_markup_percent != null ? Number(meta.units_markup_percent) : companyMarkupRates.units,
+    materials: meta?.materials_markup_percent != null ? Number(meta.materials_markup_percent) : companyMarkupRates.materials,
+  }), [meta?.units_markup_percent, meta?.materials_markup_percent, companyMarkupRates]);
+
+  // Publish the open quote's rates to the pricing engine (new lines use them).
+  // Loading never reprices saved lines — only setMarkupRates flags an edit.
+  useEffect(() => {
+    if (!meta) return;
+    setActiveQuoteMarkupRates(markupRates);
+  }, [meta, markupRates]);
+  useEffect(() => () => setActiveQuoteMarkupRates(null), []);
+
+  const setMarkupRates = useCallback(async (rates: CategoryMarkupRates) => {
+    const clean = {
+      units_markup_percent: Math.max(-50, Math.min(500, Number(rates.units) || 0)),
+      materials_markup_percent: Math.max(-50, Math.min(500, Number(rates.materials) || 0)),
+    };
+    setMeta((prev) => prev ? { ...prev, ...clean } : prev);
+    setActiveQuoteMarkupRates({ units: clean.units_markup_percent, materials: clean.materials_markup_percent }, true);
+    const { error } = await supabase.from("quotes").update(clean as TablesUpdate<"quotes">).eq("id", quoteId);
+    if (error) toast({ title: "Couldn't save markup %", description: error.message, variant: "destructive" });
+  }, [quoteId]);
 
   /* ── Quote meta ── */
   const updateQuote = useCallback(async (patch: Partial<Pick<QuoteMeta, "customer_id" | "customer_name" | "notes" | "status" | "discount_type" | "discount_value" | "terms_text" | "reference_text">>) => {
@@ -473,7 +528,10 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     ensureDefaultArea,
     getItemsByArea,
     getBundleChildren: getBundleChildrenFn,
-  }), [quoteId, meta, areas, items, loading, error, canSave, updateQuote, addArea, updateArea, deleteArea, reorderAreas, addItem, updateItem, deleteItem, moveItemToArea, ensureDefaultArea, getItemsByArea, getBundleChildrenFn]);
+    markupRates,
+    companyMarkupRates,
+    setMarkupRates,
+  }), [markupRates, companyMarkupRates, setMarkupRates, quoteId, meta, areas, items, loading, error, canSave, updateQuote, addArea, updateArea, deleteArea, reorderAreas, addItem, updateItem, deleteItem, moveItemToArea, ensureDefaultArea, getItemsByArea, getBundleChildrenFn]);
 
   return <QuoteContext.Provider value={value}>{children}</QuoteContext.Provider>;
 }
