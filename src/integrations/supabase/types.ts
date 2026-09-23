@@ -7597,6 +7597,13 @@ export type Database = {
           revenue: number
         }[]
       }
+      link_products_to_pdf_book: {
+        Args: { p_pdf_upload_id: string }
+        Returns: {
+          candidates: number
+          linked: number
+        }[]
+      }
       log_entity_resolution: {
         Args: {
           p_candidates?: Json
