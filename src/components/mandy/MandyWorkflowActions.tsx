@@ -54,8 +54,9 @@ export function useWorkflowMandyActions() {
     depositPercent: async () => {
       // Same deterministic latest company setting the RPC uses (fallback 70%).
       const { data } = await (supabase.from("company_settings") as any)
-        .select("default_deposit_percentage").order("updated_at", { ascending: false }).limit(1).maybeSingle();
-      return Number(data?.default_deposit_percentage) || 70;
+        .select("default_deposit_percentage").order("updated_at", { ascending: false, nullsFirst: false }).order("id").limit(1).maybeSingle();
+      const p = Number(data?.default_deposit_percentage) || 70;
+      return p <= 0 || p > 100 ? 70 : p;
     },
     ensureDeposit: ensureDepositInvoiceForQuote,
     onCreated: (quoteId) => { void qc.invalidateQueries({ queryKey: ["accepted-work-invoice", quoteId] }); },
@@ -99,7 +100,7 @@ export function useWorkflowMandyActions() {
       // Same source as the schedule page (job_schedules + lead + job address), RLS-scoped.
       let q = supabase
         .from("job_schedules")
-        .select("id, start_time, lead_id, agent_id, leads(customer_name, address)")
+        .select("id, start_time, lead_id, agent_id, leads(customer_name, customer_address)")
         .eq("scheduled_date", today)
         .order("start_time");
       if (fieldOnly && user?.id) q = q.eq("agent_id", user.id);
@@ -109,7 +110,7 @@ export function useWorkflowMandyActions() {
       navigate(fieldOnly ? `/field/schedule?date=${today}` : `/admin/schedule?date=${today}`);
       if (!rows.length) return { ok: true, message: "No jobs scheduled today.", data: { count: 0 } };
       const first = rows.slice(0, 3).map((r) => {
-        const sub = suburb(r.leads?.address);
+        const sub = suburb(r.leads?.customer_address);
         return `${String(r.start_time || "").slice(0, 5)} ${r.leads?.customer_name || "Job"}${sub ? `, ${sub}` : ""}`;
       });
       const more = rows.length > 3 ? ` The other ${rows.length - 3} are on screen.` : "";
