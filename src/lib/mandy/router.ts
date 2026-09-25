@@ -57,9 +57,19 @@ export async function routeVoiceCommand(input: RouteInput): Promise<RouteResult>
   }, input.transcript);
 }
 
+/** 'set / make it N hours' → set; otherwise ('add N hours', 'another hour') → add. */
+export function labourModeFromText(t: string): "add" | "set" {
+  const s = (t || "").toLowerCase();
+  if (/\b(set|make it|make that|change (it )?to|should be|total of|in total)\b/.test(s)) return "set";
+  return "add";
+}
+
 /** Post-process the provider's pick (e.g. open_live_map + a status → filter). */
 export function postProcessRoute(r: RouteResult, transcript: string): RouteResult {
   const c = coerceMapAction(r.action, r.args, transcript);
+  if (c.action === "set_labour_hours" && c.args.mode !== "add" && c.args.mode !== "set") {
+    return { ...r, action: c.action, args: { ...c.args, mode: labourModeFromText(transcript) } };
+  }
   return c.action === r.action ? r : { ...r, action: c.action, args: c.args };
 }
 

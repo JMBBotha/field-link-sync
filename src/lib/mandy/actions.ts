@@ -73,8 +73,8 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     parameters: { type: "object", properties: { area: str("Area name"), metres: num("Metres") }, required: ["metres"], additionalProperties: false },
   },
   set_labour_hours: {
-    description: "Set hourly labour on an area of the open quote, e.g. 'add 3 hours labour to main bedroom'. Hours in 0.5 steps; rate optional (defaults to the saved/standard rate).",
-    parameters: { type: "object", properties: { area: str("Area name"), hours: num("Hours"), rate: num("Rate per hour excl. VAT (optional)") }, required: ["area", "hours"], additionalProperties: false },
+    description: "Add to (mode=add) or set (mode=set) hourly labour on an area of the open quote, e.g. 'add 3 hours labour to main bedroom'. Hours in 0.5 steps; rate optional (defaults to the saved/standard rate).",
+    parameters: { type: "object", properties: { area: str("Area name"), hours: num("Hours"), rate: num("Rate per hour excl. VAT (optional)"), mode: { type: "string", enum: ["add", "set"], description: "'add N hours' → add (increment); 'set / make it N hours' → set" } }, required: ["area", "hours", "mode"], additionalProperties: false },
   },
   remove_item: {
     description: "Remove a line from the open quote (needs on-screen confirmation).",
