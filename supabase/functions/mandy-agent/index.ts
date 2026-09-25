@@ -62,6 +62,66 @@ async function xaiChat(key: string, messages: Msg[], tools: unknown[], forceText
   return { data: await res.json() };
 }
 
+/* ───────────── intent router adapters ─────────────
+ * ONE function per provider. Each takes the conversation + browser tool list
+ * and returns the same shape, so the model can be swapped / A/B'd via
+ * MANDY_ROUTER_PROVIDER without touching the dock. */
+type RouteOut =
+  | { action: string | null; args: Record<string, unknown>; confidence: number; text?: string; call_id?: string; assistant_message?: Msg; model: string }
+  | { error: string; status: number };
+
+const CONFIDENCE_PROP = {
+  type: "number",
+  minimum: 0,
+  maximum: 1,
+  description: "Your confidence (0-1) that this is the action the user meant, with these arguments.",
+};
+
+/** Adds a required `confidence` number to every tool's parameters. */
+function withConfidence(tools: unknown[]): unknown[] {
+  return tools.map((t) => {
+    const tool = t as { type: string; function: { name: string; description?: string; parameters?: Record<string, any> } };
+    const params = tool.function.parameters ?? { type: "object", properties: {} };
+    return {
+      ...tool,
+      function: {
+        ...tool.function,
+        parameters: {
+          ...params,
+          properties: { ...(params.properties ?? {}), confidence: CONFIDENCE_PROP },
+          required: Array.from(new Set([...(params.required ?? []), "confidence"])),
+        },
+      },
+    };
+  });
+}
+
+async function routeWithGrok(key: string, messages: Msg[], tools: unknown[], forceText: boolean): Promise<RouteOut> {
+  const out = await xaiChat(key, messages, withConfidence(tools), forceText);
+  if ("error" in out) return { error: out.error!, status: out.status ?? 502 };
+  const msg = out.data?.choices?.[0]?.message ?? {};
+  const call = Array.isArray(msg.tool_calls) ? msg.tool_calls[0] : null;
+  if (call?.function?.name) {
+    let raw: Record<string, unknown> = {};
+    try { raw = JSON.parse(call.function.arguments || "{}"); } catch { raw = {}; }
+    const { confidence, ...args } = raw;
+    const c = Number(confidence);
+    return {
+      action: call.function.name,
+      args,
+      confidence: Number.isFinite(c) ? Math.max(0, Math.min(1, c)) : 0,
+      call_id: call.id,
+      assistant_message: { role: "assistant", content: msg.content ?? "", tool_calls: [call] },
+      model: MODEL,
+    };
+  }
+  return { action: null, args: {}, confidence: 1, text: String(msg.content ?? "").trim(), model: MODEL };
+}
+
+const ROUTERS: Record<string, (key: string, messages: Msg[], tools: unknown[], forceText: boolean) => Promise<RouteOut>> = {
+  grok: routeWithGrok,
+};
+
 /** Money / BTU / refs → natural speech, so TTS never reads digits one by one. */
 export function toSpeech(text: string): string {
   let t = text;
@@ -130,7 +190,7 @@ Deno.serve(async (req) => {
     return json({ audio_base64: btoa(bin), mime: res.headers.get("content-type") || "audio/mpeg", spoken });
   }
 
-  if (action === "chat") {
+  if (action === "route" || action === "chat") {
     const messages = Array.isArray(body.messages) ? (body.messages as Msg[]).slice(-40) : [];
     const tools = Array.isArray(body.tools) ? (body.tools as unknown[]).slice(0, 40) : [];
     if (!messages.length) return json({ error: "No messages." }, 400);
@@ -139,20 +199,12 @@ Deno.serve(async (req) => {
       { role: "system", content: `${SYSTEM}\n\nCurrent screen context (hint only): ${ctx}` },
       ...messages,
     ];
-    const out = await xaiChat(key, full, tools, body.force_text === true);
+    const provider = (Deno.env.get("MANDY_ROUTER_PROVIDER") || "grok").toLowerCase();
+    const adapter = ROUTERS[provider];
+    if (!adapter) return json({ error: `Unknown MANDY_ROUTER_PROVIDER "${provider}".` }, 500);
+    const out = await adapter(key, full, tools, body.force_text === true);
     if ("error" in out) return json({ error: out.error }, out.status === 429 ? 429 : 502);
-    const msg = out.data?.choices?.[0]?.message ?? {};
-    const call = Array.isArray(msg.tool_calls) ? msg.tool_calls[0] : null;
-    if (call?.function?.name) {
-      let args: unknown = {};
-      try { args = JSON.parse(call.function.arguments || "{}"); } catch { args = {}; }
-      return json({
-        tool_call: { id: call.id, name: call.function.name, arguments: args },
-        assistant_message: { role: "assistant", content: msg.content ?? "", tool_calls: [call] },
-        model: MODEL,
-      });
-    }
-    return json({ text: String(msg.content ?? "").trim(), model: MODEL });
+    return json({ ...out, provider });
   }
 
   return json({ error: `Unknown action ${action}` }, 400);
