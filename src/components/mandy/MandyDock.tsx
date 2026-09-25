@@ -24,6 +24,7 @@ import { routeVoiceCommand, gateRoute } from "@/lib/mandy/router";
 import { gateDecision, gatePlan, getMandyQuoteStatus } from "@/lib/mandy/gate";
 import { runPlanSteps, planReportText, type PlanStep } from "@/lib/mandy/quoteEdits";
 import type { PlanPreview } from "@/lib/mandy/planPreview";
+import { parseMultiEdit } from "@/lib/mandy/multiEdit";
 import { honestMessage, routeReached, finalReplyFrom } from "@/lib/mandy/verify";
 import { BUILD_ID, staleWriteRefusal, useBuildStatus, checkForNewBuild } from "@/lib/buildInfo";
 import { touchedPatch } from "@/lib/mandy/pronouns";
@@ -227,6 +228,13 @@ export default function MandyDock() {
     const r = await pv({ steps });
     const p = r.data?.preview as PlanPreview | undefined;
     if (!r.ok || !p) return r.message || "I couldn't work out that plan.";
+    if (p.pick) {
+      setChoices(p.pick.options.map((o) => ({
+        label: o.label, action: "__plan",
+        args: { steps: steps.map((s, i) => (i === p.pick!.step ? { ...s, args: { ...s.args, product_id: o.id } } : s)) },
+      })));
+      return `Which model? Tap one and I'll show the whole plan (${steps.length} steps) to confirm.`;
+    }
     if (p.error) return `Step ${p.errorStep}: ${p.error} Nothing was changed.`;
     const money = (n: number) => `R${n.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     setConfirm({
@@ -254,7 +262,13 @@ export default function MandyDock() {
     let lastUnverified = false;
     const results: MandyResult[] = [];
     try {
-      for (let step = 0; step <= MAX_STEPS; step++) {
+      // Deterministic multi-edit pre-parse: 2+ clauses → ONE local plan card, no model needed.
+      const local = registry?.get("__preview_plan") ? parseMultiEdit(t) : null;
+      if (local) {
+        const staleMsg = staleWriteRefusal("run_plan", useBuildStatus.getState().stale);
+        final = staleMsg || await preparePlan(local, 1);
+      }
+      for (let step = 0; !local && step <= MAX_STEPS; step++) {
         const r0 = await routeVoiceCommand({
           transcript: step === 0 ? t : "",
           history: msgs,
