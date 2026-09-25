@@ -63,7 +63,7 @@ const AdminEstimateDetailPage = () => {
     selected_customer_name: quote?.customer_name ?? undefined,
   });
 
-  const { data: items = [] } = useQuery({
+  const { data: items = [], isFetched: itemsFetched } = useQuery({
     queryKey: ["quote-document-items", id],
     queryFn: () => buildQuoteLineItems(id, quote?.visual_sections),
     enabled: !!id && !!quote,
@@ -157,11 +157,11 @@ const AdminEstimateDetailPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const mandyPdfRan = useRef(false);
   useEffect(() => {
-    if (searchParams.get("mandy") !== "pdf" || mandyPdfRan.current || !quote || isLoading) return;
+    if (searchParams.get("mandy") !== "pdf" || mandyPdfRan.current || !quote || isLoading || !itemsFetched) return;
     mandyPdfRan.current = true;
     setSearchParams({}, { replace: true });
     void handlePdf();
-  }, [searchParams, quote, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchParams, quote, isLoading, itemsFetched]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePdf = async () => {
     setBusy("pdf");
