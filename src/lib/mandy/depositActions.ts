@@ -45,7 +45,7 @@ export function makeDepositHandlers(deps: DepositDeps) {
       const ref = q.quote_number || "this quote";
       if (!isAccepted(q)) return { ok: true, message: `${ref} is not accepted yet, so no deposit is due.` };
       const inv = await deps.fetchInvoice(q.id);
-      const state = getDepositChipState(inv, true);
+      const state = getDepositChipState(inv, { accepted: true });
       if (state === "none" || !inv) return { ok: true, message: `${ref} has no deposit invoice yet.`, data: { state } };
       const rem = getDepositRemaining(inv);
       const total = Number(inv.grand_total) || 0;
