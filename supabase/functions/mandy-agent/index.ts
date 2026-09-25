@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
       user_id: auth.userId,
       company_id: prof?.company_id ?? null,
       tool_name: `mandy_grok:${tool}`,
-      args: { channel: "mandy_grok", client_build: typeof body.client_build === "string" ? body.client_build.slice(0, 40) : null, ...(typeof body.args === "object" && body.args ? body.args as object : {}) },
+      args: { channel: "mandy_grok", ...reqMeta(req), client_build: typeof body.client_build === "string" ? body.client_build.slice(0, 40) : null, ...(typeof body.args === "object" && body.args ? body.args as object : {}) },
       result: typeof body.result === "object" ? body.result : { text: String(body.result ?? "").slice(0, 500) },
       status: body.ok ? "success" : "error",
       resource_type: "voice_action",
@@ -203,7 +203,18 @@ Deno.serve(async (req) => {
   }
 
   if (action === "route" || action === "chat") {
-    if (clientBuildTooOld(body.client_build)) return json({ stale_client: true, text: STALE_TEXT, action: null, args: {}, confidence: 1 });
+    if (clientBuildTooOld(body.client_build)) {
+      try {
+        const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+        const { data: prof } = await db.from("profiles").select("company_id").eq("id", auth.userId).maybeSingle();
+        await db.from("nl_audit_log").insert({
+          user_id: auth.userId, company_id: prof?.company_id ?? null, tool_name: "mandy_grok:stale_client",
+          args: { channel: "mandy_grok", ...reqMeta(req), client_build: typeof body.client_build === "string" ? body.client_build.slice(0, 40) : null, min_build: MIN_CLIENT_BUILD },
+          result: { text: STALE_TEXT }, status: "error", resource_type: "voice_action",
+        });
+      } catch { /* logging must not block the reply */ }
+      return json({ stale_client: true, text: STALE_TEXT, action: null, args: {}, confidence: 1, tool_call: null });
+    }
     const messages = Array.isArray(body.messages) ? (body.messages as Msg[]).slice(-40) : [];
     const tools = Array.isArray(body.tools) ? (body.tools as unknown[]).slice(0, 40) : [];
     if (!messages.length) return json({ error: "No messages." }, 400);
