@@ -172,7 +172,7 @@ export default function MandyDock() {
   const [typed, setTyped] = useState("");
   const [muted, setMuted] = useState(false);
   const [choices, setChoices] = useState<MandyChoice[]>([]);
-  const [confirm, setConfirm] = useState<{ summary: string; run: () => Promise<MandyResult> } | null>(null);
+  const [confirm, setConfirm] = useState<{ summary: string; lines?: string[]; run: () => Promise<MandyResult> } | null>(null);
   const { speak, cancel } = useSpeaker(muted);
 
   const historyRef = useRef<Msg[]>([]);
@@ -210,6 +210,33 @@ export default function MandyDock() {
     }
   }, [registry]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** Multi-step plan → ONE Confirm card with a dry-run preview. Nothing runs until Confirm. */
+  const preparePlan = useCallback(async (steps: PlanStep[], confidence: number): Promise<string> => {
+    const g = gatePlan(steps, confidence, { quoteStatus: getMandyQuoteStatus() });
+    if (g.kind === "block") return g.reason!;
+    const summary = steps.map((s, i) => `${i + 1}. ${s.action.replace(/_/g, " ")}`).join(", ");
+    if (g.kind === "chips") {
+      setChoices([{ label: `Plan: ${summary}`, action: "__plan", args: { steps } }]);
+      return "Not sure I got all of that — tap the plan to review it, or say it again.";
+    }
+    const pv = registry?.get("__preview_plan");
+    if (!pv) return "Open the quote first, then say that again.";
+    const r = await pv({ steps });
+    const p = r.data?.preview as PlanPreview | undefined;
+    if (!r.ok || !p) return r.message || "I couldn't work out that plan.";
+    if (p.error) return `Step ${p.errorStep}: ${p.error} Nothing was changed.`;
+    const money = (n: number) => `R${n.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    setConfirm({
+      summary: `Run ${steps.length} steps? Total ${money(p.before)} → ${money(p.after)} incl. VAT.`,
+      lines: p.lines.map((l) => `${l.step}. ${l.label}${l.qty != null ? ` · ${l.qty}` : ""}${l.price != null ? ` · ${money(l.price)}` : ""}`),
+      run: async () => {
+        const rep = await runPlanSteps(steps, (s) => execute(s.action, { ...s.args, __plan: true }));
+        return { ok: rep.failedAt == null, message: planReportText(rep), data: { ran: rep.ran, total: rep.total } };
+      },
+    });
+    return `Plan ready: ${steps.length} steps, total ${money(p.before)} to ${money(p.after)} incl. VAT. Tap Confirm to run it.`;
+  }, [execute, registry]);
+
   const runTurn = useCallback(async (text: string) => {
     const t = text.trim();
     if (!t || busyRef.current) return;
@@ -233,6 +260,11 @@ export default function MandyDock() {
         });
         if (step === 0) msgs.push({ role: "user", content: t });
         if (r0.error) { final = `Sorry, I couldn't reach my brain: ${r0.error}`; break; }
+        if (r0.plan) {
+          const out = await preparePlan(r0.plan, r0.confidence);
+          final = out;
+          break;
+        }
         if (r0.action) {
           const tier = gateDecision(r0.action, r0.confidence, { quoteStatus: getMandyQuoteStatus() });
           if (tier.kind === "block") { final = tier.reason!; break; }
@@ -281,11 +313,15 @@ export default function MandyDock() {
     setReply(final);
     setPhase("idle");
     await speak(final); // the ONE utterance of this turn
-  }, [cancel, execute, registry, speak]);
+  }, [cancel, execute, preparePlan, registry, speak]);
 
   const pickChoice = async (c: MandyChoice) => {
     setChoices([]);
     setPhase("working");
+    if (c.action === "__plan") {
+      const msg = formatReplyText(await preparePlan((c.args.steps as PlanStep[]) || [], 1));
+      setReply(msg); setPhase("idle"); await speak(msg); return;
+    }
     const r = await execute(c.action, c.args);
     if (r.choices?.length) setChoices(r.choices);
     if (r.confirm) setConfirm(r.confirm);
@@ -390,6 +426,11 @@ export default function MandyDock() {
         {confirm && (
           <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2">
             <p className="text-xs text-foreground">{confirm.summary}</p>
+            {confirm.lines?.length ? (
+              <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground" data-testid="mandy-plan-lines">
+                {confirm.lines.map((l, i) => <li key={i}>{l}</li>)}
+              </ul>
+            ) : null}
             <div className="mt-2 flex gap-2">
               <Button size="sm" variant="destructive" className="h-7 gap-1" onClick={() => void runConfirm()}><Check className="h-3 w-3" /> Confirm</Button>
               <Button size="sm" variant="outline" className="h-7" onClick={() => { setConfirm(null); setReply("Cancelled — nothing was changed."); }}>Cancel</Button>
