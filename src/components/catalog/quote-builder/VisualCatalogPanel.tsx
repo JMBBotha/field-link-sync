@@ -67,6 +67,7 @@ interface PdfPage {
   page_image_url: string;
   pdf_storage_path: string | null;
   price_column_bbox?: { x_frac: number; w_frac: number } | null;
+  pdf_upload_id?: string | null;
 }
 
 /** Zoom 1 = page image rendered at full container width (fit-width). */
@@ -316,7 +317,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     enabled: open,
     queryFn: async () => {
       let query = (supabase.from("supplier_pdf_pages") as any)
-        .select("id, supplier_id, pdf_filename, page_number, page_image_url, pdf_storage_path, price_column_bbox")
+        .select("id, supplier_id, pdf_filename, page_number, page_image_url, pdf_storage_path, price_column_bbox, pdf_upload_id")
         .order("supplier_id").order("pdf_filename").order("page_number");
       if (selectedSupplier !== "all") query = query.eq("supplier_id", selectedSupplier);
       const { data, error } = await query.limit(500);
@@ -1339,7 +1340,7 @@ const LazyPdfPage = ({
         // Auto-catalog unmatched items with prices
         if (unmatchedWithPrice.length > 0) {
           try {
-            const result = await autoCatalogFromRegions(regions, page.supplier_id);
+            const result = await autoCatalogFromRegions(regions, page.supplier_id, page.pdf_upload_id ?? null);
             
             if (result.insertedCount > 0) {
               console.log(`[VisualCatalog] Auto-cataloged ${result.insertedCount} new products from page ${page.page_number}`);
