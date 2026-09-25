@@ -20,6 +20,7 @@ import { WavRecorder } from "@/lib/wavRecorder";
 import { getAssistantContext, setAssistantContext } from "@/stores/assistantContextStore";
 import { useMandyDock, useMandyRegistry, useRegisterMandyActions } from "@/lib/mandy/registry";
 import { CONFIRM_REQUIRED, toolsFor, type MandyChoice, type MandyResult } from "@/lib/mandy/actions";
+import { routeVoiceCommand, MANDY_MIN_CONFIDENCE } from "@/lib/mandy/router";
 import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
 import { createDraftQuoteForCustomer } from "@/lib/createDraftQuote";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
@@ -29,6 +30,11 @@ type Phase = "idle" | "listening" | "hearing" | "working";
 type Msg = Record<string, unknown>;
 
 const QUOTE_TOOLS_PROBE = "read_quote_total";
+const actionLabel = (action: string, args: Record<string, unknown>) => {
+  const words = action.replace(/_/g, " ");
+  const detail = Object.values(args).filter((v) => typeof v === "string" || typeof v === "number").slice(0, 2).join(", ");
+  return detail ? `${words}: ${detail}` : words;
+};
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /* ───────────── global (non-quote) actions ───────────── */
@@ -194,22 +200,32 @@ export default function MandyDock() {
     setChoices([]);
     setConfirm(null);
     setPhase("working");
-    const msgs: Msg[] = [...historyRef.current.slice(-8), { role: "user", content: t }];
+    const msgs: Msg[] = [...historyRef.current.slice(-8)];
     let final = "";
     try {
       for (let step = 0; step <= MAX_STEPS; step++) {
-        const { data, error } = await supabase.functions.invoke("mandy-agent", {
-          body: { action: "chat", messages: msgs, tools: toolsFor(registry?.names() || []), context: getAssistantContext(), force_text: step === MAX_STEPS },
+        const r0 = await routeVoiceCommand({
+          transcript: step === 0 ? t : "",
+          history: msgs,
+          tools: toolsFor(registry?.names() || []),
+          context: getAssistantContext() as Record<string, unknown>,
+          forceText: step === MAX_STEPS,
         });
-        const d = data as { error?: string; text?: string; tool_call?: { id: string; name: string; arguments: Record<string, any> }; assistant_message?: Msg } | null;
-        if (error || d?.error) { final = `Sorry, I couldn't reach my brain: ${d?.error || error?.message}`; break; }
-        if (d?.tool_call) {
-          const r = await execute(d.tool_call.name, d.tool_call.arguments);
+        if (step === 0) msgs.push({ role: "user", content: t });
+        if (r0.error) { final = `Sorry, I couldn't reach my brain: ${r0.error}`; break; }
+        if (r0.action) {
+          if (r0.confidence < MANDY_MIN_CONFIDENCE) {
+            // Not sure enough — never run it. One-tap chip + one-line question.
+            setChoices([{ label: `Yes — ${actionLabel(r0.action, r0.args)}`, action: r0.action, args: r0.args }]);
+            final = `Did you mean ${actionLabel(r0.action, r0.args)}? Tap it, or say it another way.`;
+            break;
+          }
+          const r = await execute(r0.action, r0.args);
           if (r.choices?.length) setChoices(r.choices);
           if (r.confirm) setConfirm(r.confirm);
-          msgs.push(d.assistant_message!, {
+          msgs.push(r0.assistantMessage!, {
             role: "tool",
-            tool_call_id: d.tool_call.id,
+            tool_call_id: r0.callId,
             content: JSON.stringify({
               ok: r.ok,
               result: r.message,
@@ -220,7 +236,7 @@ export default function MandyDock() {
           });
           continue;
         }
-        final = d?.text || "";
+        final = r0.text || "";
         break;
       }
     } finally {
