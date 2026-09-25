@@ -56,6 +56,9 @@ interface QuoteContextValue {
   markupRates: CategoryMarkupRates;
   companyMarkupRates: CategoryMarkupRates;
   setMarkupRates: (rates: CategoryMarkupRates) => Promise<void>;
+
+  /** Silent re-read of quote/areas/items; returns the fresh rows (null on failure). */
+  refetch: () => Promise<{ areas: QuoteArea[]; items: QuoteItem[] } | null>;
 }
 
 const QuoteContext = createContext<QuoteContextValue | null>(null);
@@ -76,7 +79,7 @@ export function useQuoteContext() {
 const errMsg = (e: unknown): string =>
   e instanceof Error ? e.message : typeof e === "string" ? e : "Unknown error";
 
-const revert = (fn: () => Promise<void>) => {
+const revert = (fn: () => Promise<unknown>) => {
   void fn().catch((err) => console.error("QuoteContext revert failed:", err));
 };
 
@@ -104,19 +107,19 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   useEffect(() => { areasRef.current = areas; }, [areas]);
 
   /* ── Fetch ── */
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (silent = false): Promise<{ areas: QuoteArea[]; items: QuoteItem[] } | null> => {
     const seq = ++fetchSeqRef.current;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const [quoteRes, areasRes, itemsRes] = await Promise.all([
         supabase.from("quotes").select("id, quote_number, customer_id, customer_name, status, subtotal, vat_rate, vat_amount, total, notes, valid_until, discount_type, discount_value, terms_text, reference_text, company_id, units_markup_percent, materials_markup_percent").eq("id", quoteId).single(),
         supabase.from("quote_areas").select("*").eq("quote_id", quoteId).order("sort_order"),
         supabase.from("quote_items").select("*").eq("quote_id", quoteId).order("sort_order"),
       ]);
 
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) return null;
       // Drop stale results if a newer fetch started or realtime is now the source of truth
-      if (seq !== fetchSeqRef.current) return;
+      if (seq !== fetchSeqRef.current) return null;
 
       if (quoteRes.error) throw quoteRes.error;
       if (areasRes.error) throw areasRes.error;
@@ -126,11 +129,13 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       setAreas((areasRes.data || []) as unknown as QuoteArea[]);
       setItems((itemsRes.data || []) as unknown as QuoteItem[]);
       setError(null);
+      return { areas: (areasRes.data || []) as unknown as QuoteArea[], items: (itemsRes.data || []) as unknown as QuoteItem[] };
     } catch (e: unknown) {
       console.error("QuoteContext fetch error:", e);
       if (mountedRef.current && seq === fetchSeqRef.current) {
         setError(errMsg(e) || "Failed to load quote");
       }
+      return null;
     } finally {
       if (mountedRef.current && seq === fetchSeqRef.current) setLoading(false);
     }
@@ -531,7 +536,8 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     markupRates,
     companyMarkupRates,
     setMarkupRates,
-  }), [markupRates, companyMarkupRates, setMarkupRates, quoteId, meta, areas, items, loading, error, canSave, updateQuote, addArea, updateArea, deleteArea, reorderAreas, addItem, updateItem, deleteItem, moveItemToArea, ensureDefaultArea, getItemsByArea, getBundleChildrenFn]);
+    refetch: () => fetchAll(true),
+  }), [fetchAll, markupRates, companyMarkupRates, setMarkupRates, quoteId, meta, areas, items, loading, error, canSave, updateQuote, addArea, updateArea, deleteArea, reorderAreas, addItem, updateItem, deleteItem, moveItemToArea, ensureDefaultArea, getItemsByArea, getBundleChildrenFn]);
 
   return <QuoteContext.Provider value={value}>{children}</QuoteContext.Provider>;
 }

@@ -77,9 +77,9 @@ const actionLabel = (action: string, args: Record<string, unknown>) => {
 };
 
 /** Confidence gate: below MANDY_MIN_CONFIDENCE never run — one chip + one-line question. */
-export function gateRoute(r: Pick<RouteResult, "action" | "args" | "confidence">): GateDecision {
+export function gateRoute(r: Pick<RouteResult, "action" | "args" | "confidence">, threshold = MANDY_MIN_CONFIDENCE): GateDecision {
   if (!r.action) return { run: false };
-  if (r.confidence >= MANDY_MIN_CONFIDENCE) return { run: true };
+  if (r.confidence >= threshold) return { run: true };
   const label = actionLabel(r.action, r.args);
   return {
     run: false,

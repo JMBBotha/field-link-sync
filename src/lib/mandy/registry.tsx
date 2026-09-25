@@ -3,10 +3,18 @@ import { create } from "zustand";
 import type { MandyHandler } from "./actions";
 
 /** Dock visibility — the header "Ask Mandy" button opens it. */
-export const useMandyDock = create<{ open: boolean; setOpen: (v: boolean) => void }>((set) => ({
+export const useMandyDock = create<{ open: boolean; setOpen: (v: boolean) => void; listenRequest: number; openAndListen: () => void }>((set) => ({
   open: false,
   setOpen: (open) => set({ open }),
+  listenRequest: 0,
+  openAndListen: () => set((s) => ({ open: true, listenRequest: s.listenRequest + 1 })),
 }));
+
+/** The ONE voice entry point: close whatever panel asked, open Mandy listening. */
+export function openMandyVoice(close?: () => void) {
+  close?.();
+  useMandyDock.getState().openAndListen();
+}
 
 interface Registry {
   register: (handlers: Record<string, MandyHandler>) => () => void;
