@@ -29,7 +29,7 @@ export interface MandyResult {
 export type MandyHandler = (args: Record<string, any>) => Promise<MandyResult>;
 
 /** Never executed on voice alone — always an on-screen Confirm card. */
-export const CONFIRM_REQUIRED = new Set(["remove_item", "send_quote", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote", "create_deposit_invoice"]);
+export const CONFIRM_REQUIRED = new Set(["remove_item", "run_plan", "send_quote", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote", "create_deposit_invoice"]);
 
 const str = (description: string) => ({ type: "string", description });
 const num = (description: string) => ({ type: "number", description });
@@ -38,6 +38,53 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
   open_last_quote: {
     description: "Open the most recent quote the user can see.",
     parameters: { type: "object", properties: {}, additionalProperties: false },
+  },
+  open_latest_quote: {
+    description: "Open the most recent quote, the same one that sits at the top of the Quotes list by default.",
+    parameters: { type: "object", properties: {}, additionalProperties: false },
+  },
+  open_top_quote: {
+    description: "On the Quotes list: open the top row in the list's current sort and filters ('open the top one').",
+    parameters: { type: "object", properties: {}, additionalProperties: false },
+  },
+  set_qty: {
+    description: "Change a line's quantity on the open quote ('make the Samsung 2'). Kits/pipe lines change length in metres; labour changes hours.",
+    parameters: { type: "object", properties: { item: str("Line as spoken, e.g. the Samsung, the kit in bedroom 1"), qty: num("New quantity / metres / hours") }, required: ["item", "qty"], additionalProperties: false },
+  },
+  set_line_price: {
+    description: "Override one line's sell price excl. VAT. Never below the category markup floor; below list needs on-screen confirmation.",
+    parameters: { type: "object", properties: { item: str("Line as spoken"), price: num("New unit sell price excl. VAT") }, required: ["item", "price"], additionalProperties: false },
+  },
+  move_item: {
+    description: "Move a line to another area; a unit's kit moves with it.",
+    parameters: { type: "object", properties: { item: str("Line as spoken"), area: str("Target area name") }, required: ["item", "area"], additionalProperties: false },
+  },
+  duplicate_area: {
+    description: "Copy an area and all its lines (same stored prices) to a new area.",
+    parameters: { type: "object", properties: { area: str("Area to copy"), new_name: str("Name for the copy (optional)") }, required: ["area"], additionalProperties: false },
+  },
+  describe_area: {
+    description: "Set a short description on an area.",
+    parameters: { type: "object", properties: { area: str("Area name"), description: str("Description text") }, required: ["area", "description"], additionalProperties: false },
+  },
+  add_note: {
+    description: "Add a note to the quote or to one line.",
+    parameters: { type: "object", properties: { target: { type: "string", enum: ["quote", "item"], description: "quote or item" }, item: str("Line as spoken, when target is item"), text: str("Note text") }, required: ["target", "text"], additionalProperties: false },
+  },
+  run_plan: {
+    description: "Several quote edits from ONE request, in order, shown on ONE confirm card. Each step is {action, args} using the other quote actions (add_area, add_item_to_area, set_kit_length, set_labour_hours, set_qty, set_line_price, move_item, remove_item, duplicate_area, rename_area, describe_area, add_note).",
+    parameters: {
+      type: "object",
+      properties: {
+        steps: {
+          type: "array",
+          description: "Ordered steps",
+          items: { type: "object", properties: { action: str("Action name"), args: { type: "object", description: "Arguments for that action" } }, required: ["action", "args"] },
+        },
+      },
+      required: ["steps"],
+      additionalProperties: false,
+    },
   },
   open_quote: {
     description: "Open a quote by quote number (e.g. Q-2026-0020) or client name.",
@@ -77,8 +124,8 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     parameters: { type: "object", properties: { area: str("Area name"), hours: num("Hours"), rate: num("Rate per hour excl. VAT (optional)"), mode: { type: "string", enum: ["add", "set"], description: "'add N hours' → add (increment); 'set / make it N hours' → set" } }, required: ["area", "hours", "mode"], additionalProperties: false },
   },
   remove_item: {
-    description: "Remove a line from the open quote (needs on-screen confirmation).",
-    parameters: { type: "object", properties: { item: str("Line name or product code") }, required: ["item"], additionalProperties: false },
+    description: "Remove a line from the open quote (needs on-screen confirmation). Removing a unit asks whether to remove its kit too.",
+    parameters: { type: "object", properties: { item: str("Line as spoken, name or product code") }, required: ["item"], additionalProperties: false },
   },
   generate_quote_pdf: {
     description: "Generate / download the PDF of the open quote.",

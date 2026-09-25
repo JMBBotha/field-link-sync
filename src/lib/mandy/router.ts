@@ -6,6 +6,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { coerceMapAction } from "@/lib/mandy/mapStatus";
+import { parsePlan, type PlanStep } from "@/lib/mandy/quoteEdits";
 
 /** Below this, the dock asks / shows chips instead of running the action. */
 export const MANDY_MIN_CONFIDENCE = 0.7;
@@ -34,6 +35,8 @@ export interface RouteResult {
   callId?: string;
   assistantMessage?: RouterMsg;
   error?: string;
+  /** Present when the router chose a multi-step plan (run_plan). */
+  plan?: PlanStep[];
 }
 
 export async function routeVoiceCommand(input: RouteInput): Promise<RouteResult> {
@@ -66,6 +69,11 @@ export function labourModeFromText(t: string): "add" | "set" {
 
 /** Post-process the provider's pick (e.g. open_live_map + a status → filter). */
 export function postProcessRoute(r: RouteResult, transcript: string): RouteResult {
+  if (r.action === "run_plan") {
+    const plan = parsePlan(r.args).map((s) => (s.action === "set_labour_hours" && s.args.mode !== "add" && s.args.mode !== "set"
+      ? { ...s, args: { ...s.args, mode: labourModeFromText(transcript) } } : s));
+    return { ...r, plan };
+  }
   const c = coerceMapAction(r.action, r.args, transcript);
   if (c.action === "set_labour_hours" && c.args.mode !== "add" && c.args.mode !== "set") {
     return { ...r, action: c.action, args: { ...c.args, mode: labourModeFromText(transcript) } };
