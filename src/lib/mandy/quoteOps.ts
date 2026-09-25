@@ -116,7 +116,7 @@ export async function addCatalogProductToQuote(opts: {
         total_cost: kCost,
         markup_percent: kCost > 0 ? Number((((sell - kCost) / kCost) * 100).toFixed(2)) : 0,
         price_locked: true,
-        kit: { bundle_id: bundle.id, name: bundle.name, pricing_type: f.bundlePricingType, unit_cost: f.bundleUnitCost ?? 0, unit_sell: f.bundleUnitPrice ?? 0, items: f.kitContents ?? [] },
+        kit: { bundle_id: bundle.id, name: bundle.name, pricing_type: f.bundlePricingType, unit_cost: f.bundleUnitCost ?? 0, unit_sell: Number((f.bundleUnitPrice ?? 0).toFixed(2)), items: f.kitContents ?? [] },
       },
       sort_order: opts.sortOrder + 1,
       source: opts.source || "catalog",
@@ -135,10 +135,13 @@ export function kitSellPerMetre(item: { unit_price?: number | null; length?: num
   const k = item.metadata?.kit || {};
   const stored = Number(k.unit_sell);
   if (Number.isFinite(stored) && stored > 0) return stored;
+  const saved = (Number(item.unit_price) || 0) / (Number(item.length) || 1);
   const costM = Number(k.unit_cost);
   const mk = Number(item.metadata?.markup_percent);
-  if (Number.isFinite(costM) && costM > 0 && Number.isFinite(mk)) return costM * (1 + mk / 100);
-  return (Number(item.unit_price) || 0) / (Number(item.length) || 1);
+  if (!(Number.isFinite(costM) && costM > 0 && Number.isFinite(mk))) return saved;
+  const fromCost = costM * (1 + mk / 100);
+  // Saved rate wins (price lock) unless it has drifted away from cost × markup.
+  return Math.abs(saved - fromCost) <= Math.max(0.05, fromCost * 0.01) ? saved : Number(fromCost.toFixed(2));
 }
 
 /** Patch for a saved kit row when its length changes (same maths as withKitLength). */
@@ -154,7 +157,7 @@ export function kitLengthPatch(item: { unit_price?: number | null; length?: numb
     length: v,
     unit_price: sell,
     total_price: sell,
-    metadata: { ...md, unit_cost: cost, cost_excl: cost, total_cost: cost, ...(md.kit ? { kit: { ...md.kit, unit_sell: Number(perM.toFixed(4)) } } : {}) },
+    metadata: { ...md, unit_cost: cost, cost_excl: cost, total_cost: cost, ...(md.kit ? { kit: { ...md.kit, unit_sell: Number(perM.toFixed(2)) } } : {}) },
   };
 }
 
