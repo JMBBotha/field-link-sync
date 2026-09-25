@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useRegisterMandyActions } from "@/lib/mandy/registry";
+import { quotesListCompare } from "@/lib/mandy/latestQuote";
+import { topOfListResult } from "@/lib/mandy/topOfList";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -161,7 +164,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
     })),
   ]
     .filter((d) => (typeFilter === "all" ? true : d.kind === typeFilter))
-    .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+    .sort(quotesListCompare);
 
   const statCards = [
     { key: "draft", label: "Draft" },
@@ -276,6 +279,11 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
     if (doc.kind === "proposal") navigate(`/admin/proposal-builder?proposalId=${doc.id}`);
     else navigate(`/admin/estimates/${doc.id}`);
   };
+
+  // Mandy "open the top one": the first row of THIS list, in its current sort + filters.
+  useRegisterMandyActions({
+    open_top_quote: async () => topOfListResult(docs, openDoc),
+  });
 
   return (
     <div className="min-h-full bg-background">
