@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import PriceConfigPanel, { calculatePrices, type PriceConfig } from "./PriceConfigPanel";
+import { normalizeBrand } from "@/lib/brandNormalize";
 import { buildProductDiff, applyProductDiff, type DiffImportRow, type DiffRow as SharedDiffRow, type DiffAction as SharedDiffAction } from "@/services/diffImportPipeline";
 
 /** Strip non-numeric chars from AI values like "9000 BTU" → 9000 */
@@ -194,7 +195,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     counts.forEach((count, brand) => {
       if (count > bestCount) { best = brand; bestCount = count; }
     });
-    return best || supplierName?.trim() || null;
+    return normalizeBrand(best || supplierName);
   }, [parsedRows, diffRows, supplierName]);
 
 
