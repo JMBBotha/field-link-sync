@@ -334,11 +334,13 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       return addProduct(m.pick.product as PaletteProduct, area, qty);
     },
 
-    set_kit_length: async ({ area, metres }) => {
+    set_kit_length: async ({ area, metres, kit_id }) => {
       const m = Number(metres);
       if (!(m > 0)) return { ok: false, message: "Tell me how many metres." };
-      const a = area ? findArea(area) : null;
-      const kits = S().items.filter((i) => i.is_bundle && !i.parent_item_id && (!a || i.area_id === a.id) && (i.metadata as any)?.kit?.pricing_type !== "p/qty");
+      const a = area && !kit_id ? findArea(area) : null;
+      const kits = kit_id
+        ? S().items.filter((i) => i.id === kit_id)
+        : S().items.filter((i) => i.is_bundle && !i.parent_item_id && (!a || i.area_id === a.id) && (i.metadata as any)?.kit?.pricing_type !== "p/qty");
       if (!kits.length) return { ok: false, message: `No piping kit ${a ? `in ${a.name}` : "on this quote"}.` };
       if (kits.length > 1) {
         return {
