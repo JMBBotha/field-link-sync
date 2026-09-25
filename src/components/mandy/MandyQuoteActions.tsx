@@ -14,7 +14,9 @@ import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 import { useRegisterMandyActions } from "@/lib/mandy/registry";
 import { getAssistantContext } from "@/stores/assistantContextStore";
 import { isPronoun, resolveAreaPronoun, resolveItemPronoun, type TouchedCtx } from "@/lib/mandy/pronouns";
-import { fmtRand, type MandyChoice, type MandyResult } from "@/lib/mandy/actions";
+import { fmtRand, type MandyChoice, type MandyResult, type MandyHandler } from "@/lib/mandy/actions";
+import { supabase } from "@/integrations/supabase/client";
+import { captureSnapshot, stateHash, undoDecision, planRestore, saveUndoSnapshot, latestUnusedSnapshot, markSnapshotUsed } from "@/lib/mandy/undo";
 import { addCatalogProductToQuote, addKitToQuote, areaUnitBtu, kitLengthPatch, isAirConditioningProduct } from "@/lib/mandy/quoteOps";
 import { matchCatalog, catalogChipLabel } from "@/lib/mandy/catalogMatch";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
@@ -42,6 +44,13 @@ interface Props {
 
 const lc = (s?: string | null) => (s || "").trim().toLowerCase();
 export const NEW_AREA_LABEL = "New area…";
+/** Mandy writes that get an undo snapshot. */
+export const UNDOABLE = new Set([
+  "set_labour_hours", "add_area", "rename_area", "describe_area", "add_note", "add_item_to_area", "set_kit_length", "set_qty",
+  "set_line_price", "move_item", "duplicate_area", "remove_item", "remove_area", "remove_note", "edit_note",
+]);
+/** "Added area X." → "added area X" (for "Undid added area X."). */
+export const undoLabel = (msg: string) => { const m = String(msg || "").trim().replace(/[.!]+$/, ""); return m.charAt(0).toLowerCase() + m.slice(1); };
 
 /** Pure: area chips (existing + "New area…") for an AC add with no area. */
 /** AC units never default to an area: unless one was named and found, ask with chips. */
@@ -184,7 +193,44 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     await ctx.updateQuote({ notes: parts.filter((p) => p.trim()).join("\n") || null } as any);
   };
 
-  useRegisterMandyActions({
+  /** Authoritative quote state straight from the database (for snapshots and the undo hash). */
+  const readState = async () => {
+    const [q, a, i] = await Promise.all([
+      supabase.from("quotes").select("notes, subtotal, vat_amount, total, updated_at").eq("id", ctx.quoteId).single(),
+      supabase.from("quote_areas").select("*").eq("quote_id", ctx.quoteId),
+      supabase.from("quote_items").select("*").eq("quote_id", ctx.quoteId),
+    ]);
+    const meta = (q.data || {}) as any;
+    return { meta, areas: (a.data || []) as any[], items: (i.data || []) as any[], snapshot: captureSnapshot(meta, (a.data || []) as any[], (i.data || []) as any[]) };
+  };
+  type State = Awaited<ReturnType<typeof readState>>;
+  const pendingPlanSnap = useRef<State | null>(null);
+  const recordUndo = async (action: string, label: string, before: State) => {
+    const after = await readState();
+    const hashAfter = stateHash(after.meta.notes, after.areas, after.items);
+    if (hashAfter === stateHash(before.meta.notes, before.areas, before.items)) return; // nothing changed
+    await saveUndoSnapshot({ quoteId: ctx.quoteId, action, label: undoLabel(label), snapshot: before.snapshot, hashAfter, quoteUpdatedAtAfter: after.meta.updated_at });
+  };
+  const isDone = (r: MandyResult) => r.ok && !r.choices?.length && !r.confirm;
+  /** Snapshot before every Mandy write (plan steps are covered by the plan-level snapshot). */
+  const wrapWithUndo = (hs: Record<string, MandyHandler>): Record<string, MandyHandler> =>
+    Object.fromEntries(Object.entries(hs).map(([name, h]) => [name, !UNDOABLE.has(name) ? h : async (args) => {
+      if (args.__plan || (ctx.meta?.status && ctx.meta.status !== "draft")) return h(args);
+      const before = await readState();
+      const r = await h(args);
+      if (r.confirm) {
+        const run = r.confirm.run;
+        return { ...r, confirm: { ...r.confirm, run: async () => {
+          const b2 = await readState(); const res = await run();
+          if (isDone(res)) await recordUndo(name, res.message, b2);
+          return res;
+        } } };
+      }
+      if (isDone(r)) await recordUndo(name, r.message, before);
+      return r;
+    }]));
+
+  const handlers: Record<string, MandyHandler> = {
     /** Internal (no schema → never offered to the model): force-refresh the open quote. */
     __refresh_quote: async () => {
       const fresh = await refresh();
@@ -465,8 +511,42 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
         data: { subtotal: t.sub, total: t.total },
       };
     },
-  });
+    /** Internal: plan-level snapshot (the dock calls begin before Confirm runs, commit after). */
+    __begin_undo: async () => { pendingPlanSnap.current = await readState(); return { ok: true, message: "" }; },
+    __commit_undo: async ({ label }) => {
+      const before = pendingPlanSnap.current; pendingPlanSnap.current = null;
+      if (before) await recordUndo("run_plan", String(label || "the plan"), before);
+      return { ok: true, message: "" };
+    },
 
+    undo_last_change: async () => {
+      const status = ctx.meta?.status ?? "draft";
+      const snap = status === "draft" ? await latestUnusedSnapshot(ctx.quoteId) : null;
+      const cur = await readState();
+      const d = undoDecision({ status, snap, currentHash: stateHash(cur.meta.notes, cur.areas, cur.items) });
+      if (!d.ok) return { ok: false, message: d.message };
+      const beforeTotal = Number(cur.meta.total) || 0;
+      const plan = planRestore(snap!.snapshot, { notes: cur.meta.notes, areas: cur.areas, items: cur.items });
+      // Builder save path: delete extras, re-insert / update rows as they were (same ids).
+      for (const id of plan.deleteItems) await ctx.deleteItem(id);
+      for (const a of plan.insertAreas) await supabase.from("quote_areas").insert({ ...a, quote_id: ctx.quoteId } as any);
+      for (const a of plan.updateAreas) await ctx.updateArea(a.id, { name: a.name, description: a.description, sort_order: a.sort_order } as any);
+      for (const i of plan.insertItems) await ctx.addItem(i as any);
+      for (const i of plan.updateItems) { const { id, ...patch } = i; await ctx.updateItem(id, patch as any); }
+      for (const id of plan.deleteAreas) await ctx.deleteArea(id);
+      if (plan.notesChanged) await ctx.updateQuote({ notes: snap!.snapshot.quote.notes } as any);
+      await markSnapshotUsed(snap!.id);
+      await refresh(); // totals are recomputed by the shared quote-items trigger
+      const after = await readState();
+      return {
+        ok: true,
+        message: `Undid ${snap!.label || snap!.action.replace(/_/g, " ")}. Total ${fmtRand(beforeTotal)} → ${fmtRand(Number(after.meta.total) || 0)} incl. VAT.`,
+        verified: stateHash(after.meta.notes, after.areas, after.items) === stateHash(snap!.snapshot.quote.notes, snap!.snapshot.areas, snap!.snapshot.items),
+      };
+    },
+  };
+
+  useRegisterMandyActions(wrapWithUndo(handlers));
   return null;
 }
 

@@ -241,7 +241,9 @@ export default function MandyDock() {
       summary: `Run ${steps.length} steps? Total ${money(p.before)} → ${money(p.after)} incl. VAT.`,
       lines: p.lines.map((l) => `${l.step}. ${l.label}${l.qty != null ? ` · ${l.qty}` : ""}${l.price != null ? ` · ${money(l.price)}` : ""}`),
       run: async () => {
+        await registry?.get("__begin_undo")?.({});
         const rep = await runPlanSteps(steps, (s) => execute(s.action, { ...s.args, __plan: true }));
+        if (rep.ran > 0) await registry?.get("__commit_undo")?.({ label: `the ${rep.ran}-step plan` });
         return { ok: rep.failedAt == null, message: planReportText(rep), data: { ran: rep.ran, total: rep.total } };
       },
     });
