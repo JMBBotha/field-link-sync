@@ -15,7 +15,9 @@ import { useRegisterMandyActions } from "@/lib/mandy/registry";
 import { getAssistantContext } from "@/stores/assistantContextStore";
 import { isPronoun, resolveAreaPronoun, resolveItemPronoun, type TouchedCtx } from "@/lib/mandy/pronouns";
 import { fmtRand, type MandyChoice, type MandyResult } from "@/lib/mandy/actions";
-import { addCatalogProductToQuote, kitLengthPatch, matchSpokenProduct, isAirConditioningProduct } from "@/lib/mandy/quoteOps";
+import { addCatalogProductToQuote, addKitToQuote, areaUnitBtu, kitLengthPatch, isAirConditioningProduct } from "@/lib/mandy/quoteOps";
+import { matchCatalog, catalogChipLabel } from "@/lib/mandy/catalogMatch";
+import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
 import { runSetLabourHours } from "@/lib/mandy/labourAction";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { standardLabourRate, findAreaLabour } from "@/lib/labour";
@@ -264,16 +266,26 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
         return addProduct(p, area, qty);
       }
       if (!products.length) return { ok: false, message: "The catalog is still loading — try again in a moment." };
-      const m = matchSpokenProduct(String(query || ""), products);
+      const area0 = findArea(area);
+      const m = matchCatalog(String(query || ""), products as any[], bundles as any, { areaBtu: areaUnitBtu(S().items, products, area0?.id) });
       if (!m.ranked.length) return { ok: false, message: `Nothing on the live catalog matches “${query}”.` };
-      if (m.tie) {
+      if (m.pick?.kind === "kit") {
+        if (!area0) return { ok: true, message: `Which area for the ${m.pick.kit.name}? Waiting for the user to tap one.`, choices: areaChips("add_item_to_area", { query }) };
+        const k = await addKitToQuote({ addItem: ctx.addItem, bundle: m.pick.kit as any, areaId: area0.id, sortOrder: nextSort(), source: "mandy_voice" });
+        if (!k.kit) return { ok: false, message: `Could not add ${m.pick.kit.name}.` };
+        const fresh = await refresh();
+        return { ok: true, message: `Added ${k.kitName} to ${area0.name} at ${fmtRand(Number(k.kit.unit_price))} excl. VAT.`, data: { line_id: k.kit.id, area: area0.name }, verified: !!fresh?.items.some((i) => i.id === k.kit!.id) };
+      }
+      if (!m.pick) {
         return {
           ok: true,
           message: `Several products match “${query}”. Waiting for the user to tap one.`,
-          choices: m.ranked.map((p) => ({ label: `${p.short_name} · ${p.product_code}`, action: "add_item_to_area", args: { area, quantity: qty, product_id: p.id } })),
+          choices: m.options.map((h: any) => h.kind === "kit"
+            ? { label: catalogChipLabel(h), action: "add_item_to_area", args: { area, query: h.kit.name } }
+            : { label: catalogChipLabel(h, getEffectiveUnitPrices(h.product).unitSell), action: "add_item_to_area", args: { area, quantity: qty, product_id: h.id } }),
         };
       }
-      return addProduct(m.ranked[0], area, qty);
+      return addProduct(m.pick.product as PaletteProduct, area, qty);
     },
 
     set_kit_length: async ({ area, metres }) => {

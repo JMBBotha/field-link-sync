@@ -170,3 +170,14 @@ export function matchSpokenProduct(query: string, products: PaletteProduct[]) {
   const ranked = m.ranked.map((h) => (h as any).product as PaletteProduct);
   return { ranked: m.pick ? ranked.slice(0, 5) : ranked.slice(0, 3), tie: !m.pick && ranked.length > 0, query: m.query, match: m };
 }
+
+/** BTU of the AC unit already in an area (for "piping bundle" with no size). */
+export function areaUnitBtu(items: { area_id?: string | null; product_id?: string | null; parent_item_id?: string | null }[], products: any[], areaId?: string | null): number | null {
+  if (!areaId) return null;
+  for (const i of items) {
+    if (i.area_id !== areaId || i.parent_item_id || !i.product_id) continue;
+    const p = products.find((x) => x.id === i.product_id);
+    if (p && isAirConditioningProduct(p)) { const b = extractBtu(p); if (b) return b; }
+  }
+  return null;
+}
