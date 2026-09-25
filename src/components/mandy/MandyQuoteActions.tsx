@@ -524,7 +524,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       const snap = status === "draft" ? await latestUnusedSnapshot(ctx.quoteId) : null;
       const cur = await readState();
       const d = undoDecision({ status, snap, currentHash: stateHash(cur.meta.notes, cur.areas, cur.items) });
-      if (!d.ok) return { ok: false, message: d.message };
+      if (d.ok === false) return { ok: false, message: d.message };
       const beforeTotal = Number(cur.meta.total) || 0;
       const plan = planRestore(snap!.snapshot, { notes: cur.meta.notes, areas: cur.areas, items: cur.items });
       // Builder save path: delete extras, re-insert / update rows as they were (same ids).

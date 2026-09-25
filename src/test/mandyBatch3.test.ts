@@ -7,6 +7,7 @@ import { guardRoute, postProcessRoute } from "@/lib/mandy/router";
 import { gateDecision } from "@/lib/mandy/gate";
 import { parseMultiEdit } from "@/lib/mandy/multiEdit";
 import { setActiveQuoteMarkupRates } from "@/lib/pricing";
+import { kitLengthPatch } from "@/lib/mandy/quoteOps";
 import { undoLabel } from "@/components/mandy/MandyQuoteActions";
 
 /* ───── fixtures (TEST quote Q-2026-0014 shape) ───── */
@@ -137,7 +138,7 @@ describe("F: shared catalog matcher", () => {
     expect(m.pick).toBeNull();
     expect(m.options.map((h) => h.id).sort()).toEqual(["L12", "P12"]);
     const label = catalogChipLabel(m.options.find((h) => h.id === "P12")!, 9738.26);
-    expect(label).toBe("Samsung 12K INV MW · AR40F12C0AG/FA · R 9 738,26 excl. VAT");
+    expect(label.replace(/\s/g, " ")).toBe("Samsung 12K INV MW · AR40F12C0AG/FA · R 9 738,26 excl. VAT");
   });
   it("'piping bundle' with a 12K unit in the area → the 12K kit", () => {
     const m = matchCatalog("piping bundle", catalog, kits, { areaBtu: 12000 });
@@ -176,6 +177,9 @@ describe("replay: 'Bedroom 1: add an AR40 with 3 m kit'", () => {
     const p2 = await previewPlan(steps, deps);
     expect(p2.error).toBeUndefined();
     expect(p2.lines.find((l) => l.action === "add_item_to_area")!.price).toBeCloseTo(9738.26, 2);
-    expect(p2.lines.find((l) => l.action === "set_kit_length")!.price).toBeCloseTo(1092.3, 2);
+    const auto = p2.lines.find((l) => l.action === "auto_kit")!;
+    expect(p2.lines.find((l) => l.action === "set_kit_length")!.price).toBeCloseTo(auto.price! * 3, 1);
+    // On the real 12K kit (cost R182.05/m, 100%): 3 m = R1 092.30.
+    expect(kitLengthPatch(items[2] as any, 3).unit_price).toBeCloseTo(1092.3, 2);
   });
 });
