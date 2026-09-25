@@ -202,3 +202,84 @@ describe("plans", () => {
     expect(gatePlan([{ action: "add_item_to_area" }], 0.9, { quoteStatus: "sent" }).kind).toBe("block");
   });
 });
+
+import { parseMultiEdit } from "@/lib/mandy/multiEdit";
+import { guardRoute } from "@/lib/mandy/router";
+import { filterNotes } from "@/components/mandy/MandyQuoteActions";
+
+describe("batch 2 follow-up: multi-edit plan without Grok", () => {
+  const S = "Bedroom 3: add a 12K Samsung with 3 m kit and 2 hours labour";
+  it("live replay: Grok's single add_item_to_area becomes ONE 4-step plan", async () => {
+    setActiveQuoteMarkupRates(rates);
+    const r = postProcessRoute({ action: "add_item_to_area", args: { query: "12K Samsung" }, confidence: 0.9 }, S);
+    expect(r.action).toBe("run_plan");
+    expect(r.plan).toEqual([
+      { action: "add_area", args: { name: "Bedroom 3" } },
+      { action: "add_item_to_area", args: { area: "Bedroom 3", query: "12K Samsung" } },
+      { action: "set_kit_length", args: { area: "Bedroom 3", metres: 3 } },
+      { action: "set_labour_hours", args: { area: "Bedroom 3", hours: 2, mode: "add" } },
+    ]);
+    expect(gatePlan(r.plan!, r.confidence, { quoteStatus: "draft" }).kind).toBe("confirm");
+    const before = JSON.stringify(items);
+    const p = await previewPlan(r.plan!, { items, areas, products, bundles: bundles as any, rates, standardRate: 680, vatRate: 0.15 });
+    expect(p.error).toBeUndefined();
+    expect(JSON.stringify(items)).toBe(before); // no writes before Confirm
+    expect(p.lines.find((l) => l.action === "add_area")!.label).toBe("Area Bedroom 3");
+    const kitAuto = p.lines.find((l) => l.action === "auto_kit")!;
+    const kitLen = p.lines.find((l) => l.action === "set_kit_length")!;
+    expect(kitLen.qty).toBe(3);
+    expect(kitLen.price).toBeCloseTo(kitAuto.price! * 3, 1);
+    expect(p.lines.find((l) => l.action === "set_labour_hours")!.price).toBe(1360);
+    expect(p.beforeExcl).toBeCloseTo(12142.36, 2);
+  });
+  it("12K kit at 3 m = R1 092.30 via the same plan step", async () => {
+    const p = await previewPlan([{ action: "set_kit_length", args: { area: "Bedroom 1", metres: 3 } }], { items, areas, products, bundles: bundles as any, rates, standardRate: 680, vatRate: 0.15 });
+    expect(p.lines[0].price).toBeCloseTo(1092.3, 2);
+  });
+  it("pre-parser covers 'add a 12K Samsung to Lounge with 2 m kit'", () => {
+    expect(parseMultiEdit("add a 12K Samsung to Lounge with 2 m kit")).toEqual([
+      { action: "add_area", args: { name: "Lounge" } },
+      { action: "add_item_to_area", args: { area: "Lounge", query: "12K Samsung" } },
+      { action: "set_kit_length", args: { area: "Lounge", metres: 2 } },
+    ]);
+    expect(parseMultiEdit("add a 12K Samsung")).toBeNull();
+    expect(parseMultiEdit("Add 1 hour labour to General")).toBeNull();
+  });
+  it("tied model keeps the plan pending and offers a pick", async () => {
+    const two = [...products, { ...products[0], id: "P12b", product_code: "AR40F12C0AG/FB" }];
+    const p = await previewPlan(parseMultiEdit(S)!, { items, areas, products: two, bundles: bundles as any, rates, standardRate: 680, vatRate: 0.15 });
+    expect(p.pick?.step).toBe(1);
+    expect(p.pick?.options.map((o) => o.id).sort()).toEqual(["P12", "P12b"]);
+  });
+});
+
+describe("remove_area / notes", () => {
+  const t = (s: string) => guardRoute({ action: "remove_item", args: { item: "note" }, confidence: 0.9 }, s);
+  it("note wording never goes to remove_item", () => {
+    expect(t("remove the note")).toMatchObject({ action: "remove_note", args: {} });
+    expect(t("delete the note about side gate")).toMatchObject({ action: "remove_note", args: { match: "side gate" } });
+    expect(t("change the note to ring the bell")).toMatchObject({ action: "edit_note", args: { text: "ring the bell" } });
+    expect(t("remove the Lounge area")).toMatchObject({ action: "remove_area", args: { area: "Lounge" } });
+    expect(t("delete area Bedroom 3")).toMatchObject({ action: "remove_area", args: { area: "Bedroom 3" } });
+  });
+  it("remove_note always confirms; remove_area blocked on non-draft", () => {
+    expect(CONFIRM_REQUIRED.has("remove_note")).toBe(true);
+    expect(gateDecision("remove_note", 0.99, { quoteStatus: "draft" }).kind).toBe("confirm");
+    expect(gateDecision("remove_area", 0.9, { quoteStatus: "sent" }).kind).toBe("block");
+    expect(gateDecision("edit_note", 0.9, { quoteStatus: "accepted" }).kind).toBe("block");
+  });
+  it("several notes → narrowed by words or area", () => {
+    const notes = [
+      { key: "quote:0", target: "quote" as const, text: "access via side gate" },
+      { key: "quote:1", target: "quote" as const, text: "access via side gate" },
+      { key: "area:L", target: "area" as const, area: "Lounge", text: "north-facing wall" },
+    ];
+    expect(filterNotes(notes).length).toBe(3);
+    expect(filterNotes(notes, undefined, "lounge").map((n) => n.key)).toEqual(["area:L"]);
+    expect(filterNotes(notes, "quote", "side gate").length).toBe(2);
+  });
+  it("preview removes an area and its lines", async () => {
+    const p = await previewPlan([{ action: "remove_area", args: { area: "Bedroom 1" } }], { items, areas, products, bundles: bundles as any, rates, standardRate: 680, vatRate: 0.15 });
+    expect(p.afterExcl).toBeCloseTo(2040, 2);
+  });
+});
