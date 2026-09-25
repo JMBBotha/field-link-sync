@@ -19,6 +19,8 @@ import { useProductFavorites } from "@/hooks/useProductFavorites";
 import { getEffectiveUnitPrices, type PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
 import { fetchVisualCatalogAllowlist, filterToVisualCatalog } from "@/lib/catalogSoT";
+import { addCatalogProductToQuote } from "@/lib/mandy/quoteOps";
+import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 
 import type { QuoteItemInsert } from "@/types/quote";
 
@@ -64,6 +66,7 @@ export default function QuoteQuickEditor({
   dropUp?: boolean;
 }) {
   const { areas, items, addItem, addArea, ensureDefaultArea } = useQuoteContext();
+  const { bundles } = useQuoteBuilderBundles();
   const dropdownPos = dropUp ? "bottom-full mb-1" : "mt-1";
   const { favorites } = useProductFavorites();
   const [productTerm, setProductTerm] = useState("");
@@ -162,23 +165,8 @@ export default function QuoteQuickEditor({
   const addProduct = async (p: PaletteProduct) => {
     setAdding(p.id);
     const areaId = await resolveArea();
-    const { unitCost, unitSell } = getEffectiveUnitPrices(p);
-    const markupPct = resolveProductMarkupPercent(p);
-    await addItem({
-      ...baseItem(),
-      area_id: areaId,
-      product_id: p.id,
-      item_name: p.short_name || p.product_code || "Product",
-      item_number: p.product_code || null,
-      // Prefer the AI sales blurb (AC units) over the raw catalog description.
-      description: (p as any).ai_sales_description || p.description || null,
-      supplier: p.supplier_name || null,
-      unit_price: Number(unitSell.toFixed(2)),
-      // Cost snapshot so staff margin stays correct after a price override.
-      metadata: { unit_cost: Number(unitCost.toFixed(2)), markup_percent: markupPct },
-      sort_order: nextSortOrder(),
-      source: "catalog",
-    });
+    // Shared with Mandy: same line + auto piping kit for AC units.
+    await addCatalogProductToQuote({ addItem, product: p, areaId, sortOrder: nextSortOrder(), bundles });
     setAdding(null);
     setProductTerm("");
     onChanged?.();
