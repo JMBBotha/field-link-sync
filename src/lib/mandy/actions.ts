@@ -22,6 +22,8 @@ export interface MandyResult {
   choices?: MandyChoice[];
   /** Destructive / outbound actions: run only after an on-screen tap. */
   confirm?: { summary: string; run: () => Promise<MandyResult> };
+  /** false = the write/navigation ran but the refreshed screen didn't show it. */
+  verified?: boolean;
 }
 
 export type MandyHandler = (args: Record<string, any>) => Promise<MandyResult>;
