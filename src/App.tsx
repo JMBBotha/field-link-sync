@@ -6,6 +6,8 @@ import { EntityRealtimeSync } from "@/hooks/useEntityRealtimeSync";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { MandyActionsProvider } from "@/lib/mandy/registry";
+import MandyDock from "@/components/mandy/MandyDock";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import RequireRole from "@/components/RequireRole";
@@ -112,6 +114,8 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <MandyActionsProvider>
+              <MandyDock />
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<Index />} />
@@ -242,6 +246,7 @@ const App = () => (
                 {/* Catch-all */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </MandyActionsProvider>
             </BrowserRouter>
           </ErrorBoundary>
         </OfflineProvider>
