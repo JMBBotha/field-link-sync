@@ -35,10 +35,10 @@ export const LIVE_MAP_ROUTE = "/admin/map";
  * plain "open the live map" requests.
  */
 const UTTERANCE_WORDS: [RegExp, LeadStatusFilter][] = [
-  [/(pending|available|unassigned|unclaimed)/, "pending"],
-  [/(claimed|accepted)/, "accepted"],
-  [/in[ _-]?progress|on ?site/, "in_progress"],
-  [/(completed|finished)/, "completed"],
+  [/\b(pending|available|unassigned|unclaimed)\b/, "pending"],
+  [/\b(claimed|accepted)\b/, "accepted"],
+  [/\bin[ _-]?progress\b|\bon ?site\b/, "in_progress"],
+  [/\b(completed|finished)\b/, "completed"],
 ];
 export function statusFromUtterance(text: string): LeadStatusFilter | null {
   const t = (text || "").toLowerCase();
