@@ -109,8 +109,8 @@ export function useWorkflowMandyActions() {
       navigate(fieldOnly ? `/field/schedule?date=${today}` : `/admin/schedule?date=${today}`);
       if (!rows.length) return { ok: true, message: "No jobs scheduled today.", data: { count: 0 } };
       const first = rows.slice(0, 3).map((r) => {
-        const sub = suburb(r.leads?.customer_address);
-        return `${String(r.start_time || "").slice(0, 5)} ${r.leads?.customer_name || "Job"}${sub ? `, ${sub}` : ""}`;
+        const sub = suburb(r.customer_address);
+        return `${String(r.start_time || "").slice(0, 5)} ${r.customer_name || "Job"}${sub ? `, ${sub}` : ""}`;
       });
       const more = rows.length > 3 ? ` The other ${rows.length - 3} are on screen.` : "";
       return { ok: true, message: `${rows.length} job${rows.length === 1 ? "" : "s"} today: ${first.join("; ")}.${more}`, data: { count: rows.length } };
