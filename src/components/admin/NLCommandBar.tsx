@@ -111,7 +111,6 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
   const confirmAction = async () => {
     if (!pending) return;
     const answered = pending;
-    if (answered.id) answeredPendingIds.current.add(answered.id);
     // Close first: the answer is final, the modal must never come back.
     setPending(null);
     setConfirming(true);
@@ -138,7 +137,6 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
 
   const cancelAction = () => {
     const answered = pending;
-    if (answered?.id) answeredPendingIds.current.add(answered.id);
     setPending(null);
     setMessages((prev) => [...prev, { role: "assistant", content: "Cancelled — nothing was changed." }]);
   };
