@@ -1,5 +1,5 @@
-import { useRegisterMandyActions } from "@/lib/mandy/registry";
-import { mapSpokenStatus, MAP_STATUSES } from "@/lib/mandy/mapStatus";
+import { useSearchParams } from "react-router-dom";
+import { mapSpokenStatus } from "@/lib/mandy/mapStatus";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -64,23 +64,20 @@ const AdminMapPage = () => {
     []
   );
 
-  // Mandy: "show only pending jobs" drives the same status filter as the chips.
-  useRegisterMandyActions({
-    filter_map_by_status: async ({ status }) => {
-      const v = mapSpokenStatus(String(status || ""));
-      if (!v) {
-        return {
-          ok: true,
-          message: `“${status}” isn't a map status. Waiting for the user to tap one.`,
-          choices: MAP_STATUSES.map((m) => ({ label: m.label, action: "filter_map_by_status", args: { status: m.value } })),
-        };
-      }
-      if (!mapRef.current) return { ok: false, message: "The map is still loading — try again in a moment." };
-      mapRef.current.setStatusFilters([v]);
-      const label = MAP_STATUSES.find((m) => m.value === v)!.label;
-      return { ok: true, message: `Map now shows only ${label} jobs.` };
-    },
-  });
+  // Mandy: filter_map_by_status (global handler) navigates here with ?status=;
+  // apply it to the same filter state as the status chips.
+  const [searchParams] = useSearchParams();
+  const statusParam = searchParams.get("status");
+  useEffect(() => {
+    const v = statusParam ? mapSpokenStatus(statusParam) : null;
+    if (!v) return;
+    let tries = 0;
+    const apply = () => {
+      if (mapRef.current) mapRef.current.setStatusFilters([v]);
+      else if (tries++ < 40) setTimeout(apply, 100);
+    };
+    apply();
+  }, [statusParam]);
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);

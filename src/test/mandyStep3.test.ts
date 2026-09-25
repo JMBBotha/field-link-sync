@@ -84,3 +84,25 @@ describe("map status words", () => {
     expect(mapSpokenStatus("emergency")).toBeNull();
   });
 });
+
+import { makeMapHandlers, LIVE_MAP_ROUTE } from "@/lib/mandy/mapStatus";
+describe("Mandy live map routing", () => {
+  it("open_live_map goes to /admin/map", async () => {
+    const nav = vi.fn();
+    await makeMapHandlers(nav).open_live_map();
+    expect(LIVE_MAP_ROUTE).toBe("/admin/map");
+    expect(nav).toHaveBeenCalledWith("/admin/map");
+  });
+  it("filter from another page navigates to /admin/map with status applied", async () => {
+    const nav = vi.fn();
+    const r = await makeMapHandlers(nav).filter_map_by_status({ status: "in progress" });
+    expect(nav).toHaveBeenCalledWith("/admin/map?status=in_progress");
+    expect(r.ok).toBe(true);
+  });
+  it("unknown status gives chips and does not navigate", async () => {
+    const nav = vi.fn();
+    const r: any = await makeMapHandlers(nav).filter_map_by_status({ status: "emergency" });
+    expect(nav).not.toHaveBeenCalled();
+    expect(r.choices).toHaveLength(4);
+  });
+});

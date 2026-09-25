@@ -13,6 +13,7 @@ import { fetchQuoteInvoice, ensureDepositInvoiceForQuote } from "@/lib/depositIn
 import { makeDepositHandlers, type DepositQuote } from "@/lib/mandy/depositActions";
 import { resolveSpokenDate, sastToday } from "@/lib/mandy/dates";
 import { getAssistantContext } from "@/stores/assistantContextStore";
+import { makeMapHandlers } from "@/lib/mandy/mapStatus";
 import type { MandyResult } from "@/lib/mandy/actions";
 
 const QUOTE_COLS = "id, quote_number, status, total, customer_name";
@@ -117,9 +118,6 @@ export function useWorkflowMandyActions() {
       return { ok: true, message: `${rows.length} job${rows.length === 1 ? "" : "s"} today: ${first.join("; ")}.${more}`, data: { count: rows.length } };
     },
 
-    open_live_map: async (): Promise<MandyResult> => {
-      navigate("/admin/jobs-map");
-      return { ok: true, message: "Opened the live map." };
-    },
+    ...(makeMapHandlers(navigate) as Record<string, (a: Record<string, unknown>) => Promise<MandyResult>>),
   });
 }
