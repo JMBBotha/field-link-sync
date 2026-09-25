@@ -11,6 +11,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { basketsToQuoteState } from "@/utils/quoteBasketTotals";
 import { computeQuoteTotals, QUOTE_VAT_RATE } from "@/utils/quoteTransformers";
+import { isLabourItem, LABOUR_ITEM_TYPE } from "@/lib/labour";
 import type { Basket } from "@/components/catalog/QuoteBuilderTab";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -29,7 +30,17 @@ export async function persistQuoteFromBaskets(
   validProductIds?: Set<string>,
 ): Promise<PersistQuoteResult> {
   const { areas, items } = basketsToQuoteState(baskets);
-  const totals = computeQuoteTotals(items, areas);
+
+  // Labour rows live outside the baskets (LabourPanel) — carry them across the
+  // replace-all rewrite, re-linked to their area by name. Saved rate is kept.
+  const [oldAreasRes, labourRes] = await Promise.all([
+    supabase.from("quote_areas").select("id, name").eq("quote_id", quoteId),
+    supabase.from("quote_items").select("*").eq("quote_id", quoteId).eq("item_type", LABOUR_ITEM_TYPE),
+  ]);
+  if (labourRes.error) throw labourRes.error;
+  const oldAreaName = new Map((oldAreasRes.data || []).map((a: any) => [a.id, String(a.name || "").trim().toLowerCase()]));
+  const labourRows = ((labourRes.data || []) as any[]).filter((r) => isLabourItem(r));
+  const totals = computeQuoteTotals([...items, ...(labourRows as any)], areas);
 
   // 1. Clear existing rows (items first — they reference areas).
   const delItems = await supabase.from("quote_items").delete().eq("quote_id", quoteId);
@@ -79,6 +90,18 @@ export async function persistQuoteFromBaskets(
   });
   if (itemRows.length) {
     const { error } = await supabase.from("quote_items").insert(itemRows as never);
+    if (error) throw error;
+  }
+
+  // 3b. Re-insert labour rows against the new area ids.
+  if (labourRows.length) {
+    const newIdByName = new Map(areaRows.map((a) => [a.name.trim().toLowerCase(), a.id]));
+    const rows = labourRows.map((r, i) => {
+      const { id: _id, created_at: _c, updated_at: _u, area_id, ...rest } = r;
+      const nm = area_id ? oldAreaName.get(area_id) : undefined;
+      return { ...rest, quote_id: quoteId, area_id: (nm && newIdByName.get(nm)) || null, sort_order: itemRows.length + i };
+    });
+    const { error } = await supabase.from("quote_items").insert(rows as never);
     if (error) throw error;
   }
 
