@@ -367,6 +367,49 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       };
     },
 
+    remove_area: async (args) => {
+      if (ctx.meta?.status && ctx.meta.status !== "draft") return { ok: false, message: `This quote is ${ctx.meta.status}, so it's read-only.` };
+      const a = findArea(args.area);
+      if (!a || !args.area) return { ok: false, message: args.area ? `No area called ${args.area}.` : "Which area?", choices: areaChips("remove_area", {}) };
+      const lines = S().items.filter((i) => i.area_id === a.id);
+      const run = async (): Promise<MandyResult> => {
+        for (const i of lines.filter((x) => x.parent_item_id)) await ctx.deleteItem(i.id);
+        for (const i of lines.filter((x) => !x.parent_item_id)) await ctx.deleteItem(i.id);
+        await ctx.deleteArea(a.id);
+        const fresh = await refresh();
+        return { ok: true, message: `Removed area ${a.name}${lines.length ? ` and its ${lines.length} lines` : ""}.`, verified: !!fresh && !fresh.areas.some((x) => x.id === a.id) };
+      };
+      if (!lines.length || args.__plan) return run();
+      return {
+        ok: true,
+        message: `Awaiting on-screen confirmation to remove ${a.name} and its lines.`,
+        confirm: {
+          summary: `Remove area ${a.name} and ${lines.filter((l) => !l.parent_item_id).length} lines?`,
+          lines: lines.filter((l) => !l.parent_item_id).map((l) => `${l.item_name} · ${fmtRand(Number(l.total_price) || 0)}`),
+          run,
+        } as any,
+      };
+    },
+
+    remove_note: async (args) => {
+      const r = pickNote(args, "remove_note");
+      if ("result" in r) return r.result;
+      const n = r.note;
+      const run = async () => { await writeNote(n, null); await refresh(); return { ok: true, message: `Removed the note “${n.text}”.` } as MandyResult; };
+      if (args.__plan) return run();
+      return { ok: true, message: "Awaiting on-screen confirmation to remove the note.", confirm: { summary: `Remove note: “${n.text}”?`, run } };
+    },
+
+    edit_note: async (args) => {
+      const text = String(args.text || "").trim();
+      if (!text) return { ok: false, message: "What should the note say?" };
+      const r = pickNote(args, "edit_note");
+      if ("result" in r) return r.result;
+      await writeNote(r.note, text);
+      await refresh();
+      return { ok: true, message: `Changed the note to “${text}”.` };
+    },
+
     generate_quote_pdf: async () => {
       const m = await onPdf();
       if (typeof m === "string") return { ok: true, message: m };
