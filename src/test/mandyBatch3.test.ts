@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { captureSnapshot, stateHash, undoDecision, planRestore, MANUAL_EDIT_REFUSAL, type QuoteSnapshot } from "@/lib/mandy/undo";
-import { qtyPatch, type EditItem } from "@/lib/mandy/quoteEdits";
+import { qtyPatch, runPlanSteps, linkKitSteps, type EditItem } from "@/lib/mandy/quoteEdits";
 import { quoteTotals, previewPlan } from "@/lib/mandy/planPreview";
 import { matchCatalog, normaliseSpokenProduct, catalogChipLabel } from "@/lib/mandy/catalogMatch";
 import { guardRoute, postProcessRoute } from "@/lib/mandy/router";
@@ -168,7 +168,7 @@ describe("replay: 'Bedroom 1: add an AR40 with 3 m kit'", () => {
     expect(r.plan).toEqual([
       { action: "add_area", args: { name: "Bedroom 1" } },
       { action: "add_item_to_area", args: { area: "Bedroom 1", query: "AR40" } },
-      { action: "set_kit_length", args: { area: "Bedroom 1", metres: 3 } },
+      { action: "set_kit_length", args: { area: "Bedroom 1", metres: 3, kitOf: 1 } },
     ]);
     const deps = { items: [items[0]], areas, products: catalog, bundles: kits as any, rates, standardRate: 680, vatRate: 0.15 };
     const p1 = await previewPlan(r.plan!, deps);
@@ -181,5 +181,46 @@ describe("replay: 'Bedroom 1: add an AR40 with 3 m kit'", () => {
     expect(p2.lines.find((l) => l.action === "set_kit_length")!.price).toBeCloseTo(auto.price! * 3, 1);
     // On the real 12K kit (cost R182.05/m, 100%): 3 m = R1 092.30.
     expect(kitLengthPatch(items[2] as any, 3).unit_price).toBeCloseTo(1092.3, 2);
+  });
+});
+
+describe("plan kit step targets the kit its own add step created", () => {
+  const S = "Bedroom 1: add an AR40 with 3 m kit";
+  const rates = { unitsMarkupPercent: 25, materialsMarkupPercent: 100 } as any;
+  // A 12K kit at R182.05/m cost (100% materials → R364.10/m).
+  const kit12 = [{ id: "k12", name: "12K INV 1/4&1/2 PIPING KIT", items: [comp("KIT12", 182.05, 182.05, 1)] }];
+  const deps = () => ({ items: items.map((i) => ({ ...i })), areas, products: catalog, bundles: kit12 as any, rates, standardRate: 680, vatRate: 0.15 });
+
+  for (const grok of [{ query: "AR40" }, { query: "AR40", area: "Bedroom 1" }]) {
+    it(`Grok ${JSON.stringify(grok)} → one card; new kit 3 m = R1 092.30; existing 1 m kit untouched`, async () => {
+      setActiveQuoteMarkupRates(rates);
+      const r = postProcessRoute({ action: "add_item_to_area", args: grok, confidence: 0.9 }, S);
+      expect(r.action).toBe("run_plan");
+      expect(r.plan![2]).toEqual({ action: "set_kit_length", args: { area: "Bedroom 1", metres: 3, kitOf: 1 } });
+      const d = deps();
+      const p1 = await previewPlan(r.plan!, d);
+      const steps = r.plan!.map((s, i) => (i === p1.pick!.step ? { ...s, args: { ...s.args, product_id: "P12" } } : s));
+      const p2 = await previewPlan(steps, d);
+      expect(p2.error).toBeUndefined();
+      expect(p2.lines.find((l) => l.action === "add_item_to_area")!.price).toBeCloseTo(9738.26, 2);
+      expect(p2.lines.find((l) => l.action === "set_kit_length")!.price).toBeCloseTo(1092.3, 2);
+      expect(d.items.find((i) => i.id === "kit")).toMatchObject({ length: 1, unit_price: 364.1 });
+      // New unit 9 738.26 + new kit 1 092.30 on top of 12 142.36.
+      expect(p2.afterExcl).toBeCloseTo(12142.36 + 9738.26 + 1092.3, 2);
+    });
+  }
+
+  it("execute passes the add step's kit_id and drops the area search", async () => {
+    const seen: any[] = [];
+    const rep = await runPlanSteps(parseMultiEdit(S)!.map((s, i) => (i === 1 ? { ...s, args: { ...s.args, product_id: "P12" } } : s)), async (s) => {
+      seen.push(s);
+      return s.action === "add_item_to_area" ? { ok: true, message: "added", data: { kit_id: "NEWKIT" } } : { ok: true, message: "ok" };
+    });
+    expect(rep.failedAt).toBeNull();
+    expect(seen[2].args).toEqual({ metres: 3, kit_id: "NEWKIT" });
+  });
+
+  it("no add step → kit step still searches the area", () => {
+    expect(linkKitSteps([{ action: "set_kit_length", args: { area: "Bedroom 1", metres: 3 } }])[0].args.kitOf).toBeUndefined();
   });
 });

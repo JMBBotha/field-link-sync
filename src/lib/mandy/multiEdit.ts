@@ -3,7 +3,7 @@
  * kit and 2 hours labour" → ordered plan steps, without asking the model.
  * Returns null unless the sentence holds 2+ edit clauses.
  */
-import type { PlanStep } from "@/lib/mandy/quoteEdits";
+import { linkKitSteps, type PlanStep } from "@/lib/mandy/quoteEdits";
 
 const tidy = (s: string) => s.trim().replace(/[.!?]+$/, "").replace(/^(the|my)\s+/i, "").trim();
 const STOP_AT = /\s+(?:with|and|plus)\s+|,|\s+(?:to|in|into|on)\s+(?:the\s+)?/i;
@@ -45,5 +45,5 @@ export function parseMultiEdit(text: string): PlanStep[] | null {
   if (product) steps.push({ action: "add_item_to_area", args: { ...(area ? { area } : {}), query: product, ...(qty > 1 ? { quantity: qty } : {}) } });
   if (kitM) steps.push({ action: "set_kit_length", args: { ...(area ? { area } : {}), metres: n(kitM[1]) } });
   if (labM) steps.push({ action: "set_labour_hours", args: { area, hours: n(labM[1]), mode: "add" } });
-  return steps;
+  return linkKitSteps(steps);
 }

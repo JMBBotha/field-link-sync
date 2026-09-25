@@ -8,7 +8,7 @@ import { addCatalogProductToQuote, addKitToQuote, areaUnitBtu, kitLengthPatch, t
 import { matchCatalog, catalogChipLabel } from "@/lib/mandy/catalogMatch";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
 import { runSetLabourHours } from "@/lib/mandy/labourAction";
-import { matchQuoteItem, findUnitKits, qtyPatch, linePriceDecision, duplicateAreaRows, isKit, type EditItem, type EditArea, type PlanStep } from "@/lib/mandy/quoteEdits";
+import { linkKitSteps, matchQuoteItem, findUnitKits, qtyPatch, linePriceDecision, duplicateAreaRows, isKit, type EditItem, type EditArea, type PlanStep } from "@/lib/mandy/quoteEdits";
 import type { CategoryMarkupRates } from "@/lib/pricing";
 
 export interface PreviewDeps {
@@ -35,7 +35,9 @@ export function quoteTotals(items: EditItem[], vatRate: number, discount?: Previ
   return { excl: Number(net.toFixed(2)), incl: Number((net * (1 + vatRate)).toFixed(2)) };
 }
 
-export async function previewPlan(steps: PlanStep[], d: PreviewDeps): Promise<PlanPreview> {
+export async function previewPlan(steps0: PlanStep[], d: PreviewDeps): Promise<PlanPreview> {
+  const steps = linkKitSteps(steps0);
+  const kitByStep: Record<number, string | undefined> = {};
   let items: EditItem[] = d.items.map((i) => ({ ...i, metadata: i.metadata ? { ...i.metadata } : i.metadata }));
   const areas: EditArea[] = d.areas.map((a) => ({ ...a }));
   let seq = 0;
@@ -77,6 +79,7 @@ export async function previewPlan(steps: PlanStep[], d: PreviewDeps): Promise<Pl
             if (!args.area) return fail(step, `Which area for the ${m.pick.kit.name}?`);
             const a = ensureArea(args.area);
             const k = await addKitToQuote({ addItem, bundle: m.pick.kit as any, areaId: a.id, sortOrder: nextSort() });
+            kitByStep[n] = k.kit?.id;
             lines.push({ step, action, label: `${k.kitName} → ${a.name}`, qty: Number(k.kit?.length) || 1, price: Number(k.kit?.unit_price) || 0 });
             break;
           }
@@ -90,11 +93,21 @@ export async function previewPlan(steps: PlanStep[], d: PreviewDeps): Promise<Pl
         if (!args.area) return fail(step, `Which area for ${p.short_name}?`);
         const a = ensureArea(args.area);
         const r = await addCatalogProductToQuote({ addItem, product: p, areaId: a.id, sortOrder: nextSort(), quantity: qty, bundles: d.bundles });
+        kitByStep[n] = r.kit?.id;
         lines.push({ step, action, label: `${p.short_name} (${p.product_code}) → ${a.name}`, qty, price: Number(r.line?.unit_price) || 0 });
         if (r.kit) lines.push({ step, action: "auto_kit", label: `${r.kitName} (auto)`, qty: Number(r.kit.length) || 1, price: Number(r.kit.unit_price) || 0 });
         break;
       }
       case "set_kit_length": {
+        if (typeof args.kitOf === "number") {
+          // The kit auto-added by that step — never an existing kit in the area.
+          const kit = items.find((i) => i.id === kitByStep[args.kitOf as number]);
+          if (!kit) return fail(step, `Step ${Number(args.kitOf) + 1} adds no piping kit to set.`);
+          const p = kitLengthPatch(kit, Number(args.metres));
+          await updateItem(kit.id, p);
+          lines.push({ step, action, label: `${kit.item_name} length`, qty: p.length, price: p.unit_price });
+          break;
+        }
         const a = args.area ? findArea(args.area) : null;
         const kits = items.filter((i) => isKit(i) && !i.parent_item_id && (!a || i.area_id === a.id) && i.metadata?.kit?.pricing_type !== "p/qty");
         if (kits.length !== 1) return fail(step, kits.length ? "More than one kit — say which area." : "No piping kit there.");

@@ -168,23 +168,53 @@ export interface PlanStep { action: string; args: Record<string, unknown> }
 /** Accepts run_plan args ({steps:[…]}) or a raw array; drops malformed steps. */
 export function parsePlan(raw: unknown): PlanStep[] {
   const arr = Array.isArray(raw) ? raw : Array.isArray((raw as any)?.steps) ? (raw as any).steps : [];
-  return arr
+  const steps: PlanStep[] = arr
     .map((s: any) => {
       let args = s?.args ?? {};
       if (typeof args === "string") { try { args = JSON.parse(args); } catch { args = {}; } }
       return { action: String(s?.action || "").trim(), args: args && typeof args === "object" ? args : {} };
     })
     .filter((s: PlanStep) => !!s.action && s.action !== "run_plan");
+  return linkKitSteps(steps);
+}
+
+/**
+ * A set_kit_length that follows an add-unit step targets THAT unit's auto-kit
+ * (args.kitOf = step index), never an existing kit found by searching the area.
+ * Only plans without an earlier add step keep the area search.
+ */
+export function linkKitSteps(steps: PlanStep[]): PlanStep[] {
+  let lastAdd = -1;
+  return steps.map((s, i) => {
+    if (s.action === "add_item_to_area") lastAdd = i;
+    if (s.action === "set_kit_length" && lastAdd >= 0 && s.args.kit_id == null && s.args.kitOf == null) {
+      return { ...s, args: { ...s.args, kitOf: lastAdd } };
+    }
+    return s;
+  });
 }
 
 export interface PlanRunReport { ran: number; total: number; failedAt: number | null; messages: string[] }
 
 /** Run steps in order; stop at the first failure and report which steps ran. */
-export async function runPlanSteps(steps: PlanStep[], exec: (s: PlanStep) => Promise<{ ok: boolean; message: string; choices?: unknown[]; confirm?: unknown }>): Promise<PlanRunReport> {
+export async function runPlanSteps(steps0: PlanStep[], exec: (s: PlanStep) => Promise<{ ok: boolean; message: string; choices?: unknown[]; confirm?: unknown; data?: any }>): Promise<PlanRunReport> {
   const messages: string[] = [];
+  const steps = linkKitSteps(steps0);
+  const results: ({ data?: any } | undefined)[] = [];
   for (let i = 0; i < steps.length; i++) {
-    let r: { ok: boolean; message: string; choices?: unknown[]; confirm?: unknown };
-    try { r = await exec(steps[i]); } catch (e) { r = { ok: false, message: e instanceof Error ? e.message : String(e) }; }
+    let r: { ok: boolean; message: string; choices?: unknown[]; confirm?: unknown; data?: any };
+    let step = steps[i];
+    if (typeof step.args.kitOf === "number") {
+      const { kitOf, area: _a, ...rest } = step.args as any;
+      const kitId = results[kitOf]?.data?.kit_id;
+      step = { ...step, args: { ...rest, kit_id: kitId ?? null } };
+    }
+    try {
+      r = step.args.kit_id === null && step.action === "set_kit_length"
+        ? { ok: false, message: `Step ${Number(steps[i].args.kitOf) + 1} added no kit to set.` }
+        : await exec(step);
+    } catch (e) { r = { ok: false, message: e instanceof Error ? e.message : String(e) }; }
+    results[i] = r;
     // A step that needs a pick or a second confirm can't complete inside a plan.
     const stuck = !r.ok || (r.choices && r.choices.length) || r.confirm;
     messages.push(`${i + 1}. ${r.message}`);

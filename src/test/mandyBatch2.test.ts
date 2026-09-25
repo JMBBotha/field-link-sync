@@ -216,7 +216,7 @@ describe("batch 2 follow-up: multi-edit plan without Grok", () => {
     expect(r.plan).toEqual([
       { action: "add_area", args: { name: "Bedroom 3" } },
       { action: "add_item_to_area", args: { area: "Bedroom 3", query: "12K Samsung" } },
-      { action: "set_kit_length", args: { area: "Bedroom 3", metres: 3 } },
+      { action: "set_kit_length", args: { area: "Bedroom 3", metres: 3, kitOf: 1 } },
       { action: "set_labour_hours", args: { area: "Bedroom 3", hours: 2, mode: "add" } },
     ]);
     expect(gatePlan(r.plan!, r.confidence, { quoteStatus: "draft" }).kind).toBe("confirm");
@@ -240,7 +240,7 @@ describe("batch 2 follow-up: multi-edit plan without Grok", () => {
     expect(parseMultiEdit("add a 12K Samsung to Lounge with 2 m kit")).toEqual([
       { action: "add_area", args: { name: "Lounge" } },
       { action: "add_item_to_area", args: { area: "Lounge", query: "12K Samsung" } },
-      { action: "set_kit_length", args: { area: "Lounge", metres: 2 } },
+      { action: "set_kit_length", args: { area: "Lounge", metres: 2, kitOf: 1 } },
     ]);
     expect(parseMultiEdit("add a 12K Samsung")).toBeNull();
     expect(parseMultiEdit("Add 1 hour labour to General")).toBeNull();
