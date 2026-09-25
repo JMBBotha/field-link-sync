@@ -102,7 +102,6 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
           })),
         };
       }
-      }
       return addProduct(m.ranked[0], area, qty);
     },
 
