@@ -6,6 +6,8 @@
  * QuoteContext (quote_items / quote_areas). Cost, markup and profit live in a
  * separate staff card outside the pdf capture root.
  */
+import LabourPanel from "@/components/quoting/LabourPanel";
+import { isLabourItem } from "@/lib/labour";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -99,7 +101,7 @@ export default function EstimateBuilder({
       id: a.id,
       name: a.name,
       lines: topLevel
-        .filter((i) => i.area_id === a.id)
+        .filter((i) => i.area_id === a.id && !isLabourItem(i))
         .sort((x, y) => (x.sort_order || 0) - (y.sort_order || 0))
         .map(lineFor),
     }));
@@ -260,6 +262,8 @@ export default function EstimateBuilder({
 
         }}
       />
+
+      <LabourPanel />
 
       <StaffMarginCard items={topLevel} selectedId={selectedLineId} />
     </div>
