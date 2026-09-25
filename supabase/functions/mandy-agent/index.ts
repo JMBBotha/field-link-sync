@@ -51,14 +51,20 @@ Disambiguation (strict):
 - If no tool fits, say so in one sentence. Never use a different tool as a substitute.`;
 
 /** Client bundles older than this (YYYYMMDDHHMMSS) are told to update instead of routing. */
-const MIN_CLIENT_BUILD = Deno.env.get("MANDY_MIN_CLIENT_BUILD") || "";
+const MIN_CLIENT_BUILD = Deno.env.get("MANDY_MIN_CLIENT_BUILD") || "20260925200552";
 export function clientBuildTooOld(clientBuild: unknown, min = MIN_CLIENT_BUILD): boolean {
   if (!min) return false;
   const c = typeof clientBuild === "string" ? clientBuild.trim() : "";
-  if (!c || c === "dev") return !c;
+  if (!c) return true; // pre-version-check bundles send nothing
+  if (c === "dev") return false;
   return c < min;
 }
-const STALE_TEXT = "I've been updated — tap Update first.";
+const STALE_TEXT = "This Field Lynk tab is running an old version. Please refresh with Ctrl+Shift+R (or close and reopen the app), then try again. Your sign-in stays.";
+const reqMeta = (req: Request) => ({
+  origin: (req.headers.get("origin") || "").slice(0, 200) || null,
+  referer: (req.headers.get("referer") || "").slice(0, 300) || null,
+  ua: (req.headers.get("user-agent") || "").slice(0, 300) || null,
+});
 
 type Msg = Record<string, unknown>;
 
