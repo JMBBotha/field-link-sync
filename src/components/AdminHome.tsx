@@ -28,6 +28,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { fetchTodaysJobs, fetchOverdue } from "@/lib/todaysJobs";
 import { fetchOverdueMaintenanceCount } from "@/lib/maintenanceMetrics";
 
 
@@ -172,7 +173,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       const [leadsRes, quotesRes, activeJobsRes, overdueRes, revenueRes, agentsRes, recentRes, overdueMaintenanceRes, openLeadsRes, todayJobsRes] = await Promise.all([
         supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", today + "T00:00:00").eq("status", "pending"),
         supabase.from("quotes").select("id", { count: "exact", head: true }).eq("status", "draft").neq("status", "superseded"),
-        supabase.from("leads").select("id", { count: "exact", head: true }).in("status", ["accepted", "en_route", "on_site"]),
+        Promise.all([fetchTodaysJobs(), fetchOverdue()]).catch(() => null),
         supabase.from("invoices").select("id", { count: "exact", head: true }).eq("status", "overdue"),
         supabase.from("invoices").select("grand_total").eq("status", "paid").gte("paid_date", today),
         supabase.from("profiles").select("id, full_name, availability_status").limit(20),
@@ -188,7 +189,10 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       return {
         newLeads: leadsRes.count || 0,
         pendingQuotes: quotesRes.count || 0,
-        activeJobs: activeJobsRes.count || 0,
+        activeJobs: activeJobsRes?.[0].open.length ?? 0,
+        todayDone: activeJobsRes?.[0].completed ?? 0,
+        todayTotal: activeJobsRes?.[0].total ?? 0,
+        overdueJobs: activeJobsRes?.[1].length ?? 0,
         overdueInvoices: overdueRes.count || 0,
         overdueMaintenance: overdueMaintenanceRes,
         revenueToday,
@@ -315,6 +319,20 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                     <span className="text-xs text-muted-foreground">{kpi.label}</span>
                   </div>
                   <p className="text-2xl font-bold">{kpi.value}</p>
+                  {kpi.key === "active_jobs" && stats && (
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      {stats.todayTotal > 0 && <span>{stats.todayDone}/{stats.todayTotal} done</span>}
+                      {stats.overdueJobs > 0 && (
+                        <Link
+                          to="/admin/schedule"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-destructive font-medium hover:underline"
+                        >
+                          Overdue {stats.overdueJobs}
+                        </Link>
+                      )}
+                    </div>
+                  )}
                   {trendData && trendData.length > 0 && (
                     <div className="h-8 mt-1 -mx-1">
                       <ResponsiveContainer width="100%" height="100%">

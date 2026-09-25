@@ -12,6 +12,7 @@ import { useRegisterMandyActions } from "@/lib/mandy/registry";
 import { fetchQuoteInvoice, ensureDepositInvoiceForQuote } from "@/lib/depositInvoice";
 import { makeDepositHandlers, type DepositQuote } from "@/lib/mandy/depositActions";
 import { resolveSpokenDate, sastToday } from "@/lib/mandy/dates";
+import { fetchTodaysJobs, todayInJohannesburg } from "@/lib/todaysJobs";
 import { getAssistantContext } from "@/stores/assistantContextStore";
 import { makeMapHandlers } from "@/lib/mandy/mapStatus";
 import type { MandyResult } from "@/lib/mandy/actions";
@@ -97,22 +98,19 @@ export function useWorkflowMandyActions() {
     },
 
     list_todays_jobs: async (): Promise<MandyResult> => {
-      const today = sastToday().toISOString().slice(0, 10);
-      // Same source as the schedule page (job_schedules + lead + job address), RLS-scoped.
-      let q = supabase
-        .from("job_schedules")
-        .select("id, start_time, lead_id, agent_id, leads(customer_name, customer_address)")
-        .eq("scheduled_date", today)
-        .order("start_time");
-      if (fieldOnly && user?.id) q = q.eq("agent_id", user.id);
-      const { data, error } = await q;
-      if (error) return { ok: false, message: `Could not load today's jobs: ${error.message}` };
-      const rows = (data || []) as any[];
+      const today = todayInJohannesburg();
+      // Shared definition (same source as dispatch), RLS-scoped; open jobs only.
+      let rows: any[];
+      try {
+        rows = (await fetchTodaysJobs({ date: today, agentId: fieldOnly ? user?.id : undefined })).open;
+      } catch (e: any) {
+        return { ok: false, message: `Could not load today's jobs: ${e?.message || e}` };
+      }
       navigate(fieldOnly ? `/field/schedule?date=${today}` : `/admin/schedule?date=${today}`);
       if (!rows.length) return { ok: true, message: "No jobs scheduled today.", data: { count: 0 } };
       const first = rows.slice(0, 3).map((r) => {
-        const sub = suburb(r.leads?.customer_address);
-        return `${String(r.start_time || "").slice(0, 5)} ${r.leads?.customer_name || "Job"}${sub ? `, ${sub}` : ""}`;
+        const sub = suburb(r.customer_address);
+        return `${String(r.start_time || "").slice(0, 5)} ${r.customer_name || "Job"}${sub ? `, ${sub}` : ""}`;
       });
       const more = rows.length > 3 ? ` The other ${rows.length - 3} are on screen.` : "";
       return { ok: true, message: `${rows.length} job${rows.length === 1 ? "" : "s"} today: ${first.join("; ")}.${more}`, data: { count: rows.length } };
