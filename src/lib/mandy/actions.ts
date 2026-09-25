@@ -52,7 +52,7 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     parameters: { type: "object", properties: { item: str("Line as spoken, e.g. the Samsung, the kit in bedroom 1"), qty: num("New quantity / metres / hours") }, required: ["item", "qty"], additionalProperties: false },
   },
   set_line_price: {
-    description: "Override one line's sell price excl. VAT. Never below the category markup floor; below list needs on-screen confirmation.",
+    description: "Override one line's sell price excl. VAT ('set the Samsung price to 8000'). Never below the category markup floor; below list needs on-screen confirmation.",
     parameters: { type: "object", properties: { item: str("Line as spoken"), price: num("New unit sell price excl. VAT") }, required: ["item", "price"], additionalProperties: false },
   },
   move_item: {
@@ -60,15 +60,15 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     parameters: { type: "object", properties: { item: str("Line as spoken"), area: str("Target area name") }, required: ["item", "area"], additionalProperties: false },
   },
   duplicate_area: {
-    description: "Copy an area and all its lines (same stored prices) to a new area.",
+    description: "Copy an area and all its lines (units, kits, labour; same stored prices) to a new area. Use for 'duplicate/copy X as Y'. Never use add_area for this.",
     parameters: { type: "object", properties: { area: str("Area to copy"), new_name: str("Name for the copy (optional)") }, required: ["area"], additionalProperties: false },
   },
   describe_area: {
-    description: "Set a short description on an area.",
+    description: "Set a short description on an area. Use for 'describe X as …'. Never use rename_area for this.",
     parameters: { type: "object", properties: { area: str("Area name"), description: str("Description text") }, required: ["area", "description"], additionalProperties: false },
   },
   add_note: {
-    description: "Add a note to the quote or to one line.",
+    description: "Add a note to the quote or to one line. Use for 'add a note …' / 'note: …'. Never use add_area for notes.",
     parameters: { type: "object", properties: { target: { type: "string", enum: ["quote", "item"], description: "quote or item" }, item: str("Line as spoken, when target is item"), text: str("Note text") }, required: ["target", "text"], additionalProperties: false },
   },
   run_plan: {
@@ -99,15 +99,15 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     parameters: { type: "object", properties: { client_id: str("Client id") }, required: ["client_id"], additionalProperties: false },
   },
   add_area: {
-    description: "Add an area (room) to the open quote.",
+    description: "Add an empty area (room) to the open quote. Not for notes, descriptions or copies.",
     parameters: { type: "object", properties: { name: str("Area name, e.g. Main bedroom") }, required: ["name"], additionalProperties: false },
   },
   rename_area: {
-    description: "Rename an area on the open quote.",
+    description: "Rename an area on the open quote. Not for descriptions.",
     parameters: { type: "object", properties: { area: str("Current area name"), new_name: str("New name") }, required: ["area", "new_name"], additionalProperties: false },
   },
   add_item_to_area: {
-    description: "Add a catalog product to an area of the open quote. AC units automatically get their piping kit.",
+    description: "Add a catalog product to an area of the open quote. AC units automatically get their piping kit. If the user named no area, omit area (the app asks); never guess General.",
     parameters: {
       type: "object",
       properties: { area: str("Area name"), query: str("Product words as spoken, e.g. Samsung 24000 inverter"), quantity: num("Quantity, default 1") },
