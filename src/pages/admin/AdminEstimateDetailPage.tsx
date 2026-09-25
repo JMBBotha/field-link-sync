@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Pencil, FileCheck2, Send, Download, Printer, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -152,6 +152,16 @@ const AdminEstimateDetailPage = () => {
     }
     setBusy(null);
   };
+
+  // Mandy on the full builder hands "make the PDF" off here (?mandy=pdf); run it once.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const mandyPdfRan = useRef(false);
+  useEffect(() => {
+    if (searchParams.get("mandy") !== "pdf" || mandyPdfRan.current || !quote || isLoading) return;
+    mandyPdfRan.current = true;
+    setSearchParams({}, { replace: true });
+    void handlePdf();
+  }, [searchParams, quote, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePdf = async () => {
     setBusy("pdf");
