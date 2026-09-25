@@ -25,7 +25,6 @@ import { QuoteProvider, useQuoteContext } from "@/contexts/QuoteContext";
 import MandyQuoteActions from "@/components/mandy/MandyQuoteActions";
 import LabourPanel from "@/components/quoting/LabourPanel";
 import { isLabourItem } from "@/lib/labour";
-import { computeQuoteTotals } from "@/utils/quoteTransformers";
 import { basketsToQuoteState } from "@/utils/quoteBasketTotals";
 import { useUnifiedClients } from "@/hooks/useUnifiedClients";
 import { useQuery } from "@tanstack/react-query";
