@@ -116,7 +116,7 @@ export async function addCatalogProductToQuote(opts: {
         total_cost: kCost,
         markup_percent: kCost > 0 ? Number((((sell - kCost) / kCost) * 100).toFixed(2)) : 0,
         price_locked: true,
-        kit: { bundle_id: bundle.id, name: bundle.name, pricing_type: f.bundlePricingType, unit_cost: f.bundleUnitCost ?? 0, items: f.kitContents ?? [] },
+        kit: { bundle_id: bundle.id, name: bundle.name, pricing_type: f.bundlePricingType, unit_cost: f.bundleUnitCost ?? 0, unit_sell: Number((f.bundleUnitPrice ?? 0).toFixed(2)), items: f.kitContents ?? [] },
       },
       sort_order: opts.sortOrder + 1,
       source: opts.source || "catalog",
@@ -125,19 +125,39 @@ export async function addCatalogProductToQuote(opts: {
   return { line, kit, kitName, unitSell, kitSellPerMetre };
 }
 
+/**
+ * Per-metre SELL rate of a saved kit row. Never derived from unit_price ÷ length
+ * alone: a row whose length was written without repricing (e.g. length 5 with a
+ * 1 m price) would then yield a fraction of the real rate. Order:
+ * stored kit.unit_sell → kit.unit_cost × (1 + saved markup) → unit_price ÷ length.
+ */
+export function kitSellPerMetre(item: { unit_price?: number | null; length?: number | null; metadata?: any }): number {
+  const k = item.metadata?.kit || {};
+  const stored = Number(k.unit_sell);
+  if (Number.isFinite(stored) && stored > 0) return stored;
+  const saved = (Number(item.unit_price) || 0) / (Number(item.length) || 1);
+  const costM = Number(k.unit_cost);
+  const mk = Number(item.metadata?.markup_percent);
+  if (!(Number.isFinite(costM) && costM > 0 && Number.isFinite(mk))) return saved;
+  const fromCost = costM * (1 + mk / 100);
+  // Saved rate wins (price lock) unless it has drifted away from cost × markup.
+  return Math.abs(saved - fromCost) <= Math.max(0.05, fromCost * 0.01) ? saved : Number(fromCost.toFixed(2));
+}
+
 /** Patch for a saved kit row when its length changes (same maths as withKitLength). */
 export function kitLengthPatch(item: { unit_price?: number | null; length?: number | null; metadata?: any }, metres: number) {
   const v = Math.max(0.5, metres);
   const oldLen = Number(item.length) || 1;
-  const perM = (Number(item.unit_price) || 0) / oldLen;
+  const perM = kitSellPerMetre(item);
   const kitCostPerM = Number(item.metadata?.kit?.unit_cost) || (Number(item.metadata?.unit_cost) || 0) / oldLen;
   const sell = Number((perM * v).toFixed(2));
   const cost = Number((kitCostPerM * v).toFixed(2));
+  const md = item.metadata || {};
   return {
     length: v,
     unit_price: sell,
     total_price: sell,
-    metadata: { ...(item.metadata || {}), unit_cost: cost, cost_excl: cost, total_cost: cost },
+    metadata: { ...md, unit_cost: cost, cost_excl: cost, total_cost: cost, ...(md.kit ? { kit: { ...md.kit, unit_sell: Number(perM.toFixed(2)) } } : {}) },
   };
 }
 

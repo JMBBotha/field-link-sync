@@ -51,14 +51,20 @@ Disambiguation (strict):
 - If no tool fits, say so in one sentence. Never use a different tool as a substitute.`;
 
 /** Client bundles older than this (YYYYMMDDHHMMSS) are told to update instead of routing. */
-const MIN_CLIENT_BUILD = Deno.env.get("MANDY_MIN_CLIENT_BUILD") || "";
+const MIN_CLIENT_BUILD = Deno.env.get("MANDY_MIN_CLIENT_BUILD") || "20260925200552";
 export function clientBuildTooOld(clientBuild: unknown, min = MIN_CLIENT_BUILD): boolean {
   if (!min) return false;
   const c = typeof clientBuild === "string" ? clientBuild.trim() : "";
-  if (!c || c === "dev") return !c;
+  if (!c) return true; // pre-version-check bundles send nothing
+  if (c === "dev") return false;
   return c < min;
 }
-const STALE_TEXT = "I've been updated — tap Update first.";
+const STALE_TEXT = "This Field Lynk tab is running an old version. Please refresh with Ctrl+Shift+R (or close and reopen the app), then try again. Your sign-in stays.";
+const reqMeta = (req: Request) => ({
+  origin: (req.headers.get("origin") || "").slice(0, 200) || null,
+  referer: (req.headers.get("referer") || "").slice(0, 300) || null,
+  ua: (req.headers.get("user-agent") || "").slice(0, 300) || null,
+});
 
 type Msg = Record<string, unknown>;
 
@@ -167,7 +173,7 @@ Deno.serve(async (req) => {
       user_id: auth.userId,
       company_id: prof?.company_id ?? null,
       tool_name: `mandy_grok:${tool}`,
-      args: { channel: "mandy_grok", client_build: typeof body.client_build === "string" ? body.client_build.slice(0, 40) : null, ...(typeof body.args === "object" && body.args ? body.args as object : {}) },
+      args: { channel: "mandy_grok", ...reqMeta(req), client_build: typeof body.client_build === "string" ? body.client_build.slice(0, 40) : null, ...(typeof body.args === "object" && body.args ? body.args as object : {}) },
       result: typeof body.result === "object" ? body.result : { text: String(body.result ?? "").slice(0, 500) },
       status: body.ok ? "success" : "error",
       resource_type: "voice_action",
@@ -197,7 +203,18 @@ Deno.serve(async (req) => {
   }
 
   if (action === "route" || action === "chat") {
-    if (clientBuildTooOld(body.client_build)) return json({ stale_client: true, text: STALE_TEXT, action: null, args: {}, confidence: 1 });
+    if (clientBuildTooOld(body.client_build)) {
+      try {
+        const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+        const { data: prof } = await db.from("profiles").select("company_id").eq("id", auth.userId).maybeSingle();
+        await db.from("nl_audit_log").insert({
+          user_id: auth.userId, company_id: prof?.company_id ?? null, tool_name: "mandy_grok:stale_client",
+          args: { channel: "mandy_grok", ...reqMeta(req), client_build: typeof body.client_build === "string" ? body.client_build.slice(0, 40) : null, min_build: MIN_CLIENT_BUILD },
+          result: { text: STALE_TEXT }, status: "error", resource_type: "voice_action",
+        });
+      } catch { /* logging must not block the reply */ }
+      return json({ stale_client: true, text: STALE_TEXT, action: null, args: {}, confidence: 1, tool_call: null });
+    }
     const messages = Array.isArray(body.messages) ? (body.messages as Msg[]).slice(-40) : [];
     const tools = Array.isArray(body.tools) ? (body.tools as unknown[]).slice(0, 40) : [];
     if (!messages.length) return json({ error: "No messages." }, 400);
