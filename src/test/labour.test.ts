@@ -61,7 +61,7 @@ describe("set_labour_hours", () => {
   it("updates an existing row keeping its saved rate", async () => {
     const items = [{ id: "L", area_id: "B", item_type: "labour", metadata: { labour: true, hours: 1, rate: 400 } }];
     const updateItem = vi.fn();
-    await runSetLabourHours({ areas, items, standardRate: 600, addItem: vi.fn(), updateItem }, { area: "Lounge", hours: 2 });
+    await runSetLabourHours({ areas, items, standardRate: 600, addItem: vi.fn(), updateItem }, { area: "Lounge", hours: 2, mode: "set" });
     expect(updateItem).toHaveBeenCalledWith("L", expect.objectContaining({ quantity: 2, unit_price: 400, total_price: 800 }));
   });
   it("unknown area returns area chips", async () => {
