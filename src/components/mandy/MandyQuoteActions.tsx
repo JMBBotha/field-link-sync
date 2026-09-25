@@ -54,6 +54,13 @@ export function areaChipsForAdd(areas: { name: string }[], args: Record<string, 
   ];
 }
 
+export interface NoteRef { key: string; target: "quote" | "area"; text: string; index?: number; areaId?: string; area?: string }
+/** Pure: narrow notes by target and spoken words (area name or note text). */
+export function filterNotes(notes: NoteRef[], target?: unknown, match?: unknown): NoteRef[] {
+  const m = lc(String(match || ""));
+  return notes.filter((n) => (!target || n.target === target) && (!m || lc(n.text).includes(m) || lc(n.area).includes(m)));
+}
+
 export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) {
   const ctx = useQuoteContext();
   const { products } = useQuoteBuilderProducts();
@@ -151,6 +158,28 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     for (const id of ids) await ctx.deleteItem(id);
     const fresh = await refresh();
     return { ok: true, message: `Removed ${label}.`, verified: !!fresh && !fresh.items.some((i) => ids.includes(i.id)) };
+  };
+
+  const allNotes = (): NoteRef[] => [
+    ...String(ctx.meta?.notes || "").split("\n").map((t, i) => ({ key: `quote:${i}`, target: "quote" as const, index: i, text: t.trim() })).filter((n) => n.text),
+    ...S().areas.filter((a) => String(a.description || "").trim()).map((a) => ({ key: `area:${a.id}`, target: "area" as const, areaId: a.id, area: a.name, text: String(a.description).trim() })),
+  ];
+  const pickNote = (args: Record<string, any>, action: string): { note: NoteRef } | { result: MandyResult } => {
+    const notes = allNotes();
+    if (args.note_key) {
+      const n = notes.find((x) => x.key === args.note_key);
+      return n ? { note: n } : { result: { ok: false, message: "That note is no longer there." } };
+    }
+    const hits = filterNotes(notes, args.target, args.match);
+    if (!hits.length) return { result: { ok: false, message: notes.length ? `No note matching “${args.match ?? ""}”.` : "There are no notes on this quote." } };
+    if (hits.length === 1) return { note: hits[0] };
+    return { result: { ok: true, message: "Several notes. Waiting for the user to tap one.", choices: hits.slice(0, 8).map((n) => ({ label: `${n.area ? `${n.area}: ` : "Quote: "}${n.text.slice(0, 40)}`, action, args: { ...args, note_key: n.key } })) } };
+  };
+  const writeNote = async (n: NoteRef, text: string | null) => {
+    if (n.target === "area") { await ctx.updateArea(n.areaId!, { description: text } as any); return; }
+    const parts = String(ctx.meta?.notes || "").split("\n");
+    if (text == null) parts.splice(n.index!, 1); else parts[n.index!] = text;
+    await ctx.updateQuote({ notes: parts.filter((p) => p.trim()).join("\n") || null } as any);
   };
 
   useRegisterMandyActions({
