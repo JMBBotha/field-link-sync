@@ -1202,7 +1202,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               />
             </div>
             <div className="w-full lg:w-[320px] shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto p-3 bg-card max-h-[38vh] lg:max-h-none">
+              <>
+              <div className="mb-3"><LabourPanel /></div>
               <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
+            </>
 
             </div>
           </div>
@@ -1225,7 +1228,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
             </div>
             <div className="w-full lg:w-[320px] shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto bg-card p-3 max-h-[38vh] lg:max-h-none">
+              <>
+              <div className="mb-3"><LabourPanel /></div>
               <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
+            </>
             </div>
           </div>
         }
@@ -1276,7 +1282,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             />
           );
           const summaryEl = (
-            <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
+            <>
+              <div className="mb-3"><LabourPanel /></div>
+              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
+            </>
           );
 
           if (isCompact) {
