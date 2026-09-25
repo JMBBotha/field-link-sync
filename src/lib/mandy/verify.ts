@@ -37,3 +37,12 @@ export function routeReached(target: string, pathname: string, search = ""): boo
   const have = new URLSearchParams(search);
   return [...want.entries()].every(([k, v]) => have.get(k) === v);
 }
+
+/**
+ * Rule G: the final reply is built from what the executed tools reported,
+ * never the LLM's paraphrase. The LLM text is used only when no tool ran.
+ */
+export function finalReplyFrom(results: MandyResult[], llmText: string): string {
+  if (!results.length) return llmText;
+  return results.map((r) => honestMessage(r)).join(" ").trim();
+}
