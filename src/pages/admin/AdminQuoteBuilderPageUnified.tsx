@@ -23,6 +23,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { supabase } from "@/integrations/supabase/client";
 import { QuoteProvider, useQuoteContext } from "@/contexts/QuoteContext";
 import MandyQuoteActions from "@/components/mandy/MandyQuoteActions";
+import LabourPanel from "@/components/quoting/LabourPanel";
+import { isLabourItem } from "@/lib/labour";
+import { basketsToQuoteState } from "@/utils/quoteBasketTotals";
 import { useUnifiedClients } from "@/hooks/useUnifiedClients";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
@@ -286,9 +289,15 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   // Rates snapshot in deps: live-priced lines refresh when Units %/Materials % change.
   const rateSnap = useSyncExternalStore(subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot);
   const displayQuoteTotals = useMemo(
-    () => computeBasketsQuoteTotals(displayBaskets, { type: meta?.discount_type, value: meta?.discount_value }),
+    // Labour rows live outside the baskets (LabourPanel) — add them so totals include labour.
+    () => computeQuoteTotals(
+      [...basketsToQuoteState(displayBaskets).items, ...ctxItems.filter((i) => isLabourItem(i))],
+      basketsToQuoteState(displayBaskets).areas,
+      undefined,
+      { type: meta?.discount_type, value: meta?.discount_value },
+    ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [displayBaskets, meta?.discount_type, meta?.discount_value, rateSnap],
+    [displayBaskets, ctxItems, meta?.discount_type, meta?.discount_value, rateSnap],
   );
 
   // Publish live in-progress totals so the header/summary reflect unsaved
@@ -385,6 +394,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     const realItems = ctxItems.filter(
       (i) =>
         i.source !== "legacy_placeholder" &&
+        !isLabourItem(i) &&
         ((i.quantity ?? 0) > 0 || (i.unit_price ?? 0) > 0 || (i.total_price ?? 0) > 0)
     );
     if (realItems.length === 0 && ctxAreas.length === 0) {
@@ -445,6 +455,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     const realItems = ctxItems.filter(
       (i) =>
         i.source !== "legacy_placeholder" &&
+        !isLabourItem(i) &&
         !i.parent_item_id &&
         ((i.quantity ?? 0) > 0 || (i.unit_price ?? 0) > 0 || (i.total_price ?? 0) > 0)
     );
@@ -1191,7 +1202,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               />
             </div>
             <div className="w-full lg:w-[320px] shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto p-3 bg-card max-h-[38vh] lg:max-h-none">
+              <>
+              <div className="mb-3"><LabourPanel /></div>
               <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
+            </>
 
             </div>
           </div>
@@ -1214,7 +1228,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
             </div>
             <div className="w-full lg:w-[320px] shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto bg-card p-3 max-h-[38vh] lg:max-h-none">
+              <>
+              <div className="mb-3"><LabourPanel /></div>
               <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
+            </>
             </div>
           </div>
         }
@@ -1265,7 +1282,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             />
           );
           const summaryEl = (
-            <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
+            <>
+              <div className="mb-3"><LabourPanel /></div>
+              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
+            </>
           );
 
           if (isCompact) {

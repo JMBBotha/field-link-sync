@@ -65,7 +65,8 @@ const lineTotal = (l: RollupLine) => {
   return num(l.quantity) * num(l.unit_price);
 };
 
-const isService = (l: RollupLine) => String(l.item_type || "").toLowerCase() === "service";
+// Labour (hourly) is never the unit and is never shown as its own client line — it rolls into areaTotal.
+const isService = (l: RollupLine) => ["service", "labour"].includes(String(l.item_type || "").toLowerCase());
 const isConsumable = (l: RollupLine) => CONSUMABLE_CATEGORY.test(String(l.category || ""));
 
 /** Does this line look like the AC unit itself? */

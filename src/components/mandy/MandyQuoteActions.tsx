@@ -10,6 +10,9 @@ import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 import { useRegisterMandyActions } from "@/lib/mandy/registry";
 import { fmtRand, type MandyResult } from "@/lib/mandy/actions";
 import { addCatalogProductToQuote, kitLengthPatch, matchSpokenProduct } from "@/lib/mandy/quoteOps";
+import { runSetLabourHours } from "@/lib/mandy/labourAction";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { standardLabourRate } from "@/lib/labour";
 import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 
 interface Props {
@@ -25,6 +28,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
   const ctx = useQuoteContext();
   const { products } = useQuoteBuilderProducts();
   const { bundles } = useQuoteBuilderBundles();
+  const { settings } = useCompanySettings();
 
   const nextSort = () => (ctx.items.length ? Math.max(...ctx.items.map((i) => i.sort_order || 0)) + 1 : 0);
 
@@ -64,6 +68,14 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
   };
 
   useRegisterMandyActions({
+    set_labour_hours: async (args) => {
+      const r = await runSetLabourHours({
+        areas: ctx.areas, items: ctx.items, standardRate: standardLabourRate(settings?.default_hourly_rate),
+        addItem: ctx.addItem, updateItem: ctx.updateItem,
+      }, args);
+      if (r.ok && !r.choices) onChanged?.();
+      return r;
+    },
     add_area: async ({ name }) => {
       const n = String(name || "").trim();
       if (!n) return { ok: false, message: "No area name given." };
