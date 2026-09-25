@@ -8,13 +8,15 @@ export const PRICED_MIN = 0.7;
 
 /** Draft-quote edits that don't change prices directly. */
 export const LOW_RISK_EDITS = new Set([
-  "set_labour_hours", "add_area", "rename_area", "describe_area", "add_note", "set_qty", "move_item", "duplicate_area",
+  "set_labour_hours", "add_area", "rename_area", "describe_area", "add_note", "edit_note", "set_qty", "move_item", "duplicate_area",
+  // remove_area: the handler itself returns a Confirm card when the area has lines.
+  "remove_area",
 ]);
 /** Priced adds / changes. */
 export const PRICED_ACTIONS = new Set(["add_item_to_area", "add_unit", "add_kit", "set_kit_length", "set_line_price"]);
 /** Always a Confirm card, whatever the confidence. */
 export const ALWAYS_CONFIRM = new Set([
-  "remove_item", "create_deposit_invoice", "send_quote", "send_invoice", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote",
+  "remove_item", "remove_note", "create_deposit_invoice", "send_quote", "send_invoice", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote",
 ]);
 /** Reads and navigation — allowed on any quote. */
 export const READ_ONLY = new Set([
@@ -23,7 +25,7 @@ export const READ_ONLY = new Set([
   "read_quote_total", "generate_quote_pdf",
 ]);
 /** Actions that change the open quote. */
-const QUOTE_WRITES = new Set([...LOW_RISK_EDITS, ...PRICED_ACTIONS, "remove_item", "send_quote", "email_quote", "whatsapp_quote", "accept_quote", "delete_quote"]);
+const QUOTE_WRITES = new Set([...LOW_RISK_EDITS, ...PRICED_ACTIONS, "remove_item", "remove_note", "send_quote", "email_quote", "whatsapp_quote", "accept_quote", "delete_quote"]);
 
 export interface GateCtx {
   /** Status of the open quote, if any (null = no quote open). */
