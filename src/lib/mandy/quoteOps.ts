@@ -144,7 +144,7 @@ export function kitLengthPatch(item: { unit_price?: number | null; length?: numb
 /** Normalise spoken product words for the catalog ranker: "24000" → "24k", "inverter" → "inv". */
 export function normaliseSpokenProduct(q: string): string {
   return q
-    .replace(/\b(\d{1,2})[ ,]?000\s*(btu)?\b/gi, "$1k")
+    .replace(/\b(\d{1,2})[ ,]?000(\s*btu)?\b/gi, "$1k")
     .replace(/\b(\d{1,2})\s*k\s*btu\b/gi, "$1k")
     .replace(/\binverter\b/gi, "inv")
     .replace(/\b(a|an|the|unit|aircon|air ?conditioner)\b/gi, " ")
