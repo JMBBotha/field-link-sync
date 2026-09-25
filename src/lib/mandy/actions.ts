@@ -83,6 +83,10 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     description: "Replace the text of a quote note or an area note ('change the note to …'). Several notes → chips.",
     parameters: { type: "object", properties: { target: { type: "string", enum: ["quote", "area"], description: "quote or area (optional)" }, match: str("Words from the old note, or the area name (optional)"), text: str("New note text") }, required: ["text"], additionalProperties: false },
   },
+  undo_last_change: {
+    description: "Undo Mandy's last change to this draft quote ('undo', 'undo that', 'take that back', 'revert the last change'). Refused if the quote was edited by hand since.",
+    parameters: { type: "object", properties: {}, additionalProperties: false },
+  },
   run_plan: {
     description: "USE THIS for ANY sentence with 2 or more edits (e.g. area + unit + kit length + labour). Several quote edits from ONE request, in order, shown on ONE confirm card. Each step is {action, args} using the other quote actions (add_area, add_item_to_area, set_kit_length, set_labour_hours, set_qty, set_line_price, move_item, remove_item, duplicate_area, rename_area, describe_area, add_note).",
     parameters: {

@@ -46,6 +46,7 @@ Disambiguation (strict):
 - "set/change the <item> price to N" => set_line_price.
 - "add N hours" => set_labour_hours mode="add"; "make it / set N hours" => mode="set".
 - A sentence with 2+ edits => run_plan (one card), ALWAYS. Never return a single add_item_to_area for a sentence that also names a kit length, labour hours or an area to create.
+- 'undo' / 'undo that' / 'take that back' / 'revert the last change' => undo_last_change (no args).
 - Notes: 'remove the note' => remove_note; 'change the note to …' => edit_note. Never remove_item for notes. 'remove <area> area' => remove_area.
 - Adding an AC unit with no area named => call add_item_to_area WITHOUT area; the app asks with area chips. Never default to General.
 - "it / that / the same" refers to the last line touched; "move it back" => move_item {item:"it", area:"back"}.

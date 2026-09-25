@@ -11,6 +11,8 @@ export const LOW_RISK_EDITS = new Set([
   "set_labour_hours", "add_area", "rename_area", "describe_area", "add_note", "edit_note", "set_qty", "move_item", "duplicate_area",
   // remove_area: the handler itself returns a Confirm card when the area has lines.
   "remove_area",
+  // Undo restores the last Mandy snapshot; drafts only (handler + QUOTE_WRITES block).
+  "undo_last_change",
 ]);
 /** Priced adds / changes. */
 export const PRICED_ACTIONS = new Set(["add_item_to_area", "add_unit", "add_kit", "set_kit_length", "set_line_price"]);
