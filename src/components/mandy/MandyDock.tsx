@@ -24,7 +24,9 @@ import { routeVoiceCommand, gateRoute } from "@/lib/mandy/router";
 import { gateDecision, gatePlan, getMandyQuoteStatus } from "@/lib/mandy/gate";
 import { runPlanSteps, planReportText, type PlanStep } from "@/lib/mandy/quoteEdits";
 import type { PlanPreview } from "@/lib/mandy/planPreview";
-import { honestMessage, routeReached } from "@/lib/mandy/verify";
+import { honestMessage, routeReached, finalReplyFrom } from "@/lib/mandy/verify";
+import { BUILD_ID, staleWriteRefusal, useBuildStatus, checkForNewBuild } from "@/lib/buildInfo";
+import { touchedPatch } from "@/lib/mandy/pronouns";
 import { useMandyGo } from "@/lib/mandy/go";
 import { formatForSpeech, formatReplyText } from "@/lib/mandy/speech";
 import { useWorkflowMandyActions } from "@/components/mandy/MandyWorkflowActions";
@@ -141,7 +143,7 @@ function useSpeaker(muted: boolean) {
     if (lastRef.current && lastRef.current.text === t && now - lastRef.current.at < 4000) return; // dedupe
     lastRef.current = { text: t, at: now };
     setTtsCalls((n) => n + 1);
-    const { data, error } = await supabase.functions.invoke("mandy-agent", { body: { action: "tts", text: t } });
+    const { data, error } = await supabase.functions.invoke("mandy-agent", { body: { action: "tts", text: t, client_build: BUILD_ID } });
     const d = data as { audio_base64?: string; mime?: string; spoken?: string } | null;
     if (!error && d?.audio_base64) {
       if (!audioRef.current) audioRef.current = new Audio();
@@ -180,7 +182,7 @@ export default function MandyDock() {
   const recRef = useRef<WavRecorder | null>(null);
 
   const audit = (tool: string, args: unknown, r: MandyResult) => {
-    void supabase.functions.invoke("mandy-agent", { body: { action: "audit", tool, args, result: { message: r.message, data: r.data ?? null }, ok: r.ok } });
+    void supabase.functions.invoke("mandy-agent", { body: { action: "audit", client_build: BUILD_ID, tool, args, result: { message: r.message, data: r.data ?? null }, ok: r.ok } });
   };
 
   const execute = useCallback(async (name: string, args: Record<string, any>): Promise<MandyResult> => {
@@ -198,6 +200,7 @@ export default function MandyDock() {
         r.verified = routeReached(route, window.location.pathname, window.location.search);
       }
       audit(name, args, r);
+      if (r.ok && !r.choices && !r.confirm) setAssistantContext(touchedPatch(r.data));
       if (/^(open_quote|open_last_quote|open_latest_quote|open_top_quote|create_quote_for_client)$/.test(name) && r.ok && !r.choices) {
         // Wait for the opened page to register its quote actions.
         for (let i = 0; i < 40 && !registry?.get(QUOTE_TOOLS_PROBE); i++) await sleep(100);
@@ -249,6 +252,7 @@ export default function MandyDock() {
     const msgs: Msg[] = [...historyRef.current.slice(-8)];
     let final = "";
     let lastUnverified = false;
+    const results: MandyResult[] = [];
     try {
       for (let step = 0; step <= MAX_STEPS; step++) {
         const r0 = await routeVoiceCommand({
@@ -259,8 +263,11 @@ export default function MandyDock() {
           forceText: step === MAX_STEPS,
         });
         if (step === 0) msgs.push({ role: "user", content: t });
+        if (r0.stale) { useBuildStatus.getState().setLatest("server-newer"); final = r0.text || ""; break; }
         if (r0.error) { final = `Sorry, I couldn't reach my brain: ${r0.error}`; break; }
         if (r0.args && "__plan" in r0.args) delete (r0.args as any).__plan; // only the plan Confirm may set it
+        const staleMsg = staleWriteRefusal(r0.plan ? "run_plan" : r0.action, useBuildStatus.getState().stale || (r0.action && !import.meta.env.DEV ? await checkForNewBuild() : false));
+        if (staleMsg) { final = staleMsg; break; }
         if (r0.plan) {
           const out = await preparePlan(r0.plan, r0.confidence);
           final = out;
@@ -286,6 +293,7 @@ export default function MandyDock() {
           }
           if (r.choices?.length) setChoices(r.choices);
           if (r.confirm) setConfirm(r.confirm);
+          results.push(r);
           lastUnverified = r.verified === false;
           msgs.push(r0.assistantMessage!, {
             role: "tool",
@@ -301,12 +309,13 @@ export default function MandyDock() {
           });
           continue;
         }
-        final = r0.text || "";
+        final = finalReplyFrom(results, r0.text || "");
         break;
       }
     } finally {
       busyRef.current = false;
     }
+    if (!final && results.length) final = finalReplyFrom(results, "");
     if (!final) final = "I couldn't finish that — nothing more was done.";
     if (lastUnverified && !/confirm it on screen/i.test(final)) final = honestMessage({ ok: true, message: final, verified: false });
     final = formatReplyText(final);

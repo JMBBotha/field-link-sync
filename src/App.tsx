@@ -12,6 +12,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import RequireRole from "@/components/RequireRole";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import VersionBanner from "@/components/VersionBanner";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
@@ -111,6 +112,7 @@ const App = () => (
           <ErrorBoundary>
             <EntityRealtimeSync />
             <OfflineBanner />
+            <VersionBanner />
             <Toaster />
             <Sonner />
             <BrowserRouter>

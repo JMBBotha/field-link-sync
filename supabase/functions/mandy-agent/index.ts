@@ -37,7 +37,28 @@ Rules:
 - Reply in ONE short sentence (two at most): the read-back of what was actually done, or one clarifying question.
 - No filler, no "one moment", no "let me", no "just a sec", no narration of steps.
 - Write money as R17 825.22 and say whether it is excl. or incl. VAT when the tool said so. VAT is 15%.
-- Use metric units. Keep product names short (brand + size + type).`;
+- Use metric units. Keep product names short (brand + size + type).
+
+Disambiguation (strict):
+- "describe X as …" => describe_area. NEVER rename_area.
+- "add a note …" / "note: …" => add_note (target "quote" unless a line is named). NEVER add_area.
+- "duplicate X as Y" / "copy X to Y" => duplicate_area (copies all lines). NEVER add_area.
+- "set/change the <item> price to N" => set_line_price.
+- "add N hours" => set_labour_hours mode="add"; "make it / set N hours" => mode="set".
+- A sentence with 2+ edits => run_plan (one card).
+- Adding an AC unit with no area named => call add_item_to_area WITHOUT area; the app asks with area chips. Never default to General.
+- "it / that / the same" refers to the last line touched; "move it back" => move_item {item:"it", area:"back"}.
+- If no tool fits, say so in one sentence. Never use a different tool as a substitute.`;
+
+/** Client bundles older than this (YYYYMMDDHHMMSS) are told to update instead of routing. */
+const MIN_CLIENT_BUILD = Deno.env.get("MANDY_MIN_CLIENT_BUILD") || "";
+export function clientBuildTooOld(clientBuild: unknown, min = MIN_CLIENT_BUILD): boolean {
+  if (!min) return false;
+  const c = typeof clientBuild === "string" ? clientBuild.trim() : "";
+  if (!c || c === "dev") return !c;
+  return c < min;
+}
+const STALE_TEXT = "I've been updated — tap Update first.";
 
 type Msg = Record<string, unknown>;
 
@@ -146,7 +167,7 @@ Deno.serve(async (req) => {
       user_id: auth.userId,
       company_id: prof?.company_id ?? null,
       tool_name: `mandy_grok:${tool}`,
-      args: { channel: "mandy_grok", ...(typeof body.args === "object" && body.args ? body.args as object : {}) },
+      args: { channel: "mandy_grok", client_build: typeof body.client_build === "string" ? body.client_build.slice(0, 40) : null, ...(typeof body.args === "object" && body.args ? body.args as object : {}) },
       result: typeof body.result === "object" ? body.result : { text: String(body.result ?? "").slice(0, 500) },
       status: body.ok ? "success" : "error",
       resource_type: "voice_action",
@@ -176,6 +197,7 @@ Deno.serve(async (req) => {
   }
 
   if (action === "route" || action === "chat") {
+    if (clientBuildTooOld(body.client_build)) return json({ stale_client: true, text: STALE_TEXT, action: null, args: {}, confidence: 1 });
     const messages = Array.isArray(body.messages) ? (body.messages as Msg[]).slice(-40) : [];
     const tools = Array.isArray(body.tools) ? (body.tools as unknown[]).slice(0, 40) : [];
     if (!messages.length) return json({ error: "No messages." }, 400);
