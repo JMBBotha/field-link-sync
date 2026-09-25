@@ -25,6 +25,7 @@ import { useWorkflowMandyActions } from "@/components/mandy/MandyWorkflowActions
 import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
 import { createDraftQuoteForCustomer } from "@/lib/createDraftQuote";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
+import { ADD_NEW_CLIENT_CHOICE, buildFindClientResult } from "@/lib/mandy/clientChoices";
 
 const MAX_STEPS = 4;
 type Phase = "idle" | "listening" | "hearing" | "working";
@@ -75,20 +76,27 @@ function useGlobalMandyActions() {
     },
     find_client: async ({ query }) => {
       const q = String(query || "").trim();
-      if (!q) return { ok: false, message: "No name given." };
+      if (!q) return { ok: false, message: "No name given.", choices: [ADD_NEW_CLIENT_CHOICE] };
       const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 10 });
-      const hits = rankClientHits(q, (error ? [] : data || []) as CustomerSearchResult[]);
-      if (!hits.length) return { ok: false, message: `No client matching “${q}”.` };
-      if (hits.length === 1 && isHighConfidence(q, hits[0])) {
-        const c = hits[0];
-        setAssistantContext({ selected_customer_id: c.id, selected_customer_name: clientDisplayName(c) });
-        return { ok: true, message: `Found ${clientDisplayName(c)}.`, data: { client_id: c.id, name: clientDisplayName(c) } };
+      const ranked = rankClientHits(q, (error ? [] : data || []) as CustomerSearchResult[]);
+      const exact = ranked.length === 1 && isHighConfidence(q, ranked[0]);
+      const res = buildFindClientResult(q, ranked.map((c) => ({ id: c.id, name: clientDisplayName(c) })), exact);
+      if (res.openClientId) {
+        const name = String((res.data as any)?.name || "");
+        setAssistantContext({ selected_customer_id: res.openClientId, selected_customer_name: name });
+        navigate(`/admin/customers/${res.openClientId}`);
       }
-      return {
-        ok: true,
-        message: `Heard “${q}”. Waiting for the user to tap the right client.`,
-        choices: hits.map((c) => ({ label: `${clientDisplayName(c)} · ${c.phone || ""}`, action: "select_client", args: { client_id: c.id, name: clientDisplayName(c) } })),
-      };
+      const { openClientId: _o, ...out } = res;
+      return out;
+    },
+    open_client: async ({ client_id, name }) => {
+      setAssistantContext({ selected_customer_id: client_id, selected_customer_name: name });
+      navigate(`/admin/customers/${client_id}`);
+      return { ok: true, message: `Opened ${name}.`, data: { client_id, name } };
+    },
+    add_new_client: async () => {
+      navigate("/admin/customers?new=1");
+      return { ok: true, message: "Opened clients — add the new client there." };
     },
     select_client: async ({ client_id, name }) => {
       setAssistantContext({ selected_customer_id: client_id, selected_customer_name: name });
