@@ -15,7 +15,7 @@
  */
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireUser, authCorsHeaders } from "../_shared/auth.ts";
-import { spokenRand, numberToWords } from "../_shared/numberSpeech.ts";
+import { toSpeech } from "../_shared/toSpeech.ts";
 
 const cors = authCorsHeaders;
 const json = (body: unknown, status = 200) =>
