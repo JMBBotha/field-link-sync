@@ -188,7 +188,7 @@ export default function MandyDock() {
     if (!h) return { ok: false, message: `${name} is not available on this screen.` };
     try {
       const r = await h(args || {});
-      if (CONFIRM_REQUIRED.has(name) && r.ok && !r.confirm && !r.choices) {
+      if (CONFIRM_REQUIRED.has(name) && !args?.__plan && r.ok && !r.confirm && !r.choices) {
         // Safety: destructive actions must come back as a confirm card.
         return { ok: false, message: `${name} needs an on-screen confirmation and was not run.` };
       }
@@ -260,6 +260,7 @@ export default function MandyDock() {
         });
         if (step === 0) msgs.push({ role: "user", content: t });
         if (r0.error) { final = `Sorry, I couldn't reach my brain: ${r0.error}`; break; }
+        if (r0.args && "__plan" in r0.args) delete (r0.args as any).__plan; // only the plan Confirm may set it
         if (r0.plan) {
           const out = await preparePlan(r0.plan, r0.confidence);
           final = out;
