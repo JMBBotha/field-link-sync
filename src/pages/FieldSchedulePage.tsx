@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { fetchTodaysJobs, todayInJohannesburg } from "@/lib/todaysJobs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,6 +50,14 @@ const FieldSchedulePage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [params] = useSearchParams();
+  const rawDate = params.get("date");
+  const dayDate = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : todayInJohannesburg();
+  const { data: day } = useQuery({
+    queryKey: ["my-jobs", user?.id, "day", dayDate],
+    enabled: !!user,
+    queryFn: () => fetchTodaysJobs({ date: dayDate, agentId: user!.id }),
+  });
 
   const { data: rows = [], isLoading } = useQuery<MyAssignedJobRow[]>({
     queryKey: ["my-jobs", user?.id, "schedule"],
@@ -105,6 +114,42 @@ const FieldSchedulePage = () => {
             <RefreshCw className="h-4 w-4 mr-2" /> Refresh
           </Button>
         </div>
+
+        {day && (
+          <section className="space-y-2">
+            <div className="flex items-baseline justify-between px-1">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                {dayDate === todayInJohannesburg() ? "Today" : format(new Date(`${dayDate}T12:00:00`), "EEE, dd MMM")}
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                {day.open.length} open{day.total > 0 ? ` · ${day.completed}/${day.total} done` : ""}
+              </span>
+            </div>
+            {day.open.length === 0 ? (
+              <p className="text-sm text-muted-foreground px-1">No open jobs on this day.</p>
+            ) : (
+              <div className="grid gap-2">
+                {day.open.map((e) => (
+                  <Card
+                    key={e.key}
+                    className="cursor-pointer active:scale-[0.99] transition-transform"
+                    onClick={() => e.job_id && navigate(`/admin/jobs/${e.job_id}`)}
+                  >
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <span className="font-semibold tabular-nums">{String(e.start_time || "").slice(0, 5)}</span>
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{e.customer_name || "Job"}</div>
+                        {e.customer_address && (
+                          <div className="text-xs text-muted-foreground truncate">{e.customer_address}</div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {isLoading ? (
           <JobCardListSkeleton rows={3} />
