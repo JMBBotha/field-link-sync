@@ -15,9 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, MessageSquare, Mic, Send, Sparkle, X } from "lucide-react";
 import { isUiActionBlock, useAssistantUiActions, type UiActionBlock } from "@/hooks/useAssistantUiActions";
 import ResultTable, { TOOL_LABELS, type Row, type Structured } from "@/components/admin/nl/ResultTable";
-import VoiceAssistantPanel from "@/components/admin/nl/VoiceAssistantPanel";
-import VoiceCallDock from "@/components/admin/nl/VoiceCallDock";
-import { useVoiceAssistant } from "@/hooks/useVoiceAssistant";
+import { openMandyVoice } from "@/lib/mandy/registry";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -42,9 +40,6 @@ const SUGGESTIONS = [
 
 type AssistantMode = "text" | "voice";
 
-// Temporary safety switch: voice writes use Mandy's spoken confirmation only.
-// Keeping the second UI confirmation active creates two competing resolvers.
-const VOICE_CONFIRMATION_MODAL_ENABLED = false;
 
 interface NLCommandBarProps {
   open: boolean;
@@ -60,64 +55,17 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
   const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState<PendingConfirmation | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const [mode, setMode] = useState<AssistantMode>(initialMode);
+  const [mode, setMode] = useState<AssistantMode>("text");
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const voice = useVoiceAssistant();
   const applyUiActions = useAssistantUiActions();
-  // While a call runs the big dialog collapses into a small corner widget.
-  const [docked, setDocked] = useState(false);
-
   useEffect(() => {
     if (!open) return;
-    setMode(initialMode);
-    setDocked(false);
-    if (initialMode === "text") setTimeout(() => inputRef.current?.focus(), 50);
-  }, [open, initialMode]);
-
-  // Star icon / Voice tab: start the call as soon as voice mode is shown.
-  useEffect(() => {
-    if (open && mode === "voice" && voice.status === "idle") void voice.start();
-  }, [open, mode, voice.status]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // End the call whenever the panel closes or the user switches back to text.
-  useEffect(() => {
-    if (!open || mode !== "voice") {
-      if (voice.status === "live" || voice.status === "connecting") voice.stop();
-    }
-  }, [open, mode]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Collapse to the corner widget when a call starts; restore when it ends.
-  const callActive = voice.status === "live" || voice.status === "connecting";
-  const prevCallActive = useRef(false);
-  useEffect(() => {
-    if (mode !== "voice") {
-      setDocked(false);
-    } else if (callActive && !prevCallActive.current) {
-      setDocked(true);
-    } else if (!callActive) {
-      setDocked(false);
-    }
-    prevCallActive.current = callActive;
-  }, [mode, callActive]);
-
-  // A write tool queued during the voice call falls back to the same modal.
-  // Answered pendings are remembered so a re-poll can never resurrect them.
-  const answeredPendingIds = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    const p = voice.pending;
-    if (!p || pending) return;
-    if (p.id && answeredPendingIds.current.has(p.id)) return;
-    if (!VOICE_CONFIRMATION_MODAL_ENABLED) {
-      console.info("[NLCommandBar] voice confirmation modal suppressed", {
-        pendingId: p.id,
-        toolName: p.tool_name,
-      });
-      return;
-    }
-    setPending(p);
-  }, [voice.pending]); // eslint-disable-line react-hooks/exhaustive-deps
-
+    // Voice = Mandy (the one voice entry point); the old Vapi call is retired.
+    if (initialMode === "voice") { openMandyVoice(() => onOpenChange(false)); return; }
+    setMode("text");
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, [open, initialMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -180,11 +128,9 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
         },
       ]);
       toast({ title: "Action completed", description: res.message });
-      voice.clearPending(res.message, { id: answered.id, status: "executed" });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Action failed";
       toast({ title: "Action failed", description: message, variant: "destructive" });
-      voice.clearPending(message, { id: answered.id, status: "cancelled" });
     } finally {
       setConfirming(false);
     }
@@ -194,14 +140,13 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
     const answered = pending;
     if (answered?.id) answeredPendingIds.current.add(answered.id);
     setPending(null);
-    voice.clearPending("Cancelled — nothing was changed.", { id: answered?.id, status: "cancelled" });
     setMessages((prev) => [...prev, { role: "assistant", content: "Cancelled — nothing was changed." }]);
   };
 
 
   return (
     <>
-      <Dialog open={open && !docked} onOpenChange={onOpenChange}>
+      <Dialog open={open && initialMode !== "voice"} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl p-0 gap-0 bg-card">
           <DialogHeader className="px-4 py-3 border-b border-border">
             <DialogTitle className="text-base flex items-center gap-2">
@@ -216,7 +161,7 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
                 <button
                   key={m}
                   type="button"
-                  onClick={() => setMode(m)}
+                  onClick={() => (m === "voice" ? openMandyVoice(() => onOpenChange(false)) : setMode(m))}
                   className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                     mode === m
                       ? "bg-card text-foreground shadow-sm"
@@ -230,21 +175,7 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
             </div>
           </DialogHeader>
 
-          {mode === "voice" ? (
-            <VoiceAssistantPanel
-              status={voice.status}
-              error={voice.error}
-              transcript={voice.transcript}
-              results={voice.results}
-              assistantSpeaking={voice.assistantSpeaking}
-              muted={voice.muted}
-              onStart={() => void voice.start()}
-              onStop={voice.stop}
-              onToggleMute={voice.toggleMute}
-            />
-          ) : (
           <>
-
           <div ref={scrollRef} className="max-h-[55vh] min-h-[220px] overflow-y-auto px-4 py-3 space-y-4">
             {messages.length === 0 && (
               <div className="space-y-2">
@@ -306,22 +237,8 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
             </Button>
           </form>
           </>
-          )}
         </DialogContent>
       </Dialog>
-
-      {open && docked && (
-        <VoiceCallDock
-          status={voice.status}
-          error={voice.error}
-          transcript={voice.transcript}
-          assistantSpeaking={voice.assistantSpeaking}
-          muted={voice.muted}
-          onStop={voice.stop}
-          onToggleMute={voice.toggleMute}
-          onExpand={() => setDocked(false)}
-        />
-      )}
 
       <Dialog open={!!pending} onOpenChange={(o) => !o && cancelAction()}>
         <DialogContent className="max-w-md bg-card">

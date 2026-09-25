@@ -11,7 +11,6 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Mic, MicOff, Send, Volume2, VolumeX, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +23,7 @@ import { CONFIRM_REQUIRED, toolsFor, type MandyChoice, type MandyResult } from "
 import { routeVoiceCommand, gateRoute } from "@/lib/mandy/router";
 import { gateDecision, getMandyQuoteStatus } from "@/lib/mandy/gate";
 import { honestMessage, routeReached } from "@/lib/mandy/verify";
+import { useMandyGo } from "@/lib/mandy/go";
 import { formatForSpeech, formatReplyText } from "@/lib/mandy/speech";
 import { useWorkflowMandyActions } from "@/components/mandy/MandyWorkflowActions";
 import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
@@ -39,22 +39,6 @@ const QUOTE_TOOLS_PROBE = "read_quote_total";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /* ───────────── global (non-quote) actions ───────────── */
-/** Navigate, or — when the target is already the current route — force a refetch. */
-export function useMandyGo() {
-  const navigate = useNavigate();
-  const qc = useQueryClient();
-  const registry = useMandyRegistry();
-  return (path: string) => {
-    const here = window.location.pathname + window.location.search;
-    if (routeReached(path, window.location.pathname, window.location.search) || here === path) {
-      void qc.invalidateQueries();
-      void registry?.get("__refresh_quote")?.({});
-      return;
-    }
-    navigate(path);
-  };
-}
-
 function useGlobalMandyActions() {
   const go = useMandyGo();
   const navigate = go;

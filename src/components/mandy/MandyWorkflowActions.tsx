@@ -3,7 +3,7 @@
  * Same queries (and RLS) as the pages/buttons; money documents go through a
  * confirm card built in depositActions.ts.
  */
-import { useNavigate } from "react-router-dom";
+import { useMandyGo } from "@/lib/mandy/go";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,7 +44,7 @@ const suburb = (addr?: string | null) => {
 };
 
 export function useWorkflowMandyActions() {
-  const navigate = useNavigate();
+  const navigate = useMandyGo();
   const qc = useQueryClient();
   const { user } = useAuth();
   const { isFieldAgent, isAdmin, isDispatcher } = useRole();
@@ -68,7 +68,7 @@ export function useWorkflowMandyActions() {
     open_invoice: async ({ ref, client, invoice_id }): Promise<MandyResult> => {
       const open = (inv: any): MandyResult => {
         navigate(`/admin/invoices/${inv.id}`);
-        return { ok: true, message: `Opened invoice ${inv.invoice_number || ""}${inv.customer_name ? ` for ${inv.customer_name}` : ""}.`.replace("  ", " "), data: { invoice_id: inv.id } };
+        return { ok: true, message: `Opened invoice ${inv.invoice_number || ""}${inv.customer_name ? ` for ${inv.customer_name}` : ""}.`.replace("  ", " "), data: { invoice_id: inv.id, route: `/admin/invoices/${inv.id}` } };
       };
       let q = supabase.from("invoices").select("id, invoice_number, customer_name, created_at").order("created_at", { ascending: false }).limit(6);
       if (invoice_id) q = q.eq("id", invoice_id);
@@ -94,7 +94,7 @@ export function useWorkflowMandyActions() {
       if (!d) return { ok: false, message: `I couldn't work out the date “${date}”.` };
       navigate(fieldOnly ? `/field/schedule?date=${d}` : `/admin/schedule?date=${d}`);
       const label = new Date(`${d}T12:00:00Z`).toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long", timeZone: "Africa/Johannesburg" });
-      return { ok: true, message: `Opened the calendar on ${label}.`, data: { date: d } };
+      return { ok: true, message: `Opened the calendar on ${label}.`, data: { date: d, route: fieldOnly ? `/field/schedule?date=${d}` : `/admin/schedule?date=${d}` } };
     },
 
     list_todays_jobs: async (): Promise<MandyResult> => {
