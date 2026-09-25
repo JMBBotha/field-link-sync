@@ -32,6 +32,7 @@ import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voice
 import { createDraftQuoteForCustomer } from "@/lib/createDraftQuote";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
 import { ADD_NEW_CLIENT_CHOICE, buildFindClientResult } from "@/lib/mandy/clientChoices";
+import { latestQuoteQuery } from "@/lib/mandy/latestQuote";
 
 const MAX_STEPS = 4;
 type Phase = "idle" | "listening" | "hearing" | "working";
@@ -59,15 +60,11 @@ function useGlobalMandyActions() {
     if (!data?.length) return { ok: false, message: "No quotes found." };
     return openQuote(data[0]);
   };
-  let openQuoteBy: (a: Record<string, any>) => Promise<MandyResult> = async () => ({ ok: false, message: "" });
 
   useRegisterMandyActions({
     open_last_quote: async () => openLatest(),
     open_latest_quote: async () => openLatest(),
     open_quote: async ({ ref, client, quote_id }) => {
-      return openQuoteBy({ ref, client, quote_id });
-    },
-    __unused_open_quote_body: async ({ ref, client, quote_id }) => {
       if (quote_id) {
         const { data } = await supabase.from("quotes").select("id, quote_number, customer_name").eq("id", quote_id).maybeSingle();
         return data ? openQuote(data) : { ok: false, message: "That quote is no longer available." };
