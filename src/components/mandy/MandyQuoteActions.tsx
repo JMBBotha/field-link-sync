@@ -91,18 +91,17 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       if (!products.length) return { ok: false, message: "The catalog is still loading — try again in a moment." };
       const m = matchSpokenProduct(String(query || ""), products);
       if (!m.ranked.length) return { ok: false, message: `Nothing on the live catalog matches “${query}”.` };
-      if (m.tie || m.ranked.length > 1 && m.ranked.length <= 5 && !m.ranked[0].product_code?.toLowerCase().includes(String(query).toLowerCase().replace(/\s/g, ""))) {
-        if (m.tie) {
-          return {
-            ok: true,
-            message: `Several products match “${query}”. Waiting for the user to tap one.`,
-            choices: m.ranked.map((p) => ({
-              label: `${p.short_name} · ${p.product_code}`,
-              action: "add_item_to_area",
-              args: { area, quantity: qty, product_id: p.id },
-            })),
-          };
-        }
+      if (m.tie) {
+        return {
+          ok: true,
+          message: `Several products match “${query}”. Waiting for the user to tap one.`,
+          choices: m.ranked.map((p) => ({
+            label: `${p.short_name} · ${p.product_code}`,
+            action: "add_item_to_area",
+            args: { area, quantity: qty, product_id: p.id },
+          })),
+        };
+      }
       }
       return addProduct(m.ranked[0], area, qty);
     },

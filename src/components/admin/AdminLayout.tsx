@@ -17,6 +17,7 @@ import AdminBottomNav from "@/components/admin/AdminBottomNav";
 import IdleWarningModal from "@/components/IdleWarningModal";
 import GlobalSearchDialog from "@/components/GlobalSearchDialog";
 import NLCommandBar from "@/components/admin/NLCommandBar";
+import { useMandyDock } from "@/lib/mandy/registry";
 
 import { useIdleLogout } from "@/hooks/useIdleLogout";
 import { useAssistantContextTracker } from "@/hooks/useAssistantContextTracker";
@@ -220,10 +221,7 @@ const AdminLayout = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                setAssistantMode("voice");
-                setAssistantOpen(true);
-              }}
+              onClick={() => useMandyDock.getState().setOpen(true)}
               className="text-blue-100 hover:bg-white/10 hover:text-primary-foreground gap-1.5"
               title="Talk to the operations assistant"
             >

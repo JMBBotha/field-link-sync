@@ -15,6 +15,7 @@ import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import EstimateBuilder from "@/components/quoting/EstimateBuilder";
 import VoiceQuoteStrip from "@/components/quoting/VoiceQuoteStrip";
+import MandyQuoteActions from "@/components/mandy/MandyQuoteActions";
 import StatusPill from "@/components/shared/StatusPill";
 
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
@@ -242,6 +243,8 @@ const AdminEstimateDetailPage = () => {
       <QuoteProvider quoteId={quote.id}>
         {/* Quote-by-voice: mutates this same live quote via QuoteContext. */}
         <VoiceQuoteStrip vatRate={Number(quote.vat_rate) || 0.15} onChanged={refreshDocument} />
+        {/* Mandy (Grok dock) quote actions — same QuoteContext + PDF handler as the buttons. */}
+        <MandyQuoteActions vatRate={Number(quote.vat_rate) || 0.15} onPdf={handlePdf} onChanged={refreshDocument} />
         <EstimateBuilder
           quoteNumber={quote.quote_number}
           issueDate={quote.created_at}
