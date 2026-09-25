@@ -266,7 +266,7 @@ export default function MandyDock() {
         if (r0.stale) { useBuildStatus.getState().setLatest("server-newer"); final = r0.text || ""; break; }
         if (r0.error) { final = `Sorry, I couldn't reach my brain: ${r0.error}`; break; }
         if (r0.args && "__plan" in r0.args) delete (r0.args as any).__plan; // only the plan Confirm may set it
-        const staleMsg = staleWriteRefusal(r0.plan ? "run_plan" : r0.action, useBuildStatus.getState().stale || (r0.action ? await checkForNewBuild() : false));
+        const staleMsg = staleWriteRefusal(r0.plan ? "run_plan" : r0.action, useBuildStatus.getState().stale || (r0.action && !import.meta.env.DEV ? await checkForNewBuild() : false));
         if (staleMsg) { final = staleMsg; break; }
         if (r0.plan) {
           const out = await preparePlan(r0.plan, r0.confidence);

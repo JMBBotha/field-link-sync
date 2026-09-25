@@ -22,6 +22,9 @@ export interface AssistantUiContext {
   selected_customer_name?: string;
   last_search_query?: string;
   notes?: string;
+  last_touched_item?: string;
+  last_touched_area?: string;
+  last_move_from_area?: string;
 }
 
 interface AssistantContextState {

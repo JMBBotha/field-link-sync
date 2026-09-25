@@ -12,6 +12,8 @@ import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 import { useRegisterMandyActions } from "@/lib/mandy/registry";
+import { getAssistantContext } from "@/stores/assistantContextStore";
+import { isPronoun, resolveAreaPronoun, resolveItemPronoun, type TouchedCtx } from "@/lib/mandy/pronouns";
 import { fmtRand, type MandyChoice, type MandyResult } from "@/lib/mandy/actions";
 import { addCatalogProductToQuote, kitLengthPatch, matchSpokenProduct, isAirConditioningProduct } from "@/lib/mandy/quoteOps";
 import { runSetLabourHours } from "@/lib/mandy/labourAction";
@@ -40,6 +42,11 @@ const lc = (s?: string | null) => (s || "").trim().toLowerCase();
 export const NEW_AREA_LABEL = "New area…";
 
 /** Pure: area chips (existing + "New area…") for an AC add with no area. */
+/** AC units never default to an area: unless one was named and found, ask with chips. */
+export function acNeedsAreaPick(isAc: boolean, area: unknown, spokenArea?: string): boolean {
+  return isAc && !area && !String(spokenArea || "").trim();
+}
+
 export function areaChipsForAdd(areas: { name: string }[], args: Record<string, unknown>): MandyChoice[] {
   return [
     ...areas.map((a) => ({ label: a.name, action: "add_item_to_area", args: { ...args, area: a.name } })),
@@ -87,6 +94,9 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
 
   /** Resolve a spoken line reference; ambiguous → chips re-running `action` with item_id. */
   const resolveItem = (ref: unknown, action: string, args: Record<string, unknown>): { item: QuoteItem } | { result: MandyResult } => {
+    const pron = !args.item_id ? resolveItemPronoun(ref, getAssistantContext() as TouchedCtx) : null;
+    if (pron) args = { ...args, item_id: pron };
+    else if (isPronoun(ref)) return { result: { ok: false, message: "Which line do you mean?" } };
     if (args.item_id) {
       const it = S().items.find((i) => i.id === args.item_id);
       return it ? { item: it } : { result: { ok: false, message: "That line is no longer on the quote." } };
@@ -119,7 +129,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
   const addProduct = async (p: PaletteProduct, areaNameArg: string | undefined, qty: number): Promise<MandyResult> => {
     let area = findArea(areaNameArg);
     if (!area && areaNameArg) area = await ctx.addArea(areaNameArg.trim());
-    if (!area && isAirConditioningProduct(p) && S().areas.length !== 1) {
+    if (acNeedsAreaPick(isAirConditioningProduct(p), area, areaNameArg)) {
       return { ok: true, message: `Which area for ${p.short_name}? Waiting for the user to tap one.`, choices: areaChipsForAdd(S().areas, { product_id: p.id, quantity: qty }) };
     }
     if (!area) area = S().areas[0] || (await ctx.ensureDefaultArea()) || (await ctx.addArea("Items"));
@@ -132,7 +142,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     return {
       ok: true,
       message: `Added ${qty > 1 ? `${qty} × ` : ""}${p.short_name} (${p.product_code}) to ${area.name} at ${fmtRand(r.unitSell)} excl. VAT${kitTxt}.`,
-      data: { line_id: r.line.id, kit_id: r.kit?.id ?? null },
+      data: { line_id: r.line.id, kit_id: r.kit?.id ?? null, area: area.name },
       verified,
     };
   };
@@ -300,14 +310,17 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     move_item: async (args) => {
       const r = resolveItem(args.item, "move_item", args);
       if ("result" in r) return r.result;
-      const a = findArea(args.area);
-      if (!a) return { ok: false, message: `No area called ${args.area}.`, choices: areaChips("move_item", { item_id: r.item.id }) };
+      const target = resolveAreaPronoun(args.area, getAssistantContext() as TouchedCtx);
+      const a = findArea(target);
+      if (!a) return { ok: false, message: target ? `No area called ${target}.` : "Which area should it move to?", choices: areaChips("move_item", { item_id: r.item.id }) };
+      const fromArea = areaName(r.item.area_id);
       const moving = [r.item, ...findUnitKits(S().items as EditItem[], r.item as EditItem)];
       for (const x of moving) await ctx.moveItemToArea(x.id, a.id);
       const fresh = await refresh();
       return {
         ok: true,
         message: `Moved ${r.item.item_name}${moving.length > 1 ? " and its kit" : ""} to ${a.name}.`,
+        data: { item_id: r.item.id, area: a.name, from_area: fromArea },
         verified: !!fresh && moving.every((x) => fresh.items.some((i) => i.id === x.id && i.area_id === a.id)),
       };
     },
