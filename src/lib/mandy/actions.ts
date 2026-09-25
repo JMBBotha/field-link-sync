@@ -27,7 +27,7 @@ export interface MandyResult {
 export type MandyHandler = (args: Record<string, any>) => Promise<MandyResult>;
 
 /** Never executed on voice alone — always an on-screen Confirm card. */
-export const CONFIRM_REQUIRED = new Set(["remove_item", "send_quote", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote"]);
+export const CONFIRM_REQUIRED = new Set(["remove_item", "send_quote", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote", "create_deposit_invoice"]);
 
 const str = (description: string) => ({ type: "string", description });
 const num = (description: string) => ({ type: "number", description });
@@ -77,6 +77,34 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
   generate_quote_pdf: {
     description: "Generate / download the PDF of the open quote.",
     parameters: { type: "object", properties: {}, additionalProperties: false },
+  },
+  open_invoice: {
+    description: "Open an invoice by invoice number or client name.",
+    parameters: { type: "object", properties: { ref: str("Invoice number"), client: str("Client name") }, additionalProperties: false },
+  },
+  show_deposit_due: {
+    description: "Read back the deposit due / paid state for the open quote, or a named quote. Read-only.",
+    parameters: { type: "object", properties: { quote_ref: str("Quote number or client name; omit for the open quote") }, additionalProperties: false },
+  },
+  create_deposit_invoice: {
+    description: "Create the deposit invoice for an accepted quote (always needs on-screen confirmation).",
+    parameters: { type: "object", properties: { quote_ref: str("Quote number or client name; omit for the open quote") }, additionalProperties: false },
+  },
+  open_calendar_day: {
+    description: "Open the schedule calendar on a day: today, tomorrow, a weekday, or a date like 3 October.",
+    parameters: { type: "object", properties: { date: str("The day as spoken") }, required: ["date"], additionalProperties: false },
+  },
+  list_todays_jobs: {
+    description: "List today's scheduled jobs.",
+    parameters: { type: "object", properties: {}, additionalProperties: false },
+  },
+  open_live_map: {
+    description: "Open the live jobs map.",
+    parameters: { type: "object", properties: {}, additionalProperties: false },
+  },
+  filter_map_by_status: {
+    description: "Show only one job status on the live map (e.g. pending, claimed, in progress, completed).",
+    parameters: { type: "object", properties: { status: str("Status as spoken") }, required: ["status"], additionalProperties: false },
   },
   read_quote_total: {
     description: "Read the open quote's totals.",

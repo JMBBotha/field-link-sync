@@ -46,6 +46,8 @@ export interface MapViewHandle {
   setTrafficEnabled: (enabled: boolean) => void;
   getTrafficEnabled: () => boolean;
   toggleStatusFilter: (status: LeadStatusFilter) => void;
+  /** Show exactly these statuses (same state the filter chips drive). */
+  setStatusFilters: (statuses: LeadStatusFilter[]) => void;
 }
 
 export interface MapStatusState {
@@ -371,6 +373,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         onStatusFiltersChange?.(next);
         return next;
       });
+    },
+    setStatusFilters: (statuses: LeadStatusFilter[]) => {
+      const next = new Set(statuses);
+      setStatusFilters(next);
+      onStatusFiltersChange?.(next);
     },
   }), [mapLoaded, trafficEnabled, onStatusFiltersChange]);
 

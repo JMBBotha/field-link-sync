@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Calendar, dateFnsLocalizer, Views, SlotInfo } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale/en-US";
@@ -44,7 +45,18 @@ const ScheduleCalendar = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ date: Date; start?: Date; end?: Date } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  // ?date=YYYY-MM-DD (e.g. from Mandy) opens that day in Day view.
+  const [searchParams] = useSearchParams();
+  const dateParam = searchParams.get("date");
+  const [currentDate, setCurrentDate] = useState(() =>
+    dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? new Date(`${dateParam}T12:00:00`) : new Date()
+  );
+  useEffect(() => {
+    if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      setCurrentDate(new Date(`${dateParam}T12:00:00`));
+      setCurrentView(Views.DAY);
+    }
+  }, [dateParam]); // eslint-disable-line react-hooks/exhaustive-deps
   const [currentView, setCurrentView] = useState<(typeof Views)[keyof typeof Views]>(
     typeof window !== "undefined" && window.innerWidth < 640 ? Views.DAY : Views.WEEK
   );

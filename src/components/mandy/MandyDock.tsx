@@ -20,7 +20,8 @@ import { WavRecorder } from "@/lib/wavRecorder";
 import { getAssistantContext, setAssistantContext } from "@/stores/assistantContextStore";
 import { useMandyDock, useMandyRegistry, useRegisterMandyActions } from "@/lib/mandy/registry";
 import { CONFIRM_REQUIRED, toolsFor, type MandyChoice, type MandyResult } from "@/lib/mandy/actions";
-import { routeVoiceCommand, MANDY_MIN_CONFIDENCE } from "@/lib/mandy/router";
+import { routeVoiceCommand, gateRoute } from "@/lib/mandy/router";
+import { useWorkflowMandyActions } from "@/components/mandy/MandyWorkflowActions";
 import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
 import { createDraftQuoteForCustomer } from "@/lib/createDraftQuote";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
@@ -30,11 +31,6 @@ type Phase = "idle" | "listening" | "hearing" | "working";
 type Msg = Record<string, unknown>;
 
 const QUOTE_TOOLS_PROBE = "read_quote_total";
-const actionLabel = (action: string, args: Record<string, unknown>) => {
-  const words = action.replace(/_/g, " ");
-  const detail = Object.values(args).filter((v) => typeof v === "string" || typeof v === "number").slice(0, 2).join(", ");
-  return detail ? `${words}: ${detail}` : words;
-};
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /* ───────────── global (non-quote) actions ───────────── */
@@ -151,6 +147,7 @@ export default function MandyDock() {
   const { open, setOpen } = useMandyDock();
   const registry = useMandyRegistry();
   useGlobalMandyActions();
+  useWorkflowMandyActions();
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [heard, setHeard] = useState("");
@@ -179,7 +176,7 @@ export default function MandyDock() {
         return { ok: false, message: `${name} needs an on-screen confirmation and was not run.` };
       }
       audit(name, args, r);
-      if (/^open_|^create_quote/.test(name) && r.ok && !r.choices) {
+      if (/^(open_quote|open_last_quote|create_quote_for_client)$/.test(name) && r.ok && !r.choices) {
         // Wait for the opened page to register its quote actions.
         for (let i = 0; i < 40 && !registry?.get(QUOTE_TOOLS_PROBE); i++) await sleep(100);
       }
@@ -214,10 +211,11 @@ export default function MandyDock() {
         if (step === 0) msgs.push({ role: "user", content: t });
         if (r0.error) { final = `Sorry, I couldn't reach my brain: ${r0.error}`; break; }
         if (r0.action) {
-          if (r0.confidence < MANDY_MIN_CONFIDENCE) {
+          const gate = gateRoute(r0);
+          if (!gate.run) {
             // Not sure enough — never run it. One-tap chip + one-line question.
-            setChoices([{ label: `Yes — ${actionLabel(r0.action, r0.args)}`, action: r0.action, args: r0.args }]);
-            final = `Did you mean ${actionLabel(r0.action, r0.args)}? Tap it, or say it another way.`;
+            setChoices([gate.choice!]);
+            final = gate.question!;
             break;
           }
           const r = await execute(r0.action, r0.args);

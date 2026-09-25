@@ -55,3 +55,28 @@ export async function routeVoiceCommand(input: RouteInput): Promise<RouteResult>
     assistantMessage: d.assistant_message,
   };
 }
+
+export interface GateDecision {
+  run: boolean;
+  /** Present when the dock must ask instead of running. */
+  choice?: { label: string; action: string; args: Record<string, unknown> };
+  question?: string;
+}
+
+const actionLabel = (action: string, args: Record<string, unknown>) => {
+  const words = action.replace(/_/g, " ");
+  const detail = Object.values(args).filter((v) => typeof v === "string" || typeof v === "number").slice(0, 2).join(", ");
+  return detail ? `${words}: ${detail}` : words;
+};
+
+/** Confidence gate: below MANDY_MIN_CONFIDENCE never run — one chip + one-line question. */
+export function gateRoute(r: Pick<RouteResult, "action" | "args" | "confidence">): GateDecision {
+  if (!r.action) return { run: false };
+  if (r.confidence >= MANDY_MIN_CONFIDENCE) return { run: true };
+  const label = actionLabel(r.action, r.args);
+  return {
+    run: false,
+    choice: { label: `Yes — ${label}`, action: r.action, args: r.args },
+    question: `Did you mean ${label}? Tap it, or say it another way.`,
+  };
+}
