@@ -7,6 +7,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { coerceMapAction } from "@/lib/mandy/mapStatus";
 import { parsePlan, type PlanStep } from "@/lib/mandy/quoteEdits";
+import { parseMultiEdit } from "@/lib/mandy/multiEdit";
 import { BUILD_ID } from "@/lib/buildInfo";
 
 /** Below this, the dock asks / shows chips instead of running the action. */
@@ -75,6 +76,9 @@ export function labourModeFromText(t: string): "add" | "set" {
 
 /** Post-process the provider's pick (e.g. open_live_map + a status → filter). */
 export function postProcessRoute(r0: RouteResult, transcript: string): RouteResult {
+  // Deterministic post-check: 2+ edit clauses in the words → ONE local plan, whatever the model picked.
+  const local = r0.action !== "run_plan" ? parseMultiEdit(transcript) : null;
+  if (local) return { ...r0, action: "run_plan", args: { steps: local }, plan: local, confidence: Math.max(r0.confidence, 0.9) };
   const r = guardRoute(r0, transcript);
   if (r.action === "run_plan") {
     const plan = parsePlan(r.args).map((s) => (s.action === "set_labour_hours" && s.args.mode !== "add" && s.args.mode !== "set"
@@ -145,6 +149,15 @@ export function guardRoute(r: RouteResult, transcript: string): RouteResult {
   };
   let m: RegExpMatchArray | null;
   if ((m = t.match(/^\s*describe\s+(.+?)\s+as\s+(.+)$/i))) return pick("describe_area", { area: clean(m[1]), description: clean(m[2]) });
+  if ((m = t.match(/\b(?:edit|change|update|replace)\s+(?:the\s+)?note(?:\s+(?:about|on|for)\s+(.+?))?\s*(?:\s+to|\s+with|:)\s+(.+)$/i))) {
+    return pick("edit_note", { ...(m[1] ? { match: clean(m[1]) } : {}), text: clean(m[2]) });
+  }
+  if ((m = t.match(/\b(?:remove|delete|clear|drop)\s+(?:the\s+|all\s+(?:the\s+)?)?notes?\b(?:\s+(?:about|on|for|from|saying)\s+(.+))?\s*$/i))) {
+    return pick("remove_note", m[1] ? { match: clean(m[1]) } : {});
+  }
+  if ((m = t.match(/^\s*(?:remove|delete)\s+(?:the\s+)?area\s+(.+)$/i)) || (m = t.match(/^\s*(?:remove|delete)\s+(?:the\s+)?(.+?)\s+area\s*[.!?]?$/i))) {
+    return pick("remove_area", { area: clean(m[1]) });
+  }
   if ((m = t.match(/\b(?:add|put)\s+a\s+note(?:\s+to\s+(?:the\s+)?quote)?\s*[:,-]?\s*(.+)$/i)) || (m = t.match(/^\s*note\s*[:,-]\s*(.+)$/i))) {
     return pick("add_note", { target: "quote", text: clean(m[1]) });
   }

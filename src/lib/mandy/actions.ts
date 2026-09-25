@@ -21,7 +21,7 @@ export interface MandyResult {
   /** Low-confidence / multiple matches: user must tap one. Never a silent guess. */
   choices?: MandyChoice[];
   /** Destructive / outbound actions: run only after an on-screen tap. */
-  confirm?: { summary: string; run: () => Promise<MandyResult> };
+  confirm?: { summary: string; lines?: string[]; run: () => Promise<MandyResult> };
   /** false = the write/navigation ran but the refreshed screen didn't show it. */
   verified?: boolean;
 }
@@ -29,7 +29,7 @@ export interface MandyResult {
 export type MandyHandler = (args: Record<string, any>) => Promise<MandyResult>;
 
 /** Never executed on voice alone — always an on-screen Confirm card. */
-export const CONFIRM_REQUIRED = new Set(["remove_item", "run_plan", "send_quote", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote", "create_deposit_invoice"]);
+export const CONFIRM_REQUIRED = new Set(["remove_item", "remove_note", "run_plan", "send_quote", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote", "create_deposit_invoice"]);
 
 const str = (description: string) => ({ type: "string", description });
 const num = (description: string) => ({ type: "number", description });
@@ -71,8 +71,20 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     description: "Add a note to the quote or to one line. Use for 'add a note …' / 'note: …'. Never use add_area for notes.",
     parameters: { type: "object", properties: { target: { type: "string", enum: ["quote", "item"], description: "quote or item" }, item: str("Line as spoken, when target is item"), text: str("Note text") }, required: ["target", "text"], additionalProperties: false },
   },
+  remove_area: {
+    description: "Remove an area (room) from the open quote. If it has lines, the app shows them on a Confirm card.",
+    parameters: { type: "object", properties: { area: str("Area name") }, required: ["area"], additionalProperties: false },
+  },
+  remove_note: {
+    description: "Remove a quote note or an area note/description ('remove the note'). Never use remove_item for notes. Needs on-screen confirmation; several notes → the app shows chips.",
+    parameters: { type: "object", properties: { target: { type: "string", enum: ["quote", "area"], description: "quote or area (optional)" }, match: str("Words from the note, or the area name (optional)") }, additionalProperties: false },
+  },
+  edit_note: {
+    description: "Replace the text of a quote note or an area note ('change the note to …'). Several notes → chips.",
+    parameters: { type: "object", properties: { target: { type: "string", enum: ["quote", "area"], description: "quote or area (optional)" }, match: str("Words from the old note, or the area name (optional)"), text: str("New note text") }, required: ["text"], additionalProperties: false },
+  },
   run_plan: {
-    description: "Several quote edits from ONE request, in order, shown on ONE confirm card. Each step is {action, args} using the other quote actions (add_area, add_item_to_area, set_kit_length, set_labour_hours, set_qty, set_line_price, move_item, remove_item, duplicate_area, rename_area, describe_area, add_note).",
+    description: "USE THIS for ANY sentence with 2 or more edits (e.g. area + unit + kit length + labour). Several quote edits from ONE request, in order, shown on ONE confirm card. Each step is {action, args} using the other quote actions (add_area, add_item_to_area, set_kit_length, set_labour_hours, set_qty, set_line_price, move_item, remove_item, duplicate_area, rename_area, describe_area, add_note).",
     parameters: {
       type: "object",
       properties: {

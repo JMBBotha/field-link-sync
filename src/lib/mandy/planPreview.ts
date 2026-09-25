@@ -20,7 +20,7 @@ export interface PreviewDeps {
   discount?: { type?: string | null; value?: number | null };
 }
 export interface PreviewLine { step: number; action: string; label: string; qty: number | null; price: number | null }
-export interface PlanPreview { lines: PreviewLine[]; before: number; after: number; beforeExcl: number; afterExcl: number; error?: string; errorStep?: number }
+export interface PlanPreview { lines: PreviewLine[]; before: number; after: number; beforeExcl: number; afterExcl: number; error?: string; errorStep?: number; pick?: { step: number; options: { id: string; label: string }[] } }
 
 const lc = (s?: unknown) => String(s ?? "").trim().toLowerCase();
 const lineTotal = (i: EditItem) => Number(i.total_price ?? Number(i.quantity || 0) * Number(i.unit_price || 0)) || 0;
@@ -66,10 +66,16 @@ export async function previewPlan(steps: PlanStep[], d: PreviewDeps): Promise<Pl
       case "add_area": { const a = ensureArea(args.name); lines.push({ step, action, label: `Area ${a.name}`, qty: null, price: null }); break; }
       case "add_item_to_area": {
         const qty = Number(args.quantity) > 0 ? Number(args.quantity) : 1;
-        const p = args.product_id ? d.products.find((x) => x.id === args.product_id) : (() => {
+        let p: any = null;
+        if (args.product_id) p = d.products.find((x) => x.id === args.product_id);
+        else {
           const m = matchSpokenProduct(String(args.query || ""), d.products);
-          return m.ranked.length && !m.tie ? m.ranked[0] : null;
-        })();
+          if (m.ranked.length && m.tie) {
+            // Keep the whole plan pending: the user picks the model, then the card rebuilds.
+            return { ...fail(step, `Which ${args.query}?`), pick: { step: n, options: m.ranked.map((x: any) => ({ id: x.id, label: `${x.short_name} · ${x.product_code}` })) } };
+          }
+          p = m.ranked[0] || null;
+        }
         if (!p) return fail(step, `No single catalog match for “${args.query ?? ""}”.`);
         if (!args.area) return fail(step, `Which area for ${p.short_name}?`);
         const a = ensureArea(args.area);
@@ -139,7 +145,16 @@ export async function previewPlan(steps: PlanStep[], d: PreviewDeps): Promise<Pl
         lines.push({ step, action, label: `Duplicate ${a.name} → ${na.name}`, qty: rows.length, price: null });
         break;
       }
-      case "rename_area": case "describe_area": case "add_note": {
+      case "remove_area": {
+        const a = findArea(args.area);
+        if (!a) return fail(step, `No area called ${args.area}.`);
+        const gone = items.filter((i) => i.area_id === a.id);
+        items = items.filter((i) => i.area_id !== a.id);
+        areas.splice(areas.indexOf(a), 1);
+        lines.push({ step, action, label: `Remove area ${a.name}${gone.length ? ` (${gone.length} lines)` : ""}`, qty: null, price: -gone.filter((i) => !i.parent_item_id).reduce((s, i) => s + lineTotal(i), 0) });
+        break;
+      }
+      case "rename_area": case "describe_area": case "add_note": case "edit_note": case "remove_note": {
         lines.push({ step, action, label: action.replace(/_/g, " "), qty: null, price: null });
         break;
       }
