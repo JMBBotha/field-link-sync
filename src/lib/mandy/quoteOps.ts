@@ -10,7 +10,7 @@ import { getEffectiveUnitPrices, type PaletteProduct } from "@/components/catalo
 import { resolveProductMarkupPercent } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
 import { buildKitMaterial, kitBasketFields } from "@/components/catalog/quote-builder/kitLine";
-import { searchAndRankProducts, scoreProductMatch, normalizeQuery } from "@/components/catalog/searchSynonyms";
+import { matchCatalog } from "@/lib/mandy/catalogMatch";
 import type { QuoteItem, QuoteItemInsert } from "@/types/quote";
 
 type AddItemFn = (item: Omit<QuoteItemInsert, "quote_id">) => Promise<QuoteItem | null>;
@@ -86,43 +86,44 @@ export async function addCatalogProductToQuote(opts: {
     source: opts.source || "catalog",
   });
 
-  let kit: QuoteItem | null = null;
-  let kitName: string | null = null;
-  let kitSellPerMetre: number | null = null;
   const bundle = line && isAirConditioningProduct(p) ? findPipingKitForBtu(bundles, extractBtu(p as any)) : null;
-  if (bundle) {
-    const m = buildKitMaterial(bundle as any, 1);
-    const f = kitBasketFields(m);
-    const len = m.pricingMode === "length" ? m.adjustedLength : 1;
-    const sell = Number(((f.bundleUnitPrice || 0) * len).toFixed(2));
-    const kCost = Number(((f.bundleUnitCost || 0) * len).toFixed(2));
-    kitSellPerMetre = f.bundleUnitPrice || 0;
-    kitName = bundle.name;
-    kit = await addItem({
-      ...baseItem(),
-      area_id: areaId,
-      item_name: bundle.name,
-      item_number: m.product.product_code || null,
-      description: m.product.description || null,
-      quantity: 1,
-      length: m.pricingMode === "length" ? len : null,
-      unit_price: sell,
-      total_price: sell,
-      is_bundle: true,
-      item_type: "Installation Kit",
-      metadata: {
-        unit_cost: kCost,
-        cost_excl: kCost,
-        total_cost: kCost,
-        markup_percent: kCost > 0 ? Number((((sell - kCost) / kCost) * 100).toFixed(2)) : 0,
-        price_locked: true,
-        kit: { bundle_id: bundle.id, name: bundle.name, pricing_type: f.bundlePricingType, unit_cost: f.bundleUnitCost ?? 0, unit_sell: Number((f.bundleUnitPrice ?? 0).toFixed(2)), items: f.kitContents ?? [] },
-      },
-      sort_order: opts.sortOrder + 1,
-      source: opts.source || "catalog",
-    });
-  }
+  const k = bundle ? await addKitToQuote({ addItem, bundle, areaId, sortOrder: opts.sortOrder + 1, source: opts.source }) : null;
+  const kit = k?.kit ?? null, kitName = k?.kitName ?? null, kitSellPerMetre = k?.kitSellPerMetre ?? null;
   return { line, kit, kitName, unitSell, kitSellPerMetre };
+}
+
+/** Add a piping kit row at its default length — the exact row the builder auto-adds with an AC unit. */
+export async function addKitToQuote(opts: { addItem: AddItemFn; bundle: BundleForKit; areaId: string | null; sortOrder: number; source?: string }) {
+  const { addItem, bundle, areaId } = opts;
+  const m = buildKitMaterial(bundle as any, 1);
+  const f = kitBasketFields(m);
+  const len = m.pricingMode === "length" ? m.adjustedLength : 1;
+  const sell = Number(((f.bundleUnitPrice || 0) * len).toFixed(2));
+  const kCost = Number(((f.bundleUnitCost || 0) * len).toFixed(2));
+  const kit = await addItem({
+    ...baseItem(),
+    area_id: areaId,
+    item_name: bundle.name,
+    item_number: m.product.product_code || null,
+    description: m.product.description || null,
+    quantity: 1,
+    length: m.pricingMode === "length" ? len : null,
+    unit_price: sell,
+    total_price: sell,
+    is_bundle: true,
+    item_type: "Installation Kit",
+    metadata: {
+      unit_cost: kCost,
+      cost_excl: kCost,
+      total_cost: kCost,
+      markup_percent: kCost > 0 ? Number((((sell - kCost) / kCost) * 100).toFixed(2)) : 0,
+      price_locked: true,
+      kit: { bundle_id: bundle.id, name: bundle.name, pricing_type: f.bundlePricingType, unit_cost: f.bundleUnitCost ?? 0, unit_sell: Number((f.bundleUnitPrice ?? 0).toFixed(2)), items: f.kitContents ?? [] },
+    },
+    sort_order: opts.sortOrder,
+    source: opts.source || "catalog",
+  });
+  return { kit, kitName: bundle.name, kitSellPerMetre: f.bundleUnitPrice || 0 };
 }
 
 /**
@@ -161,24 +162,11 @@ export function kitLengthPatch(item: { unit_price?: number | null; length?: numb
   };
 }
 
-/** Normalise spoken product words for the catalog ranker: "24000" → "24k", "inverter" → "inv". */
-export function normaliseSpokenProduct(q: string): string {
-  return q
-    .replace(/\b(\d{1,2})[ ,]?000(\s*btu)?\b/gi, "$1k")
-    .replace(/\b(\d{1,2})\s*k\s*btu\b/gi, "$1k")
-    .replace(/\binverter\b/gi, "inv")
-    .replace(/\b(a|an|the|unit|aircon|air ?conditioner)\b/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+export { normaliseSpokenProduct } from "@/lib/mandy/catalogMatch";
 
-/** Rank the live catalog; `tie` = more than one equally good hit (show chips). */
+/** Rank the live catalog through the ONE shared matcher; `tie` = no single strong match (show chips). */
 export function matchSpokenProduct(query: string, products: PaletteProduct[]) {
-  const q = normaliseSpokenProduct(query);
-  const ranked = searchAndRankProducts(q, products as any[]) as PaletteProduct[];
-  if (!ranked.length) return { ranked, tie: false, query: q };
-  const nq = normalizeQuery(q);
-  const s0 = scoreProductMatch(nq, ranked[0] as any);
-  const s1 = ranked[1] ? scoreProductMatch(nq, ranked[1] as any) : -1;
-  return { ranked: ranked.slice(0, 5), tie: s1 >= 0 && s1 >= s0 - 10 && s0 < 900, query: q };
+  const m = matchCatalog(query, products as any[]);
+  const ranked = m.ranked.map((h) => (h as any).product as PaletteProduct);
+  return { ranked: m.pick ? ranked.slice(0, 5) : ranked.slice(0, 3), tie: !m.pick && ranked.length > 0, query: m.query, match: m };
 }
