@@ -95,11 +95,11 @@ const ScheduleCalendar = () => {
       if (error) throw error;
 
       // Fetch agent names
-      const agentIds = [...new Set(data.map((s: any) => s.agent_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", agentIds);
+      // Unassigned schedules have agent_id NULL — never send "null" into a uuid filter.
+      const agentIds = [...new Set(data.map((s: any) => s.agent_id).filter(Boolean))] as string[];
+      const { data: profiles } = agentIds.length
+        ? await supabase.from("profiles").select("id, full_name").in("id", agentIds)
+        : { data: [] as any[] };
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p.full_name]));
 
       // Fetch jobs linked to these leads to pull location labels

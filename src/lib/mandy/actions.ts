@@ -99,8 +99,8 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     parameters: { type: "object", properties: {}, additionalProperties: false },
   },
   open_live_map: {
-    description: "Open the live jobs map.",
-    parameters: { type: "object", properties: {}, additionalProperties: false },
+    description: "Open the live jobs map. If the user names a job status, pass it in status (or use filter_map_by_status).",
+    parameters: { type: "object", properties: { status: str("Optional status as spoken, e.g. in progress") }, additionalProperties: false },
   },
   filter_map_by_status: {
     description: "Show only one job status on the live map (e.g. pending, claimed, in progress, completed).",

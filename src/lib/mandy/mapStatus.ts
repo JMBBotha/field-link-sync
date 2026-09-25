@@ -29,9 +29,39 @@ export const LIVE_MAP_ROUTE = "/admin/map";
  * filter_map_by_status from any page: navigate to the Live Map with ?status=,
  * which AdminMapPage applies to the same filter state as its status chips.
  */
+/**
+ * Status inferred from a whole utterance ("show the live map, only in-progress jobs").
+ * Stricter than mapSpokenStatus: ignores "open"/"new"/"active", which appear in
+ * plain "open the live map" requests.
+ */
+const UTTERANCE_WORDS: [RegExp, LeadStatusFilter][] = [
+  [/\b(pending|available|unassigned|unclaimed)\b/, "pending"],
+  [/\b(claimed|accepted)\b/, "accepted"],
+  [/\bin[ _-]?progress\b|\bon ?site\b/, "in_progress"],
+  [/\b(completed|finished)\b/, "completed"],
+];
+export function statusFromUtterance(text: string): LeadStatusFilter | null {
+  const t = (text || "").toLowerCase();
+  for (const [re, v] of UTTERANCE_WORDS) if (re.test(t)) return v;
+  return null;
+}
+
+/** open_live_map carrying a status (arg or utterance) is really a filter. */
+export function coerceMapAction(
+  action: string | null,
+  args: Record<string, unknown>,
+  utterance = "",
+): { action: string | null; args: Record<string, unknown> } {
+  if (action !== "open_live_map") return { action, args };
+  const v = (args.status ? mapSpokenStatus(String(args.status)) : null) || statusFromUtterance(String(args.utterance || utterance));
+  return v ? { action: "filter_map_by_status", args: { status: v } } : { action, args };
+}
+
 export function makeMapHandlers(navigate: (to: string) => void) {
-  return {
-    open_live_map: async () => {
+  const handlers = {
+    open_live_map: async (args: Record<string, unknown> = {}) => {
+      const c = coerceMapAction("open_live_map", args);
+      if (c.action === "filter_map_by_status") return handlers.filter_map_by_status(c.args);
       navigate(LIVE_MAP_ROUTE);
       return { ok: true, message: "Opened the live map." };
     },
@@ -49,4 +79,5 @@ export function makeMapHandlers(navigate: (to: string) => void) {
       return { ok: true, message: `Map now shows only ${label} jobs.` };
     },
   };
+  return handlers;
 }
