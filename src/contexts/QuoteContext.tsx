@@ -79,7 +79,7 @@ export function useQuoteContext() {
 const errMsg = (e: unknown): string =>
   e instanceof Error ? e.message : typeof e === "string" ? e : "Unknown error";
 
-const revert = (fn: () => Promise<void>) => {
+const revert = (fn: () => Promise<unknown>) => {
   void fn().catch((err) => console.error("QuoteContext revert failed:", err));
 };
 
