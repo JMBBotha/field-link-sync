@@ -70,6 +70,10 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     description: "Set the piping kit length in metres (in an area, or the only kit on the quote).",
     parameters: { type: "object", properties: { area: str("Area name"), metres: num("Metres") }, required: ["metres"], additionalProperties: false },
   },
+  set_labour_hours: {
+    description: "Set hourly labour on an area of the open quote, e.g. 'add 3 hours labour to main bedroom'. Hours in 0.5 steps; rate optional (defaults to the saved/standard rate).",
+    parameters: { type: "object", properties: { area: str("Area name"), hours: num("Hours"), rate: num("Rate per hour excl. VAT (optional)") }, required: ["area", "hours"], additionalProperties: false },
+  },
   remove_item: {
     description: "Remove a line from the open quote (needs on-screen confirmation).",
     parameters: { type: "object", properties: { item: str("Line name or product code") }, required: ["item"], additionalProperties: false },
