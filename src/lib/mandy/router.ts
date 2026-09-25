@@ -5,6 +5,7 @@
  * can be swapped or A/B'd without touching the dock.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { coerceMapAction } from "@/lib/mandy/mapStatus";
 
 /** Below this, the dock asks / shows chips instead of running the action. */
 export const MANDY_MIN_CONFIDENCE = 0.7;
@@ -46,14 +47,20 @@ export async function routeVoiceCommand(input: RouteInput): Promise<RouteResult>
   if (error || d.error) {
     return { action: null, args: {}, confidence: 0, error: String(d.error || error?.message || "Router unavailable") };
   }
-  return {
+  return postProcessRoute({
     action: typeof d.action === "string" ? d.action : null,
     args: d.args && typeof d.args === "object" ? d.args : {},
     confidence: Number.isFinite(Number(d.confidence)) ? Number(d.confidence) : 0,
     text: typeof d.text === "string" ? d.text : undefined,
     callId: d.call_id,
     assistantMessage: d.assistant_message,
-  };
+  }, input.transcript);
+}
+
+/** Post-process the provider's pick (e.g. open_live_map + a status → filter). */
+export function postProcessRoute(r: RouteResult, transcript: string): RouteResult {
+  const c = coerceMapAction(r.action, r.args, transcript);
+  return c.action === r.action ? r : { ...r, action: c.action, args: c.args };
 }
 
 export interface GateDecision {
