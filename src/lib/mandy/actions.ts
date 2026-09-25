@@ -21,7 +21,7 @@ export interface MandyResult {
   /** Low-confidence / multiple matches: user must tap one. Never a silent guess. */
   choices?: MandyChoice[];
   /** Destructive / outbound actions: run only after an on-screen tap. */
-  confirm?: { summary: string; run: () => Promise<MandyResult> };
+  confirm?: { summary: string; lines?: string[]; run: () => Promise<MandyResult> };
   /** false = the write/navigation ran but the refreshed screen didn't show it. */
   verified?: boolean;
 }
