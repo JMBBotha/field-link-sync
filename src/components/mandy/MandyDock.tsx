@@ -21,7 +21,9 @@ import { getAssistantContext, setAssistantContext } from "@/stores/assistantCont
 import { useMandyDock, useMandyRegistry, useRegisterMandyActions } from "@/lib/mandy/registry";
 import { CONFIRM_REQUIRED, toolsFor, type MandyChoice, type MandyResult } from "@/lib/mandy/actions";
 import { routeVoiceCommand, gateRoute } from "@/lib/mandy/router";
-import { gateDecision, getMandyQuoteStatus } from "@/lib/mandy/gate";
+import { gateDecision, gatePlan, getMandyQuoteStatus } from "@/lib/mandy/gate";
+import { runPlanSteps, planReportText, type PlanStep } from "@/lib/mandy/quoteEdits";
+import type { PlanPreview } from "@/lib/mandy/planPreview";
 import { honestMessage, routeReached } from "@/lib/mandy/verify";
 import { useMandyGo } from "@/lib/mandy/go";
 import { formatForSpeech, formatReplyText } from "@/lib/mandy/speech";
@@ -50,18 +52,22 @@ function useGlobalMandyActions() {
     return { ok: true, message: `Opened ${q.quote_number || "the quote"}${q.customer_name ? ` for ${q.customer_name}` : ""}.`, data: { quote_id: q.id, route } };
   };
 
+  /** Same default sort as the Quotes list: non-superseded, newest created first. */
+  const openLatest = async (): Promise<MandyResult> => {
+    const { data, error } = await latestQuoteQuery();
+    if (error) return { ok: false, message: `Could not load quotes: ${error.message}` };
+    if (!data?.length) return { ok: false, message: "No quotes found." };
+    return openQuote(data[0]);
+  };
+  let openQuoteBy: (a: Record<string, any>) => Promise<MandyResult> = async () => ({ ok: false, message: "" });
+
   useRegisterMandyActions({
-    open_last_quote: async () => {
-      const { data, error } = await supabase
-        .from("quotes")
-        .select("id, quote_number, customer_name, created_at")
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (error) return { ok: false, message: `Could not load quotes: ${error.message}` };
-      if (!data?.length) return { ok: false, message: "No quotes found." };
-      return openQuote(data[0]);
-    },
+    open_last_quote: async () => openLatest(),
+    open_latest_quote: async () => openLatest(),
     open_quote: async ({ ref, client, quote_id }) => {
+      return openQuoteBy({ ref, client, quote_id });
+    },
+    __unused_open_quote_body: async ({ ref, client, quote_id }) => {
       if (quote_id) {
         const { data } = await supabase.from("quotes").select("id, quote_number, customer_name").eq("id", quote_id).maybeSingle();
         return data ? openQuote(data) : { ok: false, message: "That quote is no longer available." };
@@ -195,7 +201,7 @@ export default function MandyDock() {
         r.verified = routeReached(route, window.location.pathname, window.location.search);
       }
       audit(name, args, r);
-      if (/^(open_quote|open_last_quote|create_quote_for_client)$/.test(name) && r.ok && !r.choices) {
+      if (/^(open_quote|open_last_quote|open_latest_quote|open_top_quote|create_quote_for_client)$/.test(name) && r.ok && !r.choices) {
         // Wait for the opened page to register its quote actions.
         for (let i = 0; i < 40 && !registry?.get(QUOTE_TOOLS_PROBE); i++) await sleep(100);
       }
