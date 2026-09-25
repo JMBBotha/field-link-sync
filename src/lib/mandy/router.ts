@@ -148,6 +148,7 @@ export function guardRoute(r: RouteResult, transcript: string): RouteResult {
     return { ...r, action, args, confidence: Math.max(r.confidence, 0.9), assistantMessage: fixedMsg };
   };
   let m: RegExpMatchArray | null;
+  if (/^\s*(?:please\s+)?(?:undo(?:\s+(?:that|it|this|the\s+last(?:\s+change)?))?|take\s+(?:that|it)\s+back|revert\s+(?:the\s+|my\s+)?last\s+(?:change|edit))\s*[.!]?\s*$/i.test(t)) return pick("undo_last_change", {});
   if ((m = t.match(/^\s*describe\s+(.+?)\s+as\s+(.+)$/i))) return pick("describe_area", { area: clean(m[1]), description: clean(m[2]) });
   if ((m = t.match(/\b(?:edit|change|update|replace)\s+(?:the\s+)?note(?:\s+(?:about|on|for)\s+(.+?))?\s*(?:\s+to|\s+with|:)\s+(.+)$/i))) {
     return pick("edit_note", { ...(m[1] ? { match: clean(m[1]) } : {}), text: clean(m[2]) });

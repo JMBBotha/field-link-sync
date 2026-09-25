@@ -3256,6 +3256,53 @@ export type Database = {
           },
         ]
       }
+      mandy_undo_snapshots: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          label: string | null
+          quote_id: string
+          quote_updated_at_after: string | null
+          snapshot: Json
+          state_hash_after: string | null
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          quote_id: string
+          quote_updated_at_after?: string | null
+          snapshot: Json
+          state_hash_after?: string | null
+          used_at?: string | null
+          user_id?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          quote_id?: string
+          quote_updated_at_after?: string | null
+          snapshot?: Json
+          state_hash_after?: string | null
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mandy_undo_snapshots_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nl_audit_log: {
         Row: {
           access_granted: boolean | null

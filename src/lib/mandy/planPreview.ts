@@ -4,7 +4,9 @@
  * fake addItem, kitLengthPatch, runSetLabourHours, qtyPatch, linePriceDecision).
  * Nothing is saved. Produces the one Confirm card's lines and before → after.
  */
-import { addCatalogProductToQuote, kitLengthPatch, matchSpokenProduct, type BundleForKit } from "@/lib/mandy/quoteOps";
+import { addCatalogProductToQuote, addKitToQuote, areaUnitBtu, kitLengthPatch, type BundleForKit } from "@/lib/mandy/quoteOps";
+import { matchCatalog, catalogChipLabel } from "@/lib/mandy/catalogMatch";
+import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
 import { runSetLabourHours } from "@/lib/mandy/labourAction";
 import { matchQuoteItem, findUnitKits, qtyPatch, linePriceDecision, duplicateAreaRows, isKit, type EditItem, type EditArea, type PlanStep } from "@/lib/mandy/quoteEdits";
 import type { CategoryMarkupRates } from "@/lib/pricing";
@@ -69,12 +71,20 @@ export async function previewPlan(steps: PlanStep[], d: PreviewDeps): Promise<Pl
         let p: any = null;
         if (args.product_id) p = d.products.find((x) => x.id === args.product_id);
         else {
-          const m = matchSpokenProduct(String(args.query || ""), d.products);
-          if (m.ranked.length && m.tie) {
-            // Keep the whole plan pending: the user picks the model, then the card rebuilds.
-            return { ...fail(step, `Which ${args.query}?`), pick: { step: n, options: m.ranked.map((x: any) => ({ id: x.id, label: `${x.short_name} · ${x.product_code}` })) } };
+          const area0 = findArea(args.area);
+          const m = matchCatalog(String(args.query || ""), d.products, d.bundles as any, { areaBtu: areaUnitBtu(items, d.products, area0?.id) });
+          if (m.pick?.kind === "kit") {
+            if (!args.area) return fail(step, `Which area for the ${m.pick.kit.name}?`);
+            const a = ensureArea(args.area);
+            const k = await addKitToQuote({ addItem, bundle: m.pick.kit as any, areaId: a.id, sortOrder: nextSort() });
+            lines.push({ step, action, label: `${k.kitName} → ${a.name}`, qty: Number(k.kit?.length) || 1, price: Number(k.kit?.unit_price) || 0 });
+            break;
           }
-          p = m.ranked[0] || null;
+          if (!m.pick && m.options.length) {
+            // Keep the whole plan pending: the user picks the model, then the card rebuilds.
+            return { ...fail(step, `Which ${args.query}?`), pick: { step: n, options: m.options.map((h: any) => ({ id: h.id, label: catalogChipLabel(h, h.kind === "product" ? getEffectiveUnitPrices(h.product).unitSell : null) })) } };
+          }
+          p = m.pick?.kind === "product" ? m.pick.product : null;
         }
         if (!p) return fail(step, `No single catalog match for “${args.query ?? ""}”.`);
         if (!args.area) return fail(step, `Which area for ${p.short_name}?`);
