@@ -113,6 +113,9 @@ describe("category fallback + quote-level override", () => {
   it("accessories in the AC category are materials", () => {
     expect(classifyQuoteCategory({ product_category: "Air Conditioning", short_name: "M8 Raw Bolts" })).toBe("materials");
     expect(classifyQuoteCategory({ product_category: "Air Conditioning", short_name: "Membrane pump with float switch" })).toBe("materials");
+    // Heat pumps are equipment (25% units rate), not materials — the word "pump" must not short-circuit.
+    expect(classifyQuoteCategory({ product_category: "Air Conditioning", short_name: "Alliance 12000 BTU Heat Pump Inverter" })).toBe("units");
+    expect(classifyQuoteCategory({ short_name: "Heat pump 5kW monoblock" })).toBe("units");
   });
 });
 
