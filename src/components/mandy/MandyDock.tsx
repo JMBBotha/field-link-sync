@@ -21,7 +21,9 @@ import { getAssistantContext, setAssistantContext } from "@/stores/assistantCont
 import { useMandyDock, useMandyRegistry, useRegisterMandyActions } from "@/lib/mandy/registry";
 import { CONFIRM_REQUIRED, toolsFor, type MandyChoice, type MandyResult } from "@/lib/mandy/actions";
 import { routeVoiceCommand, gateRoute } from "@/lib/mandy/router";
-import { gateDecision, getMandyQuoteStatus } from "@/lib/mandy/gate";
+import { gateDecision, gatePlan, getMandyQuoteStatus } from "@/lib/mandy/gate";
+import { runPlanSteps, planReportText, type PlanStep } from "@/lib/mandy/quoteEdits";
+import type { PlanPreview } from "@/lib/mandy/planPreview";
 import { honestMessage, routeReached } from "@/lib/mandy/verify";
 import { useMandyGo } from "@/lib/mandy/go";
 import { formatForSpeech, formatReplyText } from "@/lib/mandy/speech";
@@ -30,6 +32,7 @@ import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voice
 import { createDraftQuoteForCustomer } from "@/lib/createDraftQuote";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
 import { ADD_NEW_CLIENT_CHOICE, buildFindClientResult } from "@/lib/mandy/clientChoices";
+import { latestQuoteQuery } from "@/lib/mandy/latestQuote";
 
 const MAX_STEPS = 4;
 type Phase = "idle" | "listening" | "hearing" | "working";
@@ -50,17 +53,17 @@ function useGlobalMandyActions() {
     return { ok: true, message: `Opened ${q.quote_number || "the quote"}${q.customer_name ? ` for ${q.customer_name}` : ""}.`, data: { quote_id: q.id, route } };
   };
 
+  /** Same default sort as the Quotes list: non-superseded, newest created first. */
+  const openLatest = async (): Promise<MandyResult> => {
+    const { data, error } = await latestQuoteQuery();
+    if (error) return { ok: false, message: `Could not load quotes: ${error.message}` };
+    if (!data?.length) return { ok: false, message: "No quotes found." };
+    return openQuote(data[0]);
+  };
+
   useRegisterMandyActions({
-    open_last_quote: async () => {
-      const { data, error } = await supabase
-        .from("quotes")
-        .select("id, quote_number, customer_name, created_at")
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (error) return { ok: false, message: `Could not load quotes: ${error.message}` };
-      if (!data?.length) return { ok: false, message: "No quotes found." };
-      return openQuote(data[0]);
-    },
+    open_last_quote: async () => openLatest(),
+    open_latest_quote: async () => openLatest(),
     open_quote: async ({ ref, client, quote_id }) => {
       if (quote_id) {
         const { data } = await supabase.from("quotes").select("id, quote_number, customer_name").eq("id", quote_id).maybeSingle();
@@ -169,7 +172,7 @@ export default function MandyDock() {
   const [typed, setTyped] = useState("");
   const [muted, setMuted] = useState(false);
   const [choices, setChoices] = useState<MandyChoice[]>([]);
-  const [confirm, setConfirm] = useState<{ summary: string; run: () => Promise<MandyResult> } | null>(null);
+  const [confirm, setConfirm] = useState<{ summary: string; lines?: string[]; run: () => Promise<MandyResult> } | null>(null);
   const { speak, cancel } = useSpeaker(muted);
 
   const historyRef = useRef<Msg[]>([]);
@@ -185,7 +188,7 @@ export default function MandyDock() {
     if (!h) return { ok: false, message: `${name} is not available on this screen.` };
     try {
       const r = await h(args || {});
-      if (CONFIRM_REQUIRED.has(name) && r.ok && !r.confirm && !r.choices) {
+      if (CONFIRM_REQUIRED.has(name) && !args?.__plan && r.ok && !r.confirm && !r.choices) {
         // Safety: destructive actions must come back as a confirm card.
         return { ok: false, message: `${name} needs an on-screen confirmation and was not run.` };
       }
@@ -195,7 +198,7 @@ export default function MandyDock() {
         r.verified = routeReached(route, window.location.pathname, window.location.search);
       }
       audit(name, args, r);
-      if (/^(open_quote|open_last_quote|create_quote_for_client)$/.test(name) && r.ok && !r.choices) {
+      if (/^(open_quote|open_last_quote|open_latest_quote|open_top_quote|create_quote_for_client)$/.test(name) && r.ok && !r.choices) {
         // Wait for the opened page to register its quote actions.
         for (let i = 0; i < 40 && !registry?.get(QUOTE_TOOLS_PROBE); i++) await sleep(100);
       }
@@ -206,6 +209,33 @@ export default function MandyDock() {
       return r;
     }
   }, [registry]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Multi-step plan → ONE Confirm card with a dry-run preview. Nothing runs until Confirm. */
+  const preparePlan = useCallback(async (steps: PlanStep[], confidence: number): Promise<string> => {
+    const g = gatePlan(steps, confidence, { quoteStatus: getMandyQuoteStatus() });
+    if (g.kind === "block") return g.reason!;
+    const summary = steps.map((s, i) => `${i + 1}. ${s.action.replace(/_/g, " ")}`).join(", ");
+    if (g.kind === "chips") {
+      setChoices([{ label: `Plan: ${summary}`, action: "__plan", args: { steps } }]);
+      return "Not sure I got all of that — tap the plan to review it, or say it again.";
+    }
+    const pv = registry?.get("__preview_plan");
+    if (!pv) return "Open the quote first, then say that again.";
+    const r = await pv({ steps });
+    const p = r.data?.preview as PlanPreview | undefined;
+    if (!r.ok || !p) return r.message || "I couldn't work out that plan.";
+    if (p.error) return `Step ${p.errorStep}: ${p.error} Nothing was changed.`;
+    const money = (n: number) => `R${n.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    setConfirm({
+      summary: `Run ${steps.length} steps? Total ${money(p.before)} → ${money(p.after)} incl. VAT.`,
+      lines: p.lines.map((l) => `${l.step}. ${l.label}${l.qty != null ? ` · ${l.qty}` : ""}${l.price != null ? ` · ${money(l.price)}` : ""}`),
+      run: async () => {
+        const rep = await runPlanSteps(steps, (s) => execute(s.action, { ...s.args, __plan: true }));
+        return { ok: rep.failedAt == null, message: planReportText(rep), data: { ran: rep.ran, total: rep.total } };
+      },
+    });
+    return `Plan ready: ${steps.length} steps, total ${money(p.before)} to ${money(p.after)} incl. VAT. Tap Confirm to run it.`;
+  }, [execute, registry]);
 
   const runTurn = useCallback(async (text: string) => {
     const t = text.trim();
@@ -230,6 +260,12 @@ export default function MandyDock() {
         });
         if (step === 0) msgs.push({ role: "user", content: t });
         if (r0.error) { final = `Sorry, I couldn't reach my brain: ${r0.error}`; break; }
+        if (r0.args && "__plan" in r0.args) delete (r0.args as any).__plan; // only the plan Confirm may set it
+        if (r0.plan) {
+          const out = await preparePlan(r0.plan, r0.confidence);
+          final = out;
+          break;
+        }
         if (r0.action) {
           const tier = gateDecision(r0.action, r0.confidence, { quoteStatus: getMandyQuoteStatus() });
           if (tier.kind === "block") { final = tier.reason!; break; }
@@ -278,11 +314,15 @@ export default function MandyDock() {
     setReply(final);
     setPhase("idle");
     await speak(final); // the ONE utterance of this turn
-  }, [cancel, execute, registry, speak]);
+  }, [cancel, execute, preparePlan, registry, speak]);
 
   const pickChoice = async (c: MandyChoice) => {
     setChoices([]);
     setPhase("working");
+    if (c.action === "__plan") {
+      const msg = formatReplyText(await preparePlan((c.args.steps as PlanStep[]) || [], 1));
+      setReply(msg); setPhase("idle"); await speak(msg); return;
+    }
     const r = await execute(c.action, c.args);
     if (r.choices?.length) setChoices(r.choices);
     if (r.confirm) setConfirm(r.confirm);
@@ -387,6 +427,11 @@ export default function MandyDock() {
         {confirm && (
           <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2">
             <p className="text-xs text-foreground">{confirm.summary}</p>
+            {confirm.lines?.length ? (
+              <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground" data-testid="mandy-plan-lines">
+                {confirm.lines.map((l, i) => <li key={i}>{l}</li>)}
+              </ul>
+            ) : null}
             <div className="mt-2 flex gap-2">
               <Button size="sm" variant="destructive" className="h-7 gap-1" onClick={() => void runConfirm()}><Check className="h-3 w-3" /> Confirm</Button>
               <Button size="sm" variant="outline" className="h-7" onClick={() => { setConfirm(null); setReply("Cancelled — nothing was changed."); }}>Cancel</Button>

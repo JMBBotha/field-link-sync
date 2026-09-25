@@ -1,0 +1,1 @@
+ALTER TABLE public.quote_areas ADD COLUMN IF NOT EXISTS description text;

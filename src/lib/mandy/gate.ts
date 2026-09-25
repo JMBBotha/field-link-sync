@@ -11,14 +11,14 @@ export const LOW_RISK_EDITS = new Set([
   "set_labour_hours", "add_area", "rename_area", "describe_area", "add_note", "set_qty", "move_item", "duplicate_area",
 ]);
 /** Priced adds / changes. */
-export const PRICED_ACTIONS = new Set(["add_item_to_area", "add_unit", "add_kit", "set_kit_length"]);
+export const PRICED_ACTIONS = new Set(["add_item_to_area", "add_unit", "add_kit", "set_kit_length", "set_line_price"]);
 /** Always a Confirm card, whatever the confidence. */
 export const ALWAYS_CONFIRM = new Set([
   "remove_item", "create_deposit_invoice", "send_quote", "send_invoice", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote",
 ]);
 /** Reads and navigation — allowed on any quote. */
 export const READ_ONLY = new Set([
-  "open_last_quote", "open_quote", "find_client", "open_client", "select_client", "add_new_client",
+  "open_last_quote", "open_latest_quote", "open_top_quote", "open_quote", "find_client", "open_client", "select_client", "add_new_client",
   "open_invoice", "show_deposit_due", "open_calendar_day", "list_todays_jobs", "open_live_map", "filter_map_by_status",
   "read_quote_total", "generate_quote_pdf",
 ]);
@@ -50,3 +50,21 @@ export function gateDecision(action: string, confidence: number, ctx: GateCtx = 
 let currentQuoteStatus: string | null = null;
 export const setMandyQuoteStatus = (s: string | null) => { currentQuoteStatus = s; };
 export const getMandyQuoteStatus = () => currentQuoteStatus;
+
+/**
+ * Plan gate: the plan as a whole is gated once — lowest confidence and the
+ * highest-risk step decide. A runnable plan ALWAYS goes to the single Confirm
+ * card (kind "confirm"); below the plan's threshold it becomes chips; any
+ * write on a non-draft quote blocks the whole plan.
+ */
+export function gatePlan(steps: { action: string }[], confidence: number, ctx: GateCtx = {}): GateResult {
+  if (!steps.length) return { kind: "block", threshold: 1, reason: "That plan had no steps I can run." };
+  let threshold = 0;
+  for (const s of steps) {
+    const g = gateDecision(s.action, 1, ctx);
+    if (g.kind === "block") return g;
+    const t = ALWAYS_CONFIRM.has(s.action) ? PRICED_MIN : READ_ONLY.has(s.action) || LOW_RISK_EDITS.has(s.action) ? LOW_RISK_MIN : PRICED_MIN;
+    threshold = Math.max(threshold, t);
+  }
+  return { kind: confidence >= threshold ? "confirm" : "chips", threshold };
+}

@@ -4558,6 +4558,7 @@ export type Database = {
       quote_areas: {
         Row: {
           created_at: string
+          description: string | null
           id: string
           name: string
           quote_id: string
@@ -4566,6 +4567,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
           name: string
           quote_id: string
@@ -4574,6 +4576,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
           quote_id?: string

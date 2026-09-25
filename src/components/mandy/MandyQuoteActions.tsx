@@ -1,23 +1,33 @@
 /**
  * Quote-scoped Mandy actions. Rendered inside <QuoteProvider> on the live
- * estimate page, so every action goes through QuoteContext exactly like the
- * on-screen controls. Unmounts (and unregisters) when the quote closes.
+ * estimate page AND the full builder, so every action goes through
+ * QuoteContext exactly like the on-screen controls. Unmounts (and
+ * unregisters) when the quote closes.
+ *
+ * Handlers read the quote through `live` (updated every render AND from each
+ * refetch), so the steps of a multi-step plan see each other's writes.
  */
 import { useQuoteContext } from "@/contexts/QuoteContext";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 import { useRegisterMandyActions } from "@/lib/mandy/registry";
-import { fmtRand, type MandyResult } from "@/lib/mandy/actions";
-import { addCatalogProductToQuote, kitLengthPatch, matchSpokenProduct } from "@/lib/mandy/quoteOps";
+import { fmtRand, type MandyChoice, type MandyResult } from "@/lib/mandy/actions";
+import { addCatalogProductToQuote, kitLengthPatch, matchSpokenProduct, isAirConditioningProduct } from "@/lib/mandy/quoteOps";
 import { runSetLabourHours } from "@/lib/mandy/labourAction";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { standardLabourRate, findAreaLabour } from "@/lib/labour";
 import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { refreshAfterMandyWrite } from "@/lib/mandy/verify";
 import { setMandyQuoteStatus } from "@/lib/mandy/gate";
+import {
+  matchQuoteItem, findUnitKits, qtyPatch, linePriceDecision, duplicateAreaRows, isKit, isLabour,
+  type EditItem, type PlanStep,
+} from "@/lib/mandy/quoteEdits";
+import { previewPlan } from "@/lib/mandy/planPreview";
+import type { QuoteArea, QuoteItem } from "@/types/quote";
 
 interface Props {
   vatRate: number;
@@ -27,6 +37,15 @@ interface Props {
 }
 
 const lc = (s?: string | null) => (s || "").trim().toLowerCase();
+export const NEW_AREA_LABEL = "New area…";
+
+/** Pure: area chips (existing + "New area…") for an AC add with no area. */
+export function areaChipsForAdd(areas: { name: string }[], args: Record<string, unknown>): MandyChoice[] {
+  return [
+    ...areas.map((a) => ({ label: a.name, action: "add_item_to_area", args: { ...args, area: a.name } })),
+    { label: NEW_AREA_LABEL, action: "add_item_to_area", args: { ...args, area: `Area ${areas.length + 1}` } },
+  ];
+}
 
 export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) {
   const ctx = useQuoteContext();
@@ -35,32 +54,60 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
   const { settings } = useCompanySettings();
   const qc = useQueryClient();
 
-  // Publish the open quote's status for the tiered gate (non-draft = read-only).
+  const live = useRef<{ areas: QuoteArea[]; items: QuoteItem[] }>({ areas: ctx.areas, items: ctx.items });
+  live.current = { areas: ctx.areas, items: ctx.items };
+  const S = () => live.current;
+
   useEffect(() => {
     setMandyQuoteStatus(ctx.meta?.status ?? "draft");
     return () => setMandyQuoteStatus(null);
   }, [ctx.meta?.status]);
 
   /** After every write: invalidate this quote's caches + silently re-read QuoteContext. */
-  const refresh = () => refreshAfterMandyWrite({
-    refetch: ctx.refetch,
-    invalidate: () => qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(ctx.quoteId) }),
-    onChanged,
-  });
+  const refresh = async () => {
+    const fresh = await refreshAfterMandyWrite({
+      refetch: ctx.refetch,
+      invalidate: () => qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(ctx.quoteId) }),
+      onChanged,
+    });
+    if (fresh) live.current = { areas: fresh.areas, items: fresh.items };
+    return fresh;
+  };
 
-  const nextSort = () => (ctx.items.length ? Math.max(...ctx.items.map((i) => i.sort_order || 0)) + 1 : 0);
+  const nextSort = () => { const it = S().items; return it.length ? Math.max(...it.map((i) => i.sort_order || 0)) + 1 : 0; };
 
   const findArea = (name?: string) => {
-    if (!name) return ctx.areas.length === 1 ? ctx.areas[0] : null;
+    const areas = S().areas;
+    if (!name) return areas.length === 1 ? areas[0] : null;
     const n = lc(name);
-    return ctx.areas.find((a) => lc(a.name) === n) || ctx.areas.find((a) => lc(a.name).includes(n) || n.includes(lc(a.name))) || null;
+    return areas.find((a) => lc(a.name) === n) || areas.find((a) => lc(a.name).includes(n) || n.includes(lc(a.name))) || null;
+  };
+  const areaName = (id: string | null) => S().areas.find((a) => a.id === id)?.name || "";
+  const areaChips = (action: string, args: Record<string, unknown>) => S().areas.map((a) => ({ label: a.name, action, args: { ...args, area: a.name } }));
+
+  /** Resolve a spoken line reference; ambiguous → chips re-running `action` with item_id. */
+  const resolveItem = (ref: unknown, action: string, args: Record<string, unknown>): { item: QuoteItem } | { result: MandyResult } => {
+    if (args.item_id) {
+      const it = S().items.find((i) => i.id === args.item_id);
+      return it ? { item: it } : { result: { ok: false, message: "That line is no longer on the quote." } };
+    }
+    const m = matchQuoteItem(S().items as EditItem[], S().areas, String(ref || ""));
+    if (m.hits.length === 1) return { item: m.hits[0] as QuoteItem };
+    if (!m.hits.length) return { result: { ok: false, message: `No line matching “${ref ?? ""}”.` } };
+    return {
+      result: {
+        ok: true,
+        message: "Several lines match. Waiting for the user to tap one.",
+        choices: m.hits.slice(0, 6).map((h) => ({ label: `${h.item_name}${areaName(h.area_id) ? ` · ${areaName(h.area_id)}` : ""}`, action, args: { ...args, item_id: h.id } })),
+      },
+    };
   };
 
   const totals = () => {
-    const live = useQuoteLiveTotals.getState();
-    const top = ctx.items.filter((i) => !i.parent_item_id);
-    const sub = live.hasLiveData
-      ? live.subtotal
+    const liveT = useQuoteLiveTotals.getState();
+    const top = S().items.filter((i) => !i.parent_item_id);
+    const sub = liveT.hasLiveData
+      ? liveT.subtotal
       : top.reduce((s, i) => s + (Number(i.total_price) || Number(i.quantity || 0) * Number(i.unit_price || 0)), 0);
     const dType = ctx.meta?.discount_type;
     const dVal = Number(ctx.meta?.discount_value || 0);
@@ -69,10 +116,13 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     return { sub, disc, vat: net * vatRate, total: net * (1 + vatRate), lines: top.length };
   };
 
-  const addProduct = async (p: PaletteProduct, areaName: string | undefined, qty: number): Promise<MandyResult> => {
-    let area = findArea(areaName);
-    if (!area && areaName) area = await ctx.addArea(areaName.trim());
-    if (!area) area = ctx.areas[0] || (await ctx.ensureDefaultArea()) || (await ctx.addArea("Items"));
+  const addProduct = async (p: PaletteProduct, areaNameArg: string | undefined, qty: number): Promise<MandyResult> => {
+    let area = findArea(areaNameArg);
+    if (!area && areaNameArg) area = await ctx.addArea(areaNameArg.trim());
+    if (!area && isAirConditioningProduct(p) && S().areas.length !== 1) {
+      return { ok: true, message: `Which area for ${p.short_name}? Waiting for the user to tap one.`, choices: areaChipsForAdd(S().areas, { product_id: p.id, quantity: qty }) };
+    }
+    if (!area) area = S().areas[0] || (await ctx.ensureDefaultArea()) || (await ctx.addArea("Items"));
     if (!area) return { ok: false, message: "Could not find or create an area on this quote." };
     const r = await addCatalogProductToQuote({ addItem: ctx.addItem, product: p, areaId: area.id, sortOrder: nextSort(), quantity: qty, bundles, source: "mandy_voice" });
     if (!r.line) return { ok: false, message: `Could not add ${p.short_name || p.product_code}.` };
@@ -87,22 +137,39 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     };
   };
 
+  const doRemove = async (ids: string[], label: string): Promise<MandyResult> => {
+    for (const id of ids) await ctx.deleteItem(id);
+    const fresh = await refresh();
+    return { ok: true, message: `Removed ${label}.`, verified: !!fresh && !fresh.items.some((i) => ids.includes(i.id)) };
+  };
+
   useRegisterMandyActions({
     /** Internal (no schema → never offered to the model): force-refresh the open quote. */
     __refresh_quote: async () => {
       const fresh = await refresh();
       return { ok: !!fresh, message: fresh ? "Refreshed." : "Could not refresh.", verified: !!fresh };
     },
+    /** Internal: dry-run a plan with the shared pricing; nothing is saved. */
+    __preview_plan: async ({ steps }) => {
+      const preview = await previewPlan((steps as PlanStep[]) || [], {
+        items: S().items as EditItem[], areas: S().areas, products, bundles, rates: ctx.markupRates,
+        standardRate: standardLabourRate(settings?.default_hourly_rate), vatRate,
+        discount: { type: ctx.meta?.discount_type, value: Number(ctx.meta?.discount_value || 0) },
+      });
+      return { ok: true, message: preview.error || "Preview ready.", data: { preview } };
+    },
+
     set_labour_hours: async (args) => {
       const r = await runSetLabourHours({
-        areas: ctx.areas, items: ctx.items, standardRate: standardLabourRate(settings?.default_hourly_rate),
+        areas: S().areas, items: S().items, standardRate: standardLabourRate(settings?.default_hourly_rate),
         addItem: ctx.addItem, updateItem: ctx.updateItem,
       }, args);
       if (!r.ok || r.choices) return r;
       const fresh = await refresh();
-      const a = fresh?.areas.find((x) => x.name.trim().toLowerCase() === String(args.area || "").trim().toLowerCase()) || (fresh?.areas.length === 1 ? fresh.areas[0] : null);
+      const a = fresh?.areas.find((x) => lc(x.name) === lc(String(args.area || ""))) || (fresh?.areas.length === 1 ? fresh.areas[0] : null);
       return { ...r, verified: !!a && !!fresh && !!findAreaLabour(fresh.items as any[], a.id) };
     },
+
     add_area: async ({ name }) => {
       const n = String(name || "").trim();
       if (!n) return { ok: false, message: "No area name given." };
@@ -114,13 +181,40 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       return { ok: true, message: `Added area ${row.name}.`, verified: !!fresh?.areas.some((x) => x.id === row.id) };
     },
 
-    rename_area: async ({ area, new_name }) => {
+    rename_area: async ({ area, new_name, name }) => {
       const a = findArea(area);
-      if (!a) return { ok: false, message: `No area called ${area} on this quote.`, choices: ctx.areas.map((x) => ({ label: x.name, action: "rename_area", args: { area: x.name, new_name } })) };
-      const nn = String(new_name).trim();
+      const nn = String(new_name ?? name ?? "").trim();
+      if (!a) return { ok: false, message: `No area called ${area} on this quote.`, choices: areaChips("rename_area", { new_name: nn }) };
+      if (!nn) return { ok: false, message: "What should the new name be?" };
       await ctx.updateArea(a.id, { name: nn });
       const fresh = await refresh();
       return { ok: true, message: `Renamed ${a.name} to ${nn}.`, verified: !!fresh?.areas.some((x) => x.id === a.id && x.name === nn) };
+    },
+
+    describe_area: async ({ area, description }) => {
+      const a = findArea(area);
+      if (!a) return { ok: false, message: `No area called ${area} on this quote.`, choices: areaChips("describe_area", { description }) };
+      const d = String(description || "").trim();
+      await ctx.updateArea(a.id, { description: d } as any);
+      const fresh = await refresh();
+      return { ok: true, message: `Described ${a.name}: ${d}.`, verified: !!fresh?.areas.some((x: any) => x.id === a.id && x.description === d) };
+    },
+
+    add_note: async (args) => {
+      const text = String(args.text || "").trim();
+      if (!text) return { ok: false, message: "What should the note say?" };
+      if (args.target === "item") {
+        const r = resolveItem(args.item, "add_note", args);
+        if ("result" in r) return r.result;
+        const notes = [r.item.notes, text].filter(Boolean).join("\n");
+        await ctx.updateItem(r.item.id, { notes });
+        const fresh = await refresh();
+        return { ok: true, message: `Added a note to ${r.item.item_name}.`, verified: !!fresh?.items.some((i) => i.id === r.item.id && i.notes === notes) };
+      }
+      const notes = [ctx.meta?.notes, text].filter(Boolean).join("\n");
+      await ctx.updateQuote({ notes });
+      await refresh();
+      return { ok: true, message: "Added a note to the quote." };
     },
 
     add_item_to_area: async ({ area, query, quantity, product_id }) => {
@@ -137,11 +231,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
         return {
           ok: true,
           message: `Several products match “${query}”. Waiting for the user to tap one.`,
-          choices: m.ranked.map((p) => ({
-            label: `${p.short_name} · ${p.product_code}`,
-            action: "add_item_to_area",
-            args: { area, quantity: qty, product_id: p.id },
-          })),
+          choices: m.ranked.map((p) => ({ label: `${p.short_name} · ${p.product_code}`, action: "add_item_to_area", args: { area, quantity: qty, product_id: p.id } })),
         };
       }
       return addProduct(m.ranked[0], area, qty);
@@ -151,13 +241,13 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       const m = Number(metres);
       if (!(m > 0)) return { ok: false, message: "Tell me how many metres." };
       const a = area ? findArea(area) : null;
-      const kits = ctx.items.filter((i) => i.is_bundle && !i.parent_item_id && (!a || i.area_id === a.id) && (i.metadata as any)?.kit?.pricing_type !== "p/qty");
+      const kits = S().items.filter((i) => i.is_bundle && !i.parent_item_id && (!a || i.area_id === a.id) && (i.metadata as any)?.kit?.pricing_type !== "p/qty");
       if (!kits.length) return { ok: false, message: `No piping kit ${a ? `in ${a.name}` : "on this quote"}.` };
       if (kits.length > 1) {
         return {
           ok: true,
           message: "More than one kit on this quote. Waiting for the user to tap one.",
-          choices: kits.map((k) => ({ label: `${k.item_name} · ${ctx.areas.find((x) => x.id === k.area_id)?.name || ""}`, action: "set_kit_length", args: { area: ctx.areas.find((x) => x.id === k.area_id)?.name, metres: m } })),
+          choices: kits.map((k) => ({ label: `${k.item_name} · ${areaName(k.area_id)}`, action: "set_kit_length", args: { area: areaName(k.area_id), metres: m } })),
         };
       }
       const k = kits[0];
@@ -168,25 +258,99 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       return { ok: true, message: `Set ${k.item_name} to ${patch.length} m — ${fmtRand(patch.unit_price)} excl. VAT.`, verified: !!row && Number(row.length) === Number(patch.length) };
     },
 
-    remove_item: async ({ item }) => {
-      const q = lc(item);
-      const hits = ctx.items.filter((i) => !i.parent_item_id && (lc(i.item_name).includes(q) || lc(i.item_number) === q));
-      if (!hits.length) return { ok: false, message: `No line matching “${item}”.` };
-      if (hits.length > 1) {
-        return { ok: true, message: "Several lines match. Waiting for the user to tap one.", choices: hits.slice(0, 5).map((h) => ({ label: `${h.item_name}${h.item_number ? ` · ${h.item_number}` : ""}`, action: "remove_item", args: { item: h.item_number || h.item_name } })) };
-      }
-      const h = hits[0];
+    set_qty: async (args) => {
+      const r = resolveItem(args.item, "set_qty", args);
+      if ("result" in r) return r.result;
+      const it = r.item;
+      const p = qtyPatch(it as EditItem, Number(args.qty), products.find((x) => x.id === it.product_id) as any);
+      await ctx.updateItem(it.id, p.patch as any);
+      const fresh = await refresh();
+      const unit = p.kind === "length" ? " m" : p.kind === "hours" ? " h" : "";
+      const row = fresh?.items.find((i) => i.id === it.id);
       return {
         ok: true,
-        message: `Awaiting on-screen confirmation to remove ${h.item_name}.`,
-        confirm: {
-          summary: `Remove ${h.item_name} from the quote?`,
-          run: async () => {
-            await ctx.deleteItem(h.id);
-            const fresh = await refresh();
-            return { ok: true, message: `Removed ${h.item_name}.`, verified: !!fresh && !fresh.items.some((i) => i.id === h.id) };
-          },
-        },
+        message: `${it.item_name}: ${p.value}${unit}, ${fmtRand(Number(p.patch.total_price ?? p.patch.unit_price ?? 0))} excl. VAT.`,
+        verified: !!row && (p.kind === "length" ? Number(row.length) === p.value : Number(row.quantity) === p.value),
+      };
+    },
+
+    set_line_price: async (args) => {
+      const r = resolveItem(args.item, "set_line_price", args);
+      if ("result" in r) return r.result;
+      const it = r.item;
+      const d = linePriceDecision(it as EditItem, Number(args.price), ctx.markupRates);
+      if (d.kind === "refuse") {
+        return { ok: false, message: `${d.reason}${d.floor != null ? ` The lowest allowed is ${fmtRand(d.floor)} excl. VAT.` : ""} Nothing changed.`, data: { floor: d.floor } };
+      }
+      const apply = async (): Promise<MandyResult> => {
+        await ctx.updateItem(it.id, d.patch as any);
+        const fresh = await refresh();
+        return { ok: true, message: `${it.item_name} now ${fmtRand(d.patch.unit_price)} excl. VAT.`, verified: !!fresh?.items.some((i) => i.id === it.id && Number(i.unit_price) === d.patch.unit_price) };
+      };
+      if (d.kind === "confirm" && !args.__plan) {
+        return {
+          ok: true,
+          message: `Awaiting on-screen confirmation: ${fmtRand(d.patch.unit_price)} is below list ${fmtRand(d.list)}.`,
+          confirm: { summary: `Set ${it.item_name} to ${fmtRand(d.patch.unit_price)} excl. VAT (list ${fmtRand(d.list)}, floor ${fmtRand(d.floor)})?`, run: apply },
+        };
+      }
+      return apply();
+    },
+
+    move_item: async (args) => {
+      const r = resolveItem(args.item, "move_item", args);
+      if ("result" in r) return r.result;
+      const a = findArea(args.area);
+      if (!a) return { ok: false, message: `No area called ${args.area}.`, choices: areaChips("move_item", { item_id: r.item.id }) };
+      const moving = [r.item, ...findUnitKits(S().items as EditItem[], r.item as EditItem)];
+      for (const x of moving) await ctx.moveItemToArea(x.id, a.id);
+      const fresh = await refresh();
+      return {
+        ok: true,
+        message: `Moved ${r.item.item_name}${moving.length > 1 ? " and its kit" : ""} to ${a.name}.`,
+        verified: !!fresh && moving.every((x) => fresh.items.some((i) => i.id === x.id && i.area_id === a.id)),
+      };
+    },
+
+    duplicate_area: async ({ area, new_name }) => {
+      const a = findArea(area);
+      if (!a) return { ok: false, message: `No area called ${area} on this quote.`, choices: areaChips("duplicate_area", { new_name }) };
+      const nn = String(new_name || `${a.name} copy`).trim();
+      const na = await ctx.addArea(nn);
+      if (!na) return { ok: false, message: `Could not add area ${nn}.` };
+      const idMap = new Map<string, string>();
+      const rows = duplicateAreaRows(S().items as EditItem[], a.id);
+      let sort = nextSort();
+      for (const r of rows) {
+        const created = await ctx.addItem({ ...(r.row as any), area_id: na.id, parent_item_id: r.parentSrcId ? idMap.get(r.parentSrcId) ?? null : null, sort_order: sort++ });
+        if (created) idMap.set(r.srcId, created.id);
+      }
+      const fresh = await refresh();
+      return { ok: true, message: `Copied ${a.name} to ${na.name} — ${rows.length} lines at the same prices.`, verified: !!fresh?.areas.some((x) => x.id === na.id) };
+    },
+
+    remove_item: async (args) => {
+      const r = resolveItem(args.item, "remove_item", args);
+      if ("result" in r) return r.result;
+      const h = r.item;
+      const kits = findUnitKits(S().items as EditItem[], h as EditItem);
+      if (kits.length && args.with_kit === undefined && !args.__plan) {
+        return {
+          ok: true,
+          message: `${h.item_name} has a kit. Waiting for the user to choose.`,
+          choices: [
+            { label: "Remove unit and kit", action: "remove_item", args: { item_id: h.id, with_kit: true } },
+            { label: "Remove unit only", action: "remove_item", args: { item_id: h.id, with_kit: false } },
+          ],
+        };
+      }
+      const ids = [h.id, ...(args.with_kit === false ? [] : kits.map((k) => k.id))];
+      const label = `${h.item_name}${ids.length > 1 ? " and its kit" : ""}`;
+      if (args.__plan) return doRemove(ids, label); // the plan's single Confirm already covered it
+      return {
+        ok: true,
+        message: `Awaiting on-screen confirmation to remove ${label}.`,
+        confirm: { summary: `Remove ${label} from the quote?`, run: () => doRemove(ids, label) },
       };
     },
 
@@ -208,3 +372,6 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
 
   return null;
 }
+
+// Re-exported for tests.
+export { isKit, isLabour };
