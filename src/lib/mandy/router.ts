@@ -136,7 +136,7 @@ export function guardRoute(r: RouteResult, transcript: string): RouteResult {
   const t = (transcript || "").trim();
   if (!t || r.action === "run_plan") return r;
   const pick = (action: string, args: Record<string, unknown>): RouteResult => {
-    if (r.action === action) return { ...r, args: { ...args, ...r.args } };
+    if (r.action === action) return { ...r, args: { ...r.args, ...args } };
     const am = r.assistantMessage as any;
     const fixedMsg = am?.tool_calls?.[0]
       ? { ...am, tool_calls: [{ ...am.tool_calls[0], function: { ...am.tool_calls[0].function, name: action, arguments: JSON.stringify(args) } }] }
