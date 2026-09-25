@@ -14,7 +14,8 @@ import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 
 interface Props {
   vatRate: number;
-  onPdf: () => Promise<void>;
+  /** May return a spoken message (e.g. builder hands PDF off to the estimate page). */
+  onPdf: () => Promise<void | string>;
   onChanged?: () => void;
 }
 
@@ -144,7 +145,8 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     },
 
     generate_quote_pdf: async () => {
-      await onPdf();
+      const m = await onPdf();
+      if (typeof m === "string") return { ok: true, message: m };
       return { ok: true, message: `Generated the PDF for ${ctx.meta?.quote_number || "this quote"}.` };
     },
 

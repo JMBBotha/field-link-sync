@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Pencil, FileCheck2, Send, Download, Printer, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,7 @@ const AdminEstimateDetailPage = () => {
     selected_customer_name: quote?.customer_name ?? undefined,
   });
 
-  const { data: items = [] } = useQuery({
+  const { data: items = [], isFetched: itemsFetched } = useQuery({
     queryKey: ["quote-document-items", id],
     queryFn: () => buildQuoteLineItems(id, quote?.visual_sections),
     enabled: !!id && !!quote,
@@ -152,6 +152,16 @@ const AdminEstimateDetailPage = () => {
     }
     setBusy(null);
   };
+
+  // Mandy on the full builder hands "make the PDF" off here (?mandy=pdf); run it once.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const mandyPdfRan = useRef(false);
+  useEffect(() => {
+    if (searchParams.get("mandy") !== "pdf" || mandyPdfRan.current || !quote || isLoading || !itemsFetched) return;
+    mandyPdfRan.current = true;
+    setSearchParams({}, { replace: true });
+    void handlePdf();
+  }, [searchParams, quote, isLoading, itemsFetched]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePdf = async () => {
     setBusy("pdf");

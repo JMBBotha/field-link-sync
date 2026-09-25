@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 
 import { supabase } from "@/integrations/supabase/client";
 import { QuoteProvider, useQuoteContext } from "@/contexts/QuoteContext";
+import MandyQuoteActions from "@/components/mandy/MandyQuoteActions";
 import { useUnifiedClients } from "@/hooks/useUnifiedClients";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
@@ -197,6 +198,23 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
       </div>
     </header>);
 
+}
+
+/* ─── Mandy quote actions on the full builder (same handlers as the estimate page) ─── */
+function BuilderMandyActions() {
+  const navigate = useNavigate();
+  const { quoteId, meta } = useQuoteContext();
+  if (!quoteId) return null;
+  return (
+    <MandyQuoteActions
+      vatRate={Number((meta as any)?.vat_rate) || 0.15}
+      onPdf={async () => {
+        // The branded PDF (roll-up + brochures) is built on the quote page; hand off there.
+        navigate(`/admin/estimates/${quoteId}?mandy=pdf`);
+        return `Opened ${meta?.quote_number || "the quote"} to build its PDF — the download starts once the page loads.`;
+      }}
+    />
+  );
 }
 
 /* ─── Inner content (needs context) ─── */
@@ -2025,6 +2043,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
 
   return (
     <QuoteProvider quoteId={quoteId}>
+      <BuilderMandyActions />
       <UnifiedQuoteBuilderInner mode={mode} />
     </QuoteProvider>);
 
