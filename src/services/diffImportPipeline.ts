@@ -14,6 +14,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeBrand } from "@/lib/brandNormalize";
 
 /** Strip non-numeric chars, e.g. AI-parsed "9000 BTU" → 9000 */
 function sanitizeInt(val: any): number | null {
@@ -154,7 +155,8 @@ export async function buildProductDiff(
       }
       const priceChanged = Math.abs(match.cost_price - row.cost_price) > 0.01;
       const descChanged = !!row.description && row.description !== match.description;
-      const brandChanged = !!row.brand && row.brand !== match.brand;
+      const incomingBrand = normalizeBrand(row.brand);
+      const brandChanged = !!incomingBrand && incomingBrand !== normalizeBrand(match.brand);
       const catChanged = !!row.product_category && row.product_category !== (match.product_category || match.category);
       const hasChanges = priceChanged || descChanged || brandChanged || catChanged;
       diff.push({ ...row, action: hasChanges ? "update" : "unchanged", old_cost_price: match.cost_price, existing_id: match.id });
@@ -320,7 +322,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       short_name: row.short_name,
       product_type: row.product_type || (isConsumablesSupplier ? "consumable" : "ac_unit"),
       product_category: row.product_category || (isConsumablesSupplier ? "Consumables" : "Air Conditioning"),
-      brand: row.brand || null,
+      brand: normalizeBrand(row.brand),
       sold_in_length: row.sold_in_length || false,
       unit_length: row.unit_length || null,
       unit_length_unit: row.unit_length_unit || "m",
@@ -353,7 +355,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       cost_price: row.cost_price,
       description: row.description,
       category: row.category || "General",
-      brand: row.brand || null,
+      brand: normalizeBrand(row.brand),
       product_category: row.product_category || null,
       short_name: row.short_name,
       updated_at: new Date().toISOString(),

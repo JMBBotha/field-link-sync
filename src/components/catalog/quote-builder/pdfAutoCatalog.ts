@@ -8,6 +8,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { ExtractedProductRegion } from "./pdfTextExtractor";
+import { normalizeBrand } from "@/lib/brandNormalize";
 
 /**
  * Extract a likely product/model code from text.
@@ -87,9 +88,16 @@ interface AutoCatalogResult {
 export async function autoCatalogFromRegions(
   regions: ExtractedProductRegion[],
   supplierText: string,
+  pdfUploadId: string | null,
   pageHeading?: string
 ): Promise<AutoCatalogResult> {
   const empty: AutoCatalogResult = { insertedCount: 0, newProducts: [] };
+
+  // Catalog integrity: every auto-catalogued row must belong to a price book.
+  if (!pdfUploadId) {
+    console.warn(`[autoCatalog] No pdfUploadId for "${supplierText}" — skipping auto-catalog (nothing inserted).`);
+    return empty;
+  }
 
   // Detect catalog style from the regions themselves:
   // If fewer than 30% of priced rows have 2+ prices, treat as consumable
@@ -137,8 +145,12 @@ export async function autoCatalogFromRegions(
   }
   console.log(`[autoCatalog] Resolved supplier UUID: ${supplierUuid} from "${supplierText}"`);
 
-  // Extract brand from supplier name
-  const brand = supplierText.trim().replace(/\s+$/, "");
+  // Brand comes from the price book, never from the supplier name.
+  const { data: bookRow } = await (supabase.from("pdf_uploads") as any)
+    .select("brand")
+    .eq("id", pdfUploadId)
+    .maybeSingle();
+  const brand = normalizeBrand(bookRow?.brand);
 
   // Look up discount and markup from the suppliers table
   let supplierDiscountPercent = 0;
@@ -257,6 +269,7 @@ export async function autoCatalogFromRegions(
         default_markup_percent: markupPct,
         supplier_discount_percent: supplierDiscountPercent,
         brand,
+        pdf_upload_id: pdfUploadId,
         product_category: productCategory,
         category: productCategory,
         is_active: true,

@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import PriceConfigPanel, { calculatePrices, type PriceConfig } from "./PriceConfigPanel";
+import { normalizeBrand } from "@/lib/brandNormalize";
 import { buildProductDiff, applyProductDiff, type DiffImportRow, type DiffRow as SharedDiffRow, type DiffAction as SharedDiffAction } from "@/services/diffImportPipeline";
 
 /** Strip non-numeric chars from AI values like "9000 BTU" → 9000 */
@@ -194,7 +195,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     counts.forEach((count, brand) => {
       if (count > bestCount) { best = brand; bestCount = count; }
     });
-    return best || supplierName?.trim() || null;
+    return normalizeBrand(best || supplierName);
   }, [parsedRows, diffRows, supplierName]);
 
 
@@ -781,6 +782,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     if (!pasteText.trim()) return;
     setImporting(true); setProgress(0); setError(null); setResult(null);
     try {
+      const pasteBookId: string | null = capturedBookRef.current?.pdfUploadId ?? null;
       const repaired = autoRepairCsv(pasteText);
       const lines = repaired.split("\n").map(l => l.trim()).filter(Boolean);
       if (lines.length < 2) { setError("Need at least a header row and one data row"); setImporting(false); return; }
@@ -833,22 +835,27 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           refrigerant_type: specs.refrigerant,
           pipe_size: specs.pipeLiquid && specs.pipeGas ? `${specs.pipeLiquid} ${specs.pipeGas}` : specs.pipeLiquid || null,
           is_active: true, is_price_on_request: isNaN(unitCost) || unitCost <= 0,
-          archived: false,
+          archived: !pasteBookId,
+          pdf_upload_id: pasteBookId,
         });
       }
 
       if (rows.length === 0) { setError("No valid product rows found."); setImporting(false); return; }
+      // Without a price book, stage rows (archived) and never overwrite existing ones.
+      const upsertOpts = pasteBookId
+        ? { onConflict: "supplier_id,product_code" }
+        : { onConflict: "supplier_id,product_code", ignoreDuplicates: true };
 
       const batchSize = 50;
       let imported = 0;
       for (let i = 0; i < rows.length; i += batchSize) {
         const batch = rows.slice(i, i + batchSize);
         const { error: insertError } = await supabase.from("supplier_products" as any)
-          .upsert(batch as any, { onConflict: "supplier_id,product_code" });
+          .upsert(batch as any, upsertOpts);
         if (insertError) {
           for (const row of batch) {
             const { error: singleErr } = await supabase.from("supplier_products" as any)
-              .upsert(row as any, { onConflict: "supplier_id,product_code" });
+              .upsert(row as any, upsertOpts);
             if (singleErr) errorCount++; else imported++;
           }
         } else { imported += batch.length; }
@@ -856,7 +863,11 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       }
 
       setResult({ imported, skipped: skippedCount, errors: errorCount });
-      toast({ title: `${imported} products imported successfully` });
+      if (pasteBookId) {
+        toast({ title: `${imported} products imported successfully` });
+      } else {
+        toast({ title: `${imported} products staged (not live)`, description: "They need a price book before going live. Upload and activate the PDF price book for this supplier." });
+      }
       invalidateAll(); onComplete();
     } catch (err: any) {
       setError(err.message || "Import failed");
