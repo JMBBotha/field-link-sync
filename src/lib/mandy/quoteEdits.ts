@@ -6,7 +6,7 @@
  */
 import { classifyQuoteCategory, categoryMarkupPercent, type CategoryMarkupRates } from "@/lib/pricing";
 import { kitLengthPatch } from "@/lib/mandy/quoteOps";
-import { isLabourItem } from "@/lib/labour";
+import { isLabourItem, labourFields } from "@/lib/labour";
 
 export interface EditItem {
   id: string;
@@ -96,14 +96,18 @@ export function snapQty(qty: number, p?: { qty_step?: number | null; min_qty?: n
 
 /** Quantity patch the same way the builder does: kits/length items change length, others change qty. */
 export function qtyPatch(item: EditItem, qty: number, product?: Parameters<typeof snapQty>[1]) {
-  if (isKit(item) || item.length != null) return { kind: "length" as const, value: kitLengthPatch(item, qty).length, patch: kitLengthPatch(item, qty) };
+  if (isLabour(item)) {
+    const f = labourFields(qty, Number(item.metadata?.rate ?? item.unit_price) || 0, !!item.metadata?.rate_overridden);
+    return { kind: "hours" as const, value: f.quantity, patch: { ...f, metadata: { ...(item.metadata || {}), ...f.metadata } } as Record<string, any> };
+  }
+  if (isKit(item) || item.length != null) return { kind: "length" as const, value: kitLengthPatch(item, qty).length, patch: kitLengthPatch(item, qty) as Record<string, any> };
   const q = snapQty(qty, product);
   const unitCost = Number(item.metadata?.unit_cost);
   const up = Number(item.unit_price) || 0;
   return {
     kind: "qty" as const,
     value: q,
-    patch: {
+    patch: <Record<string, any>>{
       quantity: q,
       total_price: Number((q * up).toFixed(2)),
       ...(Number.isFinite(unitCost) && item.metadata ? { metadata: { ...item.metadata, total_cost: Number((q * unitCost).toFixed(2)) } } : {}),
