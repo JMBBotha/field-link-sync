@@ -28,11 +28,12 @@ export async function runSetLabourHours(d: Deps, args: Record<string, unknown>):
   }
   const line = findAreaLabour(d.items, area.id);
   const plan = planLabour(line, hours, d.standardRate, args.rate != null ? Number(args.rate) : null);
-  if (plan.needsRate) return { ok: false, message: "No labour rate set. Say the rate, or set the standard rate in Settings." };
-  if (line) await d.updateItem(line.id, plan.fields);
+  const fields = plan.fields;
+    if (plan.needsRate || !fields) return { ok: false, message: "No labour rate set. Say the rate, or set the standard rate in Settings." };
+  if (line) await d.updateItem(line.id, fields);
   else {
     const sort = d.items.length ? Math.max(...d.items.map((i) => i.sort_order || 0)) + 1 : 0;
-    await d.addItem({ ...plan.fields, area_id: area.id, sort_order: sort, source: "mandy_voice" });
+    await d.addItem({ ...fields, area_id: area.id, sort_order: sort, source: "mandy_voice" });
   }
-  return { ok: true, message: `Labour in ${area.name}: ${plan.fields.quantity} hours at ${fmtRand(plan.fields.unit_price)} per hour, ${fmtRand(plan.fields.total_price)} excl. VAT.` };
+  return { ok: true, message: `Labour in ${area.name}: ${fields.quantity} hours at ${fmtRand(fields.unit_price)} per hour, ${fmtRand(fields.total_price)} excl. VAT.` };
 }

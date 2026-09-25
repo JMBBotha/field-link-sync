@@ -25,14 +25,15 @@ function LabourRow({ areaId, areaName, standardRate }: { areaId: string; areaNam
 
   const commit = async (nextHours: number, explicitRate?: number | null) => {
     const plan = planLabour(line, nextHours, standardRate, explicitRate);
-    if (plan.needsRate) {
+    const fields = plan.fields;
+    if (plan.needsRate || !fields) {
       toast({ title: "Set a labour rate", description: "Type a rate on this row or set the standard rate in Settings." });
       return;
     }
-    if (line) await ctx.updateItem(line.id, plan.fields as any);
+    if (line) await ctx.updateItem(line.id, fields as any);
     else {
       const sort = ctx.items.length ? Math.max(...ctx.items.map((i) => i.sort_order || 0)) + 1 : 0;
-      await ctx.addItem({ ...plan.fields, area_id: areaId, sort_order: sort, source: "labour" } as any);
+      await ctx.addItem({ ...fields, area_id: areaId, sort_order: sort, source: "labour" } as any);
     }
   };
 

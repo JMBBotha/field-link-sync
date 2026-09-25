@@ -83,7 +83,7 @@ export function planLabour(
   hours: number,
   standardRate: number | null,
   explicitRate?: number | null,
-): { needsRate: true } | { needsRate: false; fields: ReturnType<typeof labourFields> } {
+): { needsRate: boolean; fields?: ReturnType<typeof labourFields> } {
   const md = (existing?.metadata || {}) as Partial<LabourMeta>;
   const given = Number(explicitRate);
   if (Number.isFinite(given) && given > 0) {
