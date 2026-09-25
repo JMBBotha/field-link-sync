@@ -98,7 +98,8 @@ export function snapQty(qty: number, p?: { qty_step?: number | null; min_qty?: n
 export function qtyPatch(item: EditItem, qty: number, product?: Parameters<typeof snapQty>[1]) {
   if (isLabour(item)) {
     const f = labourFields(qty, Number(item.metadata?.rate ?? item.unit_price) || 0, !!item.metadata?.rate_overridden);
-    return { kind: "hours" as const, value: f.quantity, patch: { ...f, metadata: { ...(item.metadata || {}), ...f.metadata } } as Record<string, any> };
+    const { item_name: _n, allows_decimal_qty: _d, qty_step: _s, min_qty: _m, ...keep } = f;
+    return { kind: "hours" as const, value: f.quantity, patch: { ...keep, metadata: { ...(item.metadata || {}), ...f.metadata } } as Record<string, any> };
   }
   if (isKit(item) || item.length != null) return { kind: "length" as const, value: kitLengthPatch(item, qty).length, patch: kitLengthPatch(item, qty) as Record<string, any> };
   const q = snapQty(qty, product);
