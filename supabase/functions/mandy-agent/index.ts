@@ -15,7 +15,7 @@
  */
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireUser, authCorsHeaders } from "../_shared/auth.ts";
-import { spokenRand, numberToWords } from "../_shared/numberSpeech.ts";
+import { toSpeech } from "../_shared/toSpeech.ts";
 
 const cors = authCorsHeaders;
 const json = (body: unknown, status = 200) =>
@@ -122,24 +122,7 @@ const ROUTERS: Record<string, (key: string, messages: Msg[], tools: unknown[], f
   grok: routeWithGrok,
 };
 
-/** Money / BTU / refs → natural speech, so TTS never reads digits one by one. */
-export function toSpeech(text: string): string {
-  let t = text;
-  t = t.replace(/R\s?(\d{1,3}(?:[ \u00a0,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/g, (_m, num: string) => {
-    let s = num.replace(/[\u00a0 ]/g, "");
-    // "17,825.22" or "17825,22"
-    if (/,\d{1,2}$/.test(s) && !/\.\d/.test(s)) s = s.replace(/,(\d{1,2})$/, ".$1");
-    s = s.replace(/,/g, "");
-    const n = Number(s);
-    return Number.isFinite(n) ? (spokenRand(n) ?? _m) : _m;
-  });
-  t = t.replace(/(\d[\d ,]*)\s?BTU/gi, (_m, n: string) => `${numberToWords(Number(n.replace(/[ ,]/g, "")))} BTU`);
-  t = t.replace(/\b(\d+)\s?K\b/g, (_m, n: string) => `${numberToWords(Number(n))} thousand BTU`);
-  t = t.replace(/\bQ-(\d{4})-(\d+)\b/g, (_m, y: string, n: string) => `Q ${y.split("").join(" ")} ${n.split("").join(" ")}`);
-  t = t.replace(/\bexcl\.?\s*VAT\b/gi, "excluding VAT").replace(/\bincl\.?\s*VAT\b/gi, "including VAT");
-  t = t.replace(/(\d+(?:\.\d+)?)\s?m\b/g, (_m, n: string) => `${n} metre${n === "1" ? "" : "s"}`);
-  return t;
-}
+export { toSpeech };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
