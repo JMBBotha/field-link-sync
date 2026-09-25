@@ -24,8 +24,8 @@ const BillingTab = () => {
         <CardHeader><CardTitle>Default Rates</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           <div>
-            <Label>Hourly Rate (ZAR)</Label>
-            <Input type="number" value={form.default_hourly_rate} onChange={(e) => update("default_hourly_rate", parseFloat(e.target.value) || 0)} />
+            <Label>Standard labour rate per hour (R, excl VAT)</Label>
+            <Input type="number" min="0" step="0.01" placeholder="Not set" value={form.default_hourly_rate || ""} onChange={(e) => update("default_hourly_rate", parseFloat(e.target.value) || 0)} />
           </div>
           <div>
             <Label>Deposit %</Label>
