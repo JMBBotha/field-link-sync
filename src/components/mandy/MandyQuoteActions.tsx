@@ -12,7 +12,7 @@ import { fmtRand, type MandyResult } from "@/lib/mandy/actions";
 import { addCatalogProductToQuote, kitLengthPatch, matchSpokenProduct } from "@/lib/mandy/quoteOps";
 import { runSetLabourHours } from "@/lib/mandy/labourAction";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { standardLabourRate } from "@/lib/labour";
+import { standardLabourRate, findAreaLabour } from "@/lib/labour";
 import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -101,8 +101,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       if (!r.ok || r.choices) return r;
       const fresh = await refresh();
       const a = fresh?.areas.find((x) => x.name.trim().toLowerCase() === String(args.area || "").trim().toLowerCase()) || (fresh?.areas.length === 1 ? fresh.areas[0] : null);
-      const verified = !!a && !!fresh?.items.some((i) => i.area_id === a.id && (i.metadata as any)?.labour);
-      return { ...r, verified: fresh ? verified || undefined === undefined && verified : false };
+      return { ...r, verified: !!a && !!fresh && !!findAreaLabour(fresh.items as any[], a.id) };
     },
     add_area: async ({ name }) => {
       const n = String(name || "").trim();

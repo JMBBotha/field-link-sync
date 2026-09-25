@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Mic, MicOff, Send, Volume2, VolumeX, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,9 @@ import { getAssistantContext, setAssistantContext } from "@/stores/assistantCont
 import { useMandyDock, useMandyRegistry, useRegisterMandyActions } from "@/lib/mandy/registry";
 import { CONFIRM_REQUIRED, toolsFor, type MandyChoice, type MandyResult } from "@/lib/mandy/actions";
 import { routeVoiceCommand, gateRoute } from "@/lib/mandy/router";
+import { gateDecision, getMandyQuoteStatus } from "@/lib/mandy/gate";
+import { honestMessage, routeReached } from "@/lib/mandy/verify";
+import { formatForSpeech, formatReplyText } from "@/lib/mandy/speech";
 import { useWorkflowMandyActions } from "@/components/mandy/MandyWorkflowActions";
 import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
 import { createDraftQuoteForCustomer } from "@/lib/createDraftQuote";
@@ -35,13 +39,31 @@ const QUOTE_TOOLS_PROBE = "read_quote_total";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /* ───────────── global (non-quote) actions ───────────── */
-function useGlobalMandyActions() {
+/** Navigate, or — when the target is already the current route — force a refetch. */
+export function useMandyGo() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const registry = useMandyRegistry();
+  return (path: string) => {
+    const here = window.location.pathname + window.location.search;
+    if (routeReached(path, window.location.pathname, window.location.search) || here === path) {
+      void qc.invalidateQueries();
+      void registry?.get("__refresh_quote")?.({});
+      return;
+    }
+    navigate(path);
+  };
+}
+
+function useGlobalMandyActions() {
+  const go = useMandyGo();
+  const navigate = go;
   const { user } = useAuth();
 
   const openQuote = (q: { id: string; quote_number?: string | null; customer_name?: string | null }): MandyResult => {
-    navigate(`/admin/estimates/${q.id}`);
-    return { ok: true, message: `Opened ${q.quote_number || "the quote"}${q.customer_name ? ` for ${q.customer_name}` : ""}.`, data: { quote_id: q.id } };
+    const route = `/admin/estimates/${q.id}`;
+    go(route);
+    return { ok: true, message: `Opened ${q.quote_number || "the quote"}${q.customer_name ? ` for ${q.customer_name}` : ""}.`, data: { quote_id: q.id, route } };
   };
 
   useRegisterMandyActions({
@@ -92,11 +114,11 @@ function useGlobalMandyActions() {
     open_client: async ({ client_id, name }) => {
       setAssistantContext({ selected_customer_id: client_id, selected_customer_name: name });
       navigate(`/admin/customers/${client_id}`);
-      return { ok: true, message: `Opened ${name}.`, data: { client_id, name } };
+      return { ok: true, message: `Opened ${name}.`, data: { client_id, name, route: `/admin/customers/${client_id}` } };
     },
     add_new_client: async () => {
       navigate("/admin/customers?new=1");
-      return { ok: true, message: "Opened clients — add the new client there." };
+      return { ok: true, message: "Opened clients — add the new client there.", data: { route: "/admin/customers?new=1" } };
     },
     select_client: async ({ client_id, name }) => {
       setAssistantContext({ selected_customer_id: client_id, selected_customer_name: name });
@@ -108,7 +130,7 @@ function useGlobalMandyActions() {
       if (!c) return { ok: false, message: "That client was not found." };
       const id = await createDraftQuoteForCustomer(user.id, c.id, c.name || c.company_name);
       navigate(`/admin/estimates/${id}`);
-      return { ok: true, message: `Created a new draft quote for ${c.name || c.company_name} and opened it.`, data: { quote_id: id } };
+      return { ok: true, message: `Created a new draft quote for ${c.name || c.company_name} and opened it.`, data: { quote_id: id, route: `/admin/estimates/${id}` } };
     },
   });
 }
@@ -126,7 +148,7 @@ function useSpeaker(muted: boolean) {
 
   const speak = useCallback(async (text: string) => {
     cancel();
-    const t = text.trim();
+    const t = formatForSpeech(text).trim();
     if (!t || muted) return;
     const now = Date.now();
     if (lastRef.current && lastRef.current.text === t && now - lastRef.current.at < 4000) return; // dedupe
@@ -183,6 +205,11 @@ export default function MandyDock() {
         // Safety: destructive actions must come back as a confirm card.
         return { ok: false, message: `${name} needs an on-screen confirmation and was not run.` };
       }
+      const route = (r.data as any)?.route;
+      if (r.ok && !r.choices && !r.confirm && typeof route === "string" && r.verified === undefined) {
+        await sleep(60);
+        r.verified = routeReached(route, window.location.pathname, window.location.search);
+      }
       audit(name, args, r);
       if (/^(open_quote|open_last_quote|create_quote_for_client)$/.test(name) && r.ok && !r.choices) {
         // Wait for the opened page to register its quote actions.
@@ -207,6 +234,7 @@ export default function MandyDock() {
     setPhase("working");
     const msgs: Msg[] = [...historyRef.current.slice(-8)];
     let final = "";
+    let lastUnverified = false;
     try {
       for (let step = 0; step <= MAX_STEPS; step++) {
         const r0 = await routeVoiceCommand({
@@ -219,22 +247,33 @@ export default function MandyDock() {
         if (step === 0) msgs.push({ role: "user", content: t });
         if (r0.error) { final = `Sorry, I couldn't reach my brain: ${r0.error}`; break; }
         if (r0.action) {
-          const gate = gateRoute(r0);
-          if (!gate.run) {
+          const tier = gateDecision(r0.action, r0.confidence, { quoteStatus: getMandyQuoteStatus() });
+          if (tier.kind === "block") { final = tier.reason!; break; }
+          if (tier.kind === "chips") {
             // Not sure enough — never run it. One-tap chip + one-line question.
+            const gate = gateRoute(r0, tier.threshold);
             setChoices([gate.choice!]);
             final = gate.question!;
             break;
           }
-          const r = await execute(r0.action, r0.args);
+          let r: MandyResult;
+          if (tier.kind === "confirm" && !CONFIRM_REQUIRED.has(r0.action)) {
+            // Gate-level confirm (e.g. below floor): wrap the handler in a Confirm card.
+            const a = r0.action, args = r0.args;
+            r = { ok: true, message: `Awaiting on-screen confirmation for ${a.replace(/_/g, " ")}.`, confirm: { summary: `Run ${a.replace(/_/g, " ")}?`, run: () => execute(a, args) } };
+          } else {
+            r = await execute(r0.action, r0.args);
+          }
           if (r.choices?.length) setChoices(r.choices);
           if (r.confirm) setConfirm(r.confirm);
+          lastUnverified = r.verified === false;
           msgs.push(r0.assistantMessage!, {
             role: "tool",
             tool_call_id: r0.callId,
             content: JSON.stringify({
               ok: r.ok,
-              result: r.message,
+              result: honestMessage(r),
+              ...(r.verified === false ? { verified_on_screen: false } : {}),
               ...(r.data ? { data: r.data } : {}),
               ...(r.choices?.length ? { choices: r.choices.map((c) => c.label) } : {}),
               ...(r.confirm ? { awaiting_confirmation: r.confirm.summary } : {}),
@@ -249,6 +288,8 @@ export default function MandyDock() {
       busyRef.current = false;
     }
     if (!final) final = "I couldn't finish that — nothing more was done.";
+    if (lastUnverified && !/confirm it on screen/i.test(final)) final = honestMessage({ ok: true, message: final, verified: false });
+    final = formatReplyText(final);
     historyRef.current = [...historyRef.current, { role: "user", content: t }, { role: "assistant", content: final }].slice(-8);
     setReply(final);
     setPhase("idle");
@@ -261,9 +302,10 @@ export default function MandyDock() {
     const r = await execute(c.action, c.args);
     if (r.choices?.length) setChoices(r.choices);
     if (r.confirm) setConfirm(r.confirm);
-    setReply(r.message);
+    const msg = formatReplyText(honestMessage(r));
+    setReply(msg);
     setPhase("idle");
-    await speak(r.message);
+    await speak(msg);
   };
 
   const runConfirm = async () => {
@@ -273,9 +315,10 @@ export default function MandyDock() {
     setPhase("working");
     const r = await c.run();
     audit("confirmed", { summary: c.summary }, r);
-    setReply(r.message);
+    const msg = formatReplyText(honestMessage(r));
+    setReply(msg);
     setPhase("idle");
-    await speak(r.message);
+    await speak(msg);
   };
 
   /* ───────────── mic ───────────── */
@@ -312,6 +355,11 @@ export default function MandyDock() {
   };
 
   useEffect(() => () => { recRef.current?.cancel(); cancel(); }, [cancel]);
+  // "Voice" from the ops panel: open + start listening.
+  const listenRequest = useMandyDock((s) => s.listenRequest);
+  const startRef = useRef(startListening);
+  startRef.current = startListening;
+  useEffect(() => { if (listenRequest && open) void startRef.current(); }, [listenRequest, open]);
   useEffect(() => { if (!open) { recRef.current?.cancel(); recRef.current = null; cancel(); setPhase("idle"); } }, [open, cancel]);
 
   if (!user || !open) return null;
