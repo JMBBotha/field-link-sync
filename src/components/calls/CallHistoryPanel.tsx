@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Phone, ChevronDown, ExternalLink, Loader2, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import CallRecordingPlayer from "./CallRecordingPlayer";
+import CallReportCard, { type CallReport } from "./CallReportCard";
 
 export interface CallRecord {
   id: string;
@@ -64,6 +65,7 @@ export default function CallHistoryPanel({
   className,
 }: Props) {
   const [calls, setCalls] = useState<CallRecord[]>([]);
+  const [reports, setReports] = useState<Record<string, CallReport>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -86,8 +88,18 @@ export default function CallHistoryPanel({
       else if (customerId) query = query.eq("customer_id", customerId);
 
       const { data } = await query;
+      const rows = (data as CallRecord[]) || [];
+      let map: Record<string, CallReport> = {};
+      if (rows.length) {
+        const { data: reps } = await (supabase as any)
+          .from("call_reports")
+          .select("*")
+          .in("call_id", rows.map((c) => c.id));
+        for (const r of (reps ?? []) as CallReport[]) map[r.call_id] = r;
+      }
       if (active) {
-        setCalls((data as CallRecord[]) || []);
+        setCalls(rows);
+        setReports(map);
         setLoading(false);
       }
     };
@@ -180,6 +192,12 @@ export default function CallHistoryPanel({
                 <div className="mt-2 rounded-md border border-primary/20 bg-primary/5 p-2">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">AI summary</p>
                   <p className="mt-0.5 text-sm whitespace-pre-wrap">{call.summary}</p>
+                </div>
+              )}
+
+              {reports[call.id] && (
+                <div className="mt-2">
+                  <CallReportCard report={reports[call.id]} />
                 </div>
               )}
 
