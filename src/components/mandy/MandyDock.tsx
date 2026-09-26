@@ -168,31 +168,35 @@ function useSpeaker(muted: boolean) {
   return { speak, cancel, ttsCalls, setOnReplyEnded };
 }
 
-/* ───────────── greeting audio (Grok TTS, cached per page load) ───────────── */
-const GREETING = "Hi, what can I do for you?";
-let greetingBytes: Promise<ArrayBuffer> | null = null;
-let greetingBuffer: AudioBuffer | null = null;
+/* ───── greeting audio (Grok TTS, cached per page load, per user+text) ───── */
+const greetingCache = new Map<string, { bytes: Promise<ArrayBuffer>; buffer: AudioBuffer | null }>();
 let mandyCtx: AudioContext | null = null;
 const ttsReady = () => typeof window !== "undefined";
-function prefetchGreeting(): Promise<ArrayBuffer> {
-  if (!greetingBytes) {
-    greetingBytes = (async () => {
-      const { data, error } = await supabase.functions.invoke("mandy-agent", { body: { action: "tts", text: GREETING, client_build: BUILD_ID } });
+function prefetchGreeting(cacheKey: string, text: string): Promise<ArrayBuffer> {
+  let entry = greetingCache.get(cacheKey);
+  if (!entry) {
+    const bytes = (async () => {
+      const { data, error } = await supabase.functions.invoke("mandy-agent", { body: { action: "tts", text, client_build: BUILD_ID } });
       const b64 = (data as { audio_base64?: string } | null)?.audio_base64;
       if (error || !b64) throw new Error("no greeting audio");
       const bin = atob(b64); const out = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
       return out.buffer;
     })();
-    greetingBytes.catch(() => { greetingBytes = null; }); // retry on next open
+    entry = { bytes, buffer: null };
+    greetingCache.set(cacheKey, entry);
+    bytes.catch(() => { if (greetingCache.get(cacheKey) === entry) greetingCache.delete(cacheKey); }); // retry on next open
   }
-  return greetingBytes;
+  return entry.bytes;
 }
-async function getGreetingBuffer(ctx: AudioContext): Promise<AudioBuffer> {
-  if (greetingBuffer) return greetingBuffer;
-  const bytes = await prefetchGreeting();
-  greetingBuffer = await ctx.decodeAudioData(bytes.slice(0));
-  return greetingBuffer;
+async function getGreetingBuffer(ctx: AudioContext, cacheKey: string, text: string): Promise<AudioBuffer> {
+  const entry = greetingCache.get(cacheKey);
+  if (entry?.buffer) return entry.buffer;
+  const bytes = await prefetchGreeting(cacheKey, text);
+  const buffer = await ctx.decodeAudioData(bytes.slice(0));
+  const e = greetingCache.get(cacheKey);
+  if (e) e.buffer = buffer;
+  return buffer;
 }
 /** Must be called inside the tap: creates/resumes the shared AudioContext. */
 function unlockMandyAudio(): AudioContext | null {
