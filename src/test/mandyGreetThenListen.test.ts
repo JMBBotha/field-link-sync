@@ -55,6 +55,22 @@ describe("greetThenListen", () => {
     expect(m.beep).not.toHaveBeenCalled();
   });
 
+  it("buffer arrives after the timeout fallback → listen at 4 s, no play", async () => {
+    const m = mk();
+    const play = vi.fn();
+    const p = greetThenListen({
+      ...m, greeted: { current: false }, isCancelled: () => false, timeoutMs: 4000,
+      speak: (_started, shouldPlay) => new Promise<void>((r) => {
+        setTimeout(() => { if (shouldPlay()) play(); r(); }, 5000); // buffer resolves at 5 s
+      }),
+    });
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(m.startListening).toHaveBeenCalledOnce(); // mic opened at the 4 s fallback
+    await vi.advanceTimersByTimeAsync(1000); // buffer arrives at 5 s
+    expect(await p).toBe("listened-fallback");
+    expect(play).not.toHaveBeenCalled(); // abandoned greeting never plays
+  });
+
   it("second turn in the same session → no greeting", async () => {
     const m = mk();
     const greeted = { current: false };
