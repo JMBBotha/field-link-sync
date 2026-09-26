@@ -4,7 +4,7 @@
  * Pricing goes through catalogLineFields / kitLengthPatch only.
  */
 import { catalogLineFields, kitLengthPatch, kitSwapPatch, type BundleForKit } from "@/lib/mandy/quoteOps";
-import { parseKitSwapSizes, kitForSizes, swappableKits, kitSizeLabel, kitPipeSizes, pickKitForUnit } from "@/lib/kitSizes";
+import { parseKitSwapSizes, swappableKits, kitSizeLabel, kitPipeSizes, pickKitForUnit } from "@/lib/kitSizes";
 import { extractBtu } from "@/lib/bundles";
 import { installTag, lengthLabel, ROLE_LABEL, type InstallRole } from "@/lib/installTemplates";
 import { spokenRand } from "@/lib/mandy/labourAction";
@@ -138,7 +138,7 @@ export async function runInstallEdit(d: InstallDeps, args0: InstallOp & { unit_i
       }
       const pair = want.split(" + ");
       const target = (args.bundle_id ? pool.find((b) => b.id === args.bundle_id)
-        : pair.length === 2 ? kitForSizes(pool, pair, unitBtu(unit, d.liveProducts))
+        : pair.length === 2 ? (() => { const r = pickKitForUnit(pool as any[], { pipe_liquid: pair[0], pipe_gas: pair[1] }, { btuOf: () => unitBtu(unit, d.liveProducts) }); return r.reason === "pipe" ? r.kit : null; })()
         : null) as BundleForKit | null;
       if (!target) return { ok: false, message: `There's no live ${(args.sizes || []).join(" + ") || "matching"} piping kit in the active price books — nothing was changed.` };
       if (kit.metadata?.kit?.bundle_id === target.id) return { ok: true, message: `${unit.item_name} already has the ${kitSizeLabel(target as any)} kit, so nothing changed.` };
