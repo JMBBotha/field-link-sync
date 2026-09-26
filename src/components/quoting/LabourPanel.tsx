@@ -13,6 +13,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { findAreaLabour, planLabour, standardLabourRate, stepHours } from "@/lib/labour";
 import { formatRand } from "@/utils/formatRand";
 import { toast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 
 function LabourRow({ areaId, areaName, standardRate }: { areaId: string; areaName: string; standardRate: number | null }) {
   const ctx = useQuoteContext();
@@ -35,6 +36,19 @@ function LabourRow({ areaId, areaName, standardRate }: { areaId: string; areaNam
       const sort = ctx.items.length ? Math.max(...ctx.items.map((i) => i.sort_order || 0)) + 1 : 0;
       await ctx.addItem({ ...fields, area_id: areaId, sort_order: sort, source: "labour" } as any);
     }
+  };
+
+  /** Bin: delete now, offer "Undo" that re-inserts the same row (same id). */
+  const removeWithUndo = async () => {
+    if (!line) return;
+    const { quote_id: _q, created_at: _c, updated_at: _u, ...copy } = line as any;
+    const ok = await ctx.deleteItem(line.id);
+    if (!ok) return; // QuoteContext already showed the error
+    toast({
+      title: "Labour removed",
+      description: `${areaName} · ${formatRand(Number(line.total_price) || 0)}`,
+      action: <ToastAction altText="Undo" onClick={() => void ctx.addItem(copy)}>Undo</ToastAction>,
+    });
   };
 
   const onRateBlur = () => {
@@ -74,7 +88,7 @@ function LabourRow({ areaId, areaName, standardRate }: { areaId: string; areaNam
         {line ? formatRand(Number(line.total_price) || 0) : "—"}
       </div>
       {line && (
-        <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label={`Remove labour from ${areaName}`} onClick={() => void ctx.deleteItem(line.id)}>
+        <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label={`Remove labour from ${areaName}`} onClick={() => void removeWithUndo()}>
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       )}
