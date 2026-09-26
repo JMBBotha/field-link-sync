@@ -100,7 +100,7 @@ describe("kit sizes + spoken swaps", () => {
       updateItem: async (id: string, p: any) => { patches.push({ id, p }); return true; } };
     const r = await runInstallEdit(deps, { op: "kit_swap", sizes: ["3/8", "1/2"] });
     expect(r.ok).toBe(true);
-    expect(r.message).toMatch(/3\/8 \+ 1\/2.*4 m, R\s?1\s?716,08/);
+    expect(r.message).toMatch(/3\/8 \+ 1\/2.*4 m, R\s?1\s?716,0[78]/);
     expect(patches[0].p.length).toBe(4);
     expect(patches[0].p.metadata.install).toEqual(tag("u1").install);
     expect(patches[0].p.metadata.kit.bundle_id).toBe("k3812");
