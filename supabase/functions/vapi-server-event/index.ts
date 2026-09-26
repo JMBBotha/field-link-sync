@@ -263,7 +263,6 @@ export function classifyCallOrigin(body: any): {
   // falls back the same way), so treat both as staff-facing.
   const opsAssistantIds = [
     Deno.env.get("VAPI_OPS_ASSISTANT_ID"),
-    Deno.env.get("VAPI_ASSISTANT_ID"),
   ]
     .map((v) => v?.trim())
     .filter(Boolean) as string[];
