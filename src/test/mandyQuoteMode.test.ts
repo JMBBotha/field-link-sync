@@ -35,7 +35,8 @@ describe("shared matcher: spoken quantities", () => {
     expect(sp("trunking 3 lengths")).toMatchObject({ qty: 3, lengths: true, query: "trunking" });
     expect(sp("3 bends")).toMatchObject({ qty: 3, query: "elbow" });
     const m = matchCatalog("three bends", LIVE);
-    expect(m.pick?.kind === "product" && m.pick.product.product_code).toBe("ELB001");
+    const top = m.ranked[0];
+    expect(top?.kind === "product" && top.product.product_code).toBe("ELB001");
     expect(m.qty).toBe(3);
   });
 });
