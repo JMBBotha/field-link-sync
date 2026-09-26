@@ -36,6 +36,8 @@ export function parseLabourCommand(text: string): LabourCommand | null {
     r = { hours: toNum(m[1], m[2]), mode: "add", area: cleanArea(m[3]) };
   } else if ((m = t.match(new RegExp(String.raw`^(?:set|make|change)\s+(?:the\s+)?labou?r(?:\s+(?:in|for|on)\s+(.+?))?\s+(?:to\s+)?${H}$`, "i")))) {
     r = { hours: toNum(m[2], m[3]), mode: "set", area: cleanArea(m[1]) };
+  } else if ((m = t.match(new RegExp(String.raw`^(?:set|make|change)\s+(?:the\s+)?(.+?)\s+labou?r\s+(?:to\s+)?${H}$`, "i")))) {
+    r = { hours: toNum(m[2], m[3]), mode: "set", area: cleanArea(m[1]) };
   } else if ((m = t.match(new RegExp(String.raw`^labou?r(?:\s+(?:in|for|on)\s+(.+?))?\s+${H}(?:\s+(?:in|for|on|to)\s+(.+))?$`, "i")))) {
     r = { hours: toNum(m[2], m[3]), mode: "set", area: cleanArea(m[1] || m[4]) };
   }
@@ -43,4 +45,40 @@ export function parseLabourCommand(text: string): LabourCommand | null {
   if (!r.area) delete r.area;
   if (rate != null && rate > 0) r.rate = rate;
   return r;
+}
+
+export type LabourIntent =
+  | { action: "set_labour_hours"; args: Partial<LabourCommand> }
+  | { action: "remove_labour"; args: { area?: string; all?: boolean } }
+  | { action: "read_labour"; args: Record<string, never> };
+
+/** Any single labour utterance → the labour action to run, or null. */
+export function parseLabourIntent(text: string): LabourIntent | null {
+  const t = String(text || "").trim().replace(/[.!?]+$/, "");
+  if (!/\blabou?r\b/i.test(t) || /,|;/.test(t) || /\b(kit|samsung|unit|note)\b/i.test(t)) return null;
+  let m: RegExpMatchArray | null;
+  if (/^(?:what|how much|which|read|list|show)\b.*\blabou?r\b/i.test(t) || /^labou?r\s+on\s+(?:this|the)\s+quote$/i.test(t)) {
+    return { action: "read_labour", args: {} };
+  }
+  if ((m = t.match(/^(?:remove|delete|drop|take\s+off|clear)\s+(all\s+)?(?:of\s+)?(?:the\s+)?labou?r(?:\s+(?:from|in|on|off)\s+(.+))?$/i))) {
+    const area = cleanArea(m[2]);
+    if (m[1] || (area && /^(all|every|everywhere|all areas|the quote|this quote)$/i.test(area))) return { action: "remove_labour", args: { all: true } };
+    return { action: "remove_labour", args: area ? { area } : {} };
+  }
+  if ((m = t.match(/^(?:set|make|change)\s+(?:the\s+)?(?:(.+?)\s+)?labou?r\s+rate(?:\s+(?:in|for|on)\s+(.+?))?\s+(?:to\s+)?R?\s*(\d+(?:[.,]\d+)?)\s*(?:rand)?(?:\s+(?:an?|per)\s+hour)?$/i))) {
+    const area = cleanArea(m[1] || m[2]);
+    return { action: "set_labour_hours", args: { rate: Number(m[3].replace(",", ".")), mode: "set", ...(area ? { area } : {}) } };
+  }
+  const c = parseLabourCommand(t);
+  return c ? { action: "set_labour_hours", args: c } : null;
+}
+
+/** Model called an unregistered labour-ish tool → the closest real labour action. */
+export function mapLabourTool(name: string, args: Record<string, any>): { action: string; args: Record<string, any> } | null {
+  if (!/labou?r/i.test(name)) return null;
+  const a: Record<string, any> = { ...args };
+  if (/remove|delete|clear|drop/i.test(name)) return { action: "remove_labour", args: { ...(a.area ? { area: a.area } : {}), ...(a.all ? { all: true } : {}) } };
+  if (/read|list|get|show|what/i.test(name)) return { action: "read_labour", args: {} };
+  const rate = a.rate ?? a.hourly_rate ?? a.rate_per_hour;
+  return { action: "set_labour_hours", args: { ...(a.area ? { area: a.area } : {}), ...(a.hours != null ? { hours: a.hours } : {}), ...(rate != null ? { rate } : {}), mode: a.mode === "add" ? "add" : "set" } };
 }

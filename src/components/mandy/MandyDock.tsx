@@ -26,7 +26,7 @@ import { gateDecision, gatePlan, getMandyQuoteStatus } from "@/lib/mandy/gate";
 import { runPlanSteps, planReportText, type PlanStep } from "@/lib/mandy/quoteEdits";
 import type { PlanPreview } from "@/lib/mandy/planPreview";
 import { parseMultiEdit } from "@/lib/mandy/multiEdit";
-import { parseLabourCommand } from "@/lib/mandy/labourParse";
+import { parseLabourIntent, mapLabourTool } from "@/lib/mandy/labourParse";
 import { guardClaimedChange } from "@/lib/mandy/honesty";
 import { honestMessage, routeReached, finalReplyFrom } from "@/lib/mandy/verify";
 import { BUILD_ID, staleWriteRefusal, useBuildStatus, checkForNewBuild } from "@/lib/buildInfo";
@@ -240,7 +240,11 @@ export default function MandyDock() {
 
   const execute = useCallback(async (name: string, args: Record<string, any>): Promise<MandyResult> => {
     const h = registry?.get(name);
-    if (!h) return { ok: false, message: `${name} is not available on this screen.` };
+    if (!h) {
+      const mapped = mapLabourTool(name, args || {});
+      if (mapped && registry?.get(mapped.action)) return execute(mapped.action, mapped.args);
+      return { ok: false, message: unknownToolMessage(name, !!registry?.get(QUOTE_TOOLS_PROBE)) };
+    }
     try {
       const r = await h(args || {});
       if (CONFIRM_REQUIRED.has(name) && !args?.__plan && r.ok && !r.confirm && !r.choices) {
@@ -327,17 +331,17 @@ export default function MandyDock() {
         final = staleMsg || await preparePlan(local, 1);
       }
       // Deterministic single labour command: straight to set_labour_hours, no model.
-      const lab = !local ? parseLabourCommand(t) : null;
+      const lab = !local ? parseLabourIntent(t) : null;
       if (lab) {
-        if (!registry?.get("set_labour_hours")) final = "Open the quote first, then say that again.";
+        if (!registry?.get(lab.action)) final = "Open the quote first, then say that again.";
         else {
-          const staleMsg = staleWriteRefusal("set_labour_hours", useBuildStatus.getState().stale);
+          const staleMsg = staleWriteRefusal(lab.action, useBuildStatus.getState().stale);
           if (staleMsg) final = staleMsg;
           else {
-            const r = await execute("set_labour_hours", lab as unknown as Record<string, any>);
+            const r = await execute(lab.action, lab.args as Record<string, any>);
             if (r.choices?.length) setChoices(r.choices);
             if (r.confirm) setConfirm(r.confirm);
-            results.push(r); writes.push(true);
+            results.push(r); writes.push(lab.action !== "read_labour");
             final = finalReplyFrom(results, "");
           }
         }
