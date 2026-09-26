@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
-import { ensureDepositInvoiceForQuote, fetchQuoteInvoice } from "@/lib/depositInvoice";
+import { ensureDepositInvoiceForQuote, fetchQuoteInvoice, depositPercentOf } from "@/lib/depositInvoice";
 import DepositPaymentChip, { isDepositCleared } from "@/components/shared/DepositPaymentChip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -114,10 +114,13 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
     toast({ title: "Deposit link copied" });
   };
 
+  const depPct = depositPercentOf(invoice, Number(quote?.total) || null);
+  const depLabel = depPct ? `${depPct}% deposit invoice` : "deposit invoice";
+
   const sendDepositWhatsApp = () => {
     if (!clientLink) return;
     const phone = (customer?.phone || "").replace(/\D/g, "").replace(/^0/, "27");
-    const message = `Hi ${customer?.name || quote?.customer_name || "there"}, your 70% deposit invoice for quote ${quote?.quote_number || ""} is ready. View and pay securely here: ${clientLink}`;
+    const message = `Hi ${customer?.name || quote?.customer_name || "there"}, your ${depLabel} for quote ${quote?.quote_number || ""} is ready. View and pay securely here: ${clientLink}`;
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
   };
 
@@ -131,7 +134,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
       const { data, error } = await supabase.functions.invoke("send-quote-email", {
         body: {
           to: customer.email,
-          subject: `Your 70% deposit invoice — ${quote?.quote_number || "quote"}`,
+          subject: `Your ${depLabel} — ${quote?.quote_number || "quote"}`,
           quoteNumber: quote?.quote_number,
           quoteId,
           customerId: quote?.customer_id,
