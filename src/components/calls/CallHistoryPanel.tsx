@@ -89,7 +89,7 @@ export default function CallHistoryPanel({
 
       const { data } = await query;
       const rows = (data as CallRecord[]) || [];
-      let map: Record<string, CallReport> = {};
+      const map: Record<string, CallReport> = {};
       if (rows.length) {
         const { data: reps } = await (supabase as any)
           .from("call_reports")
