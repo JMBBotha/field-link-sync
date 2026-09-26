@@ -111,6 +111,14 @@ serve(async (req: Request) => {
         }
       }
 
+      // Quote bot retired (Mandy quote mode replaces it). The lead address-reply
+      // hand-off above stays live because Vapi leads rely on it. Set
+      // WHATSAPP_QUOTE_BOT_ENABLED=true to re-enable the quote flow.
+      if (Deno.env.get("WHATSAPP_QUOTE_BOT_ENABLED") !== "true") {
+        console.log("[whatsapp-quote-bot] quote flow disabled — no reply sent");
+        return new Response("Quote bot retired", { status: 200, headers: corsHeaders });
+      }
+
       if (!stateStore[from]) {
         stateStore[from] = { step: 0, qty: 1, price: 0, total: 0 };
       }
