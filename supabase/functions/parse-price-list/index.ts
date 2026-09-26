@@ -9,6 +9,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
+import { pipePairFromText } from "./pipeSizes.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -140,7 +141,7 @@ Supplier name for context: ${supplier_name || "Unknown"}`
     for (const product of enrichedProducts) {
       const { data: existing } = await supabase
         .from("supplier_products")
-        .select("id")
+        .select("id, pipe_sizes_manual")
         .eq("supplier_id", product.supplier_id)
         .eq("product_code", product.product_code)
         .maybeSingle();
@@ -151,7 +152,11 @@ Supplier name for context: ${supplier_name || "Unknown"}`
           .update({
             description: product.description,
             category: product.category,
-            pipe_size: product.pipe_size,
+            // Pipe sizes set by hand are never overwritten or nulled.
+            ...(existing.pipe_sizes_manual ? {} : {
+              ...(product.pipe_size ? { pipe_size: product.pipe_size } : {}),
+              ...(() => { const p = pipePairFromText(product.pipe_size); return p ? { pipe_liquid: p.liquid, pipe_gas: p.gas } : {}; })(),
+            }),
             cost_price: product.cost_price,
             is_price_on_request: product.is_price_on_request,
             btu_rating: product.btu_rating,
@@ -161,7 +166,8 @@ Supplier name for context: ${supplier_name || "Unknown"}`
           .eq("id", existing.id);
         if (error) { skipped++; } else { updated++; }
       } else {
-        const { error } = await supabase.from("supplier_products").insert(product);
+        const pair = pipePairFromText(product.pipe_size);
+        const { error } = await supabase.from("supplier_products").insert({ ...product, ...(pair ? { pipe_liquid: pair.liquid, pipe_gas: pair.gas } : {}) });
         if (error) { skipped++; } else { imported++; }
       }
     }

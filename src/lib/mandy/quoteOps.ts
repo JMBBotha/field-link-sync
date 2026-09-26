@@ -10,7 +10,7 @@ import { getEffectiveUnitPrices, type PaletteProduct } from "@/components/catalo
 import { resolveProductMarkupPercent } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
 import { buildKitMaterial, kitBasketFields, DEFAULT_KIT_LENGTH_M } from "@/components/catalog/quote-builder/kitLine";
-import { kitForUnitPipes } from "@/lib/kitSizes";
+import { pickKitForUnit } from "@/lib/kitSizes";
 import { matchCatalog } from "@/lib/mandy/catalogMatch";
 import type { QuoteItem, QuoteItemInsert } from "@/types/quote";
 import { pickInstallTemplate, DEFAULT_INSTALL_KIT_M, type InstallTemplate, type InstallRole } from "@/lib/installTemplates";
@@ -147,7 +147,9 @@ export function planStandardInstall(product: Partial<PaletteProduct>, templates:
   const notes: string[] = [];
   const lines: InstallPlan["lines"] = [];
   // Unit lists its pipe sizes → prefer a kit whose copper matches (never invented; null when not filled).
-  const pipeKit = kitForUnitPipes(bundles as any, product as any) as BundleForKit | null;
+  const pick = pickKitForUnit(bundles as any[], product as any, { allUnits: liveProducts as any[], btuOf: (u) => extractBtu(u as any) });
+  const pipeKit = pick.reason !== "btu" ? (pick.kit as BundleForKit | null) : null;
+  if (pick.note && pipeKit) notes.push(pick.note);
   if (!tpl) {
     const k = pipeKit || findPipingKitForBtu(bundles, btu);
     notes.push(btu ? `No standard install template for ${Math.round(btu / 1000)}K${k ? " – kit only" : ", and no piping kit found"}` : "No BTU on this unit, so no standard install was added");

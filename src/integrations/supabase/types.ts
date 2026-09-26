@@ -5844,6 +5844,7 @@ export type Database = {
           pipe_gas: string | null
           pipe_liquid: string | null
           pipe_size: string | null
+          pipe_sizes_manual: boolean
           price_bbox: Json | null
           price_excl_vat: number | null
           price_includes_vat: boolean | null
@@ -5919,6 +5920,7 @@ export type Database = {
           pipe_gas?: string | null
           pipe_liquid?: string | null
           pipe_size?: string | null
+          pipe_sizes_manual?: boolean
           price_bbox?: Json | null
           price_excl_vat?: number | null
           price_includes_vat?: boolean | null
@@ -5994,6 +5996,7 @@ export type Database = {
           pipe_gas?: string | null
           pipe_liquid?: string | null
           pipe_size?: string | null
+          pipe_sizes_manual?: boolean
           price_bbox?: Json | null
           price_excl_vat?: number | null
           price_includes_vat?: boolean | null
