@@ -21,6 +21,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuoteContext } from "@/contexts/QuoteContext";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
+import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
+import { useInstallTemplates } from "@/hooks/useInstallTemplates";
+import { addStandardInstall, isAirConditioningProduct } from "@/lib/mandy/quoteOps";
 import { WavRecorder } from "@/lib/wavRecorder";
 import { getUserCompanyId } from "@/lib/tenantUtils";
 import { DEFAULT_LEAD_SOURCE } from "@/lib/leadSources";
@@ -59,6 +62,8 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
   const { user } = useAuth();
   const { meta, areas, items, addItem, addArea, updateQuote, deleteItem } = useQuoteContext();
   const { products } = useQuoteBuilderProducts();
+  const { bundles } = useQuoteBuilderBundles();
+  const { templates } = useInstallTemplates();
 
   const { data: services = [] } = useQuery({
     queryKey: ["voice-quote-services"],
@@ -139,6 +144,7 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
       let sort = nextSortOrder();
       const ids: string[] = [];
       const created = new Map<string, string>(); // lower-cased name → area id (this run)
+      const installNotes: string[] = [];
       for (const g of groups) {
         const name = g.name.trim() || "Items";
         const key = name.toLowerCase();
@@ -177,6 +183,19 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
             ...(perMetre ? { price_per_unit_label: "m", allows_decimal_qty: true, qty_step: 0.1 } : {}),
           });
           if (row) ids.push(row.id);
+          // AC unit → the ONE standard-install rule. If the scene already priced its own
+          // copper, the template kit is left out (no double piping).
+          if (row && l.product && isAirConditioningProduct(l.product)) {
+            const spokenCopper = g.lines.some((x) => /^COPRL/i.test(String(x.product?.product_code || "")));
+            const tpls = spokenCopper ? templates.map((t) => ({ ...t, items: t.items.map((i) => i.role === "piping_kit" ? { ...i, included: false } : i) })) : templates;
+            const inst = await addStandardInstall({
+              addItem: addItem as any, unitLine: row as any, product: l.product as any, areaId, sortOrder: sort,
+              templates: tpls, bundles: spokenCopper ? [] : (bundles as any), liveProducts: products as any, source: "catalog",
+            });
+            sort += 1 + inst.installLines.length;
+            for (const x of [inst.kit, ...inst.installLines]) if (x) ids.push(x.id);
+            installNotes.push(...inst.notes);
+          }
         }
       }
       if (ids.length) committedRef.current.push(ids);
@@ -189,6 +208,7 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
           ? `Saved ${ids.length} line${ids.length === 1 ? "" : "s"} in ${groups.length} area${groups.length === 1 ? "" : "s"} for ${meta?.customer_name || "the client"}. Ready to send — use Send or PDF above, or describe the next room.`
           : `Saved ${ids.length} line${ids.length === 1 ? "" : "s"}. No client on this quote yet — set one before sending.`,
       );
+      if (installNotes.length) toast({ title: "Standard install", description: installNotes.join(". ") });
     } catch (e) {
       toast({ title: "Could not save", description: e instanceof Error ? e.message : "Try again.", variant: "destructive" });
       say("Saving failed part-way — check the quote below and confirm again for what's left.");

@@ -3,13 +3,15 @@
  * Lines are found by metadata.install.{unit_item_id, role} — never parent_item_id.
  * Pricing goes through catalogLineFields / kitLengthPatch only.
  */
-import { catalogLineFields, kitLengthPatch } from "@/lib/mandy/quoteOps";
+import { catalogLineFields, kitLengthPatch, kitSwapPatch, type BundleForKit } from "@/lib/mandy/quoteOps";
+import { parseKitSwapSizes, kitForSizes, swappableKits, kitSizeLabel } from "@/lib/kitSizes";
 import { installTag, lengthLabel, ROLE_LABEL, type InstallRole } from "@/lib/installTemplates";
 import { spokenRand } from "@/lib/mandy/labourAction";
 import type { MandyResult } from "@/lib/mandy/actions";
 
 export type InstallOp =
   | { op: "kit_length"; metres: number }
+  | { op: "kit_swap"; sizes?: string[]; bundle_id?: string }
   | { op: "bracket"; size?: "450" | "550" | "650"; flatback?: boolean; code?: string }
   | { op: "set_qty"; role: InstallRole; qty: number }
   | { op: "add_bend" }
@@ -22,6 +24,8 @@ const num = (s: string) => (NUM[s.toLowerCase()] ?? Number(s.replace(",", ".")))
 export function parseInstallCommand(text: string): InstallOp | null {
   const t = ` ${String(text || "").toLowerCase().replace(/[.!?]+$/, "").trim()} `;
   let m: RegExpMatchArray | null;
+  const sizes = parseKitSwapSizes(t);
+  if (sizes) return { op: "kit_swap", sizes };
   if ((m = t.match(/\b(?:make|set|change)\s+(?:the\s+)?(?:piping|pipe|kit|piping kit)\s+(?:to\s+)?(\d+(?:[.,]\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:m|metres?|meters?)\b/))) return { op: "kit_length", metres: num(m[1]) };
   if (/\bflat\s?back\b/.test(t) && /\bbracket|flat\s?back\b/.test(t)) {
     const s = t.match(/\b(450|550)\b/);
@@ -67,6 +71,8 @@ export interface InstallDeps {
   addItem: (row: any) => Promise<any>;
   updateItem: (id: string, patch: any) => Promise<any>;
   deleteItem: (id: string) => Promise<any>;
+  /** Active kits (for kit swaps). */
+  bundles?: BundleForKit[];
   after?: () => Promise<void>;
 }
 
@@ -113,6 +119,18 @@ export async function runInstallEdit(d: InstallDeps, args: InstallOp & { unit_it
       const ok = await d.updateItem(kit.id, p);
       if (ok === false || ok === null) return { ok: false, message: "Couldn't change the kit length — nothing was changed." };
       return done(`Piping kit for ${unit.item_name} set to ${p.length} m, ${spokenRand(p.unit_price)}.`);
+    }
+    case "kit_swap": {
+      const kit = roleLine(d.items, unit.id, "piping_kit");
+      if (!kit) return { ok: false, message: `${unit.item_name} has no piping kit — nothing was changed.` };
+      const pool = swappableKits((d.bundles || []) as any, d.liveProducts);
+      const target = (args.bundle_id ? pool.find((b) => b.id === args.bundle_id) : kitForSizes(pool, args.sizes || [])) as BundleForKit | null;
+      if (!target) return { ok: false, message: `There's no live ${(args.sizes || []).join(" + ") || "matching"} piping kit in the active price books — nothing was changed.` };
+      if (kit.metadata?.kit?.bundle_id === target.id) return { ok: true, message: `${unit.item_name} already has the ${kitSizeLabel(target as any)} kit.` };
+      const { perMetre: _p, ...patch } = kitSwapPatch(kit, target);
+      const ok = await d.updateItem(kit.id, patch);
+      if (ok === false || ok === null) return { ok: false, message: "Couldn't swap the kit — nothing was changed." };
+      return done(`Kit for ${unit.item_name} is now ${kitSizeLabel(target as any)} (${target.name}), ${patch.length} m, ${spokenRand(patch.unit_price)}.`);
     }
     case "bracket": {
       const cur = roleLine(d.items, unit.id, "bracket");

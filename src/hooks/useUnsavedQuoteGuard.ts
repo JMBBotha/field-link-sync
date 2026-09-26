@@ -1,5 +1,6 @@
 import { useState, useCallback, createElement, type ReactElement } from "react";
 import QuoteExitDialog from "@/components/quotes/QuoteExitDialog";
+import { useUnsavedFlag } from "@/lib/buildInfo";
 
 export interface UnsavedQuoteGuardActions {
   showModal: boolean;
@@ -43,6 +44,7 @@ export function useUnsavedQuoteGuard({
   onExit: () => void;
 }): UnsavedQuoteGuardActions {
   const [showModal, setShowModal] = useState(false);
+  useUnsavedFlag(isDirty);
 
   const resolvedHasClient = hasClient ?? canSave;
 

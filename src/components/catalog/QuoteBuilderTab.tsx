@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useRef, useEffect, useSyncExternalStore
 import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
 import { planStandardInstall, installBasketItem } from "@/lib/mandy/quoteOps";
+import { DEFAULT_KIT_LENGTH_M } from "@/components/catalog/quote-builder/kitLine";
 import { useInstallTemplates } from "@/hooks/useInstallTemplates";
 import type { BasketInstall } from "@/lib/installTemplates";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
@@ -498,7 +499,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         price_per_metre: pricingType === "p/meter" ? unitCost : null,
       },
       quantity: 1,
-      ...(pricingType === "p/meter" ? { length: 1 } : {}),
+      ...(pricingType === "p/meter" ? { length: DEFAULT_KIT_LENGTH_M } : {}),
       isBundle: true,
       bundleId: bundle.id,
       bundleName: bundle.name,

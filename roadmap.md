@@ -46,3 +46,9 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] Builder save keeps install links (remapped to new ids)
 - [x] Area wizard uses the shared standard-install rule
 - [ ] Admin template editor (skipped)
+
+## Standard install follow-up (2026-09-26)
+- [x] Stale build guard (index.html entry compare, banner, dock auto-reload, write refusal)
+- [x] All unit-add paths on shared install rule; kits default 3 m; skips spoken
+- [x] New 24K 3/8+1/2 kit, 24K template repointed, old 3/8+5/8 kit BTU cleared; kit swap UI + voice
+- [ ] Live test + repair on Q-2026-0014 — blocked: quote was rewritten 14:51 UTC (Lounge/24K rows gone); needs Johan's go-ahead on current state

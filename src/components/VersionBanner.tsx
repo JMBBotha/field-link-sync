@@ -20,7 +20,7 @@ export default function VersionBanner() {
       onClick={softReload}
       className="fixed left-1/2 top-2 z-[100] -translate-x-1/2 flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-lg"
     >
-      <RefreshCw className="h-4 w-4" /> New version available — tap to update
+      <RefreshCw className="h-4 w-4" /> New version available — tap to reload
     </button>
   );
 }

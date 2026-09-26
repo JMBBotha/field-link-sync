@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useUnsavedFlag } from "@/lib/buildInfo";
 
 export interface ExitGuardActions {
   showModal: boolean;
@@ -24,6 +25,7 @@ export function useExitGuard({
   onDiscard: () => void;
 }): ExitGuardActions {
   const [showModal, setShowModal] = useState(false);
+  useUnsavedFlag(isDirty);
   const [pendingAction, setPendingAction] = useState<"exit" | null>(null);
 
   const requestExit = useCallback(() => {

@@ -177,10 +177,10 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     if (r.template || r.installLines.length || r.kit) {
       return { ok: true, message: announceInstall(`${qty > 1 ? `${qty} × ` : ""}${p.short_name}`, r as any, area.name), data: { line_id: r.line.id, kit_id: r.kit?.id ?? null, install_ids: r.installLines.map((l) => l.id), area: area.name }, verified };
     }
-    const kitTxt = r.kit ? `, with a 1 m ${r.kitName} at ${fmtRand(r.kitSellPerMetre || 0)} per metre excl. VAT` : "";
+    const kitTxt = r.kit ? `, with a ${r.kitLength ?? 3} m ${r.kitName} at ${fmtRand(r.kitSellPerMetre || 0)} per metre excl. VAT` : "";
     return {
       ok: true,
-      message: `Added ${qty > 1 ? `${qty} × ` : ""}${p.short_name} (${p.product_code}) to ${area.name} at ${fmtRand(r.unitSell)} excl. VAT${kitTxt}.`,
+      message: `Added ${qty > 1 ? `${qty} × ` : ""}${p.short_name} (${p.product_code}) to ${area.name} at ${fmtRand(r.unitSell)} excl. VAT${kitTxt}.${r.notes.length ? ` ${r.notes.join(". ")}.` : ""}`,
       data: { line_id: r.line.id, kit_id: r.kit?.id ?? null, area: area.name },
       verified,
     };
@@ -290,7 +290,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       if (ctx.meta?.status && ctx.meta.status !== "draft") return { ok: false, message: `This quote is ${ctx.meta.status}, so it's read-only.` };
       const r = await runInstallEdit({
         items: S().items as any[], areaName: (id) => areaName(id ?? null), liveProducts: products,
-        addItem: g.addItem, updateItem: g.updateItem, deleteItem: g.deleteItem, after: async () => { await refresh(); },
+        addItem: g.addItem, updateItem: g.updateItem, deleteItem: g.deleteItem, bundles: bundles as any, after: async () => { await refresh(); },
       }, args as any);
       if (args.__plan && r.confirm) return r.confirm.run();
       return r;

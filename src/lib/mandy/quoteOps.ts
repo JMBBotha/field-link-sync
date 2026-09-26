@@ -9,7 +9,8 @@
 import { getEffectiveUnitPrices, type PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import { resolveProductMarkupPercent } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
-import { buildKitMaterial, kitBasketFields } from "@/components/catalog/quote-builder/kitLine";
+import { buildKitMaterial, kitBasketFields, DEFAULT_KIT_LENGTH_M } from "@/components/catalog/quote-builder/kitLine";
+import { kitForUnitPipes } from "@/lib/kitSizes";
 import { matchCatalog } from "@/lib/mandy/catalogMatch";
 import type { QuoteItem, QuoteItemInsert } from "@/types/quote";
 import { pickInstallTemplate, DEFAULT_INSTALL_KIT_M, type InstallTemplate, type InstallRole } from "@/lib/installTemplates";
@@ -145,12 +146,18 @@ export function planStandardInstall(product: Partial<PaletteProduct>, templates:
   const tpl = pickInstallTemplate(templates, btu);
   const notes: string[] = [];
   const lines: InstallPlan["lines"] = [];
-  if (!tpl) return { template: null, kitBundle: findPipingKitForBtu(bundles, btu), kitLength: DEFAULT_INSTALL_KIT_M, lines, notes };
+  // Unit lists its pipe sizes → prefer a kit whose copper matches (never invented; null when not filled).
+  const pipeKit = kitForUnitPipes(bundles as any, product as any) as BundleForKit | null;
+  if (!tpl) {
+    const k = pipeKit || findPipingKitForBtu(bundles, btu);
+    notes.push(btu ? `No standard install template for ${Math.round(btu / 1000)}K${k ? " – kit only" : ", and no piping kit found"}` : "No BTU on this unit, so no standard install was added");
+    return { template: null, kitBundle: btu ? k : null, kitLength: DEFAULT_INSTALL_KIT_M, lines, notes };
+  }
   let kitBundle: BundleForKit | null = null, kitLength = DEFAULT_INSTALL_KIT_M;
   for (const it of tpl.items) {
     if (!it.included) continue;
     if (it.role === "piping_kit") {
-      kitBundle = (it.bundle_id && bundles.find((x) => x.id === it.bundle_id)) || findPipingKitForBtu(bundles, btu);
+      kitBundle = pipeKit || (it.bundle_id && bundles.find((x) => x.id === it.bundle_id)) || findPipingKitForBtu(bundles, btu);
       kitLength = it.default_length_m || DEFAULT_INSTALL_KIT_M;
       if (!kitBundle) notes.push("Skipped piping kit – kit not found");
       continue;
@@ -209,39 +216,58 @@ export async function addStandardInstall(opts: {
   return { kit, kitName, kitSellPerMetre, installLines, notes, template: tpl, kitLength };
 }
 
+/** Row fields for a collapsed, price-locked kit at `length` m — shared by add and swap (same maths). */
+export function kitRowFields(bundle: BundleForKit, length?: number) {
+  const m = buildKitMaterial(bundle as any, 1);
+  const f = kitBasketFields(m);
+  const len = m.pricingMode === "length" ? (length && length > 0 ? length : DEFAULT_KIT_LENGTH_M) : 1;
+  const sell = Number(((f.bundleUnitPrice || 0) * len).toFixed(2));
+  const kCost = Number(((f.bundleUnitCost || 0) * len).toFixed(2));
+  return {
+    fields: {
+      item_name: bundle.name,
+      item_number: m.product.product_code || null,
+      description: m.product.description || null,
+      quantity: 1,
+      length: m.pricingMode === "length" ? len : null,
+      unit_price: sell,
+      total_price: sell,
+      is_bundle: true,
+      item_type: "Installation Kit",
+      metadata: {
+        unit_cost: kCost,
+        cost_excl: kCost,
+        total_cost: kCost,
+        markup_percent: kCost > 0 ? Number((((sell - kCost) / kCost) * 100).toFixed(2)) : 0,
+        price_locked: true,
+        kit: { bundle_id: bundle.id, name: bundle.name, pricing_type: f.bundlePricingType, unit_cost: f.bundleUnitCost ?? 0, unit_sell: Number((f.bundleUnitPrice ?? 0).toFixed(2)), items: f.kitContents ?? [] },
+      } as Record<string, any>,
+    },
+    perMetre: f.bundleUnitPrice || 0,
+    length: m.pricingMode === "length" ? len : null,
+  };
+}
+
 /** Add a piping kit row — the exact collapsed, price-locked row the builder adds with an AC unit. */
 export async function addKitToQuote(opts: { addItem: AddItemFn; bundle: BundleForKit; areaId: string | null; sortOrder: number; source?: string; length?: number; extraMeta?: Record<string, any> }) {
   const { addItem, bundle, areaId } = opts;
-  const m = buildKitMaterial(bundle as any, 1);
-  const f = kitBasketFields(m);
-  const len = m.pricingMode === "length" ? (opts.length && opts.length > 0 ? opts.length : m.adjustedLength) : 1;
-  const sell = Number(((f.bundleUnitPrice || 0) * len).toFixed(2));
-  const kCost = Number(((f.bundleUnitCost || 0) * len).toFixed(2));
+  const r = kitRowFields(bundle, opts.length);
   const kit = await addItem({
     ...baseItem(),
+    ...r.fields,
     area_id: areaId,
-    item_name: bundle.name,
-    item_number: m.product.product_code || null,
-    description: m.product.description || null,
-    quantity: 1,
-    length: m.pricingMode === "length" ? len : null,
-    unit_price: sell,
-    total_price: sell,
-    is_bundle: true,
-    item_type: "Installation Kit",
-    metadata: {
-      unit_cost: kCost,
-      cost_excl: kCost,
-      total_cost: kCost,
-      markup_percent: kCost > 0 ? Number((((sell - kCost) / kCost) * 100).toFixed(2)) : 0,
-      price_locked: true,
-      kit: { bundle_id: bundle.id, name: bundle.name, pricing_type: f.bundlePricingType, unit_cost: f.bundleUnitCost ?? 0, unit_sell: Number((f.bundleUnitPrice ?? 0).toFixed(2)), items: f.kitContents ?? [] },
-      ...(opts.extraMeta || {}),
-    },
+    metadata: { ...r.fields.metadata, ...(opts.extraMeta || {}) },
     sort_order: opts.sortOrder,
     source: opts.source || "catalog",
   });
-  return { kit, kitName: bundle.name, kitSellPerMetre: f.bundleUnitPrice || 0, length: m.pricingMode === "length" ? len : null };
+  return { kit, kitName: bundle.name, kitSellPerMetre: r.perMetre, length: r.length };
+}
+
+/** Swap a saved kit row to another kit: same metres, repriced from the book, install tag kept. */
+export function kitSwapPatch(cur: { length?: number | null; metadata?: any }, bundle: BundleForKit) {
+  const r = kitRowFields(bundle, Number(cur.length) || DEFAULT_KIT_LENGTH_M);
+  const keep = cur.metadata?.install ? { install: cur.metadata.install } : {};
+  return { ...r.fields, metadata: { ...r.fields.metadata, ...keep }, perMetre: r.perMetre };
 }
 
 /**
