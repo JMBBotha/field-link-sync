@@ -102,10 +102,10 @@ const Auth = () => {
           ? `${window.location.origin}/login?next=${encodeURIComponent(nextPath)}`
           : `${window.location.origin}/`;
         const { error } = await supabase.auth.signUp({
-          email,
-          password,
+          email: emailValue,
+          password: passwordValue,
           options: {
-            data: { full_name: fullName },
+            data: { full_name: fullNameValue },
             emailRedirectTo,
           },
         });
