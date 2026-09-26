@@ -70,6 +70,27 @@ export function getDepositChipState(
   return "due";
 }
 
+/**
+ * Shared chip/pin wording:
+ *  paid    → "Deposit paid"
+ *  partial → "Partial · R 7 774,60 due"   (balance remaining)
+ *  due     → "Deposit · R 9 774,60 due"   (full invoice total)
+ *  none    → "No deposit"
+ */
+export function depositChipLabel(
+  invoice: DepositInvoiceLike | null | undefined,
+  opts?: { accepted?: boolean },
+): string | null {
+  const state = getDepositChipState(invoice, opts);
+  if (!state) return null;
+  if (state === "paid") return "Deposit paid";
+  if (state === "none") return "No deposit";
+  const total = Math.max(0, Number(invoice?.grand_total) || 0);
+  const remaining = getDepositRemaining(invoice) ?? Math.max(0, total - (Number(invoice?.amount_paid) || 0));
+  if (state === "partial") return `Partial · ${formatRand(remaining)} due`;
+  return `Deposit · ${formatRand(remaining > 0 ? remaining : total)} due`;
+}
+
 interface DepositPaymentChipProps {
   invoice: DepositInvoiceLike | null | undefined;
   /** Pass true when the quote/work is accepted — renders the muted "No deposit" state when no invoice row exists. */
@@ -94,13 +115,7 @@ const DepositPaymentChip = ({ invoice, accepted, className }: DepositPaymentChip
     );
   }
 
-  if (state === "partial") {
-    // Partial must ALWAYS carry a Rand figure. Prefer the derived remaining,
-    // then grand_total - amount_paid, then grand_total as last resort.
-    const derived = getDepositRemaining(invoice);
-    const total = Number(invoice?.grand_total) || 0;
-    const paid = Number(invoice?.amount_paid) || 0;
-    const amount = derived !== undefined ? derived : Math.max(0, total - paid);
+  if (state === "partial" || state === "due") {
     return (
       <Badge
         className={cn(
@@ -108,21 +123,7 @@ const DepositPaymentChip = ({ invoice, accepted, className }: DepositPaymentChip
           className,
         )}
       >
-        Partial · {formatRand(amount)}
-      </Badge>
-    );
-  }
-
-
-  if (state === "due") {
-    return (
-      <Badge
-        className={cn(
-          "border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300",
-          className,
-        )}
-      >
-        Deposit due
+        {depositChipLabel(invoice, { accepted })}
       </Badge>
     );
   }

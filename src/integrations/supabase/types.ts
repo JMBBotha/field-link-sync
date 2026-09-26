@@ -7332,6 +7332,7 @@ export type Database = {
           staff_id: string
         }[]
       }
+      fmt_rand_sql: { Args: { v: number }; Returns: string }
       fuzzy_digits: { Args: { p_text: string }; Returns: string }
       fuzzy_normalize: { Args: { p_text: string }; Returns: string }
       fuzzy_score: {
