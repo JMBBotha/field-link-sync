@@ -101,6 +101,9 @@ export interface SharedPlayback {
 }
 
 /** Testable core: play `src` on `el` with real-playback detection. */
+/** Mandy talks ~12% faster; pitch preserved. */
+export const MANDY_SPEECH_RATE = 1.12;
+
 export function playOnElement(el: HTMLAudioElement, src: string, opts: { startTimeoutMs?: number; maxMs?: number } = {}): SharedPlayback {
   const startTimeoutMs = opts.startTimeoutMs ?? 2500;
   let resolveStarted!: (v: boolean) => void;
@@ -153,6 +156,12 @@ export function playOnElement(el: HTMLAudioElement, src: string, opts: { startTi
   startTimer = setTimeout(() => setStarted(false), startTimeoutMs);
   try {
     el.src = src;
+    // Setting src resets the rate, so apply it after.
+    el.defaultPlaybackRate = MANDY_SPEECH_RATE;
+    el.playbackRate = MANDY_SPEECH_RATE;
+    el.preservesPitch = true;
+    (el as any).webkitPreservesPitch = true;
+    (el as any).mozPreservesPitch = true;
     const p = el.play();
     if (p && typeof p.catch === "function") p.catch(() => setStarted(false));
   } catch { setStarted(false); }
