@@ -31,8 +31,7 @@ import { parseInstallCommand } from "@/lib/mandy/installEdits";
 import { parseQuoteIntent } from "@/lib/mandy/quoteIntent";
 import { guardClaimedChange, unknownToolMessage } from "@/lib/mandy/honesty";
 import { honestMessage, routeReached, finalReplyFrom } from "@/lib/mandy/verify";
-import { BUILD_ID, staleWriteRefusal, useBuildStatus, checkForNewBuild, softReload, STALE_WRITE_MESSAGE } from "@/lib/buildInfo";
-import { useQuoteSessionStore } from "@/stores/quoteSessionStore";
+import { BUILD_ID, staleWriteRefusal, useBuildStatus, checkForNewBuild, softReload, STALE_WRITE_MESSAGE, hasUnsavedChanges } from "@/lib/buildInfo";
 import { touchedPatch } from "@/lib/mandy/pronouns";
 import { useMandyGo } from "@/lib/mandy/go";
 import { formatForSpeech, formatReplyText } from "@/lib/mandy/speech";
@@ -240,7 +239,7 @@ export default function MandyDock() {
     let off = false;
     void checkForNewBuild().then((stale) => {
       if (off || !stale) return;
-      if (!useQuoteSessionStore.getState().isDirty) softReload();
+      if (!hasUnsavedChanges()) softReload();
       else setReply(STALE_WRITE_MESSAGE);
     });
     return () => { off = true; };

@@ -6,6 +6,7 @@
  * that works even when the host does not serve /version.json.
  */
 import { create } from "zustand";
+import { useEffect, useRef } from "react";
 
 declare const __BUILD_ID__: string;
 export const BUILD_ID: string = typeof __BUILD_ID__ !== "undefined" ? __BUILD_ID__ : "dev";
@@ -77,3 +78,13 @@ export async function checkForNewBuild(fetcher: typeof fetch = fetch, running: s
 
 /** Soft reload: no cache clearing, no sign-out, no storage wipe. */
 export const softReload = () => window.location.reload();
+
+/** Editors with unsaved changes register here so a stale-build reload never loses work. */
+const unsaved = new Set<string>();
+export function setUnsavedChanges(key: string, dirty: boolean) { if (dirty) unsaved.add(key); else unsaved.delete(key); }
+export const hasUnsavedChanges = () => unsaved.size > 0;
+/** Hook helper: mark this editor dirty while `dirty` is true. */
+export function useUnsavedFlag(dirty: boolean) {
+  const key = useRef(Math.random().toString(36).slice(2)).current;
+  useEffect(() => { setUnsavedChanges(key, dirty); return () => setUnsavedChanges(key, false); }, [key, dirty]);
+}
