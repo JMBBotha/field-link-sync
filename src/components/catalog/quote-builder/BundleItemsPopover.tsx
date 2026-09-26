@@ -24,6 +24,69 @@ export interface BundleSubItem {
 
 export type BundlePricingType = "p/meter" | "p/qty";
 
+/**
+ * How many pieces the catalog price covers, for kit pricing only.
+ * pack_qty > 1 is already divided out by getEffectiveUnitPrices → 1.
+ * Otherwise a 'pack'/'box' priced per N (price_per_unit_qty > 1) → N.
+ */
+export function packUnits(p: any): number {
+  if (!p) return 1;
+  if (Number(p.pack_qty) > 1) return 1;
+  const per = Number(p.price_per_unit_qty);
+  return (p.unit_type === "pack" || p.unit_type === "box") && per > 1 ? per : 1;
+}
+
+/** Per-piece cost/sell for a count item inside a kit (standalone lines unaffected). */
+export function bundlePieceUnitPrices(p: PaletteProduct) {
+  const r = getEffectiveUnitPrices(p, false);
+  const n = packUnits(p);
+  return { ...r, unitSell: r.unitSell / n, unitCost: r.unitCost / n, piecePack: n };
+}
+
+const isLen = (i: BundleSubItem) => i.isLengthItem && !!i.product.price_per_metre && i.product.price_per_metre > 0;
+
+/** True when the kit is priced per kit metre (has at least one non-optional length item). */
+export function isPerMetreKit(items: BundleSubItem[]): boolean {
+  return items.some((i) => !i.isOptional && isLen(i));
+}
+
+/** Per-kit-metre unit prices for one part (length → per metre, count → per piece). */
+export function kitPartUnitPrices(i: BundleSubItem) {
+  if (isLen(i)) { const r = getEffectiveUnitPrices(i.product, true); return { ...r, piecePack: 1 }; }
+  return bundlePieceUnitPrices(i.product);
+}
+
+/** Map bundle_items rows to sub-items; count parts of a per-metre kit get qty = perKitMetre × kitLength. */
+export function toBundleSubItems(
+  rows: Array<{ quantity?: number | null; length_metres?: number | null; is_length_item?: boolean | null; is_optional?: boolean | null; product?: any; supplier_product?: any }>,
+  kitLength = 3,
+  lengthFallback?: (row: any, product: PaletteProduct) => number,
+): BundleSubItem[] {
+  const subs: BundleSubItem[] = (rows || [])
+    .filter((b) => b.product || b.supplier_product)
+    .map((b) => {
+      const product = (b.product || b.supplier_product) as PaletteProduct;
+      const isLengthItem = !!b.is_length_item && !!product.price_per_metre;
+      return {
+        product,
+        quantity: b.quantity || 1,
+        isLengthItem,
+        isOptional: !!b.is_optional,
+        perKitMetre: b.length_metres ?? b.quantity ?? 1,
+        ...(isLengthItem ? { length: lengthFallback ? lengthFallback(b, product) : (b.length_metres || 1) } : {}),
+      };
+    });
+  if (isPerMetreKit(subs)) {
+    for (const s of subs) if (!s.isLengthItem) s.quantity = Math.round((s.perKitMetre ?? 1) * kitLength * 1000) / 1000;
+  }
+  return subs;
+}
+
+/** Rescale count sub-items of a per-metre kit to a new kit length. */
+export function scaleKitCountItems<T extends BundleSubItem>(items: T[], kitLength: number): T[] {
+  return items.map((s) => (s.isLengthItem ? s : { ...s, quantity: Math.round((s.perKitMetre ?? 1) * kitLength * 1000) / 1000 }));
+}
+
 export function computeBundlePricing(items: BundleSubItem[]): {
   pricingType: BundlePricingType;
   unitPrice: number;
@@ -32,23 +95,18 @@ export function computeBundlePricing(items: BundleSubItem[]): {
   const nonOptional = items.filter((i) => !i.isOptional);
   if (nonOptional.length === 0) return { pricingType: "p/qty", unitPrice: 0, unitCost: 0 };
 
-  const allPerMeter = nonOptional.every(
-    (i) => i.isLengthItem && i.product.price_per_metre && i.product.price_per_metre > 0
-  );
-
-  if (allPerMeter) {
-    const totalSell = nonOptional.reduce((sum, i) => {
-      const { unitSell } = getEffectiveUnitPrices(i.product, true);
-      return sum + unitSell * (i.perKitMetre ?? 1);
-    }, 0);
-    const totalCost = nonOptional.reduce((sum, i) => {
-      const { unitCost } = getEffectiveUnitPrices(i.product, true);
-      return sum + unitCost * (i.perKitMetre ?? 1);
-    }, 0);
+  if (isPerMetreKit(nonOptional)) {
+    let totalSell = 0, totalCost = 0;
+    for (const i of nonOptional) {
+      const { unitSell, unitCost } = kitPartUnitPrices(i);
+      const k = i.perKitMetre ?? 1;
+      totalSell += unitSell * k;
+      totalCost += unitCost * k;
+    }
     return { pricingType: "p/meter", unitPrice: totalSell, unitCost: totalCost };
   }
 
-  // Mixed or all per-unit
+  // No length items — per-unit
   const totalSell = nonOptional.reduce((sum, i) => {
     const { unitSell } = getEffectiveUnitPrices(i.product, i.isLengthItem);
     const unit = resolvePricingUnit(i.product);
@@ -66,7 +124,26 @@ export function computeBundlePricing(items: BundleSubItem[]): {
   return { pricingType: "p/qty", unitPrice: totalSell, unitCost: totalCost };
 }
 
+/** Popover row numbers — same maths as computeBundlePricing. */
+export function bundlePopoverRows(items: BundleSubItem[], pricingType: BundlePricingType) {
+  return items.filter((i) => !i.isOptional).map((item) => {
+    if (pricingType === "p/meter") {
+      const { unitCost, unitSell, isPackItem, packQty, piecePack } = kitPartUnitPrices(item);
+      const qtyOrLen = item.perKitMetre ?? 1;
+      const lineTotal = unitSell * qtyOrLen;
+      const lineCost = unitCost * qtyOrLen;
+      return { item, isLen: isLen(item), costPerUnit: unitCost, sellPerUnit: unitSell, qtyOrLen, lineTotal, lineCost,
+        isPackItem: isPackItem || piecePack > 1, packQty: piecePack > 1 ? piecePack : packQty };
+    }
+    const { unitCost, unitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product, item.isLengthItem);
+    const pricingUnit = resolvePricingUnit(item.product);
+    const qtyOrLen = item.isLengthItem ? (item.length || 1) : item.quantity;
+    return { item, isLen: item.isLengthItem, costPerUnit: unitCost, sellPerUnit: unitSell, qtyOrLen,
+      lineTotal: computeLineTotal(qtyOrLen, unitSell, pricingUnit), lineCost: computeLineTotal(qtyOrLen, unitCost, pricingUnit), isPackItem, packQty };
+  });
+}
 
+const fmtU = (v: number) => (Math.abs(v) < 10 && Math.round(v * 100) !== v * 100 ? v.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : fmt(v));
 const fmt = (v: number) => v.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function PopoverBody({
@@ -78,37 +155,10 @@ function PopoverBody({
   items: BundleSubItem[];
   pricingType: BundlePricingType;
 }) {
-  const nonOptional = items.filter((i) => !i.isOptional);
-
-  const rows = nonOptional.map((item) => {
-    const { unitCost, unitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product, item.isLengthItem);
-    const pricingUnit = resolvePricingUnit(item.product);
-    const qtyOrLen = pricingType === "p/meter"
-      ? (item.perKitMetre ?? 1)
-      : item.isLengthItem ? (item.length || 1) : item.quantity;
-    const markupAmt = unitSell - unitCost;
-    const markupPct = unitCost > 0 ? (markupAmt / unitCost) * 100 : 0;
-    const hasMarkup = markupAmt > 0.01;
-    const lineTotal = computeLineTotal(qtyOrLen, unitSell, pricingUnit);
-    const lineCost = computeLineTotal(qtyOrLen, unitCost, pricingUnit);
-    const lineMarkup = lineTotal - lineCost;
-
-
-    return {
-      item,
-      isLen: item.isLengthItem,
-      costPerUnit: unitCost,
-      sellPerUnit: unitSell,
-      qtyOrLen,
-      markupAmt,
-      markupPct,
-      hasMarkup,
-      lineTotal,
-      lineCost,
-      lineMarkup,
-      isPackItem,
-      packQty,
-    };
+  const rows = bundlePopoverRows(items, pricingType).map((r) => {
+    const markupAmt = r.sellPerUnit - r.costPerUnit;
+    return { ...r, markupAmt, markupPct: r.costPerUnit > 0 ? (markupAmt / r.costPerUnit) * 100 : 0,
+      hasMarkup: markupAmt > 0.0001, lineMarkup: r.lineTotal - r.lineCost };
   });
 
   const totalCost = rows.reduce((s, r) => s + r.lineCost, 0);
@@ -157,16 +207,16 @@ function PopoverBody({
                   </div>
                 </td>
                 <td className="text-right py-1 px-0.5 text-muted-foreground whitespace-nowrap">
-                  R{fmt(r.costPerUnit)}
+                  R{fmtU(r.costPerUnit)}
                   <span className="text-[7px]">{r.isLen ? " /m" : " /ea"}</span>
                 </td>
                 <td className="text-right py-1 px-0.5 text-foreground font-medium whitespace-nowrap">
-                  R{fmt(r.sellPerUnit)}
+                  R{fmtU(r.sellPerUnit)}
                 </td>
                 <td className="text-right py-1 px-0.5 whitespace-nowrap">
                   {r.hasMarkup ? (
                     <span className="text-green-600 dark:text-green-400">
-                      R{fmt(r.markupAmt)}
+                      R{fmtU(r.markupAmt)}
                       <span className="text-[7px] ml-0.5">({r.markupPct.toFixed(0)}%)</span>
                     </span>
                   ) : (
@@ -176,9 +226,9 @@ function PopoverBody({
                 <td className="text-right py-1 px-0.5 text-muted-foreground">
                   <span className="flex items-center justify-end gap-0.5">
                     {r.isLen ? (
-                      <><Ruler className="h-2 w-2" />{r.qtyOrLen}m</>
+                      <><Ruler className="h-2 w-2" />{+r.qtyOrLen.toFixed(3)}m</>
                     ) : (
-                      <><Hash className="h-2 w-2" />×{r.qtyOrLen}</>
+                      <><Hash className="h-2 w-2" />×{+r.qtyOrLen.toFixed(3)}{pricingType === "p/meter" ? "/m" : ""}</>
                     )}
                   </span>
                 </td>
