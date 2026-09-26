@@ -298,8 +298,10 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
       const unitItems: BasketItem[] = [];
       let firstUnit: { key: string; tpl: string | null } | null = null;
       for (const u of area.acUnits) {
-        const unitKey = `${u.product.id}-${rid()}`;
+        // Saved units keep their id as key so their existing install lines stay linked.
+        const unitKey = u.fromSaved ? u.id : `${u.product.id}-${rid()}`;
         unitItems.push({ instanceId: unitKey, product: u.product, quantity: u.quantity });
+        if (u.fromSaved) continue;
         const plan = planStandardInstall(u.product, installTemplates, bundles as any, products);
         if (!plan.template) continue;
         firstUnit = firstUnit || { key: unitKey, tpl: plan.template.id };
@@ -325,13 +327,14 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
             ...(m.pricingMode === "length" ? { length: m.adjustedLength } : {}),
             ...kf,
             // An existing wizard kit becomes the (single) unit's install kit.
-            ...(kf.isBundle && firstUnit && area.acUnits.length === 1 ? { install: { unitKey: firstUnit.key, role: "piping_kit" as const, template_id: firstUnit.tpl } } : {}),
+            ...(m.install ? { install: m.install } : kf.isBundle && firstUnit && area.acUnits.length === 1 ? { install: { unitKey: firstUnit.key, role: "piping_kit" as const, template_id: firstUnit.tpl } } : {}),
           };
         }),
         ...area.consumables.map((c) => ({
           instanceId: `${c.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           product: c.product,
           quantity: c.quantity,
+          ...(c.install ? { install: c.install } : {}),
         })),
       ];
       if (allItems.length > 0) {

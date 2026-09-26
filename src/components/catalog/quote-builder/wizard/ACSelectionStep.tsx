@@ -1,3 +1,4 @@
+import { DEFAULT_INSTALL_KIT_M } from "@/lib/installTemplates";
 import { costPerMetreOf } from "@/lib/pricing";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Search, Check, Star, X, Zap, Package, ImageIcon, Plus, Trash2, Ruler, Hash, MousePointerClick, ChevronDown, ChevronUp, Wrench, TrendingUp } from "lucide-react";
@@ -710,11 +711,11 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
           ...next,
           consumables: next.consumables.filter((c) => !c.fromBundle),
           appliedBundleId: kit.id,
-          materials: [...cleanMaterials, buildKitMaterial(kit, 1)],
+          materials: [...cleanMaterials, buildKitMaterial(kit, DEFAULT_INSTALL_KIT_M)],
         };
       })
     );
-    if (kit) toast.success(`Added "${kit.name}" · 1m`);
+    if (kit) toast.success(`Added "${kit.name}" · ${DEFAULT_INSTALL_KIT_M}m`);
   }, [areas, onAreasChange, products, bundles]);
 
   const handleRemove = useCallback((areaId: string, idx: number) => {

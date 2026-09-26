@@ -1,3 +1,4 @@
+import type { BasketInstall } from "@/lib/installTemplates";
 import type { PaletteProduct } from "../QuoteBuilderTab";
 import { computeLineTotal, resolvePricingUnit } from "@/lib/pricingUnits";
 // pricing is now simplified — cost_price is the source of truth
@@ -16,6 +17,8 @@ export interface QuoteArea {
 
 export interface AreaACUnit {
   id: string;
+  /** Hydrated from a saved quote line (its install lines already exist). */
+  fromSaved?: boolean;
   product: PaletteProduct;
   btu: number;
   quantity: number;
@@ -23,6 +26,8 @@ export interface AreaACUnit {
 
 export interface AreaMaterial {
   id: string;
+  /** Standard-install link (kept through wizard re-saves). */
+  install?: BasketInstall;
   product: PaletteProduct;
   defaultLength: number;
   adjustedLength: number;
@@ -58,6 +63,7 @@ export interface AreaBracket {
 
 export interface AreaConsumable {
   id: string;
+  install?: BasketInstall;
   product: PaletteProduct;
   quantity: number;
   /** Whether this was auto-added from suggested_consumables */
