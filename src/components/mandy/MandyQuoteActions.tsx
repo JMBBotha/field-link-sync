@@ -180,7 +180,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     const kitTxt = r.kit ? `, with a ${r.kitLength ?? 3} m ${r.kitName} at ${fmtRand(r.kitSellPerMetre || 0)} per metre excl. VAT` : "";
     return {
       ok: true,
-      message: `Added ${qty > 1 ? `${qty} × ` : ""}${p.short_name} (${p.product_code}) to ${area.name} at ${fmtRand(r.unitSell)} excl. VAT${kitTxt}.`,
+      message: `Added ${qty > 1 ? `${qty} × ` : ""}${p.short_name} (${p.product_code}) to ${area.name} at ${fmtRand(r.unitSell)} excl. VAT${kitTxt}.${r.notes.length ? ` ${r.notes.join(". ")}.` : ""}`,
       data: { line_id: r.line.id, kit_id: r.kit?.id ?? null, area: area.name },
       verified,
     };

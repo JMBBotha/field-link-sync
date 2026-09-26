@@ -15,7 +15,7 @@ import type { QuoteArea, AreaACUnit, AreaConsumable, AreaMaterial } from "../quo
 import { detectBTU, getBracketSize } from "../quoteWizardTypes";
 import { findDaikinRemote, forcePerUnitPricing, isWiredRemote } from "../daikinRemoteUtils";
 import { getProductDisplayName } from "../productDisplayUtils";
-import { buildKitMaterial, withKitLength } from "../kitLine";
+import { buildKitMaterial, withKitLength, DEFAULT_KIT_LENGTH_M } from "../kitLine";
 import { computeLineTotal, resolvePricingUnit, formatUnitPrice } from "@/lib/pricingUnits";
 import { toast } from "sonner";
 
@@ -769,7 +769,7 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
           .filter((i: any) => !i.is_optional && i.is_length_item)
           .map((i: any) => overrides[i.id]?.qty)
           .find((q: any) => Number(q) > 0);
-        const newMaterials: AreaMaterial[] = [buildKitMaterial(bundle, Number(firstLen) || 1)];
+        const newMaterials: AreaMaterial[] = [buildKitMaterial(bundle, Number(firstLen) || DEFAULT_KIT_LENGTH_M)];
         const newConsumables: AreaConsumable[] = [];
 
         toast.success(`Applied "${bundle.name}" to ${a.name}`);
