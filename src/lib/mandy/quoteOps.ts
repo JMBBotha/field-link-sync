@@ -299,3 +299,20 @@ export function areaUnitBtu(items: { area_id?: string | null; product_id?: strin
   }
   return null;
 }
+
+/**
+ * Builder/wizard basket line for one standard-install item. Price is LOCKED to
+ * exactly what catalogLineFields gives a quote write (whole supplier length),
+ * so every path shows the same number.
+ */
+export function installBasketItem(l: InstallPlan["lines"][number], unitKey: string, templateId: string | null) {
+  const f = catalogLineFields(l.product, l.qty);
+  const cost = Number((f.metadata as any)?.unit_cost) || null;
+  const supplierLen = Number((f.metadata as any)?.supplier_length_m) || null;
+  return {
+    instanceId: `${unitKey}-${l.role}`,
+    product: { ...l.product, sold_in_length: false, price_per_metre: null, locked_sell_ex_vat: f.unit_price, locked_cost_ex_vat: cost } as PaletteProduct,
+    quantity: l.qty,
+    install: { unitKey, role: l.role, template_id: templateId, supplier_length_m: supplierLen },
+  };
+}

@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect, useSyncExternalStore } from "react";
 import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
-import { planStandardInstall } from "@/lib/mandy/quoteOps";
+import { planStandardInstall, installBasketItem } from "@/lib/mandy/quoteOps";
 import { useInstallTemplates } from "@/hooks/useInstallTemplates";
 import type { BasketInstall } from "@/lib/installTemplates";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
@@ -565,14 +565,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         }
 
         // Standard install lines: each its own line, priced per supplier length (never per metre).
-        for (const l of plan?.lines || []) {
-          const perLength = !!(l.product.sold_in_length && l.product.unit_length);
-          const prod = perLength ? { ...l.product, sold_in_length: false, price_per_metre: null } : l.product;
-          nextItems.push({
-            instanceId: `${unitKey}-${l.role}`, product: prod as PaletteProduct, quantity: l.qty,
-            install: { unitKey, role: l.role, template_id: plan!.template?.id ?? null, supplier_length_m: perLength ? Number(l.product.unit_length) : null },
-          });
-        }
+        for (const l of plan?.lines || []) nextItems.push(installBasketItem(l, unitKey, plan!.template?.id ?? null));
 
         return { ...basket, items: nextItems };
       })
