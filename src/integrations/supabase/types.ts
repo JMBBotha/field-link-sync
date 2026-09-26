@@ -7654,6 +7654,7 @@ export type Database = {
         Returns: boolean
       }
       is_ops_user: { Args: { _user_id: string }; Returns: boolean }
+      is_staff_member: { Args: { _uid: string }; Returns: boolean }
       job_profit_loss: {
         Args: { p_lead_id: string }
         Returns: {
