@@ -178,7 +178,7 @@ describe("replay: 'Bedroom 1: add an AR40 with 3 m kit'", () => {
     expect(p2.error).toBeUndefined();
     expect(p2.lines.find((l) => l.action === "add_item_to_area")!.price).toBeCloseTo(9738.26, 2);
     const auto = p2.lines.find((l) => l.action === "auto_kit")!;
-    expect(p2.lines.find((l) => l.action === "set_kit_length")!.price).toBeCloseTo(auto.price! * 3, 1);
+    expect(p2.lines.find((l) => l.action === "set_kit_length")!.price).toBeCloseTo(auto.price! / (auto.qty || 1) * 3, 1);
     // On the real 12K kit (cost R182.05/m, 100%): 3 m = R1 092.30.
     expect(kitLengthPatch(items[2] as any, 3).unit_price).toBeCloseTo(1092.3, 2);
   });
