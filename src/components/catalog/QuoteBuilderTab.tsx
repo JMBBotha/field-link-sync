@@ -529,7 +529,9 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
 
         const nextItems = [...basket.items];
 
-        const existingProductIndex = nextItems.findIndex((i) => !i.isBundle && i.product.id === product.id);
+        // A unit with a standard install is always its own line (its install hangs off it).
+        const unitKey = `${product.id}-${Date.now()}`;
+        const existingProductIndex = plan ? -1 : nextItems.findIndex((i) => !i.isBundle && i.product.id === product.id);
         if (existingProductIndex >= 0) {
           const existing = nextItems[existingProductIndex];
           nextItems[existingProductIndex] = isLengthItem
@@ -537,7 +539,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
             : { ...existing, quantity: existing.quantity + 1 };
         } else {
           nextItems.push({
-            instanceId: `${product.id}-${Date.now()}`,
+            instanceId: unitKey,
             product,
             quantity: 1,
             // Metre items start at 1 m (user-entered run) — never the full coil length.
@@ -546,7 +548,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         }
 
         if (autoBundle) {
-          const existingBundleIndex = nextItems.findIndex((i) => i.isBundle && i.bundleId === autoBundle.id);
+          const existingBundleIndex = plan?.template ? -1 : nextItems.findIndex((i) => i.isBundle && i.bundleId === autoBundle.id);
 
           if (existingBundleIndex >= 0) {
             const existingBundle = nextItems[existingBundleIndex];
@@ -556,7 +558,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
           } else {
             const bundleBasketItem = buildBundleBasketItem(autoBundle);
             if (bundleBasketItem) {
-              nextItems.push(bundleBasketItem.bundlePricingType === "p/meter" ? { ...bundleBasketItem, length: plan!.kitLength } : bundleBasketItem);
+              const kitItem = bundleBasketItem.bundlePricingType === "p/meter" ? { ...bundleBasketItem, length: plan!.kitLength } : bundleBasketItem;
+              nextItems.push(plan?.template ? { ...kitItem, instanceId: `${unitKey}-kit`, install: { unitKey, role: "piping_kit", template_id: plan.template.id } } : kitItem);
             }
           }
         }
@@ -565,9 +568,10 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         for (const l of plan?.lines || []) {
           const perLength = !!(l.product.sold_in_length && l.product.unit_length);
           const prod = perLength ? { ...l.product, sold_in_length: false, price_per_metre: null } : l.product;
-          const idx = nextItems.findIndex((i) => !i.isBundle && i.product.id === l.product.id);
-          if (idx >= 0) nextItems[idx] = { ...nextItems[idx], quantity: nextItems[idx].quantity + l.qty };
-          else nextItems.push({ instanceId: `${l.product.id}-install-${Date.now()}`, product: prod as PaletteProduct, quantity: l.qty });
+          nextItems.push({
+            instanceId: `${unitKey}-${l.role}`, product: prod as PaletteProduct, quantity: l.qty,
+            install: { unitKey, role: l.role, template_id: plan!.template?.id ?? null, supplier_length_m: perLength ? Number(l.product.unit_length) : null },
+          });
         }
 
         return { ...basket, items: nextItems };
