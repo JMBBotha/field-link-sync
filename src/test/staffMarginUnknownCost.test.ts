@@ -27,13 +27,13 @@ describe("set_labour_hours modes", () => {
     const updateItem = vi.fn();
     const r = await runSetLabourHours({ areas, items, standardRate: 680, addItem: vi.fn(), updateItem }, { area: "General", hours: 1, mode: "add" });
     expect(updateItem).toHaveBeenCalledWith("L", expect.objectContaining({ quantity: 3, total_price: 2040 }));
-    expect(r.message).toContain("2 h → 3 h");
+    expect(r.message).toBe("Added 1 hour labour to General, R2 040.");
   });
   it("set replaces", async () => {
     const updateItem = vi.fn();
     const r = await runSetLabourHours({ areas, items, standardRate: 680, addItem: vi.fn(), updateItem }, { area: "General", hours: 1, mode: "set" });
     expect(updateItem).toHaveBeenCalledWith("L", expect.objectContaining({ quantity: 1, total_price: 680 }));
-    expect(r.message).toContain("2 h → 1 h");
+    expect(r.message).toBe("Labour in General set to 1 hour, R680.");
   });
   it("mode from verb", () => {
     expect(labourModeFromText("add 1 hour labour to general")).toBe("add");
