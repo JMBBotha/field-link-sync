@@ -4,6 +4,7 @@
  * fake addItem, kitLengthPatch, runSetLabourHours, qtyPatch, linePriceDecision).
  * Nothing is saved. Produces the one Confirm card's lines and before → after.
  */
+import type { InstallTemplate } from "@/lib/installTemplates";
 import { addCatalogProductToQuote, addKitToQuote, areaUnitBtu, kitLengthPatch, type BundleForKit } from "@/lib/mandy/quoteOps";
 import { matchCatalog, catalogChipLabel } from "@/lib/mandy/catalogMatch";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
@@ -16,6 +17,7 @@ export interface PreviewDeps {
   areas: EditArea[];
   products: any[];
   bundles: BundleForKit[];
+  templates?: InstallTemplate[];
   rates: CategoryMarkupRates;
   standardRate: number | null;
   vatRate: number;
@@ -92,7 +94,7 @@ export async function previewPlan(steps0: PlanStep[], d: PreviewDeps): Promise<P
         if (!p) return fail(step, `No single catalog match for “${args.query ?? ""}”.`);
         if (!args.area) return fail(step, `Which area for ${p.short_name}?`);
         const a = ensureArea(args.area);
-        const r = await addCatalogProductToQuote({ addItem, product: p, areaId: a.id, sortOrder: nextSort(), quantity: qty, bundles: d.bundles });
+        const r = await addCatalogProductToQuote({ addItem, product: p, areaId: a.id, sortOrder: nextSort(), quantity: qty, bundles: d.bundles, templates: d.templates, liveProducts: d.products as any });
         kitByStep[n] = r.kit?.id;
         lines.push({ step, action, label: `${p.short_name} (${p.product_code}) → ${a.name}`, qty, price: Number(r.line?.unit_price) || 0 });
         if (r.kit) lines.push({ step, action: "auto_kit", label: `${r.kitName} (auto)`, qty: Number(r.kit.length) || 1, price: Number(r.kit.unit_price) || 0 });
