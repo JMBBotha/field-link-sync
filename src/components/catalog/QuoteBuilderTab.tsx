@@ -566,12 +566,12 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
           if (idx >= 0) nextItems[idx] = { ...nextItems[idx], quantity: nextItems[idx].quantity + l.qty };
           else nextItems.push({ instanceId: `${l.product.id}-install-${Date.now()}`, product: prod as PaletteProduct, quantity: l.qty });
         }
-        if (plan?.notes.length) toast({ title: "Standard install", description: plan.notes.join(". ") });
 
         return { ...basket, items: nextItems };
       })
     );
 
+    if (plan?.notes.length) toast({ title: "Standard install", description: plan.notes.join(". ") });
     scrollToCanvas();
   }, [trackUsage, scrollToCanvas, isAirConditioningProduct, planInstall, buildBundleBasketItem, bundles]);
 
