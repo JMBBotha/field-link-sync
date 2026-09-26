@@ -31,15 +31,12 @@ export class WavRecorder {
   private silenceFired = false;
   private quietSince: number | null = null;
 
-  private external = false;
-
   /** Pass opts.stream/opts.context to reuse a tap-unlocked mic + AudioContext (never stopped/closed here). */
   async start(vad?: VadOptions, opts?: { stream?: MediaStream; context?: AudioContext }) {
     this.vad = vad ?? null;
     this.speechStarted = false;
     this.silenceFired = false;
     this.quietSince = null;
-    this.external = !!(opts?.stream || opts?.context);
     this.extStream = !!opts?.stream;
     this.extCtx = !!opts?.context;
     this.stream = opts?.stream ?? await navigator.mediaDevices.getUserMedia({
@@ -116,14 +113,7 @@ export class WavRecorder {
   /** Stops capture and returns the recording as a base64 WAV payload. */
   async stop(): Promise<{ base64: string; bytes: number }> {
     const sampleRate = this.ctx?.sampleRate ?? 48000;
-    this.stream?.getTracks().forEach((t) => t.stop());
-    this.node?.disconnect();
-    this.source?.disconnect();
-    await this.ctx?.close().catch(() => undefined);
-    this.ctx = null;
-    this.stream = null;
-    this.node = null;
-    this.source = null;
+    await this.release();
 
     const pcm = downsample(concat(this.chunks), sampleRate, 16000);
     const wav = encodeWav(pcm, 16000);
@@ -131,13 +121,8 @@ export class WavRecorder {
   }
 
   cancel() {
-    this.stream?.getTracks().forEach((t) => t.stop());
-    this.node?.disconnect();
-    this.source?.disconnect();
-    void this.ctx?.close().catch(() => undefined);
+    void this.release();
     this.chunks = [];
-    this.ctx = null;
-    this.stream = null;
   }
 }
 
