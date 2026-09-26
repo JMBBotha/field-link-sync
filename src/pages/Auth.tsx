@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Building2, Wrench } from "lucide-react";
 import logo from "@/assets/logo.png";
 import BackgroundVideo from "@/components/BackgroundVideo";
+import { withTimeout } from "@/lib/withTimeout";
+import { resolvePostLoginPath } from "@/lib/postLoginRedirect";
 
 
 
@@ -39,38 +41,15 @@ const Auth = () => {
       redirectingRef.current = true;
       setRedirecting(true);
 
-      try {
-        if (nextPath) {
-          window.location.replace(nextPath);
-          return;
-        }
-
-        const { data: profile, error: profileErr } = await supabase
-          .from("profiles")
-          .select("onboarding_completed")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (profileErr) throw profileErr;
-
-        if (!profile?.onboarding_completed) {
-          navigate("/onboarding");
-          return;
-        }
-
-        const { data: roles, error: rolesErr } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId);
-
-        if (rolesErr) throw rolesErr;
-
-        const hasAdmin = roles?.some(r => ["admin", "dispatcher", "viewer"].includes(r.role));
-        navigate(hasAdmin ? "/admin" : "/field");
-      } catch {
-        redirectingRef.current = false;
-        setRedirecting(false);
+      if (nextPath) {
+        window.location.replace(nextPath);
+        return;
       }
+      const { path, error } = await resolvePostLoginPath(userId);
+      if (error) {
+        toast({ title: "Couldn't load your account", description: error, variant: "destructive" });
+      }
+      navigate(path);
     };
 
     redirectUser(session.user.id);
@@ -94,7 +73,11 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email: emailValue, password: passwordValue });
+        const { error } = await withTimeout(
+          supabase.auth.signInWithPassword({ email: emailValue, password: passwordValue }),
+          12000,
+          "Sign-in is taking too long. Check your connection and try again.",
+        );
         if (error) throw error;
         toast({ title: "Welcome back!", description: "You've successfully logged in." });
       } else {
@@ -262,8 +245,8 @@ const Auth = () => {
             className="w-full bg-[hsl(25,95%,53%)] hover:bg-[hsl(25,95%,45%)] text-white font-semibold text-base h-11"
             disabled={loading || redirecting}
           >
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isLogin ? "Sign In" : "Sign Up"}
+            {(loading || redirecting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {redirecting ? "Signing you in..." : isLogin ? "Sign In" : "Sign Up"}
           </Button>
         </form>
 

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Users, Navigation, Loader2 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import BackgroundVideo from "@/components/BackgroundVideo";
+import { withTimeout } from "@/lib/withTimeout";
 
 
 
@@ -20,21 +21,22 @@ const Index = () => {
     if (authLoading) return;
 
     const checkUser = async () => {
-      if (session) {
-        const { data: roles } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id);
-
-        const hasAdminRole = roles?.some(r => r.role === "admin");
-
-        if (hasAdminRole) {
-          navigate("/admin");
-        } else {
-          navigate("/field");
+      try {
+        if (session) {
+          const { data: roles, error } = await withTimeout(
+            supabase.from("user_roles").select("role").eq("user_id", session.user.id),
+            8000,
+            "Checking your access is taking too long.",
+          );
+          if (error) throw error;
+          const hasAdminRole = roles?.some(r => r.role === "admin");
+          navigate(hasAdminRole ? "/admin" : "/field");
         }
+      } catch (err) {
+        console.error("Index checkUser error:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     checkUser();

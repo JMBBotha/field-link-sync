@@ -41,11 +41,12 @@ export const useIdleLogout = () => {
     logoutTimerRef.current = setTimeout(() => {
       void (async () => {
         try {
-          await supabase.auth.signOut();
+          // Local scope: an idle desktop must not revoke the phone's session.
+          await supabase.auth.signOut({ scope: "local" });
         } catch (err) {
           console.error("useIdleLogout signOut error:", err);
         }
-        if (mountedRef.current) navigate("/auth");
+        if (mountedRef.current) navigate("/login");
       })();
     }, IDLE_TIMEOUT);
   }, [navigate]);

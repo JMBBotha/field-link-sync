@@ -23,10 +23,12 @@ import { useIdleLogout } from "@/hooks/useIdleLogout";
 import { useAssistantContextTracker } from "@/hooks/useAssistantContextTracker";
 import { WelcomeTourDialog } from "@/components/admin/WelcomeTourDialog";
 import logo from "@/assets/logo.png";
+import { withTimeout } from "@/lib/withTimeout";
 
 const AdminLayout = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [showCreateLead, setShowCreateLead] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -125,12 +127,16 @@ const AdminLayout = () => {
   }, [authLoading, session, user]);
 
   const checkAuth = async () => {
+    setAuthError(null);
+    setLoading(true);
     try {
       if (!session || !user) { navigate("/login"); return; }
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.user.id);
+      const { data: roles, error: rolesErr } = await withTimeout(
+        supabase.from("user_roles").select("role").eq("user_id", session.user.id),
+        8000,
+        "Checking your access is taking too long.",
+      );
+      if (rolesErr) throw rolesErr;
       if (!mountedRef.current) return;
       const userRoles = roles?.map(r => r.role) || [];
       const hasAdminAccess = userRoles.some(r => ["admin", "dispatcher", "viewer"].includes(r));
@@ -139,23 +145,22 @@ const AdminLayout = () => {
         navigate("/field");
         return;
       }
-      if (!mountedRef.current) return;
-      setIsAdmin(true);
 
-      // If onboarding not completed, redirect to unified onboarding
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("id", session.user.id)
-        .maybeSingle();
+      const { data: profile, error: profileErr } = await withTimeout(
+        supabase.from("profiles").select("onboarding_completed").eq("id", session.user.id).maybeSingle(),
+        8000,
+        "Loading your profile is taking too long.",
+      );
+      if (profileErr) throw profileErr;
       if (!mountedRef.current) return;
       if (!profile?.onboarding_completed) {
         navigate("/onboarding");
         return;
       }
+      setIsAdmin(true);
     } catch (error: any) {
       console.error("Auth check error:", error);
-      navigate("/login");
+      if (mountedRef.current) setAuthError(error?.message || "Could not load your account.");
     } finally {
       if (mountedRef.current) setLoading(false);
     }
@@ -172,6 +177,21 @@ const AdminLayout = () => {
         <div className="flex flex-col items-center gap-3">
           <div className="h-10 w-10 rounded-full bg-primary/40 animate-pulse" />
           <p className="text-sm text-muted-foreground animate-fade-in">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (authError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background p-4">
+        <div className="max-w-sm w-full space-y-4 text-center">
+          <p className="font-semibold text-foreground">Couldn't load your account</p>
+          <p className="text-sm text-muted-foreground">{authError}</p>
+          <div className="flex gap-2 justify-center">
+            <Button onClick={() => checkAuth()}>Retry</Button>
+            <Button variant="outline" onClick={() => { void supabase.auth.signOut({ scope: "local" }); navigate("/login"); }}>Sign out</Button>
+          </div>
         </div>
       </div>
     );
