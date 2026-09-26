@@ -29,3 +29,10 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] Persist Welcome Tour dismissal and capped auto-show count on the user profile.
 - [x] Make accepted-quote deposit invoices deterministic at 70% and preserve invoice-row handoff gating.
 - [x] Add staff deposit Email, WhatsApp, and Copy link actions with honest email failures.
+
+## 2026-09-26 batch
+- [x] Critical security: expense-receipts files locked to own company (storage policies).
+- [ ] Live Map pin shows each lead's actual deposit paid (Available/Claimed reflects money) — waiting on Johan's scope answer.
+- [ ] GlobalSearchDialog finds leads, rooms (quote areas) and invoices by name/address/reference — waiting on answer.
+- [ ] Deposits due / partial / unpaid dashboard linked to each lead — overlaps existing Money card; waiting on answer.
+- [ ] Client portal (own invoices, payments, status updates) — request cut off ("linked to the bd…"); overlaps existing customer portal; waiting on answer.
