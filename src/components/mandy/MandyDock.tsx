@@ -32,6 +32,7 @@ import { useMandyGo } from "@/lib/mandy/go";
 import { formatForSpeech, formatReplyText } from "@/lib/mandy/speech";
 import { useWorkflowMandyActions } from "@/components/mandy/MandyWorkflowActions";
 import { greetThenListen } from "@/lib/mandy/greetThenListen";
+import { greetingFor } from "@/lib/mandy/greetingFor";
 import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
 import { createDraftQuoteForCustomer } from "@/lib/createDraftQuote";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
@@ -168,31 +169,35 @@ function useSpeaker(muted: boolean) {
   return { speak, cancel, ttsCalls, setOnReplyEnded };
 }
 
-/* ───────────── greeting audio (Grok TTS, cached per page load) ───────────── */
-const GREETING = "Hi, what can I do for you?";
-let greetingBytes: Promise<ArrayBuffer> | null = null;
-let greetingBuffer: AudioBuffer | null = null;
+/* ───── greeting audio (Grok TTS, cached per page load, per user+text) ───── */
+const greetingCache = new Map<string, { bytes: Promise<ArrayBuffer>; buffer: AudioBuffer | null }>();
 let mandyCtx: AudioContext | null = null;
 const ttsReady = () => typeof window !== "undefined";
-function prefetchGreeting(): Promise<ArrayBuffer> {
-  if (!greetingBytes) {
-    greetingBytes = (async () => {
-      const { data, error } = await supabase.functions.invoke("mandy-agent", { body: { action: "tts", text: GREETING, client_build: BUILD_ID } });
+function prefetchGreeting(cacheKey: string, text: string): Promise<ArrayBuffer> {
+  let entry = greetingCache.get(cacheKey);
+  if (!entry) {
+    const bytes = (async () => {
+      const { data, error } = await supabase.functions.invoke("mandy-agent", { body: { action: "tts", text, client_build: BUILD_ID } });
       const b64 = (data as { audio_base64?: string } | null)?.audio_base64;
       if (error || !b64) throw new Error("no greeting audio");
       const bin = atob(b64); const out = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
       return out.buffer;
     })();
-    greetingBytes.catch(() => { greetingBytes = null; }); // retry on next open
+    entry = { bytes, buffer: null };
+    greetingCache.set(cacheKey, entry);
+    bytes.catch(() => { if (greetingCache.get(cacheKey) === entry) greetingCache.delete(cacheKey); }); // retry on next open
   }
-  return greetingBytes;
+  return entry.bytes;
 }
-async function getGreetingBuffer(ctx: AudioContext): Promise<AudioBuffer> {
-  if (greetingBuffer) return greetingBuffer;
-  const bytes = await prefetchGreeting();
-  greetingBuffer = await ctx.decodeAudioData(bytes.slice(0));
-  return greetingBuffer;
+async function getGreetingBuffer(ctx: AudioContext, cacheKey: string, text: string): Promise<AudioBuffer> {
+  const entry = greetingCache.get(cacheKey);
+  if (entry?.buffer) return entry.buffer;
+  const bytes = await prefetchGreeting(cacheKey, text);
+  const buffer = await ctx.decodeAudioData(bytes.slice(0));
+  const e = greetingCache.get(cacheKey);
+  if (e) e.buffer = buffer;
+  return buffer;
 }
 /** Must be called inside the tap: creates/resumes the shared AudioContext. */
 function unlockMandyAudio(): AudioContext | null {
@@ -464,6 +469,21 @@ export default function MandyDock() {
   const openRef = useRef(open);
   openRef.current = open;
   const greetSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  /** Personalised greeting text + cache key (user id + text), resolved once per user. */
+  const greetingRef2 = useRef<{ userId: string; text: string; key: string } | null>(null);
+  const resolveGreeting = async (): Promise<{ text: string; key: string }> => {
+    const uid = user?.id ?? "anon";
+    if (greetingRef2.current?.userId === uid) return greetingRef2.current;
+    let profile: { first_name?: string | null; full_name?: string | null } | null = null;
+    if (user?.id) {
+      const { data } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+      profile = data;
+    }
+    const text = greetingFor(profile, user?.user_metadata as Record<string, unknown> | null);
+    const resolved = { userId: uid, text, key: `${uid}:${text}` };
+    greetingRef2.current = resolved;
+    return resolved;
+  };
   const beginSession = async () => {
     if (greetingRef.current || recRef.current || busyRef.current) return; // double-start guard
     const ctx = unlockMandyAudio(); // inside the tap
@@ -477,7 +497,8 @@ export default function MandyDock() {
         speak: async (onStarted) => {
           if (muted || !ctx) throw new Error("no audio");
           setPhase("greeting");
-          const buf = await getGreetingBuffer(ctx);
+          const g = await resolveGreeting();
+          const buf = await getGreetingBuffer(ctx, g.key, g.text);
           if (!openRef.current) throw new Error("closed");
           await new Promise<void>((resolve) => {
             const src = ctx.createBufferSource();
@@ -512,7 +533,7 @@ export default function MandyDock() {
   startRef.current = startListening;
   useEffect(() => { if (listenRequest && open) void startRef.current(); }, [listenRequest, open]);
   useEffect(() => {
-    if (open) { if (ttsReady()) void prefetchGreeting(); return; }
+    if (open) { if (ttsReady()) void resolveGreeting().then((g) => prefetchGreeting(g.key, g.text)).catch(() => {}); return; }
     recRef.current?.cancel(); recRef.current = null; cancel(); setPhase("idle");
     try { greetSourceRef.current?.stop(); } catch { /* already stopped */ }
     greetSourceRef.current = null;
