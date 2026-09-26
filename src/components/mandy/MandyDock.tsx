@@ -250,8 +250,12 @@ export default function MandyDock() {
   const recRef = useRef<WavRecorder | null>(null);
   const voiceModeRef = useRef(false);
 
-  const audit = (tool: string, args: unknown, r: MandyResult) => {
-    void supabase.functions.invoke("mandy-agent", { body: { action: "audit", client_build: BUILD_ID, tool, args, result: { message: r.message, data: r.data ?? null }, ok: r.ok } });
+  /** Raw transcript of the current turn (handlers read it when the model drops a number). */
+  const utterRef = useRef("");
+  const audit = (tool: string, args: unknown, r: MandyResult, reply?: string) => {
+    const { __utterance: _u, ...clean } = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
+    const logArgs = { ...clean, utterance: utterRef.current.slice(0, 300) || null, ...(reply != null ? { reply: reply.slice(0, 300) } : {}) };
+    void supabase.functions.invoke("mandy-agent", { body: { action: "audit", client_build: BUILD_ID, tool, args: logArgs, result: { message: r.message, data: r.data ?? null }, ok: r.ok } });
   };
 
   const execute = useCallback(async (name: string, args: Record<string, any>): Promise<MandyResult> => {
@@ -261,6 +265,7 @@ export default function MandyDock() {
       if (mapped && registry?.get(mapped.action)) return execute(mapped.action, mapped.args);
       return { ok: false, message: unknownToolMessage(name, !!registry?.get(QUOTE_TOOLS_PROBE)) };
     }
+    if (UTTERANCE_TOOLS.has(name) && utterRef.current) args = { ...(args || {}), __utterance: utterRef.current };
     try {
       const r = await h(args || {});
       if (CONFIRM_REQUIRED.has(name) && !args?.__plan && r.ok && !r.confirm && !r.choices) {
@@ -329,6 +334,7 @@ export default function MandyDock() {
     cancel();
     const hadPendingCard = !!confirmRef.current;
     setHeard(t);
+    utterRef.current = t;
     setChoices([]);
     setConfirm(null);
     setPhase("working");
@@ -477,12 +483,15 @@ export default function MandyDock() {
     if (lastUnverified && !/confirm it on screen/i.test(final)) final = honestMessage({ ok: true, message: final, verified: false });
     final = formatReplyText(final);
     historyRef.current = [...historyRef.current, { role: "user", content: t }, { role: "assistant", content: final }].slice(-8);
+    // One review row per turn: what the user said + what Mandy finally said (text-only answers included).
+    audit("reply", { tools: results.length }, { ok: true, message: final }, final);
     setReply(final);
     setPhase("idle");
     await speak(final); // the ONE utterance of this turn
   }, [cancel, execute, preparePlan, registry, speak]);
 
   const pickChoice = async (c: MandyChoice) => {
+    utterRef.current = "";
     setChoices([]);
     setPhase("working");
     if (c.action === "__plan") {
