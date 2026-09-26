@@ -1,3 +1,4 @@
+import { pipePairFromText, importPipeFields } from "@/lib/kitSizes";
 /**
  * DIFF IMPORT PIPELINE — safe, non-destructive supplier product import.
  *
@@ -302,6 +303,19 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
 
   console.log(`[DiffImport] Starting import for supplier "${supplierName}" (id: ${supplierId}), ${newRows.length} new, ${updateRows.length} updates, ${archiveRows.length} archives`);
 
+  // Pipe sizes set by hand are never overwritten (or nulled) by an import.
+  const { data: manualRows } = await (supabase.from("supplier_products" as any) as any)
+    .select("id, product_code, pipe_size, pipe_liquid, pipe_gas")
+    .eq("supplier_id", supplierId).eq("pipe_sizes_manual", true);
+  const manualByCode = new Map<string, any>(((manualRows as any[]) || []).map((m) => [String(m.product_code), m]));
+  const manualIds = new Set<string>(((manualRows as any[]) || []).map((m) => m.id));
+  const pipeCols = (code: string, text: string | null | undefined) => {
+    const m = manualByCode.get(String(code));
+    if (m) return { pipe_size: m.pipe_size, pipe_liquid: m.pipe_liquid, pipe_gas: m.pipe_gas };
+    const pair = pipePairFromText(text);
+    return { pipe_size: text ?? null, pipe_liquid: pair?.liquid ?? null, pipe_gas: pair?.gas ?? null };
+  };
+
   // ── PHASE 1: INSERT new products (batched) ──
   const BATCH = 50;
   for (let b = 0; b < newRows.length; b += BATCH) {
@@ -312,7 +326,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       description: row.description,
       category: row.category || "General",
       cost_price: row.cost_price,
-      pipe_size: row.pipe_size,
+      ...pipeCols(row.product_code, row.pipe_size),
       btu_rating: sanitizeInt(row.btu_rating),
       refrigerant_type: row.refrigerant_type,
       is_price_on_request: row.is_price_on_request,
@@ -365,6 +379,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       ...bookFields(row),
     };
 
+    if (!manualIds.has(row.existing_id)) Object.assign(updateData, importPipeFields(null, row.pipe_size));
     if (row.cost_excl_vat !== undefined) {
       updateData.cost_excl_vat = row.cost_excl_vat;
       updateData.cost_incl_vat = row.cost_incl_vat;
