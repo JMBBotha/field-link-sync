@@ -194,16 +194,19 @@ export type Database = {
       }
       app_webhook_config: {
         Row: {
+          call_report_token: string | null
           created_at: string
           email_webhook_token: string
           id: number
         }
         Insert: {
+          call_report_token?: string | null
           created_at?: string
           email_webhook_token?: string
           id?: number
         }
         Update: {
+          call_report_token?: string | null
           created_at?: string
           email_webhook_token?: string
           id?: number
@@ -484,6 +487,95 @@ export type Database = {
             columns: ["supplier_product_id"]
             isOneToOne: false
             referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      call_reports: {
+        Row: {
+          address: string | null
+          address_confirmed: boolean | null
+          breakdown: string | null
+          call_id: string
+          caller_name: string | null
+          caller_phone: string | null
+          company_id: string | null
+          created_at: string
+          customer_id: string | null
+          email_sent_at: string | null
+          email_status: string | null
+          email_to: string | null
+          error: string | null
+          id: string
+          is_test: boolean
+          lead_id: string | null
+          lead_level: string | null
+          model: string | null
+          next_action: string | null
+          score: number | null
+          service_type: string | null
+          status: string
+          updated_at: string
+          urgency: string | null
+        }
+        Insert: {
+          address?: string | null
+          address_confirmed?: boolean | null
+          breakdown?: string | null
+          call_id: string
+          caller_name?: string | null
+          caller_phone?: string | null
+          company_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          email_sent_at?: string | null
+          email_status?: string | null
+          email_to?: string | null
+          error?: string | null
+          id?: string
+          is_test?: boolean
+          lead_id?: string | null
+          lead_level?: string | null
+          model?: string | null
+          next_action?: string | null
+          score?: number | null
+          service_type?: string | null
+          status?: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Update: {
+          address?: string | null
+          address_confirmed?: boolean | null
+          breakdown?: string | null
+          call_id?: string
+          caller_name?: string | null
+          caller_phone?: string | null
+          company_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          email_sent_at?: string | null
+          email_status?: string | null
+          email_to?: string | null
+          error?: string | null
+          id?: string
+          is_test?: boolean
+          lead_id?: string | null
+          lead_level?: string | null
+          model?: string | null
+          next_action?: string | null
+          score?: number | null
+          service_type?: string | null
+          status?: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_reports_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "vapi_calls"
             referencedColumns: ["id"]
           },
         ]
@@ -7847,6 +7939,10 @@ export type Database = {
           p_reference?: string
         }
         Returns: string
+      }
+      request_call_report: {
+        Args: { p_call_id: string; p_force?: boolean; p_test?: boolean }
+        Returns: number
       }
       revenue_by_agent: {
         Args: never
