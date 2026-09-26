@@ -1,5 +1,6 @@
 import { findAreaLabour, isLabourItem, planLabour, snapHours } from "@/lib/labour";
 import type { MandyResult } from "@/lib/mandy/actions";
+import { findAreaFuzzy } from "@/lib/mandy/itemResolve";
 
 /** 'R2 040' when whole, 'R2 040,50' otherwise (space thousands). */
 export function spokenRand(n: number): string {
@@ -61,8 +62,9 @@ export function buildRemoveLabour(
   let pick = rows;
   if (!args.all) {
     const n = lc(String(args.area || ""));
+    const fa = n ? findAreaFuzzy(d.areas, String(args.area)) : null;
     pick = n
-      ? rows.filter((r) => lc(r.area?.name) === n).concat(rows.filter((r) => lc(r.area?.name) !== n && (lc(r.area?.name).includes(n) || n.includes(lc(r.area?.name))))).slice(0, 1)
+      ? rows.filter((r) => fa && r.area?.id === fa.id).slice(0, 1)
       : rows.length === 1 ? rows : [];
     if (!pick.length) {
       return {
@@ -98,12 +100,14 @@ export async function runSetLabourHours(d: Deps, args: Record<string, unknown>):
   const mode: "add" | "set" = !hasHours || args.mode === "set" ? "set" : "add";
   const n = lc(String(args.area || ""));
   const rows = labourRows(d);
+  // Adding hours with no area: only a single-area quote is unambiguous. Edits may use the only labour row.
+  const addNoArea = mode === "add" && hasHours;
   let area = !n
-    ? (d.areas.length === 1 ? d.areas[0] : rows.length === 1 ? rows[0].area : null)
-    : d.areas.find((a) => lc(a.name) === n) || d.areas.find((a) => lc(a.name).includes(n) || n.includes(lc(a.name))) || null;
+    ? (d.areas.length === 1 ? d.areas[0] : !addNoArea && rows.length === 1 ? rows[0].area : null)
+    : findAreaFuzzy(d.areas, String(args.area));
   const chipArgs = { ...(hasHours ? { hours: Number(args.hours) } : {}), mode, ...(hasRate ? { rate: Number(args.rate) } : {}) };
   if (!area) {
-    const pool = !n && rows.length > 1 ? rows.map((r) => r.area!).filter(Boolean) : d.areas;
+    const pool = !n && !addNoArea && rows.length > 1 ? rows.map((r) => r.area!).filter(Boolean) : d.areas;
     return {
       ok: true,
       message: n ? `No area called “${args.area}”. Waiting for the user to tap one.` : "Which area? Waiting for the user to tap one.",

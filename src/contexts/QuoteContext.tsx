@@ -37,15 +37,15 @@ interface QuoteContextValue {
 
   // Areas
   addArea: (name: string) => Promise<QuoteArea | null>;
-  updateArea: (id: string, patch: QuoteAreaUpdate) => Promise<void>;
-  deleteArea: (id: string) => Promise<void>;
+  updateArea: (id: string, patch: QuoteAreaUpdate) => Promise<boolean>;
+  deleteArea: (id: string) => Promise<boolean>;
   reorderAreas: (orderedIds: string[]) => Promise<void>;
 
   // Items
   addItem: (item: Omit<QuoteItemInsert, "quote_id">) => Promise<QuoteItem | null>;
-  updateItem: (id: string, patch: QuoteItemUpdate) => Promise<void>;
-  deleteItem: (id: string) => Promise<void>;
-  moveItemToArea: (itemId: string, areaId: string | null) => Promise<void>;
+  updateItem: (id: string, patch: QuoteItemUpdate) => Promise<boolean>;
+  deleteItem: (id: string) => Promise<boolean>;
+  moveItemToArea: (itemId: string, areaId: string | null) => Promise<boolean>;
 
   // Helpers
   ensureDefaultArea: () => Promise<QuoteArea | null>;
@@ -324,26 +324,32 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   const updateArea = useCallback(async (id: string, patch: QuoteAreaUpdate) => {
     setAreas((prev) => prev.map((a) => a.id === id ? { ...a, ...patch } as QuoteArea : a));
-    const { error } = await supabase
+    const res = await supabase
       .from("quote_areas")
       .update(patch as TablesUpdate<"quote_areas">)
-      .eq("id", id);
-    if (!mountedRef.current) return;
+      .eq("id", id).select("id");
+    const error = res.error || (!res.data?.length ? { message: "Nothing was saved (no access, or the row is gone)." } : null);
+    if (!mountedRef.current) return !error;
     if (error) {
       toast({ title: "Error updating area", description: error.message, variant: "destructive" });
       revert(fetchAll);
+      return false;
     }
+    return true;
   }, [fetchAll]);
 
   const deleteArea = useCallback(async (id: string) => {
     setAreas((prev) => prev.filter((a) => a.id !== id));
     setItems((prev) => prev.map((i) => i.area_id === id ? { ...i, area_id: null } : i));
-    const { error } = await supabase.from("quote_areas").delete().eq("id", id);
-    if (!mountedRef.current) return;
+    const res = await supabase.from("quote_areas").delete().eq("id", id).select("id");
+    const error = res.error || (!res.data?.length ? { message: "Nothing was saved (no access, or the row is gone)." } : null);
+    if (!mountedRef.current) return !error;
     if (error) {
       toast({ title: "Error deleting area", description: error.message, variant: "destructive" });
       revert(fetchAll);
+      return false;
     }
+    return true;
   }, [fetchAll]);
 
   const reorderAreas = useCallback(async (orderedIds: string[]) => {
@@ -400,38 +406,47 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   const updateItem = useCallback(async (id: string, patch: QuoteItemUpdate) => {
     setItems((prev) => prev.map((i) => i.id === id ? { ...i, ...patch } as QuoteItem : i));
-    const { error } = await supabase
+    const res = await supabase
       .from("quote_items")
       .update(patch as TablesUpdate<"quote_items">)
-      .eq("id", id);
-    if (!mountedRef.current) return;
+      .eq("id", id).select("id");
+    const error = res.error || (!res.data?.length ? { message: "Nothing was saved (no access, or the row is gone)." } : null);
+    if (!mountedRef.current) return !error;
     if (error) {
       toast({ title: "Error updating item", description: error.message, variant: "destructive" });
       revert(fetchAll);
+      return false;
     }
+    return true;
   }, [fetchAll]);
 
   const deleteItem = useCallback(async (id: string) => {
     setItems((prev) => prev.filter((i) => i.id !== id && i.parent_item_id !== id));
-    const { error } = await supabase.from("quote_items").delete().eq("id", id);
-    if (!mountedRef.current) return;
+    const res = await supabase.from("quote_items").delete().eq("id", id).select("id");
+    const error = res.error || (!res.data?.length ? { message: "Nothing was saved (no access, or the row is gone)." } : null);
+    if (!mountedRef.current) return !error;
     if (error) {
       toast({ title: "Error deleting item", description: error.message, variant: "destructive" });
       revert(fetchAll);
+      return false;
     }
+    return true;
   }, [fetchAll]);
 
   const moveItemToArea = useCallback(async (itemId: string, areaId: string | null) => {
     setItems((prev) => prev.map((i) => i.id === itemId ? { ...i, area_id: areaId } : i));
-    const { error } = await supabase
+    const res = await supabase
       .from("quote_items")
       .update({ area_id: areaId } as TablesUpdate<"quote_items">)
-      .eq("id", itemId);
-    if (!mountedRef.current) return;
+      .eq("id", itemId).select("id");
+    const error = res.error || (!res.data?.length ? { message: "Nothing was saved (no access, or the row is gone)." } : null);
+    if (!mountedRef.current) return !error;
     if (error) {
       toast({ title: "Error moving item", description: error.message, variant: "destructive" });
       revert(fetchAll);
+      return false;
     }
+    return true;
   }, [fetchAll]);
 
   /* ── Helpers ── */

@@ -8,7 +8,7 @@ export class WriteFailed extends Error {
 
 const LABELS = {
   addItem: "add the item", updateItem: "update the item", addArea: "add the area",
-  updateArea: "update the area", deleteItem: "remove the item", moveItemToArea: "move the item",
+  updateArea: "update the area", deleteArea: "remove the area", deleteItem: "remove the item", moveItemToArea: "move the item",
 } as const;
 type Keys = keyof typeof LABELS;
 

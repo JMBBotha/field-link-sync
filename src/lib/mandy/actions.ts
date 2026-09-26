@@ -21,7 +21,7 @@ export interface MandyResult {
   /** Low-confidence / multiple matches: user must tap one. Never a silent guess. */
   choices?: MandyChoice[];
   /** Destructive / outbound actions: run only after an on-screen tap. */
-  confirm?: { summary: string; lines?: string[]; run: () => Promise<MandyResult> };
+  confirm?: { summary: string; lines?: string[]; danger?: boolean; run: () => Promise<MandyResult> };
   /** false = the write/navigation ran but the refreshed screen didn't show it. */
   verified?: boolean;
 }
@@ -29,7 +29,7 @@ export interface MandyResult {
 export type MandyHandler = (args: Record<string, any>) => Promise<MandyResult>;
 
 /** Never executed on voice alone — always an on-screen Confirm card. */
-export const CONFIRM_REQUIRED = new Set(["remove_item", "remove_note", "remove_labour", "run_plan", "send_quote", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote", "create_deposit_invoice"]);
+export const CONFIRM_REQUIRED = new Set(["remove_item", "remove_note", "remove_labour", "clear_quote", "run_plan", "send_quote", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote", "create_deposit_invoice"]);
 
 const str = (description: string) => ({ type: "string", description });
 const num = (description: string) => ({ type: "number", description });
@@ -70,6 +70,10 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
   add_note: {
     description: "Add a note to the quote or to one line. Use for 'add a note …' / 'note: …'. Never use add_area for notes.",
     parameters: { type: "object", properties: { target: { type: "string", enum: ["quote", "item"], description: "quote or item" }, item: str("Line as spoken, when target is item"), text: str("Note text") }, required: ["target", "text"], additionalProperties: false },
+  },
+  clear_quote: {
+    description: "Empty the open quote: remove every line (units, kits, labour) in one go ('clear the quote', 'remove everything', 'start over'). Room names are kept unless include_areas=true ('…and the rooms too'). Always an on-screen Confirm card; undoable. Never loop remove_item for this.",
+    parameters: { type: "object", properties: { include_areas: { type: "boolean", description: "Also remove the rooms/areas (keeps the default area)" } }, additionalProperties: false },
   },
   remove_area: {
     description: "Remove an area (room) from the open quote. If it has lines, the app shows them on a Confirm card.",
@@ -133,7 +137,7 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
   },
   set_kit_length: {
     description: "Set the piping kit length in metres (in an area, or the only kit on the quote).",
-    parameters: { type: "object", properties: { area: str("Area name"), metres: num("Metres") }, required: ["metres"], additionalProperties: false },
+    parameters: { type: "object", properties: { area: str("Area name"), item: str("Kit as spoken, e.g. the 12K kit (optional)"), metres: num("Metres") }, required: ["metres"], additionalProperties: false },
   },
   set_labour_hours: {
     description: "Add to (mode=add) or set (mode=set) hourly labour on an area of the open quote, e.g. 'add 3 hours labour to main bedroom'. Also changes the labour RATE: 'make the labour rate 750' → {rate:750} (hours optional when rate is given). Hours in 0.5 steps; rate optional (defaults to the saved/standard rate).",
