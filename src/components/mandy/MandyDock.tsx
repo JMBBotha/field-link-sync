@@ -27,7 +27,7 @@ import { runPlanSteps, planReportText, type PlanStep } from "@/lib/mandy/quoteEd
 import type { PlanPreview } from "@/lib/mandy/planPreview";
 import { parseMultiEdit } from "@/lib/mandy/multiEdit";
 import { parseLabourIntent, mapLabourTool } from "@/lib/mandy/labourParse";
-import { guardClaimedChange } from "@/lib/mandy/honesty";
+import { guardClaimedChange, unknownToolMessage } from "@/lib/mandy/honesty";
 import { honestMessage, routeReached, finalReplyFrom } from "@/lib/mandy/verify";
 import { BUILD_ID, staleWriteRefusal, useBuildStatus, checkForNewBuild } from "@/lib/buildInfo";
 import { touchedPatch } from "@/lib/mandy/pronouns";
