@@ -29,7 +29,7 @@ describe("greetingFor", () => {
   });
 
   it("trims and capitalises the first letter only", () => {
-    expect(greetingFor({ first_name: "  jOHAN " }, null)).toBe("Hi JOHAN, what can I do for you?".replace("JOHAN", "JOHAN"));
+    expect(greetingFor({ first_name: "  jOHAN " }, null)).toBe("Hi JOHAN, what can I do for you?");
     expect(greetingFor({ first_name: "anne-marie" }, null)).toBe("Hi Anne-marie, what can I do for you?");
   });
 });
