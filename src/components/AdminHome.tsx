@@ -10,6 +10,7 @@ import RandSign from "@/components/icons/RandSign";
 import { Briefcase, UserCheck, Timer } from "lucide-react";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import AdminAlertsPanel from "@/components/AdminAlertsPanel";
+import MoneySummaryCard from "@/components/admin/MoneySummaryCard";
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import AdminMapPage from "@/pages/admin/AdminMapPage";
@@ -591,6 +592,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
             </div>
           </Card>
 
+          <MoneySummaryCard />
           <QuotePerformanceWidget />
           <CompletedLeadsList />
           <AdminAlertsPanel />

@@ -17,9 +17,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2, Pencil, Check, X, Trash2 } from "lucide-react";
 import RandSign from "@/components/icons/RandSign";
+import { formatRand } from "@/utils/formatRand";
 
 const formatZAR = (n: number) =>
-  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
+  formatRand(Number(n) || 0);
 
 const toDateInput = (value: string | Date) => {
   const d = new Date(value);

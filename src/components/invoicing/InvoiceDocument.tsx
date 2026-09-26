@@ -1,5 +1,6 @@
 import logo from "@/assets/logo.png";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { formatRand } from "@/utils/formatRand";
 
 export interface InvoiceDocLineItem {
   description: string;
@@ -28,7 +29,7 @@ export interface InvoiceDocumentProps {
 const formatCurrency = (amount: number) => {
   const n = Number(amount) || 0;
   const safe = Object.is(n, -0) || n === 0 ? 0 : n;
-  return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(safe);
+  return formatRand(safe);
 };
 
 /** Normalises a tax rate that may be stored as 0.15 or 15 into a display percentage. */

@@ -14,6 +14,7 @@ import LeadActionButtons from "./LeadActionButtons";
 import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
 import { exportToCSV } from "@/lib/csvExport";
 import jsPDF from "jspdf";
+import { formatRand } from "@/utils/formatRand";
 
 type FilterTab = "all" | "invoiced" | "not_invoiced" | "paid" | "unpaid";
 
@@ -184,7 +185,7 @@ const CompletedLeadsList = () => {
       <Card className="surface-card-solid">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Completed Leads</CardTitle>
+            <CardTitle className="text-base">Completed Jobs</CardTitle>
             <div className="flex items-center gap-1.5">
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCSVExport}>
                 <Download className="h-3 w-3 mr-1" />CSV
@@ -200,14 +201,14 @@ const CompletedLeadsList = () => {
           {!isLoading && !isError && (
             <div className="grid grid-cols-3 md:grid-cols-6 gap-2 text-center">
               {[
-                { label: "Total", value: stats.total },
-                { label: "Invoiced", value: stats.invoiced },
-                { label: "Not Invoiced", value: stats.notInvoiced },
-                { label: "Paid", value: stats.paid },
-                { label: "Unpaid", value: stats.unpaid },
+                { label: "Completed jobs", value: stats.total },
+                { label: "Jobs invoiced", value: stats.invoiced },
+                { label: "Jobs not invoiced", value: stats.notInvoiced },
+                { label: "Jobs paid", value: stats.paid },
+                { label: "Jobs unpaid", value: stats.unpaid },
                 {
-                  label: "Invoiced Value",
-                  value: `R ${stats.totalValue.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`,
+                  label: "Value of these jobs' invoices",
+                  value: formatRand(stats.totalValue),
                 },
               ].map((s) => (
                 <div key={s.label} className="rounded-lg bg-muted/50 p-2">

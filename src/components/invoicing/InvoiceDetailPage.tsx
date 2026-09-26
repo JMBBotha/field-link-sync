@@ -12,6 +12,7 @@ import InvoiceDocument from "@/components/invoicing/InvoiceDocument";
 
 
 import HelpTip from "@/components/help/HelpTip";
+import { formatRand } from "@/utils/formatRand";
 
 interface LineItem {
   description: string;
@@ -49,7 +50,7 @@ const getStatusBadge = (status: string) => {
 };
 
 const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(amount);
+  formatRand(Number(amount) || 0);
 
 const formatDate = (dateStr: string) =>
   new Date(dateStr).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
