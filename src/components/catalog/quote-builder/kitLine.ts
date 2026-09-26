@@ -30,7 +30,7 @@ interface BundleLike {
   }>;
 }
 
-export const DEFAULT_KIT_LENGTH_M = 1;
+export const DEFAULT_KIT_LENGTH_M = 3;
 
 export function buildKitSubItems(bundle: BundleLike): BundleSubItem[] {
   return (bundle.items || [])
