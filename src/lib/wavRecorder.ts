@@ -31,16 +31,27 @@ export class WavRecorder {
   private silenceFired = false;
   private quietSince: number | null = null;
 
-  async start(vad?: VadOptions) {
+  private external = false;
+
+  /** Pass opts.stream/opts.context to reuse a tap-unlocked mic + AudioContext (never stopped/closed here). */
+  async start(vad?: VadOptions, opts?: { stream?: MediaStream; context?: AudioContext }) {
     this.vad = vad ?? null;
     this.speechStarted = false;
     this.silenceFired = false;
     this.quietSince = null;
-    this.stream = await navigator.mediaDevices.getUserMedia({
+    this.external = !!(opts?.stream || opts?.context);
+    this.extStream = !!opts?.stream;
+    this.extCtx = !!opts?.context;
+    this.stream = opts?.stream ?? await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
     });
-    const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    this.ctx = new Ctor();
+    if (opts?.context) {
+      this.ctx = opts.context;
+      if (this.ctx.state === "suspended") await this.ctx.resume().catch(() => undefined);
+    } else {
+      const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      this.ctx = new Ctor();
+    }
     this.source = this.ctx.createMediaStreamSource(this.stream);
     this.node = this.ctx.createScriptProcessor(4096, 1, 1);
     this.chunks = [];
@@ -51,6 +62,20 @@ export class WavRecorder {
     };
     this.source.connect(this.node);
     this.node.connect(this.ctx.destination);
+  }
+  private extStream = false;
+  private extCtx = false;
+  private release() {
+    if (!this.extStream) this.stream?.getTracks().forEach((t) => t.stop());
+    if (this.node) this.node.onaudioprocess = null;
+    this.node?.disconnect();
+    this.source?.disconnect();
+    const c = this.ctx;
+    this.ctx = null;
+    this.stream = null;
+    this.node = null;
+    this.source = null;
+    return this.extCtx ? Promise.resolve() : (c?.close().catch(() => undefined) ?? Promise.resolve());
   }
 
   /** True once the speaker has actually said something. */
