@@ -25,6 +25,8 @@ export interface AssistantUiContext {
   last_touched_item?: string;
   last_touched_area?: string;
   last_move_from_area?: string;
+  /** Real labour rows on the open quote: area, hours, rate, total. */
+  open_quote_labour?: string;
 }
 
 interface AssistantContextState {
@@ -38,7 +40,7 @@ const clean = (ctx: AssistantUiContext): AssistantUiContext => {
   const out: AssistantUiContext = {};
   (Object.keys(ctx) as (keyof AssistantUiContext)[]).forEach((k) => {
     const v = ctx[k];
-    if (typeof v === "string" && v.trim()) out[k] = v.trim().slice(0, 160);
+    if (typeof v === "string" && v.trim()) out[k] = v.trim().slice(0, k === "open_quote_labour" ? 600 : 160);
   });
   return out;
 };

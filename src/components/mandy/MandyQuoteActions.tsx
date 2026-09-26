@@ -13,7 +13,7 @@ import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 import { useRegisterMandyActions } from "@/lib/mandy/registry";
-import { getAssistantContext } from "@/stores/assistantContextStore";
+import { getAssistantContext, setAssistantContext } from "@/stores/assistantContextStore";
 import { isPronoun, resolveAreaPronoun, resolveItemPronoun, type TouchedCtx } from "@/lib/mandy/pronouns";
 import { fmtRand, type MandyChoice, type MandyResult, type MandyHandler } from "@/lib/mandy/actions";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +21,7 @@ import { captureSnapshot, stateHash, undoDecision, planRestore, saveUndoSnapshot
 import { addCatalogProductToQuote, addKitToQuote, areaUnitBtu, kitLengthPatch, isAirConditioningProduct } from "@/lib/mandy/quoteOps";
 import { matchCatalog, catalogChipLabel } from "@/lib/mandy/catalogMatch";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
-import { runSetLabourHours } from "@/lib/mandy/labourAction";
+import { runSetLabourHours, buildRemoveLabour, readLabour, labourSummary } from "@/lib/mandy/labourAction";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { standardLabourRate, findAreaLabour } from "@/lib/labour";
 import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
