@@ -184,7 +184,7 @@ export function pickKitForUnit<K extends KitLike>(
     }
   }
   if (pair) {
-    const exact = kitForSizes(bundles, pair) as K | null;
+    const exact = kitForSizes(bundles, pair, unitBtu) as K | null;
     if (exact) return { kit: exact, reason };
     const near = closestKit(bundles, pair) as K | null;
     if (near) return { kit: near, reason: "closest", note: `Closest kit (unit is ${pair.join("+")}) – tap to swap` };
