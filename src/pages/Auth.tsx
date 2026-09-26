@@ -231,7 +231,10 @@ const Auth = () => {
             <Label htmlFor="email" className="text-white/90 text-sm">Email</Label>
             <Input
               id="email"
+              name="email"
               type="email"
+              autoComplete="username"
+              inputMode="email"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
