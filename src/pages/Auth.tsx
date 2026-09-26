@@ -246,7 +246,9 @@ const Auth = () => {
             <Label htmlFor="password" className="text-white/90 text-sm">Password</Label>
             <Input
               id="password"
+              name="password"
               type="password"
+              autoComplete={isLogin ? "current-password" : "new-password"}
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
