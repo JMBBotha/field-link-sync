@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { invoiceMoney, matchesMoneyFilter, type MoneyFilter } from "@/lib/moneySummary";
 import { FileText, Filter, ChevronRight, Loader2, Search, Plus, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +11,7 @@ import { exportToCSV } from "@/lib/csvExport";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { attachPaymentTotals } from "@/lib/depositInvoice";
 import jsPDF from "jspdf";
+import { formatRand } from "@/utils/formatRand";
 
 interface Invoice {
   id: string;
@@ -50,7 +53,7 @@ const getStatusBadge = (status: string) => {
 };
 
 const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(amount);
+  formatRand(Number(amount) || 0);
 
 const formatDate = (dateStr: string) =>
   new Date(dateStr).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
@@ -60,6 +63,9 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const moneyFilter = searchParams.get("money") as MoneyFilter | null;
+  const [payRows, setPayRows] = useState<any[]>([]);
 
   useEffect(() => {
     fetchInvoices();
@@ -80,12 +86,21 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
         results = results.filter(inv => inv.agent_id === agentId);
       }
       await attachPaymentTotals(results as any[]);
+      if (results.length) {
+        const { data: pays } = await supabase.from("payments").select("invoice_id, amount, status, gateway").in("invoice_id", results.map(r => r.id));
+        setPayRows(pays || []);
+      }
       setInvoices([...results]);
     }
     setLoading(false);
   };
 
   const filteredInvoices = invoices
+    .filter(inv => {
+      if (!moneyFilter) return true;
+      const { paid, balance } = invoiceMoney(inv as any, payRows);
+      return matchesMoneyFilter(inv as any, paid, balance, moneyFilter);
+    })
     .filter(inv => filter === "all" || inv.status === filter)
     .filter(inv =>
       !search ||
@@ -195,6 +210,12 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
           <FileText className="h-3 w-3 mr-1" />PDF
         </Button>
       </div>
+
+      {moneyFilter && (
+        <button onClick={() => setSearchParams({})} className="text-xs rounded-full bg-primary text-primary-foreground px-3 py-1">
+          {moneyFilter.replace("_", " ")} · clear ✕
+        </button>
+      )}
 
       {/* Search */}
       <div className="relative">

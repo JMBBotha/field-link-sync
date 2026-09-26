@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { formatRand } from "@/utils/formatRand";
 
 const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(amount);
+  formatRand(Number(amount) || 0);
 
 interface InvoiceDashboardWidgetProps {
   onViewAll?: () => void;
