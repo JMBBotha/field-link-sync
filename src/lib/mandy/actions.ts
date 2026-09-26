@@ -71,6 +71,19 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     description: "Add a note to the quote or to one line. Use for 'add a note …' / 'note: …'. Never use add_area for notes.",
     parameters: { type: "object", properties: { target: { type: "string", enum: ["quote", "item"], description: "quote or item" }, item: str("Line as spoken, when target is item"), text: str("Note text") }, required: ["target", "text"], additionalProperties: false },
   },
+  edit_install: {
+    description: "Edit the standard install of an AC unit by role: kit length ('make the piping 3 metres'), bracket ('use a 550 bracket', 'flatback bracket'), quantities ('2 end caps', '2 lengths of 100 by 40'), 'add a bend', or remove roles ('no drain', 'remove the small trunking', 'install without trunking' — Confirm card). Two units → the app shows chips. Trunking/drain are counted in supplier LENGTHS (1 × 3 m length), not metres.",
+    parameters: { type: "object", properties: {
+      op: { type: "string", enum: ["kit_length", "bracket", "set_qty", "add_bend", "remove_roles"], description: "Edit type" },
+      metres: { type: "number", description: "Kit length in metres (kit_length)" },
+      size: { type: "string", enum: ["450", "550", "650"], description: "Bracket size" },
+      flatback: { type: "boolean", description: "Flatback bracket" },
+      role: { type: "string", enum: ["trunking_main", "trunking_endcap", "trunking_small", "drain_pipe", "drain_bend"], description: "Role for set_qty" },
+      qty: { type: "number", description: "Quantity (lengths or pieces)" },
+      roles: { type: "array", items: { type: "string" }, description: "Roles to remove (remove_roles)" },
+      what: str("Spoken name of what is removed, e.g. drain"),
+    }, required: ["op"], additionalProperties: false },
+  },
   clear_quote: {
     description: "Empty the open quote: remove every line (units, kits, labour) in one go ('clear the quote', 'remove everything', 'start over'). Room names are kept unless include_areas=true ('…and the rooms too'). Always an on-screen Confirm card; undoable. Never loop remove_item for this.",
     parameters: { type: "object", properties: { include_areas: { type: "boolean", description: "Also remove the rooms/areas (keeps the default area)" } }, additionalProperties: false },

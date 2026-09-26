@@ -27,6 +27,7 @@ import { runPlanSteps, planReportText, type PlanStep } from "@/lib/mandy/quoteEd
 import type { PlanPreview } from "@/lib/mandy/planPreview";
 import { parseMultiEdit } from "@/lib/mandy/multiEdit";
 import { parseLabourIntent, mapLabourTool } from "@/lib/mandy/labourParse";
+import { parseInstallCommand } from "@/lib/mandy/installEdits";
 import { parseQuoteIntent } from "@/lib/mandy/quoteIntent";
 import { guardClaimedChange, unknownToolMessage } from "@/lib/mandy/honesty";
 import { honestMessage, routeReached, finalReplyFrom } from "@/lib/mandy/verify";
@@ -353,7 +354,22 @@ export default function MandyDock() {
           }
         }
       }
-      const quick = !lab && qi && qi.action !== "cancel_pending" ? qi : null;
+      const inst = !local && !qi && !lab ? parseInstallCommand(t) : null;
+      if (inst) {
+        if (!registry?.get("edit_install")) final = "Open the quote first, then say that again.";
+        else {
+          const staleMsg = staleWriteRefusal("edit_install", useBuildStatus.getState().stale);
+          if (staleMsg) final = staleMsg;
+          else {
+            const r = await execute("edit_install", inst as Record<string, any>);
+            if (r.choices?.length) setChoices(r.choices);
+            if (r.confirm) setConfirm(r.confirm);
+            results.push(r); writes.push(true);
+            final = finalReplyFrom(results, "");
+          }
+        }
+      }
+      const quick = !lab && !inst && qi && qi.action !== "cancel_pending" ? qi : null;
       if (quick) {
         if (!registry?.get(quick.action)) final = "Open the quote first, then say that again.";
         else {
