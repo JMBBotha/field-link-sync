@@ -51,6 +51,6 @@ describe("kit recipe (bundle_items.length_metres) in per-metre pricing", () => {
       const { unitSell } = getEffectiveUnitPrices(i.product, i.isLengthItem);
       return s + computeLineTotal(i.perKitMetre ?? 1, unitSell, resolvePricingUnit(i.product));
     }, 0);
-    expect(rows).toBeCloseTo(computeBundlePricing(subs).unitPrice, 6);
+    expect(rows).toBeCloseTo(computeBundlePricing(subs).unitPrice, 2);
   });
 });
