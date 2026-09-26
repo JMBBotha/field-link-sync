@@ -602,7 +602,7 @@ export default function MandyDock() {
             size="icon"
             variant={phase === "listening" ? "destructive" : "default"}
             className="relative h-9 w-9 shrink-0"
-            disabled={phase === "hearing" || phase === "working" || phase === "greeting"}
+            disabled={phase === "hearing" || phase === "working" || phase === "greeting" || phase === "starting"}
             onClick={() => {
               if (phase === "listening") void stopListening();
               else void beginSession();

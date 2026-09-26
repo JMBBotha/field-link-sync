@@ -32,8 +32,8 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 
 ## 2026-09-26 batch
 - [x] Critical security: expense-receipts files locked to own company (storage policies).
-- [x] Live Map pin shows real deposit paid ("Paid R X of R Y", "Claimed · R X paid").
-- [x] Search finds leads, rooms (quote areas → quote), invoices (→ invoice) by name/address/reference; searching state.
+- [x] Live Map pin shows real deposit paid (reverted — already live, duplicate).
+- [x] Search finds leads, rooms, invoices by name/address/reference (reverted — already live, duplicate).
 - [x] /admin/money per-lead page, linked from Money card (By lead →), biggest balance first.
 - [x] Client portal loads via token-checked get_customer_portal_data: jobs/status, invoices with paid/balance + pay link, payments.
 - [x] Read-only security scan report.

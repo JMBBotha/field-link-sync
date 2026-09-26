@@ -1023,10 +1023,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     const buildLeadPopupHTML = (lead: Lead) => {
       const statusColor = statusColors[lead.status] || "#6b7280";
       const rawLabel = (lead.status || "").replace("_", " ");
-      const depPaidNow = Number((depositByLead.get(lead.id) as any)?.amount_paid) || 0;
-      const statusLabel = (lead.status === "accepted" || lead.status === "claimed")
-        ? (depPaidNow > 0 ? `Claimed · ${formatRand(depPaidNow)} paid` : "Claimed")
-        : rawLabel;
+      const statusLabel = (lead.status === "accepted" || lead.status === "claimed") ? "Claimed" : rawLabel;
       const safeName = escapeHtml(lead.customer_name);
       const safeService = escapeHtml(lead.service_type);
       const safeAddress = escapeHtml(lead.customer_address);
@@ -1051,9 +1048,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         const chipBorder = isPaid ? "#6ee7b7" : "#fde68a";
         const chipColor = isPaid ? "#047857" : "#b45309";
         depositChipHtml = `
-            <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px;">
               <span style="background: ${chipBg}; border: 1px solid ${chipBorder}; color: ${chipColor}; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 9999px;">${chipText}</span>
-              <span style="font-size: 11px; color: #374151;">Paid <strong>${formatRand(Number((depInvoice as any).amount_paid) || 0)}</strong> of ${formatRand(Number((depInvoice as any).grand_total) || 0)}</span>
             </div>`;
       }
 
