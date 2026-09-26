@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
 import { hasValidCoords, resolveLeadCoords } from "@/lib/leadCoords";
 import { attachPaymentTotals, DepositInvoiceRow } from "@/lib/depositInvoice";
-import { getDepositChipState, getDepositRemaining } from "@/components/shared/DepositPaymentChip";
+import { getDepositChipState, depositChipLabel } from "@/components/shared/DepositPaymentChip";
 import { formatRand } from "@/utils/formatRand";
 
 interface AgentLocation {
