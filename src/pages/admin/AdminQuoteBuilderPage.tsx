@@ -35,7 +35,8 @@ import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
 
 import { getProductDisplayName } from "@/components/catalog/quote-builder/productDisplayUtils";
 import type { PaletteProduct, BasketItem, Basket } from "@/components/catalog/QuoteBuilderTab";
-import { computeBundlePricing } from "@/components/catalog/quote-builder/BundleItemsPopover";
+import { DEFAULT_KIT_LENGTH_M } from "@/components/catalog/quote-builder/kitLine";
+import { computeBundlePricing, toBundleSubItems, scaleKitCountItems } from "@/components/catalog/quote-builder/BundleItemsPopover";
 import { useUnifiedClients } from "@/hooks/useUnifiedClients";
 import logo from "@/assets/logo.png";
 
@@ -427,20 +428,8 @@ const AdminQuoteBuilderPage = () => {
   }, [trackUsage, scrollToCanvas]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
-    const subItems = bundle.items
-      .filter((bItem) => bItem.product)
-      .map((bItem) => {
-        trackUsage(bItem.product!.id);
-        const isLengthItem = bItem.is_length_item && !!bItem.product!.price_per_metre;
-        return {
-          product: bItem.product as PaletteProduct,
-          quantity: bItem.quantity,
-          isLengthItem,
-          isOptional: bItem.is_optional,
-          perKitMetre: bItem.length_metres ?? bItem.quantity ?? 1,
-          ...(isLengthItem ? { length: bItem.length_metres || 1 } : {}),
-        };
-      });
+    bundle.items.forEach((bItem) => bItem.product && trackUsage(bItem.product.id));
+    const subItems = toBundleSubItems(bundle.items as any, DEFAULT_KIT_LENGTH_M, (b) => b.length_metres || 1);
 
     const { pricingType, unitPrice, unitCost } = computeBundlePricing(subItems);
 

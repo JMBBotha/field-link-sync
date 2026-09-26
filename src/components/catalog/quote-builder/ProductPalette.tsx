@@ -43,7 +43,7 @@ import {
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import { getProductDisplayName, getProductBriefDescription } from "./productDisplayUtils";
 import { searchAndRankProducts } from "../searchSynonyms";
-import BundleItemsPopover, { computeBundlePricing, type BundleSubItem } from "./BundleItemsPopover";
+import BundleItemsPopover, { computeBundlePricing, toBundleSubItems, type BundleSubItem } from "./BundleItemsPopover";
 
 function HighlightText({ text, searchTerm }: { text: string; searchTerm: string }) {
   if (!searchTerm || !text) return <>{text}</>;
@@ -157,16 +157,7 @@ function BundlePaletteButton({
   });
 
   const subItems: BundleSubItem[] = useMemo(() => {
-    return bundle.items
-      .filter((item) => item.product)
-      .map((item) => ({
-        product: item.product as PaletteProduct,
-        quantity: item.quantity,
-        isLengthItem: item.is_length_item,
-        isOptional: item.is_optional,
-        perKitMetre: item.length_metres ?? item.quantity ?? 1,
-        ...(item.is_length_item ? { length: item.length_metres || 1 } : {}),
-      }));
+    return toBundleSubItems(bundle.items as any);
   }, [bundle.items]);
 
   const { pricingType, unitPrice } = useMemo(() => computeBundlePricing(subItems), [subItems]);

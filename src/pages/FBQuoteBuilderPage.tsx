@@ -39,7 +39,8 @@ import { extractBtu } from "@/lib/bundles";
 
 import { getProductDisplayName } from "@/components/catalog/quote-builder/productDisplayUtils";
 import type { PaletteProduct, BasketItem, Basket } from "@/components/catalog/QuoteBuilderTab";
-import { computeBundlePricing } from "@/components/catalog/quote-builder/BundleItemsPopover";
+import { DEFAULT_KIT_LENGTH_M } from "@/components/catalog/quote-builder/kitLine";
+import { computeBundlePricing, toBundleSubItems, scaleKitCountItems } from "@/components/catalog/quote-builder/BundleItemsPopover";
 import { useCompany } from "@/providers/CompanyProvider";
 import logo from "@/assets/logo.png";
 import PanelErrorBoundary from "@/components/shared/PanelErrorBoundary";
@@ -490,19 +491,7 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
   }, [bundles]);
 
   const buildBundleBasketItem = useCallback((bundle: PaletteBundle): BasketItem | null => {
-    const subItems = bundle.items
-      .filter((bItem) => bItem.product)
-      .map((bItem) => {
-        const isLengthItem = bItem.is_length_item && !!bItem.product!.price_per_metre;
-        return {
-          product: bItem.product as PaletteProduct,
-          quantity: bItem.quantity,
-          isLengthItem,
-          isOptional: bItem.is_optional,
-          perKitMetre: bItem.length_metres ?? bItem.quantity ?? 1,
-          ...(isLengthItem ? { length: bItem.length_metres || bItem.product!.unit_length || 1 } : {}),
-        };
-      });
+    const subItems = toBundleSubItems(bundle.items as any, DEFAULT_KIT_LENGTH_M, (b, p) => b.length_metres || p.unit_length || 1);
 
     const { pricingType, unitPrice, unitCost } = computeBundlePricing(subItems);
     const firstProduct = subItems.find((i) => !i.isOptional)?.product || subItems[0]?.product;
