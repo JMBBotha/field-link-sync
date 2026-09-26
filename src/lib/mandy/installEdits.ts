@@ -128,20 +128,18 @@ export async function runInstallEdit(d: InstallDeps, args0: InstallOp & { unit_i
     case "kit_swap": {
       const kit = roleLine(d.items, unit.id, "piping_kit");
       if (!kit) return { ok: false, message: `${unit.item_name} has no piping kit — nothing was changed.` };
-      const want = [...(args.sizes || [])];
-      const curSizes = kitPipeSizes({ id: "", name: String(kit.item_name || kit.metadata?.kit?.name || ""), items: kit.metadata?.kit?.items || [] } as any);
+      const norm = (xs: string[]) => kitPipeSizes({ id: "", name: xs.join(" & "), items: [] }).join(" + ");
+      const want = norm(args.sizes || []);
       const pool = swappableKits((d.bundles || []) as any, d.liveProducts);
       const curBundle = pool.find((b) => b.id === kit.metadata?.kit?.bundle_id);
-      const curLabel = curBundle ? kitSizeLabel(curBundle as any) : curSizes.join(" + ");
-      if (!args.bundle_id && want.length === 2 && kitForSizes([{ id: "x", name: "PIPING " + want.join(" & "), items: [] }], curLabel.split(" + "))) {
+      const curLabel = curBundle ? kitSizeLabel(curBundle as any) : norm(String(kit.item_name).match(/[1357]\/[248]/g) || []);
+      if (!args.bundle_id && want && want === curLabel) {
         return { ok: true, message: `The kit is already ${curLabel}, ${Number(kit.length) || 1} m, so nothing changed.` };
       }
+      const pair = want.split(" + ");
       const target = (args.bundle_id ? pool.find((b) => b.id === args.bundle_id)
-        : want.length === 2 ? pickKitForUnit(pool as any[], { pipe_liquid: want[0], pipe_gas: want[1] }, { btuOf: () => unitBtu(unit, d.liveProducts) }).kit
-        : kitForSizes(pool, want)) as BundleForKit | null;
-      if (target && (target as any).id && kitSizeLabel(target as any) !== [...want].sort().join(" + ") && !args.bundle_id && kitPipeSizes(target as any).join("+") !== kitPipeSizes({ id: "", name: "PIPING " + want.join(" & "), items: [] }).join("+")) {
-        return { ok: false, message: `There's no live ${want.join(" + ")} piping kit in the active price books — nothing was changed.` };
-      }
+        : pair.length === 2 ? kitForSizes(pool, pair, unitBtu(unit, d.liveProducts))
+        : null) as BundleForKit | null;
       if (!target) return { ok: false, message: `There's no live ${(args.sizes || []).join(" + ") || "matching"} piping kit in the active price books — nothing was changed.` };
       if (kit.metadata?.kit?.bundle_id === target.id) return { ok: true, message: `${unit.item_name} already has the ${kitSizeLabel(target as any)} kit, so nothing changed.` };
       const { perMetre: _p, ...patch } = kitSwapPatch(kit, target);
