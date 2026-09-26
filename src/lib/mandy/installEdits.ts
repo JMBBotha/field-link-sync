@@ -3,7 +3,7 @@
  * Lines are found by metadata.install.{unit_item_id, role} — never parent_item_id.
  * Pricing goes through catalogLineFields / kitLengthPatch only.
  */
-import { catalogLineFields, kitLengthPatch, kitSwapPatch, type BundleForKit } from "@/lib/mandy/quoteOps";
+import { catalogLineFields, kitLengthPatch, kitSwapPatch, isPerMetreTrunking, isMetreLine, metreLineTotal, type BundleForKit } from "@/lib/mandy/quoteOps";
 import { parseKitSwapSizes, swappableKits, kitSizeLabel, kitPipeSizes, pickKitForUnit } from "@/lib/kitSizes";
 import { extractBtu } from "@/lib/bundles";
 import { installTag, lengthLabel, ROLE_LABEL, type InstallRole } from "@/lib/installTemplates";
@@ -14,7 +14,7 @@ export type InstallOp =
   | { op: "kit_length"; metres: number }
   | { op: "kit_swap"; sizes?: string[]; bundle_id?: string }
   | { op: "bracket"; size?: "450" | "550" | "650"; flatback?: boolean; code?: string }
-  | { op: "set_qty"; role: InstallRole; qty?: number; metres?: number }
+  | { op: "set_qty"; role: InstallRole; qty?: number; metres?: number; lengths?: number }
   | { op: "add_bend" }
   | { op: "remove_roles"; roles: InstallRole[]; what: string };
 
@@ -40,6 +40,9 @@ export function parseInstallCommand(text: string): InstallOp | null {
   if ((m = t.match(/\b(\d+|one|two|three|four|five|six)\s+lengths?\s+of\s+(100\s*(?:by|x)\s*40|16\s*(?:by|x)\s*16)\b/))) {
     return { op: "set_qty", role: m[2].startsWith("100") ? "trunking_main" : "trunking_small", qty: num(m[1]) };
   }
+  if ((m = t.match(/\b(?:make|set|change)\s+(?:the\s+)?(small\s+)?trunking\s+(?:to\s+)?(\d+(?:[.,]\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:m|metres?|meters?)\b/))) {
+    return { op: "set_qty", role: m[1] ? "trunking_small" : "trunking_main", metres: num(m[2]) };
+  }
   if ((m = t.match(/\b(\d+|one|two|three|four|five|six)\s+end\s?caps?\b/))) return { op: "set_qty", role: "trunking_endcap", qty: num(m[1]) };
   if ((m = t.match(/\b(\d+|one|two|three|four|five|six|seven|eight)\s+(?:elbows|bends)\b/))) return { op: "set_qty", role: "drain_bend", qty: num(m[1]) };
   return null;
@@ -61,6 +64,7 @@ const FLATBACK: Record<string, string> = { BRAC01: "BRAC14", BRAC02: "BRAC15", "
 
 /** Spoken label: "1 × 3 m length" for length items, else "2 × End Caps". */
 export function installLineLabel(i: IItem): string {
+  if (isMetreLine(i)) return `${i.item_name} (${Math.round((Number(i.quantity) || 0) * 100) / 100} m)`;
   const ll = lengthLabel(Number(i.quantity) || 1, i.metadata?.supplier_length_m);
   return ll ? `${i.item_name} (${ll})` : `${Number(i.quantity) || 1} × ${i.item_name}`;
 }
@@ -99,6 +103,16 @@ export async function runInstallEdit(d: InstallDeps, args0: InstallOp & { unit_i
   const setQty = async (role: InstallRole, qty: number): Promise<MandyResult> => {
     const line = roleLine(d.items, unit.id, role);
     const Name = `${ROLE_LABEL[role][0].toUpperCase()}${ROLE_LABEL[role].slice(1)}`;
+    if (line && isMetreLine(line)) {
+      // Per-metre trunking: qty is metres.
+      const m = Math.round(qty * 100) / 100;
+      if (Number(line.quantity) === m) return { ok: true, message: `${Name} is already ${m} m, so nothing changed.` };
+      if (m <= 0) { await d.deleteItem(line.id); return done(`Removed ${line.item_name}.`); }
+      const total = metreLineTotal(line, m);
+      const ok = await d.updateItem(line.id, { quantity: m, total_price: total });
+      if (ok === false || ok === null) return { ok: false, message: `Couldn't change ${ROLE_LABEL[role]} — nothing was changed.` };
+      return done(`${Name} is now ${m} m, ${spokenRand(total)}.`);
+    }
     if (line) {
       const price = Number(line.unit_price) || 0;
       const L = line.metadata?.supplier_length_m;
@@ -115,7 +129,7 @@ export async function runInstallEdit(d: InstallDeps, args0: InstallOp & { unit_i
     const { unitSell: _u, ...f } = catalogLineFields(p, qty);
     const row = await d.addItem({ ...f, metadata: { ...f.metadata, ...tag(role) }, area_id: unit.area_id ?? null, parent_item_id: null, is_bundle: false, item_type: "product", sort_order: sortAfter, source: "mandy_voice", total_price: null, length: null, notes: null });
     if (!row) return { ok: false, message: `Couldn't add ${ROLE_LABEL[role]} — nothing was changed.` };
-    return done(`Added ${installLineLabel(row)} to ${unit.item_name}'s install, ${spokenRand(qty * f.unit_price)}.`);
+    return done(`Added ${installLineLabel(row)} to ${unit.item_name}'s install, ${spokenRand((f as any).total_price ?? qty * f.unit_price)}.`);
   };
 
   switch (args.op) {
@@ -175,8 +189,16 @@ export async function runInstallEdit(d: InstallDeps, args0: InstallOp & { unit_i
       return done(`Done. Bracket for ${unit.item_name} is now ${p.short_name || code} (${code}), ${spokenRand(f.unit_price * qty)}.`);
     }
     case "set_qty": {
-      const L = Number(roleLine(d.items, unit.id, args.role)?.metadata?.supplier_length_m) || 0;
-      const q = lengthsFromRequest(args, __utterance, L);
+      const cur = roleLine(d.items, unit.id, args.role);
+      const dp = !cur && DEFAULT_CODE[args.role] ? live(DEFAULT_CODE[args.role]!) : null;
+      if (cur ? isMetreLine(cur) : isPerMetreTrunking(dp)) {
+        const Lm = Number(cur?.metadata?.supplier_length_m ?? dp?.unit_length) || 3;
+        const mm = metresFromRequest(args, __utterance, Lm);
+        if (mm == null) return { ok: false, message: `How many metres of ${ROLE_LABEL[args.role]}? For example: “make the trunking 4 metres”.` };
+        return setQty(args.role, mm);
+      }
+      const L = Number(cur?.metadata?.supplier_length_m) || 0;
+      const q = args.lengths != null ? args.lengths : lengthsFromRequest(args, __utterance, L);
       if (q == null) return { ok: false, message: `How many ${L ? `${L} m lengths` : ""} of ${ROLE_LABEL[args.role]}? For example: “two lengths”.` };
       return setQty(args.role, q);
     }
@@ -209,6 +231,7 @@ export function announceInstall(unitName: string, r: { kitLength: number | null;
     const q = Number(l.quantity) || 1;
     if (role === "bracket") { const s = String(l.item_name).match(/(\d{3})\s*mm/i); parts.push(`${/flatback/i.test(l.item_name) ? "flatback " : ""}${s ? s[1] + " " : ""}bracket`); }
     else if (role === "drain_bend") parts.push(`${q} elbow${q > 1 ? "s" : ""}`);
+    else if (role && isMetreLine(l)) parts.push(`${q} m ${ROLE_LABEL[role]}`);
     else if (role) parts.push(q > 1 ? `${q} × ${ROLE_LABEL[role]}` : ROLE_LABEL[role]);
   }
   const total = [r.line, r.kit, ...r.installLines].filter(Boolean).reduce((s, i: any) => s + (Number(i.total_price) || (Number(i.quantity) || 1) * (Number(i.unit_price) || 0)), 0);
@@ -222,7 +245,7 @@ export function installContext(items: IItem[], areaName: (id?: string | null) =>
   return unitsWithInstall(items).map((u) => {
     const ls = installLinesOf(items, u.id).map((l) => {
       const r = installTag(l)!.role;
-      return r === "piping_kit" ? `kit ${Number(l.length) || 1}m` : `${r}:${l.item_number}×${Number(l.quantity) || 1}`;
+      return r === "piping_kit" ? `kit ${Number(l.length) || 1}m` : isMetreLine(l) ? `${r}:${l.item_number} ${Number(l.quantity) || 0}m` : `${r}:${l.item_number}×${Number(l.quantity) || 1}`;
     });
     return `Install[${u.item_name}·${areaName(u.area_id) || "No area"}]: ${ls.join(", ")}`;
   }).join(" | ");
@@ -257,6 +280,15 @@ export function lengthsFromRequest(args: { qty?: number; metres?: number }, utte
   return Number.isFinite(q) && q >= 0 ? q : null;
 }
 
+/** Per-metre set_qty: metres arg → metres; "N lengths" (arg or utterance) → N × L; bare number → metres. */
+export function metresFromRequest(args: { qty?: number; metres?: number; lengths?: number }, utterance: unknown, lengthM: number): number | null {
+  if (Number(args.metres) > 0) return Number(args.metres);
+  if (args.lengths != null && Number(args.lengths) >= 0) return Math.round(Number(args.lengths) * lengthM * 100) / 100;
+  const q = Number(args.qty);
+  if (!Number.isFinite(q) || q < 0) return null;
+  return /\blengths?\b/.test(String(utterance || "").toLowerCase()) ? Math.round(q * lengthM * 100) / 100 : q;
+}
+
 /** read_install — "Lounge Samsung 24K: 3 m 1/4 + 1/2 kit, 650 mm bracket, 1 × 3 m length trunking, …". Read-only. */
 export function readInstall(items: IItem[], areaName: (id?: string | null) => string, ref?: string): MandyResult {
   let units = unitsWithInstall(items);
@@ -270,6 +302,7 @@ export function readInstall(items: IItem[], areaName: (id?: string | null) => st
       if (role === "piping_kit") { const s = kitPipeSizes({ id: "", name: String(l.item_name), items: l.metadata?.kit?.items || [] } as any); return `${Number(l.length) || 1} m ${s.length ? s.join(" + ") + " " : ""}kit`; }
       if (role === "bracket") { const mm = String(l.item_name).match(/(\d{3})\s*mm/i)?.[1]; return `${/flatback/i.test(l.item_name) ? "flatback " : ""}${mm ? mm + " mm " : ""}bracket`; }
       if (role === "drain_bend") return `${q} elbow${q > 1 ? "s" : ""}`;
+      if (isMetreLine(l)) { const sz = String(l.item_name).match(/(\d+)\s*x\s*(\d+)/i); return `${q} m of ${sz ? `${sz[1]}x${sz[2]} ` : ""}trunking`; }
       const L = l.metadata?.supplier_length_m;
       return L ? `${qtyPhrase(q, L)} ${ROLE_LABEL[role]}` : q > 1 ? `${q} × ${ROLE_LABEL[role]}` : ROLE_LABEL[role];
     });
