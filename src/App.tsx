@@ -205,7 +205,8 @@ const App = () => (
                     <Route path="billing" element={<Navigate to="/admin/invoices" replace />} />
                     <Route path="suppliers" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminSuppliersPage /></RequireRole>} />
                     <Route path="consumables" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminConsumablesPage /></RequireRole>} />
-                    <Route path="whatsapp" element={<RequireRole allowedRoles={["admin"]}><AdminWhatsAppPage /></RequireRole>} />
+                    {/* WhatsApp quote bot retired — page hidden (the backend function is a no-op behind WHATSAPP_QUOTE_BOT_ENABLED). */}
+                    <Route path="whatsapp" element={<Navigate to="/admin" replace />} />
                     <Route path="calls" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminCallsPage /></RequireRole>} />
                     <Route path="pdf-documents" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminPDFDocumentsPage /></RequireRole>} />
                     <Route path="brochures" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminBrochuresPage /></RequireRole>} />

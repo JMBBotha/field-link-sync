@@ -1,3 +1,4 @@
+// deprecated – unlinked from UI; kept because Vapi shares assistant ids
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { anthropicTools, TOOL_KIND, type ToolName } from "../_shared/nlTools.ts";
 import { OPS_ROLES } from "../_shared/recordAccess.ts";
