@@ -498,7 +498,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         price_per_metre: pricingType === "p/meter" ? unitCost : null,
       },
       quantity: 1,
-      ...(pricingType === "p/meter" ? { length: 1 } : {}),
+      ...(pricingType === "p/meter" ? { length: DEFAULT_KIT_LENGTH_M } : {}),
       isBundle: true,
       bundleId: bundle.id,
       bundleName: bundle.name,
