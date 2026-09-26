@@ -54,7 +54,7 @@ describe("honesty guard", () => {
 describe("write failures", () => {
   it("null addItem → ok:false message", async () => {
     const g = guardQuoteWrites({ addItem: async () => null, updateItem: async () => undefined, addArea: async () => null, updateArea: async () => undefined, deleteItem: async () => undefined, moveItemToArea: async () => undefined });
-    const hs = withWriteFailures({ x: async () => { await g.addItem({}); return { ok: true, message: "Added." }; } });
+    const hs = withWriteFailures({ x: async () => { await (g.addItem as any)({}); return { ok: true, message: "Added." }; } });
     await expect(hs.x({})).resolves.toEqual({ ok: false, message: "Couldn't add the item — nothing was changed." });
   });
 });
@@ -66,5 +66,83 @@ describe("speech rate", () => {
     expect(el.playbackRate).toBe(MANDY_SPEECH_RATE);
     expect(el.playbackRate).toBe(1.12);
     expect(el.preservesPitch).toBe(true);
+  });
+});
+
+import { parseLabourIntent, mapLabourTool } from "@/lib/mandy/labourParse";
+import { buildRemoveLabour, readLabour } from "@/lib/mandy/labourAction";
+import { undoLabel } from "@/components/mandy/MandyQuoteActions";
+import { unknownToolMessage } from "@/lib/mandy/honesty";
+
+const AREAS = [{ id: "G", name: "General" }, { id: "B", name: "Bedroom 1" }];
+const lab = (id: string, area: string, h: number, rate = 680) => ({ id, area_id: area, item_type: "labour", quantity: h, unit_price: rate, total_price: h * rate, metadata: { labour: true, hours: h, rate } });
+
+describe("labour intents", () => {
+  it.each([
+    ["remove the labour from the bedroom", { action: "remove_labour", args: { area: "bedroom" } }],
+    ["remove all labour", { action: "remove_labour", args: { all: true } }],
+    ["what labour is on this quote", { action: "read_labour", args: {} }],
+    ["make the labour rate 750", { action: "set_labour_hours", args: { rate: 750, mode: "set" } }],
+    ["change lounge labour to 2 hours", { action: "set_labour_hours", args: { area: "lounge", hours: 2, mode: "set" } }],
+    ["change lounge labour to 2 hours at 700", { action: "set_labour_hours", args: { area: "lounge", hours: 2, mode: "set", rate: 700 } }],
+  ])("%s", (t, want) => expect(parseLabourIntent(t)).toEqual(want));
+});
+
+describe("read_labour", () => {
+  it("lists real rows", () => {
+    expect(readLabour({ areas: AREAS, items: [lab("L", "G", 5.5)] }).message).toBe("Labour: General 5.5 hours at R680, R3 740; Bedroom 1 none. Total labour R3 740.");
+  });
+});
+
+describe("rate-only edit", () => {
+  it("updates the only labour row at the new rate", async () => {
+    const updateItem = vi.fn().mockResolvedValue(undefined);
+    const r = await runSetLabourHours({ areas: AREAS, items: [lab("L", "G", 5.5)], standardRate: 680, addItem: vi.fn(), updateItem }, { rate: 750 });
+    expect(updateItem).toHaveBeenCalledWith("L", expect.objectContaining({ quantity: 5.5, unit_price: 750, total_price: 4125 }));
+    expect(r.message).toBe("Labour in General set to 5.5 hours, R4 125 at R750 an hour.");
+  });
+  it("area without labour → no labour yet", async () => {
+    const r = await runSetLabourHours({ areas: AREAS, items: [lab("L", "G", 5.5)], standardRate: 680, addItem: vi.fn(), updateItem: vi.fn() }, { area: "Bedroom 1", rate: 750 });
+    expect(r).toEqual({ ok: false, message: "There's no labour in Bedroom 1 yet." });
+  });
+  it("several rows, no area → chips", async () => {
+    const r = await runSetLabourHours({ areas: AREAS, items: [lab("L", "G", 5.5), lab("M", "B", 3)], standardRate: 680, addItem: vi.fn(), updateItem: vi.fn() }, { rate: 750 });
+    expect(r.choices?.map((c) => c.label)).toEqual(["General", "Bedroom 1"]);
+  });
+});
+
+describe("remove_labour", () => {
+  it("always confirm, lists rows, then removes with undo label", async () => {
+    const deleteItem = vi.fn().mockResolvedValue(undefined);
+    const r = buildRemoveLabour({ areas: AREAS, items: [lab("L", "G", 5.5), lab("M", "B", 3)], deleteItem }, { area: "Bedroom 1" });
+    expect(r.confirm?.lines).toEqual(["Bedroom 1 · 3 hours × R680 = R2 040"]);
+    expect(deleteItem).not.toHaveBeenCalled();
+    const done = await r.confirm!.run();
+    expect(deleteItem).toHaveBeenCalledWith("M");
+    expect(done.message).toBe("Removed labour from Bedroom 1, R2 040.");
+    expect(`Undid ${undoLabel(done.message)}.`).toBe("Undid removed labour from Bedroom 1, R2 040.");
+  });
+  it("all=true removes every row", async () => {
+    const deleteItem = vi.fn();
+    const r = buildRemoveLabour({ areas: AREAS, items: [lab("L", "G", 5.5), lab("M", "B", 3)], deleteItem }, { all: true });
+    expect(r.confirm?.lines).toHaveLength(2);
+    await r.confirm!.run();
+    expect(deleteItem).toHaveBeenCalledTimes(2);
+  });
+  it("unclear area → chips of areas with labour", () => {
+    const r = buildRemoveLabour({ areas: AREAS, items: [lab("L", "G", 5.5), lab("M", "B", 3)], deleteItem: vi.fn() }, {});
+    expect(r.choices?.map((c) => c.label)).toEqual(["General", "Bedroom 1"]);
+  });
+});
+
+describe("unknown labour tools", () => {
+  it("maps invented names", () => {
+    expect(mapLabourTool("remove_labour_line", { area: "General" })).toEqual({ action: "remove_labour", args: { area: "General" } });
+    expect(mapLabourTool("edit_labour_rate", { rate: 750 })).toEqual({ action: "set_labour_hours", args: { rate: 750, mode: "set" } });
+    expect(mapLabourTool("get_labour", {})).toEqual({ action: "read_labour", args: {} });
+    expect(mapLabourTool("send_fax", {})).toBeNull();
+  });
+  it("honest unknown reply", () => {
+    expect(unknownToolMessage("edit_area_colour", false)).toBe("I can't do that here — open the quote first.");
   });
 });

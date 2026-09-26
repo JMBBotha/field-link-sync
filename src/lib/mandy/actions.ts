@@ -29,7 +29,7 @@ export interface MandyResult {
 export type MandyHandler = (args: Record<string, any>) => Promise<MandyResult>;
 
 /** Never executed on voice alone — always an on-screen Confirm card. */
-export const CONFIRM_REQUIRED = new Set(["remove_item", "remove_note", "run_plan", "send_quote", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote", "create_deposit_invoice"]);
+export const CONFIRM_REQUIRED = new Set(["remove_item", "remove_note", "remove_labour", "run_plan", "send_quote", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote", "create_deposit_invoice"]);
 
 const str = (description: string) => ({ type: "string", description });
 const num = (description: string) => ({ type: "number", description });
@@ -136,8 +136,16 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     parameters: { type: "object", properties: { area: str("Area name"), metres: num("Metres") }, required: ["metres"], additionalProperties: false },
   },
   set_labour_hours: {
-    description: "Add to (mode=add) or set (mode=set) hourly labour on an area of the open quote, e.g. 'add 3 hours labour to main bedroom'. Hours in 0.5 steps; rate optional (defaults to the saved/standard rate).",
-    parameters: { type: "object", properties: { area: str("Area name"), hours: num("Hours"), rate: num("Rate per hour excl. VAT (optional)"), mode: { type: "string", enum: ["add", "set"], description: "'add N hours' → add (increment); 'set / make it N hours' → set" } }, required: ["area", "hours", "mode"], additionalProperties: false },
+    description: "Add to (mode=add) or set (mode=set) hourly labour on an area of the open quote, e.g. 'add 3 hours labour to main bedroom'. Also changes the labour RATE: 'make the labour rate 750' → {rate:750} (hours optional when rate is given). Hours in 0.5 steps; rate optional (defaults to the saved/standard rate).",
+    parameters: { type: "object", properties: { area: str("Area name (optional when the quote has one labour row)"), hours: num("Hours (optional when only the rate changes)"), rate: num("Rate per hour excl. VAT (optional)"), mode: { type: "string", enum: ["add", "set"], description: "'add N hours' → add (increment); 'set / make it N hours' → set" } }, required: [], additionalProperties: false },
+  },
+  remove_labour: {
+    description: "Remove the labour row from an area ('remove the labour from bedroom 1'), or every labour row with all=true ('remove all the labour'). Always an on-screen Confirm card. Never use remove_item for labour.",
+    parameters: { type: "object", properties: { area: str("Area name"), all: { type: "boolean", description: "Remove labour from every area" } }, additionalProperties: false },
+  },
+  read_labour: {
+    description: "Read out the labour on the open quote (hours, rate and total per area). Read-only.",
+    parameters: { type: "object", properties: {}, additionalProperties: false },
   },
   remove_item: {
     description: "Remove a line from the open quote (needs on-screen confirmation). Removing a unit asks whether to remove its kit too.",
