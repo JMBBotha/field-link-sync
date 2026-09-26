@@ -15,6 +15,8 @@ import type { QuoteArea, AreaACUnit, AreaConsumable, AreaMaterial } from "../quo
 import { detectBTU, getBracketSize } from "../quoteWizardTypes";
 import { findDaikinRemote, forcePerUnitPricing, isWiredRemote } from "../daikinRemoteUtils";
 import { getProductDisplayName } from "../productDisplayUtils";
+import { pickKitForUnit } from "@/lib/kitSizes";
+import { extractBtu } from "@/lib/bundles";
 import { buildKitMaterial, withKitLength, DEFAULT_KIT_LENGTH_M } from "../kitLine";
 import { computeLineTotal, resolvePricingUnit, formatUnitPrice } from "@/lib/pricingUnits";
 import { toast } from "sonner";
@@ -695,7 +697,12 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
 
     // Auto-apply the matching piping kit (same as basket path) — one collapsed
     // kit line at 1 m, no "Apply Kit" confirm step.
-    const kit = findSuggestedBundle(btu, product.brand || "", bundles);
+    const pick = pickKitForUnit(bundles as any[], product as any, {
+      allUnits: products as any[], btuOf: (u) => extractBtu(u as any),
+      btuFallback: () => findSuggestedBundle(btu, product.brand || "", bundles) as any,
+    });
+    const kit = pick.kit as PaletteBundle | null;
+    if (pick.note) toast.info(pick.note);
 
     onAreasChange(
       areas.map((a) => {
