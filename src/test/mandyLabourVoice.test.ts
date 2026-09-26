@@ -54,7 +54,7 @@ describe("honesty guard", () => {
 describe("write failures", () => {
   it("null addItem → ok:false message", async () => {
     const g = guardQuoteWrites({ addItem: async () => null, updateItem: async () => undefined, addArea: async () => null, updateArea: async () => undefined, deleteItem: async () => undefined, moveItemToArea: async () => undefined });
-    const hs = withWriteFailures({ x: async () => { await g.addItem({}); return { ok: true, message: "Added." }; } });
+    const hs = withWriteFailures({ x: async () => { await (g.addItem as any)({}); return { ok: true, message: "Added." }; } });
     await expect(hs.x({})).resolves.toEqual({ ok: false, message: "Couldn't add the item — nothing was changed." });
   });
 });
