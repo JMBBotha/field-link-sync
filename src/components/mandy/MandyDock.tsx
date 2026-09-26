@@ -129,40 +129,49 @@ function useGlobalMandyActions() {
 
 /* ───────────── speech out: exactly one utterance per turn ───────────── */
 function useSpeaker(muted: boolean) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastRef = useRef<{ text: string; at: number } | null>(null);
   const onEndedRef = useRef<(() => void) | null>(null);
   const setOnReplyEnded = useCallback((fn: (() => void) | null) => { onEndedRef.current = fn; }, []);
   const [ttsCalls, setTtsCalls] = useState(0);
+  const tokenRef = useRef(0); // per-utterance: cancel() bumps it so a cancelled reply never re-arms the mic
+  const handleRef = useRef<SharedPlayback | null>(null);
 
   const cancel = useCallback(() => {
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ""; }
+    tokenRef.current++;
+    handleRef.current?.cancel();
+    handleRef.current = null;
     if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
   }, []);
 
   const speak = useCallback(async (text: string) => {
     cancel();
+    const token = tokenRef.current;
+    let fired = false;
+    const end = () => { if (fired || tokenRef.current !== token) return; fired = true; onEndedRef.current?.(); };
     const t = formatForSpeech(text).trim();
-    if (!t || muted) return;
+    if (!t || muted) { end(); return; }
     const now = Date.now();
-    if (lastRef.current && lastRef.current.text === t && now - lastRef.current.at < 4000) return; // dedupe
+    if (lastRef.current && lastRef.current.text === t && now - lastRef.current.at < 4000) { end(); return; } // dedupe
     lastRef.current = { text: t, at: now };
     setTtsCalls((n) => n + 1);
     const { data, error } = await supabase.functions.invoke("mandy-agent", { body: { action: "tts", text: t, client_build: BUILD_ID } });
+    if (tokenRef.current !== token) return;
     const d = data as { audio_base64?: string; mime?: string; spoken?: string } | null;
     if (!error && d?.audio_base64) {
-      if (!audioRef.current) {
-        audioRef.current = new Audio();
-        audioRef.current.onended = () => onEndedRef.current?.();
-      }
-      audioRef.current.src = `data:${d.mime || "audio/mpeg"};base64,${d.audio_base64}`;
-      try { await audioRef.current.play(); return; } catch { /* fall through */ }
+      const h = playOnSharedAudio(`data:${d.mime || "audio/mpeg"};base64,${d.audio_base64}`, { startTimeoutMs: 2500 });
+      handleRef.current = h;
+      if (await h.started) { void h.ended.then(end); return; }
+      if (tokenRef.current !== token) return;
     }
-    if ("speechSynthesis" in window) {
-      const u = new SpeechSynthesisUtterance(d?.spoken || t);
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      const said = d?.spoken || t;
+      const u = new SpeechSynthesisUtterance(said);
       const voices = window.speechSynthesis.getVoices();
       u.voice = voices.find((v) => /en-ZA/i.test(v.lang)) || voices.find((v) => /en-GB/i.test(v.lang)) || null;
+      armUtteranceEnd(u, said.length, end);
       window.speechSynthesis.speak(u);
+    } else {
+      end();
     }
   }, [cancel, muted]);
 
@@ -170,13 +179,12 @@ function useSpeaker(muted: boolean) {
 }
 
 /* ───── greeting audio (Grok TTS, cached per page load, per user+text) ───── */
-const greetingCache = new Map<string, { bytes: Promise<ArrayBuffer>; buffer: AudioBuffer | null }>();
-let mandyCtx: AudioContext | null = null;
+const greetingCache = new Map<string, Promise<ArrayBuffer>>();
 const ttsReady = () => typeof window !== "undefined";
 function prefetchGreeting(cacheKey: string, text: string): Promise<ArrayBuffer> {
-  let entry = greetingCache.get(cacheKey);
-  if (!entry) {
-    const bytes = (async () => {
+  let bytes = greetingCache.get(cacheKey);
+  if (!bytes) {
+    const p = (async () => {
       const { data, error } = await supabase.functions.invoke("mandy-agent", { body: { action: "tts", text, client_build: BUILD_ID } });
       const b64 = (data as { audio_base64?: string } | null)?.audio_base64;
       if (error || !b64) throw new Error("no greeting audio");
@@ -184,30 +192,11 @@ function prefetchGreeting(cacheKey: string, text: string): Promise<ArrayBuffer> 
       for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
       return out.buffer;
     })();
-    entry = { bytes, buffer: null };
-    greetingCache.set(cacheKey, entry);
-    bytes.catch(() => { if (greetingCache.get(cacheKey) === entry) greetingCache.delete(cacheKey); }); // retry on next open
+    bytes = p;
+    greetingCache.set(cacheKey, p);
+    p.catch(() => { if (greetingCache.get(cacheKey) === p) greetingCache.delete(cacheKey); }); // retry on next open
   }
-  return entry.bytes;
-}
-async function getGreetingBuffer(ctx: AudioContext, cacheKey: string, text: string): Promise<AudioBuffer> {
-  const entry = greetingCache.get(cacheKey);
-  if (entry?.buffer) return entry.buffer;
-  const bytes = await prefetchGreeting(cacheKey, text);
-  const buffer = await ctx.decodeAudioData(bytes.slice(0));
-  const e = greetingCache.get(cacheKey);
-  if (e) e.buffer = buffer;
-  return buffer;
-}
-/** Must be called inside the tap: creates/resumes the shared AudioContext. */
-function unlockMandyAudio(): AudioContext | null {
-  try {
-    const AC = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AC) return null;
-    if (!mandyCtx) mandyCtx = new AC();
-    if (mandyCtx.state === "suspended") void mandyCtx.resume();
-    return mandyCtx;
-  } catch { return null; }
+  return bytes;
 }
 /** Soft ~120 ms 880 Hz ready beep. */
 function playReadyBeep(ctx: AudioContext | null) {
@@ -452,9 +441,14 @@ export default function MandyDock() {
   const startListening = async () => {
     if (recRef.current || busyRef.current) return;
     cancel();
+    stopSharedAudio();
     try {
       const rec = new WavRecorder();
-      await rec.start({ silenceMs: 1300, onSilence: () => void stopRef.current() });
+      // Reuse the mic + AudioContext unlocked in the tap (iOS keeps a fresh context suspended).
+      const stream = await getMandyMicStream();
+      const context = getMandyAudioContext() ?? undefined;
+      await rec.start({ silenceMs: 1300, onSilence: () => void stopRef.current() }, { stream, context });
+      if (!openRef.current) { rec.cancel(); return; }
       recRef.current = rec;
       voiceModeRef.current = true;
       setPhase("listening");
@@ -463,12 +457,11 @@ export default function MandyDock() {
     }
   };
 
-  /** Mic tap: greet once per session (Grok TTS via unlocked AudioContext), then listen. */
+  /** Mic tap: greet once per session (Grok TTS on the shared primed <audio>), then listen. */
   const greetedRef = useRef(false);
   const greetingRef = useRef(false);
   const openRef = useRef(open);
   openRef.current = open;
-  const greetSourceRef = useRef<AudioBufferSourceNode | null>(null);
   /** Personalised greeting text + cache key (user id + text), resolved once per user. */
   const greetingRef2 = useRef<{ userId: string; text: string; key: string } | null>(null);
   const resolveGreeting = async (): Promise<{ text: string; key: string }> => {
@@ -485,36 +478,40 @@ export default function MandyDock() {
     return resolved;
   };
   const beginSession = async () => {
+    unlockMandyVoiceFromTap(); // synchronous, inside the tap (idempotent)
     if (greetingRef.current || recRef.current || busyRef.current) return; // double-start guard
-    const ctx = unlockMandyAudio(); // inside the tap
     greetingRef.current = true;
+    const clearGreet = () => setPhase((p) => (p === "greeting" || p === "starting" ? "idle" : p));
     try {
       await greetThenListen({
         greeted: greetedRef,
         isCancelled: () => !openRef.current,
-        beep: () => playReadyBeep(ctx),
+        beep: () => playReadyBeep(getMandyAudioContext()),
         startListening: () => startListening(),
         speak: async (onStarted, shouldPlay) => {
-          if (muted || !ctx) throw new Error("no audio");
-          setPhase("greeting");
+          if (muted) throw new Error("muted");
+          setPhase("starting");
           const g = await resolveGreeting();
-          const buf = await getGreetingBuffer(ctx, g.key, g.text);
+          const bytes = await prefetchGreeting(g.key, g.text);
           if (!openRef.current) throw new Error("closed");
-          if (!shouldPlay()) { setPhase((p) => (p === "greeting" ? "idle" : p)); return; } // abandoned: keep buffer, don't play
-          await new Promise<void>((resolve) => {
-            const src = ctx.createBufferSource();
-            src.buffer = buf;
-            src.connect(ctx.destination);
-            src.onended = () => { greetSourceRef.current = null; resolve(); };
-            greetSourceRef.current = src;
-            src.start();
+          if (!shouldPlay()) { clearGreet(); return; } // abandoned: keep cache, don't play
+          const url = URL.createObjectURL(new Blob([bytes], { type: "audio/mpeg" }));
+          try {
+            const h = playOnSharedAudio(url, { startTimeoutMs: 2500, maxMs: 12000 });
+            const ok = await h.started;
+            if (!ok) throw new Error("no playback");
+            if (!shouldPlay()) { h.cancel(); clearGreet(); return; }
+            setPhase("greeting"); // only once audio is REALLY playing
             onStarted();
-          });
+            await h.ended;
+          } finally {
+            URL.revokeObjectURL(url);
+          }
         },
       });
     } finally {
       greetingRef.current = false;
-      setPhase((p) => (p === "greeting" ? "idle" : p));
+      clearGreet();
     }
   };
 
@@ -527,23 +524,25 @@ export default function MandyDock() {
     return () => setOnReplyEnded(null);
   }, [setOnReplyEnded]);
 
-  useEffect(() => () => { recRef.current?.cancel(); cancel(); }, [cancel]);
-  // "Voice" from the ops panel: open + start listening.
+  useEffect(() => () => { recRef.current?.cancel(); cancel(); stopSharedAudio(); releaseMandyMic(); }, [cancel]);
+  // "Ask Mandy" / ops-panel "Voice": open + greet once + listen.
   const listenRequest = useMandyDock((s) => s.listenRequest);
   const startRef = useRef(startListening);
   startRef.current = startListening;
-  useEffect(() => { if (listenRequest && open) void startRef.current(); }, [listenRequest, open]);
+  const beginRef = useRef(beginSession);
+  beginRef.current = beginSession;
+  useEffect(() => { if (listenRequest && open) void beginRef.current(); }, [listenRequest, open]);
   useEffect(() => {
     if (open) { if (ttsReady()) void resolveGreeting().then((g) => prefetchGreeting(g.key, g.text)).catch(() => {}); return; }
     recRef.current?.cancel(); recRef.current = null; cancel(); setPhase("idle");
-    try { greetSourceRef.current?.stop(); } catch { /* already stopped */ }
-    greetSourceRef.current = null;
+    stopSharedAudio();
+    releaseMandyMic();
     greetedRef.current = false; voiceModeRef.current = false;
   }, [open, cancel]);
 
   if (!user || !open) return null;
 
-  const statusText = phase === "greeting" ? "Mandy is speaking…" : phase === "listening" ? "Listening… go ahead" : phase === "hearing" ? "Hearing…" : phase === "working" ? "Working…" : "Ready";
+  const statusText = phase === "starting" ? "Starting…" : phase === "greeting" ? "Mandy is speaking…" : phase === "listening" ? "Listening… go ahead" : phase === "hearing" ? "Hearing…" : phase === "working" ? "Working…" : "Ready";
 
   return (
     <div className="fixed bottom-4 right-4 z-[60] w-[300px] sm:w-[340px] rounded-xl border border-border bg-card/95 backdrop-blur-md shadow-lg print:hidden" data-testid="mandy-dock">
