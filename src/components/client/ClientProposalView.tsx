@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import PayfastPayButton from "@/components/payments/PayfastPayButton";
 import EstimateDocument, { type EstimateDocLineItem } from "@/components/quoting/EstimateDocument";
-import { buildClientRollup, type ClientRollupArea } from "@/lib/clientQuoteRollup";
+import { lineQtyText, buildClientRollup, type ClientRollupArea } from "@/lib/clientQuoteRollup";
 import SignaturePad from "@/components/jobs/SignaturePad";
 import { fetchQuoteInvoiceByToken, type DepositInvoiceRow } from "@/lib/depositInvoice";
 import { isDepositCleared } from "@/components/shared/DepositPaymentChip";
@@ -118,6 +118,7 @@ const ClientProposalView = () => {
           quantity,
           unit_price,
           amount: Number(it.total_price) || quantity * unit_price,
+          qtyText: lineQtyText(it),
           imageUrl: it.image_url || null,
         };
       });

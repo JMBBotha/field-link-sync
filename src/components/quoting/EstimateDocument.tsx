@@ -9,6 +9,8 @@ export interface EstimateDocLineItem {
   quantity: number;
   unit_price: number;
   amount: number;
+  /** Quantity text override, e.g. "3 m" for per-metre trunking. */
+  qtyText?: string | null;
   /** Catalog product image for the sales-card treatment (optional). */
   imageUrl?: string | null;
 }
@@ -25,6 +27,8 @@ export interface EstimateEditLine {
   installRole?: string | null;
   /** "1 × 3 m length" for items sold per supplier length. */
   lengthLabel?: string | null;
+  /** Per-metre trunking line: qty in metres (0.1 m steps). */
+  perMetre?: boolean;
   itemNumber?: string | null;
   /** Piping kit row: the kit it was built from. */
   kitBundleId?: string | null;
@@ -399,6 +403,9 @@ const EstimateDocument = ({
                                     )}
                                   </div>
                                 )}
+                                {!line.installRole && line.perMetre && line.lengthLabel && (
+                                  <div className="text-[10px] text-slate-500 print:hidden">{line.lengthLabel}</div>
+                                )}
                                 <input
                                   key={`${line.id}-name`}
                                   defaultValue={line.name}
@@ -443,9 +450,10 @@ const EstimateDocument = ({
                             <input
                               key={`${line.id}-qty`}
                               type="number"
-                              step="1"
+                              step={line.perMetre ? "0.1" : "1"}
                               min="0"
                               defaultValue={line.quantity}
+                              aria-label={line.perMetre ? "Metres" : "Quantity"}
                               onBlur={(e) => {
                                 const v = Number(e.target.value);
                                 if (Number.isFinite(v) && v !== line.quantity) {
@@ -456,7 +464,7 @@ const EstimateDocument = ({
                             />
                           </td>
                           <td className="py-2 text-right font-medium text-slate-900">
-                            {formatCurrency(line.quantity * line.unit_price)}
+                            {formatCurrency(line.perMetre ? Math.round(line.quantity * line.unit_price * 100 + 1e-6) / 100 : line.quantity * line.unit_price)}
                           </td>
                           <td className="py-2 text-right print:hidden">
                             <button
@@ -571,8 +579,8 @@ const EstimateDocument = ({
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 text-right text-slate-600">{formatCurrency(item.unit_price)}</td>
-                    <td className="py-3 text-right text-slate-600">{item.quantity}</td>
+                    <td className="py-3 text-right text-slate-600">{formatCurrency(item.unit_price)}{item.qtyText ? " / m" : ""}</td>
+                    <td className="py-3 text-right text-slate-600">{item.qtyText || item.quantity}</td>
                     <td className="py-3 text-right font-medium text-slate-900">{formatCurrency(item.amount)}</td>
                   </tr>
                 );

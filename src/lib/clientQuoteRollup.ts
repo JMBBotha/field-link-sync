@@ -132,3 +132,9 @@ export function buildClientRollup(lines: RollupLine[], areas: RollupArea[] = [])
     return oa - ob;
   });
 }
+
+/** Quantity text for a client document line: "3 m" / "1.5 m" for per-metre trunking, else null (plain qty). */
+export function lineQtyText(l: { quantity?: number | string | null; metadata?: any }): string | null {
+  if (l?.metadata?.qty_unit !== "metre") return null;
+  return `${Math.round(num(l.quantity) * 100) / 100} m`;
+}
