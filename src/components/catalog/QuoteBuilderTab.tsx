@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useRef, useEffect, useSyncExternalStore
 import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
 import { planStandardInstall, installBasketItem } from "@/lib/mandy/quoteOps";
+import { DEFAULT_KIT_LENGTH_M } from "@/components/catalog/quote-builder/kitLine";
 import { useInstallTemplates } from "@/hooks/useInstallTemplates";
 import type { BasketInstall } from "@/lib/installTemplates";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
