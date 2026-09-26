@@ -38,7 +38,7 @@ export function parseInstallCommand(text: string): InstallOp | null {
   if (/\bremove\s+(?:the\s+)?small\s+trunking\b/.test(t)) return { op: "remove_roles", roles: ["trunking_small"], what: "small trunking" };
   if (/\badd\s+(?:a|an|one|another)\s+(?:bend|elbow)\b/.test(t)) return { op: "add_bend" };
   if ((m = t.match(/\b(\d+|one|two|three|four|five|six)\s+lengths?\s+of\s+(100\s*(?:by|x)\s*40|16\s*(?:by|x)\s*16)\b/))) {
-    return { op: "set_qty", role: m[2].startsWith("100") ? "trunking_main" : "trunking_small", qty: num(m[1]) };
+    return { op: "set_qty", role: m[2].startsWith("100") ? "trunking_main" : "trunking_small", lengths: num(m[1]) };
   }
   if ((m = t.match(/\b(?:make|set|change)\s+(?:the\s+)?(small\s+)?trunking\s+(?:to\s+)?(\d+(?:[.,]\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:m|metres?|meters?)\b/))) {
     return { op: "set_qty", role: m[1] ? "trunking_small" : "trunking_main", metres: num(m[2]) };

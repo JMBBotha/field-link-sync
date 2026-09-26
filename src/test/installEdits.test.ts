@@ -36,7 +36,7 @@ describe("install phrase parser", () => {
     ["no drain", { op: "remove_roles", roles: ["drain_pipe", "drain_bend"], what: "drain" }],
     ["add a bend", { op: "add_bend" }],
     ["2 end caps", { op: "set_qty", role: "trunking_endcap", qty: 2 }],
-    ["two lengths of 100 by 40", { op: "set_qty", role: "trunking_main", qty: 2 }],
+    ["two lengths of 100 by 40", { op: "set_qty", role: "trunking_main", lengths: 2 }],
     ["install without trunking", { op: "remove_roles", roles: ["trunking_main", "trunking_endcap", "trunking_small"], what: "trunking" }],
   ])("%s", (t, want) => expect(parseInstallCommand(t)).toEqual(want));
   it("does not grab normal edits", () => {
