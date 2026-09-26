@@ -36,3 +36,4 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [ ] GlobalSearchDialog finds leads, rooms (quote areas) and invoices by name/address/reference — waiting on answer.
 - [ ] Deposits due / partial / unpaid dashboard linked to each lead — overlaps existing Money card; waiting on answer.
 - [ ] Client portal (own invoices, payments, status updates) — request cut off ("linked to the bd…"); overlaps existing customer portal; waiting on answer.
+- [ ] Read-only security scan report (critical/error list + warn/info counts).
