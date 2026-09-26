@@ -43,6 +43,7 @@ export function buildKitSubItems(bundle: BundleLike): BundleSubItem[] {
         quantity: b.quantity || 1,
         isLengthItem,
         isOptional: !!b.is_optional,
+        perKitMetre: b.length_metres ?? b.quantity ?? 1,
         ...(isLengthItem ? { length: b.length_metres || product.unit_length || 1 } : {}),
       };
     });

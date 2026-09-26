@@ -58,8 +58,8 @@ describe("piping kit — collapsed line priced like the palette", () => {
   const bundle = {
     id: "b24k", name: "24K Inverter 3/8 5/8 piping kit",
     items: [
-      { id: "i1", quantity: 1, length_metres: 3, is_length_item: true, product: pipe("CU38", 1800) },
-      { id: "i2", quantity: 1, length_metres: 3, is_length_item: true, product: pipe("CU58", 3000) },
+      { id: "i1", quantity: 1, length_metres: 1, is_length_item: true, product: pipe("CU38", 1800) },
+      { id: "i2", quantity: 1, length_metres: 1, is_length_item: true, product: pipe("CU58", 3000) },
     ],
   };
   const perMetre = (1800 * 1.35 + 3000 * 1.35) / 15; // = 432

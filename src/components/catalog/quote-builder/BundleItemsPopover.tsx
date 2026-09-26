@@ -18,6 +18,8 @@ export interface BundleSubItem {
   length?: number;
   isLengthItem: boolean;
   isOptional?: boolean;
+  /** Metres (or qty) of this part per 1 m of kit — bundle_items.length_metres. Default 1. */
+  perKitMetre?: number;
 }
 
 export type BundlePricingType = "p/meter" | "p/qty";
@@ -37,11 +39,11 @@ export function computeBundlePricing(items: BundleSubItem[]): {
   if (allPerMeter) {
     const totalSell = nonOptional.reduce((sum, i) => {
       const { unitSell } = getEffectiveUnitPrices(i.product, true);
-      return sum + unitSell;
+      return sum + unitSell * (i.perKitMetre ?? 1);
     }, 0);
     const totalCost = nonOptional.reduce((sum, i) => {
       const { unitCost } = getEffectiveUnitPrices(i.product, true);
-      return sum + unitCost;
+      return sum + unitCost * (i.perKitMetre ?? 1);
     }, 0);
     return { pricingType: "p/meter", unitPrice: totalSell, unitCost: totalCost };
   }
@@ -81,7 +83,9 @@ function PopoverBody({
   const rows = nonOptional.map((item) => {
     const { unitCost, unitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product, item.isLengthItem);
     const pricingUnit = resolvePricingUnit(item.product);
-    const qtyOrLen = item.isLengthItem ? (item.length || 1) : item.quantity;
+    const qtyOrLen = pricingType === "p/meter"
+      ? (item.perKitMetre ?? 1)
+      : item.isLengthItem ? (item.length || 1) : item.quantity;
     const markupAmt = unitSell - unitCost;
     const markupPct = unitCost > 0 ? (markupAmt / unitCost) * 100 : 0;
     const hasMarkup = markupAmt > 0.01;

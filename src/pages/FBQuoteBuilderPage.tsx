@@ -499,6 +499,7 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
           quantity: bItem.quantity,
           isLengthItem,
           isOptional: bItem.is_optional,
+          perKitMetre: bItem.length_metres ?? bItem.quantity ?? 1,
           ...(isLengthItem ? { length: bItem.length_metres || bItem.product!.unit_length || 1 } : {}),
         };
       });

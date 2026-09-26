@@ -164,6 +164,7 @@ function BundlePaletteButton({
         quantity: item.quantity,
         isLengthItem: item.is_length_item,
         isOptional: item.is_optional,
+        perKitMetre: item.length_metres ?? item.quantity ?? 1,
         ...(item.is_length_item ? { length: item.length_metres || 1 } : {}),
       }));
   }, [bundle.items]);

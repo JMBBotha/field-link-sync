@@ -437,6 +437,7 @@ const AdminQuoteBuilderPage = () => {
           quantity: bItem.quantity,
           isLengthItem,
           isOptional: bItem.is_optional,
+          perKitMetre: bItem.length_metres ?? bItem.quantity ?? 1,
           ...(isLengthItem ? { length: bItem.length_metres || 1 } : {}),
         };
       });
