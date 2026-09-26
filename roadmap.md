@@ -42,7 +42,7 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] Mandy labour: rate-only edits, remove_labour (Confirm + undo), read_labour, labour rows in Mandy's context, invented labour tools mapped, remove button on the labour row. Live check on Q-2026-0014 done and reversed.
 
 ## Standard Install (open)
-- [ ] Live 12K/18K test + voice matrix on TEST quote Q-2026-0014 with exact restore (not yet run)
-- [ ] Clickable builder: install lines aren't linked to their unit after a builder save (the save rewrites every row)
-- [ ] Area wizard (AreaQuoteBuilderInline) not yet using the standard install
+- [x] Live 12K/18K test + voice matrix on Q-2026-0014, restored exactly
+- [x] Builder save keeps install links (remapped to new ids)
+- [x] Area wizard uses the shared standard-install rule
 - [ ] Admin template editor (skipped)

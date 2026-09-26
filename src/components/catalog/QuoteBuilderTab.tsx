@@ -1,8 +1,9 @@
 import { useState, useCallback, useMemo, useRef, useEffect, useSyncExternalStore } from "react";
 import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
-import { planStandardInstall } from "@/lib/mandy/quoteOps";
+import { planStandardInstall, installBasketItem } from "@/lib/mandy/quoteOps";
 import { useInstallTemplates } from "@/hooks/useInstallTemplates";
+import type { BasketInstall } from "@/lib/installTemplates";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { Search, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -155,6 +156,8 @@ export interface BasketItem {
   bundleUnitCost?: number;
   /** Contents of a collapsed installation kit (display only). */
   kitContents?: Array<{ name: string; code: string | null; quantity: number; isLengthItem: boolean }>;
+  /** Standard-install link to the unit line (unitKey = unit's instanceId). */
+  install?: BasketInstall;
 }
 
 export interface Basket {
@@ -526,7 +529,9 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
 
         const nextItems = [...basket.items];
 
-        const existingProductIndex = nextItems.findIndex((i) => !i.isBundle && i.product.id === product.id);
+        // A unit with a standard install is always its own line (its install hangs off it).
+        const unitKey = `${product.id}-${Date.now()}`;
+        const existingProductIndex = plan ? -1 : nextItems.findIndex((i) => !i.isBundle && i.product.id === product.id);
         if (existingProductIndex >= 0) {
           const existing = nextItems[existingProductIndex];
           nextItems[existingProductIndex] = isLengthItem
@@ -534,7 +539,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
             : { ...existing, quantity: existing.quantity + 1 };
         } else {
           nextItems.push({
-            instanceId: `${product.id}-${Date.now()}`,
+            instanceId: unitKey,
             product,
             quantity: 1,
             // Metre items start at 1 m (user-entered run) — never the full coil length.
@@ -543,7 +548,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         }
 
         if (autoBundle) {
-          const existingBundleIndex = nextItems.findIndex((i) => i.isBundle && i.bundleId === autoBundle.id);
+          const existingBundleIndex = plan?.template ? -1 : nextItems.findIndex((i) => i.isBundle && i.bundleId === autoBundle.id);
 
           if (existingBundleIndex >= 0) {
             const existingBundle = nextItems[existingBundleIndex];
@@ -553,19 +558,14 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
           } else {
             const bundleBasketItem = buildBundleBasketItem(autoBundle);
             if (bundleBasketItem) {
-              nextItems.push(bundleBasketItem.bundlePricingType === "p/meter" ? { ...bundleBasketItem, length: plan!.kitLength } : bundleBasketItem);
+              const kitItem = bundleBasketItem.bundlePricingType === "p/meter" ? { ...bundleBasketItem, length: plan!.kitLength } : bundleBasketItem;
+              nextItems.push(plan?.template ? { ...kitItem, instanceId: `${unitKey}-kit`, install: { unitKey, role: "piping_kit", template_id: plan.template.id } } : kitItem);
             }
           }
         }
 
         // Standard install lines: each its own line, priced per supplier length (never per metre).
-        for (const l of plan?.lines || []) {
-          const perLength = !!(l.product.sold_in_length && l.product.unit_length);
-          const prod = perLength ? { ...l.product, sold_in_length: false, price_per_metre: null } : l.product;
-          const idx = nextItems.findIndex((i) => !i.isBundle && i.product.id === l.product.id);
-          if (idx >= 0) nextItems[idx] = { ...nextItems[idx], quantity: nextItems[idx].quantity + l.qty };
-          else nextItems.push({ instanceId: `${l.product.id}-install-${Date.now()}`, product: prod as PaletteProduct, quantity: l.qty });
-        }
+        for (const l of plan?.lines || []) nextItems.push(installBasketItem(l, unitKey, plan!.template?.id ?? null));
 
         return { ...basket, items: nextItems };
       })

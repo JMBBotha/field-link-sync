@@ -1,3 +1,4 @@
+import { basketInstallFrom } from "@/lib/installTemplates";
 import { resolveProductMarkupPercent } from "@/lib/pricing";
 /**
  * Unified Quote Builder Page — wraps Normal / Visual / Area builders
@@ -419,6 +420,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         quantity: it.quantity,
         ...(it.length ? { length: it.length } : {}),
         ...(it.is_bundle ? { isBundle: true } : {}),
+        ...(basketInstallFrom(it) ? { install: basketInstallFrom(it) } : {}),
         ...(() => {
           const k = kitFromSavedItem(it);
           return k ? kitBasketFields(k) : {};
@@ -489,12 +491,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         const isAC = cat.includes("air") || cat.includes(" ac") || cat === "ac" || cat.includes("hvac");
         const savedKit = kitFromSavedItem(it);
         if (savedKit) {
-          base.materials.push(savedKit);
+          base.materials.push({ ...savedKit, install: basketInstallFrom(it) });
           if (savedKit.bundleId) base.appliedBundleId = savedKit.bundleId;
           continue;
         }
         if (isAC) {
-          base.acUnits.push({ id: it.id, product: stubProduct(it), btu: detectBTU(product), quantity: it.quantity });
+          base.acUnits.push({ id: it.id, fromSaved: true, product: stubProduct(it), btu: detectBTU(product), quantity: it.quantity });
         } else if (it.length && it.length > 0) {
           // unit_price on a length line is the price for the WHOLE length (qty 1),
           // so derive the true per-metre rate instead of multiplying by length twice.
@@ -512,9 +514,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             totalCost: perM * it.length,
             pricingMode: "length",
             unitQuantity: 1,
+            install: basketInstallFrom(it),
           });
         } else {
-          base.consumables.push({ id: it.id, product: stubProduct(it), quantity: it.quantity });
+          base.consumables.push({ id: it.id, product: stubProduct(it), quantity: it.quantity, install: basketInstallFrom(it) });
         }
       }
       base.subtotal = computeAreaSubtotal(base);

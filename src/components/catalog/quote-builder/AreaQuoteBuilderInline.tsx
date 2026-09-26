@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { computeLineTotal, resolvePricingUnit } from "@/lib/pricingUnits";
 import { hapticTap } from "@/lib/haptics";
 import { buildKitMaterial, kitBasketFields } from "./kitLine";
+import { planStandardInstall, installBasketItem } from "@/lib/mandy/quoteOps";
+import { useInstallTemplates } from "@/hooks/useInstallTemplates";
 import type { PaletteProduct, Basket, BasketItem } from "../QuoteBuilderTab";
 import type { QuoteArea, AreaACUnit, AreaConsumable, AreaMaterial } from "./quoteWizardTypes";
 import { WIZARD_STEPS, computeAreaSubtotal, createEmptyArea, detectBTU } from "./quoteWizardTypes";
@@ -95,6 +97,7 @@ function hasAreaContent(area: QuoteArea): boolean {
 
 export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, onDropProductToAreaRef, onDropBundleToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, pdfSelection, initialAreas, onGenerateQuote, generating }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
+  const { templates: installTemplates } = useInstallTemplates();
   const [areas, setAreas] = useState<QuoteArea[]>(() => {
     if (initialAreas && initialAreas.length > 0) return initialAreas;
     const draft = loadDraftFromStorage();
@@ -289,23 +292,49 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
   const handleSave = useCallback(() => {
     const baskets: Basket[] = [];
     for (const area of areas) {
+      // Standard install per AC unit — the SAME shared rule as the estimate page, Mandy and the builder.
+      const rid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const hasKit = area.materials.some((m) => !!kitBasketFields(m).isBundle && !m.install);
+      const unitItems: BasketItem[] = [];
+      let firstUnit: { key: string; tpl: string | null } | null = null;
+      for (const u of area.acUnits) {
+        // Saved units keep their id as key so their existing install lines stay linked.
+        const unitKey = u.fromSaved ? u.id : `${u.product.id}-${rid()}`;
+        unitItems.push({ instanceId: unitKey, product: u.product, quantity: u.quantity });
+        if (u.fromSaved) continue;
+        const plan = planStandardInstall(u.product, installTemplates, bundles as any, products);
+        if (!plan.template) continue;
+        firstUnit = firstUnit || { key: unitKey, tpl: plan.template.id };
+        if (plan.kitBundle && !hasKit) {
+          const km = buildKitMaterial(plan.kitBundle as any, plan.kitLength);
+          unitItems.push({
+            instanceId: `${unitKey}-kit`, product: km.product, quantity: km.pricingMode === "unit" ? km.unitQuantity : 1,
+            ...(km.pricingMode === "length" ? { length: km.adjustedLength } : {}), ...kitBasketFields(km),
+            install: { unitKey, role: "piping_kit", template_id: plan.template.id },
+          });
+        }
+        for (const l of plan.lines) unitItems.push(installBasketItem(l, unitKey, plan.template.id));
+        if (plan.notes.length) toast.info(plan.notes.join(". "));
+      }
       const allItems: BasketItem[] = [
-        ...area.acUnits.map((u) => ({
-          instanceId: `${u.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          product: u.product,
-          quantity: u.quantity,
-        })),
-        ...area.materials.map((m) => ({
-          instanceId: `${m.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          product: m.product,
-          quantity: m.pricingMode === "unit" ? m.unitQuantity : 1,
-          ...(m.pricingMode === "length" ? { length: m.adjustedLength } : {}),
-          ...kitBasketFields(m),
-        })),
+        ...unitItems,
+        ...area.materials.map((m) => {
+          const kf = kitBasketFields(m);
+          return {
+            instanceId: `${m.product.id}-${rid()}`,
+            product: m.product,
+            quantity: m.pricingMode === "unit" ? m.unitQuantity : 1,
+            ...(m.pricingMode === "length" ? { length: m.adjustedLength } : {}),
+            ...kf,
+            // An existing wizard kit becomes the (single) unit's install kit.
+            ...(m.install ? { install: m.install } : kf.isBundle && firstUnit && area.acUnits.length === 1 ? { install: { unitKey: firstUnit.key, role: "piping_kit" as const, template_id: firstUnit.tpl } } : {}),
+          };
+        }),
         ...area.consumables.map((c) => ({
           instanceId: `${c.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           product: c.product,
           quantity: c.quantity,
+          ...(c.install ? { install: c.install } : {}),
         })),
       ];
       if (allItems.length > 0) {
@@ -317,7 +346,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
     setCurrentStep(0);
     setAreas([]);
     toast.success("Quote areas added successfully");
-  }, [areas, onSave]);
+  }, [areas, onSave, installTemplates, bundles, products]);
 
   const stepContent = useMemo(() => {
     const props = { areas, onAreasChange: setAreas };

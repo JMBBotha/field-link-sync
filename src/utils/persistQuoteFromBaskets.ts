@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { basketsToQuoteState } from "@/utils/quoteBasketTotals";
 import { computeQuoteTotals, QUOTE_VAT_RATE } from "@/utils/quoteTransformers";
 import { isLabourItem, LABOUR_ITEM_TYPE } from "@/lib/labour";
+import { remapInstallUnitIds } from "@/lib/installTemplates";
 import type { Basket } from "@/components/catalog/QuoteBuilderTab";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -61,13 +62,16 @@ export async function persistQuoteFromBaskets(
   }
 
   // 3. Re-insert items.
-  const itemRows = items.map((it, i) => {
+  // New ids up front so install tags can point at their unit's NEW row id.
+  const newIdOf = new Map(items.map((it) => [it.id, crypto.randomUUID()]));
+  const itemRows = remapInstallUnitIds(items.map((it, i) => {
     const productId =
       it.product_id && UUID_RE.test(it.product_id) &&
       (!validProductIds || validProductIds.has(it.product_id))
         ? it.product_id
         : null;
     return {
+      id: newIdOf.get(it.id)!,
       quote_id: quoteId,
       area_id: it.area_id ? areaIdMap.get(it.area_id) ?? null : null,
       parent_item_id: null,
@@ -87,7 +91,7 @@ export async function persistQuoteFromBaskets(
       source: "builder",
       supplier: it.supplier,
     };
-  });
+  }), newIdOf);
   if (itemRows.length) {
     const { error } = await supabase.from("quote_items").insert(itemRows as never);
     if (error) throw error;
