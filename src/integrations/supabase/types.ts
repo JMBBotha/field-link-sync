@@ -7230,6 +7230,7 @@ export type Database = {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
         Returns: number
       }
+      can_access_receipt_folder: { Args: { _folder: string }; Returns: boolean }
       check_customer_duplicates: {
         Args: {
           p_address?: string
