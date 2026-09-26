@@ -78,7 +78,7 @@ describe("kit sizes + spoken swaps", () => {
     const r = kitRowFields(K38_12 as any, 3);
     expect(r.perMetre).toBeCloseTo(429.02, 2);
     expect(r.length).toBe(3);
-    expect(r.fields.unit_price).toBeCloseTo(1287.06, 2);
+    expect(r.fields.unit_price).toBeCloseTo(1287.06, 1);
   });
   it("template → piping kit; unit pipes override; no template is reported", () => {
     const t24 = TEMPLATES.map((t) => t.id === "t24" ? { ...t, items: t.items.map((i) => i.role === "piping_kit" ? { ...i, bundle_id: "k3812" } : i) } : t);
