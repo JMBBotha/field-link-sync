@@ -120,3 +120,42 @@ export const chipLabel = (i: RItem, areas: RArea[]) => {
   const a = areas.find((x) => x.id === i.area_id)?.name;
   return `${i.item_name}${a ? ` · ${a}` : ""}`;
 };
+
+const ORD: Record<string, number> = { first: 0, "1st": 0, second: 1, "2nd": 1, third: 2, "3rd": 2, fourth: 3, "4th": 3, fifth: 4, "5th": 4, last: -1 };
+const GENERIC = /^(general|default|unassigned|this|that|it|the|this one|that one|)$/;
+
+/**
+ * Area words the model sends for "rename it to Lounge": exact/fuzzy name,
+ * ordinals ("1st area", "second room"), or generic words ("General",
+ * "this area", "the room") which mean the only area. Null when unresolved.
+ */
+export function resolveAreaWord<A extends RArea>(areas: A[], ref?: string | null): A | null {
+  const hit = findAreaFuzzy(areas, ref);
+  if (hit) return hit;
+  const w = String(ref || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\b(the|my|area|room)\b/g, " ").replace(/\s+/g, " ").trim();
+  const o = w.match(/^(first|1st|second|2nd|third|3rd|fourth|4th|fifth|5th|last)(?:\s+one)?$/) || w.match(/^(?:number\s+)?(\d)$/);
+  if (o) {
+    const i = o[1] in ORD ? ORD[o[1]] : Number(o[1]) - 1;
+    return (i === -1 ? areas[areas.length - 1] : areas[i]) || null;
+  }
+  if (GENERIC.test(w) && areas.length === 1) return areas[0];
+  return null;
+}
+
+export type RenameDecision<A> =
+  | { kind: "rename"; area: A }
+  | { kind: "create" }
+  | { kind: "choices"; message: string; choices: { label: string; action: string; args: Record<string, unknown> }[] };
+
+/** rename_area never dead-ends: resolve → only area → create when none → chips. */
+export function renameAreaDecision<A extends RArea>(areas: A[], ref: unknown, newName: string): RenameDecision<A> {
+  const a = resolveAreaWord(areas, String(ref ?? ""));
+  if (a) return { kind: "rename", area: a };
+  if (areas.length === 1) return { kind: "rename", area: areas[0] };
+  if (!areas.length) return { kind: "create" };
+  return {
+    kind: "choices",
+    message: `Which room should become ${newName}? You have: ${areas.map((x) => x.name).join(", ")}.`,
+    choices: areas.map((x) => ({ label: x.name, action: "rename_area", args: { area: x.name, new_name: newName } })),
+  };
+}

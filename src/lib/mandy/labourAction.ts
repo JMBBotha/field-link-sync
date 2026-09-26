@@ -1,6 +1,7 @@
 import { findAreaLabour, isLabourItem, planLabour, snapHours } from "@/lib/labour";
 import type { MandyResult } from "@/lib/mandy/actions";
 import { findAreaFuzzy } from "@/lib/mandy/itemResolve";
+import { parseLabourHours } from "@/lib/mandy/labourParse";
 
 /** 'R2 040' when whole, 'R2 040,50' otherwise (space thousands). */
 export function spokenRand(n: number): string {
@@ -92,10 +93,24 @@ export function buildRemoveLabour(
 }
 
 /** set_labour_hours(area, hours?, rate?) — create or update that area's Labour row. */
-export async function runSetLabourHours(d: Deps, args: Record<string, unknown>): Promise<MandyResult> {
-  const hasHours = args.hours != null && args.hours !== "";
+export async function runSetLabourHours(d: Deps, args0: Record<string, unknown>): Promise<MandyResult> {
+  const { __utterance, ...args } = args0;
+  let hasHours = args.hours != null && args.hours !== "";
   const hasRate = args.rate != null && Number(args.rate) > 0;
-  if (!hasHours && !hasRate) return { ok: false, message: "Tell me how many hours." };
+  if (!hasHours && !hasRate) {
+    // The model dropped the number: read it from what the user actually said.
+    const h = parseLabourHours(__utterance);
+    if (h != null) { args.hours = h; hasHours = true; }
+    else {
+      const a = args.area ? findAreaFuzzy(d.areas, String(args.area)) : d.areas.length === 1 ? d.areas[0] : null;
+      const mode = args.mode === "set" ? "set" : "add";
+      return {
+        ok: true,
+        message: `How many hours of labour should I ${mode === "add" ? "add to" : "set for"} ${a?.name || "this quote"}?`,
+        choices: [1, 1.5, 2, 3].map((n) => ({ label: `${n} h`, action: "set_labour_hours", args: { ...(a ? { area: a.name } : args.area ? { area: args.area } : {}), mode, hours: n } })),
+      };
+    }
+  }
   if (hasHours && !(Number(args.hours) >= 0)) return { ok: false, message: "Tell me how many hours." };
   const mode: "add" | "set" = !hasHours || args.mode === "set" ? "set" : "add";
   const n = lc(String(args.area || ""));

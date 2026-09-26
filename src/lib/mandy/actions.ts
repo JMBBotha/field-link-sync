@@ -76,7 +76,7 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     parameters: { type: "object", properties: {
       op: { type: "string", enum: ["kit_length", "kit_swap", "bracket", "set_qty", "add_bend", "remove_roles"], description: "Edit type" },
       sizes: { type: "array", items: { type: "string" }, description: "Copper sizes for kit_swap, e.g. ['3/8','1/2']" },
-      metres: { type: "number", description: "Kit length in metres (kit_length)" },
+      metres: { type: "number", description: "Metres: kit length (kit_length), or trunking/drain metres for set_qty when the user said metres (converted to lengths)" },
       size: { type: "string", enum: ["450", "550", "650"], description: "Bracket size" },
       flatback: { type: "boolean", description: "Flatback bracket" },
       role: { type: "string", enum: ["trunking_main", "trunking_endcap", "trunking_small", "drain_pipe", "drain_bend"], description: "Role for set_qty" },
@@ -160,6 +160,10 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
   remove_labour: {
     description: "Remove the labour row from an area ('remove the labour from bedroom 1'), or every labour row with all=true ('remove all the labour'). Always an on-screen Confirm card. Never use remove_item for labour.",
     parameters: { type: "object", properties: { area: str("Area name"), all: { type: "boolean", description: "Remove labour from every area" } }, additionalProperties: false },
+  },
+  read_install: {
+    description: "Read out a unit's standard install (kit size + length, bracket, trunking, drain, elbows). Read-only. Use for checking questions: 'is the bracket 650?', 'what kit is on it?', 'is that one length?'. NEVER edit_install for a question.",
+    parameters: { type: "object", properties: { item: str("Unit or area as spoken (optional)") }, additionalProperties: false },
   },
   read_labour: {
     description: "Read out the labour on the open quote (hours, rate and total per area). Read-only.",

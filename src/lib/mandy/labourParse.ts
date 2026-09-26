@@ -82,3 +82,24 @@ export function mapLabourTool(name: string, args: Record<string, any>): { action
   const rate = a.rate ?? a.hourly_rate ?? a.rate_per_hour;
   return { action: "set_labour_hours", args: { ...(a.area ? { area: a.area } : {}), ...(a.hours != null ? { hours: a.hours } : {}), ...(rate != null ? { rate } : {}), mode: a.mode === "add" ? "add" : "set" } };
 }
+
+/**
+ * Hours from a raw utterance when the model dropped the number.
+ * "add to hours labour" → 2 (STT "to/too" = two), "an hour and a half" → 1.5,
+ * "half an hour" → 0.5, "three hours" → 3. Rounded to 0.5; null when none.
+ */
+export function parseLabourHours(text: unknown): number | null {
+  const t = ` ${String(text || "").toLowerCase().replace(/[.!?,]+/g, " ").replace(/\s+/g, " ")} `;
+  const W = "(\\d+(?:[.,]\\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|an?)";
+  const snap = (v: number) => (Number.isFinite(v) && v > 0 ? Math.round(v * 2) / 2 : null);
+  let m: RegExpMatchArray | null;
+  if ((m = t.match(new RegExp(`\\b${W}\\s+(?:hours?\\s+)?and\\s+a\\s+half\\b`)))) return snap(toNum(m[1]) + 0.5);
+  if (/\bhalf\s+an?\s+hour\b/.test(t)) return 0.5;
+  if ((m = t.match(new RegExp(`\\b${W}\\s*(?:hours?|hrs?|h)\\b`)))) {
+    if (/^(to|too)$/.test(m[1])) return 2;
+    return snap(toNum(m[1]));
+  }
+  if (/\b(?:add|plus|put)\s+(?:to|too)\s+(?:hours?|hrs?)\b/.test(t)) return 2;
+  if ((m = t.match(/\b(\d+(?:[.,]\d+)?)\b/))) return snap(toNum(m[1]));
+  return null;
+}
