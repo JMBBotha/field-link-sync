@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { WavRecorder } from "@/lib/wavRecorder";
 import { getAssistantContext, setAssistantContext } from "@/stores/assistantContextStore";
-import { getMandyAudioContext, getMandyMicStream, playOnSharedAudio, releaseMandyMic, stopSharedAudio, unlockMandyVoiceFromTap } from "@/lib/mandy/voiceUnlock";
+import { armUtteranceEnd, getMandyAudioContext, getMandyMicStream, playOnSharedAudio, releaseMandyMic, stopSharedAudio, unlockMandyVoiceFromTap, type SharedPlayback } from "@/lib/mandy/voiceUnlock";
 import { useMandyDock, useMandyRegistry, useRegisterMandyActions } from "@/lib/mandy/registry";
 import { CONFIRM_REQUIRED, toolsFor, type MandyChoice, type MandyResult } from "@/lib/mandy/actions";
 import { routeVoiceCommand, gateRoute } from "@/lib/mandy/router";
