@@ -15,7 +15,7 @@ export function useQuoteBuilderProducts() {
           id, product_code, short_name, brand, product_category, category,
           cost_excl_vat, cost_incl_vat, cost_price, default_markup_percent,
           selling_price, description, is_pinned, pin_order, price_per_metre,
-          sold_in_length, unit_length, pipe_size, is_material_favorite,
+          sold_in_length, unit_length, pipe_size, pipe_liquid, pipe_gas, is_material_favorite,
           suggested_consumables, pack_qty, supplier_discount_percent,
           markup_percent, btu_rating, pdf_upload_id,
           unit_type, price_per_unit_qty, price_per_unit_label,

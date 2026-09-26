@@ -84,7 +84,7 @@ export default function QuoteQuickEditor({
       const allowPromise = fetchVisualCatalogAllowlist();
       const { data, error } = await (supabase.from("supplier_products") as any)
         .select(
-          "id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, ai_sales_description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, pack_qty, default_markup_percent, btu_rating, pdf_upload_id, suppliers(name, supplier_type)",
+          "id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, ai_sales_description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, pipe_liquid, pipe_gas, is_material_favorite, pack_qty, default_markup_percent, btu_rating, pdf_upload_id, suppliers(name, supplier_type)",
         )
         .or("archived.is.null,archived.eq.false")
         .limit(2000);
