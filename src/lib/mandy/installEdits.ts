@@ -127,7 +127,7 @@ export async function runInstallEdit(d: InstallDeps, args0: InstallOp & { unit_i
     const p = code && live(code);
     if (!p) return { ok: false, message: `${code || ROLE_LABEL[role]} is not in the active price books — nothing was changed.` };
     const { unitSell: _u, ...f } = catalogLineFields(p, qty);
-    const row = await d.addItem({ ...f, metadata: { ...f.metadata, ...tag(role) }, area_id: unit.area_id ?? null, parent_item_id: null, is_bundle: false, item_type: "product", sort_order: sortAfter, source: "mandy_voice", total_price: null, length: null, notes: null });
+    const row = await d.addItem({ ...f, metadata: { ...f.metadata, ...tag(role) }, area_id: unit.area_id ?? null, parent_item_id: null, is_bundle: false, item_type: "product", sort_order: sortAfter, source: "mandy_voice", total_price: (f as any).total_price ?? null, length: null, notes: null });
     if (!row) return { ok: false, message: `Couldn't add ${ROLE_LABEL[role]} — nothing was changed.` };
     return done(`Added ${installLineLabel(row)} to ${unit.item_name}'s install, ${spokenRand((f as any).total_price ?? qty * f.unit_price)}.`);
   };

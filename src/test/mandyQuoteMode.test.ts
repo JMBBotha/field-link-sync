@@ -79,7 +79,7 @@ describe("Mandy quote mode: plan → matched → breakdown → write", () => {
     expect(unitLine.meta.kit_length_m).toBe(5);
     expect(unitLine.meta.kit_name).toBe("18K PIPING KIT");
     expect(trunk.product?.product_code).toBe("TRUNK01");
-    expect(trunk.quantity).toBe(2);
+    expect(trunk.quantity).toBe(6); // 2 lengths = 6 m (trunking per metre)
     expect(trunk.meta.install_of).toBe(unitLine.id);
 
     const rows: any[] = [];
