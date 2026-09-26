@@ -349,6 +349,7 @@ export default function MandyDock() {
       if (exitQuote) { useMandyDock.getState().setMode("default"); final = "Quote mode off."; }
       const scene = sceneOn && !exitQuote;
       if (scene) {
+        planTurn = true;
         const staleMsg = staleWriteRefusal("quote_scene", useBuildStatus.getState().stale);
         if (staleMsg) final = staleMsg;
         else { const r = await execute("quote_scene", { transcript: t }); results.push(r); final = r.message; }
