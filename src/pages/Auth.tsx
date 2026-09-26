@@ -76,13 +76,25 @@ const Auth = () => {
     redirectUser(session.user.id);
   }, [session, navigate, nextPath]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
+    // Read straight from the DOM so password-manager autofill (which may not
+    // fire React onChange) still submits the real values.
+    const form = e.currentTarget;
+    const emailEl = form.elements.namedItem("email") as HTMLInputElement | null;
+    const passwordEl = form.elements.namedItem("password") as HTMLInputElement | null;
+    const nameEl = form.elements.namedItem("fullName") as HTMLInputElement | null;
+    const emailValue = (emailEl?.value ?? email).trim();
+    const passwordValue = passwordEl?.value ?? password;
+    const fullNameValue = (nameEl?.value ?? fullName).trim();
+    if (emailValue !== email) setEmail(emailValue);
+    if (passwordValue !== password) setPassword(passwordValue);
+
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: emailValue, password: passwordValue });
         if (error) throw error;
         toast({ title: "Welcome back!", description: "You've successfully logged in." });
       } else {
@@ -90,10 +102,10 @@ const Auth = () => {
           ? `${window.location.origin}/login?next=${encodeURIComponent(nextPath)}`
           : `${window.location.origin}/`;
         const { error } = await supabase.auth.signUp({
-          email,
-          password,
+          email: emailValue,
+          password: passwordValue,
           options: {
-            data: { full_name: fullName },
+            data: { full_name: fullNameValue },
             emailRedirectTo,
           },
         });
@@ -204,7 +216,9 @@ const Auth = () => {
               <Label htmlFor="fullName" className="text-white/90 text-sm">Full Name</Label>
               <Input
                 id="fullName"
+                name="fullName"
                 type="text"
+                autoComplete="name"
                 placeholder="John Doe"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
@@ -217,7 +231,10 @@ const Auth = () => {
             <Label htmlFor="email" className="text-white/90 text-sm">Email</Label>
             <Input
               id="email"
+              name="email"
               type="email"
+              autoComplete="username"
+              inputMode="email"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -229,7 +246,9 @@ const Auth = () => {
             <Label htmlFor="password" className="text-white/90 text-sm">Password</Label>
             <Input
               id="password"
+              name="password"
               type="password"
+              autoComplete={isLogin ? "current-password" : "new-password"}
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
