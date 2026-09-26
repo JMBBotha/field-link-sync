@@ -108,15 +108,16 @@ Deno.serve(async (req) => {
         const since = new Date(Date.now() - 14 * 864e5).toISOString();
         const { data: leads } = await sb
           .from("leads")
-          .select("id, customer_id, phone, lead_status")
+          .select("id, customer_id, phone, customer_phone, lead_status")
           .eq("company_id", call.company_id)
           .is("deleted_at", null)
           .not("lead_status", "in", "(completed,lost,cancelled)")
           .gte("created_at", since)
-          .ilike("phone", `%${tail.slice(-4)}%`)
+          .or(`phone.ilike.%${tail.slice(-4)}%,customer_phone.ilike.%${tail.slice(-4)}%`)
           .order("created_at", { ascending: false })
           .limit(20);
-        const hit = (leads ?? []).find((l: any) => last9(String(l.phone ?? "")) === tail);
+        const hit = (leads ?? []).find((l: any) =>
+          last9(String(l.phone ?? "")) === tail || last9(String(l.customer_phone ?? "")) === tail);
         if (hit) { leadId = hit.id; customerId = customerId ?? hit.customer_id ?? null; }
       }
     }
@@ -169,6 +170,7 @@ Deno.serve(async (req) => {
 
     // Email
     let emailStatus: "sent" | "failed" | "skipped" = "skipped";
+    let emailError: string | null = null;
     if (emailTo && cfg.email_webhook_token) {
       const who = call.caller_name || call.caller_phone || "Unknown caller";
       const when = new Date(call.started_at || call.created_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle: "medium", timeStyle: "short" });
@@ -207,11 +209,21 @@ ${call.summary ? `<h3 style="margin:16px 0 6px;font-size:15px;">Vapi summary</h3
           body: JSON.stringify({ to: emailTo, subject, html }),
         });
         emailStatus = r.ok ? "sent" : "failed";
-        if (!r.ok) console.error("email failed", r.status, await r.text());
-      } catch (e) { emailStatus = "failed"; console.error("email error", e); }
+        if (!r.ok) {
+          const body = await r.text();
+          emailError = `Email failed ${r.status}: ${body}`.slice(0, 2000);
+          console.error("email failed", r.status, body);
+        }
+      } catch (e) {
+        emailStatus = "failed";
+        emailError = `Email error: ${String((e as Error)?.message ?? e)}`.slice(0, 2000);
+        console.error("email error", e);
+      }
     }
+    const upd: Record<string, unknown> = { email_status: emailStatus, email_sent_at: emailStatus === "sent" ? new Date().toISOString() : null };
+    if (emailError) upd.error = saved.error ? `${saved.error}\n${emailError}` : emailError;
     const { data: final } = await sb.from("call_reports")
-      .update({ email_status: emailStatus, email_sent_at: emailStatus === "sent" ? new Date().toISOString() : null })
+      .update(upd)
       .eq("id", saved.id).select().single();
 
     return json(200, final ?? saved);
