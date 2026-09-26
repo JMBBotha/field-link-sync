@@ -1043,12 +1043,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       let depositChipHtml = "";
       if (depInvoice && depState) {
         const isPaid = depState === "paid";
-        const chipText =
-          depState === "paid"
-            ? "Deposit paid"
-            : depState === "partial"
-              ? `Partial · ${formatRand(getDepositRemaining(depInvoice) ?? 0)}`
-              : "Deposit due";
+        const chipText = depositChipLabel(depInvoice) ?? "";
         const chipBg = isPaid ? "#d1fae5" : "#fef3c7";
         const chipBorder = isPaid ? "#6ee7b7" : "#fde68a";
         const chipColor = isPaid ? "#047857" : "#b45309";
@@ -1421,13 +1416,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       if (depInvoice && depState && isVisible) {
         depDot.style.display = "block";
         depDot.style.backgroundColor = depState === "paid" ? "#10b981" : "#f59e0b";
-        const remaining = getDepositRemaining(depInvoice);
-        depDot.title =
-          depState === "paid"
-            ? "Deposit paid"
-            : depState === "partial"
-              ? `Partial · ${formatRand(remaining ?? 0)}`
-              : "Deposit due";
+        depDot.title = depositChipLabel(depInvoice) ?? "";
       } else {
         depDot.style.display = "none";
       }
