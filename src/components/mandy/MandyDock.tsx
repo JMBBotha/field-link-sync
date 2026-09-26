@@ -32,6 +32,7 @@ import { useMandyGo } from "@/lib/mandy/go";
 import { formatForSpeech, formatReplyText } from "@/lib/mandy/speech";
 import { useWorkflowMandyActions } from "@/components/mandy/MandyWorkflowActions";
 import { greetThenListen } from "@/lib/mandy/greetThenListen";
+import { greetingFor } from "@/lib/mandy/greetingFor";
 import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
 import { createDraftQuoteForCustomer } from "@/lib/createDraftQuote";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
@@ -468,6 +469,21 @@ export default function MandyDock() {
   const openRef = useRef(open);
   openRef.current = open;
   const greetSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  /** Personalised greeting text + cache key (user id + text), resolved once per user. */
+  const greetingRef2 = useRef<{ userId: string; text: string; key: string } | null>(null);
+  const resolveGreeting = async (): Promise<{ text: string; key: string }> => {
+    const uid = user?.id ?? "anon";
+    if (greetingRef2.current?.userId === uid) return greetingRef2.current;
+    let profile: { first_name?: string | null; full_name?: string | null } | null = null;
+    if (user?.id) {
+      const { data } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+      profile = data;
+    }
+    const text = greetingFor(profile, user?.user_metadata as Record<string, unknown> | null);
+    const resolved = { userId: uid, text, key: `${uid}:${text}` };
+    greetingRef2.current = resolved;
+    return resolved;
+  };
   const beginSession = async () => {
     if (greetingRef.current || recRef.current || busyRef.current) return; // double-start guard
     const ctx = unlockMandyAudio(); // inside the tap
