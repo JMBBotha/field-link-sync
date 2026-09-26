@@ -37,6 +37,10 @@ export interface CatalogMatch {
   options: CatalogHit[];
   /** All scored hits, best first. */
   ranked: CatalogHit[];
+  /** Quantity words heard in the query (shared rule: 'x'/'by', spoken numbers, 'N lengths'). */
+  qty: number | null;
+  lengthM: number | null;
+  lengths: boolean;
 }
 
 export const STRONG_SCORE = 40;
@@ -47,12 +51,35 @@ const NUM_WORDS: Record<string, number> = {
   "thirty six": 36, "thirty-six": 36, "forty eight": 48, "forty-eight": 48, sixty: 60,
 };
 
+const SMALL_NUMS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17,
+  eighteen: 18, nineteen: 19, twenty: 20,
+};
+
+/** 'a couple' → 2, 'three' → 3, '2 and a half' → 2.5, 'half a metre' → 0.5 metre. Leaves 'twelve thousand' alone. */
+export function spokenNumbersToDigits(text: string): string {
+  let s = ` ${String(text || "").toLowerCase()} `;
+  s = s.replace(/\ba couple(?: of)?\b/g, " 2 ").replace(/\bcouple of\b/g, " 2 ");
+  for (const [w, n] of Object.entries(SMALL_NUMS).sort((a, b) => b[0].length - a[0].length)) {
+    s = s.replace(new RegExp(`\\b${w}\\b(?!\\s*(?:thousand|k\\b))`, "g"), String(n));
+  }
+  s = s
+    .replace(/\b(\d+)\s+and\s+a\s+half\b/g, (_m, n) => String(Number(n) + 0.5))
+    .replace(/\bhalf\s+(?:a\s+)?(metre|meter|m|length)\b/g, "0.5 $1");
+  return s.replace(/\s+/g, " ").trim();
+}
+
 /** '12K' | '12 k' | '12000' | '12 000 BTU' | 'twelve thousand' → '12k'; 'inverter' → 'inv'. */
 export function normaliseSpokenProduct(q: string): string {
   let s = ` ${String(q || "").toLowerCase()} `;
   for (const [w, n] of Object.entries(NUM_WORDS).sort((a, b) => b[0].length - a[0].length)) {
     s = s.replace(new RegExp(`\\b${w}\\s*(?:thousand|k)\\b`, "g"), `${n}k`);
   }
+  s = ` ${spokenNumbersToDigits(s)} `
+    .replace(/\bbends?\b/g, "elbow")
+    .replace(/\belbows\b/g, "elbow")
+    .replace(/(\d(?:\/\d+)?)\s*(?:by|x|×)\s*(\d)/g, "$1 x $2");
   s = s
     .replace(/\b(\d{1,2})[ ,.]?000\b/g, "$1k")
     .replace(/\b(\d{1,2})\s+k\b/g, "$1k")
@@ -62,6 +89,41 @@ export function normaliseSpokenProduct(q: string): string {
     .replace(/\s+/g, " ")
     .trim();
   return s;
+}
+
+export interface SpokenQty {
+  /** Query with the quantity / length words removed. */
+  query: string;
+  qty: number | null;
+  lengthM: number | null;
+  /** 'N lengths' was said → qty is a count of supplier lengths. */
+  lengths: boolean;
+}
+
+/**
+ * Pull quantity words out of a NORMALISED query: '2 x 3m' → qty 2, 3 m;
+ * '3 lengths of trunking' → qty 3 (lengths); '5 m drain pipe' → 5 m; '2 elbow' → qty 2.
+ * BTU sizes ('12k') are never read as a quantity.
+ */
+export function parseSpokenQty(normalised: string): SpokenQty {
+  let s = ` ${normalised} `;
+  let qty: number | null = null, lengthM: number | null = null, lengths = false;
+  const num = "(\\d+(?:\\.\\d+)?)";
+  const M = "(?:m|metres?|meters?|mtrs?)";
+  let m = s.match(new RegExp(`\\b${num}\\s*x\\s*${num}\\s*${M}\\b`));
+  if (m) { qty = Number(m[1]); lengthM = Number(m[2]); s = s.replace(m[0], " "); }
+  m = s.match(new RegExp(`\\b${num}\\s*lengths?\\b`));
+  if (m) { qty = Number(m[1]); lengths = true; s = s.replace(m[0], " "); }
+  else if (/\blengths?\b/.test(s)) { lengths = true; s = s.replace(/\blengths?\b/g, " "); }
+  m = s.match(new RegExp(`\\b${num}\\s*${M}\\b`));
+  if (m && lengthM == null) { lengthM = Number(m[1]); s = s.replace(m[0], " "); }
+  s = s.replace(/\s+/g, " ").trim();
+  m = s.match(/^(\d+(?:\.\d+)?)(?:\s*x)?\s+(?=[a-z])/);
+  if (m && qty == null) { qty = Number(m[1]); s = s.slice(m[0].length); }
+  m = s.match(/\s(?:x|times)\s*(\d+)$/);
+  if (m && qty == null) { qty = Number(m[1]); s = s.slice(0, m.index); }
+  s = s.replace(/^(?:of|x)\s+/, "").replace(/\s+/g, " ").trim();
+  return { query: s, qty, lengthM, lengths };
 }
 
 const KIT_INTENT = /\b(piping|pipe|install(?:ation)?)\s+(bundle|kit)s?\b|\bkit\b|\bbundle\b/;
@@ -116,7 +178,8 @@ export function matchCatalog(
   kits: KitLike[] = [],
   ctx: { areaBtu?: number | null } = {},
 ): CatalogMatch {
-  const q = normaliseSpokenProduct(query);
+  const spokenQ = parseSpokenQty(normaliseSpokenProduct(query));
+  const q = spokenQ.query;
   let ranked: CatalogHit[];
   if (KIT_INTENT.test(q)) {
     const want = sizeOf(q) ?? (ctx.areaBtu ? Math.round(ctx.areaBtu / 1000) : null);
@@ -133,7 +196,7 @@ export function matchCatalog(
   ranked.sort((a, b) => b.score - a.score);
   const [a, b] = ranked;
   const clear = !!a && a.score >= STRONG_SCORE && (!b || a.score - b.score >= CLOSE_GAP);
-  return { query: q, pick: clear ? a : null, options: clear ? [] : ranked.slice(0, 3), ranked };
+  return { query: q, pick: clear ? a : null, options: clear ? [] : ranked.slice(0, 3), ranked, qty: spokenQ.qty, lengthM: spokenQ.lengthM, lengths: spokenQ.lengths };
 }
 
 const rand = (n: number) => `R ${n.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
