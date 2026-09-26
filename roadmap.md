@@ -40,3 +40,9 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] Mandy mobile: one tap greets + listens (audio/mic unlocked in the tap), real-playback detection, hands-free re-listen after speechSynthesis fallback.
 - [x] Mandy: speaks 12% faster (pitch kept); labour by voice pre-routed without the model, plain spoken result, honest 'I didn't change anything' guard, failed quote saves reported. Live check on Q-2026-0014 pending (quote changed since brief).
 - [x] Mandy labour: rate-only edits, remove_labour (Confirm + undo), read_labour, labour rows in Mandy's context, invented labour tools mapped, remove button on the labour row. Live check on Q-2026-0014 done and reversed.
+
+## Standard Install (open)
+- [ ] Live 12K/18K test + voice matrix on TEST quote Q-2026-0014 with exact restore (not yet run)
+- [ ] Clickable builder: install lines aren't linked to their unit after a builder save (the save rewrites every row)
+- [ ] Area wizard (AreaQuoteBuilderInline) not yet using the standard install
+- [ ] Admin template editor (skipped)
