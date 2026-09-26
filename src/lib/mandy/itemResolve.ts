@@ -26,7 +26,7 @@ export function normText(s: string, opts: { bareSizes?: boolean } = {}): string 
   let t = ` ${String(s || "").toLowerCase().replace(/[^a-z0-9/.\- ]+/g, " ").replace(/[-/]/g, " ")} `;
   t = t.replace(/\b(twenty four|thirty six|forty eight)\b/g, (m) => NUMS[m]);
   t = t.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|eighteen|twenty|thirty|sixty)\s+thousand\b/g, (_m, w) => `${NUMS[w]}000`);
-  t = t.replace(/\b(\d{1,2})\s?000\s*(btu)?\b/g, "$1k").replace(/\b(\d{1,2})\s*k\s*(btu)?\b/g, "$1k");
+  t = t.replace(/\b(\d{1,2})\s?000\b(?:\s*btu\b)?/g, "$1k").replace(/\b(\d{1,2})\s*k\b(?:\s*btu\b)?/g, "$1k");
   t = t.replace(/\b0(\d)k\b/g, "$1k");
   t = t.replace(/\binverter\b/g, "inv").replace(/\blabor\b/g, "labour").replace(/\bpipes?\b|\bpiping\b/g, "piping");
   if (opts.bareSizes) t = t.replace(/\b(\d{1,2})\b/g, (m, n) => (SIZES.has(n) ? `${n}k` : m));
