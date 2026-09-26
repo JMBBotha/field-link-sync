@@ -216,7 +216,9 @@ const Auth = () => {
               <Label htmlFor="fullName" className="text-white/90 text-sm">Full Name</Label>
               <Input
                 id="fullName"
+                name="fullName"
                 type="text"
+                autoComplete="name"
                 placeholder="John Doe"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
