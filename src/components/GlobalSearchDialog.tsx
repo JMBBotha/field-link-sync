@@ -97,7 +97,13 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
             .select("id, customer_id, label, address")
             .order("created_at", { ascending: false })
             .limit(ROW_LIMIT),
+          supabase
+            .from("quote_areas")
+            .select("id, quote_id, name, description, quotes!inner(quote_number, customer_name, reference_text, status)")
+            .neq("quotes.status", "superseded")
+            .limit(ROW_LIMIT),
         ]);
+      const quoteAreas = (await areasPromise) as any;
 
       // Surface failures instead of silently returning an empty source.
       Object.entries({ quotes, invoices, customers, leads, suppliers, proposals, maintenance, units, locations }).forEach(
