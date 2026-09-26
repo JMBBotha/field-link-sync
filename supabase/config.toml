@@ -94,3 +94,6 @@ verify_jwt = false
 
 [functions.twilio-whatsapp-webhook]
 verify_jwt = false
+
+[functions.call-report]
+verify_jwt = false
