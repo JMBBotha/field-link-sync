@@ -337,7 +337,7 @@ export default function MandyDock() {
       }
       // Deterministic single labour command: straight to set_labour_hours, no model.
       // A bare "cancel / clear / start over" only cancels a pending card; otherwise quote intents route.
-      const qi = !local ? parseQuoteIntent(t, { pendingCard: hadPendingCard }) : null;
+      const qi = !local && !parseInstallCommand(t) ? parseQuoteIntent(t, { pendingCard: hadPendingCard }) : null;
       if (qi?.action === "cancel_pending") final = "Cancelled — nothing was changed.";
       const lab = !local && !qi ? parseLabourIntent(t) : null;
       if (lab) {

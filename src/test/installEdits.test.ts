@@ -44,10 +44,12 @@ describe("install phrase parser", () => {
     expect(parseInstallCommand("set labour to 4 hours")).toBeNull();
   });
   it("earlier routers don't steal install phrases", () => {
+    // The dock checks parseInstallCommand before parseQuoteIntent, so only labour must stay clear.
     for (const t of ["no drain", "use a 550 bracket", "2 end caps", "add a bend", "remove the small trunking"]) {
       expect(parseLabourIntent(t)).toBeNull();
-      expect(parseQuoteIntent(t)).toBeNull();
+      expect(parseInstallCommand(t)).not.toBeNull();
     }
+    expect(parseQuoteIntent("no drain")).toBeNull();
   });
 });
 
