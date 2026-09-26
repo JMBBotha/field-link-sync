@@ -48,7 +48,7 @@ export const NEW_AREA_LABEL = "New area…";
 /** Mandy writes that get an undo snapshot. */
 export const UNDOABLE = new Set([
   "set_labour_hours", "add_area", "rename_area", "describe_area", "add_note", "add_item_to_area", "set_kit_length", "set_qty",
-  "set_line_price", "move_item", "duplicate_area", "remove_item", "remove_area", "remove_note", "edit_note",
+  "set_line_price", "move_item", "duplicate_area", "remove_item", "remove_labour", "remove_area", "remove_note", "edit_note",
 ]);
 /** "Added area X." → "added area X" (for "Undid added area X."). */
 export const undoLabel = (msg: string) => { const m = String(msg || "").trim().replace(/[.!]+$/, ""); return m.charAt(0).toLowerCase() + m.slice(1); };
@@ -85,6 +85,13 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
   const live = useRef<{ areas: QuoteArea[]; items: QuoteItem[] }>({ areas: ctx.areas, items: ctx.items });
   live.current = { areas: ctx.areas, items: ctx.items };
   const S = () => live.current;
+
+  // Mandy sees the real labour rows (area, hours, rate, total) with every turn.
+  const labourCtx = labourSummary({ areas: ctx.areas, items: ctx.items });
+  useEffect(() => {
+    setAssistantContext({ open_quote_labour: labourCtx });
+    return () => setAssistantContext({ open_quote_labour: undefined });
+  }, [labourCtx]);
 
   useEffect(() => {
     setMandyQuoteStatus(ctx.meta?.status ?? "draft");
@@ -259,6 +266,15 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       const a = fresh?.areas.find((x) => lc(x.name) === lc(String(args.area || ""))) || (fresh?.areas.length === 1 ? fresh.areas[0] : null);
       return { ...r, verified: !!a && !!fresh && !!findAreaLabour(fresh.items as any[], a.id) };
     },
+
+    remove_labour: async (args) => {
+      if (ctx.meta?.status && ctx.meta.status !== "draft") return { ok: false, message: `This quote is ${ctx.meta.status}, so it's read-only.` };
+      const r = buildRemoveLabour({ areas: S().areas, items: S().items, deleteItem: g.deleteItem }, args, async () => { await refresh(); });
+      if (args.__plan && r.confirm) return r.confirm.run();
+      return r;
+    },
+
+    read_labour: async () => readLabour({ areas: S().areas, items: S().items }),
 
     add_area: async ({ name }) => {
       const n = String(name || "").trim();

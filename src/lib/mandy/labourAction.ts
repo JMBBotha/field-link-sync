@@ -82,7 +82,6 @@ export function buildRemoveLabour(
     await after?.();
     return { ok: true, message: `Removed labour from ${where}, ${spokenRand(total)}.`, data: { removed: pick.length, total } };
   };
-  if (args.__plan) return { ok: true, message: "", confirm: undefined, data: { run } } as any;
   return {
     ok: true,
     message: `Awaiting on-screen confirmation to remove labour from ${where}.`,
