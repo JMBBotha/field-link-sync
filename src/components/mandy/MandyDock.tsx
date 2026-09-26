@@ -31,6 +31,7 @@ import { touchedPatch } from "@/lib/mandy/pronouns";
 import { useMandyGo } from "@/lib/mandy/go";
 import { formatForSpeech, formatReplyText } from "@/lib/mandy/speech";
 import { useWorkflowMandyActions } from "@/components/mandy/MandyWorkflowActions";
+import { greetThenListen } from "@/lib/mandy/greetThenListen";
 import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
 import { createDraftQuoteForCustomer } from "@/lib/createDraftQuote";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
@@ -38,7 +39,7 @@ import { ADD_NEW_CLIENT_CHOICE, buildFindClientResult } from "@/lib/mandy/client
 import { latestQuoteQuery } from "@/lib/mandy/latestQuote";
 
 const MAX_STEPS = 4;
-type Phase = "idle" | "listening" | "hearing" | "working";
+type Phase = "idle" | "greeting" | "listening" | "hearing" | "working";
 type Msg = Record<string, unknown>;
 
 const QUOTE_TOOLS_PROBE = "read_quote_total";
@@ -129,6 +130,8 @@ function useGlobalMandyActions() {
 function useSpeaker(muted: boolean) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastRef = useRef<{ text: string; at: number } | null>(null);
+  const onEndedRef = useRef<(() => void) | null>(null);
+  const setOnReplyEnded = useCallback((fn: (() => void) | null) => { onEndedRef.current = fn; }, []);
   const [ttsCalls, setTtsCalls] = useState(0);
 
   const cancel = useCallback(() => {
@@ -147,7 +150,10 @@ function useSpeaker(muted: boolean) {
     const { data, error } = await supabase.functions.invoke("mandy-agent", { body: { action: "tts", text: t, client_build: BUILD_ID } });
     const d = data as { audio_base64?: string; mime?: string; spoken?: string } | null;
     if (!error && d?.audio_base64) {
-      if (!audioRef.current) audioRef.current = new Audio();
+      if (!audioRef.current) {
+        audioRef.current = new Audio();
+        audioRef.current.onended = () => onEndedRef.current?.();
+      }
       audioRef.current.src = `data:${d.mime || "audio/mpeg"};base64,${d.audio_base64}`;
       try { await audioRef.current.play(); return; } catch { /* fall through */ }
     }
@@ -159,7 +165,54 @@ function useSpeaker(muted: boolean) {
     }
   }, [cancel, muted]);
 
-  return { speak, cancel, ttsCalls };
+  return { speak, cancel, ttsCalls, setOnReplyEnded };
+}
+
+/* ───────────── greeting audio (Grok TTS, cached per page load) ───────────── */
+const GREETING = "Hi, what can I do for you?";
+let greetingBytes: Promise<ArrayBuffer> | null = null;
+let greetingBuffer: AudioBuffer | null = null;
+let mandyCtx: AudioContext | null = null;
+const ttsReady = () => typeof window !== "undefined";
+function prefetchGreeting(): Promise<ArrayBuffer> {
+  if (!greetingBytes) {
+    greetingBytes = (async () => {
+      const { data, error } = await supabase.functions.invoke("mandy-agent", { body: { action: "tts", text: GREETING, client_build: BUILD_ID } });
+      const b64 = (data as { audio_base64?: string } | null)?.audio_base64;
+      if (error || !b64) throw new Error("no greeting audio");
+      const bin = atob(b64); const out = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out.buffer;
+    })();
+    greetingBytes.catch(() => { greetingBytes = null; }); // retry on next open
+  }
+  return greetingBytes;
+}
+async function getGreetingBuffer(ctx: AudioContext): Promise<AudioBuffer> {
+  if (greetingBuffer) return greetingBuffer;
+  const bytes = await prefetchGreeting();
+  greetingBuffer = await ctx.decodeAudioData(bytes.slice(0));
+  return greetingBuffer;
+}
+/** Must be called inside the tap: creates/resumes the shared AudioContext. */
+function unlockMandyAudio(): AudioContext | null {
+  try {
+    const AC = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AC) return null;
+    if (!mandyCtx) mandyCtx = new AC();
+    if (mandyCtx.state === "suspended") void mandyCtx.resume();
+    return mandyCtx;
+  } catch { return null; }
+}
+/** Soft ~120 ms 880 Hz ready beep. */
+function playReadyBeep(ctx: AudioContext | null) {
+  if (!ctx) return;
+  try {
+    const t = ctx.currentTime, osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = "sine"; osc.frequency.value = 880;
+    g.gain.setValueAtTime(0.08, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    osc.connect(g); g.connect(ctx.destination); osc.start(t); osc.stop(t + 0.13);
+  } catch { /* no beep */ }
 }
 
 export default function MandyDock() {
@@ -176,11 +229,12 @@ export default function MandyDock() {
   const [muted, setMuted] = useState(false);
   const [choices, setChoices] = useState<MandyChoice[]>([]);
   const [confirm, setConfirm] = useState<{ summary: string; lines?: string[]; run: () => Promise<MandyResult> } | null>(null);
-  const { speak, cancel } = useSpeaker(muted);
+  const { speak, cancel, setOnReplyEnded } = useSpeaker(muted);
 
   const historyRef = useRef<Msg[]>([]);
   const busyRef = useRef(false);
   const recRef = useRef<WavRecorder | null>(null);
+  const voiceModeRef = useRef(false);
 
   const audit = (tool: string, args: unknown, r: MandyResult) => {
     void supabase.functions.invoke("mandy-agent", { body: { action: "audit", client_build: BUILD_ID, tool, args, result: { message: r.message, data: r.data ?? null }, ok: r.ok } });
@@ -528,7 +582,7 @@ export default function MandyDock() {
             className="relative h-9 w-9 shrink-0"
             disabled={phase === "hearing" || phase === "working" || phase === "greeting"}
             onClick={() => {
-              if (phase === "listening") { voiceModeRef.current = false; void stopListening(); }
+              if (phase === "listening") void stopListening();
               else void beginSession();
             }}
             aria-label={phase === "listening" ? "Stop" : "Talk"}
