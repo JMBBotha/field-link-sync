@@ -384,7 +384,7 @@ export default function MandyDock() {
           }
         }
       }
-      for (let step = 0; !local && !lab && !qi && step <= MAX_STEPS; step++) {
+      for (let step = 0; !local && !lab && !inst && !qi && step <= MAX_STEPS; step++) {
         const r0 = await routeVoiceCommand({
           transcript: step === 0 ? t : "",
           history: msgs,
