@@ -5,7 +5,7 @@
  * Clients never see this breakdown — labour rolls into the area total.
  */
 import { useState } from "react";
-import { Minus, Plus, Wrench } from "lucide-react";
+import { Minus, Plus, Trash2, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuoteContext } from "@/contexts/QuoteContext";
@@ -73,6 +73,11 @@ function LabourRow({ areaId, areaName, standardRate }: { areaId: string; areaNam
       <div className="w-28 text-right text-sm font-semibold tabular-nums">
         {line ? formatRand(Number(line.total_price) || 0) : "—"}
       </div>
+      {line && (
+        <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label={`Remove labour from ${areaName}`} onClick={() => void ctx.deleteItem(line.id)}>
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      )}
     </div>
   );
 }
