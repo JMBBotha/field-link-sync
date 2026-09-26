@@ -26,6 +26,8 @@ import { gateDecision, gatePlan, getMandyQuoteStatus } from "@/lib/mandy/gate";
 import { runPlanSteps, planReportText, type PlanStep } from "@/lib/mandy/quoteEdits";
 import type { PlanPreview } from "@/lib/mandy/planPreview";
 import { parseMultiEdit } from "@/lib/mandy/multiEdit";
+import { parseLabourCommand } from "@/lib/mandy/labourParse";
+import { guardClaimedChange } from "@/lib/mandy/honesty";
 import { honestMessage, routeReached, finalReplyFrom } from "@/lib/mandy/verify";
 import { BUILD_ID, staleWriteRefusal, useBuildStatus, checkForNewBuild } from "@/lib/buildInfo";
 import { touchedPatch } from "@/lib/mandy/pronouns";
@@ -168,6 +170,7 @@ function useSpeaker(muted: boolean) {
       const said = d?.spoken || t;
       const u = new SpeechSynthesisUtterance(said);
       const voices = window.speechSynthesis.getVoices();
+      u.rate = 1.1;
       u.voice = voices.find((v) => /en-ZA/i.test(v.lang)) || voices.find((v) => /en-GB/i.test(v.lang)) || null;
       armUtteranceEnd(u, said.length, end);
       window.speechSynthesis.speak(u);
@@ -312,6 +315,8 @@ export default function MandyDock() {
     let final = "";
     let lastUnverified = false;
     const results: MandyResult[] = [];
+    const writes: boolean[] = [];
+    const isWrite = (a?: string) => !!a && !/^(read_|show_|list_|open_|find_|search_|get_)/.test(a);
     try {
       // Deterministic multi-edit pre-parse: 2+ clauses → ONE local plan card, no model needed.
       const local = registry?.get("__preview_plan") ? parseMultiEdit(t) : null;
@@ -319,7 +324,23 @@ export default function MandyDock() {
         const staleMsg = staleWriteRefusal("run_plan", useBuildStatus.getState().stale);
         final = staleMsg || await preparePlan(local, 1);
       }
-      for (let step = 0; !local && step <= MAX_STEPS; step++) {
+      // Deterministic single labour command: straight to set_labour_hours, no model.
+      const lab = !local ? parseLabourCommand(t) : null;
+      if (lab) {
+        if (!registry?.get("set_labour_hours")) final = "Open the quote first, then say that again.";
+        else {
+          const staleMsg = staleWriteRefusal("set_labour_hours", useBuildStatus.getState().stale);
+          if (staleMsg) final = staleMsg;
+          else {
+            const r = await execute("set_labour_hours", lab as unknown as Record<string, any>);
+            if (r.choices?.length) setChoices(r.choices);
+            if (r.confirm) setConfirm(r.confirm);
+            results.push(r); writes.push(true);
+            final = finalReplyFrom(results, "");
+          }
+        }
+      }
+      for (let step = 0; !local && !lab && step <= MAX_STEPS; step++) {
         const r0 = await routeVoiceCommand({
           transcript: step === 0 ? t : "",
           history: msgs,
@@ -358,7 +379,7 @@ export default function MandyDock() {
           }
           if (r.choices?.length) setChoices(r.choices);
           if (r.confirm) setConfirm(r.confirm);
-          results.push(r);
+          results.push(r); writes.push(isWrite(r0.action));
           lastUnverified = r.verified === false;
           msgs.push(r0.assistantMessage!, {
             role: "tool",
@@ -382,6 +403,7 @@ export default function MandyDock() {
     }
     if (!final && results.length) final = finalReplyFrom(results, "");
     if (!final) final = "I couldn't finish that — nothing more was done.";
+    if (!local0Ref.current) final = guardClaimedChange(final, results, writes);
     if (lastUnverified && !/confirm it on screen/i.test(final)) final = honestMessage({ ok: true, message: final, verified: false });
     final = formatReplyText(final);
     historyRef.current = [...historyRef.current, { role: "user", content: t }, { role: "assistant", content: final }].slice(-8);
