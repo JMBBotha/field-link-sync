@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { CreditCard, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { publicCustomerUrl } from "@/lib/publicAppUrl";
+import { formatRand } from "@/utils/formatRand";
 
 interface PayfastPayButtonProps {
   invoiceId: string;
@@ -77,7 +78,7 @@ const PayfastPayButton = ({
         ) : (
           <CreditCard className="h-4 w-4 mr-2" />
         )}
-        Pay Now with PayFast — R {amount.toFixed(2)}
+        Pay Now with PayFast — {formatRand(amount)}
       </Button>
     </>
   );
