@@ -6,7 +6,8 @@
  * is never left waiting. Cancelled (dock closed) → never start the mic.
  */
 export interface GreetThenListenOpts {
-  speak: (onStarted: () => void) => Promise<void>;
+  /** shouldPlay() returns false once the greeting was abandoned (timeout/cancel) — check right before playing. */
+  speak: (onStarted: () => void, shouldPlay: () => boolean) => Promise<void>;
   startListening: () => void | Promise<void>;
   beep: () => void;
   isCancelled: () => boolean;
@@ -32,14 +33,16 @@ export async function greetThenListen(o: GreetThenListenOpts): Promise<GreetOutc
   const timeoutMs = o.timeoutMs ?? 4000;
   const maxGreetMs = o.maxGreetMs ?? 12000;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let abandoned = false;
+  const shouldPlay = () => !abandoned && !o.isCancelled();
   const result = await new Promise<"ended" | "fallback">((resolve) => {
     let started = false;
-    timer = setTimeout(() => { if (!started) resolve("fallback"); }, timeoutMs);
+    timer = setTimeout(() => { if (!started) { abandoned = true; resolve("fallback"); } }, timeoutMs);
     o.speak(() => {
       started = true;
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => resolve("ended"), maxGreetMs);
-    }).then(() => resolve("ended"), () => resolve("fallback"));
+    }, shouldPlay).then(() => resolve("ended"), () => resolve("fallback"));
   });
   if (timer) clearTimeout(timer);
   return listen(result === "ended" ? "listened" : "listened-fallback");
