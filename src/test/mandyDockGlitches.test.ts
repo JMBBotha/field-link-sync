@@ -114,9 +114,9 @@ describe("metres → lengths", () => {
 describe("count-role set_qty read-back", () => {
   it("end caps (no supplier length) → 'End cap: now 2, R59,04'", async () => {
     const unit = { id: "u", item_name: "Samsung 24K", area_id: "a", product_id: null };
-    const items = [unit, { id: "ec", item_name: "End Cap", item_number: "EC01", quantity: 1, unit_price: 29.52, total_price: 29.52, metadata: { install: { unit_item_id: "u", role: "end_cap", template_id: "t" } } }];
+    const items = [unit, { id: "ec", item_name: "End Cap", item_number: "EC01", quantity: 1, unit_price: 29.52, total_price: 29.52, metadata: { install: { unit_item_id: "u", role: "trunking_endcap", template_id: "t" } } }];
     const d = { items: items as any, areaName: () => "Lounge", liveProducts: [], addItem: vi.fn(), updateItem: vi.fn().mockResolvedValue(true), deleteItem: vi.fn(), bundles: [] };
-    const r = await runInstallEdit(d, { op: "set_qty", role: "end_cap", qty: 2 });
+    const r = await runInstallEdit(d, { op: "set_qty", role: "trunking_endcap", qty: 2 });
     expect(d.updateItem).toHaveBeenCalledWith("ec", { quantity: 2, total_price: 59.04 });
     expect(r.message).toBe("End cap: now 2, R59,04.");
   });
