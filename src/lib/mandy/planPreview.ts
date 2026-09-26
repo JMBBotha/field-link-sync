@@ -98,6 +98,7 @@ export async function previewPlan(steps0: PlanStep[], d: PreviewDeps): Promise<P
         kitByStep[n] = r.kit?.id;
         lines.push({ step, action, label: `${p.short_name} (${p.product_code}) → ${a.name}`, qty, price: Number(r.line?.unit_price) || 0 });
         if (r.kit) lines.push({ step, action: "auto_kit", label: `${r.kitName} (auto)`, qty: Number(r.kit.length) || 1, price: Number(r.kit.unit_price) || 0 });
+        for (const l of r.installLines) lines.push({ step, action: "auto_install", label: `${l.item_name} (install)`, qty: Number(l.quantity) || 1, price: Number(l.unit_price) || 0 });
         break;
       }
       case "set_kit_length": {
