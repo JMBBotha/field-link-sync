@@ -1,5 +1,13 @@
 import { findAreaLabour, planLabour, snapHours } from "@/lib/labour";
-import { fmtRand, type MandyResult } from "@/lib/mandy/actions";
+import type { MandyResult } from "@/lib/mandy/actions";
+
+/** 'R2 040' when whole, 'R2 040,50' otherwise (space thousands). */
+export function spokenRand(n: number): string {
+  const v = Math.round(Number(n || 0) * 100) / 100;
+  const [i, f] = v.toFixed(2).split(".");
+  const int = i.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return f === "00" ? `R${int}` : `R${int},${f}`;
+}
 
 interface Deps {
   areas: { id: string; name: string }[];
@@ -32,15 +40,21 @@ export async function runSetLabourHours(d: Deps, args: Record<string, unknown>):
   const plan = planLabour(line, hours, d.standardRate, args.rate != null ? Number(args.rate) : null);
   const fields = plan.fields;
     if (plan.needsRate || !fields) return { ok: false, message: "No labour rate set. Say the rate, or set the standard rate in Settings." };
-  if (line) await d.updateItem(line.id, fields);
-  else {
-    const sort = d.items.length ? Math.max(...d.items.map((i) => i.sort_order || 0)) + 1 : 0;
-    await d.addItem({ ...fields, area_id: area.id, sort_order: sort, source: "mandy_voice" });
+  try {
+    const res = line
+      ? await d.updateItem(line.id, fields)
+      : await d.addItem({ ...fields, area_id: area.id, sort_order: d.items.length ? Math.max(...d.items.map((i) => i.sort_order || 0)) + 1 : 0, source: "mandy_voice" });
+    if (res === null || res === false) return { ok: false, message: "Couldn't update the labour — nothing was changed." };
+  } catch {
+    return { ok: false, message: "Couldn't update the labour — nothing was changed." };
   }
-  const label = line?.description || line?.name || "Labour";
+  const rateTxt = args.rate != null ? ` at ${spokenRand(Number(args.rate))} an hour` : "";
+  const hrs = (h: number) => `${h} hour${h === 1 ? "" : "s"}`;
   return {
     ok: true,
-    message: `${label} (${area.name}) ${oldHours} h → ${fields.quantity} h, ${fmtRand(fields.total_price)} excl. VAT at ${fmtRand(fields.unit_price)}/h.`,
+    message: mode === "add"
+      ? `Added ${hrs(snapHours(Number(args.hours)))} labour to ${area.name}, ${spokenRand(fields.total_price)}${rateTxt}.`
+      : `Labour in ${area.name} set to ${hrs(fields.quantity)}, ${spokenRand(fields.total_price)}${rateTxt}.`,
     data: { old_hours: oldHours, new_hours: fields.quantity, total: fields.total_price, mode },
   };
 }
