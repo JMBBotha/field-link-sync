@@ -701,10 +701,10 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         if (i.isBundle && i.bundleItems && i.bundlePricingType === "p/meter") {
           const oldLength = i.length || 1;
           const ratio = length / oldLength;
-          const scaledBundleItems = i.bundleItems.map((si) => ({
+          const scaledBundleItems = scaleKitCountItems(i.bundleItems.map((si) => ({
             ...si,
             length: si.isLengthItem ? (si.length || 1) * ratio : si.length
-          }));
+          })) as any, length);
           return { ...i, length, bundleItems: scaledBundleItems };
         }
         return { ...i, length };

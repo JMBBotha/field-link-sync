@@ -628,7 +628,7 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
   }, []);
   const handleUpdateLength = useCallback((basketId: string, instanceId: string, length: number) => {
     if (length < 0.1) return;
-    setBaskets((prev) => prev.map((b) => b.id === basketId ? { ...b, items: b.items.map((i) => i.instanceId === instanceId ? { ...i, length } : i) } : b));
+    setBaskets((prev) => prev.map((b) => b.id === basketId ? { ...b, items: b.items.map((i) => i.instanceId === instanceId ? { ...i, length, ...(i.isBundle && i.bundleItems && i.bundlePricingType === "p/meter" ? { bundleItems: scaleKitCountItems(i.bundleItems as any, length) as any } : {}) } : i) } : b));
   }, []);
   const handleAddBasket = useCallback(() => {
     const id = `basket-${Date.now()}`;
