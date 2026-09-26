@@ -37,6 +37,8 @@ import { previewPlan } from "@/lib/mandy/planPreview";
 import { resolveItemRef, findAreaFuzzy, noMatchMessage, chipLabel, isKitItem, isLabourRow } from "@/lib/mandy/itemResolve";
 import { clearRefusal, clearSummary, areasToRemove, CLEARED_MESSAGE } from "@/lib/mandy/quoteIntent";
 import { quoteLinesContext } from "@/lib/mandy/quoteLinesContext";
+import { useInstallTemplates } from "@/hooks/useInstallTemplates";
+import { runInstallEdit, announceInstall, installContext, installLinesOf } from "@/lib/mandy/installEdits";
 import type { QuoteArea, QuoteItem } from "@/types/quote";
 
 interface Props {
@@ -51,7 +53,7 @@ export const NEW_AREA_LABEL = "New area…";
 /** Mandy writes that get an undo snapshot. */
 export const UNDOABLE = new Set([
   "set_labour_hours", "add_area", "rename_area", "describe_area", "add_note", "add_item_to_area", "set_kit_length", "set_qty",
-  "set_line_price", "move_item", "duplicate_area", "remove_item", "remove_labour", "remove_area", "remove_note", "edit_note", "clear_quote",
+  "set_line_price", "move_item", "duplicate_area", "remove_item", "remove_labour", "remove_area", "remove_note", "edit_note", "clear_quote", "edit_install",
 ]);
 /** "Added area X." → "added area X" (for "Undid added area X."). */
 export const undoLabel = (msg: string) => { const m = String(msg || "").trim().replace(/[.!]+$/, ""); return m.charAt(0).toLowerCase() + m.slice(1); };
@@ -82,6 +84,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
   const g = guardQuoteWrites(ctx);
   const { products } = useQuoteBuilderProducts();
   const { bundles } = useQuoteBuilderBundles();
+  const { templates } = useInstallTemplates();
   const { settings } = useCompanySettings();
   const qc = useQueryClient();
 
@@ -92,10 +95,11 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
   // Mandy sees the real labour rows (area, hours, rate, total) with every turn.
   // …and the full quote (areas, every line, totals) so she can resolve references.
   const linesCtx = quoteLinesContext({ areas: ctx.areas, items: ctx.items as any[], subtotal: Number((ctx.meta as any)?.subtotal) || 0, total: Number((ctx.meta as any)?.total) || 0 });
+  const instCtx = installContext(ctx.items as any[], (id) => ctx.areas.find((a) => a.id === id)?.name || "");
   useEffect(() => {
-    setAssistantContext({ open_quote_lines: linesCtx, open_quote_labour: undefined });
-    return () => setAssistantContext({ open_quote_lines: undefined });
-  }, [linesCtx]);
+    setAssistantContext({ open_quote_lines: linesCtx, open_quote_labour: undefined, open_quote_install: instCtx || undefined });
+    return () => setAssistantContext({ open_quote_lines: undefined, open_quote_install: undefined });
+  }, [linesCtx, instCtx]);
 
   useEffect(() => {
     setMandyQuoteStatus(ctx.meta?.status ?? "draft");
@@ -165,10 +169,14 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     }
     if (!area) area = S().areas[0] || (await ctx.ensureDefaultArea()) || (await g.addArea("Items"));
     if (!area) return { ok: false, message: "Could not find or create an area on this quote." };
-    const r = await addCatalogProductToQuote({ addItem: g.addItem, product: p, areaId: area.id, sortOrder: nextSort(), quantity: qty, bundles, source: "mandy_voice" });
+    const r = await addCatalogProductToQuote({ addItem: g.addItem, product: p, areaId: area.id, sortOrder: nextSort(), quantity: qty, bundles, templates, liveProducts: products, source: "mandy_voice" });
     if (!r.line) return { ok: false, message: `Could not add ${p.short_name || p.product_code}.` };
     const fresh = await refresh();
-    const verified = !!fresh?.items.some((i) => i.id === r.line!.id) && (!r.kit || !!fresh?.items.some((i) => i.id === r.kit!.id));
+    const verified = !!fresh?.items.some((i) => i.id === r.line!.id) && (!r.kit || !!fresh?.items.some((i) => i.id === r.kit!.id))
+      && r.installLines.every((l) => !!fresh?.items.some((i) => i.id === l.id));
+    if (r.template || r.installLines.length || r.kit) {
+      return { ok: true, message: announceInstall(`${qty > 1 ? `${qty} × ` : ""}${p.short_name}`, r as any, area.name), data: { line_id: r.line.id, kit_id: r.kit?.id ?? null, install_ids: r.installLines.map((l) => l.id), area: area.name }, verified };
+    }
     const kitTxt = r.kit ? `, with a 1 m ${r.kitName} at ${fmtRand(r.kitSellPerMetre || 0)} per metre excl. VAT` : "";
     return {
       ok: true,
@@ -274,6 +282,16 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     remove_labour: async (args) => {
       if (ctx.meta?.status && ctx.meta.status !== "draft") return { ok: false, message: `This quote is ${ctx.meta.status}, so it's read-only.` };
       const r = buildRemoveLabour({ areas: S().areas, items: S().items, deleteItem: g.deleteItem }, args, async () => { await refresh(); });
+      if (args.__plan && r.confirm) return r.confirm.run();
+      return r;
+    },
+
+    edit_install: async (args) => {
+      if (ctx.meta?.status && ctx.meta.status !== "draft") return { ok: false, message: `This quote is ${ctx.meta.status}, so it's read-only.` };
+      const r = await runInstallEdit({
+        items: S().items as any[], areaName: (id) => areaName(id ?? null), liveProducts: products,
+        addItem: g.addItem, updateItem: g.updateItem, deleteItem: g.deleteItem, after: async () => { await refresh(); },
+      }, args as any);
       if (args.__plan && r.confirm) return r.confirm.run();
       return r;
     },
@@ -475,8 +493,15 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       if ("result" in r) return r.result;
       const h = r.item;
       const kits = findUnitKits(S().items as EditItem[], h as EditItem);
-      const ids = [h.id, ...(args.with_kit === false ? [] : kits.map((k) => k.id))];
-      const label = `${h.item_name}${ids.length > 1 ? " and its kit" : ""}`;
+      const inst = installLinesOf(S().items as any[], h.id);
+      const ids = inst.length
+        ? [h.id, ...(args.with_kit === false ? [] : inst.map((k) => k.id))]
+        : [h.id, ...(args.with_kit === false ? [] : kits.map((k) => k.id))];
+      const hasKit = inst.some((l) => (l.metadata as any)?.install?.role === "piping_kit");
+      const others = inst.length - (hasKit ? 1 : 0);
+      const label = inst.length && ids.length > 1
+        ? `${h.item_name} and its install (${[hasKit ? "kit" : "", others ? `${others} line${others > 1 ? "s" : ""}` : ""].filter(Boolean).join(" + ")})`
+        : `${h.item_name}${ids.length > 1 ? " and its kit" : ""}`;
       if (args.__plan) return doRemove(ids, label); // the plan's single Confirm already covered it
       const where = areaName(h.area_id);
       return {
@@ -488,7 +513,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
           run: () => doRemove(ids, label),
         },
         // A unit with a kit: one tap to keep the kit instead.
-        ...(kits.length && args.with_kit === undefined ? { choices: [{ label: "Remove unit only (keep kit)", action: "remove_item", args: { item_id: h.id, with_kit: false } }] } : {}),
+        ...((kits.length || inst.length) && args.with_kit === undefined ? { choices: [{ label: inst.length ? "Remove unit only" : "Remove unit only (keep kit)", action: "remove_item", args: { item_id: h.id, with_kit: false } }] } : {}),
       };
     },
 
