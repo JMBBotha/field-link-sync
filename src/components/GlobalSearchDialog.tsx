@@ -46,7 +46,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
     if (!open) setQuery("");
   }, [open]);
 
-  const { data: items = [] } = useQuery<SearchItem[]>({
+  const { data: items = [], isLoading } = useQuery<SearchItem[]>({
     queryKey: ["global-search-items"],
     queryFn: async () => {
       const [quotes, invoices, customers, leads, suppliers, proposals, maintenance, units, locations, quoteAreas] =
@@ -275,7 +275,10 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
         </div>
 
         <div className="max-h-[60vh] overflow-y-auto">
-          {query.length > 1 && results.length === 0 && (
+          {query.length > 1 && isLoading && (
+            <div className="py-12 text-center text-sm text-muted-foreground">Searching…</div>
+          )}
+          {query.length > 1 && !isLoading && results.length === 0 && (
             <div className="py-12 text-center text-sm text-muted-foreground">
               No results for "{query}"
             </div>
