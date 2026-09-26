@@ -494,12 +494,13 @@ export default function MandyDock() {
         isCancelled: () => !openRef.current,
         beep: () => playReadyBeep(ctx),
         startListening: () => startListening(),
-        speak: async (onStarted) => {
+        speak: async (onStarted, shouldPlay) => {
           if (muted || !ctx) throw new Error("no audio");
           setPhase("greeting");
           const g = await resolveGreeting();
           const buf = await getGreetingBuffer(ctx, g.key, g.text);
           if (!openRef.current) throw new Error("closed");
+          if (!shouldPlay()) { setPhase((p) => (p === "greeting" ? "idle" : p)); return; } // abandoned: keep buffer, don't play
           await new Promise<void>((resolve) => {
             const src = ctx.createBufferSource();
             src.buffer = buf;
