@@ -7,7 +7,7 @@ const tag = (unit: string, role: string) => ({ install: { unit_item_id: unit, ro
 const p = (code: string, name: string, cost: number, extra: any = {}) => ({ id: code, product_code: code, short_name: name, product_category: "Consumables", category: "Consumables", cost_price: cost, cost_excl_vat: cost, default_markup_percent: 100, supplier_name: "X", ...extra });
 const live = [p("BRAC01", "Bracket 450mm", 210), p("BRAC02", "Bracket 550mm", 225), p("BRAC15", "Flatback Bracket 550mm", 335), p("TRUNKCAP01", "End Cap", 14.76), p("ELB001", "Elbow", 3.75)];
 
-const base = () => [
+const base = (): any[] => [
   { id: "u1", item_name: "Samsung 12K", area_id: "a1", quantity: 1, unit_price: 11000, metadata: {} },
   { id: "k1", item_name: "12K kit", area_id: "a1", quantity: 1, length: 3, unit_price: 1500, total_price: 1500, is_bundle: true, metadata: { ...tag("u1", "piping_kit"), unit_cost: 750, markup_percent: 100, kit: { unit_cost: 250, unit_sell: 500 } } },
   { id: "b1", item_name: "Bracket 450mm", item_number: "BRAC01", area_id: "a1", quantity: 1, unit_price: 420, metadata: tag("u1", "bracket") },
