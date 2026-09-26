@@ -33,6 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 import CommunicationTimeline from "./communication/CommunicationTimeline";
 import CallHistoryPanel from "./calls/CallHistoryPanel";
+import LeadCallReports from "./calls/LeadCallReports";
 import UsedPartsSection from "./UsedPartsSection";
 import JobCompletionSheet from "./jobs/JobCompletionSheet";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -560,6 +561,8 @@ const LeadDetailSheet = ({
 
             {/* Classification (rule/AI) with human override */}
             <LeadClassificationPanel leadId={lead.id} />
+
+            <LeadCallReports leadId={lead.id} />
 
             {/* Lead Information — full summary of everything captured at intake */}
 
