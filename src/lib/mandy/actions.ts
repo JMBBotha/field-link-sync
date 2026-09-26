@@ -72,9 +72,10 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     parameters: { type: "object", properties: { target: { type: "string", enum: ["quote", "item"], description: "quote or item" }, item: str("Line as spoken, when target is item"), text: str("Note text") }, required: ["target", "text"], additionalProperties: false },
   },
   edit_install: {
-    description: "Edit the standard install of an AC unit by role: kit length ('make the piping 3 metres'), bracket ('use a 550 bracket', 'flatback bracket'), quantities ('2 end caps', '2 lengths of 100 by 40'), 'add a bend', or remove roles ('no drain', 'remove the small trunking', 'install without trunking' — Confirm card). Two units → the app shows chips. Trunking/drain are counted in supplier LENGTHS (1 × 3 m length), not metres.",
+    description: "Edit the standard install of an AC unit by role: kit length ('make the piping 3 metres'), kit swap ('use the three eighths half kit' → op kit_swap, sizes ['3/8','1/2']), bracket ('use a 550 bracket', 'flatback bracket'), quantities ('2 end caps', '2 lengths of 100 by 40'), 'add a bend', or remove roles ('no drain', 'remove the small trunking', 'install without trunking' — Confirm card). Two units → the app shows chips. Trunking/drain are counted in supplier LENGTHS (1 × 3 m length), not metres.",
     parameters: { type: "object", properties: {
-      op: { type: "string", enum: ["kit_length", "bracket", "set_qty", "add_bend", "remove_roles"], description: "Edit type" },
+      op: { type: "string", enum: ["kit_length", "kit_swap", "bracket", "set_qty", "add_bend", "remove_roles"], description: "Edit type" },
+      sizes: { type: "array", items: { type: "string" }, description: "Copper sizes for kit_swap, e.g. ['3/8','1/2']" },
       metres: { type: "number", description: "Kit length in metres (kit_length)" },
       size: { type: "string", enum: ["450", "550", "650"], description: "Bracket size" },
       flatback: { type: "boolean", description: "Flatback bracket" },
