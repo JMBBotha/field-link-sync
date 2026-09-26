@@ -28,7 +28,12 @@ const json = (body: unknown, status = 200) =>
 
 const RATE_LIMIT = 15; // requests
 const RATE_WINDOW_MS = 60_000; // per minute
-const MODEL = "claude-sonnet-4-5";
+const MODEL = Deno.env.get("XAI_CHAT_MODEL") || "grok-4.20-0309-non-reasoning";
+// Same tools as before, in xAI (OpenAI-compatible) function format.
+const xaiTools = (anthropicTools as Array<{ name: string; description?: string; input_schema: unknown }>).map((t) => ({
+  type: "function",
+  function: { name: t.name, description: t.description ?? "", parameters: t.input_schema },
+}));
 const MAX_TOOL_ROUNDS = 4;
 
 function buildSystemPrompt(callerName: string, isOps: boolean, roleLabel: string): string {
@@ -55,8 +60,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!anthropicKey) return json({ error: "ANTHROPIC_API_KEY is not configured" }, 500);
+    const xaiKey = Deno.env.get("XAI_API_KEY");
+    if (!xaiKey) return json({ error: "XAI_API_KEY is not configured" }, 500);
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
@@ -233,42 +238,36 @@ Deno.serve(async (req) => {
     const structured: Array<{ tool_name: string; rows: Record<string, unknown>[] }> = [];
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("https://api.x.ai/v1/chat/completions", {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": anthropicKey,
-          "anthropic-version": "2023-06-01",
-        },
+        headers: { "content-type": "application/json", Authorization: `Bearer ${xaiKey}` },
         body: JSON.stringify({
           model: MODEL,
-          max_tokens: 1024,
-          system: SYSTEM_PROMPT,
-          tools: anthropicTools,
-          messages,
+          messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
+          tools: xaiTools,
+          tool_choice: "auto",
         }),
       });
 
       if (res.status === 429) return json({ error: "The assistant is busy. Try again shortly." }, 429);
       if (!res.ok) {
         const detail = await res.text();
-        console.error("[nl-query] anthropic error", res.status, detail);
+        console.error("[nl-query] xai error", res.status, detail);
         let upstream = "";
         try {
-          upstream = JSON.parse(detail)?.error?.message ?? "";
+          upstream = JSON.parse(detail)?.error?.message ?? JSON.parse(detail)?.error ?? "";
         } catch { /* ignore */ }
         return json({
-          error: upstream ? `Anthropic: ${upstream}` : "The assistant is unavailable right now.",
+          error: upstream ? `Grok: ${upstream}` : "The assistant is unavailable right now.",
         }, 502);
-
       }
 
       const payload = await res.json();
-      const content: Array<Record<string, any>> = payload.content ?? [];
-      const textOut = content.filter((c) => c.type === "text").map((c) => c.text).join("\n").trim();
-      const toolUses = content.filter((c) => c.type === "tool_use");
+      const msg = payload?.choices?.[0]?.message ?? {};
+      const textOut = String(msg.content ?? "").trim();
+      const toolUses: Array<{ id: string; function: { name: string; arguments?: string } }> = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
 
-      if (toolUses.length === 0 || payload.stop_reason !== "tool_use") {
+      if (toolUses.length === 0) {
         return json({
           type: "answer",
           message: textOut || "I could not find an answer for that.",
@@ -276,32 +275,24 @@ Deno.serve(async (req) => {
         });
       }
 
-      messages.push({ role: "assistant", content });
-      const toolResults: Array<Record<string, unknown>> = [];
+      messages.push({ role: "assistant", content: msg.content ?? "", tool_calls: toolUses });
 
       for (const use of toolUses) {
-        const name = String(use.name) as ToolName;
+        const name = String(use.function?.name) as ToolName;
+        let input: unknown = {};
+        try { input = JSON.parse(use.function?.arguments || "{}"); } catch { input = {}; }
+        const reply = (content: string) => messages.push({ role: "tool", tool_call_id: use.id, content });
 
         if (!(name in toolSchemas)) {
-          await audit(String(use.name), use.input, { error: "not_whitelisted" }, "rejected");
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: use.id,
-            is_error: true,
-            content: "That tool does not exist. Tell the user you cannot perform that action.",
-          });
+          await audit(String(name), input, { error: "not_whitelisted" }, "rejected");
+          reply("ERROR: That tool does not exist. Tell the user you cannot perform that action.");
           continue;
         }
 
-        const parsed = toolSchemas[name].safeParse(use.input ?? {});
+        const parsed = toolSchemas[name].safeParse(input ?? {});
         if (!parsed.success) {
-          await audit(name, use.input, { error: parsed.error.issues }, "invalid_args");
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: use.id,
-            is_error: true,
-            content: `Invalid arguments: ${parsed.error.issues.map((i) => i.message).join("; ")}`,
-          });
+          await audit(name, input, { error: parsed.error.issues }, "invalid_args");
+          reply(`ERROR: Invalid arguments: ${parsed.error.issues.map((i) => i.message).join("; ")}`);
           continue;
         }
 
@@ -313,11 +304,7 @@ Deno.serve(async (req) => {
             "confirmation_required",
           );
           pendingConfirmation = { id: pendingId, tool_name: name, args: parsed.data };
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: use.id,
-            content: "Queued for user confirmation. It has NOT run yet. Tell the user to confirm in the dialog.",
-          });
+          reply("Queued for user confirmation. It has NOT run yet. Tell the user to confirm in the dialog.");
           continue;
         }
 
@@ -325,24 +312,13 @@ Deno.serve(async (req) => {
           const out = await executeTool(name, parsed.data, ctx);
           await audit(name, parsed.data, { count: out.rows.length, summary: out.summary }, "executed", out);
           structured.push({ tool_name: name, rows: out.rows });
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: use.id,
-            content: JSON.stringify({ summary: out.summary, rows: out.rows.slice(0, 25) }),
-          });
+          reply(JSON.stringify({ summary: out.summary, rows: out.rows.slice(0, 25) }));
         } catch (e) {
           const message = e instanceof Error ? e.message : "Tool failed";
           await audit(name, parsed.data, { error: message }, "error");
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: use.id,
-            is_error: true,
-            content: message,
-          });
+          reply(`ERROR: ${message}`);
         }
       }
-
-      messages.push({ role: "user", content: toolResults });
 
       if (pendingConfirmation) {
         return json({

@@ -343,7 +343,18 @@ export default function MandyDock() {
       // Before any write tool: make sure this tab is not an old build.
       if (!import.meta.env.DEV) await checkForNewBuild();
       // Deterministic multi-edit pre-parse: 2+ clauses → ONE local plan card, no model needed.
-      const local = registry?.get("__preview_plan") ? parseMultiEdit(t) : null;
+      // Quote mode: the whole utterance → Grok plan → breakdown card on the page (nothing written until Confirm).
+      const sceneOn = useMandyDock.getState().mode === "quote" && !!registry?.get("quote_scene");
+      const exitQuote = sceneOn && /^(exit|leave|stop|end)\s+(the\s+)?quote\s+mode\b/i.test(t);
+      if (exitQuote) { useMandyDock.getState().setMode("default"); final = "Quote mode off."; }
+      const scene = sceneOn && !exitQuote;
+      if (scene) {
+        planTurn = true;
+        const staleMsg = staleWriteRefusal("quote_scene", useBuildStatus.getState().stale);
+        if (staleMsg) final = staleMsg;
+        else { const r = await execute("quote_scene", { transcript: t }); results.push(r); final = r.message; }
+      }
+      const local = !sceneOn && registry?.get("__preview_plan") ? parseMultiEdit(t) : null;
       if (local) {
         planTurn = true;
         const staleMsg = staleWriteRefusal("run_plan", useBuildStatus.getState().stale);
@@ -351,9 +362,9 @@ export default function MandyDock() {
       }
       // Deterministic single labour command: straight to set_labour_hours, no model.
       // A bare "cancel / clear / start over" only cancels a pending card; otherwise quote intents route.
-      const qi = !local && !parseInstallCommand(t) ? parseQuoteIntent(t, { pendingCard: hadPendingCard }) : null;
+      const qi = !sceneOn && !local && !parseInstallCommand(t) ? parseQuoteIntent(t, { pendingCard: hadPendingCard }) : null;
       if (qi?.action === "cancel_pending") final = "Cancelled — nothing was changed.";
-      const lab = !local && !qi ? parseLabourIntent(t) : null;
+      const lab = !sceneOn && !local && !qi ? parseLabourIntent(t) : null;
       if (lab) {
         if (!registry?.get(lab.action)) final = "Open the quote first, then say that again.";
         else {
@@ -368,7 +379,7 @@ export default function MandyDock() {
           }
         }
       }
-      const inst = !local && !qi && !lab ? parseInstallCommand(t) : null;
+      const inst = !sceneOn && !local && !qi && !lab ? parseInstallCommand(t) : null;
       if (inst) {
         if (!registry?.get("edit_install")) final = "Open the quote first, then say that again.";
         else {
@@ -398,7 +409,7 @@ export default function MandyDock() {
           }
         }
       }
-      for (let step = 0; !local && !lab && !inst && !qi && step <= MAX_STEPS; step++) {
+      for (let step = 0; !sceneOn && !local && !lab && !inst && !qi && step <= MAX_STEPS; step++) {
         const r0 = await routeVoiceCommand({
           transcript: step === 0 ? t : "",
           history: msgs,
@@ -614,6 +625,10 @@ export default function MandyDock() {
   const beginRef = useRef(beginSession);
   beginRef.current = beginSession;
   useEffect(() => { if (listenRequest && open) void beginRef.current(); }, [listenRequest, open]);
+  // Pages (quote-mode card Confirm) ask Mandy to speak a result.
+  const speakRequest = useMandyDock((s) => s.speakRequest);
+  useEffect(() => { if (speakRequest && open) { setReply(speakRequest.text); void speak(speakRequest.text); } }, [speakRequest]); // eslint-disable-line react-hooks/exhaustive-deps
+  const mode = useMandyDock((s) => s.mode);
   useEffect(() => {
     if (open) { if (ttsReady()) void resolveGreeting().then((g) => prefetchGreeting(g.key, g.text)).catch(() => {}); return; }
     recRef.current?.cancel(); recRef.current = null; cancel(); setPhase("idle");
@@ -632,6 +647,7 @@ export default function MandyDock() {
         <div className="flex items-center gap-2 text-xs">
           <span className={`inline-flex h-2 w-2 rounded-full ${phase === "listening" ? "bg-destructive animate-pulse" : phase === "idle" ? "bg-primary" : "bg-primary animate-pulse"}`} />
           <span className="font-medium text-foreground">Mandy</span>
+          {mode === "quote" && <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">Quote mode</span>}
           <span className="text-muted-foreground">{statusText}</span>
           {(phase === "working" || phase === "hearing") && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
         </div>

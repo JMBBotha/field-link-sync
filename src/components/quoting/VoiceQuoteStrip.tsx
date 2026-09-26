@@ -1,18 +1,15 @@
 /**
- * VoiceQuoteStrip — quote-by-voice on the LIVE estimate (/admin/estimates/:id).
- *
- * Johan UX pivot: no turn-by-turn quiz. Speak (or paste) a whole scene —
- * several rooms allowed — see the transcript, get ONE editable breakdown card
- * grouped by area, tap Confirm once. Confirm writes through QuoteContext
- * (addArea / addItem) into the same quote_areas / quote_items the click editor
- * uses. Never a parallel voice draft.
- *
- * Kit SoT (voiceQuoteKit.ts): copper per metre, 10% waste on copper + its
- * Armaflex, insulation always auto-added, prices from the catalog only.
+ * VoiceQuoteStrip — Mandy quote mode on the live quote (estimate page and
+ * quote builder). The mic opens Mandy in quote mode; she sends what was said
+ * to Grok (mandy-quote-plan) for a structured plan, every item is matched with
+ * the ONE shared catalog matcher, and the existing breakdown card is the
+ * confirm step. Confirm writes through addCatalogProductToQuote (standard
+ * install for AC units). Replies are spoken by Mandy (Grok voice eve).
+ * Each turn is logged to mandy_voice_logs.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Mic, MicOff, Loader2, Undo2, Volume2, VolumeX, Sparkles } from "lucide-react";
+import { Mic, Loader2, Undo2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,417 +20,215 @@ import { useQuoteContext } from "@/contexts/QuoteContext";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { useInstallTemplates } from "@/hooks/useInstallTemplates";
-import { addStandardInstall, isAirConditioningProduct } from "@/lib/mandy/quoteOps";
-import { WavRecorder } from "@/lib/wavRecorder";
 import { getUserCompanyId } from "@/lib/tenantUtils";
 import { DEFAULT_LEAD_SOURCE } from "@/lib/leadSources";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
 import VoiceBreakdownCard from "@/components/quoting/VoiceBreakdownCard";
 import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
 import VoiceClientOverrideFields, { emptyClientDraft, type VoiceClientDraft } from "@/components/quoting/VoiceClientOverrideFields";
-import {
-  buildSceneBreakdown,
-  isSaveable,
-  parseUtterance,
-  rand,
-  sceneReadBack,
-  sceneSubtotal,
-  type SceneBreakdown,
-  type ServiceRow,
-} from "@/lib/voiceQuoteKit";
+import { isSaveable, rand, sceneReadBack, sceneSubtotal, type SceneBreakdown, type ServiceRow } from "@/lib/voiceQuoteKit";
+import { openMandyQuoteMode, useMandyDock, useRegisterMandyActions } from "@/lib/mandy/registry";
+import { planMatches, resolvePlan, sanitizePlan, writeBreakdown } from "@/lib/mandy/quotePlan";
 
 interface Props {
   vatRate: number;
   onChanged?: () => void;
 }
 
-type MicPhase = "idle" | "listening" | "transcribing";
-type ClientPrompt =
-  | { type: "customer_pick"; hits: CustomerSearchResult[]; query: string }
-  | { type: "no_match"; query: string }
-  | { type: "new_client_phone"; name: string; address?: string | null };
+type ClientPrompt = { type: "customer_pick"; hits: CustomerSearchResult[]; query: string } | { type: "no_match"; query: string };
 
-const customerLabel = clientDisplayName;
+const EXAMPLE = "Main bedroom 18K Samsung AR40 with 5 m piping and 2 trunking lengths. Lounge 12K Samsung AR40…";
 
-const EXAMPLE = "Main bedroom 18,000 BTU AR4500 Samsung. Outside wall so back-to-back, three metres of piping, quarter and half with lagging. Five metre drain pipe with three elbows. Labour about three hours. Lounge 12,000 BTU…";
+async function logTurn(id: string, patch: Record<string, unknown>, insert = false) {
+  try {
+    if (insert) await supabase.from("mandy_voice_logs" as any).insert({ id, ...patch } as any);
+    else await supabase.from("mandy_voice_logs" as any).update(patch as any).eq("id", id);
+  } catch { /* logging never blocks the quote */ }
+}
 
 export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { meta, areas, items, addItem, addArea, updateQuote, deleteItem } = useQuoteContext();
+  const { quoteId, meta, areas, items, addItem, addArea, updateQuote, deleteItem } = useQuoteContext();
   const { products } = useQuoteBuilderProducts();
   const { bundles } = useQuoteBuilderBundles();
   const { templates } = useInstallTemplates();
+  const say = useMandyDock((s) => s.say);
 
   const { data: services = [] } = useQuery({
     queryKey: ["voice-quote-services"],
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("hvac_services")
-        .select("id, name, category, default_price, unit")
-        .eq("is_active", true)
-        .order("category");
+      const { data, error } = await supabase.from("hvac_services").select("id, name, category, default_price, unit").eq("is_active", true).order("category");
       if (error) throw error;
       return (data || []) as ServiceRow[];
     },
   });
 
-  // `?voice=1` (from the Quotes page voice start) opens the strip straight away.
   const [open, setOpen] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("voice") === "1");
-  const [micPhase, setMicPhase] = useState<MicPhase>("idle");
-  const [speakReplies, setSpeakReplies] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [reply, setReply] = useState("Tap the mic and describe the whole job — rooms, unit, piping, drain, labour — then confirm once.");
+  const [reply, setReply] = useState("Tap Ask Mandy and describe the job — rooms, units, piping, extras — then confirm once.");
   const [breakdown, setBreakdown] = useState<SceneBreakdown | null>(null);
   const [clientPrompt, setClientPrompt] = useState<ClientPrompt | null>(null);
   const [clientDraft, setClientDraft] = useState<VoiceClientDraft>(emptyClientDraft());
+  const [planning, setPlanning] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const recorderRef = useRef<WavRecorder | null>(null);
-  const stopRef = useRef<(() => Promise<void>) | null>(null);
   const committedRef = useRef<string[][]>([]);
-  const busyRef = useRef(false);
+  const logIdRef = useRef<string | null>(null);
 
-  const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
+  const speak = useCallback((text: string) => { setReply(text); say(text); }, [say]);
 
-  /* ────────────── speech out (optional, never re-arms the mic) ────────────── */
-  const say = useCallback(
-    (text: string) => {
-      setReply(text);
-      if (canSpeak && speakReplies) {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text.replace(/R (\d)/g, "rand $1"));
-        const voices = window.speechSynthesis.getVoices();
-        u.voice = voices.find((v) => /en-ZA/i.test(v.lang)) || voices.find((v) => /en-GB/i.test(v.lang)) || null;
-        u.rate = 1.05;
-        window.speechSynthesis.speak(u);
+  /* ───── client (Mandy find_client rule: one strong match sets it, else chips) ───── */
+  const setCustomer = async (c: CustomerSearchResult) => {
+    const name = clientDisplayName(c);
+    await updateQuote({ customer_id: c.id, customer_name: name });
+    setClientPrompt(null);
+    onChanged?.();
+    speak(`Client set to ${name}.`);
+  };
+  const lookupClient = async (q: string, auto = true): Promise<string> => {
+    const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 10 });
+    const hits = rankClientHits(q, (error ? [] : data || []) as CustomerSearchResult[]);
+    setClientDraft({ ...emptyClientDraft(q) });
+    if (!hits.length) { setClientPrompt({ type: "no_match", query: q }); return `No client matching ${q} — add them below.`; }
+    if (auto && hits.length === 1 && isHighConfidence(q, hits[0])) {
+      const name = clientDisplayName(hits[0]);
+      await updateQuote({ customer_id: hits[0].id, customer_name: name });
+      setClientPrompt(null);
+      onChanged?.();
+      return `Client set to ${name}.`;
+    }
+    setClientPrompt({ type: "customer_pick", hits, query: q });
+    return `Tap the right client for ${q}.`;
+  };
+  const saveOverrideAsNew = async () => {
+    const d = clientDraft;
+    if (!d.name.trim() || !d.phone.trim()) { speak("Name and phone are needed to save a new client."); return; }
+    const name = d.name.trim();
+    const [first, ...rest] = name.split(/\s+/);
+    const company_id = await getUserCompanyId(user?.id);
+    const { data, error } = await supabase.from("customers").insert({
+      first_name: first, last_name: rest.join(" ") || null, name, phone: d.phone.trim(), status: "lead",
+      lead_source: DEFAULT_LEAD_SOURCE, company_id, primary_address_line1: d.address.trim() || null, address: d.address.trim() || null,
+      ...(d.email.trim() ? { email: d.email.trim() } : {}),
+    }).select("id").single();
+    if (error || !data) { speak(`Could not create ${name}: ${error?.message || "unknown error"}.`); return; }
+    await updateQuote({ customer_id: data.id, customer_name: name });
+    setClientPrompt(null);
+    onChanged?.();
+    speak(`New client ${name} added and set on this quote.`);
+  };
+
+  /* ───── one scene: Grok plan → shared matcher → breakdown card ───── */
+  const runScene = useCallback(async (text: string): Promise<string> => {
+    const t = text.trim();
+    if (!t) return "I didn't catch anything.";
+    if (!products.length) return "The catalog is still loading — try again in a moment.";
+    setOpen(true);
+    setPlanning(true);
+    setTranscript(t);
+    try {
+      const { data, error } = await supabase.functions.invoke("mandy-quote-plan", { body: { transcript: t, areas: areas.map((a) => a.name) } });
+      const errMsg = (data as { error?: string } | null)?.error || error?.message;
+      if (errMsg) return `Sorry, I couldn't plan that: ${errMsg}`;
+      const plan = sanitizePlan((data as { plan?: unknown }).plan);
+      const bd = resolvePlan(plan, { products, bundles: bundles as any, templates, services, fallbackArea: areas[0]?.name || "Items" }, t);
+      const id = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : null;
+      if (id) {
+        logIdRef.current = id;
+        void getUserCompanyId(user?.id).then((company_id) => logTurn(id, { user_id: user?.id, company_id, quote_id: quoteId, transcript: t, plan, matches: planMatches(bd), status: "planned" }, true));
       }
+      const clientMsg = plan.client && !meta?.customer_id ? await lookupClient(plan.client) : "";
+      const lines = bd.areas.flatMap((a) => a.lines);
+      const n = lines.filter(isSaveable).length;
+      const flagged = lines.length - n;
+      setBreakdown(bd.areas.length ? bd : null);
+      if (!n && !flagged) return [clientMsg, "I couldn't make any lines from that. Try: room, unit size and brand, piping metres, extras."].filter(Boolean).join(" ");
+      return [
+        clientMsg,
+        `${n} line${n === 1 ? "" : "s"} across ${bd.areas.length} area${bd.areas.length === 1 ? "" : "s"}, ${rand(sceneSubtotal(bd))} excl. VAT before standard install.`,
+        flagged ? `${flagged} need${flagged === 1 ? "s" : ""} a tap on the card.` : "Check the card, then tap Confirm.",
+        "Nothing is saved yet.",
+      ].filter(Boolean).join(" ");
+    } finally {
+      setPlanning(false);
+    }
+  }, [products, bundles, templates, services, areas, quoteId, meta?.customer_id, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useRegisterMandyActions({
+    quote_scene: async ({ transcript: t }) => {
+      const message = await runScene(String(t || ""));
+      setReply(message);
+      return { ok: true, message };
     },
-    [canSpeak, speakReplies],
-  );
+  });
 
-  /* ────────────── scene → card ────────────── */
-  const buildCard = useCallback(
-    (text: string) => {
-      const bd = buildSceneBreakdown(text, products, services, { fallbackAreaName: areas[0]?.name || "Items" });
-      const n = bd.areas.flatMap((a) => a.lines).filter(isSaveable).length;
-      const flagged = bd.areas.flatMap((a) => a.lines).filter((l) => !isSaveable(l)).length;
-      setBreakdown(bd);
-      if (!bd.areas.length || (!n && !flagged)) {
-        say("Couldn't make any lines from that. Try: room, unit size, copper size and metres, drain, labour.");
-        return;
-      }
-      say(
-        `${n} line${n === 1 ? "" : "s"} across ${bd.areas.length} area${bd.areas.length === 1 ? "" : "s"}, ${rand(sceneSubtotal(bd))} excl. VAT.` +
-          (flagged ? ` ${flagged} need${flagged === 1 ? "s" : ""} a tap on the card.` : " Check the card, then confirm."),
-      );
-    },
-    [products, services, areas, say],
-  );
-
-  /* ────────────── one confirm → live quote ────────────── */
-  const nextSortOrder = () => (items.length ? Math.max(...items.map((i) => i.sort_order || 0)) + 1 : 0);
-
+  /* ───── one Confirm → live quote ───── */
   const confirmScene = async () => {
     if (!breakdown) return;
-    const groups = breakdown.areas.filter((a) => a.lines.some(isSaveable));
-    if (!groups.length) { say("Nothing priced to save yet."); return; }
+    if (!breakdown.areas.some((a) => a.lines.some(isSaveable))) { speak("Nothing priced to save yet."); return; }
     setSaving(true);
+    const logId = logIdRef.current;
     try {
-      let sort = nextSortOrder();
-      const ids: string[] = [];
-      const created = new Map<string, string>(); // lower-cased name → area id (this run)
-      const installNotes: string[] = [];
-      for (const g of groups) {
-        const name = g.name.trim() || "Items";
-        const key = name.toLowerCase();
-        let areaId = created.get(key) ?? areas.find((a) => a.name.trim().toLowerCase() === key)?.id ?? null;
-        if (!areaId) {
-          const row = await addArea(name);
-          if (!row) throw new Error(`Could not create area “${name}”.`);
-          areaId = row.id;
-        }
-        created.set(key, areaId);
-
-        for (const l of g.lines) {
-          if (!isSaveable(l)) continue;
-          const perMetre = !!(l.product && l.product.sold_in_length && l.product.price_per_metre);
-          const { line_note, ...restMeta } = l.meta as Record<string, unknown> & { line_note?: string | null };
-          const row = await addItem({
-            area_id: areaId,
-            parent_item_id: null,
-            product_id: l.product?.id ?? null,
-            item_name: l.label,
-            item_number: l.product?.product_code ?? null,
-            description: l.product
-              ? ((l.product as unknown as { ai_sales_description?: string | null }).ai_sales_description || l.product.description || null)
-              : (l.service?.category ?? null),
-            supplier: l.product?.supplier_name ?? null,
-            quantity: l.quantity,
-            length: null,
-            unit_price: l.unitPrice,
-            total_price: null,
-            is_bundle: false,
-            item_type: l.service ? "service" : "product",
-            metadata: { unit_cost: l.unitCost, markup_percent: l.markupPct, spoken: l.spoken, area_notes: g.notes, ...restMeta },
-            notes: typeof line_note === "string" && line_note ? line_note : null,
-            source: l.service ? "service" : "catalog",
-            sort_order: sort++,
-            ...(perMetre ? { price_per_unit_label: "m", allows_decimal_qty: true, qty_step: 0.1 } : {}),
-          });
-          if (row) ids.push(row.id);
-          // AC unit → the ONE standard-install rule. If the scene already priced its own
-          // copper, the template kit is left out (no double piping).
-          if (row && l.product && isAirConditioningProduct(l.product)) {
-            const spokenCopper = g.lines.some((x) => /^COPRL/i.test(String(x.product?.product_code || "")));
-            const tpls = spokenCopper ? templates.map((t) => ({ ...t, items: t.items.map((i) => i.role === "piping_kit" ? { ...i, included: false } : i) })) : templates;
-            const inst = await addStandardInstall({
-              addItem: addItem as any, unitLine: row as any, product: l.product as any, areaId, sortOrder: sort,
-              templates: tpls, bundles: spokenCopper ? [] : (bundles as any), liveProducts: products as any, source: "catalog",
-            });
-            sort += 1 + inst.installLines.length;
-            for (const x of [inst.kit, ...inst.installLines]) if (x) ids.push(x.id);
-            installNotes.push(...inst.notes);
-          }
-        }
-      }
+      const sortStart = items.length ? Math.max(...items.map((i) => i.sort_order || 0)) + 1 : 0;
+      const { ids, notes } = await writeBreakdown(breakdown, { addItem, addArea: addArea as any, areas, sortStart, templates, bundles: bundles as any, products });
       if (ids.length) committedRef.current.push(ids);
+      if (logId) void logTurn(logId, { status: "confirmed", matches: planMatches(breakdown), result: { ids, notes } });
       setBreakdown(null);
       setTranscript("");
       onChanged?.();
-      const hasClient = !!meta?.customer_id;
-      say(
-        hasClient
-          ? `Saved ${ids.length} line${ids.length === 1 ? "" : "s"} in ${groups.length} area${groups.length === 1 ? "" : "s"} for ${meta?.customer_name || "the client"}. Ready to send — use Send or PDF above, or describe the next room.`
-          : `Saved ${ids.length} line${ids.length === 1 ? "" : "s"}. No client on this quote yet — set one before sending.`,
-      );
-      if (installNotes.length) toast({ title: "Standard install", description: installNotes.join(". ") });
+      speak(`Saved ${ids.length} line${ids.length === 1 ? "" : "s"}, including the standard install.${notes.length ? ` Note: ${notes.join(". ")}.` : ""}${meta?.customer_id ? "" : " No client on this quote yet."}`);
+      if (notes.length) toast({ title: "Standard install", description: notes.join(". ") });
     } catch (e) {
-      toast({ title: "Could not save", description: e instanceof Error ? e.message : "Try again.", variant: "destructive" });
-      say("Saving failed part-way — check the quote below and confirm again for what's left.");
+      const msg = e instanceof Error ? e.message : "Try again.";
+      if (logId) void logTurn(logId, { status: "failed", result: { error: msg } });
+      toast({ title: "Could not save", description: msg, variant: "destructive" });
+      speak("Saving failed part-way — check the quote and confirm again for what's left.");
     } finally {
       setSaving(false);
     }
   };
 
+  const discard = () => {
+    if (logIdRef.current) void logTurn(logIdRef.current, { status: "cancelled" });
+    setBreakdown(null);
+    speak("Discarded — nothing was saved.");
+  };
+
   const undoLastConfirm = async () => {
     const ids = committedRef.current.pop();
-    if (!ids?.length) { say("Nothing to undo."); return; }
+    if (!ids?.length) { speak("Nothing to undo."); return; }
     for (const id of ids) await deleteItem(id);
     onChanged?.();
-    say(`Removed the last ${ids.length === 1 ? "line" : `${ids.length} lines`} from the quote.`);
+    speak(`Removed the last ${ids.length === 1 ? "line" : `${ids.length} lines`} from the quote.`);
   };
 
-  /* ────────────── client find / create (kept from the start dialog contract) ────────────── */
-  const setCustomer = async (c: CustomerSearchResult) => {
-    const name = customerLabel(c);
-    await updateQuote({ customer_id: c.id, customer_name: name });
-    setClientPrompt(null);
-    onChanged?.();
-    say(`Client set to ${name}. Now describe the job.`);
-  };
-
-  const createCustomer = async (name: string, phone: string, address?: string | null, email?: string | null) => {
-    const [first, ...rest] = name.split(/\s+/);
-    const company_id = await getUserCompanyId(user?.id);
-    const { data, error } = await supabase
-      .from("customers")
-      .insert({
-        first_name: first,
-        last_name: rest.join(" ") || null,
-        name,
-        phone,
-        status: "lead",
-        lead_source: DEFAULT_LEAD_SOURCE,
-        company_id,
-        primary_address_line1: address || null,
-        address: address || null,
-        ...(email ? { email } : {}),
-      })
-      .select("id")
-      .single();
-    if (error || !data) { say(`Could not create ${name}: ${error?.message || "unknown error"}.`); return; }
-    await updateQuote({ customer_id: data.id, customer_name: name });
-    setClientPrompt(null);
-    onChanged?.();
-    say(`New client ${name} added${address ? ` at ${address}` : ""} and set on this quote. Now describe the job.`);
-  };
-
-  /** Look the name up again and refresh the chips (keyboard override path). */
-  const lookupClient = async (q: string, spoken = true) => {
-    const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 10 });
-    const raw = (error ? [] : (data || [])) as CustomerSearchResult[];
-    const hits = rankClientHits(q, raw);
-    if (!hits.length) {
-      setClientPrompt({ type: "no_match", query: q });
-      say(`No client matching “${q}”. Type the details below and save them as a new client.`);
-      return;
-    }
-    if (spoken && hits.length === 1 && isHighConfidence(q, hits[0])) { await setCustomer(hits[0]); return; }
-    setClientPrompt({ type: "customer_pick", hits, query: q });
-    say(`Heard “${q}” — tap the right client, or correct the details below.`);
-  };
-
-  const saveOverrideAsNew = async () => {
-    const d = clientDraft;
-    if (!d.name.trim() || !d.phone.trim()) { say("Name and phone are needed to save a new client."); return; }
-    await createCustomer(d.name.trim(), d.phone.trim(), d.address.trim() || null, d.email.trim() || null);
-  };
-
-  /** Client commands are the only non-scene utterances. Returns true when handled. */
-  const tryClientCommand = async (text: string): Promise<boolean> => {
-    const intents = parseUtterance(text);
-    const first = intents[0];
-    if (!first) return false;
-    if (clientPrompt?.type === "new_client_phone" && (first.kind === "phone" || (first.kind === "new_client" && first.phone))) {
-      await createCustomer(clientPrompt.name, first.kind === "phone" ? first.phone : (first as { phone: string }).phone, clientPrompt.address);
-      return true;
-    }
-    if (clientPrompt?.type === "customer_pick" && first.kind === "pick") {
-      const c = clientPrompt.hits[first.index];
-      if (c) { await setCustomer(c); return true; }
-    }
-    if (intents.length !== 1) return false;
-    if (first.kind === "client" || first.kind === "phone") {
-      const q = first.kind === "phone" ? first.phone : first.query;
-      setClientDraft({ ...emptyClientDraft(first.kind === "client" ? q : ""), phone: first.kind === "phone" ? q : "" });
-      await lookupClient(q);
-      return true;
-    }
-    if (first.kind === "new_client") {
-      if (!first.name) { say("What is the client's name?"); return true; }
-      setClientDraft({ name: first.name, phone: first.phone ?? "", address: first.address ?? "", email: "" });
-      if (!first.phone) {
-        setClientPrompt({ type: "new_client_phone", name: first.name, address: first.address ?? null });
-        say(`Phone number for ${first.name}? Type it below and save.`);
-        return true;
-      }
-      await createCustomer(first.name, first.phone, first.address);
-      return true;
-    }
-    return false;
-  };
-
-  const handleUtterance = useCallback(
-    async (text: string) => {
-      if (busyRef.current) return;
-      busyRef.current = true;
-      try {
-        if (await tryClientCommand(text)) return;
-        setTranscript(text);
-        buildCard(text);
-      } finally {
-        busyRef.current = false;
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [buildCard, clientPrompt],
-  );
-  const handleUtteranceRef = useRef(handleUtterance);
-  handleUtteranceRef.current = handleUtterance;
-
-  /* ────────────── mic (long-form: generous pause before auto-stop) ────────────── */
-  const startRecording = useCallback(async () => {
-    if (recorderRef.current || busyRef.current) return;
-    try {
-      if (canSpeak) window.speechSynthesis.cancel();
-      const rec = new WavRecorder();
-      // No VAD / silence auto-stop: recording runs until the user taps Stop.
-      await rec.start();
-      recorderRef.current = rec;
-      setMicPhase("listening");
-      setReply("Listening — describe the whole job. Tap Stop when done.");
-    } catch {
-      setMicPhase("idle");
-      toast({ title: "Microphone unavailable", description: "Allow microphone access, or paste the scene below.", variant: "destructive" });
-    }
-  }, [canSpeak, toast]);
-
-  const stopRecording = async () => {
-    const rec = recorderRef.current;
-    if (!rec) return;
-    recorderRef.current = null;
-    setMicPhase("transcribing");
-    try {
-      const { base64, bytes } = await rec.stop();
-      if (bytes < 2048) throw new Error("That was empty — try again.");
-      const { data, error } = await supabase.functions.invoke("voice-quote-parse", { body: { action: "transcribe", audio: base64 } });
-      if (error || (data as { error?: string })?.error) throw new Error((data as { error?: string })?.error || error?.message || "Transcription failed.");
-      const text = String((data as { transcript?: string }).transcript ?? "").trim();
-      setMicPhase("idle");
-      if (!text) { say("Nothing was picked up."); return; }
-      await handleUtteranceRef.current(text);
-    } catch (e) {
-      setMicPhase("idle");
-      toast({ title: "Voice capture failed", description: e instanceof Error ? e.message : "Please try again.", variant: "destructive" });
-    }
-  };
-  stopRef.current = stopRecording;
-
-  const toggleMic = () => {
-    if (!open) setOpen(true);
-    if (micPhase === "listening") { void stopRecording(); return; }
-    if (micPhase === "idle") void startRecording();
-  };
-
-  const stopAll = () => {
-    recorderRef.current?.cancel();
-    recorderRef.current = null;
-    if (canSpeak) window.speechSynthesis.cancel();
-    setMicPhase("idle");
-  };
-
-  useEffect(() => () => stopAll(), []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const pendingCount = useMemo(() => (breakdown ? breakdown.areas.flatMap((a) => a.lines).filter(isSaveable).length : 0), [breakdown]);
+  const pendingCount = breakdown ? breakdown.areas.flatMap((a) => a.lines).filter(isSaveable).length : 0;
 
   return (
     <section className="print:hidden rounded-lg border border-border bg-card">
-      {/* header row */}
       <div className="flex items-center gap-2 px-3 py-2">
-        <Button
-          type="button"
-          size="sm"
-          variant={micPhase === "listening" ? "destructive" : "default"}
-          onClick={toggleMic}
-          disabled={micPhase === "transcribing" || saving}
-          className="gap-2"
-          aria-label={micPhase === "listening" ? "Stop listening" : "Start voice quote"}
-        >
-          {micPhase === "transcribing" ? <Loader2 className="h-4 w-4 animate-spin" /> : micPhase === "listening" ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-          {micPhase === "listening" ? "Stop" : micPhase === "transcribing" ? "Hearing…" : "Voice quote"}
+        <Button type="button" size="sm" onClick={() => { setOpen(true); openMandyQuoteMode(); }} disabled={saving} className="gap-2" aria-label="Ask Mandy in quote mode">
+          {planning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+          Ask Mandy
         </Button>
         <p className="min-w-0 flex-1 truncate text-sm text-foreground" title={reply}>{reply}</p>
         {breakdown && pendingCount > 0 && <Badge variant="secondary">{pendingCount} pending · {rand(sceneSubtotal(breakdown))}</Badge>}
-        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => setSpeakReplies((v) => !v)} title={speakReplies ? "Mute spoken replies" : "Speak replies"} disabled={!canSpeak}>
-          {speakReplies && canSpeak ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-        </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={() => { setOpen((v) => !v); if (open) stopAll(); }}>
-          {open ? "Hide" : "Open"}
-        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen((v) => !v)}>{open ? "Hide" : "Open"}</Button>
       </div>
 
       {open && (
         <div className="space-y-3 border-t border-border px-3 py-3">
-          {!meta?.customer_id && (
-            <p className="text-xs text-amber-700 dark:text-amber-400">No client on this quote yet — type “client Andre Blom” or “new client Jane Doe 082 123 4567” below.</p>
-          )}
-
           {clientPrompt && (
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground">
-                {clientPrompt.type === "customer_pick"
-                  ? `Heard: “${clientPrompt.query}”`
-                  : clientPrompt.type === "no_match"
-                    ? `Heard: “${clientPrompt.query}” — no client picked.`
-                    : `New client: ${clientPrompt.name}`}
+                {clientPrompt.type === "customer_pick" ? `Heard: “${clientPrompt.query}”` : `Heard: “${clientPrompt.query}” — no client picked.`}
               </p>
               {clientPrompt.type === "customer_pick" && (
                 <div className="flex flex-wrap gap-2">
                   {clientPrompt.hits.map((c, i) => (
                     <Button key={c.id} type="button" size="sm" variant="outline" onClick={() => void setCustomer(c)}>
-                      {i + 1}. {customerLabel(c)} · {c.phone}
+                      {i + 1}. {clientDisplayName(c)} · {c.phone}
                     </Button>
                   ))}
                   <Button type="button" size="sm" variant="ghost" onClick={() => setClientPrompt({ type: "no_match", query: clientPrompt.query })}>None of these</Button>
@@ -444,32 +239,18 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
                 onChange={setClientDraft}
                 busy={saving}
                 onSaveNew={() => void saveOverrideAsNew()}
-                onResearch={() => void lookupClient(clientDraft.name.trim(), false)}
+                onResearch={() => void lookupClient(clientDraft.name.trim(), false).then(setReply)}
               />
             </div>
           )}
 
-          {/* transcript / paste box — the single input for a scene */}
-          <form
-            className="space-y-2"
-            onSubmit={(e) => { e.preventDefault(); if (transcript.trim()) void handleUtteranceRef.current(transcript.trim()); }}
-          >
-            <Textarea
-              value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
-              placeholder={EXAMPLE}
-              rows={3}
-              className="text-sm"
-              disabled={saving || micPhase !== "idle"}
-              aria-label="Transcript"
-            />
+          <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); if (transcript.trim()) void runScene(transcript).then(speak); }}>
+            <Textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} placeholder={EXAMPLE} rows={3} className="text-sm" disabled={saving || planning} aria-label="Transcript" />
             <div className="flex flex-wrap items-center gap-2">
-              <Button type="submit" size="sm" variant="outline" className="gap-1" disabled={!transcript.trim() || saving || micPhase !== "idle"}>
+              <Button type="submit" size="sm" variant="outline" className="gap-1" disabled={!transcript.trim() || saving || planning}>
                 <Sparkles className="h-4 w-4" /> {breakdown ? "Re-build breakdown" : "Build breakdown"}
               </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => breakdown && say(sceneReadBack(breakdown, vatRate))} disabled={!breakdown}>
-                Read back
-              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => breakdown && speak(sceneReadBack(breakdown, vatRate))} disabled={!breakdown}>Read back</Button>
               <Button type="button" size="sm" variant="ghost" onClick={() => void undoLastConfirm()} disabled={saving || !committedRef.current.length} className="ml-auto">
                 <Undo2 className="mr-1 h-4 w-4" /> Undo last save
               </Button>
@@ -485,7 +266,7 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
               hasClient={!!meta?.customer_id}
               onChange={setBreakdown}
               onConfirm={() => void confirmScene()}
-              onDiscard={() => { setBreakdown(null); say("Discarded — nothing was saved."); }}
+              onDiscard={discard}
             />
           )}
         </div>

@@ -12,7 +12,7 @@ import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { formatRand } from "@/utils/formatRand";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
-import VoiceQuoteDialog from "@/components/quoting/VoiceQuoteDialog";
+import { openMandyQuoteMode } from "@/lib/mandy/registry";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 import ProductPalette from "@/components/catalog/quote-builder/ProductPalette";
@@ -778,30 +778,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   }, [newAreaName, ctxAddArea, commitSelectionToArea]);
 
 
-  // ---- Build with voice -------------------------------------------------
-  // Voice items are merged into the SAME shared baskets every tab uses, so
-  // they persist through persistQuoteFromBaskets like any other line item.
-  const [voiceOpen, setVoiceOpen] = useState(false);
-
-  const addVoiceItems = useCallback((entries: Array<{ product: PaletteProduct; quantity: number }>) => {
-    if (!entries.length) return;
-    setBaskets((prev) => {
-      const list = prev.length > 0 ? [...prev] : [{ id: "basket-1", name: "Zone 1", items: [] as Basket["items"] }];
-      const targetId = list[0].id;
-      return list.map((basket) => {
-        if (basket.id !== targetId) return basket;
-        const items = [...basket.items];
-        entries.forEach(({ product, quantity }, idx) => {
-          items.push({
-            instanceId: `${product.id}-${Date.now()}-${idx}`,
-            product,
-            quantity: quantity || 1,
-          });
-        });
-        return { ...basket, items };
-      });
-    });
-  }, []);
+  // ---- Build with voice → Mandy quote mode (shared matcher + standard install) ----
 
   // Handle wizard save — merge new baskets
   const handleWizardSave = useCallback((newBaskets: Basket[]) => {
@@ -1061,14 +1038,6 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       {exitGuard.ExitDialog}
 
 
-      <VoiceQuoteDialog
-        open={voiceOpen}
-        onOpenChange={setVoiceOpen}
-        products={products}
-        quoteId={quoteId}
-        onConfirm={addVoiceItems}
-      />
-
       {/* Which area do these PDF selections belong to? Cancel keeps them parked. */}
       <Dialog open={areaPickerOpen} onOpenChange={(o) => { if (!committingPdf) setAreaPickerOpen(o); }}>
         <DialogContent className="sm:max-w-md">
@@ -1139,9 +1108,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             <Button
               size="icon"
               variant="outline"
-              onClick={() => setVoiceOpen(true)}
+              onClick={() => openMandyQuoteMode()}
+              aria-label="Build with voice"
               className="h-7 w-7 ml-0.5 border-transparent bg-transparent hover:bg-accent"
-              title="Speak your line items"
+              title="Build with voice — Ask Mandy"
             >
               <Mic className="h-3.5 w-3.5" />
             </Button>

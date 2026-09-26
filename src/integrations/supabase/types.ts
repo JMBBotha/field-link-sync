@@ -3488,6 +3488,51 @@ export type Database = {
           },
         ]
       }
+      mandy_voice_logs: {
+        Row: {
+          channel: string
+          company_id: string | null
+          created_at: string
+          id: string
+          matches: Json | null
+          plan: Json | null
+          quote_id: string | null
+          result: Json | null
+          status: string
+          transcript: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          matches?: Json | null
+          plan?: Json | null
+          quote_id?: string | null
+          result?: Json | null
+          status?: string
+          transcript?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          channel?: string
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          matches?: Json | null
+          plan?: Json | null
+          quote_id?: string | null
+          result?: Json | null
+          status?: string
+          transcript?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       nl_audit_log: {
         Row: {
           access_granted: boolean | null

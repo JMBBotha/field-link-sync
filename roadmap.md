@@ -52,3 +52,10 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] All unit-add paths on shared install rule; kits default 3 m; skips spoken
 - [x] New 24K 3/8+1/2 kit, 24K template repointed, old 3/8+5/8 kit BTU cleared; kit swap UI + voice
 - [ ] Live test + repair on Q-2026-0014 — blocked: quote was rewritten 14:51 UTC (Lounge/24K rows gone); needs Johan's go-ahead on current state
+
+## Build A — in-app voice merged into Mandy (2026-09-26)
+- [x] Quote mode: Grok plan (mandy-quote-plan) → shared matcher → breakdown card → addCatalogProductToQuote; turns logged in mandy_voice_logs
+- [x] Matcher: x/by, spoken numbers, a couple, half, N lengths, bends → elbow
+- [x] Build with voice dialog removed → opens Mandy quote mode; Quotes page Voice quote → Mandy
+- [x] nl-query on Grok; nl-voice-session unlinked; WhatsApp quote bot off behind flag
+- [ ] Live check signed in (Johan)
