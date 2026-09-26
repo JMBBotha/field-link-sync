@@ -41,7 +41,7 @@ import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 import { searchAndRankProducts } from "./searchSynonyms";
 import QuoteBuilderPopup from "./quote-builder/QuoteBuilderPopup";
 import type { WizardTriggerItem } from "./quote-builder/QuoteBuilderPopup";
-import { computeBundlePricing } from "./quote-builder/BundleItemsPopover";
+import { computeBundlePricing, toBundleSubItems, scaleKitCountItems } from "./quote-builder/BundleItemsPopover";
 import { computeBasketsQuoteTotals, applyCategoryRatesToBaskets } from "@/utils/quoteBasketTotals";
 import { subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot } from "@/lib/pricing";
 import type { QuoteTotals } from "@/utils/quoteTransformers";
@@ -459,19 +459,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   [installTemplates, bundles, products]);
 
   const buildBundleBasketItem = useCallback((bundle: PaletteBundle): BasketItem | null => {
-    const subItems = bundle.items
-      .filter((bItem) => bItem.product)
-      .map((bItem) => {
-        const isLengthItem = bItem.is_length_item && !!bItem.product!.price_per_metre;
-        return {
-          product: bItem.product as PaletteProduct,
-          quantity: bItem.quantity,
-          isLengthItem,
-          isOptional: bItem.is_optional,
-          perKitMetre: bItem.length_metres ?? bItem.quantity ?? 1,
-          ...(isLengthItem ? { length: bItem.length_metres || 1 } : {}),
-        };
-      });
+    const subItems = toBundleSubItems(bundle.items as any, DEFAULT_KIT_LENGTH_M, (b) => b.length_metres || 1);
 
     const { pricingType, unitPrice, unitCost } = computeBundlePricing(subItems);
     const firstProduct = subItems.find((i) => !i.isOptional)?.product || subItems[0]?.product;

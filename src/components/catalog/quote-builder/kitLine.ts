@@ -14,7 +14,7 @@
  */
 import type { PaletteProduct } from "../QuoteBuilderTab";
 import type { AreaMaterial, AreaKitInfo } from "./quoteWizardTypes";
-import { computeBundlePricing, type BundleSubItem } from "./BundleItemsPopover";
+import { computeBundlePricing, toBundleSubItems, type BundleSubItem } from "./BundleItemsPopover";
 
 interface BundleLike {
   id: string;
@@ -32,21 +32,8 @@ interface BundleLike {
 
 export const DEFAULT_KIT_LENGTH_M = 3;
 
-export function buildKitSubItems(bundle: BundleLike): BundleSubItem[] {
-  return (bundle.items || [])
-    .filter((b) => b.product || b.supplier_product)
-    .map((b) => {
-      const product = (b.product || b.supplier_product) as PaletteProduct;
-      const isLengthItem = !!b.is_length_item && !!product.price_per_metre;
-      return {
-        product,
-        quantity: b.quantity || 1,
-        isLengthItem,
-        isOptional: !!b.is_optional,
-        perKitMetre: b.length_metres ?? b.quantity ?? 1,
-        ...(isLengthItem ? { length: b.length_metres || product.unit_length || 1 } : {}),
-      };
-    });
+export function buildKitSubItems(bundle: BundleLike, kitLength: number = DEFAULT_KIT_LENGTH_M): BundleSubItem[] {
+  return toBundleSubItems(bundle.items as any, kitLength, (b, p) => b.length_metres || p.unit_length || 1);
 }
 
 /** Synthetic price-locked product that represents the whole kit. */
