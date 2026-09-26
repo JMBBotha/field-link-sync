@@ -49,7 +49,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
   const { data: items = [] } = useQuery<SearchItem[]>({
     queryKey: ["global-search-items"],
     queryFn: async () => {
-      const [quotes, invoices, customers, leads, suppliers, proposals, maintenance, units, locations] =
+      const [quotes, invoices, customers, leads, suppliers, proposals, maintenance, units, locations, quoteAreas] =
         await Promise.all([
           supabase
             .from("quotes")
@@ -59,7 +59,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
             .limit(ROW_LIMIT),
           supabase
             .from("invoices")
-            .select("id, invoice_number, customer_name, customer_address, grand_total, status")
+            .select("id, invoice_number, customer_name, customer_address, customer_phone, notes, grand_total, status")
             .order("created_at", { ascending: false })
             .limit(ROW_LIMIT),
           supabase
@@ -103,10 +103,9 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
             .neq("quotes.status", "superseded")
             .limit(ROW_LIMIT),
         ]);
-      const quoteAreas = (await areasPromise) as any;
 
       // Surface failures instead of silently returning an empty source.
-      Object.entries({ quotes, invoices, customers, leads, suppliers, proposals, maintenance, units, locations }).forEach(
+      Object.entries({ quoteAreas, quotes, invoices, customers, leads, suppliers, proposals, maintenance, units, locations }).forEach(
         ([name, res]: [string, any]) => {
           if (res?.error) console.error(`[GlobalSearch] ${name} query failed:`, res.error.message);
         }
@@ -120,7 +119,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
           title: join(q.quote_number, q.customer_name) || "Quote",
           subtitle: join(q.reference_text, `R${Number(q.total || 0).toLocaleString("en-ZA")}`, q.status),
           searchText: join(q.quote_number, q.customer_name, q.reference_text, q.status),
-          path: "/admin/quotes",
+          path: `/admin/estimates/${q.id}`,
         })
       );
       invoices.data?.forEach((i: any) =>
@@ -129,8 +128,8 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
           type: "invoice",
           title: join(i.invoice_number, i.customer_name) || "Invoice",
           subtitle: join(i.customer_address, `R${Number(i.grand_total || 0).toLocaleString("en-ZA")}`, i.status),
-          searchText: join(i.invoice_number, i.customer_name, i.customer_address, i.status),
-          path: "/admin/invoices",
+          searchText: join(i.invoice_number, i.customer_name, i.customer_address, i.customer_phone, i.notes, i.status),
+          path: `/admin/invoices/${i.id}`,
         })
       );
       customers.data?.forEach((c: any) =>
@@ -167,7 +166,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
             l.service_type,
             l.status
           ),
-          path: "/admin/dispatch",
+          path: `/admin/dispatch?lead=${l.id}`,
         })
       );
       suppliers.data?.forEach((s: any) =>
@@ -220,6 +219,16 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
           path: loc.customer_id ? `/admin/customers/${loc.customer_id}` : "/admin/customers",
         })
       );
+      quoteAreas.data?.forEach((a: any) =>
+        result.push({
+          id: a.id,
+          type: "room",
+          title: join(a.name, a.quotes?.customer_name) || "Room",
+          subtitle: join(a.quotes?.quote_number, a.quotes?.reference_text, a.description),
+          searchText: join(a.name, a.description, a.quotes?.quote_number, a.quotes?.customer_name, a.quotes?.reference_text),
+          path: `/admin/estimates/${a.quote_id}`,
+        })
+      );
       return result;
     },
     staleTime: 60000,
@@ -241,7 +250,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
     [items]
   );
 
-  const results = query.length > 1 ? fuse.search(query).slice(0, 10) : [];
+  const results = query.length > 1 ? fuse.search(query).slice(0, 25) : [];
 
   const handleSelect = useCallback((item: SearchItem) => {
     onOpenChange(false);
@@ -255,7 +264,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
           <Search className="h-4 w-4 text-muted-foreground mr-3 shrink-0" />
           <Input
             autoFocus
-            placeholder="Search jobs, customers, quotes, suppliers, proposals, maintenance..."
+            placeholder="Search leads, rooms, invoices, quotes by name, address or reference…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="border-0 shadow-none focus-visible:ring-0 px-0 text-base"
