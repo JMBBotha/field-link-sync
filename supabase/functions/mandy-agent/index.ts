@@ -7,7 +7,7 @@
  *          This function never reads or writes quote data; the browser runs
  *          each tool under the user's own session (RLS + pricing rules).
  *   tts    { text }                      -> { audio_base64, mime, spoken }
- *          xAI text-to-speech (voice "eve"). Numbers/money converted to speech.
+ *          xAI text-to-speech (voice "liora"). Numbers/money converted to speech.
  *   audit  { tool, args, result, ok }    -> { ok }
  *          nl_audit_log row (channel "mandy_grok").
  *
@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
     const res = await fetch("https://api.x.ai/v1/tts", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ text: spoken, voice_id: "eve", language: "en" }),
+      body: JSON.stringify({ text: spoken, voice_id: "liora", language: "en" }),
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
