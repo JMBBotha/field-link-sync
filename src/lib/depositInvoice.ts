@@ -88,6 +88,21 @@ export async function fetchQuoteInvoiceByToken(token: string): Promise<DepositIn
 }
 
 /**
+ * Deposit % actually on the invoice (never a hardcoded 70). Reads the RPC's
+ * own "DEPOSIT — N%" note, else grand_total / quote total, else null.
+ */
+export function depositPercentOf(
+  invoice: { notes?: string | null; grand_total?: number | null } | null | undefined,
+  quoteTotal?: number | null,
+): number | null {
+  const m = /(\d{1,3}(?:\.\d+)?)\s*%/.exec(invoice?.notes || "");
+  if (m) return Number(m[1]);
+  const g = Number(invoice?.grand_total), t = Number(quoteTotal);
+  if (g > 0 && t > 0) return Math.round((g / t) * 100);
+  return null;
+}
+
+/**
  * Create the deposit invoice for an accepted quote.
  * Idempotent: the RPC returns the existing invoice id when one already exists.
  * Amount = quote total x the deterministic latest company setting (fallback 70%).

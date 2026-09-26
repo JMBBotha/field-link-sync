@@ -51,7 +51,8 @@ const InvoiceDashboardWidget = ({ onViewAll }: InvoiceDashboardWidgetProps) => {
         paid: invoices.filter(i => i.status === "paid").length,
         overdue: invoices.filter(i => i.status === "overdue").length,
         totalRevenue: invoices.filter(i => i.status === "paid").reduce((s, i) => s + i.grand_total, 0),
-        outstanding: invoices.filter(i => ["sent", "overdue"].includes(i.status)).reduce((s, i) => s + i.grand_total, 0),
+        // partially_paid is what recalc_invoice_status writes — it is still outstanding.
+        outstanding: invoices.filter(i => ["sent", "overdue", "partially_paid"].includes(i.status)).reduce((s, i) => s + i.grand_total, 0),
       });
     }
   };
