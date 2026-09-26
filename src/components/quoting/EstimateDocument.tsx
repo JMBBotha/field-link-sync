@@ -26,6 +26,8 @@ export interface EstimateEditLine {
   /** "1 × 3 m length" for items sold per supplier length. */
   lengthLabel?: string | null;
   itemNumber?: string | null;
+  /** Piping kit row: the kit it was built from. */
+  kitBundleId?: string | null;
 }
 
 /** One area section inside the quote body (staff edit mode only). */
@@ -51,6 +53,9 @@ export interface EstimateEditing {
   /** Swap an install bracket line to another live bracket code. */
   onSwapBracket?: (id: string, code: string) => void;
   bracketOptions?: { code: string; label: string }[];
+  /** Swap a piping kit row to another live kit (same metres, repriced from the book). */
+  onSwapKit?: (id: string, bundleId: string) => void;
+  kitOptions?: { id: string; label: string }[];
   onRenameArea: (id: string, name: string) => void;
   onAddArea: () => void;
   /** Naming the orphan default section promotes it into a real area. */
@@ -349,6 +354,21 @@ const EstimateDocument = ({
                                 />
                               )}
                               <div className={`min-w-0 flex-1 ${line.installRole ? "border-l-2 border-sky-200 pl-2" : ""}`}>
+                                {line.kitBundleId && !line.installRole && editing.onSwapKit && editing.kitOptions && (
+                                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-sky-700 print:hidden">
+                                    <span>Kit</span>
+                                    <select
+                                      aria-label="Swap kit"
+                                      value={line.kitBundleId}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onChange={(e) => editing.onSwapKit?.(line.id, e.target.value)}
+                                      className="rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] normal-case tracking-normal text-slate-700"
+                                    >
+                                      {!editing.kitOptions.some((o) => o.id === line.kitBundleId) && <option value={line.kitBundleId}>{line.name}</option>}
+                                      {editing.kitOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                                    </select>
+                                  </div>
+                                )}
                                 {line.installRole && (
                                   <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-sky-700 print:hidden">
                                     <span>Install</span>
@@ -363,6 +383,18 @@ const EstimateDocument = ({
                                       >
                                         {!editing.bracketOptions.some((o) => o.code === line.itemNumber) && <option value={line.itemNumber || ""}>{line.itemNumber}</option>}
                                         {editing.bracketOptions.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
+                                      </select>
+                                    )}
+                                    {line.installRole === "piping_kit" && line.kitBundleId && editing.onSwapKit && editing.kitOptions && (
+                                      <select
+                                        aria-label="Swap kit"
+                                        value={line.kitBundleId}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) => editing.onSwapKit?.(line.id, e.target.value)}
+                                        className="rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] normal-case tracking-normal text-slate-700"
+                                      >
+                                        {!editing.kitOptions.some((o) => o.id === line.kitBundleId) && <option value={line.kitBundleId}>{line.name}</option>}
+                                        {editing.kitOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                                       </select>
                                     )}
                                   </div>

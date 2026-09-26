@@ -65,6 +65,9 @@ export default function EstimateBuilder({
     addArea, updateArea, deleteArea, updateItem, deleteItem, updateQuote,
   } = useQuoteContext();
   const { products: liveProducts } = useQuoteBuilderProducts();
+  const { bundles } = useQuoteBuilderBundles();
+  const { toast } = useToast();
+  const kitPool = useMemo(() => swappableKits(bundles as any, liveProducts), [bundles, liveProducts]);
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
   const [focusAreaId, setFocusAreaId] = useState<string | null>(null);
@@ -101,6 +104,7 @@ export default function EstimateBuilder({
     installRole: installTag(i)?.role ?? null,
     lengthLabel: lengthLabel(Number(i.quantity || 0), (i.metadata as any)?.supplier_length_m),
     itemNumber: i.item_number ?? null,
+    kitBundleId: (i.metadata as any)?.kit?.bundle_id ?? null,
   });
 
   const editAreas: EstimateEditArea[] = useMemo(() => {
@@ -228,6 +232,21 @@ export default function EstimateBuilder({
             const { unitSell: _u, ...f } = catalogLineFields(p, qty);
             void updateItem(id, { ...f, metadata: { ...(cur.metadata || {}), ...f.metadata, install: (cur.metadata as any)?.install }, total_price: Number((qty * f.unit_price).toFixed(2)) } as any);
             onChanged?.();
+          },
+          kitOptions: kitPool.map((k) => ({ id: k.id, label: `${kitSizeLabel(k)} kit` })),
+          onSwapKit: (id, bundleId) => {
+            const cur = items.find((i) => i.id === id);
+            const b = kitPool.find((k) => k.id === bundleId);
+            if (!cur || !b) return;
+            const before = { item_name: cur.item_name, item_number: cur.item_number, description: cur.description, length: cur.length, unit_price: cur.unit_price, total_price: cur.total_price, metadata: cur.metadata };
+            const { perMetre: _p, ...patch } = kitSwapPatch(cur as any, b as any);
+            void updateItem(id, patch as any);
+            onChanged?.();
+            toast({
+              title: `Kit is now ${kitSizeLabel(b)}`,
+              description: `${patch.length} m · ${formatRand(patch.unit_price)} excl. VAT`,
+              action: <ToastAction altText="Undo kit swap" onClick={() => { void updateItem(id, before as any); onChanged?.(); }}>Undo</ToastAction>,
+            });
           },
           onDeleteLine: (id) => {
             void deleteItem(id);
