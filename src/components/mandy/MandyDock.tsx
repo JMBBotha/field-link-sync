@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { WavRecorder } from "@/lib/wavRecorder";
 import { getAssistantContext, setAssistantContext } from "@/stores/assistantContextStore";
+import { releaseMandyMic, stopSharedAudio } from "@/lib/mandy/voiceUnlock";
 import { useMandyDock, useMandyRegistry, useRegisterMandyActions } from "@/lib/mandy/registry";
 import { CONFIRM_REQUIRED, toolsFor, type MandyChoice, type MandyResult } from "@/lib/mandy/actions";
 import { routeVoiceCommand, gateRoute } from "@/lib/mandy/router";
@@ -40,7 +41,7 @@ import { ADD_NEW_CLIENT_CHOICE, buildFindClientResult } from "@/lib/mandy/client
 import { latestQuoteQuery } from "@/lib/mandy/latestQuote";
 
 const MAX_STEPS = 4;
-type Phase = "idle" | "greeting" | "listening" | "hearing" | "working";
+type Phase = "idle" | "starting" | "greeting" | "listening" | "hearing" | "working";
 type Msg = Record<string, unknown>;
 
 const QUOTE_TOOLS_PROBE = "read_quote_total";
