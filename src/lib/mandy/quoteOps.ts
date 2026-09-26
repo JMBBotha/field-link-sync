@@ -12,6 +12,7 @@ import { extractBtu } from "@/lib/bundles";
 import { buildKitMaterial, kitBasketFields } from "@/components/catalog/quote-builder/kitLine";
 import { matchCatalog } from "@/lib/mandy/catalogMatch";
 import type { QuoteItem, QuoteItemInsert } from "@/types/quote";
+import { pickInstallTemplate, DEFAULT_INSTALL_KIT_M, type InstallTemplate, type InstallRole } from "@/lib/installTemplates";
 
 type AddItemFn = (item: Omit<QuoteItemInsert, "quote_id">) => Promise<QuoteItem | null>;
 
@@ -55,6 +56,40 @@ export interface AddProductResult {
   kitName: string | null;
   unitSell: number;
   kitSellPerMetre: number | null;
+  /** Install lines added after the unit (excluding the kit). */
+  installLines: QuoteItem[];
+  /** Human notes, e.g. "Skipped BRAC05 – not in active price books". */
+  notes: string[];
+  template: InstallTemplate | null;
+  kitLength: number | null;
+}
+
+/**
+ * Insert fields for a normal catalog line — the ONE pricing path
+ * (getEffectiveUnitPrices / resolveProductMarkupPercent). Items sold in
+ * supplier lengths are stored per LENGTH (qty = lengths, price = one length),
+ * never per metre, so "1 × 3 m length" is exactly the book price.
+ */
+export function catalogLineFields(p: PaletteProduct, qty: number) {
+  const perLength = !!(p.sold_in_length && p.unit_length && p.unit_length > 0);
+  const { unitCost, unitSell } = getEffectiveUnitPrices(p, perLength ? false : undefined);
+  const markupPct = resolveProductMarkupPercent(p);
+  const cost = Number(unitCost.toFixed(2));
+  const supplierLen = perLength ? Number(p.unit_length) : null;
+  return {
+    product_id: p.id,
+    item_name: p.short_name || p.product_code || "Product",
+    item_number: p.product_code || null,
+    description: (p as any).ai_sales_description || p.description || null,
+    supplier: p.supplier_name || null,
+    quantity: qty,
+    unit_price: Number(unitSell.toFixed(2)),
+    metadata: {
+      unit_cost: cost, cost_excl: cost, markup_percent: markupPct,
+      ...(supplierLen ? { supplier_length_m: supplierLen, qty_unit: "length" } : {}),
+    } as Record<string, any>,
+    unitSell,
+  };
 }
 
 export async function addCatalogProductToQuote(opts: {
@@ -65,39 +100,121 @@ export async function addCatalogProductToQuote(opts: {
   quantity?: number;
   bundles?: BundleForKit[];
   source?: string;
+  /** Standard install templates; when given, AC units get the full standard install. */
+  templates?: InstallTemplate[];
+  /** Live catalog rows used to resolve install product codes. */
+  liveProducts?: PaletteProduct[];
 }): Promise<AddProductResult> {
   const { addItem, product: p, areaId, bundles = [] } = opts;
   const qty = opts.quantity && opts.quantity > 0 ? opts.quantity : 1;
-  const { unitCost, unitSell } = getEffectiveUnitPrices(p);
-  const markupPct = resolveProductMarkupPercent(p);
-  const cost = Number(unitCost.toFixed(2));
+  const f = catalogLineFields(p, qty);
+  const { unitSell, ...fields } = f;
   const line = await addItem({
     ...baseItem(),
+    ...fields,
     area_id: areaId,
-    product_id: p.id,
-    item_name: p.short_name || p.product_code || "Product",
-    item_number: p.product_code || null,
-    description: (p as any).ai_sales_description || p.description || null,
-    supplier: p.supplier_name || null,
-    quantity: qty,
-    unit_price: Number(unitSell.toFixed(2)),
-    metadata: { unit_cost: cost, cost_excl: cost, markup_percent: markupPct },
     sort_order: opts.sortOrder,
     source: opts.source || "catalog",
   });
-
-  const bundle = line && isAirConditioningProduct(p) ? findPipingKitForBtu(bundles, extractBtu(p as any)) : null;
-  const k = bundle ? await addKitToQuote({ addItem, bundle, areaId, sortOrder: opts.sortOrder + 1, source: opts.source }) : null;
-  const kit = k?.kit ?? null, kitName = k?.kitName ?? null, kitSellPerMetre = k?.kitSellPerMetre ?? null;
-  return { line, kit, kitName, unitSell, kitSellPerMetre };
+  const empty: AddProductResult = { line, kit: null, kitName: null, unitSell, kitSellPerMetre: null, installLines: [], notes: [], template: null, kitLength: null };
+  if (!line || !isAirConditioningProduct(p)) return empty;
+  const inst = await addStandardInstall({
+    addItem, unitLine: line, product: p, areaId, sortOrder: opts.sortOrder + 1,
+    templates: opts.templates || [], bundles, liveProducts: opts.liveProducts || [], source: opts.source,
+  });
+  return { ...empty, ...inst };
 }
 
-/** Add a piping kit row at its default length — the exact row the builder auto-adds with an AC unit. */
-export async function addKitToQuote(opts: { addItem: AddItemFn; bundle: BundleForKit; areaId: string | null; sortOrder: number; source?: string }) {
+/**
+ * Standard install for an AC unit: template by BTU → piping kit (collapsed,
+ * price-locked, at the template length) + each other item as its own normal
+ * catalog line, all tagged metadata.install = { unit_item_id, role, template_id }.
+ * No template → today's kit-only rule (findPipingKitForBtu) at 3 m.
+ */
+export interface InstallPlan {
+  template: InstallTemplate | null;
+  kitBundle: BundleForKit | null;
+  kitLength: number;
+  lines: { role: InstallRole; product: PaletteProduct; qty: number }[];
+  notes: string[];
+}
+
+/** The ONE standard-install rule (used by quote writes AND the clickable builder's basket). */
+export function planStandardInstall(product: Partial<PaletteProduct>, templates: InstallTemplate[], bundles: BundleForKit[], liveProducts: PaletteProduct[]): InstallPlan {
+  const btu = extractBtu(product as any);
+  const tpl = pickInstallTemplate(templates, btu);
+  const notes: string[] = [];
+  const lines: InstallPlan["lines"] = [];
+  if (!tpl) return { template: null, kitBundle: findPipingKitForBtu(bundles, btu), kitLength: DEFAULT_INSTALL_KIT_M, lines, notes };
+  let kitBundle: BundleForKit | null = null, kitLength = DEFAULT_INSTALL_KIT_M;
+  for (const it of tpl.items) {
+    if (!it.included) continue;
+    if (it.role === "piping_kit") {
+      kitBundle = (it.bundle_id && bundles.find((x) => x.id === it.bundle_id)) || findPipingKitForBtu(bundles, btu);
+      kitLength = it.default_length_m || DEFAULT_INSTALL_KIT_M;
+      if (!kitBundle) notes.push("Skipped piping kit – kit not found");
+      continue;
+    }
+    const code = String(it.product_code || "").trim().toUpperCase();
+    const prod = code ? liveProducts.find((x) => String(x.product_code || "").trim().toUpperCase() === code) : null;
+    if (!prod) { notes.push(`Skipped ${code || it.role} – not in active price books`); continue; }
+    lines.push({ role: it.role, product: prod, qty: it.default_qty || 1 });
+  }
+  return { template: tpl, kitBundle, kitLength, lines, notes };
+}
+
+/**
+ * Standard install for an AC unit: template by BTU → piping kit (collapsed,
+ * price-locked, at the template length) + each other item as its own normal
+ * catalog line, all tagged metadata.install = { unit_item_id, role, template_id }.
+ * No template → today's kit-only rule (findPipingKitForBtu) at 3 m.
+ */
+export async function addStandardInstall(opts: {
+  addItem: AddItemFn;
+  unitLine: QuoteItem;
+  product: PaletteProduct;
+  areaId: string | null;
+  sortOrder: number;
+  templates: InstallTemplate[];
+  bundles: BundleForKit[];
+  liveProducts: PaletteProduct[];
+  source?: string;
+}) {
+  const { addItem, unitLine, areaId } = opts;
+  const plan = planStandardInstall(opts.product, opts.templates, opts.bundles, opts.liveProducts);
+  const tpl = plan.template;
+  const notes = [...plan.notes];
+  const installLines: QuoteItem[] = [];
+  let sort = opts.sortOrder;
+  let kit: QuoteItem | null = null, kitName: string | null = null, kitSellPerMetre: number | null = null, kitLength: number | null = null;
+  const tag = (role: InstallRole) => ({ install: { unit_item_id: unitLine.id, role, template_id: tpl?.id ?? null } });
+
+  if (plan.kitBundle) {
+    const k = await addKitToQuote({ addItem, bundle: plan.kitBundle, areaId, sortOrder: sort++, source: opts.source, length: plan.kitLength, extraMeta: tag("piping_kit") });
+    kit = k.kit; kitName = k.kitName; kitSellPerMetre = k.kitSellPerMetre; kitLength = k.length;
+  }
+  for (const l of plan.lines) {
+    const { unitSell: _u, ...fields } = catalogLineFields(l.product, l.qty);
+    const row = await addItem({
+      ...baseItem(),
+      ...fields,
+      metadata: { ...fields.metadata, ...tag(l.role) },
+      area_id: areaId,
+      sort_order: sort++,
+      source: opts.source || "catalog",
+    });
+    if (row) installLines.push(row);
+    else notes.push(`Couldn't add ${l.product.product_code}`);
+  }
+  return { kit, kitName, kitSellPerMetre, installLines, notes, template: tpl, kitLength };
+}
+
+/** Add a piping kit row — the exact collapsed, price-locked row the builder adds with an AC unit. */
+export async function addKitToQuote(opts: { addItem: AddItemFn; bundle: BundleForKit; areaId: string | null; sortOrder: number; source?: string; length?: number; extraMeta?: Record<string, any> }) {
   const { addItem, bundle, areaId } = opts;
   const m = buildKitMaterial(bundle as any, 1);
   const f = kitBasketFields(m);
-  const len = m.pricingMode === "length" ? m.adjustedLength : 1;
+  const len = m.pricingMode === "length" ? (opts.length && opts.length > 0 ? opts.length : m.adjustedLength) : 1;
   const sell = Number(((f.bundleUnitPrice || 0) * len).toFixed(2));
   const kCost = Number(((f.bundleUnitCost || 0) * len).toFixed(2));
   const kit = await addItem({
@@ -119,11 +236,12 @@ export async function addKitToQuote(opts: { addItem: AddItemFn; bundle: BundleFo
       markup_percent: kCost > 0 ? Number((((sell - kCost) / kCost) * 100).toFixed(2)) : 0,
       price_locked: true,
       kit: { bundle_id: bundle.id, name: bundle.name, pricing_type: f.bundlePricingType, unit_cost: f.bundleUnitCost ?? 0, unit_sell: Number((f.bundleUnitPrice ?? 0).toFixed(2)), items: f.kitContents ?? [] },
+      ...(opts.extraMeta || {}),
     },
     sort_order: opts.sortOrder,
     source: opts.source || "catalog",
   });
-  return { kit, kitName: bundle.name, kitSellPerMetre: f.bundleUnitPrice || 0 };
+  return { kit, kitName: bundle.name, kitSellPerMetre: f.bundleUnitPrice || 0, length: m.pricingMode === "length" ? len : null };
 }
 
 /**

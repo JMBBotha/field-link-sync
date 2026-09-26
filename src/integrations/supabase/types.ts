@@ -1961,6 +1961,99 @@ export type Database = {
           },
         ]
       }
+      install_template_items: {
+        Row: {
+          bundle_id: string | null
+          created_at: string
+          default_length_m: number | null
+          default_qty: number
+          id: string
+          included: boolean
+          product_code: string | null
+          role: string
+          sort_order: number
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          bundle_id?: string | null
+          created_at?: string
+          default_length_m?: number | null
+          default_qty?: number
+          id?: string
+          included?: boolean
+          product_code?: string | null
+          role: string
+          sort_order?: number
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          bundle_id?: string | null
+          created_at?: string
+          default_length_m?: number | null
+          default_qty?: number
+          id?: string
+          included?: boolean
+          product_code?: string | null
+          role?: string
+          sort_order?: number
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "install_template_items_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "installation_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "install_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "install_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      install_templates: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          max_btu: number
+          min_btu: number
+          name: string
+          sort_order: number
+          unit_kind: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_btu: number
+          min_btu: number
+          name: string
+          sort_order?: number
+          unit_kind?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_btu?: number
+          min_btu?: number
+          name?: string
+          sort_order?: number
+          unit_kind?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       installation_bundles: {
         Row: {
           ac_type: string | null

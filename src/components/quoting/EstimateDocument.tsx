@@ -21,6 +21,11 @@ export interface EstimateEditLine {
   quantity: number;
   unit_price: number;
   imageUrl?: string | null;
+  /** Standard-install role when this line belongs to an AC unit's install. */
+  installRole?: string | null;
+  /** "1 × 3 m length" for items sold per supplier length. */
+  lengthLabel?: string | null;
+  itemNumber?: string | null;
 }
 
 /** One area section inside the quote body (staff edit mode only). */
@@ -43,6 +48,9 @@ export interface EstimateEditing {
     patch: { item_name?: string; description?: string | null; quantity?: number; unit_price?: number },
   ) => void;
   onDeleteLine: (id: string) => void;
+  /** Swap an install bracket line to another live bracket code. */
+  onSwapBracket?: (id: string, code: string) => void;
+  bracketOptions?: { code: string; label: string }[];
   onRenameArea: (id: string, name: string) => void;
   onAddArea: () => void;
   /** Naming the orphan default section promotes it into a real area. */
@@ -323,6 +331,7 @@ const EstimateDocument = ({
                       return (
                         <tr
                           key={line.id}
+                          data-install-role={line.installRole || undefined}
                           onFocus={() => editing.onSelectLine(line.id)}
                           onClick={() => editing.onSelectLine(line.id)}
                           className={`border-b border-slate-100 align-top ${
@@ -339,7 +348,25 @@ const EstimateDocument = ({
                                   loading="lazy"
                                 />
                               )}
-                              <div className="min-w-0 flex-1">
+                              <div className={`min-w-0 flex-1 ${line.installRole ? "border-l-2 border-sky-200 pl-2" : ""}`}>
+                                {line.installRole && (
+                                  <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-sky-700 print:hidden">
+                                    <span>Install</span>
+                                    {line.lengthLabel && <span className="normal-case tracking-normal text-slate-500">{line.lengthLabel}</span>}
+                                    {line.installRole === "bracket" && editing.onSwapBracket && editing.bracketOptions && (
+                                      <select
+                                        aria-label="Swap bracket"
+                                        value={line.itemNumber || ""}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) => editing.onSwapBracket?.(line.id, e.target.value)}
+                                        className="rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] normal-case tracking-normal text-slate-700"
+                                      >
+                                        {!editing.bracketOptions.some((o) => o.code === line.itemNumber) && <option value={line.itemNumber || ""}>{line.itemNumber}</option>}
+                                        {editing.bracketOptions.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
+                                      </select>
+                                    )}
+                                  </div>
+                                )}
                                 <input
                                   key={`${line.id}-name`}
                                   defaultValue={line.name}

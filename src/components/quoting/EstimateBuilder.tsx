@@ -14,6 +14,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuoteContext } from "@/contexts/QuoteContext";
+import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
+import { installTag, lengthLabel, BRACKET_OPTIONS } from "@/lib/installTemplates";
+import { catalogLineFields } from "@/lib/mandy/quoteOps";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import QuoteQuickEditor from "@/components/quoting/QuoteQuickEditor";
 import StaffMarginCard from "@/components/quoting/StaffMarginCard";
@@ -61,6 +64,7 @@ export default function EstimateBuilder({
     quoteId, meta, areas, items,
     addArea, updateArea, deleteArea, updateItem, deleteItem, updateQuote,
   } = useQuoteContext();
+  const { products: liveProducts } = useQuoteBuilderProducts();
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
   const [focusAreaId, setFocusAreaId] = useState<string | null>(null);
@@ -94,6 +98,9 @@ export default function EstimateBuilder({
     quantity: Number(i.quantity || 0),
     unit_price: Number(i.unit_price || 0),
     imageUrl: i.product_id ? (productImages as Record<string, string | null>)[i.product_id] ?? null : null,
+    installRole: installTag(i)?.role ?? null,
+    lengthLabel: lengthLabel(Number(i.quantity || 0), (i.metadata as any)?.supplier_length_m),
+    itemNumber: i.item_number ?? null,
   });
 
   const editAreas: EstimateEditArea[] = useMemo(() => {
@@ -103,6 +110,12 @@ export default function EstimateBuilder({
       lines: topLevel
         .filter((i) => i.area_id === a.id && !isLabourItem(i))
         .sort((x, y) => (x.sort_order || 0) - (y.sort_order || 0))
+        .reduce<typeof topLevel>((acc, i, _n, all) => {
+          // Install lines sit directly under their unit.
+          if (installTag(i) && all.some((u) => u.id === installTag(i)!.unit_item_id)) return acc;
+          acc.push(i, ...all.filter((x) => installTag(x)?.unit_item_id === i.id));
+          return acc;
+        }, [])
         .map(lineFor),
     }));
     const orphans = topLevel.filter((i) => !i.area_id);
@@ -204,6 +217,16 @@ export default function EstimateBuilder({
           onSelectLine: setSelectedLineId,
           onLineChange: (id, patch) => {
             void updateItem(id, patch as any);
+            onChanged?.();
+          },
+          bracketOptions: BRACKET_OPTIONS.filter((o) => liveProducts.some((p) => p.product_code === o.code)),
+          onSwapBracket: (id, code) => {
+            const cur = items.find((i) => i.id === id);
+            const p = liveProducts.find((x) => x.product_code === code);
+            if (!cur || !p) return;
+            const qty = Number(cur.quantity) || 1;
+            const { unitSell: _u, ...f } = catalogLineFields(p, qty);
+            void updateItem(id, { ...f, metadata: { ...(cur.metadata || {}), ...f.metadata, install: (cur.metadata as any)?.install }, total_price: Number((qty * f.unit_price).toFixed(2)) } as any);
             onChanged?.();
           },
           onDeleteLine: (id) => {

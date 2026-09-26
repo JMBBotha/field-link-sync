@@ -29,6 +29,8 @@ export interface AssistantUiContext {
   open_quote_labour?: string;
   /** Compact full quote: areas, every line, totals. */
   open_quote_lines?: string;
+  /** Compact standard-install tags per unit. */
+  open_quote_install?: string;
 }
 
 interface AssistantContextState {
@@ -42,7 +44,7 @@ const clean = (ctx: AssistantUiContext): AssistantUiContext => {
   const out: AssistantUiContext = {};
   (Object.keys(ctx) as (keyof AssistantUiContext)[]).forEach((k) => {
     const v = ctx[k];
-    if (typeof v === "string" && v.trim()) out[k] = v.trim().slice(0, k === "open_quote_labour" ? 600 : k === "open_quote_lines" ? 1000 : 160);
+    if (typeof v === "string" && v.trim()) out[k] = v.trim().slice(0, k === "open_quote_labour" || k === "open_quote_install" ? 600 : k === "open_quote_lines" ? 1000 : 160);
   });
   return out;
 };

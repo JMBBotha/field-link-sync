@@ -27,6 +27,7 @@ import { runPlanSteps, planReportText, type PlanStep } from "@/lib/mandy/quoteEd
 import type { PlanPreview } from "@/lib/mandy/planPreview";
 import { parseMultiEdit } from "@/lib/mandy/multiEdit";
 import { parseLabourIntent, mapLabourTool } from "@/lib/mandy/labourParse";
+import { parseInstallCommand } from "@/lib/mandy/installEdits";
 import { parseQuoteIntent } from "@/lib/mandy/quoteIntent";
 import { guardClaimedChange, unknownToolMessage } from "@/lib/mandy/honesty";
 import { honestMessage, routeReached, finalReplyFrom } from "@/lib/mandy/verify";
@@ -336,7 +337,7 @@ export default function MandyDock() {
       }
       // Deterministic single labour command: straight to set_labour_hours, no model.
       // A bare "cancel / clear / start over" only cancels a pending card; otherwise quote intents route.
-      const qi = !local ? parseQuoteIntent(t, { pendingCard: hadPendingCard }) : null;
+      const qi = !local && !parseInstallCommand(t) ? parseQuoteIntent(t, { pendingCard: hadPendingCard }) : null;
       if (qi?.action === "cancel_pending") final = "Cancelled — nothing was changed.";
       const lab = !local && !qi ? parseLabourIntent(t) : null;
       if (lab) {
@@ -353,7 +354,22 @@ export default function MandyDock() {
           }
         }
       }
-      const quick = !lab && qi && qi.action !== "cancel_pending" ? qi : null;
+      const inst = !local && !qi && !lab ? parseInstallCommand(t) : null;
+      if (inst) {
+        if (!registry?.get("edit_install")) final = "Open the quote first, then say that again.";
+        else {
+          const staleMsg = staleWriteRefusal("edit_install", useBuildStatus.getState().stale);
+          if (staleMsg) final = staleMsg;
+          else {
+            const r = await execute("edit_install", inst as Record<string, any>);
+            if (r.choices?.length) setChoices(r.choices);
+            if (r.confirm) setConfirm(r.confirm);
+            results.push(r); writes.push(true);
+            final = finalReplyFrom(results, "");
+          }
+        }
+      }
+      const quick = !lab && !inst && qi && qi.action !== "cancel_pending" ? qi : null;
       if (quick) {
         if (!registry?.get(quick.action)) final = "Open the quote first, then say that again.";
         else {
@@ -368,7 +384,7 @@ export default function MandyDock() {
           }
         }
       }
-      for (let step = 0; !local && !lab && !qi && step <= MAX_STEPS; step++) {
+      for (let step = 0; !local && !lab && !inst && !qi && step <= MAX_STEPS; step++) {
         const r0 = await routeVoiceCommand({
           transcript: step === 0 ? t : "",
           history: msgs,

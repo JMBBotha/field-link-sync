@@ -228,7 +228,7 @@ describe("batch 2 follow-up: multi-edit plan without Grok", () => {
     const kitAuto = p.lines.find((l) => l.action === "auto_kit")!;
     const kitLen = p.lines.find((l) => l.action === "set_kit_length")!;
     expect(kitLen.qty).toBe(3);
-    expect(kitLen.price).toBeCloseTo(kitAuto.price! * 3, 1);
+    expect(kitLen.price).toBeCloseTo(kitAuto.price! / (kitAuto.qty || 1) * 3, 1);
     expect(p.lines.find((l) => l.action === "set_labour_hours")!.price).toBe(1360);
     expect(p.beforeExcl).toBeCloseTo(12142.36, 2);
   });

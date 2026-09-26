@@ -21,6 +21,8 @@ import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
 import { fetchVisualCatalogAllowlist, filterToVisualCatalog } from "@/lib/catalogSoT";
 import { addCatalogProductToQuote } from "@/lib/mandy/quoteOps";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
+import { useInstallTemplates } from "@/hooks/useInstallTemplates";
+import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 
 import type { QuoteItemInsert } from "@/types/quote";
 
@@ -67,6 +69,8 @@ export default function QuoteQuickEditor({
 }) {
   const { areas, items, addItem, addArea, ensureDefaultArea } = useQuoteContext();
   const { bundles } = useQuoteBuilderBundles();
+  const { templates } = useInstallTemplates();
+  const { products: liveProducts } = useQuoteBuilderProducts();
   const dropdownPos = dropUp ? "bottom-full mb-1" : "mt-1";
   const { favorites } = useProductFavorites();
   const [productTerm, setProductTerm] = useState("");
@@ -166,7 +170,7 @@ export default function QuoteQuickEditor({
     setAdding(p.id);
     const areaId = await resolveArea();
     // Shared with Mandy: same line + auto piping kit for AC units.
-    await addCatalogProductToQuote({ addItem, product: p, areaId, sortOrder: nextSortOrder(), bundles });
+    await addCatalogProductToQuote({ addItem, product: p, areaId, sortOrder: nextSortOrder(), bundles, templates, liveProducts });
     setAdding(null);
     setProductTerm("");
     onChanged?.();
