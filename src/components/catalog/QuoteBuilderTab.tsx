@@ -41,7 +41,7 @@ import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 import { searchAndRankProducts } from "./searchSynonyms";
 import QuoteBuilderPopup from "./quote-builder/QuoteBuilderPopup";
 import type { WizardTriggerItem } from "./quote-builder/QuoteBuilderPopup";
-import { computeBundlePricing } from "./quote-builder/BundleItemsPopover";
+import { computeBundlePricing, toBundleSubItems, scaleKitCountItems } from "./quote-builder/BundleItemsPopover";
 import { computeBasketsQuoteTotals, applyCategoryRatesToBaskets } from "@/utils/quoteBasketTotals";
 import { subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot } from "@/lib/pricing";
 import type { QuoteTotals } from "@/utils/quoteTransformers";
@@ -350,7 +350,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       if (!bundleData || bundleData.length === 0) return [];
 
       const { data: itemsData, error: iErr } = await (supabase.from("bundle_items") as any).
-      select("id, bundle_id, supplier_product_id, quantity, length_metres, is_length_item, is_optional, sort_order, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, cost_price, default_markup_percent, supplier_discount_percent, markup_percent, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name))").
+      select("id, bundle_id, supplier_product_id, quantity, length_metres, is_length_item, is_optional, sort_order, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, cost_price, default_markup_percent, supplier_discount_percent, markup_percent, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pack_qty, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name))").
       order("sort_order");
       if (iErr) throw iErr;
 
@@ -459,19 +459,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   [installTemplates, bundles, products]);
 
   const buildBundleBasketItem = useCallback((bundle: PaletteBundle): BasketItem | null => {
-    const subItems = bundle.items
-      .filter((bItem) => bItem.product)
-      .map((bItem) => {
-        const isLengthItem = bItem.is_length_item && !!bItem.product!.price_per_metre;
-        return {
-          product: bItem.product as PaletteProduct,
-          quantity: bItem.quantity,
-          isLengthItem,
-          isOptional: bItem.is_optional,
-          perKitMetre: bItem.length_metres ?? bItem.quantity ?? 1,
-          ...(isLengthItem ? { length: bItem.length_metres || 1 } : {}),
-        };
-      });
+    const subItems = toBundleSubItems(bundle.items as any, DEFAULT_KIT_LENGTH_M, (b) => b.length_metres || 1);
 
     const { pricingType, unitPrice, unitCost } = computeBundlePricing(subItems);
     const firstProduct = subItems.find((i) => !i.isOptional)?.product || subItems[0]?.product;
@@ -713,10 +701,10 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         if (i.isBundle && i.bundleItems && i.bundlePricingType === "p/meter") {
           const oldLength = i.length || 1;
           const ratio = length / oldLength;
-          const scaledBundleItems = i.bundleItems.map((si) => ({
+          const scaledBundleItems = scaleKitCountItems(i.bundleItems.map((si) => ({
             ...si,
             length: si.isLengthItem ? (si.length || 1) * ratio : si.length
-          }));
+          })) as any, length);
           return { ...i, length, bundleItems: scaledBundleItems };
         }
         return { ...i, length };

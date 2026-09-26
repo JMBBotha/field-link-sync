@@ -23,8 +23,27 @@ import {
   resolvePricingUnit,
   sanitizeQty,
   formatQty,
+  roundMoney,
   type PricingUnit,
 } from "@/lib/pricingUnits";
+import { packUnits } from "./quote-builder/BundleItemsPopover";
+
+/** Parse "0.5", "1/3", "1 1/2" → number (up to 10 dp). */
+export function parseKitQty(text: string): number | null {
+  const t = text.trim().replace(",", ".");
+  if (!t) return null;
+  const m = t.match(/^(?:(\d+(?:\.\d+)?)\s+)?(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+  let v: number;
+  if (m) {
+    const den = Number(m[3]);
+    if (!(den > 0)) return null;
+    v = (m[1] ? Number(m[1]) : 0) + Number(m[2]) / den;
+  } else {
+    v = Number(t);
+  }
+  if (!Number.isFinite(v) || v < 0) return null;
+  return Math.round(v * 1e10) / 1e10;
+}
 
 
 const BUNDLE_TYPES = [
@@ -56,6 +75,11 @@ type BundleItemLocal = {
   unit_price: number;
   /** Quantity the user entered, expressed in unit.unit_type */
   entered_qty: number;
+  /** Pieces the catalog price covers (bag of 100 → 100); unit_price is then per piece. */
+  pack_units?: number;
+  pack_price?: number;
+  /** Raw text while typing a quantity (fractions allowed). */
+  qty_text?: string;
 };
 
 
@@ -99,7 +123,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bundle_items")
-        .select("*, supplier_products(description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name))")
+        .select("*, supplier_products(description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, pack_qty, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name))")
         .eq("bundle_id", bundleId!)
         .order("sort_order");
       if (error) throw error;
@@ -124,9 +148,10 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
           item.unit_type ? item : { ...product, sold_in_length: item.is_length_item || product.sold_in_length }
         );
         const isLen = unit.unit_type === "m" || unit.unit_type === "roll";
+        const pk = isLen ? 1 : packUnits(product);
         const unitPrice = isLen && product.price_per_metre
           ? product.price_per_metre * unit.price_per_unit_qty
-          : product.cost_price || 0;
+          : (product.cost_price || 0) / pk;
         return {
           id: item.id,
           supplier_product_id: item.supplier_product_id,
@@ -146,7 +171,10 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
           short_name: product.short_name,
           unit,
           unit_price: unitPrice,
-          entered_qty: sanitizeQty(isLen ? (item.length_metres ?? item.quantity ?? 1) : (item.quantity ?? 1), unit),
+          // Stored value untouched (e.g. 0.3333333333 m tape per kit metre).
+          entered_qty: Number(isLen ? (item.length_metres ?? item.quantity ?? 1) : (item.quantity ?? 1)),
+          pack_units: pk,
+          pack_price: product.cost_price || 0,
         } satisfies BundleItemLocal;
       }));
 
@@ -168,7 +196,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
 
       const { data, error } = await supabase
         .from("supplier_products")
-        .select("id, description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, brand, category, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name)")
+        .select("id, description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, brand, category, pack_qty, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name)")
         .or("archived.is.null,archived.eq.false")
         .or(orFilter)
         .limit(300);
@@ -196,9 +224,10 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
     }
     const unit = resolvePricingUnit(product);
     const isLen = unit.unit_type === "m" || unit.unit_type === "roll";
+    const pk = isLen ? 1 : packUnits(product);
     const unitPrice = isLen && product.price_per_metre
       ? product.price_per_metre * unit.price_per_unit_qty
-      : product.cost_price || 0;
+      : (product.cost_price || 0) / pk;
     const startQty = sanitizeQty(isLen ? 4 : Math.max(unit.min_qty, unit.qty_step), unit);
     setItems(prev => [...prev, {
       supplier_product_id: product.id,
@@ -219,6 +248,8 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
       unit,
       unit_price: unitPrice,
       entered_qty: startQty,
+      pack_units: pk,
+      pack_price: product.cost_price || 0,
     }]);
     setPickerOpen(false);
     setSearch("");
@@ -242,7 +273,12 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
 
   /** One formula for every item: (enteredQty / price_per_unit_qty) * unitPrice */
   const getLineTotal = (item: BundleItemLocal) =>
-    computeLineTotal(item.entered_qty, item.unit_price, item.unit);
+    (item.pack_units ?? 1) > 1
+      ? roundMoney(item.entered_qty * item.unit_price) // unit_price is per piece
+      : computeLineTotal(item.entered_qty, item.unit_price, item.unit);
+
+  /** Kit priced per kit metre: quantities are per 1 m of kit. */
+  const perMetreKit = items.some((i) => i.is_length_item && !i.is_optional);
 
 
   const bundleTotal = items.reduce((sum, item) => sum + getLineTotal(item), 0);
@@ -366,7 +402,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
                 <tr className="text-muted-foreground border-b">
                   <th className="text-left font-medium py-1.5 w-20">Code</th>
                   <th className="text-left font-medium py-1.5">Description</th>
-                  <th className="text-right font-medium py-1.5 w-28">Qty</th>
+                  <th className="text-right font-medium py-1.5 w-28">{perMetreKit ? "Qty per kit metre" : "Qty"}</th>
                   <th className="text-right font-medium py-1.5 w-28">Unit Price</th>
                   <th className="text-right font-medium py-1.5 w-20">Line Total</th>
                   <th className="text-center font-medium py-1.5 w-16">Optional</th>
@@ -392,22 +428,44 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
                             className="text-[10px] text-primary hover:underline"
                             onClick={() => setUnitEditorIdx(idx)}
                           >
-                            {formatUnitPrice(item.unit_price, item.unit)} · change unit
+                            {(item.pack_units ?? 1) > 1
+                              ? `R${item.unit_price.toFixed(2)} each (bag of ${item.pack_units} @ R${(item.pack_price ?? 0).toFixed(2)})`
+                              : formatUnitPrice(item.unit_price, item.unit)} · change unit
                           </button>
                         </div>
                       </td>
                       <td className="text-right py-1.5">
                         <div className="flex items-center justify-end gap-1">
-                          <Input
-                            {...qtyInputProps(item.unit)}
-                            value={item.entered_qty}
-                            onChange={e => {
-                              const raw = parseFloat(e.target.value);
-                              updateItem(idx, "entered_qty", sanitizeQty(Number.isFinite(raw) ? raw : item.unit.min_qty, item.unit));
-                            }}
-                            className="h-6 w-16 text-xs text-right px-1"
-                          />
-                          <span className="text-muted-foreground text-[10px]">{item.unit.unit_type === "each" ? "ea" : item.unit.unit_type}</span>
+                          {perMetreKit ? (
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              value={item.qty_text ?? String(+item.entered_qty.toFixed(4))}
+                              title={String(item.entered_qty)}
+                              onChange={e => {
+                                const text = e.target.value;
+                                const v = parseKitQty(text);
+                                setItems(prev => prev.map((it, i) => i === idx ? { ...it, qty_text: text, ...(v != null ? { entered_qty: v } : {}) } : it));
+                              }}
+                              onBlur={() => updateItem(idx, "qty_text", undefined)}
+                              className="h-6 w-16 text-xs text-right px-1"
+                            />
+                          ) : (
+                            <Input
+                              {...qtyInputProps(item.unit)}
+                              value={item.entered_qty}
+                              onChange={e => {
+                                const raw = parseFloat(e.target.value);
+                                updateItem(idx, "entered_qty", sanitizeQty(Number.isFinite(raw) ? raw : item.unit.min_qty, item.unit));
+                              }}
+                              className="h-6 w-16 text-xs text-right px-1"
+                            />
+                          )}
+                          <span className="text-muted-foreground text-[10px]">
+                            {perMetreKit
+                              ? (item.is_length_item ? "m / kit m" : "ea / kit m")
+                              : (item.unit.unit_type === "each" ? "ea" : item.unit.unit_type)}
+                          </span>
                         </div>
                       </td>
                       <td className="text-right py-1.5">
@@ -420,7 +478,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
                             onChange={e => updateItem(idx, "unit_price", parseFloat(e.target.value) || 0)}
                             className="h-6 w-20 text-xs text-right px-1"
                           />
-                          <span className="text-muted-foreground text-[10px]">/{item.unit.price_per_unit_label}</span>
+                          <span className="text-muted-foreground text-[10px]">/{(item.pack_units ?? 1) > 1 ? "ea" : item.unit.price_per_unit_label}</span>
                         </div>
                       </td>
 
@@ -442,7 +500,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
               </tbody>
               <tfoot>
                 <tr className="border-t-2">
-                  <td colSpan={4} className="py-2 text-right font-semibold text-sm">Bundle Total:</td>
+                  <td colSpan={4} className="py-2 text-right font-semibold text-sm">{perMetreKit ? "Total per kit metre:" : "Bundle Total:"}</td>
                   <td className="py-2 text-right font-bold text-sm text-primary">R{bundleTotal.toFixed(2)}</td>
                   <td colSpan={2}></td>
                 </tr>
