@@ -55,6 +55,16 @@ export function lengthLabel(qty: number, supplierLengthM: number | null | undefi
   return `${q} × ${Number(supplierLengthM)} m length${q === 1 ? "" : "s"}`;
 }
 
+/** Quantity label for a saved line: "3 m · R88.17/m" for per-metre trunking, "1 × 3 m length" for old per-length lines, else null. */
+export function qtyUnitLabel(qty: number, metadata: any, unitPrice?: number | null): string | null {
+  if (metadata?.qty_unit === "metre") {
+    const m = Math.round((Number(qty) || 0) * 100) / 100;
+    const rate = Number(unitPrice);
+    return Number.isFinite(rate) && rate > 0 ? `${m} m · R${rate.toFixed(2)}/m` : `${m} m`;
+  }
+  return lengthLabel(qty, metadata?.supplier_length_m);
+}
+
 /** Read the install tag off a saved quote line. */
 export function installTag(item: { metadata?: any } | null | undefined): InstallTag | null {
   const t = item?.metadata?.install;
@@ -84,14 +94,14 @@ export async function fetchInstallTemplates(): Promise<InstallTemplate[]> {
 }
 
 /** Client-side install link carried on a builder basket line (unitKey = the unit line's instanceId). */
-export interface BasketInstall { unitKey: string; role: InstallRole; template_id: string | null; supplier_length_m?: number | null }
+export interface BasketInstall { unitKey: string; role: InstallRole; template_id: string | null; supplier_length_m?: number | null; qty_unit?: "metre" | "length" }
 
 /** Basket install link → saved metadata (unit_item_id still holds the unit's instanceId until remapped). */
 export function basketInstallMeta(inst: BasketInstall | undefined | null): Record<string, any> {
   if (!inst) return {};
   return {
     install: { unit_item_id: inst.unitKey, role: inst.role, template_id: inst.template_id ?? null },
-    ...(inst.supplier_length_m ? { supplier_length_m: inst.supplier_length_m, qty_unit: "length" } : {}),
+    ...(inst.supplier_length_m ? { supplier_length_m: inst.supplier_length_m, qty_unit: inst.qty_unit === "metre" ? "metre" : "length" } : {}),
   };
 }
 
@@ -99,7 +109,7 @@ export function basketInstallMeta(inst: BasketInstall | undefined | null): Recor
 export function basketInstallFrom(item: { metadata?: any }): BasketInstall | undefined {
   const t = installTag(item);
   if (!t) return undefined;
-  return { unitKey: t.unit_item_id, role: t.role, template_id: t.template_id ?? null, supplier_length_m: item.metadata?.supplier_length_m ?? null };
+  return { unitKey: t.unit_item_id, role: t.role, template_id: t.template_id ?? null, supplier_length_m: item.metadata?.supplier_length_m ?? null, ...(item.metadata?.qty_unit === "metre" ? { qty_unit: "metre" as const } : {}) };
 }
 
 /**
