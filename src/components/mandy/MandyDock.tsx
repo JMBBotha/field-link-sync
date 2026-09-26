@@ -316,11 +316,13 @@ export default function MandyDock() {
     let lastUnverified = false;
     const results: MandyResult[] = [];
     const writes: boolean[] = [];
+    let planTurn = false;
     const isWrite = (a?: string) => !!a && !/^(read_|show_|list_|open_|find_|search_|get_)/.test(a);
     try {
       // Deterministic multi-edit pre-parse: 2+ clauses → ONE local plan card, no model needed.
       const local = registry?.get("__preview_plan") ? parseMultiEdit(t) : null;
       if (local) {
+        planTurn = true;
         const staleMsg = staleWriteRefusal("run_plan", useBuildStatus.getState().stale);
         final = staleMsg || await preparePlan(local, 1);
       }
@@ -355,6 +357,7 @@ export default function MandyDock() {
         const staleMsg = staleWriteRefusal(r0.plan ? "run_plan" : r0.action, useBuildStatus.getState().stale || (r0.action && !import.meta.env.DEV ? await checkForNewBuild() : false));
         if (staleMsg) { final = staleMsg; break; }
         if (r0.plan) {
+          planTurn = true;
           const out = await preparePlan(r0.plan, r0.confidence);
           final = out;
           break;
@@ -403,7 +406,7 @@ export default function MandyDock() {
     }
     if (!final && results.length) final = finalReplyFrom(results, "");
     if (!final) final = "I couldn't finish that — nothing more was done.";
-    if (!local0Ref.current) final = guardClaimedChange(final, results, writes);
+    if (!planTurn) final = guardClaimedChange(final, results, writes);
     if (lastUnverified && !/confirm it on screen/i.test(final)) final = honestMessage({ ok: true, message: final, verified: false });
     final = formatReplyText(final);
     historyRef.current = [...historyRef.current, { role: "user", content: t }, { role: "assistant", content: final }].slice(-8);
