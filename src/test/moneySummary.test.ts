@@ -28,3 +28,20 @@ describe("computeMoneySummary", () => {
     expect(formatRand(7774.6)).toBe("R 7 774,60");
   });
 });
+
+import { computeLeadMoney } from "@/lib/moneySummary";
+describe("computeLeadMoney", () => {
+  it("groups open invoices per lead, biggest balance first", () => {
+    const rows = computeLeadMoney(
+      [
+        { id: "a", status: "partially_paid", grand_total: 9774.6, quote_id: "q1", lead_id: "L1", customer_name: "TEST Mandy", invoice_number: "INV-017" },
+        { id: "b", status: "draft", grand_total: 1000, quote_id: "q2", lead_id: "L2", customer_name: "B", invoice_number: "INV-018" },
+        { id: "c", status: "paid", grand_total: 500, lead_id: "L2" },
+      ],
+      [{ invoice_id: "a", amount: 2000, status: "paid" }, { invoice_id: "c", amount: 500, status: "paid" }],
+    );
+    expect(rows.map((r) => r.leadId)).toEqual(["L1", "L2"]);
+    expect(rows[0]).toMatchObject({ paid: 2000, balance: 7774.6, depositDue: 0 });
+    expect(rows[1]).toMatchObject({ paid: 0, balance: 1000, depositDue: 1000 });
+  });
+});

@@ -77,3 +77,59 @@ export async function fetchMoneySummary(companyId: string): Promise<MoneySummary
   }
   return computeMoneySummary((invoices || []) as MoneyInvoice[], payments);
 }
+
+/** Per-lead money rows for /admin/money (Johan 2026-09-26). Open (unpaid/part-paid) invoices only, biggest balance first. */
+export interface LeadMoneyInvoice extends MoneyInvoice {
+  lead_id?: string | null;
+  customer_name?: string | null;
+  invoice_number?: string | null;
+}
+export interface LeadMoneyRow {
+  key: string;
+  leadId: string | null;
+  customerName: string;
+  invoiceNumbers: string[];
+  firstInvoiceId: string;
+  quoteId: string | null;
+  depositDue: number;
+  paid: number;
+  balance: number;
+}
+
+export function computeLeadMoney(invoices: LeadMoneyInvoice[], payments: MoneyPayment[]): LeadMoneyRow[] {
+  const rows = new Map<string, LeadMoneyRow>();
+  for (const inv of invoices) {
+    const { paid, balance } = invoiceMoney(inv, payments);
+    if (!matchesMoneyFilter(inv, paid, balance, "outstanding")) continue;
+    const key = inv.lead_id || `inv:${inv.id}`;
+    const row = rows.get(key) ?? {
+      key, leadId: inv.lead_id ?? null, customerName: inv.customer_name || "—",
+      invoiceNumbers: [], firstInvoiceId: inv.id, quoteId: inv.quote_id ?? null,
+      depositDue: 0, paid: 0, balance: 0,
+    };
+    if (inv.invoice_number) row.invoiceNumbers.push(inv.invoice_number);
+    if (!row.quoteId && inv.quote_id) row.quoteId = inv.quote_id;
+    if (matchesMoneyFilter(inv, paid, balance, "deposits_due")) row.depositDue = r2(row.depositDue + balance);
+    row.paid = r2(row.paid + paid);
+    row.balance = r2(row.balance + balance);
+    rows.set(key, row);
+  }
+  return [...rows.values()].sort((a, b) => b.balance - a.balance);
+}
+
+export async function fetchLeadMoney(companyId: string): Promise<LeadMoneyRow[]> {
+  const { data: invoices, error } = await supabase
+    .from("invoices")
+    .select("id, status, grand_total, notes, quote_id, lead_id, customer_name, invoice_number")
+    .eq("company_id", companyId);
+  if (error) throw error;
+  const ids = (invoices || []).map((i: any) => i.id);
+  let payments: MoneyPayment[] = [];
+  if (ids.length) {
+    const { data: pays, error: pErr } = await supabase
+      .from("payments").select("invoice_id, amount, status, gateway").in("invoice_id", ids);
+    if (pErr) throw pErr;
+    payments = (pays || []) as MoneyPayment[];
+  }
+  return computeLeadMoney((invoices || []) as LeadMoneyInvoice[], payments);
+}

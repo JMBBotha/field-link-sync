@@ -17,6 +17,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
 import CustomerPortal from "./pages/CustomerPortal";
+import AdminMoneyPage from "./pages/admin/AdminMoneyPage";
 import CustomerFeedbackForm from "./components/CustomerFeedbackForm";
 import CustomerInvoiceView from "./components/CustomerInvoiceView";
 import NotFound from "./pages/NotFound";
@@ -176,6 +177,7 @@ const App = () => (
                     <Route path="templates" element={<AdminProposalsPage />} />
                     <Route path="invoices" element={<AdminInvoicesPage />} />
                     <Route path="invoices/:id" element={<AdminInvoicesPage />} />
+                    <Route path="money" element={<AdminMoneyPage />} />
                     <Route path="help" element={<AdminHelpPage />} />
 
                     

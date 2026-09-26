@@ -1,3 +1,4 @@
+import { formatRand } from "@/utils/formatRand";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +50,17 @@ interface Invoice {
   lead_id: string | null;
   status: string;
   grand_total: number;
+  amount_paid?: number;
+  due_date?: string | null;
+  quote_token?: string | null;
+}
+
+interface PortalPayment {
+  id: string;
+  amount: number;
+  payment_date: string;
+  method: string | null;
+  invoice_number: string | null;
 }
 
 const STATUS_CONFIG: Record<string, { color: string; dotColor: string; label: string }> = {
@@ -67,6 +79,7 @@ const CustomerPortal = () => {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [payments, setPayments] = useState<PortalPayment[]>([]);
   const [agentNames, setAgentNames] = useState<Record<string, string>>({});
   const [upcomingMaintenance, setUpcomingMaintenance] = useState<MaintenanceDue[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -88,42 +101,23 @@ const CustomerPortal = () => {
     try {
       setLoading(true);
 
-      const { data: customerId, error: tokenError } = await supabase.rpc(
-        "validate_customer_token",
-        { p_token: token }
-      );
-
-      if (tokenError || !customerId) {
+      // One token-checked call returns only this client's own records (anon has no table access).
+      const { data: portal, error: portalError } = await supabase.rpc("get_customer_portal_data" as any, { p_token: token });
+      const pd = portal as any;
+      if (portalError || !pd?.customer) {
         setError("Invalid or expired link. Please contact us for a new link.");
         return;
       }
-
-      const { data: customerData, error: customerError } = await supabase
-        .from("customers")
-        .select("id, name, email, phone, address")
-        .eq("id", customerId)
-        .single();
-
-      if (customerError || !customerData) {
-        setError("Unable to load your information.");
-        return;
-      }
-
-      setCustomer(customerData);
-
-      // Fetch jobs, invoices, maintenance in parallel
-      const [jobsRes, invoicesRes, maintenanceRes] = await Promise.all([
-        supabase
-          .from("leads")
-          .select("id, service_type, status, created_at, completed_at, customer_address, assigned_agent_id")
-          .eq("customer_id", customerId)
-          .order("created_at", { ascending: false })
-          .limit(20),
-        supabase
-          .from("invoices")
-          .select("id, invoice_number, lead_id, status, grand_total")
-          .eq("customer_id", customerId),
-        supabase
+      const customerId = pd.customer.id as string;
+      setCustomer(pd.customer);
+      const jobsData = (pd.jobs || []) as Job[];
+      setJobs(jobsData);
+      setInvoices(pd.invoices || []);
+      setPayments(pd.payments || []);
+      const names: Record<string, string> = {};
+      (pd.jobs || []).forEach((j: any) => { if (j.assigned_agent_id && j.agent_name) names[j.assigned_agent_id] = j.agent_name; });
+      setAgentNames(names);
+      const maintenanceRes = await supabase
           .from("maintenance_schedules")
           .select(`
             id, due_date, status,
@@ -134,24 +128,7 @@ const CustomerPortal = () => {
           .in("status", ["upcoming", "scheduled"])
           .gte("due_date", new Date().toISOString().split("T")[0])
           .order("due_date", { ascending: true })
-          .limit(5),
-      ]);
-
-      const jobsData = jobsRes.data || [];
-      setJobs(jobsData);
-      setInvoices(invoicesRes.data || []);
-
-      // Fetch agent names for assigned jobs
-      const agentIds = [...new Set(jobsData.map((j) => j.assigned_agent_id).filter(Boolean))] as string[];
-      if (agentIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", agentIds);
-        const names: Record<string, string> = {};
-        (profiles || []).forEach((p) => { names[p.id] = p.full_name; });
-        setAgentNames(names);
-      }
+          .limit(5);
 
       setUpcomingMaintenance(
         (maintenanceRes.data || []).map((m: any) => ({
@@ -368,6 +345,53 @@ const CustomerPortal = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Invoices & payments */}
+        {(invoices.length > 0 || payments.length > 0) && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-4 w-4 text-primary" />
+                Invoices & payments
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {invoices.map((inv) => {
+                const paid = Number(inv.amount_paid) || 0;
+                const balance = Math.max(0, Math.round(((Number(inv.grand_total) || 0) - paid) * 100) / 100);
+                return (
+                  <div key={inv.id} className="rounded-lg border border-border p-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">Invoice {inv.invoice_number}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Total {formatRand(Number(inv.grand_total) || 0)} · Paid {formatRand(paid)}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <Badge variant="secondary" className="text-xs">
+                        {balance <= 0 ? "Paid" : paid > 0 ? `${formatRand(balance)} due` : `${formatRand(balance)} due`}
+                      </Badge>
+                      {balance > 0 && inv.quote_token && (
+                        <a href={`/quote/${inv.quote_token}`} className="text-xs text-primary font-medium hover:underline">View & pay</a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {payments.length > 0 && (
+                <div className="pt-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Payments received</p>
+                  {payments.map((p) => (
+                    <div key={p.id} className="flex justify-between text-sm py-1 border-b border-border/50 last:border-0">
+                      <span className="text-muted-foreground">{p.payment_date} · {p.invoice_number}</span>
+                      <span className="font-medium text-foreground">{formatRand(Number(p.amount) || 0)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Upcoming Maintenance */}
         {upcomingMaintenance.length > 0 && (
