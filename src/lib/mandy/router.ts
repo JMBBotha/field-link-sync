@@ -52,7 +52,7 @@ export async function routeVoiceCommand(input: RouteInput): Promise<RouteResult>
   });
   const d = (data ?? {}) as Record<string, any>;
   if (d.stale_client) {
-    return { action: null, args: {}, confidence: 1, text: String(d.text || "I've been updated — tap Update first."), stale: true } as RouteResult;
+    return { action: null, args: {}, confidence: 1, text: String(d.text || "I've been updated — please save and reload so I use the latest version."), stale: true } as RouteResult;
   }
   if (error || d.error) {
     return { action: null, args: {}, confidence: 0, error: String(d.error || error?.message || "Router unavailable") };

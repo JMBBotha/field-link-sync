@@ -31,7 +31,8 @@ import { parseInstallCommand } from "@/lib/mandy/installEdits";
 import { parseQuoteIntent } from "@/lib/mandy/quoteIntent";
 import { guardClaimedChange, unknownToolMessage } from "@/lib/mandy/honesty";
 import { honestMessage, routeReached, finalReplyFrom } from "@/lib/mandy/verify";
-import { BUILD_ID, staleWriteRefusal, useBuildStatus, checkForNewBuild } from "@/lib/buildInfo";
+import { BUILD_ID, staleWriteRefusal, useBuildStatus, checkForNewBuild, softReload, STALE_WRITE_MESSAGE } from "@/lib/buildInfo";
+import { useQuoteSession } from "@/stores/quoteSessionStore";
 import { touchedPatch } from "@/lib/mandy/pronouns";
 import { useMandyGo } from "@/lib/mandy/go";
 import { formatForSpeech, formatReplyText } from "@/lib/mandy/speech";
@@ -233,6 +234,18 @@ export default function MandyDock() {
   confirmRef.current = confirm;
   const { speak, cancel, setOnReplyEnded } = useSpeaker(muted);
 
+  // Dock opens on an old build: reload now if nothing is unsaved, else ask to save first.
+  useEffect(() => {
+    if (!open || import.meta.env.DEV) return;
+    let off = false;
+    void checkForNewBuild().then((stale) => {
+      if (off || !stale) return;
+      if (!useQuoteSession.getState().isDirty) softReload();
+      else setReply(STALE_WRITE_MESSAGE);
+    });
+    return () => { off = true; };
+  }, [open]);
+
   const historyRef = useRef<Msg[]>([]);
   const busyRef = useRef(false);
   const recRef = useRef<WavRecorder | null>(null);
@@ -328,6 +341,8 @@ export default function MandyDock() {
     let planTurn = false;
     const isWrite = (a?: string) => !!a && !/^(read_|show_|list_|open_|find_|search_|get_)/.test(a);
     try {
+      // Before any write tool: make sure this tab is not an old build.
+      if (!import.meta.env.DEV) await checkForNewBuild();
       // Deterministic multi-edit pre-parse: 2+ clauses → ONE local plan card, no model needed.
       const local = registry?.get("__preview_plan") ? parseMultiEdit(t) : null;
       if (local) {
