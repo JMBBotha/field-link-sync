@@ -631,8 +631,8 @@ export default function MandyDock() {
         )}
 
         {confirm && (
-          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2">
-            <p className="text-xs text-foreground">{confirm.summary}</p>
+          <div className={confirm.danger ? "rounded-md border-2 border-destructive bg-destructive/15 p-2" : "rounded-md border border-destructive/40 bg-destructive/10 p-2"} data-testid={confirm.danger ? "mandy-danger-card" : undefined}>
+            <p className={confirm.danger ? "text-xs font-semibold text-destructive" : "text-xs text-foreground"}>{confirm.summary}</p>
             {confirm.lines?.length ? (
               <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground" data-testid="mandy-plan-lines">
                 {confirm.lines.map((l, i) => <li key={i}>{l}</li>)}
