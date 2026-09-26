@@ -16,7 +16,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuoteContext } from "@/contexts/QuoteContext";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { installTag, lengthLabel, BRACKET_OPTIONS } from "@/lib/installTemplates";
-import { catalogLineFields } from "@/lib/mandy/quoteOps";
+import { catalogLineFields, kitSwapPatch } from "@/lib/mandy/quoteOps";
+import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
+import { swappableKits, kitSizeLabel } from "@/lib/kitSizes";
+import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
+import { formatRand } from "@/utils/formatRand";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import QuoteQuickEditor from "@/components/quoting/QuoteQuickEditor";
 import StaffMarginCard from "@/components/quoting/StaffMarginCard";
