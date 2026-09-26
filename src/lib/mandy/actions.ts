@@ -137,7 +137,7 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
   },
   set_kit_length: {
     description: "Set the piping kit length in metres (in an area, or the only kit on the quote).",
-    parameters: { type: "object", properties: { area: str("Area name"), metres: num("Metres") }, required: ["metres"], additionalProperties: false },
+    parameters: { type: "object", properties: { area: str("Area name"), item: str("Kit as spoken, e.g. the 12K kit (optional)"), metres: num("Metres") }, required: ["metres"], additionalProperties: false },
   },
   set_labour_hours: {
     description: "Add to (mode=add) or set (mode=set) hourly labour on an area of the open quote, e.g. 'add 3 hours labour to main bedroom'. Also changes the labour RATE: 'make the labour rate 750' → {rate:750} (hours optional when rate is given). Hours in 0.5 steps; rate optional (defaults to the saved/standard rate).",
