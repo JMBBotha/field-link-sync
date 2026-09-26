@@ -168,9 +168,10 @@ export function pickKitForUnit<K extends KitLike>(
 ): { kit: K | null; reason: KitPickReason; note?: string } {
   let pair = unitPair(unit);
   let reason: KitPickReason = "pipe";
+  const unitBtu = opts.btuOf ? opts.btuOf(unit) : (unit.btu_rating ?? null);
   if (!pair && opts.allUnits?.length && opts.btuOf) {
     const brand = String(unit.brand || "").trim().toLowerCase();
-    const btu = opts.btuOf(unit);
+    const btu = unitBtu;
     if (brand && btu) {
       const counts = new Map<string, number>();
       for (const u of opts.allUnits) {
