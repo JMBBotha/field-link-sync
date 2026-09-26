@@ -138,7 +138,7 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
   },
   rename_area: {
     description: "Rename an area on the open quote. Not for descriptions.",
-    parameters: { type: "object", properties: { area: str("Current area name"), new_name: str("New name") }, required: ["area", "new_name"], additionalProperties: false },
+    parameters: { type: "object", properties: { area: str("Current area name (optional — the app resolves 'this area', 'General', the only area, or asks)") }, required: ["new_name"], additionalProperties: false },
   },
   add_item_to_area: {
     description: "Add a catalog product to an area of the open quote. AC units automatically get their piping kit. If the user named no area, omit area (the app asks); never guess General.",

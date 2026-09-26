@@ -101,11 +101,13 @@ export async function runInstallEdit(d: InstallDeps, args0: InstallOp & { unit_i
     const Name = `${ROLE_LABEL[role][0].toUpperCase()}${ROLE_LABEL[role].slice(1)}`;
     if (line) {
       const price = Number(line.unit_price) || 0;
-      if (Number(line.quantity) === qty) return { ok: true, message: `${Name} is already ${qtyPhrase(qty, line.metadata?.supplier_length_m)}, so nothing changed.` };
+      const L = line.metadata?.supplier_length_m;
+      // Count roles (end caps, elbows): "End caps: now 2, R59,04" — not "is now 2".
+      if (Number(line.quantity) === qty) return { ok: true, message: L ? `${Name} is already ${qtyPhrase(qty, L)}, so nothing changed.` : `${Name}: already ${qty}, so nothing changed.` };
       if (qty <= 0) { await d.deleteItem(line.id); return done(`Removed ${line.item_name}.`); }
       const ok = await d.updateItem(line.id, { quantity: qty, total_price: Number((qty * price).toFixed(2)) });
       if (ok === false || ok === null) return { ok: false, message: `Couldn't change ${ROLE_LABEL[role]} — nothing was changed.` };
-      return done(`${Name} is now ${qtyPhrase(qty, line.metadata?.supplier_length_m)}, ${spokenRand(qty * price)}.`);
+      return done(L ? `${Name} is now ${qtyPhrase(qty, L)}, ${spokenRand(qty * price)}.` : `${Name}: now ${qty}, ${spokenRand(qty * price)}.`);
     }
     const code = DEFAULT_CODE[role];
     const p = code && live(code);

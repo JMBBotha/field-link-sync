@@ -100,6 +100,6 @@ export function parseLabourHours(text: unknown): number | null {
     return snap(toNum(m[1]));
   }
   if (/\b(?:add|plus|put)\s+(?:to|too)\s+(?:hours?|hrs?)\b/.test(t)) return 2;
-  if ((m = t.match(/\b(\d+(?:[.,]\d+)?)\b/))) return snap(toNum(m[1]));
+  // No bare-number fallback: a number only counts when attached to hours/hrs/h or 'and a half'.
   return null;
 }
