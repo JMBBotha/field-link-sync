@@ -34,6 +34,9 @@ import {
   type EditItem, type PlanStep,
 } from "@/lib/mandy/quoteEdits";
 import { previewPlan } from "@/lib/mandy/planPreview";
+import { resolveItemRef, findAreaFuzzy, noMatchMessage, chipLabel, isKitItem, isLabourRow } from "@/lib/mandy/itemResolve";
+import { clearRefusal, clearSummary, areasToRemove, CLEARED_MESSAGE } from "@/lib/mandy/quoteIntent";
+import { quoteLinesContext } from "@/lib/mandy/quoteLinesContext";
 import type { QuoteArea, QuoteItem } from "@/types/quote";
 
 interface Props {
@@ -48,7 +51,7 @@ export const NEW_AREA_LABEL = "New area…";
 /** Mandy writes that get an undo snapshot. */
 export const UNDOABLE = new Set([
   "set_labour_hours", "add_area", "rename_area", "describe_area", "add_note", "add_item_to_area", "set_kit_length", "set_qty",
-  "set_line_price", "move_item", "duplicate_area", "remove_item", "remove_labour", "remove_area", "remove_note", "edit_note",
+  "set_line_price", "move_item", "duplicate_area", "remove_item", "remove_labour", "remove_area", "remove_note", "edit_note", "clear_quote",
 ]);
 /** "Added area X." → "added area X" (for "Undid added area X."). */
 export const undoLabel = (msg: string) => { const m = String(msg || "").trim().replace(/[.!]+$/, ""); return m.charAt(0).toLowerCase() + m.slice(1); };
@@ -87,11 +90,12 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
   const S = () => live.current;
 
   // Mandy sees the real labour rows (area, hours, rate, total) with every turn.
-  const labourCtx = labourSummary({ areas: ctx.areas, items: ctx.items });
+  // …and the full quote (areas, every line, totals) so she can resolve references.
+  const linesCtx = quoteLinesContext({ areas: ctx.areas, items: ctx.items as any[], subtotal: Number((ctx.meta as any)?.subtotal) || 0, total: Number((ctx.meta as any)?.total) || 0 });
   useEffect(() => {
-    setAssistantContext({ open_quote_labour: labourCtx });
-    return () => setAssistantContext({ open_quote_labour: undefined });
-  }, [labourCtx]);
+    setAssistantContext({ open_quote_lines: linesCtx, open_quote_labour: undefined });
+    return () => setAssistantContext({ open_quote_lines: undefined });
+  }, [linesCtx]);
 
   useEffect(() => {
     setMandyQuoteStatus(ctx.meta?.status ?? "draft");
@@ -114,8 +118,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
   const findArea = (name?: string) => {
     const areas = S().areas;
     if (!name) return areas.length === 1 ? areas[0] : null;
-    const n = lc(name);
-    return areas.find((a) => lc(a.name) === n) || areas.find((a) => lc(a.name).includes(n) || n.includes(lc(a.name))) || null;
+    return findAreaFuzzy(areas, name);
   };
   const areaName = (id: string | null) => S().areas.find((a) => a.id === id)?.name || "";
   const areaChips = (action: string, args: Record<string, unknown>) => S().areas.map((a) => ({ label: a.name, action, args: { ...args, area: a.name } }));
@@ -129,14 +132,14 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       const it = S().items.find((i) => i.id === args.item_id);
       return it ? { item: it } : { result: { ok: false, message: "That line is no longer on the quote." } };
     }
-    const m = matchQuoteItem(S().items as EditItem[], S().areas, String(ref || ""));
-    if (m.hits.length === 1) return { item: m.hits[0] as QuoteItem };
-    if (!m.hits.length) return { result: { ok: false, message: `No line matching “${ref ?? ""}”.` } };
+    const m = resolveItemRef(S().items, S().areas, String(ref || ""));
+    if (m.kind === "one") return { item: m.item };
+    if (m.kind === "none") return { result: { ok: false, message: noMatchMessage(m.query, S().items, S().areas) } };
     return {
       result: {
         ok: true,
-        message: "Several lines match. Waiting for the user to tap one.",
-        choices: m.hits.slice(0, 6).map((h) => ({ label: `${h.item_name}${areaName(h.area_id) ? ` · ${areaName(h.area_id)}` : ""}`, action, args: { ...args, item_id: h.id } })),
+        message: `Which one? ${m.hits.slice(0, 6).map((h) => chipLabel(h, S().areas)).join(" / ")}. Waiting for the user to tap one.`,
+        choices: m.hits.slice(0, 6).map((h) => ({ label: chipLabel(h, S().areas), action, args: { ...args, item_id: h.id } })),
       },
     };
   };
@@ -240,6 +243,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       return r;
     }]));
 
+  const splitArea = (ref: string) => { const m = ref.match(/\b(?:in|from|on|off)\s+(?:the\s+)?(.+)$/i); return m ? m[1] : undefined; };
   const handlers: Record<string, MandyHandler> = {
     /** Internal (no schema → never offered to the model): force-refresh the open quote. */
     __refresh_quote: async () => {
@@ -353,9 +357,16 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       return addProduct(m.pick.product as PaletteProduct, area, qty);
     },
 
-    set_kit_length: async ({ area, metres, kit_id }) => {
-      const m = Number(metres);
+    set_kit_length: async (args) => {
+      let { area, kit_id } = args;
+      const m = Number(args.metres);
       if (!(m > 0)) return { ok: false, message: "Tell me how many metres." };
+      if (args.item && !kit_id) {
+        const r = resolveItem(args.item, "set_kit_length", args);
+        if ("result" in r) return r.result;
+        if (!isKitItem(r.item)) return { ok: false, message: `${r.item.item_name} isn't a kit — nothing was changed.` };
+        kit_id = r.item.id; area = undefined;
+      }
       const a = area && !kit_id ? findArea(area) : null;
       const kits = kit_id
         ? S().items.filter((i) => i.id === kit_id)
@@ -451,27 +462,33 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     },
 
     remove_item: async (args) => {
+      // "remove bedroom one" names an area, not a line → remove_area (its own Confirm card).
+      const areaRef = String(args.item || "").replace(/^(the|my)\s+/i, "").replace(/\s+(area|room)$/i, "");
+      if (!args.item_id && areaRef && findAreaFuzzy(S().areas, areaRef) && !/\b(kit|unit|samsung|labou?r)\b/i.test(areaRef)
+        && resolveItemRef(S().items, S().areas, areaRef).kind !== "one") {
+        return handlers.remove_area({ ...args, area: areaRef });
+      }
+      if (!args.item_id && isLabourRow as unknown && /^\s*(the\s+)?labou?r\b/i.test(String(args.item || ""))) {
+        return handlers.remove_labour({ area: splitArea(String(args.item)) });
+      }
       const r = resolveItem(args.item, "remove_item", args);
       if ("result" in r) return r.result;
       const h = r.item;
       const kits = findUnitKits(S().items as EditItem[], h as EditItem);
-      if (kits.length && args.with_kit === undefined && !args.__plan) {
-        return {
-          ok: true,
-          message: `${h.item_name} has a kit. Waiting for the user to choose.`,
-          choices: [
-            { label: "Remove unit and kit", action: "remove_item", args: { item_id: h.id, with_kit: true } },
-            { label: "Remove unit only", action: "remove_item", args: { item_id: h.id, with_kit: false } },
-          ],
-        };
-      }
       const ids = [h.id, ...(args.with_kit === false ? [] : kits.map((k) => k.id))];
       const label = `${h.item_name}${ids.length > 1 ? " and its kit" : ""}`;
       if (args.__plan) return doRemove(ids, label); // the plan's single Confirm already covered it
+      const where = areaName(h.area_id);
       return {
         ok: true,
-        message: `Awaiting on-screen confirmation to remove ${label}.`,
-        confirm: { summary: `Remove ${label} from the quote?`, run: () => doRemove(ids, label) },
+        message: `Awaiting on-screen confirmation to remove ${label}${where ? ` from ${where}` : ""}.`,
+        confirm: {
+          summary: `Remove ${label}${where ? ` from ${where}` : ""}?`,
+          lines: S().items.filter((i) => ids.includes(i.id)).map((i) => `${i.item_name} · ${fmtRand(Number(i.total_price) || 0)}`),
+          run: () => doRemove(ids, label),
+        },
+        // A unit with a kit: one tap to keep the kit instead.
+        ...(kits.length && args.with_kit === undefined ? { choices: [{ label: "Remove unit only (keep kit)", action: "remove_item", args: { item_id: h.id, with_kit: false } }] } : {}),
       };
     },
 
@@ -483,7 +500,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       const run = async (): Promise<MandyResult> => {
         for (const i of lines.filter((x) => x.parent_item_id)) await g.deleteItem(i.id);
         for (const i of lines.filter((x) => !x.parent_item_id)) await g.deleteItem(i.id);
-        await ctx.deleteArea(a.id);
+        await g.deleteArea(a.id);
         const fresh = await refresh();
         return { ok: true, message: `Removed area ${a.name}${lines.length ? ` and its ${lines.length} lines` : ""}.`, verified: !!fresh && !fresh.areas.some((x) => x.id === a.id) };
       };
@@ -492,10 +509,41 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
         ok: true,
         message: `Awaiting on-screen confirmation to remove ${a.name} and its lines.`,
         confirm: {
-          summary: `Remove area ${a.name} and ${lines.filter((l) => !l.parent_item_id).length} lines?`,
+          summary: `Remove ${a.name} and its ${lines.filter((l) => !l.parent_item_id).length} line${lines.filter((l) => !l.parent_item_id).length === 1 ? "" : "s"}?`,
           lines: lines.filter((l) => !l.parent_item_id).map((l) => `${l.item_name} · ${fmtRand(Number(l.total_price) || 0)}`),
           run,
         } as any,
+      };
+    },
+
+    clear_quote: async (args) => {
+      const qn = ctx.meta?.quote_number || "this quote";
+      const { data: invs } = await supabase.from("invoices").select("status").eq("quote_id", ctx.quoteId);
+      const { count: jobs } = await supabase.from("jobs").select("id", { count: "exact", head: true }).eq("quote_id", ctx.quoteId);
+      const refusal = clearRefusal(qn, ctx.meta?.status, {
+        depositPaid: (invs || []).some((i: any) => /paid/i.test(String(i.status))), hasJob: (jobs || 0) > 0,
+      });
+      if (refusal) return { ok: false, message: refusal };
+      const top = S().items.filter((i) => !i.parent_item_id);
+      const dropAreas = args.include_areas ? areasToRemove(S().areas) : [];
+      const counts = { items: top.filter((i) => !isKitItem(i) && !isLabourRow(i)).length, labour: top.filter(isLabourRow).length, kits: top.filter(isKitItem).length, areasRemoved: dropAreas.length };
+      if (!top.length && !dropAreas.length) return { ok: true, message: `${qn} is already empty.` };
+      const run = async (): Promise<MandyResult> => {
+        // ONE batch delete: every line (kit children cascade/are included), then the extra rooms.
+        const del = await supabase.from("quote_items").delete().eq("quote_id", ctx.quoteId).select("id");
+        if (del.error || (del.data?.length ?? 0) === 0) return { ok: false, message: "Couldn't clear the quote — nothing was changed." };
+        if (dropAreas.length) {
+          const da = await supabase.from("quote_areas").delete().in("id", dropAreas).select("id");
+          if (da.error) { await refresh(); return { ok: false, message: "Cleared the lines but couldn't remove the rooms. Say undo to bring everything back." }; }
+        }
+        const fresh = await refresh();
+        return { ok: true, message: dropAreas.length ? "Cleared the quote and its rooms, R0. Say undo to bring it back." : CLEARED_MESSAGE, verified: !!fresh && fresh.items.length === 0 };
+      };
+      if (args.__plan) return run();
+      return {
+        ok: true,
+        message: `Awaiting on-screen confirmation to clear ${qn}.`,
+        confirm: { summary: clearSummary(qn, counts), danger: true, lines: top.map((i) => `${i.item_name} · ${areaName(i.area_id) || "No area"} · ${fmtRand(Number(i.total_price) || 0)}`), run } as any,
       };
     },
 
@@ -554,7 +602,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       for (const a of plan.updateAreas) await g.updateArea(a.id, { name: a.name, description: a.description, sort_order: a.sort_order } as any);
       for (const i of plan.insertItems) await g.addItem(i as any);
       for (const i of plan.updateItems) { const { id, ...patch } = i; await g.updateItem(id, patch as any); }
-      for (const id of plan.deleteAreas) await ctx.deleteArea(id);
+      for (const id of plan.deleteAreas) await g.deleteArea(id);
       if (plan.notesChanged) await ctx.updateQuote({ notes: snap!.snapshot.quote.notes } as any);
       await markSnapshotUsed(snap!.id);
       await refresh(); // totals are recomputed by the shared quote-items trigger
