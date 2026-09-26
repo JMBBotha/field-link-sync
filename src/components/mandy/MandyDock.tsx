@@ -27,6 +27,7 @@ import { runPlanSteps, planReportText, type PlanStep } from "@/lib/mandy/quoteEd
 import type { PlanPreview } from "@/lib/mandy/planPreview";
 import { parseMultiEdit } from "@/lib/mandy/multiEdit";
 import { parseLabourIntent, mapLabourTool } from "@/lib/mandy/labourParse";
+import { parseQuoteIntent } from "@/lib/mandy/quoteIntent";
 import { guardClaimedChange, unknownToolMessage } from "@/lib/mandy/honesty";
 import { honestMessage, routeReached, finalReplyFrom } from "@/lib/mandy/verify";
 import { BUILD_ID, staleWriteRefusal, useBuildStatus, checkForNewBuild } from "@/lib/buildInfo";
@@ -226,7 +227,9 @@ export default function MandyDock() {
   const [typed, setTyped] = useState("");
   const [muted, setMuted] = useState(false);
   const [choices, setChoices] = useState<MandyChoice[]>([]);
-  const [confirm, setConfirm] = useState<{ summary: string; lines?: string[]; run: () => Promise<MandyResult> } | null>(null);
+  const [confirm, setConfirm] = useState<{ summary: string; lines?: string[]; danger?: boolean; run: () => Promise<MandyResult> } | null>(null);
+  const confirmRef = useRef<typeof confirm>(null);
+  confirmRef.current = confirm;
   const { speak, cancel, setOnReplyEnded } = useSpeaker(muted);
 
   const historyRef = useRef<Msg[]>([]);
@@ -311,6 +314,7 @@ export default function MandyDock() {
     if (!t || busyRef.current) return;
     busyRef.current = true;
     cancel();
+    const hadPendingCard = !!confirmRef.current;
     setHeard(t);
     setChoices([]);
     setConfirm(null);
@@ -331,7 +335,10 @@ export default function MandyDock() {
         final = staleMsg || await preparePlan(local, 1);
       }
       // Deterministic single labour command: straight to set_labour_hours, no model.
-      const lab = !local ? parseLabourIntent(t) : null;
+      // A bare "cancel / clear / start over" only cancels a pending card; otherwise quote intents route.
+      const qi = !local ? parseQuoteIntent(t, { pendingCard: hadPendingCard }) : null;
+      if (qi?.action === "cancel_pending") final = "Cancelled — nothing was changed.";
+      const lab = !local && !qi ? parseLabourIntent(t) : null;
       if (lab) {
         if (!registry?.get(lab.action)) final = "Open the quote first, then say that again.";
         else {
@@ -346,7 +353,22 @@ export default function MandyDock() {
           }
         }
       }
-      for (let step = 0; !local && !lab && step <= MAX_STEPS; step++) {
+      const quick = !lab && qi && qi.action !== "cancel_pending" ? qi : null;
+      if (quick) {
+        if (!registry?.get(quick.action)) final = "Open the quote first, then say that again.";
+        else {
+          const staleMsg = staleWriteRefusal(quick.action, useBuildStatus.getState().stale);
+          if (staleMsg) final = staleMsg;
+          else {
+            const r = await execute(quick.action, quick.args as Record<string, any>);
+            if (r.choices?.length) setChoices(r.choices);
+            if (r.confirm) setConfirm(r.confirm);
+            results.push(r); writes.push(true);
+            final = finalReplyFrom(results, "");
+          }
+        }
+      }
+      for (let step = 0; !local && !lab && !qi && step <= MAX_STEPS; step++) {
         const r0 = await routeVoiceCommand({
           transcript: step === 0 ? t : "",
           history: msgs,
