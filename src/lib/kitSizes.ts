@@ -46,17 +46,38 @@ export function swappableKits(bundles: KitLike[], liveProducts: { id: string }[]
     && b.items.every((i: any) => live.has(i.product?.id || i.supplier_product_id)) && kitPipeSizes(b).length >= 2);
 }
 
-/** Kit with exactly these copper sizes (order-free). */
-export function kitForSizes(bundles: KitLike[], sizes: string[]): KitLike | null {
+/** BTU tag in a kit name ("12K"/"18K") as a number, else null. */
+const kitTagBtu = (k: KitLike): number | null => {
+  const m = String(k.name).match(/\b(\d{2})K\b/i);
+  return m ? Number(m[1]) * 1000 : null;
+};
+
+/**
+ * Kit with exactly these copper sizes (order-free). When several kits share
+ * the sizes (12K and 18K are both 1/4+1/2) and a unit BTU is given: the kit
+ * whose min/max range contains it, else the one whose name tag matches, else
+ * the closest tag, else the first.
+ */
+export function kitForSizes(bundles: KitLike[], sizes: string[], btu?: number | null): KitLike | null {
   const want = [...new Set(sizes)].sort((a, b) => val(a) - val(b)).join("+");
-  return bundles.filter(isPiping).find((b) => kitPipeSizes(b).join("+") === want) || null;
+  const hits = bundles.filter(isPiping).filter((b) => kitPipeSizes(b).join("+") === want);
+  if (!hits.length) return null;
+  if (hits.length > 1 && btu) {
+    const inRange = hits.find((k) => k.min_btu != null && k.max_btu != null && btu >= k.min_btu && btu <= k.max_btu);
+    if (inRange) return inRange;
+    const tag = hits.find((k) => kitTagBtu(k) === btu);
+    if (tag) return tag;
+    const tagged = hits.filter((k) => kitTagBtu(k) != null);
+    if (tagged.length) return tagged.sort((a, b) => Math.abs(kitTagBtu(a)! - btu) - Math.abs(kitTagBtu(b)! - btu))[0];
+  }
+  return hits[0];
 }
 
 /** Prefer a kit matching the unit's pipe_liquid + pipe_gas; null when not filled or no match. */
-export function kitForUnitPipes(bundles: KitLike[], unit: { pipe_liquid?: string | null; pipe_gas?: string | null }): KitLike | null {
+export function kitForUnitPipes(bundles: KitLike[], unit: { pipe_liquid?: string | null; pipe_gas?: string | null; btu_rating?: number | null }): KitLike | null {
   const a = pipeFraction(unit?.pipe_liquid), b = pipeFraction(unit?.pipe_gas);
   if (!a || !b) return null;
-  return kitForSizes(bundles, [a, b]);
+  return kitForSizes(bundles, [a, b], unit?.btu_rating ?? null);
 }
 
 const SPOKEN: [RegExp, string][] = [
