@@ -154,7 +154,7 @@ const CompletedLeadsList = () => {
     doc.text("Completed Leads Report", 14, 20);
     doc.setFontSize(9);
     doc.text(`Generated: ${format(new Date(), "dd MMM yyyy HH:mm")}`, 14, 28);
-    doc.text(`Total: ${filtered.length} leads | Invoiced Value: R ${stats.totalValue.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, 14, 34);
+    doc.text(`Total: ${filtered.length} leads | Invoiced Value: ${formatRand(stats.totalValue)}`, 14, 34);
 
     let y = 44;
     doc.setFontSize(8);
@@ -173,7 +173,7 @@ const CompletedLeadsList = () => {
       doc.text(l.service_type?.slice(0, 20) || "", 70, y);
       doc.text(l.completed_at ? format(new Date(l.completed_at), "dd MMM yy") : "", 110, y);
       doc.text(l.invoice_number || "—", 145, y);
-      doc.text(l.invoice_total != null ? `R ${l.invoice_total.toLocaleString()}` : "—", 175, y);
+      doc.text(l.invoice_total != null ? formatRand(l.invoice_total) : "—", 175, y);
       y += 5;
     });
 
@@ -316,7 +316,7 @@ const CompletedLeadsList = () => {
                               {lead.invoice_status === "paid" ? "Paid" : "Invoiced"} – {lead.invoice_number}
                             </Badge>
                             <span className="text-xs font-medium">
-                              R {(lead.invoice_total ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+                              {formatRand(lead.invoice_total ?? 0)}
                             </span>
                           </>
                         ) : (
