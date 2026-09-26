@@ -7550,6 +7550,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_customer_portal_data: { Args: { p_token: string }; Returns: Json }
       get_deposit_invoice_by_quote_token: {
         Args: { p_token: string }
         Returns: Json
