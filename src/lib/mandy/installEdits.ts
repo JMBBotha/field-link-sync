@@ -4,7 +4,8 @@
  * Pricing goes through catalogLineFields / kitLengthPatch only.
  */
 import { catalogLineFields, kitLengthPatch, kitSwapPatch, type BundleForKit } from "@/lib/mandy/quoteOps";
-import { parseKitSwapSizes, kitForSizes, swappableKits, kitSizeLabel } from "@/lib/kitSizes";
+import { parseKitSwapSizes, kitForSizes, swappableKits, kitSizeLabel, kitPipeSizes, pickKitForUnit } from "@/lib/kitSizes";
+import { extractBtu } from "@/lib/bundles";
 import { installTag, lengthLabel, ROLE_LABEL, type InstallRole } from "@/lib/installTemplates";
 import { spokenRand } from "@/lib/mandy/labourAction";
 import type { MandyResult } from "@/lib/mandy/actions";
@@ -13,7 +14,7 @@ export type InstallOp =
   | { op: "kit_length"; metres: number }
   | { op: "kit_swap"; sizes?: string[]; bundle_id?: string }
   | { op: "bracket"; size?: "450" | "550" | "650"; flatback?: boolean; code?: string }
-  | { op: "set_qty"; role: InstallRole; qty: number }
+  | { op: "set_qty"; role: InstallRole; qty?: number; metres?: number }
   | { op: "add_bend" }
   | { op: "remove_roles"; roles: InstallRole[]; what: string };
 
@@ -77,7 +78,9 @@ export interface InstallDeps {
 }
 
 /** Run one install edit. Two units and no unit_item_id → chips. Removals → Confirm card. */
-export async function runInstallEdit(d: InstallDeps, args: InstallOp & { unit_item_id?: string }): Promise<MandyResult> {
+export async function runInstallEdit(d: InstallDeps, args0: InstallOp & { unit_item_id?: string; __utterance?: string }): Promise<MandyResult> {
+  const { __utterance, ...rest } = args0 as any;
+  const args = rest as InstallOp & { unit_item_id?: string };
   const units = unitsWithInstall(d.items);
   const unit = args.unit_item_id ? units.find((u) => u.id === args.unit_item_id) : units.length === 1 ? units[0] : null;
   if (!units.length) return { ok: false, message: "There's no standard install on this quote yet — nothing was changed." };
@@ -95,12 +98,14 @@ export async function runInstallEdit(d: InstallDeps, args: InstallOp & { unit_it
 
   const setQty = async (role: InstallRole, qty: number): Promise<MandyResult> => {
     const line = roleLine(d.items, unit.id, role);
+    const Name = `${ROLE_LABEL[role][0].toUpperCase()}${ROLE_LABEL[role].slice(1)}`;
     if (line) {
       const price = Number(line.unit_price) || 0;
+      if (Number(line.quantity) === qty) return { ok: true, message: `${Name} is already ${qtyPhrase(qty, line.metadata?.supplier_length_m)}, so nothing changed.` };
       if (qty <= 0) { await d.deleteItem(line.id); return done(`Removed ${line.item_name}.`); }
       const ok = await d.updateItem(line.id, { quantity: qty, total_price: Number((qty * price).toFixed(2)) });
       if (ok === false || ok === null) return { ok: false, message: `Couldn't change ${ROLE_LABEL[role]} — nothing was changed.` };
-      return done(`${ROLE_LABEL[role][0].toUpperCase()}${ROLE_LABEL[role].slice(1)} for ${unit.item_name} now ${installLineLabel({ ...line, quantity: qty })}, ${spokenRand(qty * price)}.`);
+      return done(`${Name} is now ${qtyPhrase(qty, line.metadata?.supplier_length_m)}, ${spokenRand(qty * price)}.`);
     }
     const code = DEFAULT_CODE[role];
     const p = code && live(code);
@@ -123,10 +128,22 @@ export async function runInstallEdit(d: InstallDeps, args: InstallOp & { unit_it
     case "kit_swap": {
       const kit = roleLine(d.items, unit.id, "piping_kit");
       if (!kit) return { ok: false, message: `${unit.item_name} has no piping kit — nothing was changed.` };
+      const want = [...(args.sizes || [])];
+      const curSizes = kitPipeSizes({ id: "", name: String(kit.item_name || kit.metadata?.kit?.name || ""), items: kit.metadata?.kit?.items || [] } as any);
       const pool = swappableKits((d.bundles || []) as any, d.liveProducts);
-      const target = (args.bundle_id ? pool.find((b) => b.id === args.bundle_id) : kitForSizes(pool, args.sizes || [])) as BundleForKit | null;
+      const curBundle = pool.find((b) => b.id === kit.metadata?.kit?.bundle_id);
+      const curLabel = curBundle ? kitSizeLabel(curBundle as any) : curSizes.join(" + ");
+      if (!args.bundle_id && want.length === 2 && kitForSizes([{ id: "x", name: "PIPING " + want.join(" & "), items: [] }], curLabel.split(" + "))) {
+        return { ok: true, message: `The kit is already ${curLabel}, ${Number(kit.length) || 1} m, so nothing changed.` };
+      }
+      const target = (args.bundle_id ? pool.find((b) => b.id === args.bundle_id)
+        : want.length === 2 ? pickKitForUnit(pool as any[], { pipe_liquid: want[0], pipe_gas: want[1] }, { btuOf: () => unitBtu(unit, d.liveProducts) }).kit
+        : kitForSizes(pool, want)) as BundleForKit | null;
+      if (target && (target as any).id && kitSizeLabel(target as any) !== [...want].sort().join(" + ") && !args.bundle_id && kitPipeSizes(target as any).join("+") !== kitPipeSizes({ id: "", name: "PIPING " + want.join(" & "), items: [] }).join("+")) {
+        return { ok: false, message: `There's no live ${want.join(" + ")} piping kit in the active price books — nothing was changed.` };
+      }
       if (!target) return { ok: false, message: `There's no live ${(args.sizes || []).join(" + ") || "matching"} piping kit in the active price books — nothing was changed.` };
-      if (kit.metadata?.kit?.bundle_id === target.id) return { ok: true, message: `${unit.item_name} already has the ${kitSizeLabel(target as any)} kit.` };
+      if (kit.metadata?.kit?.bundle_id === target.id) return { ok: true, message: `${unit.item_name} already has the ${kitSizeLabel(target as any)} kit, so nothing changed.` };
       const { perMetre: _p, ...patch } = kitSwapPatch(kit, target);
       const ok = await d.updateItem(kit.id, patch);
       if (ok === false || ok === null) return { ok: false, message: "Couldn't swap the kit — nothing was changed." };
@@ -147,13 +164,22 @@ export async function runInstallEdit(d: InstallDeps, args: InstallOp & { unit_it
       const p = live(code);
       if (!p) return { ok: false, message: `${code} is not in the active price books — nothing was changed.` };
       const qty = Number(cur?.quantity) || 1;
+      if (cur && curCode === code.toUpperCase()) {
+        const mm = String(cur.item_name).match(/(\d{3})\s*mm/i)?.[1] || args.size;
+        return { ok: true, message: `It already has the ${mm ? `${mm} mm ` : ""}bracket (${code}, ${spokenRand(Number(cur.total_price) || qty * (Number(cur.unit_price) || 0))}), so nothing changed.` };
+      }
       const { unitSell: _u, ...f } = catalogLineFields(p, qty);
       const patch = { ...f, metadata: { ...(cur?.metadata || {}), ...f.metadata, ...tag("bracket") }, total_price: Number((qty * f.unit_price).toFixed(2)) };
       const ok = cur ? await d.updateItem(cur.id, patch) : await d.addItem({ ...patch, area_id: unit.area_id ?? null, parent_item_id: null, is_bundle: false, item_type: "product", sort_order: sortAfter, source: "mandy_voice", length: null, notes: null });
       if (ok === false || ok === null) return { ok: false, message: "Couldn't change the bracket — nothing was changed." };
-      return done(`Bracket for ${unit.item_name} is now ${p.short_name || code} (${code}), ${spokenRand(f.unit_price * qty)}.`);
+      return done(`Done. Bracket for ${unit.item_name} is now ${p.short_name || code} (${code}), ${spokenRand(f.unit_price * qty)}.`);
     }
-    case "set_qty": return setQty(args.role, args.qty);
+    case "set_qty": {
+      const L = Number(roleLine(d.items, unit.id, args.role)?.metadata?.supplier_length_m) || 0;
+      const q = lengthsFromRequest(args, __utterance, L);
+      if (q == null) return { ok: false, message: `How many ${L ? `${L} m lengths` : ""} of ${ROLE_LABEL[args.role]}? For example: “two lengths”.` };
+      return setQty(args.role, q);
+    }
     case "add_bend": {
       const l = roleLine(d.items, unit.id, "drain_bend");
       return setQty("drain_bend", (Number(l?.quantity) || 0) + 1);
@@ -200,4 +226,54 @@ export function installContext(items: IItem[], areaName: (id?: string | null) =>
     });
     return `Install[${u.item_name}·${areaName(u.area_id) || "No area"}]: ${ls.join(", ")}`;
   }).join(" | ");
+}
+
+/** BTU of a unit line: live product first, else "24K" in the name. */
+export function unitBtu(unit: IItem, liveProducts: any[]): number | null {
+  const p = liveProducts.find((x) => x.id === unit.product_id);
+  const b = p ? extractBtu(p) : null;
+  if (b) return b;
+  const m = String(unit.item_name || "").match(/\b(\d{1,2})\s?K\b/i);
+  return m ? Number(m[1]) * 1000 : null;
+}
+
+const HALF_WORDS: Record<number, string> = { 0.5: "half a", 1: "1 ×", 1.5: "one and a half ×" };
+/** "half a 3 m length (1.5 m)" / "2 × 3 m lengths (6 m)" / "2 × End Caps"-style count. */
+export function qtyPhrase(qty: number, supplierLengthM?: number | null): string {
+  const L = Number(supplierLengthM) || 0;
+  if (!L) return `${qty}`;
+  const m = Math.round(qty * L * 100) / 100;
+  const lead = HALF_WORDS[qty] ?? `${qty} ×`;
+  return `${lead} ${L} m length${qty > 1 ? "s" : ""} (${m} m)`;
+}
+
+/** Install set_qty: metres (arg or "1.5 m" in the utterance) → supplier lengths; else qty as lengths. */
+export function lengthsFromRequest(args: { qty?: number; metres?: number }, utterance: unknown, lengthM: number): number | null {
+  const u = String(utterance || "").toLowerCase();
+  const um = u.match(/(\d+(?:[.,]\d+)?)\s*(?:m|metres?|meters?)\b(?!\s+length)/);
+  const metres = Number(args.metres) > 0 ? Number(args.metres) : lengthM && um && !/\blengths?\b/.test(u) ? Number(um[1].replace(",", ".")) : null;
+  if (metres != null && lengthM > 0) return Math.round((metres / lengthM) * 100) / 100;
+  const q = Number(args.qty);
+  return Number.isFinite(q) && q >= 0 ? q : null;
+}
+
+/** read_install — "Lounge Samsung 24K: 3 m 1/4 + 1/2 kit, 650 mm bracket, 1 × 3 m length trunking, …". Read-only. */
+export function readInstall(items: IItem[], areaName: (id?: string | null) => string, ref?: string): MandyResult {
+  let units = unitsWithInstall(items);
+  const r = String(ref || "").toLowerCase().trim();
+  if (r) { const f = units.filter((u) => `${u.item_name} ${u.item_number || ""} ${areaName(u.area_id)}`.toLowerCase().includes(r)); if (f.length) units = f; }
+  if (!units.length) return { ok: true, message: "There's no standard install on this quote yet." };
+  const parts = units.map((u) => {
+    const ls = installLinesOf(items, u.id).map((l) => {
+      const role = installTag(l)!.role;
+      const q = Number(l.quantity) || 1;
+      if (role === "piping_kit") { const s = kitPipeSizes({ id: "", name: String(l.item_name), items: l.metadata?.kit?.items || [] } as any); return `${Number(l.length) || 1} m ${s.length ? s.join(" + ") + " " : ""}kit`; }
+      if (role === "bracket") { const mm = String(l.item_name).match(/(\d{3})\s*mm/i)?.[1]; return `${/flatback/i.test(l.item_name) ? "flatback " : ""}${mm ? mm + " mm " : ""}bracket`; }
+      if (role === "drain_bend") return `${q} elbow${q > 1 ? "s" : ""}`;
+      const L = l.metadata?.supplier_length_m;
+      return L ? `${qtyPhrase(q, L)} ${ROLE_LABEL[role]}` : q > 1 ? `${q} × ${ROLE_LABEL[role]}` : ROLE_LABEL[role];
+    });
+    return `${areaName(u.area_id) || "No area"} ${u.item_name}: ${ls.join(", ")}`;
+  });
+  return { ok: true, message: `${parts.join(". ")}.` };
 }
