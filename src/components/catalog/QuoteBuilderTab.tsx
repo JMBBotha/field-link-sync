@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo, useRef, useEffect, useSyncExternalStore } from "react";
 import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
+import { planStandardInstall } from "@/lib/mandy/quoteOps";
+import { useInstallTemplates } from "@/hooks/useInstallTemplates";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { Search, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -446,35 +448,11 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     return blob.includes("air conditioning") || blob.includes("aircon");
   }, []);
 
-  const findPipingKitForBtu = useCallback((btu: number | null): QuoteBuilderBundle | null => {
-    if (!btu || btu <= 0) return null;
-
-    const kSize = Math.round(btu / 1000);
-    const paddedKSize = String(kSize).padStart(2, "0");
-    const btuRegex = new RegExp(`\\b(?:${kSize}K|${paddedKSize}K)\\b`, "i");
-
-    const pipingBundles = bundles.filter((bundle) => {
-      const text = [bundle.name, bundle.description].filter(Boolean).join(" ").toUpperCase();
-      return text.includes("PIPING");
-    });
-
-    const rangeMatch = pipingBundles.find((bundle) => {
-      if (bundle.min_btu == null || bundle.max_btu == null) return false;
-      return btu >= bundle.min_btu && btu <= bundle.max_btu;
-    });
-    if (rangeMatch) return rangeMatch;
-
-    return (
-      pipingBundles.find((candidate) => {
-        const text = [candidate.name, candidate.description]
-          .filter(Boolean)
-          .join(" ")
-          .toUpperCase();
-
-        return btuRegex.test(text);
-      }) || null
-    );
-  }, [bundles]);
+  const { templates: installTemplates } = useInstallTemplates();
+  /** Shared standard-install rule (same resolver as the estimate page and Mandy). */
+  const planInstall = useCallback((product: PaletteProduct) =>
+    planStandardInstall(product, installTemplates, bundles as any, products as PaletteProduct[]),
+  [installTemplates, bundles, products]);
 
   const buildBundleBasketItem = useCallback((bundle: PaletteBundle): BasketItem | null => {
     const subItems = bundle.items
@@ -533,8 +511,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
 
     const isLengthItem = product.sold_in_length && !!product.price_per_metre;
     const isAC = isAirConditioningProduct(product);
-    const parsedBtu = isAC ? extractBtu(product) : null;
-    const autoBundle = isAC ? findPipingKitForBtu(parsedBtu) : null;
+    const plan = isAC ? planInstall(product) : null;
+    const autoBundle = (plan?.kitBundle as QuoteBuilderBundle | null) ?? null;
 
     if (autoBundle) {
       autoBundle.items.forEach((item) => {
@@ -575,17 +553,27 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
           } else {
             const bundleBasketItem = buildBundleBasketItem(autoBundle);
             if (bundleBasketItem) {
-              nextItems.push(bundleBasketItem);
+              nextItems.push(bundleBasketItem.bundlePricingType === "p/meter" ? { ...bundleBasketItem, length: plan!.kitLength } : bundleBasketItem);
             }
           }
         }
+
+        // Standard install lines: each its own line, priced per supplier length (never per metre).
+        for (const l of plan?.lines || []) {
+          const perLength = !!(l.product.sold_in_length && l.product.unit_length);
+          const prod = perLength ? { ...l.product, sold_in_length: false, price_per_metre: null } : l.product;
+          const idx = nextItems.findIndex((i) => !i.isBundle && i.product.id === l.product.id);
+          if (idx >= 0) nextItems[idx] = { ...nextItems[idx], quantity: nextItems[idx].quantity + l.qty };
+          else nextItems.push({ instanceId: `${l.product.id}-install-${Date.now()}`, product: prod as PaletteProduct, quantity: l.qty });
+        }
+        if (plan?.notes.length) toast({ title: "Standard install", description: plan.notes.join(". ") });
 
         return { ...basket, items: nextItems };
       })
     );
 
     scrollToCanvas();
-  }, [trackUsage, scrollToCanvas, isAirConditioningProduct, findPipingKitForBtu, buildBundleBasketItem, bundles]);
+  }, [trackUsage, scrollToCanvas, isAirConditioningProduct, planInstall, buildBundleBasketItem, bundles]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
     bundle.items.forEach((item) => {
