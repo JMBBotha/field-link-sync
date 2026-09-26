@@ -131,6 +131,44 @@ export async function addCatalogProductToQuote(opts: {
  * catalog line, all tagged metadata.install = { unit_item_id, role, template_id }.
  * No template → today's kit-only rule (findPipingKitForBtu) at 3 m.
  */
+export interface InstallPlan {
+  template: InstallTemplate | null;
+  kitBundle: BundleForKit | null;
+  kitLength: number;
+  lines: { role: InstallRole; product: PaletteProduct; qty: number }[];
+  notes: string[];
+}
+
+/** The ONE standard-install rule (used by quote writes AND the clickable builder's basket). */
+export function planStandardInstall(product: Partial<PaletteProduct>, templates: InstallTemplate[], bundles: BundleForKit[], liveProducts: PaletteProduct[]): InstallPlan {
+  const btu = extractBtu(product as any);
+  const tpl = pickInstallTemplate(templates, btu);
+  const notes: string[] = [];
+  const lines: InstallPlan["lines"] = [];
+  if (!tpl) return { template: null, kitBundle: findPipingKitForBtu(bundles, btu), kitLength: DEFAULT_INSTALL_KIT_M, lines, notes };
+  let kitBundle: BundleForKit | null = null, kitLength = DEFAULT_INSTALL_KIT_M;
+  for (const it of tpl.items) {
+    if (!it.included) continue;
+    if (it.role === "piping_kit") {
+      kitBundle = (it.bundle_id && bundles.find((x) => x.id === it.bundle_id)) || findPipingKitForBtu(bundles, btu);
+      kitLength = it.default_length_m || DEFAULT_INSTALL_KIT_M;
+      if (!kitBundle) notes.push("Skipped piping kit – kit not found");
+      continue;
+    }
+    const code = String(it.product_code || "").trim().toUpperCase();
+    const prod = code ? liveProducts.find((x) => String(x.product_code || "").trim().toUpperCase() === code) : null;
+    if (!prod) { notes.push(`Skipped ${code || it.role} – not in active price books`); continue; }
+    lines.push({ role: it.role, product: prod, qty: it.default_qty || 1 });
+  }
+  return { template: tpl, kitBundle, kitLength, lines, notes };
+}
+
+/**
+ * Standard install for an AC unit: template by BTU → piping kit (collapsed,
+ * price-locked, at the template length) + each other item as its own normal
+ * catalog line, all tagged metadata.install = { unit_item_id, role, template_id }.
+ * No template → today's kit-only rule (findPipingKitForBtu) at 3 m.
+ */
 export async function addStandardInstall(opts: {
   addItem: AddItemFn;
   unitLine: QuoteItem;
@@ -142,47 +180,31 @@ export async function addStandardInstall(opts: {
   liveProducts: PaletteProduct[];
   source?: string;
 }) {
-  const { addItem, unitLine, areaId, bundles } = opts;
-  const btu = extractBtu(opts.product as any);
-  const tpl = pickInstallTemplate(opts.templates, btu);
-  const notes: string[] = [];
+  const { addItem, unitLine, areaId } = opts;
+  const plan = planStandardInstall(opts.product, opts.templates, opts.bundles, opts.liveProducts);
+  const tpl = plan.template;
+  const notes = [...plan.notes];
   const installLines: QuoteItem[] = [];
   let sort = opts.sortOrder;
   let kit: QuoteItem | null = null, kitName: string | null = null, kitSellPerMetre: number | null = null, kitLength: number | null = null;
   const tag = (role: InstallRole) => ({ install: { unit_item_id: unitLine.id, role, template_id: tpl?.id ?? null } });
 
-  if (!tpl) {
-    const b = findPipingKitForBtu(bundles, btu);
-    if (b) {
-      const k = await addKitToQuote({ addItem, bundle: b, areaId, sortOrder: sort++, source: opts.source, length: DEFAULT_INSTALL_KIT_M, extraMeta: tag("piping_kit") });
-      kit = k.kit; kitName = k.kitName; kitSellPerMetre = k.kitSellPerMetre; kitLength = k.length;
-    }
-    return { kit, kitName, kitSellPerMetre, installLines, notes, template: null, kitLength };
+  if (plan.kitBundle) {
+    const k = await addKitToQuote({ addItem, bundle: plan.kitBundle, areaId, sortOrder: sort++, source: opts.source, length: plan.kitLength, extraMeta: tag("piping_kit") });
+    kit = k.kit; kitName = k.kitName; kitSellPerMetre = k.kitSellPerMetre; kitLength = k.length;
   }
-
-  for (const it of tpl.items) {
-    if (!it.included) continue;
-    if (it.role === "piping_kit") {
-      const b = (it.bundle_id && bundles.find((x) => x.id === it.bundle_id)) || findPipingKitForBtu(bundles, btu);
-      if (!b) { notes.push("Skipped piping kit – kit not found"); continue; }
-      const k = await addKitToQuote({ addItem, bundle: b, areaId, sortOrder: sort++, source: opts.source, length: it.default_length_m || DEFAULT_INSTALL_KIT_M, extraMeta: tag("piping_kit") });
-      kit = k.kit; kitName = k.kitName; kitSellPerMetre = k.kitSellPerMetre; kitLength = k.length;
-      continue;
-    }
-    const code = String(it.product_code || "").trim().toUpperCase();
-    const prod = code ? opts.liveProducts.find((x) => String(x.product_code || "").trim().toUpperCase() === code) : null;
-    if (!prod) { notes.push(`Skipped ${code || it.role} – not in active price books`); continue; }
-    const { unitSell: _u, ...fields } = catalogLineFields(prod, it.default_qty || 1);
+  for (const l of plan.lines) {
+    const { unitSell: _u, ...fields } = catalogLineFields(l.product, l.qty);
     const row = await addItem({
       ...baseItem(),
       ...fields,
-      metadata: { ...fields.metadata, ...tag(it.role) },
+      metadata: { ...fields.metadata, ...tag(l.role) },
       area_id: areaId,
       sort_order: sort++,
       source: opts.source || "catalog",
     });
     if (row) installLines.push(row);
-    else notes.push(`Couldn't add ${code}`);
+    else notes.push(`Couldn't add ${l.product.product_code}`);
   }
   return { kit, kitName, kitSellPerMetre, installLines, notes, template: tpl, kitLength };
 }
