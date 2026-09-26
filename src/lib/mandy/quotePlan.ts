@@ -14,7 +14,7 @@ import type { QuoteItem, QuoteItemInsert } from "@/types/quote";
 import type { InstallTemplate } from "@/lib/installTemplates";
 import { matchCatalog, type CatalogHit } from "@/lib/mandy/catalogMatch";
 import {
-  addCatalogProductToQuote, catalogLineFields, isAirConditioningProduct, planStandardInstall, type BundleForKit,
+  addCatalogProductToQuote, catalogLineFields, isPerMetreTrunking, isAirConditioningProduct, planStandardInstall, type BundleForKit,
 } from "@/lib/mandy/quoteOps";
 import { serviceLine, type SceneBreakdown, type SceneLine, type ServiceRow } from "@/lib/voiceQuoteKit";
 
@@ -44,13 +44,13 @@ const codeOf = (p?: { product_code?: string | null } | null) => String(p?.produc
 /** Preview line priced exactly like the write (catalogLineFields). */
 export function planLine(p: PaletteProduct, qty: number, spoken: string, meta: Record<string, unknown> = {}): SceneLine {
   const f = catalogLineFields(p, qty);
-  const perLength = !!f.metadata.supplier_length_m;
+  const perLength = !!f.metadata.supplier_length_m && f.metadata.qty_unit !== "metre";
   return {
     id: uid(),
     label: p.short_name || p.product_code || "Product",
     product: p,
     quantity: qty,
-    unitLabel: perLength ? `× ${f.metadata.supplier_length_m} m length` : (p.price_per_unit_label || "each"),
+    unitLabel: f.metadata.qty_unit === "metre" ? "m" : perLength ? `× ${f.metadata.supplier_length_m} m length` : (p.price_per_unit_label || "each"),
     unitPrice: f.unit_price,
     unitCost: Number(f.metadata.unit_cost) || 0,
     markupPct: Number(f.metadata.markup_percent) || 0,
@@ -73,6 +73,12 @@ export interface ResolveCtx {
 
 /** Qty for a matched product: explicit plan qty, else the matcher's spoken qty, else metres → supplier lengths. */
 function qtyFor(item: QuotePlanItem, m: { qty: number | null; lengthM: number | null }, p: PaletteProduct): number {
+  if (isPerMetreTrunking(p)) {
+    // Per-metre trunking: spoken metres win; a spoken count is supplier lengths (x unit length); default one length.
+    const metres = item.length_m ?? m.lengthM;
+    if (metres) return metres;
+    return (item.qty || m.qty || 1) * Number(p.unit_length);
+  }
   if (item.qty) return item.qty;
   if (m.qty) return m.qty;
   const len = item.length_m ?? m.lengthM;

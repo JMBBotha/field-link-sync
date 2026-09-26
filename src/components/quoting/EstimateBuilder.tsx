@@ -15,8 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuoteContext } from "@/contexts/QuoteContext";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
-import { installTag, lengthLabel, BRACKET_OPTIONS } from "@/lib/installTemplates";
-import { catalogLineFields, kitSwapPatch } from "@/lib/mandy/quoteOps";
+import { installTag, qtyUnitLabel, BRACKET_OPTIONS } from "@/lib/installTemplates";
+import { catalogLineFields, kitSwapPatch, isMetreLine, metreLineTotal } from "@/lib/mandy/quoteOps";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { swappableKits, kitSizeLabel } from "@/lib/kitSizes";
 import { useToast } from "@/hooks/use-toast";
@@ -107,7 +107,8 @@ export default function EstimateBuilder({
     unit_price: Number(i.unit_price || 0),
     imageUrl: i.product_id ? (productImages as Record<string, string | null>)[i.product_id] ?? null : null,
     installRole: installTag(i)?.role ?? null,
-    lengthLabel: lengthLabel(Number(i.quantity || 0), (i.metadata as any)?.supplier_length_m),
+    lengthLabel: qtyUnitLabel(Number(i.quantity || 0), i.metadata as any, Number(i.unit_price || 0)),
+    perMetre: isMetreLine(i as any),
     itemNumber: i.item_number ?? null,
     kitBundleId: (i.metadata as any)?.kit?.bundle_id ?? null,
   });
@@ -225,6 +226,12 @@ export default function EstimateBuilder({
           selectedLineId,
           onSelectLine: setSelectedLineId,
           onLineChange: (id, patch) => {
+            const cur = items.find((i) => i.id === id);
+            // Per-metre trunking: keep total_price = round(metres × length sell ÷ length, 2).
+            if (cur && isMetreLine(cur as any) && (patch.quantity != null || patch.unit_price != null)) {
+              const next = { ...cur, ...patch } as any;
+              (patch as any).total_price = metreLineTotal(next, Number(next.quantity) || 0);
+            }
             void updateItem(id, patch as any);
             onChanged?.();
           },

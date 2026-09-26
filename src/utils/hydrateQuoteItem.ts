@@ -46,10 +46,15 @@ export function stubProductFromQuoteItem(it: SavedQuoteItemLike): PaletteProduct
   // Length lines price off LENGTH, not quantity, but unit_price was saved as
   // total ÷ quantity — lock the whole-line value so qty ≠ 1 can't shrink it.
   const isLength = !!it.length && it.length > 0;
-  const qty = isLength ? Number(it.quantity) || 1 : 1;
-  const lockedSell = unitPrice * qty;
-  const lockedCost = unitCost != null ? unitCost * qty : null;
+  // Per-metre trunking (qty = metres): lock ONE supplier length and price per
+  // that many metres, so 3 m re-totals to the exact book price (no 88.17 × 3).
+  const metreLen = meta.qty_unit === "metre" ? Number(meta.supplier_length_m) || 0 : 0;
+  const qty = isLength ? Number(it.quantity) || 1 : metreLen || 1;
+  const lockedSell = metreLen ? Math.round(unitPrice * metreLen * 100) / 100 : unitPrice * qty;
+  const lockedCost = unitCost != null ? (metreLen ? Math.round(unitCost * metreLen * 100) / 100 : unitCost * qty) : null;
+  const metreUnit = metreLen ? { unit_type: "m", price_per_unit_qty: metreLen, price_per_unit_label: `${metreLen} m`, allows_decimal_qty: true, qty_step: 0.1, min_qty: 0 } : {};
   return {
+    ...metreUnit,
     id: it.product_id || it.id,
     product_code: it.item_number || "",
     short_name: it.item_name || "",

@@ -58,8 +58,8 @@ describe("standard install", () => {
   it("prices install lines at book value per supplier length", () => {
     setActiveQuoteMarkupRates({ units: 25, materials: 100 } as any);
     const price = (code: string) => catalogLineFields(LIVE.find((p) => p.product_code === code), 1).unit_price;
-    expect(price("TRUNK01")).toBeCloseTo(264.5, 2);
-    expect(price("TRUNK02")).toBeCloseTo(32.5, 2);
+    expect((catalogLineFields(LIVE.find((p) => p.product_code === "TRUNK01"), 3) as any).total_price).toBe(264.5); // per metre: 3 m = one length
+    expect((catalogLineFields(LIVE.find((p) => p.product_code === "TRUNK02"), 3) as any).total_price).toBe(32.5);
     expect(price("DPIPE01")).toBeCloseTo(56, 2);
     expect(price("TRUNKCAP01")).toBeCloseTo(29.52, 2);
     expect(price("ELB001")).toBeCloseTo(7.5, 2);

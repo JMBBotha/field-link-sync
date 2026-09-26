@@ -79,7 +79,7 @@ describe("Mandy quote mode: plan → matched → breakdown → write", () => {
     expect(unitLine.meta.kit_length_m).toBe(5);
     expect(unitLine.meta.kit_name).toBe("18K PIPING KIT");
     expect(trunk.product?.product_code).toBe("TRUNK01");
-    expect(trunk.quantity).toBe(2);
+    expect(trunk.quantity).toBe(6); // 2 lengths = 6 m (trunking per metre)
     expect(trunk.meta.install_of).toBe(unitLine.id);
 
     const rows: any[] = [];
@@ -95,7 +95,8 @@ describe("Mandy quote mode: plan → matched → breakdown → write", () => {
     expect(kit.metadata.install).toMatchObject({ unit_item_id: "row0", role: "piping_kit", template_id: "t18" });
     const trunkRows = rows.filter((r) => r.item_number === "TRUNK01");
     expect(trunkRows).toHaveLength(1); // no duplicate — install line quantity set to 2
-    expect(trunkRows[0].quantity).toBe(2);
+    expect(trunkRows[0].quantity).toBe(6); // 2 lengths = 6 m
+    expect(trunkRows[0].total_price).toBe(529);
     expect(trunkRows[0].metadata.install.role).toBe("trunking_main");
     expect(rows.every((r) => r.area_id === "area-lounge")).toBe(true);
     expect(out.ids).toHaveLength(rows.length);
