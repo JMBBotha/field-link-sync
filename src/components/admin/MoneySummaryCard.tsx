@@ -23,7 +23,10 @@ const MoneySummaryCard = () => {
   return (
     <Card className="surface-card-solid">
       <CardContent className="p-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Money</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Money</p>
+          <button onClick={() => navigate("/admin/money")} className="text-[11px] font-medium text-primary hover:underline">By lead →</button>
+        </div>
         <div className="grid grid-cols-3 gap-2">
           {tiles.map((t) => (
             <button
