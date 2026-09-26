@@ -34,6 +34,14 @@ describe("importPipeFields", () => {
 });
 
 describe("pickKitForUnit", () => {
+  it("same-size kits: 18K unit → 18K kit, 12K unit → 12K kit", () => {
+    const K18 = kit("k18", "18K PIPING KIT", "1/4", "1/2", 17000, 19000);
+    const kits = [K09, K12, K18, K2412, K2458];
+    const u18 = unit({ brand: "Samsung", product_code: "AR40F18C0AG/FA", btu_rating: 18000, pipe_liquid: "1/4", pipe_gas: "1/2" });
+    expect(pickKitForUnit(kits, u18, { btuOf }).kit?.id).toBe("k18");
+    const u12 = unit({ brand: "Samsung", product_code: "AR40F12C0AG/FA", btu_rating: 12000, pipe_liquid: "1/4", pipe_gas: "1/2" });
+    expect(pickKitForUnit(kits, u12, { btuOf }).kit?.id).toBe("k12");
+  });
   it("AR40F24C0AG (1/4+1/2) → 1/4+1/2 kit, not 3/8+1/2", () => {
     const u = unit({ brand: "Samsung", product_code: "AR40F24C0AG/FA", btu_rating: 24000, pipe_liquid: "1/4", pipe_gas: "1/2" });
     const r = pickKitForUnit(KITS, u);
