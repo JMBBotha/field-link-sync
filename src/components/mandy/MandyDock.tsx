@@ -497,7 +497,8 @@ export default function MandyDock() {
         speak: async (onStarted) => {
           if (muted || !ctx) throw new Error("no audio");
           setPhase("greeting");
-          const buf = await getGreetingBuffer(ctx);
+          const g = await resolveGreeting();
+          const buf = await getGreetingBuffer(ctx, g.key, g.text);
           if (!openRef.current) throw new Error("closed");
           await new Promise<void>((resolve) => {
             const src = ctx.createBufferSource();
@@ -532,7 +533,7 @@ export default function MandyDock() {
   startRef.current = startListening;
   useEffect(() => { if (listenRequest && open) void startRef.current(); }, [listenRequest, open]);
   useEffect(() => {
-    if (open) { if (ttsReady()) void prefetchGreeting(); return; }
+    if (open) { if (ttsReady()) void resolveGreeting().then((g) => prefetchGreeting(g.key, g.text)).catch(() => {}); return; }
     recRef.current?.cancel(); recRef.current = null; cancel(); setPhase("idle");
     try { greetSourceRef.current?.stop(); } catch { /* already stopped */ }
     greetSourceRef.current = null;
