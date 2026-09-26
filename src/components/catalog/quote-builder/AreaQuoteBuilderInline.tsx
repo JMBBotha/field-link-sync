@@ -294,7 +294,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
     for (const area of areas) {
       // Standard install per AC unit — the SAME shared rule as the estimate page, Mandy and the builder.
       const rid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      const hasKit = area.materials.some((m) => !!kitBasketFields(m).isBundle);
+      const hasKit = area.materials.some((m) => !!kitBasketFields(m).isBundle && !m.install);
       const unitItems: BasketItem[] = [];
       let firstUnit: { key: string; tpl: string | null } | null = null;
       for (const u of area.acUnits) {
