@@ -49,6 +49,8 @@ type Phase = "idle" | "starting" | "greeting" | "listening" | "hearing" | "worki
 type Msg = Record<string, unknown>;
 
 const QUOTE_TOOLS_PROBE = "read_quote_total";
+/** Handlers that may read the raw transcript (args.__utterance; stripped before audit). */
+const UTTERANCE_TOOLS = new Set(["set_labour_hours", "edit_install"]);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /* ───────────── global (non-quote) actions ───────────── */
