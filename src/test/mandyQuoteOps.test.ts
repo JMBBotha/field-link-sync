@@ -39,7 +39,7 @@ describe("Mandy add_item_to_area uses the palette path", () => {
     expect(m.ranked.length).toBe(3);
   });
 
-  it("AR40F24C0AG/FA sells R17 825,22 and auto-adds a 1 m kit ≈ R493", async () => {
+  it("AR40F24C0AG/FA sells R17 825,22 and auto-adds a 3 m kit ≈ 3 × R493", async () => {
     setActiveQuoteMarkupRates({ units: 25, materials: 100 } as any);
     const rows: any[] = [];
     const addItem = async (i: any) => { const r = { ...i, id: `row${rows.length}` }; rows.push(r); return r; };
@@ -48,12 +48,12 @@ describe("Mandy add_item_to_area uses the palette path", () => {
     expect(rows[0].metadata.cost_excl).toBeCloseTo(14260.18, 2);
     expect(rows[0].metadata.markup_percent).toBe(25);
     expect(rows[1].is_bundle).toBe(true);
-    expect(rows[1].length).toBe(1);
-    expect(rows[1].unit_price).toBeGreaterThan(490);
-    expect(rows[1].unit_price).toBeLessThan(496);
+    expect(rows[1].length).toBe(3);
+    expect(rows[1].unit_price).toBeGreaterThan(1470);
+    expect(rows[1].unit_price).toBeLessThan(1488);
     expect(r.kitName).toContain("24K");
     const p = kitLengthPatch(rows[1], 3);
-    expect(p.unit_price).toBeCloseTo(rows[1].unit_price * 3, 1);
+    expect(p.unit_price).toBeCloseTo(rows[1].unit_price, 1);
     console.log("ROWS", JSON.stringify(rows.map((x) => ({ n: x.item_name, q: x.quantity, len: x.length, up: x.unit_price, meta: { c: x.metadata.cost_excl, m: x.metadata.markup_percent } }))));
   });
 });
