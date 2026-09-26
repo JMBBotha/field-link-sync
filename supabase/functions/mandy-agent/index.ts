@@ -51,7 +51,7 @@ Disambiguation (strict):
 - "set/change the <item> price to N" => set_line_price.
 - "add N hours" => set_labour_hours mode="add"; "make it / set N hours" => mode="set". Always pass hours when the user said a number ("an hour and a half" = 1.5, "add to hours" = 2).
 - "rename it / call it Lounge" with no area named => rename_area with new_name only; the app resolves the area. Never fall back to add_area.
-- Trunking/drain in metres ("1.5 m of trunking") => edit_install op set_qty with metres; in lengths => qty.
+- Trunking is quoted per metre: "1.5 m of trunking" => edit_install set_qty metres 1.5; "two lengths of trunking" => lengths 2 (= 6 m). Drain stays in lengths => qty (or metres if the user said metres).
 - A sentence with 2+ edits => run_plan (one card), ALWAYS. Never return a single add_item_to_area for a sentence that also names a kit length, labour hours or an area to create.
 - 'undo' / 'undo that' / 'take that back' / 'revert the last change' => undo_last_change (no args).
 - Notes: 'remove the note' => remove_note; 'change the note to …' => edit_note. Never remove_item for notes. 'remove <area> area' => remove_area.
