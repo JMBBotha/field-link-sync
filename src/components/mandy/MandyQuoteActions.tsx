@@ -38,7 +38,8 @@ import { resolveItemRef, findAreaFuzzy, noMatchMessage, chipLabel, isKitItem, is
 import { clearRefusal, clearSummary, areasToRemove, CLEARED_MESSAGE } from "@/lib/mandy/quoteIntent";
 import { quoteLinesContext } from "@/lib/mandy/quoteLinesContext";
 import { useInstallTemplates } from "@/hooks/useInstallTemplates";
-import { runInstallEdit, announceInstall, installContext, installLinesOf } from "@/lib/mandy/installEdits";
+import { runInstallEdit, announceInstall, installContext, installLinesOf, readInstall } from "@/lib/mandy/installEdits";
+import { renameAreaDecision } from "@/lib/mandy/itemResolve";
 import type { QuoteArea, QuoteItem } from "@/types/quote";
 
 interface Props {
@@ -297,6 +298,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     },
 
     read_labour: async () => readLabour({ areas: S().areas, items: S().items }),
+    read_install: async ({ item }) => readInstall(S().items as any[], (id) => areaName(id ?? null), item as string | undefined),
 
     add_area: async ({ name }) => {
       const n = String(name || "").trim();
@@ -310,10 +312,18 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     },
 
     rename_area: async ({ area, new_name, name }) => {
-      const a = findArea(area);
       const nn = String(new_name ?? name ?? "").trim();
-      if (!a) return { ok: false, message: `No area called ${area} on this quote.`, choices: areaChips("rename_area", { new_name: nn }) };
-      if (!nn) return { ok: false, message: "What should the new name be?" };
+      if (!nn) return { ok: false, message: "What should the new name be? For example: “call it Lounge”." };
+      const dec = renameAreaDecision(S().areas, area, nn);
+      if (dec.kind === "choices") return { ok: true, message: dec.message, choices: dec.choices };
+      if (dec.kind === "create") {
+        const row = await g.addArea(nn);
+        if (!row) return { ok: false, message: `Could not add ${nn}.` };
+        const fresh = await refresh();
+        return { ok: true, message: `There was no room yet, so I added ${nn}.`, verified: !!fresh?.areas.some((x) => x.id === row.id) };
+      }
+      const a = dec.area;
+      if (a.name === nn) return { ok: true, message: `It's already called ${nn}, so nothing changed.` };
       await g.updateArea(a.id, { name: nn });
       const fresh = await refresh();
       return { ok: true, message: `Renamed ${a.name} to ${nn}.`, verified: !!fresh?.areas.some((x) => x.id === a.id && x.name === nn) };
