@@ -468,7 +468,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
         && resolveItemRef(S().items, S().areas, areaRef).kind !== "one") {
         return handlers.remove_area({ ...args, area: areaRef });
       }
-      if (!args.item_id && isLabourRow as unknown && /^\s*(the\s+)?labou?r\b/i.test(String(args.item || ""))) {
+      if (!args.item_id && /^\s*(the\s+)?labou?r\b/i.test(String(args.item || ""))) {
         return handlers.remove_labour({ area: splitArea(String(args.item)) });
       }
       const r = resolveItem(args.item, "remove_item", args);

@@ -18,7 +18,7 @@ export const LOW_RISK_EDITS = new Set([
 export const PRICED_ACTIONS = new Set(["add_item_to_area", "add_unit", "add_kit", "set_kit_length", "set_line_price"]);
 /** Always a Confirm card, whatever the confidence. */
 export const ALWAYS_CONFIRM = new Set([
-  "remove_item", "remove_note", "remove_labour", "create_deposit_invoice", "send_quote", "send_invoice", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote",
+  "remove_item", "remove_note", "remove_labour", "clear_quote", "create_deposit_invoice", "send_quote", "send_invoice", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote",
 ]);
 /** Reads and navigation — allowed on any quote. */
 export const READ_ONLY = new Set([
