@@ -105,6 +105,9 @@ export async function addCatalogProductToQuote(opts: {
   templates?: InstallTemplate[];
   /** Live catalog rows used to resolve install product codes. */
   liveProducts?: PaletteProduct[];
+  /** Spoken overrides for the standard install (kit metres, qty per product code). */
+  kitLengthM?: number | null;
+  qtyByCode?: Record<string, number>;
 }): Promise<AddProductResult> {
   const { addItem, product: p, areaId, bundles = [] } = opts;
   const qty = opts.quantity && opts.quantity > 0 ? opts.quantity : 1;
@@ -122,6 +125,7 @@ export async function addCatalogProductToQuote(opts: {
   const inst = await addStandardInstall({
     addItem, unitLine: line, product: p, areaId, sortOrder: opts.sortOrder + 1,
     templates: opts.templates || [], bundles, liveProducts: opts.liveProducts || [], source: opts.source,
+    kitLengthM: opts.kitLengthM, qtyByCode: opts.qtyByCode,
   });
   return { ...empty, ...inst };
 }
@@ -188,6 +192,8 @@ export async function addStandardInstall(opts: {
   bundles: BundleForKit[];
   liveProducts: PaletteProduct[];
   source?: string;
+  kitLengthM?: number | null;
+  qtyByCode?: Record<string, number>;
 }) {
   const { addItem, unitLine, areaId } = opts;
   const plan = planStandardInstall(opts.product, opts.templates, opts.bundles, opts.liveProducts);
@@ -199,11 +205,12 @@ export async function addStandardInstall(opts: {
   const tag = (role: InstallRole) => ({ install: { unit_item_id: unitLine.id, role, template_id: tpl?.id ?? null } });
 
   if (plan.kitBundle) {
-    const k = await addKitToQuote({ addItem, bundle: plan.kitBundle, areaId, sortOrder: sort++, source: opts.source, length: plan.kitLength, extraMeta: tag("piping_kit") });
+    const k = await addKitToQuote({ addItem, bundle: plan.kitBundle, areaId, sortOrder: sort++, source: opts.source, length: opts.kitLengthM && opts.kitLengthM > 0 ? opts.kitLengthM : plan.kitLength, extraMeta: tag("piping_kit") });
     kit = k.kit; kitName = k.kitName; kitSellPerMetre = k.kitSellPerMetre; kitLength = k.length;
   }
   for (const l of plan.lines) {
-    const { unitSell: _u, ...fields } = catalogLineFields(l.product, l.qty);
+    const override = opts.qtyByCode?.[String(l.product.product_code || "").trim().toUpperCase()];
+    const { unitSell: _u, ...fields } = catalogLineFields(l.product, override && override > 0 ? override : l.qty);
     const row = await addItem({
       ...baseItem(),
       ...fields,
