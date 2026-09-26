@@ -10,7 +10,7 @@ export const useMandyDock = create<{
   open: boolean; setOpen: (v: boolean) => void; listenRequest: number; openAndListen: () => void;
   /** "quote": every utterance goes to the page's quote_scene handler (Grok plan → breakdown card). */
   mode: MandyMode; setMode: (m: MandyMode) => void;
-  /** Pages ask the dock to speak (Grok voice eve, shared speed) — e.g. after a card Confirm. */
+  /** Pages ask the dock to speak (Grok voice liora, shared speed) — e.g. after a card Confirm. */
   speakRequest: { text: string; n: number } | null; say: (text: string) => void;
 }>((set) => ({
   open: false,
