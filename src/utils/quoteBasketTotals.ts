@@ -1,3 +1,4 @@
+import { basketInstallMeta } from "@/lib/installTemplates";
 import { computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing, classifyQuoteCategory, categoryMarkupPercent, r2, type CategoryMarkupRates } from "@/lib/pricing";
 import type { Basket, BasketItem, PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import type { QuoteArea, QuoteItem } from "@/types/quote";
@@ -116,6 +117,7 @@ export function basketsToQuoteState(baskets: Basket[]): { areas: QuoteArea[]; it
           cost_excl: item.quantity > 0 ? totalCost / item.quantity : totalCost, // compat alias
           price_locked: true,
           ...(item.product.manual_price_override ? { manual_price: true } : {}),
+          ...basketInstallMeta(item.install),
           ...(item.isBundle && item.bundlePricingType
             ? {
                 kit: {

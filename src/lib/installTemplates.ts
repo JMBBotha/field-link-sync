@@ -82,3 +82,38 @@ export async function fetchInstallTemplates(): Promise<InstallTemplate[]> {
       .sort((a, b) => a.sort_order - b.sort_order),
   }));
 }
+
+/** Client-side install link carried on a builder basket line (unitKey = the unit line's instanceId). */
+export interface BasketInstall { unitKey: string; role: InstallRole; template_id: string | null; supplier_length_m?: number | null }
+
+/** Basket install link → saved metadata (unit_item_id still holds the unit's instanceId until remapped). */
+export function basketInstallMeta(inst: BasketInstall | undefined | null): Record<string, any> {
+  if (!inst) return {};
+  return {
+    install: { unit_item_id: inst.unitKey, role: inst.role, template_id: inst.template_id ?? null },
+    ...(inst.supplier_length_m ? { supplier_length_m: inst.supplier_length_m, qty_unit: "length" } : {}),
+  };
+}
+
+/** Saved row → basket install link (hydration). */
+export function basketInstallFrom(item: { metadata?: any }): BasketInstall | undefined {
+  const t = installTag(item);
+  if (!t) return undefined;
+  return { unitKey: t.unit_item_id, role: t.role, template_id: t.template_id ?? null, supplier_length_m: item.metadata?.supplier_length_m ?? null };
+}
+
+/**
+ * Replace-all save: rows get NEW ids. Point every install tag at its unit's
+ * new id (oldKey → newId). A tag whose unit is not in this save is dropped.
+ */
+export function remapInstallUnitIds<T extends { metadata?: any }>(rows: T[], idMap: Map<string, string>): T[] {
+  return rows.map((r) => {
+    const t = installTag(r);
+    if (!t) return r;
+    const nid = idMap.get(t.unit_item_id);
+    const md = { ...(r.metadata || {}) };
+    if (nid) md.install = { ...md.install, unit_item_id: nid };
+    else delete md.install;
+    return { ...r, metadata: md };
+  });
+}

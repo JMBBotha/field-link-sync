@@ -3,6 +3,7 @@ import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMar
 import { extractBtu } from "@/lib/bundles";
 import { planStandardInstall } from "@/lib/mandy/quoteOps";
 import { useInstallTemplates } from "@/hooks/useInstallTemplates";
+import type { BasketInstall } from "@/lib/installTemplates";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { Search, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -155,6 +156,8 @@ export interface BasketItem {
   bundleUnitCost?: number;
   /** Contents of a collapsed installation kit (display only). */
   kitContents?: Array<{ name: string; code: string | null; quantity: number; isLengthItem: boolean }>;
+  /** Standard-install link to the unit line (unitKey = unit's instanceId). */
+  install?: BasketInstall;
 }
 
 export interface Basket {

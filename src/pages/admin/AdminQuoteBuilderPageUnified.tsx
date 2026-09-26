@@ -1,3 +1,4 @@
+import { basketInstallFrom } from "@/lib/installTemplates";
 import { resolveProductMarkupPercent } from "@/lib/pricing";
 /**
  * Unified Quote Builder Page — wraps Normal / Visual / Area builders
@@ -419,6 +420,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         quantity: it.quantity,
         ...(it.length ? { length: it.length } : {}),
         ...(it.is_bundle ? { isBundle: true } : {}),
+        ...(basketInstallFrom(it) ? { install: basketInstallFrom(it) } : {}),
         ...(() => {
           const k = kitFromSavedItem(it);
           return k ? kitBasketFields(k) : {};
