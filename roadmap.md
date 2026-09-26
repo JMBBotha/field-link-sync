@@ -37,3 +37,4 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] /admin/money per-lead page, linked from Money card (By lead →), biggest balance first.
 - [x] Client portal loads via token-checked get_customer_portal_data: jobs/status, invoices with paid/balance + pay link, payments.
 - [x] Read-only security scan report.
+- [x] Mandy mobile: one tap greets + listens (audio/mic unlocked in the tap), real-playback detection, hands-free re-listen after speechSynthesis fallback.

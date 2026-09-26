@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { create } from "zustand";
 import type { MandyHandler } from "./actions";
+import { unlockMandyVoiceFromTap } from "./voiceUnlock";
 
 /** Dock visibility — the header "Ask Mandy" button opens it. */
 export const useMandyDock = create<{ open: boolean; setOpen: (v: boolean) => void; listenRequest: number; openAndListen: () => void }>((set) => ({
@@ -12,6 +13,7 @@ export const useMandyDock = create<{ open: boolean; setOpen: (v: boolean) => voi
 
 /** The ONE voice entry point: close whatever panel asked, open Mandy listening. */
 export function openMandyVoice(close?: () => void) {
+  unlockMandyVoiceFromTap(); // synchronous: must run inside the tap
   close?.();
   useMandyDock.getState().openAndListen();
 }
