@@ -53,7 +53,7 @@ describe("hourly labour", () => {
 describe("set_labour_hours", () => {
   const areas = [{ id: "A", name: "Main bedroom" }, { id: "B", name: "Lounge" }];
   it("creates the area's labour row at the standard rate", async () => {
-    const addItem = vi.fn(async () => null), updateItem = vi.fn();
+    const addItem = vi.fn(async () => ({ id: "n" })), updateItem = vi.fn();
     const r = await runSetLabourHours({ areas, items: [], standardRate: 450, addItem, updateItem }, { area: "main bedroom", hours: 3 });
     expect(r.ok).toBe(true);
     expect(addItem).toHaveBeenCalledWith(expect.objectContaining({ area_id: "A", quantity: 3, unit_price: 450, total_price: 1350, item_type: "labour" }));
