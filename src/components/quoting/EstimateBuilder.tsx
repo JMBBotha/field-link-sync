@@ -334,12 +334,17 @@ export default function EstimateBuilder({
             if (activeAreaId === id) setActiveAreaId(null);
             onChanged?.();
           },
-          renderAddBar: (areaId) => (
+          addBar: (
             <QuoteQuickEditor
-              key={areaId ?? "default"}
               onChanged={onChanged}
-              targetAreaId={areaId}
               dropUp
+              onAddedToArea={(areaId) => {
+                setActiveAreaId(areaId);
+                window.setTimeout(() => {
+                  const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(areaId) : areaId.replace(/["\\]/g, "\\$&");
+                  document.querySelector(`[data-area-id="${escaped}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 0);
+              }}
             />
           ),
           discountControl,

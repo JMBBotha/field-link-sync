@@ -31,6 +31,10 @@ import { Button } from "@/components/ui/button";
 import {
   matchesService, serviceLineFields, isCustomLimitError, type CatalogService,
 } from "@/lib/catalogServices";
+import { decideAddTarget } from "@/lib/addBarTarget";
+import { isAcUnitLine } from "@/lib/lineDisplay";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const money = (n: number) =>
   `R ${Number(n || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -56,16 +60,16 @@ function baseItem(): Omit<QuoteItemInsert, "quote_id" | "item_name" | "unit_pric
 
 export default function QuoteQuickEditor({
   onChanged,
-  targetAreaId = null,
   dropUp = false,
+  onAddedToArea,
 }: {
   onChanged?: () => void;
-  /** Add new lines into this area (defaults to the first / default area). */
-  targetAreaId?: string | null;
   /** Open the results list upward (used when the bar sits at the bottom of the document). */
   dropUp?: boolean;
+  /** Focus the area that received the new line. */
+  onAddedToArea?: (areaId: string) => void;
 }) {
-  const { areas, items, addItem, addArea, ensureDefaultArea, meta } = useQuoteContext();
+  const { areas, items, addItem, addArea, meta } = useQuoteContext();
   const { toast } = useToast();
   const companyId = (meta as any)?.company_id ?? null;
   const [serviceFocus, setServiceFocus] = useState(false);
@@ -80,6 +84,8 @@ export default function QuoteQuickEditor({
   const [productTerm, setProductTerm] = useState("");
   const [serviceTerm, setServiceTerm] = useState("");
   const [adding, setAdding] = useState<string | null>(null);
+  const [pendingAdd, setPendingAdd] = useState<{ kind: "product"; value: PaletteProduct } | { kind: "service"; value: CatalogService } | null>(null);
+  const [pickedAreaId, setPickedAreaId] = useState("");
 
   const { data: products = [], isLoading: loadingProducts } = useQuery({
     queryKey: ["quote-quick-editor-products"],
@@ -141,35 +147,73 @@ export default function QuoteQuickEditor({
 
   const nextSortOrder = () => (items.length ? Math.max(...items.map((i) => i.sort_order || 0)) + 1 : 0);
 
-  /**
-   * Always land new lines inside a real area. On an empty quote there are no
-   * items yet, so ensureDefaultArea() is a no-op — create the section here so
-   * the added line renders under "Items" instead of falling out as an orphan.
-   */
-  const resolveArea = async () => {
-    if (targetAreaId) return targetAreaId;
-    const area = areas[0] || (await ensureDefaultArea()) || (await addArea("Items"));
-    return area?.id ?? null;
+  const commitProduct = async (p: PaletteProduct, areaId: string) => {
+    setAdding(p.id);
+    try {
+      // Shared with Mandy: same line + auto piping kit for AC units.
+      await addCatalogProductToQuote({ addItem, product: p, areaId, sortOrder: nextSortOrder(), bundles, templates, liveProducts });
+      setProductTerm("");
+      onChanged?.();
+      onAddedToArea?.(areaId);
+    } finally {
+      setAdding(null);
+    }
+  };
+
+  const commitCatalogService = async (s: CatalogService, areaId: string) => {
+    setAdding(s.id);
+    try {
+      await addItem({ ...baseItem(), area_id: areaId, sort_order: nextSortOrder(), ...serviceLineFields(s) } as any);
+      setServiceTerm("");
+      setServiceFocus(false);
+      onChanged?.();
+      onAddedToArea?.(areaId);
+    } finally {
+      setAdding(null);
+    }
+  };
+
+  const routeAdd = async (pending: NonNullable<typeof pendingAdd>, isUnit: boolean) => {
+    const itemLines = items.filter((item) => !item.parent_item_id).map((item) => {
+      const product = item.product_id ? products.find((candidate) => candidate.id === item.product_id) : null;
+      return {
+        areaId: item.area_id,
+        isUnit: isAcUnitLine(item, product),
+      };
+    });
+    const target = decideAddTarget(areas, itemLines, isUnit);
+    if (target.kind === "pick") {
+      setPickedAreaId(target.defaultAreaId);
+      setPendingAdd(pending);
+      return;
+    }
+    const areaId = target.kind === "existing"
+      ? target.areaId
+      : (await addArea(`Area ${areas.length + 1}`))?.id;
+    if (!areaId) return;
+    if (pending.kind === "product") await commitProduct(pending.value, areaId);
+    else await commitCatalogService(pending.value, areaId);
   };
 
   const addProduct = async (p: PaletteProduct) => {
-    setAdding(p.id);
-    const areaId = await resolveArea();
-    // Shared with Mandy: same line + auto piping kit for AC units.
-    await addCatalogProductToQuote({ addItem, product: p, areaId, sortOrder: nextSortOrder(), bundles, templates, liveProducts });
-    setAdding(null);
-    setProductTerm("");
-    onChanged?.();
+    const isUnit = isAcUnitLine(
+      { item_name: p.short_name || p.product_code, item_type: "product", metadata: {} },
+      p,
+    );
+    await routeAdd({ kind: "product", value: p }, isUnit);
   };
 
   const addCatalogService = async (s: CatalogService) => {
-    setAdding(s.id);
-    const areaId = await resolveArea();
-    await addItem({ ...baseItem(), area_id: areaId, sort_order: nextSortOrder(), ...serviceLineFields(s) } as any);
-    setAdding(null);
-    setServiceTerm("");
-    setServiceFocus(false);
-    onChanged?.();
+    await routeAdd({ kind: "service", value: s }, false);
+  };
+
+  const confirmPickedArea = async () => {
+    const pending = pendingAdd;
+    const areaId = pickedAreaId;
+    if (!pending || !areaId) return;
+    setPendingAdd(null);
+    if (pending.kind === "product") await commitProduct(pending.value, areaId);
+    else await commitCatalogService(pending.value, areaId);
   };
 
   const saveCustomService = async () => {
@@ -196,7 +240,7 @@ export default function QuoteQuickEditor({
   const showServiceList = customOpen || serviceFocus || serviceTerm.trim().length > 0;
 
   return (
-    <div className="print:hidden">
+    <div data-testid="quote-add-bar" data-pdf-hide className="print:hidden">
       <div className="grid gap-2 sm:grid-cols-2">
         <div className="relative">
           <Package className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
@@ -288,6 +332,24 @@ export default function QuoteQuickEditor({
           )}
         </div>
       </div>
+      <Dialog open={!!pendingAdd} onOpenChange={(open) => { if (!open && !adding) setPendingAdd(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Which area?</DialogTitle>
+            <DialogDescription>Choose where to add this item. The last area is selected by default.</DialogDescription>
+          </DialogHeader>
+          <Select value={pickedAreaId} onValueChange={setPickedAreaId}>
+            <SelectTrigger aria-label="Area"><SelectValue placeholder="Choose an area" /></SelectTrigger>
+            <SelectContent>
+              {areas.map((area) => <SelectItem key={area.id} value={area.id}>{area.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setPendingAdd(null)} disabled={!!adding}>Cancel</Button>
+            <Button type="button" onClick={() => void confirmPickedArea()} disabled={!pickedAreaId || !!adding}>Add to area</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
