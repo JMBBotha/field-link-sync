@@ -20,8 +20,8 @@ describe("computeOverrun", () => {
     expect(r.adjustedGpPercent).toBe(19);
     expect(r.adjustedCommission).toBe(1250);
   });
-  it("clamps commission at 0 when adjusted GP is negative", () => {
-    const r = computeOverrun({ ...base, actualHours: 20, labourCostPerHour: 500, extras: [] });
+  it("clamps GP tech share at 0 when material overruns exceed its base", () => {
+    const r = computeOverrun({ ...base, actualHours: 4, labourCostPerHour: 500, extras: [{ name: "Compressor", qty: 1, unitCost: 8000 }] });
     expect(r.adjustedGp).toBe(-5000);
     expect(r.adjustedCommission).toBe(0);
   });
