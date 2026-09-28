@@ -349,7 +349,7 @@ const AdminDispatchPage = () => {
     if (showUrgentOnly) {
       leads = leads.filter(l => l.priority === "urgent" || l.priority === "high");
     }
-    if (laneParam) leads = leads.filter(l => laneOf(l) === laneParam);
+    if (laneParam) leads = filterLeadsByLane(leads, laneParam);
     return leads;
   }, [allLeads, inboxLeads, inboxMode, searchQuery, showUrgentOnly, laneParam]);
 
