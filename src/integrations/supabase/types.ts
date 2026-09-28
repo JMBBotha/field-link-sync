@@ -3045,6 +3045,7 @@ export type Database = {
         Row: {
           address: string | null
           company_id: string
+          completed_at: string | null
           created_at: string | null
           created_by: string | null
           customer_id: string | null
@@ -3060,6 +3061,7 @@ export type Database = {
           priority: string | null
           quote_id: string | null
           scheduled_for: string | null
+          started_at: string | null
           status: string | null
           title: string
           updated_at: string | null
@@ -3067,6 +3069,7 @@ export type Database = {
         Insert: {
           address?: string | null
           company_id: string
+          completed_at?: string | null
           created_at?: string | null
           created_by?: string | null
           customer_id?: string | null
@@ -3082,6 +3085,7 @@ export type Database = {
           priority?: string | null
           quote_id?: string | null
           scheduled_for?: string | null
+          started_at?: string | null
           status?: string | null
           title: string
           updated_at?: string | null
@@ -3089,6 +3093,7 @@ export type Database = {
         Update: {
           address?: string | null
           company_id?: string
+          completed_at?: string | null
           created_at?: string | null
           created_by?: string | null
           customer_id?: string | null
@@ -3104,6 +3109,7 @@ export type Database = {
           priority?: string | null
           quote_id?: string | null
           scheduled_for?: string | null
+          started_at?: string | null
           status?: string | null
           title?: string
           updated_at?: string | null
