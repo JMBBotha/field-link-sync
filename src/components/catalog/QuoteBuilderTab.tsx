@@ -44,6 +44,7 @@ import type { WizardTriggerItem } from "./quote-builder/QuoteBuilderPopup";
 import { computeBundlePricing, toBundleSubItems, scaleKitCountItems } from "./quote-builder/BundleItemsPopover";
 import { computeBasketsQuoteTotals, applyCategoryRatesToBaskets } from "@/utils/quoteBasketTotals";
 import { subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot } from "@/lib/pricing";
+import { formatRand } from "@/utils/formatRand";
 import type { QuoteTotals } from "@/utils/quoteTransformers";
 
 type QuoteBuilderBundle = PaletteBundle & {
@@ -209,6 +210,28 @@ interface QuoteBuilderTabProps {
    *  the same combined set. Not added to `baskets` state. */
   extraBaskets?: Basket[];
   quoteTotals?: QuoteTotals;
+}
+
+/**
+ * Desktop "Quote Total" bar — headline is TOTAL INCL. VAT (same maths as the
+ * estimate page and quotes.total), with the ex-VAT split on a secondary line.
+ */
+export function QuoteTotalsBar({ totals }: { totals: QuoteTotals }) {
+  return (
+    <div className="hidden md:flex flex-col border bg-card p-3 z-10 shadow-sm shrink-0 rounded-sm py-[6px] mx-[4px] my-[8px] gap-[6px]">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-muted-foreground">
+          Total incl. VAT ({totals.itemCount} items across {totals.zoneCount} zones)
+        </span>
+        <span className="text-lg font-bold text-foreground" data-testid="builder-total-incl-vat">
+          {formatRand(totals.total)}
+        </span>
+      </div>
+      <div className="text-xs text-muted-foreground">
+        Subtotal excl. VAT {formatRand(totals.subtotal)} · VAT 15% {formatRand(totals.vatAmount)}
+      </div>
+    </div>
+  );
 }
 
 const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount, areaDropProductToArea, areaDropBundleToArea, initialBaskets, extraBaskets, quoteTotals: providedQuoteTotals }: QuoteBuilderTabProps = {}) => {
@@ -802,16 +825,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
 
   return (
     <div className="flex flex-col h-full overflow-hidden gap-3 relative pb-2 min-w-0">
-      <div className="hidden md:flex flex-col border bg-card p-3 z-10 shadow-sm shrink-0 rounded-sm py-[6px] mx-[4px] my-[8px] gap-[6px]">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-muted-foreground">
-            Quote Total ({quoteTotals.itemCount} items across {quoteTotals.zoneCount} zones)
-          </span>
-          <span className="text-lg font-bold text-foreground">
-            R {quoteTotals.subtotal.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-        </div>
-      </div>
+      <QuoteTotalsBar totals={quoteTotals} />
 
       <DndContext
         sensors={sensors}
