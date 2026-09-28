@@ -12,7 +12,12 @@ import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { attachPaymentTotals } from "@/lib/depositInvoice";
 import jsPDF from "jspdf";
 import { formatRand } from "@/utils/formatRand";
-import { parseInvoiceParams, filterInvoices, matchesInvoiceState, clearParams } from "@/lib/drilldown";
+import { parseInvoiceParams, filterInvoices, matchesInvoiceState, clearParams, resolveMoneyFilter, MONEY_LABEL } from "@/lib/drilldown";
+import RowMenu from "@/components/shared/RowMenu";
+import { useNavigate } from "react-router-dom";
+import { buildDepositWhatsAppUrl } from "@/lib/depositShare";
+import { publicQuoteUrl } from "@/lib/publicAppUrl";
+import { useToast } from "@/hooks/use-toast";
 import FilterChips from "@/components/shared/FilterChips";
 
 interface Invoice {
@@ -71,7 +76,18 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   const setParam = (k: string, v: string | null) =>
     setSearchParams((p) => { const n = new URLSearchParams(p); if (v && v !== "all") n.set(k, v); else n.delete(k); return n; });
   const setFilter = (v: string) => setParam("state", v);
-  const moneyFilter = searchParams.get("money") as MoneyFilter | null;
+  const moneyFilter = resolveMoneyFilter(searchParams) as MoneyFilter | null;
+  const moneyIsAlias = !!moneyFilter && !searchParams.get("money");
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  // Existing share path: public quote page carries the deposit pay block (ClientDepositActions).
+  const sendPayLink = async (inv: any) => {
+    const { data } = inv.quote_id
+      ? await supabase.from("quotes").select("public_token").eq("id", inv.quote_id).maybeSingle()
+      : { data: null as any };
+    if (!data?.public_token) { toast({ title: "No pay link", description: "This invoice isn't linked to a shared quote." , variant: "destructive" }); return; }
+    window.open(buildDepositWhatsAppUrl(inv.invoice_number, Number(inv.grand_total) || 0, publicQuoteUrl(data.public_token)), "_blank", "noopener");
+  };
   const [payRows, setPayRows] = useState<any[]>([]);
 
   useEffect(() => {
@@ -222,14 +238,15 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
       <FilterChips
         shown={filteredInvoices.length}
         chips={[
+          ...(moneyIsAlias ? [{ key: "kind", label: MONEY_LABEL[moneyFilter as keyof typeof MONEY_LABEL] }] : []),
           ...(inf.state ? [{ key: "state", label: inf.state === "unpaid" ? "Unpaid (sent + overdue)" : `State: ${inf.state}` }] : []),
           ...(inf.period ? [{ key: "period", label: inf.period === "today" ? "Today" : /d$/.test(inf.period) ? `Last ${inf.period.replace("d", "")} days` : inf.period }] : []),
         ]}
-        onClear={(k) => setSearchParams((p) => clearParams(p, [k]))}
-        onClearAll={() => setSearchParams((p) => clearParams(p, ["state", "period", "money"]))}
+        onClear={(k) => setSearchParams((p) => clearParams(p, k === "kind" ? ["kind", "state"] : [k]))}
+        onClearAll={() => setSearchParams((p) => clearParams(p, ["state", "period", "money", "kind"]))}
       />
 
-      {moneyFilter && (
+      {moneyFilter && !moneyIsAlias && (
         <button onClick={() => setSearchParams((p) => clearParams(p, ["money"]))} className="text-xs rounded-full bg-primary text-primary-foreground px-3 py-1">
           {moneyFilter.replace("_", " ")} · clear ✕
         </button>
@@ -316,6 +333,13 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
                     <span className="font-bold text-base text-primary">
                       {formatCurrency(invoice.grand_total)}
                     </span>
+                    <RowMenu items={[
+                      { label: "Open", onSelect: () => onSelectInvoice(invoice) },
+                      { label: "Record payment", onSelect: () => onSelectInvoice(invoice), hidden: invoice.status === "paid" },
+                      { label: "Send pay link (WhatsApp)", onSelect: () => sendPayLink(invoice), hidden: invoice.status === "paid" || !(invoice as any).quote_id },
+                      { label: "Open quote", onSelect: () => navigate(`/admin/quote-builder?quoteId=${(invoice as any).quote_id}`), hidden: !(invoice as any).quote_id, separatorBefore: true },
+                      { label: "Open client", onSelect: () => navigate(`/admin/customers/${(invoice as any).customer_id}`), hidden: !(invoice as any).customer_id },
+                    ]} />
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>

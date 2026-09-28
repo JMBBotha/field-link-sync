@@ -1,3 +1,5 @@
+import { X as XIcon } from "lucide-react";
+import { parseLaneParam } from "@/lib/drilldown";
 import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -133,6 +135,7 @@ const AdminDispatchPage = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const inboxMode = searchParams.get("inbox") === "1";
+  const laneParam = parseLaneParam(searchParams);
   const { leads: inboxLeads } = useLeadInbox();
   const { salesStaff, technicians, laneById } = useLaneStaff();
   const [showCreateLead, setShowCreateLead] = useState(false);
@@ -346,8 +349,9 @@ const AdminDispatchPage = () => {
     if (showUrgentOnly) {
       leads = leads.filter(l => l.priority === "urgent" || l.priority === "high");
     }
+    if (laneParam) leads = leads.filter(l => laneOf(l) === laneParam);
     return leads;
-  }, [allLeads, inboxLeads, inboxMode, searchQuery, showUrgentOnly]);
+  }, [allLeads, inboxLeads, inboxMode, searchQuery, showUrgentOnly, laneParam]);
 
   const dateRange = useMemo(() => {
     if (viewMode === "day") return [currentDate];
@@ -820,6 +824,14 @@ const AdminDispatchPage = () => {
                     <button onClick={() => setSidebarCollapsed(true)} className="p-1 hover:bg-muted rounded" title="Collapse"><ChevronLeft className="h-3.5 w-3.5" /></button>
                   </div>
                 </div>
+                {laneParam && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="secondary" size="sm" className="h-7 rounded-full gap-1 text-xs" aria-label={`Clear ${LANE_META[laneParam].label} filter`}
+                      onClick={() => setSearchParams((p) => { const n = new URLSearchParams(p); n.delete("lane"); return n; })}>
+                      {LANE_META[laneParam].label} <XIcon className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                   <Input

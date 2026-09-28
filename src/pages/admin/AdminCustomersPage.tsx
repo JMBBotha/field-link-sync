@@ -1,3 +1,6 @@
+import RowMenu from "@/components/shared/RowMenu";
+import CreateLeadDialog from "@/components/CreateLeadDialog";
+import { TILE_LINKS } from "@/lib/drilldown";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -65,6 +68,7 @@ const LeadSourceBadge = ({ source }: { source?: string | null }) => {
 };
 
 const AdminCustomersPage = () => {
+  const [showCreateLead, setShowCreateLead] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -201,9 +205,9 @@ const AdminCustomersPage = () => {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <SummaryCard label="Overdue" amount={summary.overdue} accent />
-        <SummaryCard label="Total Outstanding" amount={summary.outstanding} />
-        <SummaryCard label="In Draft" amount={summary.draft} />
+        <SummaryCard label="Overdue" amount={summary.overdue} accent onClick={() => navigate(TILE_LINKS.overdueInvoices)} />
+        <SummaryCard label="Total Outstanding" amount={summary.outstanding} onClick={() => navigate("/admin/invoices?state=unpaid")} />
+        <SummaryCard label="In Draft" amount={summary.draft} onClick={() => navigate("/admin/quotes?status=draft")} />
       </div>
 
       {/* Recently Active */}
@@ -283,7 +287,6 @@ const AdminCustomersPage = () => {
                     className="pl-8"
                   />
                 </div>
-                <Button variant="outline">Advanced Search</Button>
               </div>
             </div>
 
@@ -338,9 +341,12 @@ const AdminCustomersPage = () => {
                             </TableCell>
                             <TableCell><LeadSourceBadge source={c.lead_source} /></TableCell>
                             <TableCell onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
+                              <RowMenu items={[
+                                { label: "Open", onSelect: () => navigate(`/admin/customers/${c.id}`) },
+                                { label: "New lead", onSelect: () => setShowCreateLead(true) },
+                                { label: "New quote", onSelect: () => navigate(`/admin/quote-builder?customerId=${c.id}`) },
+                                { label: "Edit", onSelect: () => navigate(`/admin/customers/${c.id}`) },
+                              ]} />
                             </TableCell>
                           </TableRow>
                         );
@@ -365,6 +371,8 @@ const AdminCustomersPage = () => {
         </CardContent>
       </Card>
 
+      <CreateLeadDialog open={showCreateLead} onOpenChange={setShowCreateLead} />
+
       <CreateCustomerFBDialog
         open={showCreate}
         onOpenChange={setShowCreate}
@@ -375,8 +383,10 @@ const AdminCustomersPage = () => {
   );
 };
 
-const SummaryCard = ({ label, amount, accent }: { label: string; amount: number; accent?: boolean }) => (
-  <Card className={cn(
+const SummaryCard = ({ label, amount, accent, onClick }: { label: string; amount: number; accent?: boolean; onClick?: () => void }) => (
+  <Card role={onClick ? "link" : undefined} tabIndex={onClick ? 0 : undefined} onClick={onClick}
+    onKeyDown={(e) => { if (onClick && e.key === "Enter") onClick(); }}
+    className={cn(onClick && "cursor-pointer hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
     "border-none text-white overflow-hidden",
     accent
       ? "bg-gradient-to-br from-[#0066CC] to-[#004999]"
