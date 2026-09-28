@@ -117,3 +117,23 @@ export function clearParams(p: URLSearchParams, keys: string[]): URLSearchParams
   keys.forEach((k) => n.delete(k));
   return n;
 }
+
+// ───────── Invoice spec aliases → existing money= filters ─────────
+export type MoneyAlias = "deposits_due" | "partially_paid" | "outstanding";
+/** money= wins; else kind=deposit&state=due → deposits_due, kind=deposit&state=partial → partially_paid. */
+export function resolveMoneyFilter(p: URLSearchParams): MoneyAlias | null {
+  const m = p.get("money");
+  if (m === "deposits_due" || m === "partially_paid" || m === "outstanding") return m;
+  if (p.get("kind") === "deposit") {
+    if (p.get("state") === "due") return "deposits_due";
+    if (p.get("state") === "partial") return "partially_paid";
+  }
+  return null;
+}
+export const MONEY_LABEL: Record<MoneyAlias, string> = { deposits_due: "Deposits due", partially_paid: "Partially paid", outstanding: "Outstanding" };
+
+// ───────── Leads inbox ?lane= ─────────
+export function parseLaneParam(p: URLSearchParams): "sales" | "service" | null {
+  const l = p.get("lane");
+  return l === "sales" || l === "service" ? l : null;
+}
