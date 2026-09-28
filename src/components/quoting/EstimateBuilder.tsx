@@ -185,6 +185,12 @@ export default function EstimateBuilder({
       hours = key ? Number(labourNorms.find((norm) => norm.key === key)?.hours || 0) : 0;
       auto = false;
     }
+    const existingZero = status.labourLines.find((line) => Number((line.metadata as any)?.hours ?? line.quantity) <= 0);
+    if (existingZero) {
+      if (hours > 0) await updateItem(existingZero.id!, labourFields(hours, labourRate, false, auto) as any);
+      else document.querySelector<HTMLInputElement>(`[aria-label="Labour hours for ${CSS.escape(areas.find((area) => area.id === areaId)?.name || "")}"]`)?.focus();
+      return;
+    }
     const fields = labourFields(hours, labourRate, false, auto);
     await addItem({ ...fields, area_id: areaId, sort_order: Math.max(0, ...items.map((i) => i.sort_order || 0)) + 1, source: "labour" } as any);
     onChanged?.();
