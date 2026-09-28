@@ -93,6 +93,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const [linkedCustomerId, setLinkedCustomerId] = useState<string | null>(null);
   const [laneOverride, setLaneOverride] = useState<LeadLane | "unknown" | null>(null);
   const [salesOwnerId, setSalesOwnerId] = useState<string>("");
+  const [nameFocused, setNameFocused] = useState(false);
   const { data: existingClients = [] } = useUnifiedClients();
   const { toast } = useToast();
 

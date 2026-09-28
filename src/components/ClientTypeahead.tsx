@@ -44,14 +44,8 @@ const ClientTypeahead = ({ query, open, clients, onSelect }: ClientTypeaheadProp
           type="button"
           className="w-full flex items-center gap-3 px-3 py-2 hover:bg-accent text-left"
           onPointerDown={(e) => {
-            e.preventDefault();
-            onSelect(c);
-          }}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            onSelect(c);
-          }}
-          onTouchStart={(e) => {
+            // pointerdown covers mouse + touch and fires before blur,
+            // so a tap on a suggestion always registers before the list closes
             e.preventDefault();
             onSelect(c);
           }}
