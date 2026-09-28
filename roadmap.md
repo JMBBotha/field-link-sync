@@ -63,3 +63,7 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 ## One quote-level add bar (2026-09-28)
 - [x] Replace estimate per-area add bars with one quote-level bar and requested routing.
 - [x] Fix synthetic default area print label, test routing, run full tests and TypeScript check.
+
+## Tech earnings split (2026-09-28)
+- [x] Set GP tech share to 50%, add 60% labour tech share, and keep labour cost unset.
+- [x] Update staff-only maths/screens and verify tests and TypeScript.

@@ -20,7 +20,7 @@ export function useMarginView(quoteId: string | null, companyId: string | null, 
         (supabase.from("quotes") as any).select("sales_engineer_id, created_by, owner_id").eq("id", quoteId).maybeSingle(),
         (supabase.from("profiles") as any).select("dispatch_role").eq("id", userId).maybeSingle(),
         companyId
-          ? (supabase.from("companies") as any).select("labour_cost_per_hour, gp_target_percent, sales_commission_percent").eq("id", companyId).maybeSingle()
+          ? (supabase.from("companies") as any).select("labour_cost_per_hour, gp_target_percent, sales_commission_percent, labour_tech_share_percent").eq("id", companyId).maybeSingle()
           : Promise.resolve({ data: null }),
       ]);
       return { quote: q.data ?? null, dispatchRole: (p.data?.dispatch_role as string) ?? null, company: c.data ?? null };
@@ -33,7 +33,8 @@ export function useMarginView(quoteId: string | null, companyId: string | null, 
   const settings: MarginSettings = {
     labourCostPerHour: lc != null && lc > 0 ? lc : null,
     gpTargetPercent: co?.gp_target_percent != null ? Number(co.gp_target_percent) : 20,
-    commissionPercent: co?.sales_commission_percent != null ? Number(co.sales_commission_percent) : 40,
+    commissionPercent: co?.sales_commission_percent != null ? Number(co.sales_commission_percent) : 50,
+    labourTechSharePercent: co?.labour_tech_share_percent != null ? Number(co.labour_tech_share_percent) : 60,
   };
   return { visible, settings };
 }

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-/** Admin-only: labour cost rate, GP target and sales commission on the company. */
+/** Admin-only: labour cost rate, GP target and tech earnings shares on the company. */
 export default function MarginSettingsCard() {
   const { user } = useAuth();
   const { isAdmin } = useRole();
@@ -22,29 +22,31 @@ export default function MarginSettingsCard() {
       const { data: p } = await (supabase.from("profiles") as any).select("company_id").eq("id", user!.id).maybeSingle();
       if (!p?.company_id) return null;
       const { data: c, error } = await (supabase.from("companies") as any)
-        .select("id, labour_cost_per_hour, gp_target_percent, sales_commission_percent").eq("id", p.company_id).maybeSingle();
+        .select("id, labour_cost_per_hour, gp_target_percent, sales_commission_percent, labour_tech_share_percent").eq("id", p.company_id).maybeSingle();
       if (error) throw error;
       return c;
     },
   });
-  const [labour, setLabour] = useState(""); const [target, setTarget] = useState("20"); const [comm, setComm] = useState("40");
+  const [labour, setLabour] = useState(""); const [target, setTarget] = useState("20"); const [comm, setComm] = useState("50");
+  const [labourShare, setLabourShare] = useState("60");
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     if (!data) return;
     setLabour(data.labour_cost_per_hour == null ? "" : String(data.labour_cost_per_hour));
-    setTarget(String(data.gp_target_percent ?? 20)); setComm(String(data.sales_commission_percent ?? 40));
+    setTarget(String(data.gp_target_percent ?? 20)); setComm(String(data.sales_commission_percent ?? 50));
+    setLabourShare(String(data.labour_tech_share_percent ?? 60));
   }, [data]);
   if (!isAdmin || !data) return null;
 
   const save = async () => {
-    const t = Number(target), c = Number(comm), l = labour.trim() === "" ? null : Number(labour);
-    if (!(t >= 0 && t < 100) || !(c >= 0 && c <= 100) || (l != null && !(l >= 0))) {
-      toast({ title: "Check the numbers", description: "Target 0–99%, commission 0–100%, labour cost R0 or more.", variant: "destructive" });
+    const t = Number(target), c = Number(comm), ls = Number(labourShare), l = labour.trim() === "" ? null : Number(labour);
+    if (!(t >= 0 && t < 100) || !(c >= 0 && c <= 100) || !(ls >= 0 && ls <= 100) || (l != null && !(l >= 0))) {
+      toast({ title: "Check the numbers", description: "Target 0–99%, tech shares 0–100%, labour cost R0 or more.", variant: "destructive" });
       return;
     }
     setSaving(true);
     const { error } = await (supabase.from("companies") as any)
-      .update({ labour_cost_per_hour: l, gp_target_percent: t, sales_commission_percent: c }).eq("id", data.id);
+      .update({ labour_cost_per_hour: l, gp_target_percent: t, sales_commission_percent: c, labour_tech_share_percent: ls }).eq("id", data.id);
     setSaving(false);
     if (error) { toast({ title: "Couldn't save", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Profit settings saved" });
@@ -53,15 +55,17 @@ export default function MarginSettingsCard() {
 
   return (
     <Card>
-      <CardHeader><CardTitle>Profit &amp; commission (staff only)</CardTitle></CardHeader>
-      <CardContent className="grid gap-4 md:grid-cols-3">
+      <CardHeader><CardTitle>Profit &amp; tech earnings (staff only)</CardTitle></CardHeader>
+      <CardContent className="grid gap-4 md:grid-cols-4">
         <div><Label>Labour cost per hour (R, what it costs you)</Label>
           <Input type="number" min="0" step="0.01" placeholder="Not set" value={labour} onChange={(e) => setLabour(e.target.value)} /></div>
         <div><Label>GP target %</Label>
           <Input type="number" min="0" max="99" value={target} onChange={(e) => setTarget(e.target.value)} /></div>
-        <div><Label>Sales commission % of GP</Label>
+        <div><Label>Tech share of GP – units &amp; materials (%)</Label>
           <Input type="number" min="0" max="100" value={comm} onChange={(e) => setComm(e.target.value)} /></div>
-        <div className="md:col-span-3 flex justify-end"><Button onClick={save} disabled={saving}>Save profit settings</Button></div>
+        <div><Label>Tech labour share (%)</Label>
+          <Input type="number" min="0" max="100" value={labourShare} onChange={(e) => setLabourShare(e.target.value)} /></div>
+        <div className="md:col-span-4 flex justify-end"><Button onClick={save} disabled={saving}>Save profit settings</Button></div>
       </CardContent>
     </Card>
   );

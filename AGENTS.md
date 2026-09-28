@@ -1,18 +1,21 @@
 # AGENTS
-- Install lines link via metadata.install.unit_item_id; replace-all remaps with remapInstallUnitIds.
-- Stale builds compare the running asset with no-cache index.html via buildInfo.checkForNewBuild.
-- Kit sizes come from copper names; kit swaps use kitRowFields and retain metadata.install.
-- pickKitForUnit order: exact pipes, brand+BTU majority, closest+note, BTU rule, then template; manual brochure pipe sizes win imports.
-- Mandy plans return only item queries; matchCatalog/writeBreakdown/addCatalogProductToQuote is the sole write/pricing path.
-- Per-metre trunking uses metre qty and length-sell/L rate; legacy qty_unit=length remains unchanged.
-- Jobs board merges jobs/today entries, de-dupes job_id, maps unknown statuses to Scheduled, and toggles cancelled.
-- Dashboard counts/lists share lib/drilldown.ts and Johannesburg dates.
-- Margin maths/access live in lib/margin.ts and marginAccess.ts; staff card stays outside PDF root.
-- Master-owned shared catalogue uses can_read/write_master_catalog; catalogue tables have no company_id.
-- Services exist only in catalog_services; useCatalogServices is the shared reader.
-- QuoteBuilderLayout owns the sole middle scroller; summary starts collapsed and is remembered.
-- Pricing checks live in lib/pricingChecks.ts/PricingChecksRow, remain staff-only, and never reprice.
-- Tech overruns store no prices; StaffMarginCard derives catalogue/labour cost without changing quote pricing.
-- Job status-time fields are DB-trigger-owned; clients send status only.
-- Staff lineDisplay is display-only; collapsed install rows remain separate/editable/printable.
-- Staff estimates use one QuoteQuickEditor above totals; addBarTarget routes lines, while unit adds retain shared auto-install.
+- Standard-install lines link to their unit via metadata.install.unit_item_id (never parent_item_id); replace-all builder saves must remap it to the unit's new id (remapInstallUnitIds) — otherwise Mandy's install edits lose the lines.
+- Stale-build detection compares the running /assets/index-*.js with a no-cache /index.html (buildInfo.checkForNewBuild) — /version.json is not reliably served by hosting.
+- Piping kit sizes come only from the kit's copper component names (lib/kitSizes.ts); kit swaps reprice via kitRowFields (same maths as addKitToQuote) and keep metadata.install.
+- Auto kit choice for a unit is pickKitForUnit (lib/kitSizes.ts): exact pipe_liquid+pipe_gas → brand+BTU majority → closest (with note) → BTU rule; template bundle_id is last resort. Imports never overwrite pipe fields when supplier_products.pipe_sizes_manual — brochure data beats price lists.
+- Mandy quote mode: Grok (mandy-quote-plan) only returns {items:[{query,qty,length_m,area,kind}]}; every item resolves via matchCatalog and writes via writeBreakdown → addCatalogProductToQuote (spoken kit metres / install qty passed as kitLengthM / qtyByCode) — one matcher, one pricing path.
+- Trunking (isPerMetreTrunking: sold_in_length + unit_length + "trunking" in name) is quoted per METRE: qty = metres, metadata.qty_unit='metre', unit_price = length sell ÷ L (4 dp), total_price = round(metres × length sell ÷ L, 2); builder/hydrate lock one length with price_per_unit_qty = L — so 3 m equals the exact book price. Old qty_unit 'length' lines stay per length (no migration).
+
+- Jobs board rows come from lib/jobsBoard.ts (jobs + todaysJobs.loadEntries, de-duped by job_id; unknown statuses → Scheduled, cancelled behind a toggle) — so the board never hides what the Today tile counts.
+- Dashboard tile counts and their target lists share one pure filter in lib/drilldown.ts (TILE_LINKS + parse*/filter* helpers); "today" is always todayInJohannesburg — so a tile number cannot drift from its list.
+- Quote GP/commission maths live only in lib/margin.ts and who-sees-it only in lib/marginAccess.ts (StaffMarginCard, estimate page only, outside the PDF root) — so profit never leaks to client views and the rule has one home.
+- One shared catalogue owned by the master company (companies.is_master): catalogue tables have no company_id; RLS uses can_read_master_catalog (master staff + approved company_network_members) / can_write_master_catalog (master admins) — so there is one copy of every price.
+- Services come ONLY from public.catalog_services (core = master, custom = contractor, capped by companies.custom_service_limit via a DB trigger); every picker and Mandy use useCatalogServices — hvac_services/service_templates/flat_rate_items were dropped (sandbox, 2026-09-28).
+- Quote builder frame is QuoteBuilderLayout (middle = only flex-1 min-h-0 overflow-y-auto scroller + sticky spacer; summary side panel collapsed by default, remembered in localStorage 'qb.sidepanel.open', sheet on phone) — so panels never double-scroll or cover the last line.
+- Pricing-check chips (GP vs target, missing install materials, labour below norm) live only in lib/pricingChecks.ts + PricingChecksRow (staff-only via useMarginView, print:hidden + data-html2canvas-ignore); norms come from public.labour_norms (master, global) — so hints never reprice and never reach client views.
+- Tech overrun capture ('Actual on site' in JobCompletionSheet) writes public.job_overruns (no prices ever shown to techs); staff read it in StaffMarginCard via lib/overrun.ts (catalogue cost only, labour via labour_cost_per_hour or excluded) — so overruns adjust GP/commission without touching quote pricing.
+- Job started_at/completed_at are set only by DB trigger set_job_status_times (clears on move back); the client sends { status } only — so every path, including undo, keeps times consistent.
+- Staff estimate display never changes totals: lineDisplay shortens names/units; linked install rows collapse on screen but remain separate, editable and printable; item_name changes only on rename.
+
+- Staff estimates use one QuoteQuickEditor below all areas and above totals; lib/addBarTarget.ts routes unit adds to the last unit-free area or a new area, and other lines to the sole area/new area/an area picker — existing lines never move and shared auto-install still runs.
+- Tech earnings = sales_commission_percent (50%) of units+materials GP (labour and services excluded) + labour_tech_share_percent (60%) of labour sell ex VAT; labour cost stays unset; maths only in lib/margin.ts.

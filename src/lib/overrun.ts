@@ -11,7 +11,7 @@ export interface OverrunInput {
   actualHours: number | null;
   /** Extras with their catalogue unit cost (null = free text / not in catalogue). */
   extras: (OverrunExtra & { unitCost: number | null })[];
-  job: { sell: number; gp: number };
+  job: { sell: number; gp: number; commissionBaseGp?: number };
   labourCostPerHour: number | null;
   commissionPercent: number;
 }
@@ -46,7 +46,7 @@ export function computeOverrun(i: OverrunInput): OverrunResult {
     quotedHours: i.quotedHours, actualHours: i.actualHours, extraHours, labourCost, labourNotSet,
     extrasCost, unknownExtras, adjustedGp,
     adjustedGpPercent: i.job.sell > 0 ? r2((adjustedGp / i.job.sell) * 100) : null,
-    adjustedCommission: commissionOn(adjustedGp, i.commissionPercent),
+    adjustedCommission: commissionOn((i.job.commissionBaseGp ?? i.job.gp) - extrasCost, i.commissionPercent),
   };
 }
 

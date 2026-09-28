@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { gpCheck, planPriceToTarget, missingMaterials, labourGaps, unitNormKey, serviceNormKey, type CheckLine, type LabourNorm } from "@/lib/pricingChecks";
 import type { InstallTemplate } from "@/lib/installTemplates";
 
-const S = { labourCostPerHour: null, gpTargetPercent: 20, commissionPercent: 40 };
+const S = { labourCostPerHour: null, gpTargetPercent: 20, commissionPercent: 50, labourTechSharePercent: 60 };
 const L = (o: Partial<CheckLine>): CheckLine => ({
   id: "x", name: "x", areaId: "a", qty: 1, unitPrice: 100, unitCost: 80, isLabour: false, isService: false,
   isUnit: false, btu: null, kindText: "", installRole: null, isKit: false, kitMetres: null, locked: false, ...o,

@@ -827,6 +827,7 @@ export type Database = {
           id: string
           is_master: boolean
           labour_cost_per_hour: number | null
+          labour_tech_share_percent: number
           logo_url: string | null
           materials_markup_percent: number
           name: string
@@ -847,6 +848,7 @@ export type Database = {
           id?: string
           is_master?: boolean
           labour_cost_per_hour?: number | null
+          labour_tech_share_percent?: number
           logo_url?: string | null
           materials_markup_percent?: number
           name: string
@@ -867,6 +869,7 @@ export type Database = {
           id?: string
           is_master?: boolean
           labour_cost_per_hour?: number | null
+          labour_tech_share_percent?: number
           logo_url?: string | null
           materials_markup_percent?: number
           name?: string

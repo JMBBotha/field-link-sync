@@ -7,7 +7,7 @@ import { computeOverrun } from "@/lib/overrun";
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: () => ({}) } }));
 import ActualOnSiteStep from "@/components/jobs/ActualOnSiteStep";
 
-const base = { quotedHours: 4, job: { sell: 10000, gp: 3000 }, commissionPercent: 40 };
+const base = { quotedHours: 4, job: { sell: 10000, gp: 3000 }, commissionPercent: 50 };
 
 describe("computeOverrun", () => {
   it("adjusts GP and commission for labour + catalogue extras", () => {
@@ -18,10 +18,10 @@ describe("computeOverrun", () => {
     expect(r.unknownExtras).toBe(1);
     expect(r.adjustedGp).toBe(1900);
     expect(r.adjustedGpPercent).toBe(19);
-    expect(r.adjustedCommission).toBe(760);
+    expect(r.adjustedCommission).toBe(1250);
   });
-  it("clamps commission at 0 when adjusted GP is negative", () => {
-    const r = computeOverrun({ ...base, actualHours: 20, labourCostPerHour: 500, extras: [] });
+  it("clamps GP tech share at 0 when material overruns exceed its base", () => {
+    const r = computeOverrun({ ...base, actualHours: 4, labourCostPerHour: 500, extras: [{ name: "Compressor", qty: 1, unitCost: 8000 }] });
     expect(r.adjustedGp).toBe(-5000);
     expect(r.adjustedCommission).toBe(0);
   });
@@ -30,7 +30,7 @@ describe("computeOverrun", () => {
     expect(r.labourNotSet).toBe(true);
     expect(r.labourCost).toBeNull();
     expect(r.adjustedGp).toBe(3000);
-    expect(r.adjustedCommission).toBe(1200);
+    expect(r.adjustedCommission).toBe(1500);
   });
   it("actual under quoted never adds cost", () => {
     expect(computeOverrun({ ...base, actualHours: 2, labourCostPerHour: 300, extras: [] }).adjustedGp).toBe(3000);
