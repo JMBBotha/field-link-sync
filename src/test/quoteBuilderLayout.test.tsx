@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-vi.mock("@/hooks/useCompanySettings", () => ({ useCompanySettings: () => ({ settings: null }) }));
+vi.mock("@/hooks/useCompanySettings", () => ({ useCompanySettings: () => ({ settings: { company_name: "", physical_address: "", vat_number: "", banking_details: {}, default_deposit_percentage: 70, default_payment_terms_days: 30 } }) }));
 vi.mock("@/components/catalog/MasterCatalogGate", () => ({
   useCanWriteMasterCatalog: vi.fn(),
 }));
