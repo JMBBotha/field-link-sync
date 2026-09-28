@@ -3133,6 +3133,33 @@ export type Database = {
           },
         ]
       }
+      labour_norms: {
+        Row: {
+          hours: number
+          id: string
+          key: string
+          label: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          hours: number
+          id?: string
+          key: string
+          label: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          hours?: number
+          id?: string
+          key?: string
+          label?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lead_change_requests: {
         Row: {
           created_at: string

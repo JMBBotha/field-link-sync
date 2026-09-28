@@ -45,7 +45,7 @@ export function findPipingKitForBtu(bundles: BundleForKit[], btu: number | null)
   );
 }
 
-const baseItem = (): Omit<QuoteItemInsert, "quote_id" | "item_name" | "unit_price" | "sort_order"> => ({
+export const baseItem = (): Omit<QuoteItemInsert, "quote_id" | "item_name" | "unit_price" | "sort_order"> => ({
   area_id: null, parent_item_id: null, product_id: null, item_number: null, description: null,
   quantity: 1, length: null, total_price: null, is_bundle: false, item_type: "product",
   metadata: {}, notes: null, source: "manual", supplier: null,

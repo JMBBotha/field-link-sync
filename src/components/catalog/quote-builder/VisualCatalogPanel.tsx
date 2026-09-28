@@ -40,6 +40,8 @@ import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 
 interface VisualCatalogPanelProps {
+  /** Staff cost row in the product info popover (canSeeMargin). */
+  showCost?: boolean;
   open: boolean;
   onClose: () => void;
   baskets: Basket[];
@@ -75,7 +77,7 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 const PINCH_BOUNCE = 0.12;
 
-const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAddSelectedToQuote, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef, wizardOpen, pdfSelection }: VisualCatalogPanelProps) => {
+const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddProductToBasket, onAddSelectedToQuote, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef, wizardOpen, pdfSelection }: VisualCatalogPanelProps) => {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
@@ -1113,6 +1115,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
           product={productInfoProduct}
           open={!!productInfoProduct}
           onOpenChange={(open) => { if (!open) setProductInfoProduct(null); }}
+          showCost={showCost}
         />
       )}
 

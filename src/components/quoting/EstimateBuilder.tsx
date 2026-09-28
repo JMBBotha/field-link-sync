@@ -24,7 +24,8 @@ import { ToastAction } from "@/components/ui/toast";
 import { formatRand } from "@/utils/formatRand";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import QuoteQuickEditor from "@/components/quoting/QuoteQuickEditor";
-import StaffMarginCard from "@/components/quoting/StaffMarginCard";
+import StaffMarginCard, { lineUnitCostOrNull } from "@/components/quoting/StaffMarginCard";
+import PricingChecksRow from "@/components/quoting/PricingChecksRow";
 import { useMarginView } from "@/hooks/useMarginView";
 
 interface Props {
@@ -114,6 +115,7 @@ export default function EstimateBuilder({
     itemNumber: i.item_number ?? null,
     kitBundleId: (i.metadata as any)?.kit?.bundle_id ?? null,
     isService: !!(i.metadata as any)?.catalog_service_id,
+    staffNote: margin.visible && lineUnitCostOrNull(i) != null ? `cost ${formatRand(lineUnitCostOrNull(i)!)}` : null,
   });
 
   const editAreas: EstimateEditArea[] = useMemo(() => {
@@ -142,7 +144,7 @@ export default function EstimateBuilder({
     if (grouped.length === 0) grouped.push({ id: null, name: DEFAULT_SECTION_LABEL, lines: [] });
     return grouped;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [areas, topLevel, productImages]);
+  }, [areas, topLevel, productImages, margin.visible]);
 
 
   const subtotal = useMemo(
@@ -338,6 +340,11 @@ export default function EstimateBuilder({
 
       <LabourPanel />
 
+      {margin.visible && (
+        <div className="print:hidden" data-html2canvas-ignore>
+          <PricingChecksRow settings={margin.settings} discount={discount} onApplyDiscount={applyDiscount} />
+        </div>
+      )}
       {margin.visible && (
         <StaffMarginCard items={topLevel} selectedId={selectedLineId} areas={areas} discount={discount} settings={margin.settings} />
       )}

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCompanySettings, CompanySettings } from "@/hooks/useCompanySettings";
 import { Loader2, Save } from "lucide-react";
 import MarginSettingsCard from "@/components/settings/MarginSettingsCard";
+import LabourNormsCard from "@/components/settings/LabourNormsCard";
 import NetworkMembersCard from "@/components/settings/NetworkMembersCard";
 
 const BillingTab = () => {
@@ -41,6 +42,7 @@ const BillingTab = () => {
       </Card>
 
       <MarginSettingsCard />
+      <LabourNormsCard />
       <NetworkMembersCard />
 
       <Card>
