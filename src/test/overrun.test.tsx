@@ -44,7 +44,8 @@ describe("tech completion never shows money", () => {
         <ActualOnSiteStep value={{ actualHours: "5", extras: [{ product_id: "p", name: "Bracket", qty: 2 }], notes: "" }} onChange={() => {}} />
       </QueryClientProvider>,
     );
-    expect(container.textContent).not.toMatch(/R\s?\d|R |cost|price|GP|profit/i);
+    expect(container.textContent).not.toMatch(/R\s?\d|\bR /);
+    expect(container.textContent).not.toMatch(/cost|price|profit|\bGP\b/i);
     const src = readFileSync("src/components/jobs/ActualOnSiteStep.tsx", "utf8");
     expect(src).not.toMatch(/cost_price|cost_excl|selling_price|unit_price|formatRand/);
     const sheet = readFileSync("src/components/jobs/JobCompletionSheet.tsx", "utf8");
