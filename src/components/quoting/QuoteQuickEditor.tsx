@@ -109,6 +109,12 @@ export default function QuoteQuickEditor({
     },
   });
 
+  const { services: svcOrdered, masterName, refetch: refetchCatalogServices } = useCatalogServices(companyId);
+  const catalogResults = useMemo(
+    () => svcOrdered.filter((s) => matchesService(s, serviceTerm)),
+    [svcOrdered, serviceTerm],
+  );
+
   const onQuoteProductIds = useMemo(
     () => new Set(items.map((i) => i.product_id).filter(Boolean) as string[]),
     [items],
