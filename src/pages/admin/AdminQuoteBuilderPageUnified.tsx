@@ -1,4 +1,5 @@
 import { basketInstallFrom } from "@/lib/installTemplates";
+import QuoteBuilderLayout from "@/components/quoting/QuoteBuilderLayout";
 import { resolveProductMarkupPercent } from "@/lib/pricing";
 /**
  * Unified Quote Builder Page — wraps Normal / Visual / Area builders
@@ -105,7 +106,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 
 
   return (
-    <header className="shrink-0 h-14 flex items-center justify-between px-4 shadow-sm" style={{ backgroundColor: "#0077B6" }}>
+    <header className="shrink-0 h-11 flex items-center justify-between px-2 sm:px-3 shadow-sm" style={{ backgroundColor: "#0077B6" }}>
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
@@ -1030,9 +1031,16 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   }, [leaveBuilder]);
 
 
+  const summaryNode = (
+    <>
+      <div className="mb-3"><LabourPanel /></div>
+      <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
+    </>
+  );
+
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-background">
+      className="fixed inset-0 z-50 flex h-[100dvh] flex-col overflow-hidden bg-background">
 
       <QuoteSharedHeader onBack={() => exitGuard.requestExit()} />
       {exitGuard.ExitDialog}
@@ -1100,7 +1108,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
       {/* Builder mode tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="shrink-0">
-        <div className="flex flex-wrap items-center justify-center gap-y-1 py-1.5 bg-muted/40">
+        <div className="flex flex-wrap items-center justify-center gap-y-1 py-1 bg-muted/40">
           <TabsList className="h-8 bg-muted">
             <TabsTrigger value="normal" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Build</TabsTrigger>
             <TabsTrigger value="visual" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Visual PDF</TabsTrigger>
@@ -1128,7 +1136,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
       {/* Tab content */}
 
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="relative flex-1 min-h-0 overflow-hidden">
         {ctxLoading && (
           <div className="h-full flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
@@ -1138,8 +1146,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
           </div>
         )}
         {!ctxLoading && activeTab === "normal" &&
-        <div className="h-full flex flex-col lg:flex-row overflow-hidden">
-            <div className="flex-1 min-w-0 min-h-0 overflow-y-auto">
+        <QuoteBuilderLayout compact={isCompact} side={summaryNode} middle={
               <QuoteBuilderTab
                 initialBaskets={initialBaskets}
                 onBasketsChange={setBaskets}
@@ -1173,19 +1180,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                 extraBaskets={wizardBaskets}
                 quoteTotals={displayQuoteTotals}
               />
-            </div>
-            <div className="w-full lg:w-[320px] shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto p-3 bg-card max-h-[38vh] lg:max-h-none">
-              <>
-              <div className="mb-3"><LabourPanel /></div>
-              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
-            </>
-
-            </div>
-          </div>
+            } />
         }
         {!ctxLoading && activeTab === "visual" &&
-        <div className="h-full flex flex-col lg:flex-row overflow-hidden">
-            <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
+        <QuoteBuilderLayout compact={isCompact} side={summaryNode} stickyPad="0px" middle={
               <VisualCatalogPanel
               open={true}
               onClose={() => setActiveTab("normal")}
@@ -1199,14 +1197,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               wizardOpen={areaWizardOpen}
               pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }} />
 
-            </div>
-            <div className="w-full lg:w-[320px] shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto bg-card p-3 max-h-[38vh] lg:max-h-none">
-              <>
-              <div className="mb-3"><LabourPanel /></div>
-              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
-            </>
-            </div>
-          </div>
+            } />
         }
         {!ctxLoading && activeTab === "area" && (() => {
           const paletteEl = (
@@ -1315,17 +1306,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
           }
 
           return (
-            <div className="h-full flex flex-col lg:flex-row overflow-hidden">
-              <div className="w-full lg:w-[280px] lg:shrink-0 flex flex-col min-h-0 overflow-hidden pl-2 py-1 lg:border-b-0">
-                {paletteEl}
-              </div>
-              <div className="min-w-0 min-h-0 overflow-hidden p-1 flex-1">
-                {areaEl}
-              </div>
-              <div className="w-full lg:w-[320px] lg:shrink-0 lg:border-t-0 lg:border-l overflow-y-auto bg-card p-3 lg:max-h-none shrink-0 border-t">
-                {summaryEl}
-              </div>
-            </div>
+            <QuoteBuilderLayout compact={false} left={paletteEl} middle={areaEl} side={summaryEl} stickyPad="0px" />
           );
         })()}
       </div>
@@ -1333,7 +1314,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       {/* Phone/tablet thumb bar: live total + primary Send, always visible
           while building. Sits above the fixed mobile bottom nav. */}
       {isCompact && (
-        <div className="shrink-0 flex items-center justify-between gap-3 border-t bg-card px-4 py-3 mb-16 lg:mb-0">
+        <div className="shrink-0 flex items-center justify-between gap-3 border-t bg-card px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] mb-16 lg:mb-0">
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
               Total incl. VAT
