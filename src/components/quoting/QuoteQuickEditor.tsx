@@ -25,6 +25,11 @@ import { useInstallTemplates } from "@/hooks/useInstallTemplates";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 
 import type { QuoteItemInsert } from "@/types/quote";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import {
+  orderServicesForPicker, matchesService, serviceLineFields, isCustomLimitError, type CatalogService,
+} from "@/lib/catalogServices";
 
 const money = (n: number) =>
   `R ${Number(n || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -67,7 +72,13 @@ export default function QuoteQuickEditor({
   /** Open the results list upward (used when the bar sits at the bottom of the document). */
   dropUp?: boolean;
 }) {
-  const { areas, items, addItem, addArea, ensureDefaultArea } = useQuoteContext();
+  const { areas, items, addItem, addArea, ensureDefaultArea, meta } = useQuoteContext();
+  const { toast } = useToast();
+  const companyId = (meta as any)?.company_id ?? null;
+  const [serviceFocus, setServiceFocus] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customDesc, setCustomDesc] = useState("");
   const { bundles } = useQuoteBuilderBundles();
   const { templates } = useInstallTemplates();
   const { products: liveProducts } = useQuoteBuilderProducts();
@@ -118,6 +129,29 @@ export default function QuoteQuickEditor({
       return (data || []) as ServiceRow[];
     },
   });
+
+  const { data: catalogServices = [], refetch: refetchCatalogServices } = useQuery({
+    queryKey: ["catalog-services", companyId],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const [svc, master] = await Promise.all([
+        (supabase.from("catalog_services") as any)
+          .select("id, name, description, sort_order, origin, owner_company_id, is_active, search_aliases")
+          .eq("is_active", true),
+        (supabase.from("companies") as any).select("name").eq("is_master", true).maybeSingle(),
+      ]);
+      if (svc.error) throw svc.error;
+      return { rows: (svc.data || []) as CatalogService[], masterName: (master.data?.name as string) || "the main company" };
+    },
+    select: (d) => d,
+  }) as any;
+  const svcRows: CatalogService[] = catalogServices.rows ?? [];
+  const masterName: string = catalogServices.masterName ?? "the main company";
+  const catalogResults = useMemo(
+    () => orderServicesForPicker(svcRows, companyId).filter((s) => matchesService(s, serviceTerm)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [svcRows, companyId, serviceTerm],
+  );
 
   const onQuoteProductIds = useMemo(
     () => new Set(items.map((i) => i.product_id).filter(Boolean) as string[]),
@@ -195,6 +229,39 @@ export default function QuoteQuickEditor({
     onChanged?.();
   };
 
+  const addCatalogService = async (s: CatalogService) => {
+    setAdding(s.id);
+    const areaId = await resolveArea();
+    await addItem({ ...baseItem(), area_id: areaId, sort_order: nextSortOrder(), ...serviceLineFields(s) } as any);
+    setAdding(null);
+    setServiceTerm("");
+    setServiceFocus(false);
+    onChanged?.();
+  };
+
+  const saveCustomService = async () => {
+    const name = customName.trim().slice(0, 120);
+    if (!name || !companyId) return;
+    const { data: u } = await supabase.auth.getUser();
+    const { data, error } = await (supabase.from("catalog_services") as any)
+      .insert({ name, description: customDesc.trim().slice(0, 1000) || null, origin: "custom", owner_company_id: companyId, created_by: u.user?.id ?? null })
+      .select("id, name, description, sort_order, origin, owner_company_id, is_active, search_aliases")
+      .single();
+    if (error) {
+      toast({
+        title: isCustomLimitError(error) ? `Limit reached, ask ${masterName} to add it.` : "Couldn't add service",
+        description: isCustomLimitError(error) ? undefined : error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+    setCustomOpen(false); setCustomName(""); setCustomDesc("");
+    await refetchCatalogServices();
+    await addCatalogService(data as CatalogService);
+  };
+
+  const showServiceList = serviceFocus || serviceResults.length > 0 || serviceTerm.trim().length > 0;
+
   return (
     <div className="print:hidden">
       <div className="grid gap-2 sm:grid-cols-2">
@@ -247,12 +314,42 @@ export default function QuoteQuickEditor({
           <Input
             value={serviceTerm}
             onChange={(e) => setServiceTerm(e.target.value)}
+            onFocus={() => setServiceFocus(true)}
+            onBlur={() => { if (!customOpen) setServiceFocus(false); }}
             placeholder="Add service…"
             className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
           />
-          {serviceResults.length > 0 && (
-            <ScrollArea className={`absolute z-30 ${dropdownPos} max-h-64 w-full rounded-md border border-slate-200 bg-white shadow-lg`}>
-              <div className="divide-y divide-slate-100">
+          {showServiceList && (
+            <ScrollArea className={`absolute z-30 ${dropdownPos} max-h-72 w-full rounded-md border border-slate-200 bg-white shadow-lg`}>
+              <div className="divide-y divide-slate-100" onMouseDown={(e) => e.preventDefault()}>
+                <p className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Services</p>
+                {catalogResults.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => addCatalogService(s)}
+                    disabled={adding === s.id}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50"
+                  >
+                    <Plus className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{s.name}</span>
+                    {s.origin === "custom" && <Badge variant="outline" className="shrink-0 text-[10px]">Custom</Badge>}
+                  </button>
+                ))}
+                {customOpen ? (
+                  <div className="space-y-2 p-3">
+                    <Input value={customName} maxLength={120} onChange={(e) => setCustomName(e.target.value)} placeholder="Service name" className="h-8" />
+                    <Input value={customDesc} maxLength={1000} onChange={(e) => setCustomDesc(e.target.value)} placeholder="Description" className="h-8" />
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" size="sm" variant="ghost" onClick={() => setCustomOpen(false)}>Cancel</Button>
+                      <Button type="button" size="sm" onClick={() => void saveCustomService()} disabled={!customName.trim()}>Add</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setCustomOpen(true)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-50">
+                    <Plus className="h-3.5 w-3.5 shrink-0" /> Add custom service
+                  </button>
+                )}
                 {serviceResults.map((s) => (
                   <button
                     key={s.id}
