@@ -44,7 +44,7 @@ export function AreaNameLabel({ name, onRename, autoEdit, className = "", isDefa
   return (
     <div className={`min-w-0 flex-1 ${className}`}>
       {/* Print / PDF always shows the saved name. */}
-      <span className="hidden print:inline">{name}</span>
+      <span className="hidden print:inline">{isDefault === true ? "" : name}</span>
       {editing ? (
         <input
           autoFocus

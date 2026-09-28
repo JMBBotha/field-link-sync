@@ -71,6 +71,21 @@ describe("quote builder layout", () => {
     expect(spy).toHaveBeenCalledWith({ block: "nearest", behavior: "smooth" });
     expect(spy.mock.contexts[0]).toHaveProperty("dataset.lineId", "a2-l12");
   });
+
+  it("renders one quote-level add bar after all areas and before totals", () => {
+    render(
+      <EstimateDocument
+        estimateNumber="Q2" issueDate="2026-09-28" customerName="C" items={[]} subtotal={0} taxRate={0.15} taxAmount={0} grandTotal={0}
+        editing={{
+          areas: areas(), selectedLineId: null, onSelectLine: () => {}, onLineChange: () => {}, onDeleteLine: () => {}, onRenameArea: () => {}, onAddArea: () => {},
+          addBar: <div data-testid="quote-add-bar">add-bar</div>,
+        }}
+      />,
+    );
+    const bar = screen.getByTestId("quote-add-bar");
+    expect(bar.closest("[data-pdf-hide]")).toBeTruthy();
+    expect(bar.compareDocumentPosition(screen.getByText("Subtotal")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });
 
 describe("Settings → Services tab gate", () => {

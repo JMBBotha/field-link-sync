@@ -98,8 +98,8 @@ export interface EstimateEditing {
   activeAreaId?: string | null;
   onSelectArea?: (id: string | null) => void;
 
-  /** Slim add-item / add-service bar rendered below EACH area's lines. */
-  renderAddBar?: (areaId: string | null) => ReactNode;
+  /** Single quote-level add-item / add-service bar rendered above totals. */
+  addBar?: ReactNode;
   /** Discount control rendered in the totals block. */
   discountControl?: ReactNode;
   /** Line ⋯ menu: move / duplicate into another real area. */
@@ -375,6 +375,7 @@ const EstimateDocument = ({
             {editing.areas.map((area) => (
               <section
                 key={area.id ?? "unassigned"}
+                data-area-id={area.id ?? "unassigned"}
                 onFocus={() => editing.onSelectArea?.(area.id)}
                 onClick={() => editing.onSelectArea?.(area.id)}
                 className="rounded-lg bg-white p-4 ring-1 ring-slate-200 print:rounded-none print:p-0 print:ring-0"
@@ -680,14 +681,9 @@ const EstimateDocument = ({
                   </tbody>
                 </table>
 
-                {/* ── Per-area add bar (staff only, never printed) ── */}
-                {editing.renderAddBar && (
-                  <div className="pt-2 print:hidden">{editing.renderAddBar(area.id)}</div>
-                )}
-
                 {area.lines.length === 0 && (
                   <p className="py-4 text-center text-[11px] text-slate-400 print:hidden">
-                    No lines here yet — use the add bar above to build this section.
+                    No lines here yet — use the add bar below to build this section.
                   </p>
                 )}
               </section>
@@ -790,6 +786,8 @@ const EstimateDocument = ({
             </tbody>
           </table>
         )}
+
+        {editing?.addBar && <div className="mt-6 print:hidden" data-pdf-hide>{editing.addBar}</div>}
 
         {/* ── Totals ── */}
         <div className="mt-6 flex justify-end">
