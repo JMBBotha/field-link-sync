@@ -61,5 +61,5 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [ ] Live check signed in (Johan)
 
 ## One quote-level add bar (2026-09-28)
-- [ ] Replace estimate per-area add bars with one quote-level bar and requested routing.
-- [ ] Fix synthetic default area print label, test routing, run full tests and TypeScript check.
+- [x] Replace estimate per-area add bars with one quote-level bar and requested routing.
+- [x] Fix synthetic default area print label, test routing, run full tests and TypeScript check.
