@@ -1,5 +1,7 @@
-import type { ReactNode } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useRef, type ReactNode } from "react";
+import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useNewLineScroll } from "@/hooks/useNewLineScroll";
 import logo from "@/assets/logo.png";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import type { ClientRollupArea } from "@/lib/clientQuoteRollup";
@@ -32,6 +34,8 @@ export interface EstimateEditLine {
   itemNumber?: string | null;
   /** Piping kit row: the kit it was built from. */
   kitBundleId?: string | null;
+  /** Picked from catalog_services (no price in the catalogue). */
+  isService?: boolean;
 }
 
 /** One area section inside the quote body (staff edit mode only). */
@@ -76,6 +80,9 @@ export interface EstimateEditing {
   renderAddBar?: (areaId: string | null) => ReactNode;
   /** Discount control rendered in the totals block. */
   discountControl?: ReactNode;
+  /** Line ⋯ menu: move / duplicate into another real area. */
+  onMoveLine?: (id: string, areaId: string) => void;
+  onDuplicateLine?: (id: string, areaId: string) => void;
 }
 
 
@@ -185,6 +192,11 @@ const EstimateDocument = ({
   clientAreas,
   presentationMode,
 }: EstimateDocumentProps) => {
+  const editRootRef = useRef<HTMLDivElement | null>(null);
+  const flashId = useNewLineScroll(
+    editing ? editing.areas.flatMap((a) => a.lines.map((l) => l.id)) : [],
+    () => editRootRef.current,
+  );
   const rollup = !editing && presentationMode === "clientRollup" ? clientAreas ?? [] : null;
   const { settings: authedSettings } = useCompanySettings();
   const settings = companyOverride
@@ -340,12 +352,13 @@ const EstimateDocument = ({
                       return (
                         <tr
                           key={line.id}
+                          data-line-id={line.id}
                           data-install-role={line.installRole || undefined}
                           onFocus={() => editing.onSelectLine(line.id)}
                           onClick={() => editing.onSelectLine(line.id)}
                           className={`border-b border-slate-100 align-top ${
                             selected ? "bg-sky-50/60 print:bg-transparent" : ""
-                          }`}
+                          } ${flashId === line.id ? "animate-pulse bg-amber-50 print:bg-transparent" : ""}`}
                         >
                           <td className="py-2 pr-4">
                             <div className="flex items-start gap-2">
@@ -445,6 +458,9 @@ const EstimateDocument = ({
                               }}
                               className={`${inputBase} text-right text-slate-600`}
                             />
+                            {line.isService && !line.unit_price && (
+                              <div className="text-[10px] italic text-slate-400 print:hidden">price not set</div>
+                            )}
                           </td>
                           <td className="py-2 text-right">
                             <input
@@ -467,6 +483,28 @@ const EstimateDocument = ({
                             {formatCurrency(line.perMetre ? Math.round(line.quantity * line.unit_price * 100 + 1e-6) / 100 : line.quantity * line.unit_price)}
                           </td>
                           <td className="py-2 text-right print:hidden">
+                            <div className="flex items-center justify-end gap-1">
+                            {(editing.onMoveLine || editing.onDuplicateLine) && editing.areas.some((a) => a.id && a.id !== area.id) && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button type="button" aria-label="Line actions" onClick={(e) => e.stopPropagation()}
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                  {editing.onMoveLine && <DropdownMenuLabel className="text-xs">Move to…</DropdownMenuLabel>}
+                                  {editing.onMoveLine && editing.areas.filter((a) => a.id && a.id !== area.id).map((a) => (
+                                    <DropdownMenuItem key={`m-${a.id}`} onSelect={() => editing.onMoveLine?.(line.id, a.id as string)}>{a.name}</DropdownMenuItem>
+                                  ))}
+                                  {editing.onMoveLine && editing.onDuplicateLine && <DropdownMenuSeparator />}
+                                  {editing.onDuplicateLine && <DropdownMenuLabel className="text-xs">Duplicate to…</DropdownMenuLabel>}
+                                  {editing.onDuplicateLine && editing.areas.filter((a) => a.id).map((a) => (
+                                    <DropdownMenuItem key={`d-${a.id}`} onSelect={() => editing.onDuplicateLine?.(line.id, a.id as string)}>{a.name}{a.id === area.id ? " (this area)" : ""}</DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
                             <button
                               type="button"
                               aria-label="Remove line"
@@ -476,6 +514,7 @@ const EstimateDocument = ({
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
+                            </div>
                           </td>
                         </tr>
                       );
