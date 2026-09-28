@@ -1,5 +1,7 @@
 import { basketInstallFrom } from "@/lib/installTemplates";
 import QuoteBuilderLayout from "@/components/quoting/QuoteBuilderLayout";
+import PricingChecksRow from "@/components/quoting/PricingChecksRow";
+import { useMarginView } from "@/hooks/useMarginView";
 import { resolveProductMarkupPercent } from "@/lib/pricing";
 /**
  * Unified Quote Builder Page — wraps Normal / Visual / Area builders
@@ -226,6 +228,7 @@ function BuilderMandyActions() {
 function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode }) {
   const navigate = useNavigate();
   const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta, addItem: ctxAddItem, addArea: ctxAddArea } = useQuoteContext();
+  const marginView = useMarginView(quoteId ?? null, (meta as any)?.company_id ?? null, mode === "agent" ? "agent" : "admin");
   const isCompact = useIsTabletOrBelow();
   // Phone/tablet: default to the Area Quote tab (search + areas + send), not
   // the Build/Visual PDF tabs which need desktop space.
@@ -1033,8 +1036,11 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
   const summaryNode = (
     <>
+      {marginView.visible && (
+        <div className="mb-2"><PricingChecksRow settings={marginView.settings} discount={Number(displayQuoteTotals.discountAmount ?? 0)} /></div>
+      )}
       <div className="mb-3"><LabourPanel /></div>
-      <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
+      <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} showCost={marginView.visible} />
     </>
   );
 
@@ -1185,6 +1191,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         {!ctxLoading && activeTab === "visual" &&
         <QuoteBuilderLayout compact={isCompact} side={summaryNode} stickyPad="0px" middle={
               <VisualCatalogPanel
+              showCost={marginView.visible}
               open={true}
               onClose={() => setActiveTab("normal")}
               baskets={baskets}
@@ -1248,7 +1255,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
           const summaryEl = (
             <>
               <div className="mb-3"><LabourPanel /></div>
-              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
+              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} showCost={marginView.visible} />
             </>
           );
 

@@ -36,6 +36,8 @@ export interface EstimateEditLine {
   kitBundleId?: string | null;
   /** Picked from catalog_services (no price in the catalogue). */
   isService?: boolean;
+  /** Staff-only muted note next to the price (e.g. "cost R 1 234"); set by the staff builder only. */
+  staffNote?: string | null;
 }
 
 /** One area section inside the quote body (staff edit mode only). */
@@ -459,6 +461,9 @@ const EstimateDocument = ({
                               }}
                               className={`${inputBase} text-right text-slate-600`}
                             />
+                            {line.staffNote && (
+                              <div data-html2canvas-ignore className="text-[10px] text-slate-400 print:hidden">{line.staffNote}</div>
+                            )}
                             {line.isService && !line.unit_price && (
                               <div className="text-[10px] italic text-slate-400 print:hidden">price not set</div>
                             )}
