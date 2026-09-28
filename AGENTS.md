@@ -9,3 +9,4 @@
 - Jobs board rows come from lib/jobsBoard.ts (jobs + todaysJobs.loadEntries, de-duped by job_id; unknown statuses → Scheduled, cancelled behind a toggle) — so the board never hides what the Today tile counts.
 - Dashboard tile counts and their target lists share one pure filter in lib/drilldown.ts (TILE_LINKS + parse*/filter* helpers); "today" is always todayInJohannesburg — so a tile number cannot drift from its list.
 - Quote GP/commission maths live only in lib/margin.ts and who-sees-it only in lib/marginAccess.ts (StaffMarginCard, estimate page only, outside the PDF root) — so profit never leaks to client views and the rule has one home.
+- One shared catalogue owned by the master company (companies.is_master): catalogue tables have no company_id; RLS uses can_read_master_catalog (master staff + approved company_network_members) / can_write_master_catalog (master admins) — so there is one copy of every price.

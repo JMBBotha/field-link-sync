@@ -1,3 +1,4 @@
+import MasterCatalogGate from "@/components/catalog/MasterCatalogGate";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -1166,4 +1167,8 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   );
 };
 
-export default SupplierPDFManager;
+const GatedSupplierPDFManager = (props: SupplierPDFManagerProps) => (
+  <MasterCatalogGate><SupplierPDFManager {...props} /></MasterCatalogGate>
+);
+
+export default GatedSupplierPDFManager;

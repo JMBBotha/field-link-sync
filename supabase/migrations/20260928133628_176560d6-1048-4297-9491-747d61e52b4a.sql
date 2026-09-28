@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.is_master_company_user(uuid), public.is_approved_network_member(uuid), public.can_read_master_catalog(uuid), public.can_write_master_catalog(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_master_company_user(uuid), public.is_approved_network_member(uuid), public.can_read_master_catalog(uuid), public.can_write_master_catalog(uuid) TO authenticated, service_role;
