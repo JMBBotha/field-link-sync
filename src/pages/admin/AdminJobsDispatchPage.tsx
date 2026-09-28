@@ -22,6 +22,11 @@ import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import { format } from "date-fns";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import RequireRole from "@/components/RequireRole";
+import { useNavigate } from "react-router-dom";
+import { loadEntries } from "@/lib/todaysJobs";
+import { buildBoardRows, groupBoardRows, rowTarget, type BoardRow } from "@/lib/jobsBoard";
+import { AlertTriangle, Eye, X } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const COLUMNS = [
   { key: "scheduled", label: "Scheduled", color: "border-blue-500" },
@@ -46,6 +51,8 @@ const AdminJobsDispatchPage = () => {
   const [detailJob, setDetailJob] = useState<any>(null);
   const [dragJobId, setDragJobId] = useState<string | null>(null);
   const [showAvailableOnly, setShowAvailableOnly] = useState(false);
+  const [showCancelled, setShowCancelled] = useState(false);
+  const navigate = useNavigate();
 
   // Realtime: refresh dispatch board when jobs change
   useEffect(() => {
@@ -63,18 +70,31 @@ const AdminJobsDispatchPage = () => {
 
 
   // Fetch jobs with assignments
-  const { data: jobs = [], isLoading } = useQuery({
+  const { data: jobs = [], isLoading, isFetching, isError, error: jobsError, refetch } = useQuery({
     queryKey: ["jobs-dispatch", companyId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("jobs")
         .select("*, customers(name, phone, address), customer_locations!jobs_location_id_fkey(label, address, latitude, longitude), assignments(id, profile_id, assignment_type, status, profiles(full_name, participant_type))")
-        .neq("status", "cancelled")
         .order("scheduled_for", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!companyId,
+  });
+
+  // Booked leads / schedule rows — same source as the Today's Jobs tile (not date-limited).
+  const { data: booked = { entries: [], names: {} as Record<string, string> }, isError: bookedError, refetch: refetchBooked } = useQuery({
+    queryKey: ["jobs-dispatch-booked"],
+    queryFn: async () => {
+      const entries = await loadEntries({});
+      const ids = [...new Set(entries.map((e) => e.agent_id).filter(Boolean))] as string[];
+      const names: Record<string, string> = {};
+      if (ids.length) {
+        const { data } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+        (data || []).forEach((p: any) => { names[p.id] = p.full_name; });
+      }
+      return { entries, names };
+    },
   });
 
   // Fetch available techs: internal staff + affiliated independents + network
@@ -150,13 +170,11 @@ const AdminJobsDispatchPage = () => {
   });
 
   // Group jobs by status
-  const grouped = useMemo(() => {
-    const map: Record<string, any[]> = { scheduled: [], dispatched: [], in_progress: [], completed: [] };
-    jobs.forEach((j: any) => {
-      if (map[j.status]) map[j.status].push(j);
-    });
-    return map;
-  }, [jobs]);
+  const board = useMemo(
+    () => groupBoardRows(buildBoardRows(jobs as any[], booked.entries), showCancelled),
+    [jobs, booked.entries, showCancelled],
+  );
+  const grouped = board.columns;
 
   // Assign tech mutation
   const assignMutation = useMutation({
@@ -253,11 +271,15 @@ const AdminJobsDispatchPage = () => {
     const assignee = job.assignments?.find((a: any) => a.status !== "rejected");
     return (
       <Card
-        className="cursor-pointer hover:shadow-md active:scale-[0.99] transition-all mb-2"
+        role="link"
+        tabIndex={0}
+        aria-label={`Open job ${job.title || ""}`}
+        className="cursor-pointer hover:shadow-md active:scale-[0.99] transition-all mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         draggable
         onDragStart={e => { e.dataTransfer.setData("text/plain", job.id); setDragJobId(job.id); }}
         onDragEnd={() => setDragJobId(null)}
-        onClick={() => setDetailJob(job)}
+        onClick={() => navigate(rowTarget({ kind: "job", id: job.id }))}
+        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(rowTarget({ kind: "job", id: job.id })); } }}
       >
         <CardContent className="p-3.5 space-y-2">
           <div className="flex items-start justify-between gap-2">
@@ -265,7 +287,15 @@ const AdminJobsDispatchPage = () => {
               <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab shrink-0 hidden sm:block" />
               <span className="font-semibold text-[15px] leading-tight text-foreground truncate">{job.title}</span>
             </div>
-            <Badge variant={PRIORITY_VARIANT[job.priority]} className="text-[10px] shrink-0 uppercase">{job.priority}</Badge>
+            <div className="flex items-center gap-1 shrink-0">
+              {job.status && !["scheduled","dispatched","in_progress","completed"].includes(job.status) && (
+                <Badge variant="outline" className="text-[10px] capitalize">{String(job.status).replace(/_/g, " ")}</Badge>
+              )}
+              {job.priority && <Badge variant={PRIORITY_VARIANT[job.priority]} className="text-[10px] uppercase">{job.priority}</Badge>}
+              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Quick view" onClick={e => { e.stopPropagation(); setDetailJob(job); }}>
+                <Eye className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
 
           {job.customers?.name && (
@@ -316,6 +346,49 @@ const AdminJobsDispatchPage = () => {
   };
 
 
+  const LeadCard = ({ row }: { row: Extract<BoardRow, { kind: "lead" }> }) => {
+    const e = row.entry;
+    const go = () => navigate(rowTarget(row));
+    return (
+      <Card
+        role="link"
+        tabIndex={0}
+        aria-label={`Open booked lead ${e.customer_name || ""}`}
+        className="cursor-pointer hover:shadow-md active:scale-[0.99] transition-all mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={go}
+        onKeyDown={ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); } }}
+      >
+        <CardContent className="p-3.5 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <span className="font-semibold text-[15px] leading-tight text-foreground truncate">{e.customer_name || "Booked lead"}</span>
+            <div className="flex items-center gap-1 shrink-0">
+              {e.status && !["scheduled","dispatched","in_progress","completed"].includes(e.status) && (
+                <Badge variant="outline" className="text-[10px] capitalize">{e.status.replace(/_/g, " ")}</Badge>
+              )}
+              <Badge variant="secondary" className="text-[10px]">Lead</Badge>
+            </div>
+          </div>
+          {e.customer_address && (
+            <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span className="truncate">{e.customer_address}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+            {e.date}{e.start_time ? ` · ${e.start_time.slice(0, 5)}` : ""}
+          </div>
+          {e.agent_id && (
+            <span className="inline-block text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+              {booked.names[e.agent_id] || "Assigned"}
+            </span>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const retryAll = () => { refetch(); refetchBooked(); };
+
   return (
     <div className="space-y-4 p-3 sm:p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -348,10 +421,10 @@ const AdminJobsDispatchPage = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => queryClient.invalidateQueries({ queryKey: ["jobs-dispatch"] })}
+            onClick={retryAll}
             className="gap-2"
           >
-            <Loader2 className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} /> Refresh
+            <Loader2 className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} /> Refresh
           </Button>
           <Button variant="brand" onClick={() => setShowCreate(true)} className="gap-2" size="sm">
             <Plus className="h-4 w-4" /> New Job
@@ -359,8 +432,34 @@ const AdminJobsDispatchPage = () => {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading dispatch board...</div>
+      {board.cancelled > 0 && (
+        <div>
+          <Button variant={showCancelled ? "secondary" : "outline"} size="sm" className="h-8 rounded-full gap-1.5 text-xs" onClick={() => setShowCancelled(v => !v)}>
+            {showCancelled ? <>Showing cancelled ({board.cancelled}) <X className="h-3 w-3" /></> : <>Show cancelled ({board.cancelled})</>}
+          </Button>
+        </div>
+      )}
+
+      {isError || bookedError ? (
+        <Card className="border-destructive/40">
+          <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+            <div className="flex-1">
+              <p className="font-semibold text-foreground">Couldn't load jobs</p>
+              <p className="text-sm text-muted-foreground">{(jobsError as Error)?.message || "Please try again."}</p>
+            </div>
+            <Button variant="outline" onClick={retryAll}>Retry</Button>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {[0,1,2,3].map(i => <Skeleton key={i} className="h-[300px] rounded-xl" />)}
+        </div>
+      ) : board.visible === 0 ? (
+        <Card><CardContent className="p-10 text-center space-y-2">
+          <p className="font-semibold text-foreground">No open jobs</p>
+          {board.cancelled > 0 && <p className="text-sm text-muted-foreground">{board.cancelled} cancelled job{board.cancelled === 1 ? "" : "s"} hidden — use the chip above to show them.</p>}
+        </CardContent></Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {COLUMNS.map(col => (
@@ -375,9 +474,9 @@ const AdminJobsDispatchPage = () => {
                 <Badge variant="outline" className="text-[10px]">{grouped[col.key]?.length || 0}</Badge>
               </div>
               <ScrollArea className="flex-1 px-2 pb-2">
-                {(grouped[col.key] || []).map((job: any) => (
-                  <JobCard key={job.id} job={job} />
-                ))}
+                {(grouped[col.key] || []).map((row) =>
+                  row.kind === "job" ? <JobCard key={`j-${row.id}`} job={row.job} /> : <LeadCard key={`l-${row.id}`} row={row} />
+                )}
                 {(grouped[col.key] || []).length === 0 && (
                   <div className="text-center text-xs text-muted-foreground py-8">No jobs</div>
                 )}
@@ -506,7 +605,7 @@ const AdminJobsDispatchPage = () => {
 };
 
 const AdminJobsDispatchPageGuarded = () => (
-  <RequireRole allowedRoles={["admin"]}>
+  <RequireRole allowedRoles={["admin", "dispatcher"]}>
     <AdminJobsDispatchPage />
   </RequireRole>
 );

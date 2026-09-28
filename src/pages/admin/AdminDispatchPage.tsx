@@ -187,6 +187,24 @@ const AdminDispatchPage = () => {
     },
   });
 
+  // ?lead=<id> opens the existing Job Details sheet for that lead (used by the Jobs board).
+  const leadParam = searchParams.get("lead");
+  useEffect(() => {
+    if (!leadParam || leadsLoading) return;
+    let cancelled = false;
+    const clear = () => setSearchParams((p) => { const n = new URLSearchParams(p); n.delete("lead"); return n; }, { replace: true });
+    const found = allLeads.find((l) => l.id === leadParam);
+    if (found) { setJobInfoLead(found); clear(); return; }
+    supabase.from("leads").select("*").eq("id", leadParam).maybeSingle().then(({ data }) => {
+      if (cancelled) return;
+      if (data) setJobInfoLead(data as Lead);
+      clear();
+    });
+    return () => { cancelled = true; };
+  }, [leadParam, leadsLoading, allLeads, setSearchParams]);
+
+
+
   const { data: agents = [] } = useQuery({
     queryKey: ["dispatch-agents"],
     queryFn: async () => {

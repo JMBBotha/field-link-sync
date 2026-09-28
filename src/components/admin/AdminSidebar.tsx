@@ -167,7 +167,7 @@ const AdminSidebar = ({
         item.children?.some((c) => fieldAgentOnlyPaths.has(c.path));
       if (!inSet) return null;
       if (item.children) {
-        const kids = item.children.filter((c) => fieldAgentOnlyPaths.has(c.path));
+        const kids = item.children.filter((c) => fieldAgentOnlyPaths.has(c.path) && c.path !== "/admin/jobs/dispatch");
         return { ...item, children: kids.length ? kids : undefined };
       }
     }
@@ -313,6 +313,13 @@ const AdminSidebar = ({
       <button
         onClick={() => {
           // When badged, the PopoverTrigger handles opening; chevron still expands.
+          if (item.path === "/admin/jobs/dispatch") {
+            // Jobs label navigates AND expands; chevron still only toggles.
+            const fieldOnly = isFieldAgent && !isAdmin && !isDispatcher;
+            setExpanded((s) => ({ ...s, [item.path]: true }));
+            handleNav(fieldOnly ? "/admin/my-jobs" : item.path);
+            return;
+          }
           if (!badged) {
             setExpanded((s) => ({ ...s, [item.path]: !open }));
           }

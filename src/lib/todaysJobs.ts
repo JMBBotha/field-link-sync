@@ -79,7 +79,7 @@ export function overdueEntries(entries: CalendarEntry[], today: string, agentId?
   return entries.filter((e) => e.date < today && !isClosed(e.status) && (!agentId || e.agent_id === agentId));
 }
 
-async function loadEntries(opts: { date?: string; before?: string; agentId?: string }): Promise<CalendarEntry[]> {
+export async function loadEntries(opts: { date?: string; before?: string; agentId?: string }): Promise<CalendarEntry[]> {
   let sq = supabase
     .from("job_schedules")
     .select("id, lead_id, job_id, agent_id, scheduled_date, start_time, leads(customer_name, customer_address, status), jobs(status)");
