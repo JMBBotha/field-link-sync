@@ -104,7 +104,8 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
   // BEFORE they hit the DB. Falls back to persisted totals when idle.
   const totalItems = live.hasLiveData ? live.items : dbTotals.itemCount;
   const zoneCount = live.hasLiveData ? live.zones : dbTotals.zoneCount;
-  const totalCost = live.hasLiveData ? live.subtotal : dbTotals.subtotal;
+  // Headline is TOTAL INCL. VAT (same maths as the estimate page and quotes.total).
+  const totalAmount = live.hasLiveData ? live.total : dbTotals.total;
 
 
   return (
