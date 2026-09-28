@@ -77,7 +77,7 @@ describe("installation materials group", () => {
     const grouped = groupEstimateInstallLines([unit, ...children]);
     expect(grouped.filter((row) => row.kind === "install-summary")).toHaveLength(1);
     const { container } = renderEstimate([unit, ...children]);
-    expect(screen.getByText(/Installation materials/).textContent).toContain("6 items");
+    expect(screen.getByRole("button", { name: "Show installation materials" }).textContent).toContain("6 items");
     expect(container.querySelector('[data-line-id="install-1"]')).toHaveClass("hidden");
     fireEvent.click(screen.getByLabelText("Show installation materials"));
     expect(container.querySelectorAll('[data-install-role^="role-"]:not(.hidden)')).toHaveLength(6);
