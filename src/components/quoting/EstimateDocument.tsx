@@ -1,3 +1,4 @@
+import { AreaNameLabel } from "@/components/quote/AreaNameLabel";
 import { useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -380,34 +381,20 @@ const EstimateDocument = ({
               >
                 <div className="flex items-center gap-2 border-b border-slate-300 pb-1">
                   {area.id ? (
-                    <input
-                      defaultValue={area.name}
+                    <AreaNameLabel
                       key={`${area.id}-${area.name}`}
-                      aria-label="Area name"
-                      placeholder="Room / area name"
-                      ref={(el) => {
-                        if (el && editing.focusAreaId === area.id) {
-                          el.focus();
-                          el.select();
-                        }
-                      }}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        if (v && v !== area.name) editing.onRenameArea(area.id as string, v);
-                      }}
-                      className={`${inputBase} text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]`}
+                      name={area.name}
+                      autoEdit={editing.focusAreaId === area.id}
+                      onRename={(v) => editing.onRenameArea(area.id as string, v)}
+                      className="text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]"
                     />
                   ) : (
-                    <input
+                    <AreaNameLabel
                       key={`default-${area.name}`}
-                      defaultValue={area.name === "Add items to quote" ? "" : area.name}
-                      aria-label="Area name"
-                      placeholder="Name this room / area…"
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        if (v) editing.onNameDefaultArea?.(v);
-                      }}
-                      className={`${inputBase} text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]`}
+                      name={area.name}
+                      isDefault={area.name === "Add items to quote" || undefined}
+                      onRename={(v) => editing.onNameDefaultArea?.(v)}
+                      className="text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]"
                     />
                   )}
                   {area.id && editing.onDeleteArea && (

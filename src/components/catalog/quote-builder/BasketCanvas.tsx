@@ -1,3 +1,4 @@
+import { AreaNameLabel } from "@/components/quote/AreaNameLabel";
 import { useState, useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { Plus, Trash2, Pencil, Check, Package, ShoppingBag, Copy } from "lucide-react";
@@ -82,35 +83,10 @@ function DroppableBasket({
     >
       {/* Basket header */}
       <div className={`flex items-center justify-between border-b border-border/50 ${isCompact ? "px-1.5 py-1" : "p-2.5"}`}>
-        {editing ? (
-          <div className="flex items-center gap-1 flex-1 min-w-0">
-            <Input
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              className="h-5 text-[10px] w-20 px-1"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  onRename(editName);
-                  setEditing(false);
-                }
-              }}
-            />
-            <Button variant="ghost" size="icon" className="h-5 w-5"
-              onClick={() => { onRename(editName); setEditing(false); }}>
-              <Check className="h-2.5 w-2.5" />
-            </Button>
-          </div>
-        ) : (
-          <button
-            className={`flex items-center gap-1 font-semibold text-foreground hover:text-primary transition-colors truncate min-w-0 ${isCompact ? "text-[10px]" : "text-xs"}`}
-            onClick={() => setEditing(true)}
-          >
-            <ShoppingBag className={isCompact ? "h-3 w-3 shrink-0 text-muted-foreground" : "h-3.5 w-3.5 shrink-0 text-muted-foreground"} />
-            <span className="truncate">{basket.name}</span>
-            <Pencil className="h-2 w-2 shrink-0 text-muted-foreground" />
-          </button>
-        )}
+        <div className={`flex items-center gap-1 flex-1 min-w-0 font-semibold text-foreground ${isCompact ? "text-[10px]" : "text-xs"}`}>
+          <ShoppingBag className={isCompact ? "h-3 w-3 shrink-0 text-muted-foreground" : "h-3.5 w-3.5 shrink-0 text-muted-foreground"} />
+          <AreaNameLabel name={basket.name} onRename={onRename} />
+        </div>
         <div className="flex items-center gap-0.5 shrink-0">
           <span className={`text-muted-foreground whitespace-nowrap ${isCompact ? "text-[8px]" : "text-[10px]"}`}>
             {basket.items.length}·{totalQty}
