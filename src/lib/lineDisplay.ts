@@ -131,3 +131,35 @@ export function kitContents(line: DisplayLine): { name: string; qty: string }[] 
     };
   });
 }
+
+const INSTALL_MATERIAL_NAME_RE = /copper|arma ?flex|insulation|lasso|cable tie|trunking|end cap|bracket|flatback|docking channel|pvc pipe|pvc elbow|drain|piping kit/i;
+const AC_CATEGORY_RE = /air ?con|midwall|inverter|split|cassette|ducted|floor ?ceiling/i;
+const AC_SIZE_RE = /\b\d{1,2}\s?K\b|\b\d{4,5}\s?BTU\b/i;
+const AC_WORD_RE = /\b(INV|inverter|MW|midwall|split|cassette|ducted|floor|ceiling|portable|non-inv)\b/i;
+const AC_BRAND_RE = /\b(Samsung|LG|Midea|Daikin|Carrier|Gree|Alliance|Hisense|Mitsubishi|Toshiba|Panasonic|Fujitsu|York|Chigo|TCL|Aux)\b/i;
+
+export interface AcUnitLineInput {
+  item_name?: string | null;
+  item_type?: string | null;
+  is_bundle?: boolean | null;
+  metadata?: Record<string, any> | null;
+  isLabour?: boolean;
+}
+export interface AcUnitProductInput {
+  product_category?: string | null;
+  category?: string | null;
+  subcategory?: string | null;
+}
+
+/** Display-only: is this quote line an AC unit (install materials group under it)? */
+export function isAcUnitLine(item: AcUnitLineInput, product?: AcUnitProductInput | null): boolean {
+  const md = item.metadata || {};
+  const type = String(item.item_type || "").trim();
+  const name = String(item.item_name || "");
+  if (item.is_bundle || md.kit || md.install || md.labour || md.catalog_service_id || item.isLabour) return false;
+  if (/^(installation kit|consumables|service|labour)$/i.test(type)) return false;
+  if (INSTALL_MATERIAL_NAME_RE.test(name)) return false;
+  if (/air ?con/i.test(type)) return true;
+  if (product && AC_CATEGORY_RE.test([product.product_category, product.category, product.subcategory].filter(Boolean).join(" "))) return true;
+  return AC_SIZE_RE.test(name) && (AC_WORD_RE.test(name) || AC_BRAND_RE.test(name));
+}
