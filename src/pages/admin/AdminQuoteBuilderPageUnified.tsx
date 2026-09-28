@@ -60,6 +60,8 @@ import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { useUnsavedQuoteGuard } from "@/hooks/useUnsavedQuoteGuard";
+import { missingLabourAreas } from "@/lib/areaLabour";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 
 export type QuoteBuilderMode = "admin" | "agent";
@@ -230,6 +232,7 @@ function BuilderMandyActions() {
 function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode }) {
   const navigate = useNavigate();
   const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta, addItem: ctxAddItem, addArea: ctxAddArea } = useQuoteContext();
+  const { settings: companySettings } = useCompanySettings();
   const marginView = useMarginView(quoteId ?? null, (meta as any)?.company_id ?? null, mode === "agent" ? "agent" : "admin");
   const isCompact = useIsTabletOrBelow();
   // Phone/tablet: default to the Area Quote tab (search + areas + send), not
@@ -806,6 +809,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
      Area tabs) into the ONE unified quote, then open the send-to-client flow ── */
   const [sendOpen, setSendOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [labourDialog, setLabourDialog] = useState<{ id: string; name: string }[]>([]);
+  const requireLabour = useCallback(() => {
+    const missing = missingLabourAreas(ctxAreas, ctxItems, companySettings.default_install_labour_hours);
+    if (missing.length) { setLabourDialog(missing); return false; }
+    return true;
+  }, [ctxAreas, ctxItems, companySettings.default_install_labour_hours]);
 
   /* ── Mobile/tablet accordion for the Area tab: one full-screen scrollable
      section at a time (palette / areas / summary) ── */
@@ -848,6 +857,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
   const handleGenerateQuote = useCallback(async () => {
     if (!quoteId) return;
+    if (!requireLabour()) return;
     if (displayQuoteTotals.itemCount === 0) {
       toast({ title: "Nothing to quote", description: "Add at least one line item first.", variant: "destructive" });
       return;
@@ -870,7 +880,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     } finally {
       setGenerating(false);
     }
-  }, [quoteId, displayBaskets, displayQuoteTotals.itemCount, products]);
+  }, [quoteId, displayBaskets, displayQuoteTotals.itemCount, products, requireLabour]);
 
   /* ────────────────────────────────────────────────────────────────────
      Auto-save into THE linked quote + accidental-close guard.
@@ -1112,6 +1122,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               Cancel
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={labourDialog.length > 0} onOpenChange={(open) => { if (!open) setLabourDialog([]); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Labour missing</DialogTitle><DialogDescription>Add labour to every populated area before continuing.</DialogDescription></DialogHeader>
+          <div className="space-y-1">{labourDialog.map((area) => <Button key={area.id} variant="ghost" className="w-full justify-start" onClick={() => { setLabourDialog([]); navigate(`/admin/estimates/${quoteId}`); }}>{area.name}</Button>)}</div>
         </DialogContent>
       </Dialog>
 

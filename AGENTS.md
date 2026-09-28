@@ -19,3 +19,4 @@
 
 - Staff estimates use one QuoteQuickEditor below all areas and above totals; lib/addBarTarget.ts routes unit adds to the last unit-free area or a new area, and other lines to the sole area/new area/an area picker — existing lines never move and shared auto-install still runs.
 - Tech earnings = sales_commission_percent (50%) of units+materials GP (labour and services excluded) + labour_tech_share_percent (60%) of labour sell ex VAT; labour cost stays unset; maths only in lib/margin.ts.
+- Per-area labour: default hours = company_settings.default_install_labour_hours (3.5) x AC units in the area (qty counted, isAcUnitLine); metadata.labour_auto true lines follow unit adds/removals, manual edits set it false and only show a default hint; empty areas are exempt; saves/sends/PDF/accept block on missing labour, autosave never blocks; logic in lib/areaLabour.ts.

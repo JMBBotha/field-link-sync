@@ -11,6 +11,7 @@ export interface CompanySettings {
   postal_address: string;
   logo_storage_path: string;
   default_hourly_rate: number;
+  default_install_labour_hours: number;
   default_deposit_percentage: number;
   default_payment_terms_days: number;
   payfast_merchant_id: string;
@@ -31,6 +32,7 @@ const defaultSettings: CompanySettings = {
   postal_address: "",
   logo_storage_path: "",
   default_hourly_rate: 0, // 0 = not set (labour rows ask for a rate)
+  default_install_labour_hours: 3.5,
   default_deposit_percentage: 70,
   default_payment_terms_days: 30,
   payfast_merchant_id: "",
@@ -61,6 +63,7 @@ export const useCompanySettings = () => {
         postal_address: data.postal_address || "",
         logo_storage_path: data.logo_storage_path || "",
         default_hourly_rate: Number(data.default_hourly_rate) || 0,
+        default_install_labour_hours: Number(data.default_install_labour_hours) || 3.5,
         default_deposit_percentage: Number(data.default_deposit_percentage) || 70,
         default_payment_terms_days: data.default_payment_terms_days || 30,
         payfast_merchant_id: data.payfast_merchant_id || "",
@@ -83,6 +86,7 @@ export const useCompanySettings = () => {
             postal_address: updated.postal_address,
             logo_storage_path: updated.logo_storage_path,
             default_hourly_rate: updated.default_hourly_rate,
+            default_install_labour_hours: updated.default_install_labour_hours,
             default_deposit_percentage: updated.default_deposit_percentage,
             default_payment_terms_days: updated.default_payment_terms_days,
             payfast_merchant_id: updated.payfast_merchant_id,
@@ -100,6 +104,7 @@ export const useCompanySettings = () => {
           postal_address: updated.postal_address,
           logo_storage_path: updated.logo_storage_path,
           default_hourly_rate: updated.default_hourly_rate,
+          default_install_labour_hours: updated.default_install_labour_hours,
           default_deposit_percentage: updated.default_deposit_percentage,
           default_payment_terms_days: updated.default_payment_terms_days,
           payfast_merchant_id: updated.payfast_merchant_id,

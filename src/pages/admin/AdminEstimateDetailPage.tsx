@@ -25,6 +25,8 @@ import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { fetchQuoteInvoice } from "@/lib/depositInvoice";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { QuoteProvider } from "@/contexts/QuoteContext";
+import { missingLabourAreas } from "@/lib/areaLabour";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 
 /**
@@ -41,7 +43,19 @@ const AdminEstimateDetailPage = () => {
   const { settings } = useCompanySettings();
   const [busy, setBusy] = useState<string | null>(null);
   const [sendOpen, setSendOpen] = useState(false);
-  const staffActions = useQuoteStaffActions();
+  const [missingLabour, setMissingLabour] = useState<{ id: string; name: string }[]>([]);
+  const checkLabour = async () => {
+    const [areaRes, lineRes] = await Promise.all([
+      supabase.from("quote_areas").select("id, name").eq("quote_id", id).order("sort_order"),
+      supabase.from("quote_items").select("id, area_id, parent_item_id, item_name, item_type, quantity, metadata").eq("quote_id", id),
+    ]);
+    if (areaRes.error) throw areaRes.error;
+    if (lineRes.error) throw lineRes.error;
+    const missing = missingLabourAreas((areaRes.data || []) as any[], (lineRes.data || []) as any[], settings.default_install_labour_hours);
+    if (missing.length) { setMissingLabour(missing); return false; }
+    return true;
+  };
+  const staffActions = useQuoteStaffActions(undefined, checkLabour);
 
   const { data: quote, isLoading } = useQuery({
     queryKey: ["quote-document", id],
@@ -101,6 +115,7 @@ const AdminEstimateDetailPage = () => {
    * a draft stays a draft; Send is the only thing that changes status.
    */
   const handleSave = async () => {
+    if (!await checkLabour()) return;
     setBusy("save");
     try {
       (document.activeElement as HTMLElement | null)?.blur?.();
@@ -144,6 +159,7 @@ const AdminEstimateDetailPage = () => {
   // Send uses the exact same flow as the quote builder: ensure public_token
   // + status/sent_at via the shared helper, then open the shared dialog.
   const handleSend = async () => {
+    if (!await checkLabour()) return;
     setBusy("send");
     try {
       await ensureQuoteReadyToSend(id);
@@ -167,6 +183,7 @@ const AdminEstimateDetailPage = () => {
   }, [searchParams, quote, isLoading, itemsFetched]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePdf = async () => {
+    if (!await checkLabour()) return "Remember labour before generating the PDF.";
     setBusy("pdf");
     try {
       const extras = await loadQuoteBrochuresForPdf((quote as any)?.id);
@@ -296,7 +313,7 @@ const AdminEstimateDetailPage = () => {
           {busy === "pdf" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
           PDF
         </Button>
-        <Button variant="outline" onClick={() => window.print()}>
+        <Button variant="outline" onClick={async () => { if (await checkLabour()) window.print(); }}>
           <Printer className="mr-2 h-4 w-4" /> Print
         </Button>
         <TooltipProvider>
@@ -334,6 +351,14 @@ const AdminEstimateDetailPage = () => {
         customerId={quote.customer_id}
         customerName={customer.name || quote.customer_name || "Customer"}
       />
+      <Dialog open={missingLabour.length > 0} onOpenChange={(open) => { if (!open) setMissingLabour([]); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Labour missing</DialogTitle><DialogDescription>Add labour to every populated area before continuing.</DialogDescription></DialogHeader>
+          <div className="space-y-1">
+            {missingLabour.map((area) => <Button key={area.id} type="button" variant="ghost" className="w-full justify-start" onClick={() => { setMissingLabour([]); window.setTimeout(() => document.getElementById(`area-labour-${area.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>{area.name}</Button>)}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

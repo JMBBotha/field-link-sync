@@ -24,6 +24,8 @@ import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
 import { runSetLabourHours, buildRemoveLabour, readLabour, labourSummary } from "@/lib/mandy/labourAction";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { standardLabourRate, findAreaLabour } from "@/lib/labour";
+import { applyAutoLabourDelta, missingLabourAreas } from "@/lib/areaLabour";
+import { isAcUnitLine } from "@/lib/lineDisplay";
 import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -119,6 +121,15 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
   };
 
   const nextSort = () => { const it = S().items; return it.length ? Math.max(...it.map((i) => i.sort_order || 0)) + 1 : 0; };
+  const adjustUnitLabour = async (areaId: string | null, delta: number) => {
+    const rate = standardLabourRate(settings?.default_hourly_rate);
+    if (!areaId || !rate) return;
+    await applyAutoLabourDelta({ items: S().items, areaId, unitDelta: delta, perUnit: Number(settings?.default_install_labour_hours) || 3.5, rate, addItem: g.addItem, updateItem: g.updateItem });
+  };
+  const labourReminder = (state = S()) => {
+    const missing = missingLabourAreas(state.areas, state.items, Number(settings?.default_install_labour_hours) || 3.5);
+    return missing.length ? ` Remember labour for ${missing[0].name}.` : "";
+  };
 
   const findArea = (name?: string) => {
     const areas = S().areas;
@@ -172,23 +183,30 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     if (!area) return { ok: false, message: "Could not find or create an area on this quote." };
     const r = await addCatalogProductToQuote({ addItem: g.addItem, product: p, areaId: area.id, sortOrder: nextSort(), quantity: qty, bundles, templates, liveProducts: products, source: "mandy_voice" });
     if (!r.line) return { ok: false, message: `Could not add ${p.short_name || p.product_code}.` };
+    if (isAcUnitLine({ item_name: p.short_name || p.product_code, item_type: "product", metadata: {} }, p)) await adjustUnitLabour(area.id, qty);
     const fresh = await refresh();
     const verified = !!fresh?.items.some((i) => i.id === r.line!.id) && (!r.kit || !!fresh?.items.some((i) => i.id === r.kit!.id))
       && r.installLines.every((l) => !!fresh?.items.some((i) => i.id === l.id));
     if (r.template || r.installLines.length || r.kit) {
-      return { ok: true, message: announceInstall(`${qty > 1 ? `${qty} × ` : ""}${p.short_name}`, r as any, area.name), data: { line_id: r.line.id, kit_id: r.kit?.id ?? null, install_ids: r.installLines.map((l) => l.id), area: area.name }, verified };
+      return { ok: true, message: `${announceInstall(`${qty > 1 ? `${qty} × ` : ""}${p.short_name}`, r as any, area.name)}${labourReminder(fresh || undefined)}`, data: { line_id: r.line.id, kit_id: r.kit?.id ?? null, install_ids: r.installLines.map((l) => l.id), area: area.name }, verified };
     }
     const kitTxt = r.kit ? `, with a ${r.kitLength ?? 3} m ${r.kitName} at ${fmtRand(r.kitSellPerMetre || 0)} per metre excl. VAT` : "";
     return {
       ok: true,
-      message: `Added ${qty > 1 ? `${qty} × ` : ""}${p.short_name} (${p.product_code}) to ${area.name} at ${fmtRand(r.unitSell)} excl. VAT${kitTxt}.${r.notes.length ? ` ${r.notes.join(". ")}.` : ""}`,
+      message: `Added ${qty > 1 ? `${qty} × ` : ""}${p.short_name} (${p.product_code}) to ${area.name} at ${fmtRand(r.unitSell)} excl. VAT${kitTxt}.${r.notes.length ? ` ${r.notes.join(". ")}.` : ""}${labourReminder(fresh || undefined)}`,
       data: { line_id: r.line.id, kit_id: r.kit?.id ?? null, area: area.name },
       verified,
     };
   };
 
   const doRemove = async (ids: string[], label: string): Promise<MandyResult> => {
+    const unitDeltas = new Map<string, number>();
+    for (const item of S().items.filter((x) => ids.includes(x.id))) {
+      const product = products.find((p) => p.id === item.product_id);
+      if (item.area_id && isAcUnitLine(item, product)) unitDeltas.set(item.area_id, (unitDeltas.get(item.area_id) || 0) - Number(item.quantity || 0));
+    }
     for (const id of ids) await g.deleteItem(id);
+    for (const [areaId, delta] of unitDeltas) await adjustUnitLabour(areaId, delta);
     const fresh = await refresh();
     return { ok: true, message: `Removed ${label}.`, verified: !!fresh && !fresh.items.some((i) => ids.includes(i.id)) };
   };
@@ -420,7 +438,9 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       if ("result" in r) return r.result;
       const it = r.item;
       const p = qtyPatch(it as EditItem, Number(args.qty), products.find((x) => x.id === it.product_id) as any);
+      const product = products.find((x) => x.id === it.product_id);
       await g.updateItem(it.id, p.patch as any);
+      if (it.area_id && isAcUnitLine(it, product) && p.kind !== "length") await adjustUnitLabour(it.area_id, p.value - Number(it.quantity || 0));
       const fresh = await refresh();
       const unit = p.kind === "length" ? " m" : p.kind === "hours" ? " h" : "";
       const row = fresh?.items.find((i) => i.id === it.id);
@@ -602,9 +622,10 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     },
 
     generate_quote_pdf: async () => {
+      const reminder = labourReminder();
       const m = await onPdf();
-      if (typeof m === "string") return { ok: true, message: m };
-      return { ok: true, message: `Generated the PDF for ${ctx.meta?.quote_number || "this quote"}.` };
+      if (typeof m === "string") return { ok: true, message: `${m}${reminder}` };
+      return { ok: true, message: `Generated the PDF for ${ctx.meta?.quote_number || "this quote"}.${reminder}` };
     },
 
     read_quote_total: async () => {
