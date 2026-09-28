@@ -438,7 +438,7 @@ const EstimateDocument = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {groupEstimateInstallLines(area.lines).map((row) => {
+                    {groupEstimateInstallLines(area.lines, area.id ?? "none").map((row) => {
                       if (row.kind === "install-summary") {
                         const open = !!openInstallGroups[row.unitId];
                         const total = row.lines.reduce((sum, child) => sum + lineAmount(child), 0);
