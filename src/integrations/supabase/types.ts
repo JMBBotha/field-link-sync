@@ -2786,6 +2786,54 @@ export type Database = {
           },
         ]
       }
+      job_overruns: {
+        Row: {
+          actual_hours: number | null
+          created_at: string
+          created_by: string
+          extra_items: Json
+          id: string
+          job_id: string
+          notes: string | null
+          quote_id: string | null
+        }
+        Insert: {
+          actual_hours?: number | null
+          created_at?: string
+          created_by?: string
+          extra_items?: Json
+          id?: string
+          job_id: string
+          notes?: string | null
+          quote_id?: string | null
+        }
+        Update: {
+          actual_hours?: number | null
+          created_at?: string
+          created_by?: string
+          extra_items?: Json
+          id?: string
+          job_id?: string
+          notes?: string | null
+          quote_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_overruns_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_overruns_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_photos: {
         Row: {
           caption: string | null
@@ -7498,7 +7546,15 @@ export type Database = {
         Returns: number
       }
       can_access_receipt_folder: { Args: { _folder: string }; Returns: boolean }
+      can_log_job_overrun: {
+        Args: { _job_id: string; _uid: string }
+        Returns: boolean
+      }
       can_read_master_catalog: { Args: { _uid: string }; Returns: boolean }
+      can_view_company_overruns: {
+        Args: { _job_id: string; _uid: string }
+        Returns: boolean
+      }
       can_write_master_catalog: { Args: { _uid: string }; Returns: boolean }
       check_customer_duplicates: {
         Args: {
