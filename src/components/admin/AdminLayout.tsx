@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Menu, Sun, Moon, Search, Sparkle } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import { StatusUndoButton } from "@/components/shared/StatusUndo";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
 import Footer from "@/components/Footer";
 
@@ -248,6 +249,7 @@ const AdminLayout = () => {
               <span className="text-xs hidden sm:inline">Ask Mandy</span>
             </Button>
 
+            <StatusUndoButton />
             <NotificationBell />
 
             <Button
