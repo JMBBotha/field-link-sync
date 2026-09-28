@@ -2077,78 +2077,6 @@ export type Database = {
           },
         ]
       }
-      flat_rate_items: {
-        Row: {
-          category: string
-          created_at: string
-          description: string | null
-          estimated_hours: number | null
-          id: string
-          is_active: boolean | null
-          name: string
-          parts: Json | null
-          standard_price: number
-          updated_at: string
-        }
-        Insert: {
-          category: string
-          created_at?: string
-          description?: string | null
-          estimated_hours?: number | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          parts?: Json | null
-          standard_price: number
-          updated_at?: string
-        }
-        Update: {
-          category?: string
-          created_at?: string
-          description?: string | null
-          estimated_hours?: number | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          parts?: Json | null
-          standard_price?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      hvac_services: {
-        Row: {
-          category: string
-          created_at: string
-          default_price: number
-          id: string
-          is_active: boolean
-          name: string
-          unit: string
-          updated_at: string
-        }
-        Insert: {
-          category: string
-          created_at?: string
-          default_price: number
-          id?: string
-          is_active?: boolean
-          name: string
-          unit?: string
-          updated_at?: string
-        }
-        Update: {
-          category?: string
-          created_at?: string
-          default_price?: number
-          id?: string
-          is_active?: boolean
-          name?: string
-          unit?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       import_audit_log: {
         Row: {
           action: string
@@ -2511,13 +2439,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_sales_by_product_detail"
             referencedColumns: ["invoice_id"]
-          },
-          {
-            foreignKeyName: "invoice_items_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "service_templates"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -4772,13 +4693,6 @@ export type Database = {
             referencedRelation: "proposals"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "proposal_items_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "service_templates"
-            referencedColumns: ["id"]
-          },
         ]
       }
       proposal_sections: {
@@ -5274,13 +5188,6 @@ export type Database = {
             referencedRelation: "quote_versions"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "quote_line_items_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "hvac_services"
-            referencedColumns: ["id"]
-          },
         ]
       }
       quote_template_items: {
@@ -5312,13 +5219,6 @@ export type Database = {
           unit_price?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "quote_template_items_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "hvac_services"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "quote_template_items_template_id_fkey"
             columns: ["template_id"]
@@ -5698,39 +5598,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      service_templates: {
-        Row: {
-          category: string
-          created_at: string
-          default_rate: number
-          description: string | null
-          id: string
-          is_active: boolean
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          category?: string
-          created_at?: string
-          default_rate?: number
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          category?: string
-          created_at?: string
-          default_rate?: number
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       spatial_ref_sys: {
         Row: {

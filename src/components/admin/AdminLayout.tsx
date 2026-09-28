@@ -75,7 +75,6 @@ const AdminLayout = () => {
     "/admin/agreements": "Agreements",
     "/admin/catalog": "Product Catalog",
     "/admin/inventory": "Inventory",
-    "/admin/flat-rate": "Flat Rate Book",
     "/admin/reports": "Reports",
     "/admin/reports/advanced": "Advanced Reports",
     "/admin/reports/aging": "Accounts Aging",

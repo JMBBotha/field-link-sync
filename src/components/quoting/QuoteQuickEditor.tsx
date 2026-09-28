@@ -26,21 +26,14 @@ import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 
 import type { QuoteItemInsert } from "@/types/quote";
 import { useToast } from "@/hooks/use-toast";
+import { useCatalogServices } from "@/hooks/useCatalogServices";
 import { Button } from "@/components/ui/button";
 import {
-  orderServicesForPicker, matchesService, serviceLineFields, isCustomLimitError, type CatalogService,
+  matchesService, serviceLineFields, isCustomLimitError, type CatalogService,
 } from "@/lib/catalogServices";
 
 const money = (n: number) =>
   `R ${Number(n || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-interface ServiceRow {
-  id: string;
-  name: string;
-  category: string | null;
-  default_price: number | null;
-  unit: string | null;
-}
 
 function baseItem(): Omit<QuoteItemInsert, "quote_id" | "item_name" | "unit_price" | "sort_order"> {
   return {
@@ -116,41 +109,10 @@ export default function QuoteQuickEditor({
     },
   });
 
-  const { data: services = [] } = useQuery({
-    queryKey: ["hvac-services-active"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("hvac_services")
-        .select("id, name, category, default_price, unit")
-        .eq("is_active", true)
-        .order("category");
-      if (error) throw error;
-      return (data || []) as ServiceRow[];
-    },
-  });
-
-  const { data: catalogServices = [], refetch: refetchCatalogServices } = useQuery({
-    queryKey: ["catalog-services", companyId],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const [svc, master] = await Promise.all([
-        (supabase.from("catalog_services") as any)
-          .select("id, name, description, sort_order, origin, owner_company_id, is_active, search_aliases")
-          .eq("is_active", true),
-        (supabase.from("companies") as any).select("name").eq("is_master", true).maybeSingle(),
-      ]);
-      if (svc.error) throw svc.error;
-      return { rows: (svc.data || []) as CatalogService[], masterName: (master.data?.name as string) || "the main company" };
-    },
-    select: (d) => d,
-  }) as any;
-  const svcRows: CatalogService[] = catalogServices.rows ?? [];
-  const masterName: string = catalogServices.masterName ?? "the main company";
+  const { services: svcOrdered, masterName, refetch: refetchCatalogServices } = useCatalogServices(companyId);
   const catalogResults = useMemo(
-    () => orderServicesForPicker(svcRows, companyId).filter((s) => matchesService(s, serviceTerm)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [svcRows, companyId, serviceTerm],
+    () => svcOrdered.filter((s) => matchesService(s, serviceTerm)),
+    [svcOrdered, serviceTerm],
   );
 
   const onQuoteProductIds = useMemo(
@@ -177,16 +139,6 @@ export default function QuoteQuickEditor({
     return matched.sort((a, b) => rank(a) - rank(b)).slice(0, 25);
   }, [productTerm, products, favorites, onQuoteProductIds]);
 
-  const serviceResults = useMemo(() => {
-    const term = serviceTerm.trim().toLowerCase();
-    if (term.length < 2) return [];
-    const matched = services.filter((s) =>
-      `${s.name} ${s.category || ""}`.toLowerCase().includes(term),
-    );
-    const rank = (s: ServiceRow) => (onQuoteNames.has(s.name.toLowerCase()) ? 0 : 1);
-    return matched.sort((a, b) => rank(a) - rank(b)).slice(0, 25);
-  }, [serviceTerm, services, onQuoteNames]);
-
   const nextSortOrder = () => (items.length ? Math.max(...items.map((i) => i.sort_order || 0)) + 1 : 0);
 
   /**
@@ -207,25 +159,6 @@ export default function QuoteQuickEditor({
     await addCatalogProductToQuote({ addItem, product: p, areaId, sortOrder: nextSortOrder(), bundles, templates, liveProducts });
     setAdding(null);
     setProductTerm("");
-    onChanged?.();
-  };
-
-  const addService = async (s: ServiceRow) => {
-    setAdding(s.id);
-    const areaId = await resolveArea();
-    await addItem({
-      ...baseItem(),
-      area_id: areaId,
-      item_name: s.name,
-      description: s.category || null,
-      item_type: "service",
-      unit_price: Number(s.default_price || 0),
-      metadata: { unit_cost: 0, markup_percent: 0 },
-      sort_order: nextSortOrder(),
-      source: "service",
-    });
-    setAdding(null);
-    setServiceTerm("");
     onChanged?.();
   };
 
@@ -260,7 +193,7 @@ export default function QuoteQuickEditor({
     await addCatalogService(data as CatalogService);
   };
 
-  const showServiceList = customOpen || serviceFocus || serviceResults.length > 0 || serviceTerm.trim().length > 0;
+  const showServiceList = customOpen || serviceFocus || serviceTerm.trim().length > 0;
 
   return (
     <div className="print:hidden">
@@ -350,27 +283,6 @@ export default function QuoteQuickEditor({
                     <Plus className="h-3.5 w-3.5 shrink-0" /> Add custom service
                   </button>
                 )}
-                {serviceResults.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => addService(s)}
-                    disabled={adding === s.id}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50"
-                  >
-                    <Plus className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                    <span className="min-w-0 flex-1 truncate text-sm text-slate-800">
-                      {s.name}
-                      {s.category && <span className="ml-1 text-xs text-slate-500">{s.category}</span>}
-                    </span>
-                    {onQuoteNames.has(s.name.toLowerCase()) && (
-                      <Badge variant="secondary" className="shrink-0 text-[10px]">on quote</Badge>
-                    )}
-                    <span className="shrink-0 text-xs font-medium text-slate-700">
-                      {money(Number(s.default_price || 0))}
-                    </span>
-                  </button>
-                ))}
               </div>
             </ScrollArea>
           )}

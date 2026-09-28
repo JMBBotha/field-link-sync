@@ -40,7 +40,6 @@ const AdminHomePage = () => {
     invoices: "/admin/invoices",
     agreements: "/admin/agreements",
     inventory: "/admin/inventory",
-    flatrate: "/admin/flat-rate",
     reports: "/admin/reports",
     analytics: "/admin/analytics",
     notifications: "/admin/notifications",

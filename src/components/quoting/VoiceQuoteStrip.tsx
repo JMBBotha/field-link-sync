@@ -20,6 +20,7 @@ import { useQuoteContext } from "@/contexts/QuoteContext";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { useInstallTemplates } from "@/hooks/useInstallTemplates";
+import { useCatalogServices } from "@/hooks/useCatalogServices";
 import { getUserCompanyId } from "@/lib/tenantUtils";
 import { DEFAULT_LEAD_SOURCE } from "@/lib/leadSources";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
@@ -55,15 +56,8 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
   const { templates } = useInstallTemplates();
   const say = useMandyDock((s) => s.say);
 
-  const { data: services = [] } = useQuery({
-    queryKey: ["voice-quote-services"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("hvac_services").select("id, name, category, default_price, unit").eq("is_active", true).order("category");
-      if (error) throw error;
-      return (data || []) as ServiceRow[];
-    },
-  });
+  const { serviceRows: services } = useCatalogServices((meta as any)?.company_id ?? null);
+
 
   const [open, setOpen] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("voice") === "1");
   const [transcript, setTranscript] = useState("");

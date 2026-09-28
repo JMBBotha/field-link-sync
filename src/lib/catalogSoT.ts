@@ -10,7 +10,7 @@
  *
  * `archived` alone is NOT enough: soft-archived rows keep `is_active = true`.
  *
- * Services are a PARALLEL source of truth (`hvac_services` / `service_templates`)
+ * Services are a PARALLEL source of truth (`catalog_services`)
  * and are never filtered by this module. Existing quote lines are never touched.
  */
 import { supabase } from "@/integrations/supabase/client";
