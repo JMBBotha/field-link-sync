@@ -1,3 +1,4 @@
+import { X as XIcon } from "lucide-react";
 import { parseLaneParam } from "@/lib/drilldown";
 import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -827,7 +828,7 @@ const AdminDispatchPage = () => {
                   <div className="flex flex-wrap items-center gap-2">
                     <Button variant="secondary" size="sm" className="h-7 rounded-full gap-1 text-xs" aria-label={`Clear ${LANE_META[laneParam].label} filter`}
                       onClick={() => setSearchParams((p) => { const n = new URLSearchParams(p); n.delete("lane"); return n; })}>
-                      {LANE_META[laneParam].label} <X className="h-3 w-3" />
+                      {LANE_META[laneParam].label} <XIcon className="h-3 w-3" />
                     </Button>
                   </div>
                 )}
