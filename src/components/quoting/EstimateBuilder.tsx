@@ -17,7 +17,7 @@ import { useQuoteContext } from "@/contexts/QuoteContext";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { installTag, qtyUnitLabel, BRACKET_OPTIONS } from "@/lib/installTemplates";
 import { qtyLabel, shortInstallName, kitTitleFromMetadata, kitContents } from "@/lib/lineDisplay";
-import { catalogLineFields, kitSwapPatch, isMetreLine, metreLineTotal } from "@/lib/mandy/quoteOps";
+import { catalogLineFields, kitSwapPatch, isMetreLine, metreLineTotal, kitLengthPatch } from "@/lib/mandy/quoteOps";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { swappableKits, kitSizeLabel } from "@/lib/kitSizes";
 import { useToast } from "@/hooks/use-toast";
@@ -115,13 +115,15 @@ export default function EstimateBuilder({
     perMetre: isMetreLine(i as any),
     itemNumber: i.item_number ?? null,
     kitBundleId: (i.metadata as any)?.kit?.bundle_id ?? null,
+    kitPerMetre: (i.metadata as any)?.kit?.pricing_type === "p/meter",
+    kitLength: (i as any).length != null ? Number((i as any).length) : null,
     isService: !!(i.metadata as any)?.catalog_service_id,
     displayName: (() => {
-      const dl = { item_name: i.item_name, quantity: Number(i.quantity || 0), unit_price: Number(i.unit_price || 0), metadata: i.metadata as any };
+      const dl = { item_name: i.item_name, quantity: Number(i.quantity || 0), unit_price: Number(i.unit_price || 0), length: (i as any).length ?? null, metadata: i.metadata as any };
       return kitTitleFromMetadata(dl) ?? shortInstallName(dl);
     })(),
-    unitText: qtyLabel({ item_name: i.item_name, quantity: Number(i.quantity || 0), unit_price: Number(i.unit_price || 0), metadata: i.metadata as any }),
-    kitItems: (i.metadata as any)?.kit ? kitContents({ item_name: i.item_name, quantity: 0, metadata: i.metadata as any }) : null,
+    unitText: qtyLabel({ item_name: i.item_name, quantity: Number(i.quantity || 0), unit_price: Number(i.unit_price || 0), length: (i as any).length ?? null, metadata: i.metadata as any }),
+    kitItems: (i.metadata as any)?.kit ? kitContents({ item_name: i.item_name, quantity: 0, length: (i as any).length ?? null, metadata: i.metadata as any }) : null,
     staffNote: margin.visible && lineUnitCostOrNull(i) != null ? `cost ${formatRand(lineUnitCostOrNull(i)!)}` : null,
   });
 
@@ -270,6 +272,18 @@ export default function EstimateBuilder({
               title: `Kit is now ${kitSizeLabel(b)}`,
               description: `${patch.length} m · ${formatRand(patch.unit_price)} excl. VAT`,
               action: <ToastAction altText="Undo kit swap" onClick={() => { void updateItem(id, before as any); onChanged?.(); }}>Undo</ToastAction>,
+            });
+          },
+          onKitLengthChange: (id, metres) => {
+            const cur = items.find((i) => i.id === id);
+            if (!cur || !(metres > 0)) return;
+            const before = { length: cur.length, unit_price: cur.unit_price, total_price: cur.total_price, metadata: cur.metadata };
+            const patch = kitLengthPatch(cur as any, metres);
+            void updateItem(id, patch as any);
+            onChanged?.();
+            toast({
+              title: `Kit length ${patch.length} m · ${formatRand(patch.unit_price)} excl. VAT`,
+              action: <ToastAction altText="Undo kit length" onClick={() => { void updateItem(id, before as any); onChanged?.(); }}>Undo</ToastAction>,
             });
           },
           onDeleteLine: (id) => {

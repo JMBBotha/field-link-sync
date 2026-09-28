@@ -9,6 +9,7 @@
 import { getEffectiveUnitPrices, type PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import { resolveProductMarkupPercent } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
+import { kitItemPerMetre } from "@/lib/lineDisplay";
 import { buildKitMaterial, kitBasketFields, DEFAULT_KIT_LENGTH_M } from "@/components/catalog/quote-builder/kitLine";
 import { pickKitForUnit } from "@/lib/kitSizes";
 import { matchCatalog } from "@/lib/mandy/catalogMatch";
@@ -293,7 +294,11 @@ export function kitRowFields(bundle: BundleForKit, length?: number) {
         total_cost: kCost,
         markup_percent: kCost > 0 ? Number((((sell - kCost) / kCost) * 100).toFixed(2)) : 0,
         price_locked: true,
-        kit: { bundle_id: bundle.id, name: bundle.name, pricing_type: f.bundlePricingType, unit_cost: f.bundleUnitCost ?? 0, unit_sell: Number((f.bundleUnitPrice ?? 0).toFixed(2)), items: f.kitContents ?? [] },
+        kit: {
+          bundle_id: bundle.id, name: bundle.name, pricing_type: f.bundlePricingType, unit_cost: f.bundleUnitCost ?? 0, unit_sell: Number((f.bundleUnitPrice ?? 0).toFixed(2)),
+          ...(m.pricingMode === "length" ? { length_m: len } : {}),
+          items: scaleKitItems(f.kitContents ?? [], f.bundlePricingType, m.pricingMode === "length" ? len : null),
+        },
       } as Record<string, any>,
     },
     perMetre: f.bundleUnitPrice || 0,
@@ -342,9 +347,21 @@ export function kitSellPerMetre(item: { unit_price?: number | null; length?: num
   return Math.abs(saved - fromCost) <= Math.max(0.05, fromCost * 0.01) ? saved : Number(fromCost.toFixed(2));
 }
 
+/**
+ * Kit contents normalised to qty_per_m (per-metre kits) and quantity scaled to `metres`.
+ * Legacy snapshots: length items were per metre, count items (cable ties) × 3 m — see kitItemPerMetre.
+ */
+export function scaleKitItems(items: any[], pricingType: string | null | undefined, metres: number | null): any[] {
+  if (pricingType !== "p/meter" || metres == null) return items;
+  return (items || []).map((i) => {
+    const per = kitItemPerMetre(i, pricingType);
+    return { ...i, qty_per_m: per, quantity: Math.round(per * metres * 1000) / 1000 };
+  });
+}
+
 /** Patch for a saved kit row when its length changes (same maths as withKitLength). */
 export function kitLengthPatch(item: { unit_price?: number | null; length?: number | null; metadata?: any }, metres: number) {
-  const v = Math.max(0.5, metres);
+  const v = Math.max(0.1, metres);
   const oldLen = Number(item.length) || 1;
   const perM = kitSellPerMetre(item);
   const kitCostPerM = Number(item.metadata?.kit?.unit_cost) || (Number(item.metadata?.unit_cost) || 0) / oldLen;
@@ -355,7 +372,10 @@ export function kitLengthPatch(item: { unit_price?: number | null; length?: numb
     length: v,
     unit_price: sell,
     total_price: sell,
-    metadata: { ...md, unit_cost: cost, cost_excl: cost, total_cost: cost, ...(md.kit ? { kit: { ...md.kit, unit_sell: Number(perM.toFixed(2)) } } : {}) },
+    metadata: {
+      ...md, unit_cost: cost, cost_excl: cost, total_cost: cost,
+      ...(md.kit ? { kit: { ...md.kit, unit_sell: Number(perM.toFixed(2)), length_m: v, items: scaleKitItems(md.kit.items || [], md.kit.pricing_type, v) } } : {}),
+    },
   };
 }
 

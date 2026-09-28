@@ -6,7 +6,21 @@ export interface DisplayLine {
   item_name: string;
   quantity: number;
   unit_price?: number;
+  /** quote_items.length — kit metres. */
+  length?: number | null;
   metadata?: any;
+}
+
+/** Legacy kit snapshots were built at 3 m: length items per metre, count items × 3. */
+export const LEGACY_KIT_BUILD_M = 3;
+
+/** Per-metre quantity of one kit content item (qty_per_m, else derived from the legacy snapshot). */
+export function kitItemPerMetre(item: any, pricingType?: string | null): number {
+  const q = Number(item?.qty_per_m);
+  if (Number.isFinite(q)) return q;
+  const qty = Number(item?.quantity) || 0;
+  if (pricingType !== "p/meter" || item?.isLengthItem) return qty;
+  return Math.round((qty / LEGACY_KIT_BUILD_M) * 10000) / 10000;
 }
 
 const num = (n: number) => String(Math.round((Number(n) || 0) * 100) / 100);
@@ -19,16 +33,15 @@ function lengthOfOne(line: DisplayLine): number | null {
   return n ? Number(n[1]) : null;
 }
 
-/** Kit metres: explicit length, else sell ÷ per-metre sell (kits are priced per metre). */
+/** Kit metres: row length → kit.length_m → 3 m default. */
 export function kitMetres(line: DisplayLine): number | null {
   const k = line.metadata?.kit;
   if (!k) return null;
-  const explicit = Number(k.length_m ?? k.length ?? line.metadata?.length_m ?? line.metadata?.length);
-  if (Number.isFinite(explicit) && explicit > 0) return explicit;
-  const per = Number(k.unit_sell);
-  const total = (Number(line.quantity) || 0) * (Number(line.unit_price) || 0);
-  if (per > 0 && total > 0) return Math.round((total / per) * 10) / 10;
-  return null;
+  for (const v of [line.length, k.length_m]) {
+    const n = Number(v);
+    if (v != null && Number.isFinite(n) && n > 0) return n;
+  }
+  return LEGACY_KIT_BUILD_M;
 }
 
 export function qtyLabel(line: DisplayLine): string {
@@ -102,11 +115,19 @@ export function kitTitleFromMetadata(line: DisplayLine): string | null {
   return metres != null ? `${head} · ${num(metres)} m` : head;
 }
 
-/** Read-only kit contents for the expanded view. */
+/** Read-only kit contents for the expanded view, scaled to the row's metres. */
 export function kitContents(line: DisplayLine): { name: string; qty: string }[] {
-  const items: any[] = Array.isArray(line.metadata?.kit?.items) ? line.metadata.kit.items : [];
-  return items.map((i) => ({
-    name: String(i?.name || i?.code || "Item").replace(/^([^-]+) - \1\s*/i, "$1 "),
-    qty: i?.quantity != null ? num(Number(i.quantity)) : "",
-  }));
+  const k = line.metadata?.kit;
+  const items: any[] = Array.isArray(k?.items) ? k.items : [];
+  const perMetreKit = k?.pricing_type === "p/meter";
+  const len = kitMetres(line) ?? LEGACY_KIT_BUILD_M;
+  return items.map((i) => {
+    const per = kitItemPerMetre(i, k?.pricing_type);
+    const total = perMetreKit ? per * len : Number(i?.quantity) || 0;
+    const isLen = perMetreKit && !!i?.isLengthItem;
+    return {
+      name: String(i?.name || i?.code || "Item").replace(/^([^-]+) - \1\s*/i, "$1 "),
+      qty: i?.quantity != null || i?.qty_per_m != null ? `${num(total)}${isLen ? " m" : ""}` : "",
+    };
+  });
 }
