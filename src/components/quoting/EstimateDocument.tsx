@@ -34,6 +34,9 @@ export interface EstimateEditLine {
   itemNumber?: string | null;
   /** Piping kit row: the kit it was built from. */
   kitBundleId?: string | null;
+  /** Per-metre kit: metres come from quote_items.length. */
+  kitPerMetre?: boolean;
+  kitLength?: number | null;
   /** Picked from catalog_services (no price in the catalogue). */
   isService?: boolean;
   /** Staff-only muted note next to the price (e.g. "cost R 1 234"); set by the staff builder only. */
@@ -72,6 +75,8 @@ export interface EstimateEditing {
   /** Swap a piping kit row to another live kit (same metres, repriced from the book). */
   onSwapKit?: (id: string, bundleId: string) => void;
   kitOptions?: { id: string; label: string }[];
+  /** Change a per-metre kit's length (metres); quantity stays 1. */
+  onKitLengthChange?: (id: string, metres: number) => void;
   onRenameArea: (id: string, name: string) => void;
   onAddArea: () => void;
   /** Naming the orphan default section promotes it into a real area. */
@@ -499,6 +504,28 @@ const EstimateDocument = ({
                             )}
                           </td>
                           <td className="py-2 text-right">
+                            {line.kitBundleId && line.kitPerMetre && editing.onKitLengthChange ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <input
+                                  key={`${line.id}-len-${line.kitLength ?? 3}`}
+                                  type="number"
+                                  step="any"
+                                  min="0.1"
+                                  inputMode="decimal"
+                                  defaultValue={line.kitLength ?? 3}
+                                  aria-label="Kit length (m)"
+                                  onClick={(e) => e.stopPropagation()}
+                                  onBlur={(e) => {
+                                    const saved = line.kitLength ?? 3;
+                                    const v = Number(e.target.value);
+                                    if (e.target.value.trim() === "" || !Number.isFinite(v) || v < 0.1) { e.target.value = String(saved); return; }
+                                    if (v !== saved) editing.onKitLengthChange?.(line.id, v);
+                                  }}
+                                  className={`${inputBase} text-right text-slate-600`}
+                                />
+                                <span className="text-[11px] text-slate-500">m</span>
+                              </div>
+                            ) : (
                             <input
                               key={`${line.id}-qty`}
                               type="number"
@@ -514,7 +541,8 @@ const EstimateDocument = ({
                               }}
                               className={`${inputBase} text-right text-slate-600`}
                             />
-                            {line.unitText && (
+                            )}
+                            {line.unitText && !(line.kitBundleId && line.kitPerMetre && editing.onKitLengthChange) && (
                               <div data-testid="qty-unit" className="whitespace-nowrap text-[10px] text-slate-500 print:hidden">{line.unitText}</div>
                             )}
                           </td>
