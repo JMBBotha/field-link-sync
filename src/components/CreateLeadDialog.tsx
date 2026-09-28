@@ -449,17 +449,21 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
                 onChange={(e) =>
                   setFormData({ ...formData, customer_name: e.target.value })
                 }
+                onFocus={() => setNameFocused(true)}
+                onBlur={() => setTimeout(() => setNameFocused(false), 150)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setNameFocused(false);
+                }}
                 required
                 placeholder="Full name"
                 autoComplete="off"
               />
-              {!linkedCustomerId && (
-                <ClientTypeahead
-                  query={formData.customer_name}
-                  clients={existingClients}
-                  onSelect={handleSelectClient}
-                />
-              )}
+              <ClientTypeahead
+                query={formData.customer_name}
+                open={nameFocused && !linkedCustomerId}
+                clients={existingClients}
+                onSelect={handleSelectClient}
+              />
             </div>
             {formData.customer_name === "" && (
               <p className="text-[11px] text-muted-foreground">Required – enter the customer's full name</p>
