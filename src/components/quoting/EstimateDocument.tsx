@@ -218,6 +218,7 @@ const EstimateDocument = ({
 
   return (
     <div
+      ref={editRootRef}
       data-pdf-capture-root="estimate"
       className={`estimate-document pdf-page mx-auto w-full text-slate-800 shadow-sm ring-1 ring-slate-200 print:bg-white print:shadow-none print:ring-0 ${
         editing ? "estimate-editing bg-slate-100" : "bg-white"
