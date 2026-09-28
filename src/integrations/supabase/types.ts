@@ -761,6 +761,7 @@ export type Database = {
           default_rate: number | null
           gp_target_percent: number
           id: string
+          is_master: boolean
           labour_cost_per_hour: number | null
           logo_url: string | null
           materials_markup_percent: number
@@ -779,6 +780,7 @@ export type Database = {
           default_rate?: number | null
           gp_target_percent?: number
           id?: string
+          is_master?: boolean
           labour_cost_per_hour?: number | null
           logo_url?: string | null
           materials_markup_percent?: number
@@ -797,6 +799,7 @@ export type Database = {
           default_rate?: number | null
           gp_target_percent?: number
           id?: string
+          is_master?: boolean
           labour_cost_per_hour?: number | null
           logo_url?: string | null
           materials_markup_percent?: number
@@ -957,6 +960,68 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_network_members: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          master_company_id: string
+          member_company_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          master_company_id: string
+          member_company_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          master_company_id?: string
+          member_company_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_network_members_master_company_id_fkey"
+            columns: ["master_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_network_members_master_company_id_fkey"
+            columns: ["master_company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "company_network_members_member_company_id_fkey"
+            columns: ["member_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_network_members_member_company_id_fkey"
+            columns: ["member_company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -7473,6 +7538,8 @@ export type Database = {
         Returns: number
       }
       can_access_receipt_folder: { Args: { _folder: string }; Returns: boolean }
+      can_read_master_catalog: { Args: { _uid: string }; Returns: boolean }
+      can_write_master_catalog: { Args: { _uid: string }; Returns: boolean }
       check_customer_duplicates: {
         Args: {
           p_address?: string
@@ -7887,6 +7954,7 @@ export type Database = {
       }
       invoice_amount_paid: { Args: { p_invoice_id: string }; Returns: number }
       is_agent_available_now: { Args: { p_agent_id: string }; Returns: boolean }
+      is_approved_network_member: { Args: { _uid: string }; Returns: boolean }
       is_company_admin: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
@@ -7895,6 +7963,7 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_master_company_user: { Args: { _uid: string }; Returns: boolean }
       is_ops_user: { Args: { _user_id: string }; Returns: boolean }
       is_staff_member: { Args: { _uid: string }; Returns: boolean }
       job_profit_loss: {
