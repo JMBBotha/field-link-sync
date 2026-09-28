@@ -44,6 +44,7 @@ import type { WizardTriggerItem } from "./quote-builder/QuoteBuilderPopup";
 import { computeBundlePricing, toBundleSubItems, scaleKitCountItems } from "./quote-builder/BundleItemsPopover";
 import { computeBasketsQuoteTotals, applyCategoryRatesToBaskets } from "@/utils/quoteBasketTotals";
 import { subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot } from "@/lib/pricing";
+import { formatRand } from "@/utils/formatRand";
 import type { QuoteTotals } from "@/utils/quoteTransformers";
 
 type QuoteBuilderBundle = PaletteBundle & {
