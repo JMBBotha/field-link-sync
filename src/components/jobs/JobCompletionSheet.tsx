@@ -25,8 +25,8 @@ interface JobCompletionSheetProps {
   onCompleted?: () => void;
 }
 
-const currency = (n: number) =>
-  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n || 0);
+import ActualOnSiteStep, { emptyActual, saveActualOnSite } from "./ActualOnSiteStep";
+import { useAuth } from "@/contexts/AuthContext";
 
 const JobCompletionSheet = ({
   open,
@@ -48,6 +48,8 @@ const JobCompletionSheet = ({
   const [signerEmail, setSignerEmail] = useState(customerEmail || "");
   const [saving, setSaving] = useState(false);
   const [noSignature, setNoSignature] = useState(false);
+  const [actual, setActual] = useState(emptyActual());
+  const { user } = useAuth();
 
   const { data: parts = [] } = useQuery({
     queryKey: ["job-used-parts", leadId],
@@ -125,6 +127,10 @@ const JobCompletionSheet = ({
         // totals as unknown instead of persisting misleading zeros.
         metricsKnown: isOnline,
       });
+      if (user?.id) {
+        try { await saveActualOnSite({ jobId, leadId, userId: user.id, value: actual }); }
+        catch { toast({ title: "Actual on site not saved", description: "The job is completed; tell the office the extra hours/materials." }); }
+      }
       if (!queued) {
         toast({ title: "Job completed", description: "Signed off and ready for invoicing." });
       }
@@ -166,7 +172,7 @@ const JobCompletionSheet = ({
               <Package className="mx-auto h-4 w-4 text-muted-foreground" />
               <p className="mt-1 text-xs font-medium">{isOnline ? `${parts.length} parts` : "Parts"}</p>
               <p className="text-[10px] text-muted-foreground">
-                {isOnline ? currency(partsTotal) : "synced later"}
+                {isOnline ? "used" : "synced later"}
               </p>
             </div>
             <div className="rounded-lg border border-border p-2 text-center">
@@ -188,13 +194,14 @@ const JobCompletionSheet = ({
                   <span className="truncate">
                     {p.product_name} <Badge variant="secondary">x{p.quantity}</Badge>
                   </span>
-                  <span className="text-muted-foreground">{currency(Number(p.line_total))}</span>
                 </div>
               ))}
             </div>
           )}
 
           <Separator />
+
+          <ActualOnSiteStep value={actual} onChange={setActual} />
 
           <div className="space-y-1.5">
             <Label htmlFor="work-summary">Work performed</Label>
