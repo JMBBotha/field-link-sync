@@ -28,8 +28,11 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { fetchTodaysJobs, fetchOverdue, todayInJohannesburg } from "@/lib/todaysJobs";
-import { TILE_LINKS, filterQuoteDocs, filterInvoices, PENDING_QUOTES_FILTER, OVERDUE_INVOICES_FILTER, REVENUE_TODAY_FILTER } from "@/lib/drilldown";
+import { fetchTodaysJobs, fetchOverdue, todayInJohannesburg, loadEntries } from "@/lib/todaysJobs";
+import { buildBoardRows } from "@/lib/jobsBoard";
+import { fetchMoneySummary } from "@/lib/moneySummary";
+import { TILE_LINKS, filterQuoteDocs, filterInvoices, PENDING_QUOTES_FILTER, OVERDUE_INVOICES_FILTER, REVENUE_TODAY_FILTER, D1_TILE_LINKS, filterVisitsBooked, filterLeadsByLane } from "@/lib/drilldown";
+import { CalendarCheck, Wrench, Wallet } from "lucide-react";
 import { fetchOverdueMaintenanceCount } from "@/lib/maintenanceMetrics";
 
 
@@ -39,7 +42,11 @@ const kpiViewAllHref: Record<string, string> = {
   pending_quotes: TILE_LINKS.pendingQuotes,
   overdue_invoices: TILE_LINKS.overdueInvoices,
   active_techs: TILE_LINKS.activeTechs,
+  visits_booked: D1_TILE_LINKS.visitsBooked,
+  service_leads: D1_TILE_LINKS.serviceLeads,
+  deposits_due: D1_TILE_LINKS.depositsDue,
 };
+const NO_PREVIEW = new Set(["visits_booked", "service_leads", "deposits_due"]);
 
 interface AdminHomeProps {
   onNavigate: (tab: string) => void;
@@ -48,7 +55,7 @@ interface AdminHomeProps {
 
 const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const today = todayInJohannesburg();
-  const { count: inboxCount } = useLeadInbox();
+  const { count: inboxCount, leads: inboxLeads } = useLeadInbox();
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const [jobDialog, setJobDialog] = useState<{ open: boolean; leadId?: string; customerId?: string }>({ open: false });
   const [leadsRange, setLeadsRange] = useState<"day" | "week" | "month">("week");
@@ -241,6 +248,25 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
     staleTime: 60000,
   });
 
+  // Release D1 tiles — each number uses the same pure filter as its list.
+  const { data: d1 } = useQuery({
+    queryKey: ["admin-home-d1", today, companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const [jobsRes, entries, money] = await Promise.all([
+        supabase.from("jobs").select("id, status, scheduled_for, job_type, title, address, assignments(id, profile_id, status)"),
+        loadEntries({}).catch(() => []),
+        fetchMoneySummary(companyId as string).catch(() => null),
+      ]);
+      return {
+        visitsBooked: filterVisitsBooked(buildBoardRows((jobsRes.data as any[]) || [], entries)).length,
+        depositsDue: money?.depositsDue.count ?? 0,
+      };
+    },
+    refetchInterval: 60000,
+  });
+  const serviceLeads = useMemo(() => filterLeadsByLane(inboxLeads as any[], "service").length, [inboxLeads]);
+
   // Core 5 KPIs — focused on Lead → Job → Invoice flow
   const kpiCards = useMemo(() => [
     { key: "new_leads", label: "New Leads", value: inboxCount, icon: Plus, color: "text-primary", sparkKey: "leads" as const, sparkColor: "#0077B6" },
@@ -248,7 +274,10 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
     { key: "pending_quotes", label: "Pending Quotes", value: stats?.pendingQuotes ?? 0, icon: FileText, color: "text-orange-500", sparkKey: "leads" as const, sparkColor: "#f97316" },
     { key: "overdue_invoices", label: "Overdue Invoices", value: stats?.overdueInvoices ?? 0, icon: AlertTriangle, color: "text-destructive", sparkKey: "leads" as const, sparkColor: "#ef4444" },
     { key: "active_techs", label: "Active Techs", value: jobStats?.activeFieldAgents ?? 0, icon: UserCheck, color: "text-blue-500", sparkKey: "active" as const, sparkColor: "#3b82f6" },
-  ], [stats, jobStats, inboxCount]);
+    { key: "visits_booked", label: "Visits booked", value: d1?.visitsBooked ?? 0, icon: CalendarCheck, color: "text-primary", sparkKey: "active" as const, sparkColor: "#0077B6" },
+    { key: "service_leads", label: "Service leads", value: serviceLeads, icon: Wrench, color: "text-green-500", sparkKey: "leads" as const, sparkColor: "#22c55e" },
+    { key: "deposits_due", label: "Installs awaiting deposit", value: d1?.depositsDue ?? 0, icon: Wallet, color: "text-orange-500", sparkKey: "leads" as const, sparkColor: "#f97316" },
+  ], [stats, jobStats, inboxCount, d1, serviceLeads]);
 
   const [showMore, setShowMore] = useState(false);
 
@@ -287,7 +316,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       />
 
       {/* Core 5 KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
 
 
         {isLoading
@@ -310,9 +339,13 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                 kpiKey={kpi.key}
                 label={kpi.label}
                 viewAllHref={kpiViewAllHref[kpi.key] || "/admin"}
+                disabled={NO_PREVIEW.has(kpi.key)}
               >
               <Card
                 className="surface-card surface-card-interactive cursor-pointer"
+                role="link"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter") navigate(kpiViewAllHref[kpi.key] || "/admin"); }}
                 onClick={() => navigate(kpi.key === "new_leads" ? INBOX_ROUTE : kpiViewAllHref[kpi.key] || "/admin")}
               >
                 <CardContent className="p-3 md:p-4">
