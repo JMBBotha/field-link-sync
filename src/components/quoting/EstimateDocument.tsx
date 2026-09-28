@@ -49,6 +49,12 @@ export interface EstimateEditLine {
   unitText?: string | null;
   /** Piping kit contents — read-only detail rows, not priced lines. */
   kitItems?: { name: string; qty: string }[] | null;
+  /** AC unit line (Air Conditioning) — install materials group under it. */
+  isAcUnit?: boolean;
+  /** Kit / Consumables / Installation Kit line from item_type or is_bundle. */
+  isInstallMaterial?: boolean;
+  /** Labour line — never grouped. */
+  isLabour?: boolean;
 }
 
 /** One area section inside the quote body (staff edit mode only). */
@@ -153,32 +159,60 @@ export type EstimateTableRow =
   | { kind: "line"; line: EstimateEditLine; installGroupId?: string }
   | { kind: "install-summary"; unitId: string; lines: EstimateEditLine[] };
 
-/** Groups only consecutive install children explicitly linked to the unit before them. */
-export function groupEstimateInstallLines(lines: EstimateEditLine[]): EstimateTableRow[] {
+const INSTALL_NAME_RE = /copper|arma ?flex|insulation|lasso|cable tie|trunking|end cap|bracket|flatback|docking channel|pvc pipe|pvc elbow|drain|piping kit/i;
+
+/** True when a line counts as installation material (never labour, services or AC units). */
+export function isEstimateInstallMaterial(line: EstimateEditLine): boolean {
+  if (line.isLabour || line.isService || line.isAcUnit) return false;
+  if (line.installRole) return true;
+  if (line.isInstallMaterial) return true;
+  if (line.kitBundleId) return true;
+  return INSTALL_NAME_RE.test(line.name || "");
+}
+
+/**
+ * Groups install materials under their AC unit (display order only).
+ * Tagged lines go under their tagged unit; untagged ones under the nearest preceding
+ * AC unit; with no unit before them, one group per area at the first such line.
+ */
+export function groupEstimateInstallLines(lines: EstimateEditLine[], areaKey = "none"): EstimateTableRow[] {
+  const ids = new Set(lines.map((l) => l.id));
+  const unitIds = new Set(lines.filter((l) => l.isAcUnit).map((l) => l.id));
+  const groups = new Map<string, EstimateEditLine[]>();
+  const add = (key: string, l: EstimateEditLine) => {
+    const g = groups.get(key);
+    if (g) g.push(l); else groups.set(key, [l]);
+  };
+  const assigned = new Map<string, string>();
+  let lastUnit: string | null = null;
+  for (const l of lines) {
+    if (l.isAcUnit) { lastUnit = l.id; continue; }
+    if (!isEstimateInstallMaterial(l)) continue;
+    let key: string;
+    if (l.installUnitId && ids.has(l.installUnitId) && l.installUnitId !== l.id) key = l.installUnitId;
+    else if (lastUnit) key = lastUnit;
+    else key = `area-${areaKey}`;
+    assigned.set(l.id, key);
+    add(key, l);
+  }
+  // Tagged children whose unit isn't flagged isAcUnit still group under that line.
   const rows: EstimateTableRow[] = [];
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
-    if (line.installRole) {
-      rows.push({ kind: "line", line });
+  const pushGroup = (key: string) => {
+    const kids = groups.get(key);
+    if (!kids?.length) return;
+    rows.push({ kind: "install-summary", unitId: key, lines: kids });
+    rows.push(...kids.map((child) => ({ kind: "line" as const, line: child, installGroupId: key })));
+    groups.delete(key);
+  };
+  for (const l of lines) {
+    const key = assigned.get(l.id);
+    if (key) {
+      if (key.startsWith("area-")) pushGroup(key);
+      else if (!ids.has(key)) rows.push({ kind: "line", line: l });
       continue;
     }
-
-    rows.push({ kind: "line", line });
-    const children: EstimateEditLine[] = [];
-    let childIndex = index + 1;
-    while (
-      childIndex < lines.length
-      && lines[childIndex].installRole
-      && lines[childIndex].installUnitId === line.id
-    ) {
-      children.push(lines[childIndex]);
-      childIndex += 1;
-    }
-    if (children.length > 0) {
-      rows.push({ kind: "install-summary", unitId: line.id, lines: children });
-      rows.push(...children.map((child) => ({ kind: "line" as const, line: child, installGroupId: line.id })));
-      index = childIndex - 1;
-    }
+    rows.push({ kind: "line", line: l });
+    if (unitIds.has(l.id) || groups.has(l.id)) pushGroup(l.id);
   }
   return rows;
 }
