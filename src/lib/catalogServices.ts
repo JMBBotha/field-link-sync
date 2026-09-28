@@ -63,3 +63,12 @@ export const customLimitBlocked = (activeCustomCount: number, limit: number | nu
 
 export const isCustomLimitError = (e: { message?: string } | null | undefined) =>
   !!e?.message && e.message.includes("CUSTOM_LIMIT_REACHED");
+
+/** Adapter for the voice/Mandy matcher (ServiceRow shape). No price: services are priced on the line. */
+export const toServiceRow = (s: CatalogService) => ({
+  id: s.id,
+  name: s.name,
+  category: s.origin === "custom" ? "Custom" : null,
+  default_price: null as number | null,
+  unit: null as string | null,
+});
