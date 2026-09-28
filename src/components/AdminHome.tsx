@@ -14,7 +14,6 @@ import MoneySummaryCard from "@/components/admin/MoneySummaryCard";
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import AdminMapPage from "@/pages/admin/AdminMapPage";
-import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
 import KpiHoverPreview from "@/components/admin/KpiHoverPreview";
 import { useLeadInbox, INBOX_ROUTE } from "@/hooks/useLeadInbox";
 import QuotePerformanceWidget from "@/components/analytics/QuotePerformanceWidget";
@@ -29,16 +28,17 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { fetchTodaysJobs, fetchOverdue } from "@/lib/todaysJobs";
+import { fetchTodaysJobs, fetchOverdue, todayInJohannesburg } from "@/lib/todaysJobs";
+import { TILE_LINKS, filterQuoteDocs, filterInvoices, PENDING_QUOTES_FILTER, OVERDUE_INVOICES_FILTER, REVENUE_TODAY_FILTER } from "@/lib/drilldown";
 import { fetchOverdueMaintenanceCount } from "@/lib/maintenanceMetrics";
 
 
 const kpiViewAllHref: Record<string, string> = {
   new_leads: "/admin/dispatch?inbox=1",
-  active_jobs: "/admin/jobs",
-  pending_quotes: "/admin/quotes",
-  overdue_invoices: "/admin/invoices",
-  active_techs: "/admin/team",
+  active_jobs: TILE_LINKS.todaysJobs,
+  pending_quotes: TILE_LINKS.pendingQuotes,
+  overdue_invoices: TILE_LINKS.overdueInvoices,
+  active_techs: TILE_LINKS.activeTechs,
 };
 
 interface AdminHomeProps {
@@ -47,8 +47,7 @@ interface AdminHomeProps {
 }
 
 const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
-  const today = new Date().toISOString().split("T")[0];
-  const [selectedKpi, setSelectedKpi] = useState<string | null>(null);
+  const today = todayInJohannesburg();
   const { count: inboxCount } = useLeadInbox();
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const [jobDialog, setJobDialog] = useState<{ open: boolean; leadId?: string; customerId?: string }>({ open: false });
@@ -172,11 +171,11 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
     queryKey: ["admin-home-stats", today, leadsRange, jobsRange],
     queryFn: async () => {
       const [leadsRes, quotesRes, activeJobsRes, overdueRes, revenueRes, agentsRes, recentRes, overdueMaintenanceRes, openLeadsRes, todayJobsRes] = await Promise.all([
-        supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", today + "T00:00:00").eq("status", "pending"),
-        supabase.from("quotes").select("id", { count: "exact", head: true }).eq("status", "draft").neq("status", "superseded"),
+        supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", today + "T00:00:00+02:00").eq("status", "pending"),
+        supabase.from("quotes").select("id, status, created_at").eq("status", "draft"),
         Promise.all([fetchTodaysJobs(), fetchOverdue()]).catch(() => null),
-        supabase.from("invoices").select("id", { count: "exact", head: true }).eq("status", "overdue"),
-        supabase.from("invoices").select("grand_total").eq("status", "paid").gte("paid_date", today),
+        supabase.from("invoices").select("id, status, issue_date, paid_date").eq("status", "overdue"),
+        supabase.from("invoices").select("grand_total, status, issue_date, paid_date").eq("status", "paid").gte("paid_date", today),
         supabase.from("profiles").select("id, full_name, availability_status").limit(20),
         supabase.from("notifications").select("id, type, title, body, created_at").order("created_at", { ascending: false }).limit(15),
         fetchOverdueMaintenanceCount(),
@@ -185,16 +184,19 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
 
       ]);
 
-      const revenueToday = revenueRes.data?.reduce((sum, inv) => sum + Number(inv.grand_total || 0), 0) || 0;
+      // Tile numbers use the SAME filters as the lists they link to.
+      const pendingQuotes = filterQuoteDocs(((quotesRes.data as any[]) || []).map((q) => ({ ...q, kind: "estimate" as const })), PENDING_QUOTES_FILTER).length;
+      const overdueInvoices = filterInvoices((overdueRes.data as any[]) || [], OVERDUE_INVOICES_FILTER).length;
+      const revenueToday = filterInvoices((revenueRes.data as any[]) || [], REVENUE_TODAY_FILTER).reduce((sum, inv) => sum + Number(inv.grand_total || 0), 0) || 0;
 
       return {
         newLeads: leadsRes.count || 0,
-        pendingQuotes: quotesRes.count || 0,
+        pendingQuotes,
         activeJobs: activeJobsRes?.[0].open.length ?? 0,
         todayDone: activeJobsRes?.[0].completed ?? 0,
         todayTotal: activeJobsRes?.[0].total ?? 0,
         overdueJobs: activeJobsRes?.[1].length ?? 0,
-        overdueInvoices: overdueRes.count || 0,
+        overdueInvoices,
         overdueMaintenance: overdueMaintenanceRes,
         revenueToday,
         agents: agentsRes.data || [],
@@ -251,7 +253,6 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const [showMore, setShowMore] = useState(false);
 
 
-  const activeKpi = kpiCards.find((k) => k.key === selectedKpi);
   const getCompactStatus = (status?: string | null) => {
     const normalized = status || "pending";
     const labels: Record<string, string> = {
@@ -312,7 +313,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               >
               <Card
                 className="surface-card surface-card-interactive cursor-pointer"
-                onClick={() => (kpi.key === "new_leads" ? navigate(INBOX_ROUTE) : setSelectedKpi(kpi.key))}
+                onClick={() => navigate(kpi.key === "new_leads" ? INBOX_ROUTE : kpiViewAllHref[kpi.key] || "/admin")}
               >
                 <CardContent className="p-3 md:p-4">
                   <div className="flex items-center gap-2 mb-1">
@@ -366,18 +367,6 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       {/* Pipeline health metrics — 90-day window */}
       <PipelineMetrics />
 
-      {/* KPI Detail Dialog */}
-      {activeKpi && (
-        <KpiDetailDialog
-          open={!!selectedKpi}
-          onOpenChange={(open) => !open && setSelectedKpi(null)}
-          kpiKey={activeKpi.key}
-          label={activeKpi.label}
-          icon={activeKpi.icon}
-          color={activeKpi.color}
-        />
-      )}
-
       {/* Primary widgets — Recent Open Leads + Today's Dispatch */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 min-w-0">
         <Card className="surface-card min-w-0 overflow-hidden">
@@ -388,7 +377,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                 <Plus className="h-4 w-4 text-primary" /> Open Leads
               </CardTitle>
               <Button variant="ghost" size="sm" asChild className="h-7 shrink-0 px-2 text-xs">
-                <Link to="/admin">View all</Link>
+                <Link to={INBOX_ROUTE}>View all</Link>
               </Button>
             </div>
             <div className="surface-segment grid w-full grid-cols-3 p-0.5 md:inline-flex md:w-auto md:self-start">
@@ -533,7 +522,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           {/* Secondary KPIs */}
           {stats && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Card className="surface-card">
+              <Card className="surface-card surface-card-interactive cursor-pointer" role="link" tabIndex={0} onClick={() => navigate(TILE_LINKS.revenueToday)} onKeyDown={(e) => { if (e.key === "Enter") navigate(TILE_LINKS.revenueToday); }}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <RandSign className="h-4 w-4 text-primary" />
@@ -542,7 +531,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                   <p className="text-2xl font-bold">R {(stats.revenueToday ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</p>
                 </CardContent>
               </Card>
-              <Card className="surface-card">
+              <Card className="surface-card surface-card-interactive cursor-pointer" role="link" tabIndex={0} onClick={() => navigate(TILE_LINKS.overdueMaintenance)} onKeyDown={(e) => { if (e.key === "Enter") navigate(TILE_LINKS.overdueMaintenance); }}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <Wrench className="h-4 w-4 text-destructive" />
@@ -562,9 +551,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                 {[
-                  { label: "Total Jobs", value: jobStats.totalJobs, icon: Briefcase, to: "/admin/jobs/dispatch" },
-                  { label: "Active Jobs", value: jobStats.activeJobs, icon: Clock, to: "/admin/jobs/dispatch" },
-                  { label: "Completed", value: jobStats.completedJobs, icon: CheckCircle2, to: "/admin/jobs/dispatch" },
+                  { label: "Total Jobs", value: jobStats.totalJobs, icon: Briefcase, to: TILE_LINKS.jobsTotal },
+                  { label: "Active Jobs", value: jobStats.activeJobs, icon: Clock, to: TILE_LINKS.jobsActive },
+                  { label: "Completed", value: jobStats.completedJobs, icon: CheckCircle2, to: TILE_LINKS.jobsCompleted },
                   { label: "Pending Assign.", value: jobStats.pendingAssignments, icon: ClipboardList, to: "/admin/dispatch" },
                   { label: "Active Agents", value: jobStats.activeFieldAgents, icon: UserCheck, to: "/admin/team" },
                   { label: "Avg Completion", value: `${jobStats.avgCompletionDays}d`, icon: Timer, to: "/admin/analytics" },

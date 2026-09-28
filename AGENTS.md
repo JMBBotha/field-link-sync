@@ -7,3 +7,4 @@
 - Trunking (isPerMetreTrunking: sold_in_length + unit_length + "trunking" in name) is quoted per METRE: qty = metres, metadata.qty_unit='metre', unit_price = length sell ÷ L (4 dp), total_price = round(metres × length sell ÷ L, 2); builder/hydrate lock one length with price_per_unit_qty = L — so 3 m equals the exact book price. Old qty_unit 'length' lines stay per length (no migration).
 
 - Jobs board rows come from lib/jobsBoard.ts (jobs + todaysJobs.loadEntries, de-duped by job_id; unknown statuses → Scheduled, cancelled behind a toggle) — so the board never hides what the Today tile counts.
+- Dashboard tile counts and their target lists share one pure filter in lib/drilldown.ts (TILE_LINKS + parse*/filter* helpers); "today" is always todayInJohannesburg — so a tile number cannot drift from its list.

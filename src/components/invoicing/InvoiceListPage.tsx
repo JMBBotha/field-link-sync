@@ -12,6 +12,8 @@ import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { attachPaymentTotals } from "@/lib/depositInvoice";
 import jsPDF from "jspdf";
 import { formatRand } from "@/utils/formatRand";
+import { parseInvoiceParams, filterInvoices, matchesInvoiceState, clearParams } from "@/lib/drilldown";
+import FilterChips from "@/components/shared/FilterChips";
 
 interface Invoice {
   id: string;
@@ -35,6 +37,7 @@ interface InvoiceListPageProps {
 
 const statusFilters = [
   { value: "all", label: "All" },
+  { value: "unpaid", label: "Unpaid" },
   { value: "draft", label: "Draft" },
   { value: "sent", label: "Sent" },
   { value: "paid", label: "Paid" },
@@ -61,9 +64,13 @@ const formatDate = (dateStr: string) =>
 const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceListPageProps) => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
+  const inf = parseInvoiceParams(searchParams);
+  const filter = inf.state ?? "all";
+  const setParam = (k: string, v: string | null) =>
+    setSearchParams((p) => { const n = new URLSearchParams(p); if (v && v !== "all") n.set(k, v); else n.delete(k); return n; });
+  const setFilter = (v: string) => setParam("state", v);
   const moneyFilter = searchParams.get("money") as MoneyFilter | null;
   const [payRows, setPayRows] = useState<any[]>([]);
 
@@ -95,13 +102,12 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
     setLoading(false);
   };
 
-  const filteredInvoices = invoices
+  const filteredInvoices = filterInvoices(invoices, inf)
     .filter(inv => {
       if (!moneyFilter) return true;
       const { paid, balance } = invoiceMoney(inv as any, payRows);
       return matchesMoneyFilter(inv as any, paid, balance, moneyFilter);
     })
-    .filter(inv => filter === "all" || inv.status === filter)
     .filter(inv =>
       !search ||
       inv.customer_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -110,7 +116,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
 
   // Summary stats
   const totalOutstanding = invoices
-    .filter(inv => inv.status === "sent" || inv.status === "overdue")
+    .filter(inv => matchesInvoiceState(inv.status, "unpaid"))
     .reduce((sum, inv) => sum + inv.grand_total, 0);
   const totalPaid = invoices
     .filter(inv => inv.status === "paid")
@@ -186,13 +192,15 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:max-w-md">
-        <Card className="border-0 shadow-sm">
+        <Card role="button" tabIndex={0} onClick={() => setFilter("unpaid")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFilter("unpaid"); } }}
+          className={`border-0 shadow-sm cursor-pointer hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === "unpaid" ? "ring-2 ring-primary" : ""}`}>
           <CardContent className="p-3">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Outstanding</p>
             <p className="text-lg font-bold text-orange-600">{formatCurrency(totalOutstanding)}</p>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-sm">
+        <Card role="button" tabIndex={0} onClick={() => setFilter("paid")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFilter("paid"); } }}
+          className={`border-0 shadow-sm cursor-pointer hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === "paid" ? "ring-2 ring-primary" : ""}`}>
           <CardContent className="p-3">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Collected</p>
             <p className="text-lg font-bold text-green-600">{formatCurrency(totalPaid)}</p>
@@ -211,8 +219,18 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
         </Button>
       </div>
 
+      <FilterChips
+        shown={filteredInvoices.length}
+        chips={[
+          ...(inf.state ? [{ key: "state", label: inf.state === "unpaid" ? "Unpaid (sent + overdue)" : `State: ${inf.state}` }] : []),
+          ...(inf.period ? [{ key: "period", label: inf.period === "today" ? "Today" : /d$/.test(inf.period) ? `Last ${inf.period.replace("d", "")} days` : inf.period }] : []),
+        ]}
+        onClear={(k) => setSearchParams((p) => clearParams(p, [k]))}
+        onClearAll={() => setSearchParams((p) => clearParams(p, ["state", "period", "money"]))}
+      />
+
       {moneyFilter && (
-        <button onClick={() => setSearchParams({})} className="text-xs rounded-full bg-primary text-primary-foreground px-3 py-1">
+        <button onClick={() => setSearchParams((p) => clearParams(p, ["money"]))} className="text-xs rounded-full bg-primary text-primary-foreground px-3 py-1">
           {moneyFilter.replace("_", " ")} · clear ✕
         </button>
       )}
@@ -243,7 +261,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
             {f.label}
             {f.value !== "all" && (
               <span className="ml-1 opacity-70">
-                {invoices.filter(inv => inv.status === f.value).length}
+                {filterInvoices(invoices, { state: f.value as any }).length}
               </span>
             )}
           </button>

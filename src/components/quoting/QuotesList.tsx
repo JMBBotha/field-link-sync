@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { parseQuoteParams, filterQuoteDocs, clearParams } from "@/lib/drilldown";
+import FilterChips from "@/components/shared/FilterChips";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRegisterMandyActions } from "@/lib/mandy/registry";
@@ -55,8 +58,14 @@ interface QuotesListProps {
 
 const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<"all" | "estimate" | "proposal">("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const qf = parseQuoteParams(searchParams);
+  const statusFilter = qf.status.length === 1 ? qf.status[0] : qf.status.length ? qf.status.join(",") : "all";
+  const typeFilter: "all" | "estimate" | "proposal" = qf.type ?? "all";
+  const setParam = (k: string, v: string | null) =>
+    setSearchParams((p) => { const n = new URLSearchParams(p); if (v && v !== "all") n.set(k, v); else n.delete(k); return n; });
+  const setStatusFilter = (v: string) => setParam("status", v);
+  const setTypeFilter = (v: string) => setParam("type", v);
   const [converting, setConverting] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
@@ -101,7 +110,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   };
 
   const { data: quotes = [], isLoading } = useQuery({
-    queryKey: ["quotes", search, statusFilter],
+    queryKey: ["quotes", search],
     queryFn: async () => {
       let query = supabase
         .from("quotes")
@@ -109,9 +118,6 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
         .neq("status", "superseded")
         .order("created_at", { ascending: false });
 
-      if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
-      }
       if (search) {
         query = query.or(`quote_number.ilike.%${search}%,notes.ilike.%${search}%`);
       }
@@ -122,13 +128,12 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   });
 
   const { data: proposals = [] } = useQuery({
-    queryKey: ["visual-proposals", search, statusFilter],
+    queryKey: ["visual-proposals", search],
     queryFn: async () => {
       let query = (supabase as any)
         .from("visual_proposals")
         .select("*, customers:client_id(name, phone)")
         .order("created_at", { ascending: false });
-      if (statusFilter !== "all") query = query.eq("status", statusFilter);
       if (search) query = query.ilike("title", `%${search}%`);
       const { data, error } = await query;
       if (error) throw error;
@@ -139,7 +144,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const statuses = ["all", "draft", "sent", "viewed", "accepted", "declined"];
 
   // Combined document feed — estimates + proposals in one list.
-  const docs = [
+  const allDocs = [
     ...(quotes as any[]).map((q) => ({
       kind: "estimate" as const,
       id: q.id,
@@ -163,8 +168,10 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
       raw: p,
     })),
   ]
-    .filter((d) => (typeFilter === "all" ? true : d.kind === typeFilter))
     .sort(quotesListCompare);
+  const docs = filterQuoteDocs(allDocs, qf);
+  // Stat cards: same filter minus status, so clicking a card shows exactly that count.
+  const statBase = filterQuoteDocs(allDocs, { ...qf, status: [] });
 
   const statCards = [
     { key: "draft", label: "Draft" },
@@ -172,7 +179,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
     { key: "accepted", label: "Accepted" },
     { key: "declined", label: "Declined" },
   ].map((s) => {
-    const rows = docs.filter((d) => d.status === s.key);
+    const rows = statBase.filter((d) => d.status === s.key);
     return {
       ...s,
       count: rows.length,
@@ -326,7 +333,15 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
         {/* Summary stat cards */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {statCards.map((s) => (
-            <Card key={s.key} className="shadow-sm">
+            <Card
+              key={s.key}
+              role="button"
+              tabIndex={0}
+              aria-pressed={statusFilter === s.key}
+              onClick={() => setStatusFilter(statusFilter === s.key ? "all" : s.key)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setStatusFilter(statusFilter === s.key ? "all" : s.key); } }}
+              className={`shadow-sm cursor-pointer transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${statusFilter === s.key ? "ring-2 ring-primary" : ""}`}
+            >
               <CardContent className="p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {s.label}
@@ -392,6 +407,17 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
             ))}
           </div>
         </div>
+
+        <FilterChips
+          shown={docs.length}
+          chips={[
+            ...(qf.status.length ? [{ key: "status", label: `Status: ${qf.status.join(", ")}` }] : []),
+            ...(qf.type ? [{ key: "type", label: qf.type === "estimate" ? "Estimates" : "Proposals" }] : []),
+            ...(qf.period ? [{ key: "period", label: qf.period === "today" ? "Today" : /d$/.test(qf.period) ? `Last ${qf.period.replace("d", "")} days` : qf.period }] : []),
+          ]}
+          onClear={(k) => setSearchParams((p) => clearParams(p, [k]))}
+          onClearAll={() => setSearchParams((p) => clearParams(p, ["status", "type", "period"]))}
+        />
 
         {/* Table */}
         {isLoading ? (

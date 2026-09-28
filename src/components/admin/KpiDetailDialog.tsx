@@ -1,3 +1,4 @@
+import { todayInJohannesburg } from "@/lib/todaysJobs";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -16,7 +17,7 @@ interface KpiDetailDialogProps {
 }
 
 const KpiDetailDialog = ({ open, onOpenChange, kpiKey, label, icon: Icon, color }: KpiDetailDialogProps) => {
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayInJohannesburg();
 
   const { data, isLoading } = useQuery({
     queryKey: ["kpi-detail", kpiKey],
@@ -81,7 +82,7 @@ async function fetchDetail(kpiKey: string, today: string): Promise<DetailRow[]> 
       const { data } = await supabase
         .from("leads")
         .select("id, customer_name, customer_address, service_type, status")
-        .gte("created_at", today + "T00:00:00")
+        .gte("created_at", today + "T00:00:00+02:00")
         .eq("status", "pending")
         .limit(50);
       return (data || []).map((l) => ({

@@ -1,3 +1,4 @@
+import { todayInJohannesburg } from "@/lib/todaysJobs";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -50,7 +51,7 @@ async function fetchPreview(kpiKey: string, today: string): Promise<PreviewRow[]
       const { data } =
         kpiKey === "new_leads"
           ? await query
-              .gte("created_at", today + "T00:00:00")
+              .gte("created_at", today + "T00:00:00+02:00")
               .eq("status", "pending")
               .order("created_at", { ascending: false })
               .limit(5)
@@ -143,7 +144,7 @@ const KpiHoverPreview = ({ kpiKey, label, viewAllHref, children }: Props) => {
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayInJohannesburg();
 
   const { data, isLoading } = useQuery({
     queryKey: ["kpi-preview", kpiKey, today],
