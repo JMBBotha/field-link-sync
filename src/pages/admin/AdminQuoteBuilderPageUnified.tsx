@@ -191,11 +191,12 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 
         <div className="flex items-center gap-1.5 rounded-xl bg-white/10 px-2.5 sm:px-3 py-1.5">
           <span className="hidden sm:inline text-xs text-white/70">
-            {totalItems} items · {zoneCount} zones
+            {totalItems} items · {zoneCount} zones ·
           </span>
           <span className="text-xs sm:text-sm font-bold text-white sm:ml-1">
-            R{totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+            {formatRand(totalAmount)}
           </span>
+          <span className="text-[10px] text-white/60">incl. VAT</span>
         </div>
 
         {meta?.quote_number ?
@@ -315,6 +316,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       items: displayQuoteTotals.itemCount,
       zones: displayQuoteTotals.zoneCount,
       subtotal: displayQuoteTotals.subtotal,
+      vat: displayQuoteTotals.vatAmount,
+      total: displayQuoteTotals.total,
     });
   }, [displayQuoteTotals, setLive]);
   useEffect(() => () => resetLive(), [resetLive]);
