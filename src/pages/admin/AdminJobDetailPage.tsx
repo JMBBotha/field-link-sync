@@ -22,6 +22,8 @@ import {
 import { format } from "date-fns";
 import { useState } from "react";
 import RequireRole from "@/components/RequireRole";
+import AssignTechDialog from "@/components/jobs/AssignTechDialog";
+import { useRole } from "@/hooks/useRole";
 import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import { PhotoGallery } from "@/components/PhotoGallery";
 import { useOfflineContext } from "@/contexts/OfflineContext";
@@ -53,6 +55,8 @@ const AdminJobDetailPage = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const { canAccessAdmin } = useRole();
 
   const { data: job, isLoading } = useQuery({
     queryKey: ["job-detail", id],
@@ -165,7 +169,13 @@ const AdminJobDetailPage = () => {
           <Button variant="ghost" size="sm" onClick={() => navigate("/admin/jobs")} className="gap-1.5 -ml-2">
             <ArrowLeft className="h-4 w-4" /> Jobs
           </Button>
+          {canAccessAdmin && (
+            <Button variant="outline" size="sm" className="ml-auto" onClick={() => setAssignOpen(true)}>
+              Assign tech
+            </Button>
+          )}
         </div>
+        <AssignTechDialog jobId={assignOpen ? j.id : null} onClose={() => setAssignOpen(false)} />
 
         {/* Job info */}
         <Card>

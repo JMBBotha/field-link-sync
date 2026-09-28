@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { parseQuoteParams, filterQuoteDocs, clearParams } from "@/lib/drilldown";
 import FilterChips from "@/components/shared/FilterChips";
+import RowMenu from "@/components/shared/RowMenu";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRegisterMandyActions } from "@/lib/mandy/registry";
@@ -557,6 +558,20 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                                   className="h-7 w-7"
                                 />
                               </>
+                            )}
+                            {doc.kind === "estimate" && (
+                              <RowMenu items={[
+                                { label: "Open", onSelect: () => openDoc(doc) },
+                                { label: "Edit", onSelect: () => onEditQuote(quote.id) },
+                                { label: "Copy client link", hidden: !quote.public_token, onSelect: () => { navigator.clipboard.writeText(publicQuoteUrl(quote.public_token)); toast({ title: "Link copied! 🔗" }); } },
+                                { label: "Share on WhatsApp", hidden: !quote.public_token, onSelect: () => {
+                                  const msg = `Hi ${doc.clientName || "there"}, your ${doc.kind} ${doc.ref} for ${formatZAR(doc.total)} is ready. View it here: ${publicQuoteUrl(quote.public_token)}`;
+                                  const digits = String(doc.clientPhone || "").replace(/\D/g, "").replace(/^0/, "27");
+                                  window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
+                                } },
+                                { label: "Convert to invoice", hidden: quote.status !== "accepted", disabled: converting === quote.id, onSelect: () => handleConvertToInvoice(quote.id), separatorBefore: true },
+                                { label: "Open client", hidden: !quote.customer_id, onSelect: () => navigate(`/admin/customers/${quote.customer_id}`) },
+                              ]} />
                             )}
                             {doc.status === "draft" && (
                               <Button

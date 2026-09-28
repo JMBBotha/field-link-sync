@@ -22,6 +22,7 @@ import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import { format } from "date-fns";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import AssignTechDialog from "@/components/jobs/AssignTechDialog";
+import RowMenu from "@/components/shared/RowMenu";
 import RequireRole from "@/components/RequireRole";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import BoardChip from "@/components/jobs/BoardChip";
@@ -225,6 +226,13 @@ const AdminJobsDispatchPage = () => {
               <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Quick view" onClick={e => { e.stopPropagation(); setDetailJob(job); }}>
                 <Eye className="h-3.5 w-3.5" />
               </Button>
+              <RowMenu label="Job actions" items={[
+                { label: "Open job", onSelect: () => navigate(rowTarget({ kind: "job", id: job.id })) },
+                { label: assignee ? "Reassign tech" : "Assign tech", onSelect: () => setAssignJobId(job.id) },
+                ...COLUMNS.filter(c => c.key !== job.status).map((c, i) => ({ label: `Move to ${c.label}`, onSelect: () => statusMutation.mutate({ jobId: job.id, status: c.key }), separatorBefore: i === 0 })),
+                { label: "Open invoice", hidden: !job.invoice_id, onSelect: () => navigate(`/admin/invoices/${job.invoice_id}`), separatorBefore: true },
+                { label: "Open client", hidden: !job.customer_id, onSelect: () => navigate(`/admin/customers/${job.customer_id}`) },
+              ]} />
             </div>
           </div>
 
@@ -293,6 +301,10 @@ const AdminJobsDispatchPage = () => {
                 <Badge variant="outline" className="text-[10px] capitalize">{e.status.replace(/_/g, " ")}</Badge>
               )}
               <Badge variant="secondary" className="text-[10px]">Lead</Badge>
+              <RowMenu label="Lead actions" items={[
+                { label: "Open lead", onSelect: go },
+                { label: "Open client", hidden: !e.customer_id, onSelect: () => navigate(`/admin/customers/${e.customer_id}`) },
+              ]} />
             </div>
           </div>
           {e.customer_address && (
