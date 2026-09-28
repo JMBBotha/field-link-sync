@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCompanySettings, CompanySettings } from "@/hooks/useCompanySettings";
 import { Loader2, Save } from "lucide-react";
+import MarginSettingsCard from "@/components/settings/MarginSettingsCard";
 
 const BillingTab = () => {
   const { settings, isLoading, saveSettings, isSaving } = useCompanySettings();
@@ -37,6 +38,8 @@ const BillingTab = () => {
           </div>
         </CardContent>
       </Card>
+
+      <MarginSettingsCard />
 
       <Card>
         <CardHeader><CardTitle>Banking Details (shown on invoices)</CardTitle></CardHeader>
