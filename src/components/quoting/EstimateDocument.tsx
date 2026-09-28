@@ -1,5 +1,5 @@
-import { useRef, type ReactNode } from "react";
-import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNewLineScroll } from "@/hooks/useNewLineScroll";
 import logo from "@/assets/logo.png";
@@ -38,6 +38,12 @@ export interface EstimateEditLine {
   isService?: boolean;
   /** Staff-only muted note next to the price (e.g. "cost R 1 234"); set by the staff builder only. */
   staffNote?: string | null;
+  /** Display-only short name (kit title / install companion); item_name is never rewritten unless edited. */
+  displayName?: string | null;
+  /** Unit next to qty, e.g. "3 m", "1 each", "0.5 × 3 m length", "3.5 h". */
+  unitText?: string | null;
+  /** Piping kit contents — read-only detail rows, not priced lines. */
+  kitItems?: { name: string; qty: string }[] | null;
 }
 
 /** One area section inside the quote body (staff edit mode only). */
@@ -199,6 +205,7 @@ const EstimateDocument = ({
     editing ? editing.areas.flatMap((a) => a.lines.map((l) => l.id)) : [],
     () => editRootRef.current,
   );
+  const [openKits, setOpenKits] = useState<Record<string, boolean>>({});
   const rollup = !editing && presentationMode === "clientRollup" ? clientAreas ?? [] : null;
   const { settings: authedSettings } = useCompanySettings();
   const settings = companyOverride
@@ -338,10 +345,10 @@ const EstimateDocument = ({
                   )}
                 </div>
 
-                <table className="mt-2 w-full border-collapse text-[12px]">
+                <table className="estimate-lines mt-2 w-full border-collapse text-[12px]">
 
                   <thead>
-                    <tr className="text-[10px] uppercase tracking-wider text-slate-500">
+                    <tr className="text-[10px] uppercase tracking-wider text-slate-500 max-sm:portrait:hidden">
                       <th className="py-2 text-left font-semibold">Description</th>
                       <th className="w-24 py-2 text-right font-semibold">Rate</th>
                       <th className="w-16 py-2 text-right font-semibold">Qty</th>
@@ -359,7 +366,7 @@ const EstimateDocument = ({
                           data-install-role={line.installRole || undefined}
                           onFocus={() => editing.onSelectLine(line.id)}
                           onClick={() => editing.onSelectLine(line.id)}
-                          className={`border-b border-slate-100 align-top ${
+                          className={`estimate-line border-b border-slate-100 align-top ${
                             selected ? "bg-sky-50/60 print:bg-transparent" : ""
                           } ${flashId === line.id ? "animate-pulse bg-amber-50 print:bg-transparent" : ""}`}
                         >
@@ -422,15 +429,38 @@ const EstimateDocument = ({
                                 {!line.installRole && line.perMetre && line.lengthLabel && (
                                   <div className="text-[10px] text-slate-500 print:hidden">{line.lengthLabel}</div>
                                 )}
+                                <div className="flex items-center gap-1">
+                                {line.kitItems && line.kitItems.length > 0 && (
+                                  <button
+                                    type="button"
+                                    aria-label={openKits[line.id] ? "Hide kit contents" : "Show kit contents"}
+                                    aria-expanded={!!openKits[line.id]}
+                                    onClick={(e) => { e.stopPropagation(); setOpenKits((o) => ({ ...o, [line.id]: !o[line.id] })); }}
+                                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-100 print:hidden"
+                                  >
+                                    {openKits[line.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                  </button>
+                                )}
                                 <input
-                                  key={`${line.id}-name`}
-                                  defaultValue={line.name}
+                                  key={`${line.id}-name-${line.displayName ?? ""}`}
+                                  defaultValue={line.displayName || line.name}
+                                  title={line.displayName ? line.name : undefined}
+                                  aria-label="Line name"
                                   onBlur={(e) => {
                                     const v = e.target.value.trim();
-                                    if (v && v !== line.name) editing.onLineChange(line.id, { item_name: v });
+                                    const shown = line.displayName || line.name;
+                                    if (v && v !== shown) editing.onLineChange(line.id, { item_name: v });
                                   }}
                                   className={`${inputBase} font-medium text-slate-800`}
                                 />
+                                </div>
+                                {line.kitItems && openKits[line.id] && (
+                                  <ul data-testid="kit-contents" className="mb-1 ml-7 space-y-0.5 text-[11px] text-slate-500">
+                                    {line.kitItems.map((k, idx) => (
+                                      <li key={idx} className="flex justify-between gap-2"><span>{k.name}</span>{k.qty && <span className="shrink-0">× {k.qty}</span>}</li>
+                                    ))}
+                                  </ul>
+                                )}
                                 <textarea
                                   key={`${line.id}-desc`}
                                   defaultValue={line.description ?? ""}
@@ -484,6 +514,9 @@ const EstimateDocument = ({
                               }}
                               className={`${inputBase} text-right text-slate-600`}
                             />
+                            {line.unitText && (
+                              <div data-testid="qty-unit" className="whitespace-nowrap text-[10px] text-slate-500 print:hidden">{line.unitText}</div>
+                            )}
                           </td>
                           <td className="py-2 text-right font-medium text-slate-900">
                             {formatCurrency(line.perMetre ? Math.round(line.quantity * line.unit_price * 100 + 1e-6) / 100 : line.quantity * line.unit_price)}

@@ -1024,3 +1024,11 @@ All colors MUST be HSL.
 /* Badges / pills keep AA contrast against dark surfaces. */
 .dark .badge-soft,
 .dark [data-slot="badge"] { color: hsl(var(--foreground)); }
+
+/* Staff estimate lines: one row from 640px or any landscape; stacked on narrow portrait (CSS only, no orientation lock). */
+@media (max-width: 639px) and (orientation: portrait) {
+  .estimate-lines, .estimate-lines tbody { display: block; }
+  .estimate-lines tr.estimate-line { display: grid; grid-template-columns: 1fr 4.5rem 6rem auto; column-gap: 0.25rem; align-items: start; padding-bottom: 0.25rem; }
+  .estimate-lines tr.estimate-line > td:first-child { grid-column: 1 / -1; padding-right: 0; }
+  .estimate-lines tr.estimate-line > td { display: block; }
+}
