@@ -9,7 +9,7 @@ describe("job times", () => {
     expect(jobStatusPatch("completed")).toEqual({ status: "completed" });
   });
   it("formats in Johannesburg", () => {
-    expect(formatJohannesburg("2026-09-28T22:30:00Z")).toBe("29 Sept 2026, 00:30".replace("Sept", formatJohannesburg("2026-09-28T22:30:00Z")!.split(" ")[1]));
+    expect(formatJohannesburg("2026-09-28T22:30:00Z")).toMatch(/^29 Sep\w* 2026, 00:30$/);
     expect(formatJohannesburg("2026-01-05T08:07:00Z")).toBe("5 Jan 2026, 10:07");
     expect(formatJohannesburg(null)).toBeNull();
   });
