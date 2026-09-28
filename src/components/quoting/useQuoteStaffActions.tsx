@@ -6,6 +6,7 @@ import { useRole } from "@/hooks/useRole";
 import { useToast } from "@/hooks/use-toast";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import { ToastAction } from "@/components/ui/toast";
+import { useUndoAction, QUOTE_UNDO_NOTE } from "@/components/shared/StatusUndo";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -16,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import type { RowMenuItem } from "@/components/shared/RowMenu";
 import {
   canMarkQuote, canChangeSalesperson, snapshotOf, buildAcceptPatch, buildDeclinePatch,
-  buildStatusUndoPatch, buildSalespersonPatch, buildLogRow, type StatusLogRow,
+  buildSalespersonPatch, buildLogRow, type StatusLogRow,
 } from "@/lib/quoteStaffActions";
 
 export type StaffQuote = {
@@ -38,6 +39,7 @@ export function useQuoteStaffActions(onChanged?: () => void) {
   const [salesFor, setSalesFor] = useState<StaffQuote | null>(null);
   const [salesPick, setSalesPick] = useState<string>("");
   const userId = user?.id ?? null;
+  const undo = useUndoAction();
 
   const { data: me } = useQuery({
     queryKey: ["quote-staff-me", userId],
@@ -69,16 +71,15 @@ export function useQuoteStaffActions(onChanged?: () => void) {
     try {
       await write(q, patch, buildLogRow(q, "status", prev.status, patch.status, userId));
       refresh();
+      const entry = undo.record({
+        entity_type: "quote", entity_id: q.id, field: "status", old_value: prev.status, new_value: patch.status,
+        extra_restore: { accepted_at: prev.accepted_at, accepted_by: prev.accepted_by, declined_at: prev.declined_at },
+        label: q.quote_number || "Quote", company_id: q.company_id,
+      });
       toast({
         title: kind === "accept" ? "Marked accepted" : "Marked declined",
-        description: kind === "accept" ? "Deposit invoice is created automatically." : undefined,
-        action: (
-          <ToastAction altText="Undo" onClick={async () => {
-            const undo = buildStatusUndoPatch(prev);
-            try { await write(q, undo, buildLogRow(q, "status", patch.status, prev.status, userId)); refresh(); toast({ title: "Undone" }); }
-            catch (e: any) { toast({ title: "Undo failed", description: e.message, variant: "destructive" }); }
-          }}>Undo</ToastAction>
-        ),
+        description: kind === "accept" ? `Deposit invoice is created automatically. ${QUOTE_UNDO_NOTE}` : undefined,
+        action: undo.action(entry),
       });
     } catch (e: any) {
       toast({ title: "Could not update quote", description: e.message, variant: "destructive" });

@@ -1,3 +1,4 @@
+import { useUndoAction } from "@/components/shared/StatusUndo";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,6 +57,7 @@ const AdminJobDetailPage = () => {
   const qc = useQueryClient();
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
+  const statusUndo = useUndoAction();
   const { canAccessAdmin } = useRole();
 
   const { data: job, isLoading } = useQuery({
@@ -98,6 +100,7 @@ const AdminJobDetailPage = () => {
   const changeStatus = async (nextStatus: "in_progress" | "completed") => {
     if (!id || !job) return;
     setPendingStatus(nextStatus);
+    const prevStatus = (job.status as string) ?? null;
 
     const detailKey = ["job-detail", id];
     const prevDetail = qc.getQueryData<any>(detailKey);
@@ -121,7 +124,11 @@ const AdminJobDetailPage = () => {
       if (nextStatus === "completed") patch.completed_at = new Date().toISOString();
       const { error } = await supabase.from("jobs").update(patch).eq("id", id);
       if (error) throw error;
-      toast({ title: nextStatus === "in_progress" ? "Job started" : "Job completed" });
+      const entry = statusUndo.record({
+        entity_type: "job", entity_id: id, field: "status", old_value: prevStatus, new_value: nextStatus,
+        label: job.title || "Job", company_id: job.company_id ?? null,
+      });
+      toast({ title: nextStatus === "in_progress" ? "Job started" : "Job completed", action: statusUndo.action(entry) });
       qc.invalidateQueries({ queryKey: detailKey });
       qc.invalidateQueries({ queryKey: ["jobs"] });
     } catch (err: any) {

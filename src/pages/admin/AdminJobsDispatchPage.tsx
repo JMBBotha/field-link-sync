@@ -28,6 +28,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import BoardChip from "@/components/jobs/BoardChip";
 import { LANE_META } from "@/lib/leadLane";
 import { loadEntries } from "@/lib/todaysJobs";
+import { useUndoAction } from "@/components/shared/StatusUndo";
 import { buildBoardRows, groupBoardRows, rowTarget, boardLane, rowAssignee, filterBoardRows, FILTER_KEYS, type BoardRow, type BoardFilters, type Person } from "@/lib/jobsBoard";
 import { AlertTriangle, Eye, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -140,12 +141,20 @@ const AdminJobsDispatchPage = () => {
   });
 
   // Status update mutation (drag-drop)
+  const statusUndo = useUndoAction();
   const statusMutation = useMutation({
     mutationFn: async ({ jobId, status }: { jobId: string; status: string }) => {
+      const prev = (jobs as any[]).find((j) => j.id === jobId);
       const { error } = await supabase.from("jobs").update({ status, updated_at: new Date().toISOString() }).eq("id", jobId);
       if (error) throw error;
+      return { jobId, status, prev };
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["jobs-dispatch"] }),
+    onSuccess: (r) => {
+      queryClient.invalidateQueries({ queryKey: ["jobs-dispatch"] });
+      if (!r?.prev || r.prev.status === r.status) return;
+      const entry = statusUndo.record({ entity_type: "job", entity_id: r.jobId, field: "status", old_value: r.prev.status ?? null, new_value: r.status, label: r.prev.title || "Job", company_id: r.prev.company_id ?? null });
+      toast({ title: `Moved to ${r.status.replace(/_/g, " ")}`, action: statusUndo.action(entry) });
+    },
     onError: (err: any) => toast({ title: "Status update failed", description: err.message, variant: "destructive" }),
   });
 
