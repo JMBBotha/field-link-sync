@@ -68,7 +68,7 @@ export default function EstimateBuilder({
 }: Props) {
   const {
     quoteId, meta, areas, items,
-    addArea, updateArea, deleteArea, updateItem, deleteItem, updateQuote,
+    addArea, updateArea, deleteArea, updateItem, deleteItem, updateQuote, addItem,
   } = useQuoteContext();
   const { products: liveProducts } = useQuoteBuilderProducts();
   const { bundles } = useQuoteBuilderBundles();
@@ -113,6 +113,7 @@ export default function EstimateBuilder({
     perMetre: isMetreLine(i as any),
     itemNumber: i.item_number ?? null,
     kitBundleId: (i.metadata as any)?.kit?.bundle_id ?? null,
+    isService: !!(i.metadata as any)?.catalog_service_id,
   });
 
   const editAreas: EstimateEditArea[] = useMemo(() => {
@@ -315,6 +316,22 @@ export default function EstimateBuilder({
             />
           ),
           discountControl,
+          onMoveLine: (id, areaId) => {
+            // A unit carries its install lines with it.
+            const kids = items.filter((x) => installTag(x)?.unit_item_id === id);
+            for (const x of [items.find((i) => i.id === id), ...kids]) if (x) void updateItem(x.id, { area_id: areaId } as any);
+            onChanged?.();
+          },
+          onDuplicateLine: async (id, areaId) => {
+            const src = items.find((i) => i.id === id);
+            if (!src) return;
+            const { id: _id, created_at: _c, updated_at: _u, quote_id: _q, ...rest } = src as any;
+            const md = { ...(rest.metadata || {}) };
+            delete md.install; // the copy is a stand-alone line, not linked to the original unit
+            const maxSort = Math.max(0, ...items.filter((i) => i.area_id === areaId).map((i) => Number(i.sort_order) || 0));
+            await addItem({ ...rest, metadata: md, area_id: areaId, sort_order: maxSort + 1 } as any);
+            onChanged?.();
+          },
 
         }}
       />
