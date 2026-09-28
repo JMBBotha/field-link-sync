@@ -5,6 +5,8 @@
  */
 import { Card } from "@/components/ui/card";
 import type { QuoteItem } from "@/types/quote";
+import { isLabourItem } from "@/lib/labour";
+import { computeMargin, MARGIN_AREA_NONE, type MarginLine, type MarginLineInput, type MarginSettings } from "@/lib/margin";
 
 const money = (n: number) =>
   `R ${Number(n || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -39,76 +41,84 @@ export function computeStaffMargin(items: QuoteItem[]) {
 interface Props {
   items: QuoteItem[];
   selectedId: string | null;
+  areas: { id: string; name: string }[];
+  discount: number;
+  settings: MarginSettings;
 }
 
-export default function StaffMarginCard({ items, selectedId }: Props) {
-  const topLevel = items.filter((i) => !i.parent_item_id);
-  const m = computeStaffMargin(items);
-  const totalCost = m.cost, totalProfit = m.profit, totalMarkup = m.markupPercent;
+const pctText = (p: number | null) => (p == null ? "—" : `${p.toFixed(1)}%`);
 
-  const selected = topLevel.find((i) => i.id === selectedId) || null;
-  const selKnown = selected ? lineUnitCostOrNull(selected) : null;
-  const selCost = selKnown ?? 0;
-  const selSell = selected ? Number(selected.unit_price || 0) : 0;
-  const selQty = selected ? Number(selected.quantity || 0) : 0;
-  const selMarkup = selCost > 0 ? ((selSell - selCost) / selCost) * 100 : 0;
-  const selProfit = selKnown == null ? null : (selSell - selCost) * selQty;
+export default function StaffMarginCard({ items, selectedId, areas, discount, settings }: Props) {
+  const inputs: MarginLineInput[] = items.filter((i) => !i.parent_item_id).map((i) => ({
+    id: i.id, name: i.item_name, areaId: i.area_id ?? null,
+    qty: Number(i.quantity || 0), unitPrice: Number(i.unit_price || 0),
+    unitCost: lineUnitCostOrNull(i), isLabour: isLabourItem(i),
+  }));
+  const m = computeMargin(inputs, discount, settings);
+  const areaName = (id: string) => (id === MARGIN_AREA_NONE ? "Other items" : areas.find((a) => a.id === id)?.name ?? "Area");
+  const selected = m.lines.find((l) => l.id === selectedId) || null;
+  const statusText = (l: MarginLine) =>
+    l.status === "cost_unknown" ? "cost unknown" : l.status === "labour_cost_not_set" ? "labour cost not set" : null;
 
   return (
-    <Card className="space-y-3 p-4 print:hidden">
+    <Card className="space-y-3 p-4 print:hidden" data-testid="staff-margin-card">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Staff only — cost &amp; margin</h2>
+        <h2 className="text-sm font-semibold">Profit — staff only</h2>
         <span className="text-[11px] text-muted-foreground">Never printed on the estimate</span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 text-sm">
-        <div>
-          <p className="text-[11px] text-muted-foreground">Total cost</p>
-          <p className="font-semibold tabular-nums">{money(totalCost)}</p>
-        </div>
-        <div>
-          <p className="text-[11px] text-muted-foreground">Total profit</p>
-          <p className="font-semibold tabular-nums text-emerald-600">{money(totalProfit)}</p>
-        </div>
-        <div>
-          <p className="text-[11px] text-muted-foreground">Markup</p>
-          <p className="font-semibold tabular-nums">{totalMarkup.toFixed(1)}%</p>
-        </div>
+      <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+        <div><p className="text-[11px] text-muted-foreground">Sell ex VAT</p><p className="font-semibold tabular-nums">{money(m.job.sell)}</p></div>
+        <div><p className="text-[11px] text-muted-foreground">Cost</p><p className="font-semibold tabular-nums">{money(m.job.cost)}</p></div>
+        <div><p className="text-[11px] text-muted-foreground">GP</p><p className="font-semibold tabular-nums">{money(m.job.gp)}</p></div>
+        <div><p className="text-[11px] text-muted-foreground">GP % · Target {m.target}% GP</p><p className="font-semibold tabular-nums">{pctText(m.job.gpPercent)}</p></div>
       </div>
+      {m.job.discount > 0 && <p className="text-[11px] text-muted-foreground">Includes quote discount of {money(m.job.discount)}.</p>}
 
-      {m.unknownCount > 0 && (
-        <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-          Cost unknown on {m.unknownCount} {m.unknownCount === 1 ? "line" : "lines"} ({money(m.unknownSell)} sell) — excluded from cost, profit and markup.
+      {m.belowTarget && (
+        <p role="status" className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          Job GP {pctText(m.job.gpPercent)} is below the {m.target}% target.
         </p>
       )}
+      {m.labourExcluded && (
+        <p className="rounded-md border border-border bg-muted px-3 py-2 text-xs">GP excludes labour — set labour cost rate in Settings</p>
+      )}
+      {m.unknownCostCount > 0 && (
+        <p className="text-xs text-destructive">{m.unknownCostCount} {m.unknownCostCount === 1 ? "line" : "lines"} without cost — left out of GP.</p>
+      )}
 
-      <div className="rounded-md border border-border p-3">
-        {selected ? (
-          <>
-            <p className="truncate text-xs font-medium">{selected.item_name}</p>
-            <div className="mt-2 grid grid-cols-4 gap-2 text-xs">
-              <div>
-                <p className="text-[11px] text-muted-foreground">Cost</p>
-                <p className="tabular-nums">{selKnown == null ? "Cost unknown" : money(selCost)}</p>
-              </div>
-              <div>
-                <p className="text-[11px] text-muted-foreground">M/up</p>
-                <p className="tabular-nums">{selCost > 0 ? `${selMarkup.toFixed(1)}%` : "—"}</p>
-              </div>
-              <div>
-                <p className="text-[11px] text-muted-foreground">Sell</p>
-                <p className="tabular-nums">{money(selSell)}</p>
-              </div>
-              <div>
-                <p className="text-[11px] text-muted-foreground">Line profit</p>
-                <p className="tabular-nums text-emerald-600">{selProfit == null ? "—" : money(selProfit)}</p>
-              </div>
-            </div>
-          </>
-        ) : (
-          <p className="text-xs text-muted-foreground">Select a line on the quote to see its margin.</p>
+      <div className="rounded-md border border-border p-3 text-sm">
+        <p>Your commission: <span className="font-semibold tabular-nums">{money(m.commission)}</span></p>
+        {m.commissionIfPricedCorrectly != null && (
+          <p>If priced correctly: <span className="font-semibold tabular-nums">{money(m.commissionIfPricedCorrectly)}</span></p>
         )}
+        <p className="mt-1 text-[11px] text-muted-foreground">Earned when the invoice is paid in full; overruns deducted</p>
       </div>
+
+      {Object.keys(m.areas).length > 0 && (
+        <div className="space-y-1 text-xs">
+          {Object.entries(m.areas).map(([id, a]) => (
+            <div key={id} className="flex justify-between gap-2">
+              <span className="truncate">{areaName(id)}</span>
+              <span className="tabular-nums">{money(a.gp)} · {pctText(a.gpPercent)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <details className="text-xs">
+        <summary className="cursor-pointer text-muted-foreground">Per line</summary>
+        <div className="mt-2 space-y-1">
+          {m.lines.map((l) => (
+            <div key={l.id} className={`grid grid-cols-[1fr_auto] gap-2 ${l.id === selected?.id ? "font-semibold" : ""}`}>
+              <span className="truncate">{l.name}</span>
+              <span className="tabular-nums">
+                {statusText(l) ?? `${money(l.cost!)} → ${money(l.sell)} · ${money(l.gp!)} · ${pctText(l.gpPercent)}`}
+              </span>
+            </div>
+          ))}
+        </div>
+      </details>
     </Card>
   );
 }

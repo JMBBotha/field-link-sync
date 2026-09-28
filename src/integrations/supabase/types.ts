@@ -759,11 +759,14 @@ export type Database = {
         Row: {
           created_at: string
           default_rate: number | null
+          gp_target_percent: number
           id: string
+          labour_cost_per_hour: number | null
           logo_url: string | null
           materials_markup_percent: number
           name: string
           onboarding_completed: boolean | null
+          sales_commission_percent: number
           services: string[] | null
           slug: string
           status: string
@@ -774,11 +777,14 @@ export type Database = {
         Insert: {
           created_at?: string
           default_rate?: number | null
+          gp_target_percent?: number
           id?: string
+          labour_cost_per_hour?: number | null
           logo_url?: string | null
           materials_markup_percent?: number
           name: string
           onboarding_completed?: boolean | null
+          sales_commission_percent?: number
           services?: string[] | null
           slug?: string
           status?: string
@@ -789,11 +795,14 @@ export type Database = {
         Update: {
           created_at?: string
           default_rate?: number | null
+          gp_target_percent?: number
           id?: string
+          labour_cost_per_hour?: number | null
           logo_url?: string | null
           materials_markup_percent?: number
           name?: string
           onboarding_completed?: boolean | null
+          sales_commission_percent?: number
           services?: string[] | null
           slug?: string
           status?: string

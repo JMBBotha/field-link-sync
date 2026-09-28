@@ -25,6 +25,7 @@ import { formatRand } from "@/utils/formatRand";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import QuoteQuickEditor from "@/components/quoting/QuoteQuickEditor";
 import StaffMarginCard from "@/components/quoting/StaffMarginCard";
+import { useMarginView } from "@/hooks/useMarginView";
 
 interface Props {
   quoteNumber: string;
@@ -72,6 +73,7 @@ export default function EstimateBuilder({
   const { products: liveProducts } = useQuoteBuilderProducts();
   const { bundles } = useQuoteBuilderBundles();
   const { toast } = useToast();
+  const margin = useMarginView(quoteId ?? null, meta?.company_id ?? null);
   const kitPool = useMemo(() => swappableKits(bundles as any, liveProducts), [bundles, liveProducts]);
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
@@ -319,7 +321,9 @@ export default function EstimateBuilder({
 
       <LabourPanel />
 
-      <StaffMarginCard items={topLevel} selectedId={selectedLineId} />
+      {margin.visible && (
+        <StaffMarginCard items={topLevel} selectedId={selectedLineId} areas={areas} discount={discount} settings={margin.settings} />
+      )}
     </div>
   );
 }
