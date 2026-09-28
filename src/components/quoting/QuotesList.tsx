@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { parseQuoteParams, filterQuoteDocs, clearParams } from "@/lib/drilldown";
 import FilterChips from "@/components/shared/FilterChips";
 import RowMenu from "@/components/shared/RowMenu";
+import { useQuoteStaffActions } from "@/components/quoting/useQuoteStaffActions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRegisterMandyActions } from "@/lib/mandy/registry";
@@ -75,6 +76,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const staffActions = useQuoteStaffActions();
 
   const handleConvertToInvoice = async (quoteId: string) => {
     if (!user?.id) return;
@@ -569,6 +571,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                                   const digits = String(doc.clientPhone || "").replace(/\D/g, "").replace(/^0/, "27");
                                   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
                                 } },
+                                ...staffActions.itemsFor(quote),
                                 { label: "Convert to invoice", hidden: quote.status !== "accepted", disabled: converting === quote.id, onSelect: () => handleConvertToInvoice(quote.id), separatorBefore: true },
                                 { label: "Open client", hidden: !quote.customer_id, onSelect: () => navigate(`/admin/customers/${quote.customer_id}`) },
                               ]} />
@@ -597,6 +600,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
         )}
       </div>
 
+      {staffActions.dialogs}
       <AlertDialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

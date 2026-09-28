@@ -52,8 +52,7 @@ export function useQuoteStaffActions(onChanged?: () => void) {
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["quotes"] });
-    qc.invalidateQueries({ queryKey: ["estimate"] });
-    qc.invalidateQueries({ queryKey: ["admin-quote"] });
+    qc.invalidateQueries({ queryKey: ["quote-document"] });
     onChanged?.();
   };
 

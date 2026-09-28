@@ -17,6 +17,8 @@ import EstimateBuilder from "@/components/quoting/EstimateBuilder";
 import VoiceQuoteStrip from "@/components/quoting/VoiceQuoteStrip";
 import MandyQuoteActions from "@/components/mandy/MandyQuoteActions";
 import StatusPill from "@/components/shared/StatusPill";
+import RowMenu from "@/components/shared/RowMenu";
+import { useQuoteStaffActions } from "@/components/quoting/useQuoteStaffActions";
 
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
@@ -234,7 +236,10 @@ const AdminEstimateDetailPage = () => {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-base font-bold">Estimate {quote.quote_number}</h1>
-        <div className="w-9" />
+        {staffActions.itemsFor(quote as any).some((i) => !i.hidden)
+          ? <RowMenu items={staffActions.itemsFor(quote as any).map((i) => ({ ...i, separatorBefore: false }))} />
+          : <div className="w-9" />}
+        {staffActions.dialogs}
       </div>
 
       {/* Status banner */}
