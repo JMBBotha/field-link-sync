@@ -1,5 +1,5 @@
 import { X as XIcon } from "lucide-react";
-import { parseLaneParam } from "@/lib/drilldown";
+import { parseLaneParam, filterLeadsByLane } from "@/lib/drilldown";
 import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
