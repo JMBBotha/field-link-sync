@@ -126,7 +126,6 @@ const AdminJobDetailPage = () => {
       if (error) throw error;
       const entry = statusUndo.record({
         entity_type: "job", entity_id: id, field: "status", old_value: prevStatus, new_value: nextStatus,
-        extra_restore: nextStatus === "in_progress" ? { started_at: job.started_at ?? null } : { completed_at: job.completed_at ?? null },
         label: job.title || "Job", company_id: job.company_id ?? null,
       });
       toast({ title: nextStatus === "in_progress" ? "Job started" : "Job completed", action: statusUndo.action(entry) });
