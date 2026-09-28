@@ -66,4 +66,4 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 
 ## Tech earnings split (2026-09-28)
 - [x] Set GP tech share to 50%, add 60% labour tech share, and keep labour cost unset.
-- [ ] Update staff-only maths/screens and verify tests and TypeScript.
+- [x] Update staff-only maths/screens and verify tests and TypeScript.

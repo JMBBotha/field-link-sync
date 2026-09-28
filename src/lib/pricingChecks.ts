@@ -46,7 +46,7 @@ export interface GpCheck {
 
 export function gpCheck(lines: CheckLine[], discount: number, s: MarginSettings): GpCheck {
   const priced = lines.filter((l) => !isNotPriced(l));
-  const inputs: MarginLineInput[] = priced.map((l) => ({ id: l.id, name: l.name, areaId: l.areaId, qty: l.qty, unitPrice: l.unitPrice, unitCost: l.unitCost, isLabour: l.isLabour }));
+  const inputs: MarginLineInput[] = priced.map((l) => ({ id: l.id, name: l.name, areaId: l.areaId, qty: l.qty, unitPrice: l.unitPrice, unitCost: l.unitCost, isLabour: l.isLabour, isService: l.isService }));
   // Discount share that lands on priced lines.
   const gross = lines.reduce((a, l) => a + l.qty * l.unitPrice, 0);
   const pricedGross = priced.reduce((a, l) => a + l.qty * l.unitPrice, 0);
