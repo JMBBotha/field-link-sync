@@ -1137,6 +1137,7 @@ export type Database = {
           created_at: string
           default_deposit_percentage: number | null
           default_hourly_rate: number | null
+          default_install_labour_hours: number
           default_payment_terms_days: number | null
           id: string
           logo_storage_path: string | null
@@ -1153,6 +1154,7 @@ export type Database = {
           created_at?: string
           default_deposit_percentage?: number | null
           default_hourly_rate?: number | null
+          default_install_labour_hours?: number
           default_payment_terms_days?: number | null
           id?: string
           logo_storage_path?: string | null
@@ -1169,6 +1171,7 @@ export type Database = {
           created_at?: string
           default_deposit_percentage?: number | null
           default_hourly_rate?: number | null
+          default_install_labour_hours?: number
           default_payment_terms_days?: number | null
           id?: string
           logo_storage_path?: string | null
