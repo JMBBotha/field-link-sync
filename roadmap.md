@@ -67,3 +67,11 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 ## Tech earnings split (2026-09-28)
 - [x] Set GP tech share to 50%, add 60% labour tech share, and keep labour cost unset.
 - [x] Update staff-only maths/screens and verify tests and TypeScript.
+
+## Per-area labour (2026-09-28)
+- [ ] Add company labour-hours default and staff Billing field.
+- [ ] Add pure area labour helpers and tests.
+- [ ] Render/edit per-area labour, unassigned notice, and remove bottom Labour panel.
+- [ ] Auto-create/adjust labour for unit adds/removals/quantity changes, preserving manual and existing lines.
+- [ ] Block explicit area/save/send/PDF/accept actions for missing labour; keep autosave and Mandy tools non-blocking.
+- [ ] Add AGENTS rule; run tests, TypeScript, and browser verification.
