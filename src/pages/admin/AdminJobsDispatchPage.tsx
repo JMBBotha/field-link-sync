@@ -22,9 +22,11 @@ import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import { format } from "date-fns";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import RequireRole from "@/components/RequireRole";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import BoardChip from "@/components/jobs/BoardChip";
+import { LANE_META } from "@/lib/leadLane";
 import { loadEntries } from "@/lib/todaysJobs";
-import { buildBoardRows, groupBoardRows, rowTarget, type BoardRow } from "@/lib/jobsBoard";
+import { buildBoardRows, groupBoardRows, rowTarget, boardLane, rowAssignee, filterBoardRows, FILTER_KEYS, type BoardRow, type BoardFilters, type Person } from "@/lib/jobsBoard";
 import { AlertTriangle, Eye, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -51,7 +53,13 @@ const AdminJobsDispatchPage = () => {
   const [detailJob, setDetailJob] = useState<any>(null);
   const [dragJobId, setDragJobId] = useState<string | null>(null);
   const [showAvailableOnly, setShowAvailableOnly] = useState(false);
-  const [showCancelled, setShowCancelled] = useState(false);
+  const [showCancelledState, setShowCancelled] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filters: BoardFilters = Object.fromEntries(FILTER_KEYS.map((k) => [k, searchParams.get(k)]));
+  const showCancelled = showCancelledState || filters.status === "cancelled";
+  const setFilter = (k: (typeof FILTER_KEYS)[number], v: string | null) =>
+    setSearchParams((p) => { const n = new URLSearchParams(p); if (v) n.set(k, v); else n.delete(k); return n; });
+  const clearFilters = () => setSearchParams((p) => { const n = new URLSearchParams(p); FILTER_KEYS.forEach((k) => n.delete(k)); return n; });
   const navigate = useNavigate();
 
   // Realtime: refresh dispatch board when jobs change
@@ -83,15 +91,15 @@ const AdminJobsDispatchPage = () => {
   });
 
   // Booked leads / schedule rows — same source as the Today's Jobs tile (not date-limited).
-  const { data: booked = { entries: [], names: {} as Record<string, string> }, isError: bookedError, refetch: refetchBooked } = useQuery({
+  const { data: booked = { entries: [], names: {} as Record<string, Person> }, isError: bookedError, refetch: refetchBooked } = useQuery({
     queryKey: ["jobs-dispatch-booked"],
     queryFn: async () => {
       const entries = await loadEntries({});
       const ids = [...new Set(entries.map((e) => e.agent_id).filter(Boolean))] as string[];
-      const names: Record<string, string> = {};
+      const names: Record<string, Person> = {};
       if (ids.length) {
-        const { data } = await supabase.from("profiles").select("id, full_name").in("id", ids);
-        (data || []).forEach((p: any) => { names[p.id] = p.full_name; });
+        const { data } = await supabase.from("profiles").select("id, full_name, participant_type").in("id", ids);
+        (data || []).forEach((p: any) => { names[p.id] = p; });
       }
       return { entries, names };
     },
@@ -171,8 +179,9 @@ const AdminJobsDispatchPage = () => {
 
   // Group jobs by status
   const board = useMemo(
-    () => groupBoardRows(buildBoardRows(jobs as any[], booked.entries), showCancelled),
-    [jobs, booked.entries, showCancelled],
+    () => groupBoardRows(filterBoardRows(buildBoardRows(jobs as any[], booked.entries), filters, booked.names), showCancelled),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [jobs, booked.entries, booked.names, showCancelled, searchParams.toString()],
   );
   const grouped = board.columns;
 
@@ -267,6 +276,31 @@ const AdminJobsDispatchPage = () => {
     return { internal, affiliated, network };
   }, [techs, showAvailableOnly, availability]);
 
+  const CardChips = ({ row }: { row: BoardRow }) => {
+    const a = rowAssignee(row, booked.names);
+    const lane = boardLane(row);
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+        <BoardChip label={`Filter ${LANE_META[lane].label}`} className={LANE_META[lane].className} onSelect={() => setFilter("lane", lane)}>
+          {LANE_META[lane].label}
+        </BoardChip>
+        {a ? (
+          <BoardChip
+            label={`Filter assignee ${a.name}`}
+            className={a.contractor ? "border-warning/40 bg-warning/15 text-warning" : "border-primary/30 bg-primary/10 text-primary"}
+            onSelect={() => setFilter("assignee", a.id)}
+          >
+            {a.contractor ? `Contractor · ${a.name}` : a.name}
+          </BoardChip>
+        ) : (
+          <BoardChip label="Filter unassigned" className="border-border bg-muted text-muted-foreground" onSelect={() => setFilter("assignee", "none")}>
+            Unassigned
+          </BoardChip>
+        )}
+      </div>
+    );
+  };
+
   const JobCard = ({ job }: { job: any }) => {
     const assignee = job.assignments?.find((a: any) => a.status !== "rejected");
     return (
@@ -324,12 +358,9 @@ const AdminJobsDispatchPage = () => {
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-1 border-t border-border/40">
-            {assignee ? (
-              <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-                {assignee.profiles?.full_name}
-              </span>
-            ) : (
+          <CardChips row={{ kind: "job", id: job.id, status: job.status ?? "", job }} />
+          <div className="flex items-center justify-between pt-1 border-t border-border/40 empty:hidden">
+            {assignee ? null : (
               <div className="flex gap-2 w-full">
                 <Button variant="outline" size="sm" className="h-9 flex-1 text-xs" onClick={e => { e.stopPropagation(); setAssignJobId(job.id); }}>
                   <Users className="h-3.5 w-3.5 mr-1.5" /> Assign
@@ -377,11 +408,7 @@ const AdminJobsDispatchPage = () => {
             <CalendarDays className="h-3.5 w-3.5 shrink-0" />
             {e.date}{e.start_time ? ` · ${e.start_time.slice(0, 5)}` : ""}
           </div>
-          {e.agent_id && (
-            <span className="inline-block text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-              {booked.names[e.agent_id] || "Assigned"}
-            </span>
-          )}
+          <CardChips row={row} />
         </CardContent>
       </Card>
     );
@@ -432,7 +459,31 @@ const AdminJobsDispatchPage = () => {
         </div>
       </div>
 
-      {board.cancelled > 0 && (
+      {(() => {
+        const active = FILTER_KEYS.filter((k) => filters[k]);
+        const label = (k: string, v: string) => {
+          if (k === "assignee") return v === "none" ? "Unassigned" : `Assignee: ${booked.names[v]?.full_name || (jobs as any[]).flatMap((j) => j.assignments || []).find((x: any) => x.profile_id === v)?.profiles?.full_name || "…"}`;
+          if (k === "lane") return v === "sales" ? "Sales" : "Service";
+          if (k === "date") return v === "today" ? "Today" : v;
+          if (k === "status") return `Status: ${v.replace(/_/g, " ")}`;
+          return `Type: ${v.replace(/_/g, " ")}`;
+        };
+        return (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-foreground">{board.visible} shown</span>
+            {active.map((k) => (
+              <Button key={k} variant="secondary" size="sm" className="h-8 rounded-full gap-1.5 text-xs max-w-full" onClick={() => setFilter(k, null)} aria-label={`Clear ${k} filter`}>
+                <span className="truncate">{label(k, filters[k]!)}</span> <X className="h-3 w-3 shrink-0" />
+              </Button>
+            ))}
+            {active.length > 0 && (
+              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={clearFilters}>Clear all</Button>
+            )}
+          </div>
+        );
+      })()}
+
+      {board.cancelled > 0 && filters.status !== "cancelled" && (
         <div>
           <Button variant={showCancelled ? "secondary" : "outline"} size="sm" className="h-8 rounded-full gap-1.5 text-xs" onClick={() => setShowCancelled(v => !v)}>
             {showCancelled ? <>Showing cancelled ({board.cancelled}) <X className="h-3 w-3" /></> : <>Show cancelled ({board.cancelled})</>}
@@ -457,7 +508,7 @@ const AdminJobsDispatchPage = () => {
         </div>
       ) : board.visible === 0 ? (
         <Card><CardContent className="p-10 text-center space-y-2">
-          <p className="font-semibold text-foreground">No open jobs</p>
+          <p className="font-semibold text-foreground">{FILTER_KEYS.some((k) => filters[k]) ? "No jobs match these filters" : "No open jobs"}</p>
           {board.cancelled > 0 && <p className="text-sm text-muted-foreground">{board.cancelled} cancelled job{board.cancelled === 1 ? "" : "s"} hidden — use the chip above to show them.</p>}
         </CardContent></Card>
       ) : (
