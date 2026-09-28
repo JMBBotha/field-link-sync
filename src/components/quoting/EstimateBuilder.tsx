@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuoteContext } from "@/contexts/QuoteContext";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { installTag, qtyUnitLabel, BRACKET_OPTIONS } from "@/lib/installTemplates";
-import { qtyLabel, shortInstallName, kitTitleFromMetadata, kitContents } from "@/lib/lineDisplay";
+import { qtyLabel, shortInstallName, kitTitleFromMetadata, kitContents, isAcUnitLine } from "@/lib/lineDisplay";
 import { catalogLineFields, kitSwapPatch, isMetreLine, metreLineTotal, kitLengthPatch } from "@/lib/mandy/quoteOps";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { swappableKits, kitSizeLabel } from "@/lib/kitSizes";
@@ -96,10 +96,10 @@ export default function EstimateBuilder({
     staleTime: 300_000,
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any)
-        .select("id, image_url")
+        .select("id, image_url, product_category, category, subcategory")
         .in("id", productIds);
       if (error) throw error;
-      return Object.fromEntries((data || []).map((p: any) => [p.id, p.image_url as string | null]));
+      return Object.fromEntries((data || []).map((p: any) => [p.id, p]));
     },
   });
 
@@ -109,7 +109,7 @@ export default function EstimateBuilder({
     description: i.description,
     quantity: Number(i.quantity || 0),
     unit_price: Number(i.unit_price || 0),
-    imageUrl: i.product_id ? (productImages as Record<string, string | null>)[i.product_id] ?? null : null,
+    imageUrl: i.product_id ? (productImages as Record<string, any>)[i.product_id]?.image_url ?? null : null,
     installRole: installTag(i)?.role ?? null,
     installUnitId: installTag(i)?.unit_item_id ?? null,
     lengthLabel: qtyUnitLabel(Number(i.quantity || 0), i.metadata as any, Number(i.unit_price || 0)),
@@ -120,7 +120,7 @@ export default function EstimateBuilder({
     kitLength: (i as any).length != null ? Number((i as any).length) : null,
     isService: !!(i.metadata as any)?.catalog_service_id || String(i.item_type || "").toLowerCase() === "service",
     isLabour: isLabourItem(i) || !!(i.metadata as any)?.labour,
-    isAcUnit: /air ?con/i.test(String(i.item_type || "")) && !(i as any).is_bundle && !(i.metadata as any)?.kit,
+    isAcUnit: isAcUnitLine({ item_name: i.item_name, item_type: i.item_type, is_bundle: (i as any).is_bundle, metadata: i.metadata as any, isLabour: isLabourItem(i) }, i.product_id ? (productImages as Record<string, any>)[i.product_id] : null),
     isInstallMaterial: !!(i as any).is_bundle || !!(i.metadata as any)?.kit || /^(consumables|installation kit)$/i.test(String(i.item_type || "").trim()),
     displayName: (() => {
       const dl = { item_name: i.item_name, quantity: Number(i.quantity || 0), unit_price: Number(i.unit_price || 0), length: (i as any).length ?? null, metadata: i.metadata as any };
