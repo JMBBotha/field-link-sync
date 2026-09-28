@@ -6,6 +6,8 @@ import { Percent, Clock, Trophy } from "lucide-react";
 import RandSign from "@/components/icons/RandSign";
 import { subDays } from "date-fns";
 import { useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { TILE_LINKS } from "@/lib/drilldown";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", maximumFractionDigits: 0 })
@@ -125,6 +127,7 @@ const PipelineMetrics = () => {
       hint: data ? `${data.openCount} open ${data.openCount === 1 ? "quote" : "quotes"}` : "",
       icon: RandSign,
       accent: "text-orange-500",
+      to: TILE_LINKS.openQuotesValue,
     },
     {
       key: "win",
@@ -147,7 +150,8 @@ const PipelineMetrics = () => {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
         {cards.map((c) => (
-          <Card key={c.key} className="surface-card surface-card-interactive">
+          <Card key={c.key} className={`surface-card surface-card-interactive ${"to" in c ? "cursor-pointer" : ""}`}
+            {...("to" in c ? { role: "link", tabIndex: 0, onClick: () => navigate((c as any).to), onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter") navigate((c as any).to); } } : {})}>
             <CardContent className="p-3 md:p-4">
               <div className="flex items-center gap-2 mb-1">
                 <c.icon className={`h-4 w-4 ${c.accent}`} />
@@ -161,7 +165,13 @@ const PipelineMetrics = () => {
               ) : (
                 <>
                   <p className="text-xl md:text-2xl font-bold tabular-nums leading-tight">{c.value}</p>
-                  {c.hint && (
+                  {c.key === "win" && data ? (
+                    <p className="text-[10px] md:text-[11px] text-muted-foreground mt-0.5 truncate">
+                      <Link to={TILE_LINKS.quotesWon90} className="hover:underline hover:text-foreground">{data.acceptedCount} won</Link>
+                      {" · "}
+                      <Link to={TILE_LINKS.quotesLost90} className="hover:underline hover:text-foreground">{data.declinedCount} lost</Link>
+                    </p>
+                  ) : c.hint && (
                     <p className="text-[10px] md:text-[11px] text-muted-foreground mt-0.5 truncate">
                       {c.hint}
                     </p>

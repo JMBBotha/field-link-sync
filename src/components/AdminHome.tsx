@@ -14,7 +14,6 @@ import MoneySummaryCard from "@/components/admin/MoneySummaryCard";
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import AdminMapPage from "@/pages/admin/AdminMapPage";
-import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
 import KpiHoverPreview from "@/components/admin/KpiHoverPreview";
 import { useLeadInbox, INBOX_ROUTE } from "@/hooks/useLeadInbox";
 import QuotePerformanceWidget from "@/components/analytics/QuotePerformanceWidget";
@@ -49,7 +48,6 @@ interface AdminHomeProps {
 
 const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const today = todayInJohannesburg();
-  const [selectedKpi, setSelectedKpi] = useState<string | null>(null);
   const { count: inboxCount } = useLeadInbox();
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const [jobDialog, setJobDialog] = useState<{ open: boolean; leadId?: string; customerId?: string }>({ open: false });
@@ -255,7 +253,6 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const [showMore, setShowMore] = useState(false);
 
 
-  const activeKpi = kpiCards.find((k) => k.key === selectedKpi);
   const getCompactStatus = (status?: string | null) => {
     const normalized = status || "pending";
     const labels: Record<string, string> = {
@@ -369,18 +366,6 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
 
       {/* Pipeline health metrics — 90-day window */}
       <PipelineMetrics />
-
-      {/* KPI Detail Dialog */}
-      {activeKpi && (
-        <KpiDetailDialog
-          open={!!selectedKpi}
-          onOpenChange={(open) => !open && setSelectedKpi(null)}
-          kpiKey={activeKpi.key}
-          label={activeKpi.label}
-          icon={activeKpi.icon}
-          color={activeKpi.color}
-        />
-      )}
 
       {/* Primary widgets — Recent Open Leads + Today's Dispatch */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 min-w-0">
