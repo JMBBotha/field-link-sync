@@ -139,3 +139,24 @@ describe("installation materials group", () => {
     expect(container.querySelector('[data-line-id="k"]')).toHaveClass("hidden");
   });
 });
+
+describe("collapsed install rows on phones", () => {
+  it("marks collapsed children and clears the mark when expanded", () => {
+    const lines: any[] = [
+      { id: "u", name: "u", description: null, quantity: 1, unit_price: 1, isAcUnit: true },
+      { id: "k", name: "k", description: null, quantity: 1, unit_price: 1, kitBundleId: "b" },
+    ];
+    const editing: any = { areas: [{ id: "a", name: "Bed", lines }], selectedLineId: null, onSelectLine() {}, onLineChange() {}, onDeleteLine() {}, onRenameArea() {}, onAddArea() {} };
+    const { container } = render(<EstimateDocument estimateNumber="Q" issueDate="2026-09-28" customerName="C" items={[]} subtotal={2} taxRate={0.15} taxAmount={0.3} grandTotal={2.3} editing={editing} />);
+    expect(container.querySelector('[data-line-id="k"]')).toHaveAttribute("data-install-collapsed", "true");
+    expect(container.querySelector('[data-line-id="u"]')).not.toHaveAttribute("data-install-collapsed");
+    fireEvent.click(screen.getByLabelText("Show installation materials"));
+    expect(container.querySelector('[data-line-id="k"]')).not.toHaveAttribute("data-install-collapsed");
+  });
+
+  it("index.css hides collapsed rows with !important", async () => {
+    const fs = await import("node:fs");
+    const css = fs.readFileSync(`${process.cwd()}/src/index.css`, "utf8");
+    expect(css).toMatch(/tr\.estimate-line\[data-install-collapsed="true"\]\s*\{\s*display:\s*none !important;/);
+  });
+});
