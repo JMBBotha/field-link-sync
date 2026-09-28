@@ -1036,4 +1036,7 @@ All colors MUST be HSL.
 }
 /* Collapsed install rows must beat the portrait grid rule above; they still print. */
 .estimate-lines tr.estimate-line[data-install-collapsed="true"] { display: none !important; }
-@media print { .estimate-lines tr.estimate-line[data-install-collapsed="true"] { display: revert !important; } }
+@media print {
+  .estimate-lines tr.estimate-line[data-install-collapsed="true"] { display: revert !important; }
+  .estimate-lines tr.estimate-install-summary { display: none !important; }
+}
