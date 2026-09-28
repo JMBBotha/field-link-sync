@@ -6,6 +6,7 @@ import { useNewLineScroll } from "@/hooks/useNewLineScroll";
 import logo from "@/assets/logo.png";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import type { ClientRollupArea } from "@/lib/clientQuoteRollup";
+import AreaLabourRow from "@/components/quoting/AreaLabourRow";
 
 export interface EstimateDocLineItem {
   description: string;
@@ -56,6 +57,8 @@ export interface EstimateEditLine {
   isInstallMaterial?: boolean;
   /** Labour line — never grouped. */
   isLabour?: boolean;
+  labourAuto?: boolean;
+  acUnitCount?: number;
 }
 
 /** One area section inside the quote body (staff edit mode only). */
@@ -63,6 +66,8 @@ export interface EstimateEditArea {
   id: string | null;
   name: string;
   lines: EstimateEditLine[];
+  labourLines?: EstimateEditLine[];
+  defaultLabourHours?: number;
 }
 
 /**
@@ -105,6 +110,9 @@ export interface EstimateEditing {
   /** Line ⋯ menu: move / duplicate into another real area. */
   onMoveLine?: (id: string, areaId: string) => void;
   onDuplicateLine?: (id: string, areaId: string) => void;
+  onAddLabour?: (areaId: string) => void;
+  onLabourChange?: (id: string, hours: number, rate?: number) => void;
+  unassignedLabour?: EstimateEditLine[];
 }
 
 
@@ -681,6 +689,17 @@ const EstimateDocument = ({
                   </tbody>
                 </table>
 
+                {area.id && area.lines.length > 0 && editing.onAddLabour && editing.onLabourChange && (
+                  <AreaLabourRow
+                    areaId={area.id}
+                    areaName={area.name}
+                    lines={area.labourLines || []}
+                    defaultHours={area.defaultLabourHours || 0}
+                    onAdd={() => editing.onAddLabour?.(area.id as string)}
+                    onChange={editing.onLabourChange}
+                  />
+                )}
+
                 {area.lines.length === 0 && (
                   <p className="py-4 text-center text-[11px] text-slate-400 print:hidden">
                     No lines here yet — use the add bar below to build this section.
@@ -697,6 +716,18 @@ const EstimateDocument = ({
             >
               <Plus className="h-3.5 w-3.5" /> Add area
             </button>
+            {!!editing.unassignedLabour?.length && (
+              <div className="border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 print:hidden" data-testid="unassigned-labour">
+                <p className="mb-2 font-semibold">Unassigned labour</p>
+                {editing.unassignedLabour.map((line) => (
+                  <div key={line.id} className="grid items-center gap-2 border-t border-amber-200 py-2 first:border-0 sm:grid-cols-[1fr_100px_120px]">
+                    <span>{line.name}</span>
+                    <Input aria-label="Unassigned labour hours" type="number" min="0" step="0.5" defaultValue={line.quantity} onBlur={(e) => editing.onLabourChange?.(line.id, Number(e.target.value))} className="h-8 text-right" />
+                    <Input aria-label="Unassigned labour rate" type="number" min="0" step="0.01" defaultValue={line.unit_price} onBlur={(e) => editing.onLabourChange?.(line.id, line.quantity, Number(e.target.value))} className="h-8 text-right" />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
         ) : rollup ? (

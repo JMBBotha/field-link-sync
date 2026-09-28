@@ -6,7 +6,6 @@
  * QuoteContext (quote_items / quote_areas). Cost, markup and profit live in a
  * separate staff card outside the pdf capture root.
  */
-import LabourPanel from "@/components/quoting/LabourPanel";
 import { isLabourItem } from "@/lib/labour";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -28,6 +27,11 @@ import QuoteQuickEditor from "@/components/quoting/QuoteQuickEditor";
 import StaffMarginCard, { lineUnitCostOrNull } from "@/components/quoting/StaffMarginCard";
 import PricingChecksRow from "@/components/quoting/PricingChecksRow";
 import { useMarginView } from "@/hooks/useMarginView";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useLabourNorms } from "@/hooks/useLabourNorms";
+import { serviceNormKey } from "@/lib/pricingChecks";
+import { applyAutoLabourDelta, areaLabourStatus, countAcUnits } from "@/lib/areaLabour";
+import { labourFields, planLabour, standardLabourRate } from "@/lib/labour";
 
 interface Props {
   quoteNumber: string;
@@ -76,6 +80,10 @@ export default function EstimateBuilder({
   const { bundles } = useQuoteBuilderBundles();
   const { toast } = useToast();
   const margin = useMarginView(quoteId ?? null, meta?.company_id ?? null);
+  const { settings: companySettings } = useCompanySettings();
+  const { data: labourNorms = [] } = useLabourNorms();
+  const labourRate = standardLabourRate(companySettings.default_hourly_rate);
+  const perUnitHours = Number(companySettings.default_install_labour_hours) || 3.5;
   const kitPool = useMemo(() => swappableKits(bundles as any, liveProducts), [bundles, liveProducts]);
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
@@ -120,6 +128,8 @@ export default function EstimateBuilder({
     kitLength: (i as any).length != null ? Number((i as any).length) : null,
     isService: !!(i.metadata as any)?.catalog_service_id || String(i.item_type || "").toLowerCase() === "service",
     isLabour: isLabourItem(i) || !!(i.metadata as any)?.labour,
+    labourAuto: (i.metadata as any)?.labour_auto === true,
+    acUnitCount: 0,
     isAcUnit: isAcUnitLine({ item_name: i.item_name, item_type: i.item_type, is_bundle: (i as any).is_bundle, metadata: i.metadata as any, isLabour: isLabourItem(i) }, i.product_id ? (productImages as Record<string, any>)[i.product_id] : null),
     isInstallMaterial: !!(i as any).is_bundle || !!(i.metadata as any)?.kit || /^(consumables|installation kit)$/i.test(String(i.item_type || "").trim()),
     displayName: (() => {
@@ -132,10 +142,14 @@ export default function EstimateBuilder({
   });
 
   const editAreas: EstimateEditArea[] = useMemo(() => {
-    const grouped: EstimateEditArea[] = areas.map((a) => ({
-      id: a.id,
-      name: a.name,
-      lines: topLevel
+    const grouped: EstimateEditArea[] = areas.map((a) => {
+      const areaItems = topLevel.filter((i) => i.area_id === a.id);
+      const unitCount = countAcUnits(areaItems.map((i) => ({ ...i, product: i.product_id ? (productImages as Record<string, any>)[i.product_id] : null })));
+      return {
+      id: a.id, name: a.name,
+      labourLines: areaItems.filter(isLabourItem).map((i) => ({ ...lineFor(i), acUnitCount: unitCount })),
+      defaultLabourHours: unitCount * perUnitHours,
+      lines: areaItems
         .filter((i) => i.area_id === a.id && !isLabourItem(i))
         .sort((x, y) => (x.sort_order || 0) - (y.sort_order || 0))
         .reduce<typeof topLevel>((acc, i, _n, all) => {
@@ -145,8 +159,8 @@ export default function EstimateBuilder({
           return acc;
         }, [])
         .map(lineFor),
-    }));
-    const orphans = topLevel.filter((i) => !i.area_id);
+    }});
+    const orphans = topLevel.filter((i) => !i.area_id && !isLabourItem(i));
     if (orphans.length > 0) {
       grouped.push({
         id: null,
@@ -157,7 +171,39 @@ export default function EstimateBuilder({
     if (grouped.length === 0) grouped.push({ id: null, name: DEFAULT_SECTION_LABEL, lines: [] });
     return grouped;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [areas, topLevel, productImages, margin.visible]);
+  }, [areas, topLevel, productImages, margin.visible, perUnitHours]);
+
+  const addLabourForArea = async (areaId: string) => {
+    if (!(labourRate && labourRate > 0)) { toast({ title: "Set a labour rate", description: "Set the standard labour rate in Billing first." }); return; }
+    const areaItems = topLevel.filter((i) => i.area_id === areaId);
+    const status = areaLabourStatus(areaItems.map((i) => ({ ...i, product: i.product_id ? (productImages as Record<string, any>)[i.product_id] : null })), perUnitHours);
+    let hours = status.defaultHours;
+    let auto = hours > 0;
+    if (!hours) {
+      const service = areaItems.find((i) => String(i.item_type).toLowerCase() === "service" || !!(i.metadata as any)?.catalog_service_id);
+      const key = service ? serviceNormKey(service.item_name) : null;
+      hours = key ? Number(labourNorms.find((norm) => norm.key === key)?.hours || 0) : 0;
+      auto = false;
+    }
+    const fields = labourFields(hours, labourRate, false, auto);
+    await addItem({ ...fields, area_id: areaId, sort_order: Math.max(0, ...items.map((i) => i.sort_order || 0)) + 1, source: "labour" } as any);
+    onChanged?.();
+  };
+
+  const changeLabour = async (id: string, hours: number, rate?: number) => {
+    const line = items.find((i) => i.id === id);
+    if (!line) return;
+    const chosenRate = rate != null && rate > 0 ? rate : Number((line.metadata as any)?.rate ?? line.unit_price ?? labourRate);
+    const plan = planLabour(line, hours, labourRate, chosenRate);
+    if (!plan.fields) return;
+    await updateItem(id, { ...plan.fields, metadata: { ...plan.fields.metadata, labour_auto: false } } as any);
+    onChanged?.();
+  };
+
+  const adjustAutoLabour = async (areaId: string | null, delta: number) => {
+    if (!areaId || !labourRate) return;
+    await applyAutoLabourDelta({ items, areaId, unitDelta: delta, perUnit: perUnitHours, rate: labourRate, addItem, updateItem });
+  };
 
 
   const subtotal = useMemo(
@@ -245,6 +291,9 @@ export default function EstimateBuilder({
           onSelectLine: setSelectedLineId,
           onLineChange: (id, patch) => {
             const cur = items.find((i) => i.id === id);
+            if (cur && isLabourItem(cur)) { void changeLabour(id, patch.quantity ?? Number(cur.quantity), patch.unit_price); return; }
+            const display = cur ? lineFor(cur) : null;
+            if (cur && display?.isAcUnit && patch.quantity != null) void adjustAutoLabour(cur.area_id, Number(patch.quantity) - Number(cur.quantity || 0));
             // Per-metre trunking: keep total_price = round(metres × length sell ÷ length, 2).
             if (cur && isMetreLine(cur as any) && (patch.quantity != null || patch.unit_price != null)) {
               const next = { ...cur, ...patch } as any;
@@ -291,6 +340,8 @@ export default function EstimateBuilder({
             });
           },
           onDeleteLine: (id) => {
+            const cur = items.find((i) => i.id === id);
+            if (cur && lineFor(cur).isAcUnit) void adjustAutoLabour(cur.area_id, -Number(cur.quantity || 0));
             void deleteItem(id);
             if (selectedLineId === id) setSelectedLineId(null);
             onChanged?.();
@@ -315,6 +366,11 @@ export default function EstimateBuilder({
           activeAreaId,
           onSelectArea: setActiveAreaId,
           onAddArea: async () => {
+            const last = editAreas.filter((a) => a.id).at(-1);
+            if (last && areaLabourStatus(topLevel.filter((i) => i.area_id === last.id), perUnitHours).missing) {
+              toast({ title: `${last.name} has no labour yet. Add labour first.`, action: <ToastAction altText="Add labour" onClick={() => document.getElementById(`area-labour-${last.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}>Add labour</ToastAction> });
+              return;
+            }
             const created = await addArea(`Area ${areas.length + 1}`);
             if (created?.id) {
               setActiveAreaId(created.id);
@@ -345,6 +401,7 @@ export default function EstimateBuilder({
                   document.querySelector(`[data-area-id="${escaped}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }, 0);
               }}
+              onUnitAdded={(areaId, qty) => void adjustAutoLabour(areaId, qty)}
             />
           ),
           discountControl,
@@ -364,11 +421,12 @@ export default function EstimateBuilder({
             await addItem({ ...rest, metadata: md, area_id: areaId, sort_order: maxSort + 1 } as any);
             onChanged?.();
           },
+          onAddLabour: (areaId) => void addLabourForArea(areaId),
+          onLabourChange: (id, hours, rate) => void changeLabour(id, hours, rate),
+          unassignedLabour: topLevel.filter((i) => isLabourItem(i) && (!i.area_id || !areas.some((a) => a.id === i.area_id))).map(lineFor),
 
         }}
       />
-
-      <LabourPanel />
 
       {margin.visible && (
         <div className="print:hidden" data-html2canvas-ignore>

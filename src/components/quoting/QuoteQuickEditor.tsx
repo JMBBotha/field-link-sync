@@ -62,12 +62,14 @@ export default function QuoteQuickEditor({
   onChanged,
   dropUp = false,
   onAddedToArea,
+  onUnitAdded,
 }: {
   onChanged?: () => void;
   /** Open the results list upward (used when the bar sits at the bottom of the document). */
   dropUp?: boolean;
   /** Focus the area that received the new line. */
   onAddedToArea?: (areaId: string) => void;
+  onUnitAdded?: (areaId: string, quantity: number) => void;
 }) {
   const { areas, items, addItem, addArea, meta } = useQuoteContext();
   const { toast } = useToast();
@@ -151,7 +153,8 @@ export default function QuoteQuickEditor({
     setAdding(p.id);
     try {
       // Shared with Mandy: same line + auto piping kit for AC units.
-      await addCatalogProductToQuote({ addItem, product: p, areaId, sortOrder: nextSortOrder(), bundles, templates, liveProducts });
+      const result = await addCatalogProductToQuote({ addItem, product: p, areaId, sortOrder: nextSortOrder(), bundles, templates, liveProducts });
+      if (result.line && isAcUnitLine({ item_name: result.line.item_name, item_type: result.line.item_type, metadata: result.line.metadata }, p)) onUnitAdded?.(areaId, Number(result.line.quantity) || 1);
       setProductTerm("");
       onChanged?.();
       onAddedToArea?.(areaId);
