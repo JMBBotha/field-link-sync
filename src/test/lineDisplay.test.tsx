@@ -89,10 +89,53 @@ describe("installation materials group", () => {
     expect(screen.queryByText(/Installation materials/)).toBeNull();
   });
 
-  it("leaves an orphan install line visible as a normal editable row", () => {
-    const { container } = renderEstimate([editable("orphan", { installRole: "bracket", installUnitId: "missing" })]);
-    expect(screen.queryByText(/Installation materials/)).toBeNull();
-    expect(container.querySelector('[data-line-id="orphan"]')).not.toHaveClass("hidden");
-    expect(screen.getByLabelText("Quantity")).toBeInTheDocument();
+  it("puts an install line with no unit before it into one area group", () => {
+    const rows = groupEstimateInstallLines([
+      editable("orphan", { installRole: "bracket", installUnitId: "missing" }),
+      editable("kit", { kitBundleId: "b" }),
+    ], "a");
+    expect(rows[0]).toMatchObject({ kind: "install-summary", unitId: "area-a" });
+    expect((rows[0] as any).lines).toHaveLength(2);
+  });
+
+  it("Q-2026-0013 shape: unit + 2 untagged kits → one group of 2", () => {
+    const rows = groupEstimateInstallLines([
+      editable("u", { isAcUnit: true }),
+      editable("k1", { isInstallMaterial: true, name: "24K INV PIPING KIT" }),
+      editable("k2", { isInstallMaterial: true, name: "09K INV PIPING KIT" }),
+    ]);
+    const sums = rows.filter((r) => r.kind === "install-summary");
+    expect(sums).toHaveLength(1);
+    expect((sums[0] as any).unitId).toBe("u");
+    expect((sums[0] as any).lines).toHaveLength(2);
+  });
+
+  it("Q-2026-0012 shape: unit + 5 Consumables → one group of 5", () => {
+    const names = ["Soft Drawn Copper 5/8", "Soft Drawn Copper 3/8", "Arma Flex 3/8", "Arma Flex 5/8", "Lasso Tape 48mm"];
+    const rows = groupEstimateInstallLines([editable("u", { isAcUnit: true }), ...names.map((n, i) => editable(`c${i}`, { name: n, isInstallMaterial: true }))]);
+    expect((rows.find((r) => r.kind === "install-summary") as any).lines).toHaveLength(5);
+  });
+
+  it("Q-2026-0014 tagged shape keeps 7 and never groups labour or services", () => {
+    const kids = Array.from({ length: 7 }, (_, i) => editable(`t${i}`, { installRole: `r${i}`, installUnitId: "u" }));
+    const rows = groupEstimateInstallLines([
+      editable("u", { isAcUnit: true }), ...kids,
+      editable("lab", { isLabour: true, name: "Labour copper run" }),
+      editable("svc", { isService: true, name: "Drain repair" }),
+    ]);
+    const sums = rows.filter((r) => r.kind === "install-summary");
+    expect(sums).toHaveLength(1);
+    expect((sums[0] as any).lines).toHaveLength(7);
+    expect(rows.filter((r) => r.kind === "line" && !(r as any).installGroupId).map((r: any) => r.line.id)).toEqual(["u", "lab", "svc"]);
+  });
+
+  it("starts collapsed again after remount", () => {
+    const lines = [editable("u", { isAcUnit: true }), editable("k", { kitBundleId: "b" })];
+    const first = renderEstimate(lines);
+    fireEvent.click(screen.getByLabelText("Show installation materials"));
+    first.unmount();
+    const { container } = renderEstimate(lines);
+    expect(screen.getByLabelText("Show installation materials")).toHaveAttribute("aria-expanded", "false");
+    expect(container.querySelector('[data-line-id="k"]')).toHaveClass("hidden");
   });
 });

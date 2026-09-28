@@ -118,7 +118,10 @@ export default function EstimateBuilder({
     kitBundleId: (i.metadata as any)?.kit?.bundle_id ?? null,
     kitPerMetre: (i.metadata as any)?.kit?.pricing_type === "p/meter",
     kitLength: (i as any).length != null ? Number((i as any).length) : null,
-    isService: !!(i.metadata as any)?.catalog_service_id,
+    isService: !!(i.metadata as any)?.catalog_service_id || String(i.item_type || "").toLowerCase() === "service",
+    isLabour: isLabourItem(i) || !!(i.metadata as any)?.labour,
+    isAcUnit: /air ?con/i.test(String(i.item_type || "")) && !(i as any).is_bundle && !(i.metadata as any)?.kit,
+    isInstallMaterial: !!(i as any).is_bundle || !!(i.metadata as any)?.kit || /^(consumables|installation kit)$/i.test(String(i.item_type || "").trim()),
     displayName: (() => {
       const dl = { item_name: i.item_name, quantity: Number(i.quantity || 0), unit_price: Number(i.unit_price || 0), length: (i as any).length ?? null, metadata: i.metadata as any };
       return kitTitleFromMetadata(dl) ?? shortInstallName(dl);
