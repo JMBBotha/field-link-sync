@@ -227,13 +227,13 @@ const AdminEstimateDetailPage = () => {
   }
 
   return (
-    <div className="estimate-page mx-auto min-h-full max-w-4xl space-y-4 p-4 pb-32">
+    <div className="estimate-page mx-auto min-h-full max-w-4xl space-y-3 px-2 pt-2 pb-[calc(8rem+env(safe-area-inset-bottom,0px))] sm:px-3">
       {/* Header */}
-      <div className="flex items-center justify-between print:hidden">
-        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => navigate("/admin/quotes")}>
+      <div className="flex h-9 items-center justify-between print:hidden">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/admin/quotes")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-lg font-bold">Estimate {quote.quote_number}</h1>
+        <h1 className="text-base font-bold">Estimate {quote.quote_number}</h1>
         <div className="w-9" />
       </div>
 
