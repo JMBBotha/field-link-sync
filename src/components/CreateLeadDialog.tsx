@@ -42,7 +42,7 @@ import { type CustomerMatch } from "@/lib/customerMatch";
 import { laneFromServiceType, leadLaneFields, type LeadLane } from "@/lib/leadLane";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import { useUnifiedClients, type UnifiedClient } from "@/hooks/useUnifiedClients";
-import { Search, User } from "lucide-react";
+import ClientTypeahead from "./ClientTypeahead";
 
 interface CreateLeadDialogProps {
   open: boolean;
