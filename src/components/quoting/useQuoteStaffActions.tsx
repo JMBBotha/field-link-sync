@@ -29,7 +29,7 @@ export type StaffQuote = {
 type Pending = { kind: "accept" | "decline"; quote: StaffQuote } | null;
 
 /** Menu items + dialogs for staff quote actions. Render `dialogs` once per screen. */
-export function useQuoteStaffActions(onChanged?: () => void) {
+export function useQuoteStaffActions(onChanged?: () => void, beforeAccept?: () => boolean | Promise<boolean>) {
   const { user } = useAuth();
   const { roles } = useRole();
   const { toast } = useToast();
@@ -112,7 +112,7 @@ export function useQuoteStaffActions(onChanged?: () => void) {
     const canMark = !!me && canMarkQuote(access, q);
     const s = String(q.status || "").toLowerCase();
     return [
-      { label: "Mark accepted", hidden: !canMark || s === "accepted", onSelect: () => setPending({ kind: "accept", quote: q }), separatorBefore: true },
+      { label: "Mark accepted", hidden: !canMark || s === "accepted", onSelect: async () => { if (!beforeAccept || await beforeAccept()) setPending({ kind: "accept", quote: q }); }, separatorBefore: true },
       { label: "Mark declined", hidden: !canMark || s === "declined", onSelect: () => setPending({ kind: "decline", quote: q }) },
       { label: "Change salesperson…", hidden: !me || !canChangeSalesperson(access), onSelect: () => { setSalesPick(q.sales_engineer_id || ""); setSalesFor(q); } },
     ];
