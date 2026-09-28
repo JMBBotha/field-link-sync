@@ -19,7 +19,7 @@ export default function ServicesCatalogCard() {
     enabled: canWrite,
     queryFn: async () => {
       const [s, c, m] = await Promise.all([
-        (supabase.from("catalog_services") as any).select("id, name, description, sort_order, origin, owner_company_id, is_active").eq("is_active", true).order("sort_order", { nullsFirst: false }),
+        (supabase.from("catalog_services") as any).select("id, name, description, sort_order, origin, owner_company_id, is_active").order("sort_order", { nullsFirst: false }),
         (supabase.from("companies") as any).select("id, name, is_master, custom_service_limit"),
         (supabase.from("company_network_members") as any).select("member_company_id"),
       ]);
@@ -37,8 +37,9 @@ export default function ServicesCatalogCard() {
     refresh();
   };
   const patch = (id: string, v: Record<string, unknown>) => run((supabase.from("catalog_services") as any).update(v).eq("id", id));
-  const core = data.services.filter((s) => s.origin === "core");
-  const custom = data.services.filter((s) => s.origin === "custom");
+  const core = data.services.filter((s) => s.origin === "core" && s.is_active);
+  const custom = data.services.filter((s) => s.origin === "custom" && s.is_active);
+  const archived = data.services.filter((s) => !s.is_active);
   const nextOrder = Math.max(0, ...core.map((s) => s.sort_order ?? 0)) + 1;
 
   return (
@@ -47,13 +48,14 @@ export default function ServicesCatalogCard() {
       <CardContent className="space-y-4 text-sm">
         <div className="space-y-2">
           {core.map((s) => (
-            <div key={s.id} className="grid grid-cols-[3.5rem_1fr] gap-2 sm:grid-cols-[3.5rem_1fr_1fr]">
+            <div key={s.id} className="grid grid-cols-[3.5rem_1fr_auto] gap-2 sm:grid-cols-[3.5rem_1fr_1fr_auto]">
               <Input type="number" className="h-8" defaultValue={s.sort_order ?? ""} aria-label="Order"
                 onBlur={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n !== s.sort_order) void patch(s.id, { sort_order: n }); }} />
               <Input className="h-8" defaultValue={s.name} maxLength={120} aria-label="Name"
                 onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== s.name) void patch(s.id, { name: v }); }} />
-              <Input className="col-span-2 h-8 sm:col-span-1" defaultValue={s.description ?? ""} maxLength={1000} aria-label="Description"
+              <Input className="col-span-2 h-8 sm:col-span-1 order-last sm:order-none" defaultValue={s.description ?? ""} maxLength={1000} aria-label="Description"
                 onBlur={(e) => { if (e.target.value !== (s.description ?? "")) void patch(s.id, { description: e.target.value || null }); }} />
+              <Button size="sm" variant="ghost" className="h-8" onClick={() => void patch(s.id, { is_active: false })}>Archive</Button>
             </div>
           ))}
         </div>
@@ -72,6 +74,18 @@ export default function ServicesCatalogCard() {
             </div>
           ))}
         </div>
+
+        {archived.length > 0 && (
+          <div className="space-y-2 border-t border-border pt-3">
+            <p className="font-medium">Archived</p>
+            {archived.map((s) => (
+              <div key={s.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span className="min-w-0 flex-1 truncate text-muted-foreground">{s.name}{s.origin === "custom" ? ` · ${nameOf(s.owner_company_id)}` : ""}</span>
+                <Button size="sm" variant="outline" onClick={() => void patch(s.id, { is_active: true })}>Restore</Button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="space-y-2 border-t border-border pt-3">
           <p className="font-medium">Custom service limit per company</p>
