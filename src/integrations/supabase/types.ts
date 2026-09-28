@@ -580,6 +580,69 @@ export type Database = {
           },
         ]
       }
+      catalog_services: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          origin: string
+          owner_company_id: string
+          promoted_at: string | null
+          promoted_by: string | null
+          search_aliases: string[] | null
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          origin?: string
+          owner_company_id: string
+          promoted_at?: string | null
+          promoted_by?: string | null
+          search_aliases?: string[] | null
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          origin?: string
+          owner_company_id?: string
+          promoted_at?: string | null
+          promoted_by?: string | null
+          search_aliases?: string[] | null
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_services_owner_company_id_fkey"
+            columns: ["owner_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_services_owner_company_id_fkey"
+            columns: ["owner_company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       change_order_line_items: {
         Row: {
           change_order_id: string
@@ -758,6 +821,7 @@ export type Database = {
       companies: {
         Row: {
           created_at: string
+          custom_service_limit: number
           default_rate: number | null
           gp_target_percent: number
           id: string
@@ -777,6 +841,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_service_limit?: number
           default_rate?: number | null
           gp_target_percent?: number
           id?: string
@@ -796,6 +861,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_service_limit?: number
           default_rate?: number | null
           gp_target_percent?: number
           id?: string
