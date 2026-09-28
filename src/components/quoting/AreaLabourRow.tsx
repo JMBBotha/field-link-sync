@@ -14,16 +14,14 @@ interface Props {
 
 export default function AreaLabourRow({ areaId, areaName, lines, defaultHours, onAdd, onChange }: Props) {
   const hours = lines.reduce((sum, line) => sum + Math.max(0, line.quantity), 0);
-  if (!lines.length || hours <= 0) {
-    return (
-      <div id={`area-labour-${areaId}`} data-testid={`area-labour-${areaId}`} className="mt-2 flex items-center justify-between gap-3 border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 print:hidden">
-        <span className="font-medium">Labour needed</span>
-        <Button type="button" size="sm" variant="outline" onClick={onAdd}>Add labour</Button>
-      </div>
-    );
-  }
   return (
     <div id={`area-labour-${areaId}`} data-testid={`area-labour-${areaId}`} className="mt-2 border-t border-slate-200 pt-2 print:hidden">
+      {hours <= 0 && (
+        <div className="mb-2 flex items-center justify-between gap-3 border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <span className="font-medium">Labour needed</span>
+          <Button type="button" size="sm" variant="outline" onClick={onAdd}>Add labour</Button>
+        </div>
+      )}
       {lines.map((line) => {
         const differs = !line.labourAuto && defaultHours > 0 && Math.abs(line.quantity - defaultHours) > 0.001;
         return (

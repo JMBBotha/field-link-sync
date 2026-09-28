@@ -411,8 +411,13 @@ export default function EstimateBuilder({
           discountControl,
           onMoveLine: (id, areaId) => {
             // A unit carries its install lines with it.
+            const source = items.find((i) => i.id === id);
             const kids = items.filter((x) => installTag(x)?.unit_item_id === id);
-            for (const x of [items.find((i) => i.id === id), ...kids]) if (x) void updateItem(x.id, { area_id: areaId } as any);
+            for (const x of [source, ...kids]) if (x) void updateItem(x.id, { area_id: areaId } as any);
+            if (source && lineFor(source).isAcUnit && source.area_id !== areaId) {
+              void adjustAutoLabour(source.area_id, -Number(source.quantity || 0));
+              void adjustAutoLabour(areaId, Number(source.quantity || 0));
+            }
             onChanged?.();
           },
           onDuplicateLine: async (id, areaId) => {
@@ -423,6 +428,7 @@ export default function EstimateBuilder({
             delete md.install; // the copy is a stand-alone line, not linked to the original unit
             const maxSort = Math.max(0, ...items.filter((i) => i.area_id === areaId).map((i) => Number(i.sort_order) || 0));
             await addItem({ ...rest, metadata: md, area_id: areaId, sort_order: maxSort + 1 } as any);
+            if (lineFor(src).isAcUnit) await adjustAutoLabour(areaId, Number(src.quantity || 0));
             onChanged?.();
           },
           onAddLabour: (areaId) => void addLabourForArea(areaId),
