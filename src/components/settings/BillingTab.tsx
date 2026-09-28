@@ -7,7 +7,6 @@ import { useCompanySettings, CompanySettings } from "@/hooks/useCompanySettings"
 import { Loader2, Save } from "lucide-react";
 import MarginSettingsCard from "@/components/settings/MarginSettingsCard";
 import NetworkMembersCard from "@/components/settings/NetworkMembersCard";
-import ServicesCatalogCard from "@/components/settings/ServicesCatalogCard";
 
 const BillingTab = () => {
   const { settings, isLoading, saveSettings, isSaving } = useCompanySettings();
@@ -43,7 +42,6 @@ const BillingTab = () => {
 
       <MarginSettingsCard />
       <NetworkMembersCard />
-      <ServicesCatalogCard />
 
       <Card>
         <CardHeader><CardTitle>Banking Details (shown on invoices)</CardTitle></CardHeader>

@@ -51,10 +51,10 @@ export function useProductOptions() {
     let cancelled = false;
     Promise.all([
       supabase
-        .from("service_templates")
-        .select("id, name, description, default_rate, category")
+        .from("catalog_services" as any)
+        .select("id, name, description, sort_order, origin")
         .eq("is_active", true)
-        .order("name"),
+        .order("sort_order", { nullsFirst: false }),
       supabase
         .from("supplier_products")
         .select("id, product_code, short_name, description, cost_price, default_markup_percent, markup_percent, category, is_pinned")
@@ -65,22 +65,22 @@ export function useProductOptions() {
       .then(([svcRes, prodRes]) => {
         if (cancelled) return;
         if (svcRes.error) {
-          console.error("[useProductOptions] service_templates error:", svcRes.error);
+          console.error("[useProductOptions] catalog_services error:", svcRes.error);
           return;
         }
         if (prodRes.error) {
           console.error("[useProductOptions] supplier_products error:", prodRes.error);
           return;
         }
-        const svcData = svcRes.data || [];
+        const svcData = ((svcRes.data || []) as any[]).filter((s) => s.origin === "core");
         const prodData = prodRes.data || [];
         const merged: ProductOption[] = [
           ...svcData.map((s) => ({
             id: s.id,
             name: s.name,
             description: s.description,
-            rate: Number(s.default_rate),
-            category: s.category,
+            rate: 0,
+            category: "Services",
             isFavorite: false,
             source: "template" as const,
           })),

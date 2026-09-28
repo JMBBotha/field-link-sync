@@ -9,7 +9,7 @@ import { Upload, FileSpreadsheet, X, Check, Loader2, AlertCircle } from "lucide-
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-type ImportTarget = "customers" | "inventory_items" | "flat_rate_items";
+type ImportTarget = "customers" | "inventory_items";
 
 const TARGET_FIELDS: Record<ImportTarget, { field: string; required: boolean; label: string }[]> = {
   customers: [
@@ -28,13 +28,6 @@ const TARGET_FIELDS: Record<ImportTarget, { field: string; required: boolean; la
     { field: "unit_cost", required: false, label: "Unit Cost" },
     { field: "min_stock_level", required: false, label: "Min Stock" },
     { field: "supplier", required: false, label: "Supplier" },
-  ],
-  flat_rate_items: [
-    { field: "name", required: true, label: "Name" },
-    { field: "category", required: true, label: "Category" },
-    { field: "standard_price", required: true, label: "Price" },
-    { field: "description", required: false, label: "Description" },
-    { field: "estimated_hours", required: false, label: "Est. Hours" },
   ],
 };
 
