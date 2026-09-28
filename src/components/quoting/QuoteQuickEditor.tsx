@@ -260,7 +260,7 @@ export default function QuoteQuickEditor({
     await addCatalogService(data as CatalogService);
   };
 
-  const showServiceList = serviceFocus || serviceResults.length > 0 || serviceTerm.trim().length > 0;
+  const showServiceList = customOpen || serviceFocus || serviceResults.length > 0 || serviceTerm.trim().length > 0;
 
   return (
     <div className="print:hidden">
