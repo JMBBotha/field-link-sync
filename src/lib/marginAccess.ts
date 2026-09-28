@@ -16,6 +16,7 @@ export interface MarginAccessInput {
 export function canSeeMargin({ userId, roles, dispatchRole, mode, quote }: MarginAccessInput): boolean {
   if (!userId || mode === "agent") return false;
   if (roles.includes("admin")) return true;
+  if (roles.every((r) => r === "field_agent")) return false;
   const owns = !!quote && [quote.sales_engineer_id, quote.created_by, quote.owner_id].includes(userId);
   if (dispatchRole === "sales") return owns;
   if (roles.includes("dispatcher")) return true;
