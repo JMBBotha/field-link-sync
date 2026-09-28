@@ -4,18 +4,21 @@ import type { UnifiedClient } from "@/hooks/useUnifiedClients";
 interface ClientTypeaheadProps {
   /** Current text in the name field. Empty/whitespace => render nothing. */
   query: string;
+  /** Whether the name field is focused. False => render nothing. */
+  open: boolean;
   clients: UnifiedClient[];
   onSelect: (client: UnifiedClient) => void;
 }
 
 /**
  * Type-ahead list of existing clients shown under the customer name field.
- * Renders nothing until the user has typed at least one character, so the
- * new-lead form is immediately usable with no client list in the way.
+ * Renders nothing until the field is focused AND the user has typed at
+ * least one character, so the new-lead form is immediately usable with no
+ * client list in the way.
  */
-const ClientTypeahead = ({ query, clients, onSelect }: ClientTypeaheadProps) => {
+const ClientTypeahead = ({ query, open, clients, onSelect }: ClientTypeaheadProps) => {
   const q = query.trim().toLowerCase();
-  if (!q) return null;
+  if (!open || !q) return null;
 
   const matches = clients
     .filter((c) => c.customer_id) // only real customers are linkable
@@ -40,7 +43,15 @@ const ClientTypeahead = ({ query, clients, onSelect }: ClientTypeaheadProps) => 
           key={c.customer_id}
           type="button"
           className="w-full flex items-center gap-3 px-3 py-2 hover:bg-accent text-left"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            onSelect(c);
+          }}
           onMouseDown={(e) => {
+            e.preventDefault();
+            onSelect(c);
+          }}
+          onTouchStart={(e) => {
             e.preventDefault();
             onSelect(c);
           }}
