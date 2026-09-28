@@ -7,6 +7,7 @@ import logo from "@/assets/logo.png";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import type { ClientRollupArea } from "@/lib/clientQuoteRollup";
 import AreaLabourRow from "@/components/quoting/AreaLabourRow";
+import { Input } from "@/components/ui/input";
 
 export interface EstimateDocLineItem {
   description: string;
