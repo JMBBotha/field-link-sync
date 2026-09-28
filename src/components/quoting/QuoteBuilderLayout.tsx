@@ -45,7 +45,7 @@ export default function QuoteBuilderLayout({ left, middle, side, sideTitle = "Qu
 
       <div data-testid="qb-middle" className="flex min-w-0 flex-1 flex-col min-h-0 overflow-y-auto overscroll-contain">
         {middle}
-        <div data-testid="qb-sticky-spacer" aria-hidden className="shrink-0" style={{ height: `calc(${stickyPad} + env(safe-area-inset-bottom, 0px))` }} />
+        <div data-testid="qb-sticky-spacer" data-pad={stickyPad} aria-hidden className="shrink-0" style={{ height: `calc(${stickyPad} + env(safe-area-inset-bottom, 0px))` }} />
       </div>
 
       {compact ? (

@@ -45,7 +45,7 @@ describe("quote builder layout", () => {
     // last line is followed by the sticky-bar spacer inside the same scroller
     const spacer = screen.getByTestId("qb-sticky-spacer");
     expect(mid.lastElementChild).toBe(spacer);
-    expect(spacer.getAttribute("style")).toMatch(/4rem/);
+    expect(spacer.dataset.pad).toBe("4rem");
     expect(screen.getByTestId("qb-side").dataset.state).toBe("closed");
     expect(screen.queryByText("summary")).toBeNull();
     expect(screen.getByText("price not set")).toBeTruthy();
