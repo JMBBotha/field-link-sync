@@ -32,7 +32,7 @@ import { fetchTodaysJobs, fetchOverdue, todayInJohannesburg, loadEntries } from 
 import { buildBoardRows } from "@/lib/jobsBoard";
 import { fetchMoneySummary } from "@/lib/moneySummary";
 import { TILE_LINKS, filterQuoteDocs, filterInvoices, PENDING_QUOTES_FILTER, OVERDUE_INVOICES_FILTER, REVENUE_TODAY_FILTER, D1_TILE_LINKS, filterVisitsBooked, filterLeadsByLane } from "@/lib/drilldown";
-import { CalendarCheck, Wrench, Wallet } from "lucide-react";
+import { CalendarCheck, Wallet } from "lucide-react";
 import { fetchOverdueMaintenanceCount } from "@/lib/maintenanceMetrics";
 
 
@@ -320,7 +320,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
 
 
         {isLoading
-          ? Array.from({ length: 5 }).map((_, i) => (
+          ? Array.from({ length: 8 }).map((_, i) => (
               <Card key={i} className="surface-card">
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center gap-2">
