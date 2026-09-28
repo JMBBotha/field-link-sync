@@ -443,7 +443,7 @@ const EstimateDocument = ({
                         const open = !!openInstallGroups[row.unitId];
                         const total = row.lines.reduce((sum, child) => sum + lineAmount(child), 0);
                         return (
-                          <tr key={`install-summary-${row.unitId}`} className="border-b border-slate-100 bg-slate-50 print:hidden">
+                          <tr key={`install-summary-${row.unitId}`} className="estimate-install-summary border-b border-slate-100 bg-slate-50 print:hidden">
                             <td colSpan={5} className="py-1.5">
                               <button
                                 type="button"
@@ -470,6 +470,7 @@ const EstimateDocument = ({
                           key={line.id}
                           data-line-id={line.id}
                           data-install-role={line.installRole || undefined}
+                          data-install-collapsed={row.installGroupId && !openInstallGroups[row.installGroupId] ? "true" : undefined}
                           onFocus={() => editing.onSelectLine(line.id)}
                           onClick={() => editing.onSelectLine(line.id)}
                           className={`estimate-line border-b border-slate-100 align-top ${
