@@ -62,9 +62,11 @@ interface ProductInfoDialogProps {
   open?: boolean;
   /** Callback when controlled Dialog open state changes */
   onOpenChange?: (open: boolean) => void;
+  /** Staff-only cost row (canSeeMargin). When false, cost/markup rows are hidden. */
+  showCost?: boolean;
 }
 
-export default function ProductInfoDialog({ product, onMarkupSaved, open: controlledOpen, onOpenChange }: ProductInfoDialogProps) {
+export default function ProductInfoDialog({ product, onMarkupSaved, open: controlledOpen, onOpenChange, showCost = true }: ProductInfoDialogProps) {
   const { isAdmin } = useRole();
   const btu = detectBTU(product);
   const initialMarkup = resolveProductMarkupPercent(product as any);
@@ -201,13 +203,18 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
 
               {/* Pricing grid */}
               <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 rounded-lg border bg-muted/20 p-3">
-                <InfoRow label="Cost Price" value={formatZAR(costPrice)} />
+                {showCost && <InfoRow label="Cost Price" value={formatZAR(costPrice)} />}
                 <InfoRow label="Selling Price" value={formatZAR(pricing.sellingPrice)} />
-                <InfoRow label="Markup %" value={`${pricing.markupPercent.toFixed(1)}%`} />
+                {showCost && <InfoRow label="Markup %" value={`${pricing.markupPercent.toFixed(1)}%`} />}
                 {product.price_per_metre != null && product.price_per_metre > 0 && (
                   <InfoRow label="Price/m" value={formatZAR(product.price_per_metre)} />
                 )}
               </div>
+              {showCost && costPrice > 0 && (
+                <p data-testid="staff-cost-row" data-html2canvas-ignore className="text-[11px] text-muted-foreground print:hidden">
+                  Cost {formatZAR(costPrice)} (ex VAT) · Sell {formatZAR(pricing.sellingPrice)} · GP {pricing.sellingPrice > 0 ? (((pricing.sellingPrice - costPrice) / pricing.sellingPrice) * 100).toFixed(1) : "0.0"}%
+                </p>
+              )}
 
               {isAdmin && (
                 <>

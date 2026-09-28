@@ -16,9 +16,11 @@ interface QuoteSummaryPanelProps {
   totals?: QuoteTotals;
   onGenerateQuote?: () => void;
   quoteId?: string | null;
+  /** Staff cost/GP block (canSeeMargin). Default true for back-compat. */
+  showCost?: boolean;
 }
 
-const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteSummaryPanelProps) => {
+const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId, showCost = true }: QuoteSummaryPanelProps) => {
   const summary = useMemo(() => totals ?? computeBasketsQuoteTotals(baskets), [baskets, totals]);
 
   // Extract model codes from basket items for brochure matching
@@ -105,8 +107,8 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
       )}
 
       {/* Cost & profit (ex VAT) — blended over lines with a known cost */}
-      {summary.totalCost > 0 && (
-        <div className="rounded-md border border-border p-2 space-y-1 text-xs">
+      {showCost && summary.totalCost > 0 && (
+        <div className="rounded-md border border-border p-2 space-y-1 text-xs print:hidden" data-html2canvas-ignore>
           {summary.discountAmount > 0 && (
             <div className="flex justify-between"><span className="text-muted-foreground">Discount</span><span className="tabular-nums">−{formatRand(summary.discountAmount)}</span></div>
           )}
@@ -129,7 +131,7 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
         </div>
       )}
 
-      {summary.noCostCount > 0 && (
+      {showCost && summary.noCostCount > 0 && (
         <p className="text-[10px] text-amber-700 dark:text-amber-400">
           Markup incomplete - {summary.noCostCount} {summary.noCostCount === 1 ? "line has" : "lines have"} no cost
         </p>
