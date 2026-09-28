@@ -4,8 +4,8 @@ import { computeMargin, lineMargin, sellForTarget, commissionOn, type MarginLine
 import { canSeeMargin } from "@/lib/marginAccess";
 import { buildClientRollup } from "@/lib/clientQuoteRollup";
 
-const S: MarginSettings = { labourCostPerHour: 250, gpTargetPercent: 20, commissionPercent: 40 };
-const L = (o: Partial<MarginLineInput>): MarginLineInput => ({ id: "x", name: "x", areaId: "a", qty: 1, unitPrice: 0, unitCost: null, isLabour: false, ...o });
+const S: MarginSettings = { labourCostPerHour: 250, gpTargetPercent: 20, commissionPercent: 50, labourTechSharePercent: 60 };
+const L = (o: Partial<MarginLineInput>): MarginLineInput => ({ id: "x", name: "x", areaId: "a", qty: 1, unitPrice: 0, unitCost: null, isLabour: false, isService: false, ...o });
 
 describe("margin maths", () => {
   it("line GP from stored cost (units 25% markup → 20% GP)", () => {
@@ -45,9 +45,9 @@ describe("margin maths", () => {
     const m = computeMargin([L({ unitPrice: 1100, unitCost: 1000 })], 0, S);
     expect(m.job.gpPercent).toBe(9.09);
     expect(m.belowTarget).toBe(true);
-    expect(m.commission).toBe(40);
+    expect(m.commission).toBe(50);
     expect(sellForTarget(1000, 20)).toBe(1250);
-    expect(m.commissionIfPricedCorrectly).toBe(100);
+    expect(m.commissionIfPricedCorrectly).toBe(125);
     const ok = computeMargin([L({ unitPrice: 1250, unitCost: 1000 })], 0, S);
     expect(ok.belowTarget).toBe(false);
     expect(ok.commissionIfPricedCorrectly).toBeNull();
@@ -55,6 +55,23 @@ describe("margin maths", () => {
   it("commission never below 0", () => {
     expect(commissionOn(-500, 40)).toBe(0);
     expect(computeMargin([L({ unitPrice: 800, unitCost: 1000 })], 0, S).commission).toBe(0);
+  });
+  it("pays 50% of units and materials GP, excluding labour and services", () => {
+    const m = computeMargin([
+      L({ id: "u", unitPrice: 1250, unitCost: 1000 }),
+      L({ id: "l", qty: 3.5, unitPrice: 680, isLabour: true }),
+      L({ id: "s", unitPrice: 500, unitCost: 100, isService: true }),
+    ], 0, { ...S, labourCostPerHour: null });
+    expect(m.commissionBaseGp).toBe(250);
+    expect(m.commission).toBe(125);
+    expect(m.excludedServiceCount).toBe(1);
+  });
+  it("splits labour sell 60/40 after discount", () => {
+    const m = computeMargin([L({ id: "l", qty: 3.5, unitPrice: 680, isLabour: true })], 0, { ...S, labourCostPerHour: null });
+    expect(m.labourSell).toBe(2380);
+    expect(m.labourTechShare).toBe(1428);
+    expect(m.labourCompanyShare).toBe(952);
+    expect(m.techEarningsTotal).toBe(1428);
   });
 });
 

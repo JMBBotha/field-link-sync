@@ -76,12 +76,13 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
     id: i.id, name: i.item_name, areaId: i.area_id ?? null,
     qty: Number(i.quantity || 0), unitPrice: Number(i.unit_price || 0),
     unitCost: lineUnitCostOrNull(i), isLabour: isLabourItem(i),
+    isService: String(i.item_type || "").toLowerCase() === "service" || !!(i.metadata as any)?.catalog_service_id,
   }));
   const m = computeMargin(inputs, discount, settings);
   const areaName = (id: string) => (id === MARGIN_AREA_NONE ? "Other items" : areas.find((a) => a.id === id)?.name ?? "Area");
   const selected = m.lines.find((l) => l.id === selectedId) || null;
   const quotedHours = items.filter((i) => !i.parent_item_id && isLabourItem(i)).reduce((a, i) => a + Number((i.metadata as any)?.hours ?? i.quantity ?? 0), 0);
-  const ov = overrun ? computeOverrun({ quotedHours, actualHours: overrun.actualHours, extras: overrun.extras, job: m.job, labourCostPerHour: settings.labourCostPerHour, commissionPercent: settings.commissionPercent }) : null;
+  const ov = overrun ? computeOverrun({ quotedHours, actualHours: overrun.actualHours, extras: overrun.extras, job: { ...m.job, commissionBaseGp: m.commissionBaseGp }, labourCostPerHour: settings.labourCostPerHour, commissionPercent: settings.commissionPercent }) : null;
   const statusText = (l: MarginLine) =>
     l.status === "cost_unknown" ? "cost unknown" : l.status === "labour_cost_not_set" ? "labour cost not set" : null;
 
@@ -113,9 +114,12 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
       )}
 
       <div className="rounded-md border border-border p-3 text-sm">
-        <p>Your commission: <span className="font-semibold tabular-nums">{money(m.commission)}</span></p>
+        <p>Tech share {settings.commissionPercent}% of GP (units &amp; materials): <span className="font-semibold tabular-nums">{money(m.commission)}</span></p>
+        <p>Tech labour share {settings.labourTechSharePercent}%: <span className="font-semibold tabular-nums">{money(m.labourTechShare)}</span></p>
+        <p>Total tech earnings: <span className="font-semibold tabular-nums">{money(m.techEarningsTotal)}</span></p>
+        {m.excludedServiceCount > 0 && <p className="mt-1 text-[11px] text-muted-foreground">Services excluded (no price yet)</p>}
         {m.commissionIfPricedCorrectly != null && (
-          <p>If priced correctly: <span className="font-semibold tabular-nums">{money(m.commissionIfPricedCorrectly)}</span></p>
+          <p>If priced correctly, GP tech share: <span className="font-semibold tabular-nums">{money(m.commissionIfPricedCorrectly)}</span></p>
         )}
         <p className="mt-1 text-[11px] text-muted-foreground">Earned when the invoice is paid in full; overruns deducted</p>
       </div>
@@ -129,7 +133,7 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
             : <p className="text-xs">Labour overrun cost: <span className="tabular-nums">{money(ov.labourCost ?? 0)}</span></p>)}
           <p className="text-xs">Extra materials cost: <span className="tabular-nums">{money(ov.extrasCost)}</span>{ov.unknownExtras > 0 ? ` · ${ov.unknownExtras} without catalogue cost` : ""}</p>
           <p className="mt-1">Adjusted GP: <span className="font-semibold tabular-nums">{money(ov.adjustedGp)}</span> · {pctText(ov.adjustedGpPercent)}</p>
-          <p>Adjusted commission: <span className="font-semibold tabular-nums">{money(ov.adjustedCommission)}</span> <span className="text-[11px] text-muted-foreground">overruns deducted</span></p>
+          <p>Adjusted GP tech share: <span className="font-semibold tabular-nums">{money(ov.adjustedCommission)}</span> <span className="text-[11px] text-muted-foreground">material overruns deducted</span></p>
           {overrun?.notes && <p className="mt-1 text-[11px] text-muted-foreground">Tech note: {overrun.notes}</p>}
         </div>
       )}

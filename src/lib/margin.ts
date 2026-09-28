@@ -11,12 +11,14 @@ export interface MarginLineInput {
   /** Stored unit cost; null = unknown (never treated as R0). */
   unitCost: number | null;
   isLabour: boolean;
+  isService: boolean;
 }
 
 export interface MarginSettings {
   labourCostPerHour: number | null;
   gpTargetPercent: number;
   commissionPercent: number;
+  labourTechSharePercent: number;
 }
 
 export type LineStatus = "ok" | "cost_unknown" | "labour_cost_not_set";
@@ -36,8 +38,14 @@ export interface MarginResult {
   labourExcluded: boolean;
   target: number;
   belowTarget: boolean;
+  commissionBaseGp: number;
   commission: number;
   commissionIfPricedCorrectly: number | null;
+  excludedServiceCount: number;
+  labourSell: number;
+  labourTechShare: number;
+  labourCompanyShare: number;
+  techEarningsTotal: number;
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -91,14 +99,35 @@ export function computeMargin(inputs: MarginLineInput[], discount: number, s: Ma
   const gpPercent = pct(gp, sell);
   const target = s.gpTargetPercent;
   const belowTarget = gpPercent != null && gpPercent < target;
+  const commissionLines = lines.filter((l) => {
+    const input = inputs.find((candidate) => candidate.id === l.id);
+    return l.cost != null && !input?.isLabour && !input?.isService;
+  });
+  const commissionSell = r2(commissionLines.reduce((sum, l) => sum + l.sell - share(l.sell), 0));
+  const commissionCost = r2(commissionLines.reduce((sum, l) => sum + (l.cost ?? 0), 0));
+  const commissionBaseGp = r2(commissionSell - commissionCost);
+  const commissionBaseGpPercent = pct(commissionBaseGp, commissionSell);
+  const commissionBaseBelowTarget = commissionBaseGpPercent != null && commissionBaseGpPercent < target;
+  const labourSell = r2(lines.reduce((sum, l) => {
+    const input = inputs.find((candidate) => candidate.id === l.id);
+    return input?.isLabour ? sum + l.sell - share(l.sell) : sum;
+  }, 0));
+  const labourTechShare = r2(Math.max(0, labourSell) * (s.labourTechSharePercent / 100));
+  const commission = commissionOn(commissionBaseGp, s.commissionPercent);
   return {
     lines, areas,
     job: { sell, cost, gp, gpPercent, discount: r2(d), grossSell },
     unknownCostCount: lines.filter((l) => l.status === "cost_unknown").length,
     labourExcluded: lines.some((l) => l.status === "labour_cost_not_set"),
     target, belowTarget,
-    commission: commissionOn(gp, s.commissionPercent),
-    commissionIfPricedCorrectly: belowTarget ? commissionOn(sellForTarget(cost, target) - cost, s.commissionPercent) : null,
+    commissionBaseGp,
+    commission,
+    commissionIfPricedCorrectly: commissionBaseBelowTarget ? commissionOn(sellForTarget(commissionCost, target) - commissionCost, s.commissionPercent) : null,
+    excludedServiceCount: inputs.filter((l) => l.isService).length,
+    labourSell,
+    labourTechShare,
+    labourCompanyShare: r2(labourSell - labourTechShare),
+    techEarningsTotal: r2(commission + labourTechShare),
   };
 }
 
