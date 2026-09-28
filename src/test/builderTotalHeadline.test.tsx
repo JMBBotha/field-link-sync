@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QuoteTotalsBar } from "@/components/catalog/QuoteBuilderTab";
-import { computeQuoteTotals, type QuoteItem, type QuoteArea } from "@/utils/quoteTransformers";
+import { computeQuoteTotals } from "@/utils/quoteTransformers";
+import type { QuoteItem, QuoteArea } from "@/types/quote";
 import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 
 const line = (total: number): QuoteItem =>
