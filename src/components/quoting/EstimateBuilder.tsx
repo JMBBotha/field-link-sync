@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuoteContext } from "@/contexts/QuoteContext";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { installTag, qtyUnitLabel, BRACKET_OPTIONS } from "@/lib/installTemplates";
+import { qtyLabel, shortInstallName, kitTitleFromMetadata, kitContents } from "@/lib/lineDisplay";
 import { catalogLineFields, kitSwapPatch, isMetreLine, metreLineTotal } from "@/lib/mandy/quoteOps";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { swappableKits, kitSizeLabel } from "@/lib/kitSizes";
@@ -115,6 +116,12 @@ export default function EstimateBuilder({
     itemNumber: i.item_number ?? null,
     kitBundleId: (i.metadata as any)?.kit?.bundle_id ?? null,
     isService: !!(i.metadata as any)?.catalog_service_id,
+    displayName: (() => {
+      const dl = { item_name: i.item_name, quantity: Number(i.quantity || 0), unit_price: Number(i.unit_price || 0), metadata: i.metadata as any };
+      return kitTitleFromMetadata(dl) ?? shortInstallName(dl);
+    })(),
+    unitText: qtyLabel({ item_name: i.item_name, quantity: Number(i.quantity || 0), unit_price: Number(i.unit_price || 0), metadata: i.metadata as any }),
+    kitItems: (i.metadata as any)?.kit ? kitContents({ item_name: i.item_name, quantity: 0, metadata: i.metadata as any }) : null,
     staffNote: margin.visible && lineUnitCostOrNull(i) != null ? `cost ${formatRand(lineUnitCostOrNull(i)!)}` : null,
   });
 
