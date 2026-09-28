@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 /** Admin-only: labour cost rate, GP target and sales commission on the company. */
 export default function MarginSettingsCard() {
   const { user } = useAuth();
-  const { isAdmin } = useRole() as any;
+  const { isAdmin } = useRole();
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data } = useQuery({
