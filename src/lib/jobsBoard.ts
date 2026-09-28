@@ -96,9 +96,9 @@ export function rowDate(row: BoardRow): string | null {
 }
 
 export type BoardFilters = {
-  status?: string | null; date?: string | null; assignee?: string | null; lane?: string | null; type?: string | null;
+  status?: string | null; date?: string | null; assignee?: string | null; lane?: string | null; type?: string | null; open?: string | null;
 };
-export const FILTER_KEYS = ["status", "date", "assignee", "lane", "type"] as const;
+export const FILTER_KEYS = ["status", "date", "assignee", "lane", "type", "open"] as const;
 
 export function filterBoardRows(rows: BoardRow[], f: BoardFilters, people: Record<string, Person> = {}, now = new Date()): BoardRow[] {
   const date = f.date === "today" ? todayInJohannesburg(now) : f.date;
@@ -113,6 +113,7 @@ export function filterBoardRows(rows: BoardRow[], f: BoardFilters, people: Recor
       if (f.assignee === "none" ? !!a : a?.id !== f.assignee) return false;
     }
     if (f.lane && boardLane(r) !== f.lane) return false;
+    if (f.open === "1" && (isCancelled(r.status) || columnFor(r.status) === "completed")) return false;
     if (f.type && (r.kind !== "job" || norm(r.job?.job_type) !== norm(f.type))) return false;
     return true;
   });

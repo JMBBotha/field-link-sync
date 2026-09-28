@@ -373,6 +373,7 @@ const AdminJobsDispatchPage = () => {
           if (k === "assignee") return v === "none" ? "Unassigned" : `Assignee: ${booked.names[v]?.full_name || (jobs as any[]).flatMap((j) => j.assignments || []).find((x: any) => x.profile_id === v)?.profiles?.full_name || "…"}`;
           if (k === "lane") return v === "sales" ? "Sales" : "Service";
           if (k === "date") return v === "today" ? "Today" : v;
+          if (k === "open") return "Open only";
           if (k === "status") return `Status: ${v.replace(/_/g, " ")}`;
           return `Type: ${v.replace(/_/g, " ")}`;
         };

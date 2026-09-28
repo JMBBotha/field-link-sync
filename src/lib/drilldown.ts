@@ -137,3 +137,33 @@ export function parseLaneParam(p: URLSearchParams): "sales" | "service" | null {
   const l = p.get("lane");
   return l === "sales" || l === "service" ? l : null;
 }
+
+// ───────── Release D1: three extra dashboard tiles (count = list, one rule each) ─────────
+import { laneOf } from "@/lib/leadLane";
+import { filterBoardRows, type BoardRow, type BoardFilters, type Person } from "@/lib/jobsBoard";
+import { invoiceMoney, matchesMoneyFilter, type MoneyInvoice, type MoneyPayment } from "@/lib/moneySummary";
+
+/** Leads on one lane — same rule as the dispatch inbox ?lane= filter. */
+export function filterLeadsByLane<T>(leads: T[], lane: "sales" | "service"): T[] {
+  return leads.filter((l) => laneOf(l as any) === lane);
+}
+
+/** Visits booked: sales visits dated today (Johannesburg), not cancelled or completed. */
+export const VISITS_BOOKED_FILTER: BoardFilters = { date: "today", lane: "sales", open: "1" };
+export function filterVisitsBooked(rows: BoardRow[], people: Record<string, Person> = {}, now = new Date()): BoardRow[] {
+  return filterBoardRows(rows, VISITS_BOOKED_FILTER, people, now);
+}
+
+/** Installs awaiting deposit = the invoices list money=deposits_due rule. */
+export function filterDepositsDue<T extends MoneyInvoice>(invoices: T[], payments: MoneyPayment[]): T[] {
+  return invoices.filter((inv) => {
+    const { paid, balance } = invoiceMoney(inv, payments);
+    return matchesMoneyFilter(inv, paid, balance, "deposits_due");
+  });
+}
+
+export const D1_TILE_LINKS = {
+  visitsBooked: "/admin/jobs/dispatch?date=today&lane=sales&open=1",
+  serviceLeads: "/admin/dispatch?inbox=1&lane=service",
+  depositsDue: "/admin/invoices?money=deposits_due",
+} as const;

@@ -1,5 +1,5 @@
 import { X as XIcon } from "lucide-react";
-import { parseLaneParam } from "@/lib/drilldown";
+import { parseLaneParam, filterLeadsByLane } from "@/lib/drilldown";
 import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -349,7 +349,7 @@ const AdminDispatchPage = () => {
     if (showUrgentOnly) {
       leads = leads.filter(l => l.priority === "urgent" || l.priority === "high");
     }
-    if (laneParam) leads = leads.filter(l => laneOf(l) === laneParam);
+    if (laneParam) leads = filterLeadsByLane(leads, laneParam);
     return leads;
   }, [allLeads, inboxLeads, inboxMode, searchQuery, showUrgentOnly, laneParam]);
 

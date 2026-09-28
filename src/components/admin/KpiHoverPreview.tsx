@@ -131,13 +131,17 @@ interface Props {
   label: string;
   viewAllHref: string;
   children: React.ReactNode;
+  /** Render children only (no hover preview). */
+  disabled?: boolean;
 }
 
 /**
  * Hover preview for the dashboard KPI cards — shows the first few underlying
  * records with basic info; clicking a row navigates to that client/record.
  */
-const KpiHoverPreview = ({ kpiKey, label, viewAllHref, children }: Props) => {
+const KpiHoverPreview = (props: Props) => (props.disabled ? <>{props.children}</> : <KpiHoverPreviewInner {...props} />);
+
+const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) => {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const isMobile = useIsMobile();
