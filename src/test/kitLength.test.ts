@@ -65,7 +65,8 @@ describe("kit length", () => {
       { quantity: 2, is_length_item: false, product: { id: "t", product_code: "TIE", short_name: "Tie", cost_price: 0.1, selling_price: 0.2 } },
     ] };
     const r = kitRowFields(bundle);
-    if (r.length != null) {
+    expect(r.length).toBe(3);
+    {
       expect(r.length).toBe(3);
       expect(r.fields.metadata.kit.length_m).toBe(3);
       const tie = r.fields.metadata.kit.items.find((i: any) => i.code === "TIE");
