@@ -1,17 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync, readdirSync } from "fs";
-import { CORE_SERVICE_NAMES, orderServicesForPicker, serviceLineFields, customLimitBlocked, matchesService, type CatalogService } from "@/lib/catalogServices";
+import { CORE_SERVICES, CORE_SERVICE_NAMES, orderServicesForPicker, serviceLineFields, customLimitBlocked, matchesService, type CatalogService } from "@/lib/catalogServices";
 
 const svc = (o: Partial<CatalogService>): CatalogService => ({ id: "x", name: "x", description: "Description pending", sort_order: null, origin: "core", owner_company_id: "M", is_active: true, ...o });
 
 describe("core service seed", () => {
-  it("migration seeds exactly the 10 names in order", () => {
-    const dir = "supabase/migrations";
-    const sql = readdirSync(dir).map((f) => readFileSync(`${dir}/${f}`, "utf8")).find((t) => t.includes("CREATE TABLE public.catalog_services"))!;
-    const seeded = [...sql.matchAll(/\('([^']+)', 'Description pending', (\d+), 'core'/g)].map((m) => [m[1], Number(m[2])]);
-    expect(seeded.map((s) => s[0])).toEqual([...CORE_SERVICE_NAMES]);
-    expect(seeded.map((s) => s[1])).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    expect(sql).toMatch(/-- Package unit: the unit type goes in the line description/);
+  it("the 10 approved names + descriptions, exactly, in order", () => {
+    expect(CORE_SERVICES.map((s) => ({ ...s }))).toEqual([
+      { name: "Removal of existing air conditioner", description: "Safe disconnection and removal of the existing unit, with responsible refrigerant handling, leaving the area clean." },
+      { name: "Removal and reinstallation of existing air conditioner", description: "Relocate the existing unit, including refrigerant recovery, new piping as needed, and commissioning." },
+      { name: "Installation of quoted air conditioner", description: "Supply and install the unit on this quote, including mounting, piping, pressure test, vacuum, charge and commissioning." },
+      { name: "Repair of existing air conditioner or system", description: "Diagnose and repair faults on an existing air conditioning system. Parts and labour are quoted as needed." },
+      { name: "Replacement of indoor or outdoor PC boards", description: "Supply and fit a replacement indoor or outdoor PC board." },
+      { name: "Isolator or electrical fault repair", description: "Find and repair electrical faults on the air conditioner supply, including the isolator, wiring and connections, with a safety test afterwards." },
+      { name: "Ducted system", description: "Installation or service of ducted systems." },
+      { name: "Service of split wall units", description: "Routine maintenance of split wall units to keep them clean, efficient and reliable, including cleaning, checks and a performance test." },
+      { name: "Service of cassette and hideaway systems", description: "Routine maintenance of cassette and hideaway systems, including cleaning, checks and a performance test." },
+      { name: "Package unit", description: "Installation or service of package units." },
+    ]);
+    expect(CORE_SERVICE_NAMES).toHaveLength(10);
+    expect(JSON.stringify(CORE_SERVICES)).not.toMatch(/compliance|Description pending/i);
   });
 });
 

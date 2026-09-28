@@ -10,19 +10,20 @@ export interface CatalogService {
   search_aliases?: string[] | null;
 }
 
-/** The 10 seeded core services, in order (must match the migration). */
-export const CORE_SERVICE_NAMES = [
-  "Removal of existing air conditioner",
-  "Removal and reinstallation of existing air conditioner",
-  "Installation of quoted air conditioner",
-  "Repair of existing air conditioner or system",
-  "Replacement of indoor or outdoor PC boards",
-  "Isolator or electrical fault repair",
-  "Service of ducted, cassette and under ceiling systems",
-  "Service of split wall units",
-  "Package unit",
-  "Installation of under ceiling, cassette and hideaway systems",
+/** The 10 approved core services (name + master description), in sort_order 1..10. */
+export const CORE_SERVICES = [
+  { name: "Removal of existing air conditioner", description: "Safe disconnection and removal of the existing unit, with responsible refrigerant handling, leaving the area clean." },
+  { name: "Removal and reinstallation of existing air conditioner", description: "Relocate the existing unit, including refrigerant recovery, new piping as needed, and commissioning." },
+  { name: "Installation of quoted air conditioner", description: "Supply and install the unit on this quote, including mounting, piping, pressure test, vacuum, charge and commissioning." },
+  { name: "Repair of existing air conditioner or system", description: "Diagnose and repair faults on an existing air conditioning system. Parts and labour are quoted as needed." },
+  { name: "Replacement of indoor or outdoor PC boards", description: "Supply and fit a replacement indoor or outdoor PC board." },
+  { name: "Isolator or electrical fault repair", description: "Find and repair electrical faults on the air conditioner supply, including the isolator, wiring and connections, with a safety test afterwards." },
+  { name: "Ducted system", description: "Installation or service of ducted systems." },
+  { name: "Service of split wall units", description: "Routine maintenance of split wall units to keep them clean, efficient and reliable, including cleaning, checks and a performance test." },
+  { name: "Service of cassette and hideaway systems", description: "Routine maintenance of cassette and hideaway systems, including cleaning, checks and a performance test." },
+  { name: "Package unit", description: "Installation or service of package units." },
 ] as const;
+export const CORE_SERVICE_NAMES = CORE_SERVICES.map((s) => s.name);
 
 /** Picker order: active core by sort_order, then this company's active custom by name. */
 export function orderServicesForPicker(rows: CatalogService[], companyId: string | null): CatalogService[] {
