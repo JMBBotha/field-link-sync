@@ -12,7 +12,7 @@ import { categoryMarkupPercent, classifyQuoteCategory, DEFAULT_CATEGORY_MARKUPS,
 export const LABOUR_ITEM_TYPE = "labour";
 export const LABOUR_STEP = 0.5;
 
-export interface LabourMeta { labour: true; hours: number; rate: number; rate_overridden: boolean }
+export interface LabourMeta { labour: true; hours: number; rate: number; rate_overridden: boolean; labour_auto?: boolean }
 
 type ItemLike = { item_type?: string | null; metadata?: unknown; area_id?: string | null; parent_item_id?: string | null };
 
@@ -54,7 +54,7 @@ export function labourLineTotal(hours: number, rate: number): number {
 }
 
 /** Row fields for a labour line. */
-export function labourFields(hours: number, rate: number, rateOverridden: boolean) {
+export function labourFields(hours: number, rate: number, rateOverridden: boolean, labourAuto?: boolean) {
   const h = snapHours(hours);
   const total = labourLineTotal(h, rate);
   return {
@@ -68,6 +68,7 @@ export function labourFields(hours: number, rate: number, rateOverridden: boolea
     min_qty: 0,
     metadata: {
       labour: true, hours: h, rate: r2(rate), rate_overridden: rateOverridden,
+      ...(labourAuto == null ? {} : { labour_auto: labourAuto }),
       markup_percent: 0, unit_cost: r2(rate), cost_excl: r2(rate), total_cost: total, price_locked: true,
     },
   };
