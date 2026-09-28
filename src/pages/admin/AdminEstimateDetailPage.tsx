@@ -41,6 +41,7 @@ const AdminEstimateDetailPage = () => {
   const { settings } = useCompanySettings();
   const [busy, setBusy] = useState<string | null>(null);
   const [sendOpen, setSendOpen] = useState(false);
+  const staffActions = useQuoteStaffActions();
 
   const { data: quote, isLoading } = useQuery({
     queryKey: ["quote-document", id],
