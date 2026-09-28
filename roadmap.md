@@ -69,9 +69,9 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] Update staff-only maths/screens and verify tests and TypeScript.
 
 ## Per-area labour (2026-09-28)
-- [ ] Add company labour-hours default and staff Billing field.
-- [ ] Add pure area labour helpers and tests.
-- [ ] Render/edit per-area labour, unassigned notice, and remove bottom Labour panel.
-- [ ] Auto-create/adjust labour for unit adds/removals/quantity changes, preserving manual and existing lines.
-- [ ] Block explicit area/save/send/PDF/accept actions for missing labour; keep autosave and Mandy tools non-blocking.
-- [ ] Add AGENTS rule; run tests, TypeScript, and browser verification.
+- [x] Add company labour-hours default and staff Billing field.
+- [x] Add pure area labour helpers and tests.
+- [x] Render/edit per-area labour, unassigned notice, and remove bottom Labour panel.
+- [x] Auto-create/adjust labour for unit adds/removals/quantity changes, preserving manual and existing lines.
+- [x] Block explicit area/save/send/PDF/accept actions for missing labour; keep autosave and Mandy tools non-blocking.
+- [x] Add AGENTS rule; run tests and TypeScript.
