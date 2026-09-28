@@ -27,6 +27,7 @@ const OPEN_STATUSES = ["draft", "sent", "pending", "viewed"];
  * Lead Conversion Rate, Avg Time to Quote, Open Quotes Value, Win Rate.
  */
 const PipelineMetrics = () => {
+  const navigate = useNavigate();
   const since = useMemo(() => subDays(new Date(), 90).toISOString(), []);
 
   const { data, isLoading } = useQuery({
