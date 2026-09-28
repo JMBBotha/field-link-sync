@@ -63,6 +63,7 @@ export default function QuoteQuickEditor({
   dropUp = false,
   onAddedToArea,
   onUnitAdded,
+  beforeCreateArea,
 }: {
   onChanged?: () => void;
   /** Open the results list upward (used when the bar sits at the bottom of the document). */
@@ -70,6 +71,8 @@ export default function QuoteQuickEditor({
   /** Focus the area that received the new line. */
   onAddedToArea?: (areaId: string) => void;
   onUnitAdded?: (areaId: string, quantity: number) => void;
+  /** Explicit new-area guard; ordinary adds to existing areas remain unchanged. */
+  beforeCreateArea?: () => boolean | Promise<boolean>;
 }) {
   const { areas, items, addItem, addArea, meta } = useQuoteContext();
   const { toast } = useToast();
@@ -190,9 +193,8 @@ export default function QuoteQuickEditor({
       setPendingAdd(pending);
       return;
     }
-    const areaId = target.kind === "existing"
-      ? target.areaId
-      : (await addArea(`Area ${areas.length + 1}`))?.id;
+    if (target.kind === "new" && beforeCreateArea && !(await beforeCreateArea())) return;
+    const areaId = target.kind === "existing" ? target.areaId : (await addArea(`Area ${areas.length + 1}`))?.id;
     if (!areaId) return;
     if (pending.kind === "product") await commitProduct(pending.value, areaId);
     else await commitCatalogService(pending.value, areaId);

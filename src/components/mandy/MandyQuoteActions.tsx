@@ -25,6 +25,7 @@ import { runSetLabourHours, buildRemoveLabour, readLabour, labourSummary } from 
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { standardLabourRate, findAreaLabour } from "@/lib/labour";
 import { applyAutoLabourDelta, missingLabourAreas } from "@/lib/areaLabour";
+import { isAcUnitLine } from "@/lib/lineDisplay";
 import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -182,7 +183,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     if (!area) return { ok: false, message: "Could not find or create an area on this quote." };
     const r = await addCatalogProductToQuote({ addItem: g.addItem, product: p, areaId: area.id, sortOrder: nextSort(), quantity: qty, bundles, templates, liveProducts: products, source: "mandy_voice" });
     if (!r.line) return { ok: false, message: `Could not add ${p.short_name || p.product_code}.` };
-    if (isAirConditioningProduct(p)) await adjustUnitLabour(area.id, qty);
+    if (isAcUnitLine({ item_name: p.short_name || p.product_code, item_type: "product", metadata: {} }, p)) await adjustUnitLabour(area.id, qty);
     const fresh = await refresh();
     const verified = !!fresh?.items.some((i) => i.id === r.line!.id) && (!r.kit || !!fresh?.items.some((i) => i.id === r.kit!.id))
       && r.installLines.every((l) => !!fresh?.items.some((i) => i.id === l.id));
@@ -202,7 +203,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     const unitDeltas = new Map<string, number>();
     for (const item of S().items.filter((x) => ids.includes(x.id))) {
       const product = products.find((p) => p.id === item.product_id);
-      if (item.area_id && product && isAirConditioningProduct(product)) unitDeltas.set(item.area_id, (unitDeltas.get(item.area_id) || 0) - Number(item.quantity || 0));
+      if (item.area_id && isAcUnitLine(item, product)) unitDeltas.set(item.area_id, (unitDeltas.get(item.area_id) || 0) - Number(item.quantity || 0));
     }
     for (const id of ids) await g.deleteItem(id);
     for (const [areaId, delta] of unitDeltas) await adjustUnitLabour(areaId, delta);
@@ -439,7 +440,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       const p = qtyPatch(it as EditItem, Number(args.qty), products.find((x) => x.id === it.product_id) as any);
       const product = products.find((x) => x.id === it.product_id);
       await g.updateItem(it.id, p.patch as any);
-      if (it.area_id && product && isAirConditioningProduct(product) && p.kind !== "length") await adjustUnitLabour(it.area_id, p.value - Number(it.quantity || 0));
+      if (it.area_id && isAcUnitLine(it, product) && p.kind !== "length") await adjustUnitLabour(it.area_id, p.value - Number(it.quantity || 0));
       const fresh = await refresh();
       const unit = p.kind === "length" ? " m" : p.kind === "hours" ? " h" : "";
       const row = fresh?.items.find((i) => i.id === it.id);

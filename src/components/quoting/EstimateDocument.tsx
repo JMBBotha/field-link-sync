@@ -689,7 +689,7 @@ const EstimateDocument = ({
                   </tbody>
                 </table>
 
-                {area.id && area.lines.length > 0 && editing.onAddLabour && editing.onLabourChange && (
+                {area.id && (area.lines.length > 0 || !!area.labourLines?.length) && editing.onAddLabour && editing.onLabourChange && (
                   <AreaLabourRow
                     areaId={area.id}
                     areaName={area.name}

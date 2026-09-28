@@ -60,6 +60,8 @@ export async function applyAutoLabourDelta({ items, areaId, unitDelta, perUnit, 
     await updateItem(labour.id, fields);
     return labour;
   }
+  // A removal cannot invent a legacy labour row; only positive unit adds create one.
+  if (unitDelta < 0) return null;
   const sort = items.length ? Math.max(...items.map((line) => Number(line.sort_order) || 0)) + 1 : 0;
   return addItem({ ...fields, area_id: areaId, sort_order: sort, source: "labour" });
 }

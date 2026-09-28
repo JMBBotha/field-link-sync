@@ -25,4 +25,9 @@ describe("per-area labour", () => {
     await applyAutoLabourDelta({ items: [manual], areaId: "A", unitDelta: 1, perUnit: 3.5, rate: 680, addItem, updateItem });
     expect(updateItem).not.toHaveBeenCalled();
   });
+  it("does not create a labour row while removing a unit from legacy data", async () => {
+    const addItem = vi.fn(async (x) => x), updateItem = vi.fn();
+    await applyAutoLabourDelta({ items: [], areaId: "A", unitDelta: -1, perUnit: 3.5, rate: 680, addItem, updateItem });
+    expect(addItem).not.toHaveBeenCalled();
+  });
 });

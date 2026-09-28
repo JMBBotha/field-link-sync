@@ -205,6 +205,13 @@ export default function EstimateBuilder({
     await applyAutoLabourDelta({ items, areaId, unitDelta: delta, perUnit: perUnitHours, rate: labourRate, addItem, updateItem });
   };
 
+  const allowNewArea = () => {
+    const last = editAreas.filter((a) => a.id).at(-1);
+    if (!last || !areaLabourStatus(topLevel.filter((i) => i.area_id === last.id), perUnitHours).missing) return true;
+    toast({ title: `${last.name} has no labour yet. Add labour first.`, action: <ToastAction altText="Add labour" onClick={() => document.getElementById(`area-labour-${last.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}>Add labour</ToastAction> });
+    return false;
+  };
+
 
   const subtotal = useMemo(
     () => topLevel.reduce((s, i) => s + Number(i.quantity || 0) * Number(i.unit_price || 0), 0),
@@ -366,11 +373,7 @@ export default function EstimateBuilder({
           activeAreaId,
           onSelectArea: setActiveAreaId,
           onAddArea: async () => {
-            const last = editAreas.filter((a) => a.id).at(-1);
-            if (last && areaLabourStatus(topLevel.filter((i) => i.area_id === last.id), perUnitHours).missing) {
-              toast({ title: `${last.name} has no labour yet. Add labour first.`, action: <ToastAction altText="Add labour" onClick={() => document.getElementById(`area-labour-${last.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}>Add labour</ToastAction> });
-              return;
-            }
+            if (!allowNewArea()) return;
             const created = await addArea(`Area ${areas.length + 1}`);
             if (created?.id) {
               setActiveAreaId(created.id);
@@ -402,6 +405,7 @@ export default function EstimateBuilder({
                 }, 0);
               }}
               onUnitAdded={(areaId, qty) => void adjustAutoLabour(areaId, qty)}
+              beforeCreateArea={allowNewArea}
             />
           ),
           discountControl,
