@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import CSVImporter from "@/components/bulk/CSVImporter";
 
 const AdminImportPage = () => {
-  const [importTarget, setImportTarget] = useState<"customers" | "inventory_items" | "flat_rate_items">("customers");
+  const [importTarget, setImportTarget] = useState<"customers" | "inventory_items">("customers");
   const navigate = useNavigate();
 
   return (
@@ -16,7 +16,7 @@ const AdminImportPage = () => {
           <h2 className="text-xl font-bold">CSV Import</h2>
         </div>
         <div className="flex gap-2 mb-4">
-          {(["customers", "inventory_items", "flat_rate_items"] as const).map((t) => (
+          {(["customers", "inventory_items"] as const).map((t) => (
             <Button
               key={t}
               variant={importTarget === t ? "default" : "outline"}

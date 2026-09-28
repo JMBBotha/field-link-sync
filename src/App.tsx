@@ -47,7 +47,6 @@ import FieldSchedulePage from "./pages/FieldSchedulePage";
 // Lazy-loaded admin pages (simple wrappers)
 import ScheduleCalendar from "./components/scheduling/ScheduleCalendar";
 import InventoryList from "./components/inventory/InventoryList";
-import FlatRateBook from "./components/flatrate/FlatRateBook";
 import ReportBuilder from "./components/reports/ReportBuilder";
 import AnalyticsDashboard from "./components/analytics/AnalyticsDashboard";
 import AdminNotificationSettings from "./components/AdminNotificationSettings";
@@ -186,7 +185,6 @@ const App = () => (
                     <Route path="customers" element={<AdminCustomersPage />} />
                     <Route path="customers/:id" element={<AdminCustomerDetailPage />} />
                     <Route path="inventory" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><InventoryList /></RequireRole>} />
-                    <Route path="flat-rate" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><FlatRateBook /></RequireRole>} />
                     <Route path="reports" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><ReportBuilder /></RequireRole>} />
                     <Route path="reports/advanced" element={<RequireRole allowedRoles={["admin"]}><AdminAdvancedReportsPage /></RequireRole>} />
                     <Route path="reports/aging" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><AccountsAgingReportPage /></RequireRole>} />
@@ -244,7 +242,6 @@ const App = () => (
                   <Route path="/inventory" element={<Navigate to="/admin/inventory" replace />} />
                   <Route path="/agreements" element={<Navigate to="/admin/agreements" replace />} />
                   <Route path="/reports" element={<Navigate to="/admin/reports" replace />} />
-                  <Route path="/flat-rate" element={<Navigate to="/admin/flat-rate" replace />} />
                 </Route>
 
                 {/* Catch-all */}
