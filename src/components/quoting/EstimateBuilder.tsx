@@ -91,7 +91,7 @@ export default function EstimateBuilder({
     [topLevel],
   );
   const { data: productImages = {} } = useQuery({
-    queryKey: ["quote-item-product-images", productIds.sort().join(",")],
+    queryKey: ["quote-item-product-info", productIds.sort().join(",")],
     enabled: productIds.length > 0,
     staleTime: 300_000,
     queryFn: async () => {
