@@ -93,25 +93,8 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const [linkedCustomerId, setLinkedCustomerId] = useState<string | null>(null);
   const [laneOverride, setLaneOverride] = useState<LeadLane | "unknown" | null>(null);
   const [salesOwnerId, setSalesOwnerId] = useState<string>("");
-  const [clientQuery, setClientQuery] = useState("");
-  const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const { data: existingClients = [] } = useUnifiedClients();
   const { toast } = useToast();
-
-  const filteredClients = (() => {
-    const list = existingClients.filter((c) => c.customer_id); // only real customers are linkable
-    const q = clientQuery.trim().toLowerCase();
-    if (!q) return list.slice(0, 30);
-    return list
-      .filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.phone.toLowerCase().includes(q) ||
-          (c.email && c.email.toLowerCase().includes(q)) ||
-          (c.address && c.address.toLowerCase().includes(q))
-      )
-      .slice(0, 30);
-  })();
 
   const persistCustomerCoords = async (customerId: string, lat: number, lng: number) => {
     try {
@@ -143,8 +126,6 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       email: client.email,
       matchedOn: "phone",
     });
-    setClientQuery("");
-    setClientSearchOpen(false);
 
     // Fetch the FULL customer record (+ primary location) so the lead is complete
     const [{ data: cust }, { data: loc }] = await Promise.all([
