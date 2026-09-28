@@ -1,3 +1,4 @@
+import MasterCatalogGate from "@/components/catalog/MasterCatalogGate";
 import { useState, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1267,4 +1268,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
   );
 };
 
-export default SupplierProductImporter;
+const GatedSupplierProductImporter = (props: SupplierProductImporterProps) => (
+  <MasterCatalogGate><SupplierProductImporter {...props} /></MasterCatalogGate>
+);
+
+export default GatedSupplierProductImporter;
