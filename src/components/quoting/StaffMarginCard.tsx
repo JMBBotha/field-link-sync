@@ -4,6 +4,9 @@
  * must never appear on the client-facing estimate.
  */
 import { Card } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { computeOverrun, parseExtras } from "@/lib/overrun";
 import type { QuoteItem } from "@/types/quote";
 import { isLabourItem } from "@/lib/labour";
 import { computeMargin, MARGIN_AREA_NONE, type MarginLine, type MarginLineInput, type MarginSettings } from "@/lib/margin";
@@ -44,11 +47,31 @@ interface Props {
   areas: { id: string; name: string }[];
   discount: number;
   settings: MarginSettings;
+  /** Enables the "Actual vs quoted" section when a job_overruns row exists. */
+  quoteId?: string | null;
 }
 
 const pctText = (p: number | null) => (p == null ? "—" : `${p.toFixed(1)}%`);
 
-export default function StaffMarginCard({ items, selectedId, areas, discount, settings }: Props) {
+export default function StaffMarginCard({ items, selectedId, areas, discount, settings, quoteId }: Props) {
+  const { data: overrun } = useQuery({
+    queryKey: ["job-overrun", quoteId],
+    enabled: !!quoteId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await (supabase.from("job_overruns" as any) as any)
+        .select("actual_hours, extra_items, notes, created_at").eq("quote_id", quoteId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (!data) return null;
+      const extras = parseExtras(data.extra_items);
+      const ids = extras.map((e) => e.product_id).filter(Boolean) as string[];
+      const costs = new Map<string, number>();
+      if (ids.length) {
+        const { data: ps } = await (supabase.from("supplier_products") as any).select("id, cost_price, cost_excl_vat").in("id", ids);
+        for (const p of ps || []) costs.set(p.id, Number(p.cost_price || p.cost_excl_vat || 0));
+      }
+      return { actualHours: data.actual_hours == null ? null : Number(data.actual_hours), extras: extras.map((e) => ({ ...e, unitCost: e.product_id ? costs.get(e.product_id) ?? null : null })), notes: data.notes as string | null };
+    },
+  });
   const inputs: MarginLineInput[] = items.filter((i) => !i.parent_item_id).map((i) => ({
     id: i.id, name: i.item_name, areaId: i.area_id ?? null,
     qty: Number(i.quantity || 0), unitPrice: Number(i.unit_price || 0),
@@ -57,6 +80,8 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
   const m = computeMargin(inputs, discount, settings);
   const areaName = (id: string) => (id === MARGIN_AREA_NONE ? "Other items" : areas.find((a) => a.id === id)?.name ?? "Area");
   const selected = m.lines.find((l) => l.id === selectedId) || null;
+  const quotedHours = items.filter((i) => !i.parent_item_id && isLabourItem(i)).reduce((a, i) => a + Number((i.metadata as any)?.hours ?? i.quantity ?? 0), 0);
+  const ov = overrun ? computeOverrun({ quotedHours, actualHours: overrun.actualHours, extras: overrun.extras, job: m.job, labourCostPerHour: settings.labourCostPerHour, commissionPercent: settings.commissionPercent }) : null;
   const statusText = (l: MarginLine) =>
     l.status === "cost_unknown" ? "cost unknown" : l.status === "labour_cost_not_set" ? "labour cost not set" : null;
 
@@ -94,6 +119,20 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
         )}
         <p className="mt-1 text-[11px] text-muted-foreground">Earned when the invoice is paid in full; overruns deducted</p>
       </div>
+
+      {ov && (
+        <div className="rounded-md border border-border p-3 text-sm" data-testid="actual-vs-quoted">
+          <p className="mb-1 text-xs font-semibold">Actual vs quoted</p>
+          <p className="text-xs">Labour: quoted {ov.quotedHours} h · actual {ov.actualHours ?? "—"} h{ov.extraHours > 0 ? ` (+${ov.extraHours} h)` : ""}</p>
+          {ov.extraHours > 0 && (ov.labourNotSet
+            ? <p className="text-xs text-muted-foreground">Labour overrun: labour cost not set — excluded</p>
+            : <p className="text-xs">Labour overrun cost: <span className="tabular-nums">{money(ov.labourCost ?? 0)}</span></p>)}
+          <p className="text-xs">Extra materials cost: <span className="tabular-nums">{money(ov.extrasCost)}</span>{ov.unknownExtras > 0 ? ` · ${ov.unknownExtras} without catalogue cost` : ""}</p>
+          <p className="mt-1">Adjusted GP: <span className="font-semibold tabular-nums">{money(ov.adjustedGp)}</span> · {pctText(ov.adjustedGpPercent)}</p>
+          <p>Adjusted commission: <span className="font-semibold tabular-nums">{money(ov.adjustedCommission)}</span> <span className="text-[11px] text-muted-foreground">overruns deducted</span></p>
+          {overrun?.notes && <p className="mt-1 text-[11px] text-muted-foreground">Tech note: {overrun.notes}</p>}
+        </div>
+      )}
 
       {Object.keys(m.areas).length > 0 && (
         <div className="space-y-1 text-xs">
