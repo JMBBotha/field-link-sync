@@ -55,7 +55,7 @@ export function rowTarget(r: Pick<BoardRow, "kind" | "id">): string {
 }
 
 // ───────── Step 2: lane, assignee, URL filters ─────────
-import { laneFromServiceType, type LeadLane } from "@/lib/leadLane";
+import { laneOf, type LeadLane } from "@/lib/leadLane";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
 
 const SALES_JOB_TYPES = ["quote", "sales", "consultation"];
@@ -63,9 +63,7 @@ const SALES_JOB_TYPES = ["quote", "sales", "consultation"];
 /** Sales vs Service for any board row. */
 export function boardLane(row: BoardRow): LeadLane {
   if (row.kind === "job") return SALES_JOB_TYPES.includes(norm(row.job?.job_type)) ? "sales" : "service";
-  const pi = norm(row.entry.primary_intent);
-  if (pi === "sales" || pi === "service") return pi;
-  return laneFromServiceType(row.entry.service_type) === "sales" ? "sales" : "service";
+  return laneOf(row.entry) ?? "service"; // same lane rule as the /admin/dispatch inbox
 }
 
 export type Person = { full_name?: string | null; participant_type?: string | null };
