@@ -33,6 +33,7 @@ import { JobDetailSkeleton } from "@/components/ui/skeletons";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { attachPaymentTotals } from "@/lib/depositInvoice";
+import { jobStatusPatch, formatJohannesburg } from "@/lib/jobTimes";
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -119,10 +120,8 @@ const AdminJobDetailPage = () => {
     });
 
     try {
-      const patch: any = { status: nextStatus };
-      if (nextStatus === "in_progress") patch.started_at = new Date().toISOString();
-      if (nextStatus === "completed") patch.completed_at = new Date().toISOString();
-      const { error } = await supabase.from("jobs").update(patch).eq("id", id);
+      // Times are set server-side by trg_set_job_status_times.
+      const { error } = await supabase.from("jobs").update(jobStatusPatch(nextStatus)).eq("id", id);
       if (error) throw error;
       const entry = statusUndo.record({
         entity_type: "job", entity_id: id, field: "status", old_value: prevStatus, new_value: nextStatus,
@@ -254,6 +253,18 @@ const AdminJobDetailPage = () => {
                       </>
                     )}
                   </span>
+                </div>
+              )}
+              {formatJohannesburg(j.started_at) && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Play className="h-4 w-4 shrink-0" />
+                  <span>Started: <span className="text-foreground">{formatJohannesburg(j.started_at)}</span></span>
+                </div>
+              )}
+              {formatJohannesburg(j.completed_at) && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span>Completed: <span className="text-foreground">{formatJohannesburg(j.completed_at)}</span></span>
                 </div>
               )}
             </div>
