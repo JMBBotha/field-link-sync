@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { qtyLabel, shortInstallName, kitTitleFromMetadata } from "@/lib/lineDisplay";
-import EstimateDocument from "@/components/quoting/EstimateDocument";
+import EstimateDocument, { groupEstimateInstallLines } from "@/components/quoting/EstimateDocument";
 import { vi } from "vitest";
 vi.mock("@/hooks/useCompanySettings", () => ({ useCompanySettings: () => ({ settings: { banking_details: {} } }) }));
 
@@ -58,5 +58,41 @@ describe("collapsed kit", () => {
     expect(document.body.textContent!.match(/R\s?[\d\s ]+,\d{2}/g)!.join("|")).toBe(before);
     expect(screen.getByTestId("qty-unit").textContent).toBe("3 m");
     expect(editing.onLineChange).not.toHaveBeenCalled();
+  });
+});
+
+const editable = (id: string, extra: Record<string, unknown> = {}) => ({
+  id, name: id, description: null, quantity: 1, unit_price: 10, ...extra,
+});
+
+describe("installation materials group", () => {
+  const renderEstimate = (lines: any[]) => {
+    const editing: any = { areas: [{ id: "a", name: "Bed", lines }], selectedLineId: null, onSelectLine() {}, onLineChange: vi.fn(), onDeleteLine() {}, onRenameArea() {}, onAddArea() {} };
+    return render(<EstimateDocument estimateNumber="Q" issueDate="2026-09-28" customerName="C" items={[]} subtotal={70} taxRate={0.15} taxAmount={10.5} grandTotal={80.5} editing={editing} />);
+  };
+
+  it("groups six linked children and expands their unchanged editors", () => {
+    const unit = editable("unit");
+    const children = Array.from({ length: 6 }, (_, i) => editable(`install-${i + 1}`, { installRole: `role-${i}`, installUnitId: "unit" }));
+    const grouped = groupEstimateInstallLines([unit, ...children]);
+    expect(grouped.filter((row) => row.kind === "install-summary")).toHaveLength(1);
+    const { container } = renderEstimate([unit, ...children]);
+    expect(screen.getByText(/Installation materials/).textContent).toContain("6 items");
+    expect(container.querySelector('[data-line-id="install-1"]')).toHaveClass("hidden");
+    fireEvent.click(screen.getByLabelText("Show installation materials"));
+    expect(container.querySelectorAll('[data-install-role^="role-"]:not(.hidden)')).toHaveLength(6);
+    expect(screen.getAllByLabelText("Quantity")).toHaveLength(7);
+  });
+
+  it("renders no summary when a unit has no install children", () => {
+    renderEstimate([editable("unit")]);
+    expect(screen.queryByText(/Installation materials/)).toBeNull();
+  });
+
+  it("leaves an orphan install line visible as a normal editable row", () => {
+    const { container } = renderEstimate([editable("orphan", { installRole: "bracket", installUnitId: "missing" })]);
+    expect(screen.queryByText(/Installation materials/)).toBeNull();
+    expect(container.querySelector('[data-line-id="orphan"]')).not.toHaveClass("hidden");
+    expect(screen.getByLabelText("Quantity")).toBeInTheDocument();
   });
 });

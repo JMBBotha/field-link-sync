@@ -111,6 +111,7 @@ export default function EstimateBuilder({
     unit_price: Number(i.unit_price || 0),
     imageUrl: i.product_id ? (productImages as Record<string, string | null>)[i.product_id] ?? null : null,
     installRole: installTag(i)?.role ?? null,
+    installUnitId: installTag(i)?.unit_item_id ?? null,
     lengthLabel: qtyUnitLabel(Number(i.quantity || 0), i.metadata as any, Number(i.unit_price || 0)),
     perMetre: isMetreLine(i as any),
     itemNumber: i.item_number ?? null,

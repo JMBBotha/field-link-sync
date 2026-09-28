@@ -27,6 +27,8 @@ export interface EstimateEditLine {
   imageUrl?: string | null;
   /** Standard-install role when this line belongs to an AC unit's install. */
   installRole?: string | null;
+  /** Stable parent AC unit id from metadata.install.unit_item_id. */
+  installUnitId?: string | null;
   /** "1 × 3 m length" for items sold per supplier length. */
   lengthLabel?: string | null;
   /** Per-metre trunking line: qty in metres (0.1 m steps). */
@@ -147,6 +149,45 @@ const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(safe);
 };
 
+export type EstimateTableRow =
+  | { kind: "line"; line: EstimateEditLine; installGroupId?: string }
+  | { kind: "install-summary"; unitId: string; lines: EstimateEditLine[] };
+
+/** Groups only consecutive install children explicitly linked to the unit before them. */
+export function groupEstimateInstallLines(lines: EstimateEditLine[]): EstimateTableRow[] {
+  const rows: EstimateTableRow[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line.installRole) {
+      rows.push({ kind: "line", line });
+      continue;
+    }
+
+    rows.push({ kind: "line", line });
+    const children: EstimateEditLine[] = [];
+    let childIndex = index + 1;
+    while (
+      childIndex < lines.length
+      && lines[childIndex].installRole
+      && lines[childIndex].installUnitId === line.id
+    ) {
+      children.push(lines[childIndex]);
+      childIndex += 1;
+    }
+    if (children.length > 0) {
+      rows.push({ kind: "install-summary", unitId: line.id, lines: children });
+      rows.push(...children.map((child) => ({ kind: "line" as const, line: child, installGroupId: line.id })));
+      index = childIndex - 1;
+    }
+  }
+  return rows;
+}
+
+const lineAmount = (line: EstimateEditLine) =>
+  line.perMetre
+    ? Math.round(line.quantity * line.unit_price * 100 + 1e-6) / 100
+    : line.quantity * line.unit_price;
+
 /** Normalises a tax rate stored as 0.15 or 15 into a display percentage. */
 const toPercent = (rate?: number | null) => {
   const n = Number(rate);
@@ -211,6 +252,7 @@ const EstimateDocument = ({
     () => editRootRef.current,
   );
   const [openKits, setOpenKits] = useState<Record<string, boolean>>({});
+  const [openInstallGroups, setOpenInstallGroups] = useState<Record<string, boolean>>({});
   const rollup = !editing && presentationMode === "clientRollup" ? clientAreas ?? [] : null;
   const { settings: authedSettings } = useCompanySettings();
   const settings = companyOverride
@@ -362,7 +404,32 @@ const EstimateDocument = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {area.lines.map((line) => {
+                    {groupEstimateInstallLines(area.lines).map((row) => {
+                      if (row.kind === "install-summary") {
+                        const open = !!openInstallGroups[row.unitId];
+                        const total = row.lines.reduce((sum, child) => sum + lineAmount(child), 0);
+                        return (
+                          <tr key={`install-summary-${row.unitId}`} className="border-b border-slate-100 bg-slate-50 print:hidden">
+                            <td colSpan={5} className="py-1.5">
+                              <button
+                                type="button"
+                                aria-label={open ? "Hide installation materials" : "Show installation materials"}
+                                aria-expanded={open}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setOpenInstallGroups((current) => ({ ...current, [row.unitId]: !current[row.unitId] }));
+                                }}
+                                className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-slate-600 hover:bg-slate-100"
+                              >
+                                {open ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
+                                <span className="font-medium text-slate-700">Installation materials</span>
+                                <span className="text-slate-500">· {row.lines.length} items · {formatCurrency(total)}</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      }
+                      const line = row.line;
                       const selected = editing.selectedLineId === line.id;
                       return (
                         <tr
@@ -372,6 +439,8 @@ const EstimateDocument = ({
                           onFocus={() => editing.onSelectLine(line.id)}
                           onClick={() => editing.onSelectLine(line.id)}
                           className={`estimate-line border-b border-slate-100 align-top ${
+                            row.installGroupId && !openInstallGroups[row.installGroupId] ? "hidden print:table-row" : ""
+                          } ${
                             selected ? "bg-sky-50/60 print:bg-transparent" : ""
                           } ${flashId === line.id ? "animate-pulse bg-amber-50 print:bg-transparent" : ""}`}
                         >
@@ -547,7 +616,7 @@ const EstimateDocument = ({
                             )}
                           </td>
                           <td className="py-2 text-right font-medium text-slate-900">
-                            {formatCurrency(line.perMetre ? Math.round(line.quantity * line.unit_price * 100 + 1e-6) / 100 : line.quantity * line.unit_price)}
+                            {formatCurrency(lineAmount(line))}
                           </td>
                           <td className="py-2 text-right print:hidden">
                             <div className="flex items-center justify-end gap-1">
