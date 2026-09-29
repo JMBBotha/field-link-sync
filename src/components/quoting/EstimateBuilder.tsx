@@ -6,6 +6,9 @@
  * QuoteContext (quote_items / quote_areas). Cost, markup and profit live in a
  * separate staff card outside the pdf capture root.
  */
+import { useQuoteEditors } from "@/hooks/useQuoteEditors";
+import RemoveUnitDialog from "@/components/quoting/RemoveUnitDialog";
+import { linkedToUnit } from "@/lib/unitInstallLinks";
 import { useIsPhone } from "@/hooks/useIsPhone";
 import { isLabourItem } from "@/lib/labour";
 import { useMemo, useState } from "react";
@@ -81,6 +84,23 @@ export default function EstimateBuilder({
     addArea, updateArea, deleteArea, updateItem, deleteItem, updateQuote, addItem, refetch,
   } = useQuoteContext();
   const labourMode = normalizeLabourMode((meta as any)?.labour_mode);
+  const { others: otherEditors } = useQuoteEditors(quoteId, "estimate");
+  const builderEditor = otherEditors.find((e) => e.surface === "builder");
+  const [removeUnit, setRemoveUnit] = useState<{ id: string; linked: string[] } | null>(null);
+  const deleteUnitLine = (id: string, linked: string[], removeAll: boolean) => {
+    const cur = items.find((i) => i.id === id);
+    if (cur && lineFor(cur).isAcUnit) void adjustAutoLabour(cur.area_id, -Number(cur.quantity || 0));
+    void deleteItem(id);
+    for (const lid of linked) {
+      if (removeAll) void deleteItem(lid);
+      else {
+        const l = items.find((i) => i.id === lid);
+        if (l) { const { install: _drop, ...rest } = (l.metadata || {}) as any; void updateItem(lid, { metadata: rest } as any); }
+      }
+    }
+    if (selectedLineId === id) setSelectedLineId(null);
+    onChanged?.();
+  };
   const [modeBusy, setModeBusy] = useState(false);
   const { products: liveProducts } = useQuoteBuilderProducts();
   const { bundles } = useQuoteBuilderBundles();
@@ -323,6 +343,18 @@ export default function EstimateBuilder({
 
   return (
     <div className="space-y-4">
+      {builderEditor && (
+        <div role="status" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 print:hidden" data-pdf-hide data-html2canvas-ignore>
+          {builderEditor.name} has this quote open in the builder. Their builder won't save over your changes.
+        </div>
+      )}
+      <RemoveUnitDialog
+        open={!!removeUnit}
+        linkedCount={removeUnit?.linked.length ?? 0}
+        onYes={() => { const r = removeUnit!; setRemoveUnit(null); deleteUnitLine(r.id, r.linked, true); }}
+        onNo={() => { const r = removeUnit!; setRemoveUnit(null); deleteUnitLine(r.id, r.linked, false); }}
+        onCancel={() => setRemoveUnit(null)}
+      />
       <div className="flex items-center justify-end gap-2 print:hidden" data-pdf-hide data-html2canvas-ignore>
         <span className="text-xs text-muted-foreground">Labour</span>
         <Select value={labourMode} onValueChange={(v) => void switchLabourMode(v as "per_area" | "job")} disabled={modeBusy}>
@@ -409,6 +441,8 @@ export default function EstimateBuilder({
           },
           onDeleteLine: (id) => {
             const cur = items.find((i) => i.id === id);
+            const linked = cur && lineFor(cur).isAcUnit ? linkedToUnit(items, id, (x) => installTag(x)?.unit_item_id).map((x) => x.id) : [];
+            if (linked.length) { setRemoveUnit({ id, linked }); return; }
             if (cur && lineFor(cur).isAcUnit) void adjustAutoLabour(cur.area_id, -Number(cur.quantity || 0));
             void deleteItem(id);
             if (selectedLineId === id) setSelectedLineId(null);

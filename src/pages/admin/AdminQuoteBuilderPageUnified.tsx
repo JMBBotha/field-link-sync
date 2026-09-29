@@ -53,7 +53,9 @@ import { computeQuoteTotals } from "@/utils/quoteTransformers";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import { subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot } from "@/lib/pricing";
 import { pdfItemToPaletteProduct } from "@/utils/pdfItemToProduct";
-import { persistQuoteFromBaskets } from "@/utils/persistQuoteFromBaskets";
+import { persistQuoteFromBaskets, fetchQuoteLineStamp, fetchStampForIds, QuoteChangedElsewhereError, type PersistQuoteResult } from "@/utils/persistQuoteFromBaskets";
+import { mergeStamps, type QuoteLineStamp } from "@/lib/quoteLineStamp";
+import { useQuoteEditors } from "@/hooks/useQuoteEditors";
 import { stubProductFromQuoteItem } from "@/utils/hydrateQuoteItem";
 import { kitBasketFields, kitFromSavedItem, collapseExplodedKits } from "@/components/catalog/quote-builder/kitLine";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
@@ -239,6 +241,29 @@ function BuilderMandyActions() {
 function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode }) {
   const navigate = useNavigate();
   const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta, addItem: ctxAddItem, addArea: ctxAddArea } = useQuoteContext();
+  // Two-editor guard: presence pauses saving; the line stamp blocks writes over outside changes.
+  const { others: otherEditors } = useQuoteEditors(quoteId, "builder");
+  const othersRef = useRef(otherEditors);
+  othersRef.current = otherEditors;
+  const [changedElsewhere, setChangedElsewhere] = useState(false);
+  const changedElsewhereRef = useRef(false);
+  const baselineStampRef = useRef<QuoteLineStamp | null>(null);
+  const stampLoadedRef = useRef(false);
+  useEffect(() => {
+    if (ctxLoading || !quoteId || stampLoadedRef.current) return;
+    stampLoadedRef.current = true;
+    fetchQuoteLineStamp(quoteId).then((st) => { baselineStampRef.current = st; }).catch((e) => console.error("[QuoteBuilder] stamp load failed", e));
+  }, [ctxLoading, quoteId]);
+  const guardedPersist = useCallback(async (qid: string, bk: Basket[], ids: Set<string>): Promise<PersistQuoteResult> => {
+    try {
+      const res = await persistQuoteFromBaskets(qid, bk, ids, { baseline: () => baselineStampRef.current });
+      try { baselineStampRef.current = await fetchStampForIds(res.writtenIds); } catch (e) { console.error("[QuoteBuilder] stamp refresh failed", e); }
+      return res;
+    } catch (err) {
+      if (err instanceof QuoteChangedElsewhereError) { changedElsewhereRef.current = true; setChangedElsewhere(true); }
+      throw err;
+    }
+  }, []);
   const { settings: companySettings } = useCompanySettings();
   const marginView = useMarginView(quoteId ?? null, (meta as any)?.company_id ?? null, mode === "agent" ? "agent" : "admin");
   const isCompact = useIsTabletOrBelow();
@@ -689,6 +714,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       setCommittingPdf(true);
       const committed: string[] = [];
       const failed: string[] = [];
+      const addedRowIds: string[] = [];
       let sortOrder = ctxItems.length ? Math.max(...ctxItems.map((i) => i.sort_order || 0)) + 1 : 0;
 
       for (const item of selectedFromPdf) {
@@ -716,10 +742,13 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
           source: "catalog",
           supplier: item.supplierName || null,
         });
-        if (row) committed.push(item.code);
+        if (row) { committed.push(item.code); if ((row as any).id) addedRowIds.push((row as any).id); }
         else failed.push(item.productCode || item.code);
       }
 
+      if (addedRowIds.length && baselineStampRef.current) {
+        try { baselineStampRef.current = mergeStamps(baselineStampRef.current, await fetchStampForIds(addedRowIds)); } catch (e) { console.error("[QuoteBuilder] stamp merge failed", e); }
+      }
       if (committed.length > 0) {
         const committedSet = new Set(committed);
         const entries = selectedFromPdf
@@ -876,7 +905,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     setGenerating(true);
     try {
       const validIds = new Set(products.map((p) => p.id));
-      await persistQuoteFromBaskets(quoteId, displayBaskets, validIds);
+      await guardedPersist(quoteId, displayBaskets, validIds);
       // Send = shareable client link. Shared helper ensures public_token
       // exists and moves a draft to sent — never touches accepted/declined.
       await ensureQuoteReadyToSend(quoteId);
@@ -891,7 +920,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     } finally {
       setGenerating(false);
     }
-  }, [quoteId, displayBaskets, displayQuoteTotals.itemCount, products, requireLabour]);
+  }, [quoteId, displayBaskets, displayQuoteTotals.itemCount, products, requireLabour, guardedPersist]);
 
   /* ────────────────────────────────────────────────────────────────────
      Auto-save into THE linked quote + accidental-close guard.
@@ -961,15 +990,17 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     const { quoteId: qid, displayBaskets: dbk, products: prods, contentSig: sig, isDirty: dirty } =
       latestRef.current;
     if (!qid || !dirty || savingRef.current || skipFlushRef.current) return;
+    if (othersRef.current.length > 0 || changedElsewhereRef.current) return; // paused: never write over another editor
     savingRef.current = true;
     try {
       // Only ever writes into the already-open quote — never inserts a quote.
-      await persistQuoteFromBaskets(qid, dbk, new Set(prods.map((p) => p.id)));
+      await guardedPersist(qid, dbk, new Set(prods.map((p) => p.id)));
       hasWrittenRef.current = true;
       baselineSigRef.current = sig;
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error("[QuoteBuilder] auto-save failed", err);
+      if (err instanceof QuoteChangedElsewhereError) return;
       if (Date.now() - lastSaveErrorToastRef.current > 15_000) {
         lastSaveErrorToastRef.current = Date.now();
         toast({ title: "Changes not saved", description: "You can only edit quotes where you are the salesperson. Ask an admin to reassign it.", variant: "destructive" });
@@ -984,12 +1015,13 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     if (!isDirty) return;
     const t = setTimeout(() => { void flushSave(); }, 1200);
     return () => clearTimeout(t);
-  }, [isDirty, contentSig, flushSave]);
+  }, [isDirty, contentSig, flushSave, otherEditors.length]);
 
   // Flush on unmount (route change of any kind) and on tab close.
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!latestRef.current.isDirty || skipFlushRef.current) return;
+      if (othersRef.current.length > 0 || changedElsewhereRef.current) return;
       void flushSave();
       e.preventDefault();
       e.returnValue = "";
@@ -1010,7 +1042,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     const qid = latestRef.current.quoteId;
     if (qid && hasWrittenRef.current) {
       try {
-        await persistQuoteFromBaskets(
+        await guardedPersist(
           qid,
           baselineBasketsRef.current ?? [],
           new Set(latestRef.current.products.map((p) => p.id)),
@@ -1018,7 +1050,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error("[QuoteBuilder] discard restore failed", err);
-        toast({
+        if (err instanceof QuoteChangedElsewhereError) toast({ title: "Not discarded: the quote was changed elsewhere", variant: "destructive" });
+        else toast({
           title: "Could not fully discard",
           description: "Some changes may remain on the quote.",
           variant: "destructive",
@@ -1026,7 +1059,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       }
     }
     leaveBuilder();
-  }, [leaveBuilder]);
+  }, [leaveBuilder, guardedPersist]);
 
   const exitGuard = useUnsavedQuoteGuard({
     isDirty,
@@ -1178,6 +1211,16 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
       {/* Tab content */}
 
+      {changedElsewhere ? (
+        <div role="alert" className="flex flex-wrap items-center gap-2 border-b border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <span className="flex-1">This quote was changed on the estimate page or another device. Builder saving is paused so nothing is lost.</span>
+          <Button type="button" size="sm" variant="destructive" onClick={() => window.location.reload()}>Reload builder</Button>
+        </div>
+      ) : otherEditors.length > 0 && (
+        <div role="status" className="border-b border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {otherEditors[0].name} also has this quote open on the {otherEditors[0].surface === "estimate" ? "estimate page" : "builder"}. Builder saving is paused so their changes aren't overwritten.
+        </div>
+      )}
       <div className="relative flex-1 min-h-0 overflow-hidden">
         {ctxLoading && (
           <div className="h-full flex items-center justify-center">

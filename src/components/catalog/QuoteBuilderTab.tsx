@@ -1,4 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect, useSyncExternalStore } from "react";
+import RemoveUnitDialog from "@/components/quoting/RemoveUnitDialog";
+import { applyUnitRemoval, linkedToUnit } from "@/lib/unitInstallLinks";
 import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
 import { planStandardInstall, installBasketItem } from "@/lib/mandy/quoteOps";
@@ -675,15 +677,26 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     toast({ title: `Added ${displayName} to ${targetBasket.name}` });
   }, [baskets, addProductToBasket, addBundleToBasket, areaDropProductToArea, areaDropBundleToArea]);
 
-  const handleRemoveItem = useCallback((basketId: string, instanceId: string) => {
+  const [removeAsk, setRemoveAsk] = useState<{ basketId: string; instanceId: string; count: number } | null>(null);
+  const removeWithLinks = useCallback((basketId: string, instanceId: string, removeAll: boolean | null) => {
     setBaskets((prev) =>
     prev.map((b) =>
-    b.id === basketId ?
-    { ...b, items: b.items.filter((i) => i.instanceId !== instanceId) } :
-    b
+    b.id !== basketId ? b : {
+      ...b,
+      items: removeAll === null
+        ? b.items.filter((i) => i.instanceId !== instanceId)
+        : applyUnitRemoval(b.items, instanceId, (i) => i.instanceId === instanceId, (i) => i.install?.unitKey,
+            (i) => { const { install: _x, ...rest } = i; return rest as typeof i; }, removeAll),
+    }
     )
     );
   }, []);
+  const handleRemoveItem = useCallback((basketId: string, instanceId: string) => {
+    const b = baskets.find((x) => x.id === basketId);
+    const count = b ? linkedToUnit(b.items, instanceId, (i) => i.install?.unitKey).length : 0;
+    if (count > 0) { setRemoveAsk({ basketId, instanceId, count }); return; }
+    removeWithLinks(basketId, instanceId, null);
+  }, [baskets, removeWithLinks]);
 
   const handleUpdateQuantity = useCallback((basketId: string, instanceId: string, qty: number) => {
     if (qty < 1) return;
@@ -834,6 +847,13 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}>
 
+      <RemoveUnitDialog
+        open={!!removeAsk}
+        linkedCount={removeAsk?.count ?? 0}
+        onYes={() => { const r = removeAsk!; setRemoveAsk(null); removeWithLinks(r.basketId, r.instanceId, true); }}
+        onNo={() => { const r = removeAsk!; setRemoveAsk(null); removeWithLinks(r.basketId, r.instanceId, false); }}
+        onCancel={() => setRemoveAsk(null)}
+      />
       <div className="grid grid-cols-1 grid-rows-[minmax(0,2fr)_minmax(0,3fr)] md:grid-rows-1 md:grid-cols-5 gap-4 flex-1 min-h-0 overflow-hidden px-2">
           <div className="md:col-span-2 flex flex-col min-h-0 overflow-hidden pl-2">
             <ProductPalette
