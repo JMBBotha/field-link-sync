@@ -117,3 +117,22 @@ export function isOnVisualCatalog(p: LiveRow, allow: CatalogAllowlist): boolean 
 export function filterToVisualCatalog<T extends LiveRow>(products: T[], allow: CatalogAllowlist | Set<string>): T[] {
   return products.filter((p) => isLiveCatalogProduct(p, allow));
 }
+
+type CatalogBundle<T extends LiveRow> = {
+  items: Array<{ product: T | null }>;
+};
+
+/** Filter only picker inputs without mutating the full hydration/catalogue arrays. */
+export function filterPaletteCatalog<T extends LiveRow, B extends CatalogBundle<T>>(
+  products: T[],
+  bundles: B[],
+  allow?: CatalogAllowlist,
+): { products: T[]; bundles: B[] } {
+  if (!allow?.enforced) return { products, bundles };
+  return {
+    products: filterToVisualCatalog(products, allow),
+    bundles: bundles.filter((bundle) =>
+      bundle.items.every((item) => item.product !== null && isLiveCatalogProduct(item.product, allow)),
+    ),
+  };
+}

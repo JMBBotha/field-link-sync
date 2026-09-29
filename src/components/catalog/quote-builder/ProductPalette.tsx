@@ -81,6 +81,7 @@ const CATEGORIES = [
   { value: "favorites", label: "★ Favs", icon: Star },
   { value: "recent", label: "Recent", icon: Clock },
   { value: "Air Conditioning", label: "AC", icon: Snowflake },
+  { value: "piping", label: "Piping", icon: Ruler },
   { value: "Water Heaters", label: "Geyser", icon: Droplets },
   { value: "Inverters", label: "Inverter", icon: Zap },
   { value: "Batteries", label: "Battery", icon: BatteryCharging },
@@ -127,6 +128,7 @@ interface PaletteBundle {
   name: string;
   description: string | null;
   bundle_type: string | null;
+  is_favorite?: boolean | null;
   items: Array<{
     id: string;
     supplier_product_id: string;
@@ -136,6 +138,14 @@ interface PaletteBundle {
     is_optional: boolean;
     product: PaletteProduct | null;
   }>;
+}
+
+export function isPipingProduct(p: Pick<PaletteProduct, "product_code" | "short_name" | "description" | "category" | "product_category">): boolean {
+  const blob = [p.product_code, p.short_name, p.description, p.category, p.product_category]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return ["pip", "copper", "tube", "elbow", "coupling", "insulation"].some((term) => blob.includes(term));
 }
 
 function BundlePaletteButton({
@@ -422,7 +432,7 @@ function DraggableProductCard({
                       type="button"
                       data-no-dnd="true"
                       className={`h-5 w-5 flex items-center justify-center transition-opacity rounded hover:bg-muted ${
-                        isFavorite ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        isFavorite ? "opacity-100" : "opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
                       }`}
                       onPointerDown={(e) => {
                         e.stopPropagation();
@@ -715,6 +725,7 @@ const ProductPalette = ({
   onPopOutSelected,
 }: ProductPaletteProps) => {
   const [selectedCollapsed, setSelectedCollapsed] = useState(true);
+  const [pipingKitsCollapsed, setPipingKitsCollapsed] = useState(true);
   const recentIds = useMemo(() => getRecentProductIds(), [products]);
   const filteredProducts = useMemo(() => {
     let result = products;
@@ -725,6 +736,8 @@ const ProductPalette = ({
       result = result
         .filter((p) => idSet.has(p.id))
         .sort((a, b) => recentIds.indexOf(a.id) - recentIds.indexOf(b.id));
+    } else if (categoryFilter === "piping") {
+      result = result.filter(isPipingProduct);
     }
     if (searchQuery.trim()) {
       // Alias-aware, ranked search (product_code + description + search_aliases).
@@ -757,12 +770,8 @@ const ProductPalette = ({
     }, {});
   }, [sortedProducts]);
 
-  // Filter bundles by search and category (show in All, Favs, AC)
+  // Filter bundles by search and category.
   const filteredBundles = useMemo(() => {
-    // Show bundles in all, favorites, and AC tabs
-    const allowedTabs = ["all", "favorites", "Air Conditioning"];
-    if (!allowedTabs.includes(categoryFilter)) return [];
-
     let filtered = bundles;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -777,7 +786,18 @@ const ProductPalette = ({
           return blob.includes(q);
         });
       });
+      return filtered;
     }
+
+    if (categoryFilter === "favorites") {
+      return filtered.filter((b) => b.is_favorite === true);
+    }
+
+    if (categoryFilter === "piping") {
+      return filtered.filter((b) => b.bundle_type === "piping_kit");
+    }
+
+    if (categoryFilter !== "all" && categoryFilter !== "Air Conditioning") return [];
 
     // For AC tab, only show bundles with AC-related items
     if (categoryFilter === "Air Conditioning") {
@@ -788,6 +808,13 @@ const ProductPalette = ({
 
     return filtered;
   }, [bundles, searchQuery, categoryFilter]);
+
+  const favoriteProductCount = useMemo(
+    () => products.filter((product) => favorites.has(product.id)).length,
+    [products, favorites],
+  );
+  const favoriteKitCount = useMemo(() => bundles.filter((bundle) => bundle.is_favorite === true).length, [bundles]);
+  const favoriteCount = favoriteProductCount + favoriteKitCount;
 
   return (
     <div
@@ -838,14 +865,14 @@ const ProductPalette = ({
                     key={cat.value}
                     variant={isActive ? "default" : "outline"}
                     className={`cursor-pointer text-[10px] gap-0.5 px-1.5 py-0.5 ${
-                      isFavorites && favorites.size > 0 ? "border-amber-400/50" : ""
+                      isFavorites && favoriteCount > 0 ? "border-amber-400/50" : ""
                     }`}
                     onClick={() => onCategoryChange(cat.value)}
                   >
                     <Icon className="h-2.5 w-2.5" />
                     {cat.label}
-                    {isFavorites && favorites.size > 0 && (
-                      <span className="ml-0.5">({favorites.size})</span>
+                    {isFavorites && favoriteCount > 0 && (
+                      <span className="ml-0.5">({favoriteCount})</span>
                     )}
                   </Badge>
                 );
@@ -858,7 +885,35 @@ const ProductPalette = ({
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="p-2 space-y-3">
           {/* Bundles as compact buttons — desktop/tablet only */}
-          {filteredBundles.length > 0 && (
+          {categoryFilter === "piping" && filteredBundles.length > 0 && (
+            <div className="hidden sm:block">
+              <button
+                type="button"
+                className="flex w-full items-center gap-1 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+                onClick={() => setPipingKitsCollapsed((collapsed) => !collapsed)}
+                aria-expanded={!pipingKitsCollapsed}
+              >
+                {pipingKitsCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                Piping kits · {filteredBundles.length}
+              </button>
+              {!pipingKitsCollapsed && (
+                <div className="mt-1.5 space-y-1">
+                  {filteredBundles.map((bundle) => (
+                    <BundlePaletteButton
+                      key={bundle.id}
+                      bundle={bundle}
+                      searchTerm={searchQuery}
+                      isDraggingGlobal={isDraggingGlobal}
+                      baskets={baskets}
+                      onAddBundleToBasket={onAddBundleToBasket}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {categoryFilter !== "piping" && filteredBundles.length > 0 && (
             <div className="hidden sm:block">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
                 📦 Bundles ({filteredBundles.length})
