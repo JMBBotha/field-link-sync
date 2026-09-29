@@ -24,7 +24,7 @@ import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
 import { runSetLabourHours, buildRemoveLabour, readLabour, labourSummary } from "@/lib/mandy/labourAction";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { standardLabourRate, findAreaLabour } from "@/lib/labour";
-import { applyAutoLabourDelta, missingLabourAreas } from "@/lib/areaLabour";
+import { applyAutoLabourDelta, missingLabourFor, labourTargetAreaId, normalizeLabourMode } from "@/lib/areaLabour";
 import { isAcUnitLine } from "@/lib/lineDisplay";
 import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import { useEffect, useRef } from "react";
@@ -124,10 +124,11 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
   const adjustUnitLabour = async (areaId: string | null, delta: number) => {
     const rate = standardLabourRate(settings?.default_hourly_rate);
     if (!areaId || !rate) return;
-    await applyAutoLabourDelta({ items: S().items, areaId, unitDelta: delta, perUnit: Number(settings?.default_install_labour_hours) || 3.5, rate, addItem: g.addItem, updateItem: g.updateItem });
+    const target = labourTargetAreaId(normalizeLabourMode((ctx.meta as any)?.labour_mode), areaId);
+    await applyAutoLabourDelta({ items: S().items, areaId: target, job: target === null, unitDelta: delta, perUnit: Number(settings?.default_install_labour_hours) || 3.5, rate, addItem: g.addItem, updateItem: g.updateItem });
   };
   const labourReminder = (state = S()) => {
-    const missing = missingLabourAreas(state.areas, state.items, Number(settings?.default_install_labour_hours) || 3.5);
+    const missing = missingLabourFor(normalizeLabourMode((ctx.meta as any)?.labour_mode), state.areas, state.items, Number(settings?.default_install_labour_hours) || 3.5);
     return missing.length ? ` Remember labour for ${missing[0].name}.` : "";
   };
 

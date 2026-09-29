@@ -60,7 +60,7 @@ import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { useUnsavedQuoteGuard } from "@/hooks/useUnsavedQuoteGuard";
-import { missingLabourAreas } from "@/lib/areaLabour";
+import { missingLabourFor, normalizeLabourMode } from "@/lib/areaLabour";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 
@@ -811,10 +811,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   const [generating, setGenerating] = useState(false);
   const [labourDialog, setLabourDialog] = useState<{ id: string; name: string }[]>([]);
   const requireLabour = useCallback(() => {
-    const missing = missingLabourAreas(ctxAreas, ctxItems, companySettings.default_install_labour_hours);
+    const missing = missingLabourFor(normalizeLabourMode((meta as any)?.labour_mode), ctxAreas, ctxItems, companySettings.default_install_labour_hours);
     if (missing.length) { setLabourDialog(missing); return false; }
     return true;
-  }, [ctxAreas, ctxItems, companySettings.default_install_labour_hours]);
+  }, [ctxAreas, ctxItems, companySettings.default_install_labour_hours, meta]);
 
   /* ── Mobile/tablet accordion for the Area tab: one full-screen scrollable
      section at a time (palette / areas / summary) ── */

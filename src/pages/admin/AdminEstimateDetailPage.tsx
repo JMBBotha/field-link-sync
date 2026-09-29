@@ -25,7 +25,7 @@ import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { fetchQuoteInvoice } from "@/lib/depositInvoice";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { QuoteProvider, usePendingQuoteWrites, waitForQuoteWrites } from "@/contexts/QuoteContext";
-import { missingLabourAreas } from "@/lib/areaLabour";
+import { missingLabourFor, normalizeLabourMode } from "@/lib/areaLabour";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 
@@ -45,13 +45,14 @@ const AdminEstimateDetailPage = () => {
   const [sendOpen, setSendOpen] = useState(false);
   const [missingLabour, setMissingLabour] = useState<{ id: string; name: string }[]>([]);
   const checkLabour = async () => {
-    const [areaRes, lineRes] = await Promise.all([
+    const [areaRes, lineRes, modeRes] = await Promise.all([
       supabase.from("quote_areas").select("id, name").eq("quote_id", id).order("sort_order"),
       supabase.from("quote_items").select("id, area_id, parent_item_id, item_name, item_type, quantity, metadata").eq("quote_id", id),
+      (supabase.from("quotes") as any).select("labour_mode").eq("id", id).maybeSingle(),
     ]);
     if (areaRes.error) throw areaRes.error;
     if (lineRes.error) throw lineRes.error;
-    const missing = missingLabourAreas((areaRes.data || []) as any[], (lineRes.data || []) as any[], settings.default_install_labour_hours);
+    const missing = missingLabourFor(normalizeLabourMode(modeRes.data?.labour_mode), (areaRes.data || []) as any[], (lineRes.data || []) as any[], settings.default_install_labour_hours);
     if (missing.length) { setMissingLabour(missing); return false; }
     return true;
   };
