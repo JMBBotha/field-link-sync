@@ -5420,6 +5420,7 @@ export type Database = {
           discount_type: string | null
           discount_value: number | null
           id: string
+          labour_mode: string
           lead_id: string | null
           legacy_original_total: number | null
           location_id: string | null
@@ -5460,6 +5461,7 @@ export type Database = {
           discount_type?: string | null
           discount_value?: number | null
           id?: string
+          labour_mode?: string
           lead_id?: string | null
           legacy_original_total?: number | null
           location_id?: string | null
@@ -5500,6 +5502,7 @@ export type Database = {
           discount_type?: string | null
           discount_value?: number | null
           id?: string
+          labour_mode?: string
           lead_id?: string | null
           legacy_original_total?: number | null
           location_id?: string | null
@@ -8257,6 +8260,15 @@ export type Database = {
               supplier_name: string
             }[]
           }
+      set_quote_labour_mode: {
+        Args: {
+          p_area_units?: Json
+          p_mode: string
+          p_per_unit_hours: number
+          p_quote_id: string
+        }
+        Returns: undefined
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       st_3dclosestpoint: {

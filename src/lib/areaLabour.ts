@@ -40,29 +40,83 @@ export function missingLabourAreas<T extends { id: string; name: string }>(areas
 
 export type LabourMode = "per_area" | "job";
 export const DEFAULT_LABOUR_MODE: LabourMode = "per_area";
-/** Where auto labour lands. Only 'per_area' is built; 'job' is planned. */
-export function labourTargetAreaId(mode: LabourMode, areaId: string): string {
-  return mode === "per_area" ? areaId : areaId;
+export const JOB_LABOUR_KEY = "job";
+
+export function normalizeLabourMode(v: unknown): LabourMode {
+  return v === "job" ? "job" : "per_area";
+}
+
+/** The single whole-job labour row: labour, no area, metadata.labour_scope = 'job'. */
+export function isJobLabour(line: { area_id?: string | null; parent_item_id?: string | null; item_type?: string | null; metadata?: any } | null | undefined): boolean {
+  return !!line && !line.parent_item_id && !line.area_id && isLabourItem(line as any) && (line.metadata as any)?.labour_scope === "job";
+}
+
+/** Where auto labour lands: the area for 'per_area', the job row (null area) for 'job'. */
+export function labourTargetAreaId(mode: LabourMode, areaId: string | null): string | null {
+  return mode === "job" ? null : areaId;
+}
+
+/**
+ * Labour-required check used by Save/Send/PDF/Print/Accept.
+ * per_area: every populated area needs labour. job: one job labour row with hours > 0 when the quote has lines.
+ */
+export function missingLabourFor<T extends { id: string; name: string }>(
+  mode: LabourMode, areas: T[], lines: AreaLabourLine[], perUnit = 3.5,
+): { id: string; name: string }[] {
+  if (mode !== "job") return missingLabourAreas(areas, lines, perUnit);
+  const hasLines = lines.some((l) => !l.parent_item_id && !isLabourItem(l as any));
+  if (!hasLines) return [];
+  const hours = lines.filter((l) => isJobLabour(l as any))
+    .reduce((s, l) => s + Math.max(0, Number((l.metadata as any)?.hours ?? l.quantity) || 0), 0);
+  return hours > 0 ? [] : [{ id: JOB_LABOUR_KEY, name: "Job labour" }];
+}
+
+/** per_area -> job: total hours moved onto one row. */
+export function planToJob(areaHours: number[]): number {
+  return Math.round(areaHours.reduce((s, h) => s + Math.max(0, Number(h) || 0), 0) * 100) / 100;
+}
+
+/** job -> per_area: defaults per area, difference absorbed so the total is unchanged (mirrors set_quote_labour_mode). */
+export function planToPerArea(jobHours: number, areas: { id: string; units: number }[], perUnit: number): { id: string; hours: number }[] {
+  const plan = areas.map((a) => ({ id: a.id, hours: defaultLabourHours(a.units, perUnit) }));
+  if (!plan.length) return plan;
+  let diff = Math.round((jobHours - plan.reduce((s, p) => s + p.hours, 0)) * 100) / 100;
+  if (diff >= 0) {
+    (plan.find((p) => p.hours > 0) ?? plan[0]).hours += diff;
+  } else {
+    for (const p of plan) {
+      if (diff >= 0) break;
+      const take = Math.min(p.hours, -diff);
+      p.hours = Math.round((p.hours - take) * 100) / 100;
+      diff = Math.round((diff + take) * 100) / 100;
+    }
+  }
+  return plan.map((p) => ({ ...p, hours: Math.round(p.hours * 100) / 100 }));
 }
 
 type LabourWriter = {
   items: any[];
-  areaId: string;
+  areaId: string | null;
   unitDelta: number;
   perUnit: number;
   rate: number;
   addItem: (item: any) => Promise<any>;
   updateItem: (id: string, patch: any) => Promise<any>;
+  /** Target the whole-job labour row instead of an area row. */
+  job?: boolean;
 };
 
 /** Apply an AC quantity delta only to an auto labour row; create one when none exists. */
-export async function applyAutoLabourDelta({ items, areaId, unitDelta, perUnit, rate, addItem, updateItem }: LabourWriter) {
-  if (!areaId || !unitDelta || !(rate > 0)) return null;
-  const labour = items.find((line) => line.area_id === areaId && !line.parent_item_id && isLabourItem(line));
+export async function applyAutoLabourDelta({ items, areaId, unitDelta, perUnit, rate, addItem, updateItem, job }: LabourWriter) {
+  if ((!job && !areaId) || !unitDelta || !(rate > 0)) return null;
+  const labour = job
+    ? items.find((line) => isJobLabour(line))
+    : items.find((line) => line.area_id === areaId && !line.parent_item_id && isLabourItem(line));
   if (labour && (labour.metadata as any)?.labour_auto !== true) return labour;
   const current = labour ? Number((labour.metadata as any)?.hours ?? labour.quantity) || 0 : 0;
   const hours = Math.max(0, Math.round((current + defaultLabourHours(unitDelta, perUnit)) * 100) / 100);
-  const fields = labourFields(hours, rate, false, true);
+  const base = labourFields(hours, rate, false, true);
+  const fields = job ? { ...base, item_name: "Job labour", metadata: { ...base.metadata, labour_scope: "job" } } : base;
   if (labour) {
     await updateItem(labour.id, fields);
     return labour;
@@ -70,5 +124,10 @@ export async function applyAutoLabourDelta({ items, areaId, unitDelta, perUnit, 
   // A removal cannot invent a legacy labour row; only positive unit adds create one.
   if (unitDelta < 0) return null;
   const sort = items.length ? Math.max(...items.map((line) => Number(line.sort_order) || 0)) + 1 : 0;
-  return addItem({ ...fields, area_id: areaId, sort_order: sort, source: "labour" });
+  return addItem({ ...fields, area_id: job ? null : areaId, sort_order: sort, source: "labour" });
+}
+
+/** Null/unknown-area labour shown in the amber box; the whole-job row is never listed. */
+export function unassignedLabourLines<T extends { area_id?: string | null; parent_item_id?: string | null; item_type?: string | null; metadata?: any }>(lines: T[], areas: { id: string }[]): T[] {
+  return lines.filter((i) => !i.parent_item_id && isLabourItem(i as any) && !isJobLabour(i) && (!i.area_id || !areas.some((a) => a.id === i.area_id)));
 }

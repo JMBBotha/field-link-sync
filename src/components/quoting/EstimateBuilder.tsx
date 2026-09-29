@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuoteContext, trackQuoteWrite } from "@/contexts/QuoteContext";
+import { unassignedLabourLines } from "@/lib/areaLabour";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
@@ -32,7 +33,7 @@ import { useMarginView } from "@/hooks/useMarginView";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useLabourNorms } from "@/hooks/useLabourNorms";
 import { serviceNormKey } from "@/lib/pricingChecks";
-import { applyAutoLabourDelta, areaLabourStatus, countAcUnits, labourTargetAreaId, DEFAULT_LABOUR_MODE } from "@/lib/areaLabour";
+import { applyAutoLabourDelta, areaLabourStatus, countAcUnits, labourTargetAreaId, normalizeLabourMode, isJobLabour, defaultLabourHours } from "@/lib/areaLabour";
 import { labourFields, planLabour, standardLabourRate } from "@/lib/labour";
 
 interface Props {
@@ -76,8 +77,10 @@ export default function EstimateBuilder({
 }: Props) {
   const {
     quoteId, meta, areas, items,
-    addArea, updateArea, deleteArea, updateItem, deleteItem, updateQuote, addItem,
+    addArea, updateArea, deleteArea, updateItem, deleteItem, updateQuote, addItem, refetch,
   } = useQuoteContext();
+  const labourMode = normalizeLabourMode((meta as any)?.labour_mode);
+  const [modeBusy, setModeBusy] = useState(false);
   const { products: liveProducts } = useQuoteBuilderProducts();
   const { bundles } = useQuoteBuilderBundles();
   const { toast } = useToast();
@@ -176,8 +179,41 @@ export default function EstimateBuilder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areas, topLevel, productImages, margin.visible, perUnitHours]);
 
+  const withProduct = (i: (typeof topLevel)[number]) => ({ ...i, product: i.product_id ? (productImages as Record<string, any>)[i.product_id] : null });
+  const quoteUnitCount = countAcUnits(topLevel.map(withProduct));
+
+  const addJobLabour = async () => {
+    if (!(labourRate && labourRate > 0)) { toast({ title: "Set a labour rate", description: "Set the standard labour rate in Billing first." }); return; }
+    const hours = defaultLabourHours(quoteUnitCount, perUnitHours);
+    const base = labourFields(hours, labourRate, false, true);
+    const fields = { ...base, item_name: "Job labour", metadata: { ...base.metadata, labour_scope: "job" } };
+    const existing = topLevel.find((i) => isJobLabour(i as any));
+    if (existing) await updateItem(existing.id, fields as any);
+    else await addItem({ ...fields, area_id: null, sort_order: Math.max(0, ...items.map((i) => i.sort_order || 0)) + 1, source: "labour" } as any);
+    onChanged?.();
+  };
+
+  const switchLabourMode = async (next: "per_area" | "job") => {
+    if (next === labourMode || modeBusy) return;
+    if (!window.confirm(next === "job" ? "Move all labour hours to one job line?" : "Split job labour back into the areas?")) return;
+    setModeBusy(true);
+    try {
+      const unitsByArea: Record<string, number> = {};
+      for (const a of areas) unitsByArea[a.id] = countAcUnits(topLevel.filter((i) => i.area_id === a.id).map(withProduct));
+      const { error } = await trackQuoteWrite<any>((supabase as any).rpc("set_quote_labour_mode", { p_quote_id: quoteId, p_mode: next, p_per_unit_hours: perUnitHours, p_area_units: unitsByArea }));
+      if (error) throw error;
+      await refetch();
+      onChanged?.();
+    } catch (e: any) {
+      toast({ title: "Could not change labour mode", description: e.message, variant: "destructive" });
+    } finally {
+      setModeBusy(false);
+    }
+  };
+
   const addLabourForArea = async (rawAreaId: string) => {
-    const areaId = labourTargetAreaId(DEFAULT_LABOUR_MODE, rawAreaId);
+    const areaId = labourTargetAreaId(labourMode, rawAreaId);
+    if (!areaId) { await addJobLabour(); return; }
     if (!(labourRate && labourRate > 0)) { toast({ title: "Set a labour rate", description: "Set the standard labour rate in Billing first." }); return; }
     const areaItems = topLevel.filter((i) => i.area_id === areaId);
     const status = areaLabourStatus(areaItems.map((i) => ({ ...i, product: i.product_id ? (productImages as Record<string, any>)[i.product_id] : null })), perUnitHours);
@@ -206,16 +242,19 @@ export default function EstimateBuilder({
     const chosenRate = rate != null && rate > 0 ? rate : Number((line.metadata as any)?.rate ?? line.unit_price ?? labourRate);
     const plan = planLabour(line, hours, labourRate, chosenRate);
     if (!plan.fields) return;
-    await updateItem(id, { ...plan.fields, metadata: { ...plan.fields.metadata, labour_auto: false } } as any);
+    const job = isJobLabour(line as any);
+    await updateItem(id, { ...plan.fields, ...(job ? { item_name: line.item_name || "Job labour" } : {}), metadata: { ...plan.fields.metadata, ...(job ? { labour_scope: "job" } : {}), labour_auto: false } } as any);
     onChanged?.();
   };
 
   const adjustAutoLabour = async (areaId: string | null, delta: number) => {
     if (!areaId || !labourRate) return;
-    await applyAutoLabourDelta({ items, areaId: labourTargetAreaId(DEFAULT_LABOUR_MODE, areaId), unitDelta: delta, perUnit: perUnitHours, rate: labourRate, addItem, updateItem });
+    const target = labourTargetAreaId(labourMode, areaId);
+    await applyAutoLabourDelta({ items, areaId: target, job: target === null, unitDelta: delta, perUnit: perUnitHours, rate: labourRate, addItem, updateItem });
   };
 
   const allowNewArea = () => {
+    if (labourMode === "job") return true;
     const last = editAreas.filter((a) => a.id).at(-1);
     if (!last || !areaLabourStatus(topLevel.filter((i) => i.area_id === last.id), perUnitHours).missing) return true;
     toast({ title: `${last.name} has no labour yet. Add labour first.`, action: <ToastAction altText="Add labour" onClick={() => document.getElementById(`area-labour-${last.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}>Add labour</ToastAction> });
@@ -282,6 +321,16 @@ export default function EstimateBuilder({
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-end gap-2 print:hidden" data-pdf-hide data-html2canvas-ignore>
+        <span className="text-xs text-muted-foreground">Labour</span>
+        <Select value={labourMode} onValueChange={(v) => void switchLabourMode(v as "per_area" | "job")} disabled={modeBusy}>
+          <SelectTrigger aria-label="Labour mode" className="h-8 w-[240px] text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="per_area">Labour per area</SelectItem>
+            <SelectItem value="job">One time line for the whole job</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       <EstimateDocument
         estimateNumber={quoteNumber}
         issueDate={issueDate}
@@ -441,7 +490,7 @@ export default function EstimateBuilder({
             const source = items.find((i) => i.id === id);
             const kids = items.filter((x) => installTag(x)?.unit_item_id === id);
             for (const x of [source, ...kids]) if (x) void updateItem(x.id, { area_id: areaId } as any);
-            if (source && lineFor(source).isAcUnit && source.area_id !== areaId) {
+            if (labourMode !== "job" && source && lineFor(source).isAcUnit && source.area_id !== areaId) {
               void adjustAutoLabour(source.area_id, -Number(source.quantity || 0));
               void adjustAutoLabour(areaId, Number(source.quantity || 0));
             }
@@ -460,7 +509,10 @@ export default function EstimateBuilder({
           },
           onAddLabour: (areaId) => void addLabourForArea(areaId),
           onLabourChange: (id, hours, rate) => void changeLabour(id, hours, rate),
-          unassignedLabour: topLevel.filter((i) => isLabourItem(i) && (!i.area_id || !areas.some((a) => a.id === i.area_id))).map(lineFor),
+          unassignedLabour: unassignedLabourLines(topLevel, areas).map(lineFor),
+          jobLabour: labourMode === "job"
+            ? { lines: topLevel.filter((i) => isJobLabour(i as any)).map((i) => ({ ...lineFor(i), acUnitCount: quoteUnitCount })), defaultHours: defaultLabourHours(quoteUnitCount, perUnitHours), onAdd: () => void addJobLabour() }
+            : undefined,
 
         }}
       />

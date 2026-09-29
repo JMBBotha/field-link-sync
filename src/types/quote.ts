@@ -49,6 +49,7 @@ export interface QuoteItem {
 
 export interface QuoteMeta {
   id: string;
+  labour_mode?: string | null;
   quote_number: string;
   customer_id: string | null;
   customer_name: string | null;

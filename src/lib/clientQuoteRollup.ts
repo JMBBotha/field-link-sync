@@ -49,6 +49,8 @@ export interface ClientRollupArea {
   areaTotal: number;
   /** True when the area also carries piping / materials / labour lines. */
   hasInstallExtras: boolean;
+  /** Whole-job labour line (labour mode 'job'): sell price only. */
+  isJobLabour?: boolean;
 }
 
 const UNIT_CATEGORY = /(air\s*con|aircon|midwall|mid-wall|inverter|cassette|under\s*ceiling|underceiling|console|ducted|split)/i;
@@ -96,7 +98,7 @@ export function buildClientRollup(lines: RollupLine[], areas: RollupArea[] = [])
 
   const groups = new Map<string, RollupLine[]>();
   for (const l of top) {
-    const key = l.area_id || "__general__";
+    const key = l.area_id || (String(l.item_type || "").toLowerCase() === "labour" ? "__job_labour__" : "__general__");
     const list = groups.get(key);
     if (list) list.push(l);
     else groups.set(key, [l]);
@@ -104,8 +106,9 @@ export function buildClientRollup(lines: RollupLine[], areas: RollupArea[] = [])
 
   const out: ClientRollupArea[] = [];
   for (const [key, group] of groups) {
-    const areaId = key === "__general__" ? null : key;
-    const areaName =
+    const isJob = key === "__job_labour__";
+    const areaId = key === "__general__" || isJob ? null : key;
+    const areaName = isJob ? "Labour" :
       (areaId ? names.get(areaId) : null) || group.find((l) => l.area_name)?.area_name || (areaId ? "Area" : "General");
 
     let unitLines = group.filter(looksLikeUnit);
@@ -117,6 +120,11 @@ export function buildClientRollup(lines: RollupLine[], areas: RollupArea[] = [])
     }
     const unitIds = new Set(unitLines.map((l) => l.id));
 
+    if (isJob) {
+      // Whole-job labour: one sell-price line at the end, no unit card.
+      out.push({ areaId: null, areaName, units: [], areaTotal: group.reduce((sum, l) => sum + lineTotal(l), 0), hasInstallExtras: false, isJobLabour: true });
+      continue;
+    }
     out.push({
       areaId,
       areaName,
@@ -127,8 +135,8 @@ export function buildClientRollup(lines: RollupLine[], areas: RollupArea[] = [])
   }
 
   return out.sort((a, b) => {
-    const oa = a.areaId ? order.get(a.areaId) ?? 9999 : 10000;
-    const ob = b.areaId ? order.get(b.areaId) ?? 9999 : 10000;
+    const oa = a.isJobLabour ? 10001 : a.areaId ? order.get(a.areaId) ?? 9999 : 10000;
+    const ob = b.isJobLabour ? 10001 : b.areaId ? order.get(b.areaId) ?? 9999 : 10000;
     return oa - ob;
   });
 }
