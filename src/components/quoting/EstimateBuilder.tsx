@@ -12,7 +12,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useQuoteContext } from "@/contexts/QuoteContext";
+import { useQuoteContext, trackQuoteWrite } from "@/contexts/QuoteContext";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { installTag, qtyUnitLabel, BRACKET_OPTIONS } from "@/lib/installTemplates";
 import { qtyLabel, shortInstallName, kitTitleFromMetadata, kitContents, isAcUnitLine } from "@/lib/lineDisplay";
@@ -174,7 +176,8 @@ export default function EstimateBuilder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areas, topLevel, productImages, margin.visible, perUnitHours]);
 
-  const addLabourForArea = async (areaId: string) => {
+  const addLabourForArea = async (rawAreaId: string) => {
+    const areaId = labourTargetAreaId(DEFAULT_LABOUR_MODE, rawAreaId);
     if (!(labourRate && labourRate > 0)) { toast({ title: "Set a labour rate", description: "Set the standard labour rate in Billing first." }); return; }
     const areaItems = topLevel.filter((i) => i.area_id === areaId);
     const status = areaLabourStatus(areaItems.map((i) => ({ ...i, product: i.product_id ? (productImages as Record<string, any>)[i.product_id] : null })), perUnitHours);
@@ -209,7 +212,7 @@ export default function EstimateBuilder({
 
   const adjustAutoLabour = async (areaId: string | null, delta: number) => {
     if (!areaId || !labourRate) return;
-    await applyAutoLabourDelta({ items, areaId, unitDelta: delta, perUnit: perUnitHours, rate: labourRate, addItem, updateItem });
+    await applyAutoLabourDelta({ items, areaId: labourTargetAreaId(DEFAULT_LABOUR_MODE, areaId), unitDelta: delta, perUnit: perUnitHours, rate: labourRate, addItem, updateItem });
   };
 
   const allowNewArea = () => {

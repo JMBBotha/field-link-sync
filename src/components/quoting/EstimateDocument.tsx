@@ -99,7 +99,7 @@ export interface EstimateEditing {
   /** Area whose name input should take focus (just-created area). */
   focusAreaId?: string | null;
   /** Delete an area (and its lines). Only shown for real (persisted) areas. */
-  onDeleteArea?: (id: string) => void;
+  onDeleteArea?: (id: string) => void | Promise<void>;
   /** Area currently being built — its add bar is highlighted. */
   activeAreaId?: string | null;
   onSelectArea?: (id: string | null) => void;
