@@ -1,4 +1,5 @@
 /* eslint-disable -- visual catalog panel */
+import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { inclVatFromExcl } from "@/lib/pricing";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -625,45 +626,13 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
     }
   }, [queryClient]);
 
+  const { ids: quoteFavIds, toggle: toggleQuoteFavourite } = useQuoteFavourites();
   const handleToggleFavorite = useCallback(async (product: PaletteProduct) => {
-    // Always use is_pinned for the visual catalog overlay — this is what the UI checks
-    const currentValue = !!product.is_pinned;
-    const newValue = !currentValue;
-
-    // Optimistic update: mutate product in all live-extract cached regions
-    queryClient.setQueriesData({ queryKey: ["visual-panel-live-extract"] }, (old: any) => {
-      if (!Array.isArray(old)) return old;
-      return old.map((r: any) =>
-        r.product?.id === product.id
-          ? { ...r, product: { ...r.product, is_pinned: newValue } }
-          : r
-      );
-    });
-
-    // Also clear extraction cache so next re-render uses updated product data
-    clearExtractionCache();
-
-    try {
-      const { error } = await (supabase.from("supplier_products") as any)
-        .update({ is_pinned: newValue })
-        .eq("id", product.id);
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
-      toast({ title: newValue ? "★ Added to favorites" : "Removed from favorites", duration: 2000 });
-    } catch (err) {
-      // Roll back optimistic update
-      clearExtractionCache();
-      queryClient.setQueriesData({ queryKey: ["visual-panel-live-extract"] }, (old: any) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((r: any) =>
-          r.product?.id === product.id
-            ? { ...r, product: { ...r.product, is_pinned: currentValue } }
-            : r
-        );
-      });
-      toast({ title: "Failed to update favorite", variant: "destructive" });
-    }
-  }, [queryClient]);
+    // Per-user favourites (product_favorites); shared is_pinned set is only the fallback.
+    const added = await toggleQuoteFavourite(product.id);
+    if (added === null) return; // hook already showed "Couldn't update favourite"
+    toast({ title: added ? "★ Added to favorites" : "Removed from favorites", duration: 2000 });
+  }, [toggleQuoteFavourite]);
 
 
   const handlePageCategories = useCallback((pageIndex: number, categories: string[]) => {
@@ -690,13 +659,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
   }, [categoryPageMap, scrollToPage]);
 
   // Favorites set
-  const favoriteIds = useMemo(() => {
-    const ids = new Set(products.filter(p => p.is_pinned).map(p => p.id));
-    if (ids.size > 0) {
-      console.log(`[VisualCatalog] ${ids.size} favorited products:`, [...ids].slice(0, 5));
-    }
-    return ids;
-  }, [products]);
+  const favoriteIds = quoteFavIds;
 
   const basketProductCounts = useMemo(() => {
     const counts: Record<string, number> = {};

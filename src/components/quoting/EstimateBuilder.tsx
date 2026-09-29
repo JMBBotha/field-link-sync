@@ -6,6 +6,7 @@
  * QuoteContext (quote_items / quote_areas). Cost, markup and profit live in a
  * separate staff card outside the pdf capture root.
  */
+import { useIsPhone } from "@/hooks/useIsPhone";
 import { isLabourItem } from "@/lib/labour";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -93,7 +94,8 @@ export default function EstimateBuilder({
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
   const [focusAreaId, setFocusAreaId] = useState<string | null>(null);
-  const [openAdd, setOpenAdd] = useState<{ key: string; mode: "unit" | "service" | "material" } | null>(null);
+  const [openAdd, setOpenAdd] = useState<{ key: string; mode: "unit" | "service" | "material" | "favourites" } | null>(null);
+  const isPhone = useIsPhone();
 
 
 
@@ -482,7 +484,9 @@ export default function EstimateBuilder({
                 <Plus className="mr-1 h-3 w-3" />{label}
               </Button>
             );
-            return <div className="flex flex-wrap gap-2">{btn("unit", "Add unit")}{btn("service", "Add service")}{btn("material", "Add material")}</div>;
+            return <div className="flex flex-wrap gap-2">{btn("unit", "Add unit")}{btn("service", "Add service")}{btn("material", "Add material")}{isPhone && (
+              <Button key="favourites" type="button" size="sm" variant="outline" className="h-7 text-[11px]" onClick={(e) => { e.stopPropagation(); setOpenAdd({ key, mode: "favourites" }); }}>★ Favourites</Button>
+            )}</div>;
           },
           discountControl,
           onMoveLine: (id, areaId) => {
