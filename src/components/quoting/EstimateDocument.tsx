@@ -114,6 +114,8 @@ export interface EstimateEditing {
   onAddLabour?: (areaId: string) => void;
   onLabourChange?: (id: string, hours: number, rate?: number) => void;
   unassignedLabour?: EstimateEditLine[];
+  /** Labour mode 'job': one Job labour row after the last area; areas show no labour row. */
+  jobLabour?: { lines: EstimateEditLine[]; defaultHours: number; onAdd: () => void };
 }
 
 
@@ -700,7 +702,7 @@ const EstimateDocument = ({
                   <div className="mt-2 print:hidden" data-pdf-hide data-html2canvas-ignore>{editing.renderAreaAdd(area.id)}</div>
                 )}
 
-                {area.id && editing.onAddLabour && editing.onLabourChange && (
+                {area.id && !editing.jobLabour && editing.onAddLabour && editing.onLabourChange && (
                   <AreaLabourRow
                     areaId={area.id}
                     areaName={area.name}
@@ -713,6 +715,20 @@ const EstimateDocument = ({
               </section>
 
             ))}
+
+            {editing.jobLabour && editing.onLabourChange && (
+              <section data-testid="job-labour" className="rounded-lg bg-white p-4 ring-1 ring-slate-200 print:rounded-none print:p-0 print:ring-0">
+                <AreaLabourRow
+                  areaId="job"
+                  areaName="the job"
+                  title="Job labour"
+                  lines={editing.jobLabour.lines}
+                  defaultHours={editing.jobLabour.defaultHours}
+                  onAdd={editing.jobLabour.onAdd}
+                  onChange={editing.onLabourChange}
+                />
+              </section>
+            )}
 
             <button
               type="button"
@@ -742,7 +758,7 @@ const EstimateDocument = ({
                 <div className="flex items-start justify-between gap-4">
                   <h2 className="text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]">{area.areaName}</h2>
                   <div className="text-right">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-400">Area total</p>
+                    <p className="text-[10px] uppercase tracking-wider text-slate-400">{area.isJobLabour ? "Total" : "Area total"}</p>
                     <p className="text-[15px] font-bold text-slate-900">{formatCurrency(area.areaTotal)}</p>
                   </div>
                 </div>
