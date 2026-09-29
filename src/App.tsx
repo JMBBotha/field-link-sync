@@ -19,6 +19,7 @@ import FieldAgent from "./pages/FieldAgent";
 import CustomerPortal from "./pages/CustomerPortal";
 import AdminMoneyPage from "./pages/admin/AdminMoneyPage";
 import AdminMyCommissionPage from "./pages/admin/AdminMyCommissionPage";
+import FieldEarningsPage from "./pages/FieldEarningsPage";
 import CustomerFeedbackForm from "./components/CustomerFeedbackForm";
 import CustomerInvoiceView from "./components/CustomerInvoiceView";
 import NotFound from "./pages/NotFound";
@@ -227,6 +228,9 @@ const App = () => (
 
                   {/* Field agent Schedule (agenda view) */}
                   <Route path="/field/schedule" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldSchedulePage /></RequireRole>} />
+
+                  {/* Tech "My earnings" (Job 6) */}
+                  <Route path="/field/earnings" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldEarningsPage /></RequireRole>} />
 
                   {/* Field Agent */}
                   <Route path="/field" element={<FieldAgent />} />

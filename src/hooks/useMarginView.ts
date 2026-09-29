@@ -5,6 +5,9 @@ import { useRole } from "@/hooks/useRole";
 import { canSeeMargin } from "@/lib/marginAccess";
 import type { MarginSettings } from "@/lib/margin";
 
+/** One component of the tech's labour share (Job 6): paid on completion, or holdback released after hold_days. */
+export type TechPart = { kind: string; label?: string; percent: number; hold_days?: number };
+
 /** Visibility + company margin settings for the open quote (staff only). */
 export function useMarginView(quoteId: string | null, companyId: string | null, mode: "admin" | "agent" = "admin") {
   const { user } = useAuth();
@@ -35,7 +38,10 @@ export function useMarginView(quoteId: string | null, companyId: string | null, 
     queryFn: async () => {
       const { data: e, error } = await (supabase.rpc as any)("get_my_earnings", { p_quote_id: quoteId });
       if (error) return null;
-      return (e?.quotes?.[0] ?? null) as { viewer?: { is_owner?: boolean }; sales?: { percent?: number; gp_target_percent?: number }; tech?: { percent?: number } } | null;
+      return (e?.quotes?.[0] ?? null) as {
+        viewer?: { is_owner?: boolean }; sales?: { percent?: number; gp_target_percent?: number };
+        tech?: { percent?: number; rule?: { parts?: TechPart[]; tools_percent?: number } };
+      } | null;
     },
   });
 
@@ -48,6 +54,13 @@ export function useMarginView(quoteId: string | null, companyId: string | null, 
     salesSharePercent: earn?.sales?.percent != null ? Number(earn.sales.percent) : 0,
     labourTechSharePercent: earn?.tech?.percent != null && earn?.viewer?.is_owner ? Number(earn.tech.percent) : 0,
   };
-  const splits = { sales: earn?.sales?.percent != null, owner: !!earn?.viewer?.is_owner };
+  const owner = !!earn?.viewer?.is_owner;
+  const splits = {
+    sales: earn?.sales?.percent != null,
+    owner,
+    // Owner only: tech paid / held parts and the tools share the company keeps (all % of labour sell ex VAT).
+    techParts: owner ? (earn?.tech?.rule?.parts ?? []).map((p) => ({ ...p, percent: Number(p.percent) || 0 })) : [],
+    toolsPercent: owner ? Number(earn?.tech?.rule?.tools_percent) || 0 : 0,
+  };
   return { visible, settings, splits };
 }

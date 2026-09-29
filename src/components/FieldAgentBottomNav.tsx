@@ -1,18 +1,19 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { Home, ClipboardList, CalendarDays, Map, CloudOff, RefreshCw } from "lucide-react";
+import { Home, ClipboardList, CalendarDays, Map, CloudOff, RefreshCw, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 
 /**
  * Mobile bottom navigation for field technicians.
  * Route-driven (NavLink) so it stays in sync across /field/* pages.
- * Four tabs: Home / My Jobs / Schedule / Map.
+ * Five tabs: Home / My Jobs / Schedule / Map / Earnings.
  */
 const tabs = [
   { to: "/field", label: "Home", icon: Home, match: (p: string) => p === "/field" && !p.includes("view=map") },
   { to: "/field/my-jobs", label: "My Jobs", icon: ClipboardList, match: (p: string) => p.startsWith("/field/my-jobs") },
   { to: "/field/schedule", label: "Schedule", icon: CalendarDays, match: (p: string) => p.startsWith("/field/schedule") },
   { to: "/field?view=map", label: "Map", icon: Map, match: (p: string, s: string) => p === "/field" && s.includes("view=map") },
+  { to: "/field/earnings", label: "Earnings", icon: Wallet, match: (p: string) => p.startsWith("/field/earnings") },
 ] as const;
 
 const FieldAgentBottomNav = () => {
@@ -52,7 +53,7 @@ const FieldAgentBottomNav = () => {
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-blue-400/20 bg-gradient-to-r from-[#0a1628]/95 via-[#0f2240]/95 to-[#0a1628]/95 backdrop-blur-md md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="grid grid-cols-4 h-[68px]">
+        <div className="grid grid-cols-5 h-[68px]">
           {tabs.map((tab) => {
             const active = tab.match(pathname, search);
             return (
