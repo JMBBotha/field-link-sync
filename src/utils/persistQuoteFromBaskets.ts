@@ -63,7 +63,10 @@ async function persistOnce(
   const areaRows = areas.map((a, i) => {
     const id = crypto.randomUUID();
     areaIdMap.set(a.id, id);
-    return { id, quote_id: quoteId, name: a.name || `Zone ${i + 1}`, sort_order: i };
+    // old_id lets the RPC re-link labour rows by identity (survives renames);
+    // only sent when the basket id is a real DB area id.
+    const oldId = UUID_RE.test(a.id) ? a.id : null;
+    return { id, old_id: oldId, quote_id: quoteId, name: a.name || `Zone ${i + 1}`, sort_order: i };
   });
 
   // 3. Re-insert items.
