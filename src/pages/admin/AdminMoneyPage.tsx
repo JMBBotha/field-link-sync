@@ -5,6 +5,7 @@ import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { fetchLeadMoney, fetchMoneySummary } from "@/lib/moneySummary";
 import { formatRand } from "@/utils/formatRand";
 import { Loader2 } from "lucide-react";
+import OwnerMoneyFlow from "@/components/admin/OwnerMoneyFlow";
 
 /** Money per lead: deposit due, paid, balance — biggest balance first. Row opens the lead's quote (or invoice). */
 const AdminMoneyPage = () => {
@@ -23,6 +24,7 @@ const AdminMoneyPage = () => {
 
   return (
     <div className="space-y-3 p-3 md:p-6">
+      <OwnerMoneyFlow />
       <h1 className="text-xl font-bold text-foreground">Money by lead</h1>
       <div className="grid grid-cols-3 gap-2">
         {[
