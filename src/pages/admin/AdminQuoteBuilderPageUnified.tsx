@@ -8,7 +8,7 @@ import { resolveProductMarkupPercent } from "@/lib/pricing";
  * in a shared header with tabs. Each tab renders the real builder component.
  */
 
-import { useState, useEffect, useMemo, useRef, useCallback, useSyncExternalStore } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, useSyncExternalStore, type MutableRefObject } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2, Send } from "lucide-react";
@@ -53,8 +53,8 @@ import { computeQuoteTotals } from "@/utils/quoteTransformers";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import { subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot } from "@/lib/pricing";
 import { pdfItemToPaletteProduct } from "@/utils/pdfItemToProduct";
-import { persistQuoteFromBaskets, fetchQuoteLineStamp, fetchStampForIds, QuoteChangedElsewhereError, type PersistQuoteResult } from "@/utils/persistQuoteFromBaskets";
-import { mergeStamps, type QuoteLineStamp } from "@/lib/quoteLineStamp";
+import { persistQuoteFromBaskets, fetchQuoteLineStamp, fetchStampForIds, QuoteChangedElsewhereError, waitForBuilderSaves, type PersistQuoteResult } from "@/utils/persistQuoteFromBaskets";
+import { mergeStamps, stampChanged, type QuoteLineStamp } from "@/lib/quoteLineStamp";
 import { useQuoteEditors } from "@/hooks/useQuoteEditors";
 import { stubProductFromQuoteItem } from "@/utils/hydrateQuoteItem";
 import { kitBasketFields, kitFromSavedItem, collapseExplodedKits } from "@/components/catalog/quote-builder/kitLine";
@@ -221,13 +221,16 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 }
 
 /* ─── Mandy quote actions on the full builder (same handlers as the estimate page) ─── */
-function BuilderMandyActions() {
+interface MandyBridge { beforeWrite: () => Promise<string | null>; prepareRemount: () => void }
+function BuilderMandyActions({ bridgeRef, onRemount }: { bridgeRef: MutableRefObject<MandyBridge | null>; onRemount: () => void }) {
   const navigate = useNavigate();
   const { quoteId, meta } = useQuoteContext();
   if (!quoteId) return null;
   return (
     <MandyQuoteActions
       vatRate={Number((meta as any)?.vat_rate) || 0.15}
+      beforeWrite={async () => (bridgeRef.current ? bridgeRef.current.beforeWrite() : null)}
+      afterRefresh={() => { bridgeRef.current?.prepareRemount(); onRemount(); }}
       onPdf={async () => {
         // The branded PDF (roll-up + brochures) is built on the quote page; hand off there.
         navigate(`/admin/estimates/${quoteId}?mandy=pdf`);
@@ -238,7 +241,7 @@ function BuilderMandyActions() {
 }
 
 /* ─── Inner content (needs context) ─── */
-function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode }) {
+function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?: QuoteBuilderMode; bridgeRef?: MutableRefObject<MandyBridge | null>; tabRef?: MutableRefObject<string | null> }) {
   const navigate = useNavigate();
   const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta, addItem: ctxAddItem, addArea: ctxAddArea } = useQuoteContext();
   // Two-editor guard: presence pauses saving; the line stamp blocks writes over outside changes.
@@ -270,8 +273,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   // Phone/tablet: default to the Area Quote tab (search + areas + send), not
   // the Build/Visual PDF tabs which need desktop space.
   const [activeTab, setActiveTab] = useState(() =>
-    typeof window !== "undefined" && window.innerWidth <= 1024 ? "area" : "normal"
+    tabRef?.current ?? (typeof window !== "undefined" && window.innerWidth <= 1024 ? "area" : "normal")
   );
+  useEffect(() => { if (tabRef) tabRef.current = activeTab; }, [activeTab, tabRef]);
   const [areaWizardOpen, setAreaWizardOpen] = useState(false);
   const pdfSearchRef = useRef<((term: string) => void) | null>(null);
 
@@ -1032,6 +1036,38 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       void flushSave();
     };
   }, [flushSave]);
+
+  // Mandy writes from this session are local: flush builder edits first, then
+  // re-hydrate (parent remounts us) so replace-all never wipes her lines.
+  useEffect(() => {
+    if (!bridgeRef) return;
+    const REFUSE = "I didn't change anything: this quote was changed elsewhere (or has unsaved builder changes that can't be saved right now). Reload the builder first.";
+    bridgeRef.current = {
+      prepareRemount: () => { skipFlushRef.current = true; },
+      beforeWrite: async () => {
+        const qid = latestRef.current.quoteId;
+        if (!qid) return null;
+        await waitForBuilderSaves(qid);
+        while (savingRef.current) await new Promise((r) => setTimeout(r, 50));
+        const dirtyNow = () => baselineSigRef.current !== null && latestRef.current.contentSig !== baselineSigRef.current;
+        if (dirtyNow()) {
+          if (othersRef.current.length > 0 || changedElsewhereRef.current) return REFUSE;
+          await flushSave();
+          if (dirtyNow()) return REFUSE;
+        }
+        if (changedElsewhereRef.current) return REFUSE;
+        const base = baselineStampRef.current;
+        try {
+          if (base && stampChanged(base, await fetchQuoteLineStamp(qid))) {
+            changedElsewhereRef.current = true; setChangedElsewhere(true);
+            return REFUSE;
+          }
+        } catch { return REFUSE; }
+        return null;
+      },
+    };
+    return () => { if (bridgeRef.current) bridgeRef.current = null; };
+  }, [bridgeRef, flushSave]);
 
   const leaveBuilder = useCallback(() => navigate(exitTo), [navigate, exitTo]);
 
@@ -1805,6 +1841,9 @@ function NewQuoteClientPicker({
 
 /* ─── Outer wrapper: loads existing / finds latest draft / creates new, then mounts provider ─── */
 const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderMode }) => {
+  const mandyBridgeRef = useRef<MandyBridge | null>(null);
+  const builderTabRef = useRef<string | null>(null);
+  const [builderEpoch, setBuilderEpoch] = useState(0);
   const [searchParams] = useSearchParams();
   const paramQuoteId = searchParams.get("quoteId");
   const paramLeadId = searchParams.get("leadId");
@@ -2134,8 +2173,8 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
 
   return (
     <QuoteProvider quoteId={quoteId}>
-      <BuilderMandyActions />
-      <UnifiedQuoteBuilderInner mode={mode} />
+      <BuilderMandyActions bridgeRef={mandyBridgeRef} onRemount={() => setBuilderEpoch((n) => n + 1)} />
+      <UnifiedQuoteBuilderInner key={builderEpoch} mode={mode} bridgeRef={mandyBridgeRef} tabRef={builderTabRef} />
     </QuoteProvider>);
 
 };

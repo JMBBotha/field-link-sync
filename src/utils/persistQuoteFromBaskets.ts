@@ -62,6 +62,11 @@ export function runSerialPerQuote<T>(quoteId: string, fn: () => Promise<T>): Pro
   return next;
 }
 
+/** Resolves once every queued builder save for this quote has finished. */
+export function waitForBuilderSaves(quoteId: string): Promise<void> {
+  return (inFlight.get(quoteId) ?? Promise.resolve()).then(() => undefined, () => undefined);
+}
+
 export function persistQuoteFromBaskets(
   quoteId: string,
   baskets: Basket[],
