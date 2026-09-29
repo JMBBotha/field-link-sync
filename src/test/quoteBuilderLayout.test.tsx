@@ -9,7 +9,7 @@ vi.mock("@/components/catalog/MasterCatalogGate", () => ({
 }));
 vi.mock("@/components/settings/ServicesCatalogCard", () => ({ default: () => <div>services-card</div> }));
 
-import QuoteBuilderLayout, { SIDE_PANEL_KEY } from "@/components/quoting/QuoteBuilderLayout";
+import QuoteBuilderLayout, { SIDE_PANEL_KEY, LEFT_PANEL_KEY } from "@/components/quoting/QuoteBuilderLayout";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import ServicesTab from "@/components/settings/ServicesTab";
 import { useCanWriteMasterCatalog } from "@/components/catalog/MasterCatalogGate";
@@ -60,6 +60,23 @@ describe("quote builder layout", () => {
     render(<QuoteBuilderLayout compact={false} middle={<div />} side={<div>summary</div>} />);
     expect(screen.getByTestId("qb-side").dataset.state).toBe("open");
     expect(screen.getByText("summary")).toBeTruthy();
+  });
+
+  it("left palette starts collapsed with no stored value, opens on click and stores 1", () => {
+    render(<QuoteBuilderLayout compact={false} left={<div>palette</div>} middle={<div />} side={<div>summary</div>} />);
+    expect(screen.getByTestId("qb-left").dataset.state).toBe("closed");
+    expect(screen.queryByText("palette")).toBeNull();
+    fireEvent.click(screen.getByLabelText("Show products"));
+    expect(screen.getByTestId("qb-left").dataset.state).toBe("open");
+    expect(screen.getByText("palette")).toBeTruthy();
+    expect(localStorage.getItem(LEFT_PANEL_KEY)).toBe("1");
+  });
+
+  it("left palette starts open when qb.leftpanel.open is 1", () => {
+    localStorage.setItem(LEFT_PANEL_KEY, "1");
+    render(<QuoteBuilderLayout compact={false} left={<div>palette</div>} middle={<div />} side={<div>summary</div>} />);
+    expect(screen.getByTestId("qb-left").dataset.state).toBe("open");
+    expect(screen.getByText("palette")).toBeTruthy();
   });
 
   it("adding a line scrolls it into view", () => {
