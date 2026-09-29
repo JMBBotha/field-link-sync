@@ -106,6 +106,7 @@ const AdminSidebar = ({
           ],
         },
         { path: "/admin/my-commission", label: "My commission", icon: Wallet, roles: ["admin", "dispatcher"] },
+        { path: "/field/earnings", label: "Tech earnings", icon: Wallet, roles: ["admin"] },
         { path: "/admin/map", label: "Live Tracking", icon: Navigation },
         {
           path: "/admin/catalog",

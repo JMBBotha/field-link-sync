@@ -90,7 +90,9 @@ describe("margin maths", () => {
     expect(src).toContain("% of profit on parts &amp; materials");
     expect(src).toContain("No commission on labour.");
     expect(src).toContain("% of labour");
-    expect(src).toContain("Company &amp; owner keep from labour:");
+    expect(src).toContain("Company keeps from labour");
+    expect(src).toContain("Paid on completion ");
+    expect(src).toContain("(released after ");
     expect(src).toContain("Services not counted");
     expect(src).not.toMatch(/Total tech earnings|Tech share of GP|GP tech share/);
   });

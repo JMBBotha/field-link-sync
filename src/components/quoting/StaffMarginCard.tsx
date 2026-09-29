@@ -50,7 +50,7 @@ interface Props {
   /** Enables the "Actual vs quoted" section when a job_overruns row exists. */
   quoteId?: string | null;
   /** Server-decided (get_my_earnings): sales = caller may see this quote's salesperson split; owner = company owner sees all splits. */
-  splits?: { sales: boolean; owner: boolean };
+  splits?: { sales: boolean; owner: boolean; techParts?: { kind: string; percent: number; hold_days?: number }[]; toolsPercent?: number };
 }
 
 const pctText = (p: number | null) => (p == null ? "—" : `${p.toFixed(1)}%`);
@@ -159,8 +159,17 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
         </div>)}
         {isOwner && (<div className="rounded-md border border-border p-3">
           <p className="font-semibold">{technicianLabel}</p>
-          <p>{settings.labourTechSharePercent}% of labour: <span className="font-semibold tabular-nums">{money(m.labourTechShare)}</span></p>
-          <p className="text-[11px] text-muted-foreground">Company &amp; owner keep from labour: {money(m.labourCompanyShare)}</p>
+          {(splits?.techParts?.length ?? 0) > 0 ? splits!.techParts!.map((p) => (
+            <p key={p.kind}>
+              {p.kind === "held" ? `Held ${p.percent}% (released after ${p.hold_days ?? 0} days)` : `Paid on completion ${p.percent}%`}:{" "}
+              <span className="font-semibold tabular-nums">{money(Math.round(Math.max(0, m.labourSell) * p.percent) / 100)}</span>
+            </p>
+          )) : (
+            <p>{settings.labourTechSharePercent}% of labour: <span className="font-semibold tabular-nums">{money(m.labourTechShare)}</span></p>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            Company keeps from labour{splits?.toolsPercent ? ` (incl. ${splits.toolsPercent}% tools: ${money(Math.round(Math.max(0, m.labourSell) * splits.toolsPercent) / 100)})` : ""}: {money(m.labourCompanyShare)}
+          </p>
         </div>)}
         {m.excludedServiceCount > 0 && <p className="text-[11px] text-muted-foreground sm:col-span-2">Services not counted</p>}
         <p className="text-[11px] text-muted-foreground sm:col-span-2">Earned when the invoice is paid in full; material overruns affect the salesperson share.</p>
