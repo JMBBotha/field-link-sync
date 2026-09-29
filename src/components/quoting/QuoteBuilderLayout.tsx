@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { PanelRightClose, PanelRightOpen } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -12,6 +12,19 @@ export function useSidePanelOpen(): [boolean, (v: boolean) => void] {
   });
   useEffect(() => {
     try { localStorage.setItem(SIDE_PANEL_KEY, open ? "1" : "0"); } catch { /* private mode */ }
+  }, [open]);
+  return [open, setOpen];
+}
+
+export const LEFT_PANEL_KEY = "qb.leftpanel.open";
+
+/** Left product palette open/closed, remembered per device. Collapsed by default. */
+export function useLeftPanelOpen(): [boolean, (v: boolean) => void] {
+  const [open, setOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem(LEFT_PANEL_KEY) === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(LEFT_PANEL_KEY, open ? "1" : "0"); } catch { /* private mode */ }
   }, [open]);
   return [open, setOpen];
 }
