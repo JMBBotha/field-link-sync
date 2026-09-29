@@ -62,6 +62,23 @@ describe("quote builder layout", () => {
     expect(screen.getByText("summary")).toBeTruthy();
   });
 
+  it("left palette starts collapsed with no stored value, opens on click and stores 1", () => {
+    render(<QuoteBuilderLayout compact={false} left={<div>palette</div>} middle={<div />} side={<div>summary</div>} />);
+    expect(screen.getByTestId("qb-left").dataset.state).toBe("closed");
+    expect(screen.queryByText("palette")).toBeNull();
+    fireEvent.click(screen.getByLabelText("Show products"));
+    expect(screen.getByTestId("qb-left").dataset.state).toBe("open");
+    expect(screen.getByText("palette")).toBeTruthy();
+    expect(localStorage.getItem(LEFT_PANEL_KEY)).toBe("1");
+  });
+
+  it("left palette starts open when qb.leftpanel.open is 1", () => {
+    localStorage.setItem(LEFT_PANEL_KEY, "1");
+    render(<QuoteBuilderLayout compact={false} left={<div>palette</div>} middle={<div />} side={<div>summary</div>} />);
+    expect(screen.getByTestId("qb-left").dataset.state).toBe("open");
+    expect(screen.getByText("palette")).toBeTruthy();
+  });
+
   it("adding a line scrolls it into view", () => {
     const spy = vi.fn();
     Element.prototype.scrollIntoView = spy;
