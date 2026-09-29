@@ -1,4 +1,6 @@
 import { DEFAULT_INSTALL_KIT_M } from "@/lib/installTemplates";
+import RemoveUnitDialog from "@/components/quoting/RemoveUnitDialog";
+import { applyUnitRemoval, linkedToUnit } from "@/lib/unitInstallLinks";
 import { costPerMetreOf } from "@/lib/pricing";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Search, Check, Star, X, Zap, Package, ImageIcon, Plus, Trash2, Ruler, Hash, MousePointerClick, ChevronDown, ChevronUp, Wrench, TrendingUp } from "lucide-react";
@@ -725,14 +727,33 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
     if (kit) toast.success(`Added "${kit.name}" · ${DEFAULT_INSTALL_KIT_M}m`);
   }, [areas, onAreasChange, products, bundles]);
 
-  const handleRemove = useCallback((areaId: string, idx: number) => {
+  const [removeAsk, setRemoveAsk] = useState<{ areaId: string; idx: number; unitId: string; count: number } | null>(null);
+  const removeUnitAt = useCallback((areaId: string, idx: number, links?: { unitId: string; removeAll: boolean }) => {
+    const keyOf = (x: { install?: { unitKey: string } }) => x.install?.unitKey;
+    const clear = <T extends { install?: unknown }>(x: T): T => { const { install: _i, ...rest } = x as any; return rest as T; };
     onAreasChange(
       areas.map((a) => {
         if (a.id !== areaId) return a;
-        return { ...a, acUnits: a.acUnits.filter((_, i) => i !== idx) };
+        const next = { ...a, acUnits: a.acUnits.filter((_, i) => i !== idx) };
+        if (!links) return next;
+        return {
+          ...next,
+          materials: applyUnitRemoval(a.materials || [], links.unitId, () => false, keyOf, clear, links.removeAll),
+          consumables: applyUnitRemoval(a.consumables || [], links.unitId, () => false, keyOf, clear, links.removeAll),
+        };
       })
     );
   }, [areas, onAreasChange]);
+  const handleRemove = useCallback((areaId: string, idx: number) => {
+    const area = areas.find((a) => a.id === areaId);
+    const unit = area?.acUnits[idx];
+    if (area && unit?.fromSaved) {
+      const keyOf = (x: { install?: { unitKey: string } }) => x.install?.unitKey;
+      const count = linkedToUnit(area.materials || [], unit.id, keyOf).length + linkedToUnit(area.consumables || [], unit.id, keyOf).length;
+      if (count > 0) { setRemoveAsk({ areaId, idx, unitId: unit.id, count }); return; }
+    }
+    removeUnitAt(areaId, idx);
+  }, [areas, removeUnitAt]);
 
   const handleRemoveConsumable = useCallback((areaId: string, consumableId: string) => {
     onAreasChange(
@@ -815,6 +836,13 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
         </span>
       </p>
 
+      <RemoveUnitDialog
+        open={!!removeAsk}
+        linkedCount={removeAsk?.count ?? 0}
+        onYes={() => { const r = removeAsk!; setRemoveAsk(null); removeUnitAt(r.areaId, r.idx, { unitId: r.unitId, removeAll: true }); }}
+        onNo={() => { const r = removeAsk!; setRemoveAsk(null); removeUnitAt(r.areaId, r.idx, { unitId: r.unitId, removeAll: false }); }}
+        onCancel={() => setRemoveAsk(null)}
+      />
       <div className="space-y-3">
         {areas.map((area) => (
           <AreaUnitSelector
