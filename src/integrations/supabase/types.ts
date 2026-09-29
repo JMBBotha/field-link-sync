@@ -7813,6 +7813,16 @@ export type Database = {
           next_service_due: string
         }[]
       }
+      get_company_margin_settings: {
+        Args: { p_company_id: string }
+        Returns: {
+          company_id: string
+          gp_target_percent: number
+          labour_cost_per_hour: number
+          labour_tech_share_percent: number
+          sales_commission_percent: number
+        }[]
+      }
       get_completed_jobs: {
         Args: {
           p_agent_ids?: string[]
@@ -7895,6 +7905,15 @@ export type Database = {
         Args: { p_token: string }
         Returns: Json
       }
+      get_field_deposit_chips: {
+        Args: { p_lead_ids: string[] }
+        Returns: {
+          chip_state: string
+          invoice_id: string
+          lead_id: string
+          remaining: number
+        }[]
+      }
       get_invoice_aging_report: {
         Args: never
         Returns: {
@@ -7935,6 +7954,18 @@ export type Database = {
         Returns: string
       }
       get_overdue_maintenance_count: { Args: never; Returns: number }
+      get_product_sell_options: {
+        Args: never
+        Returns: {
+          category: string
+          description: string
+          id: string
+          is_pinned: boolean
+          product_code: string
+          sell_excl_vat: number
+          short_name: string
+        }[]
+      }
       get_public_quote: { Args: { p_token: string }; Returns: Json }
       get_quote_by_public_token: { Args: { p_token: string }; Returns: string }
       get_quote_summary: {
@@ -7995,6 +8026,7 @@ export type Database = {
         Returns: boolean
       }
       is_master_company_user: { Args: { _uid: string }; Returns: boolean }
+      is_office_staff: { Args: { _uid: string }; Returns: boolean }
       is_ops_user: { Args: { _user_id: string }; Returns: boolean }
       is_staff_member: { Args: { _uid: string }; Returns: boolean }
       job_profit_loss: {

@@ -217,7 +217,7 @@ const App = () => (
                   <Route path="/admin/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminQuoteBuilderPageUnified mode="admin" /></RequireRole>} />
 
                   {/* Agent Quote Builder — same component, agent mode */}
-                  <Route path="/field/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher", "field_agent"]}><AdminQuoteBuilderPageUnified mode="agent" /></RequireRole>} />
+                  <Route path="/field/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]} redirectTo="/field" redirectOnDeny><AdminQuoteBuilderPageUnified mode="agent" /></RequireRole>} />
 
 
                   {/* Field agent My Jobs — accessible without AdminLayout */}

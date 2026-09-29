@@ -1,5 +1,5 @@
 import { ReactNode, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole, type AppRole } from "@/hooks/useRole";
@@ -11,6 +11,8 @@ interface RequireRoleProps {
   allowedRoles: AppRole[];
   /** Where to redirect if the user lacks the required role */
   redirectTo?: string;
+  /** When true, denied users are redirected instead of seeing the Access Denied screen */
+  redirectOnDeny?: boolean;
   children: ReactNode;
 }
 
@@ -21,7 +23,7 @@ interface RequireRoleProps {
  * Consumes role from useRole() (which uses useAuth internally) so there is
  * a single source of truth for both session and role data.
  */
-const RequireRole = ({ allowedRoles, redirectTo, children }: RequireRoleProps) => {
+const RequireRole = ({ allowedRoles, redirectTo, redirectOnDeny, children }: RequireRoleProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -42,14 +44,14 @@ const RequireRole = ({ allowedRoles, redirectTo, children }: RequireRoleProps) =
       return;
     }
 
-    if (!hasAccess) {
+    if (!hasAccess && !redirectOnDeny) {
       toast({
         title: "Access Denied",
         description: "You don't have permission to view this page.",
         variant: "destructive",
       });
     }
-  }, [loading, session, hasAccess, navigate, toast]);
+  }, [loading, session, hasAccess, redirectOnDeny, navigate, toast]);
 
   // Prevent UI flash before auth/role resolution
   if (loading) return null;
@@ -64,6 +66,7 @@ const RequireRole = ({ allowedRoles, redirectTo, children }: RequireRoleProps) =
 
   if (!hasAccess) {
     const fallback = redirectTo || (roles.includes("field_agent") ? "/field" : "/admin");
+    if (redirectOnDeny) return <Navigate to={fallback} replace />;
     return (
       <div className="flex min-h-screen items-center justify-center p-8 bg-background">
         <div className="text-center space-y-5 max-w-md">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useRole } from "@/hooks/useRole";
 import { calcSellingPrice, resolveProductMarkupPercent } from "@/lib/pricing";
 
 export interface ProductOption {
@@ -46,8 +47,11 @@ export { isAcCategory };
 
 export function useProductOptions() {
   const [allOptions, setAllOptions] = useState<ProductOption[]>([]);
+  const { isFieldAgent, isAdmin, isDispatcher, loading: roleLoading } = useRole();
+  const techOnly = isFieldAgent && !isAdmin && !isDispatcher;
 
   useEffect(() => {
+    if (roleLoading) return;
     let cancelled = false;
     Promise.all([
       supabase
@@ -55,7 +59,9 @@ export function useProductOptions() {
         .select("id, name, description, sort_order, origin")
         .eq("is_active", true)
         .order("sort_order", { nullsFirst: false }),
-      supabase
+      techOnly
+        ? (supabase.rpc as any)("get_product_sell_options")
+        : supabase
         .from("supplier_products")
         .select("id, product_code, short_name, description, cost_price, default_markup_percent, markup_percent, category, is_pinned")
         .eq("is_active", true)
@@ -84,7 +90,16 @@ export function useProductOptions() {
             isFavorite: false,
             source: "template" as const,
           })),
-          ...prodData.map((p) => ({
+          ...(techOnly ? (prodData as any[]).map((row) => ({
+            id: row.id,
+            name: row.short_name || row.description,
+            description: row.description,
+            rate: Number(row.sell_excl_vat),
+            category: row.category,
+            isFavorite: !!row.is_pinned,
+            source: "product" as const,
+            productCode: row.product_code || "",
+          })) : (prodData as any[]).map((p) => ({
             id: p.id,
             name: p.short_name || p.description,
             description: p.description,
@@ -98,7 +113,7 @@ export function useProductOptions() {
             isFavorite: p.is_pinned ?? false,
             source: "product" as const,
             productCode: p.product_code || "",
-          })),
+          }))),
         ];
         setAllOptions(sortProductOptions(merged));
       })
@@ -107,7 +122,7 @@ export function useProductOptions() {
       });
 
     return () => { cancelled = true; };
-  }, []);
+  }, [techOnly, roleLoading]);
 
   return allOptions;
 }
