@@ -7968,6 +7968,7 @@ export type Database = {
         Returns: string
       }
       get_overdue_maintenance_count: { Args: never; Returns: number }
+      get_owner_money_flow: { Args: { p_company_id?: string }; Returns: Json }
       get_product_sell_options: {
         Args: never
         Returns: {
