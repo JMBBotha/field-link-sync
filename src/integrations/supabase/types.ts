@@ -836,6 +836,7 @@ export type Database = {
           services: string[] | null
           slug: string
           status: string
+          tech_split_mode: string
           units_markup_percent: number
           updated_at: string | null
           vat_rate: number | null
@@ -857,6 +858,7 @@ export type Database = {
           services?: string[] | null
           slug?: string
           status?: string
+          tech_split_mode?: string
           units_markup_percent?: number
           updated_at?: string | null
           vat_rate?: number | null
@@ -878,6 +880,7 @@ export type Database = {
           services?: string[] | null
           slug?: string
           status?: string
+          tech_split_mode?: string
           units_markup_percent?: number
           updated_at?: string | null
           vat_rate?: number | null
@@ -991,6 +994,7 @@ export type Database = {
           company_id: string
           created_at: string
           id: string
+          is_owner: boolean
           role: string
           user_id: string
         }
@@ -998,6 +1002,7 @@ export type Database = {
           company_id: string
           created_at?: string
           id?: string
+          is_owner?: boolean
           role?: string
           user_id: string
         }
@@ -1005,6 +1010,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           id?: string
+          is_owner?: boolean
           role?: string
           user_id?: string
         }
@@ -7384,6 +7390,10 @@ export type Database = {
       }
     }
     Functions: {
+      _earnings_for_quote: {
+        Args: { p_quote_id: string; p_viewer: string }
+        Returns: Json
+      }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined
@@ -7645,6 +7655,8 @@ export type Database = {
           }
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string }
+      earnings_sales_rule: { Args: { p_company_id: string }; Returns: Json }
+      earnings_tech_rule: { Args: { p_company_id: string }; Returns: Json }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       find_dispatch_candidates: {
@@ -7950,6 +7962,7 @@ export type Database = {
           job_type: string
         }[]
       }
+      get_my_earnings: { Args: { p_quote_id?: string }; Returns: Json }
       get_or_create_customer_token: {
         Args: { p_customer_id: string }
         Returns: string
@@ -8023,6 +8036,10 @@ export type Database = {
         Returns: boolean
       }
       is_company_member: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_company_owner: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
