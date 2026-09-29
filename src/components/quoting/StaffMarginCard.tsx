@@ -10,6 +10,7 @@ import { computeOverrun, parseExtras } from "@/lib/overrun";
 import type { QuoteItem } from "@/types/quote";
 import { isLabourItem } from "@/lib/labour";
 import { computeMargin, MARGIN_AREA_NONE, type MarginLine, type MarginLineInput, type MarginSettings } from "@/lib/margin";
+import { useRole } from "@/hooks/useRole";
 
 const money = (n: number) =>
   `R ${Number(n || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -54,6 +55,7 @@ interface Props {
 const pctText = (p: number | null) => (p == null ? "—" : `${p.toFixed(1)}%`);
 
 export default function StaffMarginCard({ items, selectedId, areas, discount, settings, quoteId }: Props) {
+  const { isAdmin } = useRole();
   const { data: earners } = useQuery({
     queryKey: ["quote-earners", quoteId],
     enabled: !!quoteId,
@@ -148,16 +150,16 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
           <p className="font-semibold">{salespersonLabel}</p>
           <p>{settings.salesSharePercent}% of profit on parts &amp; materials: <span className="font-semibold tabular-nums">{money(m.salesShare)}</span></p>
           <p className="text-[11px] text-muted-foreground">No commission on labour.</p>
-          <p className="text-[11px] text-muted-foreground">Company keeps {money(m.salesCompanyShare)}</p>
+          {isAdmin && (<p className="text-[11px] text-muted-foreground">Company keeps {money(m.salesCompanyShare)}</p>)}
           {m.salesShareIfPricedCorrectly != null && (
             <p>If priced correctly: <span className="font-semibold tabular-nums">{money(m.salesShareIfPricedCorrectly)}</span></p>
           )}
         </div>
-        <div className="rounded-md border border-border p-3">
+        {isAdmin && (<div className="rounded-md border border-border p-3">
           <p className="font-semibold">{technicianLabel}</p>
           <p>{settings.labourTechSharePercent}% of labour: <span className="font-semibold tabular-nums">{money(m.labourTechShare)}</span></p>
           <p className="text-[11px] text-muted-foreground">Company &amp; owner keep from labour: {money(m.labourCompanyShare)}</p>
-        </div>
+        </div>)}
         {m.excludedServiceCount > 0 && <p className="text-[11px] text-muted-foreground sm:col-span-2">Services not counted</p>}
         <p className="text-[11px] text-muted-foreground sm:col-span-2">Earned when the invoice is paid in full; material overruns affect the salesperson share.</p>
       </div>

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, CalendarDays, Phone, Navigation, RefreshCw } from "lucide-react";
 import { JobCardListSkeleton } from "@/components/ui/skeletons";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
-import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
+import DepositPaymentChip, { type DepositChipState } from "@/components/shared/DepositPaymentChip";
 import { format, isToday, isTomorrow, isThisWeek, startOfDay } from "date-fns";
 
 type MyAssignedJobRow = {
@@ -29,7 +29,7 @@ type MyAssignedJobRow = {
   deposit_invoice_grand_total: number | null;
   deposit_invoice_amount_paid: number | null;
   deposit_invoice_remaining: number | null;
-
+  deposit_chip_state: string | null;
 };
 
 const STATUS_TONE: Record<string, string> = {
@@ -198,6 +198,7 @@ const FieldSchedulePage = () => {
                                     grand_total: r.deposit_invoice_grand_total,
                                     amount_paid: r.deposit_invoice_amount_paid,
                                     remaining: r.deposit_invoice_remaining,
+                                    chip_state: (r.deposit_chip_state as DepositChipState | null) ?? null,
                                   }}
 
                                   accepted
@@ -283,6 +284,7 @@ const FieldSchedulePage = () => {
                                 grand_total: r.deposit_invoice_grand_total,
                                 amount_paid: r.deposit_invoice_amount_paid,
                                 remaining: r.deposit_invoice_remaining,
+                                chip_state: (r.deposit_chip_state as DepositChipState | null) ?? null,
                               }}
                               accepted
                               className="text-[10px] shrink-0"

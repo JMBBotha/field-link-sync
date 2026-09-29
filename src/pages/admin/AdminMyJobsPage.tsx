@@ -11,7 +11,7 @@ import { MapPin, CalendarDays, CheckCircle, XCircle, Play, RefreshCw, CloudOff, 
 import { Spinner } from "@/components/ui/spinner";
 import { JobCardListSkeleton } from "@/components/ui/skeletons";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
-import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
+import DepositPaymentChip, { type DepositChipState } from "@/components/shared/DepositPaymentChip";
 import { format } from "date-fns";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -44,6 +44,7 @@ type MyAssignedJobRow = {
   deposit_invoice_grand_total: number | null;
   deposit_invoice_amount_paid: number | null;
   deposit_invoice_remaining: number | null;
+  deposit_chip_state: string | null;
 };
 
 type MyJobItem = {
@@ -114,6 +115,7 @@ const AdminMyJobsPage = () => {
               grand_total: row.deposit_invoice_grand_total,
               amount_paid: row.deposit_invoice_amount_paid,
               remaining: row.deposit_invoice_remaining,
+              chip_state: (row.deposit_chip_state as DepositChipState | null) ?? null,
             }
           : null,
         jobs: {
