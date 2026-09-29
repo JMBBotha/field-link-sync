@@ -32,6 +32,7 @@ import { formatRand } from "@/utils/formatRand";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import QuoteQuickEditor from "@/components/quoting/QuoteQuickEditor";
 import StaffMarginCard, { lineUnitCostOrNull } from "@/components/quoting/StaffMarginCard";
+import SalespersonHistoryLine from "@/components/quoting/SalespersonHistoryLine";
 import PricingChecksRow from "@/components/quoting/PricingChecksRow";
 import { useMarginView } from "@/hooks/useMarginView";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
@@ -616,6 +617,7 @@ export default function EstimateBuilder({
       {margin.visible && (
         <StaffMarginCard items={topLevel} selectedId={selectedLineId} areas={areas} discount={discount} settings={margin.settings} quoteId={quoteId} splits={margin.splits} />
       )}
+      {margin.visible && <SalespersonHistoryLine quoteId={quoteId} />}
     </div>
   );
 }
