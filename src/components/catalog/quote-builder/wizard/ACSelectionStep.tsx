@@ -738,8 +738,8 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
         if (!links) return next;
         return {
           ...next,
-          materials: applyUnitRemoval(a.materials || [], links.unitId, () => false, keyOf, clear, links.removeAll),
-          consumables: applyUnitRemoval(a.consumables || [], links.unitId, () => false, keyOf, clear, links.removeAll),
+          materials: applyUnitRemoval<AreaMaterial>(a.materials || [], links.unitId, () => false, keyOf, clear, links.removeAll),
+          consumables: applyUnitRemoval<AreaConsumable>(a.consumables || [], links.unitId, () => false, keyOf, clear, links.removeAll),
         };
       })
     );
