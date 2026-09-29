@@ -74,6 +74,12 @@ describe("margin maths", () => {
     expect(m.labourCompanyShare).toBe(952);
     expect(m).not.toHaveProperty("techEarningsTotal");
   });
+  it("keeps salesperson and technician earnings independent in staff UI", () => {
+    const src = readFileSync("src/components/quoting/StaffMarginCard.tsx", "utf8");
+    expect(src).toContain("% of markup on units &amp; materials");
+    expect(src).toContain("% of labour");
+    expect(src).not.toMatch(/Total tech earnings|Tech share of GP|GP tech share/);
+  });
 });
 
 describe("margin visibility", () => {
