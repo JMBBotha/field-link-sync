@@ -8,7 +8,7 @@ import { resolveProductMarkupPercent } from "@/lib/pricing";
  * in a shared header with tabs. Each tab renders the real builder component.
  */
 
-import { useState, useEffect, useMemo, useRef, useCallback, useSyncExternalStore } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, useSyncExternalStore, type MutableRefObject } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2, Send } from "lucide-react";
@@ -222,7 +222,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 
 /* ─── Mandy quote actions on the full builder (same handlers as the estimate page) ─── */
 interface MandyBridge { beforeWrite: () => Promise<string | null>; prepareRemount: () => void }
-function BuilderMandyActions({ bridgeRef, onRemount }: { bridgeRef: React.MutableRefObject<MandyBridge | null>; onRemount: () => void }) {
+function BuilderMandyActions({ bridgeRef, onRemount }: { bridgeRef: MutableRefObject<MandyBridge | null>; onRemount: () => void }) {
   const navigate = useNavigate();
   const { quoteId, meta } = useQuoteContext();
   if (!quoteId) return null;
@@ -241,7 +241,7 @@ function BuilderMandyActions({ bridgeRef, onRemount }: { bridgeRef: React.Mutabl
 }
 
 /* ─── Inner content (needs context) ─── */
-function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?: QuoteBuilderMode; bridgeRef?: React.MutableRefObject<MandyBridge | null>; tabRef?: React.MutableRefObject<string | null> }) {
+function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?: QuoteBuilderMode; bridgeRef?: MutableRefObject<MandyBridge | null>; tabRef?: MutableRefObject<string | null> }) {
   const navigate = useNavigate();
   const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta, addItem: ctxAddItem, addArea: ctxAddArea } = useQuoteContext();
   // Two-editor guard: presence pauses saving; the line stamp blocks writes over outside changes.
