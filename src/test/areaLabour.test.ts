@@ -31,3 +31,36 @@ describe("per-area labour", () => {
     expect(addItem).not.toHaveBeenCalled();
   });
 });
+import { planToJob, planToPerArea, unassignedLabourLines, missingLabourFor, isJobLabour } from "@/lib/areaLabour";
+
+describe("per-quote labour mode", () => {
+  const lab = (area_id: string | null, hours: number, scope?: string) => ({ id: `l-${area_id}-${hours}`, area_id, parent_item_id: null, item_type: "labour", item_name: "Labour", quantity: hours, metadata: { labour: true, hours, ...(scope ? { labour_scope: scope } : {}) } });
+  const unit = (area_id: string) => ({ id: `u-${area_id}`, area_id, parent_item_id: null, item_type: "product", item_name: "Midwall inverter split 12000 BTU", quantity: 1, metadata: {} });
+
+  it("switching modes keeps total hours both ways", () => {
+    const h = planToJob([3.5, 7, 2]);
+    expect(h).toBe(12.5);
+    const back = planToPerArea(h, [{ id: "a", units: 1 }, { id: "b", units: 2 }, { id: "c", units: 0 }], 3.5);
+    expect(back.reduce((s, p) => s + p.hours, 0)).toBe(12.5);
+    const less = planToPerArea(5, [{ id: "a", units: 1 }, { id: "b", units: 2 }], 3.5);
+    expect(less.reduce((s, p) => s + p.hours, 0)).toBe(5);
+    expect(less.every((p) => p.hours >= 0)).toBe(true);
+  });
+
+  it("job row is excluded from the unassigned labour list", () => {
+    const job = lab(null, 7, "job");
+    const orphan = lab(null, 2);
+    expect(isJobLabour(job)).toBe(true);
+    expect(unassignedLabourLines([job, orphan], [{ id: "a" }])).toEqual([orphan]);
+  });
+
+  it("missingLabourFor per_area vs job", () => {
+    const areas = [{ id: "a", name: "Lounge" }];
+    expect(missingLabourFor("per_area", areas, [unit("a")] as any).map((a) => a.id)).toEqual(["a"]);
+    expect(missingLabourFor("per_area", areas, [unit("a"), lab("a", 3.5)] as any)).toEqual([]);
+    expect(missingLabourFor("job", areas, [unit("a")] as any).map((a) => a.id)).toEqual(["job"]);
+    expect(missingLabourFor("job", areas, [unit("a"), lab(null, 3.5, "job")] as any)).toEqual([]);
+    expect(missingLabourFor("job", areas, [unit("a"), lab(null, 0, "job")] as any).length).toBe(1);
+    expect(missingLabourFor("job", areas, [] as any)).toEqual([]);
+  });
+});
