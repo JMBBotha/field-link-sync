@@ -36,4 +36,22 @@ describe("persistQuoteFromBaskets single-flight", () => {
     expect(args.p_items.some((i: any) => i.item_type === "labour")).toBe(false);
     expect(args.p_subtotal).toBeGreaterThan(0);
   });
+
+  it("sends old_id for UUID basket ids so labour re-links survive renames", async () => {
+    const uuidArea = "11111111-1111-4111-8111-111111111111";
+    mockSupabase.from.mockImplementation(() => {
+      const b: any = { select: () => b, eq: () => b, then: (r: any) => r({ data: [], error: null }) };
+      return b;
+    });
+    const rpc = vi.fn().mockResolvedValue({ error: null });
+    (mockSupabase as any).rpc = rpc;
+    await persistQuoteFromBaskets("q4", [
+      { id: uuidArea, name: "Living room", items: [] },
+      { id: "basket-temp-1", name: "Kitchen", items: [] },
+    ] as any);
+    const args = rpc.mock.calls[0][1];
+    const byName = Object.fromEntries(args.p_areas.map((a: any) => [a.name, a]));
+    expect(byName["Living room"].old_id).toBe(uuidArea);
+    expect(byName["Kitchen"].old_id).toBeNull();
+  });
 });
