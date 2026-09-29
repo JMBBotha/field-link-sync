@@ -3,7 +3,7 @@
  * Extra material cost comes from catalogue cost only; labour overrun uses the company's
  * labour_cost_per_hour, or is excluded ("labour cost not set") exactly like lib/margin.ts.
  */
-import { salesShareOn } from "@/lib/margin";
+import { salespersonBase, salesShareOn } from "@/lib/margin";
 
 export interface OverrunExtra { product_id?: string | null; name: string; qty: number }
 export interface OverrunInput {
@@ -46,7 +46,10 @@ export function computeOverrun(i: OverrunInput): OverrunResult {
     quotedHours: i.quotedHours, actualHours: i.actualHours, extraHours, labourCost, labourNotSet,
     extrasCost, unknownExtras, adjustedGp,
     adjustedGpPercent: i.job.sell > 0 ? r2((adjustedGp / i.job.sell) * 100) : null,
-    adjustedSalesShare: salesShareOn((i.job.markupBase ?? i.job.gp) - extrasCost, i.salesSharePercent),
+    adjustedSalesShare: salesShareOn(
+      salespersonBase(i.job.markupBase ?? i.job.gp, extrasCost, 0),
+      i.salesSharePercent,
+    ),
   };
 }
 

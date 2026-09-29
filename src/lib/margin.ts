@@ -66,8 +66,15 @@ export function lineMargin(l: MarginLineInput, s: MarginSettings): MarginLine {
   return { id: l.id, name: l.name, areaId: l.areaId, sell, cost, gp, gpPercent: pct(gp, sell), status };
 }
 
-/** Salesperson share of markup, never below 0. */
-export const salesShareOn = (markup: number, salesSharePercent: number) => r2(Math.max(0, markup) * (salesSharePercent / 100));
+/**
+ * Salesperson base after the full labour sell is removed from eligible quote sell.
+ * Callers exclude services before passing sellExVat; this never reprices a line.
+ */
+export const salespersonBase = (sellExVat: number, unitMaterialCost: number, fullLabourSell: number) =>
+  r2(sellExVat - unitMaterialCost - fullLabourSell);
+
+/** Salesperson share of the salesperson base, never below 0. */
+export const salesShareOn = (base: number, salesSharePercent: number) => r2(Math.max(0, base) * (salesSharePercent / 100));
 
 /** Sell that exactly meets target GP% on the same cost: cost / (1 − target). */
 export const sellForTarget = (cost: number, targetPercent: number) =>
@@ -105,13 +112,13 @@ export function computeMargin(inputs: MarginLineInput[], discount: number, s: Ma
   });
   const salesSell = r2(salesLines.reduce((sum, l) => sum + l.sell - share(l.sell), 0));
   const salesCost = r2(salesLines.reduce((sum, l) => sum + (l.cost ?? 0), 0));
-  const markupBase = r2(salesSell - salesCost);
-  const markupBasePercent = pct(markupBase, salesSell);
-  const markupBaseBelowTarget = markupBasePercent != null && markupBasePercent < target;
   const labourSell = r2(lines.reduce((sum, l) => {
     const input = inputs.find((candidate) => candidate.id === l.id);
     return input?.isLabour ? sum + l.sell - share(l.sell) : sum;
   }, 0));
+  const markupBase = salespersonBase(salesSell + labourSell, salesCost, labourSell);
+  const markupBasePercent = pct(markupBase, salesSell);
+  const markupBaseBelowTarget = markupBasePercent != null && markupBasePercent < target;
   const labourTechShare = r2(Math.max(0, labourSell) * (s.labourTechSharePercent / 100));
   const salesShare = salesShareOn(markupBase, s.salesSharePercent);
   return {

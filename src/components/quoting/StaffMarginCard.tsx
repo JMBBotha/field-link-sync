@@ -146,7 +146,8 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
       <div className="grid gap-3 text-sm sm:grid-cols-2">
         <div className="rounded-md border border-border p-3">
           <p className="font-semibold">{salespersonLabel}</p>
-          <p>{settings.salesSharePercent}% of markup on units &amp; materials: <span className="font-semibold tabular-nums">{money(m.salesShare)}</span></p>
+          <p>{settings.salesSharePercent}% of margin above labour: <span className="font-semibold tabular-nums">{money(m.salesShare)}</span></p>
+          <p className="text-[11px] text-muted-foreground">Units &amp; materials markup only. No labour.</p>
           <p className="text-[11px] text-muted-foreground">Company keeps {money(m.salesCompanyShare)}</p>
           {m.salesShareIfPricedCorrectly != null && (
             <p>If priced correctly: <span className="font-semibold tabular-nums">{money(m.salesShareIfPricedCorrectly)}</span></p>
@@ -155,7 +156,7 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
         <div className="rounded-md border border-border p-3">
           <p className="font-semibold">{technicianLabel}</p>
           <p>{settings.labourTechSharePercent}% of labour: <span className="font-semibold tabular-nums">{money(m.labourTechShare)}</span></p>
-          <p className="text-[11px] text-muted-foreground">Company keeps {money(m.labourCompanyShare)}</p>
+          <p className="text-[11px] text-muted-foreground">Company keeps from labour: {money(m.labourCompanyShare)}</p>
         </div>
         {m.excludedServiceCount > 0 && <p className="text-[11px] text-muted-foreground sm:col-span-2">Services excluded (no price yet)</p>}
         <p className="text-[11px] text-muted-foreground sm:col-span-2">Earned when the invoice is paid in full; material overruns affect the salesperson share.</p>
