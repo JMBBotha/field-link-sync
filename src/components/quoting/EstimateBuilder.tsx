@@ -12,7 +12,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useQuoteContext } from "@/contexts/QuoteContext";
+import { useQuoteContext, trackQuoteWrite } from "@/contexts/QuoteContext";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { installTag, qtyUnitLabel, BRACKET_OPTIONS } from "@/lib/installTemplates";
 import { qtyLabel, shortInstallName, kitTitleFromMetadata, kitContents, isAcUnitLine } from "@/lib/lineDisplay";
@@ -30,7 +32,7 @@ import { useMarginView } from "@/hooks/useMarginView";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useLabourNorms } from "@/hooks/useLabourNorms";
 import { serviceNormKey } from "@/lib/pricingChecks";
-import { applyAutoLabourDelta, areaLabourStatus, countAcUnits } from "@/lib/areaLabour";
+import { applyAutoLabourDelta, areaLabourStatus, countAcUnits, labourTargetAreaId, DEFAULT_LABOUR_MODE } from "@/lib/areaLabour";
 import { labourFields, planLabour, standardLabourRate } from "@/lib/labour";
 
 interface Props {
@@ -88,6 +90,7 @@ export default function EstimateBuilder({
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
   const [focusAreaId, setFocusAreaId] = useState<string | null>(null);
+  const [openAdd, setOpenAdd] = useState<{ key: string; mode: "unit" | "service" | "material" } | null>(null);
 
 
 
@@ -173,7 +176,8 @@ export default function EstimateBuilder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areas, topLevel, productImages, margin.visible, perUnitHours]);
 
-  const addLabourForArea = async (areaId: string) => {
+  const addLabourForArea = async (rawAreaId: string) => {
+    const areaId = labourTargetAreaId(DEFAULT_LABOUR_MODE, rawAreaId);
     if (!(labourRate && labourRate > 0)) { toast({ title: "Set a labour rate", description: "Set the standard labour rate in Billing first." }); return; }
     const areaItems = topLevel.filter((i) => i.area_id === areaId);
     const status = areaLabourStatus(areaItems.map((i) => ({ ...i, product: i.product_id ? (productImages as Record<string, any>)[i.product_id] : null })), perUnitHours);
@@ -208,7 +212,7 @@ export default function EstimateBuilder({
 
   const adjustAutoLabour = async (areaId: string | null, delta: number) => {
     if (!areaId || !labourRate) return;
-    await applyAutoLabourDelta({ items, areaId, unitDelta: delta, perUnit: perUnitHours, rate: labourRate, addItem, updateItem });
+    await applyAutoLabourDelta({ items, areaId: labourTargetAreaId(DEFAULT_LABOUR_MODE, areaId), unitDelta: delta, perUnit: perUnitHours, rate: labourRate, addItem, updateItem });
   };
 
   const allowNewArea = () => {
@@ -387,33 +391,50 @@ export default function EstimateBuilder({
             }
           },
 
-          onDeleteArea: (id) => {
+          onDeleteArea: async (id) => {
             const area = editAreas.find((a) => a.id === id);
-            const lineCount = area?.lines.length ?? 0;
-            const msg = lineCount > 0
-              ? `Delete this area and its ${lineCount} line${lineCount === 1 ? "" : "s"}?`
-              : "Delete this area?";
+            const count = items.filter((i) => i.area_id === id).length;
+            const name = area?.name || "this area";
+            const msg = count > 0
+              ? `Delete ${name} and its ${count} line${count === 1 ? "" : "s"} (incl. labour)?`
+              : `Delete ${name}?`;
             if (!window.confirm(msg)) return;
-            for (const line of area?.lines ?? []) void deleteItem(line.id);
-            void deleteArea(id);
             if (activeAreaId === id) setActiveAreaId(null);
+            const { error } = await trackQuoteWrite(supabase.from("quote_items").delete().eq("area_id", id).eq("quote_id", quoteId));
+            if (error) { toast({ title: "Could not delete area lines", description: error.message, variant: "destructive" }); return; }
+            await deleteArea(id);
             onChanged?.();
           },
-          addBar: (
-            <QuoteQuickEditor
-              onChanged={onChanged}
-              dropUp
-              onAddedToArea={(areaId) => {
-                setActiveAreaId(areaId);
-                window.setTimeout(() => {
-                  const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(areaId) : areaId.replace(/["\\]/g, "\\$&");
-                  document.querySelector(`[data-area-id="${escaped}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }, 0);
-              }}
-              onUnitAdded={(areaId, qty) => void adjustAutoLabour(areaId, qty)}
-              beforeCreateArea={allowNewArea}
-            />
-          ),
+          renderAreaAdd: (areaId) => {
+            const key = areaId ?? "unassigned";
+            const open = openAdd?.key === key ? openAdd.mode : null;
+            if (open) {
+              return (
+                <QuoteQuickEditor
+                  key={`${key}-${open}`}
+                  mode={open}
+                  targetAreaId={areaId ?? undefined}
+                  createTargetArea={areaId ? undefined : async () => {
+                    if (!allowNewArea()) return null;
+                    const created = await addArea(`Area ${areas.length + 1}`);
+                    if (!created?.id) return null;
+                    setOpenAdd({ key: created.id, mode: open });
+                    return created.id;
+                  }}
+                  onClose={() => setOpenAdd(null)}
+                  onChanged={onChanged}
+                  onAddedToArea={(id) => setActiveAreaId(id)}
+                  onUnitAdded={(id, qty) => void adjustAutoLabour(id, qty)}
+                />
+              );
+            }
+            const btn = (mode: "unit" | "service" | "material", label: string) => (
+              <Button key={mode} type="button" size="sm" variant="outline" className="h-7 text-[11px]" onClick={(e) => { e.stopPropagation(); setOpenAdd({ key, mode }); }}>
+                <Plus className="mr-1 h-3 w-3" />{label}
+              </Button>
+            );
+            return <div className="flex flex-wrap gap-2">{btn("unit", "Add unit")}{btn("service", "Add service")}{btn("material", "Add material")}</div>;
+          },
           discountControl,
           onMoveLine: (id, areaId) => {
             // A unit carries its install lines with it.

@@ -24,7 +24,7 @@ import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { fetchQuoteInvoice } from "@/lib/depositInvoice";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { QuoteProvider } from "@/contexts/QuoteContext";
+import { QuoteProvider, usePendingQuoteWrites, waitForQuoteWrites } from "@/contexts/QuoteContext";
 import { missingLabourAreas } from "@/lib/areaLabour";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -56,6 +56,21 @@ const AdminEstimateDetailPage = () => {
     return true;
   };
   const staffActions = useQuoteStaffActions(undefined, checkLabour);
+  const pendingWrites = usePendingQuoteWrites();
+  const [leaving, setLeaving] = useState(false);
+  useEffect(() => {
+    if (pendingWrites <= 0) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [pendingWrites]);
+  const goBack = async () => {
+    setLeaving(true);
+    const done = await waitForQuoteWrites(5000);
+    setLeaving(false);
+    if (!done && !window.confirm("Changes are still saving. Leave anyway?")) return;
+    navigate("/admin/quotes");
+  };
 
   const { data: quote, isLoading } = useQuery({
     queryKey: ["quote-document", id],
@@ -250,10 +265,15 @@ const AdminEstimateDetailPage = () => {
     <div className="estimate-page mx-auto min-h-full max-w-4xl space-y-3 px-2 pt-2 pb-[calc(8rem+env(safe-area-inset-bottom,0px))] sm:px-3">
       {/* Header */}
       <div className="flex h-9 items-center justify-between print:hidden">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/admin/quotes")}>
-          <ArrowLeft className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => void goBack()} disabled={leaving} aria-label="Back">
+          {leaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowLeft className="h-5 w-5" />}
         </Button>
-        <h1 className="text-base font-bold">Estimate {quote.quote_number}</h1>
+        <h1 className="text-base font-bold">
+          Estimate {quote.quote_number}
+          <span data-pdf-hide className="ml-2 text-xs font-normal text-muted-foreground print:hidden" aria-live="polite">
+            {pendingWrites > 0 || leaving ? "Saving…" : "Saved"}
+          </span>
+        </h1>
         {staffActions.itemsFor(quote as any).some((i) => !i.hidden)
           ? <RowMenu items={staffActions.itemsFor(quote as any).map((i) => ({ ...i, separatorBefore: false }))} />
           : <div className="w-9" />}

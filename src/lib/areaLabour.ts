@@ -38,6 +38,13 @@ export function missingLabourAreas<T extends { id: string; name: string }>(areas
   return areas.filter((area) => areaLabourStatus(lines.filter((line) => line.area_id === area.id), perUnit).missing);
 }
 
+export type LabourMode = "per_area" | "job";
+export const DEFAULT_LABOUR_MODE: LabourMode = "per_area";
+/** Where auto labour lands. Only 'per_area' is built; 'job' is planned. */
+export function labourTargetAreaId(mode: LabourMode, areaId: string): string {
+  return mode === "per_area" ? areaId : areaId;
+}
+
 type LabourWriter = {
   items: any[];
   areaId: string;

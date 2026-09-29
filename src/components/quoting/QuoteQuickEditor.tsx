@@ -9,7 +9,7 @@ import { resolveProductMarkupPercent } from "@/lib/pricing";
  */
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Star, Wrench, Package, Loader2 } from "lucide-react";
+import { Plus, Star, Wrench, Package, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +64,10 @@ export default function QuoteQuickEditor({
   onAddedToArea,
   onUnitAdded,
   beforeCreateArea,
+  targetAreaId,
+  createTargetArea,
+  mode,
+  onClose,
 }: {
   onChanged?: () => void;
   /** Open the results list upward (used when the bar sits at the bottom of the document). */
@@ -73,6 +77,13 @@ export default function QuoteQuickEditor({
   onUnitAdded?: (areaId: string, quantity: number) => void;
   /** Explicit new-area guard; ordinary adds to existing areas remain unchanged. */
   beforeCreateArea?: () => boolean | Promise<boolean>;
+  /** Commit straight into this area (no routing, no area picker). */
+  targetAreaId?: string;
+  /** Orphan default section: create the target area on first add. */
+  createTargetArea?: () => Promise<string | null>;
+  /** Which input shows/autofocuses in an area block. */
+  mode?: "unit" | "service" | "material";
+  onClose?: () => void;
 }) {
   const { areas, items, addItem, addArea, meta } = useQuoteContext();
   const { toast } = useToast();
@@ -180,6 +191,13 @@ export default function QuoteQuickEditor({
   };
 
   const routeAdd = async (pending: NonNullable<typeof pendingAdd>, isUnit: boolean) => {
+    if (targetAreaId || createTargetArea) {
+      const areaId = targetAreaId || (await createTargetArea!());
+      if (!areaId) return;
+      if (pending.kind === "product") await commitProduct(pending.value, areaId);
+      else await commitCatalogService(pending.value, areaId);
+      return;
+    }
     const itemLines = items.filter((item) => !item.parent_item_id).map((item) => {
       const product = item.product_id ? products.find((candidate) => candidate.id === item.product_id) : null;
       return {
@@ -245,14 +263,20 @@ export default function QuoteQuickEditor({
   const showServiceList = customOpen || serviceFocus || serviceTerm.trim().length > 0;
 
   return (
-    <div data-testid="quote-add-bar" data-pdf-hide className="print:hidden">
-      <div className="grid gap-2 sm:grid-cols-2">
-        <div className="relative">
+    <div data-testid={mode ? "area-add" : "quote-add-bar"} data-pdf-hide className="print:hidden">
+      {mode && onClose && (
+        <div className="mb-1 flex justify-end">
+          <Button type="button" size="icon" variant="ghost" className="h-6 w-6" aria-label="Close" onClick={onClose}><X className="h-4 w-4" /></Button>
+        </div>
+      )}
+      <div className={mode ? "grid gap-2" : "grid gap-2 sm:grid-cols-2"}>
+        {mode !== "service" && <div className="relative">
           <Package className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
           <Input
             value={productTerm}
             onChange={(e) => setProductTerm(e.target.value)}
-            placeholder="Add item from catalog…"
+            autoFocus={mode === "unit" || mode === "material"}
+            placeholder={mode === "unit" ? "Search units…" : mode === "material" ? "Search materials…" : "Add item from catalog…"}
             className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
           />
           {loadingProducts && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-slate-400" />}
@@ -289,15 +313,16 @@ export default function QuoteQuickEditor({
               </div>
             </ScrollArea>
           )}
-        </div>
+        </div>}
 
-        <div className="relative">
+        {(!mode || mode === "service") && <div className="relative">
           <Wrench className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
           <Input
             value={serviceTerm}
             onChange={(e) => setServiceTerm(e.target.value)}
             onFocus={() => setServiceFocus(true)}
             onBlur={() => { if (!customOpen) setServiceFocus(false); }}
+            autoFocus={mode === "service"}
             placeholder="Add service…"
             className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
           />
@@ -335,7 +360,7 @@ export default function QuoteQuickEditor({
               </div>
             </ScrollArea>
           )}
-        </div>
+        </div>}
       </div>
       <Dialog open={!!pendingAdd} onOpenChange={(open) => { if (!open && !adding) setPendingAdd(null); }}>
         <DialogContent className="sm:max-w-sm">

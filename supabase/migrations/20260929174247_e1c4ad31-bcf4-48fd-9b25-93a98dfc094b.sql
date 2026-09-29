@@ -1,0 +1,2 @@
+-- ROLLBACK: ALTER TABLE public.quote_items DROP CONSTRAINT quote_items_area_id_fkey, ADD CONSTRAINT quote_items_area_id_fkey FOREIGN KEY (area_id) REFERENCES public.quote_areas(id) ON DELETE SET NULL;
+ALTER TABLE public.quote_items DROP CONSTRAINT IF EXISTS quote_items_area_id_fkey, ADD CONSTRAINT quote_items_area_id_fkey FOREIGN KEY (area_id) REFERENCES public.quote_areas(id) ON DELETE CASCADE;

@@ -72,19 +72,22 @@ describe("quote builder layout", () => {
     expect(spy.mock.contexts[0]).toHaveProperty("dataset.lineId", "a2-l12");
   });
 
-  it("renders one quote-level add bar after all areas and before totals", () => {
+  it("renders add controls inside every area block, hidden from the PDF", () => {
+    const list = areas();
     render(
       <EstimateDocument
         estimateNumber="Q2" issueDate="2026-09-28" customerName="C" items={[]} subtotal={0} taxRate={0.15} taxAmount={0} grandTotal={0}
         editing={{
-          areas: areas(), selectedLineId: null, onSelectLine: () => {}, onLineChange: () => {}, onDeleteLine: () => {}, onRenameArea: () => {}, onAddArea: () => {},
-          addBar: <div data-testid="quote-add-bar">add-bar</div>,
+          areas: list, selectedLineId: null, onSelectLine: () => {}, onLineChange: () => {}, onDeleteLine: () => {}, onRenameArea: () => {}, onAddArea: () => {},
+          renderAreaAdd: (id) => <div data-testid={`area-add-${id}`}>add</div>,
         }}
       />,
     );
-    const bar = screen.getByTestId("quote-add-bar");
-    expect(bar.closest("[data-pdf-hide]")).toBeTruthy();
-    expect(bar.compareDocumentPosition(screen.getByText("Subtotal")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    for (const a of list) {
+      const el = screen.getByTestId(`area-add-${a.id}`);
+      expect(el.closest("[data-pdf-hide]")).toBeTruthy();
+      expect(el.closest(`[data-area-id="${a.id}"]`)).toBeTruthy();
+    }
   });
 });
 
