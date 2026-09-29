@@ -104,8 +104,8 @@ export interface EstimateEditing {
   activeAreaId?: string | null;
   onSelectArea?: (id: string | null) => void;
 
-  /** Single quote-level add-item / add-service bar rendered above totals. */
-  addBar?: ReactNode;
+  /** Per-area add controls (Add unit / service / material), rendered inside each area block. */
+  renderAreaAdd?: (areaId: string | null) => ReactNode;
   /** Discount control rendered in the totals block. */
   discountControl?: ReactNode;
   /** Line ⋯ menu: move / duplicate into another real area. */
@@ -690,7 +690,17 @@ const EstimateDocument = ({
                   </tbody>
                 </table>
 
-                {area.id && (area.lines.length > 0 || !!area.labourLines?.length) && editing.onAddLabour && editing.onLabourChange && (
+                {area.lines.length === 0 && (
+                  <p className="py-4 text-center text-[11px] text-slate-400 print:hidden">
+                    No lines yet — add a unit, service or material.
+                  </p>
+                )}
+
+                {editing.renderAreaAdd && (
+                  <div className="mt-2 print:hidden" data-pdf-hide data-html2canvas-ignore>{editing.renderAreaAdd(area.id)}</div>
+                )}
+
+                {area.id && editing.onAddLabour && editing.onLabourChange && (
                   <AreaLabourRow
                     areaId={area.id}
                     areaName={area.name}
@@ -699,12 +709,6 @@ const EstimateDocument = ({
                     onAdd={() => editing.onAddLabour?.(area.id as string)}
                     onChange={editing.onLabourChange}
                   />
-                )}
-
-                {area.lines.length === 0 && (
-                  <p className="py-4 text-center text-[11px] text-slate-400 print:hidden">
-                    No lines here yet — use the add bar below to build this section.
-                  </p>
                 )}
               </section>
 
