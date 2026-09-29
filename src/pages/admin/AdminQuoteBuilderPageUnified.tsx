@@ -942,6 +942,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
   // Refs so the unmount/beforeunload flush always sees the latest state.
   const savingRef = useRef(false);
+  const lastSaveErrorToastRef = useRef(0);
   const latestRef = useRef({ quoteId, displayBaskets, products, contentSig, isDirty });
   latestRef.current = { quoteId, displayBaskets, products, contentSig, isDirty };
 
@@ -958,6 +959,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error("[QuoteBuilder] auto-save failed", err);
+      if (Date.now() - lastSaveErrorToastRef.current > 15_000) {
+        lastSaveErrorToastRef.current = Date.now();
+        toast({ title: "Changes not saved", description: "You can only edit quotes where you are the salesperson. Ask an admin to reassign it.", variant: "destructive" });
+      }
     } finally {
       savingRef.current = false;
     }
