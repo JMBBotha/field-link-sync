@@ -823,7 +823,6 @@ const EstimateDocument = ({
           </table>
         )}
 
-        {editing?.addBar && <div className="mt-6 print:hidden" data-pdf-hide>{editing.addBar}</div>}
 
         {/* ── Totals ── */}
         <div className="mt-6 flex justify-end">
