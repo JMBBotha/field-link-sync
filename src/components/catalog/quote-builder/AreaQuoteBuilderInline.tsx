@@ -41,9 +41,9 @@ interface Props {
   onPdfSearch?: (term: string) => void;
   onAreasChange?: (areas: QuoteArea[]) => void;
   /** Ref that parent can use to push products into the builder */
-  onAddProductRef?: React.MutableRefObject<((product: PaletteProduct) => void) | null>;
+  onAddProductRef?: React.MutableRefObject<((product: PaletteProduct, opts?: { append?: boolean }) => void) | null>;
   /** Ref that parent can use to drop a product into a specific area by id */
-  onDropProductToAreaRef?: React.MutableRefObject<((areaId: string, product: PaletteProduct) => void) | null>;
+  onDropProductToAreaRef?: React.MutableRefObject<((areaId: string, product: PaletteProduct, opts?: { append?: boolean }) => void) | null>;
   /** Ref that parent can use to drop a bundle into a specific area by id */
   onDropBundleToAreaRef?: React.MutableRefObject<((areaId: string, bundle: any) => void) | null>;
   /** Ref that parent can use to add a new area */
@@ -145,7 +145,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
   }, [areas, onAreasChange]);
 
   // External product add: routes product to the first area based on category
-  const handleExternalProductAdd = useCallback((product: PaletteProduct) => {
+  const handleExternalProductAdd = useCallback((product: PaletteProduct, opts?: { append?: boolean }) => {
     setAreas((prev) => {
       const working = prev.length > 0 ? prev : [createEmptyArea("Additional Items/Services")];
       const targetArea = working[0];
@@ -154,7 +154,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
       if (isAC) {
         const btu = detectBTU(product);
         const newUnit: AreaACUnit = { id: crypto.randomUUID(), product, btu, quantity: 1 };
-        return working.map((a, i) => i === 0 ? { ...a, acUnits: [newUnit] } : a);
+        return working.map((a, i) => i === 0 ? { ...a, acUnits: opts?.append ? [...a.acUnits, newUnit] : [newUnit] } : a);
       } else {
         const existing = targetArea.consumables.find((c) => c.product.id === product.id);
         if (existing) {
@@ -199,7 +199,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
   }, [areas]);
 
   // Drop a product into a specific area — also switch to AC Units step
-  const handleDropProductToArea = useCallback((areaId: string, product: PaletteProduct) => {
+  const handleDropProductToArea = useCallback((areaId: string, product: PaletteProduct, opts?: { append?: boolean }) => {
     const isAC = product.product_category === "Air Conditioning" || (product.category || "").toLowerCase().includes("air conditioning");
     setAreas((prev) => {
       return prev.map((a) => {
@@ -207,7 +207,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
         if (isAC) {
           const btu = detectBTU(product);
           const newUnit: AreaACUnit = { id: crypto.randomUUID(), product, btu, quantity: 1 };
-          return { ...a, acUnits: [newUnit] };
+          return { ...a, acUnits: opts?.append ? [...a.acUnits, newUnit] : [newUnit] };
         } else {
           const existing = a.consumables.find((c) => c.product.id === product.id);
           if (existing) {
