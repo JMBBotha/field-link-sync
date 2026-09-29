@@ -11,6 +11,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { convertQuoteToInvoice, buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
 import { generateDocumentPdf } from "@/lib/documentPdf";
 import { loadQuoteBrochuresForPdf } from "@/lib/quoteBrochuresForPdf";
+import ClientQuotePdfRoot, { waitForClientPdfRoot } from "@/components/quoting/ClientQuotePdfRoot";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import EstimateBuilder from "@/components/quoting/EstimateBuilder";
@@ -42,6 +43,7 @@ const AdminEstimateDetailPage = () => {
   const qc = useQueryClient();
   const { settings } = useCompanySettings();
   const [busy, setBusy] = useState<string | null>(null);
+  const [clientPdf, setClientPdf] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [missingLabour, setMissingLabour] = useState<{ id: string; name: string }[]>([]);
   const checkLabour = async () => {
@@ -202,7 +204,10 @@ const AdminEstimateDetailPage = () => {
     if (!await checkLabour()) return "Remember labour before generating the PDF.";
     setBusy("pdf");
     try {
+      await waitForQuoteWrites(5000);
+      setClientPdf(true);
       const extras = await loadQuoteBrochuresForPdf((quote as any)?.id);
+      const captureSelector = await waitForClientPdfRoot(quote!.id);
       await generateDocumentPdf({
         ...extras,
         docType: "Quote",
@@ -220,10 +225,12 @@ const AdminEstimateDetailPage = () => {
         taxAmount,
         total,
         notes: quote?.notes || undefined,
-        captureSelector: '[data-pdf-capture-root="estimate"]',
+        captureSelector,
       });
     } catch (e: any) {
       toast({ title: "PDF failed", description: e.message, variant: "destructive" });
+    } finally {
+      setClientPdf(false);
     }
     setBusy(null);
   };
@@ -364,6 +371,7 @@ const AdminEstimateDetailPage = () => {
         </TooltipProvider>
       </div>
 
+      {clientPdf && <ClientQuotePdfRoot quoteId={quote.id} />}
       <SendQuoteDialog
         open={sendOpen}
         onOpenChange={setSendOpen}
