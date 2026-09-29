@@ -5593,6 +5593,72 @@ export type Database = {
           },
         ]
       }
+      sales_commission_snapshots: {
+        Row: {
+          commission: number
+          company_id: string
+          created_at: string
+          earned_at: string
+          id: string
+          invoice_paid_date: string | null
+          items_cost: number
+          items_profit: number
+          items_sell_ex_vat: number
+          paid_at: string | null
+          paid_by: string | null
+          paid_marked_at: string | null
+          percent: number
+          quote_id: string
+          quote_number: string | null
+          rep_id: string
+          rule: Json | null
+          status: string
+          unknown_cost_count: number
+        }
+        Insert: {
+          commission: number
+          company_id: string
+          created_at?: string
+          earned_at?: string
+          id?: string
+          invoice_paid_date?: string | null
+          items_cost: number
+          items_profit: number
+          items_sell_ex_vat: number
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_marked_at?: string | null
+          percent: number
+          quote_id: string
+          quote_number?: string | null
+          rep_id: string
+          rule?: Json | null
+          status?: string
+          unknown_cost_count?: number
+        }
+        Update: {
+          commission?: number
+          company_id?: string
+          created_at?: string
+          earned_at?: string
+          id?: string
+          invoice_paid_date?: string | null
+          items_cost?: number
+          items_profit?: number
+          items_sell_ex_vat?: number
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_marked_at?: string | null
+          percent?: number
+          quote_id?: string
+          quote_number?: string | null
+          rep_id?: string
+          rule?: Json | null
+          status?: string
+          unknown_cost_count?: number
+        }
+        Relationships: []
+      }
       service_agreements: {
         Row: {
           auto_generate_jobs: boolean
@@ -7390,6 +7456,7 @@ export type Database = {
       }
     }
     Functions: {
+      _apply_commission_snapshot: { Args: { e: Json }; Returns: Json }
       _earnings_for_quote: {
         Args: { p_quote_id: string; p_viewer: string }
         Returns: Json
@@ -7411,6 +7478,10 @@ export type Database = {
       _postgis_stats: {
         Args: { ""?: string; att_name: string; tbl: unknown }
         Returns: string
+      }
+      _snapshot_sales_commission: {
+        Args: { p_quote_id: string }
+        Returns: undefined
       }
       _st_3dintersects: {
         Args: { geom1: unknown; geom2: unknown }
@@ -8016,6 +8087,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_sales_tracker: { Args: { p_rep_id?: string }; Returns: Json }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       gettransactionid: { Args: never; Returns: unknown }
       has_role: {
@@ -8311,6 +8383,10 @@ export type Database = {
               supplier_name: string
             }[]
           }
+      set_commission_paid: {
+        Args: { p_paid?: boolean; p_paid_at?: string; p_snapshot_id: string }
+        Returns: Json
+      }
       set_quote_labour_mode: {
         Args: {
           p_area_units?: Json
