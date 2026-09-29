@@ -3,6 +3,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNewLineScroll } from "@/hooks/useNewLineScroll";
+import { useIsPhone } from "@/hooks/useIsPhone";
 import logo from "@/assets/logo.png";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import type { ClientRollupArea } from "@/lib/clientQuoteRollup";
@@ -106,6 +107,8 @@ export interface EstimateEditing {
 
   /** Per-area add controls (Add unit / service / material), rendered inside each area block. */
   renderAreaAdd?: (areaId: string | null) => ReactNode;
+  collapsedAreaKeys?: Set<string>;
+  onToggleArea?: (key: string) => void;
   /** Discount control rendered in the totals block. */
   discountControl?: ReactNode;
   /** Line ⋯ menu: move / duplicate into another real area. */
@@ -299,6 +302,7 @@ const EstimateDocument = ({
   );
   const [openKits, setOpenKits] = useState<Record<string, boolean>>({});
   const [openInstallGroups, setOpenInstallGroups] = useState<Record<string, boolean>>({});
+  const isPhone = useIsPhone();
   const rollup = !editing && presentationMode === "clientRollup" ? clientAreas ?? [] : null;
   const { settings: authedSettings } = useCompanySettings();
   const settings = companyOverride
@@ -383,10 +387,15 @@ const EstimateDocument = ({
         {/* ── Line items ── */}
         {editing ? (
           <div className="mt-6 space-y-6">
-            {editing.areas.map((area) => (
+            {editing.areas.map((area) => {
+              const areaKey = area.id ?? "unassigned";
+              const canCollapse = editing.collapsedAreaKeys !== undefined && !!editing.onToggleArea;
+              const collapsed = canCollapse && editing.collapsedAreaKeys?.has(areaKey);
+              return (
               <section
-                key={area.id ?? "unassigned"}
-                data-area-id={area.id ?? "unassigned"}
+                key={areaKey}
+                data-area-id={areaKey}
+                data-area-collapsed={collapsed ? "true" : undefined}
                 onFocus={() => editing.onSelectArea?.(area.id)}
                 onClick={() => editing.onSelectArea?.(area.id)}
                 className="rounded-lg bg-white p-4 ring-1 ring-slate-200 print:rounded-none print:p-0 print:ring-0"
@@ -409,6 +418,22 @@ const EstimateDocument = ({
                       className="text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]"
                     />
                   )}
+                  {canCollapse && area.lines.length > 0 && (
+                    <button
+                      type="button"
+                      aria-expanded={!collapsed}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        editing.onToggleArea?.(areaKey);
+                      }}
+                      className={`ml-auto inline-flex items-center gap-1 rounded-md px-2 text-[11px] text-slate-600 hover:bg-slate-100 print:hidden ${isPhone ? "min-h-[44px]" : "h-7"}`}
+                      data-pdf-hide
+                      data-html2canvas-ignore
+                    >
+                      {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      {collapsed ? `Show ${area.lines.length} item${area.lines.length === 1 ? "" : "s"}` : "Hide items"}
+                    </button>
+                  )}
                   {area.id && editing.onDeleteArea && (
                     <button
                       type="button"
@@ -418,14 +443,14 @@ const EstimateDocument = ({
                         e.stopPropagation();
                         editing.onDeleteArea?.(area.id as string);
                       }}
-                      className="ml-auto inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-red-300 bg-red-50 text-red-600 shadow-sm hover:bg-red-100 hover:text-red-700 print:hidden"
+                      className={`${canCollapse && area.lines.length > 0 ? "" : "ml-auto"} inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-red-300 bg-red-50 text-red-600 shadow-sm hover:bg-red-100 hover:text-red-700 print:hidden`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   )}
                 </div>
 
-                <table className="estimate-lines mt-2 w-full border-collapse text-[12px]">
+                <table className={`estimate-lines mt-2 w-full border-collapse text-[12px] ${collapsed ? "hidden print:table" : ""}`}>
 
                   <thead>
                     <tr className="text-[10px] uppercase tracking-wider text-slate-500 max-sm:portrait:hidden">
@@ -713,8 +738,8 @@ const EstimateDocument = ({
                   />
                 )}
               </section>
-
-            ))}
+              );
+            })}
 
             {editing.jobLabour && editing.onLabourChange && (
               <section data-testid="job-labour" className="rounded-lg bg-white p-4 ring-1 ring-slate-200 print:rounded-none print:p-0 print:ring-0">

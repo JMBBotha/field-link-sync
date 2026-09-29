@@ -13,7 +13,7 @@ interface Feature {
   mapboxId?: string; // Search Box API id, retrieved on select
 }
 
-const words = (value: string) =>
+const words = (value: string): string[] =>
   value.toLocaleLowerCase().match(/[a-z0-9]+/g) ?? [];
 
 const isRelevantExternalResult = (term: string, name: string, featureType?: string) => {
