@@ -10,9 +10,11 @@ interface Props {
   defaultHours: number;
   onAdd: () => void;
   onChange: (id: string, hours: number, rate?: number) => void;
+  /** Row label; defaults to 'Labour for <area name>'. */
+  title?: string;
 }
 
-export default function AreaLabourRow({ areaId, areaName, lines, defaultHours, onAdd, onChange }: Props) {
+export default function AreaLabourRow({ areaId, areaName, lines, defaultHours, onAdd, onChange, title }: Props) {
   const hours = lines.reduce((sum, line) => sum + Math.max(0, line.quantity), 0);
   return (
     <div id={`area-labour-${areaId}`} data-testid={`area-labour-${areaId}`} className="mt-2 border-t border-slate-200 pt-2 print:hidden">
@@ -27,7 +29,7 @@ export default function AreaLabourRow({ areaId, areaName, lines, defaultHours, o
         return (
           <div key={line.id} className="grid items-center gap-2 text-xs sm:grid-cols-[minmax(160px,1fr)_100px_120px_110px]">
             <div>
-              <span className="font-medium text-slate-800">Labour for {areaName}</span>
+              <span className="font-medium text-slate-800">{title ?? `Labour for ${areaName}`}</span>
               {differs && <span className="ml-2 text-[10px] text-slate-500">Default for {line.acUnitCount} units: {defaultHours} h</span>}
             </div>
             <label className="flex items-center gap-1 text-slate-500">
