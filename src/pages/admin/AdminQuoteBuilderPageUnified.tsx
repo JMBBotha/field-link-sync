@@ -1015,7 +1015,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     if (!isDirty) return;
     const t = setTimeout(() => { void flushSave(); }, 1200);
     return () => clearTimeout(t);
-  }, [isDirty, contentSig, flushSave]);
+  }, [isDirty, contentSig, flushSave, otherEditors.length]);
 
   // Flush on unmount (route change of any kind) and on tab close.
   useEffect(() => {
