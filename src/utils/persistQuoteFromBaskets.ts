@@ -14,6 +14,7 @@ import { computeQuoteTotals, QUOTE_VAT_RATE } from "@/utils/quoteTransformers";
 import { isLabourItem, LABOUR_ITEM_TYPE } from "@/lib/labour";
 import { remapInstallUnitIds } from "@/lib/installTemplates";
 import type { Basket } from "@/components/catalog/QuoteBuilderTab";
+import { stampChanged, stampFromRows, type QuoteLineStamp } from "@/lib/quoteLineStamp";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -23,6 +24,30 @@ export interface PersistQuoteResult {
   total: number;
   itemCount: number;
   zoneCount: number;
+  /** Ids of the quote_items rows this save wrote (non-labour). */
+  writtenIds: string[];
+}
+
+export class QuoteChangedElsewhereError extends Error {
+  constructor() { super("This quote was changed on the estimate page or another device."); this.name = "QuoteChangedElsewhereError"; }
+}
+
+const isKeptLabour = (r: any) => r.item_type === LABOUR_ITEM_TYPE && isLabourItem(r) && !r.parent_item_id;
+
+/** Stamp over the quote's non-labour lines (labour excluded exactly as persistOnce does). */
+export async function fetchQuoteLineStamp(quoteId: string): Promise<QuoteLineStamp> {
+  const { data, error } = await (supabase.from("quote_items") as any)
+    .select("id, updated_at, item_type, metadata, parent_item_id").eq("quote_id", quoteId);
+  if (error) throw error;
+  return stampFromRows(((data || []) as any[]).filter((r) => !isKeptLabour(r)));
+}
+
+/** Stamp over exactly these row ids. */
+export async function fetchStampForIds(ids: string[]): Promise<QuoteLineStamp> {
+  if (!ids.length) return { ids: new Set(), maxUpdatedAt: null };
+  const { data, error } = await (supabase.from("quote_items") as any).select("id, updated_at").in("id", ids);
+  if (error) throw error;
+  return { ...stampFromRows((data || []) as any[]), ids: new Set(ids) };
 }
 
 const inFlight = new Map<string, Promise<unknown>>();
@@ -41,8 +66,13 @@ export function persistQuoteFromBaskets(
   quoteId: string,
   baskets: Basket[],
   validProductIds?: Set<string>,
+  opts?: { baseline?: () => QuoteLineStamp | null },
 ): Promise<PersistQuoteResult> {
-  return runSerialPerQuote(quoteId, () => persistOnce(quoteId, baskets, validProductIds));
+  return runSerialPerQuote(quoteId, async () => {
+    const base = opts?.baseline?.();
+    if (base && stampChanged(base, await fetchQuoteLineStamp(quoteId))) throw new QuoteChangedElsewhereError();
+    return persistOnce(quoteId, baskets, validProductIds);
+  });
 }
 
 async function persistOnce(
@@ -117,5 +147,6 @@ async function persistOnce(
     total: totals.total,
     itemCount: totals.itemCount,
     zoneCount: totals.zoneCount,
+    writtenIds: itemRows.map((r: any) => r.id),
   };
 }
