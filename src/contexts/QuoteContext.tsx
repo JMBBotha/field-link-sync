@@ -499,7 +499,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
                 .from("quote_items")
                 .update({ area_id: defaultArea.id } as TablesUpdate<"quote_items">)
                 .eq("id", i.id)
-            ));
+            )));
             if (!mountedRef.current) return defaultArea;
             const firstErr = results.find((r) => r.error)?.error;
             if (firstErr) {
@@ -524,7 +524,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
               .from("quote_items")
               .update({ area_id: area.id } as TablesUpdate<"quote_items">)
               .eq("id", i.id)
-          ));
+          )));
           if (!mountedRef.current) return area;
           const firstErr = results.find((r) => r.error)?.error;
           if (firstErr) {
