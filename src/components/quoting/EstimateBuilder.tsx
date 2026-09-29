@@ -32,7 +32,7 @@ import { useMarginView } from "@/hooks/useMarginView";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useLabourNorms } from "@/hooks/useLabourNorms";
 import { serviceNormKey } from "@/lib/pricingChecks";
-import { applyAutoLabourDelta, areaLabourStatus, countAcUnits } from "@/lib/areaLabour";
+import { applyAutoLabourDelta, areaLabourStatus, countAcUnits, labourTargetAreaId, DEFAULT_LABOUR_MODE } from "@/lib/areaLabour";
 import { labourFields, planLabour, standardLabourRate } from "@/lib/labour";
 
 interface Props {
