@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-/** Admin-only: labour cost rate, GP target and tech earnings shares on the company. */
+/** Admin-only: labour cost rate, GP target and independent role earnings shares. */
 export default function MarginSettingsCard() {
   const { user } = useAuth();
   const { isAdmin } = useRole();
@@ -41,7 +41,7 @@ export default function MarginSettingsCard() {
   const save = async () => {
     const t = Number(target), c = Number(comm), ls = Number(labourShare), l = labour.trim() === "" ? null : Number(labour);
     if (!(t >= 0 && t < 100) || !(c >= 0 && c <= 100) || !(ls >= 0 && ls <= 100) || (l != null && !(l >= 0))) {
-      toast({ title: "Check the numbers", description: "Target 0–99%, tech shares 0–100%, labour cost R0 or more.", variant: "destructive" });
+      toast({ title: "Check the numbers", description: "Target 0–99%, earnings shares 0–100%, labour cost R0 or more.", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -55,15 +55,18 @@ export default function MarginSettingsCard() {
 
   return (
     <Card>
-      <CardHeader><CardTitle>Profit &amp; tech earnings (staff only)</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle>Sales &amp; tech earnings (staff only)</CardTitle>
+        <p className="text-sm text-muted-foreground">Sales earns on unit and material markup only. Technicians earn on labour only.</p>
+      </CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-4">
         <div><Label>Labour cost per hour (R, what it costs you)</Label>
           <Input type="number" min="0" step="0.01" placeholder="Not set" value={labour} onChange={(e) => setLabour(e.target.value)} /></div>
         <div><Label>GP target %</Label>
           <Input type="number" min="0" max="99" value={target} onChange={(e) => setTarget(e.target.value)} /></div>
-        <div><Label>Tech share of GP – units &amp; materials (%)</Label>
+        <div><Label>Salesperson share of markup, units &amp; materials (%)</Label>
           <Input type="number" min="0" max="100" value={comm} onChange={(e) => setComm(e.target.value)} /></div>
-        <div><Label>Tech labour share (%)</Label>
+        <div><Label>Technician share of labour (%)</Label>
           <Input type="number" min="0" max="100" value={labourShare} onChange={(e) => setLabourShare(e.target.value)} /></div>
         <div className="md:col-span-4 flex justify-end"><Button onClick={save} disabled={saving}>Save profit settings</Button></div>
       </CardContent>

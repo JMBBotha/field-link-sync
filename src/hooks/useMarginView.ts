@@ -33,7 +33,7 @@ export function useMarginView(quoteId: string | null, companyId: string | null, 
   const settings: MarginSettings = {
     labourCostPerHour: lc != null && lc > 0 ? lc : null,
     gpTargetPercent: co?.gp_target_percent != null ? Number(co.gp_target_percent) : 20,
-    commissionPercent: co?.sales_commission_percent != null ? Number(co.sales_commission_percent) : 50,
+    salesSharePercent: co?.sales_commission_percent != null ? Number(co.sales_commission_percent) : 50,
     labourTechSharePercent: co?.labour_tech_share_percent != null ? Number(co.labour_tech_share_percent) : 60,
   };
   return { visible, settings };

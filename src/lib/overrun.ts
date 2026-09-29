@@ -3,7 +3,7 @@
  * Extra material cost comes from catalogue cost only; labour overrun uses the company's
  * labour_cost_per_hour, or is excluded ("labour cost not set") exactly like lib/margin.ts.
  */
-import { commissionOn } from "@/lib/margin";
+import { salesShareOn } from "@/lib/margin";
 
 export interface OverrunExtra { product_id?: string | null; name: string; qty: number }
 export interface OverrunInput {
@@ -11,9 +11,9 @@ export interface OverrunInput {
   actualHours: number | null;
   /** Extras with their catalogue unit cost (null = free text / not in catalogue). */
   extras: (OverrunExtra & { unitCost: number | null })[];
-  job: { sell: number; gp: number; commissionBaseGp?: number };
+  job: { sell: number; gp: number; markupBase?: number };
   labourCostPerHour: number | null;
-  commissionPercent: number;
+  salesSharePercent: number;
 }
 export interface OverrunResult {
   quotedHours: number;
@@ -25,7 +25,7 @@ export interface OverrunResult {
   unknownExtras: number;
   adjustedGp: number;
   adjustedGpPercent: number | null;
-  adjustedCommission: number;
+  adjustedSalesShare: number;
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -46,7 +46,7 @@ export function computeOverrun(i: OverrunInput): OverrunResult {
     quotedHours: i.quotedHours, actualHours: i.actualHours, extraHours, labourCost, labourNotSet,
     extrasCost, unknownExtras, adjustedGp,
     adjustedGpPercent: i.job.sell > 0 ? r2((adjustedGp / i.job.sell) * 100) : null,
-    adjustedCommission: commissionOn((i.job.commissionBaseGp ?? i.job.gp) - extrasCost, i.commissionPercent),
+    adjustedSalesShare: salesShareOn((i.job.markupBase ?? i.job.gp) - extrasCost, i.salesSharePercent),
   };
 }
 
