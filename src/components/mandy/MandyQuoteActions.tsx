@@ -13,6 +13,7 @@ import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 import { useRegisterMandyActions } from "@/lib/mandy/registry";
+import { withBeforeWrite } from "@/lib/mandyBeforeWrite";
 import { getAssistantContext, setAssistantContext } from "@/stores/assistantContextStore";
 import { isPronoun, resolveAreaPronoun, resolveItemPronoun, type TouchedCtx } from "@/lib/mandy/pronouns";
 import { fmtRand, type MandyChoice, type MandyResult, type MandyHandler } from "@/lib/mandy/actions";
@@ -49,6 +50,10 @@ interface Props {
   /** May return a spoken message (e.g. builder hands PDF off to the estimate page). */
   onPdf: () => Promise<void | string>;
   onChanged?: () => void;
+  /** Builder only: runs before every write; a string refuses the write. */
+  beforeWrite?: () => Promise<string | null>;
+  /** Builder only: called after refresh() re-read QuoteContext. */
+  afterRefresh?: () => void;
 }
 
 const lc = (s?: string | null) => (s || "").trim().toLowerCase();
@@ -81,7 +86,7 @@ export function filterNotes(notes: NoteRef[], target?: unknown, match?: unknown)
   return notes.filter((n) => (!target || n.target === target) && (!m || lc(n.text).includes(m) || lc(n.area).includes(m)));
 }
 
-export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) {
+export default function MandyQuoteActions({ vatRate, onPdf, onChanged, beforeWrite, afterRefresh }: Props) {
   const ctx = useQuoteContext();
   // Write failures (null/false/throw) become WriteFailed → ok:false, never a success claim.
   const g = guardQuoteWrites(ctx);
@@ -117,6 +122,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
       onChanged,
     });
     if (fresh) live.current = { areas: fresh.areas, items: fresh.items };
+    afterRefresh?.();
     return fresh;
   };
 
@@ -672,7 +678,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged }: Props) 
     },
   };
 
-  useRegisterMandyActions(wrapWithUndo(withWriteFailures(handlers)));
+  useRegisterMandyActions(withBeforeWrite(wrapWithUndo(withWriteFailures(handlers)), beforeWrite));
   return null;
 }
 
