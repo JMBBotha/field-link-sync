@@ -11,8 +11,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
 import { generateDocumentPdfBlob } from "@/lib/documentPdf";
 import { loadQuoteBrochuresForPdf } from "@/lib/quoteBrochuresForPdf";
-import EstimateDocument from "./EstimateDocument";
-import { buildClientRollup } from "@/lib/clientQuoteRollup";
+import ClientQuotePdfRoot, { waitForClientPdfRoot } from "./ClientQuotePdfRoot";
 import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 import { formatRand } from "@/utils/formatRand";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
@@ -123,38 +122,12 @@ const SendQuoteDialog = ({
     enabled: open && !!quoteId && !!quote,
   });
 
-  // Client PDF shows the rolled-up view (room → unit → one area total), never
-  // the itemised copper/labour breakdown staff use for costing.
-  const { data: rollupAreas = [] } = useQuery({
-    queryKey: ["send-quote-rollup", quoteId],
-    queryFn: async () => {
-      const [lines, areas] = await Promise.all([
-        supabase
-          .from("quote_items")
-          .select(
-            "id, item_name, description, quantity, unit_price, total_price, area_id, item_type, parent_item_id, sort_order, supplier_products(category, brand, btu_rating, capacity_btu, kw, image_url, ai_sales_description)",
-          )
-          .eq("quote_id", quoteId)
-          .is("parent_item_id", null)
-          .order("sort_order"),
-        supabase.from("quote_areas").select("id, name, sort_order").eq("quote_id", quoteId),
-      ]);
-      const flat = ((lines.data || []) as any[]).map((l) => ({ ...l, ...(l.supplier_products || {}) }));
-      return buildClientRollup(flat, (areas.data || []) as any[]);
-    },
-    enabled: open && !!quoteId,
-  });
+  const [clientPdf, setClientPdf] = useState(false);
 
   const customer = quote?.customers || {};
   const subtotal = Number(quote?.subtotal) || 0;
   const taxAmount = Number(quote?.vat_amount) || 0;
   const total = Number(quote?.total) || 0;
-  const docItems = items.map((i) => ({
-    description: i.description,
-    quantity: i.quantity,
-    unit_price: i.rate,
-    amount: i.amount,
-  }));
   const resolvedCustomerName = customer.name || quote?.customer_name || customerName || "Customer";
 
   // Client link: /quote/:token → ClientProposalView (accept flow).
@@ -176,26 +149,32 @@ const SendQuoteDialog = ({
 
   const buildPdf = async (): Promise<Blob> => {
     if (!quote) throw new Error("Quote not loaded yet — please wait a moment and try again.");
-    const extras = await loadQuoteBrochuresForPdf(quoteId);
-    return generateDocumentPdfBlob({
-      ...extras,
-      docType: "Quote",
-      docNumber: quote.quote_number || quoteNumber || "DRAFT",
-      companyName: settings.company_name || "0800-BE-COOL",
-      companyAddress: settings.physical_address,
-      vatNumber: settings.vat_number,
-      customerName: resolvedCustomerName,
-      customerAddress: customer.address || undefined,
-      customerEmail: customer.email || undefined,
-      issueDate: quote.created_at,
-      lineItems: items,
-      subtotal,
-      taxRate: Number(quote.vat_rate) || 0.15,
-      taxAmount,
-      total,
-      notes: quote.notes || undefined,
-      captureSelector: '[data-pdf-capture-root="estimate"]',
-    });
+    setClientPdf(true);
+    try {
+      const extras = await loadQuoteBrochuresForPdf(quoteId);
+      const captureSelector = await waitForClientPdfRoot(quoteId);
+      return await generateDocumentPdfBlob({
+        ...extras,
+        docType: "Quote",
+        docNumber: quote.quote_number || quoteNumber || "DRAFT",
+        companyName: settings.company_name || "0800-BE-COOL",
+        companyAddress: settings.physical_address,
+        vatNumber: settings.vat_number,
+        customerName: resolvedCustomerName,
+        customerAddress: customer.address || undefined,
+        customerEmail: customer.email || undefined,
+        issueDate: quote.created_at,
+        lineItems: items,
+        subtotal,
+        taxRate: Number(quote.vat_rate) || 0.15,
+        taxAmount,
+        total,
+        notes: quote.notes || undefined,
+        captureSelector,
+      });
+    } finally {
+      setClientPdf(false);
+    }
   };
 
   const logDelivery = async (channel: "email" | "whatsapp", recipient: string) => {
@@ -394,33 +373,7 @@ const SendQuoteDialog = ({
         </DialogFooter>
       </DialogContent>
 
-      {/* Off-screen render of the CORRECT estimate template so html2canvas has
-          a real, up-to-date DOM node to capture for downloads/emails. Kept
-          out of the dialog's visible layout but not display:none (required
-          for html2canvas to measure and capture it). */}
-      {open && quote && (
-        <div style={{ position: "fixed", top: 0, left: "-10000px", width: "820px", pointerEvents: "none" }} aria-hidden="true">
-          <EstimateDocument
-            estimateNumber={quote.quote_number || quoteNumber}
-            issueDate={quote.created_at}
-            validUntil={quote.valid_until}
-            customerName={resolvedCustomerName}
-            customerCompany={customer.company_name}
-            customerAddress={customer.address}
-            customerEmail={customer.email}
-            customerPhone={customer.phone}
-            items={docItems}
-            presentationMode="clientRollup"
-            clientAreas={rollupAreas}
-            subtotal={subtotal}
-            taxRate={Number(quote.vat_rate) || 0.15}
-            taxAmount={taxAmount}
-            grandTotal={total}
-            notes={quote.notes}
-            termsText={quote.terms_text}
-          />
-        </div>
-      )}
+      {clientPdf && <ClientQuotePdfRoot quoteId={quoteId} />}
     </Dialog>
   );
 };
