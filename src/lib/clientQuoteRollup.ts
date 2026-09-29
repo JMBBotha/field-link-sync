@@ -49,6 +49,8 @@ export interface ClientRollupArea {
   areaTotal: number;
   /** True when the area also carries piping / materials / labour lines. */
   hasInstallExtras: boolean;
+  /** Whole-job labour line (labour mode 'job'): sell price only. */
+  isJobLabour?: boolean;
 }
 
 const UNIT_CATEGORY = /(air\s*con|aircon|midwall|mid-wall|inverter|cassette|under\s*ceiling|underceiling|console|ducted|split)/i;
@@ -120,7 +122,7 @@ export function buildClientRollup(lines: RollupLine[], areas: RollupArea[] = [])
 
     if (isJob) {
       // Whole-job labour: one sell-price line at the end, no unit card.
-      out.push({ areaId: null, areaName, units: [], areaTotal: group.reduce((sum, l) => sum + lineTotal(l), 0), hasInstallExtras: false, isJobLabour: true } as ClientRollupArea);
+      out.push({ areaId: null, areaName, units: [], areaTotal: group.reduce((sum, l) => sum + lineTotal(l), 0), hasInstallExtras: false, isJobLabour: true });
       continue;
     }
     out.push({
@@ -133,8 +135,8 @@ export function buildClientRollup(lines: RollupLine[], areas: RollupArea[] = [])
   }
 
   return out.sort((a, b) => {
-    const oa = (a as any).isJobLabour ? 10001 : a.areaId ? order.get(a.areaId) ?? 9999 : 10000;
-    const ob = (b as any).isJobLabour ? 10001 : b.areaId ? order.get(b.areaId) ?? 9999 : 10000;
+    const oa = a.isJobLabour ? 10001 : a.areaId ? order.get(a.areaId) ?? 9999 : 10000;
+    const ob = b.isJobLabour ? 10001 : b.areaId ? order.get(b.areaId) ?? 9999 : 10000;
     return oa - ob;
   });
 }
