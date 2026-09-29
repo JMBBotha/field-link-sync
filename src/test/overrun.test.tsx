@@ -7,10 +7,10 @@ import { computeOverrun } from "@/lib/overrun";
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: () => ({}) } }));
 import ActualOnSiteStep from "@/components/jobs/ActualOnSiteStep";
 
-const base = { quotedHours: 4, job: { sell: 10000, gp: 3000 }, commissionPercent: 50 };
+const base = { quotedHours: 4, job: { sell: 10000, gp: 3000 }, salesSharePercent: 50 };
 
 describe("computeOverrun", () => {
-  it("adjusts GP and commission for labour + catalogue extras", () => {
+  it("adjusts GP and salesperson share for labour + catalogue extras", () => {
     const r = computeOverrun({ ...base, actualHours: 6, labourCostPerHour: 300, extras: [{ name: "Bracket", product_id: "p", qty: 2, unitCost: 250 }, { name: "tape", qty: 1, unitCost: null }] });
     expect(r.extraHours).toBe(2);
     expect(r.labourCost).toBe(600);
@@ -18,19 +18,19 @@ describe("computeOverrun", () => {
     expect(r.unknownExtras).toBe(1);
     expect(r.adjustedGp).toBe(1900);
     expect(r.adjustedGpPercent).toBe(19);
-    expect(r.adjustedCommission).toBe(1250);
+    expect(r.adjustedSalesShare).toBe(1250);
   });
-  it("clamps GP tech share at 0 when material overruns exceed its base", () => {
+  it("clamps salesperson share at 0 when material overruns exceed its base", () => {
     const r = computeOverrun({ ...base, actualHours: 4, labourCostPerHour: 500, extras: [{ name: "Compressor", qty: 1, unitCost: 8000 }] });
     expect(r.adjustedGp).toBe(-5000);
-    expect(r.adjustedCommission).toBe(0);
+    expect(r.adjustedSalesShare).toBe(0);
   });
   it("missing labour rate: labour excluded and flagged", () => {
     const r = computeOverrun({ ...base, actualHours: 8, labourCostPerHour: null, extras: [] });
     expect(r.labourNotSet).toBe(true);
     expect(r.labourCost).toBeNull();
     expect(r.adjustedGp).toBe(3000);
-    expect(r.adjustedCommission).toBe(1500);
+    expect(r.adjustedSalesShare).toBe(1500);
   });
   it("actual under quoted never adds cost", () => {
     expect(computeOverrun({ ...base, actualHours: 2, labourCostPerHour: 300, extras: [] }).adjustedGp).toBe(3000);

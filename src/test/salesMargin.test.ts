@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
-import { computeMargin, lineMargin, sellForTarget, commissionOn, type MarginLineInput, type MarginSettings } from "@/lib/margin";
+import { computeMargin, lineMargin, sellForTarget, salesShareOn, type MarginLineInput, type MarginSettings } from "@/lib/margin";
 import { canSeeMargin } from "@/lib/marginAccess";
 import { buildClientRollup } from "@/lib/clientQuoteRollup";
 
-const S: MarginSettings = { labourCostPerHour: 250, gpTargetPercent: 20, commissionPercent: 50, labourTechSharePercent: 60 };
+const S: MarginSettings = { labourCostPerHour: 250, gpTargetPercent: 20, salesSharePercent: 50, labourTechSharePercent: 60 };
 const L = (o: Partial<MarginLineInput>): MarginLineInput => ({ id: "x", name: "x", areaId: "a", qty: 1, unitPrice: 0, unitCost: null, isLabour: false, isService: false, ...o });
 
 describe("margin maths", () => {
@@ -41,20 +41,20 @@ describe("margin maths", () => {
     expect(m.job).toMatchObject({ sell: 200, gp: 100 });
     expect(m.lines[0]).toMatchObject({ status: "cost_unknown", gp: null });
   });
-  it("target check at job level + commission + if priced correctly", () => {
+  it("target check at job level + sales share + if priced correctly", () => {
     const m = computeMargin([L({ unitPrice: 1100, unitCost: 1000 })], 0, S);
     expect(m.job.gpPercent).toBe(9.09);
     expect(m.belowTarget).toBe(true);
-    expect(m.commission).toBe(50);
+    expect(m.salesShare).toBe(50);
     expect(sellForTarget(1000, 20)).toBe(1250);
-    expect(m.commissionIfPricedCorrectly).toBe(125);
+    expect(m.salesShareIfPricedCorrectly).toBe(125);
     const ok = computeMargin([L({ unitPrice: 1250, unitCost: 1000 })], 0, S);
     expect(ok.belowTarget).toBe(false);
-    expect(ok.commissionIfPricedCorrectly).toBeNull();
+    expect(ok.salesShareIfPricedCorrectly).toBeNull();
   });
-  it("commission never below 0", () => {
-    expect(commissionOn(-500, 40)).toBe(0);
-    expect(computeMargin([L({ unitPrice: 800, unitCost: 1000 })], 0, S).commission).toBe(0);
+  it("sales share never below 0", () => {
+    expect(salesShareOn(-500, 40)).toBe(0);
+    expect(computeMargin([L({ unitPrice: 800, unitCost: 1000 })], 0, S).salesShare).toBe(0);
   });
   it("pays 50% of units and materials GP, excluding labour and services", () => {
     const m = computeMargin([
@@ -62,8 +62,9 @@ describe("margin maths", () => {
       L({ id: "l", qty: 3.5, unitPrice: 680, isLabour: true }),
       L({ id: "s", unitPrice: 500, unitCost: 100, isService: true }),
     ], 0, { ...S, labourCostPerHour: null });
-    expect(m.commissionBaseGp).toBe(250);
-    expect(m.commission).toBe(125);
+    expect(m.markupBase).toBe(250);
+    expect(m.salesShare).toBe(125);
+    expect(m.salesCompanyShare).toBe(125);
     expect(m.excludedServiceCount).toBe(1);
   });
   it("splits labour sell 60/40 after discount", () => {
@@ -71,7 +72,13 @@ describe("margin maths", () => {
     expect(m.labourSell).toBe(2380);
     expect(m.labourTechShare).toBe(1428);
     expect(m.labourCompanyShare).toBe(952);
-    expect(m.techEarningsTotal).toBe(1428);
+    expect(m).not.toHaveProperty("techEarningsTotal");
+  });
+  it("keeps salesperson and technician earnings independent in staff UI", () => {
+    const src = readFileSync("src/components/quoting/StaffMarginCard.tsx", "utf8");
+    expect(src).toContain("% of markup on units &amp; materials");
+    expect(src).toContain("% of labour");
+    expect(src).not.toMatch(/Total tech earnings|Tech share of GP|GP tech share/);
   });
 });
 

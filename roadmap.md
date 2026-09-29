@@ -75,3 +75,8 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] Auto-create/adjust labour for unit adds/removals/quantity changes, preserving manual and existing lines.
 - [x] Block explicit area/save/send/PDF/accept actions for missing labour; keep autosave and Mandy tools non-blocking.
 - [x] Add AGENTS rule; run tests and TypeScript.
+
+## Split salesperson and technician earnings (2026-09-29)
+- [x] Rename pure margin and overrun outputs for independent role earnings; remove combined total.
+- [x] Show salesperson and assigned technician names with separate company shares in the staff-only Profit card.
+- [x] Update Billing labels, tests, and the AGENTS earnings rule; run all tests and TypeScript.

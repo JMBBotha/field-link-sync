@@ -17,7 +17,7 @@ export interface MarginLineInput {
 export interface MarginSettings {
   labourCostPerHour: number | null;
   gpTargetPercent: number;
-  commissionPercent: number;
+  salesSharePercent: number;
   labourTechSharePercent: number;
 }
 
@@ -38,14 +38,14 @@ export interface MarginResult {
   labourExcluded: boolean;
   target: number;
   belowTarget: boolean;
-  commissionBaseGp: number;
-  commission: number;
-  commissionIfPricedCorrectly: number | null;
+  markupBase: number;
+  salesShare: number;
+  salesShareIfPricedCorrectly: number | null;
+  salesCompanyShare: number;
   excludedServiceCount: number;
   labourSell: number;
   labourTechShare: number;
   labourCompanyShare: number;
-  techEarningsTotal: number;
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -66,8 +66,8 @@ export function lineMargin(l: MarginLineInput, s: MarginSettings): MarginLine {
   return { id: l.id, name: l.name, areaId: l.areaId, sell, cost, gp, gpPercent: pct(gp, sell), status };
 }
 
-/** Commission on GP, never below 0. */
-export const commissionOn = (gp: number, commissionPercent: number) => r2(Math.max(0, gp) * (commissionPercent / 100));
+/** Salesperson share of markup, never below 0. */
+export const salesShareOn = (markup: number, salesSharePercent: number) => r2(Math.max(0, markup) * (salesSharePercent / 100));
 
 /** Sell that exactly meets target GP% on the same cost: cost / (1 − target). */
 export const sellForTarget = (cost: number, targetPercent: number) =>
@@ -99,35 +99,35 @@ export function computeMargin(inputs: MarginLineInput[], discount: number, s: Ma
   const gpPercent = pct(gp, sell);
   const target = s.gpTargetPercent;
   const belowTarget = gpPercent != null && gpPercent < target;
-  const commissionLines = lines.filter((l) => {
+  const salesLines = lines.filter((l) => {
     const input = inputs.find((candidate) => candidate.id === l.id);
     return l.cost != null && !input?.isLabour && !input?.isService;
   });
-  const commissionSell = r2(commissionLines.reduce((sum, l) => sum + l.sell - share(l.sell), 0));
-  const commissionCost = r2(commissionLines.reduce((sum, l) => sum + (l.cost ?? 0), 0));
-  const commissionBaseGp = r2(commissionSell - commissionCost);
-  const commissionBaseGpPercent = pct(commissionBaseGp, commissionSell);
-  const commissionBaseBelowTarget = commissionBaseGpPercent != null && commissionBaseGpPercent < target;
+  const salesSell = r2(salesLines.reduce((sum, l) => sum + l.sell - share(l.sell), 0));
+  const salesCost = r2(salesLines.reduce((sum, l) => sum + (l.cost ?? 0), 0));
+  const markupBase = r2(salesSell - salesCost);
+  const markupBasePercent = pct(markupBase, salesSell);
+  const markupBaseBelowTarget = markupBasePercent != null && markupBasePercent < target;
   const labourSell = r2(lines.reduce((sum, l) => {
     const input = inputs.find((candidate) => candidate.id === l.id);
     return input?.isLabour ? sum + l.sell - share(l.sell) : sum;
   }, 0));
   const labourTechShare = r2(Math.max(0, labourSell) * (s.labourTechSharePercent / 100));
-  const commission = commissionOn(commissionBaseGp, s.commissionPercent);
+  const salesShare = salesShareOn(markupBase, s.salesSharePercent);
   return {
     lines, areas,
     job: { sell, cost, gp, gpPercent, discount: r2(d), grossSell },
     unknownCostCount: lines.filter((l) => l.status === "cost_unknown").length,
     labourExcluded: lines.some((l) => l.status === "labour_cost_not_set"),
     target, belowTarget,
-    commissionBaseGp,
-    commission,
-    commissionIfPricedCorrectly: commissionBaseBelowTarget ? commissionOn(sellForTarget(commissionCost, target) - commissionCost, s.commissionPercent) : null,
+    markupBase,
+    salesShare,
+    salesShareIfPricedCorrectly: markupBaseBelowTarget ? salesShareOn(sellForTarget(salesCost, target) - salesCost, s.salesSharePercent) : null,
+    salesCompanyShare: r2(markupBase - salesShare),
     excludedServiceCount: inputs.filter((l) => l.isService).length,
     labourSell,
     labourTechShare,
     labourCompanyShare: r2(labourSell - labourTechShare),
-    techEarningsTotal: r2(commission + labourTechShare),
   };
 }
 
