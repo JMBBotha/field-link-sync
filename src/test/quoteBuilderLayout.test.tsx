@@ -9,7 +9,7 @@ vi.mock("@/components/catalog/MasterCatalogGate", () => ({
 }));
 vi.mock("@/components/settings/ServicesCatalogCard", () => ({ default: () => <div>services-card</div> }));
 
-import QuoteBuilderLayout, { SIDE_PANEL_KEY } from "@/components/quoting/QuoteBuilderLayout";
+import QuoteBuilderLayout, { SIDE_PANEL_KEY, LEFT_PANEL_KEY } from "@/components/quoting/QuoteBuilderLayout";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import ServicesTab from "@/components/settings/ServicesTab";
 import { useCanWriteMasterCatalog } from "@/components/catalog/MasterCatalogGate";
