@@ -49,6 +49,7 @@ interface Props {
  */
 export default function QuoteBuilderLayout({ left, middle, side, sideTitle = "Quote summary", compact, stickyPad = "1rem" }: Props) {
   const [open, setOpen] = useSidePanelOpen();
+  const [leftOpen, setLeftOpen] = useLeftPanelOpen();
 
   return (
     <div className="flex h-full min-h-0 overflow-hidden">
