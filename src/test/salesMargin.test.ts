@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
-import { computeMargin, lineMargin, salespersonBase, sellForTarget, salesShareOn, type MarginLineInput, type MarginSettings } from "@/lib/margin";
+import { computeMargin, itemsSoldProfit, lineMargin, sellForTarget, salesShareOn, type MarginLineInput, type MarginSettings } from "@/lib/margin";
 import { canSeeMargin } from "@/lib/marginAccess";
 import { buildClientRollup } from "@/lib/clientQuoteRollup";
 
@@ -74,12 +74,12 @@ describe("margin maths", () => {
     expect(m.labourCompanyShare).toBe(952);
     expect(m).not.toHaveProperty("techEarningsTotal");
   });
-  it("uses one salesperson base and keeps the full labour split separate", () => {
+  it("splits physical-items profit and labour earnings independently", () => {
     const m = computeMargin([
       L({ id: "u", unitPrice: 18056.11, unitCost: 10000 }),
       L({ id: "l", qty: 5, unitPrice: 680, isLabour: true }),
     ], 0, { ...S, labourCostPerHour: null });
-    expect(salespersonBase(21456.11, 10000, 3400)).toBe(8056.11);
+    expect(itemsSoldProfit([{ sellExVat: 18056.11, cost: 10000 }])).toBe(8056.11);
     expect(m.markupBase).toBe(8056.11);
     expect(m.salesShare).toBe(4028.06);
     expect(m.labourTechShare).toBe(2040);
@@ -87,10 +87,11 @@ describe("margin maths", () => {
   });
   it("keeps salesperson and technician earnings independent in staff UI", () => {
     const src = readFileSync("src/components/quoting/StaffMarginCard.tsx", "utf8");
-    expect(src).toContain("% of margin above labour");
-    expect(src).toContain("Units &amp; materials markup only. No labour.");
+    expect(src).toContain("% of profit on parts &amp; materials");
+    expect(src).toContain("No commission on labour.");
     expect(src).toContain("% of labour");
-    expect(src).toContain("Company keeps from labour:");
+    expect(src).toContain("Company &amp; owner keep from labour:");
+    expect(src).toContain("Services not counted");
     expect(src).not.toMatch(/Total tech earnings|Tech share of GP|GP tech share/);
   });
 });
