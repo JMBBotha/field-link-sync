@@ -614,7 +614,7 @@ export default function EstimateBuilder({
         </div>
       )}
       {margin.visible && (
-        <StaffMarginCard items={topLevel} selectedId={selectedLineId} areas={areas} discount={discount} settings={margin.settings} quoteId={quoteId} />
+        <StaffMarginCard items={topLevel} selectedId={selectedLineId} areas={areas} discount={discount} settings={margin.settings} quoteId={quoteId} splits={margin.splits} />
       )}
     </div>
   );

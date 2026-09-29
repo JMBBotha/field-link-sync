@@ -27,14 +27,27 @@ export function useMarginView(quoteId: string | null, companyId: string | null, 
     },
   });
 
+  // Splits come from the server (get_my_earnings): own sales figures for the quote's rep, everything for the company owner only.
+  const { data: earn } = useQuery({
+    queryKey: ["my-earnings", quoteId, userId],
+    enabled: !!quoteId && !!userId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data: e, error } = await (supabase.rpc as any)("get_my_earnings", { p_quote_id: quoteId });
+      if (error) return null;
+      return (e?.quotes?.[0] ?? null) as { viewer?: { is_owner?: boolean }; sales?: { percent?: number; gp_target_percent?: number }; tech?: { percent?: number } } | null;
+    },
+  });
+
   const visible = !!data && canSeeMargin({ userId, roles, dispatchRole: data.dispatchRole, mode, quote: data.quote });
   const co = data?.company;
   const lc = co?.labour_cost_per_hour == null ? null : Number(co.labour_cost_per_hour);
   const settings: MarginSettings = {
     labourCostPerHour: lc != null && lc > 0 ? lc : null,
-    gpTargetPercent: co?.gp_target_percent != null ? Number(co.gp_target_percent) : 20,
-    salesSharePercent: co?.sales_commission_percent != null ? Number(co.sales_commission_percent) : 50,
-    labourTechSharePercent: co?.labour_tech_share_percent != null ? Number(co.labour_tech_share_percent) : 60,
+    gpTargetPercent: co?.gp_target_percent != null ? Number(co.gp_target_percent) : earn?.sales?.gp_target_percent != null ? Number(earn.sales.gp_target_percent) : 20,
+    salesSharePercent: earn?.sales?.percent != null ? Number(earn.sales.percent) : 0,
+    labourTechSharePercent: earn?.tech?.percent != null && earn?.viewer?.is_owner ? Number(earn.tech.percent) : 0,
   };
-  return { visible, settings };
+  const splits = { sales: earn?.sales?.percent != null, owner: !!earn?.viewer?.is_owner };
+  return { visible, settings, splits };
 }
