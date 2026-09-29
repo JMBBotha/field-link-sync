@@ -62,6 +62,13 @@ import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { useUnsavedQuoteGuard } from "@/hooks/useUnsavedQuoteGuard";
 import { missingLabourFor, normalizeLabourMode } from "@/lib/areaLabour";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
+import { useIsPhone } from "@/hooks/useIsPhone";
+import { useInstallTemplates } from "@/hooks/useInstallTemplates";
+import FavouritesPicker from "@/components/quoting/FavouritesPicker";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { isAirConditioningProduct, planStandardInstall } from "@/lib/mandy/quoteOps";
 
 
 export type QuoteBuilderMode = "admin" | "agent";
@@ -387,7 +394,11 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     return result;
   }, [products, areaCategoryFilter, areaDebouncedSearch]);
 
-  const areaFavorites = useMemo(() => new Set(products.filter((p) => p.is_pinned).map((p) => p.id)), [products]);
+  const { ids: areaFavorites, toggle: toggleQuoteFavourite } = useQuoteFavourites();
+  const isPhone = useIsPhone();
+  const { templates: favInstallTemplates } = useInstallTemplates();
+  const [favSheetOpen, setFavSheetOpen] = useState(false);
+  const [favAreaId, setFavAreaId] = useState<string>("");
 
   /**
    * Hydrate baskets from the unified quote (context items+areas) so the
@@ -542,8 +553,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
 
   // Refs to the inline builder's methods
-  const areaAddProductRef = useRef<((product: PaletteProduct) => void) | null>(null);
-  const areaDropProductToAreaRef = useRef<((areaId: string, product: PaletteProduct) => void) | null>(null);
+  const areaAddProductRef = useRef<((product: PaletteProduct, opts?: { append?: boolean }) => void) | null>(null);
+  const areaDropProductToAreaRef = useRef<((areaId: string, product: PaletteProduct, opts?: { append?: boolean }) => void) | null>(null);
   const areaDropBundleToAreaRef = useRef<((areaId: string, bundle: any) => void) | null>(null);
   const areaAddZoneRef = useRef<(() => void) | null>(null);
   const areaApplyTemplateRef = useRef<((zoneNames: string[]) => void) | null>(null);
@@ -1232,7 +1243,37 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             } />
         }
         {!ctxLoading && activeTab === "area" && (() => {
+          const pickFavourite = (product: PaletteProduct) => {
+            const areaId = wizardAreas.some((a) => a.id === favAreaId) ? favAreaId : (wizardAreas[wizardAreas.length - 1]?.id ?? "__auto__");
+            const append = isAirConditioningProduct(product);
+            if (areaId === "__auto__") areaAddProductRef.current?.(product, { append });
+            else areaDropProductToAreaRef.current?.(areaId, product, { append });
+            if (append) {
+              const plan = planStandardInstall(product, favInstallTemplates, kitBundles as any, products);
+              if (plan.notes.length) toast({ title: "Install note", description: plan.notes.join(" · ") });
+            }
+          };
           const paletteEl = (
+            <>
+            {isPhone && (
+              <div className="p-2">
+                <Button type="button" variant="outline" className="h-11 w-full" onClick={() => setFavSheetOpen(true)}>★ Favourites</Button>
+                <Sheet open={favSheetOpen} onOpenChange={setFavSheetOpen}>
+                  <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
+                    <SheetHeader><SheetTitle>★ Favourites</SheetTitle></SheetHeader>
+                    {wizardAreas.length > 0 && (
+                      <div className="my-2">
+                        <Select value={wizardAreas.some((a) => a.id === favAreaId) ? favAreaId : wizardAreas[wizardAreas.length - 1].id} onValueChange={setFavAreaId}>
+                          <SelectTrigger aria-label="Area"><SelectValue /></SelectTrigger>
+                          <SelectContent>{wizardAreas.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <FavouritesPicker products={products} services={[]} onPickProduct={pickFavourite} />
+                  </SheetContent>
+                </Sheet>
+              </div>
+            )}
             <ProductPalette
               products={areaFilteredProducts}
               isLoading={false}
@@ -1242,7 +1283,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               onCategoryChange={setAreaCategoryFilter}
               isDragging={false}
               favorites={areaFavorites}
-              onToggleFavorite={() => {}}
+              onToggleFavorite={(id) => void toggleQuoteFavourite(id)}
               usageMap={areaUsageMap}
               bundles={bundles}
               baskets={areaPickerBaskets}
@@ -1260,6 +1301,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
               onPopOutSelected={() => setFloatingOpen(true)}
             />
+            </>
           );
           const areaEl = (
             <AreaQuoteBuilderInline

@@ -15,7 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuoteContext } from "@/contexts/QuoteContext";
-import { useProductFavorites } from "@/hooks/useProductFavorites";
+import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
+import FavouritesPicker from "@/components/quoting/FavouritesPicker";
 import { getEffectiveUnitPrices, type PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
 import { fetchVisualCatalogAllowlist, filterToVisualCatalog } from "@/lib/catalogSoT";
@@ -82,7 +83,7 @@ export default function QuoteQuickEditor({
   /** Orphan default section: create the target area on first add. */
   createTargetArea?: () => Promise<string | null>;
   /** Which input shows/autofocuses in an area block. */
-  mode?: "unit" | "service" | "material";
+  mode?: "unit" | "service" | "material" | "favourites";
   onClose?: () => void;
 }) {
   const { areas, items, addItem, addArea, meta } = useQuoteContext();
@@ -96,7 +97,7 @@ export default function QuoteQuickEditor({
   const { templates } = useInstallTemplates();
   const { products: liveProducts } = useQuoteBuilderProducts();
   const dropdownPos = dropUp ? "bottom-full mb-1" : "mt-1";
-  const { favorites } = useProductFavorites();
+  const { isFavourite } = useQuoteFavourites();
   const [productTerm, setProductTerm] = useState("");
   const [serviceTerm, setServiceTerm] = useState("");
   const [adding, setAdding] = useState<string | null>(null);
@@ -157,19 +158,23 @@ export default function QuoteQuickEditor({
       ),
     );
     const rank = (p: PaletteProduct) =>
-      favorites.has(p.id) || p.is_pinned ? 0 : onQuoteProductIds.has(p.id) ? 1 : 2;
+      isFavourite(p.id) ? 0 : onQuoteProductIds.has(p.id) ? 1 : 2;
     return matched.sort((a, b) => rank(a) - rank(b)).slice(0, 25);
-  }, [productTerm, products, favorites, onQuoteProductIds]);
+  }, [productTerm, products, isFavourite, onQuoteProductIds]);
 
   const nextSortOrder = () => (items.length ? Math.max(...items.map((i) => i.sort_order || 0)) + 1 : 0);
 
-  const commitProduct = async (p: PaletteProduct, areaId: string) => {
+  const commitProduct = async (p: PaletteProduct, areaId: string, fromFavourites = false) => {
     setAdding(p.id);
     try {
       // Shared with Mandy: same line + auto piping kit for AC units.
       const result = await addCatalogProductToQuote({ addItem, product: p, areaId, sortOrder: nextSortOrder(), bundles, templates, liveProducts });
       if (result.line && isAcUnitLine({ item_name: result.line.item_name, item_type: result.line.item_type, metadata: result.line.metadata }, p)) onUnitAdded?.(areaId, Number(result.line.quantity) || 1);
       setProductTerm("");
+      if (fromFavourites && result.line) {
+        toast({ title: `Added ${p.short_name || p.product_code}` });
+        if (result.notes?.length) toast({ title: "Install note", description: result.notes.join(" · ") });
+      }
       onChanged?.();
       onAddedToArea?.(areaId);
     } finally {
@@ -177,12 +182,13 @@ export default function QuoteQuickEditor({
     }
   };
 
-  const commitCatalogService = async (s: CatalogService, areaId: string) => {
+  const commitCatalogService = async (s: CatalogService, areaId: string, fromFavourites = false) => {
     setAdding(s.id);
     try {
       await addItem({ ...baseItem(), area_id: areaId, sort_order: nextSortOrder(), ...serviceLineFields(s) } as any);
       setServiceTerm("");
       setServiceFocus(false);
+      if (fromFavourites) toast({ title: `Added ${s.name}` });
       onChanged?.();
       onAddedToArea?.(areaId);
     } finally {
@@ -190,12 +196,12 @@ export default function QuoteQuickEditor({
     }
   };
 
-  const routeAdd = async (pending: NonNullable<typeof pendingAdd>, isUnit: boolean) => {
+  const routeAdd = async (pending: NonNullable<typeof pendingAdd>, isUnit: boolean, fromFavourites = false) => {
     if (targetAreaId || createTargetArea) {
       const areaId = targetAreaId || (await createTargetArea!());
       if (!areaId) return;
-      if (pending.kind === "product") await commitProduct(pending.value, areaId);
-      else await commitCatalogService(pending.value, areaId);
+      if (pending.kind === "product") await commitProduct(pending.value, areaId, fromFavourites);
+      else await commitCatalogService(pending.value, areaId, fromFavourites);
       return;
     }
     const itemLines = items.filter((item) => !item.parent_item_id).map((item) => {
@@ -218,12 +224,12 @@ export default function QuoteQuickEditor({
     else await commitCatalogService(pending.value, areaId);
   };
 
-  const addProduct = async (p: PaletteProduct) => {
+  const addProduct = async (p: PaletteProduct, fromFavourites = false) => {
     const isUnit = isAcUnitLine(
       { item_name: p.short_name || p.product_code, item_type: "product", metadata: {} },
       p,
     );
-    await routeAdd({ kind: "product", value: p }, isUnit);
+    await routeAdd({ kind: "product", value: p }, isUnit, fromFavourites);
   };
 
   const addCatalogService = async (s: CatalogService) => {
@@ -269,6 +275,15 @@ export default function QuoteQuickEditor({
           <Button type="button" size="icon" variant="ghost" className="h-6 w-6" aria-label="Close" onClick={onClose}><X className="h-4 w-4" /></Button>
         </div>
       )}
+      {mode === "favourites" ? (
+        <FavouritesPicker
+          products={liveProducts}
+          services={svcOrdered}
+          busyId={adding}
+          onPickProduct={(p) => addProduct(p, true)}
+          onPickService={(s) => routeAdd({ kind: "service", value: s }, false, true)}
+        />
+      ) : (
       <div className={mode ? "grid gap-2" : "grid gap-2 sm:grid-cols-2"}>
         {mode !== "service" && <div className="relative">
           <Package className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
@@ -285,7 +300,7 @@ export default function QuoteQuickEditor({
               <div className="divide-y divide-slate-100">
                 {productResults.map((p) => {
                   const { unitSell } = getEffectiveUnitPrices(p);
-                  const fav = favorites.has(p.id) || p.is_pinned;
+                  const fav = isFavourite(p.id);
                   return (
                     <button
                       key={p.id}
@@ -362,6 +377,7 @@ export default function QuoteQuickEditor({
           )}
         </div>}
       </div>
+      )}
       <Dialog open={!!pendingAdd} onOpenChange={(open) => { if (!open && !adding) setPendingAdd(null); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
