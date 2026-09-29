@@ -23,8 +23,39 @@ import { DEFAULT_CATEGORY_MARKUPS, setActiveQuoteMarkupRates, type CategoryMarku
 
 /* ────────────────── Types ────────────────── */
 
+/* ── Pending-write tracker (estimate page "Saving…" + leave guard) ── */
+let pendingWritesGlobal = 0;
+const pendingListeners = new Set<(n: number) => void>();
+function bumpPending(delta: number) {
+  pendingWritesGlobal = Math.max(0, pendingWritesGlobal + delta);
+  pendingListeners.forEach((fn) => fn(pendingWritesGlobal));
+}
+export function subscribePendingWrites(fn: (n: number) => void) {
+  pendingListeners.add(fn);
+  return () => { pendingListeners.delete(fn); };
+}
+export function getPendingWrites() { return pendingWritesGlobal; }
+export function usePendingQuoteWrites() {
+  const [n, setN] = useState(pendingWritesGlobal);
+  useEffect(() => subscribePendingWrites(setN), []);
+  return n;
+}
+/** Resolve true once all writes finish, false on timeout. */
+export function waitForQuoteWrites(timeoutMs = 5000): Promise<boolean> {
+  if (pendingWritesGlobal === 0) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const t = setTimeout(() => { off(); resolve(false); }, timeoutMs);
+    const off = subscribePendingWrites((n) => { if (n === 0) { clearTimeout(t); off(); resolve(true); } });
+  });
+}
+async function track<T>(p: PromiseLike<T>): Promise<T> {
+  bumpPending(1);
+  try { return await p; } finally { bumpPending(-1); }
+}
+
 interface QuoteContextValue {
   quoteId: string;
+  pendingWrites: number;
   meta: QuoteMeta | null;
   areas: QuoteArea[];
   items: QuoteItem[];
@@ -236,7 +267,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     };
     setMeta((prev) => prev ? { ...prev, ...clean } : prev);
     setActiveQuoteMarkupRates({ units: clean.units_markup_percent, materials: clean.materials_markup_percent }, true);
-    const { error } = await supabase.from("quotes").update(clean as TablesUpdate<"quotes">).eq("id", quoteId);
+    const { error } = await track(supabase.from("quotes").update(clean as TablesUpdate<"quotes">).eq("id", quoteId));
     if (error) toast({ title: "Couldn't save markup %", description: error.message, variant: "destructive" });
   }, [quoteId]);
 
@@ -257,10 +288,10 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
         return prev ? { ...prev, ...patch } : prev;
       });
     }
-    const { error } = await supabase
+    const { error } = await track(supabase
       .from("quotes")
       .update(patch as TablesUpdate<"quotes">)
-      .eq("id", quoteId);
+      .eq("id", quoteId));
     if (!mountedRef.current) return;
     if (error) {
       toast({ title: "Error updating quote", description: error.message, variant: "destructive" });
@@ -299,11 +330,11 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     optimisticIdsRef.current.add(optimisticId);
     setAreas((prev) => [...prev, optimistic]);
 
-    const { data, error } = await supabase
+    const { data, error } = await track(supabase
       .from("quote_areas")
       .insert({ id: optimisticId, quote_id: quoteId, name, sort_order: nextOrder } as TablesInsert<"quote_areas">)
       .select()
-      .single();
+      .single());
 
     if (!mountedRef.current) {
       optimisticIdsRef.current.delete(optimisticId);
@@ -324,10 +355,10 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   const updateArea = useCallback(async (id: string, patch: QuoteAreaUpdate) => {
     setAreas((prev) => prev.map((a) => a.id === id ? { ...a, ...patch } as QuoteArea : a));
-    const res = await supabase
+    const res = await track(supabase
       .from("quote_areas")
       .update(patch as TablesUpdate<"quote_areas">)
-      .eq("id", id).select("id");
+      .eq("id", id).select("id"));
     const error = res.error || (!res.data?.length ? { message: "Nothing was saved (no access, or the row is gone)." } : null);
     if (!mountedRef.current) return !error;
     if (error) {
@@ -340,8 +371,8 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   const deleteArea = useCallback(async (id: string) => {
     setAreas((prev) => prev.filter((a) => a.id !== id));
-    setItems((prev) => prev.map((i) => i.area_id === id ? { ...i, area_id: null } : i));
-    const res = await supabase.from("quote_areas").delete().eq("id", id).select("id");
+    setItems((prev) => prev.filter((i) => i.area_id !== id));
+    const res = await track(supabase.from("quote_areas").delete().eq("id", id).select("id"));
     const error = res.error || (!res.data?.length ? { message: "Nothing was saved (no access, or the row is gone)." } : null);
     if (!mountedRef.current) return !error;
     if (error) {
@@ -357,11 +388,11 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       const map = new Map(prev.map((a) => [a.id, a]));
       return orderedIds.map((id, i) => ({ ...map.get(id)!, sort_order: i }));
     });
-    const results = await Promise.all(
+    const results = await track(Promise.all(
       orderedIds.map((id, i) =>
         supabase.from("quote_areas").update({ sort_order: i } as TablesUpdate<"quote_areas">).eq("id", id)
       )
-    );
+    ));
     if (!mountedRef.current) return;
     const firstErr = results.find((r) => r.error)?.error;
     if (firstErr) {
@@ -382,11 +413,11 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     optimisticIdsRef.current.add(optimisticId);
     setItems((prev) => [...prev, optimistic].sort((a, b) => a.sort_order - b.sort_order));
 
-    const { data, error } = await supabase
+    const { data, error } = await track(supabase
       .from("quote_items")
       .insert(insertData as unknown as TablesInsert<"quote_items">)
       .select()
-      .single();
+      .single());
 
     if (!mountedRef.current) {
       optimisticIdsRef.current.delete(optimisticId);
@@ -406,10 +437,10 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   const updateItem = useCallback(async (id: string, patch: QuoteItemUpdate) => {
     setItems((prev) => prev.map((i) => i.id === id ? { ...i, ...patch } as QuoteItem : i));
-    const res = await supabase
+    const res = await track(supabase
       .from("quote_items")
       .update(patch as TablesUpdate<"quote_items">)
-      .eq("id", id).select("id");
+      .eq("id", id).select("id"));
     const error = res.error || (!res.data?.length ? { message: "Nothing was saved (no access, or the row is gone)." } : null);
     if (!mountedRef.current) return !error;
     if (error) {
@@ -422,7 +453,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   const deleteItem = useCallback(async (id: string) => {
     setItems((prev) => prev.filter((i) => i.id !== id && i.parent_item_id !== id));
-    const res = await supabase.from("quote_items").delete().eq("id", id).select("id");
+    const res = await track(supabase.from("quote_items").delete().eq("id", id).select("id"));
     const error = res.error || (!res.data?.length ? { message: "Nothing was saved (no access, or the row is gone)." } : null);
     if (!mountedRef.current) return !error;
     if (error) {
@@ -435,10 +466,10 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   const moveItemToArea = useCallback(async (itemId: string, areaId: string | null) => {
     setItems((prev) => prev.map((i) => i.id === itemId ? { ...i, area_id: areaId } : i));
-    const res = await supabase
+    const res = await track(supabase
       .from("quote_items")
       .update({ area_id: areaId } as TablesUpdate<"quote_items">)
-      .eq("id", itemId).select("id");
+      .eq("id", itemId).select("id"));
     const error = res.error || (!res.data?.length ? { message: "Nothing was saved (no access, or the row is gone)." } : null);
     if (!mountedRef.current) return !error;
     if (error) {
@@ -462,7 +493,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
           const orphans = currentItems.filter((i) => !i.area_id && !i.parent_item_id);
           if (orphans.length > 0) {
             const defaultArea = currentAreas[0];
-            const results = await Promise.all(orphans.map((i) =>
+            const results = await track(Promise.all(orphans.map((i) =>
               supabase
                 .from("quote_items")
                 .update({ area_id: defaultArea.id } as TablesUpdate<"quote_items">)
@@ -487,7 +518,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       if (area && mountedRef.current) {
         const orphans = itemsRef.current.filter((i) => !i.area_id && !i.parent_item_id);
         if (orphans.length > 0) {
-          const results = await Promise.all(orphans.map((i) =>
+          const results = await track(Promise.all(orphans.map((i) =>
             supabase
               .from("quote_items")
               .update({ area_id: area.id } as TablesUpdate<"quote_items">)
@@ -528,8 +559,10 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       .sort((a, b) => a.sort_order - b.sort_order);
   }, [items]);
 
+  const pendingWrites = usePendingQuoteWrites();
   const value: QuoteContextValue = useMemo(() => ({
     quoteId,
+    pendingWrites,
     meta,
     areas,
     items,
@@ -552,7 +585,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     companyMarkupRates,
     setMarkupRates,
     refetch: () => fetchAll(true),
-  }), [fetchAll, markupRates, companyMarkupRates, setMarkupRates, quoteId, meta, areas, items, loading, error, canSave, updateQuote, addArea, updateArea, deleteArea, reorderAreas, addItem, updateItem, deleteItem, moveItemToArea, ensureDefaultArea, getItemsByArea, getBundleChildrenFn]);
+  }), [pendingWrites, fetchAll, markupRates, companyMarkupRates, setMarkupRates, quoteId, meta, areas, items, loading, error, canSave, updateQuote, addArea, updateArea, deleteArea, reorderAreas, addItem, updateItem, deleteItem, moveItemToArea, ensureDefaultArea, getItemsByArea, getBundleChildrenFn]);
 
   return <QuoteContext.Provider value={value}>{children}</QuoteContext.Provider>;
 }
