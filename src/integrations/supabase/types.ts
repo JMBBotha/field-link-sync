@@ -836,7 +836,11 @@ export type Database = {
           services: string[] | null
           slug: string
           status: string
+          tech_holdback_days: number
+          tech_holdback_pct: number
+          tech_paid_on_completion_pct: number
           tech_split_mode: string
+          tools_retained_pct: number
           units_markup_percent: number
           updated_at: string | null
           vat_rate: number | null
@@ -858,7 +862,11 @@ export type Database = {
           services?: string[] | null
           slug?: string
           status?: string
+          tech_holdback_days?: number
+          tech_holdback_pct?: number
+          tech_paid_on_completion_pct?: number
           tech_split_mode?: string
+          tools_retained_pct?: number
           units_markup_percent?: number
           updated_at?: string | null
           vat_rate?: number | null
@@ -880,7 +888,11 @@ export type Database = {
           services?: string[] | null
           slug?: string
           status?: string
+          tech_holdback_days?: number
+          tech_holdback_pct?: number
+          tech_paid_on_completion_pct?: number
           tech_split_mode?: string
+          tools_retained_pct?: number
           units_markup_percent?: number
           updated_at?: string | null
           vat_rate?: number | null
@@ -6495,6 +6507,78 @@ export type Database = {
         }
         Relationships: []
       }
+      tech_earnings_ledger: {
+        Row: {
+          amount: number
+          bucket: string
+          callback_job_id: string | null
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          job_id: string
+          labour_base: number | null
+          note: string | null
+          paid_at: string | null
+          percent: number
+          quote_id: string | null
+          quote_number: string | null
+          reduction_amount: number
+          release_after: string | null
+          rule: Json | null
+          status: string
+          status_changed_at: string | null
+          status_changed_by: string | null
+          tech_id: string
+        }
+        Insert: {
+          amount: number
+          bucket: string
+          callback_job_id?: string | null
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          job_id: string
+          labour_base?: number | null
+          note?: string | null
+          paid_at?: string | null
+          percent: number
+          quote_id?: string | null
+          quote_number?: string | null
+          reduction_amount?: number
+          release_after?: string | null
+          rule?: Json | null
+          status: string
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          tech_id: string
+        }
+        Update: {
+          amount?: number
+          bucket?: string
+          callback_job_id?: string | null
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          labour_base?: number | null
+          note?: string | null
+          paid_at?: string | null
+          percent?: number
+          quote_id?: string | null
+          quote_number?: string | null
+          reduction_amount?: number
+          release_after?: string | null
+          rule?: Json | null
+          status?: string
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          tech_id?: string
+        }
+        Relationships: []
+      }
       unassigned_queue: {
         Row: {
           company_id: string | null
@@ -7457,6 +7541,10 @@ export type Database = {
     }
     Functions: {
       _apply_commission_snapshot: { Args: { e: Json }; Returns: Json }
+      _create_tech_ledger_for_job: {
+        Args: { p_job_id: string }
+        Returns: undefined
+      }
       _earnings_for_quote: {
         Args: { p_quote_id: string; p_viewer: string }
         Returns: Json
@@ -7906,6 +7994,10 @@ export type Database = {
           sales_commission_percent: number
         }[]
       }
+      get_company_tech_pay_settings: {
+        Args: { p_company_id: string }
+        Returns: Json
+      }
       get_completed_jobs: {
         Args: {
           p_agent_ids?: string[]
@@ -8088,6 +8180,7 @@ export type Database = {
         }[]
       }
       get_sales_tracker: { Args: { p_rep_id?: string }; Returns: Json }
+      get_tech_earnings: { Args: { p_tech_id?: string }; Returns: Json }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       gettransactionid: { Args: never; Returns: unknown }
       has_role: {
@@ -8387,6 +8480,16 @@ export type Database = {
         Args: { p_paid?: boolean; p_paid_at?: string; p_snapshot_id: string }
         Returns: Json
       }
+      set_company_tech_pay_settings: {
+        Args: {
+          p_company_id: string
+          p_holdback_days: number
+          p_holdback_pct: number
+          p_paid_pct: number
+          p_tools_pct: number
+        }
+        Returns: Json
+      }
       set_quote_labour_mode: {
         Args: {
           p_area_units?: Json
@@ -8395,6 +8498,17 @@ export type Database = {
           p_quote_id: string
         }
         Returns: undefined
+      }
+      set_tech_earning_status: {
+        Args: {
+          p_action: string
+          p_callback_job_id?: string
+          p_id: string
+          p_note?: string
+          p_paid_at?: string
+          p_reduction?: number
+        }
+        Returns: Json
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
