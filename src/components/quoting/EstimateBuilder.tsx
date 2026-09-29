@@ -200,7 +200,7 @@ export default function EstimateBuilder({
     try {
       const unitsByArea: Record<string, number> = {};
       for (const a of areas) unitsByArea[a.id] = countAcUnits(topLevel.filter((i) => i.area_id === a.id).map(withProduct));
-      const { error } = await trackQuoteWrite((supabase as any).rpc("set_quote_labour_mode", { p_quote_id: quoteId, p_mode: next, p_per_unit_hours: perUnitHours, p_area_units: unitsByArea }));
+      const { error } = await trackQuoteWrite<any>((supabase as any).rpc("set_quote_labour_mode", { p_quote_id: quoteId, p_mode: next, p_per_unit_hours: perUnitHours, p_area_units: unitsByArea }));
       if (error) throw error;
       await refetch();
       onChanged?.();
