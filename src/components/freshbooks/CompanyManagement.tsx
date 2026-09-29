@@ -36,7 +36,7 @@ const CompanyManagement = () => {
   const { data: companies = [], isLoading } = useQuery({
     queryKey: ["all-companies"],
     queryFn: async () => {
-      const { data } = await supabase.from("companies").select("*").order("created_at", { ascending: false });
+      const { data } = await supabase.from("companies").select("id, name, slug, logo_url, status, created_at, updated_at, onboarding_completed, is_master, custom_service_limit, vat_rate, default_rate, services").order("created_at", { ascending: false });
       return data || [];
     },
   });
@@ -47,7 +47,7 @@ const CompanyManagement = () => {
       const { data: company, error: companyErr } = await supabase
         .from("companies")
         .insert({ name: form.name, slug: form.slug || form.name.toLowerCase().replace(/\s+/g, "-") })
-        .select()
+        .select("id, name, slug")
         .single();
       if (companyErr) throw companyErr;
       const { error: memberErr } = await supabase

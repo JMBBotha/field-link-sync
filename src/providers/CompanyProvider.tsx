@@ -68,7 +68,7 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
       const col = isUUID(paramId) ? "id" : "slug";
       const { data, error } = await supabase
         .from("companies")
-        .select("*")
+        .select("id, name, slug, logo_url, vat_rate, default_rate, services, onboarding_completed")
         .eq(col, paramId)
         .maybeSingle();
 
@@ -91,7 +91,7 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
         const { data: newCompany, error: insertError } = await supabase
           .from("companies")
           .insert(insertPayload)
-          .select()
+          .select("id, name, slug, logo_url, vat_rate, default_rate, services, onboarding_completed")
           .single();
 
         if (!mountedRef.current || seq !== fetchSeqRef.current) return;

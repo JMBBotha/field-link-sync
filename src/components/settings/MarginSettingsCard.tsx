@@ -21,10 +21,10 @@ export default function MarginSettingsCard() {
     queryFn: async () => {
       const { data: p } = await (supabase.from("profiles") as any).select("company_id").eq("id", user!.id).maybeSingle();
       if (!p?.company_id) return null;
-      const { data: c, error } = await (supabase.from("companies") as any)
-        .select("id, labour_cost_per_hour, gp_target_percent, sales_commission_percent, labour_tech_share_percent").eq("id", p.company_id).maybeSingle();
+      const { data: rows, error } = await (supabase.rpc as any)("get_company_margin_settings", { p_company_id: p.company_id });
       if (error) throw error;
-      return c;
+      const c = Array.isArray(rows) ? rows[0] : rows;
+      return c ? { ...c, id: c.company_id } : null;
     },
   });
   const [labour, setLabour] = useState(""); const [target, setTarget] = useState("20"); const [comm, setComm] = useState("50");

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { attachPaymentTotals } from "@/lib/depositInvoice";
+import { useRole } from "@/hooks/useRole";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -152,6 +152,8 @@ const FieldAgent = () => {
   const watchIdRef = useRef<number | null>(null);
   const timerIntervalRef = useRef<number | null>(null);
   const navigate = useNavigate();
+  const { isAdmin: roleIsAdmin, isDispatcher: roleIsDispatcher } = useRole();
+  const canOpenQuoteBuilder = roleIsAdmin || roleIsDispatcher;
   const location = useLocation();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -1103,7 +1105,7 @@ const FieldAgent = () => {
     (async () => {
       const { data: installJobs, error } = await supabase
         .from("jobs")
-        .select("id, lead_id, quote_id, invoice_id")
+        .select("id, lead_id, quote_id")
         .eq("job_type", "installation")
         .in("lead_id", ids);
       if (cancelled || error || !installJobs?.length) {
@@ -1118,31 +1120,15 @@ const FieldAgent = () => {
         if (j.lead_id && j.quote_id) quoteMap[j.lead_id] = j.quote_id;
       }
       if (!cancelled) setInstallQuoteByLead(quoteMap);
-      const invoiceIds = installJobs.map((j: any) => j.invoice_id).filter(Boolean);
-      const quoteIds = installJobs.filter((j: any) => !j.invoice_id && j.quote_id).map((j: any) => j.quote_id);
       const found: Record<string, DepositInvoiceLike> = {};
-      if (invoiceIds.length > 0) {
-        const { data: invs } = await supabase
-          .from("invoices")
-          .select("id, status, paid_date, grand_total")
-          .in("id", invoiceIds);
-        for (const inv of invs ?? []) {
-          const job = installJobs.find((j: any) => j.invoice_id === inv.id);
-          if (job?.lead_id) found[job.lead_id] = inv;
-        }
+      const { data: chips, error: chipErr } = await (supabase.rpc as any)("get_field_deposit_chips", { p_lead_ids: ids });
+      if (chipErr) {
+        if (!cancelled) setInstallInvoicesByLead({});
+        return;
       }
-      if (quoteIds.length > 0) {
-        const { data: invs } = await supabase
-          .from("invoices")
-          .select("id, status, paid_date, grand_total, quote_id")
-          .in("quote_id", quoteIds);
-        for (const inv of invs ?? []) {
-          const job = installJobs.find((j: any) => !j.invoice_id && j.quote_id === (inv as any).quote_id);
-          if (job?.lead_id && !found[job.lead_id]) found[job.lead_id] = inv;
-        }
+      for (const row of (chips ?? []) as any[]) {
+        found[row.lead_id] = { id: row.invoice_id, chip_state: row.chip_state, remaining: Number(row.remaining) };
       }
-      // Attach amount_paid / remaining so the Partial chip always shows R…
-      await attachPaymentTotals(Object.values(found));
       if (!cancelled) setInstallInvoicesByLead({ ...found });
     })();
     return () => { cancelled = true; };
@@ -1212,10 +1198,10 @@ const FieldAgent = () => {
               <ArrowLeft className="h-4 w-4 text-white" />
               Dashboard
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/field/quote-builder")} className="hidden md:flex gap-1 text-white hover:bg-white/20">
+            {canOpenQuoteBuilder && <Button variant="ghost" size="sm" onClick={() => navigate("/field/quote-builder")} className="hidden md:flex gap-1 text-white hover:bg-white/20">
               <Calculator className="h-4 w-4 text-white" />
               Quote Builder
-            </Button>
+            </Button>}
             <div className="hidden md:block h-6 w-px bg-white/30" />
             <div className="flex flex-col">
               <span className="font-semibold text-sm text-white">Field Agent</span>

@@ -20,10 +20,10 @@ export function useMarginView(quoteId: string | null, companyId: string | null, 
         (supabase.from("quotes") as any).select("sales_engineer_id, created_by, owner_id").eq("id", quoteId).maybeSingle(),
         (supabase.from("profiles") as any).select("dispatch_role").eq("id", userId).maybeSingle(),
         companyId
-          ? (supabase.from("companies") as any).select("labour_cost_per_hour, gp_target_percent, sales_commission_percent, labour_tech_share_percent").eq("id", companyId).maybeSingle()
+          ? (supabase.rpc as any)("get_company_margin_settings", { p_company_id: companyId })
           : Promise.resolve({ data: null }),
       ]);
-      return { quote: q.data ?? null, dispatchRole: (p.data?.dispatch_role as string) ?? null, company: c.data ?? null };
+      return { quote: q.data ?? null, dispatchRole: (p.data?.dispatch_role as string) ?? null, company: (Array.isArray(c.data) ? c.data[0] : c.data) ?? null };
     },
   });
 

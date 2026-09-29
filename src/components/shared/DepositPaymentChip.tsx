@@ -18,6 +18,7 @@ export interface DepositInvoiceLike {
   grand_total?: number | null;
   amount_paid?: number | null;
   remaining?: number | null;
+  chip_state?: DepositChipState | null;
 }
 
 export type DepositChipState = "due" | "partial" | "paid" | "none";
@@ -60,6 +61,7 @@ export function getDepositChipState(
   opts?: { accepted?: boolean },
 ): DepositChipState | null {
   if (!invoice?.id) return opts?.accepted ? "none" : null;
+  if (invoice.chip_state) return invoice.chip_state;
   // Allocation is the only source of truth. Status/paid_date never decide.
   const paid = getDepositAmountPaid(invoice);
   if (paid === undefined) return "due"; // totals unknown — never claim paid/partial
