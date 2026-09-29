@@ -11,7 +11,7 @@ import RemoveUnitDialog from "@/components/quoting/RemoveUnitDialog";
 import { linkedToUnit } from "@/lib/unitInstallLinks";
 import { useIsPhone } from "@/hooks/useIsPhone";
 import { isLabourItem } from "@/lib/labour";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -205,7 +205,7 @@ export default function EstimateBuilder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areas, topLevel, productImages, margin.visible, perUnitHours]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (loading) return;
     const currentAreaKeys = new Set(editAreas.map((area) => area.id ?? "unassigned"));
     const currentLineAreas = new Map<string, string>();
@@ -224,7 +224,7 @@ export default function EstimateBuilder({
           if (!previousAreaKeysRef.current.has(key)) next.add(key);
         }
         for (const [lineId, key] of currentLineAreas) {
-          if (!previousLineAreasRef.current.has(lineId)) next.delete(key);
+          if (previousLineAreasRef.current.get(lineId) !== key) next.delete(key);
         }
         return next;
       });
