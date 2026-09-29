@@ -48,6 +48,7 @@ export function waitForQuoteWrites(timeoutMs = 5000): Promise<boolean> {
     const off = subscribePendingWrites((n) => { if (n === 0) { clearTimeout(t); off(); resolve(true); } });
   });
 }
+export async function trackQuoteWrite<T>(p: PromiseLike<T>): Promise<T> { return track(p); }
 async function track<T>(p: PromiseLike<T>): Promise<T> {
   bumpPending(1);
   try { return await p; } finally { bumpPending(-1); }
