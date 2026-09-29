@@ -71,6 +71,7 @@ import FavouritesPicker from "@/components/quoting/FavouritesPicker";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { isAirConditioningProduct, planStandardInstall } from "@/lib/mandy/quoteOps";
+import { fetchVisualCatalogAllowlist, filterPaletteCatalog } from "@/lib/catalogSoT";
 
 
 export type QuoteBuilderMode = "admin" | "agent";
@@ -377,7 +378,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any).
-      select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, pipe_liquid, pipe_gas, is_material_favorite, suggested_consumables, pack_qty, default_markup_percent, suppliers(name, supplier_type)").
+      select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, pipe_liquid, pipe_gas, is_material_favorite, suggested_consumables, pack_qty, default_markup_percent, is_active, pdf_upload_id, suppliers(name, supplier_type)").
       or("archived.is.null,archived.eq.false").
       order("is_pinned", { ascending: false }).
       order("pin_order", { ascending: true, nullsFirst: false }).
@@ -407,7 +408,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
 
   const areaFilteredProducts = useMemo(() => {
     let result = products;
-    if (!areaDebouncedSearch.trim() && areaCategoryFilter !== "all" && areaCategoryFilter !== "favorites") {
+    if (!areaDebouncedSearch.trim() && !["all", "favorites", "recent", "piping"].includes(areaCategoryFilter)) {
       result = result.filter((p) =>
         p.product_category === areaCategoryFilter ||
         (p.category || "").toLowerCase().includes(areaCategoryFilter.toLowerCase())
@@ -424,6 +425,11 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
   }, [products, areaCategoryFilter, areaDebouncedSearch]);
 
   const { ids: areaFavorites, toggle: toggleQuoteFavourite } = useQuoteFavourites();
+  const { data: paletteCatalogAllowlist } = useQuery({
+    queryKey: ["visual-catalog-allowlist"],
+    queryFn: fetchVisualCatalogAllowlist,
+    staleTime: 60000,
+  });
   const isPhone = useIsPhone();
   const { templates: favInstallTemplates } = useInstallTemplates();
   const [favSheetOpen, setFavSheetOpen] = useState(false);
@@ -627,7 +633,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
       if (!bundleData || bundleData.length === 0) return [];
 
       const { data: itemsData, error: iErr } = await (supabase.from("bundle_items") as any).
-      select("id, bundle_id, supplier_product_id, quantity, length_metres, is_length_item, is_optional, sort_order, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, cost_price, default_markup_percent, supplier_discount_percent, markup_percent, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pack_qty, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name))").
+      select("id, bundle_id, supplier_product_id, quantity, length_metres, is_length_item, is_optional, sort_order, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, cost_price, default_markup_percent, supplier_discount_percent, markup_percent, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pack_qty, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, is_active, pdf_upload_id, suppliers(name))").
       order("sort_order");
       if (iErr) throw iErr;
 
@@ -670,6 +676,11 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
     },
     staleTime: 60000
   });
+
+  const paletteCatalog = useMemo(
+    () => filterPaletteCatalog(areaFilteredProducts, bundles, paletteCatalogAllowlist),
+    [areaFilteredProducts, bundles, paletteCatalogAllowlist],
+  );
 
   // Add product to basket handler for Visual tab
   const addProductToBasket = useCallback((basketId: string, product: PaletteProduct) => {
@@ -1354,7 +1365,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
               </div>
             )}
             <ProductPalette
-              products={areaFilteredProducts}
+              products={paletteCatalog.products}
               isLoading={false}
               searchQuery={areaSearch}
               onSearchChange={setAreaSearch}
@@ -1364,7 +1375,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
               favorites={areaFavorites}
               onToggleFavorite={(id) => void toggleQuoteFavourite(id)}
               usageMap={areaUsageMap}
-              bundles={bundles}
+              bundles={paletteCatalog.bundles}
               baskets={areaPickerBaskets}
               onAddProductToBasket={(areaId, product) => {
                 if (areaId === "__auto__") areaAddProductRef.current?.(product);
