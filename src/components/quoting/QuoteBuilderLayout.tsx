@@ -53,8 +53,24 @@ export default function QuoteBuilderLayout({ left, middle, side, sideTitle = "Qu
 
   return (
     <div className="flex h-full min-h-0 overflow-hidden">
-      {left && !compact && (
-        <div className="flex w-[260px] shrink-0 flex-col min-h-0 overflow-hidden border-r">{left}</div>
+      {left && !compact && leftOpen && (
+        <div data-testid="qb-left" data-state="open" className="flex w-[260px] shrink-0 flex-col min-h-0 overflow-hidden border-r">
+          <div className="flex shrink-0 items-center justify-between border-b px-3 py-1.5">
+            <span className="text-xs font-semibold">Products</span>
+            <Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label="Hide products" onClick={() => setLeftOpen(false)}>
+              <PanelLeftClose className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{left}</div>
+        </div>
+      )}
+      {left && !compact && !leftOpen && (
+        <aside data-testid="qb-left" data-state="closed" className="flex w-10 shrink-0 flex-col items-center border-r bg-card py-2">
+          <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="Show products" onClick={() => setLeftOpen(true)}>
+            <PanelLeftOpen className="h-4 w-4" />
+          </Button>
+          <span className="mt-2 text-[10px] font-medium text-muted-foreground [writing-mode:vertical-rl]">Products</span>
+        </aside>
       )}
 
       <div data-testid="qb-middle" className="flex min-w-0 flex-1 flex-col min-h-0 overflow-y-auto overscroll-contain">
