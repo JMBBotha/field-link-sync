@@ -786,9 +786,6 @@ const ProductPalette = ({
           return blob.includes(q);
         });
       });
-      if (categoryFilter === "piping") {
-        filtered = filtered.filter((b) => b.bundle_type === "piping_kit");
-      }
       return filtered;
     }
 

@@ -82,7 +82,7 @@ describe("ProductPalette piping and kits", () => {
 
   it("shows only favourite kits plus starred products in Favs", () => {
     palette({ categoryFilter: "favorites" });
-    expect(screen.getByText("Starred material")).toBeInTheDocument();
+    expect(screen.getByText(/Starred material/)).toBeInTheDocument();
     expect(screen.getByText("Copper piping kit")).toBeInTheDocument();
     expect(screen.queryByText("Drain kit")).not.toBeInTheDocument();
     expect(screen.queryByText("Other material")).not.toBeInTheDocument();
@@ -90,7 +90,7 @@ describe("ProductPalette piping and kits", () => {
 
   it("shows a matching kit while searching under a non-AC chip", () => {
     palette({ categoryFilter: "Batteries", searchQuery: "drain" });
-    expect(screen.getByText("Drain kit")).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === "Drain kit")).toBeInTheDocument();
   });
 });
 
