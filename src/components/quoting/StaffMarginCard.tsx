@@ -10,7 +10,6 @@ import { computeOverrun, parseExtras } from "@/lib/overrun";
 import type { QuoteItem } from "@/types/quote";
 import { isLabourItem } from "@/lib/labour";
 import { computeMargin, MARGIN_AREA_NONE, type MarginLine, type MarginLineInput, type MarginSettings } from "@/lib/margin";
-import { useRole } from "@/hooks/useRole";
 
 const money = (n: number) =>
   `R ${Number(n || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -50,12 +49,15 @@ interface Props {
   settings: MarginSettings;
   /** Enables the "Actual vs quoted" section when a job_overruns row exists. */
   quoteId?: string | null;
+  /** Server-decided (get_my_earnings): sales = caller may see this quote's salesperson split; owner = company owner sees all splits. */
+  splits?: { sales: boolean; owner: boolean };
 }
 
 const pctText = (p: number | null) => (p == null ? "—" : `${p.toFixed(1)}%`);
 
-export default function StaffMarginCard({ items, selectedId, areas, discount, settings, quoteId }: Props) {
-  const { isAdmin } = useRole();
+export default function StaffMarginCard({ items, selectedId, areas, discount, settings, quoteId, splits }: Props) {
+  const showSales = !!splits?.sales;
+  const isOwner = !!splits?.owner;
   const { data: earners } = useQuery({
     queryKey: ["quote-earners", quoteId],
     enabled: !!quoteId,
@@ -146,16 +148,16 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
       )}
 
       <div className="grid gap-3 text-sm sm:grid-cols-2">
-        <div className="rounded-md border border-border p-3">
+        {showSales && (<div className="rounded-md border border-border p-3">
           <p className="font-semibold">{salespersonLabel}</p>
           <p>{settings.salesSharePercent}% of profit on parts &amp; materials: <span className="font-semibold tabular-nums">{money(m.salesShare)}</span></p>
           <p className="text-[11px] text-muted-foreground">No commission on labour.</p>
-          {isAdmin && (<p className="text-[11px] text-muted-foreground">Company keeps {money(m.salesCompanyShare)}</p>)}
+          {isOwner && (<p className="text-[11px] text-muted-foreground">Company keeps {money(m.salesCompanyShare)}</p>)}
           {m.salesShareIfPricedCorrectly != null && (
             <p>If priced correctly: <span className="font-semibold tabular-nums">{money(m.salesShareIfPricedCorrectly)}</span></p>
           )}
-        </div>
-        {isAdmin && (<div className="rounded-md border border-border p-3">
+        </div>)}
+        {isOwner && (<div className="rounded-md border border-border p-3">
           <p className="font-semibold">{technicianLabel}</p>
           <p>{settings.labourTechSharePercent}% of labour: <span className="font-semibold tabular-nums">{money(m.labourTechShare)}</span></p>
           <p className="text-[11px] text-muted-foreground">Company &amp; owner keep from labour: {money(m.labourCompanyShare)}</p>
@@ -173,7 +175,7 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
             : <p className="text-xs">Labour overrun cost: <span className="tabular-nums">{money(ov.labourCost ?? 0)}</span></p>)}
           <p className="text-xs">Extra materials cost: <span className="tabular-nums">{money(ov.extrasCost)}</span>{ov.unknownExtras > 0 ? ` · ${ov.unknownExtras} without catalogue cost` : ""}</p>
           <p className="mt-1">Adjusted GP: <span className="font-semibold tabular-nums">{money(ov.adjustedGp)}</span> · {pctText(ov.adjustedGpPercent)}</p>
-          <p>Adjusted salesperson share: <span className="font-semibold tabular-nums">{money(ov.adjustedSalesShare)}</span> <span className="text-[11px] text-muted-foreground">material overruns deducted</span></p>
+          {showSales && <p>Adjusted salesperson share: <span className="font-semibold tabular-nums">{money(ov.adjustedSalesShare)}</span> <span className="text-[11px] text-muted-foreground">material overruns deducted</span></p>}
           {overrun?.notes && <p className="mt-1 text-[11px] text-muted-foreground">Tech note: {overrun.notes}</p>}
         </div>
       )}
