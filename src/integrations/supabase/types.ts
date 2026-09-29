@@ -7932,6 +7932,7 @@ export type Database = {
           created_at: string
           customer_name: string
           customer_phone: string
+          deposit_chip_state: string
           deposit_invoice_amount_paid: number
           deposit_invoice_grand_total: number
           deposit_invoice_id: string
