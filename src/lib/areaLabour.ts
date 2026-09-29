@@ -126,3 +126,8 @@ export async function applyAutoLabourDelta({ items, areaId, unitDelta, perUnit, 
   const sort = items.length ? Math.max(...items.map((line) => Number(line.sort_order) || 0)) + 1 : 0;
   return addItem({ ...fields, area_id: job ? null : areaId, sort_order: sort, source: "labour" });
 }
+
+/** Null/unknown-area labour shown in the amber box; the whole-job row is never listed. */
+export function unassignedLabourLines<T extends { area_id?: string | null; parent_item_id?: string | null; item_type?: string | null; metadata?: any }>(lines: T[], areas: { id: string }[]): T[] {
+  return lines.filter((i) => !i.parent_item_id && isLabourItem(i as any) && !isJobLabour(i) && (!i.area_id || !areas.some((a) => a.id === i.area_id)));
+}
