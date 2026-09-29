@@ -5,6 +5,7 @@ import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { fetchLeadMoney, fetchMoneySummary } from "@/lib/moneySummary";
 import { formatRand } from "@/utils/formatRand";
 import { Loader2 } from "lucide-react";
+import OwnerMoneyFlow from "@/components/admin/OwnerMoneyFlow";
 
 /** Money per lead: deposit due, paid, balance — biggest balance first. Row opens the lead's quote (or invoice). */
 const AdminMoneyPage = () => {
