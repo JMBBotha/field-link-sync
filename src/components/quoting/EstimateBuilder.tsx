@@ -11,7 +11,7 @@ import RemoveUnitDialog from "@/components/quoting/RemoveUnitDialog";
 import { linkedToUnit } from "@/lib/unitInstallLinks";
 import { useIsPhone } from "@/hooks/useIsPhone";
 import { isLabourItem } from "@/lib/labour";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -80,7 +80,7 @@ export default function EstimateBuilder({
   onChanged,
 }: Props) {
   const {
-    quoteId, meta, areas, items,
+    quoteId, meta, areas, items, loading,
     addArea, updateArea, deleteArea, updateItem, deleteItem, updateQuote, addItem, refetch,
   } = useQuoteContext();
   const labourMode = normalizeLabourMode((meta as any)?.labour_mode);
@@ -116,6 +116,10 @@ export default function EstimateBuilder({
   const [focusAreaId, setFocusAreaId] = useState<string | null>(null);
   const [openAdd, setOpenAdd] = useState<{ key: string; mode: "unit" | "service" | "material" | "favourites" } | null>(null);
   const isPhone = useIsPhone();
+  const [collapsedAreaKeys, setCollapsedAreaKeys] = useState<Set<string>>(new Set());
+  const collapseReadyRef = useRef(false);
+  const previousLineAreasRef = useRef<Map<string, string>>(new Map());
+  const previousAreaKeysRef = useRef<Set<string>>(new Set());
 
 
 
@@ -200,6 +204,34 @@ export default function EstimateBuilder({
     return grouped;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areas, topLevel, productImages, margin.visible, perUnitHours]);
+
+  useEffect(() => {
+    if (loading) return;
+    const currentAreaKeys = new Set(editAreas.map((area) => area.id ?? "unassigned"));
+    const currentLineAreas = new Map<string, string>();
+    for (const area of editAreas) {
+      const key = area.id ?? "unassigned";
+      for (const line of area.lines) currentLineAreas.set(line.id, key);
+    }
+
+    if (!collapseReadyRef.current) {
+      setCollapsedAreaKeys(new Set(currentAreaKeys));
+      collapseReadyRef.current = true;
+    } else {
+      setCollapsedAreaKeys((current) => {
+        const next = new Set([...current].filter((key) => currentAreaKeys.has(key)));
+        for (const key of currentAreaKeys) {
+          if (!previousAreaKeysRef.current.has(key)) next.add(key);
+        }
+        for (const [lineId, key] of currentLineAreas) {
+          if (!previousLineAreasRef.current.has(lineId)) next.delete(key);
+        }
+        return next;
+      });
+    }
+    previousAreaKeysRef.current = currentAreaKeys;
+    previousLineAreasRef.current = currentLineAreas;
+  }, [editAreas, loading]);
 
   const withProduct = (i: (typeof topLevel)[number]) => ({ ...i, product: i.product_id ? (productImages as Record<string, any>)[i.product_id] : null });
   const quoteUnitCount = countAcUnits(topLevel.map(withProduct));
@@ -356,6 +388,21 @@ export default function EstimateBuilder({
         onCancel={() => setRemoveUnit(null)}
       />
       <div className="flex items-center justify-end gap-2 print:hidden" data-pdf-hide data-html2canvas-ignore>
+        {editAreas.some((area) => area.lines.length > 0) && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs"
+            onClick={() => {
+              const keysWithLines = editAreas.filter((area) => area.lines.length > 0).map((area) => area.id ?? "unassigned");
+              const anyCollapsed = keysWithLines.some((key) => collapsedAreaKeys.has(key));
+              setCollapsedAreaKeys(anyCollapsed ? new Set() : new Set(keysWithLines));
+            }}
+          >
+            {editAreas.some((area) => area.lines.length > 0 && collapsedAreaKeys.has(area.id ?? "unassigned")) ? "Expand all" : "Collapse all"}
+          </Button>
+        )}
         <span className="text-xs text-muted-foreground">Labour</span>
         <Select value={labourMode} onValueChange={(v) => void switchLabourMode(v as "per_area" | "job")} disabled={modeBusy}>
           <SelectTrigger aria-label="Labour mode" className="h-8 w-[240px] text-xs"><SelectValue /></SelectTrigger>
@@ -387,6 +434,12 @@ export default function EstimateBuilder({
         termsText={termsText}
         editing={{
           areas: editAreas,
+          collapsedAreaKeys,
+          onToggleArea: (key) => setCollapsedAreaKeys((current) => {
+            const next = new Set(current);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            return next;
+          }),
           selectedLineId,
           onSelectLine: setSelectedLineId,
           onLineChange: (id, patch) => {
