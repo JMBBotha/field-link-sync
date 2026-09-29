@@ -27,7 +27,7 @@ export function useQuoteBuilderBundles() {
             supplier_discount_percent, markup_percent, selling_price, description, is_pinned,
             pin_order, price_per_metre, sold_in_length, unit_length, pack_qty,
             unit_type, price_per_unit_qty, price_per_unit_label,
-            allows_decimal_qty, qty_step, min_qty,
+            allows_decimal_qty, qty_step, min_qty, is_active, pdf_upload_id,
             suppliers(name)
           )
         `)
