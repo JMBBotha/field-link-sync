@@ -25,41 +25,46 @@ export interface PersistQuoteResult {
   zoneCount: number;
 }
 
-export async function persistQuoteFromBaskets(
+const inFlight = new Map<string, Promise<unknown>>();
+
+/** Per-quote single-flight queue: calls for the same quote run strictly one after another. */
+export function runSerialPerQuote<T>(quoteId: string, fn: () => Promise<T>): Promise<T> {
+  const prev = inFlight.get(quoteId) ?? Promise.resolve();
+  const next = prev.catch(() => undefined).then(fn);
+  const tail = next.catch(() => undefined);
+  inFlight.set(quoteId, tail);
+  void tail.then(() => { if (inFlight.get(quoteId) === tail) inFlight.delete(quoteId); });
+  return next;
+}
+
+export function persistQuoteFromBaskets(
+  quoteId: string,
+  baskets: Basket[],
+  validProductIds?: Set<string>,
+): Promise<PersistQuoteResult> {
+  return runSerialPerQuote(quoteId, () => persistOnce(quoteId, baskets, validProductIds));
+}
+
+async function persistOnce(
   quoteId: string,
   baskets: Basket[],
   validProductIds?: Set<string>,
 ): Promise<PersistQuoteResult> {
   const { areas, items } = basketsToQuoteState(baskets);
 
-  // Labour rows live outside the baskets (LabourPanel) — carry them across the
-  // replace-all rewrite, re-linked to their area by name. Saved rate is kept.
-  const [oldAreasRes, labourRes] = await Promise.all([
-    supabase.from("quote_areas").select("id, name").eq("quote_id", quoteId),
-    supabase.from("quote_items").select("*").eq("quote_id", quoteId).eq("item_type", LABOUR_ITEM_TYPE),
-  ]);
+  // Labour rows live outside the baskets. They are never re-inserted: the RPC
+  // re-links them to the new area by name. Read once only for totals.
+  const labourRes = await supabase.from("quote_items").select("*").eq("quote_id", quoteId).eq("item_type", LABOUR_ITEM_TYPE);
   if (labourRes.error) throw labourRes.error;
-  const oldAreaName = new Map((oldAreasRes.data || []).map((a: any) => [a.id, String(a.name || "").trim().toLowerCase()]));
-  const labourRows = ((labourRes.data || []) as any[]).filter((r) => isLabourItem(r));
+  const labourRows = ((labourRes.data || []) as any[]).filter((r) => isLabourItem(r) && !r.parent_item_id);
   const totals = computeQuoteTotals([...items, ...(labourRows as any)], areas);
 
-  // 1. Clear existing rows (items first — they reference areas).
-  const delItems = await supabase.from("quote_items").delete().eq("quote_id", quoteId);
-  if (delItems.error) throw delItems.error;
-  const delAreas = await supabase.from("quote_areas").delete().eq("quote_id", quoteId);
-  if (delAreas.error) throw delAreas.error;
-
-  // 2. Re-insert areas with fresh ids.
   const areaIdMap = new Map<string, string>();
   const areaRows = areas.map((a, i) => {
     const id = crypto.randomUUID();
     areaIdMap.set(a.id, id);
     return { id, quote_id: quoteId, name: a.name || `Zone ${i + 1}`, sort_order: i };
   });
-  if (areaRows.length) {
-    const { error } = await supabase.from("quote_areas").insert(areaRows);
-    if (error) throw error;
-  }
 
   // 3. Re-insert items.
   // New ids up front so install tags can point at their unit's NEW row id.
@@ -92,34 +97,16 @@ export async function persistQuoteFromBaskets(
       supplier: it.supplier,
     };
   }), newIdOf);
-  if (itemRows.length) {
-    const { error } = await supabase.from("quote_items").insert(itemRows as never);
-    if (error) throw error;
-  }
-
-  // 3b. Re-insert labour rows against the new area ids.
-  if (labourRows.length) {
-    const newIdByName = new Map(areaRows.map((a) => [a.name.trim().toLowerCase(), a.id]));
-    const rows = labourRows.map((r, i) => {
-      const { id: _id, created_at: _c, updated_at: _u, area_id, ...rest } = r;
-      const nm = area_id ? oldAreaName.get(area_id) : undefined;
-      return { ...rest, quote_id: quoteId, area_id: (nm && newIdByName.get(nm)) || null, sort_order: itemRows.length + i };
-    });
-    const { error } = await supabase.from("quote_items").insert(rows as never);
-    if (error) throw error;
-  }
-
-  // 4. Refresh the quote header totals.
-  const { error: metaErr } = await supabase
-    .from("quotes")
-    .update({
-      subtotal: totals.subtotal,
-      vat_rate: QUOTE_VAT_RATE,
-      vat_amount: totals.vatAmount,
-      total: totals.total,
-    })
-    .eq("id", quoteId);
-  if (metaErr) throw metaErr;
+  const { error } = await (supabase as any).rpc("replace_quote_from_builder", {
+    p_quote_id: quoteId,
+    p_areas: areaRows,
+    p_items: itemRows,
+    p_subtotal: totals.subtotal,
+    p_vat_rate: QUOTE_VAT_RATE,
+    p_vat_amount: totals.vatAmount,
+    p_total: totals.total,
+  });
+  if (error) throw error;
 
   return {
     subtotal: totals.subtotal,
