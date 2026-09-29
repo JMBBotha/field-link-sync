@@ -9,12 +9,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { offlineDb } from "@/lib/offlineDb";
+import { useRole } from "@/hooks/useRole";
 
 interface SupplierProduct {
   id: string;
   product_code: string;
   description: string;
-  cost_price: number;
   category: string;
   supplier_id: string;
 }
@@ -24,9 +24,9 @@ interface UsedPart {
   product_id: string;
   product_code: string;
   product_name: string;
-  unit_cost: number;
+  unit_cost?: number;
   quantity: number;
-  line_total: number;
+  line_total?: number;
 }
 
 interface UsedPartsSectionProps {
@@ -47,6 +47,8 @@ const formatCurrency = (amount: number) =>
 const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPartsSectionProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isAdmin, isDispatcher } = useRole();
+  const showCost = isAdmin || isDispatcher;
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<SupplierProduct | null>(null);
@@ -54,11 +56,11 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
 
   // Fetch used parts for this lead
   const { data: usedParts = [], isLoading: partsLoading } = useQuery({
-    queryKey: ["job-used-parts", leadId],
+    queryKey: ["job-used-parts", leadId, showCost],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("job_used_parts" as any)
-        .select("id, product_id, product_code, product_name, unit_cost, quantity, line_total")
+        .select(showCost ? "id, product_id, product_code, product_name, unit_cost, quantity, line_total" : "id, product_id, product_code, product_name, quantity")
         .eq("lead_id", leadId)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -77,7 +79,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
       if (isOnline) {
         const { data, error } = await supabase
           .from("supplier_products")
-          .select("id, product_code, description, cost_price, category, supplier_id")
+          .select("id, product_code, description, category, supplier_id")
           .or(`product_code.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
           .eq("is_active", true)
           .limit(15);
@@ -94,7 +96,6 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
         id: p.id,
         product_code: p.product_code,
         description: p.description,
-        cost_price: p.cost_price,
         category: p.category,
         supplier_id: p.supplier_id,
       }));
@@ -111,7 +112,6 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
         product_id: product.id,
         product_code: product.product_code,
         product_name: product.description,
-        unit_cost: product.cost_price,
         quantity,
         added_by: agentId,
       };
@@ -170,14 +170,14 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
     addPartMutation.mutate(selectedProduct);
   };
 
-  const partsTotal = usedParts.reduce((sum, p) => sum + (p.line_total || p.unit_cost * p.quantity), 0);
+  const partsTotal = usedParts.reduce((sum, p) => sum + (p.line_total || (p.unit_cost ?? 0) * p.quantity), 0);
 
   return (
     <div className="p-2.5 rounded-xl bg-background/50 space-y-2">
       <div className="flex items-center gap-1.5">
         <Package className="h-3.5 w-3.5 text-primary" />
         <span className="text-xs font-semibold">Used Parts / Materials</span>
-        {usedParts.length > 0 && (
+        {showCost && usedParts.length > 0 && (
           <span className="ml-auto text-xs font-medium text-primary">
             {formatCurrency(partsTotal)}
           </span>
@@ -225,9 +225,6 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
                       <p className="text-sm font-medium truncate">{product.product_code}</p>
                       <p className="text-xs text-muted-foreground truncate">{product.description}</p>
                     </div>
-                    <span className="text-xs font-medium shrink-0 ml-2">
-                      {formatCurrency(product.cost_price)}
-                    </span>
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -242,7 +239,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium truncate">{selectedProduct.description}</p>
             <p className="text-[10px] text-muted-foreground">
-              {selectedProduct.product_code} · {formatCurrency(selectedProduct.cost_price)}
+              {selectedProduct.product_code}
             </p>
           </div>
           <div className="w-16 shrink-0">
@@ -285,12 +282,14 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{part.product_name}</p>
                 <p className="text-[10px] text-muted-foreground">
-                  {part.product_code} · {part.quantity} × {formatCurrency(part.unit_cost)}
+                  {part.product_code} · {showCost ? <>{part.quantity} × {formatCurrency(part.unit_cost ?? 0)}</> : <>Qty {part.quantity}</>}
                 </p>
               </div>
-              <span className="font-medium shrink-0">
-                {formatCurrency(part.line_total || part.unit_cost * part.quantity)}
-              </span>
+              {showCost && (
+                <span className="font-medium shrink-0">
+                  {formatCurrency(part.line_total || (part.unit_cost ?? 0) * part.quantity)}
+                </span>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -304,10 +303,10 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
           ))}
 
           {/* Running total */}
-          <div className="flex justify-between items-center pt-1 border-t border-border/50 text-xs">
+          {showCost && <div className="flex justify-between items-center pt-1 border-t border-border/50 text-xs">
             <span className="text-muted-foreground font-medium">Parts Total</span>
             <span className="font-bold text-primary">{formatCurrency(partsTotal)}</span>
-          </div>
+          </div>}
         </div>
       ) : (
         <p className="text-[10px] text-muted-foreground text-center py-1">No parts added yet</p>
