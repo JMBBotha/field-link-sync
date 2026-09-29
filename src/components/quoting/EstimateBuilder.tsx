@@ -88,6 +88,7 @@ export default function EstimateBuilder({
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
   const [focusAreaId, setFocusAreaId] = useState<string | null>(null);
+  const [openAdd, setOpenAdd] = useState<{ key: string; mode: "unit" | "service" | "material" } | null>(null);
 
 
 
@@ -387,33 +388,50 @@ export default function EstimateBuilder({
             }
           },
 
-          onDeleteArea: (id) => {
+          onDeleteArea: async (id) => {
             const area = editAreas.find((a) => a.id === id);
-            const lineCount = area?.lines.length ?? 0;
-            const msg = lineCount > 0
-              ? `Delete this area and its ${lineCount} line${lineCount === 1 ? "" : "s"}?`
-              : "Delete this area?";
+            const count = items.filter((i) => i.area_id === id).length;
+            const name = area?.name || "this area";
+            const msg = count > 0
+              ? `Delete ${name} and its ${count} line${count === 1 ? "" : "s"} (incl. labour)?`
+              : `Delete ${name}?`;
             if (!window.confirm(msg)) return;
-            for (const line of area?.lines ?? []) void deleteItem(line.id);
-            void deleteArea(id);
             if (activeAreaId === id) setActiveAreaId(null);
+            const { error } = await trackQuoteWrite(supabase.from("quote_items").delete().eq("area_id", id).eq("quote_id", quoteId));
+            if (error) { toast({ title: "Could not delete area lines", description: error.message, variant: "destructive" }); return; }
+            await deleteArea(id);
             onChanged?.();
           },
-          addBar: (
-            <QuoteQuickEditor
-              onChanged={onChanged}
-              dropUp
-              onAddedToArea={(areaId) => {
-                setActiveAreaId(areaId);
-                window.setTimeout(() => {
-                  const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(areaId) : areaId.replace(/["\\]/g, "\\$&");
-                  document.querySelector(`[data-area-id="${escaped}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }, 0);
-              }}
-              onUnitAdded={(areaId, qty) => void adjustAutoLabour(areaId, qty)}
-              beforeCreateArea={allowNewArea}
-            />
-          ),
+          renderAreaAdd: (areaId) => {
+            const key = areaId ?? "unassigned";
+            const open = openAdd?.key === key ? openAdd.mode : null;
+            if (open) {
+              return (
+                <QuoteQuickEditor
+                  key={`${key}-${open}`}
+                  mode={open}
+                  targetAreaId={areaId ?? undefined}
+                  createTargetArea={areaId ? undefined : async () => {
+                    if (!allowNewArea()) return null;
+                    const created = await addArea(`Area ${areas.length + 1}`);
+                    if (!created?.id) return null;
+                    setOpenAdd({ key: created.id, mode: open });
+                    return created.id;
+                  }}
+                  onClose={() => setOpenAdd(null)}
+                  onChanged={onChanged}
+                  onAddedToArea={(id) => setActiveAreaId(id)}
+                  onUnitAdded={(id, qty) => void adjustAutoLabour(id, qty)}
+                />
+              );
+            }
+            const btn = (mode: "unit" | "service" | "material", label: string) => (
+              <Button key={mode} type="button" size="sm" variant="outline" className="h-7 text-[11px]" onClick={(e) => { e.stopPropagation(); setOpenAdd({ key, mode }); }}>
+                <Plus className="mr-1 h-3 w-3" />{label}
+              </Button>
+            );
+            return <div className="flex flex-wrap gap-2">{btn("unit", "Add unit")}{btn("service", "Add service")}{btn("material", "Add material")}</div>;
+          },
           discountControl,
           onMoveLine: (id, areaId) => {
             // A unit carries its install lines with it.
