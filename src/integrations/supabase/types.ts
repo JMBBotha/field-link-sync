@@ -8091,6 +8091,18 @@ export type Database = {
         }
         Returns: string
       }
+      replace_quote_from_builder: {
+        Args: {
+          p_areas: Json
+          p_items: Json
+          p_quote_id: string
+          p_subtotal: number
+          p_total: number
+          p_vat_amount: number
+          p_vat_rate: number
+        }
+        Returns: undefined
+      }
       request_call_report: {
         Args: { p_call_id: string; p_force?: boolean; p_test?: boolean }
         Returns: number
