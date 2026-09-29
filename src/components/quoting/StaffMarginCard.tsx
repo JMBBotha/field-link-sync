@@ -72,7 +72,7 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
       const jobIds = (jobs || []).map((job: any) => job.id).filter(Boolean);
       if (!jobIds.length) return { salespersonName, technicianNames: [] as string[] };
       const { data: assignments } = await (supabase.from("assignments") as any)
-        .select("profile_id").in("job_id", jobIds).neq("status", "rejected");
+        .select("profile_id").in("job_id", jobIds);
       const profileIds = [...new Set((assignments || []).map((assignment: any) => assignment.profile_id).filter(Boolean))] as string[];
       if (!profileIds.length) return { salespersonName, technicianNames: [] as string[] };
       const { data: technicians } = await (supabase.from("profiles") as any).select("id, full_name").in("id", profileIds);
@@ -111,8 +111,8 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
   const selected = m.lines.find((l) => l.id === selectedId) || null;
   const quotedHours = items.filter((i) => !i.parent_item_id && isLabourItem(i)).reduce((a, i) => a + Number((i.metadata as any)?.hours ?? i.quantity ?? 0), 0);
   const ov = overrun ? computeOverrun({ quotedHours, actualHours: overrun.actualHours, extras: overrun.extras, job: { ...m.job, markupBase: m.markupBase }, labourCostPerHour: settings.labourCostPerHour, salesSharePercent: settings.salesSharePercent }) : null;
-  const salespersonLabel = earners?.salespersonName || "Salesperson (not set)";
-  const technicianLabel = earners?.technicianNames.length ? earners.technicianNames.join(", ") : "Technician (not assigned yet)";
+  const salespersonLabel = earners?.salespersonName ? `Salesperson: ${earners.salespersonName}` : "Salesperson (not set)";
+  const technicianLabel = earners?.technicianNames.length ? `Technician: ${earners.technicianNames.join(", ")}` : "Technician (not assigned yet)";
   const statusText = (l: MarginLine) =>
     l.status === "cost_unknown" ? "cost unknown" : l.status === "labour_cost_not_set" ? "labour cost not set" : null;
 
@@ -145,7 +145,7 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
 
       <div className="grid gap-3 text-sm sm:grid-cols-2">
         <div className="rounded-md border border-border p-3">
-          <p className="font-semibold">Salesperson: {salespersonLabel}</p>
+          <p className="font-semibold">{salespersonLabel}</p>
           <p>{settings.salesSharePercent}% of markup on units &amp; materials: <span className="font-semibold tabular-nums">{money(m.salesShare)}</span></p>
           <p className="text-[11px] text-muted-foreground">Company keeps {money(m.salesCompanyShare)}</p>
           {m.salesShareIfPricedCorrectly != null && (
@@ -153,7 +153,7 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
           )}
         </div>
         <div className="rounded-md border border-border p-3">
-          <p className="font-semibold">Technician: {technicianLabel}</p>
+          <p className="font-semibold">{technicianLabel}</p>
           <p>{settings.labourTechSharePercent}% of labour: <span className="font-semibold tabular-nums">{money(m.labourTechShare)}</span></p>
           <p className="text-[11px] text-muted-foreground">Company keeps {money(m.labourCompanyShare)}</p>
         </div>
