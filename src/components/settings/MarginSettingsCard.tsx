@@ -57,14 +57,14 @@ export default function MarginSettingsCard() {
     <Card>
       <CardHeader>
         <CardTitle>Sales &amp; tech earnings (staff only)</CardTitle>
-        <p className="text-sm text-muted-foreground">Sales earns on unit and material markup only. Technicians earn on labour only.</p>
+        <p className="text-sm text-muted-foreground">Sales earns on parts &amp; materials profit only. Technicians earn on labour only.</p>
       </CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-4">
         <div><Label>Labour cost per hour (R, what it costs you)</Label>
           <Input type="number" min="0" step="0.01" placeholder="Not set" value={labour} onChange={(e) => setLabour(e.target.value)} /></div>
         <div><Label>GP target %</Label>
           <Input type="number" min="0" max="99" value={target} onChange={(e) => setTarget(e.target.value)} /></div>
-        <div><Label>Salesperson share of markup, units &amp; materials (%)</Label>
+        <div><Label>Salesperson share of profit on parts &amp; materials (%)</Label>
           <Input type="number" min="0" max="100" value={comm} onChange={(e) => setComm(e.target.value)} /></div>
         <div><Label>Technician share of labour (%)</Label>
           <Input type="number" min="0" max="100" value={labourShare} onChange={(e) => setLabourShare(e.target.value)} /></div>
