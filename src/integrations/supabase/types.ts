@@ -7729,6 +7729,7 @@ export type Database = {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
         Returns: number
       }
+      caller_company_id: { Args: never; Returns: string }
       can_access_receipt_folder: { Args: { _folder: string }; Returns: boolean }
       can_log_job_overrun: {
         Args: { _job_id: string; _uid: string }
