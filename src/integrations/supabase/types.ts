@@ -3317,6 +3317,7 @@ export type Database = {
           confidence: number | null
           converted_at: string | null
           created_at: string | null
+          created_by: string | null
           customer_address: string
           customer_id: string | null
           customer_name: string
@@ -3377,6 +3378,7 @@ export type Database = {
           confidence?: number | null
           converted_at?: string | null
           created_at?: string | null
+          created_by?: string | null
           customer_address: string
           customer_id?: string | null
           customer_name: string
@@ -3437,6 +3439,7 @@ export type Database = {
           confidence?: number | null
           converted_at?: string | null
           created_at?: string | null
+          created_by?: string | null
           customer_address?: string
           customer_id?: string | null
           customer_name?: string
@@ -8030,6 +8033,7 @@ export type Database = {
           confidence: number | null
           converted_at: string | null
           created_at: string | null
+          created_by: string | null
           customer_address: string
           customer_id: string | null
           customer_name: string
@@ -8115,6 +8119,22 @@ export type Database = {
           product_name: string
           quantity: number
           unit_cost: number
+        }[]
+      }
+      get_my_appointments: {
+        Args: { p_days?: number }
+        Returns: {
+          address: string
+          customer_id: string
+          customer_name: string
+          is_mine: boolean
+          lead_id: string
+          quote_id: string
+          scheduled_date: string
+          scheduled_time: string
+          service_type: string
+          source: string
+          status: string
         }[]
       }
       get_my_assigned_jobs: {
@@ -8333,6 +8353,10 @@ export type Database = {
       }
       rep_can_see_invoice: {
         Args: { _inv: string; _uid: string }
+        Returns: boolean
+      }
+      rep_can_see_lead: {
+        Args: { _lead: string; _uid: string }
         Returns: boolean
       }
       replace_quote_from_builder: {
