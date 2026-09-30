@@ -140,7 +140,7 @@ export function buildClientRollup(lines: RollupLine[], areas: RollupArea[] = [])
 
   const groups = new Map<string, RollupLine[]>();
   for (const l of top) {
-    const key = l.area_id || (isLabour(l) ? "__job_labour__" : "__general__");
+    const key = isLabour(l) && (!l.area_id || l.metadata?.labour_scope === "job") ? "__job_labour__" : l.area_id || "__general__";
     const list = groups.get(key);
     if (list) list.push(l);
     else groups.set(key, [l]);

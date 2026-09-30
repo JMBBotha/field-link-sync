@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuoteContext, trackQuoteWrite } from "@/contexts/QuoteContext";
-import { unassignedLabourLines } from "@/lib/areaLabour";
+import { unassignedLabourLines, jobModeLabourLines } from "@/lib/areaLabour";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
@@ -195,7 +195,8 @@ export default function EstimateBuilder({
         }, [])
         .map(lineFor),
     }});
-    const orphans = topLevel.filter((i) => !i.area_id && !isLabourItem(i));
+    // Lines with no area OR an area id that is not on this quote: both are counted, so both must show.
+    const orphans = topLevel.filter((i) => !isLabourItem(i) && (!i.area_id || !areas.some((a) => a.id === i.area_id)));
     if (orphans.length > 0) {
       grouped.push({
         id: null,
@@ -243,7 +244,7 @@ export default function EstimateBuilder({
     const base = labourFields(hours, labourRate, false, true);
     const fields = { ...base, item_name: "Job labour", metadata: { ...base.metadata, labour_scope: "job" } };
     const existing = topLevel.find((i) => isJobLabour(i as any));
-    if (existing) await updateItem(existing.id, fields as any);
+    if (existing) await updateItem(existing.id, { ...fields, area_id: null } as any);
     else await addItem({ ...fields, area_id: null, sort_order: Math.max(0, ...items.map((i) => i.sort_order || 0)) + 1, source: "labour" } as any);
     onChanged?.();
   };
@@ -511,7 +512,7 @@ export default function EstimateBuilder({
             const created = await addArea(name);
             if (created?.id) {
               // Move any orphan lines into the newly named area.
-              for (const i of topLevel.filter((x) => !x.area_id)) {
+              for (const i of topLevel.filter((x) => !x.area_id && !isJobLabour(x as any))) {
                 void updateItem(i.id, { area_id: created.id } as any);
               }
               setActiveAreaId(created.id);
@@ -601,9 +602,10 @@ export default function EstimateBuilder({
           },
           onAddLabour: (areaId) => void addLabourForArea(areaId),
           onLabourChange: (id, hours, rate) => void changeLabour(id, hours, rate),
-          unassignedLabour: unassignedLabourLines(topLevel, areas).map(lineFor),
+          onRemoveLabour: (id) => { void deleteItem(id); onChanged?.(); },
+          unassignedLabour: unassignedLabourLines(topLevel, areas, labourMode).map(lineFor),
           jobLabour: labourMode === "job"
-            ? { lines: topLevel.filter((i) => isJobLabour(i as any)).map((i) => ({ ...lineFor(i), acUnitCount: quoteUnitCount })), defaultHours: defaultLabourHours(quoteUnitCount, perUnitHours), onAdd: () => void addJobLabour() }
+            ? { lines: jobModeLabourLines(topLevel, areas).map((i) => ({ ...lineFor(i), acUnitCount: quoteUnitCount })), defaultHours: defaultLabourHours(quoteUnitCount, perUnitHours), onAdd: () => void addJobLabour() }
             : undefined,
 
         }}

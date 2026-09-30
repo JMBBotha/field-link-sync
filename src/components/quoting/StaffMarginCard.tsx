@@ -207,7 +207,7 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
             <div key={l.id} className={`grid grid-cols-[1fr_auto] gap-2 ${l.id === selected?.id ? "font-semibold" : ""}`}>
               <span className="truncate">{l.name}</span>
               <span className="tabular-nums">
-                {statusText(l) ?? `${money(l.cost!)} → ${money(l.sell)} · ${money(l.gp!)} · ${pctText(l.gpPercent)}`}
+                {statusText(l) ?? `${money(l.cost!)} → ${money(l.sell)} · ${money(l.gp!)} · GP ${pctText(l.gpPercent)} · markup ${pctText(l.cost! > 0 ? (l.gp! / l.cost!) * 100 : null)}`}
               </span>
             </div>
           ))}

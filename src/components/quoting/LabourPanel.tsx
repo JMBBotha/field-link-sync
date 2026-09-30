@@ -10,14 +10,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuoteContext } from "@/contexts/QuoteContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { findAreaLabour, planLabour, standardLabourRate, stepHours } from "@/lib/labour";
+import { findAreaLabour, isLabourItem, planLabour, standardLabourRate, stepHours } from "@/lib/labour";
+import { isJobLabour, normalizeLabourMode } from "@/lib/areaLabour";
 import { formatRand } from "@/utils/formatRand";
 import { toast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 
-function LabourRow({ areaId, areaName, standardRate }: { areaId: string; areaName: string; standardRate: number | null }) {
+/** `line` is resolved by LabourPanel so every labour line (job row, extras) gets a row. `job` = the whole-job row. */
+function LabourRow({ areaId, areaName, standardRate, line, job }: { areaId: string; areaName: string; standardRate: number | null; line: any; job?: boolean }) {
   const ctx = useQuoteContext();
-  const line = findAreaLabour(ctx.items, areaId);
   const md = (line?.metadata || {}) as { hours?: number; rate?: number };
   const hours = Number(md.hours ?? line?.quantity ?? 0);
   const savedRate = Number(md.rate) > 0 ? Number(md.rate) : null;
@@ -31,10 +32,11 @@ function LabourRow({ areaId, areaName, standardRate }: { areaId: string; areaNam
       toast({ title: "Set a labour rate", description: "Type a rate on this row or set the standard rate in Settings." });
       return;
     }
-    if (line) await ctx.updateItem(line.id, fields as any);
+    const asJob = job || isJobLabour(line) ? { item_name: line?.item_name || "Job labour", area_id: null, metadata: { ...fields.metadata, labour_scope: "job" } } : {};
+    if (line) await ctx.updateItem(line.id, { ...fields, ...asJob } as any);
     else {
       const sort = ctx.items.length ? Math.max(...ctx.items.map((i) => i.sort_order || 0)) + 1 : 0;
-      await ctx.addItem({ ...fields, area_id: areaId, sort_order: sort, source: "labour" } as any);
+      await ctx.addItem({ ...fields, area_id: areaId, ...asJob, sort_order: sort, source: "labour" } as any);
     }
   };
 
@@ -100,17 +102,25 @@ export default function LabourPanel() {
   const ctx = useQuoteContext();
   const { settings } = useCompanySettings() as any;
   const standardRate = standardLabourRate(settings?.default_hourly_rate);
-  if (!ctx.areas.length) return null;
+  const jobMode = normalizeLabourMode((ctx.meta as any)?.labour_mode) === "job";
+  const all = ctx.items.filter((i) => !i.parent_item_id && isLabourItem(i));
+  const rows: { key: string; areaId: string; name: string; line: any; job?: boolean }[] = jobMode
+    ? [{ key: "job", areaId: "job", name: "Job labour", line: all.find((i) => isJobLabour(i as any)) ?? null, job: true }]
+    : ctx.areas.map((a) => ({ key: a.id, areaId: a.id, name: a.name, line: findAreaLabour(ctx.items, a.id) ?? null }));
+  // Any other labour line is still counted in the totals, so it gets its own row (edit or bin it).
+  const shown = new Set(rows.map((r) => r.line?.id).filter(Boolean));
+  for (const l of all) if (!shown.has(l.id)) rows.push({ key: l.id, areaId: l.area_id || "none", name: `${ctx.areas.find((a) => a.id === l.area_id)?.name || "No area"} · extra labour`, line: l });
+  if (!ctx.areas.length && !all.length) return null;
   return (
     <div className="rounded-lg border border-border bg-card p-3" data-testid="labour-panel">
       <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
-        <Wrench className="h-4 w-4" /> Labour per area
+        <Wrench className="h-4 w-4" /> {jobMode ? "Job labour" : "Labour per area"}
         <span className="text-xs font-normal text-muted-foreground">
           {standardRate == null ? "Standard rate not set — Set rate in Settings or type one on a row" : `Standard ${formatRand(standardRate)}/h excl. VAT · 0% markup · staff only`}
         </span>
       </div>
-      {ctx.areas.map((a) => (
-        <LabourRow key={a.id} areaId={a.id} areaName={a.name} standardRate={standardRate} />
+      {rows.map((r) => (
+        <LabourRow key={r.key} areaId={r.areaId} areaName={r.name} standardRate={standardRate} line={r.line} job={r.job} />
       ))}
     </div>
   );
