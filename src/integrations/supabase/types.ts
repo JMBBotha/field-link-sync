@@ -8108,6 +8108,18 @@ export type Database = {
         }[]
       }
       get_job_billable_hours: { Args: { p_lead_id: string }; Returns: number }
+      get_job_packing_list: {
+        Args: { p_job_id: string }
+        Returns: {
+          area_name: string
+          area_sort: number
+          item_code: string
+          item_name: string
+          kit_name: string
+          line_sort: number
+          quantity: number
+        }[]
+      }
       get_job_used_parts: {
         Args: { p_lead_id: string }
         Returns: {
