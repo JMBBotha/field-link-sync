@@ -7735,6 +7735,10 @@ export type Database = {
         Args: { _job_id: string; _uid: string }
         Returns: boolean
       }
+      can_manage_profile_access: {
+        Args: { _target_company: string; _target_participant: string }
+        Returns: boolean
+      }
       can_read_master_catalog: { Args: { _uid: string }; Returns: boolean }
       can_view_company_overruns: {
         Args: { _job_id: string; _uid: string }
