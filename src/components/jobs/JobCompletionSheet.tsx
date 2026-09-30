@@ -54,10 +54,8 @@ const JobCompletionSheet = ({
   const { data: parts = [] } = useQuery({
     queryKey: ["job-used-parts", leadId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("job_used_parts" as never)
-        .select("id, product_name, quantity, line_total")
-        .eq("lead_id", leadId);
+      // Server RPC: line_total is null for technicians (server computes parts_total on save).
+      const { data, error } = await (supabase.rpc as any)("get_job_used_parts", { p_lead_id: leadId });
       if (error) throw error;
       return (data || []) as unknown as Array<{
         id: string;

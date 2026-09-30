@@ -37,6 +37,7 @@ import LeadCallReports from "./calls/LeadCallReports";
 import UsedPartsSection from "./UsedPartsSection";
 import JobCompletionSheet from "./jobs/JobCompletionSheet";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRole } from "@/hooks/useRole";
 import { CheckCircle2 } from "lucide-react";
 import QuickTemplateDialog from "./quoting/QuickTemplateDialog";
 import AcceptLeadDialog from "./leads/AcceptLeadDialog";
@@ -200,9 +201,11 @@ const LeadDetailSheet = ({
   });
 
   // Fetch invoice status for this lead
+  const { isFieldAgent: roleIsFieldAgent, isAdmin: roleIsAdminForInvoice, isDispatcher: roleIsDispatcherForInvoice } = useRole();
+  const invoiceTechOnly = roleIsFieldAgent && !roleIsAdminForInvoice && !roleIsDispatcherForInvoice;
   const { data: leadInvoice } = useQuery({
-    queryKey: ['lead-invoice', lead?.id],
-    queryFn: async () => {
+    queryKey: ['lead-invoice', lead?.id, invoiceTechOnly],
+    queryFn: async (): Promise<{ id: string; invoice_number: string | null; status: string | null; grand_total: number | null; remaining?: number } | null> => {
       if (!lead?.id) return null;
       const { data } = await supabase
         .from('invoices')
@@ -211,7 +214,13 @@ const LeadDetailSheet = ({
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      return data;
+      if (data || !invoiceTechOnly) return data;
+      // Techs can't read invoice rows: show chip state + R remaining only.
+      const { data: chips } = await (supabase.rpc as any)('get_field_deposit_chips', { p_lead_ids: [lead.id] });
+      const c = (chips || [])[0];
+      return c?.invoice_id
+        ? { id: c.invoice_id, invoice_number: null, status: c.chip_state === 'paid' ? 'paid' : 'sent', grand_total: null, remaining: Number(c.remaining) }
+        : null;
     },
     enabled: !!lead?.id && lead?.status === 'completed',
   });
@@ -709,7 +718,9 @@ const LeadDetailSheet = ({
                         {leadInvoice.status === 'paid' ? 'Paid' : 'Invoiced'}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        #{leadInvoice.invoice_number} · R {Number(leadInvoice.grand_total).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                        {leadInvoice.grand_total != null
+                          ? `#${leadInvoice.invoice_number} · R ${Number(leadInvoice.grand_total).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`
+                          : `R ${Number(leadInvoice.remaining ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })} remaining`}
                       </p>
                     </div>
                   </div>
@@ -942,7 +953,9 @@ const LeadDetailSheet = ({
                           {leadInvoice.status === 'paid' ? 'Paid' : 'Invoiced'}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          #{leadInvoice.invoice_number} · R {Number(leadInvoice.grand_total).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                          {leadInvoice.grand_total != null
+                          ? `#${leadInvoice.invoice_number} · R ${Number(leadInvoice.grand_total).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`
+                          : `R ${Number(leadInvoice.remaining ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })} remaining`}
                         </p>
                       </div>
                     </div>

@@ -16,7 +16,17 @@ interface SupplierProduct {
   product_code: string;
   description: string;
   category: string;
-  supplier_id: string;
+  supplier_id?: string;
+  sell_excl_vat?: number | null;
+}
+
+interface SellOption {
+  id: string;
+  product_code: string | null;
+  short_name: string | null;
+  description: string | null;
+  category: string | null;
+  sell_excl_vat: number | null;
 }
 
 interface UsedPart {
@@ -58,36 +68,51 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
   const { data: usedParts = [], isLoading: partsLoading } = useQuery({
     queryKey: ["job-used-parts", leadId, showCost],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("job_used_parts" as any)
-        .select(showCost ? "id, product_id, product_code, product_name, unit_cost, quantity, line_total" : "id, product_id, product_code, product_name, quantity")
-        .eq("lead_id", leadId)
-        .order("created_at", { ascending: true });
+      // Server RPC: returns cost fields only to non-technicians (techs get null).
+      const { data, error } = await (supabase.rpc as any)("get_job_used_parts", { p_lead_id: leadId });
       if (error) throw error;
-      return (data || []) as unknown as UsedPart[];
+      return ((data || []) as UsedPart[]).map((p) =>
+        showCost ? p : { ...p, unit_cost: undefined, line_total: undefined }
+      );
     },
     enabled: !!leadId,
   });
 
+  // Sell-only catalogue (no cost) — the same RPC techs use for sell prices.
+  const { data: sellOptions } = useQuery({
+    queryKey: ["product-sell-options"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("get_product_sell_options");
+      if (error) throw error;
+      return (data || []) as SellOption[];
+    },
+    enabled: isOnline && (searchOpen || searchQuery.length >= 2),
+    staleTime: 5 * 60_000,
+  });
+
   // Search supplier products
   const { data: searchResults = [], isFetching: searching } = useQuery({
-    queryKey: ["supplier-product-search", searchQuery],
+    queryKey: ["supplier-product-search", searchQuery, !!sellOptions],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) return [];
 
       // Try online first, fall back to offline cache
-      if (isOnline) {
-        const { data, error } = await supabase
-          .from("supplier_products")
-          .select("id, product_code, description, category, supplier_id")
-          .or(`product_code.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
-          .eq("is_active", true)
-          .limit(15);
-        if (error) {
-          console.warn("[Parts] Online search failed, trying offline cache:", error.message);
-        } else {
-          return data as SupplierProduct[];
-        }
+      if (isOnline && sellOptions) {
+        const needle = searchQuery.toLowerCase();
+        return sellOptions
+          .filter((o) =>
+            (o.product_code || "").toLowerCase().includes(needle) ||
+            (o.description || "").toLowerCase().includes(needle) ||
+            (o.short_name || "").toLowerCase().includes(needle)
+          )
+          .slice(0, 15)
+          .map((o) => ({
+            id: o.id,
+            product_code: o.product_code || "",
+            description: o.description || o.short_name || "",
+            category: o.category || "",
+            sell_excl_vat: o.sell_excl_vat,
+          })) as SupplierProduct[];
       }
 
       // Offline fallback
@@ -145,11 +170,9 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
   const deletePartMutation = useMutation({
     mutationFn: async (partId: string) => {
       if (isOnline) {
-        const { error } = await supabase
-          .from("job_used_parts" as any)
-          .delete()
-          .eq("id", partId);
+        const { data: deleted, error } = await (supabase.rpc as any)("delete_job_used_part", { p_id: partId });
         if (error) throw error;
+        if (!deleted) throw new Error("Part could not be removed");
         console.log("[Parts] Deleted part online:", partId.slice(0, 8));
       } else if (queueOperation) {
         await queueOperation("delete_photo" as any, "job_used_parts", partId, {});
@@ -225,6 +248,9 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
                       <p className="text-sm font-medium truncate">{product.product_code}</p>
                       <p className="text-xs text-muted-foreground truncate">{product.description}</p>
                     </div>
+                    {product.sell_excl_vat != null && (
+                      <span className="ml-2 shrink-0 text-xs font-medium">{formatCurrency(Number(product.sell_excl_vat))} excl VAT</span>
+                    )}
                   </CommandItem>
                 ))}
               </CommandGroup>

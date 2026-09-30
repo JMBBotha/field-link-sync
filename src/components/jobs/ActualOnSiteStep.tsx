@@ -19,18 +19,21 @@ export default function ActualOnSiteStep({ value, onChange }: { value: ActualOnS
   const [q, setQ] = useState("");
   const [other, setOther] = useState("");
   const term = q.trim();
-  const { data: hits = [] } = useQuery({
-    queryKey: ["actual-onsite-search", term],
+  // Names/codes only, from the sell-only catalogue RPC (techs cannot read the products table).
+  const { data: catalogue = [] } = useQuery({
+    queryKey: ["actual-onsite-catalogue"],
     enabled: term.length >= 2,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
     queryFn: async () => {
-      const safe = term.replace(/[%,()]/g, " ");
-      const { data } = await (supabase.from("supplier_products") as any)
-        .select("id, product_code, short_name").eq("archived", false)
-        .or(`short_name.ilike.%${safe}%,product_code.ilike.%${safe}%`).limit(8);
-      return (data || []) as { id: string; product_code: string | null; short_name: string | null }[];
+      const { data } = await (supabase.rpc as any)("get_product_sell_options");
+      return ((data || []) as { id: string; product_code: string | null; short_name: string | null }[])
+        .map((r) => ({ id: r.id, product_code: r.product_code, short_name: r.short_name }));
     },
   });
+  const needle = term.toLowerCase();
+  const hits = term.length >= 2
+    ? catalogue.filter((h) => (h.short_name || "").toLowerCase().includes(needle) || (h.product_code || "").toLowerCase().includes(needle)).slice(0, 8)
+    : [];
   const add = (e: OverrunExtra) => onChange({ ...value, extras: [...value.extras, e] });
   const setQty = (i: number, qty: number) => onChange({ ...value, extras: value.extras.map((x, j) => (j === i ? { ...x, qty } : x)) });
   const remove = (i: number) => onChange({ ...value, extras: value.extras.filter((_, j) => j !== i) });
