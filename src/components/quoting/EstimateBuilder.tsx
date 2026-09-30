@@ -58,6 +58,8 @@ interface Props {
 
 /** Header shown for the default catch-all section (named areas keep their name). */
 const DEFAULT_SECTION_LABEL = "Add items to quote";
+/** Stable fallback: a fresh {} each render re-runs editAreas -> collapse layout effect -> setState loop. */
+const EMPTY_PRODUCT_INFO: Record<string, any> = {};
 
 const discountAmountFor = (subtotal: number, type: string | null, value: number) => {
   if (type === "percentage" || type === "percent") return (subtotal * value) / 100;
@@ -131,7 +133,7 @@ export default function EstimateBuilder({
     () => [...new Set(topLevel.map((i) => i.product_id).filter(Boolean))] as string[],
     [topLevel],
   );
-  const { data: productImages = {} } = useQuery({
+  const { data: productImages = EMPTY_PRODUCT_INFO } = useQuery({
     queryKey: ["quote-item-product-info", productIds.sort().join(",")],
     enabled: productIds.length > 0,
     staleTime: 300_000,
@@ -227,7 +229,7 @@ export default function EstimateBuilder({
         for (const [lineId, key] of currentLineAreas) {
           if (previousLineAreasRef.current.get(lineId) !== key) next.delete(key);
         }
-        return next;
+        return next.size === current.size && [...next].every((k) => current.has(k)) ? current : next;
       });
     }
     previousAreaKeysRef.current = currentAreaKeys;
