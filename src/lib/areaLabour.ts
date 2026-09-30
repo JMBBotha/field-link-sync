@@ -46,9 +46,10 @@ export function normalizeLabourMode(v: unknown): LabourMode {
   return v === "job" ? "job" : "per_area";
 }
 
-/** The single whole-job labour row: labour, no area, metadata.labour_scope = 'job'. */
+/** The single whole-job labour row: top-level labour with metadata.labour_scope = 'job'. Its area_id is ignored:
+ *  an old orphan move gave Q-2026-0014's job row an area and it vanished from the screen while still in the totals. */
 export function isJobLabour(line: { area_id?: string | null; parent_item_id?: string | null; item_type?: string | null; metadata?: any } | null | undefined): boolean {
-  return !!line && !line.parent_item_id && !line.area_id && isLabourItem(line as any) && (line.metadata as any)?.labour_scope === "job";
+  return !!line && !line.parent_item_id && isLabourItem(line as any) && (line.metadata as any)?.labour_scope === "job";
 }
 
 /** Where auto labour lands: the area for 'per_area', the job row (null area) for 'job'. */
@@ -118,7 +119,7 @@ export async function applyAutoLabourDelta({ items, areaId, unitDelta, perUnit, 
   const base = labourFields(hours, rate, false, true);
   const fields = job ? { ...base, item_name: "Job labour", metadata: { ...base.metadata, labour_scope: "job" } } : base;
   if (labour) {
-    await updateItem(labour.id, fields);
+    await updateItem(labour.id, job ? { ...fields, area_id: null } : fields);
     return labour;
   }
   // A removal cannot invent a legacy labour row; only positive unit adds create one.
@@ -127,7 +128,33 @@ export async function applyAutoLabourDelta({ items, areaId, unitDelta, perUnit, 
   return addItem({ ...fields, area_id: job ? null : areaId, sort_order: sort, source: "labour" });
 }
 
-/** Null/unknown-area labour shown in the amber box; the whole-job row is never listed. */
-export function unassignedLabourLines<T extends { area_id?: string | null; parent_item_id?: string | null; item_type?: string | null; metadata?: any }>(lines: T[], areas: { id: string }[]): T[] {
-  return lines.filter((i) => !i.parent_item_id && isLabourItem(i as any) && !isJobLabour(i) && (!i.area_id || !areas.some((a) => a.id === i.area_id)));
+type LabourLineLike = { area_id?: string | null; parent_item_id?: string | null; item_type?: string | null; metadata?: any };
+const inKnownArea = (i: LabourLineLike, areas: { id: string }[]) => !!i.area_id && areas.some((a) => a.id === i.area_id);
+
+/** Null/unknown-area labour shown in the amber box. The job row is listed only in per_area mode (nowhere else shows it there). */
+export function unassignedLabourLines<T extends LabourLineLike>(lines: T[], areas: { id: string }[], mode: LabourMode = "job"): T[] {
+  return lines.filter((i) => !i.parent_item_id && isLabourItem(i as any) && !inKnownArea(i, areas) && !(mode === "job" && isJobLabour(i)));
+}
+
+/** Job mode: the Job labour section shows the job row plus any area labour, so every counted labour line is on screen. */
+export function jobModeLabourLines<T extends LabourLineLike>(lines: T[], areas: { id: string }[]): T[] {
+  return lines.filter((i) => !i.parent_item_id && isLabourItem(i as any) && (isJobLabour(i) || inKnownArea(i, areas)));
+}
+
+/**
+ * Job mode allows ONE job labour line. A labour insert while in job mode (Mandy area labour, the builder row, a restore)
+ * merges its hours into the existing job line (keeping that line's rate) or becomes the job line. Other rows pass through.
+ */
+export function planLabourInsert<T extends LabourLineLike & { id?: string; quantity?: any; unit_price?: any; item_name?: string | null }>(
+  mode: LabourMode, items: T[], row: any,
+): { kind: "insert"; row: any } | { kind: "merge"; id: string; patch: any } {
+  if (mode !== "job" || row?.parent_item_id || !isLabourItem(row)) return { kind: "insert", row };
+  const existing = items.find((i) => isJobLabour(i) && i.id !== row.id);
+  const asJob = (fields: any) => ({ ...fields, area_id: null, item_name: "Job labour", metadata: { ...(fields.metadata || {}), labour_scope: "job" } });
+  if (!existing?.id) return { kind: "insert", row: asJob(row) };
+  const md = (existing.metadata || {}) as any;
+  const hours = (Number(md.hours ?? existing.quantity) || 0) + (Number(row.metadata?.hours ?? row.quantity) || 0);
+  const rate = Number(md.rate ?? existing.unit_price) || Number(row.metadata?.rate ?? row.unit_price) || 0;
+  const f = labourFields(hours, rate, !!md.rate_overridden, md.labour_auto === true && row.metadata?.labour_auto === true);
+  return { kind: "merge", id: existing.id, patch: { ...asJob(f), item_name: existing.item_name || "Job labour" } };
 }

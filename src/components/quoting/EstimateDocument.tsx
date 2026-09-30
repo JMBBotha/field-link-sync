@@ -117,6 +117,8 @@ export interface EstimateEditing {
   onAddLabour?: (areaId: string) => void;
   onLabourChange?: (id: string, hours: number, rate?: number) => void;
   unassignedLabour?: EstimateEditLine[];
+  /** Delete a labour line (every counted labour line must be removable). */
+  onRemoveLabour?: (id: string) => void;
   /** Labour mode 'job': one Job labour row after the last area; areas show no labour row. */
   jobLabour?: { lines: EstimateEditLine[]; defaultHours: number; onAdd: () => void };
 }
@@ -735,6 +737,7 @@ const EstimateDocument = ({
                     defaultHours={area.defaultLabourHours || 0}
                     onAdd={() => editing.onAddLabour?.(area.id as string)}
                     onChange={editing.onLabourChange}
+                    onRemove={editing.onRemoveLabour}
                   />
                 )}
               </section>
@@ -751,6 +754,7 @@ const EstimateDocument = ({
                   defaultHours={editing.jobLabour.defaultHours}
                   onAdd={editing.jobLabour.onAdd}
                   onChange={editing.onLabourChange}
+                  onRemove={editing.onRemoveLabour}
                 />
               </section>
             )}
@@ -766,10 +770,11 @@ const EstimateDocument = ({
               <div className="border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 print:hidden" data-testid="unassigned-labour">
                 <p className="mb-2 font-semibold">Unassigned labour</p>
                 {editing.unassignedLabour.map((line) => (
-                  <div key={line.id} className="grid items-center gap-2 border-t border-amber-200 py-2 first:border-0 sm:grid-cols-[1fr_100px_120px]">
+                  <div key={line.id} className="grid items-center gap-2 border-t border-amber-200 py-2 first:border-0 sm:grid-cols-[1fr_100px_120px_auto]">
                     <span>{line.name}</span>
                     <Input aria-label="Unassigned labour hours" type="number" min="0" step="0.5" defaultValue={line.quantity} onBlur={(e) => editing.onLabourChange?.(line.id, Number(e.target.value))} className="h-8 text-right" />
                     <Input aria-label="Unassigned labour rate" type="number" min="0" step="0.01" defaultValue={line.unit_price} onBlur={(e) => editing.onLabourChange?.(line.id, line.quantity, Number(e.target.value))} className="h-8 text-right" />
+                    {editing.onRemoveLabour && <button type="button" aria-label="Remove unassigned labour" onClick={() => editing.onRemoveLabour?.(line.id)} className="px-2 text-[11px] underline">Remove</button>}
                   </div>
                 ))}
               </div>
