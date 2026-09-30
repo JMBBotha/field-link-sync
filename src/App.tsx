@@ -161,8 +161,8 @@ const App = () => (
                   {/* Admin layout with nested routes */}
                   <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<AdminHomePage />} />
-                    <Route path="map" element={<AdminMapPage />} />
-                    <Route path="jobs-map" element={<AdminJobsMapPage />} />
+                    <Route path="map" element={<RequireRole allowedRoles={["admin","dispatcher","viewer","field_agent"]} denySalesRep><AdminMapPage /></RequireRole>} />
+                    <Route path="jobs-map" element={<RequireRole allowedRoles={["admin","dispatcher","viewer","field_agent"]} denySalesRep><AdminJobsMapPage /></RequireRole>} />
                     <Route path="dispatch" element={<AdminDispatchPage />} />
                     <Route path="unassigned-queue" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminUnassignedQueuePage /></RequireRole>} />
 
@@ -177,7 +177,7 @@ const App = () => (
                     <Route path="templates" element={<AdminProposalsPage />} />
                     <Route path="invoices" element={<AdminInvoicesPage />} />
                     <Route path="invoices/:id" element={<AdminInvoicesPage />} />
-                    <Route path="money" element={<AdminMoneyPage />} />
+                    <Route path="money" element={<RequireRole allowedRoles={["admin"]}><AdminMoneyPage /></RequireRole>} />
                     <Route path="my-commission" element={<AdminMyCommissionPage />} />
                     <Route path="help" element={<AdminHelpPage />} />
 
@@ -187,14 +187,14 @@ const App = () => (
                     <Route path="maintenance" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminMaintenancePage /></RequireRole>} />
                     <Route path="customers" element={<AdminCustomersPage />} />
                     <Route path="customers/:id" element={<AdminCustomerDetailPage />} />
-                    <Route path="inventory" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><InventoryList /></RequireRole>} />
-                    <Route path="reports" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><ReportBuilder /></RequireRole>} />
-                    <Route path="reports/advanced" element={<RequireRole allowedRoles={["admin"]}><AdminAdvancedReportsPage /></RequireRole>} />
-                    <Route path="reports/aging" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><AccountsAgingReportPage /></RequireRole>} />
-                    <Route path="reports/sales-by-client" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><SalesByClientReportPage /></RequireRole>} />
-                    <Route path="reports/sales-by-product" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><SalesByProductReportPage /></RequireRole>} />
-                    <Route path="reports/vat" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><VatSummaryReportPage /></RequireRole>} />
-                    <Route path="analytics" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><AnalyticsDashboard /></RequireRole>} />
+                    <Route path="inventory" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><InventoryList /></RequireRole>} />
+                    <Route path="reports" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} denySalesRep><ReportBuilder /></RequireRole>} />
+                    <Route path="reports/advanced" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminAdvancedReportsPage /></RequireRole>} />
+                    <Route path="reports/aging" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} denySalesRep><AccountsAgingReportPage /></RequireRole>} />
+                    <Route path="reports/sales-by-client" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} denySalesRep><SalesByClientReportPage /></RequireRole>} />
+                    <Route path="reports/sales-by-product" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} denySalesRep><SalesByProductReportPage /></RequireRole>} />
+                    <Route path="reports/vat" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} denySalesRep><VatSummaryReportPage /></RequireRole>} />
+                    <Route path="analytics" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} denySalesRep><AnalyticsDashboard /></RequireRole>} />
                     <Route path="notifications" element={<RequireRole allowedRoles={["admin"]}><AdminNotificationSettings /></RequireRole>} />
                     <Route path="change-requests" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminChangeRequestsPage /></RequireRole>} />
 
@@ -203,8 +203,8 @@ const App = () => (
                     <Route path="settings" element={<RequireRole allowedRoles={["admin"]}><AdminSettingsPage /></RequireRole>} />
                     <Route path="team" element={<RequireRole allowedRoles={["admin"]}><AdminTeamPage /></RequireRole>} />
                     <Route path="billing" element={<Navigate to="/admin/invoices" replace />} />
-                    <Route path="suppliers" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminSuppliersPage /></RequireRole>} />
-                    <Route path="consumables" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminConsumablesPage /></RequireRole>} />
+                    <Route path="suppliers" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSuppliersPage /></RequireRole>} />
+                    <Route path="consumables" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminConsumablesPage /></RequireRole>} />
                     {/* WhatsApp quote bot retired — page hidden (the backend function is a no-op behind WHATSAPP_QUOTE_BOT_ENABLED). */}
                     <Route path="whatsapp" element={<Navigate to="/admin" replace />} />
                     <Route path="calls" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminCallsPage /></RequireRole>} />
