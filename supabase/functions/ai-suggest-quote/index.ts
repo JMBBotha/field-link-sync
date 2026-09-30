@@ -7,22 +7,38 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // Company scoping (2026-09-30): only a signed-in user may call this, and past prices come
+    // from the caller's own company only. past_quote_analytics filters on caller_company_id()
+    // when it runs under the caller's JWT (the service role would return every company's data).
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!/^Bearer\s+\S+/i.test(authHeader)) return json({ error: "Unauthorized" }, 401);
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: userData, error: userErr } = await supabase.auth.getUser(authHeader.replace(/^Bearer\s+/i, ""));
+    if (userErr || !userData?.user) return json({ error: "Unauthorized" }, 401);
+
     const { jobType, siteNotes } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Get historical quote data
-    const { data: pastItems } = await supabase.rpc("past_quote_analytics", {
+    // Get historical quote data — caller's company only (runs as the caller).
+    const { data: pastData, error: pastErr } = await supabase.rpc("past_quote_analytics", {
       p_job_type: jobType || null,
     });
+    if (pastErr) console.warn("past_quote_analytics unavailable for caller:", pastErr.message);
+    const pastItems: any[] = pastErr ? [] : (pastData ?? []);
 
     const historicalContext = pastItems?.length
       ? `Historical line items from ${pastItems.length} similar past quotes:\n${pastItems
