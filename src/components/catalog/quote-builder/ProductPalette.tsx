@@ -726,6 +726,8 @@ const ProductPalette = ({
 }: ProductPaletteProps) => {
   const [selectedCollapsed, setSelectedCollapsed] = useState(true);
   const [pipingKitsCollapsed, setPipingKitsCollapsed] = useState(true);
+  // Kits stay visible while searching or under Favs so matches / starred kits are not hidden behind the pill.
+  const bundlesVisible = !pipingKitsCollapsed || searchQuery.trim().length > 0 || categoryFilter === "favorites";
   const recentIds = useMemo(() => getRecentProductIds(), [products]);
   const filteredProducts = useMemo(() => {
     let result = products;
@@ -884,19 +886,22 @@ const ProductPalette = ({
 
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="p-2 space-y-3">
-          {/* Bundles as compact buttons — desktop/tablet only */}
-          {categoryFilter === "piping" && filteredBundles.length > 0 && (
+          {/* Bundles: one pill button at the top, closed by default — desktop/tablet only */}
+          {filteredBundles.length > 0 && (
             <div className="hidden sm:block">
               <button
                 type="button"
-                className="flex w-full items-center gap-1 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+                data-testid="palette-bundles-pill"
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
+                  bundlesVisible ? "border-primary bg-primary text-primary-foreground" : "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
+                }`}
                 onClick={() => setPipingKitsCollapsed((collapsed) => !collapsed)}
-                aria-expanded={!pipingKitsCollapsed}
+                aria-expanded={bundlesVisible}
               >
-                {pipingKitsCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                Piping kits · {filteredBundles.length}
+                {bundlesVisible ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                {categoryFilter === "piping" ? "Piping kits" : "Bundles"} · {filteredBundles.length}
               </button>
-              {!pipingKitsCollapsed && (
+              {bundlesVisible && (
                 <div className="mt-1.5 space-y-1">
                   {filteredBundles.map((bundle) => (
                     <BundlePaletteButton
@@ -910,26 +915,6 @@ const ProductPalette = ({
                   ))}
                 </div>
               )}
-            </div>
-          )}
-
-          {categoryFilter !== "piping" && filteredBundles.length > 0 && (
-            <div className="hidden sm:block">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
-                📦 Bundles ({filteredBundles.length})
-              </p>
-              <div className="space-y-1">
-                {filteredBundles.map((bundle) => (
-                  <BundlePaletteButton
-                    key={bundle.id}
-                    bundle={bundle}
-                    searchTerm={searchQuery}
-                    isDraggingGlobal={isDraggingGlobal}
-                    baskets={baskets}
-                    onAddBundleToBasket={onAddBundleToBasket}
-                  />
-                ))}
-              </div>
             </div>
           )}
 

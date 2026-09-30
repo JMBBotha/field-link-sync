@@ -218,14 +218,12 @@ export default function EstimateBuilder({
     }
 
     if (!collapseReadyRef.current) {
-      setCollapsedAreaKeys(new Set(currentAreaKeys));
+      // Room sections open expanded by default (Johan 2026-09-30); installation materials stay collapsed in EstimateDocument.
+      setCollapsedAreaKeys(new Set());
       collapseReadyRef.current = true;
     } else {
       setCollapsedAreaKeys((current) => {
         const next = new Set([...current].filter((key) => currentAreaKeys.has(key)));
-        for (const key of currentAreaKeys) {
-          if (!previousAreaKeysRef.current.has(key)) next.add(key);
-        }
         for (const [lineId, key] of currentLineAreas) {
           if (previousLineAreasRef.current.get(lineId) !== key) next.delete(key);
         }
