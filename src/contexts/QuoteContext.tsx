@@ -20,6 +20,7 @@ import type {
 } from "@/types/quote";
 import { needsDefaultArea, getDefaultAreaName } from "@/utils/quoteTransformers";
 import { DEFAULT_CATEGORY_MARKUPS, setActiveQuoteMarkupRates, type CategoryMarkupRates } from "@/lib/pricing";
+import { isJobLabour, normalizeLabourMode, planLabourInsert } from "@/lib/areaLabour";
 
 /* ────────────────── Types ────────────────── */
 
@@ -403,7 +404,24 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   }, [fetchAll]);
 
   /* ── Items ── */
-  const addItem = useCallback(async (item: Omit<QuoteItemInsert, "quote_id">): Promise<QuoteItem | null> => {
+  const addItem = useCallback(async (item0: Omit<QuoteItemInsert, "quote_id">): Promise<QuoteItem | null> => {
+    // Job labour mode: one job labour line. A labour insert merges into it (every caller, incl. Mandy, lands here).
+    const plan = planLabourInsert(normalizeLabourMode(meta?.labour_mode), itemsRef.current, item0);
+    if (plan.kind === "merge") {
+      const before = itemsRef.current.find((i) => i.id === plan.id);
+      setItems((prev) => prev.map((i) => i.id === plan.id ? { ...i, ...plan.patch } as QuoteItem : i));
+      const res = await track(supabase.from("quote_items").update(plan.patch as TablesUpdate<"quote_items">).eq("id", plan.id).select().single());
+      if (!mountedRef.current) return null;
+      if (res.error || !res.data) {
+        toast({ title: "Error adding labour", description: res.error?.message || "Nothing was saved.", variant: "destructive" });
+        if (before) setItems((prev) => prev.map((i) => i.id === plan.id ? before : i));
+        return null;
+      }
+      const merged = res.data as unknown as QuoteItem;
+      setItems((prev) => prev.map((i) => i.id === plan.id ? merged : i));
+      return merged;
+    }
+    const item = plan.row as Omit<QuoteItemInsert, "quote_id">;
     const optimisticId = item.id || crypto.randomUUID();
     const insertData = { ...item, id: optimisticId, quote_id: quoteId };
     const optimistic: QuoteItem = {
@@ -434,7 +452,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     setItems((prev) => prev.map((i) => i.id === optimisticId ? real : i));
     setTimeout(() => optimisticIdsRef.current.delete(optimisticId), 5000);
     return real;
-  }, [quoteId]);
+  }, [quoteId, meta?.labour_mode]);
 
   const updateItem = useCallback(async (id: string, patch: QuoteItemUpdate) => {
     setItems((prev) => prev.map((i) => i.id === id ? { ...i, ...patch } as QuoteItem : i));
@@ -491,7 +509,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       const currentAreas = areasRef.current;
       if (!needsDefaultArea(currentItems, currentAreas)) {
         if (currentAreas.length > 0) {
-          const orphans = currentItems.filter((i) => !i.area_id && !i.parent_item_id);
+          const orphans = currentItems.filter((i) => !i.area_id && !i.parent_item_id && !isJobLabour(i as any));
           if (orphans.length > 0) {
             const defaultArea = currentAreas[0];
             const results = await track(Promise.all(orphans.map((i) =>
@@ -507,7 +525,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
               revert(fetchAll);
             } else {
               setItems((prev) => prev.map((i) =>
-                !i.area_id && !i.parent_item_id ? { ...i, area_id: defaultArea.id } : i
+                !i.area_id && !i.parent_item_id && !isJobLabour(i as any) ? { ...i, area_id: defaultArea.id } : i
               ));
             }
           }
@@ -517,7 +535,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       }
       const area = await addArea(getDefaultAreaName());
       if (area && mountedRef.current) {
-        const orphans = itemsRef.current.filter((i) => !i.area_id && !i.parent_item_id);
+        const orphans = itemsRef.current.filter((i) => !i.area_id && !i.parent_item_id && !isJobLabour(i as any));
         if (orphans.length > 0) {
           const results = await track(Promise.all(orphans.map((i) =>
             supabase
@@ -532,7 +550,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
             revert(fetchAll);
           } else {
             setItems((prev) => prev.map((i) =>
-              !i.area_id && !i.parent_item_id ? { ...i, area_id: area.id } : i
+              !i.area_id && !i.parent_item_id && !isJobLabour(i as any) ? { ...i, area_id: area.id } : i
             ));
           }
         }
