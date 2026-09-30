@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { Home, Briefcase, Map, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSalesRep } from "@/hooks/useSalesRep";
 
 interface AdminBottomNavProps {
   onOpenMenu: () => void;
@@ -14,6 +15,9 @@ const tabs = [
 
 const AdminBottomNav = ({ onOpenMenu }: AdminBottomNavProps) => {
   const { pathname } = useLocation();
+  const { isSalesRep } = useSalesRep();
+  const visibleTabs = isSalesRep ? tabs.filter((t) => t.to !== "/admin/map") : tabs;
+  const gridCols = visibleTabs.length + 1 === 3 ? "grid-cols-3" : "grid-cols-4";
 
   const isActive = (to: string, exact?: boolean) =>
     exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
@@ -23,8 +27,8 @@ const AdminBottomNav = ({ onOpenMenu }: AdminBottomNavProps) => {
       className="lg:hidden fixed bottom-0 inset-x-0 z-40 h-16 border-t border-slate-700/60 bg-gradient-to-b from-slate-800 to-slate-900 text-slate-100 backdrop-blur-md [--muted-foreground:215_20%_75%] [--foreground:210_40%_98%]"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="grid grid-cols-4 h-full">
-        {tabs.map((tab) => {
+      <div className={cn("grid h-full", gridCols)}>
+        {visibleTabs.map((tab) => {
           const active = isActive(tab.to, tab.exact);
           return (
             <NavLink

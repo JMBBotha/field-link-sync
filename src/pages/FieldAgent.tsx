@@ -1194,10 +1194,10 @@ const FieldAgent = () => {
           <div className="flex items-center gap-2 md:gap-3">
             <img src={logo} alt="Be Cool Logo" className="h-10 md:h-[4.5rem]" />
             <div className="hidden md:block h-6 w-px bg-white/30" />
-            <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="hidden md:flex gap-1 text-white hover:bg-white/20">
+            {(roleIsAdmin || roleIsDispatcher) && <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="hidden md:flex gap-1 text-white hover:bg-white/20">
               <ArrowLeft className="h-4 w-4 text-white" />
               Dashboard
-            </Button>
+            </Button>}
             {canOpenQuoteBuilder && <Button variant="ghost" size="sm" onClick={() => navigate("/field/quote-builder")} className="hidden md:flex gap-1 text-white hover:bg-white/20">
               <Calculator className="h-4 w-4 text-white" />
               Quote Builder
@@ -1247,7 +1247,7 @@ const FieldAgent = () => {
               />
             </div>
             <div className="h-5 w-px bg-white/30" />
-            {isMobile && (
+            {isMobile && (roleIsAdmin || roleIsDispatcher) && (
               <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="text-white hover:bg-white/20 p-2">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
