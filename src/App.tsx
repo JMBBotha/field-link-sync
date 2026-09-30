@@ -47,6 +47,7 @@ import AdminMyJobsPage from "./pages/admin/AdminMyJobsPage";
 import AdminMyAppointmentsPage from "./pages/admin/AdminMyAppointmentsPage";
 import AdminPriceListsPage from "./pages/admin/AdminPriceListsPage";
 import FieldSchedulePage from "./pages/FieldSchedulePage";
+import FieldJobSheetPage from "./pages/FieldJobSheetPage";
 
 // Lazy-loaded admin pages (simple wrappers)
 import ScheduleCalendar from "./components/scheduling/ScheduleCalendar";
@@ -232,6 +233,9 @@ const App = () => (
 
                   {/* Field agent Schedule (agenda view) */}
                   <Route path="/field/schedule" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldSchedulePage /></RequireRole>} />
+
+                  {/* Tech job sheet: no money, packing list from get_job_packing_list */}
+                  <Route path="/field/jobs/:id" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldJobSheetPage /></RequireRole>} />
 
                   {/* Tech "My earnings" (Job 6) */}
                   <Route path="/field/earnings" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldEarningsPage /></RequireRole>} />

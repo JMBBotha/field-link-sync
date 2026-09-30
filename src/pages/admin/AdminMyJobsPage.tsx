@@ -284,17 +284,15 @@ const AdminMyJobsPage = () => {
                     </div>
                   )}
 
-                  {/* Quote / build path for install jobs carrying a quote */}
-                  {job.quote_id && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1.5 text-xs"
-                      onClick={() => navigate(`/admin/estimates/${job.quote_id}`)}
-                    >
-                      <FileText className="h-3.5 w-3.5" /> Open estimate
-                    </Button>
-                  )}
+                  {/* Tech job sheet (no prices) with the packing list */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs"
+                    onClick={() => navigate(`/field/jobs/${job.id}`)}
+                  >
+                    <FileText className="h-3.5 w-3.5" /> Job sheet
+                  </Button>
 
                   {/* Full-width action buttons — mobile-friendly touch targets */}
                   {(() => {

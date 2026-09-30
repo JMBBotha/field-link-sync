@@ -133,7 +133,7 @@ const FieldSchedulePage = () => {
                   <Card
                     key={e.key}
                     className="cursor-pointer active:scale-[0.99] transition-transform"
-                    onClick={() => e.job_id && navigate(`/admin/jobs/${e.job_id}`)}
+                    onClick={() => e.job_id && navigate(`/field/jobs/${e.job_id}`)}
                   >
                     <CardContent className="p-3 flex items-center gap-3">
                       <span className="font-semibold tabular-nums">{String(e.start_time || "").slice(0, 5)}</span>
@@ -173,7 +173,7 @@ const FieldSchedulePage = () => {
                     <Card
                       key={r.assignment_id}
                       className="overflow-hidden active:scale-[0.99] transition-transform cursor-pointer"
-                      onClick={() => navigate(`/admin/jobs/${r.job_id}`)}
+                      onClick={() => navigate(`/field/jobs/${r.job_id}`)}
                     >
                       <CardContent className="p-4 space-y-2">
                         <div className="flex items-start justify-between gap-3">
@@ -270,7 +270,7 @@ const FieldSchedulePage = () => {
                     <Card
                       key={r.assignment_id}
                       className="cursor-pointer active:scale-[0.99] transition-transform"
-                      onClick={() => navigate(`/admin/jobs/${r.job_id}`)}
+                      onClick={() => navigate(`/field/jobs/${r.job_id}`)}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-2">
