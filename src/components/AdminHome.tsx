@@ -280,6 +280,12 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
     { key: "service_leads", label: "Service leads", value: serviceLeads, icon: Wrench, color: "text-green-500", sparkKey: "leads" as const, sparkColor: "#22c55e" },
     { key: "deposits_due", label: "Installs awaiting deposit", value: d1?.depositsDue ?? 0, icon: Wallet, color: "text-orange-500", sparkKey: "leads" as const, sparkColor: "#f97316" },
   ], [stats, jobStats, inboxCount, d1, serviceLeads]);
+  const SALES_REP_HIDDEN_KPIS = ["overdue_invoices", "active_techs", "deposits_due"];
+  const kpiCards = useMemo(
+    () => (isSalesRep ? kpiCardsAll.filter((k) => !SALES_REP_HIDDEN_KPIS.includes(k.key)) : kpiCardsAll),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [kpiCardsAll, isSalesRep],
+  );
 
   const [showMore, setShowMore] = useState(false);
 
@@ -557,7 +563,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           {/* Secondary KPIs */}
           {stats && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Card className="surface-card surface-card-interactive cursor-pointer" role="link" tabIndex={0} onClick={() => navigate(TILE_LINKS.revenueToday)} onKeyDown={(e) => { if (e.key === "Enter") navigate(TILE_LINKS.revenueToday); }}>
+              {!isSalesRep && <Card className="surface-card surface-card-interactive cursor-pointer" role="link" tabIndex={0} onClick={() => navigate(TILE_LINKS.revenueToday)} onKeyDown={(e) => { if (e.key === "Enter") navigate(TILE_LINKS.revenueToday); }}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <RandSign className="h-4 w-4 text-primary" />
@@ -565,7 +571,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                   </div>
                   <p className="text-2xl font-bold">R {(stats.revenueToday ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</p>
                 </CardContent>
-              </Card>
+              </Card>}
               <Card className="surface-card surface-card-interactive cursor-pointer" role="link" tabIndex={0} onClick={() => navigate(TILE_LINKS.overdueMaintenance)} onKeyDown={(e) => { if (e.key === "Enter") navigate(TILE_LINKS.overdueMaintenance); }}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-1">
@@ -579,7 +585,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           )}
 
           {/* Jobs & Dispatch overview */}
-          {jobStats && (
+          {jobStats && !isSalesRep && (
             <div>
               <h3 className="text-sm font-semibold mb-2 flex items-center gap-2 text-muted-foreground">
                 <Briefcase className="h-4 w-4" /> Jobs & Dispatch
@@ -610,14 +616,16 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           )}
 
           {/* Live Map — same view as the sidebar "Map" page */}
-          <Card className="surface-card-solid overflow-hidden">
-            <div className="relative w-full h-[70vh] min-h-[480px]">
-              <AdminMapPage />
-            </div>
-          </Card>
+          {!isSalesRep && (
+            <Card className="surface-card-solid overflow-hidden">
+              <div className="relative w-full h-[70vh] min-h-[480px]">
+                <AdminMapPage />
+              </div>
+            </Card>
+          )}
 
-          <MoneySummaryCard />
-          <QuotePerformanceWidget />
+          {!isSalesRep && <MoneySummaryCard />}
+          {!isSalesRep && <QuotePerformanceWidget />}
           <CompletedLeadsList />
           <AdminAlertsPanel />
           <SyncConflictsSection />
