@@ -11,7 +11,8 @@ import BundleItemsPopover from "@/components/catalog/quote-builder/BundleItemsPo
 import type { BasketItem } from "@/components/catalog/QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
 import { normalizeMarkupPercent, resolveProductMarkupPercent } from "@/lib/pricing";
-import { lineMarkupPercent, calculateBasketItemCost } from "@/utils/quoteBasketTotals";
+import { lineMarkupPercent, calculateBasketItemCost, calculateBasketItemSell } from "@/utils/quoteBasketTotals";
+import { markupDrift, standardMarkupFor } from "@/lib/priceGuard";
 import { formatRand as formatZAR } from "@/utils/formatRand";
 import {
   resolvePricingUnit,
@@ -23,6 +24,11 @@ import {
   stepQty,
 } from "@/lib/pricingUnits";
 
+
+/** Warn-only chip: the line's markup differs from the standard. Never blocks save/send. */
+const WarnChip = ({ label }: { label: string }) => (
+  <Badge variant="outline" data-testid="markup-warn" title={label} className="text-[8px] px-1 py-0 h-3.5 border-amber-400 bg-amber-50 text-amber-800 shrink-0 truncate max-w-[220px]">⚠ {label}</Badge>
+);
 
 interface SharedBasketItemProps {
   item: BasketItem;
@@ -52,6 +58,7 @@ export function CollapsibleBundleCard({
   // Audit trail: blended kit markup from real kit cost vs sell (display only).
   const kitCost = calculateBasketItemCost(item);
   const kitMarkup = Math.round(lineMarkupPercent(item));
+  const kitWarn = markupDrift(calculateBasketItemSell(item), kitCost, standardMarkupFor(null, true), item.quantity);
 
   const decrement = () =>
     isBundleLength
@@ -108,6 +115,7 @@ export function CollapsibleBundleCard({
               {kitMarkup}% M/Up · cost {formatZAR(kitCost)}
             </Badge>
           )}
+          {kitWarn && <WarnChip label={kitWarn.label} />}
         </div>
 
         {/* Multiplier control */}
@@ -217,6 +225,7 @@ export function RegularItemCard({
   // product's stored markup field — that belonged to the first kit component.
   const baseMarkup = Math.round(lineMarkupPercent(item) || resolveProductMarkupPercent(item.product as any));
   const lineCost = calculateBasketItemCost(item);
+  const warn = markupDrift(calculateBasketItemSell(item), lineCost, standardMarkupFor(item.product), item.quantity);
   const effectiveMarkup = baseMarkup + markupAdj;
 
   const { unitSell: rawUnitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product);
@@ -245,6 +254,7 @@ export function RegularItemCard({
         <div className="min-w-0 flex-1 truncate font-medium flex items-center gap-0.5">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
           <Badge variant="outline" className="text-[7px] px-1 py-0 h-3 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
+          {warn && <WarnChip label={warn.label} />}
           <ProductInfoDialog product={item.product} />
         </div>
         {isMeasured ? (
@@ -299,6 +309,7 @@ export function RegularItemCard({
         <p className="font-medium truncate flex items-center gap-1">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
           <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
+          {warn && <WarnChip label={warn.label} />}
           <ProductInfoDialog product={item.product} />
         </p>
         <div className="flex items-center gap-1.5">

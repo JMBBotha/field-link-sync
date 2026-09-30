@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { calcSellingPrice, resolveProductMarkupPercent } from "@/lib/pricing";
+import { calcSellingPrice, resolveProductMarkupPercent, getActiveQuoteMarkupRates } from "@/lib/pricing";
 import { Info, X, ImageIcon, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useProductAiDescription } from "@/hooks/useProductAiDescription";
@@ -68,6 +68,8 @@ interface ProductInfoDialogProps {
 
 export default function ProductInfoDialog({ product, onMarkupSaved, open: controlledOpen, onOpenChange, showCost = true }: ProductInfoDialogProps) {
   const { isAdmin } = useRole();
+  // Inside an open quote (or on a saved quote line) this dialog never writes the catalogue markup.
+  const inQuote = getActiveQuoteMarkupRates() != null || (product as any).locked_sell_ex_vat != null;
   const btu = detectBTU(product);
   const initialMarkup = resolveProductMarkupPercent(product as any);
   const costPrice = product.cost_price || product.cost_excl_vat || 0;
@@ -87,7 +89,7 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
   const pricing = { sellingPrice, markupPercent };
 
   const handleSaveMarkup = async () => {
-    if (costPrice <= 0) return;
+    if (costPrice <= 0 || inQuote) return;
     setSaving(true);
     const { error } = await supabase
       .from("supplier_products")
@@ -216,7 +218,10 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
                 </p>
               )}
 
-              {isAdmin && (
+              {isAdmin && inQuote && (
+                <p className="text-[11px] text-muted-foreground">Catalogue markup is changed on the Catalogue page. A quote line's markup stays on that quote.</p>
+              )}
+              {isAdmin && !inQuote && (
                 <>
                   <Separator />
                   <div className="space-y-2">

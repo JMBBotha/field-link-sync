@@ -47,6 +47,8 @@ export interface EstimateEditLine {
   isService?: boolean;
   /** Staff-only muted note next to the price (e.g. "cost R 1 234"); set by the staff builder only. */
   staffNote?: string | null;
+  /** Staff-only warn chip: markup differs from the standard (warn only, never on the client PDF). */
+  priceWarn?: string | null;
   /** Display-only short name (kit title / install companion); item_name is never rewritten unless edited. */
   displayName?: string | null;
   /** Unit next to qty, e.g. "3 m", "1 each", "0.5 × 3 m length", "3.5 h". */
@@ -628,6 +630,9 @@ const EstimateDocument = ({
                             />
                             {line.staffNote && (
                               <div data-html2canvas-ignore className="text-[10px] text-slate-400 print:hidden">{line.staffNote}</div>
+                            )}
+                            {line.priceWarn && (
+                              <div data-html2canvas-ignore data-testid="markup-warn" className="mt-0.5 inline-block rounded-full border border-amber-400 bg-amber-50 px-1.5 text-[10px] text-amber-800 print:hidden">⚠ {line.priceWarn}</div>
                             )}
                             {line.isService && !line.unit_price && (
                               <div className="text-[10px] italic text-slate-400 print:hidden">price not set</div>

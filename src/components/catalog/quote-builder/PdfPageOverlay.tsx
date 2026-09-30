@@ -1,5 +1,6 @@
 import { memo, useRef, useCallback, useState } from "react";
-import { computeProductPricing, resolveRowCostExVat, resolveProductMarkupPercent } from "@/lib/pricing";
+import { computeProductPricing, resolveRowCostExVat, resolveProductMarkupPercent, normalizeMarkupPercent } from "@/lib/pricing";
+import { standardSell } from "@/lib/priceGuard";
 import { toast } from "@/hooks/use-toast";
 import { parsePdfRowSpecs } from "./parsePdfRowSpecs";
 import { Info, Circle, CheckCircle2, Star } from "lucide-react";
@@ -166,7 +167,7 @@ const isRegionSelected = (
 };
 
 /** Shared select logic (unchanged pricing behaviour) used by the margin tap strip. */
-const selectRegion = (
+export const selectRegion = (
   region: OverlayRegion,
   pdfSelection: PdfSelectionHandlers | undefined,
   baskets: Basket[],
@@ -195,9 +196,9 @@ const selectRegion = (
     // Stored catalog cost is already net of that supplier's trade deal — trust
     // it verbatim. The PDF list column is never used as cost.
     const effectiveCost = resolveRowCostExVat(product, null);
-    const normalizedMarkup = resolveProductMarkupPercent(product);
+    const normalizedMarkup = normalizeMarkupPercent(resolveProductMarkupPercent(product));
     const sellExVat = effectiveCost > 0
-      ? Math.round(effectiveCost * (1 + normalizedMarkup / 100) * 100) / 100
+      ? standardSell(effectiveCost, normalizedMarkup)
       : (computeProductPricing(product).sellExVat || 0);
 
     const specs = parsePdfRowSpecs(region.label || "");

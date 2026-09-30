@@ -3,6 +3,7 @@ import RemoveUnitDialog from "@/components/quoting/RemoveUnitDialog";
 import { applyUnitRemoval, linkedToUnit } from "@/lib/unitInstallLinks";
 import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
+import { unitPricesFor, canMergeRepick, freshProduct } from "@/lib/priceGuard";
 import { planStandardInstall, installBasketItem } from "@/lib/mandy/quoteOps";
 import { DEFAULT_KIT_LENGTH_M } from "@/components/catalog/quote-builder/kitLine";
 import { useInstallTemplates } from "@/hooks/useInstallTemplates";
@@ -111,31 +112,8 @@ export interface PaletteProduct {
  *  to ensure supplier discounts (e.g. Samsung 20%) are always applied.
  */
 export function getEffectiveUnitPrices(product: PaletteProduct, isLengthOverride?: boolean) {
-  const isLength = isLengthOverride ?? (product.sold_in_length && !!product.price_per_metre);
-  const pq = product.pack_qty && product.pack_qty > 1 && !isLength ? product.pack_qty : 1;
-
-  const listPrice = product.cost_excl_vat || 0;
-  const markupPct = resolveProductMarkupPercent(product);
-  const supplierCode = resolveSupplierCode(product.supplier_name);
-
-  // computePricing handles discount + markup; cost_price may already be discounted
-  // Saved quote lines are price-locked: never re-apply markup (see PaletteProduct.locked_sell_ex_vat).
-  const pricing = lockedPricing(product) ?? computePricing(supplierCode, listPrice, markupPct, product.cost_price || null);
-
-  let unitSell: number;
-  let unitCost: number;
-
-  if (isLength) {
-    // For length items, derive per-metre from total
-    const totalLength = product.unit_length || 1;
-    unitCost = pricing.costExVat / totalLength;
-    unitSell = pricing.sellExVat / totalLength;
-  } else {
-    unitSell = pricing.sellExVat / pq;
-    unitCost = pricing.costExVat / pq;
-  }
-
-  return { unitCost, unitSell, isPackItem: pq > 1, packQty: pq };
+  // THE shared unit price (src/lib/priceGuard.ts): sell = cost x (1 + standard markup).
+  return unitPricesFor(product, isLengthOverride);
 }
 
 export interface BasketItem {
@@ -548,7 +526,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
 
         // A unit with a standard install is always its own line (its install hangs off it).
         const unitKey = `${product.id}-${Date.now()}`;
-        const existingProductIndex = plan ? -1 : nextItems.findIndex((i) => !i.isBundle && i.product.id === product.id);
+        const existingProductIndex = plan ? -1 : nextItems.findIndex((i) => !i.isBundle && i.product.id === product.id && canMergeRepick(i.product, product));
         if (existingProductIndex >= 0) {
           const existing = nextItems[existingProductIndex];
           nextItems[existingProductIndex] = isLengthItem
@@ -557,7 +535,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         } else {
           nextItems.push({
             instanceId: unitKey,
-            product,
+            product: freshProduct(product),
             quantity: 1,
             // Metre items start at 1 m (user-entered run) — never the full coil length.
             ...(isLengthItem ? { length: 1 } : {}),
@@ -565,7 +543,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         }
 
         if (autoBundle) {
-          const existingBundleIndex = plan?.template ? -1 : nextItems.findIndex((i) => i.isBundle && i.bundleId === autoBundle.id);
+          const freshKit = buildBundleBasketItem(autoBundle);
+          const existingBundleIndex = plan?.template ? -1 : nextItems.findIndex((i) => i.isBundle && i.bundleId === autoBundle.id && Math.abs((i.bundleUnitPrice || 0) - (freshKit?.bundleUnitPrice || 0)) <= 0.01);
 
           if (existingBundleIndex >= 0) {
             const existingBundle = nextItems[existingBundleIndex];
@@ -573,7 +552,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
               ? { ...existingBundle, length: (existingBundle.length || 1) + 1 }
               : { ...existingBundle, quantity: existingBundle.quantity + 1 };
           } else {
-            const bundleBasketItem = buildBundleBasketItem(autoBundle);
+            const bundleBasketItem = freshKit;
             if (bundleBasketItem) {
               const kitItem = bundleBasketItem.bundlePricingType === "p/meter" ? { ...bundleBasketItem, length: plan!.kitLength } : bundleBasketItem;
               nextItems.push(plan?.template ? { ...kitItem, instanceId: `${unitKey}-kit`, install: { unitKey, role: "piping_kit", template_id: plan.template.id } } : kitItem);
