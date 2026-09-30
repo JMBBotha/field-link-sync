@@ -7783,6 +7783,7 @@ export type Database = {
       }
       create_quote_version: { Args: { p_quote_id: string }; Returns: string }
       decline_quote_by_token: { Args: { p_token: string }; Returns: boolean }
+      delete_job_used_part: { Args: { p_id: string }; Returns: boolean }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
@@ -8098,6 +8099,19 @@ export type Database = {
         }[]
       }
       get_job_billable_hours: { Args: { p_lead_id: string }; Returns: number }
+      get_job_used_parts: {
+        Args: { p_lead_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          line_total: number
+          product_code: string
+          product_id: string
+          product_name: string
+          quantity: number
+          unit_cost: number
+        }[]
+      }
       get_my_assigned_jobs: {
         Args: { p_profile_id: string }
         Returns: {
@@ -8209,6 +8223,7 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_field_tech_only: { Args: { _uid: string }; Returns: boolean }
       is_master_company_user: { Args: { _uid: string }; Returns: boolean }
       is_office_staff: { Args: { _uid: string }; Returns: boolean }
       is_ops_user: { Args: { _user_id: string }; Returns: boolean }
