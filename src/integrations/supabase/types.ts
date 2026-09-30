@@ -8232,6 +8232,7 @@ export type Database = {
       is_master_company_user: { Args: { _uid: string }; Returns: boolean }
       is_office_staff: { Args: { _uid: string }; Returns: boolean }
       is_ops_user: { Args: { _user_id: string }; Returns: boolean }
+      is_sales_rep: { Args: { _uid: string }; Returns: boolean }
       is_staff_member: { Args: { _uid: string }; Returns: boolean }
       job_profit_loss: {
         Args: { p_lead_id: string }
@@ -8330,6 +8331,10 @@ export type Database = {
         }
         Returns: string
       }
+      rep_can_see_invoice: {
+        Args: { _inv: string; _uid: string }
+        Returns: boolean
+      }
       replace_quote_from_builder: {
         Args: {
           p_areas: Json
@@ -8367,6 +8372,9 @@ export type Database = {
           revenue: number
         }[]
       }
+      rh_assert: { Args: { _block_sales: boolean }; Returns: undefined }
+      rh_ops_ok: { Args: { _company: string }; Returns: boolean }
+      rh_photo_ok: { Args: { _name: string; _owner: string }; Returns: boolean }
       search_customers: {
         Args: { max_results?: number; search_term: string }
         Returns: {
@@ -9112,6 +9120,22 @@ export type Database = {
       st_wrapx: {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
+      }
+      tech_can_see_customer: {
+        Args: { _customer: string; _uid: string }
+        Returns: boolean
+      }
+      tech_can_see_job: {
+        Args: { _job: string; _uid: string }
+        Returns: boolean
+      }
+      tech_can_see_lead: {
+        Args: { _lead: string; _uid: string }
+        Returns: boolean
+      }
+      tech_owns_lead: {
+        Args: { _lead: string; _uid: string }
+        Returns: boolean
       }
       unconvert_lead: { Args: { p_lead_id: string }; Returns: undefined }
       unlockrows: { Args: { "": string }; Returns: number }
