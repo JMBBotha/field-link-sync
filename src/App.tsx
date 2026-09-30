@@ -44,6 +44,8 @@ import AdminCustomerDetailPage from "./pages/admin/AdminCustomerDetailPage";
 import AdminJobDetailPage from "./pages/admin/AdminJobDetailPage";
 import AdminJobsDispatchPage from "./pages/admin/AdminJobsDispatchPage";
 import AdminMyJobsPage from "./pages/admin/AdminMyJobsPage";
+import AdminMyAppointmentsPage from "./pages/admin/AdminMyAppointmentsPage";
+import AdminPriceListsPage from "./pages/admin/AdminPriceListsPage";
 import FieldSchedulePage from "./pages/FieldSchedulePage";
 
 // Lazy-loaded admin pages (simple wrappers)
@@ -170,6 +172,7 @@ const App = () => (
                     <Route path="jobs/dispatch" element={<AdminJobsDispatchPage />} />
                     <Route path="jobs/:id" element={<AdminJobDetailPage />} />
                     <Route path="my-jobs" element={<AdminMyJobsPage />} />
+                    <Route path="my-appointments" element={<AdminMyAppointmentsPage />} />
                     <Route path="schedule" element={<ScheduleCalendar />} />
                     <Route path="quotes" element={<AdminQuotesPage />} />
                     <Route path="estimates/:id" element={<AdminEstimateDetailPage />} />
@@ -184,6 +187,7 @@ const App = () => (
                     
                     <Route path="agreements" element={<ServiceAgreements />} />
                     <Route path="catalog" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminCatalogPage /></RequireRole>} />
+                    <Route path="price-lists" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminPriceListsPage /></RequireRole>} />
                     <Route path="maintenance" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminMaintenancePage /></RequireRole>} />
                     <Route path="customers" element={<AdminCustomersPage />} />
                     <Route path="customers/:id" element={<AdminCustomerDetailPage />} />

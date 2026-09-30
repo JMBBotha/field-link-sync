@@ -29,6 +29,7 @@ import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useSalesRep } from "@/hooks/useSalesRep";
+import MyAppointmentsCard from "@/components/admin/MyAppointmentsCard";
 import { fetchTodaysJobs, fetchOverdue, todayInJohannesburg, loadEntries } from "@/lib/todaysJobs";
 import { buildBoardRows } from "@/lib/jobsBoard";
 import { fetchMoneySummary } from "@/lib/moneySummary";
@@ -322,6 +323,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         open={showTemplatePicker}
         onClose={() => setShowTemplatePicker(false)}
       />
+
+      {/* Rep: own upcoming appointments (STEP 3) */}
+      {isSalesRep && <MyAppointmentsCard limit={5} />}
 
       {/* Core 5 KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
