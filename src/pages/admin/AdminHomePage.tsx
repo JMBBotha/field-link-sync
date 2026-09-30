@@ -5,12 +5,14 @@ import CreateLeadDialog from "@/components/CreateLeadDialog";
 import MapView from "@/components/MapView";
 import OfferCards from "@/components/dispatch/OfferCards";
 import { Button } from "@/components/ui/button";
+import { useSalesRep } from "@/hooks/useSalesRep";
 
 import { Map, ExternalLink, Maximize2, Minimize2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 const AdminHomePage = () => {
   const navigate = useNavigate();
+  const { isSalesRep } = useSalesRep();
   const [showCreateLead, setShowCreateLead] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -57,10 +59,12 @@ const AdminHomePage = () => {
             <Map className="h-3.5 w-3.5" />
             Dashboard
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => navigate("/admin/map")} className="gap-1.5 text-xs h-8">
-            <Map className="h-3.5 w-3.5" />
-            Live Map
-          </Button>
+          {!isSalesRep && (
+            <Button size="sm" variant="ghost" onClick={() => navigate("/admin/map")} className="gap-1.5 text-xs h-8">
+              <Map className="h-3.5 w-3.5" />
+              Live Map
+            </Button>
+          )}
           <Button size="sm" variant="ghost" onClick={toggleFullscreen} className="gap-1.5 text-xs h-8">
             {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
             {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}

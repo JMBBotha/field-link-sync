@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole, type AppRole } from "@/hooks/useRole";
+import { useSalesRep } from "@/hooks/useSalesRep";
 import { Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -13,6 +14,8 @@ interface RequireRoleProps {
   redirectTo?: string;
   /** When true, denied users are redirected instead of seeing the Access Denied screen */
   redirectOnDeny?: boolean;
+  /** When true, sales reps are treated as having no access */
+  denySalesRep?: boolean;
   children: ReactNode;
 }
 
@@ -23,15 +26,18 @@ interface RequireRoleProps {
  * Consumes role from useRole() (which uses useAuth internally) so there is
  * a single source of truth for both session and role data.
  */
-const RequireRole = ({ allowedRoles, redirectTo, redirectOnDeny, children }: RequireRoleProps) => {
+const RequireRole = ({ allowedRoles, redirectTo, redirectOnDeny, denySalesRep, children }: RequireRoleProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const { session, loading: authLoading } = useAuth();
   const { roles, loading: roleLoading } = useRole();
 
-  const loading = authLoading || roleLoading;
-  const hasAccess = roles.some((r) => allowedRoles.includes(r));
+  const salesRep = useSalesRep();
+
+  const loading = authLoading || roleLoading || (!!denySalesRep && salesRep.loading);
+  const hasAccess =
+    roles.some((r) => allowedRoles.includes(r)) && !(denySalesRep && salesRep.isSalesRep);
 
   useEffect(() => {
     // Only fire redirect logic after both auth and role loading are settled.

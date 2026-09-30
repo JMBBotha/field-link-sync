@@ -28,6 +28,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useSalesRep } from "@/hooks/useSalesRep";
 import { fetchTodaysJobs, fetchOverdue, todayInJohannesburg, loadEntries } from "@/lib/todaysJobs";
 import { buildBoardRows } from "@/lib/jobsBoard";
 import { fetchMoneySummary } from "@/lib/moneySummary";
@@ -268,7 +269,8 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const serviceLeads = useMemo(() => filterLeadsByLane(inboxLeads as any[], "service").length, [inboxLeads]);
 
   // Core 5 KPIs — focused on Lead → Job → Invoice flow
-  const kpiCards = useMemo(() => [
+  const { isSalesRep } = useSalesRep();
+  const kpiCardsAll = useMemo(() => [
     { key: "new_leads", label: "New Leads", value: inboxCount, icon: Plus, color: "text-primary", sparkKey: "leads" as const, sparkColor: "#0077B6" },
     { key: "active_jobs", label: "Today's Jobs", value: stats?.activeJobs ?? 0, icon: Clock, color: "text-green-500", sparkKey: "active" as const, sparkColor: "#22c55e" },
     { key: "pending_quotes", label: "Pending Quotes", value: stats?.pendingQuotes ?? 0, icon: FileText, color: "text-orange-500", sparkKey: "leads" as const, sparkColor: "#f97316" },

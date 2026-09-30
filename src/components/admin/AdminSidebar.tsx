@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole, type AppRole } from "@/hooks/useRole";
+import { useSalesRep } from "@/hooks/useSalesRep";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { LayoutDashboard, CalendarDays, FileText, Receipt, Package, BarChart3, ShoppingBag, LineChart, Bell, History, Upload, Settings, Plus, Users, LogOut, ChevronLeft, ChevronRight, ChevronDown, X, Building2, Briefcase, ClipboardList, Sparkles, HelpCircle, Navigation, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ const AdminSidebar = ({
   const location = useLocation();
   const { isAdmin, isDispatcher, isFieldAgent, roles } = useRole();
   const { settings } = useCompanySettings();
+  const { isSalesRep } = useSalesRep();
   const { count: inboxCount } = useLeadInbox();
 
 
@@ -107,7 +109,7 @@ const AdminSidebar = ({
         },
         { path: "/admin/my-commission", label: "My commission", icon: Wallet, roles: ["admin", "dispatcher"] },
         { path: "/field/earnings", label: "Tech earnings", icon: Wallet, roles: ["admin"] },
-        { path: "/admin/map", label: "Live Tracking", icon: Navigation },
+        ...(isSalesRep ? [] : [{ path: "/admin/map", label: "Live Tracking", icon: Navigation } as NavItem]),
         {
           path: "/admin/catalog",
           label: "Items",
@@ -116,12 +118,14 @@ const AdminSidebar = ({
           badge: lowStockCount > 0 ? lowStockCount : undefined,
           children: [
             { path: "/admin/catalog", label: "Catalog", icon: ShoppingBag },
-            { path: "/admin/inventory", label: "Stock", icon: Package, badge: lowStockCount > 0 ? lowStockCount : undefined },
-            { path: "/admin/suppliers", label: "Suppliers", icon: Building2 },
+            ...(isSalesRep ? [] : [
+              { path: "/admin/inventory", label: "Stock", icon: Package, badge: lowStockCount > 0 ? lowStockCount : undefined } as NavItem,
+              { path: "/admin/suppliers", label: "Suppliers", icon: Building2 } as NavItem,
+            ]),
           ],
         },
         { path: "/admin/team", label: "Team Members", icon: Users, roles: ["admin"] },
-        {
+        ...(isSalesRep ? [] : [{
           path: "/admin/reports",
           label: "Reports",
           icon: BarChart3,
@@ -133,7 +137,7 @@ const AdminSidebar = ({
             { path: "/admin/reports/vat", label: "VAT Summary", icon: Receipt },
             { path: "/admin/analytics", label: "Analytics", icon: LineChart },
           ],
-        },
+        } as NavItem]),
       ],
     },
   ];
@@ -373,7 +377,7 @@ const AdminSidebar = ({
         )}
       >
         <button
-          onClick={() => handleNav("/admin/settings")}
+          onClick={() => handleNav(isSalesRep ? "/admin" : "/admin/settings")}
           className={cn(
             "flex w-full flex-col items-center gap-2 rounded-md p-2 transition-colors hover:bg-white/[0.07]",
             collapsed && "gap-0 p-1"
@@ -466,7 +470,7 @@ const AdminSidebar = ({
       {/* Secondary links */}
       <div className={cn("border-t border-nav-border px-2 py-2 space-y-px", collapsed && "px-1")}>
         {[
-          { path: "/admin/settings", label: "Settings", icon: Settings },
+          ...(isSalesRep ? [] : [{ path: "/admin/settings", label: "Settings", icon: Settings }]),
           { path: "/admin/help", label: "Help", icon: HelpCircle },
         ].map((item) => (
           <button
