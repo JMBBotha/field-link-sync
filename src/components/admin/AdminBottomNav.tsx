@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { Home, Briefcase, Map, Menu } from "lucide-react";
+import { Home, Briefcase, Map, Menu, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSalesRep } from "@/hooks/useSalesRep";
 
@@ -16,7 +16,10 @@ const tabs = [
 const AdminBottomNav = ({ onOpenMenu }: AdminBottomNavProps) => {
   const { pathname } = useLocation();
   const { isSalesRep } = useSalesRep();
-  const visibleTabs = isSalesRep ? tabs.filter((t) => t.to !== "/admin/map") : tabs;
+  // Reps: Map is hidden (step 2); its slot becomes the read-only PDF price lists.
+  const visibleTabs = isSalesRep
+    ? [...tabs.filter((t) => t.to !== "/admin/map"), { to: "/admin/price-lists", label: "Prices", icon: BookOpen }]
+    : tabs;
   const gridCols = visibleTabs.length + 1 === 3 ? "grid-cols-3" : "grid-cols-4";
 
   const isActive = (to: string, exact?: boolean) =>

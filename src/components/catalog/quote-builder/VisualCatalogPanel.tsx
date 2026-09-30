@@ -60,6 +60,8 @@ interface VisualCatalogPanelProps {
   wizardOpen?: boolean;
   /** Shared PDF selection state */
   pdfSelection?: PdfSelectionHandlers;
+  /** Read-only price-list view (/admin/price-lists): hides delete and skips auto-cataloguing. */
+  readOnly?: boolean;
 }
 
 interface PdfPage {
@@ -78,7 +80,7 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 const PINCH_BOUNCE = 0.12;
 
-const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddProductToBasket, onAddSelectedToQuote, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef, wizardOpen, pdfSelection }: VisualCatalogPanelProps) => {
+const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddProductToBasket, onAddSelectedToQuote, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef, wizardOpen, pdfSelection, readOnly = false }: VisualCatalogPanelProps) => {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
@@ -794,7 +796,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
                   currentPageNumber={currentPage.page_number ?? null}
                 />
               )}
-              {currentPage && (
+              {currentPage && !readOnly && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 text-destructive hover:bg-destructive/10" disabled={deleting}>
@@ -972,9 +974,9 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
                           onAddProductToBasket={onAddProductToBasket}
                           basketProductCounts={basketProductCounts}
                           onProductClick={handleProductClick}
-                          onQuickAddProduct={handleQuickAddProduct}
-                          onToggleFavorite={handleToggleFavorite}
-                          onRemoveRegion={handleRemoveRegion}
+                          onQuickAddProduct={readOnly ? undefined : handleQuickAddProduct}
+                          onToggleFavorite={readOnly ? undefined : handleToggleFavorite}
+                          onRemoveRegion={readOnly ? undefined : handleRemoveRegion}
                           scrollContainerRef={scrollContainerRef}
                           onCategoriesDetected={handlePageCategories}
                           totalPages={pages.length}
@@ -988,6 +990,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
                           hdMode={hdMode}
                           supplierType={supplierTypeMap[page.supplier_id]}
                           onImageReady={handlePageImageReady}
+                          readOnly={readOnly}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
@@ -1143,6 +1146,7 @@ interface LazyPdfPageProps {
   hdMode?: boolean;
   supplierType?: string;
   onImageReady?: (pageIndex: number) => void;
+  readOnly?: boolean;
 }
 
 const LazyPdfPage = ({
@@ -1171,6 +1175,7 @@ const LazyPdfPage = ({
   hdMode,
   supplierType,
   onImageReady,
+  readOnly = false,
 }: LazyPdfPageProps) => {
   const queryClient = useQueryClient();
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -1303,8 +1308,8 @@ const LazyPdfPage = ({
         
         console.log(`[VisualCatalog] Page ${page.page_number}: ${regions.length} regions, ${matched.length} matched, ${unmatchedWithPrice.length} unmatched with prices`);
         
-        // Auto-catalog unmatched items with prices
-        if (unmatchedWithPrice.length > 0) {
+        // Auto-catalog unmatched items with prices (never from the read-only price-list view)
+        if (!readOnly && unmatchedWithPrice.length > 0) {
           try {
             const result = await autoCatalogFromRegions(regions, page.supplier_id, page.pdf_upload_id ?? null);
             

@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRole, type AppRole } from "@/hooks/useRole";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { LayoutDashboard, CalendarDays, FileText, Receipt, Package, BarChart3, ShoppingBag, LineChart, Bell, History, Upload, Settings, Plus, Users, LogOut, ChevronLeft, ChevronRight, ChevronDown, X, Building2, Briefcase, ClipboardList, Sparkles, HelpCircle, Navigation, Wallet } from "lucide-react";
+import { LayoutDashboard, CalendarDays, FileText, Receipt, Package, BarChart3, ShoppingBag, LineChart, Bell, History, Upload, Settings, Plus, Users, LogOut, ChevronLeft, ChevronRight, ChevronDown, X, Building2, Briefcase, ClipboardList, Sparkles, HelpCircle, Navigation, Wallet, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -107,6 +107,7 @@ const AdminSidebar = ({
             { path: "/admin/my-jobs", label: "My Jobs", icon: Briefcase },
           ],
         },
+        ...(isSalesRep ? [{ path: "/admin/my-appointments", label: "My appointments", icon: CalendarDays } as NavItem] : []),
         { path: "/admin/my-commission", label: "My commission", icon: Wallet, roles: ["admin", "dispatcher"] },
         { path: "/field/earnings", label: "Tech earnings", icon: Wallet, roles: ["admin"] },
         ...(isSalesRep ? [] : [{ path: "/admin/map", label: "Live Tracking", icon: Navigation } as NavItem]),
@@ -124,6 +125,7 @@ const AdminSidebar = ({
             ]),
           ],
         },
+        { path: "/admin/price-lists", label: "Price lists", icon: BookOpen, roles: ["admin", "dispatcher"] },
         { path: "/admin/team", label: "Team Members", icon: Users, roles: ["admin"] },
         ...(isSalesRep ? [] : [{
           path: "/admin/reports",
