@@ -1,4 +1,5 @@
-import { applyCategoryRatesToAreas } from "@/utils/repriceAreas";
+import { applyCategoryRatesToAreas, draftSafeAreas } from "@/utils/repriceAreas";
+import { canMergeRepick, freshProduct } from "@/lib/priceGuard";
 import { subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot } from "@/lib/pricing";
 import { costPerMetreOf } from "@/lib/pricing";
 /**
@@ -68,7 +69,7 @@ const DRAFT_STORAGE_KEY = "quote-builder-draft";
 
 function saveDraftToStorage(areas: QuoteArea[], step: number) {
   try {
-    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ areas, step, savedAt: Date.now() }));
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ areas: draftSafeAreas(areas), step, savedAt: Date.now() }));
   } catch { /* ignore */ }
 }
 
@@ -153,17 +154,17 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
       
       if (isAC) {
         const btu = detectBTU(product);
-        const newUnit: AreaACUnit = { id: crypto.randomUUID(), product, btu, quantity: 1 };
+        const newUnit: AreaACUnit = { id: crypto.randomUUID(), product: freshProduct(product), btu, quantity: 1 };
         return working.map((a, i) => i === 0 ? { ...a, acUnits: opts?.append ? [...a.acUnits, newUnit] : [newUnit] } : a);
       } else {
-        const existing = targetArea.consumables.find((c) => c.product.id === product.id);
+        const existing = targetArea.consumables.find((c) => c.product.id === product.id && canMergeRepick(c.product, product));
         if (existing) {
           return working.map((a, i) => i === 0 ? {
             ...a,
-            consumables: a.consumables.map((c) => c.product.id === product.id ? { ...c, quantity: c.quantity + 1 } : c)
+            consumables: a.consumables.map((c) => c === existing ? { ...c, quantity: c.quantity + 1 } : c)
           } : a);
         }
-        const newConsumable: AreaConsumable = { id: crypto.randomUUID(), product, quantity: 1 };
+        const newConsumable: AreaConsumable = { id: crypto.randomUUID(), product: freshProduct(product), quantity: 1 };
         return working.map((a, i) => i === 0 ? { ...a, consumables: [...a.consumables, newConsumable] } : a);
       }
     });
@@ -206,14 +207,14 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
         if (a.id !== areaId) return a;
         if (isAC) {
           const btu = detectBTU(product);
-          const newUnit: AreaACUnit = { id: crypto.randomUUID(), product, btu, quantity: 1 };
+          const newUnit: AreaACUnit = { id: crypto.randomUUID(), product: freshProduct(product), btu, quantity: 1 };
           return { ...a, acUnits: opts?.append ? [...a.acUnits, newUnit] : [newUnit] };
         } else {
-          const existing = a.consumables.find((c) => c.product.id === product.id);
+          const existing = a.consumables.find((c) => c.product.id === product.id && canMergeRepick(c.product, product));
           if (existing) {
-            return { ...a, consumables: a.consumables.map((c) => c.product.id === product.id ? { ...c, quantity: c.quantity + 1 } : c) };
+            return { ...a, consumables: a.consumables.map((c) => c === existing ? { ...c, quantity: c.quantity + 1 } : c) };
           }
-          const newConsumable: AreaConsumable = { id: crypto.randomUUID(), product, quantity: 1 };
+          const newConsumable: AreaConsumable = { id: crypto.randomUUID(), product: freshProduct(product), quantity: 1 };
           return { ...a, consumables: [...a.consumables, newConsumable] };
         }
       });

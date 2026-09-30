@@ -3,6 +3,7 @@ import QuoteBuilderLayout from "@/components/quoting/QuoteBuilderLayout";
 import PricingChecksRow from "@/components/quoting/PricingChecksRow";
 import { useMarginView } from "@/hooks/useMarginView";
 import { resolveProductMarkupPercent } from "@/lib/pricing";
+import { canMergeRepick, freshProduct } from "@/lib/priceGuard";
 /**
  * Unified Quote Builder Page — wraps Normal / Visual / Area builders
  * in a shared header with tabs. Each tab renders the real builder component.
@@ -689,12 +690,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
       let updated = prev.length > 0 ? [...prev] : [{ id: "basket-1", name: "Zone 1", items: [] }];
       return updated.map((basket) => {
         if (basket.id !== basketId) return basket;
-        const existing = basket.items.find((i) => i.product.id === product.id);
+        const existing = basket.items.find((i) => i.product.id === product.id && canMergeRepick(i.product, product));
         if (existing) {
           return {
             ...basket,
             items: basket.items.map((i) =>
-            i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
+            i === existing ? { ...i, quantity: i.quantity + 1 } : i
             )
           };
         }
@@ -704,7 +705,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
           ...basket.items,
           {
             instanceId: `${product.id}-${Date.now()}`,
-            product,
+            product: freshProduct(product),
             quantity: 1,
             ...(product.sold_in_length && product.price_per_metre ? { length: 1 } : {})
           }]

@@ -7,7 +7,7 @@
  *  - live catalogue lines follow the active rates automatically
  *  - labour is never marked up
  */
-import { categoryMarkupPercent, r2, type CategoryMarkupRates } from "@/lib/pricing";
+import { categoryMarkupPercent, r2, getActiveQuoteMarkupRates, DEFAULT_CATEGORY_MARKUPS, type CategoryMarkupRates } from "@/lib/pricing";
 import type { QuoteArea, AreaMaterial } from "@/components/catalog/quote-builder/quoteWizardTypes";
 import { repriceProductForRates } from "@/utils/quoteBasketTotals";
 import { withKitLength } from "@/components/catalog/quote-builder/kitLine";
@@ -42,4 +42,10 @@ export function applyCategoryRatesToAreas(areas: QuoteArea[], rates: CategoryMar
     consumables: a.consumables.map((c) => ({ ...c, product: repriceProductForRates(c.product, rates) })),
     materials: a.materials.map((m) => repriceMaterial(m, rates)),
   }));
+}
+
+/** Local-storage drafts never keep a line's own price: every line is saved at the standard (category) markup. */
+export function draftSafeAreas(areas: QuoteArea[], rates: CategoryMarkupRates = getActiveQuoteMarkupRates() ?? DEFAULT_CATEGORY_MARKUPS): QuoteArea[] {
+  const un = <T extends { product: any }>(x: T): T => { const { manual_price_override: _m, ...product } = x.product || {}; return { ...x, product }; };
+  return applyCategoryRatesToAreas(areas.map((a) => ({ ...a, acUnits: a.acUnits.map(un), consumables: a.consumables.map(un), materials: a.materials.map(un) })), rates);
 }

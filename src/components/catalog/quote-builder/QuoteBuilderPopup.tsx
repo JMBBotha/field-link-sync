@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { kitBasketFields } from "./kitLine";
+import { draftSafeAreas } from "@/utils/repriceAreas";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Check, Wand2, X, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -83,7 +84,7 @@ const DRAFT_STORAGE_KEY = "quote-builder-draft";
 
 function saveDraftToStorage(areas: QuoteArea[], step: number) {
   try {
-    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ areas, step, savedAt: Date.now() }));
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ areas: draftSafeAreas(areas), step, savedAt: Date.now() }));
   } catch {
     // localStorage full or unavailable
   }

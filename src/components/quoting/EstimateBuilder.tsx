@@ -40,6 +40,7 @@ import { useLabourNorms } from "@/hooks/useLabourNorms";
 import { serviceNormKey } from "@/lib/pricingChecks";
 import { applyAutoLabourDelta, areaLabourStatus, countAcUnits, labourTargetAreaId, normalizeLabourMode, isJobLabour, defaultLabourHours } from "@/lib/areaLabour";
 import { labourFields, planLabour, standardLabourRate } from "@/lib/labour";
+import { quoteLineDrift } from "@/lib/priceGuard";
 
 interface Props {
   quoteNumber: string;
@@ -174,6 +175,8 @@ export default function EstimateBuilder({
     unitText: qtyLabel({ item_name: i.item_name, quantity: Number(i.quantity || 0), unit_price: Number(i.unit_price || 0), length: (i as any).length ?? null, metadata: i.metadata as any }),
     kitItems: (i.metadata as any)?.kit ? kitContents({ item_name: i.item_name, quantity: 0, length: (i as any).length ?? null, metadata: i.metadata as any }) : null,
     staffNote: margin.visible && lineUnitCostOrNull(i) != null ? `cost ${formatRand(lineUnitCostOrNull(i)!)}` : null,
+    // Warn-only (staff): this line's markup differs from the standard. Never blocks save/send; not on the client PDF.
+    priceWarn: margin.visible ? quoteLineDrift(i as any, i.product_id ? liveProducts.find((p) => p.id === i.product_id) : null)?.label ?? null : null,
   });
 
   const editAreas: EstimateEditArea[] = useMemo(() => {
