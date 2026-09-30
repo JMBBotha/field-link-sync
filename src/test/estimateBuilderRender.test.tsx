@@ -71,4 +71,10 @@ describe("EstimateBuilder opens without an update loop (#185)", () => {
     expect(r.errors).toEqual([]);
     expect(r.crashed).toBe(false);
   });
+  it("opens room sections expanded by default", async () => {
+    await openEstimate(false);
+    expect(document.querySelectorAll('[data-area-collapsed="true"]')).toHaveLength(0);
+    expect(document.querySelectorAll('button[aria-expanded="false"][aria-label^="Show"]')).toHaveLength(0);
+    expect(document.querySelectorAll('[data-area-id] [data-line-id]').length).toBeGreaterThan(0);
+  });
 });

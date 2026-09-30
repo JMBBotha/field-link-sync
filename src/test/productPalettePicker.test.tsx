@@ -80,6 +80,19 @@ describe("ProductPalette piping and kits", () => {
     expect(screen.getByText("Copper piping kit")).toBeInTheDocument();
   });
 
+  it("shows Bundles as a closed pill at the top under All and opens on click", () => {
+    palette({ categoryFilter: "all" });
+    const pill = screen.getByTestId("palette-bundles-pill");
+    expect(pill).toHaveTextContent("Bundles · 2");
+    expect(pill).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Copper piping kit")).not.toBeInTheDocument();
+    fireEvent.click(pill);
+    expect(pill).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Copper piping kit")).toBeInTheDocument();
+    fireEvent.click(pill);
+    expect(screen.queryByText("Copper piping kit")).not.toBeInTheDocument();
+  });
+
   it("shows only favourite kits plus starred products in Favs", () => {
     palette({ categoryFilter: "favorites" });
     expect(screen.getByText(/Starred material/)).toBeInTheDocument();
