@@ -33,18 +33,21 @@ export type CalendarEntry = {
   service_type?: string | null;
   primary_intent?: string | null;
   customer_id?: string | null;
+  notes?: string | null;
+  call_summary?: string | null;
 };
 
 export type ScheduleRowIn = {
   id: string; lead_id: string | null; job_id: string | null; agent_id: string | null;
   scheduled_date: string; start_time: string | null;
-  leads?: { customer_name?: string | null; customer_address?: string | null; status?: string | null; service_type?: string | null; primary_intent?: string | null; customer_id?: string | null } | null;
+  leads?: { customer_name?: string | null; customer_address?: string | null; status?: string | null; service_type?: string | null; primary_intent?: string | null; customer_id?: string | null; notes?: string | null; call_summary?: string | null } | null;
   jobs?: { status?: string | null } | null;
 };
 export type LeadRowIn = {
   id: string; assigned_agent_id: string | null; scheduled_date: string | null; scheduled_time?: string | null;
   status: string | null; customer_name?: string | null; customer_address?: string | null;
   service_type?: string | null; primary_intent?: string | null; customer_id?: string | null;
+  notes?: string | null; call_summary?: string | null;
 };
 
 /** Merge schedule rows + scheduled leads, de-duplicated by job_id / lead_id. */
@@ -58,6 +61,7 @@ export function buildCalendarEntries(schedules: ScheduleRowIn[], leads: LeadRowI
       agent_id: s.agent_id, status: s.job_id ? (s.jobs?.status ?? s.leads?.status ?? null) : (s.leads?.status ?? null),
       customer_name: s.leads?.customer_name ?? null, customer_address: s.leads?.customer_address ?? null,
       service_type: s.leads?.service_type ?? null, primary_intent: s.leads?.primary_intent ?? null, customer_id: s.leads?.customer_id ?? null,
+      notes: s.leads?.notes ?? null, call_summary: s.leads?.call_summary ?? null,
     });
   }
   for (const l of leads) {
@@ -69,6 +73,7 @@ export function buildCalendarEntries(schedules: ScheduleRowIn[], leads: LeadRowI
       agent_id: l.assigned_agent_id, status: l.status, customer_name: l.customer_name ?? null,
       customer_address: l.customer_address ?? null,
       service_type: l.service_type ?? null, primary_intent: l.primary_intent ?? null, customer_id: l.customer_id ?? null,
+      notes: l.notes ?? null, call_summary: l.call_summary ?? null,
     });
   }
   return [...out.values()].sort((a, b) =>
@@ -89,10 +94,10 @@ export function overdueEntries(entries: CalendarEntry[], today: string, agentId?
 export async function loadEntries(opts: { date?: string; before?: string; agentId?: string }): Promise<CalendarEntry[]> {
   let sq = supabase
     .from("job_schedules")
-    .select("id, lead_id, job_id, agent_id, scheduled_date, start_time, leads(customer_name, customer_address, status, service_type, primary_intent, customer_id), jobs(status)");
+    .select("id, lead_id, job_id, agent_id, scheduled_date, start_time, leads(customer_name, customer_address, status, service_type, primary_intent, customer_id, notes, call_summary), jobs(status)");
   let lq = supabase
     .from("leads")
-    .select("id, assigned_agent_id, scheduled_date, scheduled_time, status, customer_name, customer_address, service_type, primary_intent, customer_id")
+    .select("id, assigned_agent_id, scheduled_date, scheduled_time, status, customer_name, customer_address, service_type, primary_intent, customer_id, notes, call_summary")
     .not("assigned_agent_id", "is", null)
     .not("scheduled_date", "is", null)
     .is("deleted_at", null);

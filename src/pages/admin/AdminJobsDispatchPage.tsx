@@ -28,6 +28,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import BoardChip from "@/components/jobs/BoardChip";
 import { LANE_META } from "@/lib/leadLane";
 import { loadEntries } from "@/lib/todaysJobs";
+import CallSummary from "@/components/leads/CallSummary";
+import AttentionStrip from "@/components/jobs/AttentionStrip";
 import { useUndoAction } from "@/components/shared/StatusUndo";
 import { buildBoardRows, groupBoardRows, rowTarget, boardLane, rowAssignee, filterBoardRows, FILTER_KEYS, type BoardRow, type BoardFilters, type Person } from "@/lib/jobsBoard";
 import { AlertTriangle, Eye, X } from "lucide-react";
@@ -321,6 +323,7 @@ const AdminJobsDispatchPage = () => {
               <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span className="min-w-0 flex-1 line-clamp-2 break-words">{e.customer_address}</span>
             </div>
           )}
+          <CallSummary lead={{ notes: e.notes, call_summary: e.call_summary }} compact />
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <CalendarDays className="h-3.5 w-3.5 shrink-0" />
             {e.date}{e.start_time ? ` · ${e.start_time.slice(0, 5)}` : ""}
@@ -375,6 +378,8 @@ const AdminJobsDispatchPage = () => {
           </Button>
         </div>
       </div>
+
+      <AttentionStrip />
 
       {(() => {
         const active = FILTER_KEYS.filter((k) => filters[k]);

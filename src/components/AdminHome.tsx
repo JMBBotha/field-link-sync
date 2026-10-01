@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import LeadCardV2 from "@/components/leads/LeadCardV2";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -188,7 +189,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         supabase.from("profiles").select("id, full_name, availability_status").limit(20),
         supabase.from("notifications").select("id, type, title, body, created_at").order("created_at", { ascending: false }).limit(15),
         fetchOverdueMaintenanceCount(),
-        supabase.from("leads").select("id, customer_name, service_type, customer_address, status, created_at, customer_id").eq("status", "pending").gte("created_at", leadsRangeSince).order("created_at", { ascending: false }).limit(20),
+        supabase.from("leads").select("*").eq("status", "pending").gte("created_at", leadsRangeSince).order("created_at", { ascending: false }).limit(20),
         supabase.from("jobs").select("id, title, status, scheduled_for, address, customer_id").gte("scheduled_for", jobsRangeBounds.start).lt("scheduled_for", jobsRangeBounds.end).order("scheduled_for", { ascending: true }).limit(20),
 
       ]);
@@ -446,14 +447,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               <p className="text-sm text-muted-foreground text-center py-6">No open leads {leadsRange === "day" ? "today" : leadsRange === "week" ? "this week" : "this month"}</p>
             ) : (
               stats.openLeads.map((lead: any) => (
-                <div key={lead.id} className="surface-row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 p-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{lead.customer_name}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {lead.service_type}{lead.customer_address ? ` · ${lead.customer_address}` : ""}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">{format(new Date(lead.created_at), "dd MMM HH:mm")}</p>
-                  </div>
+                <LeadCardV2 key={lead.id} lead={lead} onOpen={() => navigate(`/admin/dispatch?lead=${lead.id}`)} extra={
                    <div className="flex items-center gap-1 shrink-0">
                     {lead.customer_id ? (
                       <Button
@@ -488,7 +482,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                       <Briefcase className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
+                } />
               ))
             )}
           </CardContent>

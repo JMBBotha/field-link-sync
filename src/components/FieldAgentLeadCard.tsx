@@ -9,6 +9,7 @@ import BookingBadge from "@/components/BookingBadge";
 import DepositPaymentChip, { type DepositInvoiceLike } from "@/components/shared/DepositPaymentChip";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 import { cn } from "@/lib/utils";
+import LeadCardV2 from "@/components/leads/LeadCardV2";
 
 interface Lead {
   id: string;
@@ -181,6 +182,14 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
         )}
 
         <CardContent className="p-3 space-y-2">
+          {variant === "available" ? (
+            <LeadCardV2 lead={lead as any} hideContact className="border-0 border-l-0 bg-transparent p-0 shadow-none" action={onAccept ? (
+              <Button size="sm" className="h-8 rounded-full px-4 font-semibold" style={{ backgroundColor: "#0077B6", color: "#FFFFFF" }} disabled={!!loadingAction}
+                onClick={(e) => { e.stopPropagation(); onAccept(lead.id); }}>
+                {loadingAction === "accept" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Accept Lead"}
+              </Button>
+            ) : <span />} extra={distance ? <span className="text-xs text-muted-foreground">{distance}km</span> : undefined} />
+          ) : (<>
           {/* Booking badge */}
           <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={lead.scheduled_time} status={lead.status} />
           <div className="flex items-start justify-between">
@@ -232,25 +241,6 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
             </p>
           )}
 
-          {/* Available lead - Accept button */}
-          {variant === "available" && onAccept && (
-            <Button
-              size="sm"
-              className="w-full h-9 rounded-full font-semibold"
-              style={{ backgroundColor: "#0077B6", color: "#FFFFFF" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onAccept(lead.id);
-              }}
-              disabled={!!loadingAction}
-            >
-              {loadingAction === "accept" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Accept Lead"
-              )}
-            </Button>
-          )}
 
           {/* Active lead - Action buttons */}
           {variant === "active" && (
@@ -319,6 +309,7 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
               compact
             />
           )}
+          </>)}
         </CardContent>
       </Card>
     );
