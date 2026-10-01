@@ -104,6 +104,7 @@ const AdminSidebar = ({
           label: "Jobs & Dispatch",
           icon: Briefcase,
           children: [
+            { path: "/admin/jobs?tab=pipeline", label: "Pipeline", icon: BarChart3, roles: ["admin", "dispatcher", "viewer"] },
             { path: "/admin/jobs/dispatch", label: "Dispatch Board", icon: ClipboardList },
             { path: "/admin/schedule", label: "Schedule", icon: CalendarDays },
             { path: "/admin/my-jobs", label: "My Jobs", icon: Briefcase },

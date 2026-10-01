@@ -46,6 +46,7 @@ import AdminCustomersPage from "./pages/admin/AdminCustomersPage";
 import AdminCustomerDetailPage from "./pages/admin/AdminCustomerDetailPage";
 import AdminJobDetailPage from "./pages/admin/AdminJobDetailPage";
 import AdminJobsDispatchPage from "./pages/admin/AdminJobsDispatchPage";
+import AdminJobsHubPage from "./pages/admin/AdminJobsHubPage";
 import AdminMyJobsPage from "./pages/admin/AdminMyJobsPage";
 import AdminMyAppointmentsPage from "./pages/admin/AdminMyAppointmentsPage";
 import AdminPriceListsPage from "./pages/admin/AdminPriceListsPage";
@@ -174,7 +175,7 @@ const App = () => (
                     <Route path="dispatch" element={<AdminDispatchPage />} />
                     <Route path="unassigned-queue" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminUnassignedQueuePage /></RequireRole>} />
 
-                    <Route path="jobs" element={<Navigate to="/admin/jobs/dispatch" replace />} />
+                    <Route path="jobs" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} redirectTo="/admin/my-jobs" redirectOnDeny><AdminJobsHubPage /></RequireRole>} />
                     <Route path="jobs/dispatch" element={<AdminJobsDispatchPage />} />
                     <Route path="jobs/:id" element={<AdminJobDetailPage />} />
                     <Route path="my-jobs" element={<AdminMyJobsPage />} />
