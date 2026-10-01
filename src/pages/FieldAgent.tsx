@@ -1117,7 +1117,7 @@ const FieldAgent = () => {
       }
       const quoteMap: Record<string, string> = {};
       for (const j of installJobs as any[]) {
-        if (j.lead_id && j.quote_id) quoteMap[j.lead_id] = j.quote_id;
+        if (j.lead_id) quoteMap[j.lead_id] = j.id; // job id: techs open /field/jobs/:id (no money)
       }
       if (!cancelled) setInstallQuoteByLead(quoteMap);
       const found: Record<string, DepositInvoiceLike> = {};

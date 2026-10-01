@@ -264,6 +264,9 @@ const LeadDetailSheet = ({
     // If customer has equipment, show equipment flow next
     if (lead.customer_id) {
       setShowCompletionFlow(true);
+    } else if (invoiceTechOnly) {
+      // Techs never invoice (the DB refuses it): finish the job instead of opening InvoiceForm
+      void onComplete(lead.id, null);
     } else {
       setShowInvoiceForm(true);
     }
@@ -272,6 +275,10 @@ const LeadDetailSheet = ({
   const handleEquipmentSelected = (equipmentId: string | null) => {
     setSelectedEquipmentId(equipmentId);
     setShowCompletionFlow(false);
+    if (invoiceTechOnly) {
+      void onComplete(lead.id, equipmentId);
+      return;
+    }
     setShowInvoiceForm(true);
   };
 

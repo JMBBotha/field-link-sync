@@ -441,7 +441,7 @@ const AdminDispatchPage = () => {
           .from("assignments")
           .select("id")
           .eq("job_id", targetJobId)
-          .eq("assignment_type", "primary")
+          .in("assignment_type", ["primary", "internal"])
           .limit(1);
         if (existingAssignment?.[0]) {
           await supabase.from("assignments").update({ profile_id: agentId } as any).eq("id", existingAssignment[0].id);
@@ -449,8 +449,8 @@ const AdminDispatchPage = () => {
           await supabase.from("assignments").insert([{ job_id: targetJobId, profile_id: agentId, assignment_type: "primary" } as any]);
         }
       } else {
-        // Update lead
-        await supabase
+        // Update lead — check the row really changed (RLS can turn an update into a silent no-op)
+        const { data: assigned, error: assignErr } = await supabase
           .from("leads")
           .update({
             assigned_agent_id: agentId,
@@ -458,7 +458,10 @@ const AdminDispatchPage = () => {
             scheduled_time: startTime,
             assignment_method: laneById.get(agentId) === "sales" ? "manual_sales" : "manual_dispatch",
           })
-          .eq("id", leadId);
+          .eq("id", leadId)
+          .select("id");
+        if (assignErr) throw assignErr;
+        if (!assigned?.length) throw new Error("Not saved: you don't have permission to assign this lead.");
       }
     },
 
