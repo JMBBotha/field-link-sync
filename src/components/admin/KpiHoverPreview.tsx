@@ -12,6 +12,7 @@ import { ChevronRight, Briefcase, Send, Loader2, X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { assertQuotePriced } from "@/lib/quoteSend";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
 
 
@@ -219,6 +220,7 @@ const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) =
     }
     setBusy(`send-${q.id}`);
     try {
+      await assertQuotePriced(q.id);
       const { error } = await supabase.functions.invoke("send-quote-email", {
         body: {
           to: q.email,
