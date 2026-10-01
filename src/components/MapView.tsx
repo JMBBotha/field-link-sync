@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { MapPin, Key, Loader2, AlertCircle, Layers, Navigation, LocateFixed, Maximize2, Minimize2, ExternalLink } from "lucide-react";
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
+import { leadStatusCategory } from "@/lib/leadStatusCategory";
 import { Switch } from "@/components/ui/switch";
 import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
 import { hasValidCoords, resolveLeadCoords } from "@/lib/leadCoords";
@@ -1190,11 +1191,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
     // Filter leads based on active status filters
     const shouldShowLead = (lead: Lead): boolean => {
-      if (lead.status === "pending") return statusFilters.has("pending");
-      if (lead.status === "accepted" || lead.status === "claimed") return statusFilters.has("accepted");
-      if (lead.status === "in_progress") return statusFilters.has("in_progress");
-      if (lead.status === "completed") return statusFilters.has("completed");
-      return false;
+      return statusFilters.has(leadStatusCategory(lead.status));
     };
 
     // Remove stale lead markers (be resilient to transient empty fetches)
@@ -1550,10 +1547,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
                 className="flex-nowrap max-w-[min(92vw,32rem)]"
                 activeFilters={statusFilters}
                 counts={{
-                  pending: leads.filter((l) => l.status === "pending").length,
-                  accepted: leads.filter((l) => l.status === "accepted" || l.status === "claimed").length,
-                  in_progress: leads.filter((l) => l.status === "in_progress").length,
-                  completed: leads.filter((l) => l.status === "completed").length,
+                  pending: leads.filter((l) => leadStatusCategory(l.status) === "pending").length,
+                  accepted: leads.filter((l) => leadStatusCategory(l.status) === "accepted").length,
+                  in_progress: leads.filter((l) => leadStatusCategory(l.status) === "in_progress").length,
+                  completed: leads.filter((l) => leadStatusCategory(l.status) === "completed").length,
+                  cancelled: leads.filter((l) => leadStatusCategory(l.status) === "cancelled").length,
                 }}
                 onToggle={(status) => {
                   setStatusFilters((prev) => {
