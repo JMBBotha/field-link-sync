@@ -55,7 +55,7 @@ const AdminMapPage = () => {
   const [trafficEnabled, setTrafficEnabledState] = useState(false);
   const [statusState, setStatusState] = useState<MapStatusState>({
     filters: new Set<LeadStatusFilter>(["pending", "accepted", "in_progress"]),
-    counts: { pending: 0, accepted: 0, in_progress: 0, completed: 0 },
+    counts: { pending: 0, accepted: 0, in_progress: 0, completed: 0, cancelled: 0 },
   });
 
   const handleStatusStateChange = useCallback((s: MapStatusState) => setStatusState(s), []);

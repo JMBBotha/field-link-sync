@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export type LeadStatusFilter = "pending" | "accepted" | "in_progress" | "completed";
+export type LeadStatusFilter = "pending" | "accepted" | "in_progress" | "completed" | "cancelled";
 
 interface StatusFilterButtonsProps {
   activeFilters: Set<LeadStatusFilter>;
@@ -48,6 +48,14 @@ const statusConfig: Record<
     inactiveText: "text-black dark:text-white",
     dotColor: "bg-foreground",
   },
+  cancelled: {
+    label: "Cancelled",
+    shortLabel: "Cancel",
+    bgColor: "bg-destructive",
+    textColor: "text-destructive-foreground",
+    inactiveText: "text-destructive",
+    dotColor: "bg-destructive",
+  },
 };
 
 const StatusFilterButtons = ({
@@ -58,7 +66,7 @@ const StatusFilterButtons = ({
   counts,
   variant = "default",
 }: StatusFilterButtonsProps) => {
-  const statuses: LeadStatusFilter[] = ["pending", "accepted", "in_progress", "completed"];
+  const statuses: LeadStatusFilter[] = ["pending", "accepted", "in_progress", "completed", "cancelled"];
 
   if (variant === "quiet") {
     return (

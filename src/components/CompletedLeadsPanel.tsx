@@ -72,7 +72,7 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
     const { data } = await supabase
       .from("leads")
       .select("*")
-      .eq("status", "completed")
+      .in("status", ["completed", "converted"])
       .order("completed_at", { ascending: false });
 
     if (data) {

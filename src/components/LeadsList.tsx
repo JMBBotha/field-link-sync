@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { hasValidCoords } from "@/lib/leadCoords";
+import { leadStatusCategory } from "@/lib/leadStatusCategory";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -90,7 +91,7 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
   const useCompact = isMobile || isTabletOrBelow;
   
   // Status chips filter which leads are shown (map page passes its filter set).
-  const visibleLeads = statusFilter ? leads.filter((l) => statusFilter.has(l.status)) : leads;
+  const visibleLeads = statusFilter ? leads.filter((l) => statusFilter.has(leadStatusCategory(l.status))) : leads;
 
   // Get photo counts for all leads
   const leadIds = visibleLeads.map(l => l.id);
@@ -274,6 +275,7 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
   };
 
   const getStatusBadge = (status: string) => {
+    const category = leadStatusCategory(status);
     const colors: Record<string, string> = {
       pending: "bg-warning",
       accepted: "bg-onsite",
@@ -282,7 +284,7 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
       cancelled: "bg-destructive",
     };
 
-    // Match the status chip language (Avail / Claimed / Active / Done)
+    // Match the status chip language (Avail / Claimed / Active / Done / Cancelled)
     const labels: Record<string, string> = {
       pending: "Avail",
       accepted: "Claimed",
@@ -292,8 +294,8 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
     };
 
     return (
-      <Badge className={colors[status] || "bg-muted"}>
-        {labels[status] || status.replace("_", " ")}
+      <Badge className={colors[category] || "bg-muted"}>
+        {labels[category] || status.replace("_", " ")}
       </Badge>
     );
   };
