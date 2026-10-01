@@ -89,8 +89,11 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
   // Compact mode: mobile OR tablet — reduces card height & lets the map show through.
   const useCompact = isMobile || isTabletOrBelow;
   
+  // Status chips filter which leads are shown (map page passes its filter set).
+  const visibleLeads = statusFilter ? leads.filter((l) => statusFilter.has(l.status)) : leads;
+
   // Get photo counts for all leads
-  const leadIds = leads.map(l => l.id);
+  const leadIds = visibleLeads.map(l => l.id);
   const { photoCounts } = useLeadPhotoCount(leadIds);
   
   // Pull-to-refresh refs
