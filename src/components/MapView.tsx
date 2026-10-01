@@ -131,10 +131,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     onStatusStateChange?.({
       filters: new Set(statusFilters),
       counts: {
-        pending: leads.filter((l) => l.status === "pending").length,
-        accepted: leads.filter((l) => l.status === "accepted" || l.status === "claimed").length,
-        in_progress: leads.filter((l) => l.status === "in_progress").length,
-        completed: leads.filter((l) => l.status === "completed").length,
+        pending: leads.filter((l) => leadStatusCategory(l.status) === "pending").length,
+        accepted: leads.filter((l) => leadStatusCategory(l.status) === "accepted").length,
+        in_progress: leads.filter((l) => leadStatusCategory(l.status) === "in_progress").length,
+        completed: leads.filter((l) => leadStatusCategory(l.status) === "completed").length,
+        cancelled: leads.filter((l) => leadStatusCategory(l.status) === "cancelled").length,
       },
     });
   }, [statusFilters, leads, onStatusStateChange]);
