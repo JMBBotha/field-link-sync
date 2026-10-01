@@ -46,7 +46,7 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
       // Affiliated independents
       const { data: affiliations } = await supabase
         .from("agent_affiliations")
-        .select("profile_id, profiles(id, full_name, participant_type)")
+        .select("profile_id, profiles!agent_affiliations_profile_id_fkey(id, full_name, participant_type)")
         .eq("company_id", companyId!)
         .eq("status", "active");
       (affiliations || []).forEach((a: any) => {
