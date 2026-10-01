@@ -66,7 +66,7 @@ const StatusFilterButtons = ({
   counts,
   variant = "default",
 }: StatusFilterButtonsProps) => {
-  const statuses: LeadStatusFilter[] = ["pending", "accepted", "in_progress", "completed"];
+  const statuses: LeadStatusFilter[] = ["pending", "accepted", "in_progress", "completed", "cancelled"];
 
   if (variant === "quiet") {
     return (
