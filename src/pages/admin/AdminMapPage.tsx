@@ -251,8 +251,13 @@ const AdminMapPage = () => {
               onStatusFiltersChange={(filters) => {
                 const hasCompleted = filters.has("completed");
                 setShowCompletedFilter(hasCompleted);
-                if (hasCompleted) setCompletedPanelCollapsed(false);
-                else setCompletedPanelCollapsed(true);
+                if (hasCompleted) {
+                  setCompletedPanelCollapsed(false);
+                  // Mobile: keep all info on one (left) side — opening completed collapses leads
+                  if (window.innerWidth < 1024) setLeadsCollapsed(true);
+                } else {
+                  setCompletedPanelCollapsed(true);
+                }
               }}
 
               onLeadClick={handleLeadClick}
@@ -288,10 +293,14 @@ const AdminMapPage = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setCompletedPanelCollapsed(!completedPanelCollapsed)}
+              onClick={() => {
+                const opening = completedPanelCollapsed;
+                setCompletedPanelCollapsed(!completedPanelCollapsed);
+                if (opening && window.innerWidth < 1024) setLeadsCollapsed(true);
+              }}
               className={`flex absolute top-4 z-20 bg-background/95 text-foreground backdrop-blur-md shadow-md hover:bg-accent hover:text-accent-foreground rounded-md border border-border transition-all duration-300 ${
-                completedPanelCollapsed ? 'left-2' : 'left-[calc(min(72vw,22rem)+0.5rem)] sm:left-[calc(20rem+0.5rem)] md:left-[calc(24rem+0.5rem)]'
-              }`}
+                completedPanelCollapsed ? 'left-14 lg:left-2' : 'left-[calc(min(72vw,22rem)+0.5rem)] sm:left-[calc(20rem+0.5rem)] md:left-[calc(24rem+0.5rem)]'
+              } ${!leadsCollapsed ? 'max-lg:hidden' : ''}`}
             >
               {completedPanelCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </Button>
@@ -318,18 +327,24 @@ const AdminMapPage = () => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setLeadsCollapsed(!leadsCollapsed)}
+            onClick={() => {
+              const opening = leadsCollapsed;
+              setLeadsCollapsed(!leadsCollapsed);
+              if (opening && window.innerWidth < 1024) setCompletedPanelCollapsed(true);
+            }}
             className={`flex absolute top-4 z-20 bg-background/95 text-foreground backdrop-blur-md shadow-md hover:bg-accent hover:text-accent-foreground rounded-md border border-border transition-all duration-300 ${
-              leadsCollapsed ? 'right-2' : 'right-[calc(min(72vw,22rem)+0.5rem)] sm:right-[calc(20rem+0.5rem)] md:right-[calc(24rem+0.5rem)]'
-            }`}
+              leadsCollapsed
+                ? 'left-2 lg:left-auto lg:right-2'
+                : 'left-[calc(min(72vw,22rem)+0.5rem)] sm:left-[calc(20rem+0.5rem)] md:left-[calc(24rem+0.5rem)] lg:left-auto lg:right-[calc(24rem+0.5rem)]'
+            } ${showCompletedFilter && !completedPanelCollapsed ? 'max-lg:hidden' : ''}`}
           >
             {leadsCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
           </Button>
 
           <div
-            className={`absolute top-0 right-0 h-full z-10 overflow-y-auto glass-panel border-l shadow-xl transition-all duration-300 ease-out ${
+            className={`absolute top-0 left-0 h-full z-10 overflow-y-auto glass-panel border-r shadow-xl transition-all duration-300 ease-out lg:left-auto lg:right-0 lg:border-r-0 lg:border-l ${
               leadsCollapsed
-                ? 'w-0 opacity-0 pointer-events-none translate-x-[100%]'
+                ? 'w-0 opacity-0 pointer-events-none -translate-x-full lg:translate-x-full'
                 : 'w-[72vw] max-w-[22rem] sm:w-80 md:w-96 opacity-100 translate-x-0'
             }`}
           >
