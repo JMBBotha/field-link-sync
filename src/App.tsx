@@ -25,6 +25,8 @@ import CustomerInvoiceView from "./components/CustomerInvoiceView";
 import NotFound from "./pages/NotFound";
 import UnifiedOnboarding from "./pages/UnifiedOnboarding";
 import IndependentSignup from "./pages/IndependentSignup";
+import SetPassword from "./pages/SetPassword";
+import IdleLogoutGate from "@/components/IdleLogoutGate";
 import ClientProposalView from "./components/client/ClientProposalView";
 
 
@@ -122,6 +124,7 @@ const App = () => (
             <BrowserRouter>
               <MandyActionsProvider>
               <MandyDock />
+              <IdleLogoutGate />
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<Index />} />
@@ -130,6 +133,7 @@ const App = () => (
                 
                 <Route path="/onboarding" element={<UnifiedOnboarding />} />
                 <Route path="/signup/independent" element={<IndependentSignup />} />
+                <Route path="/set-password" element={<SetPassword />} />
 
                 {/* Customer Portal Routes */}
                 <Route path="/customer/:token" element={<CustomerPortal />} />
