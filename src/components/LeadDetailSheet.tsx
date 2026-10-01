@@ -1,4 +1,6 @@
 import { useState, useRef, useCallback } from "react";
+import CallSummary from "@/components/leads/CallSummary";
+import { isCallDump } from "@/lib/callSummary";
 import { useNavigate } from "react-router-dom";
 import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus, FileText, Timer, GitBranch, CloudOff, ChevronRight } from "lucide-react";
 import RandSign from "@/components/icons/RandSign";
@@ -573,6 +575,8 @@ const LeadDetailSheet = ({
 
             <LeadCallReports leadId={lead.id} />
 
+            <CallSummary lead={lead as any} />
+
             {/* Lead Information — full summary of everything captured at intake */}
 
             <div className="rounded-xl border border-border/60 bg-background/60 p-3 space-y-3">
@@ -603,8 +607,8 @@ const LeadDetailSheet = ({
                   "scheduled_time",
                   "order_status",
                   "parts_status",
-                  "notes",
-                ]}
+                  ...(isCallDump(lead.notes) ? [] : ["notes"]),
+                ] as any}
               />
             </div>
 

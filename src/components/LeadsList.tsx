@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import CallSummary from "@/components/leads/CallSummary";
 import { hasValidCoords } from "@/lib/leadCoords";
 import { leadStatusCategory } from "@/lib/leadStatusCategory";
 import { useNavigate } from "react-router-dom";
@@ -424,7 +425,7 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
       {lead.notes && (
         <div className="p-2 rounded-md bg-muted/40 border border-border/40">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Issue description</p>
-          <p className="text-xs text-foreground whitespace-pre-wrap line-clamp-3">{lead.notes}</p>
+          <CallSummary lead={lead as any} compact />
         </div>
       )}
       {lead.profiles && (
