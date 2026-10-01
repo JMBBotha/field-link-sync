@@ -68,7 +68,7 @@ const AdminJobDetailPage = () => {
       const { data, error } = await supabase
         .from("jobs")
         .select(
-          "*, customers(id, name, phone), customer_locations!jobs_location_id_fkey(id, label, address_line1, city), invoices!jobs_invoice_id_fkey(id, invoice_number, status, grand_total)"
+          "*, customers(id, name, phone), customer_locations!jobs_location_id_fkey(id, label, address), invoices!jobs_invoice_id_fkey(id, invoice_number, status, grand_total)"
         )
         .eq("id", id!)
         .maybeSingle();
@@ -240,16 +240,15 @@ const AdminJobDetailPage = () => {
                   {j.customers.phone && <span className="text-xs">· {j.customers.phone}</span>}
                 </div>
               )}
-              {(location?.label || location?.address_line1) && (
+              {(location?.label || location?.address) && (
                 <div className="flex items-start gap-2 text-muted-foreground">
                   <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
                   <span className="text-foreground">
                     {location?.label ? <strong>{location.label}</strong> : null}
-                    {location?.address_line1 && (
+                    {location?.address && (
                       <>
                         {location?.label ? " · " : ""}
-                        {location.address_line1}
-                        {location.city ? `, ${location.city}` : ""}
+                        {location.address}
                       </>
                     )}
                   </span>
@@ -380,9 +379,7 @@ const AdminJobDetailPage = () => {
 
             {/* Quick action: Navigate (opens native maps) */}
             {(() => {
-              const addr = location?.address_line1
-                ? [location.address_line1, location.city].filter(Boolean).join(", ")
-                : j.address;
+              const addr = location?.address || j.address;
               const href = addr
                 ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`
                 : null;
