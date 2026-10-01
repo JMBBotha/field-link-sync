@@ -35,6 +35,7 @@ const typeIcons: Record<string, typeof Bell> = {
   assignment_started: Briefcase,
   invoice_paid: CreditCard,
   invoice_ready: CreditCard,
+  deposit_paid: CreditCard,
   quote_status_change: FileText,
   call_logged: Phone,
   appointment_reschedule_request: MessageSquare,
@@ -70,7 +71,16 @@ const categoryOf = (type: string): FilterKey => {
   return "all";
 };
 
-export const notificationHref = (type: string, relatedId?: string | null): string => {
+export const notificationHref = (type: string, relatedId?: string | null, isTech = false): string => {
+  const t = (type || "").toLowerCase();
+  if (isTech) {
+    // Techs never land on /admin: job/assignment bells open the tech job sheet, everything else /field
+    if (relatedId && t !== "job_status_change" && categoryOf(t) === "jobs") return `/field/jobs/${relatedId}`;
+    return "/field";
+  }
+  if (t === "deposit_paid") return relatedId ? `/admin/estimates/${relatedId}` : "/admin/quotes";
+  // job_status_change carries a LEAD id (notify_job_status_change), not a job id
+  if (t === "job_status_change") return relatedId ? `/admin/dispatch?lead=${relatedId}` : "/admin/dispatch";
   if ((type || "").startsWith("network_")) return "/admin/network-agents";
   if (CHANGE_REQUEST_TYPES.has((type || "").toLowerCase())) return "/admin/change-requests";
   const category = categoryOf(type);
@@ -122,7 +132,7 @@ const NotificationsList = ({
     setFollowUps((prev) => new Set(prev).add(n.id));
     if (!n.read) onMarkAsRead(n.id);
     onClose();
-    navigate(notificationHref(n.type, n.related_id));
+    navigate(notificationHref(n.type, n.related_id, window.location.pathname.startsWith("/field")));
   };
 
   const quickMarkRead = (n: Notification) => {

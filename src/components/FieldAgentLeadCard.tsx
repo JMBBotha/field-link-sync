@@ -217,7 +217,7 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
                   onClick={(e) => e.stopPropagation()}
                   className="text-[10px] font-medium text-primary hover:underline"
                 >
-                  Open estimate
+                  Open job sheet
                 </Link>
               )}
               <div className="flex items-center gap-1.5">

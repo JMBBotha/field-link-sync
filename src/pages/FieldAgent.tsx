@@ -1117,7 +1117,7 @@ const FieldAgent = () => {
       }
       const quoteMap: Record<string, string> = {};
       for (const j of installJobs as any[]) {
-        if (j.lead_id && j.quote_id) quoteMap[j.lead_id] = j.quote_id;
+        if (j.lead_id) quoteMap[j.lead_id] = j.id; // job id: techs open /field/jobs/:id (no money)
       }
       if (!cancelled) setInstallQuoteByLead(quoteMap);
       const found: Record<string, DepositInvoiceLike> = {};
@@ -1451,7 +1451,7 @@ const FieldAgent = () => {
                         onComplete={handleCompleteJob}
                         onRelease={handleReleaseLead}
                         invoice={installInvoicesByLead[lead.id] ?? null}
-                        estimateUrl={installQuoteByLead[lead.id] ? `/admin/estimates/${installQuoteByLead[lead.id]}` : null}
+                        estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
                         loadingAction={loadingAction}
                         scrollIntoView={highlightedLeadId === lead.id}
                       />
@@ -1476,7 +1476,7 @@ const FieldAgent = () => {
                         onComplete={handleCompleteJob}
                         loadingAction={loadingAction}
                         invoice={installInvoicesByLead[lead.id] ?? null}
-                        estimateUrl={installQuoteByLead[lead.id] ? `/admin/estimates/${installQuoteByLead[lead.id]}` : null}
+                        estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
                       />
                     ))}
                   </>
@@ -1523,9 +1523,9 @@ const FieldAgent = () => {
                                 <button
                                   type="button"
                                   className="text-[10px] font-medium text-primary hover:underline"
-                                  onClick={(e) => { e.stopPropagation(); navigate(`/admin/estimates/${installQuoteByLead[lead.id]}`); }}
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/field/jobs/${installQuoteByLead[lead.id]}`); }}
                                 >
-                                  Open estimate
+                                  Open job sheet
                                 </button>
                               )}
                             </div>
@@ -1651,7 +1651,7 @@ const FieldAgent = () => {
                                 onAccept={handleAcceptLead}
                                 loadingAction={loadingAction}
                                 invoice={installInvoicesByLead[lead.id] ?? null}
-                        estimateUrl={installQuoteByLead[lead.id] ? `/admin/estimates/${installQuoteByLead[lead.id]}` : null}
+                        estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
                               />
                             );
                           })
@@ -1695,7 +1695,7 @@ const FieldAgent = () => {
                                 onRelease={handleReleaseLead}
                                 loadingAction={loadingAction}
                                 invoice={installInvoicesByLead[lead.id] ?? null}
-                        estimateUrl={installQuoteByLead[lead.id] ? `/admin/estimates/${installQuoteByLead[lead.id]}` : null}
+                        estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
                               />
                             );
                           })
@@ -1735,7 +1735,7 @@ const FieldAgent = () => {
                                 onComplete={handleCompleteJob}
                                 loadingAction={loadingAction}
                                 invoice={installInvoicesByLead[lead.id] ?? null}
-                        estimateUrl={installQuoteByLead[lead.id] ? `/admin/estimates/${installQuoteByLead[lead.id]}` : null}
+                        estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
                               />
                             ))}
                           </>
@@ -1782,9 +1782,9 @@ const FieldAgent = () => {
                                         <button
                                           type="button"
                                           className="text-[10px] font-medium text-primary hover:underline"
-                                          onClick={(e) => { e.stopPropagation(); navigate(`/admin/estimates/${installQuoteByLead[lead.id]}`); }}
+                                          onClick={(e) => { e.stopPropagation(); navigate(`/field/jobs/${installQuoteByLead[lead.id]}`); }}
                                         >
-                                          Open estimate
+                                          Open job sheet
                                         </button>
                                       )}
                                     </div>
@@ -1854,7 +1854,7 @@ const FieldAgent = () => {
                     onCardClick={openLeadDetail}
                     onStart={openLeadDetail}
                     invoice={installInvoicesByLead[lead.id] ?? null}
-                        estimateUrl={installQuoteByLead[lead.id] ? `/admin/estimates/${installQuoteByLead[lead.id]}` : null}
+                        estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
                     loadingAction={loadingAction}
                   />
                 ))

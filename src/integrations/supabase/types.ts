@@ -1608,6 +1608,7 @@ export type Database = {
       entity_outbox: {
         Row: {
           attempts: number
+          claimed_at: string | null
           company_id: string | null
           created_at: string
           entity_id: string
@@ -1621,6 +1622,7 @@ export type Database = {
         }
         Insert: {
           attempts?: number
+          claimed_at?: string | null
           company_id?: string | null
           created_at?: string
           entity_id: string
@@ -1634,6 +1636,7 @@ export type Database = {
         }
         Update: {
           attempts?: number
+          claimed_at?: string | null
           company_id?: string | null
           created_at?: string
           entity_id?: string
@@ -8007,6 +8010,7 @@ export type Database = {
     }
     Functions: {
       _apply_commission_snapshot: { Args: { e: Json }; Returns: Json }
+      _create_balance_invoice: { Args: { p_quote_id: string }; Returns: string }
       _create_tech_ledger_for_job: {
         Args: { p_job_id: string }
         Returns: undefined
@@ -8243,6 +8247,10 @@ export type Database = {
           p_lead_id: string
         }
         Returns: number
+      }
+      create_balance_invoice_for_quote: {
+        Args: { p_quote_id: string }
+        Returns: string
       }
       create_change_order: { Args: { p_quote_id: string }; Returns: string }
       create_deposit_invoice_for_quote: {
@@ -8739,6 +8747,7 @@ export type Database = {
       }
       is_field_tech_only: { Args: { _uid: string }; Returns: boolean }
       is_master_company_user: { Args: { _uid: string }; Returns: boolean }
+      is_my_company_owner: { Args: never; Returns: boolean }
       is_office_staff: { Args: { _uid: string }; Returns: boolean }
       is_ops_user: { Args: { _user_id: string }; Returns: boolean }
       is_sales_rep: { Args: { _uid: string }; Returns: boolean }
@@ -8843,6 +8852,7 @@ export type Database = {
           status: string
         }[]
       }
+      reap_stuck_outbox: { Args: never; Returns: number }
       record_invoice_payment: {
         Args: {
           p_amount: number
@@ -9662,6 +9672,10 @@ export type Database = {
       tech_owns_lead: {
         Args: { _lead: string; _uid: string }
         Returns: boolean
+      }
+      tech_set_job_status: {
+        Args: { p_job_id: string; p_status: string }
+        Returns: string
       }
       unconvert_lead: { Args: { p_lead_id: string }; Returns: undefined }
       unlockrows: { Args: { "": string }; Returns: number }
