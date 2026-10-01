@@ -908,75 +908,28 @@ const AdminDispatchPage = () => {
                           : ""
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <GripVertical className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div
-                          className="flex-1 min-w-0 cursor-pointer"
-                          onClick={(e) => { e.stopPropagation(); setJobInfoLead(lead); setJobInfoSchedule(null); }}
-                        >
-                          <p className="font-medium text-xs break-words">{lead.customer_name}</p>
-                          <p className="text-[11px] text-muted-foreground break-words">{getSuburb(lead.customer_address)}</p>
-                        </div>
-                        <Badge variant={PRIORITY_COLORS[lead.priority] as any || "secondary"} className="text-[10px] h-5 shrink-0">
-                          {lead.priority}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                        {(() => {
-                          const lane = laneOf(lead);
-                          return (
-                            <Badge
-                              variant="outline"
-                              className={`text-[10px] h-5 ${lane ? LANE_META[lane].className : UNKNOWN_LANE_META.className}`}
-                            >
-                              {lane ? LANE_META[lane].label : UNKNOWN_LANE_META.label}
-                            </Badge>
-                          );
-                        })()}
-                        <Badge variant="outline" className="text-[10px] h-auto whitespace-normal break-words">
-                          {lead.service_type}
-                        </Badge>
-                      </div>
-                      {/* Dispatcher can set / change the lane while the lead is uncommitted */}
-                      <div className="flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
-                        {(["sales", "service"] as LeadLane[]).map(l => (
-                          <Button
-                            key={l}
-                            type="button"
-                            size="sm"
-                            variant={laneOf(lead) === l ? "default" : "outline"}
-                            className="h-6 px-2 text-[10px]"
-                            disabled={setLaneMutation.isPending}
-                            onClick={() => setLaneMutation.mutate({ leadId: lead.id, lane: l })}
-                          >
-                            {LANE_META[l].label}
-                          </Button>
-                        ))}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-
-                        {lead.scheduled_time && (
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                            <Clock className="h-2.5 w-2.5" />{lead.scheduled_time}
-                          </span>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="ml-auto h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setQuickAssignLead(lead);
-                            setQuickAssignAgent("");
-                            setQuickAssignDate(format(currentDate, "yyyy-MM-dd"));
-                            setQuickAssignStart("08:00");
-                            setQuickAssignEnd("10:00");
-                          }}
-                          title="Quick Assign"
-                        >
-                          <User className="h-3 w-3" />
-                        </Button>
-                      </div>
+                      <LeadCardV2
+                        lead={lead as any}
+                        className="border-0 border-l-4 bg-transparent p-0 shadow-none"
+                        onOpen={() => { setJobInfoLead(lead); setJobInfoSchedule(null); }}
+                        onAssign={() => {
+                          setQuickAssignLead(lead);
+                          setQuickAssignAgent("");
+                          setQuickAssignDate(format(currentDate, "yyyy-MM-dd"));
+                          setQuickAssignStart("08:00");
+                          setQuickAssignEnd("10:00");
+                        }}
+                        extra={
+                          <div className="flex w-full items-center gap-1" onClick={e => e.stopPropagation()}>
+                            {(["sales", "service"] as LeadLane[]).map(l => (
+                              <Button key={l} type="button" size="sm" variant={laneOf(lead) === l ? "default" : "outline"} className="h-6 px-2 text-[10px]"
+                                disabled={setLaneMutation.isPending} onClick={() => setLaneMutation.mutate({ leadId: lead.id, lane: l })}>
+                                {LANE_META[l].label}
+                              </Button>
+                            ))}
+                          </div>
+                        }
+                      />
                     </motion.div>
                   ))}
                 </div>

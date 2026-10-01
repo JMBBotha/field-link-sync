@@ -241,25 +241,6 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
             </p>
           )}
 
-          {/* Available lead - Accept button */}
-          {variant === "available" && onAccept && (
-            <Button
-              size="sm"
-              className="w-full h-9 rounded-full font-semibold"
-              style={{ backgroundColor: "#0077B6", color: "#FFFFFF" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onAccept(lead.id);
-              }}
-              disabled={!!loadingAction}
-            >
-              {loadingAction === "accept" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Accept Lead"
-              )}
-            </Button>
-          )}
 
           {/* Active lead - Action buttons */}
           {variant === "active" && (
