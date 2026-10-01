@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { cn } from "@/lib/utils";
+import { blockR0 } from "@/lib/zeroPriceGuard";
 import { useProductOptions, type ProductOption } from "@/hooks/useProductOptions";
 import ProductSearchDropdown from "@/components/shared/ProductSearchDropdown";
 import { useQuoteSessionStore } from "@/stores/quoteSessionStore";
@@ -366,6 +367,7 @@ const ProposalBuilder = ({
 
   /* ─── Save ─── */
   const saveProposal = async (status: "draft" | "sent" | "approved") => {
+    if (blockR0(lineItems, toast)) return;
     if (!customerName.trim()) {
       toast({ title: "Error", description: "Please select or enter a client", variant: "destructive" });
       return;
@@ -461,6 +463,7 @@ const ProposalBuilder = ({
 
   /* ─── Convert to Invoice ─── */
   const convertToInvoice = async () => {
+    if (blockR0(lineItems, toast)) return;
     // Save first if not saved
     if (!existingId) {
       await saveProposal("approved");

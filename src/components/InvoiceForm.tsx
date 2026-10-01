@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { notifyJobCompleted, notifyInvoiceSent } from "@/lib/notificationService";
 import { recordInvoicePayment } from "@/lib/payments";
+import { blockR0 } from "@/lib/zeroPriceGuard";
 
 interface LineItem {
   description: string;
@@ -92,6 +93,7 @@ const InvoiceForm = ({ lead, open, onClose, onSuccess, agentId }: InvoiceFormPro
   };
 
   const saveInvoice = async (status: "draft" | "sent" | "paid") => {
+    if (blockR0(lineItems, toast)) return;
     if (lineItems.every(item => !item.description || item.amount === 0)) {
       toast({
         title: "Error",

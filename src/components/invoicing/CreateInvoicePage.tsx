@@ -18,6 +18,7 @@ import BeCoolLogo from "@/components/shared/BeCoolLogo";
 import DocumentHeader from "@/components/shared/DocumentHeader";
 import { generateDocumentPdf } from "@/lib/documentPdf";
 import StickyActionBar from "@/components/shared/StickyActionBar";
+import { blockR0 } from "@/lib/zeroPriceGuard";
 
 /* ────────── Types ────────── */
 
@@ -369,6 +370,7 @@ const CreateInvoicePage = ({
 
   /* ─── Save ─── */
   const saveInvoice = async (status: "draft" | "sent" | "paid") => {
+    if (blockR0(lineItems, toast)) return;
     if (!customerName.trim()) {
       toast({ title: "Error", description: "Please select or enter a client", variant: "destructive" });
       return;

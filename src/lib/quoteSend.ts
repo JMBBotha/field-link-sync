@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { r0Quote, r0Msg } from "@/lib/zeroPriceGuard";
 
 /**
  * Single Send prep for the whole app: ensures the quote has a public_token
@@ -7,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
  * Used by both the quote builder and the estimate page — one send pipeline.
  */
 export async function ensureQuoteReadyToSend(quoteId: string): Promise<void> {
+  await assertQuotePriced(quoteId);
   const { data: q, error } = await supabase
     .from("quotes")
     .select("public_token, status, sent_at")
@@ -26,4 +28,11 @@ export async function ensureQuoteReadyToSend(quoteId: string): Promise<void> {
     const { error: updateError } = await supabase.from("quotes").update(patch).eq("id", quoteId);
     if (updateError) throw updateError;
   }
+}
+
+export async function assertQuotePriced(id: string) {
+  const { data, error } = await supabase.from("quote_items").select("item_name, unit_price, parent_item_id").eq("quote_id", id);
+  if (error) throw error;
+  const n = r0Quote((data || []) as any[]);
+  if (n) throw new Error(r0Msg(n));
 }
