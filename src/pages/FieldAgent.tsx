@@ -1087,7 +1087,7 @@ const FieldAgent = () => {
 
   // Deposit invoices for install jobs linked to my active leads (chip on lead tiles)
   const [installInvoicesByLead, setInstallInvoicesByLead] = useState<Record<string, DepositInvoiceLike>>({});
-  // Linked quote id per lead for install jobs (drives the "Open job sheet" affordance)
+  // Linked quote id per lead for install jobs (drives the "Open estimate" affordance)
   const [installQuoteByLead, setInstallQuoteByLead] = useState<Record<string, string>>({});
   const activeLeadIdsKey = useMemo(
     () => Array.from(new Set([...activeLeads, ...inProgressLeads, ...completedLeads].map((l) => l.id)))
