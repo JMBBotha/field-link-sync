@@ -282,9 +282,18 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
       cancelled: "bg-destructive",
     };
 
+    // Match the status chip language (Avail / Claimed / Active / Done)
+    const labels: Record<string, string> = {
+      pending: "Avail",
+      accepted: "Claimed",
+      in_progress: "Active",
+      completed: "Done",
+      cancelled: "Cancelled",
+    };
+
     return (
       <Badge className={colors[status] || "bg-muted"}>
-        {status.replace("_", " ")}
+        {labels[status] || status.replace("_", " ")}
       </Badge>
     );
   };
