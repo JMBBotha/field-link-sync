@@ -663,7 +663,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
             <div>
               <h2 className="text-lg font-semibold text-foreground">Recent Leads</h2>
               <p className="text-sm text-muted-foreground">
-                {leads.length} total leads
+                {visibleLeads.length} total leads
               </p>
             </div>
             <Button
@@ -714,14 +714,14 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
         )}
         
         <div className="p-3 space-y-2 w-full max-w-full">
-          {leads.length === 0 ? (
+          {visibleLeads.length === 0 ? (
             <Card className="glass-card">
               <CardContent className="py-8 text-center text-muted-foreground">
-                No leads yet
+                {leads.length === 0 ? "No leads yet" : "No leads match the selected filters"}
               </CardContent>
             </Card>
           ) : (
-            leads.map((lead) => (
+            visibleLeads.map((lead) => (
               useCompact ? renderMobileCard(lead) : renderDesktopCard(lead)
             ))
           )}
