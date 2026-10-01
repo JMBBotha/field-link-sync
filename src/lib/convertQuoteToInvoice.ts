@@ -105,13 +105,21 @@ export async function convertQuoteToInvoice(quoteId: string, agentUserId: string
     throw new Error("Declined quotes cannot be converted to an invoice");
   }
 
-  // Prevent duplicate invoices from the same quote.
-  const { data: existing } = await supabase
+  // Prevent duplicate invoices from the same quote. A DEPOSIT invoice doesn't count: then the
+  // balance (quote total minus what's already invoiced) is created server-side as a draft.
+  const { data: existingRows } = await supabase
     .from("invoices")
-    .select("id")
-    .eq("quote_id", quoteId)
-    .maybeSingle();
-  if (existing?.id) return existing.id;
+    .select("id, notes, status")
+    .eq("quote_id", quoteId);
+  const live = ((existingRows || []) as any[]).filter((i) => !["void", "cancelled"].includes(i.status || ""));
+  const full = live.find((i) => !String(i.notes || "").startsWith("DEPOSIT"));
+  if (full) return full.id;
+  if (live.length > 0) {
+    const { data: balanceId, error: bErr } = await (supabase.rpc as any)("create_balance_invoice_for_quote", { p_quote_id: quoteId });
+    if (bErr) throw bErr;
+    if (!balanceId) throw new Error("Nothing left to invoice on this quote.");
+    return balanceId as string;
+  }
 
   const lineItems = await buildQuoteLineItems(quoteId, quote.visual_sections);
 

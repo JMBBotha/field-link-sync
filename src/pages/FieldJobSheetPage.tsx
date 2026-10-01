@@ -8,7 +8,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CalendarDays, MapPin, Package, Phone } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, MapPin, Package, Phone, Play } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { fmtQty, groupPackingList, loadTicks, saveTicks, type PackingRow } from "@/lib/packingList";
 
 export default function FieldJobSheetPage() {
@@ -45,6 +46,21 @@ export default function FieldJobSheetPage() {
   const total = groups.reduce((n, g) => n + g.rows.length, 0);
   const done = groups.reduce((n, g) => n + g.rows.filter((r) => ticks[r.key]).length, 0);
   const j = job.data;
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+  const setStatus = async (status: "in_progress" | "completed") => {
+    if (status === "completed" && !window.confirm("Mark this job as completed?")) return;
+    setBusy(true);
+    const { error } = await (supabase.rpc as any)("tech_set_job_status", { p_job_id: id, p_status: status });
+    setBusy(false);
+    if (error) {
+      toast({ title: "Couldn't update the job", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: status === "completed" ? "Job completed" : "Job started" });
+    job.refetch();
+  };
+
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 p-4 pb-24">
@@ -73,6 +89,18 @@ export default function FieldJobSheetPage() {
                 {j.customers.phone && <a className="underline" href={`tel:${j.customers.phone}`}>{j.customers.phone}</a>}</p>
             )}
             {j.description && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{j.description}</p>}
+            {["scheduled", "dispatched", "in_progress"].includes(j.status) && (
+              <div className="flex gap-2 pt-2">
+                {j.status !== "in_progress" && (
+                  <Button className="h-11 flex-1 gap-1.5" disabled={busy} onClick={() => setStatus("in_progress")}>
+                    <Play className="h-4 w-4" /> Start job
+                  </Button>
+                )}
+                <Button className="h-11 flex-1 gap-1.5" variant={j.status === "in_progress" ? "default" : "outline"} disabled={busy} onClick={() => setStatus("completed")}>
+                  <CheckCircle2 className="h-4 w-4" /> Complete job
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

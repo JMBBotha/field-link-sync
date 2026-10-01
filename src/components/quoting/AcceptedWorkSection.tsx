@@ -222,20 +222,26 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
       }
 
       if (techId && jobId) {
-        await supabase.from("assignments").insert([{
+        const { error: asgErr } = await supabase.from("assignments").insert([{
           job_id: jobId,
           profile_id: techId,
-          assignment_type: "primary",
+          assignment_type: "internal",
           assigned_by: user?.id ?? null,
         } as any]);
+        if (asgErr) throw asgErr;
       }
 
       // Calendar row for the install day, keyed to the installation JOB so it can
       // never collide with the salesperson's own visit row on the same lead.
       // No named tech => agent_id null => shows in the Technical pool as first-accept.
-      if (quote.lead_id && date && jobId) {
+      let scheduleLeadId: string | null = quote.lead_id ?? null;
+      if (!scheduleLeadId && jobId) {
+        const { data: jl } = await supabase.from("jobs").select("lead_id").eq("id", jobId).maybeSingle();
+        scheduleLeadId = (jl as any)?.lead_id ?? null;
+      }
+      if (scheduleLeadId && date && jobId) {
         await supabase.from("job_schedules").insert([{
-          lead_id: quote.lead_id,
+          lead_id: scheduleLeadId,
           job_id: jobId,
           agent_id: techId || null,
           scheduled_date: date,
