@@ -914,7 +914,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
     // Only cluster completed leads (active ones use individual markers)
     const completedFeatures = leads
-      .filter((l) => l.status === "completed" && statusFilters.has("completed"))
+      .filter((l) => leadStatusCategory(l.status) === "completed" && statusFilters.has("completed"))
       .map((l) => ({
         type: "Feature" as const,
         geometry: { type: "Point" as const, coordinates: [l.longitude, l.latitude] },

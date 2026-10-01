@@ -90,7 +90,7 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
   const useCompact = isMobile || isTabletOrBelow;
   
   // Status chips filter which leads are shown (map page passes its filter set).
-  const visibleLeads = statusFilter ? leads.filter((l) => statusFilter.has(l.status)) : leads;
+  const visibleLeads = statusFilter ? leads.filter((l) => statusFilter.has(leadStatusCategory(l.status))) : leads;
 
   // Get photo counts for all leads
   const leadIds = visibleLeads.map(l => l.id);
