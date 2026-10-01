@@ -658,6 +658,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         style: "mapbox://styles/mapbox/streets-v12",
         center: [center.lng, center.lat],
         zoom: 12,
+        // Hide the Mapbox attribution / info control (bottom-right ⓘ)
+        attributionControl: false,
       });
 
       mapInstanceRef.current.addControl(new mapboxgl.NavigationControl(), "bottom-left");
