@@ -70,7 +70,7 @@ describe("replay of the typed sentences on a CURRENT client", () => {
     const r = route(R("set_qty", { item: "Samsung", qty: 8000 }), "Set the Samsung price to 8000");
     expect(r).toMatchObject({ action: "set_line_price", args: { item: "Samsung", price: 8000 } });
     const unit = { id: "U", area_id: "B1", item_name: "Samsung 12K INV MW", unit_price: 9738.26, quantity: 1, metadata: { unit_cost: 7790.61, markup_percent: 25 } };
-    expect(linePriceDecision(unit as any, 8000, { units: 25, materials: 100 }).kind).toBe("refuse");
+    expect(linePriceDecision(unit as any, 8000, { units: 25, materials: 100 }).kind).toBe("confirm");
   });
   it("Move the kit to General, then Move it back", () => {
     const a = route(R("move_item", { item: "the kit", area: "General" }), "Move the kit to General");

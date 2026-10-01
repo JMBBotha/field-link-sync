@@ -69,6 +69,7 @@ export function stubProductFromQuoteItem(it: SavedQuoteItemLike): PaletteProduct
     locked_sell_ex_vat: lockedSell,
     locked_cost_ex_vat: lockedCost,
     manual_price_override: meta.manual_price === true,
+    quote_category: meta.quote_category ?? null,
     supplier_name: it.supplier || "",
     supplier_type: "both",
     supplier_discount_percent: null,

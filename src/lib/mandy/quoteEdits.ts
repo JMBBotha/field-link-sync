@@ -128,13 +128,12 @@ export type PriceDecision =
   | { kind: "refuse"; floor: number | null; reason: string }
   | { kind: "confirm" | "apply"; patch: Record<string, any>; list: number; floor: number };
 
-/** set_line_price: never below the floor; below list needs Confirm; cost never changes. */
+/** set_line_price: no floor (the amber chip warns); below list needs Confirm; cost never changes. */
 export function linePriceDecision(item: EditItem, price: number, rates: CategoryMarkupRates): PriceDecision {
   const p = Number(Number(price).toFixed(2));
   if (!(p > 0)) return { kind: "refuse", floor: null, reason: "Give a price above zero." };
   const floor = priceFloor(item, rates);
   if (floor == null) return { kind: "refuse", floor: null, reason: `${item.item_name} has no cost on file, so I can't check the price floor.` };
-  if (p < floor) return { kind: "refuse", floor, reason: `That's below the floor for ${item.item_name}.` };
   const md = item.metadata || {};
   const list = Number(md.original_sell ?? item.unit_price) || 0;
   const cost = Number(md.unit_cost ?? md.cost_excl);

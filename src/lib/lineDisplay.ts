@@ -159,6 +159,7 @@ export function isAcUnitLine(item: AcUnitLineInput, product?: AcUnitProductInput
   if (item.is_bundle || md.kit || md.install || md.labour || md.catalog_service_id || item.isLabour) return false;
   if (/^(installation kit|consumables|service|labour)$/i.test(type)) return false;
   if (INSTALL_MATERIAL_NAME_RE.test(name)) return false;
+  if (/\b(remote|controller|dongle|harness|purifier)\b/i.test(name) || /control/i.test(String(product?.category || product?.subcategory || ""))) return false;
   if (/air ?con/i.test(type)) return true;
   if (product && AC_CATEGORY_RE.test([product.product_category, product.category, product.subcategory].filter(Boolean).join(" "))) return true;
   return AC_SIZE_RE.test(name) && (AC_WORD_RE.test(name) || AC_BRAND_RE.test(name));

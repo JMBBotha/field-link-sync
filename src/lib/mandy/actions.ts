@@ -52,7 +52,7 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     parameters: { type: "object", properties: { item: str("Line as spoken, e.g. the Samsung, the kit in bedroom 1"), qty: num("New quantity / metres / hours") }, required: ["item", "qty"], additionalProperties: false },
   },
   set_line_price: {
-    description: "Override one line's sell price excl. VAT ('set the Samsung price to 8000'). Never below the category markup floor; below list needs on-screen confirmation.",
+    description: "Override one line's sell price excl. VAT ('set the Samsung price to 8000'). Below standard is allowed; below list needs on-screen confirmation.",
     parameters: { type: "object", properties: { item: str("Line as spoken"), price: num("New unit sell price excl. VAT") }, required: ["item", "price"], additionalProperties: false },
   },
   move_item: {

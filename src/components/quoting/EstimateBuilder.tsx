@@ -457,6 +457,15 @@ export default function EstimateBuilder({
               const next = { ...cur, ...patch } as any;
               (patch as any).total_price = metreLineTotal(next, Number(next.quantity) || 0);
             }
+            if (cur && !isMetreLine(cur as any) && (patch.quantity != null || patch.unit_price != null)) {
+              const q = (cur.metadata as any)?.kit?.pricing_type === "p/meter" ? 1 : Number(patch.quantity ?? cur.quantity) || 0;
+              (patch as any).total_price = Number((q * (Number(patch.unit_price ?? cur.unit_price) || 0)).toFixed(2));
+            }
+            // Typed price = per-quote override on this line only (never the product); Units % changes keep it.
+            if (cur && patch.unit_price != null) {
+              const md: any = cur.metadata || {}, c = Number(md.unit_cost ?? md.cost_excl);
+              (patch as any).metadata = { ...md, manual_price: true, price_overridden: true, ...(c > 0 ? { markup_percent: Number(((Number(patch.unit_price) / c - 1) * 100).toFixed(2)) } : {}) };
+            }
             void updateItem(id, patch as any);
             onChanged?.();
           },

@@ -3,7 +3,7 @@ import RemoveUnitDialog from "@/components/quoting/RemoveUnitDialog";
 import { applyUnitRemoval, linkedToUnit } from "@/lib/unitInstallLinks";
 import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
-import { unitPricesFor, canMergeRepick, freshProduct } from "@/lib/priceGuard";
+import { unitPricesFor, canMergeRepick, freshProduct, standardSell } from "@/lib/priceGuard";
 import { planStandardInstall, installBasketItem } from "@/lib/mandy/quoteOps";
 import { DEFAULT_KIT_LENGTH_M } from "@/components/catalog/quote-builder/kitLine";
 import { useInstallTemplates } from "@/hooks/useInstallTemplates";
@@ -34,6 +34,7 @@ import ProductPalette from "./quote-builder/ProductPalette";
 import type { PaletteBundle } from "./quote-builder/ProductPalette";
 import VisualCatalogPanel from "./quote-builder/VisualCatalogPanel";
 import BasketCanvas from "./quote-builder/BasketCanvas";
+import { BasketMarkupContext } from "@/components/shared/SharedBasketItems";
 import DragOverlayCard from "./quote-builder/DragOverlayCard";
 import FloatingDropZoneStrip from "./quote-builder/FloatingDropZoneStrip";
 import ACOptionsModal, { detectACType } from "./quote-builder/ACOptionsModal";
@@ -705,6 +706,18 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     );
   }, []);
 
+  /** ±5 pills: per-quote override on this line only; never saved to the product. Fresh adds start at standard. */
+  const handleSetLineMarkup = useCallback((instanceId: string, pct: number) => {
+    setBaskets((prev) => prev.map((b) => ({ ...b, items: b.items.map((i) => {
+      if (i.instanceId !== instanceId || i.isBundle) return i;
+      const p = i.product;
+      if (p.locked_sell_ex_vat != null && !(Number(p.locked_cost_ex_vat) > 0)) return i; // no cost on file
+      const cost = (lockedPricing(p) ?? computePricing(resolveSupplierCode(p.supplier_name), p.cost_excl_vat || 0, resolveProductMarkupPercent(p), p.cost_price || null)).costExVat;
+      if (!(cost > 0)) return i;
+      return { ...i, product: { ...p, locked_cost_ex_vat: cost, locked_sell_ex_vat: standardSell(cost, pct), manual_price_override: true } };
+    }) })));
+  }, []);
+
   const handleUpdateLength = useCallback((basketId: string, instanceId: string, length: number) => {
     if (length < 0.1) return;
     setBaskets((prev) =>
@@ -858,6 +871,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
           </div>
           <div ref={canvasRef} className="md:col-span-3 flex flex-col min-h-0 overflow-hidden pr-2">
             <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" as any }}>
+              <BasketMarkupContext.Provider value={handleSetLineMarkup}>
               <BasketCanvas
                 baskets={baskets}
                 allProducts={products}
@@ -880,6 +894,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
                 areaApplyTemplate={areaApplyTemplate}
                 areaClearAll={areaClearAll}
                 areaCount={areaCount} />
+              </BasketMarkupContext.Provider>
             </div>
           </div>
         </div>
