@@ -214,7 +214,7 @@ const AdminJobsDispatchPage = () => {
         role="link"
         tabIndex={0}
         aria-label={`Open job ${job.title || ""}`}
-        className="cursor-pointer hover:shadow-md active:scale-[0.99] transition-all mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="w-full min-w-0 cursor-pointer hover:shadow-md active:scale-[0.99] transition-all mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         draggable
         onDragStart={e => { e.dataTransfer.setData("text/plain", job.id); setDragJobId(job.id); }}
         onDragEnd={() => setDragJobId(null)}
@@ -248,18 +248,18 @@ const AdminJobsDispatchPage = () => {
           {job.customers?.name && (
             <div className="flex items-center gap-1.5 text-sm text-foreground/80">
               <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate font-medium">{job.customers.name}</span>
+              <span className="min-w-0 truncate font-medium">{job.customers.name}</span>
             </div>
           )}
 
           {(job.customer_locations?.address || job.address) && (
             <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
               <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 {job.customer_locations?.label && (
                   <div className="text-xs font-semibold text-foreground/90">{job.customer_locations.label}</div>
                 )}
-                <div className="truncate">{job.customer_locations?.address || job.address}</div>
+                <div className="line-clamp-2 break-words">{job.customer_locations?.address || job.address}</div>
               </div>
             </div>
           )}
@@ -298,13 +298,13 @@ const AdminJobsDispatchPage = () => {
         role="link"
         tabIndex={0}
         aria-label={`Open booked lead ${e.customer_name || ""}`}
-        className="cursor-pointer hover:shadow-md active:scale-[0.99] transition-all mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="w-full min-w-0 cursor-pointer hover:shadow-md active:scale-[0.99] transition-all mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onClick={go}
         onKeyDown={ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); } }}
       >
         <CardContent className="p-3.5 space-y-2">
           <div className="flex items-start justify-between gap-2">
-            <span className="font-semibold text-[15px] leading-tight text-foreground truncate">{e.customer_name || "Booked lead"}</span>
+            <span className="min-w-0 flex-1 font-semibold text-[15px] leading-tight text-foreground truncate">{e.customer_name || "Booked lead"}</span>
             <div className="flex items-center gap-1 shrink-0">
               {e.status && !["scheduled","dispatched","in_progress","completed"].includes(e.status) && (
                 <Badge variant="outline" className="text-[10px] capitalize">{e.status.replace(/_/g, " ")}</Badge>
@@ -318,7 +318,7 @@ const AdminJobsDispatchPage = () => {
           </div>
           {e.customer_address && (
             <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span className="truncate">{e.customer_address}</span>
+              <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span className="min-w-0 flex-1 line-clamp-2 break-words">{e.customer_address}</span>
             </div>
           )}
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -430,11 +430,11 @@ const AdminJobsDispatchPage = () => {
           {board.cancelled > 0 && <p className="text-sm text-muted-foreground">{board.cancelled} cancelled job{board.cancelled === 1 ? "" : "s"} hidden — use the chip above to show them.</p>}
         </CardContent></Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2 md:grid md:grid-cols-2 md:gap-4 md:overflow-visible md:pb-0 xl:grid-cols-4">
           {COLUMNS.map(col => (
             <div
               key={col.key}
-              className={`rounded-xl border-t-4 ${col.color} bg-card min-h-[300px] flex flex-col`}
+              className={`rounded-xl border-t-4 ${col.color} bg-card min-h-[300px] flex flex-col min-w-0 shrink-0 basis-[85%] sm:basis-[48%] snap-start md:basis-auto md:shrink`}
               onDragOver={e => e.preventDefault()}
               onDrop={e => handleDrop(e, col.key)}
             >
@@ -442,7 +442,7 @@ const AdminJobsDispatchPage = () => {
                 <span className="font-semibold text-sm text-foreground">{col.label}</span>
                 <Badge variant="outline" className="text-[10px]">{grouped[col.key]?.length || 0}</Badge>
               </div>
-              <ScrollArea className="flex-1 px-2 pb-2">
+              <ScrollArea className="flex-1 min-w-0 px-2 pb-2 [&_[data-radix-scroll-area-viewport]>div]:!block">
                 {(grouped[col.key] || []).map((row) =>
                   row.kind === "job" ? <JobCard key={`j-${row.id}`} job={row.job} /> : <LeadCard key={`l-${row.id}`} row={row} />
                 )}
