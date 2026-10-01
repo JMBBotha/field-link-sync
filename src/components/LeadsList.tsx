@@ -650,31 +650,26 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
 
   return (
     <div className="h-full flex flex-col overflow-hidden max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-80px)] lg:max-h-none">
-      {/* Fixed header */}
-      <div className="p-4 border-b border-border/40 flex-shrink-0 sticky top-0 z-10 glass-header">
-        {headerSlot && <div className="mb-4">{headerSlot}</div>}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Recent Leads</h2>
-            <p className="text-sm text-muted-foreground">
-              {leads.length} total leads
-            </p>
-          </div>
-          {/* Manual refresh button for desktop */}
-          {!isMobile && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
+      {/* Fixed header — compact on mobile (filters only), full on desktop */}
+      <div className={`border-b border-border/40 flex-shrink-0 sticky top-0 z-10 glass-header ${isMobile ? "px-3 py-2.5" : "p-4"}`}>
+        {headerSlot && <div className={isMobile ? "" : "mb-4"}>{headerSlot}</div>}
+        {!isMobile && (
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Recent Leads</h2>
+              <p className="text-sm text-muted-foreground">
+                {leads.length} total leads
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
               className="h-8 w-8"
               onClick={() => fetchLeads(true)}
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
-          )}
-        </div>
-        {/* Pull-to-refresh hint for mobile */}
-        {isMobile && (
-          <p className="text-xs text-muted-foreground mt-1">Pull down to refresh</p>
+          </div>
         )}
       </div>
 
