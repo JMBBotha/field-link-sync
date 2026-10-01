@@ -341,7 +341,7 @@ const AdminMapPage = () => {
                     <div className="lg:hidden">
                       <StatusFilterButtons
                         variant="quiet"
-                        className="w-full justify-between flex-nowrap"
+                        className="w-full flex-wrap justify-start gap-1"
                         activeFilters={statusState.filters}
                         counts={statusState.counts}
                         onToggle={handleStatusToggle}
