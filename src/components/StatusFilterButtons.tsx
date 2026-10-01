@@ -77,7 +77,7 @@ const StatusFilterButtons = ({
               onClick={() => onToggle(status)}
               aria-pressed={isActive}
               className={cn(
-                "flex shrink-0 items-center gap-0.5 rounded-full border px-1 py-0.5 sm:px-1.5 text-[9px] sm:text-[10px] font-semibold whitespace-nowrap leading-none transition-colors",
+                "flex shrink-0 self-center items-center gap-0.5 rounded-full border px-1 py-0.5 sm:px-1.5 text-[9px] sm:text-[10px] font-semibold whitespace-nowrap leading-none transition-colors",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                 isActive
                   ? "border-border bg-muted text-foreground"
