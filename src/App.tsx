@@ -11,6 +11,7 @@ import MandyDock from "@/components/mandy/MandyDock";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import RequireRole from "@/components/RequireRole";
+import RequireOwner from "@/components/RequireOwner";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import VersionBanner from "@/components/VersionBanner";
 import Index from "./pages/Index";
@@ -185,7 +186,7 @@ const App = () => (
                     <Route path="templates" element={<AdminProposalsPage />} />
                     <Route path="invoices" element={<AdminInvoicesPage />} />
                     <Route path="invoices/:id" element={<AdminInvoicesPage />} />
-                    <Route path="money" element={<RequireRole allowedRoles={["admin"]}><AdminMoneyPage /></RequireRole>} />
+                    <Route path="money" element={<RequireRole allowedRoles={["admin"]}><RequireOwner><AdminMoneyPage /></RequireOwner></RequireRole>} />
                     <Route path="my-commission" element={<AdminMyCommissionPage />} />
                     <Route path="help" element={<AdminHelpPage />} />
 
