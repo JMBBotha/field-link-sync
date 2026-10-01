@@ -222,12 +222,12 @@ const AdminMapPage = () => {
             />
           </div>
         )}
-        {/* Status chips float over the map only while the leads panel is closed;
-            once open they sit at the top of the panel on mobile/tablet. */}
-        <div className={`order-last w-full min-w-0 overflow-hidden pointer-events-auto lg:order-none lg:w-auto lg:overflow-visible ${leadsCollapsed ? "" : "hidden lg:block"}`}>
+        {/* Status chips live only in the desktop toolbar; on mobile/tablet they
+            sit inside the leads panel and collapse away with it. */}
+        <div className="hidden lg:block pointer-events-auto lg:order-none lg:w-auto lg:overflow-visible">
           <StatusFilterButtons
             variant="quiet"
-            className="w-full justify-between flex-nowrap sm:w-max sm:justify-start"
+            className="w-max justify-start"
             activeFilters={statusState.filters}
             counts={statusState.counts}
             onToggle={handleStatusToggle}
