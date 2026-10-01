@@ -17,6 +17,9 @@ import {
   ChevronDown, ChevronRight, Loader2, Trash2, Clock, Activity,
 } from "lucide-react";
 import { format } from "date-fns";
+import { Link } from "react-router-dom";
+import { usePendingApplicants } from "@/hooks/usePendingApplicants";
+import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import type { AppRole } from "@/hooks/useRole";
 import AgentAvailabilityEditor from "@/components/scheduling/AgentAvailabilityEditor";
 import { resolveLane, type LaneStaffMember } from "@/hooks/useLaneStaff";
@@ -29,6 +32,11 @@ const ROLE_META: Record<string, { label: string; color: string; icon: React.Elem
   viewer: { label: "Viewer", color: "bg-gray-600 text-gray-50", icon: Eye, description: "Read-only access" },
 };
 
+// Invite choices. Salesperson = dispatcher + sales lane (isSalesRep in lib/roleAccess).
+const INVITE_OPTIONS: Record<string, { label: string; description: string; role: AppRole; lane: string | null }> = {
+  ...Object.fromEntries(Object.entries(ROLE_META).map(([k, m]) => [k, { label: m.label, description: m.description, role: k as AppRole, lane: k === "field_agent" ? "technician" : null }])),
+  sales: { label: "Salesperson", description: "Quotes, leads, price lists, own commission", role: "dispatcher", lane: "sales" },
+};
 const AdminTeamPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -37,6 +45,20 @@ const AdminTeamPage = () => {
   const [inviteRole, setInviteRole] = useState<string>("field_agent");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [availabilityUser, setAvailabilityUser] = useState<string | null>(null);
+  const { companyId } = useUserCompanyId();
+  const { pending } = usePendingApplicants();
+
+  const reviewMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { data, error } = await supabase.from("profiles").update({ network_status: status } as any).eq("id", id).select("id");
+      if (error || !data?.length) throw error || new Error("Not allowed to update this applicant");
+    },
+    onSuccess: (_, v) => {
+      ["pending-applicants", "network-agents", "team-members"].forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
+      toast({ title: `Applicant ${v.status}` });
+    },
+    onError: (err: any) => toast({ title: "Failed to update applicant", description: err.message, variant: "destructive" }),
+  });
 
   // Fetch team members
   const { data: members = [], isLoading } = useQuery({
@@ -168,28 +190,23 @@ const AdminTeamPage = () => {
   // Invite user mutation
   const inviteMutation = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: string }) => {
-      // Sign up user with a random password (they'll use magic link / reset)
-      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-        email,
-        password: crypto.randomUUID(), // temp password, user resets
-      });
-      if (signUpErr) throw signUpErr;
-      if (!signUpData.user) throw new Error("Failed to create user");
-
-      // Assign role
-      const { error: roleErr } = await supabase
-        .from("user_roles")
-        .insert({ user_id: signUpData.user.id, role: role as AppRole });
-      if (roleErr) throw roleErr;
-
-      return signUpData.user;
+      // Invite row (company + role + lane) is applied by handle_new_user when the invitee first
+      // opens the magic link; they then set a password on /set-password.
+      const opt = INVITE_OPTIONS[role], clean = email.trim().toLowerCase();
+      if (!companyId) throw new Error("Your account has no company, so the invite can't be linked");
+      const inv = () => (supabase as any).from("team_invites");
+      await inv().delete().eq("email", clean).is("accepted_at", null);
+      const { error: invErr } = await inv().insert({ email: clean, role: opt.role, dispatch_role: opt.lane, company_id: companyId });
+      if (invErr) throw invErr;
+      const { error } = await supabase.auth.signInWithOtp({ email: clean, options: { shouldCreateUser: true, emailRedirectTo: `${window.location.origin}/set-password` } });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team-members"] });
       setInviteOpen(false);
       setInviteEmail("");
       setInviteRole("field_agent");
-      toast({ title: "Invitation sent", description: "User will receive an email to set up their account." });
+      toast({ title: "Invite email sent", description: "They open the link and set a password. Existing accounts only get a sign-in link: set their role below." });
     },
     onError: (err: any) => {
       toast({ title: "Failed to invite user", description: err.message, variant: "destructive" });
@@ -242,10 +259,9 @@ const AdminTeamPage = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(ROLE_META).map(([key, meta]) => (
+                    {Object.entries(INVITE_OPTIONS).map(([key, meta]) => (
                       <SelectItem key={key} value={key}>
                         <div className="flex items-center gap-2">
-                          <meta.icon className="h-3.5 w-3.5" />
                           <span>{meta.label}</span>
                           <span className="text-xs text-muted-foreground">— {meta.description}</span>
                         </div>
@@ -284,6 +300,27 @@ const AdminTeamPage = () => {
         ))}
       </div>
 
+      {pending.length > 0 && (
+        <Card id="pending-applications" className="border-amber-500/40">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-lg">Pending applications ({pending.length})</CardTitle>
+            <Link to="/admin/network-agents" className="text-sm text-primary hover:underline">Network Agents →</Link>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pending.map((a: any) => (
+              <div key={a.id} className="flex flex-wrap items-center gap-3 rounded-md border p-3">
+                <div className="min-w-0 flex-1 text-xs text-muted-foreground">
+                  <p className="text-sm font-medium text-foreground">{a.full_name} · {a.participant_type === "independent_tech" ? "Technician" : "Sales"}</p>
+                  <p>{a.phone || "No phone"} · applied {format(new Date(a.created_at), "dd MMM, HH:mm")}</p>
+                  {a.skills?.[0] && <p className="line-clamp-2">{a.skills[0]}</p>}
+                </div>
+                <Button size="sm" disabled={reviewMutation.isPending} onClick={() => reviewMutation.mutate({ id: a.id, status: "approved" })}>Approve</Button>
+                <Button size="sm" variant="outline" disabled={reviewMutation.isPending} onClick={() => confirm(`Reject ${a.full_name}?`) && reviewMutation.mutate({ id: a.id, status: "rejected" })}>Reject</Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
       {/* Team Table */}
       <Card className="border-border/50">
         <CardHeader className="pb-3">

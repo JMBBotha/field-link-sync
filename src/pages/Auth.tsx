@@ -240,6 +240,14 @@ const Auth = () => {
               className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white/50 focus:ring-white/20"
             />
           </div>
+          {isLogin && (
+            <button type="button" className="block ml-auto -mt-2 text-xs text-white/70 hover:text-white underline" onClick={async () => {
+              const em = ((document.getElementById("email") as HTMLInputElement)?.value || email).trim();
+              if (!em) return toast({ title: "Enter your email first", variant: "destructive" });
+              const { error } = await supabase.auth.resetPasswordForEmail(em, { redirectTo: `${window.location.origin}/set-password` });
+              toast(error ? { title: "Error", description: error.message, variant: "destructive" } : { title: "Check your email for a link to set a new password" });
+            }}>Forgot password?</button>
+          )}
           <Button
             type="submit"
             className="w-full bg-[hsl(25,95%,53%)] hover:bg-[hsl(25,95%,45%)] text-white font-semibold text-base h-11"

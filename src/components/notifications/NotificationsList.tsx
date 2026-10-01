@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { Bell, CheckCheck, FileText, Briefcase, CreditCard, MessageSquare, ChevronRight, Check, Lock, Phone } from "lucide-react";
+import { Bell, CheckCheck, FileText, Briefcase, CreditCard, MessageSquare, ChevronRight, Check, Lock, Phone, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -28,6 +28,7 @@ interface NotificationsListProps {
 const typeIcons: Record<string, typeof Bell> = {
   lead_assigned: Briefcase,
   new_lead: Briefcase,
+  network_applicant: UserPlus,
   job_status_change: Briefcase,
   assignment_created: Briefcase,
   assignment_accepted: Briefcase,
@@ -69,6 +70,7 @@ const categoryOf = (type: string): FilterKey => {
 };
 
 export const notificationHref = (type: string, relatedId?: string | null): string => {
+  if ((type || "").startsWith("network_")) return "/admin/network-agents";
   if (CHANGE_REQUEST_TYPES.has((type || "").toLowerCase())) return "/admin/change-requests";
   const category = categoryOf(type);
   if (category === "calls") return "/admin/calls";

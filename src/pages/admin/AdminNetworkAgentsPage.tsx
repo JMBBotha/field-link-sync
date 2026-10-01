@@ -27,7 +27,7 @@ const AdminNetworkAgentsPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, phone, participant_type, network_status, created_at")
+        .select("id, full_name, phone, skills, participant_type, network_status, created_at")
         .in("participant_type", ["independent_sales", "independent_tech"] as any)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -60,6 +60,7 @@ const AdminNetworkAgentsPage = () => {
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["network-agents"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-applicants"] });
       toast({ title: `Agent ${vars.status === "approved" ? "approved" : "rejected"}` });
     },
     onError: (err: any) => {
@@ -173,6 +174,7 @@ const AdminNetworkAgentsPage = () => {
                   <TableRow key={agent.id}>
                     <TableCell>
                       <div className="font-medium">{agent.full_name}</div>
+                      {agent.skills?.[0] && <div className="text-xs text-muted-foreground line-clamp-2 max-w-xs">{agent.skills[0]}</div>}
                     </TableCell>
                     <TableCell>{typeBadge(agent.participant_type)}</TableCell>
                     <TableCell className="text-sm">{agent.phone || "—"}</TableCell>

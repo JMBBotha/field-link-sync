@@ -36,6 +36,8 @@ const IndependentSignup = () => {
           data: {
             full_name: fullName,
             participant_type: participantType,
+            phone,
+            skills: bio,
           },
           emailRedirectTo: `${window.location.origin}/`,
         },
@@ -44,18 +46,7 @@ const IndependentSignup = () => {
       if (authError) throw authError;
       if (!authData.user) throw new Error("User creation failed");
 
-      // Update profile with independent agent fields
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          phone,
-          skills: bio ? [bio] : [],
-          participant_type: participantType,
-          network_status: "pending",
-        })
-        .eq("id", authData.user.id);
-
-      if (profileError) throw profileError;
+      // Phone + skills go in the sign-up metadata; handle_new_user saves them.
 
       // Role assignment is handled by DB trigger (auto_assign_independent_role)
 

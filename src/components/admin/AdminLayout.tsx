@@ -15,12 +15,10 @@ import Footer from "@/components/Footer";
 import { useQuery } from "@tanstack/react-query";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminBottomNav from "@/components/admin/AdminBottomNav";
-import IdleWarningModal from "@/components/IdleWarningModal";
 import GlobalSearchDialog from "@/components/GlobalSearchDialog";
 import NLCommandBar from "@/components/admin/NLCommandBar";
 import { useMandyDock, openMandyVoice } from "@/lib/mandy/registry";
 
-import { useIdleLogout } from "@/hooks/useIdleLogout";
 import { useAssistantContextTracker } from "@/hooks/useAssistantContextTracker";
 import { WelcomeTourDialog } from "@/components/admin/WelcomeTourDialog";
 import logo from "@/assets/logo.png";
@@ -44,7 +42,6 @@ const AdminLayout = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { resolvedTheme, toggleTheme } = useTheme();
-  const { showWarning, secondsLeft, stayActive } = useIdleLogout();
   // Keeps Mandy aware of the page / record the operator currently has open.
   useAssistantContextTracker();
 
@@ -91,6 +88,7 @@ const AdminLayout = () => {
     "/admin/billing": "Billing & Subscription",
     "/admin/suppliers": "Supplier Database",
     "/admin/companies": "Company Management",
+    "/admin/network-agents": "Network Agents",
   };
   const pageTitle = pageTitles[location.pathname] || "Admin Dashboard";
   // Dashboard and map pages own their mobile bottom spacing so their map surfaces
@@ -297,7 +295,6 @@ const AdminLayout = () => {
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
       <NLCommandBar open={assistantOpen} onOpenChange={setAssistantOpen} initialMode={assistantMode} />
 
-      <IdleWarningModal open={showWarning} secondsLeft={secondsLeft} onStayActive={stayActive} />
       {currentUserId && <WelcomeTourDialog userId={currentUserId} />}
 
     </div>

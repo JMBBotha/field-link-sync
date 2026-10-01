@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRole, type AppRole } from "@/hooks/useRole";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { LayoutDashboard, CalendarDays, FileText, Receipt, Package, BarChart3, ShoppingBag, LineChart, Bell, History, Upload, Settings, Plus, Users, LogOut, ChevronLeft, ChevronRight, ChevronDown, X, Building2, Briefcase, ClipboardList, Sparkles, HelpCircle, Navigation, Wallet, BookOpen } from "lucide-react";
+import { LayoutDashboard, CalendarDays, FileText, Receipt, Package, BarChart3, ShoppingBag, LineChart, Bell, History, Upload, Settings, Plus, Users, LogOut, ChevronLeft, ChevronRight, ChevronDown, X, Building2, Briefcase, ClipboardList, Sparkles, HelpCircle, Navigation, Wallet, BookOpen, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import logo from "@/assets/logo.png";
 import { useLeadInbox, INBOX_ROUTE } from "@/hooks/useLeadInbox";
+import { usePendingApplicants } from "@/hooks/usePendingApplicants";
 
 interface NavItem {
   path: string;
@@ -51,6 +52,7 @@ const AdminSidebar = ({
   const { settings } = useCompanySettings();
   const { isSalesRep } = useSalesRep();
   const { count: inboxCount } = useLeadInbox();
+  const { count: pendingApplicants } = usePendingApplicants();
 
 
   const companyName = settings?.company_name?.trim() || "My Company";
@@ -127,6 +129,7 @@ const AdminSidebar = ({
         },
         { path: "/admin/price-lists", label: "Price lists", icon: BookOpen, roles: ["admin", "dispatcher"] },
         { path: "/admin/team", label: "Team Members", icon: Users, roles: ["admin"] },
+        { path: "/admin/network-agents", label: "Network Agents", icon: UserPlus, roles: ["admin"], badge: pendingApplicants > 0 ? pendingApplicants : undefined },
         ...(isSalesRep ? [] : [{
           path: "/admin/reports",
           label: "Reports",
