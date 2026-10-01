@@ -45,8 +45,8 @@ export default function AttentionStrip({ className }: { className?: string }) {
   const chips = ([
     { key: "contact", n: clocks.filter((c) => c?.stage === 1 && c.tone === "red").length, label: `leads past ${sla.contactMinutes}-min contact`, tone: "red", to: "/admin/dispatch" },
     { key: "quote", n: clocks.filter((c) => c?.stage === 2 && c.tone === "red").length, label: "quote/visit overdue", tone: "red", to: "/admin/dispatch" },
-    { key: "late", n: data?.lateJobs || 0, label: "jobs late to start", tone: "red", to: "/admin/jobs/dispatch" },
-    { key: "paid", n: data?.paidNoJob || 0, label: "deposits paid, no job booked", tone: "red", to: "/admin/quotes" },
+    { key: "late", n: data?.lateJobs || 0, label: "jobs late to start", tone: "red", to: "/admin/jobs?tab=dispatch&view=cards" },
+    { key: "paid", n: data?.paidNoJob || 0, label: "deposits paid, no job booked", tone: "red", to: "/admin/jobs?tab=pipeline&view=stages" },
     { key: "unassigned", n: leads.filter((l) => !l.assigned_agent_id).length, label: "unassigned leads", tone: "orange", to: "/admin/dispatch" },
     { key: "queued", n: clocks.filter((c) => c?.stage === 0).length, label: "after-hours leads queued", tone: "blue", to: "/admin/dispatch" },
   ] as Chip[]).filter((c) => c.n > 0);

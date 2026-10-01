@@ -1033,7 +1033,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       const safeService = escapeHtml(lead.service_type);
       const safeAddress = escapeHtml(lead.customer_address);
       const safePhone = escapeHtml(lead.customer_phone);
-      const safeNotes = escapeHtml(lead.notes);
       const encodedAddress = encodeURIComponent(lead.customer_address);
       const navigationUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
       const isClaimed = lead.status === "accepted" || lead.status === "claimed";

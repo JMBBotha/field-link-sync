@@ -777,7 +777,7 @@ const AdminDispatchPage = () => {
         <div className="flex items-center gap-4 mr-auto">
           <div className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-bold">Dispatch Board</h2>
+            <h2 className="text-lg font-bold">Dispatch calendar</h2>
           </div>
           <div className="hidden md:flex items-center gap-3">
             <StatBadge icon={<AlertTriangle className="h-3.5 w-3.5" />} label="Unassigned" value={stats.unassigned} variant="warning" />
@@ -923,13 +923,23 @@ const AdminDispatchPage = () => {
                           setQuickAssignEnd("10:00");
                         }}
                         extra={
-                          <div className="flex w-full items-center gap-1" onClick={e => e.stopPropagation()}>
+                          <div className="flex w-full flex-wrap items-center gap-1" onClick={e => e.stopPropagation()}>
                             {(["sales", "service"] as LeadLane[]).map(l => (
                               <Button key={l} type="button" size="sm" variant={laneOf(lead) === l ? "default" : "outline"} className="h-6 px-2 text-[10px]"
                                 disabled={setLaneMutation.isPending} onClick={() => setLaneMutation.mutate({ leadId: lead.id, lane: l })}>
                                 {LANE_META[l].label}
                               </Button>
                             ))}
+                            {lead.scheduled_time && (
+                              <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                                <Clock className="h-2.5 w-2.5" />{lead.scheduled_time.slice(0, 5)}
+                              </span>
+                            )}
+                            {lead.priority && (
+                              <Badge variant={PRIORITY_COLORS[lead.priority] as any || "secondary"} className="ml-auto h-5 shrink-0 text-[10px]">
+                                {lead.priority}
+                              </Badge>
+                            )}
                           </div>
                         }
                       />

@@ -65,7 +65,7 @@ const AdminLayout = () => {
     "/admin/jobs/dispatch": "Jobs & Dispatch",
     "/admin/my-jobs": "My Jobs",
     "/admin/jobs-map": "Live Tracking",
-    "/admin/dispatch": "Dispatch Board",
+    "/admin/dispatch": "Dispatch calendar",
     "/admin/schedule": "Schedule",
     "/admin/quotes": "Quotes",
     "/admin/templates": "Templates",
