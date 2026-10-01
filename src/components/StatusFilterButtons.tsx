@@ -64,7 +64,7 @@ const StatusFilterButtons = ({
     return (
       <div
         className={cn(
-          "flex items-center gap-1 sm:gap-1.5 overflow-x-auto scrollbar-hide",
+          "flex items-center gap-0.5 sm:gap-1 overflow-x-auto scrollbar-hide",
           className
         )}
       >
@@ -76,8 +76,9 @@ const StatusFilterButtons = ({
               key={status}
               onClick={() => onToggle(status)}
               aria-pressed={isActive}
+              data-no-min
               className={cn(
-                "flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-full border px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-medium whitespace-nowrap transition-colors",
+                "flex shrink-0 self-center items-center gap-0.5 rounded-full border px-1 py-0.5 sm:px-1.5 text-[9px] sm:text-[10px] font-semibold whitespace-nowrap leading-none transition-colors",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                 isActive
                   ? "border-border bg-muted text-foreground"
@@ -86,7 +87,7 @@ const StatusFilterButtons = ({
             >
               <span
                 className={cn(
-                  "h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0 rounded-full",
+                  "h-1 w-1 sm:h-1.5 sm:w-1.5 shrink-0 rounded-full",
                   config.dotColor,
                   !isActive && "opacity-50"
                 )}
@@ -96,7 +97,7 @@ const StatusFilterButtons = ({
                 <span className="hidden sm:inline">{config.label}</span>
               </span>
               {typeof counts?.[status] === "number" && (
-                <span className="rounded-full bg-foreground/10 px-1 text-[9px] sm:text-[10px] font-semibold tabular-nums">
+                <span className="rounded-full bg-foreground/10 px-1 text-[8px] sm:text-[9px] font-semibold tabular-nums">
                   {counts[status]}
                 </span>
               )}
