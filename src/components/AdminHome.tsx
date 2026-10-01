@@ -13,6 +13,7 @@ import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger }
 import AdminAlertsPanel from "@/components/AdminAlertsPanel";
 import MoneySummaryCard from "@/components/admin/MoneySummaryCard";
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
+import ReadyToInvoiceCard from "@/components/admin/ReadyToInvoiceCard";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import AdminMapPage from "@/pages/admin/AdminMapPage";
 import KpiHoverPreview from "@/components/admin/KpiHoverPreview";
@@ -328,6 +329,8 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       {/* Rep: own upcoming appointments (STEP 3) */}
       {isSalesRep && <MyAppointmentsCard limit={5} />}
 
+      {!isSalesRep && <ReadyToInvoiceCard />}
+
       {/* Core 5 KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
 
@@ -624,7 +627,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
 
           {!isSalesRep && <MoneySummaryCard />}
           {!isSalesRep && <QuotePerformanceWidget />}
-          <CompletedLeadsList />
+          {!isSalesRep && <CompletedLeadsList />}
           <AdminAlertsPanel />
           <SyncConflictsSection />
         </CollapsibleContent>
