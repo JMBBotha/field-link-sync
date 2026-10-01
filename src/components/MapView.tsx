@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
+import { callSummaryHtml } from "@/lib/callSummary";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import mapboxgl from 'mapbox-gl';
@@ -1082,7 +1083,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
             ${lead.notes ? `
             <div style="display: flex; align-items: flex-start; gap: 6px; margin-top: 4px; padding-top: 6px; border-top: 1px solid #e5e7eb;">
               <svg style="width: 14px; height: 14px; color: #9ca3af; flex-shrink: 0; margin-top: 1px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-              <span style="font-size: 11px; color: #6b7280;">${safeNotes}</span>
+              <span style="font-size: 11px; color: #6b7280; min-width: 0;">${callSummaryHtml(lead as any)}</span>
             </div>
             ` : ""}
 

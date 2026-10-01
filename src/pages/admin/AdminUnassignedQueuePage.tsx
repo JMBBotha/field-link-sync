@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import CallSummary from "@/components/leads/CallSummary";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +22,8 @@ interface QueueRow {
     customer_phone: string | null;
     customer_address: string | null;
     service_type: string | null;
+    notes?: string | null;
+    call_summary?: string | null;
   } | null;
 }
 
@@ -47,7 +50,7 @@ export default function AdminUnassignedQueuePage() {
       const { data, error } = await supabase
         .from("unassigned_queue")
         .select(
-          "id, lead_id, reason, priority, escalate_at, escalated, created_at, leads(customer_name, customer_phone, customer_address, service_type)",
+          "id, lead_id, reason, priority, escalate_at, escalated, created_at, leads(customer_name, customer_phone, customer_address, service_type, notes, call_summary)",
         )
         .eq("resolved", false)
         .order("escalate_at", { ascending: true });
@@ -118,6 +121,7 @@ export default function AdminUnassignedQueuePage() {
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p className="text-muted-foreground">{row.leads?.service_type ?? "Service request"}</p>
+              {row.leads && <CallSummary lead={row.leads} compact />}
               {row.leads?.customer_address && (
                 <p className="flex items-start gap-2 text-muted-foreground">
                   <MapPin className="h-4 w-4 shrink-0 mt-0.5" />

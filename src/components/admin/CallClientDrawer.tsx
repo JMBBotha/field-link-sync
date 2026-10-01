@@ -1,4 +1,5 @@
 import { useState } from "react";
+import CallSummary from "@/components/leads/CallSummary";
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose,
 } from "@/components/ui/drawer";
@@ -122,7 +123,7 @@ const CallClientDrawer = ({ open, onClose, leadId, customerPhone }: Props) => {
                     Completed: {format(new Date(ctx.lead.completion_date), "dd MMM yyyy")}
                   </p>
                 )}
-                {ctx.lead.notes && <p className="text-xs text-muted-foreground">{ctx.lead.notes}</p>}
+                {ctx.lead.notes && <CallSummary lead={ctx.lead as any} compact />}
               </section>
 
               {/* Talking Points */}
