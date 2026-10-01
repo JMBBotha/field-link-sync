@@ -3300,6 +3300,60 @@ export type Database = {
           },
         ]
       }
+      lead_sla_settings: {
+        Row: {
+          close_time: string
+          company_id: string
+          contact_minutes: number
+          enabled: boolean
+          live_from: string
+          open_time: string
+          quote_amber_time: string
+          updated_at: string
+          updated_by: string | null
+          work_days: number[]
+        }
+        Insert: {
+          close_time?: string
+          company_id: string
+          contact_minutes?: number
+          enabled?: boolean
+          live_from?: string
+          open_time?: string
+          quote_amber_time?: string
+          updated_at?: string
+          updated_by?: string | null
+          work_days?: number[]
+        }
+        Update: {
+          close_time?: string
+          company_id?: string
+          contact_minutes?: number
+          enabled?: boolean
+          live_from?: string
+          open_time?: string
+          quote_amber_time?: string
+          updated_at?: string
+          updated_by?: string | null
+          work_days?: number[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_sla_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_sla_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           accepted_at: string | null
@@ -3309,12 +3363,19 @@ export type Database = {
           assignment_method: string | null
           assignment_score: number | null
           broadcast_radius_km: number | null
+          call_area: string | null
+          call_next_action: string | null
+          call_summary: string | null
+          call_summary_at: string | null
+          call_summary_model: string | null
+          call_urgency: string | null
           cancellation_reason: string | null
           classified_by: Database["public"]["Enums"]["lead_classifier"] | null
           company_id: string | null
           company_name: string | null
           completed_at: string | null
           confidence: number | null
+          contact_attempts: number
           converted_at: string | null
           created_at: string | null
           created_by: string | null
@@ -3328,11 +3389,15 @@ export type Database = {
           estimated_duration_minutes: number | null
           estimated_end_time: string | null
           external_id: string | null
+          first_contact_at: string | null
+          first_contact_channel: string | null
           id: string
           idempotency_key: string | null
           intents: string[]
           interaction_history: Json
           last_activity_at: string
+          last_contact_attempt_at: string | null
+          last_contact_outcome: string | null
           latitude: number
           lead_priority: Database["public"]["Enums"]["lead_priority_level"]
           lead_score: number | null
@@ -3350,12 +3415,14 @@ export type Database = {
           phone: string | null
           primary_intent: Database["public"]["Enums"]["lead_intent"] | null
           priority: string
+          quote_sla_breached_at: string | null
           raw_payload: Json | null
           scheduled_date: string | null
           scheduled_time: string | null
           service_type: string
           sla_breached_at: string | null
           source: Database["public"]["Enums"]["lead_source"]
+          stage2_done_at: string | null
           started_at: string | null
           status: string
           technician_eta: string | null
@@ -3370,12 +3437,19 @@ export type Database = {
           assignment_method?: string | null
           assignment_score?: number | null
           broadcast_radius_km?: number | null
+          call_area?: string | null
+          call_next_action?: string | null
+          call_summary?: string | null
+          call_summary_at?: string | null
+          call_summary_model?: string | null
+          call_urgency?: string | null
           cancellation_reason?: string | null
           classified_by?: Database["public"]["Enums"]["lead_classifier"] | null
           company_id?: string | null
           company_name?: string | null
           completed_at?: string | null
           confidence?: number | null
+          contact_attempts?: number
           converted_at?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -3389,11 +3463,15 @@ export type Database = {
           estimated_duration_minutes?: number | null
           estimated_end_time?: string | null
           external_id?: string | null
+          first_contact_at?: string | null
+          first_contact_channel?: string | null
           id?: string
           idempotency_key?: string | null
           intents?: string[]
           interaction_history?: Json
           last_activity_at?: string
+          last_contact_attempt_at?: string | null
+          last_contact_outcome?: string | null
           latitude: number
           lead_priority?: Database["public"]["Enums"]["lead_priority_level"]
           lead_score?: number | null
@@ -3411,12 +3489,14 @@ export type Database = {
           phone?: string | null
           primary_intent?: Database["public"]["Enums"]["lead_intent"] | null
           priority?: string
+          quote_sla_breached_at?: string | null
           raw_payload?: Json | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           service_type: string
           sla_breached_at?: string | null
           source?: Database["public"]["Enums"]["lead_source"]
+          stage2_done_at?: string | null
           started_at?: string | null
           status?: string
           technician_eta?: string | null
@@ -3431,12 +3511,19 @@ export type Database = {
           assignment_method?: string | null
           assignment_score?: number | null
           broadcast_radius_km?: number | null
+          call_area?: string | null
+          call_next_action?: string | null
+          call_summary?: string | null
+          call_summary_at?: string | null
+          call_summary_model?: string | null
+          call_urgency?: string | null
           cancellation_reason?: string | null
           classified_by?: Database["public"]["Enums"]["lead_classifier"] | null
           company_id?: string | null
           company_name?: string | null
           completed_at?: string | null
           confidence?: number | null
+          contact_attempts?: number
           converted_at?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -3450,11 +3537,15 @@ export type Database = {
           estimated_duration_minutes?: number | null
           estimated_end_time?: string | null
           external_id?: string | null
+          first_contact_at?: string | null
+          first_contact_channel?: string | null
           id?: string
           idempotency_key?: string | null
           intents?: string[]
           interaction_history?: Json
           last_activity_at?: string
+          last_contact_attempt_at?: string | null
+          last_contact_outcome?: string | null
           latitude?: number
           lead_priority?: Database["public"]["Enums"]["lead_priority_level"]
           lead_score?: number | null
@@ -3472,12 +3563,14 @@ export type Database = {
           phone?: string | null
           primary_intent?: Database["public"]["Enums"]["lead_intent"] | null
           priority?: string
+          quote_sla_breached_at?: string | null
           raw_payload?: Json | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           service_type?: string
           sla_breached_at?: string | null
           source?: Database["public"]["Enums"]["lead_source"]
+          stage2_done_at?: string | null
           started_at?: string | null
           status?: string
           technician_eta?: string | null
@@ -7818,6 +7911,7 @@ export type Database = {
           primary_address_line1: string
         }[]
       }
+      check_lead_sla: { Args: never; Returns: number }
       claim_offer: {
         Args: { p_offer_id: string; p_staff_id: string }
         Returns: Json
@@ -8076,12 +8170,19 @@ export type Database = {
           assignment_method: string | null
           assignment_score: number | null
           broadcast_radius_km: number | null
+          call_area: string | null
+          call_next_action: string | null
+          call_summary: string | null
+          call_summary_at: string | null
+          call_summary_model: string | null
+          call_urgency: string | null
           cancellation_reason: string | null
           classified_by: Database["public"]["Enums"]["lead_classifier"] | null
           company_id: string | null
           company_name: string | null
           completed_at: string | null
           confidence: number | null
+          contact_attempts: number
           converted_at: string | null
           created_at: string | null
           created_by: string | null
@@ -8095,11 +8196,15 @@ export type Database = {
           estimated_duration_minutes: number | null
           estimated_end_time: string | null
           external_id: string | null
+          first_contact_at: string | null
+          first_contact_channel: string | null
           id: string
           idempotency_key: string | null
           intents: string[]
           interaction_history: Json
           last_activity_at: string
+          last_contact_attempt_at: string | null
+          last_contact_outcome: string | null
           latitude: number
           lead_priority: Database["public"]["Enums"]["lead_priority_level"]
           lead_score: number | null
@@ -8117,12 +8222,14 @@ export type Database = {
           phone: string | null
           primary_intent: Database["public"]["Enums"]["lead_intent"] | null
           priority: string
+          quote_sla_breached_at: string | null
           raw_payload: Json | null
           scheduled_date: string | null
           scheduled_time: string | null
           service_type: string
           sla_breached_at: string | null
           source: Database["public"]["Enums"]["lead_source"]
+          stage2_done_at: string | null
           started_at: string | null
           status: string
           technician_eta: string | null
@@ -8325,6 +8432,15 @@ export type Database = {
           revenue: number
         }[]
       }
+      lead_fill_call_summary: { Args: { p_lead: string }; Returns: boolean }
+      lead_is_test: { Args: { p_name: string }; Returns: boolean }
+      lead_sla_next_open: {
+        Args: {
+          p_ts: string
+          s: Database["public"]["Tables"]["lead_sla_settings"]["Row"]
+        }
+        Returns: string
+      }
       link_products_to_pdf_book: {
         Args: { p_pdf_upload_id: string }
         Returns: {
@@ -8344,6 +8460,10 @@ export type Database = {
           p_score?: number
         }
         Returns: string
+      }
+      log_lead_contact: {
+        Args: { p_channel: string; p_lead_id: string; p_outcome: string }
+        Returns: undefined
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
       mark_overdue_maintenance: { Args: never; Returns: number }
