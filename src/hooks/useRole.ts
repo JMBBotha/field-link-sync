@@ -21,7 +21,7 @@ export const useRole = (): UseRoleReturn => {
   const { user, loading: authLoading } = useAuth();
   const userId = user?.id ?? null;
 
-  const { data: roles = [], isLoading } = useQuery({
+  const { data: roles = [], isLoading, isError } = useQuery({
     queryKey: ["user-roles", userId],
     queryFn: async () => {
       if (!userId) return [];
@@ -34,6 +34,10 @@ export const useRole = (): UseRoleReturn => {
       return (data?.map((r) => r.role) || []) as AppRole[];
     },
     enabled: !!userId,
+    // A failed role lookup means "retry", never "deny"
+    retry: 4,
+    retryDelay: (n) => Math.min(1000 * 2 ** n, 8000),
+    refetchInterval: (q) => (q.state.status === "error" ? 5000 : false),
   });
 
   const isAdmin = roles.includes("admin");
@@ -51,6 +55,6 @@ export const useRole = (): UseRoleReturn => {
     canAccessAdmin: isAdmin || isDispatcher,
     canWrite: isAdmin || isFieldAgent || isDispatcher,
     userId,
-    loading: authLoading || isLoading,
+    loading: authLoading || isLoading || (isError && roles.length === 0),
   };
 };

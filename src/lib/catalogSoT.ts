@@ -14,6 +14,7 @@
  * and are never filtered by this module. Existing quote lines are never touched.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPages } from "@/lib/fetchAllPages";
 
 export interface CatalogAllowlist {
   /** product_id values that have at least one PDF overlay region (informational). */
@@ -59,7 +60,7 @@ export async function fetchActiveUploadIds(): Promise<Set<string>> {
 export async function fetchVisualCatalogAllowlist(): Promise<CatalogAllowlist> {
   try {
     const [regionsRes, activeUploadIds] = await Promise.all([
-      (supabase.from("pdf_product_regions") as any).select("product_id, product_code").limit(20000),
+      fetchAllPages<any>((from, to) => (supabase.from("pdf_product_regions") as any).select("product_id, product_code").order("id", { ascending: true }).range(from, to)),
       fetchActiveUploadIds(),
     ]);
 

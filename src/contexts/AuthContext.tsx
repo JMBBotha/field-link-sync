@@ -33,6 +33,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (_event, session) => {
         if (!isMounted) return;
         if (_event === "PASSWORD_RECOVERY" && window.location.pathname !== "/set-password") window.location.replace("/set-password");
+        if (!session && _event !== "SIGNED_OUT" && _event !== "INITIAL_SESSION") {
+          // No session without an explicit sign-out (e.g. mid token refresh): check again, don't log out
+          supabase.auth.getSession().then(({ data: { session: s } }) => {
+            if (!isMounted) return;
+            setSession(s);
+            setUser(s?.user ?? null);
+            setLoading(false);
+          });
+          return;
+        }
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
