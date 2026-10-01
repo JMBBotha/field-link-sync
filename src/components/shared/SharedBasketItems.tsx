@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useContext, createContext } from "react";
 import { Plus, Trash2, Minus, Package, Ruler, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -209,6 +209,9 @@ export function CollapsibleBundleCard({
   );
 }
 
+/** ±5 pills: per-quote markup override for one line (instanceId, %). Provided by QuoteBuilderTab. */
+export const BasketMarkupContext = createContext<((instanceId: string, pct: number) => void) | null>(null);
+
 /** Regular product item card — shared between admin and agent builders */
 export function RegularItemCard({
   item,
@@ -220,7 +223,10 @@ export function RegularItemCard({
   const unit = resolvePricingUnit(item.product);
   /** Measured units (m, g, kg, l, ml, roll, custom) use the length field as the entered qty. */
   const isMeasured = !["each", "box", "pack"].includes(unit.unit_type);
-  const [markupAdj, setMarkupAdj] = useState(0);
+  const setLineMarkup = useContext(BasketMarkupContext);
+  // ±5 saves a per-quote override on this line (never the product); the price shown is the saved price.
+  const markupAdj: number = 0;
+  const setMarkupAdj = (f: (m: number) => number) => setLineMarkup?.(item.instanceId, Math.max(0, f(baseMarkup)));
   // True markup from real cost vs sell (kits/bundles: component costs), not the
   // product's stored markup field — that belonged to the first kit component.
   const baseMarkup = Math.round(lineMarkupPercent(item) || resolveProductMarkupPercent(item.product as any));

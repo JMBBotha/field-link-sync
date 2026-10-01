@@ -2,7 +2,7 @@ import { basketInstallFrom } from "@/lib/installTemplates";
 import QuoteBuilderLayout from "@/components/quoting/QuoteBuilderLayout";
 import PricingChecksRow from "@/components/quoting/PricingChecksRow";
 import { useMarginView } from "@/hooks/useMarginView";
-import { resolveProductMarkupPercent } from "@/lib/pricing";
+import { resolveProductMarkupPercent, classifyQuoteCategory } from "@/lib/pricing";
 import { canMergeRepick, freshProduct } from "@/lib/priceGuard";
 /**
  * Unified Quote Builder Page — wraps Normal / Visual / Area builders
@@ -752,7 +752,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
           total_price: null,
           is_bundle: false,
           item_type: "product",
-          metadata: { unit_cost: Number(unitCost.toFixed(2)), markup_percent: markupPct },
+          metadata: { unit_cost: Number(unitCost.toFixed(2)), markup_percent: markupPct, quote_category: classifyQuoteCategory(product as any) },
           sort_order: sortOrder++,
           notes: null,
           source: "catalog",

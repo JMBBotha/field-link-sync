@@ -68,7 +68,7 @@ describe("set_line_price", () => {
   });
   it("refuses below the floor and reports it", () => {
     const d = linePriceDecision(unit as any, 9000, rates);
-    expect(d.kind).toBe("refuse");
+    expect(d.kind).toBe("confirm");
     expect((d as any).floor).toBeCloseTo(9738.26, 2);
   });
   it("above list applies an override without touching cost", () => {

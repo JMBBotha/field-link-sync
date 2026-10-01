@@ -7,7 +7,7 @@
  * quote category rates) and the kit pricing in kitLine.ts — no formula here.
  */
 import { getEffectiveUnitPrices, type PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
-import { resolveProductMarkupPercent } from "@/lib/pricing";
+import { resolveProductMarkupPercent, classifyQuoteCategory } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
 import { kitItemPerMetre } from "@/lib/lineDisplay";
 import { buildKitMaterial, kitBasketFields, DEFAULT_KIT_LENGTH_M } from "@/components/catalog/quote-builder/kitLine";
@@ -91,7 +91,7 @@ export function catalogLineFields(p: PaletteProduct, qty: number) {
       unit_price: r4(lengthSell / supplierLen),
       total_price: perMetreTotal(qty, lengthSell, supplierLen),
       metadata: {
-        unit_cost: r4(cost / supplierLen), cost_excl: r4(cost / supplierLen), markup_percent: markupPct,
+        unit_cost: r4(cost / supplierLen), cost_excl: r4(cost / supplierLen), markup_percent: markupPct, quote_category: classifyQuoteCategory(p),
         supplier_length_m: supplierLen, qty_unit: "metre",
       } as Record<string, any>,
       unitSell: lengthSell / supplierLen,
@@ -106,7 +106,7 @@ export function catalogLineFields(p: PaletteProduct, qty: number) {
     quantity: qty,
     unit_price: Number(unitSell.toFixed(2)),
     metadata: {
-      unit_cost: cost, cost_excl: cost, markup_percent: markupPct,
+      unit_cost: cost, cost_excl: cost, markup_percent: markupPct, quote_category: classifyQuoteCategory(p),
       ...(supplierLen ? { supplier_length_m: supplierLen, qty_unit: "length" } : {}),
     } as Record<string, any>,
     unitSell,

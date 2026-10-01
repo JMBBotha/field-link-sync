@@ -364,7 +364,7 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center justify-between">
             Global Markup
-            <Button variant="ghost" size="sm" className="text-xs gap-1 h-7" onClick={resetAllToGlobal}>
+            <Button variant="ghost" size="sm" className="text-xs gap-1 h-7" onClick={resetAllToGlobal} disabled>
               <RotateCcw className="h-3 w-3" /> Reset All
             </Button>
           </CardTitle>
@@ -376,13 +376,13 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
                 <Label className="text-xs text-muted-foreground whitespace-nowrap cursor-help">Default Markup %</Label>
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs max-w-[220px]">
-                Set the default profit margin applied to all areas. Higher markup increases profit but may reduce client acceptance.
+                Read-only: this quote's Units % (change it in Quote summary).
               </TooltipContent>
             </Tooltip>
             <Input
               type="number"
               value={globalMarkup}
-              onChange={(e) => { setGlobalMarkup(parseFloat(e.target.value) || 0); }}
+              readOnly
               className="h-8 w-24 text-sm"
               min={0}
               step={5}
@@ -481,7 +481,7 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
                           <Input
                             type="number"
                             value={pricing.markupPercent}
-                            onChange={(e) => { updateAreaPricing(area.id, { markupPercent: parseFloat(e.target.value) || 0 }); }}
+                            readOnly
                             className="h-8 text-xs w-16 text-center min-h-[44px] sm:min-h-0 sm:h-7"
                             min={0}
                             step={5}
