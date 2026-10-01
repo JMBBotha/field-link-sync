@@ -222,8 +222,9 @@ const AdminMapPage = () => {
             />
           </div>
         )}
-        {/* Status chips — the only chrome on mobile/tablet */}
-        <div className="order-last w-full min-w-0 overflow-hidden pointer-events-auto lg:order-none lg:w-auto lg:overflow-visible">
+        {/* Status chips float over the map only while the leads panel is closed;
+            once open they sit at the top of the panel on mobile/tablet. */}
+        <div className={`order-last w-full min-w-0 overflow-hidden pointer-events-auto lg:order-none lg:w-auto lg:overflow-visible ${leadsCollapsed ? "" : "hidden lg:block"}`}>
           <StatusFilterButtons
             variant="quiet"
             className="w-full justify-between flex-nowrap sm:w-max sm:justify-start"
@@ -335,16 +336,30 @@ const AdminMapPage = () => {
             {!leadsCollapsed && (
               <LeadsList
                 headerSlot={
-                  <BusinessSearch
-                    className="relative w-full"
-                    getToken={() => mapRef.current?.getMapboxToken() ?? null}
-                    onSelect={(lat, lng, name, address) => {
-                      mapRef.current?.showSearchResult(lat, lng, name, address);
-                    }}
-                    onSelectLead={(leadId, lat, lng) => {
-                      mapRef.current?.panToLocationAndOpenPopup(lat, lng, leadId);
-                    }}
-                  />
+                  <>
+                    {/* Mobile/tablet: status chips lead the panel; search stays desktop-only */}
+                    <div className="lg:hidden">
+                      <StatusFilterButtons
+                        variant="quiet"
+                        className="w-full flex-wrap justify-start gap-1"
+                        activeFilters={statusState.filters}
+                        counts={statusState.counts}
+                        onToggle={handleStatusToggle}
+                      />
+                    </div>
+                    <div className="hidden lg:block">
+                      <BusinessSearch
+                        className="relative w-full"
+                        getToken={() => mapRef.current?.getMapboxToken() ?? null}
+                        onSelect={(lat, lng, name, address) => {
+                          mapRef.current?.showSearchResult(lat, lng, name, address);
+                        }}
+                        onSelectLead={(leadId, lat, lng) => {
+                          mapRef.current?.panToLocationAndOpenPopup(lat, lng, leadId);
+                        }}
+                      />
+                    </div>
+                  </>
                 }
                 onLeadClick={(lat, lng, leadId) => {
                   if (mapRef.current) mapRef.current.panToLocationAndOpenPopup(lat, lng, leadId);
