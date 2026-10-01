@@ -46,7 +46,8 @@ const PRIORITY_VARIANT: Record<string, "destructive" | "default" | "secondary" |
   urgent: "destructive", high: "destructive", normal: "secondary", low: "outline",
 };
 
-const AdminJobsDispatchPage = () => {
+/** embedded = shown inside the Jobs hub (Dispatch · Stages): the hub supplies the title and the attention strip. */
+const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => {
   const { companyId } = useUserCompanyId();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -339,7 +340,7 @@ const AdminJobsDispatchPage = () => {
   return (
     <div className="space-y-4 p-3 sm:p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Jobs &amp; Dispatch</h1>
+        {embedded ? <span /> : <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Jobs &amp; Dispatch</h1>}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 text-sm">
             <Filter className="h-4 w-4 text-muted-foreground" />
@@ -379,7 +380,7 @@ const AdminJobsDispatchPage = () => {
         </div>
       </div>
 
-      <AttentionStrip />
+      {!embedded && <AttentionStrip />}
 
       {(() => {
         const active = FILTER_KEYS.filter((k) => filters[k]);
@@ -527,9 +528,9 @@ const AdminJobsDispatchPage = () => {
   );
 };
 
-const AdminJobsDispatchPageGuarded = () => (
+const AdminJobsDispatchPageGuarded = (props: { embedded?: boolean }) => (
   <RequireRole allowedRoles={["admin", "dispatcher"]}>
-    <AdminJobsDispatchPage />
+    <AdminJobsDispatchPage {...props} />
   </RequireRole>
 );
 

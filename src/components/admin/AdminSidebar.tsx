@@ -100,12 +100,13 @@ const AdminSidebar = ({
           roles: ["admin", "dispatcher", "viewer"],
         },
         {
-          path: "/admin/jobs/dispatch",
+          path: "/admin/jobs",
           label: "Jobs & Dispatch",
           icon: Briefcase,
           children: [
             { path: "/admin/jobs?tab=pipeline", label: "Pipeline", icon: BarChart3, roles: ["admin", "dispatcher", "viewer"] },
-            { path: "/admin/jobs/dispatch", label: "Dispatch Board", icon: ClipboardList },
+            { path: "/admin/jobs?tab=dispatch", label: "Dispatch", icon: ClipboardList, roles: ["admin", "dispatcher", "viewer"] },
+            { path: "/admin/dispatch", label: "Dispatch calendar", icon: CalendarDays, roles: ["admin", "dispatcher"] },
             { path: "/admin/schedule", label: "Schedule", icon: CalendarDays },
             { path: "/admin/my-jobs", label: "My Jobs", icon: Briefcase },
           ],
@@ -197,7 +198,11 @@ const AdminSidebar = ({
 
   const isActive = (path: string) => {
     if (path === "/admin") return location.pathname === "/admin";
-    const base = path.split("#")[0];
+    const [base, query] = path.split("#")[0].split("?");
+    if (query) {
+      const have = new URLSearchParams(location.search);
+      return location.pathname === base && [...new URLSearchParams(query)].every(([k, v]) => have.get(k) === v);
+    }
     return location.pathname === base || location.pathname.startsWith(base + "/");
   };
 
@@ -325,7 +330,7 @@ const AdminSidebar = ({
       <button
         onClick={() => {
           // When badged, the PopoverTrigger handles opening; chevron still expands.
-          if (item.path === "/admin/jobs/dispatch") {
+          if (item.path === "/admin/jobs") {
             // Jobs label navigates AND expands; chevron still only toggles.
             const fieldOnly = isFieldAgent && !isAdmin && !isDispatcher;
             setExpanded((s) => ({ ...s, [item.path]: true }));
