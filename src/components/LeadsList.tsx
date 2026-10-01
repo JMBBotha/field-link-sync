@@ -275,6 +275,7 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
   };
 
   const getStatusBadge = (status: string) => {
+    const category = leadStatusCategory(status);
     const colors: Record<string, string> = {
       pending: "bg-warning",
       accepted: "bg-onsite",
@@ -283,7 +284,7 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
       cancelled: "bg-destructive",
     };
 
-    // Match the status chip language (Avail / Claimed / Active / Done)
+    // Match the status chip language (Avail / Claimed / Active / Done / Cancelled)
     const labels: Record<string, string> = {
       pending: "Avail",
       accepted: "Claimed",
@@ -293,8 +294,8 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
     };
 
     return (
-      <Badge className={colors[status] || "bg-muted"}>
-        {labels[status] || status.replace("_", " ")}
+      <Badge className={colors[category] || "bg-muted"}>
+        {labels[category] || status.replace("_", " ")}
       </Badge>
     );
   };

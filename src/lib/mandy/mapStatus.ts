@@ -6,6 +6,7 @@ export const MAP_STATUSES: { value: LeadStatusFilter; label: string }[] = [
   { value: "accepted", label: "Claimed" },
   { value: "in_progress", label: "In progress" },
   { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 const WORDS: [RegExp, LeadStatusFilter][] = [
