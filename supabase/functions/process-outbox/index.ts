@@ -152,15 +152,26 @@ async function notifyTeam(ev: OutboxEvent) {
   const title = `${ev.entity_type === "lead" ? "Job" : ev.entity_type[0].toUpperCase() + ev.entity_type.slice(1)} updated`;
   const body = `${label}: ${bits.join(", ")}`;
 
-  // Admins + dispatchers in the same company, plus the assigned technician.
+  // Admins + dispatchers of THIS company only (profiles.company_id = event company), plus the assigned technician.
+  // No company on the event -> no staff recipients (never another company's users).
   const recipients = new Set<string>();
-  const { data: staff } = await admin
-    .from("user_roles")
-    .select("user_id, role, profiles!inner(company_id)")
-    .in("role", ["admin", "dispatcher"]);
-  (staff ?? []).forEach((r: any) => {
-    if (!ev.company_id || r.profiles?.company_id === ev.company_id) recipients.add(r.user_id);
-  });
+  if (ev.company_id) {
+    const { data: roles, error: rolesErr } = await admin
+      .from("user_roles")
+      .select("user_id")
+      .in("role", ["admin", "dispatcher"]);
+    if (rolesErr) throw rolesErr;
+    const ids = [...new Set((roles ?? []).map((r: any) => r.user_id).filter(Boolean))];
+    if (ids.length) {
+      const { data: staff, error: staffErr } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("company_id", ev.company_id)
+        .in("id", ids);
+      if (staffErr) throw staffErr;
+      (staff ?? []).forEach((p: any) => recipients.add(p.id));
+    }
+  }
   if (next.assigned_agent_id) recipients.add(next.assigned_agent_id);
   if (actor) recipients.delete(actor);
   if (!recipients.size) return { skipped: "no recipients" };
@@ -240,7 +251,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ processed: processed.length, details: processed }), {
+    return new Response(JSON.stringify({ processed: processed.length, details: processed, version: "outbox-2026-10-01" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {

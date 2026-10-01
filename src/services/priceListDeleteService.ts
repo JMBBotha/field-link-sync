@@ -12,7 +12,7 @@ export async function deletePriceListUpload(uploadId: string): Promise<{
   try {
     // 1. Fetch the upload row to get supplier_id
     const { data: upload, error: fetchErr } = await (supabase.from("price_list_uploads") as any)
-      .select("id, supplier_id, file_path, storage_path")
+      .select("id, supplier_id, file_name")
       .eq("id", uploadId)
       .maybeSingle();
 
@@ -29,7 +29,7 @@ export async function deletePriceListUpload(uploadId: string): Promise<{
     await (supabase.from("price_list_uploads") as any).delete().eq("id", uploadId);
 
     // 4. Try removing storage file
-    const rawPath = upload.file_path || upload.storage_path || "";
+    const rawPath = upload.file_name || "";
     if (rawPath) {
       const match = rawPath.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)/);
       const cleanPath = match ? match[1] : rawPath;
