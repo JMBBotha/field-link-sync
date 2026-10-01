@@ -67,9 +67,11 @@ interface LeadsListProps {
   onPanelClose?: () => void;
   /** Optional content rendered above the "Recent Leads" heading (e.g. business search). */
   headerSlot?: React.ReactNode;
+  /** When provided, only leads whose status is in this set are shown. */
+  statusFilter?: Set<string>;
 }
 
-const LeadsList = ({ onLeadClick, onPanelClose, headerSlot }: LeadsListProps) => {
+const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: LeadsListProps) => {
   const navigate = useNavigate();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
