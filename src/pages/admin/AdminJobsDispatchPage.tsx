@@ -86,7 +86,7 @@ const AdminJobsDispatchPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("jobs")
-        .select("*, customers(name, phone, address), customer_locations!jobs_location_id_fkey(label, address, latitude, longitude), assignments(id, profile_id, assignment_type, status, profiles(full_name, participant_type))")
+        .select("*, customers(name, phone, address), customer_locations!jobs_location_id_fkey(label, address, latitude, longitude), assignments(id, profile_id, assignment_type, status, profiles!assignments_profile_id_fkey(full_name, participant_type))")
         .order("scheduled_for", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return data || [];
