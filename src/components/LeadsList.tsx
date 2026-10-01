@@ -67,9 +67,11 @@ interface LeadsListProps {
   onPanelClose?: () => void;
   /** Optional content rendered above the "Recent Leads" heading (e.g. business search). */
   headerSlot?: React.ReactNode;
+  /** When provided, only leads whose status is in this set are shown. */
+  statusFilter?: Set<string>;
 }
 
-const LeadsList = ({ onLeadClick, onPanelClose, headerSlot }: LeadsListProps) => {
+const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: LeadsListProps) => {
   const navigate = useNavigate();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -87,8 +89,11 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot }: LeadsListProps) =>
   // Compact mode: mobile OR tablet — reduces card height & lets the map show through.
   const useCompact = isMobile || isTabletOrBelow;
   
+  // Status chips filter which leads are shown (map page passes its filter set).
+  const visibleLeads = statusFilter ? leads.filter((l) => statusFilter.has(l.status)) : leads;
+
   // Get photo counts for all leads
-  const leadIds = leads.map(l => l.id);
+  const leadIds = visibleLeads.map(l => l.id);
   const { photoCounts } = useLeadPhotoCount(leadIds);
   
   // Pull-to-refresh refs
@@ -658,7 +663,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
             <div>
               <h2 className="text-lg font-semibold text-foreground">Recent Leads</h2>
               <p className="text-sm text-muted-foreground">
-                {leads.length} total leads
+                {visibleLeads.length} total leads
               </p>
             </div>
             <Button
@@ -709,14 +714,14 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
         )}
         
         <div className="p-3 space-y-2 w-full max-w-full">
-          {leads.length === 0 ? (
+          {visibleLeads.length === 0 ? (
             <Card className="glass-card">
               <CardContent className="py-8 text-center text-muted-foreground">
-                No leads yet
+                {leads.length === 0 ? "No leads yet" : "No leads match the selected filters"}
               </CardContent>
             </Card>
           ) : (
-            leads.map((lead) => (
+            visibleLeads.map((lead) => (
               useCompact ? renderMobileCard(lead) : renderDesktopCard(lead)
             ))
           )}

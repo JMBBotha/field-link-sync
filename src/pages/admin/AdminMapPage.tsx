@@ -60,7 +60,15 @@ const AdminMapPage = () => {
 
   const handleStatusStateChange = useCallback((s: MapStatusState) => setStatusState(s), []);
   const handleStatusToggle = useCallback(
-    (status: LeadStatusFilter) => mapRef.current?.toggleStatusFilter(status),
+    (status: LeadStatusFilter) => {
+      mapRef.current?.toggleStatusFilter(status);
+      // Mobile: tapping a chip opens the panel that shows those leads
+      // ("completed" opens the completed-jobs panel via onStatusFiltersChange).
+      if (window.innerWidth < 1024 && status !== "completed") {
+        setLeadsCollapsed(false);
+        setCompletedPanelCollapsed(true);
+      }
+    },
     []
   );
 
@@ -350,6 +358,7 @@ const AdminMapPage = () => {
           >
             {!leadsCollapsed && (
               <LeadsList
+                statusFilter={statusState.filters}
                 headerSlot={
                   <>
                     {/* Mobile/tablet: status chips lead the panel; search stays desktop-only */}
