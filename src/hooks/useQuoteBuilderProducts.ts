@@ -2,6 +2,7 @@ import { resolveProductMarkupPercent } from "@/lib/pricing";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchVisualCatalogAllowlist, filterToVisualCatalog } from "@/lib/catalogSoT";
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 
 export function useQuoteBuilderProducts() {
@@ -9,7 +10,7 @@ export function useQuoteBuilderProducts() {
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
       const allowPromise = fetchVisualCatalogAllowlist();
-      const { data, error } = await supabase
+      const { data, error } = await fetchAllPages<any>((from, to) => supabase
         .from("supplier_products")
         .select(`
           id, product_code, short_name, brand, product_category, category,
@@ -27,7 +28,8 @@ export function useQuoteBuilderProducts() {
         .eq("is_active", true)
         .order("is_pinned", { ascending: false })
         .order("pin_order", { ascending: true, nullsFirst: false })
-        .limit(2000);
+        .order("id", { ascending: true })
+        .range(from, to));
 
       if (error) throw error;
 
