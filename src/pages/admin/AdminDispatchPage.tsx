@@ -33,6 +33,8 @@ import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
 import { fetchQuoteInvoice } from "@/lib/depositInvoice";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { KpiGridSkeleton, JobCardListSkeleton } from "@/components/ui/skeletons";
+import LeadCardV2 from "@/components/leads/LeadCardV2";
+import AttentionStrip from "@/components/jobs/AttentionStrip";
 
 // ─── Types ───
 interface Lead {
@@ -806,6 +808,7 @@ const AdminDispatchPage = () => {
         </div>
       </div>
 
+      <AttentionStrip className="mx-3 mt-2 shrink-0" />
       {/* ─── Main content: sidebar + timeline (+ optional map) ─── */}
       <div className="flex flex-1 overflow-hidden">
         {/* Unassigned Jobs Sidebar */}

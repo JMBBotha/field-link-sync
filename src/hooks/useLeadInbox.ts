@@ -36,7 +36,7 @@ export function isInboxLead(lead: InboxLeadLike | null | undefined): boolean {
 export const INBOX_ROUTE = "/admin/dispatch?inbox=1";
 
 const INBOX_COLUMNS =
-  "id, customer_name, customer_phone, customer_address, service_type, status, lead_status, priority, primary_intent, assigned_agent_id, scheduled_date, scheduled_time, deleted_at, created_at";
+  "id, customer_name, customer_phone, customer_address, service_type, status, lead_status, priority, primary_intent, assigned_agent_id, scheduled_date, scheduled_time, deleted_at, created_at, source, notes, first_contact_at, contact_attempts, stage2_done_at, sla_breached_at, quote_sla_breached_at, call_summary, call_area, call_urgency, call_next_action";
 
 /** Shared inbox list + count, company-scoped, realtime. */
 export function useLeadInbox() {
