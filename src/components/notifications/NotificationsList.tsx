@@ -34,6 +34,7 @@ const typeIcons: Record<string, typeof Bell> = {
   assignment_accepted: Briefcase,
   assignment_started: Briefcase,
   invoice_paid: CreditCard,
+  invoice_ready: CreditCard,
   quote_status_change: FileText,
   call_logged: Phone,
   appointment_reschedule_request: MessageSquare,
@@ -74,6 +75,7 @@ export const notificationHref = (type: string, relatedId?: string | null): strin
   if (CHANGE_REQUEST_TYPES.has((type || "").toLowerCase())) return "/admin/change-requests";
   const category = categoryOf(type);
   if (category === "calls") return "/admin/calls";
+  if (type === "invoice_ready") return "/admin#ready-to-invoice";
 
   if (category === "quotes") return relatedId ? `/admin/estimates/${relatedId}` : "/admin/quotes";
   if (category === "invoices") return relatedId ? `/admin/invoices/${relatedId}` : "/admin/invoices";

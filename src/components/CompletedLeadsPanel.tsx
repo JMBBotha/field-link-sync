@@ -94,21 +94,19 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
       // Fetch invoices for all completed leads
       const leadIds = data.map((l) => l.id);
       if (leadIds.length > 0) {
-        const { data: invoices } = await supabase
-          .from("invoices")
-          .select("id, lead_id, invoice_number, status, grand_total")
-          .in("lead_id", leadIds);
+        const { data: invoices } = await (supabase.from("lead_invoice_status" as any) as any)
+          .select("lead_id, invoice_id, invoice_number, invoice_status, invoice_total, invoice_state")
+          .in("lead_id", leadIds)
+          .not("invoice_id", "is", null);
         if (invoices) {
           const map = new Map<string, InvoiceInfo>();
-          invoices.forEach((inv) => {
-            if (inv.lead_id) {
-              map.set(inv.lead_id, {
-                id: inv.id,
-                invoice_number: inv.invoice_number,
-                status: inv.status,
-                grand_total: Number(inv.grand_total),
-              });
-            }
+          (invoices as any[]).forEach((inv) => {
+            map.set(inv.lead_id, {
+              id: inv.invoice_id,
+              invoice_number: inv.invoice_number,
+              status: inv.invoice_state === "deposit_only" ? "deposit" : inv.invoice_status,
+              grand_total: Number(inv.invoice_total),
+            });
           });
           setInvoiceMap(map);
         }
@@ -224,7 +222,8 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
 
   const renderInvoiceBadge = (lead: Lead) => {
     const inv = invoiceMap.get(lead.id);
-    if (!inv) {
+    if (!inv && lead.status !== "completed") return null;
+    if (!inv || inv.status === "deposit") {
       return (
         <Button
           variant="default"
@@ -233,7 +232,7 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
           onClick={(e) => handleCreateInvoice(lead, e)}
         >
           <FilePlus className="h-3 w-3" />
-          Create Invoice
+          {inv ? "Invoice balance" : "Create Invoice"}
         </Button>
       );
     }

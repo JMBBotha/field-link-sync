@@ -81,10 +81,10 @@ const CompletedLeadsList = () => {
       const customerIds = completedLeads.map((l) => l.customer_id).filter(Boolean) as string[];
 
       const [invoiceRes, customerRes] = await Promise.all([
-        supabase
-          .from("invoices")
-          .select("id, lead_id, status, grand_total, invoice_number")
-          .in("lead_id", leadIds),
+        (supabase.from("lead_invoice_status" as any) as any)
+          .select("lead_id, id:invoice_id, status:invoice_status, grand_total:invoice_total, invoice_number")
+          .in("lead_id", leadIds)
+          .not("invoice_id", "is", null),
         customerIds.length > 0
           ? supabase.from("customers").select("id, email").in("id", customerIds)
           : Promise.resolve({ data: [], error: null }),
@@ -92,8 +92,8 @@ const CompletedLeadsList = () => {
 
       if (invoiceRes.error) throw invoiceRes.error;
 
-      const invoiceMap = new Map(
-        (invoiceRes.data || []).map((inv) => [inv.lead_id, inv])
+      const invoiceMap = new Map<string, any>(
+        (invoiceRes.data || []).map((inv: any) => [inv.lead_id, inv])
       );
       const customerEmailMap = new Map(
         (customerRes.data || []).map((c) => [c.id, c.email])
