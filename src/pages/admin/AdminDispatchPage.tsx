@@ -260,7 +260,7 @@ const AdminDispatchPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("job_schedules")
-        .select("*, leads(customer_name, service_type, status, priority, customer_address, latitude, longitude)")
+        .select("*, leads(id, customer_name, service_type, status, priority, customer_address, latitude, longitude)")
         .order("scheduled_date");
       if (error) throw error;
       return data as Schedule[];
@@ -433,21 +433,21 @@ const AdminDispatchPage = () => {
       if (targetJobId) {
         // Installation job: reassign/reschedule the JOB, leave the sales lead's own
         // assignment and lane untouched.
-        await supabase
+        const { error: jobErr } = await supabase
           .from("jobs")
           .update({ scheduled_for: new Date(`${date}T${startTime}`).toISOString() } as any)
           .eq("id", targetJobId);
+        if (jobErr) throw jobErr;
         const { data: existingAssignment } = await supabase
           .from("assignments")
           .select("id")
           .eq("job_id", targetJobId)
           .in("assignment_type", ["primary", "internal"])
           .limit(1);
-        if (existingAssignment?.[0]) {
-          await supabase.from("assignments").update({ profile_id: agentId } as any).eq("id", existingAssignment[0].id);
-        } else {
-          await supabase.from("assignments").insert([{ job_id: targetJobId, profile_id: agentId, assignment_type: "primary" } as any]);
-        }
+        const { error: asgErr } = existingAssignment?.[0]
+          ? await supabase.from("assignments").update({ profile_id: agentId } as any).eq("id", existingAssignment[0].id)
+          : await supabase.from("assignments").insert([{ job_id: targetJobId, profile_id: agentId, assignment_type: "primary" } as any]);
+        if (asgErr) throw asgErr;
       } else {
         // Update lead — check the row really changed (RLS can turn an update into a silent no-op)
         const { data: assigned, error: assignErr } = await supabase
@@ -475,6 +475,13 @@ const AdminDispatchPage = () => {
       toast({ title: "Assignment failed", description: err.message, variant: "destructive" });
     },
   });
+
+  // Job Details "Calendar slot" follows edits made in the same dialog (DB trigger moves the row; realtime refetches)
+  const liveSlot: any = jobInfoLead
+    ? (rawSchedules as any[]).find((r) => jobInfoSchedule && r.id === jobInfoSchedule.id)
+      ?? (rawSchedules as any[]).find((r) => r.lead_id === jobInfoLead.id && !r.job_id)
+      ?? jobInfoSchedule
+    : null;
 
   // ─── Lane (sales vs service) ───
   const setLaneMutation = useMutation({
@@ -541,12 +548,15 @@ const AdminDispatchPage = () => {
       e.dataTransfer.setData("text/plain", schedule.lead_id);
       e.dataTransfer.setData("application/schedule-id", schedule.id);
       if (schedule.job_id) e.dataTransfer.setData("application/job-id", schedule.job_id);
+      // Carry the tile's own time so a move keeps its length (day view) and its start time (week view)
+      if (schedule.start_time) e.dataTransfer.setData("application/start-time", schedule.start_time);
+      if (schedule.end_time) e.dataTransfer.setData("application/end-time", schedule.end_time);
       e.dataTransfer.effectAllowed = "move";
 
     }
   };
 
-  const handleDrop = (e: React.DragEvent, agentId: string, dateStr: string, hour: number) => {
+  const handleDrop = (e: React.DragEvent, agentId: string, dateStr: string, dropHour: number, keepStart = false) => {
     e.preventDefault();
     setDragOverSlot(null);
     setIsDragging(false);
@@ -557,8 +567,15 @@ const AdminDispatchPage = () => {
     // Moving an existing tile targets THAT schedule row (and its install job), never lead_id alone.
     const draggedScheduleId = e.dataTransfer.getData("application/schedule-id") || null;
     const draggedJobId = e.dataTransfer.getData("application/job-id") || null;
-    const startTime = `${String(hour).padStart(2, "0")}:00`;
-    const endTime = `${String(Math.min(hour + 2, 20)).padStart(2, "0")}:00`;
+    const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
+    const toHHMM = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+    const dragStart = e.dataTransfer.getData("application/start-time");
+    const dragEnd = e.dataTransfer.getData("application/end-time");
+    const dragDur = dragStart && dragEnd && toMin(dragEnd) > toMin(dragStart) ? toMin(dragEnd) - toMin(dragStart) : 0;
+    const startMin = keepStart && dragStart ? toMin(dragStart) : dropHour * 60;
+    const hour = Math.floor(startMin / 60);
+    const startTime = toHHMM(startMin);
+    const endTime = dragDur ? toHHMM(Math.min(startMin + dragDur, 23 * 60 + 59)) : toHHMM(Math.min(startMin + 120, 20 * 60));
 
     // Check for overlapping bookings
     const slotKey = `${agentId}-${dateStr}-${hour}`;
@@ -999,7 +1016,7 @@ const AdminDispatchPage = () => {
                 schedulesMap={schedulesForDates}
                 isAgentOnline={isAgentOnline}
                 hasConflict={hasConflict}
-                onDrop={handleDrop}
+                onDrop={(e, a, d, h) => handleDrop(e, a, d, h, true)}
                 onDragOver={handleDragOver}
                 onScheduleDragStart={handleScheduleDragStart}
                 pxPerHour={PX_PER_HOUR}
@@ -1153,11 +1170,10 @@ const AdminDispatchPage = () => {
                   "notes",
                 ]}
               />
-              {jobInfoSchedule && (
+              {liveSlot && (
                 <>
-                  <Separator />
                   <p className="text-xs text-muted-foreground">
-                    Calendar slot: {jobInfoSchedule.scheduled_date} · {jobInfoSchedule.start_time} – {jobInfoSchedule.end_time}
+                    Calendar slot: {liveSlot.scheduled_date} · {liveSlot.start_time} – {liveSlot.end_time}
                   </p>
                 </>
               )}
@@ -1180,7 +1196,7 @@ const AdminDispatchPage = () => {
                 Create / Open Quote
               </Button>
             )}
-            {jobInfoLead && !jobInfoLead.assigned_agent_id && (
+            {jobInfoLead && !(allLeads.find((l) => l.id === jobInfoLead.id) ?? jobInfoLead).assigned_agent_id && (
               <Button
                 onClick={() => {
                   const lead = jobInfoLead;

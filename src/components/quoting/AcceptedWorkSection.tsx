@@ -240,7 +240,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
         scheduleLeadId = (jl as any)?.lead_id ?? null;
       }
       if (scheduleLeadId && date && jobId) {
-        await supabase.from("job_schedules").insert([{
+        const row = {
           lead_id: scheduleLeadId,
           job_id: jobId,
           agent_id: techId || null,
@@ -248,7 +248,13 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
           start_time: startTime || "08:00",
           end_time: addMinutesToTime(startTime || "08:00", duration),
           notes: `Installation — quote ${quote.quote_number || ""}`.trim(),
-        } as any]);
+        };
+        // The assignment trigger may already have created this job's row: update it, never add a second tile
+        const { data: existingRow } = await supabase.from("job_schedules").select("id").eq("job_id", jobId).limit(1);
+        const { error: schedErr } = existingRow?.[0]
+          ? await supabase.from("job_schedules").update(row as any).eq("id", existingRow[0].id)
+          : await supabase.from("job_schedules").insert([row as any]);
+        if (schedErr) console.warn("Install calendar row not saved", schedErr);
       }
 
 
