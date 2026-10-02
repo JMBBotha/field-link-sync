@@ -243,7 +243,7 @@ const AdminNetworkAgentsPage = () => {
                             size="sm"
                             variant="ghost"
                             className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
-                            onClick={() => updateStatus.mutate({ id: agent.id, status: "rejected" })}
+                            onClick={() => confirm(`Reject ${agent.full_name}?`) && updateStatus.mutate({ id: agent.id, status: "rejected" })}
                             disabled={updateStatus.isPending}
                           >
                             <XCircle className="h-4 w-4 mr-1" />
@@ -287,6 +287,55 @@ const AdminNetworkAgentsPage = () => {
           </Table>
         </div>
       )}
+
+      {/* Applicant detail */}
+      <Dialog open={!!detail} onOpenChange={(o) => { if (!o) setDetail(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{detail?.full_name}</DialogTitle>
+            <DialogDescription>
+              Applied as {detail?.participant_type === "independent_sales" ? "Sales agent" : "Technician"}
+              {detail && ` · ${format(new Date(detail.created_at), "dd MMM yyyy, HH:mm")}`}
+            </DialogDescription>
+          </DialogHeader>
+          {detail && (
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center gap-2">
+                {statusBadge(detail.network_status)}
+                {getAffiliation(detail.id) && <Badge variant="outline">On team · {getAffiliation(detail.id).affiliation_type}</Badge>}
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                {detail.phone ? <a href={`tel:${detail.phone}`} className="text-primary hover:underline">{detail.phone}</a> : <span className="text-muted-foreground">No phone given</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                {detailEmail ? <a href={`mailto:${detailEmail}`} className="text-primary hover:underline">{detailEmail}</a> : <span className="text-muted-foreground">No email</span>}
+              </div>
+              <div>
+                <p className="font-medium mb-1">Skills & experience</p>
+                {detail.skills?.length ? (
+                  <ul className="list-disc pl-5 space-y-1">{detail.skills.map((sk: string, i: number) => <li key={i} className="whitespace-pre-wrap">{sk}</li>)}</ul>
+                ) : <p className="text-muted-foreground">None given</p>}
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            {detail && detail.network_status !== "rejected" && (
+              <Button variant="outline" className="text-red-500" disabled={updateStatus.isPending}
+                onClick={() => confirm(`Reject ${detail.full_name}?`) && updateStatus.mutate({ id: detail.id, status: "rejected" })}>
+                <XCircle className="h-4 w-4 mr-1" />Reject
+              </Button>
+            )}
+            {detail && detail.network_status !== "approved" && (
+              <Button disabled={updateStatus.isPending || !companyId}
+                onClick={() => updateStatus.mutate({ id: detail.id, status: "approved", type: detail.participant_type })}>
+                <CheckCircle2 className="h-4 w-4 mr-1" />Approve &amp; add to team
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Affiliate Dialog */}
       <Dialog open={!!affiliateDialogAgent} onOpenChange={(open) => { if (!open) setAffiliateDialogAgent(null); }}>
