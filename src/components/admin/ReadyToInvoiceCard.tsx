@@ -1,16 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import { formatDistanceToNowStrict } from "date-fns";
 import { FilePlus, Receipt } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
-import { convertQuoteToInvoice } from "@/lib/convertQuoteToInvoice";
 import { formatRand } from "@/utils/formatRand";
 
 interface ReadyRow {
@@ -32,9 +29,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 const ReadyToInvoiceCard = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [dialogRow, setDialogRow] = useState<ReadyRow | null>(null);
 
   const { data: rows = [], refetch } = useQuery({
@@ -53,21 +47,8 @@ const ReadyToInvoiceCard = () => {
 
   if (rows.length === 0) return null;
 
-  const handleClick = async (row: ReadyRow) => {
-    if (row.invoice_state === "none" && row.quote_id && user) {
-      setBusyId(row.lead_id);
-      try {
-        const id = await convertQuoteToInvoice(row.quote_id, user.id);
-        navigate(`/admin/invoices/${id}`);
-      } catch (e: any) {
-        toast({ title: "Couldn't create invoice", description: e?.message || String(e), variant: "destructive" });
-      } finally {
-        setBusyId(null);
-      }
-      return;
-    }
-    setDialogRow(row);
-  };
+  // Always open the editor (autofilled from the job) so nothing is saved without review.
+  const handleClick = (row: ReadyRow) => setDialogRow(row);
 
   return (
     <Card id="ready-to-invoice" className="surface-card border-amber-500/40">
@@ -101,7 +82,6 @@ const ReadyToInvoiceCard = () => {
               <Button
                 size="sm"
                 className="h-7 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs flex-shrink-0"
-                disabled={busyId === row.lead_id}
                 onClick={() => handleClick(row)}
               >
                 <FilePlus className="h-3 w-3" />
