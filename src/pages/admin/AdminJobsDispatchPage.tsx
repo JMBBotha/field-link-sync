@@ -75,6 +75,17 @@ const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => 
       .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () => {
         queryClient.invalidateQueries({ queryKey: ["jobs-dispatch"] });
       })
+      // Booked lead visits and tech changes (Stages "booked" cards)
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["jobs-dispatch"] });
+        queryClient.invalidateQueries({ queryKey: ["jobs-dispatch-booked"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "job_schedules" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["jobs-dispatch-booked"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "assignments" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["jobs-dispatch"] });
+      })
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -255,14 +266,14 @@ const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => 
             </div>
           )}
 
-          {(job.customer_locations?.address || job.address) && (
+          {(job.address || job.customer_locations?.address) && (
             <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
               <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
               <div className="min-w-0 flex-1">
                 {job.customer_locations?.label && (
                   <div className="text-xs font-semibold text-foreground/90">{job.customer_locations.label}</div>
                 )}
-                <div className="line-clamp-2 break-words">{job.customer_locations?.address || job.address}</div>
+                <div className="line-clamp-2 break-words">{job.address || job.customer_locations?.address}</div>
               </div>
             </div>
           )}
@@ -478,14 +489,14 @@ const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => 
                 {detailJob.customers?.name && <div><span className="text-muted-foreground">Customer:</span> {detailJob.customers.name}</div>}
                 {detailJob.scheduled_for && <div><span className="text-muted-foreground">Scheduled:</span> {format(new Date(detailJob.scheduled_for), "dd MMM yyyy HH:mm")}</div>}
               </div>
-              {(detailJob.customer_locations?.address || detailJob.address) && (
+              {(detailJob.address || detailJob.customer_locations?.address) && (
                 <div className="text-sm flex items-start gap-1">
                   <MapPin className="h-4 w-4 text-primary mt-0.5" />
                   <div>
                     {detailJob.customer_locations?.label && (
                       <span className="font-semibold">{detailJob.customer_locations.label}</span>
                     )}
-                    <span className="text-muted-foreground"> — {detailJob.customer_locations?.address || detailJob.address}</span>
+                    <span className="text-muted-foreground"> — {detailJob.address || detailJob.customer_locations?.address}</span>
                   </div>
                 </div>
               )}

@@ -132,7 +132,7 @@ const EditLeadDialog = ({ lead, open, onOpenChange, onSuccess }: EditLeadDialogP
     try {
       const formattedPhone = formatPhoneForWhatsApp(formData.customer_phone);
 
-      const { error } = await supabase
+      const { data: saved, error } = await supabase
         .from("leads")
         .update({
           customer_name: formData.customer_name,
@@ -146,9 +146,11 @@ const EditLeadDialog = ({ lead, open, onOpenChange, onSuccess }: EditLeadDialogP
           latitude,
           longitude,
         })
-        .eq("id", lead.id);
+        .eq("id", lead.id)
+        .select("id");
 
       if (error) throw error;
+      if (!saved?.length) throw new Error("Not saved: you don't have permission to edit this lead.");
 
       toast({
         title: "Lead Updated ✓",

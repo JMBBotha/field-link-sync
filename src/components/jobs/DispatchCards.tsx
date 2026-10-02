@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -76,6 +76,17 @@ export default function DispatchCards() {
   const techs = techStrip(shown, now);
   const dayCounts = Object.fromEntries(techs.map((t) => [t.id, t.jobs]));
 
+  // Live: jobs, techs and lead bookings (keeps the 30 s poll as a fallback)
+  useEffect(() => {
+    const ch = supabase
+      .channel("dispatch-cards-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () => qc.invalidateQueries({ queryKey: ["dispatch-cards"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "assignments" }, () => qc.invalidateQueries({ queryKey: ["dispatch-cards"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => qc.invalidateQueries({ queryKey: ["dispatch-cards-leads"] }))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [qc]);
+
   const refresh = () => { qc.invalidateQueries({ queryKey: ["dispatch-cards"] }); qc.invalidateQueries({ queryKey: ["jobs-dispatch"] }); qc.invalidateQueries({ queryKey: ["attention-strip"] }); };
   const move = useMutation({
     mutationFn: async ({ job, status }: { job: Job; status: string }) => {
@@ -130,7 +141,7 @@ export default function DispatchCards() {
         <div className="truncate text-sm font-semibold">{j.title || "Job"}</div>
         <div className="flex items-center gap-1 truncate text-xs text-muted-foreground">
           <MapPin className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{[place(j.customer_locations?.address || j.address), j.customers?.name].filter(Boolean).join(" · ") || "No address"}</span>
+          <span className="truncate">{[place(j.address || j.customer_locations?.address), j.customers?.name].filter(Boolean).join(" · ") || "No address"}</span>
         </div>
         {a && <div className="flex items-center gap-1 text-xs"><HardHat className="h-3.5 w-3.5 text-amber-600" />{a.profiles?.full_name || "Assigned"}</div>}
         <div className="flex flex-wrap items-center gap-1 pt-0.5" onClick={(e) => e.stopPropagation()}>

@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSaveOnUnmount } from "@/hooks/useSaveOnUnmount";
 import { Check, Loader2, MapPin, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,8 @@ const AddressMapField = ({
   const [pin, setPin] = useState<Pin | null>(toPin(lat, lng));
   const [fromPin, setFromPin] = useState(false);
   const [token, setToken] = useState(getMapboxTokenSync());
+  const editingRef = useRef(false);
+  editingRef.current = editing;
 
   useEffect(() => {
     if (token) return;
@@ -64,7 +67,21 @@ const AddressMapField = ({
     }
   }, []);
 
+  const pendingSave = (): AddressMapValue | undefined => {
+    if (!editingRef.current) return undefined;
+    const address = draft.trim() === "" ? null : draft.trim();
+    const old = toPin(lat, lng);
+    const pinChanged = !!pin && (!old || old.lat !== pin.lat || old.lng !== pin.lng);
+    if (address === (value ?? null) && !pinChanged) return undefined;
+    return { address, lat: pinChanged ? pin!.lat : null, lng: pinChanged ? pin!.lng : null };
+  };
+  // Dialog closed / Esc / navigation mid-edit: save instead of silently dropping the edit
+  useSaveOnUnmount(pendingSave, (v) =>
+    onSave(v).then(() => toast({ title: `${label} saved`, description: v.lat != null ? "Map pin updated" : undefined })),
+  );
+
   const cancel = () => {
+    editingRef.current = false;
     setDraft(value ?? "");
     setPin(toPin(lat, lng));
     setFromPin(false);
@@ -72,6 +89,8 @@ const AddressMapField = ({
   };
 
   const commit = async () => {
+    if (!editingRef.current) return;
+    editingRef.current = false;
     const address = draft.trim() === "" ? null : draft.trim();
     const old = toPin(lat, lng);
     const pinChanged = !!pin && (!old || old.lat !== pin.lat || old.lng !== pin.lng);
@@ -109,14 +128,13 @@ const AddressMapField = ({
             onChange={(e) => { setDraft(e.target.value); setFromPin(false); }}
             onKeyDown={(e) => {
               if (e.key === "Enter") commit();
-              if (e.key === "Escape") cancel();
             }}
             className="h-8 min-w-0 text-sm"
           />
           <Button type="button" size="sm" aria-label="Save" onClick={commit} className="h-8 shrink-0 gap-1 px-2.5">
             <Check className="h-4 w-4" /> Save
           </Button>
-          <button type="button" aria-label="Cancel" onClick={cancel} className="p-1 rounded hover:bg-muted">
+          <button type="button" aria-label="Cancel" onMouseDown={(e) => e.preventDefault()} onClick={cancel} className="p-1 rounded hover:bg-muted">
             <X className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>

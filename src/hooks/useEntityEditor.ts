@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getEntityConfig, type EntityType } from "@/lib/entityRegistry";
 
+const SCHEDULE_ROOTS = new Set(["dispatch-schedules", "job-schedules", "jobs-dispatch-booked", "my-jobs", "dispatch-cards", "dispatch-cards-leads", "field-job-sheet"]);
+
 type Row = Record<string, any>;
 
 /**
@@ -142,8 +144,9 @@ export function useEntityEditor(
       }
     },
     onSettled: () => {
+      // Joined calendar/schedule lists can't be patched in place (the DB moves their rows), so refetch them.
       cfg.cacheKeys.forEach((root) =>
-        qc.invalidateQueries({ queryKey: [root], refetchType: "none" }),
+        qc.invalidateQueries({ queryKey: [root], refetchType: SCHEDULE_ROOTS.has(root) ? "active" : "none" }),
       );
     },
   });

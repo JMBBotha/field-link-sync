@@ -120,12 +120,14 @@ const LeadTimeEditDialog = ({
         return;
       }
 
-      const { error } = await supabase
+      const { data: saved, error } = await supabase
         .from("leads")
         .update(updates)
-        .eq("id", lead.id);
+        .eq("id", lead.id)
+        .select("id");
 
       if (error) throw error;
+      if (!saved?.length) throw new Error("Not saved: you don't have permission to edit this lead.");
 
       toast({
         title: "Updated ✓",

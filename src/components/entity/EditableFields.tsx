@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useSaveOnUnmount } from "@/hooks/useSaveOnUnmount";
 import { Check, Loader2, Pencil, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -64,16 +65,27 @@ export const EditableField = ({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? "");
   const inputRef = useRef<HTMLInputElement>(null);
+  const editingRef = useRef(false);
+  editingRef.current = editing;
 
   useEffect(() => {
     if (!editing) setDraft(value ?? "");
   }, [value, editing]);
+
+  const pendingValue = () => {
+    if (!editingRef.current) return undefined;
+    const next = draft === "" ? null : draft;
+    return next === (value ?? null) ? undefined : next;
+  };
+  useSaveOnUnmount(pendingValue, (v) => Promise.resolve(onSave(v)).then(() => toast({ title: `${label} saved` })));
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
   }, [editing]);
 
   const commit = async () => {
+    if (!editingRef.current) return;
+    editingRef.current = false;
     const next = draft === "" ? null : draft;
     setEditing(false);
     if (next === (value ?? null)) return;
@@ -97,11 +109,8 @@ export const EditableField = ({
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") commit();
-              if (e.key === "Escape") {
-                setDraft(value ?? "");
-                setEditing(false);
-              }
             }}
+            onBlur={commit}
             className="h-8 min-w-0 text-sm"
           />
           <Button type="button" size="sm" aria-label="Save" onClick={commit} className="h-8 shrink-0 gap-1 px-2.5">
@@ -110,7 +119,9 @@ export const EditableField = ({
           <button
             type="button"
             aria-label="Cancel"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
+              editingRef.current = false;
               setDraft(value ?? "");
               setEditing(false);
             }}
@@ -182,7 +193,7 @@ export const EditableSelect = ({
   </Shell>
 );
 
-/** Date + time pair that saves as a single ISO timestamp. */
+/** Date + time pair that saves as a single ISO timestamp when you leave the field (not on every keystroke). */
 export const EditableDateTime = ({
   label,
   value,
@@ -192,32 +203,64 @@ export const EditableDateTime = ({
   className,
 }: BaseProps) => {
   const iso = value ? new Date(value) : null;
-  const dateStr = iso ? iso.toISOString().slice(0, 10) : "";
-  const timeStr = iso
-    ? `${String(iso.getHours()).padStart(2, "0")}:${String(iso.getMinutes()).padStart(2, "0")}`
-    : "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  // Local date (toISOString() is UTC and showed the previous day for 00:00-01:59 SAST)
+  const dateStr = iso ? `${iso.getFullYear()}-${pad(iso.getMonth() + 1)}-${pad(iso.getDate())}` : "";
+  const timeStr = iso ? `${pad(iso.getHours())}:${pad(iso.getMinutes())}` : "";
+  const [d, setD] = useState(dateStr);
+  const [t, setT] = useState(timeStr);
+  const [focused, setFocused] = useState(false);
 
-  const save = (d: string, t: string) => {
-    if (!d) return onSave(null);
-    const merged = new Date(`${d}T${t || "08:00"}:00`);
-    return onSave(merged.toISOString());
+  useEffect(() => {
+    if (!focused) {
+      setD(dateStr);
+      setT(timeStr);
+    }
+  }, [dateStr, timeStr, focused]);
+
+  const nextValue = (): string | null | undefined => {
+    if (!d) return value ? null : undefined;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || Number(d.slice(0, 4)) < 2000) return undefined;
+    const merged = new Date(`${d}T${t || "08:00"}:00`).toISOString();
+    return value && new Date(value).getTime() === new Date(merged).getTime() ? undefined : merged;
   };
+  const flush = async () => {
+    const v = nextValue();
+    if (v === undefined) return;
+    try {
+      await onSave(v);
+      toast({ title: `${label} saved` });
+    } catch {
+      // useEntityEditor already shows the error and reverts
+    }
+  };
+  useSaveOnUnmount(() => (focused ? nextValue() : undefined), (v) => onSave(v));
 
   return (
     <Shell label={label} saving={saving} className={className}>
-      <div className="flex items-center gap-1">
+      <div
+        className="flex items-center gap-1"
+        onFocus={() => setFocused(true)}
+        onBlur={(e) => {
+          if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+          setFocused(false);
+          flush();
+        }}
+      >
         <Input
           type="date"
-          value={dateStr}
+          value={d}
           disabled={disabled}
-          onChange={(e) => save(e.target.value, timeStr)}
+          onChange={(e) => setD(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && flush()}
           className="h-8 text-sm"
         />
         <Input
           type="time"
-          value={timeStr}
-          disabled={disabled || !dateStr}
-          onChange={(e) => save(dateStr, e.target.value)}
+          value={t}
+          disabled={disabled || !d}
+          onChange={(e) => setT(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && flush()}
           className="h-8 w-28 text-sm"
         />
       </div>
@@ -241,6 +284,16 @@ export const EditableNotes = ({
   const text = String(draft ?? "");
   const fullRows = text.split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 70)), 0);
   const isLong = fullRows > 6;
+
+  // Esc closes the dialog without a blur: save what was typed
+  useSaveOnUnmount(
+    () => {
+      if (!focused) return undefined;
+      const next = draft === "" ? null : draft;
+      return next === (value ?? null) ? undefined : next;
+    },
+    (v) => Promise.resolve(onSave(v)).then(() => toast({ title: `${label} saved` })),
+  );
 
   useEffect(() => {
     if (!focused) setDraft(value ?? "");
