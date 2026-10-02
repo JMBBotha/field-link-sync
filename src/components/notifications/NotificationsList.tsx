@@ -71,6 +71,15 @@ const categoryOf = (type: string): FilterKey => {
   return "all";
 };
 
+// These bells carry a LEAD id in related_id (DB triggers) → open that lead's Job Details sheet
+const LEAD_ID_TYPES = new Set(["job_status_change", "lead_assigned", "new_lead", "job_schedule", "entity_update"]);
+
+const scrollToHash = (id: string, tries = 15) => {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  else if (tries > 0) setTimeout(() => scrollToHash(id, tries - 1), 200);
+};
+
 export const notificationHref = (type: string, relatedId?: string | null, isTech = false): string => {
   const t = (type || "").toLowerCase();
   if (isTech) {
@@ -79,8 +88,7 @@ export const notificationHref = (type: string, relatedId?: string | null, isTech
     return "/field";
   }
   if (t === "deposit_paid") return relatedId ? `/admin/estimates/${relatedId}` : "/admin/quotes";
-  // job_status_change carries a LEAD id (notify_job_status_change), not a job id
-  if (t === "job_status_change") return relatedId ? `/admin/dispatch?lead=${relatedId}` : "/admin/dispatch";
+  if (LEAD_ID_TYPES.has(t) || t.startsWith("lead_") || t.includes("sla")) return relatedId ? `/admin/dispatch?lead=${relatedId}` : "/admin/dispatch";
   if ((type || "").startsWith("network_")) return "/admin/network-agents";
   if (CHANGE_REQUEST_TYPES.has((type || "").toLowerCase())) return "/admin/change-requests";
   const category = categoryOf(type);
@@ -132,7 +140,10 @@ const NotificationsList = ({
     setFollowUps((prev) => new Set(prev).add(n.id));
     if (!n.read) onMarkAsRead(n.id);
     onClose();
-    navigate(notificationHref(n.type, n.related_id, window.location.pathname.startsWith("/field")));
+    const href = notificationHref(n.type, n.related_id, window.location.pathname.startsWith("/field"));
+    navigate(href);
+    const hash = href.split("#")[1];
+    if (hash) scrollToHash(hash);
   };
 
   const quickMarkRead = (n: Notification) => {
