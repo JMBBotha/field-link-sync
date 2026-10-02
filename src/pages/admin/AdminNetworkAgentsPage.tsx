@@ -78,9 +78,9 @@ const AdminNetworkAgentsPage = () => {
       }
     },
     onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ["network-agents"] });
-      queryClient.invalidateQueries({ queryKey: ["pending-applicants"] });
-      toast({ title: `Agent ${vars.status === "approved" ? "approved" : "rejected"}` });
+      ["network-agents", "pending-applicants", "company-affiliations", "team-members"].forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
+      setDetail(null);
+      toast({ title: vars.status === "approved" ? "Approved — now listed under Team Members" : "Applicant rejected" });
     },
     onError: (err: any) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -167,6 +167,16 @@ const AdminNetworkAgentsPage = () => {
           </p>
         </div>
       </div>
+
+      {connectedCount > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {connectedCount} approved agent{connectedCount === 1 ? " is" : "s are"} connected and listed under{" "}
+          <Link to="/admin/team" className="text-primary hover:underline">Team Members</Link>.{" "}
+          <button type="button" className="text-primary hover:underline" onClick={() => setShowConnected((v) => !v)}>
+            {showConnected ? "Hide them here" : "Show them here"}
+          </button>
+        </p>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-12">
