@@ -32,7 +32,7 @@ const CreateInvoiceDialog = ({ open, onClose, agentId, prefillLead }: CreateInvo
             <X className="h-5 w-5 stroke-[3]" />
           </button>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [&_[data-testid=sticky-action-bar]]:bottom-0" style={{ WebkitOverflowScrolling: 'touch' }}>
           <CreateInvoicePage
             agentId={agentId}
             onBack={onClose}
