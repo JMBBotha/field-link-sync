@@ -817,9 +817,17 @@ const AdminDispatchPage = () => {
         {/* Unassigned Jobs Sidebar */}
         <div className={`shrink-0 border-r bg-card flex flex-col transition-all duration-200 ${sidebarCollapsed ? "w-10" : "w-80"}`}>
           {sidebarCollapsed ? (
-            <button onClick={() => setSidebarCollapsed(false)} className="h-full flex items-center justify-center hover:bg-muted transition-colors" title="Expand sidebar">
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
+            <div className="flex h-full flex-col items-center pt-2">
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed(false)}
+                title="Show panel"
+                aria-label="Show panel"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg ring-2 ring-primary/30 transition hover:scale-110 hover:bg-primary/85 hover:shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring"
+              >
+                <ChevronRight className="h-5 w-5" strokeWidth={3} />
+              </button>
+            </div>
           ) : (
             <>
               <div className="p-3 border-b space-y-2">
@@ -902,8 +910,8 @@ const AdminDispatchPage = () => {
                       whileDrag={{ scale: 1.05, rotate: 2, zIndex: 50 }}
                       whileHover={{ scale: 1.02 }}
                       draggable
-                      onDragStart={(e) => handleDragStart(e as any, lead)}
-                      onDragEnd={handleDragEnd}
+                      onDragStartCapture={(e) => handleDragStart(e as any, lead)}
+                      onDragEndCapture={handleDragEnd}
                       onClick={(e) => handleCardClick(e as any, lead.id)}
                       className={`bg-gradient-to-br from-primary/[0.06] to-muted/40 dark:from-[#0f2240]/70 dark:via-[#1a3a5c]/30 dark:to-[#0d1a30]/50 border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors group ${
                         multiSelectedIds.has(lead.id)
@@ -1114,7 +1122,7 @@ const AdminDispatchPage = () => {
 
       {/* ─── Job Info Dialog ─── */}
       <Dialog open={!!jobInfoLead} onOpenChange={(open) => { if (!open) { setJobInfoLead(null); setJobInfoSchedule(null); } }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Info className="h-5 w-5 text-primary" />
@@ -1521,7 +1529,7 @@ const DayTimeline = ({
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.2 }}
                       draggable
-                      onDragStart={(e) => onScheduleDragStart(e as any, schedule)}
+                      onDragStartCapture={(e) => onScheduleDragStart(e as any, schedule)}
                       className="absolute left-1 right-1 rounded-md px-1.5 py-1 text-[10px] cursor-pointer overflow-y-auto border shadow-sm"
                       style={{
                         top,
