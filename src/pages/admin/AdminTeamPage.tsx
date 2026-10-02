@@ -51,7 +51,7 @@ const AdminTeamPage = () => {
 
   // Fetch team members
   const { data: members = [], isLoading } = useQuery({
-    queryKey: ["team-members"],
+    queryKey: ["team-members", companyId],
     queryFn: async () => {
       const { data: roles, error } = await supabase
         .from("user_roles")
@@ -63,8 +63,18 @@ const AdminTeamPage = () => {
 
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, full_name, phone, avatar_url, availability_status, updated_at, dispatch_role, participant_type")
+        .select("id, full_name, phone, avatar_url, availability_status, updated_at, dispatch_role, participant_type, network_status, company_id")
         .in("id", userIds);
+      // Only people connected to this company: staff/members, or approved agents with an active affiliation
+      const connected = new Set<string>();
+      if (companyId) {
+        const [{ data: mem }, { data: aff }] = await Promise.all([
+          supabase.from("company_members").select("user_id").eq("company_id", companyId),
+          supabase.from("agent_affiliations").select("profile_id").eq("company_id", companyId).eq("status", "active"),
+        ]);
+        (mem || []).forEach((m: any) => connected.add(m.user_id));
+        (aff || []).forEach((a: any) => connected.add(a.profile_id));
+      }
 
       const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
