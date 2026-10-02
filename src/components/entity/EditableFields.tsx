@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useSaveOnUnmount } from "@/hooks/useSaveOnUnmount";
 import { Check, Loader2, Pencil, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -64,16 +65,27 @@ export const EditableField = ({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? "");
   const inputRef = useRef<HTMLInputElement>(null);
+  const editingRef = useRef(false);
+  editingRef.current = editing;
 
   useEffect(() => {
     if (!editing) setDraft(value ?? "");
   }, [value, editing]);
+
+  const pendingValue = () => {
+    if (!editingRef.current) return undefined;
+    const next = draft === "" ? null : draft;
+    return next === (value ?? null) ? undefined : next;
+  };
+  useSaveOnUnmount(pendingValue, (v) => Promise.resolve(onSave(v)).then(() => toast({ title: `${label} saved` })));
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
   }, [editing]);
 
   const commit = async () => {
+    if (!editingRef.current) return;
+    editingRef.current = false;
     const next = draft === "" ? null : draft;
     setEditing(false);
     if (next === (value ?? null)) return;
@@ -97,11 +109,8 @@ export const EditableField = ({
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") commit();
-              if (e.key === "Escape") {
-                setDraft(value ?? "");
-                setEditing(false);
-              }
             }}
+            onBlur={commit}
             className="h-8 min-w-0 text-sm"
           />
           <Button type="button" size="sm" aria-label="Save" onClick={commit} className="h-8 shrink-0 gap-1 px-2.5">
@@ -110,7 +119,9 @@ export const EditableField = ({
           <button
             type="button"
             aria-label="Cancel"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
+              editingRef.current = false;
               setDraft(value ?? "");
               setEditing(false);
             }}
