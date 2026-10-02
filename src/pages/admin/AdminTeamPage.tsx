@@ -48,17 +48,6 @@ const AdminTeamPage = () => {
   const { companyId } = useUserCompanyId();
   const { pending } = usePendingApplicants();
 
-  const reviewMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { data, error } = await supabase.from("profiles").update({ network_status: status } as any).eq("id", id).select("id");
-      if (error || !data?.length) throw error || new Error("Not allowed to update this applicant");
-    },
-    onSuccess: (_, v) => {
-      ["pending-applicants", "network-agents", "team-members"].forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
-      toast({ title: `Applicant ${v.status}` });
-    },
-    onError: (err: any) => toast({ title: "Failed to update applicant", description: err.message, variant: "destructive" }),
-  });
 
   // Fetch team members
   const { data: members = [], isLoading } = useQuery({
