@@ -51,6 +51,7 @@ import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPa
 import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 import { areasToBaskets } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
 import { computeQuoteTotals } from "@/utils/quoteTransformers";
+import { buildAreaReview } from "@/utils/areaReviewTotals";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import { subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot } from "@/lib/pricing";
 import { pdfItemToPaletteProduct } from "@/utils/pdfItemToProduct";
@@ -346,6 +347,11 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [displayBaskets, ctxItems, meta?.discount_type, meta?.discount_value, rateSnap],
+  );
+  // Build Area Quote Pricing / Review / footer: same totals as the header, split per area.
+  const areaReview = useMemo(
+    () => buildAreaReview(displayBaskets, ctxItems, ctxAreas, displayQuoteTotals, marginView.visible),
+    [displayBaskets, ctxItems, ctxAreas, displayQuoteTotals, marginView.visible],
   );
 
   // Publish live in-progress totals so the header/summary reflect unsaved
@@ -1302,6 +1308,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
                     initialAreas={initialWizardAreas}
                     onGenerateQuote={handleGenerateQuote}
                     generating={generating}
+                    reviewSummary={areaReview}
                   />
                 }
                 areaAddZone={() => areaAddZoneRef.current?.()}
