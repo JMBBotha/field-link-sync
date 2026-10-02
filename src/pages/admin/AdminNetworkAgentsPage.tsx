@@ -182,9 +182,9 @@ const AdminNetworkAgentsPage = () => {
         <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : agents.length === 0 ? (
+      ) : visibleAgents.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          No independent agent applications yet.
+          No applications waiting for review.
         </div>
       ) : (
         <div className="rounded-lg border bg-card">
@@ -201,12 +201,12 @@ const AdminNetworkAgentsPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {agents.map((agent) => {
+              {visibleAgents.map((agent) => {
                 const affil = getAffiliation(agent.id);
                 return (
-                  <TableRow key={agent.id}>
+                  <TableRow key={agent.id} className="cursor-pointer" onClick={() => setDetail(agent)}>
                     <TableCell>
-                      <div className="font-medium">{agent.full_name}</div>
+                      <div className="font-medium text-primary hover:underline">{agent.full_name}</div>
                       {agent.skills?.[0] && <div className="text-xs text-muted-foreground line-clamp-2 max-w-xs">{agent.skills[0]}</div>}
                     </TableCell>
                     <TableCell>{typeBadge(agent.participant_type)}</TableCell>
