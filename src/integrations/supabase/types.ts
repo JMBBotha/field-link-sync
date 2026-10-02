@@ -8911,6 +8911,10 @@ export type Database = {
       rh_assert: { Args: { _block_sales: boolean }; Returns: undefined }
       rh_ops_ok: { Args: { _company: string }; Returns: boolean }
       rh_photo_ok: { Args: { _name: string; _owner: string }; Returns: boolean }
+      schedule_in_user_company: {
+        Args: { _job: string; _lead: string; _uid: string }
+        Returns: boolean
+      }
       search_customers: {
         Args: { max_results?: number; search_term: string }
         Returns: {
