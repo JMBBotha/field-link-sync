@@ -21,7 +21,7 @@ export default function FieldJobSheetPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("jobs")
-        .select("id, title, description, address, scheduled_for, status, job_type, customers(name, phone)")
+        .select("id, title, description, address, scheduled_for, status, job_type, customers(name, phone, address), leads(customer_address)")
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
@@ -39,6 +39,17 @@ export default function FieldJobSheetPage() {
   });
   const [ticks, setTicks] = useState<Record<string, boolean>>({});
   useEffect(() => setTicks(loadTicks(id)), [id]);
+
+  // Live: a reschedule or address change in the office shows here without a refresh
+  useEffect(() => {
+    if (!id) return;
+    const ch = supabase
+      .channel(`field-job-sheet-${id}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "jobs", filter: `id=eq.${id}` }, () => job.refetch())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
   const toggle = (key: string) =>
     setTicks((t) => { const next = { ...t, [key]: !t[key] }; saveTicks(id, next); return next; });
 
@@ -46,6 +57,7 @@ export default function FieldJobSheetPage() {
   const total = groups.reduce((n, g) => n + g.rows.length, 0);
   const done = groups.reduce((n, g) => n + g.rows.filter((r) => ticks[r.key]).length, 0);
   const j = job.data;
+  const siteAddress: string | null = (j as any)?.address || (j as any)?.leads?.customer_address || (j as any)?.customers?.address || null;
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
   const setStatus = async (status: "in_progress" | "completed") => {

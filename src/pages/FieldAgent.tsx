@@ -1018,9 +1018,19 @@ const FieldAgent = () => {
       return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
     }), [leads]);
 
+  // Includes leads the office booked for me on the calendar (drag/assign leaves them "pending")
   const activeLeads = useMemo(() => leads.filter(l =>
     ["claimed", "accepted", "in_progress", "pending"].includes(l.status) && l.assigned_agent_id === currentUserId
   ), [leads, currentUserId]);
+
+  // /field?lead=<id> (from the Schedule page) opens that lead's sheet
+  const openedLinkRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = new URLSearchParams(location.search).get("lead");
+    if (!id || openedLinkRef.current === id) return;
+    const l = leads.find((x) => x.id === id);
+    if (l) { openedLinkRef.current = id; openLeadDetail(l); }
+  }, [location.search, leads, openLeadDetail]);
 
   const completedLeads = useMemo(() => {
     // If filtered results are active, use those
