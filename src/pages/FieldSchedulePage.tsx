@@ -147,7 +147,7 @@ const FieldSchedulePage = () => {
                   <Card
                     key={e.key}
                     className="cursor-pointer active:scale-[0.99] transition-transform"
-                    onClick={() => e.job_id && navigate(`/field/jobs/${e.job_id}`)}
+                    onClick={() => e.job_id ? navigate(`/field/jobs/${e.job_id}`) : e.lead_id && navigate(`/field?lead=${e.lead_id}`)}
                   >
                     <CardContent className="p-3 flex items-center gap-3">
                       <span className="font-semibold tabular-nums">{String(e.start_time || "").slice(0, 5)}</span>
@@ -162,6 +162,25 @@ const FieldSchedulePage = () => {
                 ))}
               </div>
             )}
+          </section>
+        )}
+
+        {visits.length > 0 && (
+          <section className="space-y-2">
+            <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Booked visits</h2>
+            <div className="grid gap-2">
+              {visits.map((e) => (
+                <Card key={e.key} className="cursor-pointer active:scale-[0.99] transition-transform" onClick={() => e.lead_id && navigate(`/field?lead=${e.lead_id}`)}>
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <span className="font-semibold tabular-nums">{format(new Date(`${e.date}T00:00:00`), "dd MMM")} {String(e.start_time || "").slice(0, 5)}</span>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{e.customer_name || "Visit"}</div>
+                      {e.customer_address && <div className="text-xs text-muted-foreground truncate">{e.customer_address}</div>}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </section>
         )}
 
