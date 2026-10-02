@@ -5,6 +5,7 @@ import { AlertCircle, Crosshair, Loader2, Maximize2, Minimize2, Search, X, MapPi
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
+import { supabase } from "@/integrations/supabase/client";
 
 const DEFAULT_CENTER: [number, number] = [18.4241, -33.9249]; // [lng, lat] Cape Town
 
@@ -110,6 +111,26 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapLoaded, latitude, longitude]);
+
+  // Pin-first: with no pin yet, centre on GPS, else the company's latest pinned lead, else Cape Town
+  useEffect(() => {
+    if (!mapLoaded || latitude != null || longitude != null) return;
+    let gps = false;
+    const centre = (lat: number, lng: number, zoom: number, fromGps: boolean) => {
+      if (markerRef.current || !mapRef.current || (gps && !fromGps)) return;
+      if (fromGps) gps = true;
+      mapRef.current.jumpTo({ center: [lng, lat], zoom });
+    };
+    void supabase.from("leads").select("latitude, longitude").not("latitude", "is", null).neq("latitude", 0)
+      .order("created_at", { ascending: false }).limit(1)
+      .then(({ data }) => { const r: any = data?.[0]; if (r) centre(Number(r.latitude), Number(r.longitude), 12, false); });
+    navigator.geolocation?.getCurrentPosition(
+      (p) => centre(p.coords.latitude, p.coords.longitude, 15, true),
+      () => {},
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapLoaded]);
 
   // Resize map on fullscreen toggle
   useEffect(() => {

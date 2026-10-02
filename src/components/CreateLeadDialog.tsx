@@ -253,9 +253,8 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   ) => {
     setLatitude(lat);
     setLongitude(lng);
-    // Only replace the saved address when the user explicitly picked a new one
-    // from the map search (or when we have no address at all yet).
-    if (address && (source === "search" || formData.customer_address.trim() === "")) {
+    // Pin-first: a tap, drag, GPS or search pick fills the address (typing still overrides)
+    if (address && source) {
       setFormData(prev => ({ ...prev, customer_address: address }));
     }
     // Keep the linked customer's pin corrected too (address text stays as-is)
