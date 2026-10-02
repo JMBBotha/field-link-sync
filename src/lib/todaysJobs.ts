@@ -91,10 +91,10 @@ export function overdueEntries(entries: CalendarEntry[], today: string, agentId?
   return entries.filter((e) => e.date < today && !isClosed(e.status) && (!agentId || e.agent_id === agentId));
 }
 
-export async function loadEntries(opts: { date?: string; before?: string; agentId?: string }): Promise<CalendarEntry[]> {
+export async function loadEntries(opts: { date?: string; before?: string; from?: string; agentId?: string }): Promise<CalendarEntry[]> {
   let sq = supabase
     .from("job_schedules")
-    .select("id, lead_id, job_id, agent_id, scheduled_date, start_time, leads(customer_name, customer_address, status, service_type, primary_intent, customer_id, notes, call_summary), jobs(status)");
+    .select("id, lead_id, job_id, agent_id, scheduled_date, start_time, leads(id, customer_name, customer_address, status, service_type, primary_intent, customer_id, notes, call_summary), jobs(status)");
   let lq = supabase
     .from("leads")
     .select("id, assigned_agent_id, scheduled_date, scheduled_time, status, customer_name, customer_address, service_type, primary_intent, customer_id, notes, call_summary")
@@ -103,6 +103,7 @@ export async function loadEntries(opts: { date?: string; before?: string; agentI
     .is("deleted_at", null);
   if (opts.date) { sq = sq.eq("scheduled_date", opts.date); lq = lq.eq("scheduled_date", opts.date); }
   if (opts.before) { sq = sq.lt("scheduled_date", opts.before); lq = lq.lt("scheduled_date", opts.before); }
+  if (opts.from) { sq = sq.gte("scheduled_date", opts.from); lq = lq.gte("scheduled_date", opts.from); }
   if (opts.agentId) { sq = sq.eq("agent_id", opts.agentId); lq = lq.eq("assigned_agent_id", opts.agentId); }
   const [s, l] = await Promise.all([sq, lq]);
   if (s.error) throw s.error;

@@ -379,7 +379,7 @@ const AdminJobDetailPage = () => {
 
             {/* Quick action: Navigate (opens native maps) */}
             {(() => {
-              const addr = location?.address || j.address;
+              const addr = j.address || location?.address;
               const href = addr
                 ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`
                 : null;

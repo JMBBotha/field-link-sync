@@ -32,6 +32,9 @@ export interface EntityFieldConfig {
   placeholder?: string;
   /** Rendered full width in the two-column grid. */
   wide?: boolean;
+  /** kind "address": coordinate columns saved with the map pin (default latitude/longitude). */
+  latKey?: string;
+  lngKey?: string;
 }
 
 export interface EntityConfig {
@@ -88,10 +91,15 @@ export const ENTITY_REGISTRY: Record<EntityType, EntityConfig> = {
       "my-jobs",
       "job-schedules",
       "dispatch-schedules",
+      "dispatch-cards-leads",
+      "jobs-dispatch-booked",
+      "lead-inbox",
+      "pipeline",
     ],
     fields: [
       { key: "customer_name", label: "Customer", kind: "text" },
       { key: "customer_phone", label: "Phone", kind: "tel" },
+      { key: "email", label: "Email", kind: "email" },
       { key: "customer_address", label: "Address", kind: "address", wide: true },
       { key: "service_type", label: "Job Type", kind: "text" },
       { key: "status", label: "Status", kind: "select", options: LEAD_STATUS },
@@ -130,7 +138,7 @@ export const ENTITY_REGISTRY: Record<EntityType, EntityConfig> = {
     table: "jobs",
     label: "Job",
     select: "*",
-    cacheKeys: ["job", "job-detail", "jobs", "jobs-dispatch", "my-jobs", "jobs-map"],
+    cacheKeys: ["job", "job-detail", "jobs", "jobs-dispatch", "my-jobs", "jobs-map", "dispatch-cards", "field-job-sheet"],
     fields: [
       { key: "title", label: "Title", kind: "text", wide: true },
       { key: "status", label: "Status", kind: "select", options: JOB_STATUS },
@@ -138,7 +146,7 @@ export const ENTITY_REGISTRY: Record<EntityType, EntityConfig> = {
       { key: "job_type", label: "Job Type", kind: "text" },
       { key: "scheduled_for", label: "Scheduled For", kind: "datetime" },
       { key: "estimated_duration", label: "Est. Duration", kind: "text" },
-      { key: "address", label: "Address", kind: "text", wide: true },
+      { key: "address", label: "Address", kind: "address", wide: true, latKey: "lat", lngKey: "lng" },
       { key: "description", label: "Description", kind: "textarea", wide: true },
     ],
   },
@@ -160,7 +168,7 @@ export const ENTITY_REGISTRY: Record<EntityType, EntityConfig> = {
       { key: "phone", label: "Phone", kind: "tel" },
       { key: "secondary_phone", label: "Alt Phone", kind: "tel" },
       { key: "email", label: "Email", kind: "email" },
-      { key: "primary_address_line1", label: "Address", kind: "text", wide: true },
+      { key: "primary_address_line1", label: "Address", kind: "address", wide: true },
       { key: "city", label: "City", kind: "text" },
       { key: "postal_code", label: "Postal Code", kind: "text" },
       { key: "vat_number", label: "VAT Number", kind: "text" },
