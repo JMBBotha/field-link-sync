@@ -1016,7 +1016,7 @@ const AdminDispatchPage = () => {
                 schedulesMap={schedulesForDates}
                 isAgentOnline={isAgentOnline}
                 hasConflict={hasConflict}
-                onDrop={handleDrop}
+                onDrop={(e, a, d, h) => handleDrop(e, a, d, h, true)}
                 onDragOver={handleDragOver}
                 onScheduleDragStart={handleScheduleDragStart}
                 pxPerHour={PX_PER_HOUR}
@@ -1170,11 +1170,10 @@ const AdminDispatchPage = () => {
                   "notes",
                 ]}
               />
-              {jobInfoSchedule && (
+              {liveSlot && (
                 <>
-                  <Separator />
-                  <p className="text-xs text-muted-foreground">
-                    Calendar slot: {jobInfoSchedule.scheduled_date} · {jobInfoSchedule.start_time} – {jobInfoSchedule.end_time}
+...
+                    Calendar slot: {liveSlot.scheduled_date} · {liveSlot.start_time} – {liveSlot.end_time}
                   </p>
                 </>
               )}
@@ -1197,7 +1196,7 @@ const AdminDispatchPage = () => {
                 Create / Open Quote
               </Button>
             )}
-            {jobInfoLead && !jobInfoLead.assigned_agent_id && (
+            {jobInfoLead && !(allLeads.find((l) => l.id === jobInfoLead.id) ?? jobInfoLead).assigned_agent_id && (
               <Button
                 onClick={() => {
                   const lead = jobInfoLead;
