@@ -131,11 +131,11 @@ const EntityDetailsForm = ({
               return (
                 <AddressMapField
                   {...shared}
-                  lat={data.latitude}
-                  lng={data.longitude}
+                  lat={(data as any)[field.latKey ?? "latitude"]}
+                  lng={(data as any)[field.lngKey ?? "longitude"]}
                   onSave={({ address, lat, lng }) =>
                     update(lat != null && lng != null
-                      ? { [field.key]: address, latitude: lat, longitude: lng }
+                      ? { [field.key]: address, [field.latKey ?? "latitude"]: lat, [field.lngKey ?? "longitude"]: lng }
                       : { [field.key]: address })
                   }
                 />
