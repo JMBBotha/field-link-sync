@@ -25,7 +25,7 @@ import { WIZARD_STEPS, computeAreaSubtotal, createEmptyArea, detectBTU } from ".
 import AreaDefinitionStep from "./wizard/AreaDefinitionStep";
 import ACSelectionStep from "./wizard/ACSelectionStep";
 import PricingStep from "./wizard/PricingStep";
-import { TimeAllocationStep, ReviewStep } from "./wizard/PlaceholderSteps";
+import { TimeAllocationStep, ReviewWithLabourStep } from "./wizard/TimeAllocationStep";
 
 interface PaletteBundle {
   id: string;
@@ -356,7 +356,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
       case 1: return <ACSelectionStep {...props} products={products} bundles={bundles} onPdfSearch={onPdfSearch} />;
       case 2: return <PricingStep {...props} onGenerateQuote={onGenerateQuote} generating={generating} />;
       case 3: return <TimeAllocationStep {...props} />;
-      case 4: return <ReviewStep {...props} />;
+      case 4: return <ReviewWithLabourStep {...props} />;
       default: return null;
     }
   }, [currentStep, areas, products, bundles, onPdfSearch, onGenerateQuote, generating]);
