@@ -62,12 +62,20 @@ const AdminNetworkAgentsPage = () => {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ network_status: status } as any)
-        .eq("id", id);
-      if (error) throw error;
+    mutationFn: async ({ id, status, type }: { id: string; status: string; type?: string }) => {
+      const { data, error } = await supabase.from("profiles").update({ network_status: status } as any).eq("id", id).select("id");
+      if (error || !data?.length) throw error || new Error("Not allowed to update this applicant");
+      if (!companyId) return;
+      if (status === "approved") {
+        // Approval connects the agent to this company (moves them to Team Members)
+        const { error: e2 } = await supabase.from("agent_affiliations").upsert({
+          profile_id: id, company_id: companyId, affiliation_type: type === "independent_sales" ? "sales" : "technical",
+          status: "active", approved_at: new Date().toISOString(), approved_by: user?.id || null,
+        }, { onConflict: "company_id,profile_id" });
+        if (e2) throw e2;
+      } else {
+        await supabase.from("agent_affiliations").update({ status: "inactive" }).eq("company_id", companyId).eq("profile_id", id);
+      }
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["network-agents"] });
@@ -122,6 +130,10 @@ const AdminNetworkAgentsPage = () => {
 
   const getAffiliation = (agentId: string) =>
     affiliations.find((a: any) => a.profile_id === agentId && a.status === "active");
+
+  const isConnected = (a: any) => a.network_status === "approved" && !!getAffiliation(a.id);
+  const connectedCount = agents.filter(isConnected).length;
+  const visibleAgents = showConnected ? agents : agents.filter((a) => !isConnected(a));
 
   const statusBadge = (status: string | null) => {
     switch (status) {
