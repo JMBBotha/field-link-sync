@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, XCircle, Clock, Loader2, Users, Link2, Unlink } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Loader2, Users, Link2, Unlink, Phone, Mail } from "lucide-react";
+import { Link } from "react-router-dom";
 import { format } from "date-fns";
 
 const AdminNetworkAgentsPage = () => {
@@ -20,6 +21,16 @@ const AdminNetworkAgentsPage = () => {
   const { user } = useAuth();
   const [affiliateDialogAgent, setAffiliateDialogAgent] = useState<any>(null);
   const [affiliationType, setAffiliationType] = useState("technical");
+  const [detail, setDetail] = useState<any>(null);
+  const [showConnected, setShowConnected] = useState(false);
+  const { data: detailEmail } = useQuery({
+    queryKey: ["applicant-email", detail?.id],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("get_applicant_email" as any, { _id: detail.id });
+      return (data as string) || null;
+    },
+    enabled: !!detail?.id,
+  });
 
   // All independent agents
   const { data: agents = [], isLoading } = useQuery({
