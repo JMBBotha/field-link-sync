@@ -131,11 +131,15 @@ const ScheduleJobModal = ({
         const { error } = await supabase.from("job_schedules").insert(payload);
         if (error) throw error;
       }
-      await supabase.from("leads").update({
-        scheduled_date: date,
-        scheduled_time: startTime,
-        assigned_agent_id: agentId,
-      }).eq("id", leadId);
+      // Install rows (job_id) must not overwrite the sales lead's own visit/person
+      if (!(existingEvent as any)?.job_id) {
+        const { error: leadErr } = await supabase.from("leads").update({
+          scheduled_date: date,
+          scheduled_time: startTime,
+          assigned_agent_id: agentId,
+        }).eq("id", leadId);
+        if (leadErr) throw leadErr;
+      }
 
       toast({ title: existingEvent ? "Schedule updated" : "Job scheduled" });
       queryClient.invalidateQueries({ queryKey: ["job-schedules"] });
@@ -152,8 +156,18 @@ const ScheduleJobModal = ({
     if (!existingEvent) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from("job_schedules").delete().eq("id", existingEvent.id);
+      const ev: any = existingEvent;
+      if (!ev.job_id && ev.lead_id) {
+        // Clear the lead's booking too, or Dispatch re-creates the tile from the lead (the DB trigger removes the row)
+        const { data: cleared, error: clrErr } = await supabase.from("leads")
+          .update({ scheduled_date: null, scheduled_time: null }).eq("id", ev.lead_id).select("id");
+        if (clrErr) throw clrErr;
+        if (!cleared?.length) throw new Error("Not removed: no permission to change this lead.");
+      }
+      const { error } = await supabase.from("job_schedules").delete().eq("id", ev.id);
       if (error) throw error;
+      const { data: still } = await supabase.from("job_schedules").select("id").eq("id", ev.id);
+      if (still?.length) throw new Error("Not removed: no permission to delete this slot.");
       toast({ title: "Schedule removed" });
       queryClient.invalidateQueries({ queryKey: ["job-schedules"] });
       onSaved();

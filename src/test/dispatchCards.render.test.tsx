@@ -18,7 +18,8 @@ const rows: Record<string, any[]> = {
 vi.mock("@/integrations/supabase/client", () => {
   const q = (t: string): any => new Proxy(function () {}, { get: (_x, p) => p === "then"
     ? (res: any) => res({ data: rows[t] ?? [], error: null }) : () => q(t) });
-  return { supabase: { from: q, functions: { invoke: vi.fn() } } };
+  const ch: any = { on: () => ch, subscribe: () => ch };
+  return { supabase: { from: q, functions: { invoke: vi.fn() }, channel: () => ch, removeChannel: vi.fn() } };
 });
 vi.mock("@/contexts/AuthContext", () => { const v = { user: { id: "u1" } }; return { useAuth: () => v }; });
 vi.mock("@/components/shared/StatusUndo", () => ({ useUndoAction: () => ({ record: () => null, action: () => undefined }) }));
