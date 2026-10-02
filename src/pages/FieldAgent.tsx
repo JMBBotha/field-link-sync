@@ -1019,7 +1019,7 @@ const FieldAgent = () => {
     }), [leads]);
 
   const activeLeads = useMemo(() => leads.filter(l =>
-    ["claimed", "accepted", "in_progress"].includes(l.status) && l.assigned_agent_id === currentUserId
+    ["claimed", "accepted", "in_progress", "pending"].includes(l.status) && l.assigned_agent_id === currentUserId
   ), [leads, currentUserId]);
 
   const completedLeads = useMemo(() => {
