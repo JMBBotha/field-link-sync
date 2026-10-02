@@ -1172,7 +1172,7 @@ const AdminDispatchPage = () => {
               />
               {liveSlot && (
                 <>
-...
+                  <p className="text-xs text-muted-foreground">
                     Calendar slot: {liveSlot.scheduled_date} · {liveSlot.start_time} – {liveSlot.end_time}
                   </p>
                 </>
