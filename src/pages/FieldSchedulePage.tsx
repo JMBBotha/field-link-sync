@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { fetchTodaysJobs, todayInJohannesburg } from "@/lib/todaysJobs";
+import { fetchTodaysJobs, loadEntries, todayInJohannesburg } from "@/lib/todaysJobs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -69,16 +69,30 @@ const FieldSchedulePage = () => {
     },
   });
 
+  // Booked visits (calendar drags / lead assignments) from tomorrow on; installs come from get_my_assigned_jobs
+  const { data: visits = [] } = useQuery({
+    queryKey: ["my-jobs", user?.id, "visits", dayDate],
+    enabled: !!user,
+    queryFn: async () =>
+      (await loadEntries({ from: dayDate, agentId: user!.id }))
+        .filter((e) => !e.job_id && e.date > dayDate && !["completed", "cancelled"].includes(String(e.status || "")))
+        .sort((a, b) => (a.date + (a.start_time || "")).localeCompare(b.date + (b.start_time || ""))),
+  });
+
   useEffect(() => {
-    const ch = supabase
+    const refresh = () => queryClient.invalidateQueries({ queryKey: ["my-jobs"] });
+    let ch = supabase
       .channel("field-schedule-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () =>
-        queryClient.invalidateQueries({ queryKey: ["my-jobs"] }))
-      .on("postgres_changes", { event: "*", schema: "public", table: "assignments" }, () =>
-        queryClient.invalidateQueries({ queryKey: ["my-jobs"] }))
-      .subscribe();
+      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "assignments" }, refresh);
+    if (user?.id) {
+      ch = ch
+        .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `assigned_agent_id=eq.${user.id}` }, refresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "job_schedules", filter: `agent_id=eq.${user.id}` }, refresh);
+    }
+    ch.subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [queryClient]);
+  }, [queryClient, user?.id]);
 
   // Sort scheduled jobs ascending and group into day buckets
   const grouped = useMemo(() => {
@@ -133,7 +147,7 @@ const FieldSchedulePage = () => {
                   <Card
                     key={e.key}
                     className="cursor-pointer active:scale-[0.99] transition-transform"
-                    onClick={() => e.job_id && navigate(`/field/jobs/${e.job_id}`)}
+                    onClick={() => e.job_id ? navigate(`/field/jobs/${e.job_id}`) : e.lead_id && navigate(`/field?lead=${e.lead_id}`)}
                   >
                     <CardContent className="p-3 flex items-center gap-3">
                       <span className="font-semibold tabular-nums">{String(e.start_time || "").slice(0, 5)}</span>
@@ -151,9 +165,28 @@ const FieldSchedulePage = () => {
           </section>
         )}
 
+        {visits.length > 0 && (
+          <section className="space-y-2">
+            <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Booked visits</h2>
+            <div className="grid gap-2">
+              {visits.map((e) => (
+                <Card key={e.key} className="cursor-pointer active:scale-[0.99] transition-transform" onClick={() => e.lead_id && navigate(`/field?lead=${e.lead_id}`)}>
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <span className="font-semibold tabular-nums">{format(new Date(`${e.date}T00:00:00`), "dd MMM")} {String(e.start_time || "").slice(0, 5)}</span>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{e.customer_name || "Visit"}</div>
+                      {e.customer_address && <div className="text-xs text-muted-foreground truncate">{e.customer_address}</div>}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+
         {isLoading ? (
           <JobCardListSkeleton rows={3} />
-        ) : grouped.length === 0 && unscheduled.length === 0 ? (
+        ) : grouped.length === 0 && unscheduled.length === 0 && visits.length === 0 ? (
           <div className="flex flex-col items-center gap-2 text-center py-20 text-muted-foreground">
             <CalendarDays className="h-10 w-10 opacity-40" />
             <p className="text-sm">No upcoming jobs</p>
