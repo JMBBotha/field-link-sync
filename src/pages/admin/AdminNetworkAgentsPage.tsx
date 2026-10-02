@@ -225,13 +225,13 @@ const AdminNetworkAgentsPage = () => {
                       {format(new Date(agent.created_at), "dd MMM yyyy")}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex gap-1 justify-end flex-wrap">
+                      <div className="flex gap-1 justify-end flex-wrap" onClick={(e) => e.stopPropagation()}>
                         {agent.network_status !== "approved" && (
                           <Button
                             size="sm"
                             variant="ghost"
                             className="text-green-500 hover:text-green-400 hover:bg-green-500/10"
-                            onClick={() => updateStatus.mutate({ id: agent.id, status: "approved" })}
+                            onClick={() => updateStatus.mutate({ id: agent.id, status: "approved", type: agent.participant_type })}
                             disabled={updateStatus.isPending}
                           >
                             <CheckCircle2 className="h-4 w-4 mr-1" />
