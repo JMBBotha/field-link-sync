@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload, FileDown, Send } from "lucide-react";
+import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,7 +16,6 @@ import { useExitGuard } from "@/hooks/useExitGuard";
 import UnsavedQuoteDialog from "@/components/shared/UnsavedQuoteDialog";
 import BeCoolLogo from "@/components/shared/BeCoolLogo";
 import DocumentHeader from "@/components/shared/DocumentHeader";
-import { generateDocumentPdf } from "@/lib/documentPdf";
 import StickyActionBar from "@/components/shared/StickyActionBar";
 import { blockR0 } from "@/lib/zeroPriceGuard";
 
@@ -416,6 +415,17 @@ const CreateInvoicePage = ({
         finalLeadId = newLead.id;
       }
 
+      // Client-facing lines: unit price is the SELL price (cost × markup); cost/markup never saved.
+      const validItems = lineItems
+        .filter((i) => i.description && i.amount > 0)
+        .map((i) => ({
+          description: i.description,
+          quantity: i.quantity,
+          rate: Math.round(i.rate * (1 + (i.markup || 0) / 100) * 100) / 100,
+          amount: Math.round(i.amount * 100) / 100,
+          service_id: i.service_id || null,
+        }));
+
       const { data: insertedInvoice, error } = await supabase
         .from("invoices")
         .insert({
@@ -428,7 +438,7 @@ const CreateInvoicePage = ({
           customer_address: customerAddress || null,
           customer_email: customerEmail || null,
           customer_id: selectedCustomerId || null,
-          line_items: lineItems.filter((i) => i.description && i.amount > 0),
+          line_items: validItems,
           subtotal,
           tax_rate: taxRate,
           tax_amount: taxAmount,
@@ -446,7 +456,6 @@ const CreateInvoicePage = ({
       if (error) throw error;
 
       // Insert normalized invoice_items
-      const validItems = lineItems.filter((i) => i.description && i.amount > 0);
       if (insertedInvoice && validItems.length > 0) {
         await supabase.from("invoice_items").insert(
           validItems.map((i) => ({
@@ -454,7 +463,7 @@ const CreateInvoicePage = ({
             service_id: i.service_id || null,
             description: i.description,
             quantity: i.quantity,
-            unit_price: i.rate,
+            unit_price: i.rate, // sell price (see validItems)
             amount: i.amount,
           })) as any
         );
@@ -501,7 +510,7 @@ const CreateInvoicePage = ({
 
   /* ─── Render ─── */
   return (
-    <div className="min-h-screen bg-muted/40 pb-28 lg:pb-24">
+    <div className="min-h-screen bg-muted/40 pb-28 lg:pb-24 overflow-x-clip">
       <UnsavedQuoteDialog
         open={exitGuard.showModal}
         onContinue={exitGuard.confirmContinue}
@@ -510,16 +519,16 @@ const CreateInvoicePage = ({
       />
 
       {/* ── Top bar ── */}
-      <div className="sticky top-0 z-40 bg-background border-b px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-bold text-foreground">New Invoice</h1>
+      <div className="sticky top-0 z-40 bg-background border-b px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
+        <h1 className="text-base sm:text-lg font-bold text-foreground whitespace-nowrap">New Invoice</h1>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={exitGuard.requestExit}>
             Cancel
           </Button>
-          <Button variant="outline" size="sm" onClick={() => saveInvoice("draft")} disabled={loading}>
+          <Button variant="outline" size="sm" className="hidden lg:inline-flex" onClick={() => saveInvoice("draft")} disabled={loading}>
             Save Draft
           </Button>
-          <Button size="sm" className="text-white" style={{ backgroundColor: "#0077B6" }} onClick={() => saveInvoice("sent")} disabled={loading}>
+          <Button size="sm" className="hidden lg:inline-flex text-white" style={{ backgroundColor: "#0077B6" }} onClick={() => saveInvoice("sent")} disabled={loading}>
             {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
             Send To…
           </Button>
@@ -527,7 +536,7 @@ const CreateInvoicePage = ({
       </div>
 
       {/* ── A4 Card ── */}
-      <div data-pdf-capture-root="invoice" className="max-w-3xl mx-auto my-8 bg-white shadow-lg rounded-lg border p-8 md:p-12 space-y-8 text-slate-900 [&_.text-foreground]:!text-slate-900 [&_.text-muted-foreground]:!text-slate-500 [&_input]:!text-slate-900 [&_textarea]:!text-slate-900 [&_select]:!text-slate-900 [&_input::placeholder]:!text-slate-400 [&_textarea::placeholder]:!text-slate-400">
+      <div data-pdf-capture-root="invoice" className="max-w-3xl mx-auto my-3 sm:my-8 bg-white shadow-lg rounded-lg border p-4 sm:p-8 md:p-12 space-y-8 text-slate-900 [&_.text-foreground]:!text-slate-900 [&_.text-muted-foreground]:!text-slate-500 [&_input]:!text-slate-900 [&_textarea]:!text-slate-900 [&_select]:!text-slate-900 [&_input::placeholder]:!text-slate-400 [&_textarea::placeholder]:!text-slate-400">
         {/* ── HEADER ROW ── */}
         <DocumentHeader
           logoUrl={logoUrl}
@@ -538,7 +547,7 @@ const CreateInvoicePage = ({
 
         {/* ── BILLED TO + DATES ROW ── */}
         <div className="space-y-1">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
             <div className="col-span-1 space-y-1 relative">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Billed To</p>
               {customerName && !showCustomerPicker ? (
@@ -584,11 +593,11 @@ const CreateInvoicePage = ({
 
             <div className="space-y-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Amount Due (ZAR)</p>
-              <p className="text-[28px] font-bold px-2 py-0.5" style={{ color: "#0077B6" }}>{formatCurrency(amountDue)}</p>
+              <p className="text-xl sm:text-[28px] font-bold px-2 py-0.5 whitespace-nowrap" style={{ color: "#0077B6" }}>{formatCurrency(amountDue)}</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6" style={{ marginTop: "-12px" }}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 md:-mt-3">
             <div />
             <div className="space-y-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due Date</p>
@@ -606,8 +615,8 @@ const CreateInvoicePage = ({
 
         {/* ── LINE ITEMS TABLE ── */}
         <div>
-          <div className="grid grid-cols-[1fr_80px_50px_60px_80px_30px] gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1">
-            <div>Description</div>
+          <div className="grid grid-cols-[repeat(4,minmax(0,1fr))_24px] sm:grid-cols-[1fr_80px_50px_60px_80px_30px] gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1">
+            <div className="hidden sm:block">Description</div>
             <div className="text-right">Cost</div>
             <div className="text-right">Qty</div>
             <div className="text-right">Markup%</div>
@@ -616,8 +625,8 @@ const CreateInvoicePage = ({
           </div>
 
           {lineItems.map((item, idx) => (
-            <div key={idx} className="grid grid-cols-[1fr_80px_50px_60px_80px_30px] gap-2 items-center py-1 group relative">
-              <div className="relative">
+            <div key={idx} className="grid grid-cols-[repeat(4,minmax(0,1fr))_24px] sm:grid-cols-[1fr_80px_50px_60px_80px_30px] gap-x-2 gap-y-1 items-center py-1 group relative border-b sm:border-0 pb-2 sm:pb-1">
+              <div className="relative col-span-5 sm:col-span-1 min-w-0">
                 <ProductSearchDropdown
                   value={item.description}
                   allOptions={allOptions}
@@ -634,9 +643,9 @@ const CreateInvoicePage = ({
               <div>
                 <GhostInput type="number" min="0" step="1" className="text-right" value={item.markup || ""} onChange={(e) => updateLineItem(idx, "markup", e.target.value)} placeholder="0" />
               </div>
-              <div className="text-right text-sm font-medium py-1.5 px-2">{formatCurrency(item.amount)}</div>
+              <div className="text-right text-xs sm:text-sm font-medium py-1.5 px-1 sm:px-2 whitespace-nowrap">{formatCurrency(item.amount)}</div>
               <div className="flex justify-center">
-                <button onClick={() => removeLineItem(idx)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
+                <button onClick={() => removeLineItem(idx)} className="sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -652,7 +661,7 @@ const CreateInvoicePage = ({
 
         {/* ── TOTALS ── */}
         <div className="flex justify-end">
-          <div className="w-72 space-y-2">
+          <div className="w-full sm:w-72 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Subtotal</span>
               <span>{formatCurrency(subtotal)}</span>
@@ -747,21 +756,7 @@ const CreateInvoicePage = ({
       </div>
 
       {/* ── Bottom action bar ── */}
-      <StickyActionBar>
-        <Button variant="outline" size="sm" onClick={() => generateDocumentPdf({
-          docType: "Invoice", docNumber: invoiceNumber, companyName: companySettings.company_name || "Your Company",
-          companyAddress: companySettings.physical_address || "", vatNumber: companySettings.vat_number || "",
-          customerName, customerAddress, customerEmail, issueDate, dueDate,
-          lineItems: lineItems.filter(i => i.description), subtotal, discountAmount, taxRate, taxAmount, total: grandTotal, notes, terms,
-        })}>
-          <FileDown className="h-4 w-4 mr-1" />PDF
-        </Button>
-        <Button variant="outline" size="sm" onClick={async () => {
-          await saveInvoice("sent");
-          toast({ title: "Email placeholder", description: "Email sending will be connected soon." });
-        }} disabled={loading}>
-          <Send className="h-4 w-4 mr-1" />Send
-        </Button>
+      <StickyActionBar className="mx-0 px-3 sm:px-4 gap-1.5 sm:gap-2 [&>button]:px-2 sm:[&>button]:px-3">
         <Button variant="outline" size="sm" onClick={() => saveInvoice("paid")} disabled={loading}>
           Mark Paid
         </Button>
