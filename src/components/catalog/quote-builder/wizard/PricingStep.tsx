@@ -1,4 +1,4 @@
-import { blendedMarkupHealth, BLENDED_MARKUP_BAR_MAX } from "@/utils/quoteTransformers";
+import { blendedMarkupHealth, BLENDED_MARKUP_BAR_MAX, type QuoteTotals } from "@/utils/quoteTransformers";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
 import { useState, useMemo, useCallback } from "react";
 import { calcSellingPrice, VAT_RATE, resolveProductMarkupPercent, lockedPricing, costPerMetreOf } from "@/lib/pricing";
@@ -25,6 +25,8 @@ interface Props {
    *  client-side-only quote generation again. */
   onGenerateQuote?: () => void;
   generating?: boolean;
+  /** Shared quote totals (same as header / Visual PDF summary, incl. labour). */
+  quoteTotals?: QuoteTotals;
 }
 
 // VAT_RATE now imported from @/lib/pricing
@@ -219,7 +221,7 @@ function getProductMarkup(product: any): number {
   return resolveProductMarkupPercent(product ?? {});
 }
 
-export default function PricingStep({ areas, onAreasChange, onGenerateQuote, generating }: Props) {
+export default function PricingStep({ areas, onAreasChange, onGenerateQuote, generating, quoteTotals }: Props) {
   // Derive initial global markup from the first AC unit's product markup
   const defaultMarkup = useMemo(() => {
     for (const a of areas) {
@@ -537,18 +539,21 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
         <CardContent className="py-4 px-4 space-y-3">
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">Subtotal (excl. VAT)</span>
-            <span className="font-medium">{formatCurrency(subtotal)}</span>
+            <span className="font-medium">{formatCurrency(quoteTotals ? quoteTotals.subtotal : subtotal)}</span>
           </div>
+          {quoteTotals && quoteTotals.labourTotal > 0 && (
+            <div className="flex justify-between text-xs"><span className="text-muted-foreground">incl. labour (Time step)</span><span>{formatCurrency(quoteTotals.labourTotal)}</span></div>
+          )}
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">VAT (15%)</span>
-            <span>{formatCurrency(vatAmount)}</span>
+            <span>{formatCurrency(quoteTotals ? quoteTotals.vatAmount : vatAmount)}</span>
           </div>
           <Separator />
 
           {/* Grand total - highlighted */}
           <div className="flex justify-between items-center text-lg font-bold rounded-lg bg-primary/5 px-3 py-2 -mx-1 text-primary">
             <span>Total Incl. VAT</span>
-            <span>{formatCurrency(total)}</span>
+            <span>{formatCurrency(quoteTotals ? quoteTotals.total : total)}</span>
           </div>
 
           {/* Markup impact bar */}

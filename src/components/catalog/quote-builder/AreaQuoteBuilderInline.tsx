@@ -25,7 +25,10 @@ import { WIZARD_STEPS, computeAreaSubtotal, createEmptyArea, detectBTU } from ".
 import AreaDefinitionStep from "./wizard/AreaDefinitionStep";
 import ACSelectionStep from "./wizard/ACSelectionStep";
 import PricingStep from "./wizard/PricingStep";
-import { TimeAllocationStep, ReviewWithLabourStep } from "./wizard/TimeAllocationStep";
+import { TimeAllocationStep } from "./wizard/TimeAllocationStep";
+import AreaReviewStep from "./wizard/AreaReviewStep";
+import type { AreaReviewSummary } from "@/utils/areaReviewTotals";
+import { formatRand } from "@/utils/formatRand";
 
 interface PaletteBundle {
   id: string;
@@ -63,6 +66,8 @@ interface Props {
    *  step building its own disconnected, client-only quote/PDF. */
   onGenerateQuote?: () => void;
   generating?: boolean;
+  /** Shared per-area + quote totals (same as header / Visual PDF summary, incl. labour) for Pricing, Review and the footer. */
+  reviewSummary?: AreaReviewSummary;
 }
 
 const DRAFT_STORAGE_KEY = "quote-builder-draft";
@@ -96,7 +101,7 @@ function hasAreaContent(area: QuoteArea): boolean {
   );
 }
 
-export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, onDropProductToAreaRef, onDropBundleToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, pdfSelection, initialAreas, onGenerateQuote, generating }: Props) {
+export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, onDropProductToAreaRef, onDropBundleToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, pdfSelection, initialAreas, onGenerateQuote, generating, reviewSummary }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const { templates: installTemplates } = useInstallTemplates();
   const [areas, setAreas] = useState<QuoteArea[]>(() => {
@@ -354,12 +359,12 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
     switch (currentStep) {
       case 0: return <AreaDefinitionStep {...props} />;
       case 1: return <ACSelectionStep {...props} products={products} bundles={bundles} onPdfSearch={onPdfSearch} />;
-      case 2: return <PricingStep {...props} onGenerateQuote={onGenerateQuote} generating={generating} />;
+      case 2: return <PricingStep {...props} onGenerateQuote={onGenerateQuote} generating={generating} quoteTotals={reviewSummary?.totals} />;
       case 3: return <TimeAllocationStep {...props} />;
-      case 4: return <ReviewWithLabourStep {...props} />;
+      case 4: return <AreaReviewStep {...props} summary={reviewSummary} />;
       default: return null;
     }
-  }, [currentStep, areas, products, bundles, onPdfSearch, onGenerateQuote, generating]);
+  }, [currentStep, areas, products, bundles, onPdfSearch, onGenerateQuote, generating, reviewSummary]);
 
   const grandTotal = useMemo(() => areas.reduce((s, a) => s + computeAreaSubtotal(a), 0), [areas]);
 
@@ -422,7 +427,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
       <div className="flex items-center justify-between px-4 py-3 border-t shrink-0 bg-card text-foreground">
         <div className="flex items-center gap-2">
           <div className="text-xs text-muted-foreground hidden sm:block">
-            {areas.length > 0 && `${areas.length} area${areas.length !== 1 ? "s" : ""} · R ${grandTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`}
+            {areas.length > 0 && `${areas.length} area${areas.length !== 1 ? "s" : ""} · ${reviewSummary ? `${formatRand(reviewSummary.totals.total)} incl. VAT` : formatRand(grandTotal)}`}
           </div>
           {areas.length > 0 && (
             <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={handleSaveDraft}>
