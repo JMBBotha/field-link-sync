@@ -547,9 +547,13 @@ const AdminSidebar = ({
       <div className="hidden lg:block border-t border-nav-border p-1.5">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center justify-center py-1.5 text-nav-muted hover:text-nav-foreground transition-colors"
+          title={collapsed ? "Show panel" : "Collapse sidebar"}
+          aria-label={collapsed ? "Show panel" : "Collapse sidebar"}
+          className={collapsed
+            ? "mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg ring-2 ring-primary/30 transition hover:scale-110 hover:bg-primary/85 hover:shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring"
+            : "w-full flex items-center justify-center py-1.5 text-nav-muted hover:text-nav-foreground transition-colors"}
         >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          {collapsed ? <ChevronRight className="h-5 w-5" strokeWidth={3} /> : <ChevronLeft className="h-4 w-4" />}
         </button>
       </div>
     </div>
