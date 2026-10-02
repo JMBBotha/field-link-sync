@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { fetchTodaysJobs, todayInJohannesburg } from "@/lib/todaysJobs";
+import { fetchTodaysJobs, loadEntries, todayInJohannesburg } from "@/lib/todaysJobs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -69,16 +69,30 @@ const FieldSchedulePage = () => {
     },
   });
 
+  // Booked visits (calendar drags / lead assignments) from tomorrow on; installs come from get_my_assigned_jobs
+  const { data: visits = [] } = useQuery({
+    queryKey: ["my-jobs", user?.id, "visits", dayDate],
+    enabled: !!user,
+    queryFn: async () =>
+      (await loadEntries({ from: dayDate, agentId: user!.id }))
+        .filter((e) => !e.job_id && e.date > dayDate && !["completed", "cancelled"].includes(String(e.status || "")))
+        .sort((a, b) => (a.date + (a.start_time || "")).localeCompare(b.date + (b.start_time || ""))),
+  });
+
   useEffect(() => {
-    const ch = supabase
+    const refresh = () => queryClient.invalidateQueries({ queryKey: ["my-jobs"] });
+    let ch = supabase
       .channel("field-schedule-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () =>
-        queryClient.invalidateQueries({ queryKey: ["my-jobs"] }))
-      .on("postgres_changes", { event: "*", schema: "public", table: "assignments" }, () =>
-        queryClient.invalidateQueries({ queryKey: ["my-jobs"] }))
-      .subscribe();
+      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "assignments" }, refresh);
+    if (user?.id) {
+      ch = ch
+        .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `assigned_agent_id=eq.${user.id}` }, refresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "job_schedules", filter: `agent_id=eq.${user.id}` }, refresh);
+    }
+    ch.subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [queryClient]);
+  }, [queryClient, user?.id]);
 
   // Sort scheduled jobs ascending and group into day buckets
   const grouped = useMemo(() => {

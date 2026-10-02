@@ -92,9 +92,9 @@ export default function FieldJobSheetPage() {
               <p className="flex items-center gap-2 text-sm"><CalendarDays className="h-4 w-4" />
                 {new Date(j.scheduled_for).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</p>
             )}
-            {j.address && (
-              <a className="flex items-center gap-2 text-sm underline" href={`https://maps.google.com/?q=${encodeURIComponent(j.address)}`} target="_blank" rel="noreferrer">
-                <MapPin className="h-4 w-4" />{j.address}</a>
+            {siteAddress && (
+              <a className="flex items-center gap-2 text-sm underline" href={`https://maps.google.com/?q=${encodeURIComponent(siteAddress)}`} target="_blank" rel="noreferrer">
+                <MapPin className="h-4 w-4" />{siteAddress}</a>
             )}
             {j.customers?.name && (
               <p className="flex flex-wrap items-center gap-2 text-sm"><Phone className="h-4 w-4" />{j.customers.name}
