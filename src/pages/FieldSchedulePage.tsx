@@ -186,7 +186,7 @@ const FieldSchedulePage = () => {
 
         {isLoading ? (
           <JobCardListSkeleton rows={3} />
-        ) : grouped.length === 0 && unscheduled.length === 0 ? (
+        ) : grouped.length === 0 && unscheduled.length === 0 && visits.length === 0 ? (
           <div className="flex flex-col items-center gap-2 text-center py-20 text-muted-foreground">
             <CalendarDays className="h-10 w-10 opacity-40" />
             <p className="text-sm">No upcoming jobs</p>
