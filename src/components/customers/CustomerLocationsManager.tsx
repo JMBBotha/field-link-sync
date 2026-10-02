@@ -210,7 +210,9 @@ const LocationDialog = ({
     setSaving(true);
     try {
       let finalLat = lat, finalLng = lng;
-      if (finalLat == null || finalLng == null) {
+      // Address edited but pin not moved: re-locate so the pin follows the new address
+      const staleCoords = !!existing && address !== existing.address && lat === existing.latitude && lng === existing.longitude;
+      if (finalLat == null || finalLng == null || staleCoords) {
         const r = await geocodeAddress(address);
         if (r) { finalLat = r.latitude; finalLng = r.longitude; }
       }

@@ -248,7 +248,8 @@ const LeadDetailSheet = ({
   const isClaimed = ["claimed", "accepted"].includes(lead.status) && isOwner;
   const isInProgress = lead.status === "in_progress" && isOwner;
   const isCompleted = lead.status === "completed";
-  const canEdit = isOwner || isClaimed || isInProgress; // Field agent can edit their assigned leads
+  // Field agent edits their assigned leads; office (admin/dispatcher) can always edit
+  const canEdit = isOwner || isClaimed || isInProgress || roleIsAdminForInvoice || roleIsDispatcherForInvoice;
 
   const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${lead.latitude},${lead.longitude}`;
   const addressSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.customer_address)}`;
@@ -406,13 +407,16 @@ const LeadDetailSheet = ({
       const newEnd = new Date(currentEnd.getTime() + additionalMinutes * 60 * 1000);
       const newDuration = (lead.estimated_duration_minutes || 60) + additionalMinutes;
 
-      await supabase
+      const { data: saved, error } = await supabase
         .from("leads")
         .update({
           estimated_duration_minutes: newDuration,
           estimated_end_time: newEnd.toISOString(),
         })
-        .eq("id", lead.id);
+        .eq("id", lead.id)
+        .select("id");
+      if (error) throw error;
+      if (!saved?.length) throw new Error("Not saved: no permission");
 
       onLeadUpdated?.();
       
@@ -438,13 +442,16 @@ const LeadDetailSheet = ({
         : new Date();
       const newEnd = new Date(startTime.getTime() + newTotalMinutes * 60 * 1000);
 
-      await supabase
+      const { data: saved, error } = await supabase
         .from("leads")
         .update({
           estimated_duration_minutes: newTotalMinutes,
           estimated_end_time: newEnd.toISOString(),
         })
-        .eq("id", lead.id);
+        .eq("id", lead.id)
+        .select("id");
+      if (error) throw error;
+      if (!saved?.length) throw new Error("Not saved: no permission");
 
       onLeadUpdated?.();
       
@@ -604,7 +611,7 @@ const LeadDetailSheet = ({
                 visibleFields={[
                   "customer_name",
                   "customer_phone",
-                  "customer_email",
+                  "email",
                   "customer_address",
                   "service_type",
                   "priority",

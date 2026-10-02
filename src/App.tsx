@@ -243,7 +243,7 @@ const App = () => (
                   <Route path="/field/jobs/:id" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldJobSheetPage /></RequireRole>} />
 
                   {/* Tech "My earnings" (Job 6) */}
-                  <Route path="/field/earnings" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldEarningsPage /></RequireRole>} />
+                  <Route path="/field/earnings" element={<RequireRole allowedRoles={["field_agent", "admin"]}><FieldEarningsPage /></RequireRole>} />
 
                   {/* Field Agent */}
                   <Route path="/field" element={<FieldAgent />} />
