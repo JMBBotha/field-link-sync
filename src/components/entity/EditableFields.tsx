@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { Check, Loader2, Pencil, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -75,7 +77,12 @@ export const EditableField = ({
     const next = draft === "" ? null : draft;
     setEditing(false);
     if (next === (value ?? null)) return;
-    await onSave(next);
+    try {
+      await onSave(next);
+      toast({ title: `${label} saved` });
+    } catch {
+      // useEntityEditor already shows "Couldn't save change" and reverts
+    }
   };
 
   if (editing) {
@@ -95,16 +102,11 @@ export const EditableField = ({
                 setEditing(false);
               }
             }}
-            className="h-8 text-sm"
+            className="h-8 min-w-0 text-sm"
           />
-          <button
-            type="button"
-            aria-label="Save"
-            onClick={commit}
-            className="p-1 rounded hover:bg-muted"
-          >
-            <Check className="h-4 w-4 text-primary" />
-          </button>
+          <Button type="button" size="sm" aria-label="Save" onClick={commit} className="h-8 shrink-0 gap-1 px-2.5">
+            <Check className="h-4 w-4" /> Save
+          </Button>
           <button
             type="button"
             aria-label="Cancel"
@@ -235,6 +237,10 @@ export const EditableNotes = ({
 }: BaseProps & { placeholder?: string }) => {
   const [draft, setDraft] = useState(value ?? "");
   const [focused, setFocused] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const text = String(draft ?? "");
+  const fullRows = text.split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 70)), 0);
+  const isLong = fullRows > 6;
 
   useEffect(() => {
     if (!focused) setDraft(value ?? "");
@@ -243,7 +249,7 @@ export const EditableNotes = ({
   return (
     <Shell label={label} saving={saving} className={className}>
       <Textarea
-        rows={3}
+        rows={expanded ? Math.min(30, Math.max(6, fullRows + 1)) : 6}
         value={draft ?? ""}
         disabled={disabled}
         placeholder={placeholder}
@@ -252,10 +258,25 @@ export const EditableNotes = ({
         onBlur={async () => {
           setFocused(false);
           const next = draft === "" ? null : draft;
-          if (next !== (value ?? null)) await onSave(next);
+          if (next === (value ?? null)) return;
+          try {
+            await onSave(next);
+            toast({ title: `${label} saved` });
+          } catch {
+            // useEntityEditor already shows the error and reverts
+          }
         }}
-        className="text-sm resize-none"
+        className="text-sm leading-relaxed resize-y whitespace-pre-wrap break-words"
       />
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((x) => !x)}
+          className="mt-1 text-xs font-medium text-primary hover:underline"
+        >
+          {expanded ? "Show less" : "Show all"}
+        </button>
+      )}
     </Shell>
   );
 };
