@@ -17,7 +17,8 @@ export type EditableFieldKind =
   | "select"
   | "date"
   | "time"
-  | "datetime";
+  | "datetime"
+  | "address";
 
 export interface EntityFieldConfig {
   /** Column name on the underlying table. */
@@ -91,7 +92,7 @@ export const ENTITY_REGISTRY: Record<EntityType, EntityConfig> = {
     fields: [
       { key: "customer_name", label: "Customer", kind: "text" },
       { key: "customer_phone", label: "Phone", kind: "tel" },
-      { key: "customer_address", label: "Address", kind: "text", wide: true },
+      { key: "customer_address", label: "Address", kind: "address", wide: true },
       { key: "service_type", label: "Job Type", kind: "text" },
       { key: "status", label: "Status", kind: "select", options: LEAD_STATUS },
       { key: "priority", label: "Priority", kind: "select", options: PRIORITY },

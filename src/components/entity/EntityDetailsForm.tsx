@@ -11,6 +11,7 @@ import {
   EditableDateTime,
   EditableNotes,
 } from "./EditableFields";
+import AddressMapField from "./AddressMapField";
 
 interface EntityDetailsFormProps {
   entityType: EntityType;
@@ -35,7 +36,7 @@ const EntityDetailsForm = ({
   readOnly,
   className,
 }: EntityDetailsFormProps) => {
-  const { config, data, isLoading, savingField, updateField } = useEntityEditor(
+  const { config, data, isLoading, savingField, updateField, update } = useEntityEditor(
     entityType,
     entityId,
     { initialData },
@@ -126,6 +127,19 @@ const EntityDetailsForm = ({
               return <EditableSelect {...shared} options={optionsFor(field)} />;
             case "textarea":
               return <EditableNotes {...shared} placeholder={field.placeholder} />;
+            case "address":
+              return (
+                <AddressMapField
+                  {...shared}
+                  lat={data.latitude}
+                  lng={data.longitude}
+                  onSave={({ address, lat, lng }) =>
+                    update(lat != null && lng != null
+                      ? { [field.key]: address, latitude: lat, longitude: lng }
+                      : { [field.key]: address })
+                  }
+                />
+              );
             case "datetime":
               return <EditableDateTime {...shared} />;
             case "date":
