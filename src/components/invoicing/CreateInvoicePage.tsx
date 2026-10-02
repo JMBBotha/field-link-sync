@@ -18,6 +18,7 @@ import BeCoolLogo from "@/components/shared/BeCoolLogo";
 import DocumentHeader from "@/components/shared/DocumentHeader";
 import StickyActionBar from "@/components/shared/StickyActionBar";
 import { blockR0 } from "@/lib/zeroPriceGuard";
+import { useInvoiceAutofill, type AutofillFlag } from "@/hooks/useInvoiceAutofill";
 
 /* ────────── Types ────────── */
 
@@ -28,6 +29,8 @@ interface LineItem {
   markup?: number;
   amount: number;
   service_id?: string | null;
+  /** Editor-only marker (never saved): tech-sourced line to check, or a deposit credit. */
+  flag?: AutofillFlag;
 }
 
 interface Customer {
@@ -244,30 +247,27 @@ const CreateInvoicePage = ({
       });
   }, [selectedCustomerId]);
 
-  // Fetch used parts for lead
+  // Autofill from the job: quote lines, deposit credit, tech extras (sell price), labour overrun, notes.
+  const [quoteChoice, setQuoteChoice] = useState<string | null>(null);
+  const [autoQuoteId, setAutoQuoteId] = useState<string | null>(null);
+  const autofill = useInvoiceAutofill(prefillLead?.id || prefillFromLead?.id, quoteChoice, allOptions, companySettings.default_hourly_rate);
+  const appliedKey = useRef<string | null>(null);
+  const autoNotes = useRef("");
   useEffect(() => {
-    const lid = prefillLead?.id;
-    if (!lid) return;
-    supabase
-      .from("job_used_parts" as any)
-      .select("product_name, product_code, unit_cost, quantity")
-      .eq("lead_id", lid)
-      .then(({ data }) => {
-        if (data && (data as any[]).length > 0) {
-          const parts: LineItem[] = (data as any[]).map((p: any) => ({
-            description: `${p.product_name} (${p.product_code})`,
-            quantity: p.quantity,
-            rate: p.unit_cost,
-            amount: p.quantity * p.unit_cost,
-          }));
-          setLineItems((prev) => {
-            const existing = prev.filter((i) => i.description && i.amount > 0);
-            const merged = [...parts, ...existing];
-            return merged.length ? merged : [{ description: "", quantity: 1, rate: 0, amount: 0 }];
-          });
-        }
+    if (!autofill || appliedKey.current === autofill.key) return;
+    appliedKey.current = autofill.key;
+    setAutoQuoteId(autofill.quoteId);
+    if (autofill.customerId) setSelectedCustomerId((prev) => prev || autofill.customerId);
+    if (autofill.lines.length) {
+      setLineItems((prev) => {
+        const keep = autofill.quoteId ? [] : prev.filter((i) => i.description && !i.flag);
+        return [...keep, ...autofill.lines];
       });
-  }, [prefillLead?.id]);
+    }
+    const lastAuto = autoNotes.current;
+    autoNotes.current = autofill.notes;
+    setNotes((prev) => (!prev.trim() || prev === lastAuto ? autofill.notes : prev));
+  }, [autofill]);
 
   // Terms from company settings
   useEffect(() => {
@@ -321,6 +321,7 @@ const CreateInvoicePage = ({
       const clientRate = item.rate * (1 + item.markup / 100);
       item.amount = item.quantity * clientRate;
     }
+    if (item.flag === "credit") item.amount = -Math.abs(item.amount);
     items[index] = item;
     setLineItems(items);
   };
@@ -378,6 +379,10 @@ const CreateInvoicePage = ({
       toast({ title: "Error", description: "Add at least one line item", variant: "destructive" });
       return;
     }
+    if (subtotal < 0) {
+      toast({ title: "Error", description: "The deposit credit is more than the invoice lines", variant: "destructive" });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -417,7 +422,7 @@ const CreateInvoicePage = ({
 
       // Client-facing lines: unit price is the SELL price (cost × markup); cost/markup never saved.
       const validItems = lineItems
-        .filter((i) => i.description && i.amount > 0)
+        .filter((i) => i.description && (i.amount > 0 || (i.flag === "credit" && i.amount < 0)))
         .map((i) => ({
           description: i.description,
           quantity: i.quantity,
@@ -431,6 +436,7 @@ const CreateInvoicePage = ({
         .insert({
           invoice_number: finalNumber,
           lead_id: finalLeadId,
+          quote_id: autoQuoteId,
           agent_id: agentId,
           company_id,
           customer_name: customerName,
@@ -615,6 +621,23 @@ const CreateInvoicePage = ({
 
         {/* ── LINE ITEMS TABLE ── */}
         <div>
+          {!autoQuoteId && !!autofill?.suggestions.length && (
+            <div className="mb-3 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 space-y-1">
+              <p>No quote is linked to this job. This client has:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {autofill.suggestions.map((q) => (
+                  <button key={q.id} type="button" onClick={() => setQuoteChoice(q.id)} className="rounded border border-amber-400 bg-white px-2 py-0.5 hover:bg-amber-100">
+                    {q.quote_number || "Quote"} {formatCurrency(q.total)} ({q.status}) – use
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {lineItems.some((i) => i.flag === "tech") && (
+            <p className="mb-3 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+              Lines marked "From tech – check" came from the technician. Check they aren't already in the quote lines and that the price is right.
+            </p>
+          )}
           <div className="grid grid-cols-[repeat(4,minmax(0,1fr))_24px] sm:grid-cols-[1fr_80px_50px_60px_80px_30px] gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1">
             <div className="hidden sm:block">Description</div>
             <div className="text-right">Cost</div>
@@ -633,6 +656,11 @@ const CreateInvoicePage = ({
                   onChange={(val) => updateLineItem(idx, "description", val)}
                   onSelect={(opt) => pickOption(opt, idx)}
                 />
+                {item.flag && (
+                  <span className="mt-0.5 inline-block rounded bg-amber-100 px-1.5 text-[10px] font-medium text-amber-800">
+                    {item.flag === "tech" ? "From tech – check" : "Deposit credit"}
+                  </span>
+                )}
               </div>
               <div>
                 <GhostInput type="number" min="0" step="0.01" className="text-right" value={item.rate || ""} onChange={(e) => updateLineItem(idx, "rate", e.target.value)} placeholder="0.00" />
