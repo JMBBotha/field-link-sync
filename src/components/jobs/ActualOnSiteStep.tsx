@@ -86,19 +86,13 @@ export default function ActualOnSiteStep({ value, onChange }: { value: ActualOnS
   );
 }
 
-/** Save the step; job_id required. Quote comes from jobs.quote_id, else the lead's latest quote. */
+/** Save the step by lead (job optional). The server fills lead/quote links. Throws on failure. */
 export async function saveActualOnSite(opts: { jobId: string | null | undefined; leadId: string; userId: string; value: ActualOnSiteValue }) {
   const { jobId, leadId, userId, value } = opts;
-  if (!jobId || !hasActual(value)) return false;
-  const { data: job } = await (supabase.from("jobs") as any).select("quote_id").eq("id", jobId).maybeSingle();
-  let quoteId: string | null = job?.quote_id ?? null;
-  if (!quoteId) {
-    const { data: q } = await (supabase.from("quotes") as any).select("id").eq("lead_id", leadId).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    quoteId = q?.id ?? null;
-  }
+  if (!leadId || !hasActual(value)) return false;
   const h = Number(value.actualHours);
   const { error } = await (supabase.from("job_overruns" as any) as any).insert({
-    job_id: jobId, quote_id: quoteId, created_by: userId,
+    job_id: jobId || null, lead_id: leadId, created_by: userId,
     actual_hours: value.actualHours.trim() !== "" && Number.isFinite(h) && h >= 0 ? h : null,
     extra_items: value.extras.filter((x) => x.qty > 0), notes: value.notes.trim() || null,
   });

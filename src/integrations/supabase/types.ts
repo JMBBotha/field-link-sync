@@ -2883,7 +2883,8 @@ export type Database = {
           created_by: string
           extra_items: Json
           id: string
-          job_id: string
+          job_id: string | null
+          lead_id: string | null
           notes: string | null
           quote_id: string | null
         }
@@ -2893,7 +2894,8 @@ export type Database = {
           created_by?: string
           extra_items?: Json
           id?: string
-          job_id: string
+          job_id?: string | null
+          lead_id?: string | null
           notes?: string | null
           quote_id?: string | null
         }
@@ -2903,7 +2905,8 @@ export type Database = {
           created_by?: string
           extra_items?: Json
           id?: string
-          job_id?: string
+          job_id?: string | null
+          lead_id?: string | null
           notes?: string | null
           quote_id?: string | null
         }
@@ -2913,6 +2916,20 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_overruns_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "job_overruns_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
           {
@@ -8205,6 +8222,10 @@ export type Database = {
         Args: { _job_id: string; _uid: string }
         Returns: boolean
       }
+      can_log_overrun: {
+        Args: { _job_id: string; _lead_id: string; _uid: string }
+        Returns: boolean
+      }
       can_manage_profile_access: {
         Args: { _target_company: string; _target_participant: string }
         Returns: boolean
@@ -8212,6 +8233,10 @@ export type Database = {
       can_read_master_catalog: { Args: { _uid: string }; Returns: boolean }
       can_view_company_overruns: {
         Args: { _job_id: string; _uid: string }
+        Returns: boolean
+      }
+      can_view_overrun: {
+        Args: { _job_id: string; _lead_id: string; _uid: string }
         Returns: boolean
       }
       can_write_master_catalog: { Args: { _uid: string }; Returns: boolean }
@@ -8797,6 +8822,10 @@ export type Database = {
       longtransactionsenabled: { Args: never; Returns: boolean }
       mark_overdue_maintenance: { Args: never; Returns: number }
       normalize_phone: { Args: { phone: string }; Returns: string }
+      overrun_company_id: {
+        Args: { _job_id: string; _lead_id: string }
+        Returns: string
+      }
       past_quote_analytics: {
         Args: { p_job_type?: string }
         Returns: {
