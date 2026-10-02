@@ -78,7 +78,13 @@ const AdminTeamPage = () => {
         }
       }
 
-      return Array.from(grouped.entries()).map(([userId, info]) => {
+      return Array.from(grouped.entries()).filter(([userId]) => {
+        const p: any = profileMap.get(userId);
+        if (!companyId) return true;
+        const indep = p?.participant_type === "independent_sales" || p?.participant_type === "independent_tech";
+        if (indep && p?.network_status !== "approved") return false;
+        return connected.has(userId) || (!indep && p?.company_id === companyId);
+      }).map(([userId, info]) => {
         const profile = profileMap.get(userId);
         return {
           id: userId,
@@ -290,25 +296,9 @@ const AdminTeamPage = () => {
       </div>
 
       {pending.length > 0 && (
-        <Card id="pending-applications" className="border-amber-500/40">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-lg">Pending applications ({pending.length})</CardTitle>
-            <Link to="/admin/network-agents" className="text-sm text-primary hover:underline">Network Agents →</Link>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {pending.map((a: any) => (
-              <div key={a.id} className="flex flex-wrap items-center gap-3 rounded-md border p-3">
-                <div className="min-w-0 flex-1 text-xs text-muted-foreground">
-                  <p className="text-sm font-medium text-foreground">{a.full_name} · {a.participant_type === "independent_tech" ? "Technician" : "Sales"}</p>
-                  <p>{a.phone || "No phone"} · applied {format(new Date(a.created_at), "dd MMM, HH:mm")}</p>
-                  {a.skills?.[0] && <p className="line-clamp-2">{a.skills[0]}</p>}
-                </div>
-                <Button size="sm" disabled={reviewMutation.isPending} onClick={() => reviewMutation.mutate({ id: a.id, status: "approved" })}>Approve</Button>
-                <Button size="sm" variant="outline" disabled={reviewMutation.isPending} onClick={() => confirm(`Reject ${a.full_name}?`) && reviewMutation.mutate({ id: a.id, status: "rejected" })}>Reject</Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <Link to="/admin/network-agents" className="block text-sm text-primary hover:underline">
+          {pending.length} pending application{pending.length === 1 ? "" : "s"} — review in Network Agents →
+        </Link>
       )}
       {/* Team Table */}
       <Card className="border-border/50">
