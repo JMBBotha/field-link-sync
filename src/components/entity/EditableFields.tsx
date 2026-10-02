@@ -285,6 +285,16 @@ export const EditableNotes = ({
   const fullRows = text.split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 70)), 0);
   const isLong = fullRows > 6;
 
+  // Esc closes the dialog without a blur: save what was typed
+  useSaveOnUnmount(
+    () => {
+      if (!focused) return undefined;
+      const next = draft === "" ? null : draft;
+      return next === (value ?? null) ? undefined : next;
+    },
+    (v) => Promise.resolve(onSave(v)).then(() => toast({ title: `${label} saved` })),
+  );
+
   useEffect(() => {
     if (!focused) setDraft(value ?? "");
   }, [value, focused]);

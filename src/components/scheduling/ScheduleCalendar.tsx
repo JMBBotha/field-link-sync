@@ -81,6 +81,8 @@ const ScheduleCalendar = () => {
         queryClient.invalidateQueries({ queryKey: ["job-schedules"] }))
       .on("postgres_changes", { event: "*", schema: "public", table: "customer_locations" }, () =>
         queryClient.invalidateQueries({ queryKey: ["job-schedules"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["job-schedules"] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [queryClient]);
@@ -90,7 +92,7 @@ const ScheduleCalendar = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("job_schedules")
-        .select("*, leads(customer_name, service_type, status)")
+        .select("*, leads(id, customer_name, service_type, status)")
         .order("scheduled_date");
       if (error) throw error;
 
