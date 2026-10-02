@@ -8465,6 +8465,7 @@ export type Database = {
           next_service_due: string
         }[]
       }
+      get_applicant_email: { Args: { _id: string }; Returns: string }
       get_company_margin_settings: {
         Args: { p_company_id: string }
         Returns: {
