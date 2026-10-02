@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, XCircle, Clock, Loader2, Users, Link2, Unlink } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Loader2, Users, Link2, Unlink, Phone, Mail } from "lucide-react";
+import { Link } from "react-router-dom";
 import { format } from "date-fns";
 
 const AdminNetworkAgentsPage = () => {
@@ -20,6 +21,16 @@ const AdminNetworkAgentsPage = () => {
   const { user } = useAuth();
   const [affiliateDialogAgent, setAffiliateDialogAgent] = useState<any>(null);
   const [affiliationType, setAffiliationType] = useState("technical");
+  const [detail, setDetail] = useState<any>(null);
+  const [showConnected, setShowConnected] = useState(false);
+  const { data: detailEmail } = useQuery({
+    queryKey: ["applicant-email", detail?.id],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("get_applicant_email" as any, { _id: detail.id });
+      return (data as string) || null;
+    },
+    enabled: !!detail?.id,
+  });
 
   // All independent agents
   const { data: agents = [], isLoading } = useQuery({
@@ -51,17 +62,25 @@ const AdminNetworkAgentsPage = () => {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ network_status: status } as any)
-        .eq("id", id);
-      if (error) throw error;
+    mutationFn: async ({ id, status, type }: { id: string; status: string; type?: string }) => {
+      const { data, error } = await supabase.from("profiles").update({ network_status: status } as any).eq("id", id).select("id");
+      if (error || !data?.length) throw error || new Error("Not allowed to update this applicant");
+      if (!companyId) return;
+      if (status === "approved") {
+        // Approval connects the agent to this company (moves them to Team Members)
+        const { error: e2 } = await supabase.from("agent_affiliations").upsert({
+          profile_id: id, company_id: companyId, affiliation_type: type === "independent_sales" ? "sales" : "technical",
+          status: "active", approved_at: new Date().toISOString(), approved_by: user?.id || null,
+        }, { onConflict: "company_id,profile_id" });
+        if (e2) throw e2;
+      } else {
+        await supabase.from("agent_affiliations").update({ status: "inactive" }).eq("company_id", companyId).eq("profile_id", id);
+      }
     },
     onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ["network-agents"] });
-      queryClient.invalidateQueries({ queryKey: ["pending-applicants"] });
-      toast({ title: `Agent ${vars.status === "approved" ? "approved" : "rejected"}` });
+      ["network-agents", "pending-applicants", "company-affiliations", "team-members"].forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
+      setDetail(null);
+      toast({ title: vars.status === "approved" ? "Approved — now listed under Team Members" : "Applicant rejected" });
     },
     onError: (err: any) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -112,6 +131,10 @@ const AdminNetworkAgentsPage = () => {
   const getAffiliation = (agentId: string) =>
     affiliations.find((a: any) => a.profile_id === agentId && a.status === "active");
 
+  const isConnected = (a: any) => a.network_status === "approved" && !!getAffiliation(a.id);
+  const connectedCount = agents.filter(isConnected).length;
+  const visibleAgents = showConnected ? agents : agents.filter((a) => !isConnected(a));
+
   const statusBadge = (status: string | null) => {
     switch (status) {
       case "approved":
@@ -145,13 +168,23 @@ const AdminNetworkAgentsPage = () => {
         </div>
       </div>
 
+      {connectedCount > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {connectedCount} approved agent{connectedCount === 1 ? " is" : "s are"} connected and listed under{" "}
+          <Link to="/admin/team" className="text-primary hover:underline">Team Members</Link>.{" "}
+          <button type="button" className="text-primary hover:underline" onClick={() => setShowConnected((v) => !v)}>
+            {showConnected ? "Hide them here" : "Show them here"}
+          </button>
+        </p>
+      )}
+
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : agents.length === 0 ? (
+      ) : visibleAgents.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          No independent agent applications yet.
+          No applications waiting for review.
         </div>
       ) : (
         <div className="rounded-lg border bg-card">
@@ -168,12 +201,12 @@ const AdminNetworkAgentsPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {agents.map((agent) => {
+              {visibleAgents.map((agent) => {
                 const affil = getAffiliation(agent.id);
                 return (
-                  <TableRow key={agent.id}>
+                  <TableRow key={agent.id} className="cursor-pointer" onClick={() => setDetail(agent)}>
                     <TableCell>
-                      <div className="font-medium">{agent.full_name}</div>
+                      <div className="font-medium text-primary hover:underline">{agent.full_name}</div>
                       {agent.skills?.[0] && <div className="text-xs text-muted-foreground line-clamp-2 max-w-xs">{agent.skills[0]}</div>}
                     </TableCell>
                     <TableCell>{typeBadge(agent.participant_type)}</TableCell>
@@ -192,13 +225,13 @@ const AdminNetworkAgentsPage = () => {
                       {format(new Date(agent.created_at), "dd MMM yyyy")}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex gap-1 justify-end flex-wrap">
+                      <div className="flex gap-1 justify-end flex-wrap" onClick={(e) => e.stopPropagation()}>
                         {agent.network_status !== "approved" && (
                           <Button
                             size="sm"
                             variant="ghost"
                             className="text-green-500 hover:text-green-400 hover:bg-green-500/10"
-                            onClick={() => updateStatus.mutate({ id: agent.id, status: "approved" })}
+                            onClick={() => updateStatus.mutate({ id: agent.id, status: "approved", type: agent.participant_type })}
                             disabled={updateStatus.isPending}
                           >
                             <CheckCircle2 className="h-4 w-4 mr-1" />
@@ -210,7 +243,7 @@ const AdminNetworkAgentsPage = () => {
                             size="sm"
                             variant="ghost"
                             className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
-                            onClick={() => updateStatus.mutate({ id: agent.id, status: "rejected" })}
+                            onClick={() => confirm(`Reject ${agent.full_name}?`) && updateStatus.mutate({ id: agent.id, status: "rejected" })}
                             disabled={updateStatus.isPending}
                           >
                             <XCircle className="h-4 w-4 mr-1" />
@@ -254,6 +287,55 @@ const AdminNetworkAgentsPage = () => {
           </Table>
         </div>
       )}
+
+      {/* Applicant detail */}
+      <Dialog open={!!detail} onOpenChange={(o) => { if (!o) setDetail(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{detail?.full_name}</DialogTitle>
+            <DialogDescription>
+              Applied as {detail?.participant_type === "independent_sales" ? "Sales agent" : "Technician"}
+              {detail && ` · ${format(new Date(detail.created_at), "dd MMM yyyy, HH:mm")}`}
+            </DialogDescription>
+          </DialogHeader>
+          {detail && (
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center gap-2">
+                {statusBadge(detail.network_status)}
+                {getAffiliation(detail.id) && <Badge variant="outline">On team · {getAffiliation(detail.id).affiliation_type}</Badge>}
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                {detail.phone ? <a href={`tel:${detail.phone}`} className="text-primary hover:underline">{detail.phone}</a> : <span className="text-muted-foreground">No phone given</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                {detailEmail ? <a href={`mailto:${detailEmail}`} className="text-primary hover:underline">{detailEmail}</a> : <span className="text-muted-foreground">No email</span>}
+              </div>
+              <div>
+                <p className="font-medium mb-1">Skills & experience</p>
+                {detail.skills?.length ? (
+                  <ul className="list-disc pl-5 space-y-1">{detail.skills.map((sk: string, i: number) => <li key={i} className="whitespace-pre-wrap">{sk}</li>)}</ul>
+                ) : <p className="text-muted-foreground">None given</p>}
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            {detail && detail.network_status !== "rejected" && (
+              <Button variant="outline" className="text-red-500" disabled={updateStatus.isPending}
+                onClick={() => confirm(`Reject ${detail.full_name}?`) && updateStatus.mutate({ id: detail.id, status: "rejected" })}>
+                <XCircle className="h-4 w-4 mr-1" />Reject
+              </Button>
+            )}
+            {detail && detail.network_status !== "approved" && (
+              <Button disabled={updateStatus.isPending || !companyId}
+                onClick={() => updateStatus.mutate({ id: detail.id, status: "approved", type: detail.participant_type })}>
+                <CheckCircle2 className="h-4 w-4 mr-1" />Approve &amp; add to team
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Affiliate Dialog */}
       <Dialog open={!!affiliateDialogAgent} onOpenChange={(open) => { if (!open) setAffiliateDialogAgent(null); }}>

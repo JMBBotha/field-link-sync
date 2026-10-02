@@ -48,21 +48,10 @@ const AdminTeamPage = () => {
   const { companyId } = useUserCompanyId();
   const { pending } = usePendingApplicants();
 
-  const reviewMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { data, error } = await supabase.from("profiles").update({ network_status: status } as any).eq("id", id).select("id");
-      if (error || !data?.length) throw error || new Error("Not allowed to update this applicant");
-    },
-    onSuccess: (_, v) => {
-      ["pending-applicants", "network-agents", "team-members"].forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
-      toast({ title: `Applicant ${v.status}` });
-    },
-    onError: (err: any) => toast({ title: "Failed to update applicant", description: err.message, variant: "destructive" }),
-  });
 
   // Fetch team members
   const { data: members = [], isLoading } = useQuery({
-    queryKey: ["team-members"],
+    queryKey: ["team-members", companyId],
     queryFn: async () => {
       const { data: roles, error } = await supabase
         .from("user_roles")
@@ -74,8 +63,18 @@ const AdminTeamPage = () => {
 
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, full_name, phone, avatar_url, availability_status, updated_at, dispatch_role, participant_type")
+        .select("id, full_name, phone, avatar_url, availability_status, updated_at, dispatch_role, participant_type, network_status, company_id")
         .in("id", userIds);
+      // Only people connected to this company: staff/members, or approved agents with an active affiliation
+      const connected = new Set<string>();
+      if (companyId) {
+        const [{ data: mem }, { data: aff }] = await Promise.all([
+          supabase.from("company_members").select("user_id").eq("company_id", companyId),
+          supabase.from("agent_affiliations").select("profile_id").eq("company_id", companyId).eq("status", "active"),
+        ]);
+        (mem || []).forEach((m: any) => connected.add(m.user_id));
+        (aff || []).forEach((a: any) => connected.add(a.profile_id));
+      }
 
       const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
@@ -89,7 +88,13 @@ const AdminTeamPage = () => {
         }
       }
 
-      return Array.from(grouped.entries()).map(([userId, info]) => {
+      return Array.from(grouped.entries()).filter(([userId]) => {
+        const p: any = profileMap.get(userId);
+        if (!companyId) return true;
+        const indep = p?.participant_type === "independent_sales" || p?.participant_type === "independent_tech";
+        if (indep && p?.network_status !== "approved") return false;
+        return connected.has(userId) || (!indep && p?.company_id === companyId);
+      }).map(([userId, info]) => {
         const profile = profileMap.get(userId);
         return {
           id: userId,
@@ -301,25 +306,9 @@ const AdminTeamPage = () => {
       </div>
 
       {pending.length > 0 && (
-        <Card id="pending-applications" className="border-amber-500/40">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-lg">Pending applications ({pending.length})</CardTitle>
-            <Link to="/admin/network-agents" className="text-sm text-primary hover:underline">Network Agents →</Link>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {pending.map((a: any) => (
-              <div key={a.id} className="flex flex-wrap items-center gap-3 rounded-md border p-3">
-                <div className="min-w-0 flex-1 text-xs text-muted-foreground">
-                  <p className="text-sm font-medium text-foreground">{a.full_name} · {a.participant_type === "independent_tech" ? "Technician" : "Sales"}</p>
-                  <p>{a.phone || "No phone"} · applied {format(new Date(a.created_at), "dd MMM, HH:mm")}</p>
-                  {a.skills?.[0] && <p className="line-clamp-2">{a.skills[0]}</p>}
-                </div>
-                <Button size="sm" disabled={reviewMutation.isPending} onClick={() => reviewMutation.mutate({ id: a.id, status: "approved" })}>Approve</Button>
-                <Button size="sm" variant="outline" disabled={reviewMutation.isPending} onClick={() => confirm(`Reject ${a.full_name}?`) && reviewMutation.mutate({ id: a.id, status: "rejected" })}>Reject</Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <Link to="/admin/network-agents" className="block text-sm text-primary hover:underline">
+          {pending.length} pending application{pending.length === 1 ? "" : "s"} — review in Network Agents →
+        </Link>
       )}
       {/* Team Table */}
       <Card className="border-border/50">
