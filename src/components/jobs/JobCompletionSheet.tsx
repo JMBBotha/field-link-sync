@@ -125,11 +125,19 @@ const JobCompletionSheet = ({
         // totals as unknown instead of persisting misleading zeros.
         metricsKnown: isOnline,
       });
+      // Only one toast shows at a time, so a failed "Actual on site" save must win over "Job completed".
+      let actualError: string | null = null;
       if (user?.id) {
         try { await saveActualOnSite({ jobId, leadId, userId: user.id, value: actual }); }
-        catch { toast({ title: "Actual on site not saved", description: "The job is completed; tell the office the extra hours/materials." }); }
+        catch (e) { actualError = (e as { message?: string })?.message || "unknown error"; }
       }
-      if (!queued) {
+      if (actualError) {
+        toast({
+          title: "Actual on site NOT saved",
+          description: `The job is completed, but the extra hours/materials were not saved (${actualError}). Tell the office.`,
+          variant: "destructive",
+        });
+      } else if (!queued) {
         toast({ title: "Job completed", description: "Signed off and ready for invoicing." });
       }
       queryClient.invalidateQueries({ queryKey: ["leads"] });
