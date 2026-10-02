@@ -50,8 +50,8 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [geocoding, setGeocoding] = useState(false);
-  const [geoStatus, setGeoStatus] = useState<"idle" | "ok" | "failed" | "inherited">("idle");
-  const [showPicker, setShowPicker] = useState(false);
+  const [geoStatus, setGeoStatus] = useState<"idle" | "ok" | "failed" | "inherited" | "pinned">("idle");
+  const [showPicker, setShowPicker] = useState(true);
 
   // Sync incoming defaults whenever the dialog opens (dialog is mounted once
   // and reused, so prop changes must be pushed into state here).
@@ -162,7 +162,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   // Debounced geocode on address change (if we don't already have inherited coords)
   useEffect(() => {
     if (!address || address.length < 5) return;
-    if (geoStatus === "inherited") return;
+    if (geoStatus === "inherited" || geoStatus === "pinned") return; // a pin-set address keeps its pin
     const t = setTimeout(async () => {
       setGeocoding(true);
       const r = await geocodeAddress(address);
@@ -306,12 +306,12 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setLat(null);
     setLng(null);
     setGeoStatus("idle");
-    setShowPicker(false);
+    setShowPicker(true);
   };
 
   const geoHint = () => {
     if (geocoding) return <span className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Locating address…</span>;
-    if (geoStatus === "ok") return <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle2 className="h-3 w-3" /> Address located — will pin on Map</span>;
+    if (geoStatus === "ok" || geoStatus === "pinned") return <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle2 className="h-3 w-3" /> Address located — will pin on Map</span>;
     if (geoStatus === "inherited") return <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle2 className="h-3 w-3" /> Using existing customer/lead coordinates</span>;
     if (geoStatus === "failed") return <span className="flex items-center gap-1 text-xs text-amber-600"><AlertTriangle className="h-3 w-3" /> Couldn't locate address — <button type="button" className="underline" onClick={() => setShowPicker(true)}>place pin manually</button></span>;
     return null;
@@ -392,8 +392,8 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
                   latitude={lat}
                   longitude={lng}
                   onLocationChange={(la, ln, addr) => {
-                    setLat(la); setLng(ln); setGeoStatus("ok");
-                    if (addr && !address) setAddress(addr);
+                    setLat(la); setLng(ln); setGeoStatus("pinned");
+                    if (addr) setAddress(addr);
                   }}
                 />
               </div>
