@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
-import NotificationsList from "./NotificationsList";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import NotificationsList, { notificationHref } from "./NotificationsList";
+import { markFollowUpDone } from "./notificationFollowUp";
 
 interface Notification {
   id: string;
@@ -24,6 +27,9 @@ const NotificationBell = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const navRef = useRef(navigate);
+  navRef.current = navigate;
 
   useEffect(() => {
     const getUser = async () => {
@@ -60,7 +66,25 @@ const NotificationBell = () => {
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          setNotifications((prev) => [payload.new as Notification, ...prev].slice(0, 20));
+          const n = payload.new as Notification;
+          setNotifications((prev) => [n, ...prev].slice(0, 20));
+          // Lead SLA alerts (check_lead_sla cron) also pop a toast; Open marks read + opens the lead
+          if ((n.type || "").startsWith("lead_sla")) {
+            toast.warning(n.title, {
+              description: n.body ?? undefined,
+              duration: 15000,
+              action: {
+                label: "Open",
+                onClick: () => {
+                  markFollowUpDone(n.id);
+                  supabase.from("notifications").update({ read: true }).eq("id", n.id).then(() =>
+                    setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))
+                  );
+                  navRef.current(notificationHref(n.type, n.related_id, window.location.pathname.startsWith("/field")));
+                },
+              },
+            });
+          }
         }
       )
       .on(
