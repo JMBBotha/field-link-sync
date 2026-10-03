@@ -72,6 +72,13 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId, showCost
         <span className="text-muted-foreground">Subtotal (excl. VAT)</span>
         <span className="font-medium text-foreground tabular-nums">{formatRand(summary.subtotal)}</span>
       </div>
+      {summary.discountAmount > 0 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Discount (before VAT)</span>
+          <span className="font-medium text-foreground tabular-nums">−{formatRand(summary.discountAmount)}</span>
+        </div>
+      )}
+
 
       {/* VAT */}
       <div className="flex items-center justify-between text-sm">

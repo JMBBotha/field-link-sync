@@ -15,7 +15,13 @@ import AreaDefinitionStep from "./wizard/AreaDefinitionStep";
 import ACSelectionStep from "./wizard/ACSelectionStep";
 import MaterialsStep from "./wizard/MaterialsStep";
 import PricingStep from "./wizard/PricingStep";
-import { TimeAllocationStep, ReviewStep } from "./wizard/PlaceholderSteps";
+import { TimeAllocationStep } from "./wizard/PlaceholderSteps";
+import AreaReviewStep from "./wizard/AreaReviewStep";
+import { buildWizardReview } from "@/utils/areaReviewTotals";
+import { useOptionalQuoteContext } from "@/contexts/QuoteContext";
+import { useMarginView } from "@/hooks/useMarginView";
+import { useRole } from "@/hooks/useRole";
+import { formatRand } from "@/utils/formatRand";
 
 interface PaletteBundle {
   id: string;
@@ -201,17 +207,27 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
     toast.success("Quote areas added successfully");
   }, [areas, onSave, onClose]);
 
+  // Same formula as the header / Visual PDF summary: these areas + their saved labour, quote discount, VAT.
+  const qctx = useOptionalQuoteContext();
+  const { roles } = useRole();
+  const marginView = useMarginView(qctx?.quoteId ?? null, (qctx?.meta as any)?.company_id ?? null);
+  const showCost = qctx?.quoteId ? marginView.visible : (roles as string[]).includes("admin");
+  const summary = useMemo(
+    () => buildWizardReview(areasToBaskets(areas), qctx?.items ?? [], qctx?.areas ?? [], { type: qctx?.meta?.discount_type, value: qctx?.meta?.discount_value }, showCost),
+    [areas, qctx?.items, qctx?.areas, qctx?.meta?.discount_type, qctx?.meta?.discount_value, showCost],
+  );
+
   const stepContent = useMemo(() => {
     const props = { areas, onAreasChange: setAreas };
     switch (currentStep) {
       case 0: return <AreaDefinitionStep {...props} />;
       case 1: return <ACSelectionStep {...props} products={products} bundles={bundles} onPdfSearch={onPdfSearch} />;
-      case 2: return <PricingStep {...props} />;
+      case 2: return <PricingStep {...props} summary={summary} />;
       case 3: return <TimeAllocationStep {...props} />;
-      case 4: return <ReviewStep {...props} />;
+      case 4: return <AreaReviewStep {...props} summary={summary} />;
       default: return null;
     }
-  }, [currentStep, areas, products, bundles, onPdfSearch]);
+  }, [currentStep, areas, products, bundles, onPdfSearch, summary]);
 
   const grandTotal = useMemo(() => areas.reduce((s, a) => s + computeAreaSubtotal(a), 0), [areas]);
 
@@ -272,7 +288,7 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
         <div className="flex items-center justify-between px-4 py-3 border-t shrink-0 bg-card text-foreground">
           <div className="flex items-center gap-2">
             <div className="text-xs text-muted-foreground hidden sm:block">
-              {areas.length > 0 && `${areas.length} area${areas.length !== 1 ? "s" : ""} · R ${grandTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`}
+              {areas.length > 0 && `${areas.length} area${areas.length !== 1 ? "s" : ""} · ${formatRand(summary.totals.total)} incl. VAT`}
             </div>
             {areas.length > 0 && (
               <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={handleSaveDraft}>

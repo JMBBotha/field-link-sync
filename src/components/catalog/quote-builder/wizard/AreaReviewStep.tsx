@@ -19,6 +19,7 @@ function Figures({ t, hours, rate, showCost, missing }: { t: QuoteTotals; hours:
         : line("Labour", hours > 0 ? `${hours} h${rate != null ? ` × ${formatRand(rate)}` : ""} = ${formatRand(t.labourTotal)}` : "—")}
       {showCost && t.noCostCount > 0 && <div className="text-amber-700">{t.noCostCount} line{t.noCostCount !== 1 ? "s have" : " has"} no cost (left out of markup/GP)</div>}
       {line("Subtotal (excl. VAT)", formatRand(t.subtotal), "border-t pt-1")}
+      {t.discountAmount > 0 && line("Discount (before VAT, whole quote)", `−${formatRand(t.discountAmount)}`)}
       {line("VAT (15%)", formatRand(t.vatAmount))}
       {line("Total incl. VAT", formatRand(t.total), "font-bold")}
     </div>
@@ -41,7 +42,6 @@ export default function AreaReviewStep({ areas, summary }: { areas: QuoteArea[];
       ))}
       <div className="rounded border-2 border-primary/30 bg-primary/5 p-3" data-testid="review-totals">
         <div className="mb-1 text-sm font-bold">Quote total</div>
-        {t.discountAmount > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Discount (areas above are before discount)</span><span className="tabular-nums">−{formatRand(t.discountAmount)}</span></div>}
         {showCost && <div className="flex justify-between"><span className="text-muted-foreground">Our cost incl. labour (as side summary)</span><span className="tabular-nums">{formatRand(t.totalCost)}</span></div>}
         {showCost && <div className="flex justify-between"><span className="text-muted-foreground">Overall markup (on cost, incl. labour)</span><span className="tabular-nums">{t.avgMarkup.toFixed(1)}%</span></div>}
         <Figures t={t} hours={rows.reduce((s, r) => s + r.hours, 0)} rate={null} showCost={showCost} />

@@ -182,8 +182,10 @@ export function computeQuoteTotals(
     return sum + price;
   }, 0);
 
-  const vatAmount = subtotal * vatRate;
-  const total = subtotal + vatAmount;
+  // Discount comes off the ex-VAT subtotal BEFORE VAT (same as recalc_quote_totals and the client PDF).
+  const discountAmount = quoteDiscountAmount(subtotal, discount);
+  const vatAmount = (subtotal - discountAmount) * vatRate;
+  const total = subtotal - discountAmount + vatAmount;
 
   const areaIds = new Set(areas.map((a) => a.id));
   const usedAreas = new Set<string>();
@@ -231,7 +233,6 @@ export function computeQuoteTotals(
   const noCostCount = topLevel.filter((i) => lineCost(i) == null).length;
   // Discount: before VAT, never allocated to labour — spread over units +
   // materials in proportion to their pre-discount sell.
-  const discountAmount = quoteDiscountAmount(subtotal, discount);
   const share = allocateQuoteDiscount(topLevel, discountAmount, isLabour);
   const costedShare = topLevel.reduce((s2, i) => s2 + (lineCost(i) != null ? share.get(i.id) || 0 : 0), 0);
   const netSell = all.sell - costedShare;

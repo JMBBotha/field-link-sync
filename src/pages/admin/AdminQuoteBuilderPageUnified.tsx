@@ -112,7 +112,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
     slice(0, 8);
   }, [clients, clientSearch]);
 
-  const dbTotals = useMemo(() => computeQuoteTotals(items, areas), [items, areas]);
+  const dbTotals = useMemo(() => computeQuoteTotals(items, areas, undefined, { type: meta?.discount_type, value: meta?.discount_value }), [items, areas, meta?.discount_type, meta?.discount_value]);
 
   // Prefer live in-progress builder totals so header reflects unsaved edits
   // BEFORE they hit the DB. Falls back to persisted totals when idle.

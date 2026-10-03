@@ -89,10 +89,15 @@ async function persistOnce(
 
   // Labour rows live outside the baskets. They are never re-inserted: the RPC
   // re-links them to the new area by name. Read once only for totals.
-  const labourRes = await supabase.from("quote_items").select("*").eq("quote_id", quoteId).eq("item_type", LABOUR_ITEM_TYPE);
+  const [labourRes, quoteRes] = await Promise.all([
+    supabase.from("quote_items").select("*").eq("quote_id", quoteId).eq("item_type", LABOUR_ITEM_TYPE),
+    supabase.from("quotes").select("discount_type, discount_value").eq("id", quoteId),
+  ]);
   if (labourRes.error) throw labourRes.error;
   const labourRows = ((labourRes.data || []) as any[]).filter((r) => isLabourItem(r) && !r.parent_item_id);
-  const totals = computeQuoteTotals([...items, ...(labourRows as any)], areas);
+  // Saved VAT/total take the quote discount off before VAT (matches the DB trigger and the client PDF).
+  const qd = ((quoteRes as any)?.data as any[] | null)?.[0];
+  const totals = computeQuoteTotals([...items, ...(labourRows as any)], areas, undefined, qd ? { type: qd.discount_type, value: qd.discount_value } : null);
 
   const areaIdMap = new Map<string, string>();
   const areaRows = areas.map((a, i) => {

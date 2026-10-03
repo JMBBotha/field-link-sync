@@ -1,4 +1,5 @@
-import { blendedMarkupHealth, BLENDED_MARKUP_BAR_MAX, type QuoteTotals } from "@/utils/quoteTransformers";
+import { blendedMarkupHealth, BLENDED_MARKUP_BAR_MAX } from "@/utils/quoteTransformers";
+import type { AreaReviewSummary } from "@/utils/areaReviewTotals";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
 import { useState, useMemo, useCallback } from "react";
 import { calcSellingPrice, VAT_RATE, resolveProductMarkupPercent, lockedPricing, costPerMetreOf } from "@/lib/pricing";
@@ -25,8 +26,8 @@ interface Props {
    *  client-side-only quote generation again. */
   onGenerateQuote?: () => void;
   generating?: boolean;
-  /** Shared quote totals (same as header / Visual PDF summary, incl. labour). */
-  quoteTotals?: QuoteTotals;
+  /** Shared per-area + quote totals (same formula as header / Visual PDF summary, incl. labour and discount). */
+  summary?: AreaReviewSummary;
 }
 
 // VAT_RATE now imported from @/lib/pricing
@@ -221,7 +222,10 @@ function getProductMarkup(product: any): number {
   return resolveProductMarkupPercent(product ?? {});
 }
 
-export default function PricingStep({ areas, onAreasChange, onGenerateQuote, generating, quoteTotals }: Props) {
+export default function PricingStep({ areas, onAreasChange, onGenerateQuote, generating, summary }: Props) {
+  const quoteTotals = summary?.totals;
+  const showCost = !summary || summary.showCost;
+  const rowFor = (a: QuoteArea) => summary?.rows.find((r) => r.name.trim().toLowerCase() === (a.name || "").trim().toLowerCase())?.totals;
   // Derive initial global markup from the first AC unit's product markup
   const defaultMarkup = useMemo(() => {
     for (const a of areas) {
@@ -353,9 +357,10 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
   const total = useMemo(() => subtotal + vatAmount, [subtotal, vatAmount]);
   /** Blended project markup: (Σ sell − Σ cost) / Σ cost — units + kits + materials. */
   const avgMarkup = useMemo(() => {
+    if (quoteTotals) return quoteTotals.avgMarkup;
     const cost = lineItems.reduce((s, l) => s + l.totalCost, 0);
     return cost > 0 ? ((subtotal - cost) / cost) * 100 : 0;
-  }, [lineItems, subtotal]);
+  }, [lineItems, subtotal, quoteTotals]);
 
   const editingArea = editingAreaId ? areas.find(a => a.id === editingAreaId) : null;
 
@@ -458,7 +463,7 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
 
                   {/* Qty */}
                   <div className="flex justify-center">
-                    {unit ? (
+                    {summary ? <span className="text-xs tabular-nums">{area.acUnits.reduce((s, u) => s + (Number(u.quantity) || 0), 0)} unit(s)</span> : unit ? (
                       <QuantityControl
                         value={pricing.quantity}
                         onChange={(v) => { updateAreaPricing(area.id, { quantity: v }); }}
@@ -472,12 +477,12 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
 
                   {/* Cost */}
                   <div className="text-right">
-                    <span className="text-xs text-muted-foreground">{unit ? formatCurrency(costPrice) : "—"}</span>
+                    <span className="text-xs text-muted-foreground">{summary ? (showCost && rowFor(area) ? formatCurrency(rowFor(area)!.totalCost - rowFor(area)!.labourTotal) : "—") : unit ? formatCurrency(costPrice) : "—"}</span>
                   </div>
 
                   {/* Markup */}
                   <div className="flex justify-center">
-                    {unit ? (
+                    {summary ? <span className="text-xs tabular-nums">{showCost && rowFor(area)?.unitsMaterialsMarkup != null ? `${rowFor(area)!.unitsMaterialsMarkup!.toFixed(0)}%` : "—"}</span> : unit ? (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Input
@@ -500,8 +505,8 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
                   <div className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <div>
-                        <span className="text-xs font-semibold">{unit ? formatCurrency(lineTotal) : "—"}</span>
-                        {unit && (
+                        <span className="text-xs font-semibold">{summary ? formatCurrency(rowFor(area) ? rowFor(area)!.subtotal - rowFor(area)!.labourTotal : 0) : unit ? formatCurrency(lineTotal) : "—"}</span>
+                        {summary ? <span className="block text-[9px] text-muted-foreground">items, excl. labour</span> : unit && (
                           <span className="block text-[9px] text-muted-foreground">
                             {formatCurrency(sellingPrice)} × {quantity}
                           </span>
@@ -544,6 +549,9 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
           {quoteTotals && quoteTotals.labourTotal > 0 && (
             <div className="flex justify-between text-xs"><span className="text-muted-foreground">incl. labour (Time step)</span><span>{formatCurrency(quoteTotals.labourTotal)}</span></div>
           )}
+          {quoteTotals && quoteTotals.discountAmount > 0 && (
+            <div className="flex justify-between text-xs"><span className="text-muted-foreground">Discount (before VAT)</span><span>−{formatCurrency(quoteTotals.discountAmount)}</span></div>
+          )}
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">VAT (15%)</span>
             <span>{formatCurrency(quoteTotals ? quoteTotals.vatAmount : vatAmount)}</span>
@@ -557,7 +565,7 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
           </div>
 
           {/* Markup impact bar */}
-          <div className="space-y-1">
+          {showCost && <div className="space-y-1">
             <div className="flex items-center justify-between text-[10px] text-muted-foreground">
               <span className="flex items-center gap-1">
                 <TrendingUp className="h-3 w-3" />
@@ -577,7 +585,7 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
               <span className="absolute left-[35%] -translate-x-1/2">35%</span>
               <span className="absolute right-0">100%+</span>
             </div>
-          </div>
+          </div>}
         </CardContent>
       </Card>
 
