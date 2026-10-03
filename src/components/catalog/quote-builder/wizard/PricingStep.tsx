@@ -565,7 +565,7 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
           </div>
 
           {/* Markup impact bar */}
-          <div className="space-y-1">
+          {showCost && <div className="space-y-1">
             <div className="flex items-center justify-between text-[10px] text-muted-foreground">
               <span className="flex items-center gap-1">
                 <TrendingUp className="h-3 w-3" />
@@ -585,7 +585,7 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
               <span className="absolute left-[35%] -translate-x-1/2">35%</span>
               <span className="absolute right-0">100%+</span>
             </div>
-          </div>
+          </div>}
         </CardContent>
       </Card>
 

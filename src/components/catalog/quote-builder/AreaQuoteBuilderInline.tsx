@@ -359,7 +359,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
     switch (currentStep) {
       case 0: return <AreaDefinitionStep {...props} />;
       case 1: return <ACSelectionStep {...props} products={products} bundles={bundles} onPdfSearch={onPdfSearch} />;
-      case 2: return <PricingStep {...props} onGenerateQuote={onGenerateQuote} generating={generating} quoteTotals={reviewSummary?.totals} />;
+      case 2: return <PricingStep {...props} onGenerateQuote={onGenerateQuote} generating={generating} summary={reviewSummary} />;
       case 3: return <TimeAllocationStep {...props} />;
       case 4: return <AreaReviewStep {...props} summary={reviewSummary} />;
       default: return null;
