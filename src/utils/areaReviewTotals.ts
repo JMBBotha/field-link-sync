@@ -1,6 +1,6 @@
 import type { Basket } from "@/components/catalog/QuoteBuilderTab";
 import { basketsToQuoteState } from "@/utils/quoteBasketTotals";
-import { computeQuoteTotals, type QuoteTotals } from "@/utils/quoteTransformers";
+import { computeQuoteTotals, type QuoteTotals, type QuoteDiscount } from "@/utils/quoteTransformers";
 import { isLabourItem } from "@/lib/labour";
 import { isJobLabour } from "@/lib/areaLabour";
 
@@ -43,3 +43,13 @@ export function buildAreaReview(baskets: Basket[], ctxItems: any[], ctxAreas: { 
   }).filter((r) => r.totals.itemCount > 0);
   return { rows, totals, showCost };
 }
+
+/** Pop-up wizard: totals for just its own areas + their saved labour, with the quote discount (same formula as the header). */
+export function buildWizardReview(baskets: Basket[], ctxItems: any[], ctxAreas: { id: string; name: string }[], discount: QuoteDiscount | null, showCost: boolean): AreaReviewSummary {
+  const names = new Set(baskets.map((b) => norm(b.name)));
+  const ctxName = new Map(ctxAreas.map((a) => [a.id, a.name]));
+  const labour = ctxItems.filter((l) => !l.parent_item_id && isLabourItem(l) && !isJobLabour(l) && names.has(norm(ctxName.get(l.area_id))));
+  const st = basketsToQuoteState(baskets);
+  return buildAreaReview(baskets, labour, ctxAreas, computeQuoteTotals([...st.items, ...labour], st.areas, undefined, discount), showCost);
+}
+
