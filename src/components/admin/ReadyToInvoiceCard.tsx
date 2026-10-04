@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNowStrict } from "date-fns";
-import { FilePlus, Receipt } from "lucide-react";
+import { ChevronDown, FilePlus, Receipt } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
@@ -30,6 +31,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const ReadyToInvoiceCard = () => {
   const { user } = useAuth();
   const [dialogRow, setDialogRow] = useState<ReadyRow | null>(null);
+  const [open, setOpen] = useState(false);
 
   const { data: rows = [], refetch } = useQuery({
     queryKey: ["ready-to-invoice"],
@@ -52,14 +54,28 @@ const ReadyToInvoiceCard = () => {
 
   return (
     <Card id="ready-to-invoice" className="surface-card border-amber-500/40">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Receipt className="h-4 w-4 text-amber-600" />
-          Ready to invoice ({rows.length})
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">Completed jobs with no invoice yet</p>
-      </CardHeader>
-      <CardContent className="max-h-72 overflow-y-auto space-y-2 pt-0">
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader
+            className="pb-2 cursor-pointer select-none hover:bg-muted/30 transition-colors rounded-t-lg"
+            role="button"
+            aria-expanded={open}
+            aria-label={open ? "Collapse ready to invoice list" : `Expand ready to invoice list – ${rows.length} completed jobs to invoice`}
+          >
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Receipt className="h-4 w-4 text-amber-600" />
+              Ready to invoice
+              <Badge className="border-0 bg-amber-500/15 text-amber-600">{rows.length}</Badge>
+              <span className="ml-auto text-xs font-normal text-muted-foreground">
+                {open ? "Click to hide" : "Click to invoice completed jobs"}
+              </span>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+            </CardTitle>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="max-h-72 overflow-y-auto space-y-2 pt-0">
+            <p className="text-xs text-muted-foreground">Completed jobs with no invoice yet</p>
         {rows.map((row) => {
           const ageMs = row.completed_at ? Date.now() - new Date(row.completed_at).getTime() : null;
           const red = ageMs === null || ageMs >= DAY_MS;
@@ -90,7 +106,9 @@ const ReadyToInvoiceCard = () => {
             </div>
           );
         })}
-      </CardContent>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
       {dialogRow && user && (
         <CreateInvoiceDialog
           open={!!dialogRow}
