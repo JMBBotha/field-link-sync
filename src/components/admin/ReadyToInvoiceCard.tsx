@@ -106,7 +106,9 @@ const ReadyToInvoiceCard = () => {
             </div>
           );
         })}
-      </CardContent>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
       {dialogRow && user && (
         <CreateInvoiceDialog
           open={!!dialogRow}
