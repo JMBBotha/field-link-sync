@@ -125,7 +125,8 @@ const timeToMinutes = (t: string) => {
 const minutesToPx = (mins: number, pxPerHour: number) => (mins / 60) * pxPerHour;
 
 // ─── Component ───
-const AdminDispatchPage = () => {
+/** embedded = Dispatch · Calendar inside the Jobs hub: the hub supplies the title and the attention strip. */
+const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -149,7 +150,10 @@ const AdminDispatchPage = () => {
   const [draggingLead, setDraggingLead] = useState<Lead | null>(null);
   const [showMapPane, setShowMapPane] = useState(false);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Phones (<768px): start with the unassigned panel folded so the timeline is visible, unless opened for the inbox / a lane.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 768 && searchParams.get("inbox") !== "1" && !searchParams.get("lane"),
+  );
   const [quickAssignLead, setQuickAssignLead] = useState<Lead | null>(null);
   const [quickAssignAgent, setQuickAssignAgent] = useState("");
   const [quickAssignDate, setQuickAssignDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -207,6 +211,15 @@ const AdminDispatchPage = () => {
     });
     return () => { cancelled = true; };
   }, [leadParam, leadsLoading, allLeads, setSearchParams]);
+
+  // ?date=YYYY-MM-DD or ?date=today (old /admin/schedule links, Mandy) opens that day in Day view.
+  const dateParam = searchParams.get("date");
+  useEffect(() => {
+    if (!dateParam) return;
+    const d = dateParam === "today" ? new Date() : /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? new Date(`${dateParam}T12:00:00`) : null;
+    if (d && !isNaN(d.getTime())) { setCurrentDate(d); setViewMode("day"); }
+    setSearchParams((p) => { const n = new URLSearchParams(p); n.delete("date"); return n; }, { replace: true });
+  }, [dateParam, setSearchParams]);
 
 
 
@@ -792,10 +805,12 @@ const AdminDispatchPage = () => {
       {/* ─── Header Stats Bar ─── */}
       <div className="shrink-0 border-b bg-card p-3 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-4 mr-auto">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-bold">Dispatch calendar</h2>
-          </div>
+          {!embedded && (
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-bold">Dispatch calendar</h2>
+            </div>
+          )}
           <div className="hidden md:flex items-center gap-3">
             <StatBadge icon={<AlertTriangle className="h-3.5 w-3.5" />} label="Unassigned" value={stats.unassigned} variant="warning" />
             <StatBadge icon={<Zap className="h-3.5 w-3.5" />} label="In Progress" value={stats.inProgress} variant="success" />
@@ -828,11 +843,11 @@ const AdminDispatchPage = () => {
         </div>
       </div>
 
-      <AttentionStrip className="mx-3 mt-2 shrink-0" />
+      {!embedded && <AttentionStrip className="mx-3 mt-2 shrink-0" />}
       {/* ─── Main content: sidebar + timeline (+ optional map) ─── */}
       <div className="flex flex-1 overflow-hidden">
         {/* Unassigned Jobs Sidebar */}
-        <div className={`shrink-0 border-r bg-card flex flex-col transition-all duration-200 ${sidebarCollapsed ? "w-10" : "w-80"}`}>
+        <div className={`shrink-0 border-r bg-card flex flex-col transition-all duration-200 ${sidebarCollapsed ? "w-10" : "w-full sm:w-80"}`}>
           {sidebarCollapsed ? (
             <div className="flex h-full flex-col items-center pt-2">
               <button
