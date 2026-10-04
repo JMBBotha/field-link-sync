@@ -104,11 +104,9 @@ const AdminSidebar = ({
           label: "Jobs & Dispatch",
           icon: Briefcase,
           children: [
-            { path: "/admin/jobs?tab=pipeline", label: "Pipeline", icon: BarChart3, roles: ["admin", "dispatcher", "viewer"] },
+            // Dispatch calendar + Schedule are views inside Dispatch now (old URLs redirect); techs use /field.
+            { path: "/admin/jobs?tab=pipeline", label: "Sales pipeline", icon: BarChart3, roles: ["admin", "dispatcher", "viewer"] },
             { path: "/admin/jobs?tab=dispatch", label: "Dispatch", icon: ClipboardList, roles: ["admin", "dispatcher", "viewer"] },
-            { path: "/admin/dispatch", label: "Dispatch calendar", icon: CalendarDays, roles: ["admin", "dispatcher"] },
-            { path: "/admin/schedule", label: "Schedule", icon: CalendarDays },
-            { path: "/admin/my-jobs", label: "My Jobs", icon: Briefcase },
           ],
         },
         ...(isSalesRep ? [{ path: "/admin/my-appointments", label: "My appointments", icon: CalendarDays } as NavItem] : []),

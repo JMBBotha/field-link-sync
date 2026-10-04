@@ -38,14 +38,13 @@ import AdminQuoteBuilderPage from "./pages/admin/AdminQuoteBuilderPage";
 import AdminQuoteBuilderPageUnified from "./pages/admin/AdminQuoteBuilderPageUnified";
 import AdminProposalBuilderPage from "./pages/admin/AdminProposalBuilderPage";
 import AdminCatalogPage from "./pages/admin/AdminCatalogPage";
-import AdminDispatchPage from "./pages/admin/AdminDispatchPage";
 import AdminUnassignedQueuePage from "./pages/admin/AdminUnassignedQueuePage";
 import AdminJobsMapPage from "./pages/admin/AdminJobsMapPage";
 import AdminMaintenancePage from "./pages/admin/AdminMaintenancePage";
 import AdminCustomersPage from "./pages/admin/AdminCustomersPage";
 import AdminCustomerDetailPage from "./pages/admin/AdminCustomerDetailPage";
 import AdminJobDetailPage from "./pages/admin/AdminJobDetailPage";
-import AdminJobsHubPage, { JobsDispatchRedirect } from "./pages/admin/AdminJobsHubPage";
+import AdminJobsHubPage, { JobsDispatchRedirect, DispatchCalendarRedirect } from "./pages/admin/AdminJobsHubPage";
 import AdminMyJobsPage from "./pages/admin/AdminMyJobsPage";
 import AdminMyAppointmentsPage from "./pages/admin/AdminMyAppointmentsPage";
 import AdminPriceListsPage from "./pages/admin/AdminPriceListsPage";
@@ -53,7 +52,6 @@ import FieldSchedulePage from "./pages/FieldSchedulePage";
 import FieldJobSheetPage from "./pages/FieldJobSheetPage";
 
 // Lazy-loaded admin pages (simple wrappers)
-import ScheduleCalendar from "./components/scheduling/ScheduleCalendar";
 import InventoryList from "./components/inventory/InventoryList";
 import ReportBuilder from "./components/reports/ReportBuilder";
 import AnalyticsDashboard from "./components/analytics/AnalyticsDashboard";
@@ -171,7 +169,8 @@ const App = () => (
                     <Route index element={<AdminHomePage />} />
                     <Route path="map" element={<RequireRole allowedRoles={["admin","dispatcher","viewer","field_agent"]} denySalesRep><AdminMapPage /></RequireRole>} />
                     <Route path="jobs-map" element={<RequireRole allowedRoles={["admin","dispatcher","viewer","field_agent"]} denySalesRep><AdminJobsMapPage /></RequireRole>} />
-                    <Route path="dispatch" element={<AdminDispatchPage />} />
+                    {/* Dispatch calendar + old Schedule now live in Jobs → Dispatch · Calendar (hub role check applies); params kept. */}
+                    <Route path="dispatch" element={<DispatchCalendarRedirect />} />
                     <Route path="unassigned-queue" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminUnassignedQueuePage /></RequireRole>} />
 
                     <Route path="jobs" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} redirectTo="/admin/my-jobs" redirectOnDeny><AdminJobsHubPage /></RequireRole>} />
@@ -179,7 +178,7 @@ const App = () => (
                     <Route path="jobs/:id" element={<AdminJobDetailPage />} />
                     <Route path="my-jobs" element={<AdminMyJobsPage />} />
                     <Route path="my-appointments" element={<AdminMyAppointmentsPage />} />
-                    <Route path="schedule" element={<ScheduleCalendar />} />
+                    <Route path="schedule" element={<DispatchCalendarRedirect />} />
                     <Route path="quotes" element={<AdminQuotesPage />} />
                     <Route path="estimates/:id" element={<AdminEstimateDetailPage />} />
 
