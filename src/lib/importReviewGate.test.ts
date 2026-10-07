@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildReviewItems, emptyPages, sampleCost, looseCode } from "./importReviewGate";
+import { buildReviewItems, emptyPages, sampleCost, looseCode, passesBasicModelCode } from "./importReviewGate";
 
 const ex = [
   { id: "1", product_code: "MIM-H04ΎN", cost_price: 500 },
@@ -27,5 +27,12 @@ describe("import review gate", () => {
   it("lists empty pages and computes sample cost", () => {
     expect(emptyPages([{ page: 1, rows: 3 }, { page: 2, rows: 0 }])).toEqual([2]);
     expect(sampleCost(2999.87, 20)).toBe(2399.9);
+  });
+  it("flags codes failing the basic model-code check", () => {
+    expect(passesBasicModelCode("JU")).toBe(false);
+    expect(passesBasicModelCode("AR80")).toBe(true);
+    expect(passesBasicModelCode("AR09BSHGAWK/FA")).toBe(true);
+    const items = buildReviewItems([{ model_number: "JU", cost_price: 900 }], ex);
+    expect(items[0].reasons.some((r) => r.text.includes("basic model-code"))).toBe(true);
   });
 });

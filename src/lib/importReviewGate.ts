@@ -27,6 +27,12 @@ export interface ReviewItem { index: number; reasons: ReviewReason[]; duplicateO
 /** OCR look-alikes fixed, then everything non-alphanumeric stripped. */
 export const looseCode = (code: string) => sanitizeModelCode(code).code.replace(/[^A-Z0-9]/g, "");
 
+/** Basic model-code shape: 4+ chars with at least one letter and one digit (rejects 'JU', 'JUNE'). */
+export const passesBasicModelCode = (code: string) => {
+  const c = sanitizeModelCode(code).code.replace(/[^A-Z0-9]/g, "");
+  return c.length >= 4 && /[A-Z]/.test(c) && /\d/.test(c);
+};
+
 const hasUnreadable = (code: string) => /[^A-Za-z0-9\-/.()+#_\s]/.test(code);
 
 function within1(a: string, b: string): boolean {
@@ -72,6 +78,7 @@ export function buildReviewItems(rows: GateRow[], existing: ExistingProduct[]): 
     if (ocr) reasons.push({ kind: "flag", text: `Code corrected: "${ocr.slice("model_code_ocr_fixed:".length)}" → ${s.code}` });
     if (flags.includes("model_code_unreadable") || hasUnreadable(code)) reasons.push({ kind: "flag", text: `Code unreadable: "${code}"` });
     if (s.code !== upper.replace(/\s/g, "") && !ocr) reasons.push({ kind: "flag", text: `Code would clean to: "${code}" → ${s.code}` });
+    if (code && !passesBasicModelCode(code)) reasons.push({ kind: "flag", text: `Code "${code}" fails the basic model-code check` });
     if (flags.some((f) => f.startsWith("description_garbled"))) reasons.push({ kind: "flag", text: "Description looks garbled" });
 
     // (b) price outliers
