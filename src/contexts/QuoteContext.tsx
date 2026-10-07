@@ -22,6 +22,8 @@ import { needsDefaultArea, getDefaultAreaName } from "@/utils/quoteTransformers"
 import { DEFAULT_CATEGORY_MARKUPS, setActiveQuoteMarkupRates, type CategoryMarkupRates } from "@/lib/pricing";
 import { isJobLabour, normalizeLabourMode, planLabourInsert, syncAutoLabour, countAcUnits } from "@/lib/areaLabour";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { isLabourItem } from "@/lib/labour";
+import { runSerialPerQuote } from "@/utils/persistQuoteFromBaskets";
 
 /* ────────────────── Types ────────────────── */
 
@@ -137,7 +139,6 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     itemsRef.current = next;
     setItemsState(next);
   }, []);
-  const labourQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const areasRef = useRef<QuoteArea[]>([]);
   const setAreas = useCallback((value: React.SetStateAction<QuoteArea[]>) => {
     const next = typeof value === "function" ? value(areasRef.current) : value;
@@ -416,7 +417,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   /* ── Items ── */
   const reconcileLabour = useCallback(async () => {
-    const run = labourQueueRef.current.catch(() => undefined).then(async () => {
+    const run = track(runSerialPerQuote(quoteId, async () => {
       const check = async (request: any) => {
         const res = await track<any>(request.select().single());
         if (res.error || !res.data) throw new Error(res.error?.message || "Labour was not saved.");
@@ -438,8 +439,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
           setItems((prev) => prev.filter((i) => i.id !== id));
         },
       });
-    });
-    labourQueueRef.current = run;
+    }));
     try { await run; } catch (e) {
       toast({ title: "Could not update automatic labour", description: errMsg(e), variant: "destructive" });
       await fetchAll(true);
@@ -448,13 +448,13 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   }, [quoteId, meta?.labour_mode, labourSettings.default_install_labour_hours, labourSettings.default_hourly_rate, fetchAll, setItems]);
 
   const addItem = useCallback(async (item0: Omit<QuoteItemInsert, "quote_id">): Promise<QuoteItem | null> => {
+    if (isLabourItem(item0) && item0.metadata?.labour_auto === true) {
+      await reconcileLabour();
+      return itemsRef.current.find((i) => isLabourItem(i) && (normalizeLabourMode(meta?.labour_mode) === "job" ? isJobLabour(i) : i.area_id === item0.area_id)) ?? null;
+    }
     // Job labour mode: one job labour line. A labour insert merges into it (every caller, incl. Mandy, lands here).
     const plan = planLabourInsert(normalizeLabourMode(meta?.labour_mode), itemsRef.current, item0);
     if (plan.kind === "merge") {
-      if (item0.metadata?.labour_auto === true) {
-        await reconcileLabour();
-        return itemsRef.current.find((i) => i.id === plan.id) ?? null;
-      }
       const before = itemsRef.current.find((i) => i.id === plan.id);
       setItems((prev) => prev.map((i) => i.id === plan.id ? { ...i, ...plan.patch } as QuoteItem : i));
       const res = await track(supabase.from("quote_items").update(plan.patch as TablesUpdate<"quote_items">).eq("id", plan.id).select().single());

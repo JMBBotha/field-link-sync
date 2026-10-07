@@ -20,7 +20,7 @@ describe("automatic labour lifecycle, no live writes", () => {
       expect(l.length).toBe(expected ? 1 : 0);
       for (const row of l) expect(row.total_price).toBe(row.quantity * row.unit_price);
       const total = computeQuoteTotals(rows, areas);
-      const client = buildClientRollup(rows, areas).reduce((s, a) => s + a.areaTotal, 0);
+      const client = buildClientRollup(rows, areas as any).reduce((s, a) => s + a.areaTotal, 0);
       expect(client).toBe(total.subtotal);
       stages.push({ stage: name, labour: l.reduce((s, r) => s + r.total_price, 0), subtotal: total.subtotal, total: total.total });
       expect(stages.at(-1).labour).toBe(expected);

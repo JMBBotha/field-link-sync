@@ -22,7 +22,7 @@ describe("persistQuoteFromBaskets single-flight", () => {
     const insert = vi.fn();
     const del = vi.fn();
     mockSupabase.from.mockImplementation(() => {
-      const b: any = { select: () => b, eq: () => b, limit: () => b, insert, delete: del, update: () => b, then: (r: any) => r({ data: [labour], error: null }) };
+      const b: any = { select: () => b, eq: () => b, order: () => b, limit: () => b, insert, delete: del, update: () => b, then: (r: any) => r({ data: [labour], error: null }) };
       return b;
     });
     const rpc = vi.fn().mockResolvedValue({ error: null });
@@ -40,7 +40,7 @@ describe("persistQuoteFromBaskets single-flight", () => {
   it("sends old_id for UUID basket ids so labour re-links survive renames", async () => {
     const uuidArea = "11111111-1111-4111-8111-111111111111";
     mockSupabase.from.mockImplementation(() => {
-      const b: any = { select: () => b, eq: () => b, limit: () => b, then: (r: any) => r({ data: [], error: null }) };
+      const b: any = { select: () => b, eq: () => b, order: () => b, limit: () => b, then: (r: any) => r({ data: [], error: null }) };
       return b;
     });
     const rpc = vi.fn().mockResolvedValue({ error: null });

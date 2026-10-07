@@ -94,7 +94,7 @@ async function persistOnce(
     supabase.from("quote_items").select("*").eq("quote_id", quoteId).eq("item_type", LABOUR_ITEM_TYPE),
     supabase.from("quotes").select("discount_type, discount_value, labour_mode").eq("id", quoteId),
     supabase.from("quote_areas").select("id, name").eq("quote_id", quoteId),
-    supabase.from("company_settings").select("default_install_labour_hours, default_hourly_rate").limit(1),
+    supabase.from("company_settings").select("default_install_labour_hours, default_hourly_rate").order("updated_at", { ascending: false }).limit(1),
   ]);
   if (labourRes.error) throw labourRes.error;
   if (quoteRes.error || oldAreasRes.error || settingsRes.error) throw quoteRes.error || oldAreasRes.error || settingsRes.error;
