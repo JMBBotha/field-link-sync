@@ -115,7 +115,7 @@ export async function applyAutoLabourDelta({ items, areaId, unitDelta, perUnit, 
     : items.find((line) => line.area_id === areaId && !line.parent_item_id && isLabourItem(line));
   if (labour && (labour.metadata as any)?.labour_auto !== true) return labour;
   const current = labour ? Number((labour.metadata as any)?.hours ?? labour.quantity) || 0 : 0;
-  const hours = Math.max(0, Math.round((current + defaultLabourHours(unitDelta, perUnit)) * 100) / 100);
+  const hours = Math.max(0, Math.round((current + unitDelta * Math.max(0, perUnit)) * 100) / 100);
   const base = labourFields(hours, rate, false, true);
   const fields = job ? { ...base, item_name: "Job labour", metadata: { ...base.metadata, labour_scope: "job" } } : base;
   if (labour) {
@@ -126,6 +126,42 @@ export async function applyAutoLabourDelta({ items, areaId, unitDelta, perUnit, 
   if (unitDelta < 0) return null;
   const sort = items.length ? Math.max(...items.map((line) => Number(line.sort_order) || 0)) + 1 : 0;
   return addItem({ ...fields, area_id: job ? null : areaId, sort_order: sort, source: "labour" });
+}
+
+/** Idempotent projection from actual units, not click deltas. Manual rows are never changed. */
+export function reconcileAutoLabour<T extends AreaLabourLine>(items: T[], areas: { id: string; name: string }[], mode: LabourMode, perUnit: number, rate: number): T[] {
+  const result = items.filter((i) => !(isLabourItem(i) && i.metadata?.labour_auto === true));
+  const targets = mode === "job" ? [null] : areas.map((a) => a.id);
+  for (const areaId of targets) {
+    const scope = items.filter((i) => !i.parent_item_id && (mode === "job" ? isLabourItem(i) ? isJobLabour(i) : true : i.area_id === areaId && !isJobLabour(i)));
+    const manual = scope.some((i) => isLabourItem(i) && i.metadata?.labour_auto !== true);
+    if (manual) continue;
+    const hours = defaultLabourHours(countAcUnits(scope), perUnit);
+    const existing = scope.find((i) => isLabourItem(i) && i.metadata?.labour_auto === true);
+    const savedRate = Number(existing?.metadata?.rate ?? (existing as any)?.unit_price) || rate;
+    if (!(hours > 0 && savedRate > 0)) continue;
+    const fields = labourFields(hours, savedRate, !!existing?.metadata?.rate_overridden, true);
+    result.push({ ...existing, ...fields, id: existing?.id ?? `auto-labour-${areaId ?? "job"}`, area_id: areaId, parent_item_id: null,
+      metadata: { ...existing?.metadata, ...fields.metadata, ...(mode === "job" ? { labour_scope: "job" } : {}) },
+      ...(mode === "job" ? { item_name: "Job labour" } : {}),
+    } as unknown as T);
+  }
+  return result;
+}
+
+/** Persist only the automatic changes from the projection; callers supply their checked write path. */
+export async function syncAutoLabour(items: any[], areas: { id: string; name: string }[], mode: LabourMode, perUnit: number, rate: number,
+  writer: { add: (row: any) => Promise<unknown>; update: (id: string, row: any) => Promise<unknown>; remove: (id: string) => Promise<unknown> }) {
+  const next = reconcileAutoLabour(items, areas, mode, perUnit, rate);
+  const nextIds = new Set(next.map((i) => i.id));
+  for (const row of items) if (isLabourItem(row) && row.metadata?.labour_auto === true && !nextIds.has(row.id)) await writer.remove(row.id);
+  for (const row of next) {
+    if (!isLabourItem(row) || row.metadata?.labour_auto !== true) continue;
+    const { id, quote_id, created_at, updated_at, ...fields } = row;
+    const old = items.find((i) => i.id === id);
+    if (!old) await writer.add(fields);
+    else if (old.quantity !== row.quantity || old.unit_price !== row.unit_price || old.total_price !== row.total_price || old.area_id !== row.area_id || old.metadata?.hours !== row.metadata?.hours) await writer.update(id, fields);
+  }
 }
 
 type LabourLineLike = { area_id?: string | null; parent_item_id?: string | null; item_type?: string | null; metadata?: any };
@@ -148,10 +184,16 @@ export function jobModeLabourLines<T extends LabourLineLike>(lines: T[], areas: 
 export function planLabourInsert<T extends LabourLineLike & { id?: string; quantity?: any; unit_price?: any; item_name?: string | null }>(
   mode: LabourMode, items: T[], row: any,
 ): { kind: "insert"; row: any } | { kind: "merge"; id: string; patch: any } {
-  if (mode !== "job" || row?.parent_item_id || !isLabourItem(row)) return { kind: "insert", row };
+  if (row?.parent_item_id || !isLabourItem(row)) return { kind: "insert", row };
+  if (mode !== "job") {
+    const existing = row.metadata?.labour_auto === true ? items.find((i) => i.id && i.area_id === row.area_id && !i.parent_item_id && isLabourItem(i)) : undefined;
+    if (!existing?.id) return { kind: "insert", row };
+    return { kind: "merge", id: existing.id, patch: {} };
+  }
   const existing = items.find((i) => isJobLabour(i) && i.id !== row.id);
   const asJob = (fields: any) => ({ ...fields, area_id: null, item_name: "Job labour", metadata: { ...(fields.metadata || {}), labour_scope: "job" } });
   if (!existing?.id) return { kind: "insert", row: asJob(row) };
+  if (row.metadata?.labour_auto === true) return { kind: "merge", id: existing.id, patch: {} };
   const md = (existing.metadata || {}) as any;
   const hours = (Number(md.hours ?? existing.quantity) || 0) + (Number(row.metadata?.hours ?? row.quantity) || 0);
   const rate = Number(md.rate ?? existing.unit_price) || Number(row.metadata?.rate ?? row.unit_price) || 0;

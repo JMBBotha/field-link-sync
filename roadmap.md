@@ -1,5 +1,10 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
+## Automatic labour accumulation (2026-10-07)
+- [x] Reconcile automatic labour from actual units, serialize writes per quote, remove estimate click deltas; saved/manual rate and hours overrides remain intact. Basket saves re-link existing labour transactionally before reconciling automatic rows; previews use the same projection.
+- [x] In-memory add/remove/swap/two-unit/manual and PDF-rollup tests; read-only audit found zero duplicate/orphan automatic lines across two automatic-labour quotes (Q-2026-0023, Q-2026-0024); no real quote changes.
+- [x] Full suite: 812/813 passed; existing unrelated Mandy map-status test still expects four choices instead of five. Automatic harness build passed. Lifecycle verification used an in-memory backend (no browser or real quote writes): labour R0 → R2,380 → R0 → R2,380 → R4,760; VAT-inclusive fixture totals R0 → R14,237 → R0 → R16,537 → R30,774.
+
 ## Labour outlines and PDF presses (2026-10-07)
 - [x] Correct PDF radio to separate-click normal → selected → favourite → normal cycle; 6 targeted tests passed; guarded signed-in PDF clicks verified all three visuals, cleared basket and two intercepted favourite writes. Labour outlines unchanged.
 - [x] Outline missing-labour and per-area hours rows in AreaLabourRow, LabourPanel and wizard TimeRow; generic glass styling was overriding orange. Guarded desktop/mobile estimate and Build quote checks measured 2px rgb(249, 115, 22); missing state verified with a read-response fixture.

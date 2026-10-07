@@ -66,7 +66,7 @@ import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { useUnsavedQuoteGuard } from "@/hooks/useUnsavedQuoteGuard";
-import { missingLabourFor, normalizeLabourMode } from "@/lib/areaLabour";
+import { missingLabourFor, normalizeLabourMode, reconcileAutoLabour } from "@/lib/areaLabour";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
 import { useIsPhone } from "@/hooks/useIsPhone";
@@ -347,24 +347,31 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   }, [baskets, wizardBaskets, popupPreviewBaskets]);
   // Rates snapshot in deps: live-priced lines refresh when Units %/Materials % change.
   const rateSnap = useSyncExternalStore(subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot);
+  const displayState = useMemo(() => {
+    const state = basketsToQuoteState(displayBaskets);
+    const labour = ctxItems.filter(isLabourItem).map((row) => ({ ...row,
+      area_id: state.areas.find((a) => a.id === row.area_id || a.name.trim().toLowerCase() === ctxAreas.find((old) => old.id === row.area_id)?.name.trim().toLowerCase())?.id ?? row.area_id,
+    }));
+    return { ...state, items: reconcileAutoLabour([...state.items, ...labour], state.areas, normalizeLabourMode(meta?.labour_mode), companySettings.default_install_labour_hours, companySettings.default_hourly_rate) };
+  }, [displayBaskets, ctxItems, ctxAreas, meta?.labour_mode, companySettings.default_install_labour_hours, companySettings.default_hourly_rate, rateSnap]);
   const displayQuoteTotals = useMemo(
     // Labour rows live outside the baskets (LabourPanel) — add them so totals include labour.
     () => activeTab === "quote"
       // Area-first view edits saved lines: totals come straight from them (same maths as the estimate page).
       ? computeQuoteTotals(ctxItems, ctxAreas, undefined, { type: meta?.discount_type, value: meta?.discount_value })
       : computeQuoteTotals(
-      [...basketsToQuoteState(displayBaskets).items, ...ctxItems.filter((i) => isLabourItem(i))],
-      basketsToQuoteState(displayBaskets).areas,
+      displayState.items,
+      displayState.areas,
       undefined,
       { type: meta?.discount_type, value: meta?.discount_value },
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeTab, displayBaskets, ctxItems, ctxAreas, meta?.discount_type, meta?.discount_value, rateSnap],
+    [activeTab, displayState, ctxItems, ctxAreas, meta?.discount_type, meta?.discount_value],
   );
   // Build Area Quote Pricing / Review / footer: same totals as the header, split per area.
   const areaReview = useMemo(
-    () => buildAreaReview(displayBaskets, ctxItems, ctxAreas, displayQuoteTotals, marginView.visible),
-    [displayBaskets, ctxItems, ctxAreas, displayQuoteTotals, marginView.visible],
+    () => buildAreaReview(displayBaskets, displayState.items, displayState.areas, displayQuoteTotals, marginView.visible),
+    [displayBaskets, displayState, displayQuoteTotals, marginView.visible],
   );
 
   // Publish live in-progress totals so the header/summary reflect unsaved

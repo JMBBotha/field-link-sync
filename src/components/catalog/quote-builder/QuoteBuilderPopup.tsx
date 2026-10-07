@@ -22,6 +22,7 @@ import { useOptionalQuoteContext } from "@/contexts/QuoteContext";
 import { useMarginView } from "@/hooks/useMarginView";
 import { useRole } from "@/hooks/useRole";
 import { formatRand } from "@/utils/formatRand";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 interface PaletteBundle {
   id: string;
@@ -209,12 +210,14 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
 
   // Same formula as the header / Visual PDF summary: these areas + their saved labour, quote discount, VAT.
   const qctx = useOptionalQuoteContext();
+  const { settings } = useCompanySettings();
   const { roles } = useRole();
   const marginView = useMarginView(qctx?.quoteId ?? null, (qctx?.meta as any)?.company_id ?? null);
   const showCost = qctx?.quoteId ? marginView.visible : (roles as string[]).includes("admin");
   const summary = useMemo(
-    () => buildWizardReview(areasToBaskets(areas), qctx?.items ?? [], qctx?.areas ?? [], { type: qctx?.meta?.discount_type, value: qctx?.meta?.discount_value }, showCost),
-    [areas, qctx?.items, qctx?.areas, qctx?.meta?.discount_type, qctx?.meta?.discount_value, showCost],
+    () => buildWizardReview(areasToBaskets(areas), qctx?.items ?? [], qctx?.areas ?? [], { type: qctx?.meta?.discount_type, value: qctx?.meta?.discount_value }, showCost,
+      qctx ? { mode: qctx.meta?.labour_mode, perUnit: settings.default_install_labour_hours, rate: settings.default_hourly_rate } : undefined),
+    [areas, qctx?.items, qctx?.areas, qctx?.meta?.discount_type, qctx?.meta?.discount_value, qctx?.meta?.labour_mode, settings.default_install_labour_hours, settings.default_hourly_rate, showCost],
   );
 
   const stepContent = useMemo(() => {

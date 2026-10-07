@@ -15,6 +15,7 @@ import { isLabourItem, LABOUR_ITEM_TYPE } from "@/lib/labour";
 import { remapInstallUnitIds } from "@/lib/installTemplates";
 import type { Basket } from "@/components/catalog/QuoteBuilderTab";
 import { stampChanged, stampFromRows, type QuoteLineStamp } from "@/lib/quoteLineStamp";
+import { normalizeLabourMode, reconcileAutoLabour, syncAutoLabour } from "@/lib/areaLabour";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -88,16 +89,34 @@ async function persistOnce(
   const { areas, items } = basketsToQuoteState(baskets);
 
   // Labour rows live outside the baskets. They are never re-inserted: the RPC
-  // re-links them to the new area by name. Read once only for totals.
-  const [labourRes, quoteRes] = await Promise.all([
+  // re-links them to the new area by identity/name. Reconcile auto rows after replacement.
+  const [labourRes, quoteRes, oldAreasRes, settingsRes] = await Promise.all([
     supabase.from("quote_items").select("*").eq("quote_id", quoteId).eq("item_type", LABOUR_ITEM_TYPE),
-    supabase.from("quotes").select("discount_type, discount_value").eq("id", quoteId),
+    supabase.from("quotes").select("discount_type, discount_value, labour_mode").eq("id", quoteId),
+    supabase.from("quote_areas").select("id, name").eq("quote_id", quoteId),
+    supabase.from("company_settings").select("default_install_labour_hours, default_hourly_rate").order("updated_at", { ascending: false }).limit(1),
   ]);
   if (labourRes.error) throw labourRes.error;
+  if (quoteRes.error || oldAreasRes.error || settingsRes.error) throw quoteRes.error || oldAreasRes.error || settingsRes.error;
   const labourRows = ((labourRes.data || []) as any[]).filter((r) => isLabourItem(r) && !r.parent_item_id);
   // Saved VAT/total take the quote discount off before VAT (matches the DB trigger and the client PDF).
   const qd = ((quoteRes as any)?.data as any[] | null)?.[0];
-  const totals = computeQuoteTotals([...items, ...(labourRows as any)], areas, undefined, qd ? { type: qd.discount_type, value: qd.discount_value } : null);
+  const settings = settingsRes.data?.[0];
+  const oldAreas = oldAreasRes.data || [];
+  const projectedLabour = labourRows.map((row) => {
+    const old = oldAreas.find((a) => a.id === row.area_id);
+    const next = areas.find((a) => a.id === row.area_id) ?? areas.find((a) => old && a.name.trim().toLowerCase() === old.name.trim().toLowerCase());
+    return { ...row, area_id: next?.id ?? row.area_id };
+  });
+  const mode = normalizeLabourMode(qd?.labour_mode);
+  const perUnit = Number(settings?.default_install_labour_hours) || 3.5;
+  const rate = Number(settings?.default_hourly_rate) || 0;
+  const working = reconcileAutoLabour([...items, ...projectedLabour], areas, mode, perUnit, rate);
+  const checked = async (request: any) => {
+    const res = await request.select("id");
+    if (res.error || !res.data?.length) throw new Error(res.error?.message || "Automatic labour was not saved.");
+  };
+  const totals = computeQuoteTotals(working, areas, undefined, qd ? { type: qd.discount_type, value: qd.discount_value } : null);
 
   const areaIdMap = new Map<string, string>();
   const areaRows = areas.map((a, i) => {
@@ -150,6 +169,17 @@ async function persistOnce(
     p_total: totals.total,
   });
   if (error) throw error;
+
+  // Areas now exist and existing labour has been re-linked by the transaction.
+  // Never re-insert existing labour or create temporary unassigned labour rows.
+  const freshLabour = await supabase.from("quote_items").select("*").eq("quote_id", quoteId).eq("item_type", LABOUR_ITEM_TYPE);
+  if (freshLabour.error) throw freshLabour.error;
+  const currentLabour = (freshLabour.data || []).filter((row) => !row.parent_item_id && isLabourItem(row));
+  await syncAutoLabour([...itemRows, ...currentLabour], areaRows, mode, perUnit, rate, {
+    add: async (fields) => { await checked(supabase.from("quote_items").insert({ ...fields, id: crypto.randomUUID(), quote_id: quoteId, source: "labour", sort_order: itemRows.length })); },
+    update: async (id, fields) => { await checked(supabase.from("quote_items").update(fields).eq("id", id).eq("quote_id", quoteId)); },
+    remove: async (id) => { await checked(supabase.from("quote_items").delete().eq("id", id).eq("quote_id", quoteId)); },
+  });
 
   return {
     subtotal: totals.subtotal,
