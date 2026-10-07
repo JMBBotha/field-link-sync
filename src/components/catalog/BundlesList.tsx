@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Plus, Copy, Pencil, Trash2, Package, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import BundleBuilder from "./BundleBuilder";
+import BundleCheckPanel from "./BundleCheckPanel";
 
 type Bundle = {
   id: string;
@@ -181,6 +182,8 @@ const BundlesList = () => {
           <Plus className="h-3.5 w-3.5" /> Create Bundle
         </Button>
       </div>
+
+      <BundleCheckPanel />
 
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground text-sm">Loading bundles...</div>

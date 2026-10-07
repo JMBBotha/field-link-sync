@@ -1,4 +1,5 @@
 import { readPdfBasket, writePdfBasket, migrateDraftPdfBasket, pdfBasketKey } from "@/lib/pdfBasketStore";
+import { resolveBundlesLive } from "@/lib/bundleResolve";
 import { basketInstallFrom } from "@/lib/installTemplates";
 import QuoteBuilderLayout from "@/components/quoting/QuoteBuilderLayout";
 import PricingChecksRow from "@/components/quoting/PricingChecksRow";
@@ -707,10 +708,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
         });
       });
 
-      return bundleData.map((b) => ({
-        ...b,
-        items: itemsByBundle[b.id] || []
-      }));
+      // Items resolve LIVE by model number (lib/bundleResolve.ts); not found → zero-priced "Not found" placeholder.
+      return resolveBundlesLive(bundleData.map((b) => ({ ...b, items: itemsByBundle[b.id] || [] })) as any) as any;
     },
     staleTime: 60000
   });

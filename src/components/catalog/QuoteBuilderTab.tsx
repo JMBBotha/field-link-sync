@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect, useSyncExternalStore } from "react";
+import { resolveBundlesLive } from "@/lib/bundleResolve";
 import RemoveUnitDialog from "@/components/quoting/RemoveUnitDialog";
 import { applyUnitRemoval, linkedToUnit } from "@/lib/unitInstallLinks";
 import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMarkupPercent, lockedPricing } from "@/lib/pricing";
@@ -392,10 +393,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         });
       });
 
-      return bundleData.map((b) => ({
-        ...b,
-        items: itemsByBundle[b.id] || []
-      }));
+      // Items resolve LIVE by model number (lib/bundleResolve.ts); not found → zero-priced "Not found" placeholder.
+      return resolveBundlesLive(bundleData.map((b) => ({ ...b, items: itemsByBundle[b.id] || [] })) as any) as any;
     },
     staleTime: 60000
   });

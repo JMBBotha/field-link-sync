@@ -421,7 +421,9 @@ export type Database = {
           is_length_item: boolean
           is_optional: boolean
           length_metres: number | null
+          match_status: string | null
           min_qty: number
+          model_number: string | null
           notes: string | null
           price_per_unit_label: string
           price_per_unit_qty: number
@@ -439,7 +441,9 @@ export type Database = {
           is_length_item?: boolean
           is_optional?: boolean
           length_metres?: number | null
+          match_status?: string | null
           min_qty?: number
+          model_number?: string | null
           notes?: string | null
           price_per_unit_label?: string
           price_per_unit_qty?: number
@@ -457,7 +461,9 @@ export type Database = {
           is_length_item?: boolean
           is_optional?: boolean
           length_metres?: number | null
+          match_status?: string | null
           min_qty?: number
+          model_number?: string | null
           notes?: string | null
           price_per_unit_label?: string
           price_per_unit_qty?: number

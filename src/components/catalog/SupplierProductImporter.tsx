@@ -1,4 +1,5 @@
 import MasterCatalogGate from "@/components/catalog/MasterCatalogGate";
+import { runBundleCheckAfterImport } from "@/lib/bundleResolve";
 import { useState, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -724,6 +725,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         pdfUploadId,
         tradeDiscountPercent: tradeDiscount,
       });
+      void runBundleCheckAfterImport();
 
       if (errors > 0 && archiveRowsPreview.length > 0) {
         toast({
