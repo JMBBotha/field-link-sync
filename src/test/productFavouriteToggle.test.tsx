@@ -51,11 +51,11 @@ describe("personal favourite toggle", () => {
     expect(result.current.ids.has("samsung")).toBe(true);
     expect(db.rows).toEqual(["samsung"]);
   });
-  it("unfavourites a starred PDF row with one radio tap, without selecting a unit", () => {
+  it.each([false, true])("single tap selects and double tap toggles regardless of starred state (%s)", (starred) => {
     const toggle = vi.fn();
-    const add = vi.fn();
+    const select = vi.fn();
     const product = { id: "samsung", product_code: "AR24BSAAAWK/FA", cost_price: 100, default_markup_percent: 25 } as PaletteProduct;
-    render(<PdfPageOverlay regions={[{ id: "region", x_pct: 0, y_pct: 40, w_pct: 100, h_pct: 20, product, product_code: product.product_code, label: "Samsung" }]} baskets={[]} basketProductCounts={{}} favoriteIds={new Set([product.id])} onToggleFavorite={toggle} onAddProductToBasket={add} />);
+    render(<PdfPageOverlay regions={[{ id: "region", x_pct: 0, y_pct: 40, w_pct: 100, h_pct: 20, product, product_code: product.product_code, label: "Samsung" }]} baskets={[]} basketProductCounts={{}} favoriteIds={new Set(starred ? [product.id] : [])} onToggleFavorite={toggle} pdfSelection={{ selectedFromPdf: [], setSelectedFromPdf: vi.fn(), updateSelectedItem: vi.fn(), handleSelectProduct: select }} />);
     const strip = screen.getByTestId("pdf-margin-hit-strip");
     const rect = { top: 0, left: 0, right: 100, bottom: 100, width: 100, height: 100, x: 0, y: 0, toJSON: () => ({}) };
     vi.spyOn(strip, "getBoundingClientRect").mockReturnValue(rect);
@@ -63,7 +63,11 @@ describe("personal favourite toggle", () => {
     // jsdom does not provide PointerEvent; mouse-event coordinates exercise the same handler.
     fireEvent(strip, new MouseEvent("pointerdown", { bubbles: true, clientX: 99, clientY: 50 }));
     fireEvent(strip, new MouseEvent("pointerup", { bubbles: true, clientX: 99, clientY: 50 }));
+    expect(select).toHaveBeenCalledWith(expect.objectContaining({ productId: "samsung" }));
+    expect(toggle).not.toHaveBeenCalled();
+    fireEvent(strip, new MouseEvent("pointerdown", { bubbles: true, clientX: 99, clientY: 50 }));
+    fireEvent(strip, new MouseEvent("pointerup", { bubbles: true, clientX: 99, clientY: 50 }));
     expect(toggle).toHaveBeenCalledWith(expect.objectContaining({ id: "samsung" }));
-    expect(add).not.toHaveBeenCalled();
+    expect(select).toHaveBeenCalledTimes(1);
   });
 });

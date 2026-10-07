@@ -1,5 +1,9 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
+## Labour outlines and PDF presses (2026-10-07)
+- [ ] Outline missing-labour and per-area hours rows across estimate and wizard screens; verify computed 2px orange border.
+- [ ] Restore PDF single press selection and double press favourites; run regression tests and guarded browser checks.
+
 ## Shared area-name chips (2026-10-07)
 - [x] Restore ordered shared chips under every creation input, preserve inline placement and repeat numbering.
 - [x] 15 targeted tests passed; guarded estimate desktop/390px checks confirmed chip order, Other focus and placement above totals; all backend writes intercepted. Other builder screens covered by shared wiring/tests, not browser-verified.
