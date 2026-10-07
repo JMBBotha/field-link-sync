@@ -115,6 +115,7 @@ export default function EstimateBuilder({
   const { bundles } = useQuoteBuilderBundles();
   const { toast } = useToast();
   const margin = useMarginView(quoteId ?? null, meta?.company_id ?? null);
+  const { find: findSpecial } = useActiveSpecials();
   const { settings: companySettings } = useCompanySettings();
   const { data: labourNorms = [] } = useLabourNorms();
   const labourRate = standardLabourRate(companySettings.default_hourly_rate);
