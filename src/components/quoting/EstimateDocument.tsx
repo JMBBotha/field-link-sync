@@ -395,7 +395,7 @@ const EstimateDocument = ({
 
         {/* ── Line items ── */}
         {editing ? (
-          <div className="mt-6 space-y-6">
+          <div className="mt-6 space-y-4 rounded-lg border border-border bg-card p-4" data-testid="estimate-areas-card">
             {editing.areas.map((area) => {
               const areaKey = area.id ?? "unassigned";
               const canCollapse = editing.collapsedAreaKeys !== undefined && !!editing.onToggleArea;
@@ -407,7 +407,7 @@ const EstimateDocument = ({
                 data-area-collapsed={collapsed ? "true" : undefined}
                 onFocus={() => editing.onSelectArea?.(area.id)}
                 onClick={() => editing.onSelectArea?.(area.id)}
-                className="rounded-lg bg-white p-4 ring-1 ring-slate-200 print:rounded-none print:p-0 print:ring-0"
+                className="border-b border-border pb-4 print:pb-0"
               >
                 <div className="flex items-center gap-2 border-b border-slate-300 pb-1">
                   {area.id ? (
@@ -758,7 +758,7 @@ const EstimateDocument = ({
             })}
 
             {editing.jobLabour && editing.onLabourChange && (
-              <section data-testid="job-labour" className="rounded-lg bg-white p-4 ring-1 ring-slate-200 print:rounded-none print:p-0 print:ring-0">
+              <section data-testid="job-labour" className="border-b border-border pb-4 print:pb-0">
                 <AreaLabourRow
                   areaId="job"
                   areaName="the job"
@@ -785,7 +785,7 @@ const EstimateDocument = ({
                 ))}
               </div>
             )}
-            <div className="print:hidden" data-pdf-hide data-html2canvas-ignore data-testid="inline-estimate-area-create">
+            <div className="w-full print:hidden" data-pdf-hide data-html2canvas-ignore data-testid="inline-estimate-area-create">
               {editing.areaCreationControl ?? (
                 <button
                   type="button"
@@ -888,7 +888,7 @@ const EstimateDocument = ({
 
 
         {/* ── Totals ── */}
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex justify-end" data-testid="estimate-totals">
           <div className="w-full max-w-[320px] space-y-2 text-[12px]">
             <div className="flex justify-between text-slate-600">
               <span>Subtotal</span>
