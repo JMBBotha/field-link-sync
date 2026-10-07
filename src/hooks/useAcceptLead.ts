@@ -187,7 +187,8 @@ export function useAcceptLead() {
         description: `${title} on ${format(startDate, "EEE dd MMM, HH:mm")}`,
       });
 
-      return { jobId: jobId! };
+      if (!jobId) throw new Error("Job was not created");
+      return { jobId };
     } catch (err: any) {
       console.error("[useAcceptLead] failed:", err);
       toast({

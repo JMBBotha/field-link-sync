@@ -587,7 +587,7 @@ export default function EstimateBuilder({
                 <div className="space-y-2" onClick={stop} data-area-key={key}>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="canonical-add-actions">
                     {([['unit', 'Add unit'], ['service', 'Add service'], ['material', 'Add material'], ['selected', 'Selected']] as const).map(([mode, label]) => (
-                      <Button key={mode} type="button" size="sm" variant={open === mode ? "default" : "outline"} className={`h-10 ${open === mode ? "border-orange-500 ring-2 ring-orange-500/30" : "border-primary/20 text-primary"}`} onClick={() => setOpenAdd(open === mode ? null : { key, mode })}>
+                      <Button key={mode} type="button" size="sm" variant={open === mode ? "default" : "outline"} className={`h-10 ${open === mode ? "border-orange-500 bg-orange-500 text-primary-foreground ring-2 ring-orange-500/30 hover:bg-orange-500/90" : "border-primary/20 text-primary"}`} onClick={() => setOpenAdd(open === mode ? null : { key, mode })}>
                         {label}
                       </Button>
                     ))}
