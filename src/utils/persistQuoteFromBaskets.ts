@@ -15,7 +15,7 @@ import { isLabourItem, LABOUR_ITEM_TYPE } from "@/lib/labour";
 import { remapInstallUnitIds } from "@/lib/installTemplates";
 import type { Basket } from "@/components/catalog/QuoteBuilderTab";
 import { stampChanged, stampFromRows, type QuoteLineStamp } from "@/lib/quoteLineStamp";
-import { normalizeLabourMode, syncAutoLabour } from "@/lib/areaLabour";
+import { normalizeLabourMode, reconcileAutoLabour, syncAutoLabour } from "@/lib/areaLabour";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -89,7 +89,7 @@ async function persistOnce(
   const { areas, items } = basketsToQuoteState(baskets);
 
   // Labour rows live outside the baskets. They are never re-inserted: the RPC
-  // re-links them to the new area by name. Read once only for totals.
+  // re-links them to the new area by identity/name. Reconcile auto rows after replacement.
   const [labourRes, quoteRes, oldAreasRes, settingsRes] = await Promise.all([
     supabase.from("quote_items").select("*").eq("quote_id", quoteId).eq("item_type", LABOUR_ITEM_TYPE),
     supabase.from("quotes").select("discount_type, discount_value, labour_mode").eq("id", quoteId),
@@ -108,30 +108,14 @@ async function persistOnce(
     const next = areas.find((a) => a.id === row.area_id) ?? areas.find((a) => old && a.name.trim().toLowerCase() === old.name.trim().toLowerCase());
     return { ...row, area_id: next?.id ?? row.area_id };
   });
-  const working: any[] = [...items, ...projectedLabour];
+  const mode = normalizeLabourMode(qd?.labour_mode);
+  const perUnit = Number(settings?.default_install_labour_hours) || 3.5;
+  const rate = Number(settings?.default_hourly_rate) || 0;
+  const working = reconcileAutoLabour([...items, ...projectedLabour], areas, mode, perUnit, rate);
   const checked = async (request: any) => {
     const res = await request.select("id");
     if (res.error || !res.data?.length) throw new Error(res.error?.message || "Automatic labour was not saved.");
   };
-  await syncAutoLabour(working, areas, normalizeLabourMode(qd?.labour_mode), Number(settings?.default_install_labour_hours) || 3.5, Number(settings?.default_hourly_rate) || 0, {
-    add: async (fields) => {
-      // A new area's id does not exist until the replace RPC; keep this new row unassigned until then.
-      const id = crypto.randomUUID();
-      const previous = oldAreas.find((a) => a.id === fields.area_id) ?? oldAreas.find((a) => areas.find((n) => n.id === fields.area_id)?.name === a.name);
-      await checked(supabase.from("quote_items").insert({ ...fields, id, area_id: previous?.id ?? null, quote_id: quoteId, source: "labour", sort_order: items.length }));
-      working.push({ ...fields, id });
-    },
-    update: async (id, fields) => {
-      const { area_id, ...patch } = fields;
-      await checked(supabase.from("quote_items").update(patch).eq("id", id));
-      Object.assign(working.find((i) => i.id === id), fields);
-    },
-    remove: async (id) => {
-      await checked(supabase.from("quote_items").delete().eq("id", id));
-      const index = working.findIndex((i) => i.id === id);
-      if (index >= 0) working.splice(index, 1);
-    },
-  });
   const totals = computeQuoteTotals(working, areas, undefined, qd ? { type: qd.discount_type, value: qd.discount_value } : null);
 
   const areaIdMap = new Map<string, string>();
@@ -186,11 +170,14 @@ async function persistOnce(
   });
   if (error) throw error;
 
-  // Newly created area labour was temporarily null-area; link it once its area exists.
-  for (const row of working.filter((i) => isLabourItem(i) && i.metadata?.labour_auto === true && i.area_id)) {
-    const areaId = areaIdMap.get(row.area_id);
-    if (areaId) await checked(supabase.from("quote_items").update({ area_id: areaId }).eq("id", row.id));
-  }
+  // Areas now exist and existing labour has been re-linked by the transaction.
+  // Never re-insert existing labour or create temporary unassigned labour rows.
+  const currentLabour = projectedLabour.map((row) => ({ ...row, area_id: areaIdMap.get(row.area_id) ?? row.area_id }));
+  await syncAutoLabour([...itemRows, ...currentLabour], areaRows, mode, perUnit, rate, {
+    add: async (fields) => { await checked(supabase.from("quote_items").insert({ ...fields, id: crypto.randomUUID(), quote_id: quoteId, source: "labour", sort_order: itemRows.length })); },
+    update: async (id, fields) => { await checked(supabase.from("quote_items").update(fields).eq("id", id).eq("quote_id", quoteId)); },
+    remove: async (id) => { await checked(supabase.from("quote_items").delete().eq("id", id).eq("quote_id", quoteId)); },
+  });
 
   return {
     subtotal: totals.subtotal,

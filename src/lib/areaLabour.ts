@@ -188,11 +188,12 @@ export function planLabourInsert<T extends LabourLineLike & { id?: string; quant
   if (mode !== "job") {
     const existing = row.metadata?.labour_auto === true ? items.find((i) => i.id && i.area_id === row.area_id && !i.parent_item_id && isLabourItem(i)) : undefined;
     if (!existing?.id) return { kind: "insert", row };
-    return { kind: "merge", id: existing.id, patch: existing.metadata?.labour_auto === true ? row : {} };
+    return { kind: "merge", id: existing.id, patch: {} };
   }
   const existing = items.find((i) => isJobLabour(i) && i.id !== row.id);
   const asJob = (fields: any) => ({ ...fields, area_id: null, item_name: "Job labour", metadata: { ...(fields.metadata || {}), labour_scope: "job" } });
   if (!existing?.id) return { kind: "insert", row: asJob(row) };
+  if (row.metadata?.labour_auto === true) return { kind: "merge", id: existing.id, patch: {} };
   const md = (existing.metadata || {}) as any;
   const hours = (Number(md.hours ?? existing.quantity) || 0) + (Number(row.metadata?.hours ?? row.quantity) || 0);
   const rate = Number(md.rate ?? existing.unit_price) || Number(row.metadata?.rate ?? row.unit_price) || 0;

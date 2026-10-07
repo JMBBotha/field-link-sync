@@ -125,7 +125,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const [meta, setMeta] = useState<QuoteMeta | null>(null);
-  const [areas, setAreas] = useState<QuoteArea[]>([]);
+  const [areas, setAreasState] = useState<QuoteArea[]>([]);
   const [items, setItemsState] = useState<QuoteItem[]>([]);
   const { settings: labourSettings } = useCompanySettings();
   const [loading, setLoading] = useState(true);
@@ -139,13 +139,16 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   }, []);
   const labourQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const areasRef = useRef<QuoteArea[]>([]);
+  const setAreas = useCallback((value: React.SetStateAction<QuoteArea[]>) => {
+    const next = typeof value === "function" ? value(areasRef.current) : value;
+    areasRef.current = next;
+    setAreasState(next);
+  }, []);
   const fetchSeqRef = useRef(0);
   const ensuringRef = useRef<Promise<QuoteArea | null> | null>(null);
   // Tracks optimistic ids created locally so realtime INSERTs for the same id are deduped
   const optimisticIdsRef = useRef<Set<string>>(new Set());
 
-  useEffect(() => { itemsRef.current = items; }, [items]);
-  useEffect(() => { areasRef.current = areas; }, [areas]);
 
   /* ── Fetch ── */
   const fetchAll = useCallback(async (silent = false): Promise<{ areas: QuoteArea[]; items: QuoteItem[] } | null> => {
@@ -448,6 +451,10 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     // Job labour mode: one job labour line. A labour insert merges into it (every caller, incl. Mandy, lands here).
     const plan = planLabourInsert(normalizeLabourMode(meta?.labour_mode), itemsRef.current, item0);
     if (plan.kind === "merge") {
+      if (item0.metadata?.labour_auto === true) {
+        await reconcileLabour();
+        return itemsRef.current.find((i) => i.id === plan.id) ?? null;
+      }
       const before = itemsRef.current.find((i) => i.id === plan.id);
       setItems((prev) => prev.map((i) => i.id === plan.id ? { ...i, ...plan.patch } as QuoteItem : i));
       const res = await track(supabase.from("quote_items").update(plan.patch as TablesUpdate<"quote_items">).eq("id", plan.id).select().single());
@@ -497,6 +504,11 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   const updateItem = useCallback(async (id: string, patch: QuoteItemUpdate) => {
     const before = itemsRef.current.find((i) => i.id === id);
+    // Legacy add callbacks must not apply a second click-delta after unit CRUD reconciled it.
+    if (before && isLabourItem(before) && patch.metadata?.labour_auto === true) {
+      await reconcileLabour();
+      return true;
+    }
     setItems((prev) => prev.map((i) => i.id === id ? { ...i, ...patch } as QuoteItem : i));
     const res = await track(supabase
       .from("quote_items")
