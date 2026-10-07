@@ -1,8 +1,8 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
 ## Inline area-name controls (2026-10-07)
-- [ ] Check estimate, Visual PDF, Build wizard, Build Area Quote and mobile branches; move area-name/create-area controls below the last section with one instance per screen.
-- [ ] Verify placement and existing quote display without changing pricing or saved data.
+- [x] Check estimate, Visual PDF, Build wizard, Build Area Quote and mobile branches; move area-name/create-area controls below the last section with one instance per screen.
+- [x] Verify placement and existing quote display without changing pricing or saved data (18 targeted tests passed; read-only desktop/390px checks; preview build OK).
 
 Scope lock: equipment/materials come from the current Visual PDF book only.
 `hvac_services` stays a parallel source of truth and is never filtered.
