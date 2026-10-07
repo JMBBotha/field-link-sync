@@ -44,7 +44,8 @@ function calculatePrices(rawPrice: number, config: PriceConfig) {
   const listPriceExclVat = price;
 
   // Preview values (for the live preview panel only)
-  const discountedCost = listPriceExclVat * (1 - config.supplierDiscountPercent / 100);
+  // Money is rounded to 2 decimals (owner rule 2026-10-07): 2999.87 less 20% = 2399.90, not 2399.896.
+  const discountedCost = Math.round(listPriceExclVat * (1 - config.supplierDiscountPercent / 100) * 100) / 100;
   const costInclVat = discountedCost * (1 + config.vatRate / 100);
   const sellingPrice = discountedCost * (1 + config.yourMarkupPercent / 100);
 

@@ -42,6 +42,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const priceListInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const importFileRef = useRef<File | null>(null);
+  const storedUploadIdRef = useRef<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [processingPriceList, setProcessingPriceList] = useState(false);
   const [priceListProgress, setPriceListProgress] = useState("");
@@ -511,14 +512,61 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     importFileRef.current = file;
     try {
       const { parseImportFile } = await import("@/services/productImportParser");
+      storedUploadIdRef.current = null;
       const preview = await parseImportFile(file, supplierId);
-      setImportPreview(preview);
+      setImportPreview(await withDiffSummary(preview));
     } catch (err: any) {
       toast({ title: "Analysis failed", description: err.message, variant: "destructive" });
     } finally {
       setImportAnalysing(false);
     }
   }, [supplierId, toast]);
+
+  /** Read-only: how the preview compares with the live catalogue (nothing written). */
+  const withDiffSummary = useCallback(async (preview: ImportPreview): Promise<ImportPreview> => {
+    try {
+      const rows = preview.products
+        .filter((p) => p.model_number && p.model_number.trim().length >= 2)
+        .map((p) => ({ product_code: p.model_number, description: p.description || "", category: p.category || "General", cost_price: p.cost_price }));
+      const diff = await buildProductDiff(supplierId, rows as DiffImportRow[]);
+      const n = (a: string) => diff.filter((d) => d.action === a).length;
+      const newCount = n("new"), updated = n("update") + n("restore"), unchanged = n("unchanged");
+      return { ...preview, diffSummary: { new: newCount, updated, unchanged, skipped: preview.products.length - newCount - updated - unchanged } };
+    } catch { return preview; }
+  }, [supplierId]);
+
+  /** AI Import from the stored pages of this supplier's active upload. */
+  const runStoredPagesImport = useCallback(async () => {
+    setImportAnalysing(true);
+    try {
+      const { data: up } = await (supabase.from("pdf_uploads") as any)
+        .select("id, file_name").eq("supplier_id", supplierId).eq("is_active", true)
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (!up?.id) throw new Error("No active uploaded price list. Upload one first.");
+      const { data: pages, error } = await (supabase.from("supplier_pdf_pages") as any)
+        .select("page_number, page_image_url, pdf_storage_path, pdf_filename")
+        .eq("pdf_upload_id", up.id).order("page_number");
+      if (error) throw error;
+      if (!pages?.length) throw new Error("The active upload has no stored pages.");
+      const pdfUrl = pages.find((p: any) => p.pdf_storage_path)?.pdf_storage_path;
+      if (!pdfUrl) throw new Error("The stored PDF file is missing.");
+      const blob = await (await fetch(pdfUrl)).blob();
+      const name = pages[0].pdf_filename || up.file_name || "price-list.pdf";
+      const file = new File([blob], name, { type: "application/pdf" });
+      const images: (string | null)[] = [];
+      for (const p of pages) images[p.page_number - 1] = p.page_image_url || null;
+      setImportFileName(name);
+      importFileRef.current = file;
+      storedUploadIdRef.current = up.id;
+      const { parseImportFile } = await import("@/services/productImportParser");
+      const preview = await parseImportFile(file, supplierId, undefined, undefined, images);
+      setImportPreview(await withDiffSummary(preview));
+    } catch (err: any) {
+      toast({ title: "AI Import failed", description: err.message, variant: "destructive" });
+    } finally {
+      setImportAnalysing(false);
+    }
+  }, [supplierId, toast, withDiffSummary]);
 
   const handleImportConfirm = useCallback(async (products: ParsedProduct[], isFullCatalogue: boolean = true) => {
     setImportConfirming(true);
@@ -542,6 +590,9 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         sold_in_length: p.sold_in_length || false,
         unit_length: p.unit_length ?? null,
         price_per_metre: p.price_per_metre ?? null,
+        list_price_raw: p.price_excl_vat ?? p.raw_price ?? null,
+        supplier_discount_percent: p.supplier_discount_percent ?? 0,
+        import_flags: (p.flags || []).filter((f) => /^model_code_|^description_garbled/.test(f)),
       })).filter((r) => r.product_code && r.product_code.trim().length >= 2);
 
       const diffRows = await buildProductDiff(supplierId, rows);
@@ -552,6 +603,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         defaultMarkupPercent: products[0]?.default_markup_percent || 30,
         fileName: file?.name || "AI Import",
         isFullCatalogue,
+        pdfUploadId: storedUploadIdRef.current,
       });
 
       if (imported === 0 && updated === 0 && archived === 0 && errors > 0) {
@@ -747,6 +799,11 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
                   <><FileSpreadsheet className="h-3 w-3" />Import Products</>
                 )}
               </Button>
+              {catalogPageCount > 0 && (
+                <Button size="sm" variant="outline" onClick={runStoredPagesImport} disabled={importAnalysing} className="text-xs gap-1.5 mt-1.5 w-full">
+                  <Sparkles className="h-3 w-3" />AI Import (uploaded pages)
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
