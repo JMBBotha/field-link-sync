@@ -584,7 +584,7 @@ export default function EstimateBuilder({
                 targetAreaId: areaId ?? undefined,
                 createTargetArea: areaId ? undefined : async () => {
                   if (!allowNewArea()) return null;
-                  const created = await addArea(name || `Area ${areas.length + 1}`);
+                  const created = await addArea(`Area ${areas.length + 1}`);
                   return created?.id ?? null;
                 },
                 onChanged,
@@ -635,7 +635,7 @@ export default function EstimateBuilder({
                   targetAreaId={areaId ?? undefined}
                   createTargetArea={areaId ? undefined : async () => {
                     if (!allowNewArea()) return null;
-                    const created = await addArea(name || `Area ${areas.length + 1}`);
+                    const created = await addArea(`Area ${areas.length + 1}`);
                     if (!created?.id) return null;
                     setOpenAdd({ key: created.id, mode: open });
                     return created.id;

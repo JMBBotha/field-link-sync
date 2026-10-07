@@ -22,7 +22,7 @@ describe("shared area name chips", () => {
     fireEvent.click(screen.getByRole("button", { name: "Other (type own)" }));
     expect(screen.getByRole("textbox")).toHaveFocus();
     expect(onCreate).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Bedroom", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^Bedroom$/ }));
     expect(screen.getByRole("textbox")).toHaveValue("Bedroom 3");
     expect(onCreate).toHaveBeenCalledWith("Bedroom 3");
     finish?.();
@@ -38,7 +38,7 @@ describe("shared area name chips", () => {
     const onAreasChange = vi.fn();
     const areas = [createEmptyArea("Bedroom"), createEmptyArea("Bedroom 2")];
     render(<AreaDefinitionStep areas={areas} onAreasChange={onAreasChange} controlsOnly />);
-    fireEvent.click(screen.getByRole("button", { name: "Bedroom", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^Bedroom$/ }));
     await waitFor(() => expect(onAreasChange).toHaveBeenCalledWith([...areas, expect.objectContaining({ name: "Bedroom 3" })]));
   });
   it("also supports fill-only callers without automatic creation", () => {
