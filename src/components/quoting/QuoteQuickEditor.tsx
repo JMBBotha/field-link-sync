@@ -1,4 +1,7 @@
 import { productMatchesTerms } from "@/lib/productSearchTags";
+import { useActiveSpecials } from "@/hooks/useActiveSpecials";
+import { SpecialChip, useSpecialPrompt } from "@/components/specials/SpecialsUi";
+import { specialLineMeta } from "@/lib/specials";
 import { resolveProductMarkupPercent } from "@/lib/pricing";
 /**
  * QuoteQuickEditor — slim search bar that adds lines into the OPEN quote.
@@ -101,6 +104,8 @@ export default function QuoteQuickEditor({
   const { bundles } = useQuoteBuilderBundles();
   const { templates } = useInstallTemplates();
   const { products: liveProducts } = useQuoteBuilderProducts();
+  const { find: findSpecial } = useActiveSpecials();
+  const specialPrompt = useSpecialPrompt();
   const dropdownPos = dropUp ? "bottom-full mb-1" : "mt-1";
   const { isFavourite, ids: favIds } = useQuoteFavourites();
   const [productTerm, setProductTerm] = useState("");
@@ -197,7 +202,25 @@ export default function QuoteQuickEditor({
     setAdding(p.id);
     try {
       // Shared with Mandy: same line + auto piping kit for AC units.
-      const result = await addCatalogProductToQuote({ addItem, product: p, areaId, sortOrder: nextSortOrder(), bundles, templates, liveProducts });
+      // Specials overlay: Yes = special cost on THIS line only (standard markup on top); catalogue untouched.
+      const sp = findSpecial(p.id, p.product_code);
+      let product = p;
+      let add = addItem;
+      if (sp) {
+        const normal = Number(getEffectiveUnitPrices(p).unitCost.toFixed(2));
+        if (await specialPrompt.ask(sp, normal)) {
+          product = { ...p, cost_excl_vat: Number(sp.special_cost), cost_price: Number(sp.special_cost) } as PaletteProduct;
+          let stamped = false;
+          add = ((row: any) => {
+            if (!stamped && row?.product_id === p.id) {
+              stamped = true;
+              return addItem({ ...row, metadata: { ...(row.metadata || {}), ...specialLineMeta(sp, normal) } });
+            }
+            return addItem(row);
+          }) as typeof addItem;
+        }
+      }
+      const result = await addCatalogProductToQuote({ addItem: add, product, areaId, sortOrder: nextSortOrder(), bundles, templates, liveProducts });
       if (result.line && isAcUnitLine({ item_name: result.line.item_name, item_type: result.line.item_type, metadata: result.line.metadata }, p)) onUnitAdded?.(areaId, Number(result.line.quantity) || 1);
       setProductTerm("");
       if (fromFavourites && result.line) {
@@ -276,6 +299,7 @@ export default function QuoteQuickEditor({
         {onQuoteProductIds.has(p.id) && (
           <Badge variant="secondary" className="shrink-0 text-[10px]">on quote</Badge>
         )}
+        {(() => { const sp = findSpecial(p.id, p.product_code); return sp ? <SpecialChip cost={Number(sp.special_cost)} endDate={sp.end_date} /> : null; })()}
         <span className="shrink-0 text-xs font-medium text-slate-700">{money(unitSell)}</span>
       </button>
     );
@@ -327,6 +351,7 @@ export default function QuoteQuickEditor({
 
   return (
     <div data-testid={mode ? "area-add" : "quote-add-bar"} data-pdf-hide className="print:hidden">
+      {specialPrompt.dialog}
       {mode && onClose && (
         <div className="mb-1 flex justify-end">
           <Button type="button" size="icon" variant="ghost" className="h-6 w-6" aria-label="Close" onClick={onClose}><X className="h-4 w-4" /></Button>
