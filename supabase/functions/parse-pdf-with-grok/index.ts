@@ -259,12 +259,32 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
       );
     }
 
+    // The AI provider cannot fetch storage URLs itself — inline the image as base64.
+    // Only our own storage host is fetched (no arbitrary URLs).
+    let inlineImage: string | null = pageImageUrl;
+    if (pageImageUrl && pageImageUrl.startsWith("https://")) {
+      const own = (Deno.env.get("SUPABASE_URL") || "").replace(/\/$/, "");
+      if (!own || !pageImageUrl.startsWith(`${own}/storage/v1/`)) {
+        return new Response(JSON.stringify({ error: "page_image_url must be a stored page image", products: [], detected_price_columns: [] }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const imgResp = await fetch(pageImageUrl);
+      if (!imgResp.ok) {
+        return new Response(JSON.stringify({ error: `Page image not readable (${imgResp.status})`, products: [], detected_price_columns: [] }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const bytes = new Uint8Array(await imgResp.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      inlineImage = `data:${imgResp.headers.get("content-type") || "image/jpeg"};base64,${btoa(bin)}`;
+    }
+
     const callAI = async (text: string, url: string, key: string, mdl: string, isXai: boolean) => {
       // Vision mode: send the page image (Lovable AI only; xAI path stays text-only).
       const userContent = pageImageUrl && !isXai
         ? [
             { type: "text", text: `Read EVERY priced product row in this price-list page image${pageNumberHint ? ` (PDF page ${pageNumberHint}; set pageNumber=${pageNumberHint})` : ""}, including indoor/outdoor unit tables. Copy model codes and descriptions exactly as printed in Latin letters.` },
-            { type: "image_url", image_url: { url: pageImageUrl } },
+            { type: "image_url", image_url: { url: inlineImage! } },
           ]
         : text;
       return await fetch(url, {
