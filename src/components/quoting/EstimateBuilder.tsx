@@ -30,6 +30,7 @@ import { swappableKits, kitSizeLabel } from "@/lib/kitSizes";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { formatRand } from "@/utils/formatRand";
+import { useActiveSpecials } from "@/hooks/useActiveSpecials";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import QuoteQuickEditor from "@/components/quoting/QuoteQuickEditor";
 import StaffMarginCard, { lineUnitCostOrNull } from "@/components/quoting/StaffMarginCard";
@@ -114,6 +115,7 @@ export default function EstimateBuilder({
   const { bundles } = useQuoteBuilderBundles();
   const { toast } = useToast();
   const margin = useMarginView(quoteId ?? null, meta?.company_id ?? null);
+  const { find: findSpecial } = useActiveSpecials();
   const { settings: companySettings } = useCompanySettings();
   const { data: labourNorms = [] } = useLabourNorms();
   const labourRate = standardLabourRate(companySettings.default_hourly_rate);
@@ -180,6 +182,12 @@ export default function EstimateBuilder({
     kitItems: (i.metadata as any)?.kit ? kitContents({ item_name: i.item_name, quantity: 0, length: (i as any).length ?? null, metadata: i.metadata as any }) : null,
     staffNote: margin.visible && lineUnitCostOrNull(i) != null ? `cost ${formatRand(lineUnitCostOrNull(i)!)}` : null,
     // Warn-only (staff): this line's markup differs from the standard. Never blocks save/send; not on the client PDF.
+    special: margin.visible ? (() => {
+      const m = (i.metadata as any)?.special;
+      if (m?.cost != null && m?.end_date) return { cost: Number(m.cost), endDate: String(m.end_date), pdfPath: m.pdf_path ?? null, applied: true };
+      const sp = findSpecial(i.product_id ?? null, i.item_number ?? null);
+      return sp ? { cost: Number(sp.special_cost), endDate: sp.end_date, pdfPath: sp.specials_pdf_path, applied: false } : null;
+    })() : null,
     priceWarn: margin.visible ? quoteLineDrift(i as any, i.product_id ? liveProducts.find((p) => p.id === i.product_id) : null)?.label ?? null : null,
   });
 

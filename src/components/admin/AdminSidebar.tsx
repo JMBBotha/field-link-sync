@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRole, type AppRole } from "@/hooks/useRole";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { LayoutDashboard, CalendarDays, FileText, Receipt, Package, BarChart3, ShoppingBag, LineChart, Bell, History, Upload, Settings, Plus, Users, LogOut, ChevronLeft, ChevronRight, ChevronDown, X, Building2, Briefcase, ClipboardList, Sparkles, HelpCircle, Navigation, Wallet, BookOpen, UserPlus } from "lucide-react";
+import { LayoutDashboard, CalendarDays, FileText, Receipt, Package, BarChart3, ShoppingBag, LineChart, Bell, History, Upload, Settings, Plus, Users, LogOut, ChevronLeft, ChevronRight, ChevronDown, X, Building2, Briefcase, ClipboardList, Sparkles, HelpCircle, Navigation, Wallet, BookOpen, UserPlus, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -124,6 +124,7 @@ const AdminSidebar = ({
             ...(isSalesRep ? [] : [
               { path: "/admin/inventory", label: "Stock", icon: Package, badge: lowStockCount > 0 ? lowStockCount : undefined } as NavItem,
               { path: "/admin/suppliers", label: "Suppliers", icon: Building2 } as NavItem,
+              { path: "/admin/specials", label: "Specials", icon: Tag } as NavItem,
             ]),
           ],
         },
