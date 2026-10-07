@@ -1,0 +1,1 @@
+- PDF builder default tab 'quote' (AreaFirstBuilder → EstimateBuilder areaFirst) edits saved lines directly; while it is open the basket replace-all autosave/generate persist is paused (livePausedRef) and leaving it refetches + remounts the builder — so the two save paths never overwrite each other.

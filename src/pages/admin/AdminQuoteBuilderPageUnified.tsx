@@ -77,6 +77,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { isAirConditioningProduct, planStandardInstall } from "@/lib/mandy/quoteOps";
 import { fetchVisualCatalogAllowlist, filterPaletteCatalog } from "@/lib/catalogSoT";
 import { useActiveSpecials } from "@/hooks/useActiveSpecials";
+import AreaFirstBuilder from "@/components/quoting/AreaFirstBuilder";
 import { useSpecialPrompt } from "@/components/specials/SpecialsUi";
 import { specialLineMeta } from "@/lib/specials";
 
@@ -249,9 +250,9 @@ function BuilderMandyActions({ bridgeRef, onRemount }: { bridgeRef: MutableRefOb
 }
 
 /* ─── Inner content (needs context) ─── */
-function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?: QuoteBuilderMode; bridgeRef?: MutableRefObject<MandyBridge | null>; tabRef?: MutableRefObject<string | null> }) {
+function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount }: { mode?: QuoteBuilderMode; bridgeRef?: MutableRefObject<MandyBridge | null>; tabRef?: MutableRefObject<string | null>; onRemount?: () => void }) {
   const navigate = useNavigate();
-  const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta, addItem: ctxAddItem, addArea: ctxAddArea } = useQuoteContext();
+  const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta, addItem: ctxAddItem, addArea: ctxAddArea, refetch: ctxRefetch } = useQuoteContext();
   // Two-editor guard: presence pauses saving; the line stamp blocks writes over outside changes.
   const { others: otherEditors } = useQuoteEditors(quoteId, "builder");
   const othersRef = useRef(otherEditors);
@@ -280,10 +281,14 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
   const isCompact = useIsTabletOrBelow();
   // Phone/tablet: default to the Area Quote tab (search + areas + send), not
   // the Build/Visual PDF tabs which need desktop space.
-  const [activeTab, setActiveTab] = useState(() =>
-    tabRef?.current ?? (typeof window !== "undefined" && window.innerWidth <= 1024 ? "area" : "normal")
-  );
+  // R6: "quote" (area-first, edits saved lines directly) is the default view on every device.
+  const [activeTab, setActiveTab] = useState(() => tabRef?.current ?? "quote");
   useEffect(() => { if (tabRef) tabRef.current = activeTab; }, [activeTab, tabRef]);
+  // While the area-first view is open the basket replace-all autosave is paused, so the two
+  // save paths can never overwrite each other; leaving it remounts the builder from saved lines.
+  const livePausedRef = useRef(activeTab === "quote");
+  livePausedRef.current = activeTab === "quote";
+  const liveUsedRef = useRef(activeTab === "quote");
   const [areaWizardOpen, setAreaWizardOpen] = useState(false);
   const pdfSearchRef = useRef<((term: string) => void) | null>(null);
 
@@ -344,14 +349,17 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
   const rateSnap = useSyncExternalStore(subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot);
   const displayQuoteTotals = useMemo(
     // Labour rows live outside the baskets (LabourPanel) — add them so totals include labour.
-    () => computeQuoteTotals(
+    () => activeTab === "quote"
+      // Area-first view edits saved lines: totals come straight from them (same maths as the estimate page).
+      ? computeQuoteTotals(ctxItems, ctxAreas, undefined, { type: meta?.discount_type, value: meta?.discount_value })
+      : computeQuoteTotals(
       [...basketsToQuoteState(displayBaskets).items, ...ctxItems.filter((i) => isLabourItem(i))],
       basketsToQuoteState(displayBaskets).areas,
       undefined,
       { type: meta?.discount_type, value: meta?.discount_value },
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [displayBaskets, ctxItems, meta?.discount_type, meta?.discount_value, rateSnap],
+    [activeTab, displayBaskets, ctxItems, ctxAreas, meta?.discount_type, meta?.discount_value, rateSnap],
   );
   // Build Area Quote Pricing / Review / footer: same totals as the header, split per area.
   const areaReview = useMemo(
@@ -907,9 +915,23 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
   }, []);
 
   // Switching tabs: the Area tab uses the inline builder, no modal popup
-  const handleTabChange = useCallback((tab: string) => {
+  const handleTabChange = useCallback(async (tab: string) => {
+    if (tab === activeTab) return;
+    if (tab === "quote") {
+      await flushSaveRef.current?.(); // builder edits land first, then the live view takes over
+      liveUsedRef.current = true;
+      setActiveTab(tab);
+      return;
+    }
+    if (activeTab === "quote") {
+      skipFlushRef.current = true; // stale baskets must never save over live edits
+      if (tabRef) tabRef.current = tab;
+      await ctxRefetch();
+      onRemount?.();
+      return;
+    }
     setActiveTab(tab);
-  }, []);
+  }, [activeTab, ctxRefetch, onRemount, tabRef]);
 
 
   /* ── Generate Quote: persist the merged basket state (Build + Visual PDF +
@@ -965,14 +987,15 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
   const handleGenerateQuote = useCallback(async () => {
     if (!quoteId) return;
     if (!requireLabour()) return;
-    if (displayQuoteTotals.itemCount === 0) {
+    if ((livePausedRef.current ? ctxItems.length : displayQuoteTotals.itemCount) === 0) {
       toast({ title: "Nothing to quote", description: "Add at least one line item first.", variant: "destructive" });
       return;
     }
     setGenerating(true);
     try {
       const validIds = new Set(products.map((p) => p.id));
-      await guardedPersist(quoteId, displayBaskets, validIds);
+      // Area-first view edits saved lines directly: nothing to persist from baskets.
+      if (!livePausedRef.current) await guardedPersist(quoteId, displayBaskets, validIds);
       // Send = shareable client link. Shared helper ensures public_token
       // exists and moves a draft to sent — never touches accepted/declined.
       await ensureQuoteReadyToSend(quoteId);
@@ -987,7 +1010,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
     } finally {
       setGenerating(false);
     }
-  }, [quoteId, displayBaskets, displayQuoteTotals.itemCount, products, requireLabour, guardedPersist]);
+  }, [quoteId, displayBaskets, displayQuoteTotals.itemCount, products, requireLabour, guardedPersist, ctxItems.length]);
 
   /* ────────────────────────────────────────────────────────────────────
      Auto-save into THE linked quote + accidental-close guard.
@@ -1056,7 +1079,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
   const flushSave = useCallback(async () => {
     const { quoteId: qid, displayBaskets: dbk, products: prods, contentSig: sig, isDirty: dirty } =
       latestRef.current;
-    if (!qid || !dirty || savingRef.current || skipFlushRef.current) return;
+    if (!qid || !dirty || savingRef.current || skipFlushRef.current || livePausedRef.current) return;
     if (othersRef.current.length > 0 || changedElsewhereRef.current) return; // paused: never write over another editor
     savingRef.current = true;
     try {
@@ -1077,6 +1100,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
     }
   }, []);
 
+  const flushSaveRef = useRef<(() => Promise<void>) | null>(null);
+  flushSaveRef.current = flushSave;
+
   // Debounced auto-save while editing.
   useEffect(() => {
     if (!isDirty) return;
@@ -1087,7 +1113,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
   // Flush on unmount (route change of any kind) and on tab close.
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!latestRef.current.isDirty || skipFlushRef.current) return;
+      if (!latestRef.current.isDirty || skipFlushRef.current || livePausedRef.current) return;
       if (othersRef.current.length > 0 || changedElsewhereRef.current) return;
       void flushSave();
       e.preventDefault();
@@ -1139,7 +1165,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
   const discardAndLeave = useCallback(async () => {
     skipFlushRef.current = true;
     const qid = latestRef.current.quoteId;
-    if (qid && hasWrittenRef.current) {
+    // After area-first edits the opening snapshot is stale — never restore it over live work.
+    if (qid && hasWrittenRef.current && !liveUsedRef.current) {
       try {
         await guardedPersist(
           qid,
@@ -1285,6 +1312,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
       <Tabs value={activeTab} onValueChange={handleTabChange} className="shrink-0">
         <div className="flex flex-wrap items-center justify-center gap-y-1 py-1 bg-muted/40">
           <TabsList className="h-8 bg-muted">
+            <TabsTrigger value="quote" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4 font-semibold">Build quote</TabsTrigger>
             <TabsTrigger value="normal" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Build</TabsTrigger>
             <TabsTrigger value="visual" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Visual PDF</TabsTrigger>
             <TabsTrigger value="area" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Build Area Quote</TabsTrigger>
@@ -1328,6 +1356,11 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
               <Loader2 className="h-8 w-8 animate-spin text-white" />
               <p className="text-sm text-white/80">Loading quote…</p>
             </div>
+          </div>
+        )}
+        {!ctxLoading && activeTab === "quote" && (
+          <div className="h-full overflow-y-auto bg-muted/30" data-testid="area-first-view">
+            <AreaFirstBuilder pdfBasket={selectedFromPdf} />
           </div>
         )}
         {!ctxLoading && activeTab === "normal" &&
@@ -2239,7 +2272,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
   return (
     <QuoteProvider quoteId={quoteId}>
       <BuilderMandyActions bridgeRef={mandyBridgeRef} onRemount={() => setBuilderEpoch((n) => n + 1)} />
-      <UnifiedQuoteBuilderInner key={builderEpoch} mode={mode} bridgeRef={mandyBridgeRef} tabRef={builderTabRef} />
+      <UnifiedQuoteBuilderInner key={builderEpoch} mode={mode} bridgeRef={mandyBridgeRef} tabRef={builderTabRef} onRemount={() => setBuilderEpoch((n) => n + 1)} />
     </QuoteProvider>);
 
 };
