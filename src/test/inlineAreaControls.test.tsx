@@ -26,7 +26,7 @@ describe("inline wizard area creation", () => {
     const onAreasChange = vi.fn();
     render(<AreaDefinitionStep areas={[]} onAreasChange={onAreasChange} controlsOnly />);
     expect(screen.getAllByRole("button", { name: "Add Area" })).toHaveLength(1);
-    fireEvent.pointerDown(screen.getByRole("button", { name: "Add Area" }), { button: 0, ctrlKey: false, pointerType: "mouse" });
+    fireEvent.keyDown(screen.getByRole("button", { name: "Add Area" }), { key: "Enter" });
     fireEvent.click(screen.getByRole("menuitem", { name: "Custom..." }));
     fireEvent.change(screen.getByPlaceholderText("Enter custom area name..."), { target: { value: "Study" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
