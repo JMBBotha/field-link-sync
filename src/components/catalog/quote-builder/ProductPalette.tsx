@@ -321,11 +321,7 @@ function DraggableProductCard({
   const handleStarClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (isFavorite) {
-      setConfirmUnfav(true);
-    } else {
-      onToggleFavorite();
-    }
+    onToggleFavorite();
   };
 
   const handleCardClick = useCallback((e: React.MouseEvent) => {
@@ -358,7 +354,7 @@ function DraggableProductCard({
                   style={{ pointerEvents: isDraggingGlobal && !isDragging ? "none" : "auto" }}
                   className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-pointer transition-all hover:shadow-md hover:border-primary/20 ${
                     isDragging ? "opacity-40 shadow-lg scale-95" : ""
-                  } ${product.is_pinned ? "border-primary/30" : ""} ${
+                  } ${isFavorite ? "border-primary/30" : ""} ${
                     isFavorite ? "border-l-2 border-l-yellow-400 bg-yellow-50/50 dark:bg-yellow-950/20" : ""
                   }`}
                 >

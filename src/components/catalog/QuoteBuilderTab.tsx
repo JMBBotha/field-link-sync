@@ -1,3 +1,4 @@
+import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
 import { useState, useCallback, useMemo, useRef, useEffect, useSyncExternalStore } from "react";
 import { resolveBundlesLive } from "@/lib/bundleResolve";
 import RemoveUnitDialog from "@/components/quoting/RemoveUnitDialog";
@@ -29,7 +30,7 @@ import {
   type CollisionDetection,
   rectIntersection,
 } from "@dnd-kit/core";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ProductPalette from "./quote-builder/ProductPalette";
 import type { PaletteBundle } from "./quote-builder/ProductPalette";
@@ -322,27 +323,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     staleTime: 60000
   });
 
-  const favorites = useMemo(() => new Set(products.filter((p) => p.is_pinned).map((p) => p.id)), [products]);
-  const togglePinMutation = useMutation({
-    mutationFn: async (productId: string) => {
-      const currentlyPinned = products.find((p) => p.id === productId)?.is_pinned ?? false;
-      const pinOrder = currentlyPinned ? 0 : Math.floor(Date.now() / 1000) % 2000000000;
-      const { error } = await (supabase.from("supplier_products") as any).
-      update({ is_pinned: !currentlyPinned, pin_order: pinOrder } as any).eq("id", productId);
-      if (error) throw error;
-    },
-    onMutate: async (productId) => {
-      await queryClient.cancelQueries({ queryKey: ["quote-builder-products"] });
-      queryClient.setQueryData<PaletteProduct[]>(["quote-builder-products"], (old) =>
-      old?.map((p) => p.id === productId ? { ...p, is_pinned: !p.is_pinned } : p)
-      );
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
-      queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
-    }
-  });
-  const toggleFavorite = useCallback((id: string) => togglePinMutation.mutate(id), [togglePinMutation]);
+  const { ids: favorites, toggle: toggleFavorite } = useQuoteFavourites();
 
   // Fetch bundles with their items + products
   const { data: bundles = [], isLoading: bundlesLoading } = useQuery<QuoteBuilderBundle[]>({
