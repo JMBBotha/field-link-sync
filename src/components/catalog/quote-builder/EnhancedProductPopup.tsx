@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useLayoutEffect } from "react";
+import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
 import { createPortal } from "react-dom";
 import { Plus, Minus, Star, ShoppingBag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ const EnhancedProductPopup = ({
   isVisible = true,
   priceOverride = null,
 }: EnhancedProductPopupProps) => {
+  const { isFavourite } = useQuoteFavourites();
   const safeNum = (n: number) => (isFinite(n) && !isNaN(n) ? n : 0);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const popupRef = useRef<HTMLDivElement>(null);
@@ -268,7 +270,7 @@ const EnhancedProductPopup = ({
                       R{product.price_per_metre.toFixed(2)}/m
                     </Badge>
                   )}
-                  {product.is_pinned && (
+                  {isFavourite(product.id) && (
                     <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-500" />
                   )}
                   {inQuoteQty > 0 && (

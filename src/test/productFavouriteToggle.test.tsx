@@ -41,7 +41,7 @@ describe("personal favourite toggle", () => {
     await waitFor(() => expect(result.current.ids.size).toBe(0));
     expect(db.writes[0]).toEqual({ column: "user_id", user: "owner", ids: ["samsung"] });
     await act(async () => { expect(await result.current.toggle("samsung")).toBe(true); });
-    expect(result.current.ids.has("samsung")).toBe(true);
+    await waitFor(() => expect(result.current.ids.has("samsung")).toBe(true));
   });
   it("restores the yellow favourite state when deletion fails", async () => {
     const { result } = renderHook(() => useQuoteFavourites(), { wrapper });
