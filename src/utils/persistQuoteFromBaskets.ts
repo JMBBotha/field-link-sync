@@ -172,7 +172,9 @@ async function persistOnce(
 
   // Areas now exist and existing labour has been re-linked by the transaction.
   // Never re-insert existing labour or create temporary unassigned labour rows.
-  const currentLabour = projectedLabour.map((row) => ({ ...row, area_id: areaIdMap.get(row.area_id) ?? row.area_id }));
+  const freshLabour = await supabase.from("quote_items").select("*").eq("quote_id", quoteId).eq("item_type", LABOUR_ITEM_TYPE);
+  if (freshLabour.error) throw freshLabour.error;
+  const currentLabour = (freshLabour.data || []).filter((row) => !row.parent_item_id && isLabourItem(row));
   await syncAutoLabour([...itemRows, ...currentLabour], areaRows, mode, perUnit, rate, {
     add: async (fields) => { await checked(supabase.from("quote_items").insert({ ...fields, id: crypto.randomUUID(), quote_id: quoteId, source: "labour", sort_order: itemRows.length })); },
     update: async (id, fields) => { await checked(supabase.from("quote_items").update(fields).eq("id", id).eq("quote_id", quoteId)); },
