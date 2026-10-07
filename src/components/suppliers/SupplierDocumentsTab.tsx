@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import PDFExtractReviewModal from "./PDFExtractReviewModal";
 import SupplierInfoReviewModal from "./SupplierInfoReviewModal";
-import ImportPreviewModal from "./ImportPreviewModal";
+import ImportPreviewModal, { type ImportReviewRecord } from "./ImportPreviewModal";
 import type { ExtractedSupplierInfo } from "@/services/supplierInfoExtractor";
 import type { ImportPreview, ParsedProduct } from "@/services/productImportParser";
 import { cleanImportForSupplier, logImportAction } from "@/services/cleanImportPipeline";
@@ -60,6 +60,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   // AI Import state
   const [importAnalysing, setImportAnalysing] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [importPageImages, setImportPageImages] = useState<(string | null)[]>([]);
   const [importFileName, setImportFileName] = useState("");
   const [importConfirming, setImportConfirming] = useState(false);
 
@@ -513,6 +514,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     try {
       const { parseImportFile } = await import("@/services/productImportParser");
       storedUploadIdRef.current = null;
+      setImportPageImages([]);
       const preview = await parseImportFile(file, supplierId);
       setImportPreview(await withDiffSummary(preview));
     } catch (err: any) {
@@ -555,6 +557,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       const file = new File([blob], name, { type: "application/pdf" });
       const images: (string | null)[] = [];
       for (const p of pages) images[p.page_number - 1] = p.page_image_url || null;
+      setImportPageImages(images);
       setImportFileName(name);
       importFileRef.current = file;
       storedUploadIdRef.current = up.id;
@@ -568,7 +571,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     }
   }, [supplierId, toast, withDiffSummary]);
 
-  const handleImportConfirm = useCallback(async (products: ParsedProduct[], isFullCatalogue: boolean = true) => {
+  const handleImportConfirm = useCallback(async (products: ParsedProduct[], isFullCatalogue: boolean = true, review?: ImportReviewRecord) => {
     setImportConfirming(true);
     try {
       const file = importFileRef.current;
@@ -605,6 +608,17 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         isFullCatalogue,
         pdfUploadId: storedUploadIdRef.current,
       });
+
+      // Record the review decisions (who, when, choices) — non-fatal.
+      try {
+        await (supabase.from("import_audit_log") as any).insert({
+          supplier_id: supplierId,
+          action: "ai_import_review",
+          products_imported: imported + updated,
+          file_name: file?.name || "AI Import",
+          import_settings: { review, result: { imported, updated, archived, unchanged, errors }, pdf_upload_id: storedUploadIdRef.current, is_full_catalogue: isFullCatalogue },
+        });
+      } catch (e) { console.warn("[Import] review audit failed (non-fatal):", e); }
 
       if (imported === 0 && updated === 0 && archived === 0 && errors > 0) {
         throw new Error(firstError || "Import pipeline failed");
@@ -1049,6 +1063,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           fileName={importFileName}
           onConfirm={handleImportConfirm}
           confirming={importConfirming}
+          supplierId={supplierId}
+          pageImages={importPageImages}
         />
       )}
     </div>

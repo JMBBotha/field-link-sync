@@ -1,4 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { buildReviewItems, emptyPages, pickSample, sampleCost, type ExistingProduct } from "@/lib/importReviewGate";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -25,8 +28,24 @@ interface ImportPreviewModalProps {
   /** isFullCatalogue: true if this file represents the supplier's entire
    *  current catalogue (missing products get archived), false for a
    *  partial/delta file (nothing gets archived). */
-  onConfirm: (products: ParsedProduct[], isFullCatalogue: boolean) => void;
+  onConfirm: (products: ParsedProduct[], isFullCatalogue: boolean, review: ImportReviewRecord) => void;
   confirming?: boolean;
+  /** Supplier being imported — used to compare with its existing catalogue (read-only). */
+  supplierId?: string;
+  /** Source page images, same order as pages (index 0 = page 1). */
+  pageImages?: (string | null)[];
+}
+
+export type ReviewChoice = "ok" | "exclude" | "merge";
+export interface ImportReviewRecord {
+  reviewed_by: string | null;
+  reviewed_by_email: string | null;
+  reviewed_at: string;
+  decisions: { model_number: string; choice: ReviewChoice; merged_into?: string; reasons: string[] }[];
+  empty_pages_acknowledged: number[];
+  sample_checked: { model_number: string; list_ex_vat: number; discount_percent: number; computed_cost: number; page: number | null }[];
+  excluded_count: number;
+  merged_count: number;
 }
 
 function ConfidenceBadge({ level }: { level: "high" | "medium" | "low" }) {
@@ -42,7 +61,10 @@ const ImportPreviewModal = ({
   fileName,
   onConfirm,
   confirming = false,
+  supplierId,
+  pageImages,
 }: ImportPreviewModalProps) => {
+  const { user } = useAuth();
   const ss = preview.supplierSettings;
   const detectedCols = preview.detectedPriceColumns || [];
   const hasDiscount = preview.detectedDiscount > 0 || ss.tradeDiscount > 0;
@@ -71,6 +93,58 @@ const ImportPreviewModal = ({
   }, [products, search]);
 
   const sample = products[0];
+
+  // ── Enforced review gate ──
+  const [existing, setExisting] = useState<ExistingProduct[]>([]);
+  useEffect(() => {
+    if (!supplierId) return;
+    (supabase.from("supplier_products" as any) as any)
+      .select("id, product_code, cost_price, description").eq("supplier_id", supplierId).limit(5000)
+      .then(({ data }: any) => setExisting(data || []));
+  }, [supplierId]);
+  const reviewItems = useMemo(() => buildReviewItems(products, existing), [products, existing]);
+  const zeroPages = useMemo(() => emptyPages(preview.pageReport), [preview.pageReport]);
+  const [choices, setChoices] = useState<Record<number, ReviewChoice>>({});
+  const [ackPages, setAckPages] = useState<Set<number>>(new Set());
+  const [sampleIdx] = useState(() => pickSample(preview.products.length, 5));
+  const [sampleChecked, setSampleChecked] = useState(false);
+  const unresolved = reviewItems.filter((i) => !choices[i.index]).length
+    + zeroPages.filter((p) => !ackPages.has(p)).length
+    + (sampleIdx.length > 0 && !sampleChecked ? 1 : 0);
+  const finalProducts = useMemo(() => products.flatMap((p, i) => {
+    const c = choices[i];
+    if (c === "exclude") return [];
+    if (c === "merge") {
+      const it = reviewItems.find((r) => r.index === i);
+      return it?.duplicateOf ? [{ ...p, model_number: it.duplicateOf }] : [p];
+    }
+    return [p];
+  }), [products, choices, reviewItems]);
+  const setChoice = (i: number, c: ReviewChoice) => setChoices((prev) => ({ ...prev, [i]: c }));
+  const handleConfirm = () => {
+    if (unresolved > 0) return;
+    const record: ImportReviewRecord = {
+      reviewed_by: user?.id ?? null,
+      reviewed_by_email: user?.email ?? null,
+      reviewed_at: new Date().toISOString(),
+      decisions: reviewItems.map((it) => ({
+        model_number: products[it.index]?.model_number,
+        choice: choices[it.index],
+        ...(choices[it.index] === "merge" ? { merged_into: it.duplicateOf } : {}),
+        reasons: it.reasons.map((r) => r.text),
+      })),
+      empty_pages_acknowledged: [...ackPages].sort((a, b) => a - b),
+      sample_checked: sampleIdx.map((i) => {
+        const p = products[i];
+        const list = Number(p.price_excl_vat ?? p.raw_price) || 0;
+        const d = Number(p.supplier_discount_percent ?? effectiveDiscount) || 0;
+        return { model_number: p.model_number, list_ex_vat: list, discount_percent: d, computed_cost: sampleCost(list, d), page: p.page_number ?? null };
+      }),
+      excluded_count: Object.values(choices).filter((c) => c === "exclude").length,
+      merged_count: Object.values(choices).filter((c) => c === "merge").length,
+    };
+    onConfirm(finalProducts, isFullCatalogue, record);
+  };
 
   const handleDownloadCSV = () => {
     const header = "Model,Description,Category,List Price,Excl VAT,Cost Price,Our Price Excl,VAT,Sell Incl VAT\n";
@@ -142,6 +216,83 @@ const ImportPreviewModal = ({
                   const n = preview.products.filter((p) => (p.flags || []).some((f) => f.startsWith("model_code_"))).length;
                   return n > 0 ? <p className="text-amber-700 dark:text-amber-400">{n} model code(s) needed OCR fixes or are unreadable — flagged for checking.</p> : null;
                 })()}
+              </CardContent>
+            </Card>
+            {/* Review required — Confirm is blocked until every item is resolved */}
+            <Card className={unresolved > 0 ? "border-destructive/50" : "border-primary/40"}>
+              <CardContent className="p-3 space-y-3 text-xs">
+                <p className="text-sm font-semibold flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Review required {unresolved > 0 ? `— ${unresolved} item${unresolved === 1 ? "" : "s"} still need review` : "— all resolved"}
+                </p>
+                {reviewItems.length === 0 && zeroPages.length === 0 && <p className="text-muted-foreground">No flagged rows, outliers, duplicates or empty pages.</p>}
+                {reviewItems.map((it) => {
+                  const p = products[it.index];
+                  const c = choices[it.index];
+                  return (
+                    <div key={it.index} className="rounded border p-2 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono font-semibold">{p.model_number || "(no code)"}</span>
+                        <span className="text-muted-foreground truncate max-w-[16rem]">{p.description}</span>
+                        <span className="ml-auto">{formatRand(p.cost_price)}</span>
+                        {p.page_number ? <span className="text-muted-foreground">p.{p.page_number}</span> : null}
+                      </div>
+                      <ul className="list-disc pl-4 space-y-0.5">
+                        {it.reasons.map((r, k) => (
+                          <li key={k} className={r.kind === "duplicate" ? "text-destructive" : "text-amber-700 dark:text-amber-400"}>{r.text}</li>
+                        ))}
+                      </ul>
+                      <div className="flex flex-wrap gap-1.5">
+                        <Button size="sm" variant={c === "ok" ? "default" : "outline"} className="h-7 text-xs" onClick={() => setChoice(it.index, "ok")}>Reviewed OK</Button>
+                        <Button size="sm" variant={c === "exclude" ? "destructive" : "outline"} className="h-7 text-xs" onClick={() => setChoice(it.index, "exclude")}>Exclude</Button>
+                        {it.duplicateOf && (
+                          <Button size="sm" variant={c === "merge" ? "default" : "outline"} className="h-7 text-xs" onClick={() => setChoice(it.index, "merge")}>Merge into existing {it.duplicateOf}</Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {zeroPages.map((pg) => (
+                  <div key={`pg-${pg}`} className="rounded border p-2 flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">Page {pg}: 0 rows found</span>
+                    {pageImages?.[pg - 1] && <a href={pageImages[pg - 1]!} target="_blank" rel="noreferrer" className="underline text-primary">View page</a>}
+                    <Button size="sm" variant={ackPages.has(pg) ? "default" : "outline"} className="h-7 text-xs ml-auto"
+                      onClick={() => setAckPages((prev) => { const n = new Set(prev); n.has(pg) ? n.delete(pg) : n.add(pg); return n; })}>
+                      Acknowledged
+                    </Button>
+                  </div>
+                ))}
+                {sampleIdx.length > 0 && (
+                  <div className="rounded border p-2 space-y-2">
+                    <p className="font-semibold">Sample price check — compare these with the PDF</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[11px]">
+                        <thead><tr className="text-left text-muted-foreground"><th className="pr-2">Model</th><th className="pr-2">List ex VAT</th><th className="pr-2">Discount</th><th className="pr-2">Cost</th><th>Page</th></tr></thead>
+                        <tbody>
+                          {sampleIdx.map((i) => {
+                            const p = products[i]; if (!p) return null;
+                            const list = Number(p.price_excl_vat ?? p.raw_price) || 0;
+                            const d = Number(p.supplier_discount_percent ?? effectiveDiscount) || 0;
+                            const img = p.page_number ? pageImages?.[p.page_number - 1] : null;
+                            return (
+                              <tr key={i} className="border-t">
+                                <td className="pr-2 font-mono">{p.model_number}</td>
+                                <td className="pr-2">{formatRand(list)}</td>
+                                <td className="pr-2">{d}%</td>
+                                <td className="pr-2 font-semibold">{formatRand(sampleCost(list, d))}</td>
+                                <td>{img ? <a href={img} target="_blank" rel="noreferrer"><img src={img} alt={`Page ${p.page_number}`} className="h-10 w-8 object-cover border rounded" /></a> : (p.page_number ? `p.${p.page_number}` : "—")}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={sampleChecked} onChange={(e) => setSampleChecked(e.target.checked)} />
+                      I checked these against the PDF
+                    </label>
+                  </div>
+                )}
               </CardContent>
             </Card>
             {/* Detected Price Columns */}
@@ -424,11 +575,12 @@ const ImportPreviewModal = ({
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={confirming}>
             Cancel
           </Button>
-          <Button onClick={() => onConfirm(products, isFullCatalogue)} disabled={confirming || products.length === 0}>
+          {unresolved > 0 && <span className="text-xs text-destructive whitespace-nowrap">{unresolved} item{unresolved === 1 ? "" : "s"} still need review</span>}
+          <Button onClick={handleConfirm} disabled={confirming || finalProducts.length === 0 || unresolved > 0}>
             {confirming ? (
               <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Uploading...</>
             ) : (
-              <>✅ Confirm & Upload {products.length} Products</>
+              <>✅ Confirm & Upload {finalProducts.length} Products</>
             )}
           </Button>
           </div>
