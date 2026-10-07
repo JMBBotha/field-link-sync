@@ -142,3 +142,15 @@ export async function remapBundleItem(itemId: string, product: { id: string; pro
   if (error) throw error;
   if (!data?.length) throw new Error("Not allowed to change this bundle");
 }
+
+/** After a price-list import: re-check bundles and warn about anything that fell off the list. */
+export async function runBundleCheckAfterImport() {
+  try {
+    const r = await checkAllBundles();
+    const missing = r.bundles.flatMap((b) => b.lines.filter((l) => !l.found).map((l) => `${b.name}: ${l.text}`));
+    if (missing.length) {
+      const { toast } = await import("sonner");
+      toast.warning(`${missing.length} bundle item(s) not found after import`, { description: missing.slice(0, 3).join(" · ") + " — remap them in Catalog → Bundles." });
+    }
+  } catch (e) { console.warn("[bundles] post-import check failed", e); }
+}

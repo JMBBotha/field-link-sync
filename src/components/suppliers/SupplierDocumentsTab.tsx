@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { runBundleCheckAfterImport } from "@/lib/bundleResolve";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -531,6 +532,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         throw new Error(firstError || "Import pipeline failed");
       }
 
+      void runBundleCheckAfterImport();
       invalidateAll();
       toast({
         title: `✅ ${imported} inserted · ${updated} updated · ${archived} archived · ${unchanged} unchanged`,
