@@ -129,7 +129,7 @@ export default function EstimateBuilder({
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
   const [focusAreaId, setFocusAreaId] = useState<string | null>(null);
-  const [openAdd, setOpenAdd] = useState<{ key: string; mode: "unit" | "service" | "material" | "favourites" } | null>(null);
+  const [openAdd, setOpenAdd] = useState<{ key: string; mode: "unit" | "service" | "material" | "favourites" | "selected" } | null>(null);
   const isPhone = useIsPhone();
   const [collapsedAreaKeys, setCollapsedAreaKeys] = useState<Set<string>>(new Set());
   const collapseReadyRef = useRef(false);
@@ -585,33 +585,12 @@ export default function EstimateBuilder({
               const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
               return (
                 <div className="space-y-2" onClick={stop} data-area-key={key}>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-                    <div className="min-w-0 flex-1"><QuoteQuickEditor key={`${key}-item`} mode="item" {...editorProps} /></div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button type="button" size="sm" className="h-9 shrink-0 gap-1 self-end sm:self-auto"><Plus className="h-4 w-4" />Add<ChevronDown className="h-3.5 w-3.5" /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuItem onSelect={async () => { if (!allowNewArea()) return; const c = await addArea(`Area ${areas.length + 1}`); if (c?.id) { setActiveAreaId(c.id); setFocusAreaId(c.id); } }}>Add area</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setTimeout(() => (document.querySelector(`[data-area-key="${key}"] [data-area-item-search]`) as HTMLInputElement | null)?.focus(), 80)}>Add item</DropdownMenuItem>
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>Labour or service</DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuItem onSelect={() => { if (labourMode === "job") void addJobLabour(); else if (areaId) void addLabourForArea(areaId); }}>Add labour</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => setOpenAdd({ key, mode: "service" })}>Add service</DropdownMenuItem>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>More</DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuItem onSelect={() => setOpenAdd({ key, mode: "unit" })}>Add unit only</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => setOpenAdd({ key, mode: "material" })}>Add material only</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => setOpenAdd({ key, mode: "favourites" })}>★ Favourites</DropdownMenuItem>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="canonical-add-actions">
+                    {([['unit', 'Add unit'], ['service', 'Add service'], ['material', 'Add material'], ['selected', 'Selected']] as const).map(([mode, label]) => (
+                      <Button key={mode} type="button" size="sm" variant={open === mode ? "default" : "outline"} className={`h-10 ${open === mode ? "border-orange-500 bg-orange-500 text-primary-foreground ring-2 ring-orange-500/30 hover:bg-orange-500/90" : "border-primary/20 text-primary"}`} onClick={() => setOpenAdd(open === mode ? null : { key, mode })}>
+                        {label}
+                      </Button>
+                    ))}
                   </div>
                   {open && <QuoteQuickEditor key={`${key}-${open}`} mode={open} onClose={() => setOpenAdd(null)} {...editorProps} />}
                 </div>

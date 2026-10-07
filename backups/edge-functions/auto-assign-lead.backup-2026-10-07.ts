@@ -106,7 +106,7 @@ serve(async (req) => {
     // Get lead details for the notification message
     const { data: lead, error: leadError } = await supabase
       .from("leads")
-      .select("id, company_id, customer_name, customer_phone, customer_address, service_type, primary_intent, priority, status, latitude, longitude, assigned_agent_id, scheduled_date")
+      .select("id, customer_name, customer_phone, customer_address, service_type, priority, status, latitude, longitude, assigned_agent_id, scheduled_date")
       .eq("id", lead_id)
       .single();
 
@@ -122,17 +122,6 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         success: true,
         message: "Lead already assigned",
-        skipped: true,
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (lead.primary_intent !== "sales" && lead.primary_intent !== "service") {
-      return new Response(JSON.stringify({
-        success: true,
-        message: "Lead needs a lane before assignment",
         skipped: true,
       }), {
         status: 200,
@@ -237,16 +226,10 @@ serve(async (req) => {
 
     // If no agents found, alert admins/dispatchers in-app
     if (offerCount === 0) {
-      const { data: companyProfiles } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("company_id", lead.company_id);
-      const companyProfileIds = (companyProfiles || []).map((profile: { id: string }) => profile.id);
       const { data: admins } = await supabase
         .from("user_roles")
         .select("user_id, role")
-        .in("role", ["admin", "dispatcher"])
-        .in("user_id", companyProfileIds.length ? companyProfileIds : ["00000000-0000-0000-0000-000000000000"]);
+        .in("role", ["admin", "dispatcher"]);
 
       if (admins?.length) {
         await supabase.from("notifications").insert(

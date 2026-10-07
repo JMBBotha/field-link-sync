@@ -26,6 +26,7 @@ import AppointmentPicker, {
 } from "@/components/scheduling/AppointmentPicker";
 import { useAcceptLead, type AcceptLeadInput } from "@/hooks/useAcceptLead";
 import { format } from "date-fns";
+import { laneFromServiceType } from "@/lib/leadLane";
 
 interface AcceptLeadDialogProps {
   lead: AcceptLeadInput | null;
@@ -216,7 +217,7 @@ const AcceptLeadDialog = ({
           )}
 
           <div className="rounded-lg border border-border bg-muted/30 p-3">
-            <AppointmentPicker value={appt} onChange={setAppt} />
+            <AppointmentPicker value={appt} onChange={setAppt} assignmentLane={laneFromServiceType(lead?.service_type) ?? "service"} />
           </div>
         </div>
 
