@@ -55,17 +55,13 @@ export function useQuoteFavourites() {
     staleTime: 60_000,
     queryFn: async (): Promise<FavState> => {
       const { data: mine, error } = await supabase
-        .from("product_favorites").select("product_id, created_at").eq("user_id", userId!);
+        .from("product_favorites").select("product_id, created_at").eq("user_id", userId ?? "");
       if (error) throw error;
-      if (mine && mine.length > 0) return { source: "personal", ids: mine.map((r) => r.product_id) };
-      const { data: shared, error: e2 } = await (supabase.from("supplier_products") as any)
-        .select("id, pin_order").eq("is_pinned", true).order("pin_order", { ascending: true, nullsFirst: false });
-      if (e2) throw e2;
-      return { source: "shared", ids: (shared || []).map((r: any) => r.id) };
+      return { source: "personal", ids: (mine ?? []).map((r) => r.product_id) };
     },
   });
 
-  const state: FavState = data ?? { source: "shared", ids: [] };
+   const state: FavState = data ?? { source: "personal", ids: [] };
   const ids = new Set(state.ids);
 
   const toggle = useCallback(async (productId: string): Promise<boolean | null> => {
