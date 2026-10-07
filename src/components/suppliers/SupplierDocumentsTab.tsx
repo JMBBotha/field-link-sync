@@ -163,9 +163,23 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const deleteCatalogPages = async () => {
     setDeletingCatalog(true);
     try {
+      // Legacy rows may key supplier_id by the supplier's text NAME instead of UUID.
+      const aliases = new Set<string>([supplierId]);
+      let rawName = supplierName;
+      if (!rawName) {
+        const { data: sRow } = await supabase.from("suppliers").select("name").eq("id", supplierId).maybeSingle();
+        rawName = (sRow as any)?.name;
+      }
+      if (rawName) {
+        aliases.add(String(rawName));
+        const trimmed = String(rawName).trim();
+        if (trimmed) aliases.add(trimmed);
+      }
+      const aliasArr = Array.from(aliases);
+
       const { data: pages } = await (supabase.from("supplier_pdf_pages") as any)
         .select("page_image_url, pdf_filename, pdf_storage_path")
-        .eq("supplier_id", supplierId);
+        .in("supplier_id", aliasArr);
 
       if (pages && pages.length > 0) {
         const imagePaths = pages
@@ -186,7 +200,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         }
       }
 
-      await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierId);
+      await (supabase.from("supplier_pdf_pages") as any).delete().in("supplier_id", aliasArr);
       invalidateAll();
       toast({ title: "PDF catalog deleted", description: `${pages?.length || 0} pages removed.` });
     } catch (err: any) {
