@@ -14,6 +14,8 @@ import { normalizeMarkupPercent, resolveProductMarkupPercent } from "@/lib/prici
 import { lineMarkupPercent, calculateBasketItemCost, calculateBasketItemSell } from "@/utils/quoteBasketTotals";
 import { markupDrift, standardMarkupFor } from "@/lib/priceGuard";
 import { formatRand as formatZAR } from "@/utils/formatRand";
+import { useActiveSpecials } from "@/hooks/useActiveSpecials";
+import { SpecialChip } from "@/components/specials/SpecialsUi";
 import {
   resolvePricingUnit,
   computeLineTotal,
@@ -232,6 +234,9 @@ export function RegularItemCard({
   const baseMarkup = Math.round(lineMarkupPercent(item) || resolveProductMarkupPercent(item.product as any));
   const lineCost = calculateBasketItemCost(item);
   const warn = markupDrift(calculateBasketItemSell(item), lineCost, standardMarkupFor(item.product), item.quantity);
+  const { find: findSpecial } = useActiveSpecials();
+  const sp = findSpecial(item.product.id, item.product.product_code);
+  const spChip = sp ? <SpecialChip cost={Number(sp.special_cost)} endDate={sp.end_date} pdfPath={sp.specials_pdf_path} /> : null;
   const effectiveMarkup = baseMarkup + markupAdj;
 
   const { unitSell: rawUnitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product);
@@ -260,7 +265,7 @@ export function RegularItemCard({
         <div className="min-w-0 flex-1 truncate font-medium flex items-center gap-0.5">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
           <Badge variant="outline" className="text-[7px] px-1 py-0 h-3 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
-          {warn && <WarnChip label={warn.label} />}
+          {warn && <WarnChip label={warn.label} />}{spChip}
           <ProductInfoDialog product={item.product} />
         </div>
         {isMeasured ? (
@@ -315,7 +320,7 @@ export function RegularItemCard({
         <p className="font-medium truncate flex items-center gap-1">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
           <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
-          {warn && <WarnChip label={warn.label} />}
+          {warn && <WarnChip label={warn.label} />}{spChip}
           <ProductInfoDialog product={item.product} />
         </p>
         <div className="flex items-center gap-1.5">
