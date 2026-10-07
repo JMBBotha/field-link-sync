@@ -15,12 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuoteContext } from "@/contexts/QuoteContext";
-import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
+import { useQuoteFavourites, groupFavourites } from "@/hooks/useQuoteFavourites";
+import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import FavouritesPicker from "@/components/quoting/FavouritesPicker";
 import { getEffectiveUnitPrices, type PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
 import { fetchVisualCatalogAllowlist, filterToVisualCatalog } from "@/lib/catalogSoT";
-import { addCatalogProductToQuote } from "@/lib/mandy/quoteOps";
+import { addCatalogProductToQuote, isAirConditioningProduct } from "@/lib/mandy/quoteOps";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { useInstallTemplates } from "@/hooks/useInstallTemplates";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
@@ -69,6 +70,7 @@ export default function QuoteQuickEditor({
   createTargetArea,
   mode,
   onClose,
+  pdfBasket,
 }: {
   onChanged?: () => void;
   /** Open the results list upward (used when the bar sits at the bottom of the document). */
@@ -85,6 +87,8 @@ export default function QuoteQuickEditor({
   /** Which input shows/autofocuses in an area block. */
   mode?: "unit" | "service" | "material" | "favourites";
   onClose?: () => void;
+  /** Read-only Visual PDF "Selected Items" basket; shown first and mapped to live catalogue rows. */
+  pdfBasket?: PdfSelectedProduct[];
 }) {
   const { areas, items, addItem, addArea, meta } = useQuoteContext();
   const { toast } = useToast();
@@ -97,7 +101,7 @@ export default function QuoteQuickEditor({
   const { templates } = useInstallTemplates();
   const { products: liveProducts } = useQuoteBuilderProducts();
   const dropdownPos = dropUp ? "bottom-full mb-1" : "mt-1";
-  const { isFavourite } = useQuoteFavourites();
+  const { isFavourite, ids: favIds } = useQuoteFavourites();
   const [productTerm, setProductTerm] = useState("");
   const [serviceTerm, setServiceTerm] = useState("");
   const [adding, setAdding] = useState<string | null>(null);
@@ -147,6 +151,30 @@ export default function QuoteQuickEditor({
     [items],
   );
 
+  // Basket rows → LIVE loaded catalogue products (id, then code); off-book rows are skipped.
+  const basketProducts = useMemo(() => {
+    if (!pdfBasket?.length) return [] as PaletteProduct[];
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const byCode = new Map(products.filter((p) => p.product_code).map((p) => [String(p.product_code).trim().toLowerCase(), p]));
+    const out: PaletteProduct[] = [];
+    const seen = new Set<string>();
+    for (const b of pdfBasket) {
+      const p = (b.productId && byId.get(b.productId)) || (b.productCode ? byCode.get(b.productCode.trim().toLowerCase()) : undefined);
+      if (p && !seen.has(p.id)) { seen.add(p.id); out.push(p); }
+    }
+    return out;
+  }, [pdfBasket, products]);
+  const basketIds = useMemo(() => new Set(basketProducts.map((p) => p.id)), [basketProducts]);
+
+  const emptySections = useMemo(() => {
+    if (mode !== "unit" && mode !== "material") return null;
+    const fits = (p: PaletteProduct) => (mode === "unit") === isAirConditioningProduct(p);
+    const basket = basketProducts.filter(fits);
+    const g = groupFavourites(favIds, products, []);
+    const favs = (mode === "unit" ? g.units : g.materials).filter((p) => !basketIds.has(p.id));
+    return basket.length || favs.length ? { basket, favs } : null;
+  }, [mode, basketProducts, basketIds, favIds, products]);
+
   const productResults = useMemo(() => {
     const term = productTerm.trim();
     if (term.length < 2) return [];
@@ -158,9 +186,9 @@ export default function QuoteQuickEditor({
       ),
     );
     const rank = (p: PaletteProduct) =>
-      isFavourite(p.id) ? 0 : onQuoteProductIds.has(p.id) ? 1 : 2;
+      basketIds.has(p.id) ? 0 : isFavourite(p.id) ? 1 : onQuoteProductIds.has(p.id) ? 2 : 3;
     return matched.sort((a, b) => rank(a) - rank(b)).slice(0, 25);
-  }, [productTerm, products, isFavourite, onQuoteProductIds]);
+  }, [productTerm, products, isFavourite, onQuoteProductIds, basketIds]);
 
   const nextSortOrder = () => (items.length ? Math.max(...items.map((i) => i.sort_order || 0)) + 1 : 0);
 
@@ -222,6 +250,34 @@ export default function QuoteQuickEditor({
     if (!areaId) return;
     if (pending.kind === "product") await commitProduct(pending.value, areaId);
     else await commitCatalogService(pending.value, areaId);
+  };
+
+  const renderRow = (p: PaletteProduct) => {
+    const { unitSell } = getEffectiveUnitPrices(p);
+    const fav = isFavourite(p.id);
+    return (
+      <button
+        key={p.id}
+        type="button"
+        onClick={() => addProduct(p)}
+        disabled={adding === p.id}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50"
+      >
+        {fav ? (
+          <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
+        ) : (
+          <Plus className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+        )}
+        <span className="min-w-0 flex-1 truncate text-sm text-slate-800">
+          {p.short_name || p.product_code}
+          <span className="ml-1 text-xs text-slate-500">{p.brand}</span>
+        </span>
+        {onQuoteProductIds.has(p.id) && (
+          <Badge variant="secondary" className="shrink-0 text-[10px]">on quote</Badge>
+        )}
+        <span className="shrink-0 text-xs font-medium text-slate-700">{money(unitSell)}</span>
+      </button>
+    );
   };
 
   const addProduct = async (p: PaletteProduct, fromFavourites = false) => {
@@ -295,36 +351,17 @@ export default function QuoteQuickEditor({
             className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
           />
           {loadingProducts && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-slate-400" />}
-          {productResults.length > 0 && (
+          {(productResults.length > 0 || (!productTerm.trim() && emptySections)) && (
             <ScrollArea className={`absolute z-30 ${dropdownPos} max-h-64 w-full rounded-md border border-slate-200 bg-white shadow-lg`}>
               <div className="divide-y divide-slate-100">
-                {productResults.map((p) => {
-                  const { unitSell } = getEffectiveUnitPrices(p);
-                  const fav = isFavourite(p.id);
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => addProduct(p)}
-                      disabled={adding === p.id}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50"
-                    >
-                      {fav ? (
-                        <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
-                      ) : (
-                        <Plus className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      )}
-                      <span className="min-w-0 flex-1 truncate text-sm text-slate-800">
-                        {p.short_name || p.product_code}
-                        <span className="ml-1 text-xs text-slate-500">{p.brand}</span>
-                      </span>
-                      {onQuoteProductIds.has(p.id) && (
-                        <Badge variant="secondary" className="shrink-0 text-[10px]">on quote</Badge>
-                      )}
-                      <span className="shrink-0 text-xs font-medium text-slate-700">{money(unitSell)}</span>
-                    </button>
-                  );
-                })}
+                {productResults.length > 0
+                  ? productResults.map((p) => renderRow(p))
+                  : emptySections && (<>
+                      {emptySections.basket.length > 0 && <div className="bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Selected from PDF</div>}
+                      {emptySections.basket.map((p) => renderRow(p))}
+                      {emptySections.favs.length > 0 && <div className="bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Favourites</div>}
+                      {emptySections.favs.map((p) => renderRow(p))}
+                    </>)}
               </div>
             </ScrollArea>
           )}

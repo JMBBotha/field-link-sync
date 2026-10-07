@@ -1,3 +1,4 @@
+import type { PdfSelectedProduct } from "@/types/pdfSelection";
 /**
  * EstimateBuilder — the single quote surface on /admin/estimates/:id.
  *
@@ -43,6 +44,8 @@ import { labourFields, planLabour, standardLabourRate } from "@/lib/labour";
 import { quoteLineDrift } from "@/lib/priceGuard";
 
 interface Props {
+  /** Optional read-only Visual PDF basket, forwarded to the area add drop-downs. */
+  pdfBasket?: PdfSelectedProduct[];
   quoteNumber: string;
   issueDate: string;
   validUntil?: string | null;
@@ -82,6 +85,7 @@ export default function EstimateBuilder({
   notes,
   termsText,
   onChanged,
+  pdfBasket,
 }: Props) {
   const {
     quoteId, meta, areas, items, loading,
@@ -577,6 +581,7 @@ export default function EstimateBuilder({
                   onChanged={onChanged}
                   onAddedToArea={(id) => setActiveAreaId(id)}
                   onUnitAdded={(id, qty) => void adjustAutoLabour(id, qty)}
+                  pdfBasket={pdfBasket}
                 />
               );
             }
@@ -585,7 +590,7 @@ export default function EstimateBuilder({
                 <Plus className="mr-1 h-3 w-3" />{label}
               </Button>
             );
-            return <div className="flex flex-wrap gap-2">{btn("unit", "Add unit")}{btn("service", "Add service")}{btn("material", "Add material")}{isPhone && (
+            return <div className="flex flex-wrap gap-2">{btn("unit", "Add unit")}{btn("service", "Add service")}{btn("material", "Add material")}{(
               <Button key="favourites" type="button" size="sm" variant="outline" className="h-7 text-[11px]" onClick={(e) => { e.stopPropagation(); setOpenAdd({ key, mode: "favourites" }); }}>★ Favourites</Button>
             )}</div>;
           },
