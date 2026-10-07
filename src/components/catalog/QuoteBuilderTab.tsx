@@ -725,9 +725,9 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     );
   }, []);
 
-  const handleAddBasket = useCallback(() => {
+  const handleAddBasket = useCallback((name?: string) => {
     const id = `basket-${Date.now()}`;
-    setBaskets((prev) => [...prev, { id, name: `Zone ${prev.length + 1}`, items: [] }]);
+    setBaskets((prev) => [...prev, { id, name: name || `Zone ${prev.length + 1}`, items: [] }]);
   }, []);
 
   const handleRenameBasket = useCallback((basketId: string, newName: string) => {

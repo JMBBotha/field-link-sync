@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, cleanup } from "@testing-library/react";
+import { fireEvent, render, screen, cleanup, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import AreaDefinitionStep from "@/components/catalog/quote-builder/wizard/AreaDefinitionStep";
 import { createEmptyArea } from "@/components/catalog/quote-builder/quoteWizardTypes";
@@ -22,14 +22,15 @@ describe("inline wizard area creation", () => {
     assertTail("Office");
   });
 
-  it("keeps the existing custom-name action available in controls-only and empty states", () => {
+  it("keeps the custom-name action available in controls-only and empty states", async () => {
     const onAreasChange = vi.fn();
     render(<AreaDefinitionStep areas={[]} onAreasChange={onAreasChange} controlsOnly />);
     expect(screen.getAllByRole("button", { name: "Add Area" })).toHaveLength(1);
-    fireEvent.keyDown(screen.getByRole("button", { name: "Add Area" }), { key: "Enter" });
-    fireEvent.click(screen.getByRole("menuitem", { name: "Custom..." }));
-    fireEvent.change(screen.getByPlaceholderText("Enter custom area name..."), { target: { value: "Study" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
-    expect(onAreasChange).toHaveBeenCalledWith([expect.objectContaining({ name: "Study" })]);
+    fireEvent.click(screen.getByRole("button", { name: "Other (type own)" }));
+    const input = screen.getByRole("textbox", { name: "New area name" });
+    expect(input).toHaveFocus();
+    fireEvent.change(input, { target: { value: "Study" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add Area" }));
+    await waitFor(() => expect(onAreasChange).toHaveBeenCalledWith([expect.objectContaining({ name: "Study" })]));
   });
 });

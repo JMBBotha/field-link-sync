@@ -1,5 +1,9 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
+## Shared area-name chips (2026-10-07)
+- [x] Restore ordered shared chips under every creation input, preserve inline placement and repeat numbering.
+- [x] 15 targeted tests passed; guarded estimate desktop/390px checks confirmed chip order, Other focus and placement above totals; all backend writes intercepted. Other builder screens covered by shared wiring/tests, not browser-verified.
+
 ## Final estimate UI fixes (2026-10-07)
 - [x] Keep Create area inside the areas card after all item/service/labour rows and above totals.
 - [x] Restyle Labour needed without yellow fill; verify both null-page Samsung products already render in ProductPalette (no page-number filter exists; no catalogue logic changed).

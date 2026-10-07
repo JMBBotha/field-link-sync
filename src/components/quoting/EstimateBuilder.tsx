@@ -553,9 +553,9 @@ export default function EstimateBuilder({
           },
           activeAreaId,
           onSelectArea: setActiveAreaId,
-          onAddArea: async () => {
+          onAddArea: async (name) => {
             if (!allowNewArea()) return;
-            const created = await addArea(`Area ${areas.length + 1}`);
+            const created = await addArea(name || `Area ${areas.length + 1}`);
             if (created?.id) {
               setActiveAreaId(created.id);
               setFocusAreaId(created.id);

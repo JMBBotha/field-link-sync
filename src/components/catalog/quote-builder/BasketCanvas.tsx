@@ -1,4 +1,5 @@
 import { AreaNameLabel } from "@/components/quote/AreaNameLabel";
+import { AreaCreateControl } from "@/components/quote/AreaNameChips";
 import { useState, useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { Plus, Trash2, Pencil, Check, Package, ShoppingBag, Copy } from "lucide-react";
@@ -14,7 +15,7 @@ interface BasketCanvasProps {
   baskets: Basket[];
   allProducts: PaletteProduct[];
   dbBundles?: Array<{ id: string; name: string; min_btu?: number | null; max_btu?: number | null; items: any[] }>;
-  onAddBasket: () => void;
+  onAddBasket: (name?: string) => void;
   onRenameBasket: (id: string, name: string) => void;
   onRemoveBasket: (id: string) => void;
   onRemoveItem: (basketId: string, instanceId: string) => void;
@@ -220,10 +221,7 @@ const BasketCanvas = ({
           )}
           <div className="flex flex-wrap items-center gap-1" data-testid="inline-zone-create">
           {!isCompact && <ZoneTemplateSelector onApplyTemplate={effectiveApplyTemplate} />}
-          {!hasAreaBuilder && <Button variant="outline" size="sm" className={`gap-0.5 ${isCompact ? "h-6 text-[10px] px-1.5" : "h-7 text-xs"}`} onClick={effectiveAddZone}>
-            <Plus className={isCompact ? "h-2.5 w-2.5" : "h-3 w-3"} />
-            {isCompact ? "Zone" : "Add Zone"}
-          </Button>}
+          {!hasAreaBuilder && <div className="w-full"><AreaCreateControl existingNames={baskets.map((basket) => basket.name)} onCreate={onAddBasket} label={isCompact ? "Zone" : "Add Zone"} /></div>}
           </div>
         </div>
       </div>
