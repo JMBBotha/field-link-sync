@@ -41,7 +41,7 @@ import { useMarginView } from "@/hooks/useMarginView";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useLabourNorms } from "@/hooks/useLabourNorms";
 import { serviceNormKey } from "@/lib/pricingChecks";
-import { applyAutoLabourDelta, areaLabourStatus, countAcUnits, labourTargetAreaId, normalizeLabourMode, isJobLabour, defaultLabourHours } from "@/lib/areaLabour";
+import { areaLabourStatus, countAcUnits, labourTargetAreaId, normalizeLabourMode, isJobLabour, defaultLabourHours } from "@/lib/areaLabour";
 import { labourFields, planLabour, standardLabourRate } from "@/lib/labour";
 import { quoteLineDrift } from "@/lib/priceGuard";
 
@@ -104,7 +104,6 @@ export default function EstimateBuilder({
   const [removeUnit, setRemoveUnit] = useState<{ id: string; linked: string[] } | null>(null);
   const deleteUnitLine = (id: string, linked: string[], removeAll: boolean) => {
     const cur = items.find((i) => i.id === id);
-    if (cur && lineFor(cur).isAcUnit) void adjustAutoLabour(cur.area_id, -Number(cur.quantity || 0));
     void deleteItem(id);
     for (const lid of linked) {
       if (removeAll) void deleteItem(lid);
@@ -324,12 +323,6 @@ export default function EstimateBuilder({
     onChanged?.();
   };
 
-  const adjustAutoLabour = async (areaId: string | null, delta: number) => {
-    if (!areaId || !labourRate) return;
-    const target = labourTargetAreaId(labourMode, areaId);
-    await applyAutoLabourDelta({ items, areaId: target, job: target === null, unitDelta: delta, perUnit: perUnitHours, rate: labourRate, addItem, updateItem });
-  };
-
   const allowNewArea = () => {
     if (labourMode === "job") return true;
     const last = editAreas.filter((a) => a.id).at(-1);
@@ -470,7 +463,6 @@ export default function EstimateBuilder({
             const cur = items.find((i) => i.id === id);
             if (cur && isLabourItem(cur)) { void changeLabour(id, patch.quantity ?? Number(cur.quantity), patch.unit_price); return; }
             const display = cur ? lineFor(cur) : null;
-            if (cur && display?.isAcUnit && patch.quantity != null) void adjustAutoLabour(cur.area_id, Number(patch.quantity) - Number(cur.quantity || 0));
             // Per-metre trunking: keep total_price = round(metres × length sell ÷ length, 2).
             if (cur && isMetreLine(cur as any) && (patch.quantity != null || patch.unit_price != null)) {
               const next = { ...cur, ...patch } as any;
@@ -529,7 +521,6 @@ export default function EstimateBuilder({
             const cur = items.find((i) => i.id === id);
             const linked = cur && lineFor(cur).isAcUnit ? linkedToUnit(items, id, (x) => installTag(x)?.unit_item_id).map((x) => x.id) : [];
             if (linked.length) { setRemoveUnit({ id, linked }); return; }
-            if (cur && lineFor(cur).isAcUnit) void adjustAutoLabour(cur.area_id, -Number(cur.quantity || 0));
             void deleteItem(id);
             if (selectedLineId === id) setSelectedLineId(null);
             onChanged?.();
@@ -589,7 +580,6 @@ export default function EstimateBuilder({
                 },
                 onChanged,
                 onAddedToArea: (id: string) => setActiveAreaId(id),
-                onUnitAdded: (id: string, qty: number) => void adjustAutoLabour(id, qty),
                 pdfBasket,
               };
               const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
@@ -643,7 +633,6 @@ export default function EstimateBuilder({
                   onClose={() => setOpenAdd(null)}
                   onChanged={onChanged}
                   onAddedToArea={(id) => setActiveAreaId(id)}
-                  onUnitAdded={(id, qty) => void adjustAutoLabour(id, qty)}
                   pdfBasket={pdfBasket}
                 />
               );
@@ -663,10 +652,6 @@ export default function EstimateBuilder({
             const source = items.find((i) => i.id === id);
             const kids = items.filter((x) => installTag(x)?.unit_item_id === id);
             for (const x of [source, ...kids]) if (x) void updateItem(x.id, { area_id: areaId } as any);
-            if (labourMode !== "job" && source && lineFor(source).isAcUnit && source.area_id !== areaId) {
-              void adjustAutoLabour(source.area_id, -Number(source.quantity || 0));
-              void adjustAutoLabour(areaId, Number(source.quantity || 0));
-            }
             onChanged?.();
           },
           onDuplicateLine: async (id, areaId) => {
@@ -677,7 +662,6 @@ export default function EstimateBuilder({
             delete md.install; // the copy is a stand-alone line, not linked to the original unit
             const maxSort = Math.max(0, ...items.filter((i) => i.area_id === areaId).map((i) => Number(i.sort_order) || 0));
             await addItem({ ...rest, metadata: md, area_id: areaId, sort_order: maxSort + 1 } as any);
-            if (lineFor(src).isAcUnit) await adjustAutoLabour(areaId, Number(src.quantity || 0));
             onChanged?.();
           },
           onAddLabour: (areaId) => void addLabourForArea(areaId),

@@ -66,7 +66,7 @@ import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { useUnsavedQuoteGuard } from "@/hooks/useUnsavedQuoteGuard";
-import { missingLabourFor, normalizeLabourMode } from "@/lib/areaLabour";
+import { missingLabourFor, normalizeLabourMode, reconcileAutoLabour } from "@/lib/areaLabour";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
 import { useIsPhone } from "@/hooks/useIsPhone";
@@ -353,13 +353,13 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
       // Area-first view edits saved lines: totals come straight from them (same maths as the estimate page).
       ? computeQuoteTotals(ctxItems, ctxAreas, undefined, { type: meta?.discount_type, value: meta?.discount_value })
       : computeQuoteTotals(
-      [...basketsToQuoteState(displayBaskets).items, ...ctxItems.filter((i) => isLabourItem(i))],
+      reconcileAutoLabour([...basketsToQuoteState(displayBaskets).items, ...ctxItems.filter((i) => isLabourItem(i)).map((row) => ({ ...row, area_id: basketsToQuoteState(displayBaskets).areas.find((a) => a.id === row.area_id || a.name.trim().toLowerCase() === ctxAreas.find((old) => old.id === row.area_id)?.name.trim().toLowerCase())?.id ?? row.area_id }))], basketsToQuoteState(displayBaskets).areas, normalizeLabourMode(meta?.labour_mode), companySettings.default_install_labour_hours, companySettings.default_hourly_rate),
       basketsToQuoteState(displayBaskets).areas,
       undefined,
       { type: meta?.discount_type, value: meta?.discount_value },
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeTab, displayBaskets, ctxItems, ctxAreas, meta?.discount_type, meta?.discount_value, rateSnap],
+    [activeTab, displayBaskets, ctxItems, ctxAreas, meta?.discount_type, meta?.discount_value, meta?.labour_mode, companySettings.default_install_labour_hours, companySettings.default_hourly_rate, rateSnap],
   );
   // Build Area Quote Pricing / Review / footer: same totals as the header, split per area.
   const areaReview = useMemo(
