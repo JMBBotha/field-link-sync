@@ -591,7 +591,7 @@ export default function EstimateBuilder({
               };
               const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
               return (
-                <div className="space-y-2" onClick={stop}>
+                <div className="space-y-2" onClick={stop} data-area-key={key}>
                   <div className="flex items-start gap-2">
                     <div className="min-w-0 flex-1"><QuoteQuickEditor key={`${key}-item`} mode="item" {...editorProps} /></div>
                     <DropdownMenu>
@@ -600,7 +600,7 @@ export default function EstimateBuilder({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuItem onSelect={async () => { if (!allowNewArea()) return; const c = await addArea(`Area ${areas.length + 1}`); if (c?.id) { setActiveAreaId(c.id); setFocusAreaId(c.id); } }}>Add area</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={(e) => { const root = (e.target as HTMLElement).closest("[data-area-add-root]"); setTimeout(() => (root?.querySelector("[data-area-item-search]") as HTMLInputElement | null)?.focus(), 50); }}>Add item</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setTimeout(() => (document.querySelector(`[data-area-key="${key}"] [data-area-item-search]`) as HTMLInputElement | null)?.focus(), 80)}>Add item</DropdownMenuItem>
                         <DropdownMenuSub>
                           <DropdownMenuSubTrigger>Labour or service</DropdownMenuSubTrigger>
                           <DropdownMenuSubContent>
