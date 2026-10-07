@@ -1,4 +1,5 @@
 # AGENTS
+- Catalogue writes from price lists/PDFs go only through ImportPreviewModal review (applyProductDiff needs reviewGatePassed); auto-catalog only proposes; browser checks use scripts/browser/readonly_guard.py — no silent inserts.
 - Area controls end the estimate areas card before totals. Favourites use useQuoteFavourites + product_favorites, never is_pinned — so unfavourite stays off.
 - Standard-install lines link to their unit via metadata.install.unit_item_id (never parent_item_id); replace-all builder saves must remap it to the unit's new id (remapInstallUnitIds) — otherwise Mandy's install edits lose the lines.
 - Stale-build detection compares the running /assets/index-*.js with a no-cache /index.html (buildInfo.checkForNewBuild) — /version.json is not reliably served by hosting.
