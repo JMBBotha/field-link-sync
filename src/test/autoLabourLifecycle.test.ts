@@ -4,7 +4,7 @@ import { labourFields, isLabourItem } from "@/lib/labour";
 import { computeQuoteTotals } from "@/utils/quoteTransformers";
 import { buildClientRollup } from "@/lib/clientQuoteRollup";
 
-const areas = [{ id: "bedroom", name: "Bedroom", sort_order: 0 }];
+const areas = [{ id: "bedroom", name: "Bedroom", sort_order: 0, quote_id: "memory-quote", created_at: "", updated_at: "" }];
 const unit = (id = "u1", quantity = 1, price = 10000) => ({ id, area_id: "bedroom", item_name: "Samsung 12K INV MW", item_type: "product", quantity, unit_price: price, total_price: price * quantity, metadata: {} });
 const labour = (id = "l1", hours = 3.5, auto = true, rate = 680) => ({ id, area_id: "bedroom", ...labourFields(hours, rate, rate !== 680, auto) });
 const reconcile = (rows: any[], mode: "per_area" | "job" = "per_area") => reconcileAutoLabour(rows, areas, mode, 3.5, 680);
