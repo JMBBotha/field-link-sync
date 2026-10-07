@@ -321,11 +321,7 @@ function DraggableProductCard({
   const handleStarClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (isFavorite) {
-      setConfirmUnfav(true);
-    } else {
-      onToggleFavorite();
-    }
+    onToggleFavorite();
   };
 
   const handleCardClick = useCallback((e: React.MouseEvent) => {

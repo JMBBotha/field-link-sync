@@ -1,5 +1,9 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
+## Personal favourite toggle (2026-10-07)
+- [x] Confirm own-row DELETE policy; align PDF/list indicators and toggles with personal rows, optimistic updates and rollback.
+- [x] Run regression checks without changing existing favourite or catalogue rows; real database mutation intentionally not exercised.
+
 ## Inline area-name controls (2026-10-07)
 - [x] Check estimate, Visual PDF, Build wizard, Build Area Quote and mobile branches; move area-name/create-area controls below the last section with one instance per screen.
 - [x] Verify placement and existing quote display without changing pricing or saved data (18 targeted tests passed; read-only desktop/390px checks; preview build OK).
