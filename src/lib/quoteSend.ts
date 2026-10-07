@@ -31,7 +31,7 @@ export async function ensureQuoteReadyToSend(quoteId: string): Promise<void> {
 }
 
 export async function assertQuotePriced(id: string) {
-  const { data, error } = await supabase.from("quote_items").select("item_name, unit_price, parent_item_id").eq("quote_id", id);
+  const { data, error } = await supabase.from("quote_items").select("item_name, unit_price, parent_item_id, metadata").eq("quote_id", id);
   if (error) throw error;
   const n = r0Quote((data || []) as any[]);
   if (n) throw new Error(r0Msg(n));
