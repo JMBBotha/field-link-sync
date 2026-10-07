@@ -1,5 +1,10 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
+## Final estimate UI fixes (2026-10-07)
+- [x] Keep Create area inside the areas card after all item/service/labour rows and above totals.
+- [x] Restyle Labour needed without yellow fill; verify both null-page Samsung products already render in ProductPalette (no page-number filter exists; no catalogue logic changed).
+- [x] 17 targeted tests passed; signed-in read-only desktop/390px placement and both Samsung models verified; preview build OK, quote total unchanged.
+
 ## Personal favourite toggle (2026-10-07)
 - [x] Confirm own-row DELETE policy; align PDF/list indicators and toggles with personal rows, optimistic updates and rollback.
 - [x] Run regression checks without changing existing favourite or catalogue rows; real database mutation intentionally not exercised.

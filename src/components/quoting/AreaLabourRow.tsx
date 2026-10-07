@@ -20,7 +20,7 @@ export default function AreaLabourRow({ areaId, areaName, lines, defaultHours, o
   return (
     <div id={`area-labour-${areaId}`} data-testid={`area-labour-${areaId}`} className="mt-2 border-t border-slate-200 pt-2 print:hidden">
       {hours <= 0 && (
-        <div className="mb-2 flex items-center justify-between gap-3 border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <div className="mb-2 flex items-center justify-between gap-3 bg-card text-foreground border-2 border-orange-500 px-3 py-2 text-xs">
           <span className="font-medium">Labour needed</span>
           <Button type="button" size="sm" variant="outline" onClick={onAdd}>Add labour</Button>
         </div>

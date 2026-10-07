@@ -34,7 +34,7 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
   };
 
   const createAreaSection = (
-      <section className="rounded-xl border-2 border-primary/30 bg-card p-3 shadow-sm sm:p-4" data-testid="create-area">
+      <section className="w-full bg-card text-foreground" data-testid="create-area">
         <div className="mb-2 flex items-center gap-2">
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">1</span>
           <h2 className="text-base font-semibold text-foreground">Create area</h2>

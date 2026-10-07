@@ -65,6 +65,17 @@ function palette(props: Partial<React.ComponentProps<typeof ProductPalette>> = {
 }
 
 describe("ProductPalette piping and kits", () => {
+  it("keeps both Samsung models with null page numbers in category grouping", () => {
+    const samsung = [
+      product("17703fff-cd41-4ec5-980b-4bc5eeec6529", "Samsung 9K", { product_code: "AR09BSHGAWK/FA", product_category: "Air Conditioning", page_number: null, is_active: true }),
+      product("737e350b-248b-4c16-a9f1-8a4ba40709b4", "Samsung 18K", { product_code: "AR18BSAAAWK/FA", product_category: "Air Conditioning", page_number: null, is_active: true }),
+    ];
+    palette({ products: samsung, bundles: [], categoryFilter: "Air Conditioning" });
+    expect(screen.getByText("AR09BSHGAWK/FA")).toBeInTheDocument();
+    expect(screen.getByText("AR18BSAAAWK/FA")).toBeInTheDocument();
+    expect(screen.getByText("Air Conditioning (2)")).toBeInTheDocument();
+  });
+
   it("matches the MaterialsStep piping terms", () => {
     expect(isPipingProduct(copper)).toBe(true);
     expect(isPipingProduct(product("INS", "Foam", { description: "pipe insulation" }))).toBe(true);
