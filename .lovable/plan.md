@@ -1,13 +1,21 @@
-# Show every active catalogue service
+# Canonical quote builder release
 
-## Changes
-- Extend the core-service mirror with “Extraction system” and “Fresh air system” after “Package unit”, allowing blank descriptions.
-- Update the shared Add service dropdown so its list has a reliable scrollable height on desktop and mobile, without limiting service rows.
-- Since every quote-builder Add service entry uses the shared `QuoteQuickEditor`, verify each builder surface receives the same full list.
+## Build
+- Replace the initial area-name entry with four primary blue choices—Main bedroom, Guest bedroom, Lounge, Office—and an Other menu containing the remaining approved names plus free typing. Repeated names keep automatic numbering.
+- Collapse the area chooser after creation, then render one action row: Add unit, Add service, Add material, Selected. Add area reopens the same chooser in a shadowed pop-up within the estimate, above totals.
+- Make Selected read only from the existing PDF Selected Items basket and remove the Favourites label from that view.
+- Put personal favourites directly below each item search: opening an empty search shows favourites; typing switches to ranked catalogue search; selecting one uses the existing quote add path.
+- Keep the area table as Description, Rate, Quantity, Line total, with labour last inside each area and its existing orange outline.
+- Apply slate/grey surfaces, blue accents, and orange selected states using semantic design tokens and existing controls.
+
+## Compatibility
+- Preserve existing areas and lines, pricing, specials, resolved bundles, R0 send block, manual labour, automatic labour reconciliation, PDF radio three-click cycle, and client output.
+- The two new services remain zero-price lines with no description until edited.
+
+## Technical details
+- Reuse the shared area-name and quick-editor components so estimate detail, AreaFirst, Visual PDF, wizard, inline builder, popup, BasketCanvas, desktop, and mobile stay aligned.
+- Do not alter the database, backend functions, Mandy files, or saved quote data.
 
 ## Verification
-- Add tests proving all 12 active core services remain ordered and visible to the picker, including blank descriptions.
-- Run the focused tests and inspect the live picker at desktop and 390px with the read-only browser guard, confirming 12 service names render.
-
-## Scope
-- UI and shared frontend catalogue helpers only; no database, pricing, or server-function changes.
+- Add focused tests for chooser ordering/collapse, repeated-name numbering, Selected basket labeling, favourites/search behavior, service ordering, R0 service lines, and control placement.
+- Run affected tests and guarded browser checks at 1280px and 390px without allowing database writes.

@@ -10,7 +10,7 @@ export interface CatalogService {
   search_aliases?: string[] | null;
 }
 
-/** The 10 approved core services (name + master description), in sort_order 1..10. */
+/** The 12 approved core services (name + master description), in sort_order 1..12. */
 export const CORE_SERVICES = [
   { name: "Removal of existing air conditioner", description: "Safe disconnection and removal of the existing unit, with responsible refrigerant handling, leaving the area clean." },
   { name: "Removal and reinstallation of existing air conditioner", description: "Relocate the existing unit, including refrigerant recovery, new piping as needed, and commissioning." },
@@ -22,6 +22,8 @@ export const CORE_SERVICES = [
   { name: "Service of split wall units", description: "Routine maintenance of split wall units to keep them clean, efficient and reliable, including cleaning, checks and a performance test." },
   { name: "Service of cassette and hideaway systems", description: "Routine maintenance of cassette and hideaway systems, including cleaning, checks and a performance test." },
   { name: "Package unit", description: "Installation or service of package units." },
+  { name: "Extraction system", description: null },
+  { name: "Fresh air system", description: null },
 ] as const;
 export const CORE_SERVICE_NAMES = CORE_SERVICES.map((s) => s.name);
 
