@@ -26,6 +26,7 @@ import { createEmptyArea } from "../quoteWizardTypes";
 interface Props {
   areas: QuoteArea[];
   onAreasChange: (areas: QuoteArea[]) => void;
+  controlsOnly?: boolean;
 }
 
 // Category-specific area options
@@ -107,7 +108,7 @@ function SortableAreaRow({
   );
 }
 
-export default function AreaDefinitionStep({ areas, onAreasChange }: Props) {
+export default function AreaDefinitionStep({ areas, onAreasChange, controlsOnly = false }: Props) {
   const [customMode, setCustomMode] = useState(false);
   const [customName, setCustomName] = useState("");
 
@@ -162,6 +163,7 @@ export default function AreaDefinitionStep({ areas, onAreasChange }: Props) {
 
   return (
     <div className="space-y-4">
+      {!controlsOnly && <>
       <p className="text-sm text-muted-foreground">
         Define the areas/rooms for this installation. Each area will get its own AC unit, materials, and consumables. Drag to reorder.
       </p>
@@ -185,8 +187,38 @@ export default function AreaDefinitionStep({ areas, onAreasChange }: Props) {
         )}
       </div>
 
+      {/* Area list */}
+      {areas.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-10 text-center space-y-3">
+          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+            <Home className="h-7 w-7 text-muted-foreground/60" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">No areas yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Add a room to start building your quote — use a template or the Add Area button below.</p>
+          </div>
+        </div>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={areas.map((a) => a.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
+              {areas.map((area, i) => (
+                <SortableAreaRow
+                  key={area.id}
+                  area={area}
+                  index={i}
+                  onRename={renameArea}
+                  onRemove={removeArea}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
+      </>}
+
       {/* Add Area dropdown + custom input */}
-      <div className="flex gap-2">
+      <div className="flex gap-2" data-testid="inline-area-create">
         {customMode ? (
           <>
             <Input
@@ -248,34 +280,6 @@ export default function AreaDefinitionStep({ areas, onAreasChange }: Props) {
         )}
       </div>
 
-      {/* Area list */}
-      {areas.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-10 text-center space-y-3">
-          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-            <Home className="h-7 w-7 text-muted-foreground/60" />
-          </div>
-          <div>
-            <p className="text-sm font-medium">No areas yet</p>
-            <p className="text-xs text-muted-foreground mt-1">Add a room to start building your quote — use a template or the Add Area button above.</p>
-          </div>
-        </div>
-      ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={areas.map((a) => a.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-2">
-              {areas.map((area, i) => (
-                <SortableAreaRow
-                  key={area.id}
-                  area={area}
-                  index={i}
-                  onRename={renameArea}
-                  onRemove={removeArea}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-      )}
     </div>
   );
 }

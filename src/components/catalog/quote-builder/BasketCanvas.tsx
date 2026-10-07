@@ -181,21 +181,11 @@ const BasketCanvas = ({
               {!isCompact && "Clear All"}
             </Button>
           )}
-          {!isCompact && <ZoneTemplateSelector onApplyTemplate={effectiveApplyTemplate} />}
-          <Button variant="outline" size="sm" className={`gap-0.5 ${isCompact ? "h-6 text-[10px] px-1.5" : "h-7 text-xs"}`} onClick={effectiveAddZone}>
-            <Plus className={isCompact ? "h-2.5 w-2.5" : "h-3 w-3"} />
-            {isCompact ? "Zone" : "Add Zone"}
-          </Button>
+
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0" style={{ scrollBehavior: "smooth" as any }}>
-        {areaBuilderNode && (
-          <div className="px-[5px] py-2">
-            {areaBuilderNode}
-          </div>
-        )}
-
         <div className={`${isCompact ? "p-1.5 space-y-1.5" : "p-3 space-y-3"}`}>
           {baskets.length === 0 ? (
             <div className={`flex flex-col items-center justify-center text-muted-foreground ${isCompact ? "py-6" : "py-12"}`}>
@@ -223,6 +213,18 @@ const BasketCanvas = ({
               />
             ))
           )}
+          {areaBuilderNode && (
+            <div className="px-[5px] py-2">
+              {areaBuilderNode}
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-1" data-testid="inline-zone-create">
+          {!isCompact && <ZoneTemplateSelector onApplyTemplate={effectiveApplyTemplate} />}
+          {!hasAreaBuilder && <Button variant="outline" size="sm" className={`gap-0.5 ${isCompact ? "h-6 text-[10px] px-1.5" : "h-7 text-xs"}`} onClick={effectiveAddZone}>
+            <Plus className={isCompact ? "h-2.5 w-2.5" : "h-3 w-3"} />
+            {isCompact ? "Zone" : "Add Zone"}
+          </Button>}
+          </div>
         </div>
       </div>
     </div>

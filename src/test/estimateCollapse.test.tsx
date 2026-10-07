@@ -40,6 +40,16 @@ const renderDocument = (editing?: EstimateEditing) => render(
 );
 
 describe("estimate area collapse", () => {
+  it("renders one custom creation control after the last section, without the generic duplicate", () => {
+    const r = renderDocument({ ...baseEditing, areaCreationControl: <div>Create area · Bedroom · Lounge</div> });
+    const control = screen.getByTestId("inline-estimate-area-create");
+    const section = r.container.querySelector('[data-area-id="area-1"]');
+    expect(section?.compareDocumentPosition(control)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(screen.queryByRole("button", { name: "Add area" })).toBeNull();
+    expect(screen.getAllByText("Create area · Bedroom · Lounge")).toHaveLength(1);
+    expect(control).toHaveAttribute("data-html2canvas-ignore");
+  });
+
   it("keeps collapsed rows mounted and printable", () => {
     renderDocument({ ...baseEditing, collapsedAreaKeys: new Set(["area-1"]), onToggleArea: vi.fn() });
     expect(screen.getByRole("button", { name: "Show 2 items" })).toHaveAttribute("aria-expanded", "false");
