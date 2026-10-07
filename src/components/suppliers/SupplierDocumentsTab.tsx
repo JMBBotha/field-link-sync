@@ -258,16 +258,15 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       // ── Replace only the old PDF page images (not products) ──
       // Legacy rows may key supplier_id by the supplier's text NAME instead of UUID.
       const aliases = new Set<string>([supplierId]);
-      let name = supplierName?.trim();
-      if (!name) {
+      let rawName = supplierName;
+      if (!rawName) {
         const { data: sRow } = await supabase.from("suppliers").select("name").eq("id", supplierId).maybeSingle();
-        name = (sRow as any)?.name?.trim();
+        rawName = (sRow as any)?.name;
       }
-      if (name) {
-        aliases.add(name);
-        const { data: sRow2 } = await supabase.from("suppliers").select("name").eq("id", supplierId).maybeSingle();
-        const rawName = (sRow2 as any)?.name;
-        if (rawName) aliases.add(String(rawName));
+      if (rawName) {
+        aliases.add(String(rawName)); // exact (may have trailing space)
+        const trimmed = String(rawName).trim();
+        if (trimmed) aliases.add(trimmed);
       }
       const aliasArr = Array.from(aliases);
 
@@ -286,7 +285,12 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           await supabase.storage.from("supplier-pdf-pages").remove(imagePaths);
         }
       }
-      await (supabase.from("supplier_pdf_pages" as any) as any).delete().eq("supplier_id", supplierId);
+      await (supabase.from("supplier_pdf_pages" as any) as any).delete().in("supplier_id", aliasArr);
+
+      // ── Archive this supplier's existing pdf_uploads so old books stop driving the catalog ──
+      await (supabase.from("pdf_uploads") as any)
+        .update({ is_active: false, status: "archived" })
+        .eq("supplier_id", supplierId);
 
       // ── Process the new PDF ──
       setPriceListProgress("Loading PDF...");
