@@ -173,6 +173,7 @@ export default function QuoteQuickEditor({
   }, [pdfBasket, products]);
   const basketIds = useMemo(() => new Set(basketProducts.map((p) => p.id)), [basketProducts]);
 
+  const [itemFocus, setItemFocus] = useState(false);
   const emptySections = useMemo(() => {
     if (mode !== "unit" && mode !== "material" && mode !== "item") return null;
     const fits = (p: PaletteProduct) => mode === "item" || (mode === "unit") === isAirConditioningProduct(p);
@@ -373,14 +374,17 @@ export default function QuoteQuickEditor({
           <Input
             value={productTerm}
             onChange={(e) => setProductTerm(e.target.value)}
+            onFocus={() => setItemFocus(true)}
+            onBlur={() => setItemFocus(false)}
+            data-area-item-search
             autoFocus={mode === "unit" || mode === "material"}
             placeholder={mode === "unit" ? "Search units…" : mode === "material" ? "Search materials…" : mode === "item" ? "Search model, size (12k) or name…" : "Add item from catalog…"}
             className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
           />
           {loadingProducts && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-slate-400" />}
-          {(productResults.length > 0 || (!productTerm.trim() && emptySections)) && (
+          {(mode !== "item" || itemFocus) && (productResults.length > 0 || (!productTerm.trim() && emptySections)) && (
             <ScrollArea className={`absolute z-30 ${dropdownPos} max-h-64 w-full rounded-md border border-slate-200 bg-white shadow-lg`}>
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100" onMouseDown={(e) => { if (mode === "item") e.preventDefault(); }}>
                 {productResults.length > 0
                   ? productResults.map((p) => renderRow(p))
                   : emptySections && (<>
