@@ -421,6 +421,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-[5px] py-4 min-h-0">
         {stepContent}
+        {currentStep !== 0 && <div className="mt-4"><AreaDefinitionStep areas={areas} onAreasChange={setAreas} controlsOnly /></div>}
       </div>
 
       {/* Footer */}

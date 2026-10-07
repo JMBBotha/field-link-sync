@@ -12,7 +12,7 @@ import RemoveUnitDialog from "@/components/quoting/RemoveUnitDialog";
 import { linkedToUnit } from "@/lib/unitInstallLinks";
 import { useIsPhone } from "@/hooks/useIsPhone";
 import { isLabourItem } from "@/lib/labour";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -62,6 +62,7 @@ interface Props {
   onChanged?: () => void;
   /** Area-first PDF builder: one always-on item search per area + one combined Add menu; no separate presence. */
   areaFirst?: boolean;
+  areaCreationControl?: ReactNode;
 }
 
 /** Header shown for the default catch-all section (named areas keep their name). */
@@ -91,6 +92,7 @@ export default function EstimateBuilder({
   onChanged,
   pdfBasket,
   areaFirst = false,
+  areaCreationControl,
 }: Props) {
   const {
     quoteId, meta, areas, items, loading,
@@ -454,6 +456,7 @@ export default function EstimateBuilder({
         notes={notes}
         termsText={termsText}
         editing={{
+          areaCreationControl,
           areas: editAreas,
           collapsedAreaKeys,
           onToggleArea: (key) => setCollapsedAreaKeys((current) => {

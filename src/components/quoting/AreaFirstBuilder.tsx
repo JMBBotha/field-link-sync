@@ -63,6 +63,7 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
     <div className="mx-auto w-full max-w-4xl space-y-4 p-3 pb-24 sm:p-4">
       <EstimateBuilder
         areaFirst
+        areaCreationControl={createAreaSection}
         pdfBasket={pdfBasket}
         quoteNumber={m.quote_number ?? ""}
         issueDate={m.created_at ?? new Date().toISOString()}
@@ -76,7 +77,6 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
         notes={m.notes ?? null}
         termsText={m.terms_text ?? null}
       />
-      {createAreaSection}
     </div>
   );
 }

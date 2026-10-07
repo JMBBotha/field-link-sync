@@ -112,6 +112,8 @@ export interface EstimateEditing {
 
   /** Per-area add controls (Add unit / service / material), rendered inside each area block. */
   renderAreaAdd?: (areaId: string | null) => ReactNode;
+  /** Single inline creation control after all quote sections, before totals. */
+  areaCreationControl?: ReactNode;
   collapsedAreaKeys?: Set<string>;
   onToggleArea?: (key: string) => void;
   /** Discount control rendered in the totals block. */
@@ -770,13 +772,6 @@ const EstimateDocument = ({
               </section>
             )}
 
-            <button
-              type="button"
-              onClick={editing.onAddArea}
-              className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 bg-white px-3 py-1.5 text-[12px] text-slate-600 hover:border-[#1B3A5C] hover:text-[#1B3A5C] print:hidden"
-            >
-              <Plus className="h-3.5 w-3.5" /> Add area
-            </button>
             {!!editing.unassignedLabour?.length && (
               <div className="border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 print:hidden" data-testid="unassigned-labour">
                 <p className="mb-2 font-semibold">Unassigned labour</p>
@@ -790,6 +785,17 @@ const EstimateDocument = ({
                 ))}
               </div>
             )}
+            <div className="print:hidden" data-pdf-hide data-html2canvas-ignore data-testid="inline-estimate-area-create">
+              {editing.areaCreationControl ?? (
+                <button
+                  type="button"
+                  onClick={editing.onAddArea}
+                  className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 bg-white px-3 py-1.5 text-[12px] text-slate-600 hover:border-[#1B3A5C] hover:text-[#1B3A5C] print:hidden"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add area
+                </button>
+              )}
+            </div>
           </div>
 
         ) : rollup ? (
