@@ -66,6 +66,7 @@ export function useQuoteFavourites() {
 
   const toggle = useCallback(async (productId: string): Promise<boolean | null> => {
     if (!userId) return null;
+    await qc.cancelQueries({ queryKey: key });
     const prev = qc.getQueryData<FavState>(key) ?? state;
     const plan = planFavouriteToggle(prev.source, prev.ids, productId);
     qc.setQueryData<FavState>(key, { source: "personal", ids: [...plan.next] });
