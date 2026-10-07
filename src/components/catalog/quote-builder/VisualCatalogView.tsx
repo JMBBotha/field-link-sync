@@ -82,7 +82,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
     queryKey: ["visual-catalog-pages", selectedSupplier],
     queryFn: async () => {
       let query = (supabase.from("supplier_pdf_pages") as any)
-        .select("id, supplier_id, pdf_filename, page_number, page_image_url")
+        .select("id, supplier_id, pdf_filename, page_number, page_image_url, pdf_upload_id")
         .order("supplier_id")
         .order("pdf_filename")
         .order("page_number");
@@ -93,7 +93,11 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
 
       const { data, error } = await query.limit(100);
       if (error) throw error;
-      return data || [];
+      // Exclude pages belonging to inactive pdf_uploads (null pdf_upload_id stays visible)
+      const { data: inactiveUploads } = await (supabase.from("pdf_uploads") as any)
+        .select("id").eq("is_active", false).limit(2000);
+      const inactiveIds = new Set<string>((inactiveUploads || []).map((u: any) => u.id));
+      return (data || []).filter((p: any) => !p.pdf_upload_id || !inactiveIds.has(p.pdf_upload_id));
     },
     staleTime: 30000,
   });

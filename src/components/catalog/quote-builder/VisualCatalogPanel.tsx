@@ -327,10 +327,15 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
       if (selectedSupplier !== "all") query = query.eq("supplier_id", selectedSupplier);
       const { data, error } = await query.limit(500);
       if (error) throw error;
+      // Exclude pages belonging to inactive pdf_uploads (null pdf_upload_id stays visible)
+      const { data: inactiveUploads } = await (supabase.from("pdf_uploads") as any)
+        .select("id").eq("is_active", false).limit(2000);
+      const inactiveIds = new Set<string>((inactiveUploads || []).map((u: any) => u.id));
       // Deduplicate by (supplier_id, pdf_filename, page_number) – keep first occurrence
       const seen = new Set<string>();
       const deduped: typeof data = [];
       for (const row of (data || [])) {
+        if (row.pdf_upload_id && inactiveIds.has(row.pdf_upload_id)) continue;
         const key = `${row.supplier_id}|${row.pdf_filename}|${row.page_number}`;
         if (!seen.has(key)) {
           seen.add(key);

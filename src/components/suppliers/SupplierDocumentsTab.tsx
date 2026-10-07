@@ -256,9 +256,24 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
 
     try {
       // ── Replace only the old PDF page images (not products) ──
+      // Legacy rows may key supplier_id by the supplier's text NAME instead of UUID.
+      const aliases = new Set<string>([supplierId]);
+      let name = supplierName?.trim();
+      if (!name) {
+        const { data: sRow } = await supabase.from("suppliers").select("name").eq("id", supplierId).maybeSingle();
+        name = (sRow as any)?.name?.trim();
+      }
+      if (name) {
+        aliases.add(name);
+        const { data: sRow2 } = await supabase.from("suppliers").select("name").eq("id", supplierId).maybeSingle();
+        const rawName = (sRow2 as any)?.name;
+        if (rawName) aliases.add(String(rawName));
+      }
+      const aliasArr = Array.from(aliases);
+
       const { data: oldPages } = await (supabase.from("supplier_pdf_pages" as any) as any)
         .select("page_image_url")
-        .eq("supplier_id", supplierId);
+        .in("supplier_id", aliasArr);
       if (oldPages && oldPages.length > 0) {
         const imagePaths = oldPages
           .map((p: any) => {
