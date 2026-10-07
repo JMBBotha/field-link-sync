@@ -75,6 +75,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { isAirConditioningProduct, planStandardInstall } from "@/lib/mandy/quoteOps";
 import { fetchVisualCatalogAllowlist, filterPaletteCatalog } from "@/lib/catalogSoT";
+import { useActiveSpecials } from "@/hooks/useActiveSpecials";
+import { useSpecialPrompt } from "@/components/specials/SpecialsUi";
+import { specialLineMeta } from "@/lib/specials";
 
 
 export type QuoteBuilderMode = "admin" | "agent";
@@ -605,6 +608,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
 
   // Shared PDF product selection state
   const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>(() => readPdfBasket(quoteId));
+  const { find: findSpecial } = useActiveSpecials();
+  const specialPrompt = useSpecialPrompt();
   // Persist the basket per quote (shared with the estimate page drop-downs).
   const basketKeyRef = useRef<string | null>(null);
   const basketJsonRef = useRef<string>("");
@@ -765,7 +770,22 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
       const addedRowIds: string[] = [];
       let sortOrder = ctxItems.length ? Math.max(...ctxItems.map((i) => i.sort_order || 0)) + 1 : 0;
 
+      // Specials overlay: ask per running special; Yes = special cost on THIS line only, standard markup on top.
+      const specialMeta = new Map<string, Record<string, any>>();
+      const toCommit: PdfSelectedProduct[] = [];
       for (const item of selectedFromPdf) {
+        const sp = findSpecial(item.productId || null, item.productCode || null);
+        if (!sp) { toCommit.push(item); continue; }
+        const normal = item.costPrice != null ? Number(item.costPrice) : 0;
+        if (await specialPrompt.ask(sp, normal)) {
+          const mk = resolveProductMarkupPercent(pdfItemToPaletteProduct(item) as any);
+          const cost = Number(sp.special_cost);
+          specialMeta.set(item.code, specialLineMeta(sp, normal));
+          toCommit.push({ ...item, costPrice: cost, markupPercent: mk, price: String(standardSell(cost, mk)) } as PdfSelectedProduct);
+        } else toCommit.push(item);
+      }
+
+      for (const item of toCommit) {
         const product = pdfItemToPaletteProduct(item);
         const quantity = item.quantity || 1;
         const unitSell = parseFloat(item.price) || 0;
@@ -784,7 +804,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
           total_price: null,
           is_bundle: false,
           item_type: "product",
-          metadata: { unit_cost: Number(unitCost.toFixed(2)), markup_percent: markupPct, quote_category: classifyQuoteCategory(product as any) },
+          metadata: { unit_cost: Number(unitCost.toFixed(2)), markup_percent: markupPct, quote_category: classifyQuoteCategory(product as any), ...(specialMeta.get(item.code) || {}) },
           sort_order: sortOrder++,
           notes: null,
           source: "catalog",
@@ -799,7 +819,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
       }
       if (committed.length > 0) {
         const committedSet = new Set(committed);
-        const entries = selectedFromPdf
+        const entries = toCommit
           .filter((i) => committedSet.has(i.code))
           .map((item) => {
             // Lock to exactly what was committed so auto-save can't re-price it.
@@ -849,7 +869,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
       setAreaPickerOpen(false);
       setNewAreaName("");
     },
-    [selectedFromPdf, ctxItems, ctxAddItem, seedPdfDescription],
+    [selectedFromPdf, ctxItems, ctxAddItem, seedPdfDescription, findSpecial, specialPrompt],
   );
 
   /** Entry point from the Visual PDF "Add N to quote" button. */
