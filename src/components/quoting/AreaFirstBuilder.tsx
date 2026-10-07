@@ -62,8 +62,8 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
       <EstimateBuilder
         areaFirst
         pdfBasket={pdfBasket}
-        quoteNumber={m.quote_number ?? null}
-        issueDate={m.created_at ?? null}
+        quoteNumber={m.quote_number ?? ""}
+        issueDate={m.created_at ?? new Date().toISOString()}
         validUntil={m.valid_until ?? null}
         customerName={m.customer_name || "Customer"}
         customerCompany={null}
