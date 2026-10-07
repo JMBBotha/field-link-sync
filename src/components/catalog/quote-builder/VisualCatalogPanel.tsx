@@ -1320,6 +1320,13 @@ const LazyPdfPage = ({
         if (!readOnly && unmatchedWithPrice.length > 0) {
           try {
             const result = await autoCatalogFromRegions(regions, page.supplier_id, page.pdf_upload_id ?? null);
+            if (result.proposals?.length) {
+              toast({
+                title: `${result.proposals.length} possible new products on page ${page.page_number}`,
+                description: "Not added. Run AI Import on Supplier > Documents to review them.",
+                duration: 5000,
+              });
+            }
             
             if (result.insertedCount > 0) {
               console.log(`[VisualCatalog] Auto-cataloged ${result.insertedCount} new products from page ${page.page_number}`);

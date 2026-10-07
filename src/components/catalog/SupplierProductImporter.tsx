@@ -662,6 +662,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
 
   // ─── Apply diff import ───
   const handleApplyDiff = async (forceAll = false) => {
+    // Review gate: this importer has no enforced review, so it never writes.
+    if (forceAll !== null) { toast({ title: "Use AI Import with review", description: "Direct imports are disabled. Upload the price list on Supplier > Documents and run AI Import — every row is reviewed before saving.", variant: "destructive" }); return; }
     setImportingDiff(true); setError(null); setProgress(0);
 
     const workingRowsPreview = forceAll
@@ -782,6 +784,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
 
   /** Parse pasted CSV text with category-header detection */
   const handlePasteImport = async () => {
+    // Review gate: pasted rows were upserted straight into the catalogue — disabled.
+    if (pasteText !== null) { toast({ title: "Use AI Import with review", description: "Direct imports are disabled. Upload the price list on Supplier > Documents and run AI Import — every row is reviewed before saving.", variant: "destructive" }); return; }
     if (!pasteText.trim()) return;
     setImporting(true); setProgress(0); setError(null); setResult(null);
     try {
