@@ -6733,6 +6733,69 @@ export type Database = {
           },
         ]
       }
+      supplier_specials: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          end_date: string
+          id: string
+          is_active: boolean
+          model_number: string
+          notes: string | null
+          special_cost: number
+          specials_pdf_path: string | null
+          start_date: string
+          supplier_id: string | null
+          supplier_product_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          end_date: string
+          id?: string
+          is_active?: boolean
+          model_number: string
+          notes?: string | null
+          special_cost: number
+          specials_pdf_path?: string | null
+          start_date: string
+          supplier_id?: string | null
+          supplier_product_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          model_number?: string
+          notes?: string | null
+          special_cost?: number
+          specials_pdf_path?: string | null
+          start_date?: string
+          supplier_id?: string | null
+          supplier_product_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_specials_supplier_product_id_fkey"
+            columns: ["supplier_product_id"]
+            isOneToOne: false
+            referencedRelation: "live_supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_specials_supplier_product_id_fkey"
+            columns: ["supplier_product_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           company_name: string | null
@@ -8234,6 +8297,7 @@ export type Database = {
         Returns: boolean
       }
       can_read_master_catalog: { Args: { _uid: string }; Returns: boolean }
+      can_read_specials: { Args: { _uid: string }; Returns: boolean }
       can_view_company_overruns: {
         Args: { _job_id: string; _uid: string }
         Returns: boolean
@@ -8243,6 +8307,7 @@ export type Database = {
         Returns: boolean
       }
       can_write_master_catalog: { Args: { _uid: string }; Returns: boolean }
+      can_write_specials: { Args: { _uid: string }; Returns: boolean }
       check_customer_duplicates: {
         Args: {
           p_address?: string
