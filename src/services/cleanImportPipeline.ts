@@ -17,6 +17,10 @@ export async function cleanImportForSupplier(supplierId: string): Promise<{
   deletedProducts: number;
   deletedPdfs: number;
 }> {
+  // DISABLED: full hard-delete purge bypasses the import review gate.
+  // Use archive + Documents > AI Import (reviewed diff) instead.
+  throw new Error("Permanent purge is disabled. Archive products, then re-import through AI Import review.");
+  // eslint-disable-next-line no-unreachable
   console.log(`[CleanImport] Starting full purge for supplier ${supplierId}`);
 
   // ─── PHASE 1: Get all existing IDs ───

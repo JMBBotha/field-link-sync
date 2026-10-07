@@ -607,6 +607,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         fileName: file?.name || "AI Import",
         isFullCatalogue,
         pdfUploadId: storedUploadIdRef.current,
+        reviewGatePassed: true, // reached only after ImportPreviewModal's enforced review
       });
 
       // Record the review decisions (who, when, choices) — non-fatal.
@@ -689,7 +690,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       </Button>
 
       {/* Clear All & Re-upload */}
-      {(activeProductCount > 0 || catalogPageCount > 0) && (
+      {/* Clear All & Re-upload disabled: destructive purge bypassed the review gate. */}
+      {false && (activeProductCount > 0 || catalogPageCount > 0) && (
         <Card className="border-dashed border-destructive/30 bg-destructive/5">
           <CardContent className="p-3 flex items-center justify-between">
             <div className="min-w-0">

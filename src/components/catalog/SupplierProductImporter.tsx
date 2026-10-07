@@ -13,6 +13,9 @@ import { Switch } from "@/components/ui/switch";
 import { Upload, FileSpreadsheet, Loader2, AlertCircle, Check, Sparkles, FileUp, FileText, X, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+/** Review gate: this importer writes without ImportPreviewModal review, so its writes are off. */
+const DIRECT_IMPORT_DISABLED: boolean = true;
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import PriceConfigPanel, { calculatePrices, type PriceConfig } from "./PriceConfigPanel";
@@ -662,6 +665,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
 
   // ─── Apply diff import ───
   const handleApplyDiff = async (forceAll = false) => {
+    // Review gate: this importer has no enforced review, so it never writes.
+    if (DIRECT_IMPORT_DISABLED) { toast({ title: "Use AI Import with review", description: "Direct imports are disabled. Upload the price list on Supplier > Documents and run AI Import — every row is reviewed before saving.", variant: "destructive" }); return; }
     setImportingDiff(true); setError(null); setProgress(0);
 
     const workingRowsPreview = forceAll
@@ -782,6 +787,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
 
   /** Parse pasted CSV text with category-header detection */
   const handlePasteImport = async () => {
+    // Review gate: pasted rows were upserted straight into the catalogue — disabled.
+    if (DIRECT_IMPORT_DISABLED) { toast({ title: "Use AI Import with review", description: "Direct imports are disabled. Upload the price list on Supplier > Documents and run AI Import — every row is reviewed before saving.", variant: "destructive" }); return; }
     if (!pasteText.trim()) return;
     setImporting(true); setProgress(0); setError(null); setResult(null);
     try {

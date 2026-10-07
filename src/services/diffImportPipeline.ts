@@ -232,6 +232,8 @@ export interface ApplyDiffOptions {
   pdfUploadId?: string | null;
   /** Trade discount % for this book (0 for NETT books like Livance/Midea). */
   tradeDiscountPercent?: number;
+  /** Must be true: only the enforced review gate (ImportPreviewModal) may write. */
+  reviewGatePassed?: boolean;
 }
 
 
@@ -264,7 +266,11 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
     isFullCatalogue = true,
     pdfUploadId = null,
     tradeDiscountPercent = 0,
+    reviewGatePassed = false,
   } = opts;
+  if (!reviewGatePassed) {
+    throw new Error("Price-list imports must go through the review gate (Supplier > Documents > AI Import).");
+  }
 
   /** Per-row book/pricing columns applied on insert, update AND restore. */
   const bookFields = (row: DiffRow) => {

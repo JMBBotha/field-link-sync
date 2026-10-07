@@ -353,7 +353,8 @@ async function parsePDFWithFullPipeline(
   } catch (err) { console.warn("[Import] Page-by-page AI failed:", err); }
 
   // STAGE 4: Lovable AI fallback
-  if (rawRows.length === 0 && allText.trim().length > 50) {
+  // parse-price-list writes supplier_products itself (no review) — never call it from preview.
+  if (false && rawRows.length === 0 && allText.trim().length > 50) {
     onStage?.({ stage: "ai_extraction", detail: "Trying Lovable AI..." });
     try {
       const { data, error } = await supabase.functions.invoke("parse-price-list", {
@@ -602,8 +603,8 @@ async function parseCSVFile(file: File, settings: SupplierPricingSettings, suppl
   const effectiveInclVat = vatDetection.confidence === "high" ? vatDetection.isIncl : settings.pricesIncludeVat;
   const effectiveDiscount = discountDetection.confidence === "high" ? discountDetection.percent : settings.tradeDiscount;
 
-  // Try Lovable AI first
-  if (supplierId) {
+  // parse-price-list writes supplier_products itself (no review) — never call it from preview.
+  if (false && supplierId) {
     try {
       const { data, error } = await supabase.functions.invoke("parse-price-list", {
         body: { csv_text: text.substring(0, 15000), supplier_id: supplierId, supplier_name: settings.supplierName },

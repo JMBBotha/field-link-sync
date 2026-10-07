@@ -1,6 +1,6 @@
 /**
  * Auto-catalog utility: detects unmatched priced items from PDF text extraction
- * and inserts them into supplier_products automatically.
+ * and PROPOSES them (never inserts — writes go through the import review gate).
  *
  * Supports two modes:
  *   - HVAC (strict): requires model codes + 2 prices
@@ -76,6 +76,8 @@ interface AutoCatalogResult {
     supplier_id: string;
     brand: string;
   }>;
+  /** Rows that look like new products; never written — review via AI Import. */
+  proposals?: Array<{ product_code: string; description: string; list_price: number }>;
 }
 
 /**
@@ -248,52 +250,13 @@ export async function autoCatalogFromRegions(
   // Set product_category explicitly for consumable items
   const productCategory = isConsumableStyle ? "Consumables" : category;
 
-  // Batch insert (50 at a time)
-  const allNew: AutoCatalogResult["newProducts"] = [];
-  const batchSize = 50;
-
-  for (let i = 0; i < toInsert.length; i += batchSize) {
-    const batch = toInsert.slice(i, i + batchSize).map(c => {
-      const rawExclVat = c.price;
-      // cost_price = discounted buy price (discount applied if supplier toggle is on)
-      const costPrice = Math.round(rawExclVat * (1 - supplierDiscountPercent / 100) * 100) / 100;
-      const markupPct = supplierMarkupPercent;
-      return {
-        supplier_id: supplierUuid,
-        product_code: c.sku,
-        short_name: c.shortName,
-        description: c.description,
-        cost_price: costPrice,
-        cost_excl_vat: costPrice,
-        
-        default_markup_percent: markupPct,
-        supplier_discount_percent: supplierDiscountPercent,
-        brand,
-        pdf_upload_id: pdfUploadId,
-        product_category: productCategory,
-        category: productCategory,
-        is_active: true,
-        archived: false,
-      };
-    });
-
-    // Use INSERT only — no upsert/merge to prevent stale data carrying over
-    const { data: inserted, error } = await (supabase.from("supplier_products") as any)
-      .insert(batch)
-      .select("id, product_code, short_name, description, cost_excl_vat, supplier_id, brand");
-
-    if (error) {
-      console.error(`[autoCatalog] Insert batch failed:`, error.message, error.details, error.hint);
-      continue;
-    }
-
-    console.log(`[autoCatalog] Batch insert returned ${inserted?.length ?? 0} rows`);
-
-    if (inserted) {
-      allNew.push(...inserted);
-    }
-  }
-
-  console.log(`[autoCatalog] Inserted ${allNew.length} new products for ${brand} (style: ${isConsumableStyle ? "consumable" : "hvac"})`);
-  return { insertedCount: allNew.length, newProducts: allNew };
+  // REVIEW GATE: background creation from PDF text never writes supplier_products.
+  // Candidates are only proposed; staff add them via Documents > AI Import, whose
+  // enforced review gate (ImportPreviewModal) is the only price-list write path.
+  console.log(`[autoCatalog] ${toInsert.length} possible new products proposed (not inserted) — category ${productCategory}`);
+  return {
+    insertedCount: 0,
+    newProducts: [],
+    proposals: toInsert.map((c) => ({ product_code: c.sku, description: c.description, list_price: c.price })),
+  };
 }
