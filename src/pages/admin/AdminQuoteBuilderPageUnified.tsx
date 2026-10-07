@@ -1,3 +1,4 @@
+import { readPdfBasket, writePdfBasket, migrateDraftPdfBasket, pdfBasketKey } from "@/lib/pdfBasketStore";
 import { basketInstallFrom } from "@/lib/installTemplates";
 import QuoteBuilderLayout from "@/components/quoting/QuoteBuilderLayout";
 import PricingChecksRow from "@/components/quoting/PricingChecksRow";
@@ -603,7 +604,32 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
   const areaClearAllRef = useRef<(() => void) | null>(null);
 
   // Shared PDF product selection state
-  const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>([]);
+  const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>(() => readPdfBasket(quoteId));
+  // Persist the basket per quote (shared with the estimate page drop-downs).
+  const basketKeyRef = useRef<string | null>(null);
+  const basketJsonRef = useRef<string>("");
+  useEffect(() => {
+    if (quoteId) migrateDraftPdfBasket(quoteId);
+    const next = readPdfBasket(quoteId);
+    basketKeyRef.current = pdfBasketKey(quoteId);
+    basketJsonRef.current = JSON.stringify(next);
+    setSelectedFromPdf(next);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== basketKeyRef.current) return;
+      const v = readPdfBasket(quoteId);
+      basketJsonRef.current = JSON.stringify(v);
+      setSelectedFromPdf(v);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [quoteId]);
+  useEffect(() => {
+    if (basketKeyRef.current !== pdfBasketKey(quoteId)) return;
+    const json = JSON.stringify(selectedFromPdf);
+    if (json === basketJsonRef.current) return;
+    basketJsonRef.current = json;
+    writePdfBasket(quoteId, selectedFromPdf);
+  }, [selectedFromPdf, quoteId]);
   const [floatingOpen, setFloatingOpen] = useState(false);
 
   const handleSelectProduct = useCallback((product: Pick<PdfSelectedProduct, "code" | "description" | "price"> & Partial<Pick<PdfSelectedProduct, "costPrice" | "markupPercent">>) => {
