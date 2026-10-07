@@ -1097,6 +1097,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
     }
   }, []);
 
+  const flushSaveRef = useRef<(() => Promise<void>) | null>(null);
+  flushSaveRef.current = flushSave;
+
   // Debounced auto-save while editing.
   useEffect(() => {
     if (!isDirty) return;
