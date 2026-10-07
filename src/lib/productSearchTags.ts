@@ -58,6 +58,7 @@ export function deriveSearchTags(p: TagSource): string {
   const tags = new Set<string>();
   const add = (w: string | null | undefined) => {
     const t = (w || "").toLowerCase().trim();
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-/.test(t)) return; // ids leaked into text columns
     if (t.length >= 2 && !STOP.has(t)) tags.add(t);
   };
 
@@ -73,11 +74,11 @@ export function deriveSearchTags(p: TagSource): string {
   // BTU sizes from columns and text (9000, 12 000, 12k, 18000btu).
   const btus = new Set<number>();
   for (const b of [p.btu_rating, p.capacity_btu]) if (b && b >= 5000 && b <= 200000) btus.add(Math.round(b));
-  for (const m of text.matchAll(/\b(\d{1,3})[\s,]?000\s*(btu)?\b/gi)) {
+  for (const m of text.matchAll(/(?<![\d.,])(\d{1,3})[\s,]?000\s*(btu)?\b/gi)) {
     const v = Number(m[1]) * 1000; if (v >= 5000 && v <= 200000) btus.add(v);
   }
-  for (const m of text.matchAll(/\b(\d{1,3})\s*k\b/gi)) {
-    const v = Number(m[1]) * 1000; if (v >= 5000 && v <= 200000) btus.add(v);
+  for (const m of text.matchAll(/(?<![\d.,])(\d{1,3}(?:[.,]\d{1,2})?)\s*k\b/gi)) {
+    const v = Math.round(Number(m[1].replace(",", ".")) * 1000); if (v >= 5000 && v <= 200000) btus.add(v);
   }
   btus.forEach((b) => sizesFor(b).forEach(add));
   if (btus.size) add("btu");
