@@ -366,6 +366,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
 
         batchRows.push({
           supplier_id: supplierId,
+          pdf_upload_id: newUploadId,
           pdf_filename: file.name,
           page_number: pageNum,
           page_image_url: urlData.publicUrl,
