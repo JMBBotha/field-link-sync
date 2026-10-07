@@ -106,7 +106,7 @@ export function isLiveCatalogProduct(p: LiveRow, allow: CatalogAllowlist | Set<s
   if (p.is_active === false) return false;
   const active = allow instanceof Set ? allow : allow.activeUploadIds;
   if (active.size === 0) return true; // no active books at all → archived/is_active only
-  return !!p.pdf_upload_id && active.has(p.pdf_upload_id);
+  return !p.pdf_upload_id || active.has(p.pdf_upload_id);
 }
 
 /** @deprecated alias kept for existing callers — same hard rule as isLiveCatalogProduct. */
