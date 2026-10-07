@@ -149,6 +149,21 @@ export function reconcileAutoLabour<T extends AreaLabourLine>(items: T[], areas:
   return result;
 }
 
+/** Persist only the automatic changes from the projection; callers supply their checked write path. */
+export async function syncAutoLabour(items: any[], areas: { id: string; name: string }[], mode: LabourMode, perUnit: number, rate: number,
+  writer: { add: (row: any) => Promise<unknown>; update: (id: string, row: any) => Promise<unknown>; remove: (id: string) => Promise<unknown> }) {
+  const next = reconcileAutoLabour(items, areas, mode, perUnit, rate);
+  const nextIds = new Set(next.map((i) => i.id));
+  for (const row of items) if (isLabourItem(row) && row.metadata?.labour_auto === true && !nextIds.has(row.id)) await writer.remove(row.id);
+  for (const row of next) {
+    if (!isLabourItem(row) || row.metadata?.labour_auto !== true) continue;
+    const { id, quote_id, created_at, updated_at, ...fields } = row;
+    const old = items.find((i) => i.id === id);
+    if (!old) await writer.add(fields);
+    else if (old.quantity !== row.quantity || old.unit_price !== row.unit_price || old.total_price !== row.total_price || old.area_id !== row.area_id || old.metadata?.hours !== row.metadata?.hours) await writer.update(id, fields);
+  }
+}
+
 type LabourLineLike = { area_id?: string | null; parent_item_id?: string | null; item_type?: string | null; metadata?: any };
 const inKnownArea = (i: LabourLineLike, areas: { id: string }[]) => !!i.area_id && areas.some((a) => a.id === i.area_id);
 

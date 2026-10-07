@@ -20,7 +20,8 @@ import type {
 } from "@/types/quote";
 import { needsDefaultArea, getDefaultAreaName } from "@/utils/quoteTransformers";
 import { DEFAULT_CATEGORY_MARKUPS, setActiveQuoteMarkupRates, type CategoryMarkupRates } from "@/lib/pricing";
-import { isJobLabour, normalizeLabourMode, planLabourInsert } from "@/lib/areaLabour";
+import { isJobLabour, normalizeLabourMode, planLabourInsert, syncAutoLabour, countAcUnits } from "@/lib/areaLabour";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 /* ────────────────── Types ────────────────── */
 
@@ -125,11 +126,18 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   const userId = user?.id ?? null;
   const [meta, setMeta] = useState<QuoteMeta | null>(null);
   const [areas, setAreas] = useState<QuoteArea[]>([]);
-  const [items, setItems] = useState<QuoteItem[]>([]);
+  const [items, setItemsState] = useState<QuoteItem[]>([]);
+  const { settings: labourSettings } = useCompanySettings();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
   const itemsRef = useRef<QuoteItem[]>([]);
+  const setItems = useCallback((value: React.SetStateAction<QuoteItem[]>) => {
+    const next = typeof value === "function" ? value(itemsRef.current) : value;
+    itemsRef.current = next;
+    setItemsState(next);
+  }, []);
+  const labourQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const areasRef = useRef<QuoteArea[]>([]);
   const fetchSeqRef = useRef(0);
   const ensuringRef = useRef<Promise<QuoteArea | null> | null>(null);
@@ -404,6 +412,38 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   }, [fetchAll]);
 
   /* ── Items ── */
+  const reconcileLabour = useCallback(async () => {
+    const run = labourQueueRef.current.catch(() => undefined).then(async () => {
+      const check = async (request: any) => {
+        const res = await track<any>(request.select().single());
+        if (res.error || !res.data) throw new Error(res.error?.message || "Labour was not saved.");
+        return res.data as QuoteItem;
+      };
+      await syncAutoLabour(itemsRef.current, areasRef.current, normalizeLabourMode(meta?.labour_mode), labourSettings.default_install_labour_hours, labourSettings.default_hourly_rate, {
+        add: async (row) => {
+          const id = crypto.randomUUID();
+          optimisticIdsRef.current.add(id);
+          const saved = await check(supabase.from("quote_items").insert({ ...row, id, quote_id: quoteId, sort_order: itemsRef.current.length, source: "labour" }));
+          setItems((prev) => [...prev.filter((i) => i.id !== id), saved]);
+        },
+        update: async (id, row) => {
+          const saved = await check(supabase.from("quote_items").update(row).eq("id", id));
+          setItems((prev) => prev.map((i) => i.id === id ? saved : i));
+        },
+        remove: async (id) => {
+          await check(supabase.from("quote_items").delete().eq("id", id));
+          setItems((prev) => prev.filter((i) => i.id !== id));
+        },
+      });
+    });
+    labourQueueRef.current = run;
+    try { await run; } catch (e) {
+      toast({ title: "Could not update automatic labour", description: errMsg(e), variant: "destructive" });
+      await fetchAll(true);
+      throw e;
+    }
+  }, [quoteId, meta?.labour_mode, labourSettings.default_install_labour_hours, labourSettings.default_hourly_rate, fetchAll, setItems]);
+
   const addItem = useCallback(async (item0: Omit<QuoteItemInsert, "quote_id">): Promise<QuoteItem | null> => {
     // Job labour mode: one job labour line. A labour insert merges into it (every caller, incl. Mandy, lands here).
     const plan = planLabourInsert(normalizeLabourMode(meta?.labour_mode), itemsRef.current, item0);
@@ -451,10 +491,12 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     const real = data as unknown as QuoteItem;
     setItems((prev) => prev.map((i) => i.id === optimisticId ? real : i));
     setTimeout(() => optimisticIdsRef.current.delete(optimisticId), 5000);
+    if (countAcUnits([real]) > 0) await reconcileLabour();
     return real;
-  }, [quoteId, meta?.labour_mode]);
+  }, [quoteId, meta?.labour_mode, reconcileLabour]);
 
   const updateItem = useCallback(async (id: string, patch: QuoteItemUpdate) => {
+    const before = itemsRef.current.find((i) => i.id === id);
     setItems((prev) => prev.map((i) => i.id === id ? { ...i, ...patch } as QuoteItem : i));
     const res = await track(supabase
       .from("quote_items")
@@ -467,10 +509,12 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       revert(fetchAll);
       return false;
     }
+    if (before && (countAcUnits([before]) > 0 || countAcUnits([{ ...before, ...patch }]) > 0) && (patch.quantity != null || patch.area_id !== undefined || patch.product_id !== undefined || patch.item_name !== undefined)) await reconcileLabour();
     return true;
-  }, [fetchAll]);
+  }, [fetchAll, reconcileLabour]);
 
   const deleteItem = useCallback(async (id: string) => {
+    const before = itemsRef.current.find((i) => i.id === id);
     setItems((prev) => prev.filter((i) => i.id !== id && i.parent_item_id !== id));
     const res = await track(supabase.from("quote_items").delete().eq("id", id).select("id"));
     const error = res.error || (!res.data?.length ? { message: "Nothing was saved (no access, or the row is gone)." } : null);
@@ -480,10 +524,12 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       revert(fetchAll);
       return false;
     }
+    if (before && countAcUnits([before]) > 0) await reconcileLabour();
     return true;
-  }, [fetchAll]);
+  }, [fetchAll, reconcileLabour]);
 
   const moveItemToArea = useCallback(async (itemId: string, areaId: string | null) => {
+    const before = itemsRef.current.find((i) => i.id === itemId);
     setItems((prev) => prev.map((i) => i.id === itemId ? { ...i, area_id: areaId } : i));
     const res = await track(supabase
       .from("quote_items")
@@ -496,8 +542,9 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       revert(fetchAll);
       return false;
     }
+    if (before && countAcUnits([before]) > 0) await reconcileLabour();
     return true;
-  }, [fetchAll]);
+  }, [fetchAll, reconcileLabour]);
 
   /* ── Helpers ── */
   const ensureDefaultArea = useCallback(async (): Promise<QuoteArea | null> => {
