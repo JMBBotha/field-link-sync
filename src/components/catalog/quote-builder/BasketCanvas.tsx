@@ -181,11 +181,7 @@ const BasketCanvas = ({
               {!isCompact && "Clear All"}
             </Button>
           )}
-          {!isCompact && <ZoneTemplateSelector onApplyTemplate={effectiveApplyTemplate} />}
-          <Button variant="outline" size="sm" className={`gap-0.5 ${isCompact ? "h-6 text-[10px] px-1.5" : "h-7 text-xs"}`} onClick={effectiveAddZone}>
-            <Plus className={isCompact ? "h-2.5 w-2.5" : "h-3 w-3"} />
-            {isCompact ? "Zone" : "Add Zone"}
-          </Button>
+
         </div>
       </div>
 
@@ -223,6 +219,13 @@ const BasketCanvas = ({
               />
             ))
           )}
+          <div className="flex flex-wrap items-center gap-1" data-testid="inline-zone-create">
+          {!isCompact && <ZoneTemplateSelector onApplyTemplate={effectiveApplyTemplate} />}
+          {!hasAreaBuilder && <Button variant="outline" size="sm" className={`gap-0.5 ${isCompact ? "h-6 text-[10px] px-1.5" : "h-7 text-xs"}`} onClick={effectiveAddZone}>
+            <Plus className={isCompact ? "h-2.5 w-2.5" : "h-3 w-3"} />
+            {isCompact ? "Zone" : "Add Zone"}
+          </Button>}
+          </div>
         </div>
       </div>
     </div>
