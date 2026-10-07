@@ -57,7 +57,10 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
           </p>
         )}
       </section>
+  );
 
+  return (
+    <div className="mx-auto w-full max-w-4xl space-y-4 p-3 pb-24 sm:p-4">
       <EstimateBuilder
         areaFirst
         pdfBasket={pdfBasket}
