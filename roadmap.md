@@ -1,6 +1,7 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
 ## Labour outlines and PDF presses (2026-10-07)
+- [ ] Correct PDF radio to separate-click normal → selected → favourite → normal cycle; keep labour outlines unchanged and test basket removal plus personal favourite state.
 - [x] Outline missing-labour and per-area hours rows in AreaLabourRow, LabourPanel and wizard TimeRow; generic glass styling was overriding orange. Guarded desktop/mobile estimate and Build quote checks measured 2px rgb(249, 115, 22); missing state verified with a read-response fixture.
 - [x] Restore PDF single press selection and double press favourites; 14 tests passed, guarded live PDF single press changed Selected Items without a favourite write, double presses exercised intercepted favourite writes; no backend data changed.
 

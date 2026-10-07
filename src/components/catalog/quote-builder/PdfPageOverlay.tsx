@@ -369,7 +369,6 @@ const RegionBox = memo(({
           <Star className={`w-auto aspect-square fill-accent-yellow text-accent-yellow ${CONTROL_SIZE_CLASS}`} aria-hidden />
         ) : isSelected ? (
           <CheckCircle2
-            className={`w-auto aspect-square ${CONTROL_SIZE_CLASS}`}
             className={`w-auto aspect-square text-success ${CONTROL_SIZE_CLASS}`}
             aria-hidden
           />
