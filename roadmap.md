@@ -107,3 +107,8 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] Rename pure margin and overrun outputs for independent role earnings; remove combined total.
 - [x] Show salesperson and assigned technician names with separate company shares in the staff-only Profit card.
 - [x] Update Billing labels, tests, and the AGENTS earnings rule; run all tests and TypeScript.
+
+## Canonical quote builder release (queued after service picker)
+- [ ] Match the owner-locked area-first builder flow, controls, table columns, selected basket, favourites, styling, and Add area pop-up.
+- [ ] Preserve existing quote loading/editing, labour reconciliation, orange labour outline, and PDF three-click cycle.
+- [ ] Add focused tests and verify desktop/mobile through the read-only browser guard.
