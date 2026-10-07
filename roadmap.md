@@ -1,8 +1,8 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
 ## Labour outlines and PDF presses (2026-10-07)
-- [ ] Outline missing-labour and per-area hours rows across estimate and wizard screens; verify computed 2px orange border.
-- [ ] Restore PDF single press selection and double press favourites; run regression tests and guarded browser checks.
+- [x] Outline missing-labour and per-area hours rows in AreaLabourRow, LabourPanel and wizard TimeRow; generic glass styling was overriding orange. Guarded desktop/mobile estimate and Build quote checks measured 2px rgb(249, 115, 22); missing state verified with a read-response fixture.
+- [x] Restore PDF single press selection and double press favourites; 14 tests passed, guarded live PDF single press changed Selected Items without a favourite write, double presses exercised intercepted favourite writes; no backend data changed.
 
 ## Shared area-name chips (2026-10-07)
 - [x] Restore ordered shared chips under every creation input, preserve inline placement and repeat numbering.
