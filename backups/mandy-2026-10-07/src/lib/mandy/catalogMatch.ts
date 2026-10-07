@@ -8,7 +8,6 @@
  * top 2–3 as chips. Never auto-pick when scores are close.
  */
 import { extractBtu } from "@/lib/bundles";
-import { productMatchesTerms, squash } from "@/lib/productSearchTags";
 
 export interface CatalogProductLike {
   id: string;
@@ -17,7 +16,6 @@ export interface CatalogProductLike {
   name?: string | null;
   spoken_name?: string | null;
   search_aliases?: string[] | null;
-  search_tags?: string | null;
   brand?: string | null;
   description?: string | null;
   btu_rating?: number | null;
@@ -149,9 +147,7 @@ export function scoreProduct(q: string, p: CatalogProductLike): number {
   const size = sizeOf(q);
   const words = toks(q).filter((t) => !/^\d{1,2}k$/.test(t));
   const aliases = [...(p.search_aliases || []), p.spoken_name || ""].filter(Boolean).map((a) => a.toLowerCase());
-  const blobText = [p.short_name, p.name, p.product_code, p.brand, p.description, p.search_tags, ...aliases].filter(Boolean).join(" ");
-  const blob = new Set(toks(blobText));
-  const squashed = squash(blobText); // "windfree" ≈ "Wind-free", same rule as productSearchTags
+  const blob = new Set(toks([p.short_name, p.name, p.product_code, p.brand, p.description, ...aliases].filter(Boolean).join(" ")));
   const code = alnum(p.product_code);
   let score = 0;
   if (size != null) {
@@ -166,7 +162,6 @@ export function scoreProduct(q: string, p: CatalogProductLike): number {
     else if (modelish && code.includes(w)) score += 40;
     else if (blob.has(w)) score += 20;
     else if (w.length >= 3 && [...blob].some((b) => b.startsWith(w))) score += 10;
-    else if (w.length >= 3 && squashed.includes(w)) score += 10;
     else score -= 15;
   }
   return score > 0 ? score : 0;
@@ -197,13 +192,6 @@ export function matchCatalog(
       .filter(isLiveProduct)
       .map((p) => ({ kind: "product" as const, id: p.id, product: p, score: scoreProduct(q, p) }))
       .filter((h) => h.score > 0);
-    // Fallback: shared productMatchesTerms (every word somewhere incl. search_tags); chips only, never auto-pick.
-    if (!ranked.length && q) {
-      ranked = products
-        .filter(isLiveProduct)
-        .filter((p) => productMatchesTerms(p as any, q))
-        .map((p) => ({ kind: "product" as const, id: p.id, product: p, score: STRONG_SCORE - 1 }));
-    }
   }
   ranked.sort((a, b) => b.score - a.score);
   const [a, b] = ranked;
