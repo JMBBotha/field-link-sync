@@ -391,12 +391,22 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       if (pdfUrlData?.publicUrl) {
         await (supabase.from("supplier_pdf_pages") as any)
           .update({ pdf_storage_path: pdfUrlData.publicUrl })
-          .eq("supplier_id", supplierId)
-          .eq("pdf_filename", file.name);
+          .eq("pdf_upload_id", newUploadId);
       }
 
+      // ── Cleanup OTHER uploads of this supplier, then activate the new one ──
+      // Order matters: deactivate/archive old books first (never the new id),
+      // then flip the new book active so it can never end up archived.
+      await (supabase.from("pdf_uploads") as any)
+        .update({ is_active: false, status: "archived" })
+        .eq("supplier_id", supplierId)
+        .neq("id", newUploadId);
+      await (supabase.from("pdf_uploads") as any)
+        .update({ is_active: true, status: "parsed", activated_at: new Date().toISOString() })
+        .eq("id", newUploadId);
+
       invalidateAll();
-      toast({ title: `Price list uploaded`, description: `${totalPages} pages processed for Visual Catalog.` });
+      toast({ title: `Uploaded ${file.name}, ${totalPages} pages. Now run AI Import.` });
 
       // Auto-extract supplier contact info
       try {
