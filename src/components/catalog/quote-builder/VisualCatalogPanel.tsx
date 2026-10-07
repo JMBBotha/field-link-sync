@@ -1,3 +1,4 @@
+import { productMatchesTerms } from "@/lib/productSearchTags";
 import { deriveSearchTags } from "@/lib/productSearchTags";
 /* eslint-disable -- visual catalog panel */
 import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
@@ -687,7 +688,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
     // Search products for a match
     const match = products.find(p => {
       const blob = [p.product_code, p.short_name, p.brand, p.description].filter(Boolean).join(" ").toLowerCase();
-      return blob.includes(lowerTerm);
+      return blob.includes(lowerTerm) || productMatchesTerms(p as any, term);
     });
     if (!match) {
       toast({ title: "No match found in PDF", description: `Could not find "${term}" on any page`, duration: 3000 });

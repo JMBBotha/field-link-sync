@@ -20,7 +20,7 @@ export function useQuoteBuilderProducts() {
           suggested_consumables, pack_qty, supplier_discount_percent,
           markup_percent, btu_rating, pdf_upload_id,
           unit_type, price_per_unit_qty, price_per_unit_label,
-          allows_decimal_qty, qty_step, min_qty, search_aliases,
+          allows_decimal_qty, qty_step, min_qty, search_aliases, search_tags,
 
           suppliers(name, supplier_type)
         `)
