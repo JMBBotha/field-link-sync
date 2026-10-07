@@ -53,6 +53,8 @@ export interface DiffImportRow {
   vat_rate?: number;
   /** Printed LIST price ex VAT from the price book — required by the activation gate. */
   list_price_raw?: number | null;
+  /** Import review flags (e.g. OCR-fixed model codes) written to supplier_products.import_flags. */
+  import_flags?: string[] | null;
 }
 
 /** cost = NETT as printed, or list × (1 − trade%) when a trade discount applies. */
@@ -270,6 +272,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
     const markup = defaultMarkupPercent;
     return {
       pdf_upload_id: pdfUploadId,
+      ...(row.import_flags && row.import_flags.length ? { import_flags: row.import_flags } : {}),
       list_price_raw: row.list_price_raw ?? deriveListPriceRaw(row.cost_price, discount),
       supplier_discount_percent: discount,
       default_markup_percent: markup,

@@ -119,6 +119,31 @@ const ImportPreviewModal = ({
 
         <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="space-y-4 pr-1">
+            {/* Dry run: nothing is saved until Confirm */}
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-3 space-y-1.5 text-xs">
+                <p className="font-semibold">Preview only — nothing has been saved yet.</p>
+                {preview.pageReport && preview.pageReport.length > 0 && (
+                  <p>
+                    {preview.pageReport.map((r) => (
+                      <span key={r.page} className={r.rows === 0 ? "text-destructive" : undefined}>
+                        Page {r.page}: {r.rows} rows{r.usedImage ? " (used image)" : ""}
+                        {r.page < preview.pageReport!.length ? ", " : ""}
+                      </span>
+                    ))}
+                  </p>
+                )}
+                {preview.diffSummary && (
+                  <p className="font-medium">
+                    Would add {preview.diffSummary.new} new · update {preview.diffSummary.updated} · unchanged {preview.diffSummary.unchanged} · skipped {preview.diffSummary.skipped}
+                  </p>
+                )}
+                {(() => {
+                  const n = preview.products.filter((p) => (p.flags || []).some((f) => f.startsWith("model_code_"))).length;
+                  return n > 0 ? <p className="text-amber-700 dark:text-amber-400">{n} model code(s) needed OCR fixes or are unreadable — flagged for checking.</p> : null;
+                })()}
+              </CardContent>
+            </Card>
             {/* Detected Price Columns */}
             {detectedCols.length > 1 && (
               <Card className="border-blue-200 dark:border-blue-800">

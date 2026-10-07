@@ -94,6 +94,10 @@ export interface ImportPreview {
   discountConfidence: "high" | "medium" | "low";
   supplierSettings: SupplierPricingSettings;
   parseMethod?: "ai" | "regex" | "csv" | "grok_ai" | "lovable_ai";
+  /** Per-page read report (PDF only). */
+  pageReport?: PageReport[];
+  /** Read-only diff against the live catalogue (filled by the caller). */
+  diffSummary?: { new: number; updated: number; unchanged: number; skipped: number };
   /** Price columns detected by Grok AI */
   detectedPriceColumns?: string[];
   /** The column Grok auto-selected as best */
@@ -107,6 +111,10 @@ export type ImportStage =
   | { stage: "ai_extraction"; detail: string }
   | { stage: "text_fallback"; detail: string }
   | { stage: "complete"; detail: string };
+
+import { readPagesOneByOne, extractPageTexts, type PageReport } from "@/services/pageByPageImport";
+import { sanitizeModelCode, looksGarbled } from "@/lib/modelCodeSanitize";
+export type { PageReport };
 
 // ─── FETCH SUPPLIER SETTINGS ───
 
@@ -163,7 +171,7 @@ export function recalculateProducts(
 ): ParsedProduct[] {
   return products.map((p) => {
     const calc = calculateImportPrices(p.raw_price, isInclVat, discountPercent, markupPercent);
-    const flags: string[] = [];
+    const flags: string[] = (p.flags || []).filter((f) => !/^discount_|^price_incl_vat/.test(f));
     if (isInclVat) flags.push("price_incl_vat_stripped");
     if (discountPercent > 0) flags.push(`discount_${discountPercent}pct_applied`);
     return {
@@ -191,7 +199,9 @@ export async function parseImportFile(
   file: File,
   supplierId: string,
   settingsOverride?: Partial<SupplierPricingSettings>,
-  onStage?: (stage: ImportStage) => void
+  onStage?: (stage: ImportStage) => void,
+  /** Stored page images (supplier_pdf_pages.page_image_url) in page order. */
+  pageImageUrls?: (string | null)[]
 ): Promise<ImportPreview> {
   const dbSettings = await getSupplierPricingSettings(supplierId);
   const settings: SupplierPricingSettings = { ...dbSettings, ...settingsOverride };
@@ -199,7 +209,7 @@ export async function parseImportFile(
   if (file.name.endsWith(".csv") || file.type === "text/csv") {
     return parseCSVFile(file, settings, supplierId);
   }
-  return parsePDFWithFullPipeline(file, settings, supplierId, onStage);
+  return parsePDFWithFullPipeline(file, settings, supplierId, onStage, pageImageUrls);
 }
 
 // ─── VAT DETECTION ───
@@ -261,8 +271,10 @@ async function parsePDFWithFullPipeline(
   file: File,
   settings: SupplierPricingSettings,
   supplierId: string,
-  onStage?: (stage: ImportStage) => void
+  onStage?: (stage: ImportStage) => void,
+  pageImageUrls?: (string | null)[]
 ): Promise<ImportPreview> {
+  let pageReport: PageReport[] = [];
   let parseMethod: ImportPreview["parseMethod"] = "regex";
   let detectedPriceColumns: string[] = [];
   let selectedPriceColumn: string | undefined;
@@ -289,95 +301,56 @@ async function parsePDFWithFullPipeline(
   // STAGE 2: Enhancement skipped
   console.log(`[Import] Skipping Deep-Image.ai enhancement`);
 
-  // STAGE 3: Grok AI
-  onStage?.({ stage: "ai_extraction", detail: "Parsing with Grok AI..." });
+  // STAGE 3: AI — every page on its own; garbled/empty pages fall back to the page image.
+  onStage?.({ stage: "ai_extraction", detail: "Reading pages one by one..." });
   try {
-    const chunks: string[] = [];
-    let i = 0;
-    while (i < allText.length) {
-      let end = Math.min(i + CHUNK_SIZE, allText.length);
-      if (end < allText.length) {
-        const lastNewline = allText.lastIndexOf("\n", end);
-        if (lastNewline > i + CHUNK_SIZE * 0.5) end = lastNewline + 1;
-      }
-      chunks.push(allText.substring(i, end));
-      i = end;
-    }
-
-    // Fetch supplier_type so edge function gets correct consumables prompt
     let supplierType: string | null = null;
     try {
       const { data: supRow } = await (supabase.from("suppliers") as any)
-        .select("supplier_type")
-        .eq("id", supplierId)
-        .single();
+        .select("supplier_type").eq("id", supplierId).single();
       supplierType = supRow?.supplier_type || null;
     } catch { /* ignore */ }
 
-    for (let ci = 0; ci < chunks.length; ci++) {
-      onStage?.({ stage: "ai_extraction", detail: `Grok AI: chunk ${ci + 1}/${chunks.length} (${chunks[ci].length} chars)...` });
-      console.log(`[Import] Sending chunk ${ci + 1}/${chunks.length}: ${chunks[ci].length} chars, first 200: "${chunks[ci].substring(0, 200).replace(/\n/g, '\\n')}"`);
-      const { data, error } = await supabase.functions.invoke("parse-pdf-with-grok", {
-        body: { extracted_text: chunks[ci], supplier_id: supplierId, supplier_name: settings.supplierName, supplier_type: supplierType === "consumables" || supplierType === "both" ? "consumables" : undefined, chunk_index: ci, chunk_total: chunks.length },
-      });
-      if (error) { console.error(`[Import] Grok chunk ${ci} error:`, error.message || error, 'data:', JSON.stringify(data)?.substring(0, 200)); continue; }
-
-      const chunkProducts = data?.products || [];
-      let chunkAccepted = 0;
-
-      // Capture detected price columns from Grok (filter out raw R-amounts)
-      if (data?.detected_price_columns?.length) {
-        for (const col of data.detected_price_columns) {
-          const t = (col || "").trim();
-          if (!t) continue;
-          // Exclude pure price strings
-          if (/^(R\s*)?[\d\s,]+(\.\s?\d{1,2})?$/i.test(t)) continue;
-          // Must contain a header keyword
-          if (!/\b(PRICE|VAT|LIST|EXCL|INCL|INC|NETT|WEBSHOP|CAMPAIGN|RRP|COST|RETAIL|TRADE|DEALER)\b/i.test(t)) continue;
-          if (!detectedPriceColumns.includes(col)) detectedPriceColumns.push(col);
-        }
-      }
-
-      for (const p of chunkProducts) {
-        // Use the smart-selected cost_price from Grok (already picked best column)
-        const price = typeof p.cost_price === "number" && p.cost_price > 0
-          ? p.cost_price
-          : 0;
-
-        // Track selected column and VAT detection from first product
-        if (!selectedPriceColumn && p.selected_price_column) {
-          selectedPriceColumn = p.selected_price_column;
-          grokDetectedInclVat = !!p.price_is_incl_vat;
-          console.log(`[Import] Grok selected column: "${selectedPriceColumn}", isInclVat: ${grokDetectedInclVat}`);
-        }
-
-        if (price > 0) {
-          rawRows.push({
-            model: p.product_code || p.sku || "",
-            description: p.description || p.name || "",
-            price,
-            category: p.product_category || p.category || "Air Conditioning",
-            btu_rating: p.btu_rating || null, pipe_size: p.pipe_size || null,
-            refrigerant_type: p.refrigerant_type || null, phase: p.phase || null,
-            speed_type: p.speed_type || null, kw: p.kw || null, unit_type: p.unit_type || null,
-            short_name: p.short_name || null, brand: p.brand || null,
-            product_category: p.product_category || null,
-            sold_in_length: p.sold_in_length || false, unit_length: p.unit_length || null,
-            price_per_metre: p.price_per_metre || null,
-            // AI bounding box data for visual overlay fallback on scanned pages
-            row_bbox: p.rowBbox || p.row_bbox || null,
-            price_bbox: p.priceBbox || p.price_bbox || null,
-            page_number: p.pageNumber || p.page_number || null,
-          });
-          chunkAccepted++;
-        } else {
-          console.warn(`[Import] Chunk ${ci}: Skipped product "${p.product_code || p.sku}" — price=${price} (cost_price=${p.cost_price})`);
-        }
-      }
-      console.log(`[Import] Chunk ${ci + 1}/${chunks.length}: ${chunkProducts.length} from Grok, ${chunkAccepted} accepted into rawRows (${chunkProducts.length - chunkAccepted} skipped for price<=0)`);
+    const pageTexts = await extractPageTexts(await file.arrayBuffer());
+    const pageImages = Array.from({ length: Math.max(numPages, pageTexts.length) }, (_, i) =>
+      pageImageUrls?.[i] || (images[i] ? `data:image/png;base64,${images[i]}` : null));
+    const res = await readPagesOneByOne({
+      pageTexts, pageImages, supplierId, supplierName: settings.supplierName,
+      supplierType: supplierType === "consumables" || supplierType === "both" ? "consumables" : undefined,
+      onPage: (pg, tot, mode) => onStage?.({ stage: "ai_extraction", detail: `Page ${pg}/${tot} (${mode === "image" ? "reading image" : "reading text"})...` }),
+    });
+    pageReport = res.report;
+    for (const col of res.detectedPriceColumns) {
+      const t = (col || "").trim();
+      if (!t || /^(R\s*)?[\d\s,]+(\.\s?\d{1,2})?$/i.test(t)) continue;
+      if (!/\b(PRICE|VAT|LIST|EXCL|INCL|INC|NETT|WEBSHOP|CAMPAIGN|RRP|COST|RETAIL|TRADE|DEALER)\b/i.test(t)) continue;
+      if (!detectedPriceColumns.includes(col)) detectedPriceColumns.push(col);
     }
-    if (rawRows.length > 0) { parseMethod = "grok_ai"; console.log(`[Import] Grok total: ${rawRows.length} products across ${chunks.length} chunks`); }
-  } catch (err) { console.warn("[Import] Grok failed:", err); }
+    for (const p of res.products) {
+      const price = typeof p.cost_price === "number" && p.cost_price > 0 ? p.cost_price : 0;
+      if (!selectedPriceColumn && p.selected_price_column) {
+        selectedPriceColumn = p.selected_price_column;
+        grokDetectedInclVat = !!p.price_is_incl_vat;
+      }
+      if (price <= 0) continue;
+      rawRows.push({
+        model: p.product_code || p.sku || "",
+        description: p.description || p.name || "",
+        price,
+        category: p.product_category || p.category || "Air Conditioning",
+        btu_rating: p.btu_rating || null, pipe_size: p.pipe_size || null,
+        refrigerant_type: p.refrigerant_type || null, phase: p.phase || null,
+        speed_type: p.speed_type || null, kw: p.kw || null, unit_type: p.unit_type || null,
+        short_name: p.short_name || null, brand: p.brand || null,
+        product_category: p.product_category || null,
+        sold_in_length: p.sold_in_length || false, unit_length: p.unit_length || null,
+        price_per_metre: p.price_per_metre || null,
+        row_bbox: p.row_bbox || null, price_bbox: p.price_bbox || null,
+        page_number: p.page_number || null,
+      });
+    }
+    if (rawRows.length > 0) parseMethod = "grok_ai";
+  } catch (err) { console.warn("[Import] Page-by-page AI failed:", err); }
 
   // STAGE 4: Lovable AI fallback
   if (rawRows.length === 0 && allText.trim().length > 50) {
@@ -464,6 +437,10 @@ async function parsePDFWithFullPipeline(
   const products: ParsedProduct[] = uniqueRows.map((row) => {
     const calc = calculateImportPrices(row.price, effectiveInclVat, effectiveDiscount, settings.markupPercent);
     const flags: string[] = [];
+    const clean = sanitizeModelCode(row.model);
+    row = { ...row, model: clean.code };
+    flags.push(...clean.flags);
+    if (looksGarbled(row.description)) flags.push("description_garbled");
     if (effectiveInclVat) flags.push("price_incl_vat_stripped");
     if (effectiveDiscount > 0) flags.push(`discount_${effectiveDiscount}pct_applied`);
 
@@ -525,6 +502,7 @@ async function parsePDFWithFullPipeline(
     parseMethod,
     detectedPriceColumns: detectedPriceColumns.length > 0 ? detectedPriceColumns : undefined,
     selectedPriceColumn,
+    pageReport,
   };
 }
 

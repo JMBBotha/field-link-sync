@@ -206,24 +206,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
-    const { supplier_id, supplier_name, supplier_type, chunk_index, chunk_total } = body;
-    // Optional vision mode (2026-10-07): one page image instead of text.
-    const pageImageUrl: string | null =
-      typeof body.page_image_url === "string" && /^(https:\/\/|data:image\/)/.test(body.page_image_url)
-        ? body.page_image_url : null;
-    const pageNumberHint = Number.isFinite(Number(body.page_number)) ? Number(body.page_number) : null;
-    const extracted_text: string = typeof body.extracted_text === "string" && body.extracted_text
-      ? body.extracted_text
-      : (pageImageUrl ? `[Page image${pageNumberHint ? ` — PDF page ${pageNumberHint}` : ""}]` : "");
+    const { extracted_text, supplier_id, supplier_name, supplier_type, chunk_index, chunk_total } = await req.json();
     const isConsumables = supplier_type === "consumables";
     const chunkIndex = Number.isFinite(Number(chunk_index)) ? Number(chunk_index) : 0;
     const chunkTotal = Number.isFinite(Number(chunk_total)) ? Number(chunk_total) : 1;
 
-    console.log("[Grok] Request:", { textLength: extracted_text?.length, supplier_id, chunkIndex, chunkTotal, vision: !!pageImageUrl, page: pageNumberHint });
+    console.log("[Grok] Request:", { textLength: extracted_text?.length, supplier_id, chunkIndex, chunkTotal });
 
     if (!extracted_text || !supplier_id) {
-      return new Response(JSON.stringify({ error: "extracted_text (or page_image_url) and supplier_id required" }), {
+      return new Response(JSON.stringify({ error: "extracted_text and supplier_id required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -260,13 +251,6 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
     }
 
     const callAI = async (text: string, url: string, key: string, mdl: string, isXai: boolean) => {
-      // Vision mode: send the page image (Lovable AI only; xAI path stays text-only).
-      const userContent = pageImageUrl && !isXai
-        ? [
-            { type: "text", text: `Read EVERY priced product row in this price-list page image${pageNumberHint ? ` (PDF page ${pageNumberHint}; set pageNumber=${pageNumberHint})` : ""}, including indoor/outdoor unit tables. Copy model codes and descriptions exactly as printed in Latin letters.` },
-            { type: "image_url", image_url: { url: pageImageUrl } },
-          ]
-        : text;
       return await fetch(url, {
         method: "POST",
         headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
@@ -274,7 +258,7 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
           model: mdl,
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: userContent },
+            { role: "user", content: text },
           ],
           temperature: 0.1,
           ...(isXai ? { response_format: { type: "json_object" } } : {}),
@@ -451,7 +435,7 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
             speed_type: p.speedType || null,
             kw: p.kw || null,
             unit_type: p.unitType || null,
-            page_number: p.pageNumber || pageNumberHint || null,
+            page_number: p.pageNumber || null,
             row_bbox: p.rowBbox || null,
             price_bbox: p.priceBbox || null,
           };
