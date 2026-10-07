@@ -33,8 +33,7 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
     try { await addArea(nameFor(name)); setCustom(""); } finally { setBusy(false); }
   };
 
-  return (
-    <div className="mx-auto w-full max-w-4xl space-y-4 p-3 pb-24 sm:p-4">
+  const createAreaSection = (
       <section className="rounded-xl border-2 border-primary/30 bg-card p-3 shadow-sm sm:p-4" data-testid="create-area">
         <div className="mb-2 flex items-center gap-2">
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">1</span>
@@ -58,7 +57,10 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
           </p>
         )}
       </section>
+  );
 
+  return (
+    <div className="mx-auto w-full max-w-4xl space-y-4 p-3 pb-24 sm:p-4">
       <EstimateBuilder
         areaFirst
         pdfBasket={pdfBasket}
@@ -74,6 +76,7 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
         notes={m.notes ?? null}
         termsText={m.terms_text ?? null}
       />
+      {createAreaSection}
     </div>
   );
 }
