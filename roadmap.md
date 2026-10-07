@@ -117,3 +117,10 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [ ] Match the owner-locked area-first builder flow, controls, table columns, selected basket, favourites, styling, and Add area pop-up.
 - [ ] Preserve existing quote loading/editing, labour reconciliation, orange labour outline, and PDF three-click cycle.
 - [ ] Add focused tests and verify desktop/mobile through the read-only browser guard.
+
+## Lead assignment and routing correctness (queued last)
+- [ ] Send `estimated_end_time` as an ISO timestamp in `useAcceptLead`; confirm the start timestamp field uses the same correct type.
+- [ ] Source assignment choices from dispatch-active profiles in the lead's company; label/filter sales versus technician lanes correctly.
+- [ ] Back up and correct `auto-assign-lead` plus `broadcast_lead_to_agents` to use stored role values and lane-specific recipients; include rollback notes.
+- [ ] Never grant the owner's top-level account AB Refrigeration access; do not set working hours or rotate the webhook secret.
+- [ ] Test only with test data or the read-only browser guard; do not modify real leads.
