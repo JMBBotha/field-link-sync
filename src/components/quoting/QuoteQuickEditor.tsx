@@ -410,7 +410,7 @@ export default function QuoteQuickEditor({
             className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
           />
           {showServiceList && (
-            <ScrollArea className={`absolute z-30 ${dropdownPos} max-h-72 w-full rounded-md border border-slate-200 bg-white shadow-lg`}>
+            <ScrollArea className={`absolute z-30 ${dropdownPos} h-72 max-h-[min(18rem,50vh)] w-full rounded-md border border-slate-200 bg-white shadow-lg`}>
               <div className="divide-y divide-slate-100" onMouseDown={(e) => e.preventDefault()}>
                 <p className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Services</p>
                 {catalogResults.map((s) => (
