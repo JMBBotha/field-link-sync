@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AreaCreateControl, AreaNameChips, nextAreaName } from "@/components/quote/AreaNameChips";
+import { AreaCreateControl, AreaNameChips, CanonicalAreaCreateControl, nextAreaName } from "@/components/quote/AreaNameChips";
 import AreaDefinitionStep from "@/components/catalog/quote-builder/wizard/AreaDefinitionStep";
 import { createEmptyArea } from "@/components/catalog/quote-builder/quoteWizardTypes";
 
@@ -46,5 +46,15 @@ describe("shared area name chips", () => {
     render(<AreaNameChips existingNames={[]} onPick={onPick} onOther={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Main bedroom" }));
     expect(onPick).toHaveBeenCalledWith("Main bedroom");
+  });
+  it("uses four primary choices and collapses subsequent creation into Add area", () => {
+    const create = vi.fn();
+    const view = render(<CanonicalAreaCreateControl existingNames={[]} onCreate={create} />);
+    expect(screen.getAllByRole("button").map((button) => button.textContent?.trim())).toEqual(["Main bedroom", "Guest bedroom", "Lounge", "Office", "Other"]);
+    fireEvent.click(screen.getByRole("button", { name: "Main bedroom" }));
+    expect(create).toHaveBeenCalledWith("Main bedroom");
+    view.rerender(<CanonicalAreaCreateControl existingNames={["Main bedroom"]} onCreate={create} />);
+    expect(screen.getByRole("button", { name: "Add area" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Guest bedroom" })).not.toBeInTheDocument();
   });
 });

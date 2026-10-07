@@ -90,7 +90,7 @@ export default function QuoteQuickEditor({
   createTargetArea?: () => Promise<string | null>;
   /** Which input shows/autofocuses in an area block. */
   /** "item" = ONE search over units + materials (area-first builder). */
-  mode?: "unit" | "service" | "material" | "favourites" | "item";
+  mode?: "unit" | "service" | "material" | "favourites" | "item" | "selected";
   onClose?: () => void;
   /** Read-only Visual PDF "Selected Items" basket; shown first and mapped to live catalogue rows. */
   pdfBasket?: PdfSelectedProduct[];
@@ -175,7 +175,8 @@ export default function QuoteQuickEditor({
 
   const [itemFocus, setItemFocus] = useState(false);
   const emptySections = useMemo(() => {
-    if (mode !== "unit" && mode !== "material" && mode !== "item") return null;
+    if (mode !== "unit" && mode !== "material" && mode !== "item" && mode !== "selected") return null;
+    if (mode === "selected") return basketProducts.length ? { basket: basketProducts, favs: [] as PaletteProduct[] } : null;
     const fits = (p: PaletteProduct) => mode === "item" || (mode === "unit") === isAirConditioningProduct(p);
     const basket = basketProducts.filter(fits);
     const g = groupFavourites(favIds, products, []);
@@ -378,19 +379,20 @@ export default function QuoteQuickEditor({
             onBlur={() => setItemFocus(false)}
             data-area-item-search
             autoFocus={mode === "unit" || mode === "material"}
-            placeholder={mode === "unit" ? "Search units…" : mode === "material" ? "Search materials…" : mode === "item" ? "Search model, size (12k) or name…" : "Add item from catalog…"}
+            readOnly={mode === "selected"}
+            placeholder={mode === "selected" ? "Selected Items from PDF" : mode === "unit" ? "Search units…" : mode === "material" ? "Search materials…" : mode === "item" ? "Search model, size (12k) or name…" : "Add item from catalog…"}
             className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
           />
           {loadingProducts && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-slate-400" />}
-          {(mode !== "item" || itemFocus) && (productResults.length > 0 || (!productTerm.trim() && emptySections)) && (
+          {(mode === "selected" || mode !== "item" || itemFocus) && (productResults.length > 0 || (!productTerm.trim() && emptySections)) && (
             <ScrollArea className={`absolute z-30 ${dropdownPos} max-h-64 w-full rounded-md border border-slate-200 bg-white shadow-lg`}>
               <div className="divide-y divide-slate-100" onMouseDown={(e) => { if (mode === "item") e.preventDefault(); }}>
                 {productResults.length > 0
                   ? productResults.map((p) => renderRow(p))
                   : emptySections && (<>
-                      {emptySections.basket.length > 0 && <div className="bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Selected from PDF</div>}
+                       {emptySections.basket.length > 0 && mode !== "selected" && <div className="bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Selected from PDF</div>}
                       {emptySections.basket.map((p) => renderRow(p))}
-                      {emptySections.favs.length > 0 && <div className="bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Favourites</div>}
+                       {emptySections.favs.length > 0 && <div className="bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Favourites</div>}
                       {emptySections.favs.map((p) => renderRow(p))}
                     </>)}
               </div>

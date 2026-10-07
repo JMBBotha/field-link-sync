@@ -397,7 +397,12 @@ const EstimateDocument = ({
         {/* ── Line items ── */}
         {editing ? (
           <div className="mt-6 space-y-4 rounded-lg border border-border bg-card p-4" data-testid="estimate-areas-card">
-            {editing.areas.map((area) => {
+            {editing.areaCreationControl && !editing.areas.some((area) => area.id) && editing.areas.every((area) => area.lines.length === 0) && (
+              <div className="w-full print:hidden" data-pdf-hide data-html2canvas-ignore data-testid="inline-estimate-area-create">
+                {editing.areaCreationControl}
+              </div>
+            )}
+            {editing.areas.filter((area) => !(editing.areaCreationControl && !area.id && area.lines.length === 0)).map((area) => {
               const areaKey = area.id ?? "unassigned";
               const canCollapse = editing.collapsedAreaKeys !== undefined && !!editing.onToggleArea;
               const collapsed = canCollapse && editing.collapsedAreaKeys?.has(areaKey);
@@ -466,7 +471,7 @@ const EstimateDocument = ({
                     <tr className="text-[10px] uppercase tracking-wider text-slate-500 max-sm:portrait:hidden">
                       <th className="py-2 text-left font-semibold">Description</th>
                       <th className="w-24 py-2 text-right font-semibold">Rate</th>
-                      <th className="w-16 py-2 text-right font-semibold">Qty</th>
+                       <th className="w-16 py-2 text-right font-semibold">Quantity</th>
                       <th className="w-28 py-2 text-right font-semibold">Line Total</th>
                       <th className="w-8 print:hidden" />
                     </tr>
@@ -786,11 +791,13 @@ const EstimateDocument = ({
                 ))}
               </div>
             )}
-            <div className="w-full print:hidden" data-pdf-hide data-html2canvas-ignore data-testid="inline-estimate-area-create">
-              {editing.areaCreationControl ?? (
-                <AreaCreateControl existingNames={editing.areas.map((area) => area.name)} onCreate={editing.onAddArea} />
-              )}
-            </div>
+            {(editing.areas.some((area) => area.id) || editing.areas.some((area) => area.lines.length > 0) || !editing.areaCreationControl) && (
+              <div className="w-full border-t border-border pt-4 print:hidden" data-pdf-hide data-html2canvas-ignore data-testid="inline-estimate-area-create">
+                {editing.areaCreationControl ?? (
+                  <AreaCreateControl existingNames={editing.areas.map((area) => area.name)} onCreate={editing.onAddArea} />
+                )}
+              </div>
+            )}
           </div>
 
         ) : rollup ? (

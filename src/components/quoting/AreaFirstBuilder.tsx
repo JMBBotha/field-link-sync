@@ -1,4 +1,4 @@
-import { AreaCreateControl } from "@/components/quote/AreaNameChips";
+import { CanonicalAreaCreateControl } from "@/components/quote/AreaNameChips";
 import { useQuoteContext } from "@/contexts/QuoteContext";
 import EstimateBuilder from "@/components/quoting/EstimateBuilder";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
@@ -19,12 +19,7 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
           <h2 className="text-base font-semibold text-foreground">Create area</h2>
           <span className="ml-auto text-xs text-muted-foreground">{areas.length} area{areas.length === 1 ? "" : "s"}</span>
         </div>
-        <AreaCreateControl existingNames={areas.map((area) => area.name)} onCreate={addArea} label="Create" />
-        {areas.length > 0 && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">2.</span> In each area, search a model, size (12k / 12000) or name. Units add their install kit automatically.
-          </p>
-        )}
+        <CanonicalAreaCreateControl existingNames={areas.map((area) => area.name)} onCreate={addArea} />
       </section>
   );
 
