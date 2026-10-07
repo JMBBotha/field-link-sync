@@ -20,7 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuoteContext, trackQuoteWrite } from "@/contexts/QuoteContext";
 import { unassignedLabourLines, jobModeLabourLines } from "@/lib/areaLabour";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { installTag, qtyUnitLabel, BRACKET_OPTIONS } from "@/lib/installTemplates";
 import { qtyLabel, shortInstallName, kitTitleFromMetadata, kitContents, isAcUnitLine } from "@/lib/lineDisplay";
@@ -59,6 +60,8 @@ interface Props {
   notes?: string | null;
   termsText?: string | null;
   onChanged?: () => void;
+  /** Area-first PDF builder: one always-on item search per area + one combined Add menu; no separate presence. */
+  areaFirst?: boolean;
 }
 
 /** Header shown for the default catch-all section (named areas keep their name). */
@@ -87,13 +90,14 @@ export default function EstimateBuilder({
   termsText,
   onChanged,
   pdfBasket,
+  areaFirst = false,
 }: Props) {
   const {
     quoteId, meta, areas, items, loading,
     addArea, updateArea, deleteArea, updateItem, deleteItem, updateQuote, addItem, refetch,
   } = useQuoteContext();
   const labourMode = normalizeLabourMode((meta as any)?.labour_mode);
-  const { others: otherEditors } = useQuoteEditors(quoteId, "estimate");
+  const { others: otherEditors } = useQuoteEditors(areaFirst ? null : quoteId, "estimate");
   const builderEditor = otherEditors.find((e) => e.surface === "builder");
   const [removeUnit, setRemoveUnit] = useState<{ id: string; linked: string[] } | null>(null);
   const deleteUnitLine = (id: string, linked: string[], removeAll: boolean) => {
@@ -424,8 +428,8 @@ export default function EstimateBuilder({
         <Select value={labourMode} onValueChange={(v) => void switchLabourMode(v as "per_area" | "job")} disabled={modeBusy}>
           <SelectTrigger aria-label="Labour mode" className="h-8 w-[240px] text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="per_area">Labour per area</SelectItem>
-            <SelectItem value="job">One time line for the whole job</SelectItem>
+            <SelectItem value="per_area">Per unit ({perUnitHours} h each, per area)</SelectItem>
+            <SelectItem value="job">One total for the whole job</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -572,6 +576,54 @@ export default function EstimateBuilder({
           renderAreaAdd: (areaId) => {
             const key = areaId ?? "unassigned";
             const open = openAdd?.key === key ? openAdd.mode : null;
+            if (areaFirst) {
+              const editorProps = {
+                targetAreaId: areaId ?? undefined,
+                createTargetArea: areaId ? undefined : async () => {
+                  if (!allowNewArea()) return null;
+                  const created = await addArea(`Area ${areas.length + 1}`);
+                  return created?.id ?? null;
+                },
+                onChanged,
+                onAddedToArea: (id: string) => setActiveAreaId(id),
+                onUnitAdded: (id: string, qty: number) => void adjustAutoLabour(id, qty),
+                pdfBasket,
+              };
+              const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
+              return (
+                <div className="space-y-2" onClick={stop}>
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1"><QuoteQuickEditor key={`${key}-item`} mode="item" {...editorProps} /></div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" size="sm" className="h-9 shrink-0 gap-1"><Plus className="h-4 w-4" />Add<ChevronDown className="h-3.5 w-3.5" /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem onSelect={async () => { if (!allowNewArea()) return; const c = await addArea(`Area ${areas.length + 1}`); if (c?.id) { setActiveAreaId(c.id); setFocusAreaId(c.id); } }}>Add area</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => { const root = (e.target as HTMLElement).closest("[data-area-add-root]"); setTimeout(() => (root?.querySelector("[data-area-item-search]") as HTMLInputElement | null)?.focus(), 50); }}>Add item</DropdownMenuItem>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>Labour or service</DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem onSelect={() => { if (labourMode === "job") void addJobLabour(); else if (areaId) void addLabourForArea(areaId); }}>Add labour</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setOpenAdd({ key, mode: "service" })}>Add service</DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>More</DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem onSelect={() => setOpenAdd({ key, mode: "unit" })}>Add unit only</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setOpenAdd({ key, mode: "material" })}>Add material only</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setOpenAdd({ key, mode: "favourites" })}>★ Favourites</DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  {open && <QuoteQuickEditor key={`${key}-${open}`} mode={open} onClose={() => setOpenAdd(null)} {...editorProps} />}
+                </div>
+              );
+            }
             if (open) {
               return (
                 <QuoteQuickEditor

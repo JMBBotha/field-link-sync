@@ -737,7 +737,7 @@ const EstimateDocument = ({
                 )}
 
                 {editing.renderAreaAdd && (
-                  <div className="mt-2 print:hidden" data-pdf-hide data-html2canvas-ignore>{editing.renderAreaAdd(area.id)}</div>
+                  <div className="mt-2 print:hidden" data-pdf-hide data-html2canvas-ignore data-area-add-root>{editing.renderAreaAdd(area.id)}</div>
                 )}
 
                 {area.id && !editing.jobLabour && editing.onAddLabour && editing.onLabourChange && (
