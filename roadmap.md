@@ -114,9 +114,9 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] Verify desktop/mobile with the read-only browser guard.
 
 ## Canonical quote builder release (queued after service picker)
-- [ ] Match the owner-locked area-first builder flow, controls, table columns, selected basket, favourites, styling, and Add area pop-up.
-- [ ] Preserve existing quote loading/editing, labour reconciliation, orange labour outline, and PDF three-click cycle.
-- [ ] Add focused tests and verify desktop/mobile through the read-only browser guard.
+- [x] Match the owner-locked area-first builder flow, controls, table columns, selected basket, favourites, styling, and Add area pop-up.
+- [x] Preserve existing quote loading/editing, labour reconciliation, orange labour outline, and PDF three-click cycle.
+- [x] Add focused tests and verify desktop/mobile through the read-only browser guard.
 
 ## Lead assignment and routing correctness (queued last)
 - [ ] Send `estimated_end_time` as an ISO timestamp in `useAcceptLead`; confirm the start timestamp field uses the same correct type.

@@ -1,0 +1,2 @@
+-- Rollback note only. Restore the function definition captured in:
+-- backups/database/broadcast-lead-to-agents.backup-2026-10-07.sql

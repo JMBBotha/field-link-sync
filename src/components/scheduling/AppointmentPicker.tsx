@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useLaneStaff } from "@/hooks/useLaneStaff";
+import type { LeadLane } from "@/lib/leadLane";
 
 export interface AppointmentValue {
   /** ISO date "YYYY-MM-DD" */
@@ -25,6 +27,7 @@ interface AppointmentPickerProps {
   onChange: (v: AppointmentValue) => void;
   /** Show the agent picker section */
   showAgentPicker?: boolean;
+  assignmentLane?: LeadLane;
   className?: string;
 }
 
@@ -51,7 +54,7 @@ const toMinutes = (t: string) => {
   return h * 60 + (m || 0);
 };
 
-const AppointmentPicker = ({ value, onChange, showAgentPicker = true, className }: AppointmentPickerProps) => {
+const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignmentLane = "service", className }: AppointmentPickerProps) => {
   const [calendarOpen, setCalendarOpen] = useState(false);
 
   const selectedDate = useMemo(() => {
@@ -59,22 +62,8 @@ const AppointmentPicker = ({ value, onChange, showAgentPicker = true, className 
     return parse(value.date, "yyyy-MM-dd", new Date());
   }, [value.date]);
 
-  // Fetch field agents
-  const { data: agents = [] } = useQuery({
-    queryKey: ["appointment-agents"],
-    queryFn: async () => {
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .in("role", ["field_agent"] as any);
-      if (!roles?.length) return [];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", roles.map((r: any) => r.user_id));
-      return profiles || [];
-    },
-  });
+  const { salesStaff, technicians } = useLaneStaff();
+  const agents = assignmentLane === "sales" ? salesStaff : technicians;
 
   // Fetch same-day schedules for conflict/availability display
   const { data: daySchedules = [] } = useQuery({
@@ -260,7 +249,7 @@ const AppointmentPicker = ({ value, onChange, showAgentPicker = true, className 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-              <Users className="h-3 w-3" /> Technician
+               <Users className="h-3 w-3" /> {assignmentLane === "sales" ? "Assign salesperson" : "Assign technician"}
             </label>
             <Button
               type="button"
@@ -276,7 +265,7 @@ const AppointmentPicker = ({ value, onChange, showAgentPicker = true, className 
 
           {agents.length === 0 ? (
             <p className="text-xs text-muted-foreground italic px-1">
-              No field technicians available yet.
+               No {assignmentLane === "sales" ? "sales staff" : "technicians"} available yet.
             </p>
           ) : (
             <div className="space-y-1.5">

@@ -68,7 +68,6 @@ export function useAcceptLead() {
       );
       const endDate = addMinutes(startDate, appointment.durationMinutes);
       const scheduledIso = startDate.toISOString();
-      const endHhmm = format(endDate, "HH:mm");
       const durationInterval = `${appointment.durationMinutes} minutes`;
 
       // 1) Update lead → accepted + scheduling metadata
@@ -78,7 +77,7 @@ export function useAcceptLead() {
         scheduled_date: appointment.date,
         scheduled_time: appointment.startTime,
         estimated_duration_minutes: appointment.durationMinutes,
-        estimated_end_time: endHhmm,
+        estimated_end_time: endDate.toISOString(),
         accepted_at: new Date().toISOString(),
       };
       const { error: leadErr } = await supabase

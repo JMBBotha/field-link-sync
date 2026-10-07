@@ -21,8 +21,7 @@ export interface LaneStaffMember {
  * Resolve someone's lane.
  * - explicit profiles.dispatch_role wins
  * - independent techs are service-only
- * - fallback: field_agent role => technician
- * - fallback: untagged company staff (admin/dispatcher) can take sales leads
+ * Profiles are the dispatch source of truth; user_roles may be hidden by RLS.
  */
 export function resolveLane(m: {
   dispatch_role?: string | null;
@@ -32,9 +31,6 @@ export function resolveLane(m: {
   if (m.dispatch_role === "sales") return m.participant_type === "independent_tech" ? "service" : "sales";
   if (m.dispatch_role === "technician") return "service";
   if (m.participant_type === "independent_tech") return "service";
-  const roles = m.roles || [];
-  if (roles.includes("field_agent")) return "service";
-  if (roles.includes("admin") || roles.includes("dispatcher")) return "sales";
   return null;
 }
 
@@ -43,25 +39,13 @@ export function useLaneStaff() {
   const query = useQuery({
     queryKey: ["lane-staff"],
     queryFn: async (): Promise<LaneStaffMember[]> => {
-      const { data: roleRows, error: roleErr } = await supabase
-        .from("user_roles")
-        .select("user_id, role");
-      if (roleErr) throw roleErr;
-
-      const rolesById = new Map<string, string[]>();
-      for (const r of roleRows || []) {
-        const list = rolesById.get(r.user_id) || [];
-        list.push(r.role as string);
-        rolesById.set(r.user_id, list);
-      }
-
       const { data: profiles, error: profErr } = await supabase
         .from("profiles")
-        .select("id, full_name, phone, availability_status, dispatch_role, participant_type");
+        .select("id, full_name, phone, availability_status, dispatch_role, participant_type, dispatch_active")
+        .eq("dispatch_active", true);
       if (profErr) throw profErr;
 
       return (profiles || []).map((p: any) => {
-        const roles = rolesById.get(p.id) || [];
         return {
           id: p.id,
           full_name: p.full_name || "Unnamed",
@@ -69,8 +53,8 @@ export function useLaneStaff() {
           availability_status: p.availability_status ?? null,
           dispatch_role: (p.dispatch_role as DispatchRole | null) ?? null,
           participant_type: p.participant_type ?? null,
-          roles,
-          lane: resolveLane({ ...p, roles }),
+          roles: [],
+          lane: resolveLane(p),
         };
       });
     },
