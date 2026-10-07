@@ -124,6 +124,7 @@ const AdminSidebar = ({
             ...(isSalesRep ? [] : [
               { path: "/admin/inventory", label: "Stock", icon: Package, badge: lowStockCount > 0 ? lowStockCount : undefined } as NavItem,
               { path: "/admin/suppliers", label: "Suppliers", icon: Building2 } as NavItem,
+              { path: "/admin/specials", label: "Specials", icon: Tag } as NavItem,
             ]),
           ],
         },

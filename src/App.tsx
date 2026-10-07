@@ -70,6 +70,7 @@ import AdminTeamPage from "./pages/admin/AdminTeamPage";
 import AdminNetworkAgentsPage from "./pages/admin/AdminNetworkAgentsPage";
 
 import AdminSuppliersPage from "./pages/admin/AdminSuppliersPage";
+import AdminSpecialsPage from "./pages/admin/AdminSpecialsPage";
 import AdminConsumablesPage from "./pages/admin/AdminConsumablesPage";
 import AdminCallsPage from "./pages/admin/AdminCallsPage";
 import AdminPDFDocumentsPage from "./pages/admin/AdminPDFDocumentsPage";
@@ -212,6 +213,7 @@ const App = () => (
                     <Route path="settings" element={<RequireRole allowedRoles={["admin"]}><AdminSettingsPage /></RequireRole>} />
                     <Route path="team" element={<RequireRole allowedRoles={["admin"]}><AdminTeamPage /></RequireRole>} />
                     <Route path="billing" element={<Navigate to="/admin/invoices" replace />} />
+                    <Route path="specials" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSpecialsPage /></RequireRole>} />
                     <Route path="suppliers" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSuppliersPage /></RequireRole>} />
                     <Route path="consumables" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminConsumablesPage /></RequireRole>} />
                     {/* WhatsApp quote bot retired — page hidden (the backend function is a no-op behind WHATSAPP_QUOTE_BOT_ENABLED). */}
