@@ -1,3 +1,4 @@
+import { AreaCreateControl, nextAreaName } from "@/components/quote/AreaNameChips";
 import { useState, useMemo } from "react";
 import { Plus, Trash2, Home, Tv, Briefcase, BedDouble, GripVertical, Factory, ChevronDown, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -134,8 +135,7 @@ export default function AreaDefinitionStep({ areas, onAreasChange, controlsOnly 
     if (!name.trim()) return;
     // Auto-increment if duplicate
     const baseName = name.trim();
-    const count = areas.filter((a) => a.name === baseName || a.name.startsWith(baseName + " ")).length;
-    const finalName = count > 0 ? `${baseName} ${count + 1}` : baseName;
+    const finalName = nextAreaName(baseName, areas.map((area) => area.name));
     onAreasChange([...areas, createEmptyArea(finalName)]);
     setCustomName("");
     setCustomMode(false);
@@ -217,67 +217,8 @@ export default function AreaDefinitionStep({ areas, onAreasChange, controlsOnly 
       )}
       </>}
 
-      {/* Add Area dropdown + custom input */}
-      <div className="flex gap-2" data-testid="inline-area-create">
-        {customMode ? (
-          <>
-            <Input
-              autoFocus
-              placeholder="Enter custom area name..."
-              value={customName}
-              onChange={(e) => setCustomName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") addArea(customName);
-                if (e.key === "Escape") setCustomMode(false);
-              }}
-              className="h-11 sm:h-9 text-sm flex-1"
-            />
-            <Button size="sm" className="min-h-[44px] sm:min-h-0" onClick={() => addArea(customName)} disabled={!customName.trim()}>
-              <Plus className="h-4 w-4 mr-1" /> Add
-            </Button>
-            <Button variant="ghost" size="sm" className="min-h-[44px] sm:min-h-0 text-xs" onClick={() => setCustomMode(false)}>
-              Cancel
-            </Button>
-          </>
-        ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5 min-h-[44px] sm:min-h-0">
-                <Plus className="h-4 w-4" />
-                Add Area
-                <ChevronDown className="h-3 w-3 ml-0.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52 z-[70]">
-              {categoryLabel && (
-                <>
-                  <DropdownMenuLabel className="text-[10px] text-muted-foreground">
-                    {categoryLabel} Areas
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              {dropdownOptions.map((opt) => (
-                <DropdownMenuItem
-                  key={opt}
-                  className="text-xs cursor-pointer gap-2"
-                  onClick={() => addArea(opt)}
-                >
-                  <Home className="h-3 w-3 text-muted-foreground" />
-                  {opt}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-xs cursor-pointer gap-2"
-                onClick={() => setCustomMode(true)}
-              >
-                <Pencil className="h-3 w-3 text-muted-foreground" />
-                Custom...
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+      <div className="space-y-2" data-testid="inline-area-create">
+        <AreaCreateControl existingNames={areas.map((area) => area.name)} onCreate={addArea} label="Add Area" />
       </div>
 
     </div>

@@ -1,3 +1,4 @@
+import { AreaCreateControl } from "@/components/quote/AreaNameChips";
 import { AreaNameLabel } from "@/components/quote/AreaNameLabel";
 import { SpecialChip } from "@/components/specials/SpecialsUi";
 import { useRef, useState, type ReactNode } from "react";
@@ -99,7 +100,7 @@ export interface EstimateEditing {
   /** Change a per-metre kit's length (metres); quantity stays 1. */
   onKitLengthChange?: (id: string, metres: number) => void;
   onRenameArea: (id: string, name: string) => void;
-  onAddArea: () => void;
+  onAddArea: (name?: string) => void | Promise<unknown>;
   /** Naming the orphan default section promotes it into a real area. */
   onNameDefaultArea?: (name: string) => void;
   /** Area whose name input should take focus (just-created area). */
@@ -787,13 +788,7 @@ const EstimateDocument = ({
             )}
             <div className="w-full print:hidden" data-pdf-hide data-html2canvas-ignore data-testid="inline-estimate-area-create">
               {editing.areaCreationControl ?? (
-                <button
-                  type="button"
-                  onClick={editing.onAddArea}
-                  className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 bg-white px-3 py-1.5 text-[12px] text-slate-600 hover:border-[#1B3A5C] hover:text-[#1B3A5C] print:hidden"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Add area
-                </button>
+                <AreaCreateControl existingNames={editing.areas.map((area) => area.name)} onCreate={editing.onAddArea} />
               )}
             </div>
           </div>
