@@ -3,6 +3,7 @@ import { reconcileAutoLabour, syncAutoLabour, planLabourInsert } from "@/lib/are
 import { labourFields, isLabourItem } from "@/lib/labour";
 import { computeQuoteTotals } from "@/utils/quoteTransformers";
 import { buildClientRollup } from "@/lib/clientQuoteRollup";
+import { buildWizardReview } from "@/utils/areaReviewTotals";
 
 const areas = [{ id: "bedroom", name: "Bedroom", sort_order: 0, quote_id: "memory-quote", created_at: "", updated_at: "" }];
 const unit = (id = "u1", quantity = 1, price = 10000) => ({ id, area_id: "bedroom", item_name: "Samsung 12K INV MW", item_type: "product", quantity, unit_price: price, total_price: price * quantity, metadata: {} });
@@ -84,5 +85,21 @@ describe("automatic labour lifecycle, no live writes", () => {
     expect(writer.update).not.toHaveBeenCalled();
     expect(labs(rows)[0].total_price).toBe(2380);
     expect(planLabourInsert("per_area", rows, labour("incoming"))).toMatchObject({ kind: "merge", id: "saved", patch: {} });
+  });
+
+  it("wizard live previews recalculate instead of adding stale saved labour totals", () => {
+    const basket = (quantity: number) => [{ id: "local", name: "Bedroom", items: quantity ? [{ instanceId: "unit", quantity, product: { id: "p", short_name: "Samsung 12K INV MW", product_code: "AR40", product_category: "Air Conditioning", locked_sell_ex_vat: 10000, locked_cost_ex_vat: 8000 } }] : [] }] as any;
+    const options = { mode: "per_area", perUnit: 3.5, rate: 680 };
+    const stale = [labour("old", 7), labour("duplicate")];
+    for (const [quantity, subtotal, hours] of [[0, 0, 0], [1, 12380, 3.5], [2, 24760, 7]]) {
+      const review = buildWizardReview(basket(quantity), stale, areas, null, false, options);
+      expect(review.totals.subtotal).toBe(subtotal);
+      expect(review.rows.reduce((sum, r) => sum + r.hours, 0)).toBe(hours);
+      expect(review.rows.reduce((sum, r) => sum + r.totals.subtotal, 0)).toBe(subtotal);
+    }
+    const manual = labour("manual", 5, false, 800);
+    const review = buildWizardReview(basket(1), [manual], areas, null, false, options);
+    expect(review.totals.subtotal).toBe(14000);
+    expect(review.rows[0]).toMatchObject({ hours: 5, rate: 800 });
   });
 });
