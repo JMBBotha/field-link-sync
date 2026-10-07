@@ -76,6 +76,7 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
         notes={m.notes ?? null}
         termsText={m.terms_text ?? null}
       />
+      {createAreaSection}
     </div>
   );
 }
