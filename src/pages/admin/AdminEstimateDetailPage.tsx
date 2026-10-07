@@ -1,3 +1,4 @@
+import { usePdfBasket } from "@/lib/pdfBasketStore";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -38,6 +39,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
  */
 const AdminEstimateDetailPage = () => {
   const { id = "" } = useParams();
+  const [pdfBasket] = usePdfBasket(id || null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -309,6 +311,7 @@ const AdminEstimateDetailPage = () => {
         {/* Mandy (Grok dock) quote actions — same QuoteContext + PDF handler as the buttons. */}
         <MandyQuoteActions vatRate={Number(quote.vat_rate) || 0.15} onPdf={handlePdf} onChanged={refreshDocument} />
         <EstimateBuilder
+          pdfBasket={pdfBasket}
           quoteNumber={quote.quote_number}
           issueDate={quote.created_at}
           validUntil={quote.valid_until}
