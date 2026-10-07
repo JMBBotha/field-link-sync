@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor, render, fireEvent, screen, cleanup } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import type { PdfSelectionState } from "@/types/pdfSelection";
 import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
 import PdfPageOverlay from "@/components/catalog/quote-builder/PdfPageOverlay";
 import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
@@ -51,23 +52,44 @@ describe("personal favourite toggle", () => {
     expect(result.current.ids.has("samsung")).toBe(true);
     expect(db.rows).toEqual(["samsung"]);
   });
-  it.each([false, true])("single tap selects and double tap toggles regardless of starred state (%s)", (starred) => {
+  it.each([0, 1000])("cycles selected, favourite, normal with separate clicks (%s ms apart)", (delay) => {
     const toggle = vi.fn();
     const select = vi.fn();
     const product = { id: "samsung", product_code: "AR24BSAAAWK/FA", cost_price: 100, default_markup_percent: 25 } as PaletteProduct;
-    render(<PdfPageOverlay regions={[{ id: "region", x_pct: 0, y_pct: 40, w_pct: 100, h_pct: 20, product, product_code: product.product_code, label: "Samsung" }]} baskets={[]} basketProductCounts={{}} favoriteIds={new Set(starred ? [product.id] : [])} onToggleFavorite={toggle} pdfSelection={{ selectedFromPdf: [], setSelectedFromPdf: vi.fn(), updateSelectedItem: vi.fn(), handleSelectProduct: select }} />);
+    function Cycle() {
+      const [selected, setSelected] = useState<PdfSelectionState>([]);
+      const [starred, setStarred] = useState(false);
+      return <PdfPageOverlay regions={[{ id: "region", x_pct: 0, y_pct: 40, w_pct: 100, h_pct: 20, product, product_code: product.product_code, label: "Samsung" }]} baskets={[]} basketProductCounts={{}} favoriteIds={new Set(starred ? [product.id] : [])} onToggleFavorite={(p) => { toggle(p); setStarred(value => !value); }} pdfSelection={{ selectedFromPdf: selected, setSelectedFromPdf: setSelected, updateSelectedItem: vi.fn(), handleSelectProduct: (p) => { select(p); setSelected([{ ...p, quantity: 1, unitType: "unit" }]); } }} />;
+    }
+    render(<Cycle />);
     const strip = screen.getByTestId("pdf-margin-hit-strip");
     const rect = { top: 0, left: 0, right: 100, bottom: 100, width: 100, height: 100, x: 0, y: 0, toJSON: () => ({}) };
     vi.spyOn(strip, "getBoundingClientRect").mockReturnValue(rect);
     if (strip.parentElement) vi.spyOn(strip.parentElement, "getBoundingClientRect").mockReturnValue(rect);
-    // jsdom does not provide PointerEvent; mouse-event coordinates exercise the same handler.
-    fireEvent(strip, new MouseEvent("pointerdown", { bubbles: true, clientX: 99, clientY: 50 }));
-    fireEvent(strip, new MouseEvent("pointerup", { bubbles: true, clientX: 99, clientY: 50 }));
+    let now = 0;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+    const click = () => {
+      now += delay;
+      // jsdom has no PointerEvent; coordinates exercise the same handler.
+      fireEvent(strip, new MouseEvent("pointerdown", { bubbles: true, clientX: 99, clientY: 50 }));
+      fireEvent(strip, new MouseEvent("pointerup", { bubbles: true, clientX: 99, clientY: 50 }));
+    };
+    const state = () => document.querySelector("[data-pdf-region-box]")?.getAttribute("data-pdf-state");
+    expect(state()).toBe("normal");
+    click();
+    expect(state()).toBe("selected");
     expect(select).toHaveBeenCalledWith(expect.objectContaining({ productId: "samsung" }));
     expect(toggle).not.toHaveBeenCalled();
-    fireEvent(strip, new MouseEvent("pointerdown", { bubbles: true, clientX: 99, clientY: 50 }));
-    fireEvent(strip, new MouseEvent("pointerup", { bubbles: true, clientX: 99, clientY: 50 }));
+    click();
+    expect(state()).toBe("favourite");
     expect(toggle).toHaveBeenCalledWith(expect.objectContaining({ id: "samsung" }));
     expect(select).toHaveBeenCalledTimes(1);
+    click();
+    expect(state()).toBe("normal");
+    expect(toggle).toHaveBeenCalledTimes(2);
+    click();
+    expect(state()).toBe("selected");
+    expect(select).toHaveBeenCalledTimes(2);
+    clock.mockRestore();
   });
 });

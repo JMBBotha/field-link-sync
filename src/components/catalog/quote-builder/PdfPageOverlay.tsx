@@ -45,7 +45,6 @@ const STRIP_W_PHONE = 44;
 const STRIP_W_DESKTOP = 64;
 /** Minimum half-height (screen px) of the vertical hit window per row. */
 const MIN_HIT_HALF_PX = 12;
-const DOUBLE_TAP_MS = 400;
 const TAP_MOVE_TOLERANCE_PX = 8;
 /** Vivid info-blue and dark radio greys. */
 const INFO_BLUE = "hsl(217 91% 53%)";
@@ -269,6 +268,7 @@ const RegionBox = memo(({
   return (
     <div
       data-pdf-region-box
+      data-pdf-state={isFavorite ? "favourite" : isSelected ? "selected" : "normal"}
       className="absolute z-20"
       style={{
         left: "0%",
@@ -365,10 +365,11 @@ const RegionBox = memo(({
             }}
           />
         </span>
-        {isSelected ? (
+        {isFavorite ? (
+          <Star className={`w-auto aspect-square fill-accent-yellow text-accent-yellow ${CONTROL_SIZE_CLASS}`} aria-hidden />
+        ) : isSelected ? (
           <CheckCircle2
-            className={`w-auto aspect-square ${CONTROL_SIZE_CLASS}`}
-            style={{ color: isFavorite ? "hsl(45 93% 47%)" : "hsl(var(--success))" }}
+            className={`w-auto aspect-square text-success ${CONTROL_SIZE_CLASS}`}
             aria-hidden
           />
         ) : (
@@ -399,6 +400,8 @@ RegionBox.displayName = "RegionBox";
  */
 const MarginHitStrip = ({
   regions,
+  favoriteIds,
+  basketProductCounts,
   pdfSelection,
   baskets,
   onAddProductToBasket,
@@ -411,6 +414,8 @@ const MarginHitStrip = ({
   supplierDiscountPercent,
 }: {
   regions: OverlayRegion[];
+  favoriteIds?: Set<string>;
+  basketProductCounts?: Record<string, number>;
   onInfoPress?: (regionId: string) => void;
   pdfSelection?: PdfSelectionHandlers;
   baskets: Basket[];
@@ -423,7 +428,6 @@ const MarginHitStrip = ({
   supplierDiscountPercent?: number | null;
 }) => {
   const downRef = useRef<{ id: number; x: number; y: number } | null>(null);
-  const lastTapRef = useRef<{ regionId: string; at: number }>({ regionId: "", at: 0 });
   const hoverIdRef = useRef<string | null>(null);
 
   /** Resolve the row under a client Y using the page box rect (transform-aware). */
@@ -478,13 +482,15 @@ const MarginHitStrip = ({
       return;
     }
 
-    const now = Date.now();
-    const last = lastTapRef.current;
-    lastTapRef.current = { regionId: region.id, at: now };
     const product = regionProduct(region, supplierDiscountPercent);
-    if (onToggleFavorite && last.regionId === region.id && now - last.at < DOUBLE_TAP_MS) {
-      lastTapRef.current = { regionId: "", at: 0 };
-      onToggleFavorite(product);
+    if (favoriteIds?.has(product.id)) {
+      const code = regionSelectionCode(region);
+      pdfSelection?.setSelectedFromPdf((items) => items.filter((item) => item.code !== code));
+      onToggleFavorite?.(product);
+      return;
+    }
+    if (isRegionSelected(region, pdfSelection, basketProductCounts)) {
+      onToggleFavorite?.(product);
       return;
     }
     selectRegion(region, pdfSelection, baskets, onAddProductToBasket, supplierDiscountPercent);
@@ -574,6 +580,8 @@ const PdfPageOverlay = ({
       })}
       <MarginHitStrip
         regions={regions}
+        favoriteIds={favoriteIds}
+        basketProductCounts={basketProductCounts}
         pdfSelection={pdfSelection}
         baskets={baskets}
         onAddProductToBasket={onAddProductToBasket}
