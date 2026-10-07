@@ -1,3 +1,4 @@
+import { deriveSearchTags } from "@/lib/productSearchTags";
 import { pipePairFromText, importPipeFields } from "@/lib/kitSizes";
 /**
  * DIFF IMPORT PIPELINE — safe, non-destructive supplier product import.
@@ -346,7 +347,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       cost_incl_vat: row.cost_incl_vat ?? null,
       vat_rate: row.vat_rate || 15,
       ...bookFields(row),
-    }));
+    })).map((r: any) => ({ ...r, search_tags: deriveSearchTags(r) || null }));
 
 
     const { error: err, data } = await (supabase.from("supplier_products" as any) as any)
@@ -378,6 +379,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       is_active: true,
       ...bookFields(row),
     };
+    updateData.search_tags = deriveSearchTags(updateData) || null;
 
     if (!manualIds.has(row.existing_id)) Object.assign(updateData, importPipeFields(null, row.pipe_size));
     if (row.cost_excl_vat !== undefined) {

@@ -1,0 +1,6 @@
+# AGENTS (src/lib)
+- Piping kit sizes come only from the kit's copper component names (lib/kitSizes.ts); kit swaps reprice via kitRowFields (same maths as addKitToQuote) and keep metadata.install.
+- Auto kit choice for a unit is pickKitForUnit (lib/kitSizes.ts): exact pipe_liquid+pipe_gas → brand+BTU majority → closest (with note) → BTU rule; template bundle_id is last resort. Imports never overwrite pipe fields when supplier_products.pipe_sizes_manual — brochure data beats price lists.
+- Jobs board rows come from lib/jobsBoard.ts (jobs + todaysJobs.loadEntries, de-duped by job_id; unknown statuses → Scheduled, cancelled behind a toggle) — so the board never hides what the Today tile counts.
+- Dashboard tile counts and their target lists share one pure filter in lib/drilldown.ts (TILE_LINKS + parse*/filter* helpers); "today" is always todayInJohannesburg — so a tile number cannot drift from its list.
+- Product search tags: supplier_products.search_tags come only from deriveSearchTags (lib/productSearchTags.ts) on import/manual add; every product search matches via productMatchesTerms (hyphen/space-insensitive) — so one tagger and one matcher.

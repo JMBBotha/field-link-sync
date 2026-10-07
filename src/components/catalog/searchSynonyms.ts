@@ -1,3 +1,4 @@
+import { productMatchesTerms } from "@/lib/productSearchTags";
 /**
  * HVAC search synonym expansion.
  * When a user types a term, we also check its synonyms against the product blob.
@@ -112,6 +113,9 @@ export interface AliasSearchableProduct {
   product_category?: string | null;
   supplier_name?: string | null;
   search_aliases?: string[] | null;
+  name?: string | null;
+  search_tags?: string | null;
+  btu_rating?: number | null;
 }
 
 /** lowercase + collapse whitespace */
@@ -144,6 +148,9 @@ export function buildProductSearchText(p: AliasSearchableProduct): string {
     p.category,
     p.product_category,
     p.supplier_name,
+    p.name,
+    p.btu_rating != null ? String(p.btu_rating) : null,
+    p.search_tags,
     ...aliases,
     ...aliases.map(stripSpaces),
   ];
@@ -178,6 +185,8 @@ export function scoreProductMatch(query: string, p: AliasSearchableProduct): num
     const aliasHits = terms.filter((t) => expandTerm(t).some((e) => aliasBlob.includes(e))).length;
     return 300 + aliasHits * 20;
   }
+  // Hyphen/space-insensitive match incl. search_tags ("windfree" ≈ "Wind-free").
+  if (productMatchesTerms(p as any, nq)) return 200;
 
   return -1;
 }

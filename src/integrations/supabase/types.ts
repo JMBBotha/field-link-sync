@@ -6539,6 +6539,7 @@ export type Database = {
           refrigerant_type: string | null
           row_bbox: Json | null
           search_aliases: string[] | null
+          search_tags: string | null
           sell_price_incl_vat: number | null
           selling_price: number | null
           short_name: string | null
@@ -6615,6 +6616,7 @@ export type Database = {
           refrigerant_type?: string | null
           row_bbox?: Json | null
           search_aliases?: string[] | null
+          search_tags?: string | null
           sell_price_incl_vat?: number | null
           selling_price?: number | null
           short_name?: string | null
@@ -6691,6 +6693,7 @@ export type Database = {
           refrigerant_type?: string | null
           row_bbox?: Json | null
           search_aliases?: string[] | null
+          search_tags?: string | null
           sell_price_incl_vat?: number | null
           selling_price?: number | null
           short_name?: string | null
