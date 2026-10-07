@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { Tag, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { formatRand } from "@/lib/formatCurrency";
+import { formatRand } from "@/utils/formatRand";
 import { fmtDate, signedSpecialsPdfUrl, type SupplierSpecial } from "@/lib/specials";
 
 /** In-app preview of a specials PDF via a short-lived signed URL. */
