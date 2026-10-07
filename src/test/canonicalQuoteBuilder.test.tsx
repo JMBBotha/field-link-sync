@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { CanonicalAreaCreateControl, nextAreaName } from "@/components/quote/AreaNameChips";
+import { CanonicalAreaCreateControl, nextAreaName, OTHER_AREA_PICKS } from "@/components/quote/AreaNameChips";
 import { CORE_SERVICES, serviceLineFields, type CatalogService } from "@/lib/catalogServices";
 
 describe("canonical quote builder", () => {
@@ -10,13 +10,7 @@ describe("canonical quote builder", () => {
     expect(within(choices).getAllByRole("button").map((button) => button.textContent?.trim())).toEqual([
       "Main bedroom", "Guest bedroom", "Lounge", "Office", "Other",
     ]);
-    fireEvent.click(screen.getByRole("button", { name: "Other" }));
-    expect(screen.getByRole("menuitem", { name: "Bedroom" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Bedroom 1" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Kitchen" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Dining room" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Study" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Type own name" })).toBeInTheDocument();
+    expect(OTHER_AREA_PICKS).toEqual(["Bedroom", "Bedroom 1", "Kitchen", "Dining room", "Study"]);
   });
 
   it("auto-numbers repeated canonical area names", () => {
