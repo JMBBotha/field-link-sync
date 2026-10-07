@@ -349,14 +349,17 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   const rateSnap = useSyncExternalStore(subscribeQuoteMarkupRates, getQuoteMarkupRatesSnapshot);
   const displayQuoteTotals = useMemo(
     // Labour rows live outside the baskets (LabourPanel) — add them so totals include labour.
-    () => computeQuoteTotals(
+    () => activeTab === "quote"
+      // Area-first view edits saved lines: totals come straight from them (same maths as the estimate page).
+      ? computeQuoteTotals(ctxItems, ctxAreas, undefined, { type: meta?.discount_type, value: meta?.discount_value })
+      : computeQuoteTotals(
       [...basketsToQuoteState(displayBaskets).items, ...ctxItems.filter((i) => isLabourItem(i))],
       basketsToQuoteState(displayBaskets).areas,
       undefined,
       { type: meta?.discount_type, value: meta?.discount_value },
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [displayBaskets, ctxItems, meta?.discount_type, meta?.discount_value, rateSnap],
+    [activeTab, displayBaskets, ctxItems, ctxAreas, meta?.discount_type, meta?.discount_value, rateSnap],
   );
   // Build Area Quote Pricing / Review / footer: same totals as the header, split per area.
   const areaReview = useMemo(
