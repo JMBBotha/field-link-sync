@@ -592,11 +592,11 @@ export default function EstimateBuilder({
               const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
               return (
                 <div className="space-y-2" onClick={stop} data-area-key={key}>
-                  <div className="flex items-start gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                     <div className="min-w-0 flex-1"><QuoteQuickEditor key={`${key}-item`} mode="item" {...editorProps} /></div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button type="button" size="sm" className="h-9 shrink-0 gap-1"><Plus className="h-4 w-4" />Add<ChevronDown className="h-3.5 w-3.5" /></Button>
+                        <Button type="button" size="sm" className="h-9 shrink-0 gap-1 self-end sm:self-auto"><Plus className="h-4 w-4" />Add<ChevronDown className="h-3.5 w-3.5" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuItem onSelect={async () => { if (!allowNewArea()) return; const c = await addArea(`Area ${areas.length + 1}`); if (c?.id) { setActiveAreaId(c.id); setFocusAreaId(c.id); } }}>Add area</DropdownMenuItem>
