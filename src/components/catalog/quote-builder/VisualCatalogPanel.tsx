@@ -1,3 +1,4 @@
+import { deriveSearchTags } from "@/lib/productSearchTags";
 /* eslint-disable -- visual catalog panel */
 import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
@@ -418,6 +419,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
         category: "Manual",
         is_active: true,
         archived: false,
+        search_tags: deriveSearchTags({ short_name: manualName.trim(), description: manualName.trim(), product_code: manualCode.trim() }) || null,
       }).select().single();
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
