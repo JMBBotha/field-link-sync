@@ -57,9 +57,9 @@ describe("estimate area collapse", () => {
   it("places creation after whole-job and unassigned labour, including newly added areas", () => {
     renderDocument({
       ...baseEditing,
-      areas: [area, { id: "area-2", name: "Office", lines: [{ id: "service", name: "Service", quantity: 1, unit_price: 50 }] }],
+      areas: [area, { id: "area-2", name: "Office", lines: [{ id: "service", name: "Service", description: null, quantity: 1, unit_price: 50 }] }],
       jobLabour: { lines: [], defaultHours: 3.5, onAdd: vi.fn() },
-      unassignedLabour: [{ id: "extra", name: "Extra labour", quantity: 1, unit_price: 680 }],
+      unassignedLabour: [{ id: "extra", name: "Extra labour", description: null, quantity: 1, unit_price: 680 }],
       onLabourChange: vi.fn(),
       areaCreationControl: <div>Create area</div>,
     });
