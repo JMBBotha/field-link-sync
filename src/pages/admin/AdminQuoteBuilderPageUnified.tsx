@@ -4,7 +4,7 @@ import QuoteBuilderLayout from "@/components/quoting/QuoteBuilderLayout";
 import PricingChecksRow from "@/components/quoting/PricingChecksRow";
 import { useMarginView } from "@/hooks/useMarginView";
 import { resolveProductMarkupPercent, classifyQuoteCategory } from "@/lib/pricing";
-import { canMergeRepick, freshProduct } from "@/lib/priceGuard";
+import { canMergeRepick, freshProduct, standardSell } from "@/lib/priceGuard";
 /**
  * Unified Quote Builder Page — wraps Normal / Visual / Area builders
  * in a shared header with tabs. Each tab renders the real builder component.
@@ -1210,6 +1210,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef }: { mode?
   return (
     <div
       className="fixed inset-0 z-50 flex h-[100dvh] flex-col overflow-hidden bg-background">
+      {specialPrompt.dialog}
 
       <QuoteSharedHeader onBack={() => exitGuard.requestExit()} />
       {exitGuard.ExitDialog}
