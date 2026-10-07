@@ -1,5 +1,9 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
+## Automatic labour accumulation (2026-10-07)
+- [ ] Fix add/remove/swap automatic labour across shared builder paths without changing manual overrides or real quotes.
+- [ ] Test add/remove/swap/two units/manual labour and client totals with in-memory data; read-only audit existing duplicate/orphan labour and report quotes.
+
 ## Labour outlines and PDF presses (2026-10-07)
 - [x] Correct PDF radio to separate-click normal → selected → favourite → normal cycle; 6 targeted tests passed; guarded signed-in PDF clicks verified all three visuals, cleared basket and two intercepted favourite writes. Labour outlines unchanged.
 - [x] Outline missing-labour and per-area hours rows in AreaLabourRow, LabourPanel and wizard TimeRow; generic glass styling was overriding orange. Guarded desktop/mobile estimate and Build quote checks measured 2px rgb(249, 115, 22); missing state verified with a read-response fixture.
