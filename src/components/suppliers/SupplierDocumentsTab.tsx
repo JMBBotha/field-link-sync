@@ -302,11 +302,6 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       }
       await (supabase.from("supplier_pdf_pages" as any) as any).delete().in("supplier_id", aliasArr);
 
-      // ── Archive this supplier's existing pdf_uploads so old books stop driving the catalog ──
-      await (supabase.from("pdf_uploads") as any)
-        .update({ is_active: false, status: "archived" })
-        .eq("supplier_id", supplierId);
-
       // ── Process the new PDF ──
       setPriceListProgress("Loading PDF...");
       const pdfjsLib = await import("pdfjs-dist");
@@ -315,6 +310,26 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       const totalPages = pdf.numPages;
+
+      // ── Create the new pdf_uploads book row FIRST (inactive until pages are stored) ──
+      const safeNameForPath = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const bookStoragePath = `${supplierId}/${safeNameForPath}`;
+      const { data: bookRow, error: bookErr } = await (supabase.from("pdf_uploads") as any)
+        .insert({
+          supplier_id: supplierId,
+          file_name: file.name,
+          file_path: bookStoragePath,
+          storage_path: bookStoragePath,
+          page_count: totalPages,
+          status: "uploaded",
+          is_active: false,
+        })
+        .select("id")
+        .single();
+      if (bookErr || !bookRow?.id) {
+        throw new Error(`Could not create the price book record: ${bookErr?.message || "unknown error"}`);
+      }
+      const newUploadId: string = bookRow.id;
 
       setPriceListProgress(`Processing ${totalPages} pages...`);
 
