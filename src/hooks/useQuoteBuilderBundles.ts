@@ -1,4 +1,5 @@
 import { resolveProductMarkupPercent } from "@/lib/pricing";
+import { resolveBundlesLive } from "@/lib/bundleResolve";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
@@ -82,10 +83,8 @@ export function useQuoteBuilderBundles() {
         });
       });
 
-      return bundleData.map((b) => ({
-        ...b,
-        items: itemsByBundle[b.id] || []
-      }));
+      // Items resolve LIVE by model number (lib/bundleResolve.ts); not found → zero-priced "Not found" placeholder.
+      return resolveBundlesLive(bundleData.map((b) => ({ ...b, items: itemsByBundle[b.id] || [] })) as any) as any;
     },
     staleTime: 60000,
   });
