@@ -1,4 +1,4 @@
-import { AreaCreateControl } from "@/components/quote/AreaNameChips";
+import { CanonicalAreaCreateControl } from "@/components/quote/AreaNameChips";
 import { AreaNameLabel } from "@/components/quote/AreaNameLabel";
 import { SpecialChip } from "@/components/specials/SpecialsUi";
 import { useRef, useState, type ReactNode } from "react";
@@ -794,7 +794,7 @@ const EstimateDocument = ({
             {(editing.areas.some((area) => area.id) || editing.areas.some((area) => area.lines.length > 0) || !editing.areaCreationControl) && (
               <div className="w-full border-t border-border pt-4 print:hidden" data-pdf-hide data-html2canvas-ignore data-testid="inline-estimate-area-create">
                 {editing.areaCreationControl ?? (
-                  <AreaCreateControl existingNames={editing.areas.map((area) => area.name)} onCreate={editing.onAddArea} />
+                  <CanonicalAreaCreateControl existingNames={editing.areas.map((area) => area.name)} onCreate={editing.onAddArea} />
                 )}
               </div>
             )}

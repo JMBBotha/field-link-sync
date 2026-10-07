@@ -178,9 +178,9 @@ export default function QuoteQuickEditor({
     if (mode !== "unit" && mode !== "material" && mode !== "item" && mode !== "selected") return null;
     if (mode === "selected") return basketProducts.length ? { basket: basketProducts, favs: [] as PaletteProduct[] } : null;
     const fits = (p: PaletteProduct) => mode === "item" || (mode === "unit") === isAirConditioningProduct(p);
-    const basket = basketProducts.filter(fits);
+    const basket = mode === "selected" ? basketProducts.filter(fits) : [];
     const g = groupFavourites(favIds, products, []);
-    const favs = (mode === "item" ? [...g.units, ...g.materials] : mode === "unit" ? g.units : g.materials).filter((p) => !basketIds.has(p.id));
+    const favs = mode === "selected" ? [] : (mode === "item" ? [...g.units, ...g.materials] : mode === "unit" ? g.units : g.materials);
     return basket.length || favs.length ? { basket, favs } : null;
   }, [mode, basketProducts, basketIds, favIds, products]);
 
