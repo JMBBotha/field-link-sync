@@ -20,7 +20,7 @@ export default function AreaLabourRow({ areaId, areaName, lines, defaultHours, o
   return (
     <div id={`area-labour-${areaId}`} data-testid={`area-labour-${areaId}`} className="mt-2 border-t border-slate-200 pt-2 print:hidden">
       {hours <= 0 && (
-        <div className="mb-2 flex items-center justify-between gap-3 bg-card text-foreground border-2 border-orange-500 px-3 py-2 text-xs">
+        <div data-testid="labour-needed-row" className="mb-2 flex items-center justify-between gap-3 rounded-md bg-card text-foreground border-2 border-orange-500 px-3 py-2 text-xs">
           <span className="font-medium">Labour needed</span>
           <Button type="button" size="sm" variant="outline" onClick={onAdd}>Add labour</Button>
         </div>
@@ -28,9 +28,9 @@ export default function AreaLabourRow({ areaId, areaName, lines, defaultHours, o
       {lines.map((line) => {
         const differs = !line.labourAuto && defaultHours > 0 && Math.abs(line.quantity - defaultHours) > 0.001;
         return (
-          <div key={line.id} className="grid items-center gap-2 text-xs sm:grid-cols-[minmax(160px,1fr)_100px_120px_110px_auto]">
+          <div key={line.id} data-testid="area-labour-hours-row" className="mb-2 grid items-center gap-2 rounded-md bg-card text-foreground border-2 border-orange-500 px-3 py-2 text-xs sm:grid-cols-[minmax(160px,1fr)_100px_120px_110px_auto]">
             <div>
-              <span className="font-medium text-slate-800">{title ?? `Labour for ${areaName}`}</span>
+              <span className="font-medium text-foreground">{title ?? `Labour for ${areaName}`}</span>
               {differs && <span className="ml-2 text-[10px] text-slate-500">Default for {line.acUnitCount} units: {defaultHours} h</span>}
             </div>
             <label className="flex items-center gap-1 text-slate-500">

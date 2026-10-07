@@ -60,7 +60,7 @@ function LabourRow({ areaId, areaName, standardRate, line, job }: { areaId: stri
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-t border-border/60 py-2 first:border-t-0" data-testid={`labour-row-${areaId}`}>
+    <div className="my-2 flex flex-wrap items-center gap-2 rounded-md bg-card text-foreground border-2 border-orange-500 px-3 py-2" data-testid={`labour-row-${areaId}`}>
       <div className="min-w-[110px] flex-1 text-sm font-medium">{areaName}</div>
       <div className="flex items-center gap-1">
         <Button type="button" size="icon" variant="outline" className="h-8 w-8" aria-label="Less labour" disabled={hours <= 0} onClick={() => commit(stepHours(hours, -1))}>

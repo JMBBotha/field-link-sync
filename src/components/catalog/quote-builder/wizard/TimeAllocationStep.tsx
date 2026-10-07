@@ -65,7 +65,7 @@ function TimeRow({ r, standardRate, write }: { r: Row; standardRate: number | nu
   const off = !r.saved;
   const hasContent = r.area.acUnits.length + r.area.materials.length + r.area.brackets.length + (r.area.consumables?.length || 0) > 0;
   return (
-    <div className="grid grid-cols-2 items-center gap-2 border-t py-2 text-xs first:border-t-0 sm:grid-cols-[1fr_auto_auto_auto_auto]" data-testid="time-row">
+    <div className="grid grid-cols-2 items-center gap-2 rounded-md bg-card text-foreground border-2 border-orange-500 px-3 py-2 text-xs sm:grid-cols-[1fr_auto_auto_auto_auto]" data-testid="time-row">
       <div className="col-span-2 min-w-0 sm:col-span-1">
         <div className="truncate text-sm font-medium">{r.area.name || "Unnamed area"}</div>
         <div className="text-muted-foreground">{r.units} AC unit{r.units !== 1 ? "s" : ""} · suggested {r.suggested} h</div>
@@ -123,7 +123,7 @@ export function TimeAllocationStep({ areas }: { areas: QuoteArea[]; onAreasChang
       {areas.length === 0 ? (
         <p className="text-xs text-muted-foreground">No areas defined.</p>
       ) : (
-        <div className="rounded-lg border bg-card px-3">
+        <div className="space-y-2">
           {L.rows.map((r) => <TimeRow key={r.area.id} r={r} standardRate={L.standardRate} write={L.write} />)}
         </div>
       )}

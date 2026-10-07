@@ -53,6 +53,7 @@ All colors MUST be HSL.
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
+    --labour-outline: 24.5815 94.9791% 53.1373%;
     --warning-foreground: 30 40% 15%;
     --info: 204 100% 36%;
     --info-foreground: 0 0% 100%;
@@ -895,6 +896,11 @@ All colors MUST be HSL.
   -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(150%);
   border-color: hsl(var(--surface-border) / var(--surface-border-alpha));
   box-shadow: var(--surface-shadow);
+}
+
+/* Labour editors keep their explicit outline instead of the generic glass edge. */
+.app-surface .bg-card.border-orange-500 {
+  border-color: hsl(var(--labour-outline)) !important;
 }
 
 /* 3. Bright glass edge on the main surface primitives. */

@@ -399,7 +399,6 @@ RegionBox.displayName = "RegionBox";
  */
 const MarginHitStrip = ({
   regions,
-  favoriteIds,
   pdfSelection,
   baskets,
   onAddProductToBasket,
@@ -412,7 +411,6 @@ const MarginHitStrip = ({
   supplierDiscountPercent,
 }: {
   regions: OverlayRegion[];
-  favoriteIds?: Set<string>;
   onInfoPress?: (regionId: string) => void;
   pdfSelection?: PdfSelectionHandlers;
   baskets: Basket[];
@@ -484,7 +482,7 @@ const MarginHitStrip = ({
     const last = lastTapRef.current;
     lastTapRef.current = { regionId: region.id, at: now };
     const product = regionProduct(region, supplierDiscountPercent);
-    if (onToggleFavorite && (favoriteIds?.has(product.id) || (last.regionId === region.id && now - last.at < DOUBLE_TAP_MS))) {
+    if (onToggleFavorite && last.regionId === region.id && now - last.at < DOUBLE_TAP_MS) {
       lastTapRef.current = { regionId: "", at: 0 };
       onToggleFavorite(product);
       return;
@@ -576,7 +574,6 @@ const PdfPageOverlay = ({
       })}
       <MarginHitStrip
         regions={regions}
-        favoriteIds={favoriteIds}
         pdfSelection={pdfSelection}
         baskets={baskets}
         onAddProductToBasket={onAddProductToBasket}

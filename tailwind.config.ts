@@ -14,6 +14,7 @@ export default {
     },
     extend: {
       colors: {
+        orange: { 500: "hsl(var(--labour-outline))" },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
