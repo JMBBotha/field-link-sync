@@ -39,6 +39,12 @@ import { hhmm, leadMinutes, fromMinutes, toMinutes } from "@/lib/schedulingDefau
 import { overlapMap } from "@/lib/clash";
 import { useClashGuard } from "@/components/scheduling/ClashGuard";
 import { useDoubleBookings } from "@/hooks/useDoubleBookings";
+import { useSalesRep } from "@/hooks/useSalesRep";
+import { useRole } from "@/hooks/useRole";
+import { useIsMobile } from "@/hooks/use-mobile";
+import NeedsSomeoneTray from "@/components/calendar/NeedsSomeoneTray";
+import DayCards, { BusyBlock } from "@/components/calendar/DayCards";
+import { bookingMinutes, hoursLabel, calendarText, salesCalendarPeople } from "@/components/calendar/calendarModel";
 
 // ─── Types ───
 interface Lead {
@@ -139,7 +145,12 @@ const minutesToPx = (mins: number, pxPerHour: number) => (mins / 60) * pxPerHour
 const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) => {
   const { toast } = useToast();
   const { confirmBooking, dialog: clashDialog } = useClashGuard();
-  const { count: doubleBookings } = useDoubleBookings();
+  const { count: allDoubleBookings, rows: doubleBookingRows } = useDoubleBookings();
+  const { isSalesRep, loading: salesLoading } = useSalesRep();
+  const { userId, isAdmin, isDispatcher } = useRole();
+  const mobile = useIsMobile();
+  const doubleBookings = salesLoading ? 0 : isSalesRep ? doubleBookingRows.filter(r => r.profile_id === userId).length : allDoubleBookings;
+  const [dayStyle, setDayStyle] = useState<"cards" | "timeline">(() => localStorage.getItem("fls.calendar.dayStyle") === "timeline" ? "timeline" : "cards");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isOnline: isPresenceOnline } = usePresence("dispatch-presence");
@@ -192,7 +203,8 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
 
   // ─── Data queries ───
   const { data: allLeads = [], isLoading: leadsLoading, isError: leadsError } = useQuery({
-    queryKey: ["dispatch-leads"],
+    queryKey: ["dispatch-leads", userId, isSalesRep],
+    enabled: !!userId && !salesLoading,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leads")
@@ -261,13 +273,13 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
       byId.set(s.id, { id: s.id, full_name: s.full_name, availability_status: s.availability_status }),
     );
     agents.forEach(a => { if (!byId.has(a.id)) byId.set(a.id, a); });
-    return Array.from(byId.values()).sort((a, b) => {
+    return salesLoading ? [] : salesCalendarPeople(Array.from(byId.values()), isSalesRep, userId).sort((a, b) => {
       const laneA = laneRank(laneById.get(a.id) ?? null);
       const laneB = laneRank(laneById.get(b.id) ?? null);
       if (laneA !== laneB) return laneA - laneB;
       return a.full_name.localeCompare(b.full_name);
     });
-  }, [salesStaff, technicians, agents, laneById]);
+  }, [salesStaff, technicians, agents, laneById, isSalesRep, userId, salesLoading]);
 
   const { data: agentLocations = [] } = useQuery({
     queryKey: ["dispatch-agent-locations"],
@@ -281,12 +293,13 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
 
   
   const { data: rawSchedules = [], refetch: refetchSchedules, isLoading: schedulesLoading } = useQuery({
-    queryKey: ["dispatch-schedules"],
+    queryKey: ["dispatch-schedules", userId, isSalesRep],
+    enabled: !!userId && !salesLoading,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("job_schedules")
-        .select("*, leads(id, customer_name, service_type, status, priority, customer_address, latitude, longitude), jobs(status)")
-        .order("scheduled_date");
+      let query = supabase.from("job_schedules")
+        .select("*, leads(id, customer_name, service_type, status, priority, customer_address, latitude, longitude), jobs(status)");
+      if (isSalesRep) query = query.eq("agent_id", userId || "");
+      const { data, error } = await query.order("scheduled_date");
       if (error) throw error;
       return data as Schedule[];
     },
@@ -305,7 +318,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     const jobRowKey = new Set(live.filter(s => s.job_id).map(s => `${s.lead_id}|${s.agent_id}|${s.scheduled_date}`));
 
     const synthetic: Schedule[] = allLeads
-      .filter(l => l.assigned_agent_id && l.scheduled_date && !isCancelled(l.status) && !withRow.has(l.id)
+      .filter(l => (!isSalesRep || l.assigned_agent_id === userId) && l.assigned_agent_id && l.scheduled_date && !isCancelled(l.status) && !withRow.has(l.id)
         && !jobRowKey.has(`${l.id}|${l.assigned_agent_id}|${l.scheduled_date}`))
       .map(l => {
         const start = hhmm(l.scheduled_time || "08:00");
@@ -334,7 +347,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
       const o = clashes.get(s.id);
       return o ? { ...s, clash: { start: hhmm(o.start_time), end: hhmm(o.end_time), label: o.leads?.customer_name || "Booking" } } : s;
     });
-  }, [rawSchedules, allLeads]);
+  }, [rawSchedules, allLeads, isSalesRep, userId]);
 
 
   // ─── Realtime subscriptions ───
@@ -372,6 +385,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     let leads: Lead[] = inboxMode
       ? (inboxLeads as unknown as Lead[])
       : allLeads.filter(l => !l.assigned_agent_id && l.status === "pending");
+    if (isSalesRep) leads = leads.filter(l => laneOf(l) === "sales" && (!l.assigned_agent_id || l.assigned_agent_id === userId));
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       leads = leads.filter(l =>
@@ -385,7 +399,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     }
     if (laneParam) leads = filterLeadsByLane(leads, laneParam);
     return leads;
-  }, [allLeads, inboxLeads, inboxMode, searchQuery, showUrgentOnly, laneParam]);
+  }, [allLeads, inboxLeads, inboxMode, searchQuery, showUrgentOnly, laneParam, isSalesRep, userId]);
 
   const dateRange = useMemo(() => {
     if (viewMode === "day") return [currentDate];
@@ -863,6 +877,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
               <TabsTrigger value="week" className="text-xs px-3 h-7">Week</TabsTrigger>
             </TabsList>
           </Tabs>
+          {!mobile && !isSalesRep && (isAdmin || isDispatcher) && viewMode === "day" && <Tabs value={dayStyle} onValueChange={v => { const next = v === "timeline" ? "timeline" : "cards"; setDayStyle(next); localStorage.setItem("fls.calendar.dayStyle", next); }}><TabsList className="h-8"><TabsTrigger value="cards" className="text-xs">Cards</TabsTrigger><TabsTrigger value="timeline" className="text-xs">Timeline</TabsTrigger></TabsList></Tabs>}
           <Button
             variant={showMapPane ? "default" : "outline"}
             size="sm"
@@ -1032,7 +1047,19 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
 
           {/* Resource Timeline */}
           <div className="flex-1 overflow-auto">
-            {viewMode === "day" ? (
+            <NeedsSomeoneTray
+              leads={allLeads.filter(l => !l.assigned_agent_id && !!l.scheduled_time && dateRange.some(d => format(d, "yyyy-MM-dd") === l.scheduled_date) && !isCancelled(l.status) && (!isSalesRep || laneOf(l) === "sales"))}
+              pool={isSalesRep ? [] : Array.from(schedulesForDates.values()).flat().filter(isPoolSchedule)}
+              onLeadDragStart={handleDragStart} onScheduleDragStart={handleScheduleDragStart} onDragEnd={handleDragEnd}
+              onAssignLead={lead => { setQuickAssignLead(lead); setQuickAssignAgent(""); setQuickAssignDate(lead.scheduled_date || format(currentDate, "yyyy-MM-dd")); setQuickAssignStart(hhmm(lead.scheduled_time || "08:00")); setQuickAssignEnd(fromMinutes(toMinutes(lead.scheduled_time || "08:00") + leadMinutes(lead))); }}
+              onAssignPool={s => { if (s.job_id) navigate(`/admin/jobs/${s.job_id}`); }} />
+            {(mobile || viewMode === "day") && (mobile || dayStyle === "cards" || isSalesRep) ? (
+              <DayCards date={format(currentDate, "yyyy-MM-dd")} groups={groupAgentsByLane(dispatchAgents, laneById)}
+                schedules={schedulesForDates.get(format(currentDate, "yyyy-MM-dd")) || []} leads={allLeads} sales={isSalesRep}
+                isAgentOnline={isAgentOnline} onJobInfoClick={(lead, schedule) => { setJobInfoLead(lead); setJobInfoSchedule(schedule); }}
+                onScheduleDragStart={handleScheduleDragStart} onDragEnd={handleDragEnd} onDrop={handleDrop} onDragOver={handleDragOver}
+                dragOverSlot={dragOverSlot} onSlotDragEnter={handleSlotDragEnter} onSlotDragLeave={handleSlotDragLeave} />
+            ) : viewMode === "day" ? (
               <DayTimeline
                 date={currentDate}
                 agents={dispatchAgents}
@@ -1055,6 +1082,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
               />
             ) : (
               <WeekTimeline
+                sales={isSalesRep}
                 dates={dateRange}
                 agents={dispatchAgents}
                 laneById={laneById}
@@ -1317,7 +1345,7 @@ function LaneBadge({ lane }: { lane: LeadLane | null }) {
         lane ? LANE_META[lane].className : UNKNOWN_LANE_META.className
       }`}
     >
-      {lane === "sales" ? "Sales" : lane === "service" ? "Tech" : "Needs lane"}
+      {lane?.toUpperCase() || "LANE?"}
     </span>
   );
 }
@@ -1346,7 +1374,7 @@ const InstallDepositChip = ({ leadId, compact, showOpen }: { leadId: string; com
   if (!invoice?.id) return null;
   return (
     <span className="inline-flex items-center gap-1">
-      <DepositPaymentChip invoice={invoice} accepted className={compact ? "text-[9px] px-1 py-0" : undefined} />
+      <DepositPaymentChip invoice={invoice} hideAmount accepted className={compact ? "text-[9px] px-1 py-0" : undefined} />
       {showOpen && (
         <Button
           variant="outline"
@@ -1369,32 +1397,6 @@ const isInstallSchedule = (s: Schedule) => !!s.job_id || (!!s.notes && s.notes.s
  * This is a calendar slot label only — there is no "Unassigned" person/profile.
  */
 const isPoolSchedule = (s: Schedule) => !s.agent_id && !!s.job_id;
-
-const TechPoolTile = ({
-  schedule, onDragStart, compact, style, onOpen,
-}: {
-  schedule: Schedule;
-  onDragStart: (e: React.DragEvent, s: Schedule) => void;
-  compact?: boolean;
-  style?: React.CSSProperties;
-  onOpen: (jobId: string) => void;
-}) => (
-  <div
-    draggable
-    onDragStart={(e) => onDragStart(e, schedule)}
-    onClick={() => schedule.job_id && onOpen(schedule.job_id)}
-    className={`rounded-md border border-dashed border-emerald-500 bg-emerald-500/15 px-1.5 py-1 text-[10px] cursor-pointer overflow-y-auto ${compact ? "" : "absolute left-1 right-1"}`}
-    style={style}
-    title={`${schedule.leads?.customer_name || "Installation"} • ${hhmm(schedule.start_time)} • Unassigned · first-accept`}
-  >
-    <p className="font-semibold leading-tight break-words">{schedule.leads?.customer_name || "Installation"}</p>
-    <span className="mt-0.5 inline-block rounded bg-emerald-500/30 px-1 text-[9px] font-medium">
-      Unassigned · first-accept
-    </span>
-  </div>
-);
-
-
 
 // ─── Day Timeline ───
 const DayTimeline = ({
@@ -1424,27 +1426,9 @@ const DayTimeline = ({
   const dateStr = format(date, "yyyy-MM-dd");
   const now = new Date();
   const currentMinuteOffset = isToday(date) ? (now.getHours() - 6) * pxPerHour + (now.getMinutes() / 60) * pxPerHour : -1;
-  const poolSchedules = schedules.filter(isPoolSchedule);
   const laneGroups = groupAgentsByLane(agents, laneById);
-  const hasTechGroup = laneGroups.some(g => g.key === "service");
 
-  /** Technical-pool column: unassigned first-accept installs for this day. */
-  const PoolColumn = () => (
-    <div className="flex-1 min-w-[160px] border-r bg-emerald-500/5">
-      <div className="h-10 border-b px-2 flex items-center gap-1.5 bg-emerald-500/10 sticky top-0 z-10">
-        <span className="text-xs font-medium truncate">Technical pool</span>
-        {poolSchedules.length > 0 && (
-          <Badge variant="secondary" className="ml-auto h-4 text-[9px] px-1">{poolSchedules.length}</Badge>
-        )}
-      </div>
-      <div className="relative">
-        {HOURS.map(h => (
-          <div key={h} className="border-b" style={{ height: pxPerHour }} />
-        ))}
-        {poolSchedules.map(s => {
-          const top = minutesToPx(timeToMinutes(s.start_time) - 6 * 60, pxPerHour);
-          const height = Math.max(minutesToPx(timeToMinutes(s.end_time) - timeToMinutes(s.start_time), pxPerHour), 28);
-          return (
+  return (
             <TechPoolTile
               key={s.id}
               schedule={s}
@@ -1474,54 +1458,12 @@ const DayTimeline = ({
 
       {/* Agent columns */}
       <div className="flex flex-1 min-w-0 overflow-x-auto">
-        {/* Unassigned lane — scheduled jobs with no technician yet */}
-        {(() => {
-          const unassignedToday = allLeads.filter(
-            l => !l.assigned_agent_id && l.scheduled_date === dateStr && !!l.scheduled_time
-          );
-          return (
-            <div className="flex-1 min-w-[160px] border-r bg-warning/5">
-              <div className="h-10 border-b px-2 flex items-center gap-1.5 bg-warning/10 sticky top-0 z-10">
-                <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
-                <span className="text-xs font-medium truncate">Unassigned</span>
-                {unassignedToday.length > 0 && (
-                  <Badge variant="secondary" className="ml-auto h-4 text-[9px] px-1">{unassignedToday.length}</Badge>
-                )}
-              </div>
-              <div className="relative">
-                {HOURS.map(h => (
-                  <div key={h} className="border-b" style={{ height: pxPerHour }} />
-                ))}
-                {unassignedToday.map(lead => {
-                  const startMins = timeToMinutes(lead.scheduled_time as string) - 6 * 60;
-                  const top = minutesToPx(startMins, pxPerHour);
-                  const height = minutesToPx(120, pxPerHour);
-                  return (
-                    <div
-                      key={lead.id}
-                      className="absolute left-1 right-1 rounded-md border border-dashed border-warning bg-warning/15 px-1.5 py-1 text-[10px] cursor-pointer overflow-y-auto"
-                      style={{ top, height }}
-                      title={`${lead.customer_name} • ${lead.scheduled_time} • Unassigned`}
-                      onClick={() => onJobInfoClick(lead, null as any)}
-                    >
-                      <p className="font-semibold leading-tight break-words">{lead.customer_name}</p>
-                      <p className="break-words opacity-80">{lead.service_type}</p>
-                      <span className="mt-0.5 inline-block rounded bg-warning/30 px-1 text-[9px] font-medium">Unassigned</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
         {agents.length === 0 && (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm py-20">
             No staff found. Add sales people or technicians in Settings.
           </div>
         )}
 
-        {/* Unassigned first-accept installs still show under Technical when no tech rows exist. */}
-        {!hasTechGroup && poolSchedules.length > 0 && <PoolColumn />}
         {laneGroups.map(group => (
 
           <Fragment key={group.key ?? "unknown"}>
@@ -1606,7 +1548,7 @@ const DayTimeline = ({
                         borderColor: STATUS_COLORS[status] || "#6b7280",
                         color: "white",
                       }}
-                      title={schedule.clash ? `Overlaps ${schedule.clash.start}–${schedule.clash.end} with ${schedule.clash.label}` : `${schedule.leads?.customer_name} • ${hhmm(schedule.start_time)}–${hhmm(schedule.end_time)}`}
+                      title={schedule.clash ? `Overlaps ${schedule.clash.start}–${schedule.clash.end} with ${schedule.clash.label}` : `${calendarText(schedule.leads?.customer_name, calendarText(schedule.leads?.service_type))} • ${hhmm(schedule.start_time)}–${hhmm(schedule.end_time)}`}
                       onClick={() => {
                         const lead = allLeads.find(l => l.id === schedule.lead_id);
                         if (lead) { onJobInfoClick(lead, schedule); }
@@ -1626,8 +1568,8 @@ const DayTimeline = ({
                         ) : null;
                       })()}
                       {schedule.clash && <span className="inline-block rounded bg-destructive px-1 text-[9px] font-bold text-destructive-foreground" data-testid="clash-badge">⚠ Clash</span>}
-                      <p className="font-semibold leading-tight break-words">{schedule.leads?.customer_name || "Job"}</p>
-                      {height > 30 && <p className="break-words opacity-80">{schedule.leads?.service_type}</p>}
+                      <p className="font-semibold leading-tight break-words">{calendarText(schedule.leads?.customer_name, calendarText(schedule.leads?.service_type))}</p>
+                      {height > 30 && <p className="break-words opacity-80">{calendarText(schedule.leads?.service_type)}</p>}
                       {height > 45 && <p className="opacity-60">{hhmm(schedule.start_time)}–{hhmm(schedule.end_time)}</p>}
                       {height > 60 && isInstallSchedule(schedule) && (
                         <span className="mt-0.5 inline-block"><InstallDepositChip leadId={schedule.lead_id} compact /></span>
@@ -1649,7 +1591,6 @@ const DayTimeline = ({
             </div>
           );
             })}
-            {group.key === "service" && poolSchedules.length > 0 && <PoolColumn />}
           </Fragment>
 
         ))}
@@ -1660,9 +1601,10 @@ const DayTimeline = ({
 
 // ─── Week Timeline (compact) ───
 const WeekTimeline = ({
-  dates, agents, schedulesMap, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick, onQuoteClick, laneById,
+  sales, dates, agents, schedulesMap, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick, onQuoteClick, laneById,
   isDragging, dragOverSlot, onSlotDragEnter, onSlotDragLeave,
 }: {
+  sales: boolean;
   dates: Date[];
   agents: Agent[];
   laneById: Map<string, LeadLane | null>;
@@ -1684,24 +1626,7 @@ const WeekTimeline = ({
   const COMPACT_HEIGHT = 52;
   const navigate = useNavigate();
   const laneGroups = groupAgentsByLane(agents, laneById);
-  const hasTechGroup = laneGroups.some(g => g.key === "service");
-  const poolByDate = new Map<string, Schedule[]>();
-  dates.forEach(d => {
-    const key = format(d, "yyyy-MM-dd");
-    poolByDate.set(key, (schedulesMap.get(key) || []).filter(isPoolSchedule));
-  });
-  const hasPool = Array.from(poolByDate.values()).some(v => v.length > 0);
-
-  /** Technical-pool row: unassigned first-accept installs across the week. */
-  const PoolRow = () => (
-    <tr>
-      <td className="border-b border-r p-2 bg-emerald-500/10 sticky left-0 z-10">
-        <span className="text-xs font-medium">Technical pool</span>
-      </td>
-      {dates.map(d => {
-        const key = format(d, "yyyy-MM-dd");
-        const items = poolByDate.get(key) || [];
-        return (
+  return (
           <td key={key} className="border-b p-1 align-top min-w-[100px]">
             <div className="space-y-0.5">
               {items.map(s => (
@@ -1739,38 +1664,6 @@ const WeekTimeline = ({
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td className="border-b border-r p-2 bg-warning/10 sticky left-0 z-10">
-              <div className="flex items-center gap-1.5">
-                <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
-                <span className="text-xs font-medium truncate">Unassigned</span>
-              </div>
-            </td>
-            {dates.map(d => {
-              const dateStr = format(d, "yyyy-MM-dd");
-              const dayLeads = allLeads.filter(l => !l.assigned_agent_id && l.scheduled_date === dateStr);
-              return (
-                <td key={dateStr} className={`border-b p-1 align-top min-w-[100px] ${isToday(d) ? "bg-warning/10" : "bg-warning/5"}`}>
-                  <div className="space-y-0.5">
-                    {dayLeads.map(lead => (
-                      <div
-                        key={lead.id}
-                        className="rounded border border-dashed border-warning bg-warning/20 px-1.5 py-0.5 text-[10px] cursor-pointer break-words"
-                        title={`${lead.customer_name} • Unassigned`}
-                        onClick={() => onJobInfoClick(lead, null as any)}
-                      >
-                        <span className="font-medium">{(lead.scheduled_time || "").slice(0, 5)}</span> {lead.customer_name}
-                      </div>
-                    ))}
-                    {dayLeads.length === 0 && (
-                      <div className="text-[10px] text-muted-foreground/40 text-center py-2">—</div>
-                    )}
-                  </div>
-                </td>
-              );
-            })}
-          </tr>
-          {!hasTechGroup && hasPool && <PoolRow />}
           {laneGroups.map(group => (
 
             <Fragment key={group.key ?? "unknown"}>
@@ -1821,13 +1714,13 @@ const WeekTimeline = ({
                             onDragStart={(e) => onScheduleDragStart(e, schedule)}
                             className="rounded px-1.5 py-0.5 text-[10px] text-white cursor-pointer break-words"
                             style={{ backgroundColor: STATUS_COLORS[status] || "#6b7280" }}
-                            title={schedule.clash ? `Overlaps ${schedule.clash.start}–${schedule.clash.end} with ${schedule.clash.label}` : `${schedule.leads?.customer_name} ${hhmm(schedule.start_time)}–${hhmm(schedule.end_time)}`}
+                            title={schedule.clash ? `Overlaps ${schedule.clash.start}–${schedule.clash.end} with ${schedule.clash.label}` : `${calendarText(schedule.leads?.customer_name, calendarText(schedule.leads?.service_type))} ${hhmm(schedule.start_time)}–${hhmm(schedule.end_time)}`}
                             onClick={() => {
                               const lead = allLeads.find(l => l.id === schedule.lead_id);
                               if (lead) onJobInfoClick(lead, schedule);
                             }}
                           >
-                            {schedule.clash && <span className="mr-1 rounded bg-destructive px-1 font-bold text-destructive-foreground" data-testid="clash-badge">⚠ Clash</span>}<span className="font-medium">{hhmm(schedule.start_time)}</span> {schedule.leads?.customer_name || "Job"}
+                            {schedule.clash && <span className="mr-1 rounded bg-destructive px-1 font-bold text-destructive-foreground" data-testid="clash-badge">⚠ Clash</span>}<span className="font-medium">{hhmm(schedule.start_time)}</span> {calendarText(schedule.leads?.customer_name, calendarText(schedule.leads?.service_type))}
                             {isInstallSchedule(schedule) && (
                               <span className="ml-1 inline-block align-middle"><InstallDepositChip leadId={schedule.lead_id} compact /></span>
                             )}

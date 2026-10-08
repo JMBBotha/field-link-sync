@@ -104,6 +104,6 @@ export function calendarScheduleToCard(schedule: CalendarSchedule, lead?: Calend
     statusKey: schedule.jobs?.status || details?.status || "scheduled",
     priority: details?.priority, place: calendarText(details?.customer_address, "Address pending"),
     clientName: title, lane: schedule.job_id ? "service" : laneOf(lead || details || {}) || "sales",
-    urgency: { key: "normal", mins: null, label: "" },
+    urgency: { key: "later", rank: 6, mins: null },
   };
 }
