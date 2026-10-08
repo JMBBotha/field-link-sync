@@ -32,12 +32,10 @@ import PullToRefresh from "@/components/PullToRefresh";
 import Layout from "@/components/Layout";
 import SyncConflictDialog from "@/components/SyncConflictDialog";
 
-import UpgradeModal from "@/components/subscription/UpgradeModal";
+import IdentityBadge from "@/components/IdentityBadge";
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
-import SubscriptionBadge from "@/components/subscription/SubscriptionBadge";
 import NotificationBell from "@/components/notifications/NotificationBell";
-import { useSubscription } from "@/hooks/useSubscription";
 import LeadListFilterPills, { LeadListStatus } from "@/components/LeadListFilterPills";
 import FieldAgentLeadCard from "@/components/FieldAgentLeadCard";
 import DepositPaymentChip, { type DepositInvoiceLike } from "@/components/shared/DepositPaymentChip";
@@ -178,8 +176,6 @@ const FieldAgent = () => {
   const [releaseLeadId, setReleaseLeadId] = useState<string | null>(null);
   const [releaseReason, setReleaseReason] = useState('');
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const subscription = useSubscription();
 
   // Use offline leads data
   const leads = offlineLeads.leads as Lead[];
@@ -415,10 +411,6 @@ const FieldAgent = () => {
   // Accept/Claim a lead → open the schedule-and-assign dialog.
   // The dialog handles the DB write, assignment, and job creation.
   const handleAcceptLead = async (leadId: string) => {
-    if (!subscription.canCreateJobs) {
-      setShowUpgradeModal(true);
-      return;
-    }
     const lead = leads.find((l) => l.id === leadId);
     if (!lead) return;
     setAcceptDialogLead(lead);
@@ -1229,7 +1221,7 @@ const FieldAgent = () => {
             )}
           </div>
           <div className="flex items-center gap-2 md:gap-3">
-            <SubscriptionBadge />
+            <IdentityBadge />
             <NotificationBell />
             {/* Offline/Online Status Indicator */}
             <OfflineIndicator
@@ -1924,11 +1916,6 @@ const FieldAgent = () => {
           loading={completedJobsFilter.loading}
         />
         <SyncConflictDialog conflict={activeConflict} onResolve={resolveConflict} />
-        <UpgradeModal
-          open={showUpgradeModal}
-          onOpenChange={setShowUpgradeModal}
-          reason={subscription.isExpired ? "trial_expired" : "limit_reached"}
-        />
 
         {/* Release Lead Reason Dialog */}
         <Dialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
