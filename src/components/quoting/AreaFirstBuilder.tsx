@@ -13,12 +13,7 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
   const { meta, areas, addArea } = useQuoteContext();
   const m: any = meta || {};
   const createAreaSection = (
-      <section className="w-full bg-card text-foreground" data-testid="create-area">
-        <div className="mb-2 flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">1</span>
-          <h2 className="text-base font-semibold text-foreground">Create area</h2>
-          <span className="ml-auto text-xs text-muted-foreground">{areas.length} area{areas.length === 1 ? "" : "s"}</span>
-        </div>
+      <section className="w-full print:hidden" data-html2canvas-ignore data-testid="create-area">
         <CanonicalAreaCreateControl existingNames={areas.map((area) => area.name)} onCreate={addArea} />
       </section>
   );
