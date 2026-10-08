@@ -93,7 +93,7 @@ describe("estimate area collapse", () => {
     const rename = vi.fn();
     renderDocument({ ...baseEditing, areas: [area, { id: "second", name: "Main bedroom", lines: [] }], onRenameArea: rename });
     fireEvent.click(screen.getByRole("button", { name: "Rename area Bedroom" }));
-    fireEvent.click(screen.getByRole("button", { name: "Main bedroom", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^Main bedroom$/ }));
     expect(rename).toHaveBeenCalledWith("area-1", "Main bedroom 2");
     expect(screen.queryByTestId("canonical-area-choices")).toBeNull();
   });
