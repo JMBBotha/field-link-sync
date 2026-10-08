@@ -12,7 +12,7 @@ import { resolveProductMarkupPercent } from "@/lib/pricing";
  * into quote_items / quote_areas for the already-open quoteId. The Visual PDF
  * catalog stays in the full builder.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Star, Wrench, Package, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -359,8 +359,11 @@ export default function QuoteQuickEditor({
     setPendingAdd(null);
     addingRef.current = true;
     try {
-    if (pending.kind === "product") await commitProduct(pending.value, areaId);
-    else await commitCatalogService(pending.value, areaId);
+      if (pending.kind === "product") await commitProduct(pending.value, areaId);
+      else await commitCatalogService(pending.value, areaId);
+    } finally {
+      addingRef.current = false;
+    }
   };
 
   const saveCustomService = async () => {
