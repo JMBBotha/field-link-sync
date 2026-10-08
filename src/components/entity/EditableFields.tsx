@@ -102,6 +102,9 @@ export const EditableField = ({
     return (
       <Shell label={label} saving={saving} className={className}>
         <div className="flex items-center gap-1">
+          {type === "time24" || type === "time" ? (
+            <TimeInput24 value={draft ?? ""} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commit(); }} className="h-8" />
+          ) : (
           <Input
             ref={inputRef}
             type={type}
@@ -114,6 +117,7 @@ export const EditableField = ({
             onBlur={commit}
             className="h-8 min-w-0 text-sm"
           />
+          )}
           <Button type="button" size="sm" aria-label="Save" onClick={commit} className="h-8 shrink-0 gap-1 px-2.5">
             <Check className="h-4 w-4" /> Save
           </Button>
