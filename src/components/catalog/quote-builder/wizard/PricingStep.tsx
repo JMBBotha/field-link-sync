@@ -64,10 +64,11 @@ function AreaSubItems({ area }: { area: QuoteArea }) {
   for (const mat of area.materials) {
     const isLen = mat.pricingMode === "length";
     const unit = resolvePricingUnit(mat.product);
-    const unitPrice = unitPriceOf(mat.product);
+    const metre = (mat.product as any)?.qty_unit === "metre" && (mat.product as any)?.waste_percent != null;
+    const unitPrice = metre ? getEffectiveUnitPrices(mat.product).unitSell : unitPriceOf(mat.product);
     const qty = isLen ? mat.adjustedLength : mat.unitQuantity;
-    const lineTotal = isLen ? mat.totalCost : lineTotalOf(mat.product, mat.unitQuantity);
-    items.push({ name: mat.product.short_name || mat.product.product_code, qty, unitPrice, lineTotal, mode: isLen ? unitSuffix(unit) : unit.price_per_unit_label });
+    const lineTotal = isLen ? mat.totalCost : metre ? Math.round(unitPrice * mat.unitQuantity * 100 + 1e-9) / 100 : lineTotalOf(mat.product, mat.unitQuantity);
+    items.push({ name: mat.product.short_name || mat.product.product_code, qty, unitPrice, lineTotal, mode: metre ? "/ m" : isLen ? unitSuffix(unit) : unit.price_per_unit_label });
   }
   for (const cons of (area.consumables ?? [])) {
     const unit = resolvePricingUnit(cons.product);
@@ -156,9 +157,9 @@ function EditBundleDialog({
                   <QuantityControl
                     value={m.pricingMode === "length" ? m.adjustedLength : m.unitQuantity}
                     onChange={(v) => updateMaterialQty(m.id, v)}
-                    min={1}
+                    min={(m.product as any)?.waste_percent != null ? 0.1 : 1}
                     max={m.pricingMode === "length" ? 100 : 50}
-                    step={m.pricingMode === "length" ? 0.5 : 1}
+                    step={m.pricingMode === "length" ? 0.5 : (m.product as any)?.waste_percent != null ? 0.1 : 1}
                     showSlider={false}
                     suffix={m.pricingMode === "length" ? "m" : undefined}
                     size="sm"
