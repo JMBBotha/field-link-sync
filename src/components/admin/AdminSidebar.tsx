@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import logo from "@/assets/logo.png";
+import CompanyLogo from "@/components/shared/CompanyLogo";
 import { useLeadInbox, INBOX_ROUTE } from "@/hooks/useLeadInbox";
 import { usePendingApplicants } from "@/hooks/usePendingApplicants";
 
@@ -393,9 +393,7 @@ const AdminSidebar = ({
           )}
           title={companyName}
         >
-          <img
-            src={logo}
-            alt={`${companyName} logo`}
+          <CompanyLogo
             className={cn(
               "w-full object-contain",
               collapsed ? "h-8 w-8" : "max-h-20 px-2"

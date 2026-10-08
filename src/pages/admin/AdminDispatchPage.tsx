@@ -975,9 +975,9 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                       onDragStartCapture={(e) => handleDragStart(e as any, lead)}
                       onDragEndCapture={handleDragEnd}
                       onClick={(e) => handleCardClick(e as any, lead.id)}
-                      className={`bg-gradient-to-br from-primary/[0.06] to-muted/40 dark:from-[#0f2240]/70 dark:via-[#1a3a5c]/30 dark:to-[#0d1a30]/50 border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors group ${
+                      className={`rounded-lg cursor-grab active:cursor-grabbing transition-colors group ${
                         multiSelectedIds.has(lead.id)
-                          ? "ring-2 ring-primary border-primary/60 bg-primary/10"
+                          ? "ring-2 ring-primary"
                           : ""
                       }`}
                     >

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarDays, CheckCircle, XCircle, Play, RefreshCw, CloudOff, FileText } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { JobCardListSkeleton } from "@/components/ui/skeletons";
-import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
+import FieldShell from "@/components/field/FieldShell";
 import DepositPaymentChip, { type DepositChipState } from "@/components/shared/DepositPaymentChip";
 import { format } from "date-fns";
 
@@ -201,10 +201,10 @@ const AdminMyJobsPage = () => {
     return () => { supabase.removeChannel(ch); };
   }, [queryClient]);
 
-  return (
-    <div className={`space-y-4 p-4 md:p-6 max-w-3xl mx-auto ${isFieldContext ? "pb-32" : ""}`}>
-      <div className="flex items-center justify-between">
-        <h1 className="page-title">My Jobs</h1>
+  const content = (
+    <div className={isFieldContext ? "space-y-4" : "space-y-4 p-4 md:p-6 max-w-3xl mx-auto "}>
+      <div className={`flex items-center ${isFieldContext ? "justify-end" : "justify-between"}`}>
+        {!isFieldContext && <h1 className="page-title">My Jobs</h1>}
         <Button size="sm" variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ["my-jobs"] })}>
           <RefreshCw className="h-4 w-4 mr-2" /> Refresh
         </Button>
@@ -319,9 +319,9 @@ const AdminMyJobsPage = () => {
           })}
         </div>
       )}
-      {isFieldContext && <FieldAgentBottomNav />}
     </div>
   );
+  return isFieldContext ? <FieldShell title="My Jobs">{content}</FieldShell> : content;
 };
 
 export default AdminMyJobsPage;
