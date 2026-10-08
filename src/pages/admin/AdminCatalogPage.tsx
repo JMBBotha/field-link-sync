@@ -15,6 +15,7 @@ import QuoteBuilderTab from "@/components/catalog/QuoteBuilderTab";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { archiveCounts, archiveMessage, archivePatch, deactivatePdfUploads } from "@/services/catalogArchive";
 
 const PRODUCT_CATEGORIES = [
   { value: "all", label: "All", icon: Package },
@@ -107,24 +108,29 @@ const AdminCatalogPage = () => {
     }
   };
 
+  const [archiveCount, setArchiveCount] = useState<{ products: number; books: number } | null>(null);
+  const openArchiveConfirm = async () => {
+    setArchiveCount(null);
+    setClearConfirmOpen(true);
+    try { setArchiveCount(await archiveCounts()); } catch { setArchiveCount({ products: 0, books: 0 }); }
+  };
+
+  // Archive only: never deletes products, price lists or quote lines.
   const handleClearAllProducts = async () => {
     setClearing(true);
     try {
-      // Clear all dependent records first
-      await (supabase.from("pdf_product_regions") as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await (supabase.from("quote_items") as any).delete().not("product_id", "is", null);
-      await (supabase.from("job_used_parts") as any).delete().not("product_id", "is", null);
-      await (supabase.from("bundle_items") as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await (supabase.from("inventory_stock") as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      // Delete all products
-      await (supabase.from("supplier_products") as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      const { error } = await (supabase.from("supplier_products") as any)
+        .update(archivePatch())
+        .or("archived.is.null,archived.eq.false");
+      if (error) throw error;
+      await deactivatePdfUploads({ all: true });
       queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
       queryClient.invalidateQueries({ queryKey: ["product-category-counts"] });
       queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
       queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
-      toast.success("All products cleared from catalog");
+      toast.success("All products archived and price lists deactivated");
     } catch (e: any) {
-      toast.error(e.message || "Clear failed");
+      toast.error(e.message || "Archive failed");
     } finally {
       setClearing(false);
       setClearConfirmOpen(false);
@@ -180,11 +186,11 @@ const AdminCatalogPage = () => {
             variant="outline"
             size="sm"
             className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
-            onClick={() => setClearConfirmOpen(true)}
+            onClick={openArchiveConfirm}
             disabled={clearing}
           >
             {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-            {clearing ? "Clearing..." : "Clear All Products"}
+            {clearing ? "Archiving..." : "Archive All Products"}
           </Button>
           <Button
             variant="outline"
@@ -299,18 +305,19 @@ const AdminCatalogPage = () => {
       <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear All Products?</AlertDialogTitle>
+            <AlertDialogTitle>Archive all products?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete ALL products from the catalog, including pinned items, bundle items, and inventory stock records. Supplier records will remain intact for re-import.
+              {archiveCount ? archiveMessage(archiveCount.products, archiveCount.books, "all suppliers") : "Counting products…"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleClearAllProducts}
+              disabled={!archiveCount || clearing}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {clearing ? "Clearing..." : "Delete All Products"}
+              {clearing ? "Archiving..." : `Archive ${archiveCount?.products ?? ""} products`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
