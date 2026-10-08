@@ -222,7 +222,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
                         size="icon"
                         className="h-5 w-5 text-destructive hover:text-destructive"
                         onClick={() => setDeleteAllSupplierId(s.id)}
-                        title="Delete all products"
+                        title="Archive all products"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -292,10 +292,10 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
       <AlertDialog open={!!deleteAllSupplierId} onOpenChange={(o) => !o && setDeleteAllSupplierId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete all products?</AlertDialogTitle>
+            <AlertDialogTitle>Archive all products?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete all {deleteAllSupplierId ? (productCounts[deleteAllSupplierId] || 0) : 0} products
-              for supplier "{suppliers.find(s => s.id === deleteAllSupplierId)?.name}". This action cannot be undone.
+              Archive {deleteAllSupplierId ? (productCounts[deleteAllSupplierId] || 0) : 0} products
+              for {suppliers.find(s => s.id === deleteAllSupplierId)?.name}. Existing quotes are not changed. Archived products can't be quoted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -304,7 +304,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteAllSupplierId && deleteAllProductsMutation.mutate(deleteAllSupplierId)}
             >
-              {deleteAllProductsMutation.isPending ? "Deleting..." : "Delete All Products"}
+              {deleteAllProductsMutation.isPending ? "Archiving..." : "Archive All Products"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

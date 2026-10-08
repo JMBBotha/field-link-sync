@@ -172,7 +172,7 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
         onClear={() => setSelectedIds(new Set())}
         actions={[
           {
-            label: "Delete",
+            label: "Archive",
             icon: <Trash2 className="h-3.5 w-3.5" />,
             onClick: () => setConfirmBulkDelete(true),
             variant: "destructive",
@@ -318,9 +318,9 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
       <AlertDialog open={confirmBulkDelete} onOpenChange={setConfirmBulkDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedIds.size} products?</AlertDialogTitle>
+            <AlertDialogTitle>Archive {selectedIds.size} products?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the selected products. This action cannot be undone.
+              Archive {selectedIds.size} products. Existing quotes are not changed. Archived products can't be quoted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -329,7 +329,7 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => bulkDeleteMutation.mutate([...selectedIds])}
             >
-              {bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
+              {bulkDeleteMutation.isPending ? "Archiving..." : `Archive ${selectedIds.size} products`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
