@@ -5,8 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
 import NeedsSomeoneTray from "@/components/calendar/NeedsSomeoneTray";
 import DayCards, { LoadBar } from "@/components/calendar/DayCards";
-import { freeGaps, salesCalendarPeople, type CalendarLead, type CalendarSchedule } from "@/components/calendar/calendarModel";
-import { calendarScheduleToCard } from "@/lib/cardModel";
+import { calendarScheduleToCard, freeGaps, salesCalendarPeople, type CalendarLead, type CalendarSchedule } from "@/components/calendar/calendarModel";
 import AttentionStrip from "@/components/jobs/AttentionStrip";
 
 const state = vi.hoisted(() => ({ count: 1, sales: false, mobile: false }));

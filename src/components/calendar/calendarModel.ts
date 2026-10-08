@@ -1,4 +1,6 @@
 import { hhmm, toMinutes, fromMinutes } from "@/lib/schedulingDefaults";
+import type { CardJob } from "@/lib/cardModel";
+import { laneOf } from "@/lib/leadLane";
 
 export type CalendarLead = {
   id: string; customer_name: string; customer_address: string; service_type: string;
@@ -40,4 +42,18 @@ export function freeGaps(bookings: Pick<CalendarSchedule, "start_time" | "end_ti
 }
 export function loadTone(minutes: number, clash: boolean) {
   return clash || minutes > 540 ? "destructive" : minutes > 540 * 0.75 ? "warning" : "primary";
+}
+
+/** Preserve the calendar booking's own date/time and job identity. */
+export function calendarScheduleToCard(schedule: CalendarSchedule, lead?: CalendarLead): CardJob {
+  const details = schedule.leads || lead;
+  const title = calendarText(details?.customer_name, calendarText(details?.service_type));
+  return {
+    id: schedule.job_id || schedule.lead_id || schedule.id, kind: schedule.job_id ? "job" : "visit",
+    title, scheduledFor: `${schedule.scheduled_date}T${hhmm(schedule.start_time)}:00+02:00`,
+    statusKey: schedule.jobs?.status || details?.status || "scheduled",
+    priority: details?.priority, place: calendarText(details?.customer_address, "Address pending"),
+    clientName: title, lane: schedule.job_id ? "service" : laneOf(lead || details || {}) || "sales",
+    urgency: { key: "later", rank: 6, mins: null },
+  };
 }

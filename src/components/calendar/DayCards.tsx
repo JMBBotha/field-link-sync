@@ -1,9 +1,8 @@
 import { type DragEvent } from "react";
 import JobCard from "@/components/cards/JobCard";
-import { calendarScheduleToCard } from "@/lib/cardModel";
 import { toMinutes } from "@/lib/schedulingDefaults";
 import { LANE_META, type LeadLane } from "@/lib/leadLane";
-import { bookingMinutes, bookingRange, hoursLabel, freeGaps, loadTone, type CalendarLead, type CalendarSchedule, type CalendarPerson } from "./calendarModel";
+import { calendarScheduleToCard, bookingMinutes, bookingRange, hoursLabel, freeGaps, loadTone, type CalendarLead, type CalendarSchedule, type CalendarPerson } from "./calendarModel";
 
 export function BusyBlock({ schedule }: { schedule: CalendarSchedule }) {
   return <div data-testid="busy-block" className="rounded-md border bg-muted p-3 text-muted-foreground"><p className="text-sm font-semibold">Busy</p><p className="text-xs">{bookingRange(schedule)} · {hoursLabel(bookingMinutes(schedule))}</p></div>;
