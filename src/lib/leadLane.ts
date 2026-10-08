@@ -47,7 +47,13 @@ export function leadLaneFields(lane: LeadLane | null) {
   } as const;
 }
 
-export const LANE_META: Record<LeadLane, { label: string; short: string; className: string }> = {
+export const LANE_META: Record<LeadLane | "install", { label: string; short: string; className: string }> = {
+  install: {
+    label: "Install",
+    short: "Install",
+    className:
+      "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  },
   sales: {
     label: "Sales",
     short: "Sales",
