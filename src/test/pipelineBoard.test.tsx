@@ -46,6 +46,9 @@ describe("PipelineBoard", () => {
     mount("stages");
     await waitFor(() => expect(screen.getByText("Brendon Behnke")).toBeTruthy());
     expect(screen.getByText("Accepted · deposit")).toBeTruthy();
+    expect(document.querySelector('[data-stage-column="lead-draft"]')).toBeTruthy();
+    expect(document.querySelector('[data-stage-column="sent-viewed"]')).toBeTruthy();
+    expect(document.querySelector('[data-stage-grid]')!.className).toContain("xl:grid-cols-5");
     expect(screen.getByText("Bianca")).toBeTruthy();
     expect(screen.queryByText("Test Dummy Lead QA")).toBeNull();
     expect(screen.getByText("Marissa Ellis")).toBeTruthy();
@@ -77,7 +80,7 @@ describe("PipelineBoard", () => {
     expect(block.querySelectorAll("[data-deal-card]").length).toBe(2);
     fireEvent.click(within(block as HTMLElement).getByRole("button", { name: "+2 more" }));
     expect(block.querySelectorAll("[data-deal-card]").length).toBe(4);
-    expect(block.className).toContain("col-span-full");
+    expect(block.closest("[data-stage-column]")!.className).toContain("col-span-full");
     const header = within(block as HTMLElement).getByRole("button", { name: "Draft stage" });
     expect(header.getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(header);

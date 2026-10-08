@@ -199,54 +199,63 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
       </div>
 
       {view === "stages" ? (
-        <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 lg:grid-cols-3" data-stage-grid>
-          {STAGES.map((s) => {
-            if (s.key === "lost" && !showLost) {
-              const n = columnSummary(shownDeals, "lost").count;
-              return (
-                <Button key="lost" variant="ghost" onClick={() => setShowLost(true)}
-                  data-stage-block="lost"
-                  onDragOver={(e) => { e.preventDefault(); setOver("lost"); }}
-                  onDrop={(e) => { e.preventDefault(); if (dragFrom) runDrop(dragFrom.id, dragFrom.stage, "lost"); setOver(null); }}
-                  className={cn("h-auto justify-start rounded-lg bg-muted/60 px-3 py-3 text-xs font-semibold text-muted-foreground", over === "lost" && "ring-2 ring-primary")}>
-                  Lost · {n} <ChevronDown className="ml-auto h-4 w-4" />
-                </Button>
-              );
-            }
-            const sum = s.key === "lead" ? {
-              count: shownLeads.length, total: 0,
-              avgDays: shownLeads.length ? Math.round(shownLeads.reduce((total, l) => total + daysSince(l.created_at, now), 0) / shownLeads.length) : 0,
-            } : columnSummary(shownDeals, s.key);
-            const list = shownDeals.filter((d) => d.stage === s.key).sort((a, b) => b.value - a.value);
-            const isExpanded = expanded.has(s.key);
-            const remaining = sum.count - 2;
+        /* First four stages stack in two columns (New lead/Draft, Sent/Viewed); Accepted, Job booked, Lost stay side-by-side. */
+        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-5" data-stage-grid>
+          {([["lead", "draft"], ["sent", "viewed"], ["accepted"], ["booked"], ["lost"]] as PipelineStage[][]).map((keys) => {
+            const colExpanded = keys.some((k) => expanded.has(k));
             return (
-              <div key={s.key} data-stage-block={s.key}
-                onDragOver={(e) => { if (dragFrom) { e.preventDefault(); setOver(s.key); } }}
-                onDragLeave={() => setOver((o) => (o === s.key ? null : o))}
-                onDrop={(e) => { e.preventDefault(); if (dragFrom) runDrop(dragFrom.id, dragFrom.stage, s.key); setOver(null); }}
-                className={cn("flex min-w-0 flex-col rounded-xl bg-muted/50", isExpanded && "col-span-full", over === s.key && "ring-2 ring-primary")}>
-                <div className={cn("h-1.5 rounded-t-xl", BAR[s.key])} />
-                <Button variant="ghost" aria-label={`${s.label} stage`} aria-expanded={isExpanded}
-                  onClick={() => toggleStage(s.key)} className="h-auto w-full flex-col items-stretch whitespace-normal px-3 pb-2 pt-2 text-left">
-                  <div className="flex items-center justify-between text-sm font-bold">
-                    <span>{s.label}</span><span className="flex items-center gap-2 text-muted-foreground">{sum.count}{isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
-                  </div>
-                  <div className="text-lg font-bold tabular-nums">{s.key === "lead" ? "—" : fmtRandShort(sum.total)}</div>
-                  <div className="text-[11px] font-normal text-muted-foreground">{s.hint} · avg {sum.avgDays} d in stage</div>
-                </Button>
-                {s.key === "lost" && <Button variant="ghost" size="sm" className="mx-3 mb-1 h-6 self-start text-[11px] text-primary" onClick={() => setShowLost(false)}>Hide Lost</Button>}
-                <div className={cn("grid min-h-24 grid-cols-1 gap-2 px-2 pb-2", isExpanded && "md:grid-cols-2 lg:grid-cols-3")}>
-                  {s.key === "lead"
-                    ? (isExpanded ? shownLeads : shownLeads.slice(0, 2)).map(leadCard)
-                    : (isExpanded ? list : list.slice(0, 2)).map((d) => dealCard(d, undefined, true))}
-                  {!isExpanded && remaining > 0 && <Button variant="ghost" className="h-8 text-xs text-primary" onClick={() => toggleStage(s.key)}>+{remaining} more</Button>}
-                  {s.key === "booked" && list.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-emerald-400 bg-emerald-50/60 p-3 text-center text-xs text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200">
-                      Drop an accepted quote here to open <b>Book job</b> (date, tech). The job then appears on Dispatch.
+              <div key={keys.join("-")} data-stage-column={keys.join("-")} className={cn("flex min-w-0 flex-col gap-3", colExpanded && "col-span-full sm:col-span-2 xl:col-span-5")}>
+                {keys.map((key) => {
+                  const s = STAGES.find((x) => x.key === key)!;
+                  if (s.key === "lost" && !showLost) {
+                    const n = columnSummary(shownDeals, "lost").count;
+                    return (
+                      <Button key="lost" variant="ghost" onClick={() => setShowLost(true)}
+                        data-stage-block="lost"
+                        onDragOver={(e) => { e.preventDefault(); setOver("lost"); }}
+                        onDrop={(e) => { e.preventDefault(); if (dragFrom) runDrop(dragFrom.id, dragFrom.stage, "lost"); setOver(null); }}
+                        className={cn("h-auto justify-start rounded-lg bg-muted/60 px-3 py-3 text-xs font-semibold text-muted-foreground", over === "lost" && "ring-2 ring-primary")}>
+                        Lost · {n} <ChevronDown className="ml-auto h-4 w-4" />
+                      </Button>
+                    );
+                  }
+                  const sum = s.key === "lead" ? {
+                    count: shownLeads.length, total: 0,
+                    avgDays: shownLeads.length ? Math.round(shownLeads.reduce((total, l) => total + daysSince(l.created_at, now), 0) / shownLeads.length) : 0,
+                  } : columnSummary(shownDeals, s.key);
+                  const list = shownDeals.filter((d) => d.stage === s.key).sort((a, b) => b.value - a.value);
+                  const isExpanded = expanded.has(s.key);
+                  const remaining = sum.count - 2;
+                  return (
+                    <div key={s.key} data-stage-block={s.key}
+                      onDragOver={(e) => { if (dragFrom) { e.preventDefault(); setOver(s.key); } }}
+                      onDragLeave={() => setOver((o) => (o === s.key ? null : o))}
+                      onDrop={(e) => { e.preventDefault(); if (dragFrom) runDrop(dragFrom.id, dragFrom.stage, s.key); setOver(null); }}
+                      className={cn("flex min-w-0 flex-col rounded-xl bg-muted/50", isExpanded && "col-span-full", over === s.key && "ring-2 ring-primary")}>
+                      <div className={cn("h-1.5 rounded-t-xl", BAR[s.key])} />
+                      <Button variant="ghost" aria-label={`${s.label} stage`} aria-expanded={isExpanded}
+                        onClick={() => toggleStage(s.key)} className="h-auto w-full flex-col items-stretch whitespace-normal px-3 pb-2 pt-2 text-left">
+                        <div className="flex items-center justify-between text-sm font-bold">
+                          <span>{s.label}</span><span className="flex items-center gap-2 text-muted-foreground">{sum.count}{isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+                        </div>
+                        <div className="text-lg font-bold tabular-nums">{s.key === "lead" ? "—" : fmtRandShort(sum.total)}</div>
+                        <div className="text-[11px] font-normal text-muted-foreground">{s.hint} · avg {sum.avgDays} d in stage</div>
+                      </Button>
+                      {s.key === "lost" && <Button variant="ghost" size="sm" className="mx-3 mb-1 h-6 self-start text-[11px] text-primary" onClick={() => setShowLost(false)}>Hide Lost</Button>}
+                      <div className={cn("grid min-h-24 grid-cols-1 gap-2 px-2 pb-2", isExpanded && "md:grid-cols-2 lg:grid-cols-3")}>
+                        {s.key === "lead"
+                          ? (isExpanded ? shownLeads : shownLeads.slice(0, 2)).map(leadCard)
+                          : (isExpanded ? list : list.slice(0, 2)).map((d) => dealCard(d, undefined, true))}
+                        {!isExpanded && remaining > 0 && <Button variant="ghost" className="h-8 text-xs text-primary" onClick={() => toggleStage(s.key)}>+{remaining} more</Button>}
+                        {s.key === "booked" && list.length === 0 && (
+                          <div className="rounded-lg border border-dashed border-emerald-400 bg-emerald-50/60 p-3 text-center text-xs text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200">
+                            Drop an accepted quote here to open <b>Book job</b> (date, tech). The job then appears on Dispatch.
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
+                  );
+                })}
               </div>
             );
           })}
