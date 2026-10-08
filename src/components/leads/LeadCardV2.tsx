@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { laneOf } from "@/lib/leadLane";
+import { laneOf, LANE_META, UNKNOWN_LANE_META } from "@/lib/leadLane";
 import { hhmm, leadClock, type LeadClock, type Tone } from "@/lib/leadClock";
 import { isCallDump } from "@/lib/callSummary";
 import { logLeadContact, useLeadSla, useNow } from "@/hooks/useLeadSla";
@@ -60,10 +60,11 @@ type Props = {
   action?: ReactNode; extra?: ReactNode; className?: string;
   /** Hide phone / Call / WhatsApp (e.g. techs browsing unaccepted leads). */
   hideContact?: boolean;
+  density?: "full" | "compact";
 };
 
 /** Lead card v2: lane + source tags, live two-stage clock, Call/WhatsApp (logs contact), one-line call summary, UNASSIGNED + Assign. */
-export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, action, extra, className, hideContact }: Props) {
+export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, action, extra, className, hideContact, density = "full" }: Props) {
   const now = useNow();
   const { sla } = useLeadSla();
   const qc = useQueryClient();
@@ -74,6 +75,7 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
   const clock = leadClock(lead, now, sla);
   const phone = lead.customer_phone || lead.phone || "";
   const unassigned = !lead.assigned_agent_id;
+  const compact = density === "compact";
   const who = assigneeName ?? staff.find((s) => s.id === lead.assigned_agent_id)?.full_name ?? null;
   const pool = lane === "service" ? technicians : lane === "sales" ? salesStaff : staff;
   const attempts = Number(lead.contact_attempts) || 0;
@@ -109,8 +111,8 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide",
-            lane === "service" ? "bg-teal-100 text-teal-800" : lane === "sales" ? "bg-violet-100 text-violet-800" : "bg-amber-100 text-amber-800")}>
-            {lane === "service" ? "TECHNICAL" : lane === "sales" ? "SALES" : "LANE?"}
+            lane ? LANE_META[lane].className : UNKNOWN_LANE_META.className)}>
+            {lane ? LANE_META[lane].short.toUpperCase() : "LANE?"}
           </span>
           <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{sourceLabel(lead)}</span>
         </div>
@@ -125,11 +127,11 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
         <p className="truncate text-[15px] font-semibold leading-tight">{lead.customer_name || "New lead"}</p>
         {lead.customer_address && (
           <p className="mt-0.5 flex items-start gap-1 text-xs text-muted-foreground">
-            <MapPin className="mt-px h-3.5 w-3.5 shrink-0" /><span className="min-w-0 line-clamp-2 break-words">{lead.customer_address}</span>
+            <MapPin className="mt-px h-3.5 w-3.5 shrink-0" /><span className="min-w-0 line-clamp-2 break-words">{compact ? lead.customer_address.split(",")[0] : lead.customer_address}</span>
           </p>
         )}
       </div>
-      {phone && !hideContact && (
+      {phone && !hideContact && !compact && (
         <div className="flex flex-wrap items-center gap-1.5" onClick={stop}>
           <Phone className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="text-sm font-semibold tabular-nums">{phone}</span>
@@ -139,23 +141,23 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
           </Button>
         </div>
       )}
-      {asking && (
+      {asking && !compact && (
         <div className="flex flex-wrap items-center gap-1.5 rounded-md bg-muted/60 p-1.5 text-xs" onClick={stop}>
           <span>Did they answer?</span>
           <Button size="sm" className="h-6 px-2 text-[11px]" disabled={busy} onClick={() => log("call", "reached")}>Reached</Button>
           <Button size="sm" variant="outline" className="h-6 px-2 text-[11px]" disabled={busy} onClick={() => log("call", "no_answer")}>No answer</Button>
         </div>
       )}
-      <div className="flex flex-wrap gap-1" onClick={stop}>
+      {!compact && <div className="flex flex-wrap gap-1" onClick={stop}>
         <CallSummary lead={lead} compact />
         {/call ?back/i.test(lead.call_next_action || "") && <span className="rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-[10px] text-red-700">Call back requested</span>}
         {attempts > 0 && !lead.first_contact_at && <span className="rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-[10px] text-sky-800">{attempts} attempt{attempts === 1 ? "" : "s"} · no answer</span>}
-      </div>
+      </div>}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5" onClick={stop}>
-        {action ?? (unassigned ? (
+        {(!compact ? action : null) ?? (unassigned ? (
           <div className="flex items-center gap-1.5">
             <span className="rounded border border-red-500 px-1.5 py-0.5 text-[10px] font-bold text-red-600">UNASSIGNED</span>
-            {onAssign ? (
+            {!compact && (onAssign ? (
               <Button size="sm" variant="destructive" className="h-6 px-2 text-[11px]" onClick={onAssign}>Assign <ChevronDown className="ml-0.5 h-3 w-3" /></Button>
             ) : (
               <DropdownMenu>
@@ -168,7 +170,7 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
                     : <DropdownMenuItem disabled>No staff found</DropdownMenuItem>}
                 </DropdownMenuContent>
               </DropdownMenu>
-            )}
+            ))}
           </div>
         ) : (
           <div className="flex min-w-0 items-center gap-1.5">
@@ -176,7 +178,7 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
             <span className="truncate text-xs font-medium">{who || "Assigned"}</span>
           </div>
         ))}
-        {clock?.alerted ? <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">🔔 {clock.alerted}</span>
+        {compact ? action : clock?.alerted ? <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">🔔 {clock.alerted}</span>
           : clock ? <Steps clock={clock} lead={lead} /> : null}
         {extra}
       </div>

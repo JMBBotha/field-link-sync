@@ -1,17 +1,11 @@
-import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { cn } from "@/lib/utils";
+import AttentionChips from "@/components/jobs/AttentionChips";
 import { leadClock } from "@/lib/leadClock";
 import { isTestLead } from "@/lib/callSummary";
 import { useLeadSla, useNow } from "@/hooks/useLeadSla";
 
 type Chip = { key: string; n: number; label: string; tone: "red" | "orange" | "blue"; to: string };
-const TONES = {
-  red: "border-red-300 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-200",
-  orange: "border-orange-300 bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-200",
-  blue: "border-sky-300 bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-200",
-};
 
 /** Needs-attention strip (counts only, test records hidden). Click a chip to go where it is fixed. */
 export default function AttentionStrip({ className }: { className?: string }) {
@@ -50,14 +44,5 @@ export default function AttentionStrip({ className }: { className?: string }) {
     { key: "unassigned", n: leads.filter((l) => !l.assigned_agent_id).length, label: "unassigned leads", tone: "orange", to: "/admin/dispatch" },
     { key: "queued", n: clocks.filter((c) => c?.stage === 0).length, label: "after-hours leads queued", tone: "blue", to: "/admin/dispatch" },
   ] as Chip[]).filter((c) => c.n > 0);
-  return (
-    <div className={cn("flex flex-wrap items-center gap-1.5 rounded-xl border bg-card px-3 py-2", className)} data-testid="attention-strip">
-      <span className="mr-1 text-xs font-bold tracking-wide text-muted-foreground">⚠ NEEDS ATTENTION</span>
-      {chips.length === 0 ? <span className="text-xs text-emerald-600">All clear</span> : chips.map((c) => (
-        <Link key={c.key} to={c.to} className={cn("rounded-full border px-2.5 py-0.5 text-xs font-medium hover:underline", TONES[c.tone])}>
-          <b>{c.n}</b> {c.label}
-        </Link>
-      ))}
-    </div>
-  );
+  return <AttentionChips chips={chips} className={className} data-testid="attention-strip" />;
 }

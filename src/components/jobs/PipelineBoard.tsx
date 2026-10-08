@@ -4,18 +4,21 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/useRole";
+import { useSalesRep } from "@/hooks/useSalesRep";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { isTestLead } from "@/lib/callSummary";
 import { laneOf, LANE_META, type LeadLane } from "@/lib/leadLane";
 import { useQuoteStaffActions } from "@/components/quoting/useQuoteStaffActions";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
-import RowMenu from "@/components/shared/RowMenu";
+import QuoteCard from "@/components/cards/QuoteCard";
+import LeadCardV2, { type LeadV2 } from "@/components/leads/LeadCardV2";
+import AttentionChips from "@/components/jobs/AttentionChips";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CalendarPlus, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { CalendarPlus, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import {
-  STAGES, FLAG_META, buildDeals, columnSummary, followUps, pipelineChips, matchesChip, dropAction, daysSince,
+  STAGES, buildDeals, columnSummary, followUps, pipelineChips, matchesChip, dropAction, daysSince,
   fmtRand, fmtRandShort, type Deal, type PipelineStage, type PipelineChipKey, type PipeQuote,
 } from "@/lib/quotePipeline";
 
@@ -23,19 +26,13 @@ type Q = PipeQuote & {
   company_id: string; quote_number: string | null; customer_name: string | null; accepted_by?: string | null;
   created_by?: string | null; owner_id?: string | null; customers?: { name: string | null; area: string | null; city: string | null } | null;
 };
-type L = { id: string; customer_name: string | null; customer_address: string | null; primary_intent: string | null; service_type: string | null; created_at: string; first_contact_at: string | null };
+type L = LeadV2 & { created_at: string };
 
-const TONE = {
-  red: "border-red-300 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-200",
-  orange: "border-orange-300 bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-200",
-  yellow: "border-yellow-300 bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200",
-};
 const BAR: Record<PipelineStage, string> = {
   lead: "bg-slate-500", draft: "bg-slate-400", sent: "bg-blue-600", viewed: "bg-violet-600",
   accepted: "bg-emerald-600", booked: "bg-slate-900 dark:bg-slate-200", lost: "bg-slate-300",
 };
 const nameOf = (q: Q) => q.customers?.name || q.customer_name || "No client";
-const initials = (n?: string | null) => (n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join("");
 const OPEN_STAGES: PipelineStage[] = ["draft", "sent", "viewed", "accepted"];
 
 /** Shared pipeline data (one fetch for the hub switch summary and the board). RLS scopes reps to their own quotes. */
@@ -51,7 +48,7 @@ export function usePipelineData() {
         supabase.from("invoices").select("quote_id, status, notes, grand_total").not("quote_id", "is", null).limit(2000),
         supabase.from("jobs").select("quote_id, status, created_at").not("quote_id", "is", null).limit(2000),
         (supabase.from("leads") as any)
-          .select("id, customer_name, customer_address, primary_intent, service_type, created_at, first_contact_at")
+          .select("id, customer_name, customer_address, primary_intent, service_type, created_at, first_contact_at, customer_phone, phone, source, notes, status, assigned_agent_id, contact_attempts, stage2_done_at, sla_breached_at, quote_sla_breached_at, call_summary, call_next_action")
           .eq("status", "pending").is("deleted_at", null).is("merged_into_id", null).order("created_at", { ascending: false }).limit(500),
       ]);
       if (quotes.error) throw quotes.error;
@@ -87,6 +84,7 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
   const { toast } = useToast();
   const { user } = useAuth();
   const { isAdmin } = useRole();
+  const { isSalesRep } = useSalesRep();
   const { data, isLoading, refetch } = usePipelineData();
   const staff = useQuoteStaffActions(() => { void refetch(); });
   const [rep, setRep] = useState("all");
@@ -94,6 +92,12 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
   const [hideTest, setHideTestState] = useState(getHideTest());
   const [chip, setChip] = useState<PipelineChipKey | null>(null);
   const [showLost, setShowLost] = useState(false);
+  const [expanded, setExpanded] = useState<Set<PipelineStage>>(() => new Set());
+  const toggleStage = (key: PipelineStage) => setExpanded((current) => {
+    const next = new Set(current);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
   const [bookId, setBookId] = useState<string | null>(null);
   const [dragFrom, setDragFrom] = useState<{ id: string; stage: PipelineStage } | null>(null);
   const [over, setOver] = useState<PipelineStage | null>(null);
@@ -140,89 +144,35 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
     item.onSelect();
   };
 
-  const flags = (d: Deal<Q>) => (
-    <>
-      {d.paid > 0 && <span className="rounded border border-emerald-300 bg-emerald-50 px-1.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">{fmtRand(d.paid)} PAID</span>}
-      {d.partPaid && <span className="rounded border border-emerald-300 bg-emerald-50 px-1.5 text-[10px] font-bold text-emerald-700">PART PAID</span>}
-      {d.depositDue && <span className="rounded border border-amber-300 bg-amber-50 px-1.5 text-[10px] font-bold text-amber-800">DEPOSIT DUE</span>}
-      {d.flags.map((f) => <span key={f} className={cn("rounded border px-1.5 text-[10px] font-bold", TONE[FLAG_META[f].tone])}>{FLAG_META[f].label}</span>)}
-    </>
+  // Render helpers return stable module-level components, never nested component types.
+  const dealCard = (d: Deal<Q>, action?: React.ReactNode, draggable = false) => (
+    <QuoteCard key={d.quote.id} deal={d} density="full"
+      repName={data?.repName[d.quote.sales_engineer_id || ""]} showRep={view === "stages" || !isSalesRep}
+      onOpen={() => navigate(`/admin/estimates/${d.quote.id}`)} onBook={() => setBookId(d.quote.id)}
+      menuItems={menuFor(d)} action={action}
+      {...(draggable ? {
+        draggable: true,
+        onDragStart: (e: React.DragEvent<HTMLDivElement>) => { e.dataTransfer.setData("text/plain", d.quote.id); setDragFrom({ id: d.quote.id, stage: d.stage }); },
+        onDragEnd: () => { setDragFrom(null); setOver(null); },
+      } : {})} />
   );
-
-  // Plain render functions (not components) so a card isn't remounted mid-drag.
-  const dealCard = (d: Deal<Q>) => {
-    const red = d.flags.some((f) => FLAG_META[f].tone === "red");
-    return (
-      <div
-        key={d.quote.id}
-        draggable
-        onDragStart={(e) => { e.dataTransfer.setData("text/plain", d.quote.id); setDragFrom({ id: d.quote.id, stage: d.stage }); }}
-        onDragEnd={() => { setDragFrom(null); setOver(null); }}
-        onClick={() => navigate(`/admin/estimates/${d.quote.id}`)}
-        className={cn("cursor-pointer rounded-lg border bg-card p-2.5 text-left shadow-sm transition hover:shadow-md", red && "border-red-300 bg-red-50/40 dark:bg-red-950/20")}
-        data-deal-card
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 text-sm font-semibold leading-tight">{nameOf(d.quote)}</div>
-          <div className="shrink-0 text-sm font-bold tabular-nums">{fmtRand(d.value)}</div>
-        </div>
-        <div className="mt-0.5 truncate text-xs text-muted-foreground">
-          {[d.quote.customers?.area || d.quote.customers?.city, d.quote.quote_number || "no number"].filter(Boolean).join(" · ")}
-        </div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          <span title={data?.repName[d.quote.sales_engineer_id || ""] || "Rep"} className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-[9px] font-bold text-white">
-            {initials(data?.repName[d.quote.sales_engineer_id || ""])}
-          </span>
-          {flags(d)}
-          <span className={cn("ml-auto text-[11px] font-semibold tabular-nums", d.days > 7 ? "text-orange-600" : "text-muted-foreground")}>{d.days}d</span>
-        </div>
-        <div className="mt-1.5 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          {d.stage === "accepted" && (
-            <Button size="sm" className="h-7 gap-1 bg-red-600 px-2 text-xs hover:bg-red-700" onClick={() => setBookId(d.quote.id)}>
-              <CalendarPlus className="h-3.5 w-3.5" /> Book job
-            </Button>
-          )}
-          <div className="ml-auto"><RowMenu items={menuFor(d)} /></div>
-        </div>
-      </div>
-    );
-  };
-
-  const leadCard = (l: L) => {
-    const ln = laneOf(l);
-    return (
-      <div key={l.id} onClick={() => navigate(`/admin/dispatch?lead=${l.id}`)} className={cn("cursor-pointer rounded-lg border bg-card p-2.5 shadow-sm hover:shadow-md", !l.first_contact_at && "border-red-300")}>
-        <div className="text-sm font-semibold leading-tight">{l.customer_name || "New lead"}</div>
-        <div className="mt-0.5 truncate text-xs text-muted-foreground">{(l.customer_address || "Address pending").split(",")[0]}</div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          {ln ? <span className={cn("rounded border px-1.5 text-[10px] font-bold uppercase", LANE_META[ln].className)}>{LANE_META[ln].short}</span>
-            : <span className="rounded border border-amber-300 bg-amber-50 px-1.5 text-[10px] font-bold text-amber-800">LANE?</span>}
-          {!l.first_contact_at && <span className={cn("rounded border px-1.5 text-[10px] font-bold", TONE.red)}>NOT CONTACTED</span>}
-          <span className="ml-auto text-[11px] font-semibold text-red-600">{daysSince(l.created_at, now)}d</span>
-        </div>
-        <div className="mt-1.5" onClick={(e) => e.stopPropagation()}>
-          <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={() => navigate(`/admin/quote-builder?leadId=${l.id}`)}>
-            <FileText className="h-3.5 w-3.5" /> Quote
-          </Button>
-        </div>
-      </div>
-    );
-  };
+  const leadCard = (l: L) => (
+    <LeadCardV2 key={l.id} density="compact" lead={l}
+      onOpen={() => navigate(`/admin/dispatch?lead=${l.id}`)}
+      action={<Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs"
+        onClick={() => navigate(`/admin/quote-builder?leadId=${l.id}`)}>
+        <FileText className="h-3.5 w-3.5" /> Quote
+      </Button>} />
+  );
 
   if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading pipeline…</div>;
 
   return (
     <div className="space-y-3" data-pipeline-board>
       {/* Needs attention (pipeline) — click a chip to filter, again to clear */}
-      <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50/50 px-3 py-2 dark:bg-orange-950/10">
-        <span className="mr-1 text-xs font-bold tracking-wide text-orange-700 dark:text-orange-300">⚠ NEEDS ATTENTION</span>
-        {chips.length === 0 ? <span className="text-xs text-emerald-600">All clear</span> : chips.map((c) => (
-          <button key={c.key} onClick={() => setChip(chip === c.key ? null : c.key)}
-            className={cn("rounded-full border px-2.5 py-0.5 text-xs font-medium", TONE[c.tone as keyof typeof TONE], chip === c.key && "ring-2 ring-offset-1 ring-slate-700")}>
-            <b>{c.n}</b> {c.label}{c.value > 0 && c.key !== "zero" ? ` (${fmtRandShort(c.value)})` : ""}
-          </button>
-        ))}
-      </div>
+      <AttentionChips activeKey={chip} onChipClick={(key) => setChip(chip === key ? null : key)}
+        chips={chips.map((c) => ({ ...c, tone: c.tone as "red" | "orange" | "yellow",
+          label: c.label + (c.value > 0 && c.key !== "zero" ? ` (${fmtRandShort(c.value)})` : "") }))} />
 
       {/* Filters + totals */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -249,39 +199,48 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
       </div>
 
       {view === "stages" ? (
-        <div className="flex gap-3 overflow-x-auto pb-3">
+        <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 lg:grid-cols-3" data-stage-grid>
           {STAGES.map((s) => {
             if (s.key === "lost" && !showLost) {
               const n = columnSummary(shownDeals, "lost").count;
               return (
-                <button key="lost" onClick={() => setShowLost(true)} onDragOver={(e) => { e.preventDefault(); setOver("lost"); }}
+                <Button key="lost" variant="ghost" onClick={() => setShowLost(true)}
+                  data-stage-block="lost"
+                  onDragOver={(e) => { e.preventDefault(); setOver("lost"); }}
                   onDrop={(e) => { e.preventDefault(); if (dragFrom) runDrop(dragFrom.id, dragFrom.stage, "lost"); setOver(null); }}
-                  className={cn("flex w-10 shrink-0 flex-col items-center gap-1 rounded-xl bg-muted/60 py-3 text-xs font-semibold text-muted-foreground", over === "lost" && "ring-2 ring-primary")}>
-                  <ChevronLeft className="h-4 w-4" /><span className="[writing-mode:vertical-rl]">Lost · {n}</span>
-                </button>
+                  className={cn("h-auto justify-start rounded-lg bg-muted/60 px-3 py-3 text-xs font-semibold text-muted-foreground", over === "lost" && "ring-2 ring-primary")}>
+                  Lost · {n} <ChevronDown className="ml-auto h-4 w-4" />
+                </Button>
               );
             }
-            const sum = s.key === "lead" ? { count: shownLeads.length, total: 0, avgDays: 0 } : columnSummary(shownDeals, s.key);
+            const sum = s.key === "lead" ? {
+              count: shownLeads.length, total: 0,
+              avgDays: shownLeads.length ? Math.round(shownLeads.reduce((total, l) => total + daysSince(l.created_at, now), 0) / shownLeads.length) : 0,
+            } : columnSummary(shownDeals, s.key);
             const list = shownDeals.filter((d) => d.stage === s.key).sort((a, b) => b.value - a.value);
+            const isExpanded = expanded.has(s.key);
+            const remaining = sum.count - 2;
             return (
-              <div key={s.key}
+              <div key={s.key} data-stage-block={s.key}
                 onDragOver={(e) => { if (dragFrom) { e.preventDefault(); setOver(s.key); } }}
                 onDragLeave={() => setOver((o) => (o === s.key ? null : o))}
                 onDrop={(e) => { e.preventDefault(); if (dragFrom) runDrop(dragFrom.id, dragFrom.stage, s.key); setOver(null); }}
-                className={cn("flex w-64 shrink-0 flex-col rounded-xl bg-muted/50", over === s.key && "ring-2 ring-primary")}>
+                className={cn("flex min-w-0 flex-col rounded-xl bg-muted/50", isExpanded && "col-span-full", over === s.key && "ring-2 ring-primary")}>
                 <div className={cn("h-1.5 rounded-t-xl", BAR[s.key])} />
-                <div className="px-3 pb-2 pt-2">
+                <Button variant="ghost" aria-label={`${s.label} stage`} aria-expanded={isExpanded}
+                  onClick={() => toggleStage(s.key)} className="h-auto w-full flex-col items-stretch whitespace-normal px-3 pb-2 pt-2 text-left">
                   <div className="flex items-center justify-between text-sm font-bold">
-                    <span>{s.label}</span><span className="text-muted-foreground">{sum.count}</span>
+                    <span>{s.label}</span><span className="flex items-center gap-2 text-muted-foreground">{sum.count}{isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
                   </div>
                   <div className="text-lg font-bold tabular-nums">{s.key === "lead" ? "—" : fmtRandShort(sum.total)}</div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {s.key === "lead" || !sum.count ? s.hint : `${s.hint} · avg ${sum.avgDays} d in stage`}
-                  </div>
-                  {s.key === "lost" && <button className="mt-1 inline-flex items-center text-[11px] text-primary" onClick={() => setShowLost(false)}>Collapse <ChevronRight className="h-3 w-3" /></button>}
-                </div>
-                <div className="flex min-h-24 flex-col gap-2 px-2 pb-2">
-                  {s.key === "lead" ? shownLeads.map(leadCard) : list.map(dealCard)}
+                  <div className="text-[11px] font-normal text-muted-foreground">{s.hint} · avg {sum.avgDays} d in stage</div>
+                </Button>
+                {s.key === "lost" && <Button variant="ghost" size="sm" className="mx-3 mb-1 h-6 self-start text-[11px] text-primary" onClick={() => setShowLost(false)}>Hide Lost</Button>}
+                <div className={cn("grid min-h-24 grid-cols-1 gap-2 px-2 pb-2", isExpanded && "md:grid-cols-2 lg:grid-cols-3")}>
+                  {s.key === "lead"
+                    ? (isExpanded ? shownLeads : shownLeads.slice(0, 2)).map(leadCard)
+                    : (isExpanded ? list : list.slice(0, 2)).map((d) => dealCard(d, undefined, true))}
+                  {!isExpanded && remaining > 0 && <Button variant="ghost" className="h-8 text-xs text-primary" onClick={() => toggleStage(s.key)}>+{remaining} more</Button>}
                   {s.key === "booked" && list.length === 0 && (
                     <div className="rounded-lg border border-dashed border-emerald-400 bg-emerald-50/60 p-3 text-center text-xs text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200">
                       Drop an accepted quote here to open <b>Book job</b> (date, tech). The job then appears on Dispatch.
@@ -302,34 +261,12 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
                 ))}
             </div>
           )}
-          <div className="divide-y rounded-xl border bg-card">
-            {followUps(shownDeals).map((d) => (
-              <div key={d.quote.id} onClick={() => navigate(`/admin/estimates/${d.quote.id}`)} className="flex cursor-pointer flex-wrap items-center gap-2 px-3 py-2.5 hover:bg-muted/40">
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold">{nameOf(d.quote)} · <span className="tabular-nums">{fmtRand(d.value)}</span></div>
-                  <div className="text-xs text-muted-foreground">
-                    {STAGES.find((s) => s.key === d.stage)?.label} {d.days} days · {d.quote.quote_number || "no number"} · {data?.repName[d.quote.sales_engineer_id || ""] || "—"}
-                  </div>
-                  <div className="mt-1 flex flex-wrap gap-1">{flags(d)}</div>
-                </div>
-                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                  {d.stage === "accepted"
-                    ? <Button size="sm" className="h-8 gap-1 bg-red-600 text-xs hover:bg-red-700" onClick={() => setBookId(d.quote.id)}><CalendarPlus className="h-3.5 w-3.5" /> Book job</Button>
-                    : <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => navigate(`/admin/estimates/${d.quote.id}`)}>{d.stage === "draft" ? "Finish & send" : "Follow up"}</Button>}
-                  <RowMenu items={menuFor(d)} />
-                </div>
-              </div>
-            ))}
-            {shownLeads.map((l) => (
-              <div key={l.id} onClick={() => navigate(`/admin/dispatch?lead=${l.id}`)} className="flex cursor-pointer items-center gap-2 px-3 py-2.5 hover:bg-muted/40">
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold">{l.customer_name || "New lead"} · <span className="text-muted-foreground">no quote yet</span></div>
-                  <div className="text-xs text-muted-foreground">New lead {daysSince(l.created_at, now)} days{!l.first_contact_at ? " · not contacted" : ""}</div>
-                </div>
-                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={(e) => { e.stopPropagation(); navigate(`/admin/quote-builder?leadId=${l.id}`); }}>Quote</Button>
-              </div>
-            ))}
-            {followUps(shownDeals).length === 0 && shownLeads.length === 0 && <div className="p-6 text-center text-sm text-muted-foreground">Nothing to follow up.</div>}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {followUps(shownDeals).map((d) => dealCard(d, d.stage === "accepted"
+              ? <Button size="sm" className="h-8 gap-1 bg-red-600 text-xs hover:bg-red-700" onClick={() => setBookId(d.quote.id)}><CalendarPlus className="h-3.5 w-3.5" /> Book job</Button>
+              : <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => navigate(`/admin/estimates/${d.quote.id}`)}>{d.stage === "draft" ? "Finish & send" : "Follow up"}</Button>))}
+            {shownLeads.map(leadCard)}
+            {followUps(shownDeals).length === 0 && shownLeads.length === 0 && <div className="col-span-full p-6 text-center text-sm text-muted-foreground">Nothing to follow up.</div>}
           </div>
         </div>
       )}
