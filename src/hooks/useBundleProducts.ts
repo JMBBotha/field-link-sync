@@ -108,7 +108,9 @@ export function useBundleProducts() {
       if (tierFlagError) {
         console.warn("[AutoBundle] tier_bundle lookup unavailable; falling back to name pattern only", tierFlagError.message || tierFlagError);
       } else {
-        byTierFlagData = (tierFlagRows as SupplierProductRow[] | null) || [];
+        const rows = (tierFlagRows as SupplierProductRow[] | null) || [];
+        const live = await filterLiveIds(rows.map((r: any) => r.id));
+        byTierFlagData = rows.filter((r: any) => live.has(r.id));
       }
 
       const namePatternFilter = [
@@ -119,7 +121,7 @@ export function useBundleProducts() {
         "description.ilike.%PIPING KIT%",
       ].join(",");
 
-      const { data: byNameData, error: byNameError } = await fromTable
+      const { data: byNameData, error: byNameError } = await liveProducts()
         .select(SUPPLIER_PRODUCT_SELECT)
         .eq("is_active", true)
         .or(`archived.is.null,archived.eq.false`)
