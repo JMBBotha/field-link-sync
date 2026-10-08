@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { archiveSupplierProducts, deactivatePdfUploads, archiveProductIds } from "@/services/catalogArchive";
 
 /**
  * Complete FK dependency tree rooted at `suppliers`:
@@ -300,13 +301,8 @@ export async function cleanOrphanProducts(): Promise<number> {
     orphanProducts = (data || []).map((p: any) => p.id);
   }
 
-  if (orphanProducts.length > 0) {
-    await purgeProductImages(orphanProducts);
-    await deleteBatched("quote_items", "product_id", orphanProducts);
-    await deleteBatched("job_used_parts", "product_id", orphanProducts);
-    await deleteBatched("pdf_product_regions", "product_id", orphanProducts);
-    await deleteBatched("supplier_products", "id", orphanProducts);
-  }
+  // Archive only — never delete products or quote lines.
+  if (orphanProducts.length > 0) await archiveProductIds(orphanProducts);
 
   return orphanProducts.length;
 }
