@@ -288,7 +288,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     setMeta((prev) => prev ? ({ ...prev, materials_waste_percent: v } as any) : prev);
     setActiveMaterialsWastePercent(v ?? companyWaste);
     setRepriceSeq((n) => n + 1);
-    const { error } = await track((supabase.from("quotes") as any).update({ materials_waste_percent: v }).eq("id", quoteId));
+    const { error } = await track<any>((supabase.from("quotes") as any).update({ materials_waste_percent: v }).eq("id", quoteId));
     if (error) toast({ title: "Couldn't save waste %", description: error.message, variant: "destructive" });
   }, [quoteId, companyWaste]);
 
