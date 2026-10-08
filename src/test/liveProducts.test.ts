@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 
-const from = vi.fn(() => ({ select: vi.fn(() => ({ in: vi.fn(async () => ({ data: [{ id: "a" }] })) })) }));
+const { from } = vi.hoisted(() => ({ from: vi.fn(() => ({ select: vi.fn(() => ({ in: vi.fn(async () => ({ data: [{ id: "a" }] })) })) })) }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from } }));
 
 import { liveProducts, filterLiveIds, LIVE_PRODUCTS_SOURCE } from "@/lib/liveProducts";

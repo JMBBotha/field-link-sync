@@ -28,6 +28,8 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   },
 } }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
+// Favourites are filtered to live price-list ids; every fixture id is live here.
+vi.mock("@/lib/liveProducts", () => ({ filterLiveIds: async (ids: string[]) => new Set(ids) }));
 
 beforeEach(() => { cleanup(); db.rows = ["samsung"]; db.fail = false; db.writes = []; });
 const wrapper = ({ children }: { children: ReactNode }) => (
