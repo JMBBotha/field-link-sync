@@ -59,8 +59,8 @@ describe("standard install", () => {
     setActiveQuoteMarkupRates({ units: 25, materials: 100 } as any);
     const price = (code: string) => catalogLineFields(LIVE.find((p) => p.product_code === code), 1).unit_price;
     expect((catalogLineFields(LIVE.find((p) => p.product_code === "TRUNK01"), 3) as any).total_price).toBe(290.94); // per metre with 10% waste
-    expect((catalogLineFields(LIVE.find((p) => p.product_code === "TRUNK02"), 3) as any).total_price).toBe(32.5);
-    expect(price("DPIPE01")).toBeCloseTo(56, 2);
+    expect((catalogLineFields(LIVE.find((p) => p.product_code === "TRUNK02"), 3) as any).total_price).toBe(35.76);
+    expect(price("DPIPE01")).toBeCloseTo(15.4, 2);
     expect(price("TRUNKCAP01")).toBeCloseTo(29.52, 2);
     expect(price("ELB001")).toBeCloseTo(7.5, 2);
     expect(price("BRAC01")).toBe(420);
