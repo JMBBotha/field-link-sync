@@ -50,11 +50,11 @@ describe("shared area name chips", () => {
   it("uses four primary choices and collapses subsequent creation into Add area", () => {
     const create = vi.fn();
     const view = render(<CanonicalAreaCreateControl existingNames={[]} onCreate={create} />);
-    expect(screen.getAllByRole("button").map((button) => button.textContent?.trim())).toEqual(["Main bedroom", "Guest bedroom", "Lounge", "Office", "Other"]);
+    expect(screen.getAllByRole("button").map((button) => button.textContent?.trim())).toEqual(["Main bedroom", "Guest bedroom", "Lounge", "Office", "Other…"]);
     fireEvent.click(screen.getByRole("button", { name: "Main bedroom" }));
     expect(create).toHaveBeenCalledWith("Main bedroom");
     view.rerender(<CanonicalAreaCreateControl existingNames={["Main bedroom"]} onCreate={create} />);
-    expect(screen.getByRole("button", { name: "Add area" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create area" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Guest bedroom" })).not.toBeInTheDocument();
   });
 });

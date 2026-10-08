@@ -13,6 +13,7 @@ import QuoteBuilderLayout, { SIDE_PANEL_KEY, LEFT_PANEL_KEY } from "@/components
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import ServicesTab from "@/components/settings/ServicesTab";
 import { useCanWriteMasterCatalog } from "@/components/catalog/MasterCatalogGate";
+import unifiedBuilderSource from "@/pages/admin/AdminQuoteBuilderPageUnified.tsx?raw";
 
 const areas = (extra = 0): EstimateEditArea[] =>
   [0, 1, 2].map((a) => ({
@@ -35,6 +36,14 @@ const wrap = (n: ReactNode) => <QueryClientProvider client={new QueryClient()}>{
 
 describe("quote builder layout", () => {
   beforeEach(() => localStorage.clear());
+
+  it("hides old tabs and returns Visual PDF to the shared quote view", () => {
+    for (const tab of ["normal", "area"]) {
+      expect(unifiedBuilderSource).toContain(`value="${tab}" disabled aria-hidden="true" className="hidden`);
+    }
+    expect(unifiedBuilderSource).toContain('onClose={() => void handleTabChange("quote")}');
+    expect(unifiedBuilderSource).toContain('if (activeTab === "normal" || activeTab === "area") void handleTabChange("quote")');
+  });
 
   it("3 areas × 12 lines: middle scrolls on its own, side closed, spacer present", () => {
     render(<QuoteBuilderLayout compact={false} middle={doc(areas())} side={<div>summary</div>} stickyPad="4rem" />);
@@ -100,10 +109,15 @@ describe("quote builder layout", () => {
         }}
       />,
     );
+    expect(screen.getAllByRole("columnheader", { name: "QTY" })).toHaveLength(3);
+    expect(screen.getByTestId("estimate-areas-card")).toHaveAttribute("data-solid");
     for (const a of list) {
       const el = screen.getByTestId(`area-add-${a.id}`);
       expect(el.closest("[data-pdf-hide]")).toBeTruthy();
       expect(el.closest(`[data-area-id="${a.id}"]`)).toBeTruthy();
+      expect(el.closest("[data-html2canvas-ignore]")).toBeTruthy();
+      const table = el.closest("section")?.querySelector("table");
+      expect(table && el.compareDocumentPosition(table)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     }
   });
 });

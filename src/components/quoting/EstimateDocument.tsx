@@ -1,5 +1,5 @@
-import { CanonicalAreaCreateControl } from "@/components/quote/AreaNameChips";
-import { AreaNameLabel } from "@/components/quote/AreaNameLabel";
+import { CanonicalAreaChoices, CanonicalAreaCreateControl } from "@/components/quote/AreaNameChips";
+import { AreaNameLabel, isDefaultAreaName } from "@/components/quote/AreaNameLabel";
 import { SpecialChip } from "@/components/specials/SpecialsUi";
 import { useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Trash2 } from "lucide-react";
@@ -11,6 +11,8 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import type { ClientRollupArea } from "@/lib/clientQuoteRollup";
 import AreaLabourRow from "@/components/quoting/AreaLabourRow";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { formatRand } from "@/utils/formatRand";
 
 export interface EstimateDocLineItem {
   description: string;
@@ -123,6 +125,7 @@ export interface EstimateEditing {
   onMoveLine?: (id: string, areaId: string) => void;
   onDuplicateLine?: (id: string, areaId: string) => void;
   onAddLabour?: (areaId: string) => void;
+  labourRate?: number;
   onLabourChange?: (id: string, hours: number, rate?: number) => void;
   unassignedLabour?: EstimateEditLine[];
   /** Delete a labour line (every counted labour line must be removable). */
@@ -310,6 +313,7 @@ const EstimateDocument = ({
     editing ? editing.areas.flatMap((a) => a.lines.map((l) => l.id)) : [],
     () => editRootRef.current,
   );
+  const [namingAreas, setNamingAreas] = useState<Set<string>>(new Set());
   const [openKits, setOpenKits] = useState<Record<string, boolean>>({});
   const [openInstallGroups, setOpenInstallGroups] = useState<Record<string, boolean>>({});
   const isPhone = useIsPhone();
@@ -396,13 +400,13 @@ const EstimateDocument = ({
 
         {/* ── Line items ── */}
         {editing ? (
-          <div className="mt-6 space-y-4 rounded-lg border border-border bg-card p-4" data-testid="estimate-areas-card">
-            {editing.areaCreationControl && !editing.areas.some((area) => area.id) && editing.areas.every((area) => area.lines.length === 0) && (
+          <div data-solid data-paper className="option1-solid mt-6 space-y-4 rounded-xl border bg-card p-4 shadow-sm sm:p-5" data-testid="estimate-areas-card">
+            {!editing.areas.some((area) => area.id) && editing.areas.every((area) => area.lines.length === 0) && (
               <div className="w-full print:hidden" data-pdf-hide data-html2canvas-ignore data-testid="inline-estimate-area-create">
-                {editing.areaCreationControl}
+                {editing.areaCreationControl ?? <CanonicalAreaCreateControl existingNames={[]} onCreate={editing.onAddArea} />}
               </div>
             )}
-            {editing.areas.filter((area) => !(editing.areaCreationControl && !area.id && area.lines.length === 0)).map((area) => {
+            {editing.areas.filter((area) => !(!area.id && area.lines.length === 0)).map((area) => {
               const areaKey = area.id ?? "unassigned";
               const canCollapse = editing.collapsedAreaKeys !== undefined && !!editing.onToggleArea;
               const collapsed = canCollapse && editing.collapsedAreaKeys?.has(areaKey);
@@ -413,44 +417,48 @@ const EstimateDocument = ({
                 data-area-collapsed={collapsed ? "true" : undefined}
                 onFocus={() => editing.onSelectArea?.(area.id)}
                 onClick={() => editing.onSelectArea?.(area.id)}
-                className="border-b border-border pb-4 print:pb-0"
+                className="option1-area pb-0 print:pb-0"
               >
-                <div className="flex items-center gap-2 border-b border-slate-300 pb-1">
+                <div className="option1-title-row flex items-center gap-2 border-b pb-3">
                   {area.id ? (
                     <AreaNameLabel
                       key={`${area.id}-${area.name}`}
                       name={area.name}
-                      autoEdit={editing.focusAreaId === area.id}
+                      choicesEditing
+                      onEditingChange={() => setNamingAreas((current) => new Set(current).add(areaKey))}
                       onRename={(v) => editing.onRenameArea(area.id as string, v)}
-                      className="text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]"
+                      className="text-xl font-bold normal-case"
                     />
                   ) : (
                     <AreaNameLabel
                       key={`default-${area.name}`}
                       name={area.name}
+                      choicesEditing
                       isDefault={area.name === "Add items to quote" || undefined}
+                      onEditingChange={() => setNamingAreas((current) => new Set(current).add(areaKey))}
                       onRename={(v) => editing.onNameDefaultArea?.(v)}
-                      className="text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]"
+                      className="text-xl font-bold normal-case"
                     />
                   )}
                   {canCollapse && area.lines.length > 0 && (
-                    <button
+                    <Button
+                      variant="ghost" data-solid
                       type="button"
                       aria-expanded={!collapsed}
                       onClick={(e) => {
                         e.stopPropagation();
                         editing.onToggleArea?.(areaKey);
                       }}
-                      className={`ml-auto inline-flex items-center gap-1 rounded-md px-2 text-[11px] text-slate-600 hover:bg-slate-100 print:hidden ${isPhone ? "min-h-[44px]" : "h-7"}`}
+                      className="option1-collapse ml-auto h-9 shrink-0 px-1 text-xs font-normal print:hidden"
                       data-pdf-hide
                       data-html2canvas-ignore
                     >
-                      {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       {collapsed ? `Show ${area.lines.length} item${area.lines.length === 1 ? "" : "s"}` : "Hide items"}
-                    </button>
+                    </Button>
                   )}
                   {area.id && editing.onDeleteArea && (
-                    <button
+                    <Button
+                      variant="ghost" size="icon" data-solid data-html2canvas-ignore
                       type="button"
                       aria-label={`Delete area ${area.name}`}
                       title="Delete this area and its lines"
@@ -458,20 +466,33 @@ const EstimateDocument = ({
                         e.stopPropagation();
                         editing.onDeleteArea?.(area.id as string);
                       }}
-                      className={`${canCollapse && area.lines.length > 0 ? "" : "ml-auto"} inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-red-300 bg-red-50 text-red-600 shadow-sm hover:bg-red-100 hover:text-red-700 print:hidden`}
+                      className={`${canCollapse && area.lines.length > 0 ? "" : "ml-auto"} option1-delete h-7 w-7 shrink-0 print:hidden`}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   )}
                 </div>
 
-                <table className={`estimate-lines mt-2 w-full border-collapse text-[12px] ${collapsed ? "hidden print:table" : ""}`}>
+                {(isDefaultAreaName(area.name) || area.name === "Add items to quote" || namingAreas.has(areaKey)) && (
+                  <div className="mt-4 print:hidden" data-html2canvas-ignore>
+                    <CanonicalAreaChoices existingNames={editing.areas.filter((other) => other.id !== area.id).map((other) => other.name)} onCreate={(name) => {
+                      if (area.id) editing.onRenameArea(area.id, name);
+                      else editing.onNameDefaultArea?.(name);
+                      setNamingAreas((current) => { const next = new Set(current); next.delete(areaKey); return next; });
+                    }} />
+                  </div>
+                )}
+                {editing.renderAreaAdd && (
+                  <div className="mt-4 print:hidden" data-pdf-hide data-html2canvas-ignore data-area-add-root>{editing.renderAreaAdd(area.id)}</div>
+                )}
+
+                <table className={`estimate-lines mt-4 w-full border-collapse text-[12px] ${collapsed ? "hidden print:table" : ""}`}>
 
                   <thead>
-                    <tr className="text-[10px] uppercase tracking-wider text-slate-500 max-sm:portrait:hidden">
-                      <th className="py-2 text-left font-semibold">Description</th>
+                    <tr className="option1-table-header text-[11px] uppercase tracking-wider max-sm:portrait:hidden">
+                      <th className="rounded-l py-2 pl-2 text-left font-semibold">Description</th>
                       <th className="w-24 py-2 text-right font-semibold">Rate</th>
-                       <th className="w-16 py-2 text-right font-semibold">Quantity</th>
+                       <th className="w-16 py-2 text-right font-semibold">QTY</th>
                       <th className="w-28 py-2 text-right font-semibold">Line Total</th>
                       <th className="w-8 print:hidden" />
                     </tr>
@@ -482,9 +503,10 @@ const EstimateDocument = ({
                         const open = !!openInstallGroups[row.unitId];
                         const total = row.lines.reduce((sum, child) => sum + lineAmount(child), 0);
                         return (
-                          <tr key={`install-summary-${row.unitId}`} className="estimate-install-summary border-b border-slate-100 bg-slate-50 print:hidden">
-                            <td colSpan={5} className="py-1.5">
-                              <button
+                          <tr key={`install-summary-${row.unitId}`} className="estimate-install-summary print:hidden" data-html2canvas-ignore>
+                            <td colSpan={5} className="py-3">
+                              <Button
+                                variant="ghost" data-solid
                                 type="button"
                                 aria-label={open ? "Hide installation materials" : "Show installation materials"}
                                 aria-expanded={open}
@@ -492,12 +514,12 @@ const EstimateDocument = ({
                                   event.stopPropagation();
                                   setOpenInstallGroups((current) => ({ ...current, [row.unitId]: !current[row.unitId] }));
                                 }}
-                                className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-slate-600 hover:bg-slate-100"
+                                className="option1-install-bar flex h-auto min-h-10 w-full flex-wrap justify-start gap-1 rounded-md px-3 py-2 text-left text-xs"
                               >
                                 {open ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
-                                <span className="font-medium text-slate-700">Installation materials</span>
-                                <span className="text-slate-500">· {row.lines.length} items · {formatCurrency(total)}</span>
-                              </button>
+                                <span className="font-semibold">Installation materials</span>
+                                <span>· {row.lines.length} items · {formatRand(total)}</span>
+                              </Button>
                             </td>
                           </tr>
                         );
@@ -589,18 +611,15 @@ const EstimateDocument = ({
                                     {openKits[line.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                   </button>
                                 )}
-                                <input
-                                  key={`${line.id}-name-${line.displayName ?? ""}`}
-                                  defaultValue={line.displayName || line.name}
-                                  title={line.displayName ? line.name : undefined}
-                                  aria-label="Line name"
-                                  onBlur={(e) => {
-                                    const v = e.target.value.trim();
-                                    const shown = line.displayName || line.name;
-                                    if (v && v !== shown) editing.onLineChange(line.id, { item_name: v });
-                                  }}
-                                  className={`${inputBase} font-medium text-slate-800`}
-                                />
+                                <div className="option1-line-copy min-w-0 text-sm leading-relaxed">
+                                  <span key={`${line.id}-name-${line.displayName ?? ""}`} contentEditable suppressContentEditableWarning role="textbox" aria-label="Line name" title={line.displayName ? line.name : undefined}
+                                    onBlur={(event) => { const value = event.currentTarget.textContent?.trim(); if (value && value !== (line.displayName || line.name)) editing.onLineChange(line.id, { item_name: value }); }}
+                                    className="font-bold outline-none">{line.displayName || line.name}</span>
+                                  <span> — </span>
+                                  <span key={`${line.id}-desc-${line.description ?? ""}`} contentEditable suppressContentEditableWarning role="textbox" aria-label="Line description"
+                                    onBlur={(event) => { const value = event.currentTarget.textContent || ""; if (value !== (line.description ?? "")) editing.onLineChange(line.id, { description: value || null }); }}
+                                    className="outline-none">{line.description || ""}</span>
+                                </div>
                                 </div>
                                 {line.kitItems && openKits[line.id] && (
                                   <ul data-testid="kit-contents" className="mb-1 ml-7 space-y-0.5 text-[11px] text-slate-500">
@@ -609,19 +628,7 @@ const EstimateDocument = ({
                                     ))}
                                   </ul>
                                 )}
-                                <textarea
-                                  key={`${line.id}-desc`}
-                                  defaultValue={line.description ?? ""}
-                                  rows={2}
-                                  placeholder="Description (prints on the quote)"
-                                  onBlur={(e) => {
-                                    const v = e.target.value;
-                                    if (v !== (line.description ?? "")) {
-                                      editing.onLineChange(line.id, { description: v || null });
-                                    }
-                                  }}
-                                  className={`${inputBase} mt-0.5 resize-y text-[11px] text-slate-500`}
-                                />
+
                               </div>
                             </div>
                           </td>
@@ -695,8 +702,8 @@ const EstimateDocument = ({
                               <div data-testid="qty-unit" className="whitespace-nowrap text-[10px] text-slate-500 print:hidden">{line.unitText}</div>
                             )}
                           </td>
-                          <td className="py-2 text-right font-medium text-slate-900">
-                            {formatCurrency(lineAmount(line))}
+                          <td className="py-2 text-right font-bold text-slate-900">
+                            {formatRand(lineAmount(line))}
                           </td>
                           <td className="py-2 text-right print:hidden">
                             <div className="flex items-center justify-end gap-1">
@@ -738,22 +745,13 @@ const EstimateDocument = ({
                   </tbody>
                 </table>
 
-                {area.lines.length === 0 && (
-                  <p className="py-4 text-center text-[11px] text-slate-400 print:hidden">
-                    No lines yet — add a unit, service or material.
-                  </p>
-                )}
-
-                {editing.renderAreaAdd && (
-                  <div className="mt-2 print:hidden" data-pdf-hide data-html2canvas-ignore data-area-add-root>{editing.renderAreaAdd(area.id)}</div>
-                )}
-
                 {area.id && !editing.jobLabour && editing.onAddLabour && editing.onLabourChange && (
                   <AreaLabourRow
                     areaId={area.id}
                     areaName={area.name}
                     lines={area.labourLines || []}
                     defaultHours={area.defaultLabourHours || 0}
+                    defaultRate={editing.labourRate}
                     onAdd={() => editing.onAddLabour?.(area.id as string)}
                     onChange={editing.onLabourChange}
                     onRemove={editing.onRemoveLabour}
@@ -764,13 +762,14 @@ const EstimateDocument = ({
             })}
 
             {editing.jobLabour && editing.onLabourChange && (
-              <section data-testid="job-labour" className="border-b border-border pb-4 print:pb-0">
+              <section data-testid="job-labour" className="option1-area pb-0 print:pb-0">
                 <AreaLabourRow
                   areaId="job"
                   areaName="the job"
                   title="Job labour"
                   lines={editing.jobLabour.lines}
                   defaultHours={editing.jobLabour.defaultHours}
+                  defaultRate={editing.labourRate}
                   onAdd={editing.jobLabour.onAdd}
                   onChange={editing.onLabourChange}
                   onRemove={editing.onRemoveLabour}
@@ -791,8 +790,8 @@ const EstimateDocument = ({
                 ))}
               </div>
             )}
-            {(editing.areas.some((area) => area.id) || editing.areas.some((area) => area.lines.length > 0) || !editing.areaCreationControl) && (
-              <div className="w-full border-t border-border pt-4 print:hidden" data-pdf-hide data-html2canvas-ignore data-testid="inline-estimate-area-create">
+            {(editing.areas.some((area) => area.id) || editing.areas.some((area) => area.lines.length > 0)) && (
+              <div className="w-full print:hidden" data-pdf-hide data-html2canvas-ignore data-testid="inline-estimate-area-create">
                 {editing.areaCreationControl ?? (
                   <CanonicalAreaCreateControl existingNames={editing.areas.map((area) => area.name)} onCreate={editing.onAddArea} />
                 )}

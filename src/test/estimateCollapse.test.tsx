@@ -75,11 +75,38 @@ describe("estimate area collapse", () => {
     expect(screen.getByTestId("inline-estimate-area-create").parentElement).toBe(screen.getByTestId("estimate-areas-card"));
   });
 
-  it("shows Labour needed with the requested outline and no yellow fill", () => {
-    render(<AreaLabourRow areaId="a" areaName="Bedroom" lines={[]} defaultHours={3.5} onAdd={vi.fn()} onChange={vi.fn()} />);
-    const warning = screen.getByText("Labour needed").parentElement;
-    expect(warning).toHaveClass("bg-card", "text-foreground", "border-2", "border-orange-500");
-    expect(warning?.className).not.toMatch(/bg-(yellow|amber)/);
+  it("shows zero-hour outlined labour and uses the existing add path on tap", () => {
+    const onAdd = vi.fn();
+    render(<AreaLabourRow areaId="a" areaName="Bedroom" lines={[]} defaultHours={3.5} onAdd={onAdd} onChange={vi.fn()} />);
+    expect(screen.getByTestId("area-labour-hours-row")).toHaveClass("border-2", "border-orange-500");
+    expect(screen.queryByText("Labour needed")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Edit labour hours for Bedroom" }));
+    expect(onAdd).toHaveBeenCalledOnce();
+  });
+
+  it("renders no empty labour in unit-free areas", () => {
+    render(<AreaLabourRow areaId="a" areaName="Bedroom" lines={[]} defaultHours={0} onAdd={vi.fn()} onChange={vi.fn()} />);
+    expect(screen.queryByTestId("area-labour-a")).toBeNull();
+  });
+
+  it("pencil opens rename chips and a repeated choice renames with numbering", () => {
+    const rename = vi.fn();
+    renderDocument({ ...baseEditing, areas: [area, { id: "second", name: "Main bedroom", lines: [] }], onRenameArea: rename });
+    fireEvent.click(screen.getByRole("button", { name: "Rename area Bedroom" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Main bedroom$/ }));
+    expect(rename).toHaveBeenCalledWith("area-1", "Main bedroom 2");
+    expect(screen.queryByTestId("canonical-area-choices")).toBeNull();
+  });
+
+  it("edits existing labour only on tap via onChange", () => {
+    const onChange = vi.fn();
+    render(<AreaLabourRow areaId="a" areaName="Bedroom" lines={[{ id: "lab", name: "Labour", description: null, quantity: 3.5, unit_price: 680 }]} defaultHours={3.5} onAdd={vi.fn()} onChange={onChange} />);
+    expect(screen.queryByRole("spinbutton")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Edit labour hours for Bedroom" }));
+    const input = screen.getByRole("spinbutton");
+    fireEvent.change(input, { target: { value: "4" } });
+    fireEvent.blur(input);
+    expect(onChange).toHaveBeenCalledWith("lab", 4);
   });
 
   it("keeps collapsed rows mounted and printable", () => {

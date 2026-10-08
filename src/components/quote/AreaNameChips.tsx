@@ -55,7 +55,7 @@ export function AreaCreateControl({ existingNames, onCreate, label = "Create are
   </div>;
 }
 
-function CanonicalAreaChoices({ existingNames, onCreate }: {
+export function CanonicalAreaChoices({ existingNames, onCreate }: {
   existingNames: string[];
   onCreate: (name: string) => void | Promise<unknown>;
 }) {
@@ -75,17 +75,17 @@ function CanonicalAreaChoices({ existingNames, onCreate }: {
     }
   };
   return (
-    <div className="space-y-3" data-testid="canonical-area-choices">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+    <div className="space-y-3 print:hidden" data-html2canvas-ignore data-testid="canonical-area-choices">
+      <div className="flex flex-wrap gap-2">
         {PRIMARY_AREA_PICKS.map((name) => (
-          <Button key={name} type="button" disabled={busy} onClick={() => void create(name)} className="min-h-11 whitespace-normal bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button key={name} type="button" variant="outline" data-solid disabled={busy} onClick={() => void create(name)} className="option1-name-chip h-10 whitespace-normal rounded-md px-4 font-medium">
             {name}
           </Button>
         ))}
         <DropdownMenu onOpenChange={(open) => { if (!open) setShowCustom(false); }}>
           <DropdownMenuTrigger asChild>
-            <Button type="button" disabled={busy} variant="outline" className="min-h-11 gap-1 border-primary/30 bg-primary/5 text-primary hover:bg-primary/10">
-              Other <ChevronDown className="h-4 w-4" />
+            <Button type="button" data-solid disabled={busy} variant="outline" className="option1-other-chip h-10 rounded-md border-dashed px-4">
+              Other…
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
@@ -93,7 +93,7 @@ function CanonicalAreaChoices({ existingNames, onCreate }: {
             <DropdownMenuItem onSelect={(event) => { event.preventDefault(); setShowCustom(true); setTimeout(() => input.current?.focus(), 0); }}>Type own name</DropdownMenuItem>
             {showCustom && (
               <form className="flex gap-2 p-2" onSubmit={(event) => { event.preventDefault(); void create(custom); }}>
-                <Input ref={input} aria-label="New area name" value={custom} onChange={(event) => setCustom(event.target.value)} placeholder="Area name" className="h-9 min-w-0" />
+                <Input ref={input} data-solid aria-label="New area name" value={custom} maxLength={60} onChange={(event) => setCustom(event.target.value)} placeholder="Area name" className="h-9 min-w-0" />
                 <Button type="submit" size="sm" disabled={!custom.trim() || busy}>Add</Button>
               </form>
             )}
@@ -120,11 +120,11 @@ export function CanonicalAreaCreateControl({ existingNames, onCreate }: {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" className="h-11 w-full justify-center gap-2 border-primary/30 text-primary" data-testid="canonical-add-area">
-          <Plus className="h-4 w-4" /> Add area
+        <Button type="button" variant="outline" data-solid className="option1-create-area h-11 w-full justify-center gap-2 rounded-lg border-dashed font-semibold" data-testid="canonical-add-area">
+          <Plus className="h-4 w-4" /> Create area
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl border-border bg-card shadow-xl">
+      <DialogContent data-solid data-paper className="option1-solid max-w-2xl shadow-xl">
         <DialogHeader><DialogTitle>Create area</DialogTitle></DialogHeader>
         <CanonicalAreaChoices existingNames={existingNames} onCreate={create} />
       </DialogContent>

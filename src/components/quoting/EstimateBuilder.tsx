@@ -1,4 +1,5 @@
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
+import { usePdfBasket } from "@/lib/pdfBasketStore";
 /**
  * EstimateBuilder — the single quote surface on /admin/estimates/:id.
  *
@@ -98,6 +99,7 @@ export default function EstimateBuilder({
     quoteId, meta, areas, items, loading,
     addArea, updateArea, deleteArea, updateItem, deleteItem, updateQuote, addItem, refetch,
   } = useQuoteContext();
+  const [savedPdfBasket] = usePdfBasket(quoteId);
   const labourMode = normalizeLabourMode((meta as any)?.labour_mode);
   const { others: otherEditors } = useQuoteEditors(areaFirst ? null : quoteId, "estimate");
   const builderEditor = otherEditors.find((e) => e.surface === "builder");
@@ -570,60 +572,31 @@ export default function EstimateBuilder({
           renderAreaAdd: (areaId) => {
             const key = areaId ?? "unassigned";
             const open = openAdd?.key === key ? openAdd.mode : null;
-            if (areaFirst) {
-              const editorProps = {
-                targetAreaId: areaId ?? undefined,
-                createTargetArea: areaId ? undefined : async () => {
-                  if (!allowNewArea()) return null;
-                  const created = await addArea(`Area ${areas.length + 1}`);
-                  return created?.id ?? null;
-                },
-                onChanged,
-                onAddedToArea: (id: string) => setActiveAreaId(id),
-                pdfBasket,
-              };
-              const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
-              return (
-                <div className="space-y-2" onClick={stop} data-area-key={key}>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="canonical-add-actions">
-                    {([['unit', 'Add unit'], ['service', 'Add service'], ['material', 'Add material'], ['selected', 'Selected']] as const).map(([mode, label]) => (
-                      <Button key={mode} type="button" size="sm" variant={open === mode ? "default" : "outline"} className={`h-10 ${open === mode ? "border-orange-500 bg-orange-500 text-primary-foreground ring-2 ring-orange-500/30 hover:bg-orange-500/90" : "border-primary/20 text-primary"}`} onClick={() => setOpenAdd(open === mode ? null : { key, mode })}>
-                        {label}
-                      </Button>
-                    ))}
-                  </div>
-                  {open && <QuoteQuickEditor key={`${key}-${open}`} mode={open} onClose={() => setOpenAdd(null)} {...editorProps} />}
+            const editorProps = {
+              targetAreaId: areaId ?? undefined,
+              createTargetArea: areaId ? undefined : async () => {
+                if (!allowNewArea()) return null;
+                const created = await addArea(`Area ${areas.length + 1}`);
+                if (!created?.id) return null;
+                setOpenAdd({ key: created.id, mode: open ?? "unit" });
+                return created.id;
+              },
+              onChanged,
+              onAddedToArea: (id: string) => setActiveAreaId(id),
+              pdfBasket: pdfBasket ?? savedPdfBasket,
+            };
+            return (
+              <div className="space-y-2" onClick={(event) => event.stopPropagation()} data-area-key={key}>
+                <div className="flex flex-wrap gap-2" data-testid="canonical-add-actions">
+                  {([['unit', '+ Add unit'], ['service', '+ Add service'], ['material', '+ Add material'], ['selected', '★ Selected / Favourites']] as const).map(([mode, label]) => (
+                    <Button key={mode} type="button" size="sm" variant="outline" data-solid aria-pressed={open === mode}
+                      className={`h-9 rounded-md px-3 text-sm ${mode === "unit" ? "option1-add-unit" : "option1-add-secondary"}`}
+                      onClick={() => setOpenAdd(open === mode ? null : { key, mode })}>{label}</Button>
+                  ))}
                 </div>
-              );
-            }
-            if (open) {
-              return (
-                <QuoteQuickEditor
-                  key={`${key}-${open}`}
-                  mode={open}
-                  targetAreaId={areaId ?? undefined}
-                  createTargetArea={areaId ? undefined : async () => {
-                    if (!allowNewArea()) return null;
-                    const created = await addArea(`Area ${areas.length + 1}`);
-                    if (!created?.id) return null;
-                    setOpenAdd({ key: created.id, mode: open });
-                    return created.id;
-                  }}
-                  onClose={() => setOpenAdd(null)}
-                  onChanged={onChanged}
-                  onAddedToArea={(id) => setActiveAreaId(id)}
-                  pdfBasket={pdfBasket}
-                />
-              );
-            }
-            const btn = (mode: "unit" | "service" | "material", label: string) => (
-              <Button key={mode} type="button" size="sm" variant="outline" className="h-7 text-[11px]" onClick={(e) => { e.stopPropagation(); setOpenAdd({ key, mode }); }}>
-                <Plus className="mr-1 h-3 w-3" />{label}
-              </Button>
+                {open && <QuoteQuickEditor key={`${key}-${open}`} mode={open} onClose={() => setOpenAdd(null)} {...editorProps} />}
+              </div>
             );
-            return <div className="flex flex-wrap gap-2">{btn("unit", "Add unit")}{btn("service", "Add service")}{btn("material", "Add material")}{(
-              <Button key="favourites" type="button" size="sm" variant="outline" className="h-7 text-[11px]" onClick={(e) => { e.stopPropagation(); setOpenAdd({ key, mode: "favourites" }); }}>★ Favourites</Button>
-            )}</div>;
           },
           discountControl,
           onMoveLine: (id, areaId) => {
@@ -644,6 +617,7 @@ export default function EstimateBuilder({
             onChanged?.();
           },
           onAddLabour: (areaId) => void addLabourForArea(areaId),
+          labourRate,
           onLabourChange: (id, hours, rate) => void changeLabour(id, hours, rate),
           onRemoveLabour: (id) => { void deleteItem(id); onChanged?.(); },
           unassignedLabour: unassignedLabourLines(topLevel, areas, labourMode).map(lineFor),

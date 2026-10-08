@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 /** Empty or "Area" / "Area 3" style placeholder names. */
 export function isDefaultAreaName(name: string | null | undefined): boolean {
@@ -17,22 +18,27 @@ interface Props {
   className?: string;
   /** Override default-name detection (e.g. a synthetic "Add items" area). */
   isDefault?: boolean;
+  onEditingChange?: (editing: boolean) => void;
+  /** Option-1 chips replace the title input while choosing a name. */
+  choicesEditing?: boolean;
 }
 
-export function AreaNameLabel({ name, onRename, autoEdit, className = "", isDefault }: Props) {
+export function AreaNameLabel({ name, onRename, autoEdit, className = "", isDefault, onEditingChange, choicesEditing = false }: Props) {
   const [editing, setEditing] = useState(!!autoEdit);
   const [draft, setDraft] = useState("");
   const cancelled = useRef(false);
   const showDefault = isDefault ?? isDefaultAreaName(name);
 
   useEffect(() => {
-    if (autoEdit) setEditing(true);
+    if (autoEdit) { setDraft(showDefault ? "" : name); setEditing(true); onEditingChange?.(true); }
   }, [autoEdit]);
 
   const open = () => {
+    if (choicesEditing) { onEditingChange?.(true); return; }
     cancelled.current = false;
     setDraft(showDefault ? "" : name);
     setEditing(true);
+    onEditingChange?.(true);
   };
   const commit = () => {
     if (cancelled.current) return;
@@ -48,6 +54,7 @@ export function AreaNameLabel({ name, onRename, autoEdit, className = "", isDefa
       {editing ? (
         <input
           autoFocus
+          data-solid
           value={draft}
           aria-label="Area name"
           placeholder="Name this area (e.g. Lounge, Main bedroom)"
@@ -65,34 +72,33 @@ export function AreaNameLabel({ name, onRename, autoEdit, className = "", isDefa
               setEditing(false);
             }
           }}
-          className="w-full rounded border border-input bg-background px-1.5 py-0.5 text-sm normal-case tracking-normal font-normal text-foreground print:hidden"
+          className="option1-name-input w-full rounded border border-input bg-transparent px-1.5 py-0.5 text-xl font-bold normal-case print:hidden"
           data-html2canvas-ignore
         />
       ) : (
-        <button
+        <Button
+          variant="ghost"
+          data-solid
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             open();
           }}
           aria-label={showDefault ? "Name this area" : `Rename area ${name}`}
-          className="flex max-w-full flex-col items-start text-left print:hidden"
+          className="option1-title h-auto max-w-full justify-start whitespace-normal p-0 text-left text-xl font-bold print:hidden"
           data-html2canvas-ignore
         >
           <span className="flex max-w-full items-center gap-1.5">
             {showDefault ? (
-              <span className="truncate italic font-normal normal-case tracking-normal text-muted-foreground">
-                Tap to name this area
+              <span className="font-medium normal-case text-muted-foreground">
+                Name this area
               </span>
             ) : (
-              <span className="truncate">{name}</span>
+              <span className="break-words">{name}</span>
             )}
             <Pencil className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
           </span>
-          {showDefault && (
-            <span className="text-[10px] font-normal normal-case tracking-normal text-muted-foreground">e.g. Lounge</span>
-          )}
-        </button>
+        </Button>
       )}
     </div>
   );

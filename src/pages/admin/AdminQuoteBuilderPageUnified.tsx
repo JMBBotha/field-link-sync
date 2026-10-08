@@ -922,7 +922,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   }, []);
 
   // Switching tabs: the Area tab uses the inline builder, no modal popup
-  const handleTabChange = useCallback(async (tab: string) => {
+  const handleTabChange = useCallback(async (requestedTab: string) => {
+    const tab = requestedTab === "normal" || requestedTab === "area" ? "quote" : requestedTab;
     if (tab === activeTab) return;
     if (tab === "quote") {
       await flushSaveRef.current?.(); // builder edits land first, then the live view takes over
@@ -939,6 +940,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
     }
     setActiveTab(tab);
   }, [activeTab, ctxRefetch, onRemount, tabRef]);
+  useEffect(() => {
+    if (activeTab === "normal" || activeTab === "area") void handleTabChange("quote");
+  }, [activeTab, handleTabChange]);
 
 
   /* ── Generate Quote: persist the merged basket state (Build + Visual PDF +
@@ -1316,13 +1320,13 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
 
 
       {/* Builder mode tabs */}
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="shrink-0">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="relative z-[10001] shrink-0">
         <div className="flex flex-wrap items-center justify-center gap-y-1 py-1 bg-muted/40">
           <TabsList className="h-8 bg-muted">
             <TabsTrigger value="quote" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4 font-semibold">Build quote</TabsTrigger>
-            <TabsTrigger value="normal" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Build</TabsTrigger>
+            <TabsTrigger value="normal" disabled aria-hidden="true" className="hidden text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Build</TabsTrigger>
             <TabsTrigger value="visual" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Visual PDF</TabsTrigger>
-            <TabsTrigger value="area" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Build Area Quote</TabsTrigger>
+            <TabsTrigger value="area" disabled aria-hidden="true" className="hidden text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Build Area Quote</TabsTrigger>
             <Button
               size="icon"
               variant="outline"
@@ -1413,7 +1417,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
               <VisualCatalogPanel
               showCost={marginView.visible}
               open={true}
-              onClose={() => setActiveTab("normal")}
+              onClose={() => void handleTabChange("quote")}
               baskets={baskets}
               onAddProductToBasket={addProductToBasket}
               onAddSelectedToQuote={addSelectedPdfToQuote}
