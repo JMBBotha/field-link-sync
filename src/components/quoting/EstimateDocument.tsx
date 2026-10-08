@@ -12,6 +12,7 @@ import type { ClientRollupArea } from "@/lib/clientQuoteRollup";
 import AreaLabourRow from "@/components/quoting/AreaLabourRow";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { formatRand } from "@/utils/formatRand";
 
 export interface EstimateDocLineItem {
   description: string;
@@ -400,12 +401,12 @@ const EstimateDocument = ({
         {/* ── Line items ── */}
         {editing ? (
           <div data-solid data-paper className="option1-solid mt-6 space-y-4 rounded-xl border bg-card p-4 shadow-sm sm:p-5" data-testid="estimate-areas-card">
-            {editing.areaCreationControl && !editing.areas.some((area) => area.id) && editing.areas.every((area) => area.lines.length === 0) && (
+            {!editing.areas.some((area) => area.id) && editing.areas.every((area) => area.lines.length === 0) && (
               <div className="w-full print:hidden" data-pdf-hide data-html2canvas-ignore data-testid="inline-estimate-area-create">
-                {editing.areaCreationControl}
+                {editing.areaCreationControl ?? <CanonicalAreaCreateControl existingNames={[]} onCreate={editing.onAddArea} />}
               </div>
             )}
-            {editing.areas.filter((area) => !(editing.areaCreationControl && !area.id && area.lines.length === 0)).map((area) => {
+            {editing.areas.filter((area) => !(!area.id && area.lines.length === 0)).map((area) => {
               const areaKey = area.id ?? "unassigned";
               const canCollapse = editing.collapsedAreaKeys !== undefined && !!editing.onToggleArea;
               const collapsed = canCollapse && editing.collapsedAreaKeys?.has(areaKey);
@@ -517,7 +518,7 @@ const EstimateDocument = ({
                               >
                                 {open ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
                                 <span className="font-semibold">Installation materials</span>
-                                <span>· {row.lines.length} items · {formatCurrency(total)}</span>
+                                <span>· {row.lines.length} items · {formatRand(total)}</span>
                               </Button>
                             </td>
                           </tr>
@@ -701,8 +702,8 @@ const EstimateDocument = ({
                               <div data-testid="qty-unit" className="whitespace-nowrap text-[10px] text-slate-500 print:hidden">{line.unitText}</div>
                             )}
                           </td>
-                          <td className="py-2 text-right font-medium text-slate-900">
-                            {formatCurrency(lineAmount(line))}
+                          <td className="py-2 text-right font-bold text-slate-900">
+                            {formatRand(lineAmount(line))}
                           </td>
                           <td className="py-2 text-right print:hidden">
                             <div className="flex items-center justify-end gap-1">
@@ -789,7 +790,7 @@ const EstimateDocument = ({
                 ))}
               </div>
             )}
-            {(editing.areas.some((area) => area.id) || editing.areas.some((area) => area.lines.length > 0) || !editing.areaCreationControl) && (
+            {(editing.areas.some((area) => area.id) || editing.areas.some((area) => area.lines.length > 0)) && (
               <div className="w-full print:hidden" data-pdf-hide data-html2canvas-ignore data-testid="inline-estimate-area-create">
                 {editing.areaCreationControl ?? (
                   <CanonicalAreaCreateControl existingNames={editing.areas.map((area) => area.name)} onCreate={editing.onAddArea} />

@@ -1,4 +1,5 @@
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
+import { usePdfBasket } from "@/lib/pdfBasketStore";
 /**
  * EstimateBuilder — the single quote surface on /admin/estimates/:id.
  *
@@ -98,6 +99,7 @@ export default function EstimateBuilder({
     quoteId, meta, areas, items, loading,
     addArea, updateArea, deleteArea, updateItem, deleteItem, updateQuote, addItem, refetch,
   } = useQuoteContext();
+  const [savedPdfBasket] = usePdfBasket(quoteId);
   const labourMode = normalizeLabourMode((meta as any)?.labour_mode);
   const { others: otherEditors } = useQuoteEditors(areaFirst ? null : quoteId, "estimate");
   const builderEditor = otherEditors.find((e) => e.surface === "builder");
@@ -581,7 +583,7 @@ export default function EstimateBuilder({
               },
               onChanged,
               onAddedToArea: (id: string) => setActiveAreaId(id),
-              pdfBasket,
+              pdfBasket: pdfBasket ?? savedPdfBasket,
             };
             return (
               <div className="space-y-2" onClick={(event) => event.stopPropagation()} data-area-key={key}>

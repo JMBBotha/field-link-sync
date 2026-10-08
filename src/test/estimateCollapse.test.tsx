@@ -89,6 +89,15 @@ describe("estimate area collapse", () => {
     expect(screen.queryByTestId("area-labour-a")).toBeNull();
   });
 
+  it("pencil opens rename chips and a repeated choice renames with numbering", () => {
+    const rename = vi.fn();
+    renderDocument({ ...baseEditing, areas: [area, { id: "second", name: "Main bedroom", lines: [] }], onRenameArea: rename });
+    fireEvent.click(screen.getByRole("button", { name: "Rename area Bedroom" }));
+    fireEvent.click(screen.getByRole("button", { name: "Main bedroom", exact: true }));
+    expect(rename).toHaveBeenCalledWith("area-1", "Main bedroom 2");
+    expect(screen.queryByTestId("canonical-area-choices")).toBeNull();
+  });
+
   it("edits existing labour only on tap via onChange", () => {
     const onChange = vi.fn();
     render(<AreaLabourRow areaId="a" areaName="Bedroom" lines={[{ id: "lab", name: "Labour", description: null, quantity: 3.5, unit_price: 680 }]} defaultHours={3.5} onAdd={vi.fn()} onChange={onChange} />);
