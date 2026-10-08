@@ -423,7 +423,7 @@ const EstimateDocument = ({
                     <AreaNameLabel
                       key={`${area.id}-${area.name}`}
                       name={area.name}
-                      autoEdit={editing.focusAreaId === area.id && isDefaultAreaName(area.name)}
+                      choicesEditing
                       onEditingChange={() => setNamingAreas((current) => new Set(current).add(areaKey))}
                       onRename={(v) => editing.onRenameArea(area.id as string, v)}
                       className="text-xl font-bold normal-case"
@@ -432,6 +432,7 @@ const EstimateDocument = ({
                     <AreaNameLabel
                       key={`default-${area.name}`}
                       name={area.name}
+                      choicesEditing
                       isDefault={area.name === "Add items to quote" || undefined}
                       onEditingChange={() => setNamingAreas((current) => new Set(current).add(areaKey))}
                       onRename={(v) => editing.onNameDefaultArea?.(v)}

@@ -19,9 +19,11 @@ interface Props {
   /** Override default-name detection (e.g. a synthetic "Add items" area). */
   isDefault?: boolean;
   onEditingChange?: (editing: boolean) => void;
+  /** Option-1 chips replace the title input while choosing a name. */
+  choicesEditing?: boolean;
 }
 
-export function AreaNameLabel({ name, onRename, autoEdit, className = "", isDefault, onEditingChange }: Props) {
+export function AreaNameLabel({ name, onRename, autoEdit, className = "", isDefault, onEditingChange, choicesEditing = false }: Props) {
   const [editing, setEditing] = useState(!!autoEdit);
   const [draft, setDraft] = useState("");
   const cancelled = useRef(false);
@@ -32,6 +34,7 @@ export function AreaNameLabel({ name, onRename, autoEdit, className = "", isDefa
   }, [autoEdit]);
 
   const open = () => {
+    if (choicesEditing) { onEditingChange?.(true); return; }
     cancelled.current = false;
     setDraft(showDefault ? "" : name);
     setEditing(true);
