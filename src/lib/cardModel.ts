@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { activeAssignee, jobUrgency, type DJob, type Urgency } from "@/lib/dispatchCards";
 import { boardLane, isCancelled, rowAssignee, type Person } from "@/lib/jobsBoard";
 import type { CalendarEntry } from "@/lib/todaysJobs";
+import { hhmm } from "@/lib/schedulingDefaults";
 
 /** "Overdue · 9 Jan" for a card more than 24 h late; date-only values keep their calendar day. */
 export function overdueLabel(scheduledFor: string | null): string {
@@ -57,4 +58,35 @@ export function visitToCard(entry: CalendarEntry, names: Record<string, Person> 
     urgency: jobUrgency({ id: row.id, status: entry.status, scheduled_for: scheduledFor,
       assignments: a ? [{ profile_id: a.id }] : [] }, new Date()),
   };
+}
+
+type AssignmentCardSource = {
+  status: string; job_id: string; job_type?: string | null;
+  jobs: { id: string; title?: string | null; address?: string | null; scheduled_for?: string | null;
+    priority?: string | null; status?: string | null; customers?: { name?: string | null; phone?: string | null } | null };
+};
+
+/** Presentation only: the assignment owns its action state; no queries or writes here. */
+export function assignmentToCard(assignment: AssignmentCardSource): CardJob {
+  const job = assignment.jobs;
+  const card = jobToCard({ ...job, job_type: assignment.job_type, status: assignment.status,
+    assignments: [{ profile_id: "self", status: assignment.status, profiles: { full_name: "You" } }] });
+  return { ...card, statusKey: assignment.status, assigneeName: "You" };
+}
+
+type ScheduleCardSource = {
+  assignment_status?: string | null; job_id: string; job_title?: string | null; job_address?: string | null;
+  job_status?: string | null; job_scheduled_for?: string | null; job_type?: string | null;
+  customer_name?: string | null; customer_phone?: string | null;
+};
+
+export function scheduleRowToCard(row: ScheduleCardSource | CalendarEntry): CardJob {
+  if ("key" in row) {
+    const card = visitToCard(row, row.agent_id ? { [row.agent_id]: { full_name: "You" } } : {});
+    return { ...card, scheduledFor: row.start_time ? `${row.date}T${hhmm(row.start_time)}:00+02:00` : row.date };
+  }
+  return assignmentToCard({ status: row.assignment_status || row.job_status || "proposed", job_id: row.job_id,
+    job_type: row.job_type, jobs: { id: row.job_id, title: row.job_title, address: row.job_address,
+      status: row.job_status, scheduled_for: row.job_scheduled_for,
+      customers: { name: row.customer_name, phone: row.customer_phone } } });
 }
