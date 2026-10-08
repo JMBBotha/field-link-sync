@@ -8319,6 +8319,17 @@ export type Database = {
         Args: { p_quote_id: string; p_viewer: string }
         Returns: Json
       }
+      _first_fit: {
+        Args: {
+          p_after: number
+          p_b: Json
+          p_m: number
+          p_we: number
+          p_ws: number
+        }
+        Returns: number
+      }
+      _mins_time: { Args: { p: number }; Returns: string }
       _person_bookings: {
         Args: { p_date: string; p_profile_id: string }
         Returns: {
@@ -8348,6 +8359,43 @@ export type Database = {
       _postgis_stats: {
         Args: { ""?: string; att_name: string; tbl: unknown }
         Returns: string
+      }
+      _rank_core: {
+        Args: {
+          p_date: string
+          p_exclude_job: string
+          p_exclude_lead: string
+          p_lane: string
+          p_lat: number
+          p_lng: number
+          p_minutes: number
+          p_start: string
+        }
+        Returns: {
+          best_start: string
+          blocks: Json
+          booked_minutes: number
+          full_name: string
+          km: number
+          next_free: string
+          profile_id: string
+          reason: string
+          sort_key: number
+          status: string
+          tier: number
+          work_end: string
+          work_start: string
+        }[]
+      }
+      _slot_fits: {
+        Args: {
+          p_b: Json
+          p_m: number
+          p_s: number
+          p_we: number
+          p_ws: number
+        }
+        Returns: boolean
       }
       _snapshot_sales_commission: {
         Args: { p_quote_id: string }
@@ -9224,6 +9272,31 @@ export type Database = {
           status: string
         }[]
       }
+      rank_booking_candidates: {
+        Args: {
+          p_date: string
+          p_exclude_job?: string
+          p_exclude_lead?: string
+          p_lane: string
+          p_lat: number
+          p_lng: number
+          p_minutes: number
+          p_start: string
+        }
+        Returns: {
+          blocks: Json
+          booked_minutes: number
+          full_name: string
+          km: number
+          next_free: string
+          profile_id: string
+          reason: string
+          status: string
+          tier: number
+          work_end: string
+          work_start: string
+        }[]
+      }
       reap_stuck_outbox: { Args: never; Returns: number }
       record_invoice_payment: {
         Args: {
@@ -10043,6 +10116,17 @@ export type Database = {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
       }
+      staff_busy_blocks: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          block_date: string
+          end_time: string
+          kind: string
+          label: string
+          profile_id: string
+          start_time: string
+        }[]
+      }
       staff_work_window: {
         Args: { p_date: string; p_profile_id: string }
         Returns: {
@@ -10050,6 +10134,24 @@ export type Database = {
           is_working: boolean
           source: string
           start_time: string
+        }[]
+      }
+      suggest_booking_slots: {
+        Args: {
+          p_date: string
+          p_exclude_job?: string
+          p_exclude_lead?: string
+          p_lane: string
+          p_lat: number
+          p_lng: number
+          p_minutes: number
+        }
+        Returns: {
+          full_name: string
+          profile_id: string
+          reason: string
+          slot_date: string
+          slot_start: string
         }[]
       }
       tech_can_see_customer: {
