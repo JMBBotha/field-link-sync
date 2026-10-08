@@ -117,6 +117,16 @@ export default function QuoteQuickEditor({
   const [productTerm, setProductTerm] = useState("");
   const [serviceTerm, setServiceTerm] = useState("");
   const [adding, setAdding] = useState<string | null>(null);
+  // Sync guard: a second fast click/Enter on ANY row is ignored until the add settles.
+  const addingRef = useRef(false);
+  const closeAfterAdd = () => {
+    if (mode) { onClose?.(); return; }
+    setProductTerm("");
+    setServiceTerm("");
+    setServiceFocus(false);
+    const el = document.activeElement as HTMLElement | null;
+    if (el && el.tagName === "INPUT") el.blur();
+  };
   const [pendingAdd, setPendingAdd] = useState<{ kind: "product"; value: PaletteProduct } | { kind: "service"; value: CatalogService } | null>(null);
   const [pickedAreaId, setPickedAreaId] = useState("");
 
@@ -245,6 +255,7 @@ export default function QuoteQuickEditor({
         const id = result.line.id;
         setTimeout(() => { const el = document.querySelector<HTMLInputElement>(`[data-line-qty="${id}"]`); el?.focus(); el?.select(); }, 150);
       }
+      if (result.line) closeAfterAdd();
     } finally {
       setAdding(null);
     }
@@ -259,6 +270,7 @@ export default function QuoteQuickEditor({
       if (fromFavourites) toast({ title: `Added ${s.name}` });
       onChanged?.();
       onAddedToArea?.(areaId);
+      closeAfterAdd();
     } finally {
       setAdding(null);
     }
@@ -327,18 +339,26 @@ export default function QuoteQuickEditor({
       { item_name: p.short_name || p.product_code, item_type: "product", metadata: {} },
       p,
     );
-    await routeAdd({ kind: "product", value: p }, isUnit, fromFavourites);
+    await guardedRouteAdd({ kind: "product", value: p }, isUnit, fromFavourites);
   };
 
   const addCatalogService = async (s: CatalogService) => {
-    await routeAdd({ kind: "service", value: s }, false);
+    await guardedRouteAdd({ kind: "service", value: s }, false);
+  };
+
+  const guardedRouteAdd = async (pending: NonNullable<typeof pendingAdd>, isUnit: boolean, fromFavourites = false) => {
+    if (addingRef.current || adding) return;
+    addingRef.current = true;
+    try { await routeAdd(pending, isUnit, fromFavourites); } finally { addingRef.current = false; }
   };
 
   const confirmPickedArea = async () => {
     const pending = pendingAdd;
     const areaId = pickedAreaId;
-    if (!pending || !areaId) return;
+    if (!pending || !areaId || addingRef.current) return;
     setPendingAdd(null);
+    addingRef.current = true;
+    try {
     if (pending.kind === "product") await commitProduct(pending.value, areaId);
     else await commitCatalogService(pending.value, areaId);
   };
