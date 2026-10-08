@@ -1,5 +1,9 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
+## Card consistency C4a (2026-10-08)
+- [ ] Share company-logo fallback and field headers/navigation; preserve admin My Jobs and dispatch rail handlers.
+- [ ] Run focused shell, technician-card, job-card, dispatch and clash tests; check field pages without writes.
+
 ## Card consistency C3 (2026-10-08)
 - [x] Share technician lead/job/schedule cards and sales appointment cards; preserve actions, navigation and queries, hide technician money.
 - [x] 25 focused tests pass; signed-in desktop/phone schedule and appointments render without overflow or runtime errors, all writes blocked. Assigned-job screen had no rows; actions covered with in-memory tests.
