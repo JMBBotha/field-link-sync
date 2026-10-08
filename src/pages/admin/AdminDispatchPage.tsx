@@ -1140,7 +1140,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
       {clashDialog}
       {/* ─── Quick Assign Dialog ─── */}
       <Dialog open={!!quickAssignLead} onOpenChange={(open) => { if (!open) setQuickAssignLead(null); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Assign Lead</DialogTitle>
             <DialogDescription>
