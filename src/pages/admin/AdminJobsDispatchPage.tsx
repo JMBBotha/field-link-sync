@@ -22,13 +22,12 @@ import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import { format } from "date-fns";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import AssignTechDialog from "@/components/jobs/AssignTechDialog";
-import RowMenu from "@/components/shared/RowMenu";
 import RequireRole from "@/components/RequireRole";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import BoardChip from "@/components/jobs/BoardChip";
-import { LANE_META } from "@/lib/leadLane";
+import JobCard from "@/components/cards/JobCard";
+import { jobToCard, visitToCard } from "@/lib/cardModel";
+import { STATUS_PILL } from "@/lib/dispatchCards";
 import { loadEntries } from "@/lib/todaysJobs";
-import CallSummary from "@/components/leads/CallSummary";
 import AttentionStrip from "@/components/jobs/AttentionStrip";
 import { useUndoAction } from "@/components/shared/StatusUndo";
 import { buildBoardRows, groupBoardRows, rowTarget, boardLane, rowAssignee, filterBoardRows, FILTER_KEYS, type BoardRow, type BoardFilters, type Person } from "@/lib/jobsBoard";
@@ -36,10 +35,10 @@ import { AlertTriangle, Eye, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const COLUMNS = [
-  { key: "scheduled", label: "Scheduled", color: "border-blue-500" },
-  { key: "dispatched", label: "Dispatched", color: "border-amber-500" },
-  { key: "in_progress", label: "In Progress", color: "border-green-500" },
-  { key: "completed", label: "Completed", color: "border-muted-foreground" },
+  { key: "scheduled", label: "Scheduled", color: STATUS_PILL.scheduled.bar },
+  { key: "dispatched", label: "En route", color: STATUS_PILL.dispatched.bar },
+  { key: "in_progress", label: "On site", color: STATUS_PILL.in_progress.bar },
+  { key: "completed", label: "Done", color: STATUS_PILL.completed.bar },
 ] as const;
 
 const PRIORITY_VARIANT: Record<string, "destructive" | "default" | "secondary" | "outline"> = {
@@ -196,161 +195,39 @@ const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => 
   }, [jobs]);
 
 
-  const CardChips = ({ row }: { row: BoardRow }) => {
-    const a = rowAssignee(row, booked.names);
-    const lane = boardLane(row);
-    return (
-      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-        <BoardChip label={`Filter ${LANE_META[lane].label}`} className={LANE_META[lane].className} onSelect={() => setFilter("lane", lane)}>
-          {LANE_META[lane].label}
-        </BoardChip>
-        {a ? (
-          <BoardChip
-            label={`Filter assignee ${a.name}`}
-            className={a.contractor ? "border-warning/40 bg-warning/15 text-warning" : "border-primary/30 bg-primary/10 text-primary"}
-            onSelect={() => setFilter("assignee", a.id)}
-          >
-            {a.contractor ? `Contractor · ${a.name}` : a.name}
-          </BoardChip>
-        ) : (
-          <BoardChip label="Filter unassigned" className="border-border bg-muted text-muted-foreground" onSelect={() => setFilter("assignee", "none")}>
-            Unassigned
-          </BoardChip>
-        )}
-      </div>
-    );
-  };
-
-  const JobCard = ({ job }: { job: any }) => {
-    const assignee = job.assignments?.find((a: any) => a.status !== "rejected");
-    return (
-      <Card
-        role="link"
-        tabIndex={0}
-        aria-label={`Open job ${job.title || ""}`}
-        className="w-full min-w-0 cursor-pointer hover:shadow-md active:scale-[0.99] transition-all mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        draggable
-        onDragStart={e => { e.dataTransfer.setData("text/plain", job.id); setDragJobId(job.id); }}
-        onDragEnd={() => setDragJobId(null)}
-        onClick={() => navigate(rowTarget({ kind: "job", id: job.id }))}
-        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(rowTarget({ kind: "job", id: job.id })); } }}
-      >
-        <CardContent className="p-3.5 space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab shrink-0 hidden sm:block" />
-              <span className="font-semibold text-[15px] leading-tight text-foreground truncate">{job.title}</span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              {job.status && !["scheduled","dispatched","in_progress","completed"].includes(job.status) && (
-                <Badge variant="outline" className="text-[10px] capitalize">{String(job.status).replace(/_/g, " ")}</Badge>
-              )}
-              {job.priority && <Badge variant={PRIORITY_VARIANT[job.priority]} className="text-[10px] uppercase">{job.priority}</Badge>}
-              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Quick view" onClick={e => { e.stopPropagation(); setDetailJob(job); }}>
-                <Eye className="h-3.5 w-3.5" />
-              </Button>
-              <RowMenu label="Job actions" items={[
-                { label: "Open job", onSelect: () => navigate(rowTarget({ kind: "job", id: job.id })) },
-                { label: assignee ? "Reassign tech" : "Assign tech", onSelect: () => setAssignJobId(job.id) },
-                ...COLUMNS.filter(c => c.key !== job.status).map((c, i) => ({ label: `Move to ${c.label}`, onSelect: () => statusMutation.mutate({ jobId: job.id, status: c.key }), separatorBefore: i === 0 })),
-                { label: "Open invoice", hidden: !job.invoice_id, onSelect: () => navigate(`/admin/invoices/${job.invoice_id}`), separatorBefore: true },
-                { label: "Open client", hidden: !job.customer_id, onSelect: () => navigate(`/admin/customers/${job.customer_id}`) },
-              ]} />
-            </div>
-          </div>
-
-          {job.customers?.name && (
-            <div className="flex items-center gap-1.5 text-sm text-foreground/80">
-              <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 truncate font-medium">{job.customers.name}</span>
-            </div>
-          )}
-
-          {(job.address || job.customer_locations?.address) && (
-            <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-              <div className="min-w-0 flex-1">
-                {job.customer_locations?.label && (
-                  <div className="text-xs font-semibold text-foreground/90">{job.customer_locations.label}</div>
-                )}
-                <div className="line-clamp-2 break-words">{job.address || job.customer_locations?.address}</div>
-              </div>
-            </div>
-          )}
-
-          {job.scheduled_for && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-              {format(new Date(job.scheduled_for), "dd MMM · HH:mm")}
-            </div>
-          )}
-
-          <CardChips row={{ kind: "job", id: job.id, status: job.status ?? "", job }} />
-          <div className="flex items-center justify-between pt-1 border-t border-border/40 empty:hidden">
-            {assignee ? null : (
-              <div className="flex gap-2 w-full">
-                <Button variant="outline" size="sm" className="h-9 flex-1 text-xs" onClick={e => { e.stopPropagation(); setAssignJobId(job.id); }}>
-                  <Users className="h-3.5 w-3.5 mr-1.5" /> Assign
-                </Button>
-                <Button variant="outline" size="sm" className="h-9 flex-1 text-xs" onClick={e => { e.stopPropagation(); autoDispatchMutation.mutate(job.id); }} disabled={autoDispatchMutation.isPending}>
-                  <Zap className="h-3.5 w-3.5 mr-1.5" /> Auto
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
-
-  const LeadCard = ({ row }: { row: Extract<BoardRow, { kind: "lead" }> }) => {
-    const e = row.entry;
-    const go = () => navigate(rowTarget(row));
-    return (
-      <Card
-        role="link"
-        tabIndex={0}
-        aria-label={`Open booked lead ${e.customer_name || ""}`}
-        className="w-full min-w-0 cursor-pointer hover:shadow-md active:scale-[0.99] transition-all mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        onClick={go}
-        onKeyDown={ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); } }}
-      >
-        <CardContent className="p-3.5 space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <span className="min-w-0 flex-1 font-semibold text-[15px] leading-tight text-foreground truncate">{e.customer_name || "Booked lead"}</span>
-            <div className="flex items-center gap-1 shrink-0">
-              {e.status && !["scheduled","dispatched","in_progress","completed"].includes(e.status) && (
-                <Badge variant="outline" className="text-[10px] capitalize">{e.status.replace(/_/g, " ")}</Badge>
-              )}
-              <Badge variant="secondary" className="text-[10px]">Lead</Badge>
-              <RowMenu label="Lead actions" items={[
-                { label: "Open lead", onSelect: go },
-                { label: "Open client", hidden: !e.customer_id, onSelect: () => navigate(`/admin/customers/${e.customer_id}`) },
-              ]} />
-            </div>
-          </div>
-          {e.customer_address && (
-            <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span className="min-w-0 flex-1 line-clamp-2 break-words">{e.customer_address}</span>
-            </div>
-          )}
-          <CallSummary lead={{ notes: e.notes, call_summary: e.call_summary }} compact />
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-            {e.date}{e.start_time ? ` · ${e.start_time.slice(0, 5)}` : ""}
-          </div>
-          <CardChips row={row} />
-        </CardContent>
-      </Card>
-    );
+  const renderCard = (row: BoardRow) => {
+    const item = row.kind === "job" ? jobToCard(row.job) : visitToCard(row.entry, booked.names);
+    const assignee = rowAssignee(row, booked.names);
+    const open = () => navigate(rowTarget(row));
+    const job = row.kind === "job" ? row.job : null;
+    return <JobCard key={`${row.kind}-${row.id}`} item={item} density="compact" audience="office" className="mb-2"
+      onOpen={open} onLaneClick={() => setFilter("lane", boardLane(row))}
+      onAssigneeClick={() => setFilter("assignee", assignee?.id || "none")}
+      {...(job ? {
+        draggable: true,
+        onDragStart: (e: React.DragEvent<HTMLDivElement>) => { e.dataTransfer.setData("text/plain", job.id); setDragJobId(job.id); },
+        onDragEnd: () => setDragJobId(null),
+        onAssign: () => setAssignJobId(job.id),
+      } : {})}
+      menuItems={job ? [
+        { label: "Open job", onSelect: open },
+        { label: "Quick view", onSelect: () => setDetailJob(job) },
+        { label: assignee ? "Reassign tech" : "Assign tech", onSelect: () => setAssignJobId(job.id) },
+        { label: "Auto", hidden: !!assignee, disabled: autoDispatchMutation.isPending, onSelect: () => autoDispatchMutation.mutate(job.id) },
+        ...COLUMNS.filter(c => c.key !== job.status).map((c, i) => ({ label: `Move to ${c.label}`, onSelect: () => statusMutation.mutate({ jobId: job.id, status: c.key }), separatorBefore: i === 0 })),
+        { label: "Open invoice", hidden: !job.invoice_id, onSelect: () => navigate(`/admin/invoices/${job.invoice_id}`), separatorBefore: true },
+        { label: "Open client", hidden: !job.customer_id, onSelect: () => navigate(`/admin/customers/${job.customer_id}`) },
+      ] : [
+        { label: "Open lead", onSelect: open },
+        { label: "Open client", hidden: row.kind !== "lead" || !row.entry.customer_id, onSelect: () => { if (row.kind === "lead") navigate(`/admin/customers/${row.entry.customer_id}`); } },
+      ]} />;
   };
 
   const retryAll = () => { refetch(); refetchBooked(); };
 
   return (
     <div className="space-y-4 p-3 sm:p-4 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {!embedded && <div className="flex flex-wrap items-center justify-between gap-3">
         {embedded ? <span /> : <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Jobs &amp; Dispatch</h1>}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 text-sm">
@@ -389,7 +266,7 @@ const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => 
             <Plus className="h-4 w-4" /> New Job
           </Button>
         </div>
-      </div>
+      </div>}
 
       {!embedded && <AttentionStrip />}
 
@@ -451,18 +328,16 @@ const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => 
           {COLUMNS.map(col => (
             <div
               key={col.key}
-              className={`rounded-xl border-t-4 ${col.color} bg-card min-h-[300px] flex flex-col min-w-0 shrink-0 basis-[85%] sm:basis-[48%] snap-start md:basis-auto md:shrink`}
+              className="rounded-xl bg-card min-h-[300px] flex flex-col min-w-0 shrink-0 basis-[85%] sm:basis-[48%] snap-start md:basis-auto md:shrink"
               onDragOver={e => e.preventDefault()}
               onDrop={e => handleDrop(e, col.key)}
             >
               <div className="p-3 flex items-center justify-between">
-                <span className="font-semibold text-sm text-foreground">{col.label}</span>
+                <span className={`border-l-4 pl-2 font-semibold text-sm text-foreground ${col.color}`}>{col.label}</span>
                 <Badge variant="outline" className="text-[10px]">{grouped[col.key]?.length || 0}</Badge>
               </div>
               <ScrollArea className="flex-1 min-w-0 px-2 pb-2 [&_[data-radix-scroll-area-viewport]>div]:!block">
-                {(grouped[col.key] || []).map((row) =>
-                  row.kind === "job" ? <JobCard key={`j-${row.id}`} job={row.job} /> : <LeadCard key={`l-${row.id}`} row={row} />
-                )}
+                {(grouped[col.key] || []).map(renderCard)}
                 {(grouped[col.key] || []).length === 0 && (
                   <div className="text-center text-xs text-muted-foreground py-8">No jobs</div>
                 )}
@@ -472,7 +347,7 @@ const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => 
         </div>
       )}
 
-      <AssignTechDialog jobId={assignJobId} onClose={() => setAssignJobId(null)} availableOnly={showAvailableOnly} dayCounts={techDayCounts} />
+      <AssignTechDialog jobId={assignJobId} onClose={() => setAssignJobId(null)} availableOnly={embedded ? false : showAvailableOnly} dayCounts={techDayCounts} />
 
       {/* Job Detail Modal */}
       <Dialog open={!!detailJob} onOpenChange={open => { if (!open) setDetailJob(null); }}>

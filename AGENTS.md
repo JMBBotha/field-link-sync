@@ -18,3 +18,7 @@
 - Per-area labour: default hours = company_settings.default_install_labour_hours (3.5) x AC units in the area (qty counted, isAcUnitLine); metadata.labour_auto true lines follow unit adds/removals, manual edits set it false and only show a default hint; empty areas are exempt; saves/sends/PDF/accept block on missing labour, autosave never blocks; logic in lib/areaLabour.ts.
 - Builder saves go through replace_quote_from_builder (one transaction, per-quote advisory lock) via a per-quote single-flight queue in persistQuoteFromBaskets; labour rows are never re-inserted, only re-linked to the new area by name, so overlapping saves cannot duplicate or orphan labour.
 - Labour mode is per quote (quotes.labour_mode 'per_area' | 'job'); job = one labour row with area_id null + metadata.labour_scope='job'; switching only via set_quote_labour_mode (moves hours, total unchanged); labour-required checks go through missingLabourFor() in lib/areaLabour.ts — one rule for all callers.
+
+<!-- LOVABLE:BEGIN -->
+- Dispatch Cards, Board and Upcoming Jobs render JobCard through cardModel adapters; callers own mutations and drag props — one presentation without changing dispatch behaviour.
+<!-- LOVABLE:END -->

@@ -1,5 +1,9 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
+## Card consistency C1 (2026-10-08)
+- [x] Share JobCard and cardModel across Dispatch Cards, Board and Upcoming Jobs; preserve mutations and query filters.
+- [x] 29 focused tests pass; full suite 861/862 (existing Mandy map-status failure). Signed-in read-only Cards/Board/Calendar checks confirm shared cards, menu Quick view, chip filters, all-view New job/Refresh and no phone overflow; no writes exercised.
+
 ## Owner-approved Option 1 (2026-10-08)
 - [x] Share solid Option 1 area card, rename chips, add row, tap-edit labour and creation control on estimate/Build quote; hide legacy tabs.
 - [x] Full suite once: 820/823 initially; two obsolete labour-outline expectations updated, 30/30 affected tests pass; unrelated existing Mandy map-status failure left unchanged. Preview build OK. Guarded Q-2026-0026 checks at 1366/768/390 confirm solid white cards, no overflow, rename choices, all 12 services, favourites, tap-hours, hidden tabs, Visual PDF return and field route; every backend write blocked. Actual save/add writes and technician-session checks intentionally not exercised; mockup content differs because saved test lines are preserved.
