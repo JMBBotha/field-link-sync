@@ -1,5 +1,9 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
+## Card consistency C2 (2026-10-08)
+- [ ] Share QuoteCard and AttentionChips, add compact lead cards and wrapping expandable stage blocks; preserve queries, actions and drag behaviour.
+- [ ] Run focused card/pipeline tests and verify the read-only screen.
+
 ## Card consistency C1 (2026-10-08)
 - [x] Share JobCard and cardModel across Dispatch Cards, Board and Upcoming Jobs; preserve mutations and query filters.
 - [x] 29 focused tests pass; full suite 861/862 (existing Mandy map-status failure). Signed-in read-only Cards/Board/Calendar checks confirm shared cards, menu Quick view, chip filters, all-view New job/Refresh and no phone overflow; no writes exercised.
