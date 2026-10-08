@@ -379,6 +379,8 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
             bestIdx = idx;
           }
         }
+        // At the very top the first page is the current page (a short page 1 can be out-ratioed by page 2).
+        if (container.scrollTop <= 4) { bestIdx = 0; bestRatio = Math.max(bestRatio, 1); }
         if (bestRatio > 0) {
           setVisiblePageIndex(bestIdx);
           // Find which category this page belongs to (first match in categoryPageMap)
