@@ -46,6 +46,7 @@ import NeedsSomeoneTray from "@/components/calendar/NeedsSomeoneTray";
 import DayCards, { BusyBlock } from "@/components/calendar/DayCards";
 import { hoursLabel, calendarText, salesCalendarPeople, mergedMinutes, type WorkWindow, type BlockedTime } from "@/components/calendar/calendarModel";
 import { TimeInput24 } from "@/components/ui/time-input-24";
+import AvailabilityPicker from "@/components/scheduling/AvailabilityPicker";
 
 // ─── Types ───
 interface Lead {
