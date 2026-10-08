@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from "react";
+import { Children, cloneElement, isValidElement, type HTMLAttributes, type ReactNode } from "react";
 import { format } from "date-fns";
 import { MapPin, HardHat, Phone, Users, Zap, ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,20 @@ import { pillFor, NEXT_STATUS, fmtMins } from "@/lib/dispatchCards";
 import { LANE_META } from "@/lib/leadLane";
 import { overdueLabel, type CardJob } from "@/lib/cardModel";
 import { cn } from "@/lib/utils";
+import { hhmm, sastParts } from "@/lib/schedulingDefaults";
+
+/** Keep caller-owned technician controls, but discard office controls and client links. */
+export function techCardContent(content: ReactNode): ReactNode {
+  return Children.map(content, (child) => {
+    if (typeof child === "string") return /assign|\bauto\b|invoice|move[- ]to|next[- ]status/i.test(child) ? null : child.replace(/R\s?\d[\d\s,.]*/g, "");
+    if (!isValidElement<{ children?: ReactNode; href?: string; to?: string; "aria-label"?: string }>(child)) return child;
+    const props = child.props;
+    if (props.href || (props.to && !/^\/field\/(jobs|job-sheet)/.test(props.to))) return null;
+    if (/assign|\bauto\b|invoice|move[- ]to|next[- ]status|client/i.test(props["aria-label"] || "")) return null;
+    if (typeof props.children === "string" && /assign|\bauto\b|invoice|move[- ]to|next[- ]status/i.test(props.children)) return null;
+    return props.children === undefined ? child : cloneElement(child, {}, techCardContent(props.children));
+  });
+}
 
 export type { CardJob } from "@/lib/cardModel";
 type Props = Omit<HTMLAttributes<HTMLDivElement>, "children"> & {
@@ -28,7 +42,7 @@ export default function JobCard({ item, density, audience, actions, menuItems = 
     assignments: item.assigneeName ? [{ profile_id: "assigned" }] : [] });
   const { key, mins, onSiteMins } = item.urgency;
   const scheduled = item.scheduledFor ? new Date(item.scheduledFor) : null;
-  const time = scheduled && !isNaN(scheduled.getTime()) && !/^\d{4}-\d{2}-\d{2}$/.test(item.scheduledFor || "") ? format(scheduled, "HH:mm") : "--:--";
+  const time = scheduled && !isNaN(scheduled.getTime()) && !/^\d{4}-\d{2}-\d{2}$/.test(item.scheduledFor || "") ? (tech ? hhmm(sastParts(scheduled.toISOString()).time) : format(scheduled, "HH:mm")) : "--:--";
   const next = NEXT_STATUS[item.statusKey];
   const secondary: RowMenuItem[] = density === "compact" ? [
     ...(onAuto && unassigned ? [{ label: "Auto", onSelect: onAuto }] : []),
@@ -36,7 +50,7 @@ export default function JobCard({ item, density, audience, actions, menuItems = 
     ...(item.clientPhone && !closed ? [{ label: "Client", onSelect: () => { window.location.href = `tel:${item.clientPhone}`; } }] : []),
     ...(next && onNext ? [{ label: next.label, onSelect: onNext }] : []),
   ] : [];
-  const menu = [...secondary, ...menuItems].filter((m) => !tech || !/assign|auto|invoice|R\s?\d/i.test(m.label));
+  const menu = [...secondary, ...menuItems].filter((m) => !tech || !/assign|auto|invoice|move[- ]to|next[- ]status|client|R\s?\d/i.test(m.label));
   const assign = !tech && unassigned && onAssign ? <Button size="sm" variant="destructive" className="h-7 gap-1 px-2 text-xs" onClick={onAssign}><Users className="h-3.5 w-3.5" />{density === "full" ? "Assign tech" : "Assign"}</Button> : null;
   return (
     <div role="link" tabIndex={0} aria-label={`Open ${item.kind === "job" ? "job" : "booked lead"} ${text(item.title)}`}
@@ -66,7 +80,7 @@ export default function JobCard({ item, density, audience, actions, menuItems = 
       </div>
       {!tech && item.kind === "visit" && <CallSummary lead={{ call_summary: item.callSummary, notes: item.notes }} compact />}
       <div className="flex flex-wrap items-center gap-1 pt-0.5" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-        {!tech && (actions !== undefined ? actions : <>{assign}{density === "full" && <>
+        {tech ? techCardContent(actions) : (actions !== undefined ? actions : <>{assign}{density === "full" && <>
           {onAuto && unassigned && <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={onAuto}><Zap className="h-3.5 w-3.5" />Auto</Button>}
           {item.assigneePhone && !closed && <Button asChild size="sm" className="h-7 gap-1 px-2 text-xs"><a href={`tel:${item.assigneePhone}`}><Phone className="h-3.5 w-3.5" />Call tech</a></Button>}
           {item.clientPhone && !closed && <Button asChild size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs"><a href={`tel:${item.clientPhone}`}><Phone className="h-3.5 w-3.5" />Client</a></Button>}

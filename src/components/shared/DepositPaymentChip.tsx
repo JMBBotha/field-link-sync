@@ -98,9 +98,10 @@ interface DepositPaymentChipProps {
   /** Pass true when the quote/work is accepted — renders the muted "No deposit" state when no invoice row exists. */
   accepted?: boolean;
   className?: string;
+  hideAmount?: boolean;
 }
 
-const DepositPaymentChip = ({ invoice, accepted, className }: DepositPaymentChipProps) => {
+const DepositPaymentChip = ({ invoice, accepted, className, hideAmount }: DepositPaymentChipProps) => {
   const state = getDepositChipState(invoice, { accepted });
   if (!state) return null;
 
@@ -125,7 +126,7 @@ const DepositPaymentChip = ({ invoice, accepted, className }: DepositPaymentChip
           className,
         )}
       >
-        {depositChipLabel(invoice, { accepted })}
+        {hideAmount ? (state === "partial" ? "Part paid · balance due" : "Deposit due") : depositChipLabel(invoice, { accepted })}
       </Badge>
     );
   }
