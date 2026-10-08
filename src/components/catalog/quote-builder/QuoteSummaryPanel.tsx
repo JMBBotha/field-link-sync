@@ -15,12 +15,14 @@ interface QuoteSummaryPanelProps {
   baskets: Basket[];
   totals?: QuoteTotals;
   onGenerateQuote?: () => void;
+  /** Hide the Send button (phones/tablets use the shared bottom action bar instead). */
+  hideSend?: boolean;
   quoteId?: string | null;
   /** Staff cost/GP block (canSeeMargin). Default true for back-compat. */
   showCost?: boolean;
 }
 
-const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId, showCost = true }: QuoteSummaryPanelProps) => {
+const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId, showCost = true, hideSend = false }: QuoteSummaryPanelProps) => {
   const summary = useMemo(() => totals ?? computeBasketsQuoteTotals(baskets), [baskets, totals]);
 
   // Extract model codes from basket items for brochure matching
@@ -207,13 +209,15 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId, showCost
 
       {/* Send button: saves the quote, then offers the client link (copy /
           WhatsApp) plus email PDF via the send dialog */}
-      <Button
-        className="w-full h-11 text-sm font-semibold gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-gray-900"
-        onClick={onGenerateQuote}
-      >
-        <Send className="h-4 w-4" />
-        Send
-      </Button>
+      {!hideSend && (
+        <Button
+          className="w-full h-11 text-sm font-semibold gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-gray-900"
+          onClick={onGenerateQuote}
+        >
+          <Send className="h-4 w-4" />
+          Send
+        </Button>
+      )}
     </div>
   );
 };

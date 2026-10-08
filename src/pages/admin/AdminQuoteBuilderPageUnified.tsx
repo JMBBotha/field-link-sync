@@ -29,7 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 import { supabase } from "@/integrations/supabase/client";
-import { QuoteProvider, useQuoteContext } from "@/contexts/QuoteContext";
+import { QuoteProvider, useQuoteContext, trackQuoteWrite } from "@/contexts/QuoteContext";
 import MandyQuoteActions from "@/components/mandy/MandyQuoteActions";
 import LabourPanel from "@/components/quoting/LabourPanel";
 import { isLabourItem } from "@/lib/labour";
@@ -1101,7 +1101,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
     savingRef.current = true;
     try {
       // Only ever writes into the already-open quote — never inserts a quote.
-      await guardedPersist(qid, dbk, new Set(prods.map((p) => p.id)));
+      // Tracked so the shared action bar's Save/PDF/Send waits for an in-flight basket save.
+      await trackQuoteWrite(guardedPersist(qid, dbk, new Set(prods.map((p) => p.id))));
       hasWrittenRef.current = true;
       baselineSigRef.current = sig;
     } catch (err) {
@@ -1247,7 +1248,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
         <div className="mb-2"><PricingChecksRow settings={marginView.settings} discount={Number(displayQuoteTotals.discountAmount ?? 0)} /></div>
       )}
       <div className="mb-3"><LabourPanel /></div>
-      <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} showCost={marginView.visible} />
+      <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} hideSend={isCompact} showCost={marginView.visible} />
     </>
   );
 
@@ -1580,8 +1581,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
         })()}
       </div>
 
-      {/* Shared Save draft · Download PDF · Send bar (Build quote tab, every width); phones keep the live total and sit above the bottom nav. */}
-      {activeTab === "quote" && quoteId && (
+      {/* Shared Save draft · Download PDF · Send bar: Build quote tab at every width, and Visual PDF on phones/tablets
+          (replaces the old total + Send bar there). Phones keep the live total and sit above the bottom nav. */}
+      {quoteId && (activeTab === "quote" || isCompact) && (
         <div className="shrink-0 border-t bg-card px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] mb-16 lg:mb-0">
           <QuoteActionBar
             busy={docActions.busy}
@@ -1596,18 +1598,6 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
               </div>
             ) : undefined}
           />
-        </div>
-      )}
-      {isCompact && activeTab !== "quote" && (
-        <div className="shrink-0 flex items-center justify-between gap-3 border-t bg-card px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] mb-16 lg:mb-0">
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total incl. VAT</p>
-            <p className="text-base font-bold text-foreground tabular-nums truncate">{formatRand(displayQuoteTotals.total)}</p>
-          </div>
-          <Button onClick={handleGenerateQuote} disabled={generating} className="h-11 px-5 text-sm font-semibold gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-gray-900 shrink-0">
-            {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Send
-          </Button>
         </div>
       )}
       {docActions.portals}
