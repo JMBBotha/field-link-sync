@@ -303,7 +303,7 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
       {lead.completed_at && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Calendar className="h-3 w-3 flex-shrink-0" />
-          <span>Completed: {format(new Date(lead.completed_at), 'MMM d, yyyy h:mm a')}</span>
+          <span>Completed: {format(new Date(lead.completed_at), 'MMM d, yyyy HH:mm')}</span>
         </div>
       )}
       <div className="flex items-center justify-between pt-1 gap-2 min-w-0">

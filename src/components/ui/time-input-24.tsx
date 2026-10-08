@@ -22,7 +22,7 @@ export function TimeInput24({ value, onChange, className, disabled, id, onKeyDow
   const emit = (nh: string, nm: string) => onChange({ target: { value: `${nh || "08"}:${nm || "00"}` } });
   const sel = "h-9 rounded-md border border-input bg-background px-1.5 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50";
   return (
-    <div className={cn("inline-flex items-center gap-1 min-w-0", className)} data-time24="">
+    <div className={cn("inline-flex items-center gap-1 min-w-0", className, "w-auto shrink-0")} data-time24="">
       <select id={id} aria-label={rest["aria-label"] ? `${rest["aria-label"]} hour` : "Hour"} className={sel} disabled={disabled}
         value={h} onKeyDown={onKeyDown} onChange={(e) => emit(e.target.value, m)}>
         {!h && <option value="">--</option>}

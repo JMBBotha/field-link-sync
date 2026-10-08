@@ -408,7 +408,7 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
                       (request.source === "customer_whatsapp" ? "Customer (WhatsApp)" : "System")}
                   </span>
                   <span>•</span>
-                  <span>{format(new Date(request.created_at), "MMM d, h:mm a")}</span>
+                  <span>{format(new Date(request.created_at), "MMM d, HH:mm")}</span>
                 </div>
 
                 {request.customer_message && (

@@ -105,7 +105,7 @@ const AgentAvailabilityEditor = ({ agentId }: Props) => {
         ) : (
           <>
             {schedule.map((day) => (
-              <div key={day.day_of_week} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
+              <div key={day.day_of_week} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2 border-b border-border/50 last:border-0">
                 <Switch
                   checked={day.is_available}
                   onCheckedChange={(v) => updateDay(day.day_of_week, "is_available", v)}
@@ -114,7 +114,7 @@ const AgentAvailabilityEditor = ({ agentId }: Props) => {
                   {DAYS[day.day_of_week]}
                 </span>
                 {day.is_available && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex w-full sm:w-auto items-center gap-2 pl-12 sm:pl-0">
                     <TimeInput24 value={day.start_time} onChange={(e) => updateDay(day.day_of_week, "start_time", e.target.value)} className="w-28 h-8 text-sm" />
                     <span className="text-muted-foreground text-xs">to</span>
                     <TimeInput24 value={day.end_time} onChange={(e) => updateDay(day.day_of_week, "end_time", e.target.value)} className="w-28 h-8 text-sm" />

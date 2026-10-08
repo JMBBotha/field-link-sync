@@ -48,7 +48,7 @@ const AgentChangeRequestDialog = ({
   const [submitting, setSubmitting] = useState(false);
 
   // Helper to format time consistently
-  const formatDateTime = (dateStr: string) => format(new Date(dateStr), "MMM d, h:mm a");
+  const formatDateTime = (dateStr: string) => format(new Date(dateStr), "MMM d, HH:mm");
 
   // Job date
   const [jobDate, setJobDate] = useState<Date | undefined>(() => {
@@ -79,10 +79,10 @@ const AgentChangeRequestDialog = ({
   const getCurrentValues = (): string => {
     const parts: string[] = [];
     if (lead.actual_start_time) {
-      parts.push(`Started: ${format(new Date(lead.actual_start_time), "MMM d, h:mm a")}`);
+      parts.push(`Started: ${format(new Date(lead.actual_start_time), "MMM d, HH:mm")}`);
     }
     if (lead.completed_at) {
-      parts.push(`Completed: ${format(new Date(lead.completed_at), "MMM d, h:mm a")}`);
+      parts.push(`Completed: ${format(new Date(lead.completed_at), "MMM d, HH:mm")}`);
     }
     if (parts.length === 0) {
       return "No times recorded";
@@ -143,7 +143,7 @@ const AgentChangeRequestDialog = ({
       else durationStr = `${mins}m`;
 
       // Format requested value in same style as current value display
-      const requestedValue = `${format(jobDate, "MMM d")}: ${format(startDateTime, "h:mm a")} → ${format(endDateTime, "h:mm a")} (${durationStr})`;
+      const requestedValue = `${format(jobDate, "MMM d")}: ${format(startDateTime, "HH:mm")} → ${format(endDateTime, "HH:mm")} (${durationStr})`;
 
       // Store ISO values in reason field as JSON for approval processing
       const requestData = JSON.stringify({
