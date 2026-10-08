@@ -4,6 +4,7 @@ import { ArrowLeft, CloudOff, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import CompanyLogo from "@/components/shared/CompanyLogo";
+import IdentityBadge from "@/components/IdentityBadge";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 
@@ -25,6 +26,7 @@ export default function FieldShell({ title, back = false, children }: FieldShell
           </Button>}
           <CompanyLogo className="h-12 w-24 shrink-0 object-contain" />
           <h1 className="min-w-0 flex-1 break-words text-xl font-bold text-foreground">{title}</h1>
+          <IdentityBadge />
           <Badge variant="outline" className="gap-1 text-muted-foreground" role="status">
             {isOnline ? <Wifi className="h-3 w-3" /> : <CloudOff className="h-3 w-3" />}
             {isOnline ? "Online" : "Offline"}

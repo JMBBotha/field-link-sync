@@ -22,6 +22,7 @@ import { useMandyDock, openMandyVoice } from "@/lib/mandy/registry";
 import { useAssistantContextTracker } from "@/hooks/useAssistantContextTracker";
 import { WelcomeTourDialog } from "@/components/admin/WelcomeTourDialog";
 import CompanyLogo from "@/components/shared/CompanyLogo";
+import IdentityBadge from "@/components/IdentityBadge";
 import { withTimeout } from "@/lib/withTimeout";
 
 const AdminLayout = () => {
@@ -223,6 +224,7 @@ const AdminLayout = () => {
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <IdentityBadge />
             <Button
               variant="ghost"
               size="sm"
