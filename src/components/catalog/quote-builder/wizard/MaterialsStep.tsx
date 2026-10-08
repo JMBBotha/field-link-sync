@@ -18,6 +18,7 @@ import type { PaletteProduct } from "../../QuoteBuilderTab";
 import type { QuoteArea, AreaMaterial, AreaBracket, AreaConsumable } from "../quoteWizardTypes";
 import { getBracketSize } from "../quoteWizardTypes";
 import { isWiredRemote, forcePerUnitPricing } from "../daikinRemoteUtils";
+import { isConsumable, isLengthCatalogItem, isMetreStub, newMetreMaterial, clampMetres } from "./metreLine";
 import { determinePricingMode, auditPricingMode, toAreaPricingMode } from "../pricingModeUtils";
 import { termMatchesBlob } from "../../searchSynonyms";
 import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
@@ -217,6 +218,8 @@ const MaterialStar = memo(function MaterialStar({ product }: { product: PaletteP
 });
 
 /* ── Picker Row (memoized to avoid re-instantiating mutation hooks) ── */
+const metreStubSell = (p: PaletteProduct) => computeProductPricing(newMetreMaterial(p).product).sellExVat;
+
 const PickerRow = memo(function PickerRow({ product, onSelect }: { product: PaletteProduct; onSelect: () => void }) {
   return (
     <button
@@ -228,8 +231,8 @@ const PickerRow = memo(function PickerRow({ product, onSelect }: { product: Pale
         <div className="font-medium truncate">{product.short_name || product.product_code}</div>
         <div className="text-muted-foreground truncate">
           {product.product_code}
-          {product.sold_in_length && typeof product.price_per_metre === "number" && product.price_per_metre > 0
-            ? ` · R${product.price_per_metre.toFixed(2)}/m`
+          {isLengthCatalogItem(product)
+            ? ` · R${metreStubSell(product).toFixed(2)} / m`
             : ` · R${(computeProductPricing(product).sellExVat).toFixed(2)}`}
         </div>
       </div>
@@ -277,8 +280,7 @@ function MaterialPicker({
 
     // Only show products from installation-material-compatible suppliers
     result = result.filter((p) => {
-      const st = p.supplier_type || "both";
-      return st === "installation_material" || st === "consumables" || st === "both";
+      return isConsumable(p); // One Stop Shop only
     });
 
     // Category filter
@@ -300,7 +302,7 @@ function MaterialPicker({
       if (section === "materials") {
         result = result.filter((p) => {
           const cat = (p.product_category || p.category || "").toLowerCase();
-          return cat.includes("pip") || cat.includes("copper") || cat.includes("insulation") || cat.includes("bracket") || cat.includes("elbow") || cat.includes("coupling") || cat.includes("rod") || cat.includes("flare") || cat.includes("saddle") || cat.includes("trunking") || cat.includes("kit");
+          return cat.includes("pip") || cat.includes("copper") || cat.includes("insulation") || cat.includes("bracket") || cat.includes("elbow") || cat.includes("coupling") || cat.includes("rod") || cat.includes("flare") || cat.includes("saddle") || cat.includes("trunking") || cat.includes("kit") || cat.includes("consum");
         });
       } else if (section === "consumables") {
         result = result.filter((p) => {
@@ -332,8 +334,7 @@ function MaterialPicker({
   const totalBeforeLimit = useMemo(() => {
     let result = products.filter((p) => !isACUnit(p));
     result = result.filter((p) => {
-      const st = p.supplier_type || "both";
-      return st === "installation_material" || st === "consumables" || st === "both";
+      return isConsumable(p); // One Stop Shop only
     });
     // No strict section filter — matches the filtered logic above
     if (debouncedSearch.trim()) {
@@ -588,7 +589,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
         return {
           ...a,
           materials: a.materials.map((m) =>
-            m.id === matId ? { ...m, unitQuantity: Math.max(1, m.unitQuantity + delta) } : m
+            m.id === matId ? { ...m, unitQuantity: isMetreStub(m.product) ? clampMetres(m.unitQuantity + delta) : Math.max(1, m.unitQuantity + delta) } : m
           ),
         };
       })
@@ -602,7 +603,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
         return {
           ...a,
           materials: a.materials.map((m) =>
-            m.id === matId ? { ...m, unitQuantity: Math.max(1, qty) } : m
+            m.id === matId ? { ...m, unitQuantity: isMetreStub(m.product) ? clampMetres(qty) : Math.max(1, qty) } : m
           ),
         };
       })
@@ -655,6 +656,11 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
 
   const addMaterialFromPicker = useCallback((areaId: string, product: PaletteProduct) => {
     // Force per-unit pricing for wired remotes (Daikin BRC073, BRCW901A08, etc.)
+    if (isConsumable(product) && isLengthCatalogItem(product)) {
+      onAreasChange(areas.map((a) => a.id !== areaId ? a : { ...a, materials: [...a.materials, newMetreMaterial(product, 1)] }));
+      setOpenPicker((prev) => ({ ...prev, [areaId]: null }));
+      return;
+    }
     const safeProduct = isWiredRemote(product) ? forcePerUnitPricing(product) : product;
     
     // Determine correct pricing mode based on category
@@ -688,6 +694,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
   }, [areas, onAreasChange]);
 
   const addConsumableFromPicker = useCallback((areaId: string, product: PaletteProduct) => {
+    if (isLengthCatalogItem(product)) { addMaterialFromPicker(areaId, product); return; }
     onAreasChange(
       areas.map((a) => {
         if (a.id !== areaId) return a;
@@ -695,7 +702,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
       })
     );
     setOpenPicker((prev) => ({ ...prev, [areaId]: null }));
-  }, [areas, onAreasChange]);
+  }, [areas, onAreasChange, addMaterialFromPicker]);
 
   const updateConsumableQty = useCallback((areaId: string, consId: string, delta: number) => {
     onAreasChange(
@@ -825,7 +832,8 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                         const isLength = mat.pricingMode === "length";
                         const canToggle = determinePricingMode(mat.product) === "per-meter" && typeof mat.product.price_per_metre === "number" && mat.product.price_per_metre > 0;
                         const unitPrice = computeProductPricing(mat.product).sellExVat;
-                        const lineTotal = isLength ? mat.totalCost : unitPrice * mat.unitQuantity;
+                        const perM = isMetreStub(mat.product);
+                        const lineTotal = isLength ? mat.totalCost : perM ? Math.round(unitPrice * mat.unitQuantity * 100 + 1e-9) / 100 : unitPrice * mat.unitQuantity;
 
                         return (
                           <div key={mat.id} className="space-y-1.5 rounded border bg-muted/30 p-2">
@@ -837,7 +845,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 {isLength && <span className="text-muted-foreground">R {mat.costPerMeter.toFixed(2)}/m</span>}
-                                {!isLength && <span className="text-muted-foreground">R {unitPrice.toFixed(2)} ea</span>}
+                                {!isLength && <span className="text-muted-foreground">R {unitPrice.toFixed(2)}{perM ? " / m" : " ea"}</span>}
                                 {canToggle && (
                                   <button
                                     className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-muted hover:bg-accent transition-colors"
@@ -896,10 +904,12 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                                   </Button>
                                   <Input
                                     type="number"
-                                    min={1}
+                                    min={perM ? 0.1 : 1}
                                     max={50}
+                                    step={perM ? 0.1 : 1}
+                                    inputMode={perM ? "decimal" : undefined}
                                     value={mat.unitQuantity}
-                                    onChange={(e) => setMaterialUnitQty(area.id, mat.id, parseInt(e.target.value) || 1)}
+                                    onChange={(e) => setMaterialUnitQty(area.id, mat.id, perM ? (parseFloat(e.target.value) || 0.1) : (parseInt(e.target.value) || 1))}
                                     className="h-7 w-14 text-xs text-center"
                                   />
                                   <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateMaterialUnitQty(area.id, mat.id, 1)} aria-label="Increase quantity">
@@ -909,9 +919,9 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                                 <Slider
                                   value={[mat.unitQuantity]}
                                   onValueChange={([v]) => setMaterialUnitQty(area.id, mat.id, v)}
-                                  min={1}
+                                  min={perM ? 0.1 : 1}
                                   max={50}
-                                  step={1}
+                                  step={perM ? 0.1 : 1}
                                   className="flex-1 min-w-[80px]"
                                 />
                                 <span className="text-xs font-medium w-20 text-right shrink-0">

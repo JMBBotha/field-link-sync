@@ -601,6 +601,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
             unitQuantity: 1,
             install: basketInstallFrom(it),
           });
+        } else if ((it.metadata as any)?.qty_unit === "metre" && (it.metadata as any)?.waste_percent != null) {
+          // Waste-priced metre line: keep decimal metres + saved price (qty = metres).
+          base.materials.push({ id: it.id, product: stubProduct(it), defaultLength: 1, adjustedLength: 1, costPerMeter: 0, totalCost: 0, pricingMode: "unit", unitQuantity: Number(it.quantity) || 0.1, install: basketInstallFrom(it) });
         } else {
           base.consumables.push({ id: it.id, product: stubProduct(it), quantity: it.quantity, install: basketInstallFrom(it) });
         }
