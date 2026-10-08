@@ -147,7 +147,7 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
   // Render helpers return stable module-level components, never nested component types.
   const dealCard = (d: Deal<Q>, action?: React.ReactNode, draggable = false) => (
     <QuoteCard key={d.quote.id} deal={d} density="full"
-      repName={data?.repName[d.quote.sales_engineer_id || ""]} showRep={view === "stages" || !isSalesRep}
+      repName={data?.repName[d.quote.sales_engineer_id || ""]} showRep={view !== "stages" && !isSalesRep}
       onOpen={() => navigate(`/admin/estimates/${d.quote.id}`)} onBook={() => setBookId(d.quote.id)}
       menuItems={menuFor(d)} action={action}
       {...(draggable ? {

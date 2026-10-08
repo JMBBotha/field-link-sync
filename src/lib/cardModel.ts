@@ -3,6 +3,8 @@ import { activeAssignee, jobUrgency, type DJob, type Urgency } from "@/lib/dispa
 import { boardLane, isCancelled, rowAssignee, type Person } from "@/lib/jobsBoard";
 import type { CalendarEntry } from "@/lib/todaysJobs";
 import { hhmm } from "@/lib/schedulingDefaults";
+import { calendarText, type CalendarLead, type CalendarSchedule } from "@/components/calendar/calendarModel";
+import { laneOf } from "@/lib/leadLane";
 
 /** "Overdue · 9 Jan" for a card more than 24 h late; date-only values keep their calendar day. */
 export function overdueLabel(scheduledFor: string | null): string {
@@ -90,4 +92,18 @@ export function scheduleRowToCard(row: ScheduleCardSource | CalendarEntry): Card
     job_type: row.job_type, jobs: { id: row.job_id, title: row.job_title, address: row.job_address,
       status: row.job_status, scheduled_for: row.job_scheduled_for,
       customers: { name: row.customer_name, phone: row.customer_phone } } });
+}
+
+/** Dispatch calendar adapter: preserve the booking's own date/time and job identity. */
+export function calendarScheduleToCard(schedule: CalendarSchedule, lead?: CalendarLead): CardJob {
+  const details = schedule.leads || lead;
+  const title = calendarText(details?.customer_name, calendarText(details?.service_type));
+  return {
+    id: schedule.job_id || schedule.lead_id || schedule.id, kind: schedule.job_id ? "job" : "visit",
+    title, scheduledFor: `${schedule.scheduled_date}T${hhmm(schedule.start_time)}:00+02:00`,
+    statusKey: schedule.jobs?.status || details?.status || "scheduled",
+    priority: details?.priority, place: calendarText(details?.customer_address, "Address pending"),
+    clientName: title, lane: schedule.job_id ? "service" : laneOf(lead || details || {}) || "sales",
+    urgency: { key: "normal", mins: null, label: "" },
+  };
 }
