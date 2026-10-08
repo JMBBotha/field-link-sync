@@ -10,3 +10,6 @@
 
 - Stale-build detection compares the running /assets/index-*.js with a no-cache /index.html (buildInfo.checkForNewBuild) — /version.json is not reliably served by hosting.
 - Length items (sold_in_length + unit_length, e.g. One Stop Shop copper/trunking/drain) are metre lines priced only by priceGuard.lengthLinePrice (waste in cost; active waste = quote ?? company ?? 10): qty = metres, total = round2(qty x unit_price), metadata.waste_percent stamped. Old metre lines without waste_percent keep the per-length maths (metreLineTotal); kits never use this.
+
+- Quote GP/commission maths live only in lib/margin.ts and who-sees-it only in lib/marginAccess.ts (StaffMarginCard, estimate page only, outside the PDF root) — profit never leaks to clients.
+- Per-area labour: default hours = company_settings.default_install_labour_hours (3.5) x AC units in the area (qty counted, isAcUnitLine); metadata.labour_auto true lines follow unit adds/removals, manual edits set it false and only show a default hint; empty areas are exempt; saves/sends/PDF/accept block on missing labour, autosave never blocks; logic in lib/areaLabour.ts.
