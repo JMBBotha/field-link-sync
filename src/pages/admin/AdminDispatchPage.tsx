@@ -977,7 +977,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                       onClick={(e) => handleCardClick(e as any, lead.id)}
                       className={`rounded-lg cursor-grab active:cursor-grabbing transition-colors group ${
                         multiSelectedIds.has(lead.id)
-                          ? "ring-2 ring-primary border-primary/60 bg-primary/10"
+                          ? "ring-2 ring-primary"
                           : ""
                       }`}
                     >
