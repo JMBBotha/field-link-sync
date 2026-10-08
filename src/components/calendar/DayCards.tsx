@@ -10,9 +10,7 @@ export function BusyBlock({ schedule }: { schedule: CalendarSchedule }) {
 }
 export function LoadBar({ minutes, clash }: { minutes: number; clash: boolean }) {
   const tone = loadTone(minutes, clash);
-  // Discrete widths keep the visual styling token-based, without dynamic inline colours.
-  const width = minutes >= 540 ? "w-full" : minutes > 405 ? "w-5/6" : minutes > 270 ? "w-2/3" : minutes > 135 ? "w-1/3" : minutes > 0 ? "w-1/6" : "w-0";
-  return <div className="space-y-1"><p className="text-xs text-muted-foreground">{hoursLabel(minutes)} booked of 9 h</p><div role="progressbar" aria-label="Booked hours" aria-valuenow={minutes / 60} aria-valuemin={0} aria-valuemax={9} data-tone={tone} className="h-1.5 overflow-hidden rounded bg-muted"><div className={`h-full ${width} ${tone === "destructive" ? "bg-destructive" : tone === "warning" ? "bg-warning" : "bg-primary"}`} /></div></div>;
+  return <div className="space-y-1"><p className="text-xs text-muted-foreground">{hoursLabel(minutes)} booked of 9 h</p><svg role="progressbar" aria-label="Booked hours" aria-valuenow={minutes / 60} aria-valuemin={0} aria-valuemax={9} data-tone={tone} viewBox="0 0 100 6" preserveAspectRatio="none" className="h-1.5 w-full overflow-hidden rounded bg-muted"><rect width={Math.min(100, minutes / 540 * 100)} height={6} className={tone === "destructive" ? "fill-destructive" : tone === "warning" ? "fill-warning" : "fill-primary"} /></svg></div>;
 }
 type Props<L extends CalendarLead, S extends CalendarSchedule> = {
   date: string; groups: { key: LeadLane | null; label: string; agents: CalendarPerson[] }[];
