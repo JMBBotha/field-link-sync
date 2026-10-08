@@ -403,7 +403,7 @@ export default function QuoteQuickEditor({
           services={svcOrdered}
           busyId={adding}
           onPickProduct={(p) => addProduct(p, true)}
-          onPickService={(s) => routeAdd({ kind: "service", value: s }, false, true)}
+          onPickService={(s) => guardedRouteAdd({ kind: "service", value: s }, false, true)}
         />
       ) : (
       <div className={mode ? "grid gap-2" : "grid gap-2 sm:grid-cols-2"}>
