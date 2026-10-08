@@ -8,20 +8,20 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04          # pinned; avoids the 19 Oct ubuntu-latest -> Ubuntu 26 switch surprise
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5     # Node 24 runtime
+      - uses: actions/setup-node@v5   # Node 24 runtime
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22            # @capacitor/cli 8 needs Node >= 22
+      - uses: oven-sh/setup-bun@v2    # Node 24 runtime
 
-      - run: npm ci
+      # Lovable keeps bun.lock up to date (not package-lock.json), so install from bun.lock
+      - run: bun install --frozen-lockfile
 
       - name: Run unit & integration tests
-        run: npx vitest run --reporter=verbose
+        run: bunx vitest run --reporter=verbose
 
       - name: TypeScript type check
-        run: npx tsc --noEmit
+        run: bunx tsc --noEmit

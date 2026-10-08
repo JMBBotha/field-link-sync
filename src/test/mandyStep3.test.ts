@@ -103,6 +103,6 @@ describe("Mandy live map routing", () => {
     const nav = vi.fn();
     const r: any = await makeMapHandlers(nav).filter_map_by_status({ status: "emergency" });
     expect(nav).not.toHaveBeenCalled();
-    expect(r.choices).toHaveLength(4);
+    expect(r.choices).toHaveLength(5);
   });
 });
