@@ -58,6 +58,8 @@ export interface ClientRollupArea {
   areaTotal: number;
   /** True when the area also carries piping / materials / labour lines. */
   hasInstallExtras: boolean;
+  /** False when the area carries no labour line (labour mode 'job'): client wording drops "& labour". */
+  hasLabour?: boolean;
   /** Whole-job labour line (labour mode 'job'): sell price only. */
   isJobLabour?: boolean;
 }
@@ -183,6 +185,7 @@ export function buildClientRollup(lines: RollupLine[], areas: RollupArea[] = [])
       units,
       areaTotal,
       hasInstallExtras: !serviceOnly && shown.length > 0 && group.some((l) => !shownIds.has(l.id) && (isLabour(l) || isInstallMaterial(l)) && lineTotal(l) !== 0),
+      hasLabour: group.some((l) => isLabour(l) && lineTotal(l) !== 0),
     });
   }
 

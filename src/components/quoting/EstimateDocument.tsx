@@ -836,7 +836,7 @@ const EstimateDocument = ({
                     </div>
                   ))}
                   {area.hasInstallExtras && (
-                    <p className="text-[11px] italic text-slate-500">Installed incl. piping, materials &amp; labour</p>
+                    <p className="text-[11px] italic text-slate-500">{area.hasLabour === false ? "Installed incl. piping & materials" : "Installed incl. piping, materials & labour"}</p>
                   )}
                 </div>
               </section>
