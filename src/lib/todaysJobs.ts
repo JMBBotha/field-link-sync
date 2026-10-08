@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const CLOSED_STATUSES = ["completed", "cancelled", "canceled"];
 const isClosed = (s?: string | null) => CLOSED_STATUSES.includes(String(s || "").toLowerCase());
+const isCancelled = (s?: string | null) => ["cancelled", "canceled"].includes(String(s || "").toLowerCase());
 const isCompleted = (s?: string | null) => String(s || "").toLowerCase() === "completed";
 
 /** 'YYYY-MM-DD' in Africa/Johannesburg. Never toISOString. */
@@ -50,10 +51,17 @@ export type LeadRowIn = {
   notes?: string | null; call_summary?: string | null;
 };
 
-/** Merge schedule rows + scheduled leads, de-duplicated by job_id / lead_id. */
+/**
+ * Merge schedule rows + scheduled leads, de-duplicated by job_id / lead_id.
+ * Cancelled jobs/leads are hidden. A made-up lead tile is skipped when a job-keyed
+ * row exists for the same lead + person + date (one tile per visit).
+ */
 export function buildCalendarEntries(schedules: ScheduleRowIn[], leads: LeadRowIn[]): CalendarEntry[] {
   const out = new Map<string, CalendarEntry>();
+  const jobRowKey = new Set<string>();
   for (const s of schedules) {
+    if (isCancelled(s.jobs?.status) || isCancelled(s.leads?.status)) continue;
+    if (s.job_id && s.lead_id) jobRowKey.add(`${s.lead_id}|${s.agent_id}|${s.scheduled_date}`);
     const key = s.job_id ? `job:${s.job_id}` : `lead:${s.lead_id}`;
     if (out.has(key)) continue;
     out.set(key, {
@@ -66,6 +74,8 @@ export function buildCalendarEntries(schedules: ScheduleRowIn[], leads: LeadRowI
   }
   for (const l of leads) {
     if (!l.assigned_agent_id || !l.scheduled_date) continue; // leads-only never count
+    if (isCancelled(l.status)) continue;
+    if (jobRowKey.has(`${l.id}|${l.assigned_agent_id}|${l.scheduled_date}`)) continue;
     const key = `lead:${l.id}`;
     if (out.has(key)) continue;
     out.set(key, {
