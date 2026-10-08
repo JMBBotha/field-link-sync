@@ -123,7 +123,7 @@ const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => 
 
   // Group jobs by status
   const board = useMemo(
-    () => groupBoardRows(filterBoardRows(buildBoardRows(jobs as any[], booked.entries), filters, booked.names), showCancelled),
+    () => groupBoardRows(filterBoardRows(buildBoardRows(jobs as any[], visibleVisitEntries(booked.entries)), filters, booked.names), showCancelled),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [jobs, booked.entries, booked.names, showCancelled, searchParams.toString()],
   );
