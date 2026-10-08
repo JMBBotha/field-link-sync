@@ -124,4 +124,22 @@ describe("PipelineBoard", () => {
     expect(document.querySelectorAll("[data-rep-initials]").length).toBe(0);
     expect(screen.getByText("Johan Botha")).toBeTruthy();
   });
+  it("stacks New lead behind Draft and Sent behind Viewed like playing cards; click/tap slides the back card open and closed", async () => {
+    mount("stages");
+    await waitFor(() => expect(screen.getByText("Marissa Ellis")).toBeTruthy());
+    const lead = document.querySelector('[data-stage-block="lead"]') as HTMLElement;
+    const sent = document.querySelector('[data-stage-block="sent"]') as HTMLElement;
+    expect(lead.dataset.cardStack).toBe("back");
+    expect(sent.dataset.cardStack).toBe("back");
+    expect((document.querySelector('[data-stage-block="draft"]') as HTMLElement).dataset.cardStack).toBe("front");
+    expect((document.querySelector('[data-stage-block="viewed"]') as HTMLElement).dataset.cardStack).toBe("front");
+    expect(document.querySelector('[data-stage-block="accepted"]')!.hasAttribute("data-card-stack")).toBe(false);
+    expect(lead.dataset.peekOpen).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "New lead stage" }));
+    expect(lead.dataset.peekOpen).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "New lead stage" }));
+    expect(lead.dataset.peekOpen).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "Sent stage" }));
+    expect(sent.dataset.peekOpen).toBe("true");
+  });
 });

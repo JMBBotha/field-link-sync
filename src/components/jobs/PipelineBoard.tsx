@@ -99,6 +99,14 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
     return next;
   });
   const [bookId, setBookId] = useState<string | null>(null);
+  // Playing-card stacks: New lead behind Draft, Sent behind Viewed. Back card opens on mouse hover or click/tap (pinned).
+  const [peekHover, setPeekHover] = useState<PipelineStage | null>(null);
+  const [peekPinned, setPeekPinned] = useState<Set<PipelineStage>>(() => new Set());
+  const togglePeek = (key: PipelineStage) => setPeekPinned((current) => {
+    const next = new Set(current);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
   const [dragFrom, setDragFrom] = useState<{ id: string; stage: PipelineStage } | null>(null);
   const [over, setOver] = useState<PipelineStage | null>(null);
   const setHideTest = (v: boolean) => { localStorage.setItem("fls.pipeline.hideTest", v ? "1" : "0"); setHideTestState(v); qc.invalidateQueries({ queryKey: ["pipeline"] }); };
@@ -204,9 +212,13 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
           {([["lead", "draft"], ["sent", "viewed"], ["accepted"], ["booked"], ["lost"]] as PipelineStage[][]).map((keys) => {
             const colExpanded = keys.some((k) => expanded.has(k));
             return (
-              <div key={keys.join("-")} data-stage-column={keys.join("-")} className={cn("flex min-w-0 flex-col gap-3", colExpanded && "col-span-full sm:col-span-2 xl:col-span-5")}>
-                {keys.map((key) => {
+              <div key={keys.join("-")} data-stage-column={keys.join("-")}
+                onPointerLeave={(e) => { if (keys.length === 2 && e.pointerType === "mouse") setPeekHover((h) => (h === keys[0] ? null : h)); }}
+                className={cn("flex min-w-0 flex-col", keys.length === 2 ? "gap-0" : "gap-3", colExpanded && "col-span-full sm:col-span-2 xl:col-span-5")}>
+                {keys.map((key, idx) => {
                   const s = STAGES.find((x) => x.key === key)!;
+                  const isBack = keys.length === 2 && idx === 0;
+                  const isFront = keys.length === 2 && idx === 1;
                   if (s.key === "lost" && !showLost) {
                     const n = columnSummary(shownDeals, "lost").count;
                     return (
@@ -226,23 +238,37 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
                   const list = shownDeals.filter((d) => d.stage === s.key).sort((a, b) => b.value - a.value);
                   const isExpanded = expanded.has(s.key);
                   const remaining = sum.count - 2;
+                  // Back card is "open" when hovered (mouse), pinned by click/tap, a drag is over it, or fully expanded.
+                  const peekOpen = !isBack || isExpanded || peekPinned.has(s.key) || peekHover === s.key || over === s.key;
                   return (
                     <div key={s.key} data-stage-block={s.key}
+                      data-card-stack={isBack ? "back" : isFront ? "front" : undefined}
+                      data-peek-open={isBack ? (peekOpen ? "true" : "false") : undefined}
+                      onPointerEnter={isBack ? (e) => { if (e.pointerType === "mouse") setPeekHover(s.key); } : undefined}
                       onDragOver={(e) => { if (dragFrom) { e.preventDefault(); setOver(s.key); } }}
                       onDragLeave={() => setOver((o) => (o === s.key ? null : o))}
                       onDrop={(e) => { e.preventDefault(); if (dragFrom) runDrop(dragFrom.id, dragFrom.stage, s.key); setOver(null); }}
-                      className={cn("flex min-w-0 flex-col rounded-xl bg-muted/50", isExpanded && "col-span-full", over === s.key && "ring-2 ring-primary")}>
+                      className={cn("flex min-w-0 flex-col rounded-xl bg-muted/50 transition-[margin,box-shadow] duration-300",
+                        isBack && "relative z-0 border border-border/60 shadow-sm",
+                        isBack && !peekOpen && "mx-2 bg-muted/70",
+                        isFront && "relative z-10 border border-border/60 bg-card shadow-[0_-6px_14px_-8px_rgba(0,0,0,0.35)]",
+                        isFront && "-mt-3",
+                        isExpanded && "col-span-full", over === s.key && "ring-2 ring-primary")}>
                       <div className={cn("h-1.5 rounded-t-xl", BAR[s.key])} />
-                      <Button variant="ghost" aria-label={`${s.label} stage`} aria-expanded={isExpanded}
-                        onClick={() => toggleStage(s.key)} className="h-auto w-full flex-col items-stretch whitespace-normal px-3 pb-2 pt-2 text-left">
+                      <Button variant="ghost" aria-label={`${s.label} stage`} aria-expanded={isBack ? peekOpen : isExpanded}
+                        onClick={() => (isBack ? togglePeek(s.key) : toggleStage(s.key))} className="h-auto w-full flex-col items-stretch whitespace-normal px-3 pb-2 pt-2 text-left">
                         <div className="flex items-center justify-between text-sm font-bold">
-                          <span>{s.label}</span><span className="flex items-center gap-2 text-muted-foreground">{sum.count}{isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+                          <span>{s.label}</span><span className="flex items-center gap-2 text-muted-foreground">{sum.count}{(isBack ? peekOpen : isExpanded) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
                         </div>
                         <div className="text-lg font-bold tabular-nums">{s.key === "lead" ? "—" : fmtRandShort(sum.total)}</div>
-                        <div className="text-[11px] font-normal text-muted-foreground">{s.hint} · avg {sum.avgDays} d in stage</div>
+                        <div className={cn("text-[11px] font-normal text-muted-foreground", isBack && !peekOpen && "hidden")}>{s.hint} · avg {sum.avgDays} d in stage</div>
                       </Button>
                       {s.key === "lost" && <Button variant="ghost" size="sm" className="mx-3 mb-1 h-6 self-start text-[11px] text-primary" onClick={() => setShowLost(false)}>Hide Lost</Button>}
-                      <div className={cn("grid min-h-24 grid-cols-1 gap-2 px-2 pb-2", isExpanded && "md:grid-cols-2 lg:grid-cols-3")}>
+                      <div className={cn("grid transition-[grid-template-rows] duration-300 ease-out", peekOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}
+                        aria-hidden={!peekOpen || undefined} data-peek-body={isBack ? s.key : undefined}
+                        {...({ inert: peekOpen ? undefined : "" } as Record<string, unknown>)}>
+                      <div className="min-h-0 overflow-hidden">
+                      <div className={cn("grid grid-cols-1 gap-2 px-2 pb-2", peekOpen && "min-h-24", isFront && "pb-3", isExpanded && "md:grid-cols-2 lg:grid-cols-3")}>
                         {s.key === "lead"
                           ? (isExpanded ? shownLeads : shownLeads.slice(0, 2)).map(leadCard)
                           : (isExpanded ? list : list.slice(0, 2)).map((d) => dealCard(d, undefined, true))}
@@ -253,6 +279,9 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
                           </div>
                         )}
                       </div>
+                      </div>
+                      </div>
+                      {isBack && !peekOpen && <div className="h-3" aria-hidden />}
                     </div>
                   );
                 })}
