@@ -538,7 +538,7 @@ const AdminTeamPage = () => {
       {/* Availability Editor Dialog */}
       {availabilityUser && (
         <Dialog open={!!availabilityUser} onOpenChange={(open) => { if (!open) setAvailabilityUser(null); }}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Set Weekly Availability</DialogTitle>
             </DialogHeader>
