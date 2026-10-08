@@ -20,6 +20,7 @@ import {
   logAssistantAudit,
   resolvePersona,
   resolveScope,
+  loadCallerRoles,
   sanitizeArgs,
   type AssistantAuditEntry,
 } from "../_shared/assistantScope.ts";
@@ -151,12 +152,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
     const companyId: string = profile.company_id;
 
-    const { data: roleRows, error: rolesErr } = await db
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    if (rolesErr) throw rolesErr;
-    const roles = ((roleRows ?? []) as { role: string }[]).map((r) => r.role);
+    const roles = await loadCallerRoles(db, userId);
 
     member = {
       userId,
@@ -747,11 +743,14 @@ async function createEstimate(db: any, member: CallerContext, params: any): Prom
   let customerName = params.customer_name;
   let customerDisplayName = "";
 
+  const custScope = await resolveScope(db, member.userId, member.companyId, member.roles, member.email);
   if (!customerId && customerName) {
-    const { data: matches } = await db
+    let q = db
       .from("customers")
       .select("id, first_name, last_name, company_name")
-      .eq("company_id", member.companyId)
+      .eq("company_id", member.companyId);
+    if (custScope.customerIds) q = q.in("id", [...custScope.customerIds]);
+    const { data: matches } = await q
       .ilike("first_name", `%${customerName}%`)
       .or(`last_name.ilike.%${customerName}%,company_name.ilike.%${customerName}%`)
       .limit(5);
@@ -770,6 +769,9 @@ async function createEstimate(db: any, member: CallerContext, params: any): Prom
 
   if (!customerId) {
     throw new Error("customer_id or customer_name is required");
+  }
+  if (custScope.customerIds && !custScope.customerIds.has(String(customerId))) {
+    throw new Error("Customer not found in your company");
   }
 
   const { data: customer, error: custErr } = await db

@@ -1,3 +1,4 @@
+import { loadCallerRoles } from "../_shared/assistantScope.ts";
 // deprecated – unlinked from UI; kept because Vapi shares assistant ids
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { anthropicTools, TOOL_KIND, type ToolName } from "../_shared/nlTools.ts";
@@ -174,8 +175,7 @@ Deno.serve(async (req) => {
         error: "Your account is not linked to a company yet, so the assistant has no data to work with.",
       }, 403);
     }
-    const { data: roleRows } = await db.from("user_roles").select("role").eq("user_id", userId);
-    const roles = ((roleRows ?? []) as { role: string }[]).map((r) => r.role);
+    const roles = await loadCallerRoles(db, userId);
     const isOps = roles.some((r) => OPS_ROLES.has(r));
 
     // Identity comes ONLY from the verified JWT + the profile row it points at.

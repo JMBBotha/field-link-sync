@@ -21,6 +21,36 @@ export type RecordKind = "quote" | "invoice";
 /** Minimal structural subset of the Supabase client used here. */
 export interface AccessDb {
   from(table: string): any;
+  rpc?(fn: string, args?: any): any;
+}
+
+const REP_DISPATCH_ROLES = new Set(["sales", "sales_engineer"]);
+
+/**
+ * Sales rep = dispatcher (not admin) whose profiles.dispatch_role is sales /
+ * sales_engineer. Prefers the DB helper is_sales_rep; falls back to the same
+ * rule in code (mirrors src/lib/roleAccess.ts isSalesRep).
+ */
+export async function isSalesRepServer(
+  db: { from(table: string): any; rpc?(fn: string, args?: any): any },
+  userId: string,
+  roles?: string[],
+): Promise<boolean> {
+  if (typeof db.rpc === "function") {
+    try {
+      const res = await db.rpc("is_sales_rep", { _uid: userId });
+      if (res && !res.error) return res.data === true;
+    } catch { /* fall back */ }
+  }
+  let list = roles;
+  if (!list) {
+    const { data } = await db.from("user_roles").select("role").eq("user_id", userId);
+    list = ((data ?? []) as { role: string }[]).map((r) => r.role);
+  }
+  if (!list.includes("dispatcher") || list.includes("admin")) return false;
+  const { data: prof } = await db.from("profiles").select("dispatch_role").eq("id", userId);
+  const row = Array.isArray(prof) ? prof[0] : prof;
+  return REP_DISPATCH_ROLES.has(String(row?.dispatch_role ?? ""));
 }
 
 export const OPS_ROLES = new Set([
@@ -37,9 +67,12 @@ export async function hasRecordAccess(
   row: Record<string, any>,
 ): Promise<boolean> {
   const { data: roles } = await db.from("user_roles").select("role").eq("user_id", userId);
-  if ((roles ?? []).some((r: { role: string }) => OPS_ROLES.has(r.role))) return true;
+  const roleList = ((roles ?? []) as { role: string }[]).map((r) => r.role);
+  const rep = await isSalesRepServer(db, userId, roleList);
+  if (!rep && roleList.some((r) => OPS_ROLES.has(r))) return true;
 
   if (kind === "quote" && row.sales_engineer_id === userId) return true;
+  if (kind === "quote" && (row.owner_id === userId || row.created_by === userId)) return true;
   if (kind === "invoice" && row.agent_id === userId) return true;
 
   const jobFilter = kind === "quote"
