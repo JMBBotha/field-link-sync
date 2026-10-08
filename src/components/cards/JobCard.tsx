@@ -44,7 +44,7 @@ export default function JobCard({ item, density, audience, actions, menuItems = 
     assignments: item.assigneeName ? [{ profile_id: "assigned" }] : [] });
   const { key, mins, onSiteMins } = item.urgency;
   const scheduled = item.scheduledFor ? new Date(item.scheduledFor) : null;
-  const time = scheduled && !isNaN(scheduled.getTime()) && !/^\d{4}-\d{2}-\d{2}$/.test(item.scheduledFor || "") ? (tech ? hhmm(sastParts(scheduled.toISOString()).time) : format(scheduled, "HH:mm")) : "--:--";
+  const time = scheduled && !isNaN(scheduled.getTime()) && !/^\d{4}-\d{2}-\d{2}$/.test(item.scheduledFor || "") ? (tech || item.kind === "visit" ? hhmm(sastParts(scheduled.toISOString()).time) : format(scheduled, "HH:mm")) : "--:--";
   const next = NEXT_STATUS[item.statusKey];
   const secondary: RowMenuItem[] = density === "compact" ? [
     ...(onAuto && unassigned ? [{ label: "Auto", onSelect: onAuto }] : []),

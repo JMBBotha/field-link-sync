@@ -1,8 +1,8 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
 ## Card consistency C3 (2026-10-08)
-- [ ] Share technician lead/job/schedule cards and sales appointment cards; preserve actions, navigation and queries, hide technician money.
-- [ ] Run focused technician/card/appointment/dispatch tests and verify rendering without data writes.
+- [x] Share technician lead/job/schedule cards and sales appointment cards; preserve actions, navigation and queries, hide technician money.
+- [x] 25 focused tests pass; signed-in desktop/phone schedule and appointments render without overflow or runtime errors, all writes blocked. Assigned-job screen had no rows; actions covered with in-memory tests.
 
 ## Calendar S1 + S2 (2026-10-08)
 - [x] One tile per visit, HH:MM labels, cancelled hidden, assignment value normaliser, SAST new-job times, install duration saved.
