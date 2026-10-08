@@ -81,3 +81,28 @@ export function quoteLineDrift(
   const unitCost = Number(md.unit_cost ?? md.cost_excl);
   return markupDrift((Number(line.unit_price) || 0) * qty, unitCost * qty, std, qty);
 }
+
+/* ── Length items (One Stop Shop, sold_in_length + unit_length): priced PER METRE with waste ──
+ * cost_per_m = round4((pack cost ex VAT / unit_length) x (1 + waste/100))
+ * sell_per_m = round2(cost_per_m x (1 + materials markup/100))
+ * Waste sits in the COST, so the line markup reads exactly the materials % (no drift warning).
+ * Piping kits do NOT use this (kitRowFields / buildKitMaterial unchanged). */
+const r4 = (n: number) => Math.round(n * 10000 + 1e-9) / 10000;
+const r2 = (n: number) => Math.round(n * 100 + 1e-9) / 100;
+
+export function isLengthProduct(p: { sold_in_length?: boolean | null; unit_length?: number | null } | null | undefined): boolean {
+  return !!p?.sold_in_length && Number(p?.unit_length) > 0;
+}
+
+/** Same maths from a raw per-metre pack cost (used when repricing a saved metre line). */
+export function metrePriceFromPackPerMetre(packCostPerM: number, wastePct: number, materialsMarkupPct: number) {
+  const costPerM = r4(packCostPerM * (1 + (Number(wastePct) || 0) / 100));
+  return { costPerM, sellPerM: r2(costPerM * (1 + (Number(materialsMarkupPct) || 0) / 100)) };
+}
+
+/** THE length-item price. Pack cost = catalogue cost ex VAT of one supplier length. */
+export function lengthLinePrice(product: Partial<PaletteProduct>, wastePct: number, materialsMarkupPct: number) {
+  const L = Number(product.unit_length) || 1;
+  const packCost = computePricing(resolveSupplierCode(product.supplier_name), Number(product.cost_excl_vat ?? product.cost_price) || 0, 0, product.cost_price ?? null).costExVat;
+  return { ...metrePriceFromPackPerMetre(packCost / L, wastePct, materialsMarkupPct), packCost, unitLength: L };
+}

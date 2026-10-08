@@ -8,6 +8,13 @@
       "when": 1791392494338,
       "tag": "0000_route_lead_broadcast_by_lane",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791458768196,
+      "tag": "0001_materials_waste_percent_and_packing_units",
+      "breakpoints": true
     }
   ]
 }

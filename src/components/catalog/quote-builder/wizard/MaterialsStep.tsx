@@ -863,13 +863,14 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                               <div className="flex items-center gap-3">
                                 <Input
                                   type="number"
-                                  min={0.5}
+                                  min={0.1}
                                   max={50}
-                                  step={0.5}
+                                  step={0.1}
+                                  inputMode="decimal"
                                   value={mat.adjustedLength}
                                   onChange={(e) => {
                                     const parsed = parseFloat(e.target.value);
-                                    const clamped = isNaN(parsed) ? mat.adjustedLength : Math.max(0.5, Math.min(50, parsed));
+                                    const clamped = isNaN(parsed) ? mat.adjustedLength : Math.max(0.1, Math.min(50, Math.round(parsed * 10) / 10));
                                     updateMaterialLength(area.id, mat.id, clamped);
                                   }}
                                   className="h-7 w-20 text-xs"
@@ -878,9 +879,9 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                                 <Slider
                                   value={[mat.adjustedLength]}
                                   onValueChange={([v]) => updateMaterialLength(area.id, mat.id, v)}
-                                  min={0.5}
+                                  min={0.1}
                                   max={50}
-                                  step={0.5}
+                                  step={0.1}
                                   className="flex-1"
                                 />
                                 <span className="text-xs font-medium w-20 text-right">

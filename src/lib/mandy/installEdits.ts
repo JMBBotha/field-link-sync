@@ -3,7 +3,8 @@
  * Lines are found by metadata.install.{unit_item_id, role} — never parent_item_id.
  * Pricing goes through catalogLineFields / kitLengthPatch only.
  */
-import { catalogLineFields, kitLengthPatch, kitSwapPatch, isPerMetreTrunking, isMetreLine, metreLineTotal, type BundleForKit } from "@/lib/mandy/quoteOps";
+import { isLengthProduct } from "@/lib/priceGuard";
+import { catalogLineFields, kitLengthPatch, kitSwapPatch, isMetreLine, metreLineTotal, type BundleForKit } from "@/lib/mandy/quoteOps";
 import { parseKitSwapSizes, swappableKits, kitSizeLabel, kitPipeSizes, pickKitForUnit } from "@/lib/kitSizes";
 import { extractBtu } from "@/lib/bundles";
 import { installTag, lengthLabel, ROLE_LABEL, type InstallRole } from "@/lib/installTemplates";
@@ -191,7 +192,7 @@ export async function runInstallEdit(d: InstallDeps, args0: InstallOp & { unit_i
     case "set_qty": {
       const cur = roleLine(d.items, unit.id, args.role);
       const dp = !cur && DEFAULT_CODE[args.role] ? live(DEFAULT_CODE[args.role]!) : null;
-      if (cur ? isMetreLine(cur) : isPerMetreTrunking(dp)) {
+      if (cur ? isMetreLine(cur) : isLengthProduct(dp)) {
         const Lm = Number(cur?.metadata?.supplier_length_m ?? dp?.unit_length) || 3;
         const mm = metresFromRequest(args, __utterance, Lm);
         if (mm == null) return { ok: false, message: `How many metres of ${ROLE_LABEL[args.role]}? For example: “make the trunking 4 metres”.` };

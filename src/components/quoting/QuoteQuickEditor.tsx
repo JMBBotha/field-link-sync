@@ -26,7 +26,11 @@ import FavouritesPicker from "@/components/quoting/FavouritesPicker";
 import { getEffectiveUnitPrices, type PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
 import { fetchVisualCatalogAllowlist, filterToVisualCatalog } from "@/lib/catalogSoT";
-import { addCatalogProductToQuote, isAirConditioningProduct } from "@/lib/mandy/quoteOps";
+import { addCatalogProductToQuote, isAirConditioningProduct, catalogLineFields } from "@/lib/mandy/quoteOps";
+import { isLengthProduct } from "@/lib/priceGuard";
+
+/** "+ Add material" shows One Stop Shop (supplier_type 'consumables') only. */
+export const isConsumable = (p: { supplier_type?: string | null }) => p?.supplier_type === "consumables";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { useInstallTemplates } from "@/hooks/useInstallTemplates";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
@@ -184,7 +188,7 @@ export default function QuoteQuickEditor({
     const fits = (p: PaletteProduct) => mode === "item" || (mode === "unit") === isAirConditioningProduct(p);
     const basket: PaletteProduct[] = [];
     const g = groupFavourites(favIds, products, []);
-    const favs = mode === "item" ? [...g.units, ...g.materials] : mode === "unit" ? g.units : g.materials;
+    const favs = mode === "item" ? [...g.units, ...g.materials] : mode === "unit" ? g.units : g.materials.filter(isConsumable);
     return basket.length || favs.length ? { basket, favs } : null;
   }, [mode, basketProducts, favIds, products]);
 
@@ -192,16 +196,16 @@ export default function QuoteQuickEditor({
     const term = productTerm.trim();
     if (term.length < 2) return [];
     const terms = term.toLowerCase().split(/\s+/).filter(Boolean);
-    const matched = products.filter((p) =>
+    const matched = products.filter((p) => (mode !== "material" || isConsumable(p)) && (
       allTermsMatchBlob(
         terms,
         `${p.product_code || ""} ${p.short_name || ""} ${p.brand || ""} ${p.product_category || ""} ${p.description || ""}`.toLowerCase(),
-      ) || productMatchesTerms(p as any, term),
+      ) || productMatchesTerms(p as any, term)),
     );
     const rank = (p: PaletteProduct) =>
       basketIds.has(p.id) ? 0 : isFavourite(p.id) ? 1 : onQuoteProductIds.has(p.id) ? 2 : 3;
     return matched.sort((a, b) => rank(a) - rank(b)).slice(0, 25);
-  }, [productTerm, products, isFavourite, onQuoteProductIds, basketIds]);
+  }, [productTerm, products, isFavourite, onQuoteProductIds, basketIds, mode]);
 
   const nextSortOrder = () => (items.length ? Math.max(...items.map((i) => i.sort_order || 0)) + 1 : 0);
 
@@ -236,6 +240,11 @@ export default function QuoteQuickEditor({
       }
       onChanged?.();
       onAddedToArea?.(areaId);
+      // Length item: added at 1 m — put the cursor in its metres box.
+      if (result.line && isLengthProduct(p)) {
+        const id = result.line.id;
+        setTimeout(() => { const el = document.querySelector<HTMLInputElement>(`[data-line-qty="${id}"]`); el?.focus(); el?.select(); }, 150);
+      }
     } finally {
       setAdding(null);
     }
@@ -285,6 +294,7 @@ export default function QuoteQuickEditor({
 
   const renderRow = (p: PaletteProduct) => {
     const { unitSell } = getEffectiveUnitPrices(p);
+    const perM = isLengthProduct(p) ? catalogLineFields(p, 1).unit_price : null;
     const fav = isFavourite(p.id);
     return (
       <button
@@ -307,7 +317,7 @@ export default function QuoteQuickEditor({
           <Badge variant="secondary" className="shrink-0 text-[10px]">on quote</Badge>
         )}
         {(() => { const sp = findSpecial(p.id, p.product_code); return sp ? <SpecialChip cost={Number(sp.special_cost)} endDate={sp.end_date} /> : null; })()}
-        <span className="shrink-0 text-xs font-medium text-slate-700">{money(unitSell)}</span>
+        <span className="shrink-0 text-xs font-medium text-slate-700">{perM != null ? `${money(perM)} / m` : money(unitSell)}</span>
       </button>
     );
   };

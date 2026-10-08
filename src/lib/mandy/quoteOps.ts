@@ -7,7 +7,8 @@
  * quote category rates) and the kit pricing in kitLine.ts — no formula here.
  */
 import { getEffectiveUnitPrices, type PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
-import { resolveProductMarkupPercent, classifyQuoteCategory } from "@/lib/pricing";
+import { resolveProductMarkupPercent, classifyQuoteCategory, getActiveQuoteMarkupRates, getActiveMaterialsWastePercent, categoryMarkupPercent } from "@/lib/pricing";
+import { lengthLinePrice, isLengthProduct } from "@/lib/priceGuard";
 import { extractBtu } from "@/lib/bundles";
 import { kitItemPerMetre } from "@/lib/lineDisplay";
 import { buildKitMaterial, kitBasketFields, DEFAULT_KIT_LENGTH_M } from "@/components/catalog/quote-builder/kitLine";
@@ -28,6 +29,8 @@ export interface BundleForKit {
 }
 
 export function isAirConditioningProduct(product: Partial<PaletteProduct>): boolean {
+  // Consumables (One Stop Shop) never count as a unit: no standard install, no auto labour.
+  if ((product as any)?.supplier_type === "consumables") return false;
   const blob = [product.product_category, product.category, product.short_name, product.description]
     .filter(Boolean).join(" ").toLowerCase();
   return blob.includes("air conditioning") || blob.includes("aircon");
@@ -78,9 +81,12 @@ export function catalogLineFields(p: PaletteProduct, qty: number) {
   const markupPct = resolveProductMarkupPercent(p);
   const cost = Number(unitCost.toFixed(2));
   const supplierLen = perLength ? Number(p.unit_length) : null;
-  if (supplierLen && isPerMetreTrunking(p)) {
-    // Trunking is quoted per METRE: the book price of one length ÷ its metres (qty = metres).
-    const lengthSell = Number(unitSell.toFixed(2));
+  if (supplierLen) {
+    // Length items are quoted per METRE with waste in the cost (lengthLinePrice). qty = metres.
+    const waste = getActiveMaterialsWastePercent();
+    const rates = getActiveQuoteMarkupRates();
+    const matPct = rates ? categoryMarkupPercent("materials", rates) : markupPct;
+    const lp = lengthLinePrice(p, waste, matPct);
     return {
       product_id: p.id,
       item_name: p.short_name || p.product_code || "Product",
@@ -88,13 +94,13 @@ export function catalogLineFields(p: PaletteProduct, qty: number) {
       description: (p as any).ai_sales_description || p.description || null,
       supplier: p.supplier_name || null,
       quantity: qty,
-      unit_price: r4(lengthSell / supplierLen),
-      total_price: perMetreTotal(qty, lengthSell, supplierLen),
+      unit_price: lp.sellPerM,
+      total_price: Math.round(qty * lp.sellPerM * 100 + 1e-9) / 100,
       metadata: {
-        unit_cost: r4(cost / supplierLen), cost_excl: r4(cost / supplierLen), markup_percent: markupPct, quote_category: classifyQuoteCategory(p),
-        supplier_length_m: supplierLen, qty_unit: "metre",
+        unit_cost: lp.costPerM, cost_excl: lp.costPerM, markup_percent: matPct, quote_category: "materials",
+        qty_unit: "metre", supplier_length_m: supplierLen, waste_percent: waste, pack_cost_ex_vat: lp.packCost,
       } as Record<string, any>,
-      unitSell: lengthSell / supplierLen,
+      unitSell: lp.sellPerM,
     };
   }
   return {
@@ -107,7 +113,6 @@ export function catalogLineFields(p: PaletteProduct, qty: number) {
     unit_price: Number(unitSell.toFixed(2)),
     metadata: {
       unit_cost: cost, cost_excl: cost, markup_percent: markupPct, quote_category: classifyQuoteCategory(p),
-      ...(supplierLen ? { supplier_length_m: supplierLen, qty_unit: "length" } : {}),
     } as Record<string, any>,
     unitSell,
   };
@@ -131,6 +136,8 @@ export const isMetreLine = (i: { metadata?: any } | null | undefined) => i?.meta
 
 /** Total of a saved per-metre line at `metres` (from its stored per-metre price). */
 export function metreLineTotal(i: { unit_price?: number | null; metadata?: any }, metres: number): number {
+  // Waste-priced metre lines (waste_percent stamped): total = round2(metres x per-metre sell).
+  if (i.metadata?.waste_percent != null) return Math.round(metres * (Number(i.unit_price) || 0) * 100 + 1e-9) / 100;
   const L = Number(i.metadata?.supplier_length_m) || 3;
   const lengthSell = Math.round((Number(i.unit_price) || 0) * L * 100) / 100;
   return perMetreTotal(metres, lengthSell, L);
@@ -153,7 +160,7 @@ export async function addCatalogProductToQuote(opts: {
   qtyByCode?: Record<string, number>;
 }): Promise<AddProductResult> {
   const { addItem, product: p, areaId, bundles = [] } = opts;
-  const qty = opts.quantity && opts.quantity > 0 ? opts.quantity : isPerMetreTrunking(p) ? Number(p.unit_length) : 1;
+  const qty = opts.quantity && opts.quantity > 0 ? opts.quantity : 1;
   const f = catalogLineFields(p, qty);
   const { unitSell, ...fields } = f;
   const line = await addItem({
@@ -214,8 +221,8 @@ export function planStandardInstall(product: Partial<PaletteProduct>, templates:
     const code = String(it.product_code || "").trim().toUpperCase();
     const prod = code ? liveProducts.find((x) => String(x.product_code || "").trim().toUpperCase() === code) : null;
     if (!prod) { notes.push(`Skipped ${code || it.role} – not in active price books`); continue; }
-    // Per-metre trunking: default_length_m as metres, else default_qty lengths × unit length.
-    const qty = isPerMetreTrunking(prod) ? (it.default_length_m && it.default_length_m > 0 ? it.default_length_m : (it.default_qty || 1) * Number(prod.unit_length)) : it.default_qty || 1;
+    // Length items (trunking, drain pipe…): default_length_m as metres, else default_qty lengths × unit length.
+    const qty = isLengthProduct(prod) ? (it.default_length_m && it.default_length_m > 0 ? it.default_length_m : (it.default_qty || 1) * Number(prod.unit_length)) : it.default_qty || 1;
     lines.push({ role: it.role, product: prod, qty });
   }
   return { template: tpl, kitBundle, kitLength, lines, notes };

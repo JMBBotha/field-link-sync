@@ -48,13 +48,17 @@ export function stubProductFromQuoteItem(it: SavedQuoteItemLike): PaletteProduct
   const isLength = !!it.length && it.length > 0;
   // Per-metre trunking (qty = metres): lock ONE supplier length and price per
   // that many metres, so 3 m re-totals to the exact book price (no 88.17 × 3).
-  const metreLen = meta.qty_unit === "metre" ? Number(meta.supplier_length_m) || 0 : 0;
+  // Waste-priced metre lines (waste_percent stamped) lock ONE metre: total = qty x per-metre sell.
+  const wasteLine = meta.qty_unit === "metre" && meta.waste_percent != null;
+  const metreLen = wasteLine ? 1 : meta.qty_unit === "metre" ? Number(meta.supplier_length_m) || 0 : 0;
   const qty = isLength ? Number(it.quantity) || 1 : metreLen || 1;
   const lockedSell = metreLen ? Math.round(unitPrice * metreLen * 100) / 100 : unitPrice * qty;
   const lockedCost = unitCost != null ? (metreLen ? Math.round(unitCost * metreLen * 100) / 100 : unitCost * qty) : null;
-  const metreUnit = metreLen ? { unit_type: "m", price_per_unit_qty: metreLen, price_per_unit_label: `${metreLen} m`, allows_decimal_qty: true, qty_step: 0.1, min_qty: 0 } : {};
+  const metreUnit = metreLen ? { unit_type: "m", price_per_unit_qty: metreLen, price_per_unit_label: `${metreLen} m`, allows_decimal_qty: true, qty_step: 0.1, min_qty: wasteLine ? 0.1 : 0 } : {};
+  const wasteMeta = wasteLine ? { qty_unit: "metre", supplier_length_m: Number(meta.supplier_length_m) || null, waste_percent: Number(meta.waste_percent), pack_cost_ex_vat: meta.pack_cost_ex_vat ?? null } : {};
   return {
     ...metreUnit,
+    ...wasteMeta,
     id: it.product_id || it.id,
     product_code: it.item_number || "",
     short_name: it.item_name || "",

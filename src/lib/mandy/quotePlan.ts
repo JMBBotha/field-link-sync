@@ -13,8 +13,9 @@ import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import type { QuoteItem, QuoteItemInsert } from "@/types/quote";
 import type { InstallTemplate } from "@/lib/installTemplates";
 import { matchCatalog, type CatalogHit } from "@/lib/mandy/catalogMatch";
+import { isLengthProduct } from "@/lib/priceGuard";
 import {
-  addCatalogProductToQuote, catalogLineFields, isPerMetreTrunking, isAirConditioningProduct, planStandardInstall, type BundleForKit,
+  addCatalogProductToQuote, catalogLineFields, isAirConditioningProduct, planStandardInstall, type BundleForKit,
 } from "@/lib/mandy/quoteOps";
 import { serviceLine, type SceneBreakdown, type SceneLine, type ServiceRow } from "@/lib/voiceQuoteKit";
 
@@ -73,17 +74,14 @@ export interface ResolveCtx {
 
 /** Qty for a matched product: explicit plan qty, else the matcher's spoken qty, else metres → supplier lengths. */
 function qtyFor(item: QuotePlanItem, m: { qty: number | null; lengthM: number | null }, p: PaletteProduct): number {
-  if (isPerMetreTrunking(p)) {
-    // Per-metre trunking: spoken metres win; a spoken count is supplier lengths (x unit length); default one length.
+  if (isLengthProduct(p)) {
+    // Length items are metre lines: spoken metres win; a spoken count is supplier lengths (x unit length); default one length.
     const metres = item.length_m ?? m.lengthM;
     if (metres) return metres;
     return (item.qty || m.qty || 1) * Number(p.unit_length);
   }
   if (item.qty) return item.qty;
   if (m.qty) return m.qty;
-  const len = item.length_m ?? m.lengthM;
-  const unitLen = Number(p.unit_length) || 0;
-  if (len && p.sold_in_length && unitLen > 0) return Math.max(1, Math.ceil(len / unitLen - 1e-9));
   return 1;
 }
 
