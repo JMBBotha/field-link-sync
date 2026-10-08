@@ -178,9 +178,8 @@ export default function QuoteQuickEditor({
   const emptySections = useMemo(() => {
     if (mode !== "unit" && mode !== "material" && mode !== "item" && mode !== "selected") return null;
     if (mode === "selected") {
-      const grouped = groupFavourites(favIds, products, []);
-      const favs = [...grouped.units, ...grouped.materials];
-      return basketProducts.length || favs.length ? { basket: basketProducts, favs } : null;
+      // Selected = PDF basket picks only; favourites stay in unit/material/item pickers.
+      return basketProducts.length ? { basket: basketProducts, favs: [] } : null;
     }
     const fits = (p: PaletteProduct) => mode === "item" || (mode === "unit") === isAirConditioningProduct(p);
     const basket: PaletteProduct[] = [];
@@ -385,7 +384,7 @@ export default function QuoteQuickEditor({
             data-area-item-search
             autoFocus={mode === "unit" || mode === "material"}
             readOnly={mode === "selected"}
-            placeholder={mode === "selected" ? "Selected / Favourites" : mode === "unit" ? "Search units…" : mode === "material" ? "Search materials…" : mode === "item" ? "Search model, size (12k) or name…" : "Add item from catalog…"}
+            placeholder={mode === "selected" ? "Selected from PDF" : mode === "unit" ? "Search units…" : mode === "material" ? "Search materials…" : mode === "item" ? "Search model, size (12k) or name…" : "Add item from catalog…"}
             className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
           />
           {loadingProducts && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-slate-400" />}
