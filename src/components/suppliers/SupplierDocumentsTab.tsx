@@ -875,7 +875,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">
                       {new Date(entry.created_at).toLocaleDateString()}{" "}
-                      {new Date(entry.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(entry.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
                     </span>
                     <Badge variant={entry.action === "clean_purge" ? "destructive" : "default"} className="text-[9px] px-1.5 py-0">
                       {entry.action === "clean_purge" ? "Purge" : entry.action === "pdf_import" ? "PDF Import" : "CSV Import"}

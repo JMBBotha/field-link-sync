@@ -52,7 +52,7 @@ export const logQueueState = async () => {
       type: op.operationType,
       table: op.tableName,
       recordId: op.recordId?.substring(0, 8) + '...',
-      timestamp: new Date(op.timestamp).toLocaleTimeString(),
+      timestamp: new Date(op.timestamp).toLocaleTimeString([], { hour12: false }),
       retryCount: op.retryCount,
       synced: op.synced,
       error: op.lastError?.substring(0, 30),
