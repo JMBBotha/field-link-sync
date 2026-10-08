@@ -1441,6 +1441,7 @@ export type Database = {
         Row: {
           address: string | null
           area: string | null
+          assigned_rep_id: string | null
           city: string | null
           company_id: string | null
           company_name: string | null
@@ -1477,6 +1478,7 @@ export type Database = {
         Insert: {
           address?: string | null
           area?: string | null
+          assigned_rep_id?: string | null
           city?: string | null
           company_id?: string | null
           company_name?: string | null
@@ -1513,6 +1515,7 @@ export type Database = {
         Update: {
           address?: string | null
           area?: string | null
+          assigned_rep_id?: string | null
           city?: string | null
           company_id?: string | null
           company_name?: string | null
@@ -1547,6 +1550,13 @@ export type Database = {
           vat_number?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "customers_assigned_rep_id_fkey"
+            columns: ["assigned_rep_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "customers_company_id_fkey"
             columns: ["company_id"]
@@ -9014,14 +9024,24 @@ export type Database = {
         }
         Returns: string
       }
+      rep_can_see_customer: {
+        Args: { _customer: string; _uid: string }
+        Returns: boolean
+      }
       rep_can_see_invoice: {
         Args: { _inv: string; _uid: string }
+        Returns: boolean
+      }
+      rep_can_see_job: {
+        Args: { _job: string; _uid: string }
         Returns: boolean
       }
       rep_can_see_lead: {
         Args: { _lead: string; _uid: string }
         Returns: boolean
       }
+      rep_customer_ids: { Args: { _uid: string }; Returns: string[] }
+      rep_owns_lead: { Args: { _lead: string; _uid: string }; Returns: boolean }
       replace_quote_from_builder: {
         Args: {
           p_areas: Json
