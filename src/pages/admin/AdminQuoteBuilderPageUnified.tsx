@@ -78,6 +78,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { isAirConditioningProduct, planStandardInstall } from "@/lib/mandy/quoteOps";
 import { fetchVisualCatalogAllowlist, filterPaletteCatalog } from "@/lib/catalogSoT";
 import { useActiveSpecials } from "@/hooks/useActiveSpecials";
+import QuoteActionBar from "@/components/quoting/QuoteActionBar";
+import { useQuoteDocumentActions } from "@/hooks/useQuoteDocumentActions";
 import AreaFirstBuilder from "@/components/quoting/AreaFirstBuilder";
 import { useSpecialPrompt } from "@/components/specials/SpecialsUi";
 import { specialLineMeta } from "@/lib/specials";
@@ -1117,6 +1119,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
 
   const flushSaveRef = useRef<(() => Promise<void>) | null>(null);
   flushSaveRef.current = flushSave;
+  const docActions = useQuoteDocumentActions(quoteId, { beforeWrite: () => flushSaveRef.current?.() });
 
   // Debounced auto-save while editing.
   useEffect(() => {
@@ -1318,7 +1321,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
       <Dialog open={labourDialog.length > 0} onOpenChange={(open) => { if (!open) setLabourDialog([]); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Labour missing</DialogTitle><DialogDescription>Add labour to every populated area before continuing.</DialogDescription></DialogHeader>
-          <div className="space-y-1">{labourDialog.map((area) => <Button key={area.id} variant="ghost" className="w-full justify-start" onClick={() => { setLabourDialog([]); navigate(`/admin/estimates/${quoteId}`); }}>{area.name}</Button>)}</div>
+          <div className="space-y-1">{labourDialog.map((area) => <Button key={area.id} variant="ghost" className="w-full justify-start" onClick={() => { setLabourDialog([]); window.setTimeout(() => document.getElementById(`area-labour-${area.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>{area.id === "job" ? "Job labour" : area.name}</Button>)}</div>
         </DialogContent>
       </Dialog>
 
@@ -1577,28 +1580,37 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
         })()}
       </div>
 
-      {/* Phone/tablet thumb bar: live total + primary Send, always visible
-          while building. Sits above the fixed mobile bottom nav. */}
-      {isCompact && (
+      {/* Shared Save draft · Download PDF · Send bar (Build quote tab, every width); phones keep the live total and sit above the bottom nav. */}
+      {activeTab === "quote" && quoteId && (
+        <div className="shrink-0 border-t bg-card px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] mb-16 lg:mb-0">
+          <QuoteActionBar
+            busy={docActions.busy}
+            onSave={docActions.handleSave}
+            onPdf={() => void docActions.handlePdf()}
+            onSend={docActions.handleSend}
+            onPrint={docActions.handlePrint}
+            leading={isCompact ? (
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total incl. VAT</p>
+                <p className="truncate text-base font-bold tabular-nums text-foreground">{formatRand(displayQuoteTotals.total)}</p>
+              </div>
+            ) : undefined}
+          />
+        </div>
+      )}
+      {isCompact && activeTab !== "quote" && (
         <div className="shrink-0 flex items-center justify-between gap-3 border-t bg-card px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] mb-16 lg:mb-0">
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Total incl. VAT
-            </p>
-            <p className="text-base font-bold text-foreground tabular-nums truncate">
-              {formatRand(displayQuoteTotals.total)}
-            </p>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total incl. VAT</p>
+            <p className="text-base font-bold text-foreground tabular-nums truncate">{formatRand(displayQuoteTotals.total)}</p>
           </div>
-          <Button
-            onClick={handleGenerateQuote}
-            disabled={generating}
-            className="h-11 px-5 text-sm font-semibold gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-gray-900 shrink-0"
-          >
+          <Button onClick={handleGenerateQuote} disabled={generating} className="h-11 px-5 text-sm font-semibold gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-gray-900 shrink-0">
             {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Send
           </Button>
         </div>
       )}
+      {docActions.portals}
 
       {/* Floating selected items panel */}
       {floatingOpen && (

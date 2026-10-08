@@ -14,6 +14,7 @@ import { findAreaLabour, isLabourItem, planLabour, standardLabourRate, stepHours
 import { isJobLabour, normalizeLabourMode } from "@/lib/areaLabour";
 import { formatRand } from "@/utils/formatRand";
 import { toast } from "@/hooks/use-toast";
+import LabourModeSwitch, { useLabourModeSwitch } from "@/components/quoting/LabourModeSwitch";
 import { ToastAction } from "@/components/ui/toast";
 
 /** `line` is resolved by LabourPanel so every labour line (job row, extras) gets a row. `job` = the whole-job row. */
@@ -103,6 +104,7 @@ export default function LabourPanel() {
   const { settings } = useCompanySettings() as any;
   const standardRate = standardLabourRate(settings?.default_hourly_rate);
   const jobMode = normalizeLabourMode((ctx.meta as any)?.labour_mode) === "job";
+  const labourSwitch = useLabourModeSwitch(Number(settings?.default_install_labour_hours) || 3.5);
   const all = ctx.items.filter((i) => !i.parent_item_id && isLabourItem(i));
   const rows: { key: string; areaId: string; name: string; line: any; job?: boolean }[] = jobMode
     ? [{ key: "job", areaId: "job", name: "Job labour", line: all.find((i) => isJobLabour(i as any)) ?? null, job: true }]
@@ -119,6 +121,7 @@ export default function LabourPanel() {
           {standardRate == null ? "Standard rate not set — Set rate in Settings or type one on a row" : `Standard ${formatRand(standardRate)}/h excl. VAT · 0% markup · staff only`}
         </span>
       </div>
+      <LabourModeSwitch className="mb-1 text-xs" checked={jobMode} disabled={labourSwitch.busy} onChange={(job) => void labourSwitch.switchTo(job ? "job" : "per_area")} />
       {rows.map((r) => (
         <LabourRow key={r.key} areaId={r.areaId} areaName={r.name} standardRate={standardRate} line={r.line} job={r.job} />
       ))}

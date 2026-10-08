@@ -43,6 +43,13 @@
       "when": 1791481603032,
       "tag": "0005_calendar_s5_rank_busy_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791484004018,
+      "tag": "0006_labour_mode_job_auto_rate",
+      "breakpoints": true
     }
   ]
 }
