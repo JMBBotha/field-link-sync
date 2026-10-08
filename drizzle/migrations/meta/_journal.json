@@ -36,6 +36,13 @@
       "when": 1791480540773,
       "tag": "0004_calendar_s5_availability_picker",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791481603032,
+      "tag": "0005_calendar_s5_rank_busy_fix",
+      "breakpoints": true
     }
   ]
 }
