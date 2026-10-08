@@ -1,7 +1,9 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import IdentityBadge from "@/components/IdentityBadge";
 import fieldAgentSource from "@/pages/FieldAgent.tsx?raw";
+import adminLayoutSource from "@/components/admin/AdminLayout.tsx?raw";
+import fieldShellSource from "@/components/field/FieldShell.tsx?raw";
 
 const state = vi.hoisted(() => ({
   user: { id: "user-1", email: "t@x.co" } as { id: string; email: string } | null,
@@ -12,13 +14,13 @@ const state = vi.hoisted(() => ({
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
-      getUser: async () => ({ data: { user: state.user } }),
+      getSession: async () => ({ data: { session: state.user ? { user: state.user } : null } }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
     },
     from: (table: string) => ({
       select: () => ({
         eq: () => {
-          const rows =
-            table === "profiles" ? state.profile : state.roles.map((role) => ({ role }));
+          const rows = table === "profiles" ? state.profile : state.roles.map((role) => ({ role }));
           return {
             maybeSingle: async () => ({ data: table === "profiles" ? state.profile : null }),
             then: (resolve: (r: unknown) => void) => resolve({ data: rows, error: null }),
@@ -32,6 +34,13 @@ vi.mock("@/integrations/supabase/client", () => ({
 const renderBadge = () => render(<IdentityBadge />);
 
 describe("IdentityBadge", () => {
+  beforeEach(() => {
+    cleanup();
+    state.user = { id: "user-1", email: "t@x.co" };
+    state.profile = null;
+    state.roles = [];
+  });
+
   it.each([
     [["admin"], false, "Admin"],
     [["field_agent"], false, "Technician"],
@@ -45,7 +54,7 @@ describe("IdentityBadge", () => {
     };
     renderBadge();
     expect(await screen.findByText(label as string)).toBeInTheDocument();
-    expect(screen.getByTestId("identity-badge")).toHaveTextContent("Thabo Mokoena");
+    await waitFor(() => expect(screen.getByTestId("identity-badge")).toHaveTextContent("Thabo Mokoena"));
   });
 
   it("shows first name on phones with the role chip", async () => {
@@ -53,7 +62,7 @@ describe("IdentityBadge", () => {
     state.profile = { full_name: "Thabo Mokoena", dispatch_role: null };
     renderBadge();
     await screen.findByText("Technician");
-    expect(document.querySelector(".xl\\:hidden")).toHaveTextContent("Thabo");
+    await waitFor(() => expect(document.querySelector(".xl\\:hidden")).toHaveTextContent("Thabo"));
     expect(document.querySelector(".xl\\:inline")).toHaveTextContent("Thabo Mokoena");
   });
 
@@ -63,7 +72,7 @@ describe("IdentityBadge", () => {
     state.profile = { full_name: null, dispatch_role: null };
     renderBadge();
     expect(await screen.findByText("Admin")).toBeInTheDocument();
-    expect(screen.getByTestId("identity-badge")).toHaveTextContent("amy");
+    await waitFor(() => expect(screen.getByTestId("identity-badge")).toHaveTextContent("amy"));
   });
 
   it("FieldAgent no longer renders the trial badge or upgrade gate", () => {
@@ -71,5 +80,11 @@ describe("IdentityBadge", () => {
     expect(fieldAgentSource).not.toContain("UpgradeModal");
     expect(fieldAgentSource).not.toContain("useSubscription");
     expect(fieldAgentSource).not.toContain("Trial Expired");
+  });
+
+  it("is mounted in AdminLayout, FieldAgent and FieldShell headers", () => {
+    expect(adminLayoutSource).toContain("<IdentityBadge />");
+    expect(fieldAgentSource).toContain("<IdentityBadge />");
+    expect(fieldShellSource).toContain("<IdentityBadge />");
   });
 });
