@@ -1429,22 +1429,6 @@ const DayTimeline = ({
   const laneGroups = groupAgentsByLane(agents, laneById);
 
   return (
-            <TechPoolTile
-              key={s.id}
-              schedule={s}
-              onDragStart={onScheduleDragStart}
-              style={{ top, height }}
-              onOpen={(jobId) => navigate(`/admin/jobs/${jobId}`)}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
-
-
-
-  return (
     <div className="flex min-w-0">
       {/* Time gutter */}
       <div className="shrink-0 w-14 border-r bg-muted/30">
@@ -1627,28 +1611,6 @@ const WeekTimeline = ({
   const navigate = useNavigate();
   const laneGroups = groupAgentsByLane(agents, laneById);
   return (
-          <td key={key} className="border-b p-1 align-top min-w-[100px]">
-            <div className="space-y-0.5">
-              {items.map(s => (
-                <TechPoolTile
-                  key={s.id}
-                  schedule={s}
-                  compact
-                  onDragStart={onScheduleDragStart}
-                  onOpen={(jobId) => navigate(`/admin/jobs/${jobId}`)}
-                />
-              ))}
-              {items.length === 0 && <div className="text-[10px] text-muted-foreground/40 text-center py-2">—</div>}
-            </div>
-          </td>
-        );
-      })}
-    </tr>
-  );
-
-
-
-  return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse min-w-[800px]">
         <thead>
@@ -1685,6 +1647,7 @@ const WeekTimeline = ({
                   <LaneBadge lane={laneById.get(agent.id) ?? null} />
                   {isAgentOnline(agent.id) && <span className="text-[9px] text-success font-semibold ml-auto shrink-0">Online</span>}
                 </div>
+                 <p className="text-[10px] text-muted-foreground">{hoursLabel(Array.from(schedulesMap.values()).flat().filter(s => s.agent_id === agent.id).reduce((n, s) => n + bookingMinutes(s), 0))} booked</p>
               </td>
               {dates.map(d => {
                 const dateStr = format(d, "yyyy-MM-dd");
@@ -1749,7 +1712,6 @@ const WeekTimeline = ({
               })}
             </tr>
               ))}
-              {group.key === "service" && hasPool && <PoolRow />}
             </Fragment>
 
           ))}
