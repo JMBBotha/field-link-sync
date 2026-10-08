@@ -578,7 +578,6 @@ export default function EstimateBuilder({
                 if (!allowNewArea()) return null;
                 const created = await addArea(`Area ${areas.length + 1}`);
                 if (!created?.id) return null;
-                setOpenAdd({ key: created.id, mode: open ?? "unit" });
                 return created.id;
               },
               onChanged,

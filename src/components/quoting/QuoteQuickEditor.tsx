@@ -12,7 +12,7 @@ import { resolveProductMarkupPercent } from "@/lib/pricing";
  * into quote_items / quote_areas for the already-open quoteId. The Visual PDF
  * catalog stays in the full builder.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Star, Wrench, Package, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -117,6 +117,16 @@ export default function QuoteQuickEditor({
   const [productTerm, setProductTerm] = useState("");
   const [serviceTerm, setServiceTerm] = useState("");
   const [adding, setAdding] = useState<string | null>(null);
+  // Sync guard: a second fast click/Enter on ANY row is ignored until the add settles.
+  const addingRef = useRef(false);
+  const closeAfterAdd = () => {
+    if (mode) { onClose?.(); return; }
+    setProductTerm("");
+    setServiceTerm("");
+    setServiceFocus(false);
+    const el = document.activeElement as HTMLElement | null;
+    if (el && el.tagName === "INPUT") el.blur();
+  };
   const [pendingAdd, setPendingAdd] = useState<{ kind: "product"; value: PaletteProduct } | { kind: "service"; value: CatalogService } | null>(null);
   const [pickedAreaId, setPickedAreaId] = useState("");
 
@@ -245,6 +255,7 @@ export default function QuoteQuickEditor({
         const id = result.line.id;
         setTimeout(() => { const el = document.querySelector<HTMLInputElement>(`[data-line-qty="${id}"]`); el?.focus(); el?.select(); }, 150);
       }
+      if (result.line) closeAfterAdd();
     } finally {
       setAdding(null);
     }
@@ -259,6 +270,7 @@ export default function QuoteQuickEditor({
       if (fromFavourites) toast({ title: `Added ${s.name}` });
       onChanged?.();
       onAddedToArea?.(areaId);
+      closeAfterAdd();
     } finally {
       setAdding(null);
     }
@@ -327,20 +339,31 @@ export default function QuoteQuickEditor({
       { item_name: p.short_name || p.product_code, item_type: "product", metadata: {} },
       p,
     );
-    await routeAdd({ kind: "product", value: p }, isUnit, fromFavourites);
+    await guardedRouteAdd({ kind: "product", value: p }, isUnit, fromFavourites);
   };
 
   const addCatalogService = async (s: CatalogService) => {
-    await routeAdd({ kind: "service", value: s }, false);
+    await guardedRouteAdd({ kind: "service", value: s }, false);
+  };
+
+  const guardedRouteAdd = async (pending: NonNullable<typeof pendingAdd>, isUnit: boolean, fromFavourites = false) => {
+    if (addingRef.current || adding) return;
+    addingRef.current = true;
+    try { await routeAdd(pending, isUnit, fromFavourites); } finally { addingRef.current = false; }
   };
 
   const confirmPickedArea = async () => {
     const pending = pendingAdd;
     const areaId = pickedAreaId;
-    if (!pending || !areaId) return;
+    if (!pending || !areaId || addingRef.current) return;
     setPendingAdd(null);
-    if (pending.kind === "product") await commitProduct(pending.value, areaId);
-    else await commitCatalogService(pending.value, areaId);
+    addingRef.current = true;
+    try {
+      if (pending.kind === "product") await commitProduct(pending.value, areaId);
+      else await commitCatalogService(pending.value, areaId);
+    } finally {
+      addingRef.current = false;
+    }
   };
 
   const saveCustomService = async () => {
@@ -380,7 +403,7 @@ export default function QuoteQuickEditor({
           services={svcOrdered}
           busyId={adding}
           onPickProduct={(p) => addProduct(p, true)}
-          onPickService={(s) => routeAdd({ kind: "service", value: s }, false, true)}
+          onPickService={(s) => guardedRouteAdd({ kind: "service", value: s }, false, true)}
         />
       ) : (
       <div className={mode ? "grid gap-2" : "grid gap-2 sm:grid-cols-2"}>
