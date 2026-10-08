@@ -8,6 +8,8 @@ interface AvailabilityIndicatorProps {
   isInBufferWindow: boolean;
   nextAvailableText: string;
   compact?: boolean;
+  /** Compact only: show just the status dot (label stays in the tooltip / aria-label). */
+  hideLabel?: boolean;
 }
 
 const AvailabilityIndicator = ({
@@ -15,6 +17,7 @@ const AvailabilityIndicator = ({
   isInBufferWindow,
   nextAvailableText,
   compact = false,
+  hideLabel = false,
 }: AvailabilityIndicatorProps) => {
   const getStatusConfig = () => {
     if (status === "available") {
@@ -71,19 +74,21 @@ const AvailabilityIndicator = ({
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5" aria-label={`Schedule: ${config.label}`}>
             <div className={`relative h-2.5 w-2.5 rounded-full ${config.color}`}>
               {config.pulse && (
                 <span className={`absolute inset-0 rounded-full ${config.color} animate-ping opacity-75`} />
               )}
             </div>
-            <span className={`text-xs font-medium ${config.textColor}`}>
-              {config.label}
-            </span>
+            {!hideLabel && (
+              <span className={`text-xs font-medium ${config.textColor}`}>
+                {config.label}
+              </span>
+            )}
           </div>
         </TooltipTrigger>
         <TooltipContent>
-          <p>{nextAvailableText}</p>
+          <p>{hideLabel ? `${config.label} · ${nextAvailableText}` : nextAvailableText}</p>
         </TooltipContent>
       </Tooltip>
     );

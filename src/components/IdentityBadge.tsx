@@ -53,13 +53,14 @@ const IdentityBadge = () => {
     <div
       data-testid="identity-badge"
       title={`${info.name} · ${info.role}`}
-      className="flex min-w-0 max-w-[9rem] items-center gap-1.5 rounded-full bg-orange-500 py-1 pl-2.5 pr-1.5 text-xs font-semibold text-white sm:max-w-[14rem] sm:pl-3 sm:pr-2"
+      className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-orange-500 py-1 pl-2.5 pr-1.5 text-xs font-semibold text-white xl:pl-3 xl:pr-2"
     >
-      <span className="truncate">
-        <span className="sm:hidden">{firstName}</span>
-        <span className="hidden sm:inline">{info.name}</span>
+      {/* Phones/tablets: first name + role chip (never squeezed); desktop: "Full Name · Role". */}
+      <span className="max-w-[7rem] truncate xl:max-w-[14rem]">
+        <span className="xl:hidden">{firstName}</span>
+        <span className="hidden xl:inline">{info.name}</span>
       </span>
-      <span className="hidden sm:inline">·</span>
+      <span className="hidden xl:inline">·</span>
       <span className="shrink-0 rounded-full bg-orange-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none">
         {info.role}
       </span>

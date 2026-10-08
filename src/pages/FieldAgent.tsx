@@ -6,9 +6,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, LogOut, MapPin, Navigation, ChevronUp, ChevronDown, List, Clock, Loader2, Map, Timer, AlertCircle, RefreshCw, Home, CheckCircle2, FileText, CloudOff, Calculator } from "lucide-react";
+import { ArrowLeft, LogOut, MapPin, Navigation, ChevronUp, ChevronDown, List, Clock, Loader2, Map, Timer, AlertCircle, RefreshCw, Home, CheckCircle2, FileText, CloudOff, Calculator, Menu, NavigationOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -1192,69 +1193,87 @@ const FieldAgent = () => {
     <Layout footerLeftContent={footerLeftContent} hideFooterOnMobile>
       <div className="h-screen flex flex-col overflow-hidden pb-12">
         {/* Header - Cyan Theme */}
-        <header className="backdrop-blur border-b px-3 md:px-4 py-2 md:py-3 flex items-center justify-between z-20" style={{ backgroundColor: '#0077B6', borderColor: '#006699', color: '#FFFFFF' }}>
-          <div className="flex items-center gap-2 md:gap-3">
-            <CompanyLogo className="h-10 md:h-[4.5rem]" />
-            <div className="hidden md:block h-6 w-px bg-white/30" />
-            {(roleIsAdmin || roleIsDispatcher) && <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="hidden md:flex gap-1 text-white hover:bg-white/20">
-              <ArrowLeft className="h-4 w-4 text-white" />
-              Dashboard
-            </Button>}
-            {canOpenQuoteBuilder && <Button variant="ghost" size="sm" onClick={() => navigate("/field/quote-builder")} className="hidden md:flex gap-1 text-white hover:bg-white/20">
-              <Calculator className="h-4 w-4 text-white" />
-              Quote Builder
-            </Button>}
-            <div className="hidden md:block h-6 w-px bg-white/30" />
-            <div className="flex flex-col">
-              <span className="font-semibold text-sm text-white">Field Agent</span>
-              {userName && <span className="text-xs text-white/80 hidden md:block">{userName}</span>}
-            </div>
+        <header className="backdrop-blur border-b px-2 sm:px-3 md:px-4 py-2 md:py-3 flex items-center justify-between gap-2 min-w-0 z-20" style={{ backgroundColor: '#0077B6', borderColor: '#006699', color: '#FFFFFF' }}>
+          {/* Left: logo, office links (text at xl, icons at tablet, menu on phones), GPS state.
+              The signed-in person is shown once, by the orange IdentityBadge on the right. */}
+          <div className="flex min-w-0 items-center gap-1.5 md:gap-2 xl:gap-3">
+            <CompanyLogo className="h-8 w-auto max-w-[6.5rem] shrink-0 object-contain sm:max-w-none md:h-12 xl:h-[4.5rem]" />
+            <h1 className="sr-only">Field Agent{userName ? ` – ${userName}` : ""}</h1>
+            {(roleIsAdmin || roleIsDispatcher || canOpenQuoteBuilder) && (
+              <>
+                <div className="hidden md:block h-6 w-px shrink-0 bg-white/30" />
+                {(roleIsAdmin || roleIsDispatcher) && <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} aria-label="Dashboard" title="Dashboard" className="hidden md:flex shrink-0 gap-1 px-2 xl:px-3 text-white hover:bg-white/20">
+                  <ArrowLeft className="h-4 w-4 text-white" />
+                  <span className="hidden xl:inline">Dashboard</span>
+                </Button>}
+                {canOpenQuoteBuilder && <Button variant="ghost" size="sm" onClick={() => navigate("/field/quote-builder")} aria-label="Quote Builder" title="Quote Builder" className="hidden md:flex shrink-0 gap-1 px-2 xl:px-3 text-white hover:bg-white/20">
+                  <Calculator className="h-4 w-4 text-white" />
+                  <span className="hidden xl:inline">Quote Builder</span>
+                </Button>}
+              </>
+            )}
             {locationEnabled ? (
-              <Badge variant="outline" className="text-xs bg-green-500/20 text-white border-green-400">
-                <Navigation className="h-3 w-3 mr-1" />
-                {isMobile ? "" : "Live"}
+              <Badge variant="outline" title="Live location on" aria-label="Live location on" className="shrink-0 whitespace-nowrap text-xs bg-green-500/20 text-white border-green-400">
+                <Navigation className="h-3 w-3 xl:mr-1" />
+                <span className="hidden xl:inline">Live</span>
               </Badge>
             ) : (
-              <Badge variant="outline" className="text-xs bg-red-500/20 text-white border-red-400">
-                No GPS
+              <Badge variant="outline" title="No GPS" aria-label="No GPS" className="shrink-0 whitespace-nowrap text-xs bg-red-500/20 text-white border-red-400">
+                <NavigationOff className="h-3 w-3 xl:mr-1" />
+                <span className="hidden xl:inline">No GPS</span>
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2 md:gap-3">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-1.5 md:gap-2">
             <IdentityBadge />
             <NotificationBell />
-            {/* Offline/Online Status Indicator */}
-            <OfflineIndicator
-              isOnline={isOnline}
-              syncStatus={syncStatus}
-              onRetrySync={retrySyncFailedOperations}
-              onClearFailed={clearFailedOperations}
-              onDeleteOperation={deleteOperation}
-              getPendingOperations={getPendingOperationsList}
-              compact={isMobile}
-            />
-            <div className="h-5 w-px bg-white/30" />
-            {/* Availability Toggle with Status Indicator */}
-            <div className="flex items-center gap-2">
+            {/* One availability control: connection/sync state, schedule status dot, and the
+                "available for leads" switch (behaviour unchanged: writes agent_locations.is_available only). */}
+            <div data-testid="availability-control" className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-white/25 bg-white/10 py-0 pl-1.5 pr-1">
+              {(syncStatus.isSyncing || !isOnline || syncStatus.pendingCount > 0 || syncStatus.failedOperations > 0) && (
+                <OfflineIndicator
+                  isOnline={isOnline}
+                  syncStatus={syncStatus}
+                  onRetrySync={retrySyncFailedOperations}
+                  onClearFailed={clearFailedOperations}
+                  onDeleteOperation={deleteOperation}
+                  getPendingOperations={getPendingOperationsList}
+                  compact
+                />
+              )}
               <AvailabilityIndicator
                 status={availability.status}
                 isInBufferWindow={availability.isInBufferWindow}
                 nextAvailableText={availability.formatNextAvailable()}
-                compact={isMobile}
+                compact
+                hideLabel
               />
+              <span className="hidden xl:inline text-xs font-medium text-white">{isAvailableForLeads ? "Available" : "Not available"}</span>
               <Switch
                 checked={isAvailableForLeads}
                 onCheckedChange={toggleAvailability}
-                className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-white/30"
+                aria-label="Available for new leads"
+                className="scale-90 origin-center data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-white/30 xl:scale-100"
               />
             </div>
-            <div className="h-5 w-px bg-white/30" />
-            {isMobile && (roleIsAdmin || roleIsDispatcher) && (
-              <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="text-white hover:bg-white/20 p-2">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
+            {(roleIsAdmin || roleIsDispatcher || canOpenQuoteBuilder) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" aria-label="Menu" className="md:hidden shrink-0 p-2 text-white hover:bg-white/20">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="z-[60]">
+                  {(roleIsAdmin || roleIsDispatcher) && (
+                    <DropdownMenuItem onSelect={() => navigate("/admin")}><ArrowLeft className="mr-2 h-4 w-4" />Dashboard</DropdownMenuItem>
+                  )}
+                  {canOpenQuoteBuilder && (
+                    <DropdownMenuItem onSelect={() => navigate("/field/quote-builder")}><Calculator className="mr-2 h-4 w-4" />Quote Builder</DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
-            <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-white hover:bg-white/20 p-2">
+            <Button variant="ghost" size="sm" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className="shrink-0 text-white hover:bg-white/20 p-2">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>

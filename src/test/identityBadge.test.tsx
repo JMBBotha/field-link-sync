@@ -53,8 +53,8 @@ describe("IdentityBadge", () => {
     state.profile = { full_name: "Thabo Mokoena", dispatch_role: null };
     renderBadge();
     await screen.findByText("Technician");
-    expect(document.querySelector(".sm\\:hidden")).toHaveTextContent("Thabo");
-    expect(document.querySelector(".sm\\:inline")).toHaveTextContent("Thabo Mokoena");
+    expect(document.querySelector(".xl\\:hidden")).toHaveTextContent("Thabo");
+    expect(document.querySelector(".xl\\:inline")).toHaveTextContent("Thabo Mokoena");
   });
 
   it("falls back to the email prefix when no full name is saved", async () => {
