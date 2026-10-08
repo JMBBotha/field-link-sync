@@ -49,6 +49,7 @@ const AdminPriceListsPage = () => {
       <VisualCatalogPanel
         readOnly
         showCost
+        rememberSupplierKey="fls-price-lists-supplier"
         open={true}
         onClose={() => navigate("/admin")}
         baskets={[]}
