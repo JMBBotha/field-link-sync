@@ -137,7 +137,7 @@ export default function CallHistoryPanel({
                         month: "short",
                         year: "numeric",
                         hour: "2-digit",
-                        minute: "2-digit",
+                        minute: "2-digit", hour12: false,
                       })}
                     </span>
                     <Badge variant="outline">{formatCallDuration(call.duration_seconds)}</Badge>
