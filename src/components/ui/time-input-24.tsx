@@ -8,13 +8,14 @@ export interface TimeInput24Props {
   disabled?: boolean;
   id?: string;
   "aria-label"?: string;
+  placeholder?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
 }
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
 const MINS = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, "0"));
 
-export function TimeInput24({ value, onChange, className, disabled, id, onKeyDown, ...rest }: TimeInput24Props) {
+export function TimeInput24({ value, onChange, className, disabled, id, onKeyDown, placeholder: _p, ...rest }: TimeInput24Props) {
   const [hRaw, mRaw] = String(value || "").split(":");
   const h = hRaw ? String(Number(hRaw)).padStart(2, "0") : "";
   const m = hRaw ? String(Number(mRaw || 0)).padStart(2, "0") : "";
