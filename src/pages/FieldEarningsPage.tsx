@@ -10,8 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Wallet } from "lucide-react";
-import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
+import { Loader2 } from "lucide-react";
+import FieldShell from "@/components/field/FieldShell";
 import { formatRand } from "@/utils/formatRand";
 import { formatSastDate } from "@/lib/salesTracker";
 import {
@@ -103,10 +103,9 @@ export default function FieldEarningsPage() {
   const sections = summarize(rows, techId || null);
 
   return (
-    <div className="min-h-screen bg-background pb-32" data-testid="tech-earnings">
-      <div className="mx-auto max-w-3xl space-y-3 p-4">
+    <FieldShell title={owner ? "Tech earnings" : "My earnings"}>
+      <div className="space-y-3" data-testid="tech-earnings">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-bold text-foreground"><Wallet className="h-5 w-5" />{owner ? "Tech earnings" : "My earnings"}</h1>
           <p className="text-[11px] text-muted-foreground">
             Your share of labour (ex VAT): paid when the job is completed, plus a holdback released after the holdback period unless there is a callback.
           </p>
@@ -169,7 +168,6 @@ export default function FieldEarningsPage() {
         ))}
         {!isLoading && rows.length === 0 && <p className="text-sm text-muted-foreground">No earnings yet.</p>}
       </div>
-      <FieldAgentBottomNav />
-    </div>
+    </FieldShell>
   );
 }

@@ -21,7 +21,7 @@ import { useMandyDock, openMandyVoice } from "@/lib/mandy/registry";
 
 import { useAssistantContextTracker } from "@/hooks/useAssistantContextTracker";
 import { WelcomeTourDialog } from "@/components/admin/WelcomeTourDialog";
-import logo from "@/assets/logo.png";
+import CompanyLogo from "@/components/shared/CompanyLogo";
 import { withTimeout } from "@/lib/withTimeout";
 
 const AdminLayout = () => {
@@ -218,7 +218,7 @@ const AdminLayout = () => {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <img src={logo} alt="Logo" className="h-8 lg:hidden shrink-0" />
+            <CompanyLogo className="h-8 lg:hidden shrink-0" />
             <h1 className="text-base sm:text-lg font-bold text-primary-foreground truncate">{pageTitle}</h1>
           </div>
 

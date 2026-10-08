@@ -3,18 +3,18 @@
  * the packing list is get_job_packing_list (name, code, quantity, area only). Ticks are saved on this device only.
  */
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CalendarDays, CheckCircle2, MapPin, Package, Phone, Play } from "lucide-react";
+import { CalendarDays, CheckCircle2, MapPin, Package, Phone, Play } from "lucide-react";
+import FieldShell from "@/components/field/FieldShell";
 import { useToast } from "@/hooks/use-toast";
 import { packQtyText, groupPackingList, loadTicks, saveTicks, type PackingRow } from "@/lib/packingList";
 
 export default function FieldJobSheetPage() {
   const { id = "" } = useParams();
-  const navigate = useNavigate();
   const job = useQuery({
     queryKey: ["field-job-sheet", id],
     enabled: !!id,
@@ -75,10 +75,8 @@ export default function FieldJobSheetPage() {
 
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4 p-4 pb-24">
-      <Button variant="ghost" size="sm" className="h-11 gap-1.5" onClick={() => navigate(-1)}>
-        <ArrowLeft className="h-4 w-4" /> Back
-      </Button>
+    <FieldShell title="Job sheet" back>
+      <div className="space-y-4">
       {job.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading job…</p>
       ) : !j ? (
@@ -86,7 +84,7 @@ export default function FieldJobSheetPage() {
       ) : (
         <Card>
           <CardContent className="space-y-2 p-4">
-            <h1 className="text-lg font-semibold">{j.title || "Job"}</h1>
+            <h2 className="text-lg font-semibold">{j.title || "Job"}</h2>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{[j.job_type, j.status].filter(Boolean).join(" · ")}</p>
             {j.scheduled_for && (
               <p className="flex items-center gap-2 text-sm"><CalendarDays className="h-4 w-4" />
@@ -146,6 +144,7 @@ export default function FieldJobSheetPage() {
           </Card>
         ))
       )}
-    </div>
+      </div>
+    </FieldShell>
   );
 }

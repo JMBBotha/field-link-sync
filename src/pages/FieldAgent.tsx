@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
-import logo from "@/assets/logo.png";
+import CompanyLogo from "@/components/shared/CompanyLogo";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import LeadDetailSheet from "@/components/LeadDetailSheet";
@@ -1202,7 +1202,7 @@ const FieldAgent = () => {
         {/* Header - Cyan Theme */}
         <header className="backdrop-blur border-b px-3 md:px-4 py-2 md:py-3 flex items-center justify-between z-20" style={{ backgroundColor: '#0077B6', borderColor: '#006699', color: '#FFFFFF' }}>
           <div className="flex items-center gap-2 md:gap-3">
-            <img src={logo} alt="Be Cool Logo" className="h-10 md:h-[4.5rem]" />
+            <CompanyLogo className="h-10 md:h-[4.5rem]" />
             <div className="hidden md:block h-6 w-px bg-white/30" />
             {(roleIsAdmin || roleIsDispatcher) && <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="hidden md:flex gap-1 text-white hover:bg-white/20">
               <ArrowLeft className="h-4 w-4 text-white" />

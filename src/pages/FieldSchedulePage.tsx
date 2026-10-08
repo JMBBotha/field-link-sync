@@ -9,7 +9,7 @@ import { scheduleRowToCard } from "@/lib/cardModel";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, Phone, Navigation, RefreshCw } from "lucide-react";
 import { JobCardListSkeleton } from "@/components/ui/skeletons";
-import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
+import FieldShell from "@/components/field/FieldShell";
 import DepositPaymentChip, { type DepositChipState } from "@/components/shared/DepositPaymentChip";
 import { format, isToday, isTomorrow, isThisWeek, startOfDay } from "date-fns";
 
@@ -110,10 +110,9 @@ const FieldSchedulePage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background pb-32">
-      <div className="max-w-3xl mx-auto p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Schedule</h1>
+    <FieldShell title="Schedule">
+      <div className="space-y-4">
+        <div className="flex items-center justify-end">
           <Button
             size="sm"
             variant="outline"
@@ -269,8 +268,7 @@ const FieldSchedulePage = () => {
         )}
       </div>
 
-      <FieldAgentBottomNav />
-    </div>
+    </FieldShell>
   );
 };
 
