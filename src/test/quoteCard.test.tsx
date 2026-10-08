@@ -6,7 +6,7 @@ import { buildDeals } from "@/lib/quotePipeline";
 
 const deal = (status = "accepted") => buildDeals([
   { id: "q1", status, total: 2000, created_at: "2026-10-01T08:00:00Z", customer_name: "Client", quote_number: "Q-001" },
-])[0];
+], [], [])[0];
 
 describe("QuoteCard", () => {
   it("forwards drag props to the root without enabling drag by itself", () => {
