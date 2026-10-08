@@ -8169,6 +8169,18 @@ export type Database = {
         Args: { p_quote_id: string; p_viewer: string }
         Returns: Json
       }
+      _person_bookings: {
+        Args: { p_date: string; p_profile_id: string }
+        Returns: {
+          agent_id: string
+          customer_name: string
+          end_time: string
+          job_id: string
+          lead_id: string
+          schedule_id: string
+          start_time: string
+        }[]
+      }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined
@@ -8337,6 +8349,24 @@ export type Database = {
         }[]
       }
       backfill_leads_to_customers: { Args: never; Returns: Json }
+      booking_clashes: {
+        Args: {
+          p_date: string
+          p_end: string
+          p_exclude_job_id?: string
+          p_exclude_lead_id?: string
+          p_profile_id: string
+          p_start: string
+        }
+        Returns: {
+          end_time: string
+          job_id: string
+          kind: string
+          label: string
+          lead_id: string
+          start_time: string
+        }[]
+      }
       broadcast_lead_to_agents: {
         Args: { p_lead_id: string; p_radius_km?: number }
         Returns: {
@@ -8423,6 +8453,7 @@ export type Database = {
       }
       create_quote_version: { Args: { p_quote_id: string }; Returns: string }
       decline_quote_by_token: { Args: { p_token: string }; Returns: boolean }
+      default_booking_minutes: { Args: { p_kind: string }; Returns: number }
       delete_job_used_part: { Args: { p_id: string }; Returns: boolean }
       disablelongtransactions: { Args: never; Returns: string }
       dispatchable_technicians: {
@@ -8968,6 +8999,20 @@ export type Database = {
       longtransactionsenabled: { Args: never; Returns: boolean }
       mark_overdue_maintenance: { Args: never; Returns: number }
       normalize_phone: { Args: { phone: string }; Returns: string }
+      open_double_bookings: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          a_end: string
+          a_label: string
+          a_start: string
+          b_end: string
+          b_label: string
+          b_start: string
+          booking_date: string
+          full_name: string
+          profile_id: string
+        }[]
+      }
       overrun_company_id: {
         Args: { _job_id: string; _lead_id: string }
         Returns: string

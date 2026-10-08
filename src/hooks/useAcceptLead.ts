@@ -5,6 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useToast } from "@/hooks/use-toast";
 import { addMinutes, format, parse } from "date-fns";
+import { useClashGuard } from "@/components/scheduling/ClashGuard";
+import { fromMinutes, toMinutes } from "@/lib/schedulingDefaults";
 import type { AppointmentValue } from "@/components/scheduling/AppointmentPicker";
 
 export interface AcceptLeadInput {
@@ -39,6 +41,7 @@ export function useAcceptLead() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const { confirmBooking, dialog: clashDialog } = useClashGuard();
 
   const acceptAndSchedule = async (
     lead: AcceptLeadInput,
@@ -57,6 +60,15 @@ export function useAcceptLead() {
     if (!appointment.date || !appointment.startTime) {
       toast({ title: "Pick a date and time", variant: "destructive" });
       return null;
+    }
+
+    if (appointment.agentId) {
+      const ok = await confirmBooking({
+        profileId: appointment.agentId, date: appointment.date, start: appointment.startTime,
+        end: fromMinutes(toMinutes(appointment.startTime) + appointment.durationMinutes),
+        excludeLeadId: lead.id, entity: { type: "lead", id: lead.id },
+      });
+      if (!ok) return null;
     }
 
     setSubmitting(true);
@@ -140,20 +152,19 @@ export function useAcceptLead() {
           .eq("profile_id", appointment.agentId)
           .maybeSingle();
 
-        if (existingAssign) {
-          await supabase
+        const { error: asgErr } = existingAssign
+          ? await supabase
             .from("assignments")
             .update({ status: "accepted", assigned_by: user.id })
-            .eq("id", existingAssign.id);
-        } else {
-          await supabase.from("assignments").insert({
+            .eq("id", existingAssign.id)
+          : await supabase.from("assignments").insert({
             job_id: jobId,
             profile_id: appointment.agentId,
             assigned_by: user.id,
             status: "accepted",
-            assignment_type: "manual",
+            assignment_type: "internal",
           });
-        }
+        if (asgErr) throw new Error(`Assigning the person failed: ${asgErr.message}`);
       }
 
       // 4) Activity log (best-effort)
@@ -202,5 +213,5 @@ export function useAcceptLead() {
     }
   };
 
-  return { acceptAndSchedule, submitting };
+  return { acceptAndSchedule, submitting, clashDialog };
 }

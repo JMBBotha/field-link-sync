@@ -54,7 +54,7 @@ serve(async (req) => {
     // Get job details
     const { data: job, error: jobError } = await supabase
       .from("jobs")
-      .select("id, company_id, status, title, customer_id")
+      .select("id, company_id, status, title, customer_id, scheduled_for, estimated_duration, job_type")
       .eq("id", job_id)
       .single();
 
@@ -88,7 +88,31 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    const pool = ((poolRows || []) as any[]).map((r) => ({ id: r.profile_id as string, assignment_type: r.assignment_type as string }));
+    let pool = ((poolRows || []) as any[]).map((r) => ({ id: r.profile_id as string, assignment_type: r.assignment_type as string }));
+
+    // ─── Clash check (Auto only): drop people already booked at the job's slot ───
+    if (!override_assignee_id && (job as any).scheduled_for && pool.length > 0) {
+      try {
+        const slot = sastSlot((job as any).scheduled_for, durationMinutes((job as any).estimated_duration, (job as any).job_type));
+        const free: typeof pool = [];
+        for (const p of pool) {
+          const { data: rows, error } = await supabase.rpc("booking_clashes", {
+            p_profile_id: p.id, p_date: slot.date, p_start: slot.start, p_end: slot.end, p_exclude_job_id: job_id,
+          });
+          if (error) throw error;
+          if (!((rows || []) as any[]).some((r) => r.kind === "overlap")) free.push(p);
+        }
+        if (free.length === 0) {
+          return new Response(
+            JSON.stringify({ success: false, assigned: false, reason: "Everyone is booked at that time", message: "Everyone is booked at that time" }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        pool = free;
+      } catch (e) {
+        console.error("[dispatch] booking_clashes failed, continuing without clash check:", e);
+      }
+    }
 
     let assigneeId: string | null = null;
     let assignmentType = "internal";
@@ -220,3 +244,28 @@ serve(async (req) => {
     );
   }
 });
+
+// Defaults mirrored from src/lib/schedulingDefaults.ts
+function durationMinutes(interval: string | null, jobType: string | null): number {
+  const s = String(interval || "");
+  const hm = s.match(/(\d+):(\d{2})/);
+  let mins = 0;
+  const days = s.match(/(\d+)\s*day/);
+  if (days) mins += Number(days[1]) * 1440;
+  if (hm) mins += Number(hm[1]) * 60 + Number(hm[2]);
+  if (mins > 0) return mins;
+  const k = String(jobType || "").toLowerCase();
+  if (k.includes("install")) return 210;
+  if (k.includes("repair")) return 150;
+  if (k.includes("service") || k.includes("maint")) return 120;
+  return 60;
+}
+
+function sastSlot(iso: string, mins: number) {
+  const local = new Date(new Date(iso).getTime() + 2 * 3600_000); // SAST = UTC+2, no DST
+  const date = local.toISOString().slice(0, 10);
+  const startMin = local.getUTCHours() * 60 + local.getUTCMinutes();
+  const endMin = Math.min(startMin + mins, 23 * 60 + 59);
+  const f = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  return { date, start: f(startMin), end: f(endMin) };
+}

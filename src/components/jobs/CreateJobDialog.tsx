@@ -16,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, MapPin, AlertTriangle, CheckCircle2 } from "lucide-react";
 import LocationPicker from "@/components/LocationPicker";
 import { geocodeAddress } from "@/lib/geocodeAddress";
+import { useClashGuard } from "@/components/scheduling/ClashGuard";
+import { fromMinutes, toMinutes } from "@/lib/schedulingDefaults";
 import AppointmentPicker, { type AppointmentValue } from "@/components/scheduling/AppointmentPicker";
 
 interface Props {
@@ -31,6 +33,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { confirmBooking, flushOverride, dialog: clashDialog } = useClashGuard();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -227,7 +230,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         address: address || null,
         lat: finalLat,
         lng: finalLng,
-        scheduled_for: appt.date && appt.startTime ? `${appt.date}T${appt.startTime}:00` : null,
+        scheduled_for: appt.date && appt.startTime ? `${appt.date}T${appt.startTime}:00+02:00` : null,
         estimated_duration: `${(appt.durationMinutes / 60).toFixed(2)} hours`,
         priority,
         job_type: jobType,
@@ -237,28 +240,24 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
 
       // If an agent was picked, create an assignment + schedule row
       if (data?.id && appt.agentId && appt.date && appt.startTime) {
-        const endTimeParts = (() => {
-          const [h, m] = appt.startTime.split(":").map(Number);
-          const total = h * 60 + m + appt.durationMinutes;
-          const eh = Math.floor(total / 60) % 24;
-          const em = total % 60;
-          return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
-        })();
-        await (supabase as any).from("assignments").insert({
+        const endTimeParts = fromMinutes(toMinutes(appt.startTime) + appt.durationMinutes);
+        const { error: asgErr } = await (supabase as any).from("assignments").insert({
           job_id: data.id,
           profile_id: appt.agentId,
           assigned_by: userId || null,
-          assignment_type: "primary",
-          status: "assigned",
+          assignment_type: "internal",
+          status: "accepted",
         });
+        if (asgErr) throw new Error(`Job created, but assigning the person failed: ${asgErr.message}`);
+        void flushOverride({ type: "job", id: data.id });
         if (safeLeadId) {
-          await supabase.from("job_schedules").insert({
-            lead_id: safeLeadId,
-            agent_id: appt.agentId,
-            scheduled_date: appt.date,
-            start_time: appt.startTime,
-            end_time: endTimeParts,
-          });
+          // The assignment trigger usually creates the job-keyed row; set its times, else insert it.
+          const { data: rows } = await supabase.from("job_schedules").select("id").eq("job_id", data.id).limit(1);
+          const times = { agent_id: appt.agentId, scheduled_date: appt.date, start_time: appt.startTime, end_time: endTimeParts };
+          const { error: schedErr } = rows?.[0]
+            ? await supabase.from("job_schedules").update(times).eq("id", rows[0].id)
+            : await supabase.from("job_schedules").insert({ ...times, lead_id: safeLeadId, job_id: data.id } as any);
+          if (schedErr) throw new Error(`Job created, but the calendar slot failed: ${schedErr.message}`);
         }
       }
 
@@ -318,6 +317,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -426,7 +426,17 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
-            onClick={() => createMutation.mutate()}
+            onClick={async () => {
+              if (appt.agentId && appt.date && appt.startTime) {
+                const ok = await confirmBooking({
+                  profileId: appt.agentId, date: appt.date, start: appt.startTime,
+                  end: fromMinutes(toMinutes(appt.startTime) + appt.durationMinutes),
+                  entity: { type: "job", id: "" },
+                });
+                if (!ok) return;
+              }
+              createMutation.mutate();
+            }}
             disabled={!title || !customerId || !address || !appt.date || !appt.startTime || !companyId || createMutation.isPending}
           >
             {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -435,6 +445,8 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {clashDialog}
+    </>
   );
 };
 

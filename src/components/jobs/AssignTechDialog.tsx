@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Loader2, User } from "lucide-react";
 import { mapDispatchCandidates } from "@/lib/teamGroups";
+import { useClashGuard } from "@/components/scheduling/ClashGuard";
+import { fromMinutes, jobMinutes, sastParts, toMinutes } from "@/lib/schedulingDefaults";
 
 /**
  * The Jobs board's Assign Technician dialog (moved here unchanged so the
@@ -29,6 +31,18 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
   const showAvailableOnly = availableOnly;
   const techDayCounts = dayCounts;
   const setAssignJobId = (_: null) => onClose();
+  const { confirmBooking, dialog: clashDialog } = useClashGuard();
+
+  /** Clash check over the job's scheduled_for + estimated_duration (SAST). */
+  const checkClash = async (jobId: string, techId: string) => {
+    const { data: job } = await supabase.from("jobs").select("scheduled_for, estimated_duration, job_type").eq("id", jobId).maybeSingle();
+    if (!(job as any)?.scheduled_for) return true;
+    const { date, time } = sastParts((job as any).scheduled_for);
+    return confirmBooking({
+      profileId: techId, date, start: time, end: fromMinutes(toMinutes(time) + jobMinutes(job as any)),
+      excludeJobId: jobId, entity: { type: "job", id: jobId },
+    });
+  };
   // Fetch available techs: internal staff + affiliated independents + network
   const { data: techs = [] } = useQuery({
     queryKey: ["dispatch-techs", companyId],
@@ -148,7 +162,11 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
             <Button variant="outline" onClick={() => setAssignJobId(null)}>Cancel</Button>
             <Button
               disabled={!selectedTechId || assignMutation.isPending}
-              onClick={() => assignJobId && assignMutation.mutate({ jobId: assignJobId, techId: selectedTechId })}
+              onClick={async () => {
+                if (!assignJobId) return;
+                if (!(await checkClash(assignJobId, selectedTechId))) return;
+                assignMutation.mutate({ jobId: assignJobId, techId: selectedTechId });
+              }}
             >
               {assignMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Assign
@@ -156,7 +174,7 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
+      {clashDialog}
     </>
   );
 };

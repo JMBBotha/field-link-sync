@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
+import { useClashGuard } from "./ClashGuard";
 import AppointmentPicker, { type AppointmentValue } from "./AppointmentPicker";
 import { format, parse, addMinutes } from "date-fns";
 
@@ -50,7 +50,7 @@ const ScheduleJobModal = ({
     agentId: "",
   });
   const [notes, setNotes] = useState("");
-  const [conflict, setConflict] = useState<string | null>(null);
+  const { confirmBooking, dialog: clashDialog } = useClashGuard();
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -71,7 +71,6 @@ const ScheduleJobModal = ({
         : prev.durationMinutes || 120,
       agentId: existingEvent?.agentId ?? prev.agentId,
     }));
-    setConflict(null);
   }, [open, existingEvent, selectedDate, selectedStart, selectedEnd]);
 
   // Fetch unscheduled leads
@@ -89,30 +88,19 @@ const ScheduleJobModal = ({
     enabled: open,
   });
 
-  // Conflict detection against provided schedules
-  useEffect(() => {
-    const { agentId, date, startTime, durationMinutes } = appt;
-    if (!agentId || !date || !startTime) {
-      setConflict(null);
-      return;
-    }
-    const endTime = computeEndTime(startTime, durationMinutes);
-    const conflicting = existingSchedules.find((s: any) => {
-      if (existingEvent && s.id === existingEvent.id) return false;
-      if (s.agent_id !== agentId || s.scheduled_date !== date) return false;
-      return startTime < s.end_time && endTime > s.start_time;
-    });
-    setConflict(conflicting
-      ? `Conflicts with ${conflicting.leads?.customer_name || "another job"} (${conflicting.start_time}–${conflicting.end_time})`
-      : null);
-  }, [appt, existingSchedules, existingEvent]);
-
   const handleSave = async () => {
     const { agentId, date, startTime, durationMinutes } = appt;
     if (!leadId || !agentId || !date || !startTime) {
       toast({ title: "Please fill all required fields", variant: "destructive" });
       return;
     }
+    const ev: any = existingEvent;
+    const ok = await confirmBooking({
+      profileId: agentId, date, start: startTime, end: computeEndTime(startTime, durationMinutes),
+      excludeJobId: ev?.job_id ?? null, excludeLeadId: ev?.job_id ? null : leadId,
+      entity: ev?.job_id ? { type: "job", id: ev.job_id } : { type: "lead", id: leadId },
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       const endTime = computeEndTime(startTime, durationMinutes);
@@ -180,6 +168,8 @@ const ScheduleJobModal = ({
   };
 
   return (
+    <>
+    {clashDialog}
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -203,13 +193,6 @@ const ScheduleJobModal = ({
             <AppointmentPicker value={appt} onChange={setAppt} />
           </div>
 
-          {conflict && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{conflict}</AlertDescription>
-            </Alert>
-          )}
-
           <div>
             <Label>Notes</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Optional notes..." />
@@ -229,6 +212,7 @@ const ScheduleJobModal = ({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   );
 };
 

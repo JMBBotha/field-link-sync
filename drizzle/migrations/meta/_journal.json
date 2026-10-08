@@ -15,6 +15,13 @@
       "when": 1791458768196,
       "tag": "0001_materials_waste_percent_and_packing_units",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791474290578,
+      "tag": "0002_calendar_clash_check",
+      "breakpoints": true
     }
   ]
 }
