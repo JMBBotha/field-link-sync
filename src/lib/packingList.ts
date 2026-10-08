@@ -2,6 +2,7 @@
 export type PackingRow = {
   area_name: string | null; area_sort: number | null; kit_name: string | null;
   item_code: string | null; item_name: string | null; quantity: number | string | null; line_sort: number | null;
+  qty_unit?: string | null; supplier_length_m?: number | string | null;
 };
 export type PackingLine = PackingRow & { key: string };
 
@@ -29,3 +30,13 @@ export function saveTicks(jobId: string, ticks: Record<string, boolean>) {
   try { localStorage.setItem(tickKey(jobId), JSON.stringify(ticks)); } catch { /* storage blocked: ticks stay in memory */ }
 }
 export const fmtQty = (q: unknown) => { const n = Number(q); return Number.isFinite(n) ? String(Math.round(n * 100) / 100) : "-"; };
+
+/** Packing qty text: metre rows "5 m (1 x 15.24 m coil)" (coil for copper, length otherwise); others "x 3". */
+export function packQtyText(r: Pick<PackingRow, "quantity" | "qty_unit" | "supplier_length_m" | "item_name" | "item_code">): string {
+  if (r.qty_unit !== "metre") return `× ${fmtQty(r.quantity)}`;
+  const m = Number(r.quantity) || 0, L = Number(r.supplier_length_m) || 0;
+  if (!(L > 0)) return `${fmtQty(m)} m`;
+  const n = Math.max(1, Math.ceil(m / L - 1e-9));
+  const word = /copper|^coprl/i.test(`${r.item_name || ""} ${r.item_code || ""}`) || /^coprl/i.test(r.item_code || "") ? "coil" : "length";
+  return `${fmtQty(m)} m (${n} x ${fmtQty(L)} m ${word})`;
+}

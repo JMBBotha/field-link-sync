@@ -96,7 +96,7 @@ describe("Mandy quote mode: plan → matched → breakdown → write", () => {
     const trunkRows = rows.filter((r) => r.item_number === "TRUNK01");
     expect(trunkRows).toHaveLength(1); // no duplicate — install line quantity set to 2
     expect(trunkRows[0].quantity).toBe(6); // 2 lengths = 6 m
-    expect(trunkRows[0].total_price).toBe(529);
+    expect(trunkRows[0].total_price).toBe(581.88);
     expect(trunkRows[0].metadata.install.role).toBe("trunking_main");
     expect(rows.every((r) => r.area_id === "area-lounge")).toBe(true);
     expect(out.ids).toHaveLength(rows.length);

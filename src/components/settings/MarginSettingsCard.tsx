@@ -45,6 +45,17 @@ export default function MarginSettingsCard() {
     setPaidPct(String(techPay.tech_paid_on_completion_pct)); setHeldPct(String(techPay.tech_holdback_pct));
     setHeldDays(String(techPay.tech_holdback_days)); setToolsPct(String(techPay.tools_retained_pct));
   }, [techPay]);
+  const [waste, setWaste] = useState("10");
+  const { data: wasteRow } = useQuery({
+    queryKey: ["materials-waste", data?.id],
+    enabled: !!data?.id,
+    queryFn: async () => {
+      const { data: w, error } = await (supabase.from("companies") as any).select("materials_waste_percent").eq("id", data!.id).maybeSingle();
+      if (error) throw error;
+      return w as { materials_waste_percent: number } | null;
+    },
+  });
+  useEffect(() => { if (wasteRow) setWaste(String(wasteRow.materials_waste_percent ?? 10)); }, [wasteRow]);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     if (!data) return;
@@ -56,6 +67,11 @@ export default function MarginSettingsCard() {
   const save = async () => {
     const t = Number(target), c = Number(comm), l = labour.trim() === "" ? null : Number(labour);
     const pp = Number(paidPct), hp = Number(heldPct), hd = Number(heldDays), tp = Number(toolsPct);
+    const w = Number(waste);
+    if (waste.trim() === "" || !(w >= 0 && w <= 50)) {
+      toast({ title: "Check the numbers", description: "Materials waste must be 0–50%.", variant: "destructive" });
+      return;
+    }
     const techOk = [pp, hp, tp].every((x) => x >= 0 && x <= 100) && pp + hp + tp <= 100 && Number.isInteger(hd) && hd >= 0 && hd <= 3650;
     if (!(t >= 0 && t < 100) || !(c >= 0 && c <= 100) || !techOk || (l != null && !(l >= 0))) {
       toast({ title: "Check the numbers", description: "Target 0–99%, sales share 0–100%, tech paid + held + tools 100% or less, holdback days 0–3650, labour cost R0 or more.", variant: "destructive" });
@@ -63,7 +79,7 @@ export default function MarginSettingsCard() {
     }
     setSaving(true);
     const { error } = await (supabase.from("companies") as any)
-      .update({ labour_cost_per_hour: l, gp_target_percent: t, sales_commission_percent: c }).eq("id", data.id);
+      .update({ labour_cost_per_hour: l, gp_target_percent: t, sales_commission_percent: c, materials_waste_percent: w }).eq("id", data.id);
     const { error: techErr } = error ? { error: null } : await (supabase.rpc as any)("set_company_tech_pay_settings", {
       p_company_id: data.id, p_paid_pct: pp, p_holdback_pct: hp, p_holdback_days: hd, p_tools_pct: tp,
     });
@@ -71,7 +87,7 @@ export default function MarginSettingsCard() {
     if (error || techErr) { toast({ title: "Couldn't save", description: (error || techErr).message, variant: "destructive" }); return; }
     toast({ title: "Profit settings saved" });
     qc.invalidateQueries({ queryKey: ["margin-settings"] }); qc.invalidateQueries({ queryKey: ["margin-view"] });
-    qc.invalidateQueries({ queryKey: ["tech-pay-settings"] }); qc.invalidateQueries({ queryKey: ["my-earnings"] });
+    qc.invalidateQueries({ queryKey: ["tech-pay-settings"] }); qc.invalidateQueries({ queryKey: ["my-earnings"] }); qc.invalidateQueries({ queryKey: ["materials-waste"] });
   };
 
   return (
@@ -95,6 +111,8 @@ export default function MarginSettingsCard() {
           <Input type="number" min="0" max="3650" step="1" value={heldDays} onChange={(e) => setHeldDays(e.target.value)} /></div>
         <div><Label>Tools share kept by company (% of labour)</Label>
           <Input type="number" min="0" max="100" value={toolsPct} onChange={(e) => setToolsPct(e.target.value)} /></div>
+        <div><Label>Materials waste % (length items)</Label>
+          <Input type="number" min="0" max="50" step="0.5" value={waste} onChange={(e) => setWaste(e.target.value)} /></div>
         <p className="md:col-span-4 text-[11px] text-muted-foreground">
           Company keeps {Math.max(0, 100 - (Number(paidPct) || 0) - (Number(heldPct) || 0))}% of labour (incl. the {Number(toolsPct) || 0}% tools share).
         </p>

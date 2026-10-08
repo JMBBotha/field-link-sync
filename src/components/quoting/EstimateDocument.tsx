@@ -686,11 +686,15 @@ const EstimateDocument = ({
                               key={`${line.id}-qty`}
                               type="number"
                               step={line.perMetre ? "0.1" : "1"}
-                              min="0"
+                              min={line.perMetre ? "0.1" : "0"}
+                              inputMode={line.perMetre ? "decimal" : undefined}
+                              data-line-qty={line.id}
                               defaultValue={line.quantity}
                               aria-label={line.perMetre ? "Metres" : "Quantity"}
                               onBlur={(e) => {
                                 const v = Number(e.target.value);
+                                // Metre lines: 0 m is not allowed (min 0.1 m).
+                                if (line.perMetre && !(v >= 0.1)) { e.target.value = String(line.quantity); return; }
                                 if (Number.isFinite(v) && v !== line.quantity) {
                                   editing.onLineChange(line.id, { quantity: v });
                                 }

@@ -1,4 +1,5 @@
-import { resolveProductMarkupPercent } from "@/lib/pricing";
+import { resolveProductMarkupPercent, getActiveQuoteMarkupRates, getActiveMaterialsWastePercent, categoryMarkupPercent } from "@/lib/pricing";
+import { lengthLinePrice, isLengthProduct } from "@/lib/priceGuard";
 /**
  * voiceQuoteKit — pure logic for the quote-by-voice MVP on /admin/estimates/:id.
  *
@@ -8,7 +9,7 @@ import { resolveProductMarkupPercent } from "@/lib/pricing";
  *
  * Quote-kit source of truth (Johan / Professor):
  *  - Copper is sold per metre; pack length lives on the catalog (unit_length).
- *  - 10% waste on copper AND its matching Armaflex: charge_qty = run_m × 1.10.
+ *  - Waste (company/quote %, default 10) is in the per-metre COST (lengthLinePrice), never in qty.
  *  - Matching insulation is ALWAYS auto-added, never asked.
  *  - Prices come from the catalog only — voice never invents a rand amount.
  */
@@ -31,8 +32,8 @@ export const COPPER_KIT: Record<PipeSize, { copper: string; insulation: string; 
   "3/4": { copper: "COPRL005", insulation: "IT013", spoken: "three-quarter" },
 };
 
-/** run metres → charged metres (10% waste, rounded to 0.1 m). */
-export const chargeQty = (runM: number) => Math.round(runM * WASTE_FACTOR * 10) / 10;
+/** run metres → charged metres (rounded to 0.1 m). Waste is priced into the metre cost, not the qty. */
+export const chargeQty = (runM: number) => Math.round(runM * 10) / 10;
 
 /* ────────────────── Types ────────────────── */
 
@@ -310,6 +311,19 @@ export const byCode = (products: PaletteProduct[], code: string) =>
 const uid = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
 export function productLine(p: PaletteProduct, quantity: number, meta: Record<string, unknown> = {}): PendingLine {
+  if (isLengthProduct(p)) {
+    // Length items: per metre with waste — the same helper as the picker (catalogLineFields).
+    const rates = getActiveQuoteMarkupRates();
+    const matPct = rates ? categoryMarkupPercent("materials", rates) : resolveProductMarkupPercent(p as any);
+    const waste = getActiveMaterialsWastePercent();
+    const lp = lengthLinePrice(p, waste, matPct);
+    return {
+      id: uid(), label: p.short_name || p.product_code, product: p,
+      quantity: Math.round(quantity * 100) / 100, unitLabel: "m",
+      unitPrice: lp.sellPerM, unitCost: lp.costPerM, markupPct: matPct,
+      meta: { voice: true, ...meta, waste_percent: waste },
+    };
+  }
   const { unitCost, unitSell } = getEffectiveUnitPrices(p);
   const perMetre = !!(p.sold_in_length && p.price_per_metre);
   return {
@@ -350,7 +364,7 @@ export function buildCopperKit(size: PipeSize, runM: number, products: PalettePr
   const missing: string[] = [];
   const copper = byCode(products, spec.copper);
   const insulation = byCode(products, spec.insulation);
-  const meta = { kit: "copper", pipe_size: size, run_m: runM, waste_factor: WASTE_FACTOR };
+  const meta = { kit: "copper", pipe_size: size, run_m: runM };
   if (copper) lines.push(productLine(copper, qty, meta)); else missing.push(spec.copper);
   if (insulation) lines.push(productLine(insulation, qty, { ...meta, paired_with: spec.copper })); else missing.push(spec.insulation);
   return { lines, missing };

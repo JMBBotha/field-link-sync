@@ -46,6 +46,14 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId, showCost
   const quoteCtx = useOptionalQuoteContext();
   const [unitsDraft, setUnitsDraft] = useState<string>("");
   const [matsDraft, setMatsDraft] = useState<string>("");
+  const [wasteDraft, setWasteDraft] = useState<string>("");
+  useEffect(() => { if (quoteCtx) setWasteDraft(String(quoteCtx.wastePercent)); }, [quoteCtx?.wastePercent]); // eslint-disable-line react-hooks/exhaustive-deps
+  const commitWaste = () => {
+    if (!quoteCtx) return;
+    const w = Number(wasteDraft);
+    if (wasteDraft.trim() === "" || !Number.isFinite(w) || w < 0 || w > 50) { setWasteDraft(String(quoteCtx.wastePercent)); return; }
+    if (w !== quoteCtx.wastePercent) void quoteCtx.setWastePercent(w);
+  };
   useEffect(() => {
     if (!quoteCtx) return;
     setUnitsDraft(String(quoteCtx.markupRates.units));
@@ -95,7 +103,7 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId, showCost
       {quoteCtx && (
         <div className="rounded-md border border-border p-2 space-y-1.5 text-xs">
           <div className="font-medium text-foreground">Markup on cost for this quote</div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <label className="space-y-0.5">
               <span className="text-muted-foreground">Units %</span>
               <Input type="number" inputMode="decimal" className="h-8 text-xs" value={unitsDraft}
@@ -106,6 +114,12 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId, showCost
               <span className="text-muted-foreground">Materials %</span>
               <Input type="number" inputMode="decimal" className="h-8 text-xs" value={matsDraft}
                 onChange={(e) => setMatsDraft(e.target.value)} onBlur={commitRates}
+                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
+            </label>
+            <label className="space-y-0.5">
+              <span className="text-muted-foreground">Waste %</span>
+              <Input type="number" inputMode="decimal" min={0} max={50} className="h-8 text-xs" value={wasteDraft} aria-label="Waste % (length items)"
+                onChange={(e) => setWasteDraft(e.target.value)} onBlur={commitWaste}
                 onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
             </label>
           </div>

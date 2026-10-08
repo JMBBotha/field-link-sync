@@ -17,7 +17,7 @@ describe("builder save keeps install links", () => {
     const { items } = basketsToQuoteState(baskets);
     expect(installTag(items[1])).toEqual({ unit_item_id: unitKey, role: "trunking_main", template_id: "tpl-12" });
     expect((items[1].metadata as any).supplier_length_m).toBe(3);
-    expect(items[1].unit_price).toBeCloseTo(264.5, 2); // locked whole-length price
+    expect(items[1].unit_price).toBeCloseTo(96.98, 2); // per metre with 10% waste (qty 1 = 1 m)
 
     const idMap = new Map(items.map((it, i) => [it.id, `new-${i}`]));
     const saved = remapInstallUnitIds(items.map((it) => ({ ...it, id: idMap.get(it.id)! })), idMap);

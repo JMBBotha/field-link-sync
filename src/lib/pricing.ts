@@ -443,3 +443,13 @@ export function setActiveQuoteMarkupRates(rates: CategoryMarkupRates | null, edi
 }
 export function subscribeQuoteMarkupRates(l: () => void) { rateListeners.add(l); return () => { rateListeners.delete(l); }; }
 export function getQuoteMarkupRatesSnapshot() { return rateSnapshot; }
+
+// Active materials waste % for length items (One Stop Shop per-metre lines) — set by QuoteProvider.
+// Active waste = quote override ?? company ?? 10.
+export const DEFAULT_MATERIALS_WASTE_PERCENT = 10;
+let activeWaste: number = DEFAULT_MATERIALS_WASTE_PERCENT;
+export function getActiveMaterialsWastePercent() { return activeWaste; }
+export function setActiveMaterialsWastePercent(pct: number | null | undefined) {
+  const n = Number(pct);
+  activeWaste = Number.isFinite(n) && n >= 0 && n <= 50 ? n : DEFAULT_MATERIALS_WASTE_PERCENT;
+}

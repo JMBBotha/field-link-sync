@@ -107,6 +107,8 @@ export function basketsToQuoteState(baskets: Basket[]): { areas: QuoteArea[]; it
           ...(item.product.manual_price_override ? { manual_price: true } : {}),
           quote_category: item.isBundle ? "materials" : classifyQuoteCategory(item.product),
           ...basketInstallMeta(item.install),
+          // Waste-priced metre line (hydrated): keep its metre shape so a builder save never drops it.
+          ...((item.product as any).waste_percent != null ? { qty_unit: "metre", supplier_length_m: (item.product as any).supplier_length_m ?? null, waste_percent: (item.product as any).waste_percent, pack_cost_ex_vat: (item.product as any).pack_cost_ex_vat ?? null } : {}),
           ...(item.isBundle && item.bundlePricingType
             ? {
                 kit: {

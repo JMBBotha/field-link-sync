@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CalendarDays, CheckCircle2, MapPin, Package, Phone, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { fmtQty, groupPackingList, loadTicks, saveTicks, type PackingRow } from "@/lib/packingList";
+import { packQtyText, groupPackingList, loadTicks, saveTicks, type PackingRow } from "@/lib/packingList";
 
 export default function FieldJobSheetPage() {
   const { id = "" } = useParams();
@@ -139,7 +139,7 @@ export default function FieldJobSheetPage() {
                     {r.item_name || r.item_code}
                     <span className="block text-xs text-muted-foreground">{[r.item_code, r.kit_name && `in ${r.kit_name}`].filter(Boolean).join(" · ")}</span>
                   </span>
-                  <span className="text-sm font-semibold tabular-nums">× {fmtQty(r.quantity)}</span>
+                  <span className="text-sm font-semibold tabular-nums">{packQtyText(r)}</span>
                 </label>
               ))}
             </CardContent>

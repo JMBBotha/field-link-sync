@@ -19,7 +19,8 @@ import type {
   QuoteAreaInsert, QuoteAreaUpdate,
 } from "@/types/quote";
 import { needsDefaultArea, getDefaultAreaName } from "@/utils/quoteTransformers";
-import { DEFAULT_CATEGORY_MARKUPS, setActiveQuoteMarkupRates, type CategoryMarkupRates } from "@/lib/pricing";
+import { DEFAULT_CATEGORY_MARKUPS, setActiveQuoteMarkupRates, setActiveMaterialsWastePercent, DEFAULT_MATERIALS_WASTE_PERCENT, type CategoryMarkupRates } from "@/lib/pricing";
+import { metrePriceFromPackPerMetre } from "@/lib/priceGuard";
 import { isJobLabour, normalizeLabourMode, planLabourInsert, syncAutoLabour, countAcUnits } from "@/lib/areaLabour";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { isLabourItem } from "@/lib/labour";
@@ -92,6 +93,9 @@ interface QuoteContextValue {
   markupRates: CategoryMarkupRates;
   companyMarkupRates: CategoryMarkupRates;
   setMarkupRates: (rates: CategoryMarkupRates) => Promise<void>;
+  /** Active waste % for length items: quote override ?? company ?? 10. */
+  wastePercent: number;
+  setWastePercent: (pct: number | null) => Promise<void>;
 
   /** Silent re-read of quote/areas/items; returns the fresh rows (null on failure). */
   refetch: () => Promise<{ areas: QuoteArea[]; items: QuoteItem[] } | null>;
@@ -157,7 +161,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     try {
       if (!silent) setLoading(true);
       const [quoteRes, areasRes, itemsRes] = await Promise.all([
-        supabase.from("quotes").select("id, quote_number, customer_id, customer_name, status, subtotal, vat_rate, vat_amount, total, notes, valid_until, discount_type, discount_value, terms_text, reference_text, company_id, units_markup_percent, materials_markup_percent, labour_mode").eq("id", quoteId).single(),
+        supabase.from("quotes").select("id, quote_number, customer_id, customer_name, status, subtotal, vat_rate, vat_amount, total, notes, valid_until, discount_type, discount_value, terms_text, reference_text, company_id, units_markup_percent, materials_markup_percent, materials_waste_percent, labour_mode").eq("id", quoteId).single(),
         supabase.from("quote_areas").select("*").eq("quote_id", quoteId).order("sort_order"),
         supabase.from("quote_items").select("*").eq("quote_id", quoteId).order("sort_order"),
       ]);
@@ -243,16 +247,19 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   /* ── Category markup rates ── */
   const [companyMarkupRates, setCompanyMarkupRates] = useState<CategoryMarkupRates>(DEFAULT_CATEGORY_MARKUPS);
+  const [companyWaste, setCompanyWaste] = useState<number>(DEFAULT_MATERIALS_WASTE_PERCENT);
+  const [repriceSeq, setRepriceSeq] = useState(0);
   const companyId = meta?.company_id ?? null;
   useEffect(() => {
     if (!companyId) return;
     let cancelled = false;
     void (supabase.from("companies") as any)
-      .select("units_markup_percent, materials_markup_percent")
+      .select("units_markup_percent, materials_markup_percent, materials_waste_percent")
       .eq("id", companyId)
       .maybeSingle()
-      .then(({ data }: { data: { units_markup_percent: number | null; materials_markup_percent: number | null } | null }) => {
+      .then(({ data }: { data: { units_markup_percent: number | null; materials_markup_percent: number | null; materials_waste_percent?: number | null } | null }) => {
         if (cancelled || !data) return;
+        setCompanyWaste(Number(data.materials_waste_percent ?? DEFAULT_MATERIALS_WASTE_PERCENT));
         setCompanyMarkupRates({
           units: Number(data.units_markup_percent ?? DEFAULT_CATEGORY_MARKUPS.units),
           materials: Number(data.materials_markup_percent ?? DEFAULT_CATEGORY_MARKUPS.materials),
@@ -273,6 +280,17 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     setActiveQuoteMarkupRates(markupRates);
   }, [meta, markupRates]);
   useEffect(() => () => setActiveQuoteMarkupRates(null), []);
+  const wastePercent = (meta as any)?.materials_waste_percent != null ? Number((meta as any).materials_waste_percent) : companyWaste;
+  useEffect(() => { setActiveMaterialsWastePercent(wastePercent); }, [wastePercent]);
+  useEffect(() => () => setActiveMaterialsWastePercent(null), []);
+  const setWastePercent = useCallback(async (pct: number | null) => {
+    const v = pct == null ? null : Math.max(0, Math.min(50, Number(pct) || 0));
+    setMeta((prev) => prev ? ({ ...prev, materials_waste_percent: v } as any) : prev);
+    setActiveMaterialsWastePercent(v ?? companyWaste);
+    setRepriceSeq((n) => n + 1);
+    const { error } = await track<any>((supabase.from("quotes") as any).update({ materials_waste_percent: v }).eq("id", quoteId));
+    if (error) toast({ title: "Couldn't save waste %", description: error.message, variant: "destructive" });
+  }, [quoteId, companyWaste]);
 
   const setMarkupRates = useCallback(async (rates: CategoryMarkupRates) => {
     const clean = {
@@ -281,6 +299,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     };
     setMeta((prev) => prev ? { ...prev, ...clean } : prev);
     setActiveQuoteMarkupRates({ units: clean.units_markup_percent, materials: clean.materials_markup_percent }, true);
+    setRepriceSeq((n) => n + 1);
     const { error } = await track(supabase.from("quotes").update(clean as TablesUpdate<"quotes">).eq("id", quoteId));
     if (error) toast({ title: "Couldn't save markup %", description: error.message, variant: "destructive" });
   }, [quoteId]);
@@ -638,6 +657,25 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   }, [items]);
 
   const pendingWrites = usePendingQuoteWrites();
+  // Materials % / waste % edited → reprice waste-priced metre lines through the same helper (manual prices kept).
+  const lastRepriceRef = useRef(0);
+  useEffect(() => {
+    if (repriceSeq === lastRepriceRef.current) return;
+    lastRepriceRef.current = repriceSeq;
+    for (const i of itemsRef.current) {
+      const md: any = i.metadata || {};
+      if (md.qty_unit !== "metre" || md.waste_percent == null || md.manual_price) continue;
+      const L = Number(md.supplier_length_m), pack = Number(md.pack_cost_ex_vat);
+      if (!(L > 0) || !(pack > 0)) continue;
+      const { costPerM, sellPerM } = metrePriceFromPackPerMetre(pack / L, wastePercent, markupRates.materials);
+      if (sellPerM === Number(i.unit_price) && costPerM === Number(md.unit_cost)) continue;
+      void updateItem(i.id, {
+        unit_price: sellPerM, total_price: Math.round((Number(i.quantity) || 0) * sellPerM * 100 + 1e-9) / 100,
+        metadata: { ...md, unit_cost: costPerM, cost_excl: costPerM, markup_percent: markupRates.materials, waste_percent: wastePercent },
+      } as any);
+    }
+  }, [repriceSeq, wastePercent, markupRates.materials, updateItem]);
+
   const value: QuoteContextValue = useMemo(() => ({
     quoteId,
     pendingWrites,
@@ -662,8 +700,10 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     markupRates,
     companyMarkupRates,
     setMarkupRates,
+    wastePercent,
+    setWastePercent,
     refetch: () => fetchAll(true),
-  }), [pendingWrites, fetchAll, markupRates, companyMarkupRates, setMarkupRates, quoteId, meta, areas, items, loading, error, canSave, updateQuote, addArea, updateArea, deleteArea, reorderAreas, addItem, updateItem, deleteItem, moveItemToArea, ensureDefaultArea, getItemsByArea, getBundleChildrenFn]);
+  }), [pendingWrites, fetchAll, markupRates, companyMarkupRates, setMarkupRates, wastePercent, setWastePercent, quoteId, meta, areas, items, loading, error, canSave, updateQuote, addArea, updateArea, deleteArea, reorderAreas, addItem, updateItem, deleteItem, moveItemToArea, ensureDefaultArea, getItemsByArea, getBundleChildrenFn]);
 
   return <QuoteContext.Provider value={value}>{children}</QuoteContext.Provider>;
 }

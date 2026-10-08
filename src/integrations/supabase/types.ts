@@ -883,6 +883,7 @@ export type Database = {
           labour_tech_share_percent: number
           logo_url: string | null
           materials_markup_percent: number
+          materials_waste_percent: number
           name: string
           onboarding_completed: boolean | null
           sales_commission_percent: number
@@ -909,6 +910,7 @@ export type Database = {
           labour_tech_share_percent?: number
           logo_url?: string | null
           materials_markup_percent?: number
+          materials_waste_percent?: number
           name: string
           onboarding_completed?: boolean | null
           sales_commission_percent?: number
@@ -935,6 +937,7 @@ export type Database = {
           labour_tech_share_percent?: number
           logo_url?: string | null
           materials_markup_percent?: number
+          materials_waste_percent?: number
           name?: string
           onboarding_completed?: boolean | null
           sales_commission_percent?: number
@@ -5829,6 +5832,7 @@ export type Database = {
           legacy_original_total: number | null
           location_id: string | null
           materials_markup_percent: number | null
+          materials_waste_percent: number | null
           notes: string | null
           owner_id: string | null
           public_token: string | null
@@ -5870,6 +5874,7 @@ export type Database = {
           legacy_original_total?: number | null
           location_id?: string | null
           materials_markup_percent?: number | null
+          materials_waste_percent?: number | null
           notes?: string | null
           owner_id?: string | null
           public_token?: string | null
@@ -5911,6 +5916,7 @@ export type Database = {
           legacy_original_total?: number | null
           location_id?: string | null
           materials_markup_percent?: number | null
+          materials_waste_percent?: number | null
           notes?: string | null
           owner_id?: string | null
           public_token?: string | null
@@ -8741,7 +8747,9 @@ export type Database = {
           item_name: string
           kit_name: string
           line_sort: number
+          qty_unit: string
           quantity: number
+          supplier_length_m: number
         }[]
       }
       get_job_used_parts: {

@@ -9,7 +9,9 @@ const kitNotFound = (ls: { metadata?: any }[]) => {
   for (const l of ls) for (const k of (l?.metadata?.kit?.items ?? []) as any[]) if (String(k?.name ?? "").startsWith("Not found: ")) return String(k.name);
   return null;
 };
-export const r0Quote = (ls: { item_name?: string | null; unit_price?: unknown; parent_item_id?: string | null; metadata?: any }[]) =>
-  r0Line(ls.filter((l) => !l.parent_item_id).map((l) => ({ n: l.item_name, p: String(l.item_name ?? "").startsWith("Not found: ") ? 0 : l.unit_price })))
+// A metre line at 0 m is treated like an R0 line (must enter metres).
+const zeroMetre = (l: { quantity?: unknown; metadata?: any }) => l?.metadata?.qty_unit === "metre" && !(Number(l.quantity) > 0);
+export const r0Quote = (ls: { item_name?: string | null; unit_price?: unknown; quantity?: unknown; parent_item_id?: string | null; metadata?: any }[]) =>
+  r0Line(ls.filter((l) => !l.parent_item_id).map((l) => ({ n: l.item_name, p: String(l.item_name ?? "").startsWith("Not found: ") || zeroMetre(l) ? 0 : l.unit_price })))
   ?? kitNotFound(ls);
 export const blockR0Quote = (ls: Parameters<typeof r0Quote>[0], t: T) => blk(r0Quote(ls), t);
