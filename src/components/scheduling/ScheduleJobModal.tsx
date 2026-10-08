@@ -88,6 +88,22 @@ const ScheduleJobModal = ({
     enabled: open,
   });
 
+  // Site coordinates for distance ranking: lead first, then its customer
+  const { data: leadLoc } = useQuery({
+    queryKey: ["schedule-lead-location", leadId],
+    enabled: open && !!leadId,
+    queryFn: async () => {
+      const { data } = await supabase.from("leads").select("latitude, longitude, customer_id").eq("id", leadId).maybeSingle();
+      const ok = (v: any) => v != null && Number(v) !== 0;
+      if (data && ok(data.latitude) && ok(data.longitude)) return { lat: Number(data.latitude), lng: Number(data.longitude) };
+      if (data?.customer_id) {
+        const { data: c } = await supabase.from("customers").select("latitude, longitude").eq("id", data.customer_id).maybeSingle();
+        if (c && ok(c.latitude) && ok(c.longitude)) return { lat: Number(c.latitude), lng: Number(c.longitude) };
+      }
+      return null;
+    },
+  });
+
   const handleSave = async () => {
     const { agentId, date, startTime, durationMinutes } = appt;
     if (!leadId || !agentId || !date || !startTime) {
@@ -190,7 +206,7 @@ const ScheduleJobModal = ({
           </div>
 
           <div className="rounded-lg border border-border bg-muted/30 p-3">
-            <AppointmentPicker value={appt} onChange={setAppt} />
+            <AppointmentPicker value={appt} onChange={setAppt} lat={leadLoc?.lat ?? null} lng={leadLoc?.lng ?? null} excludeLeadId={leadId || null} />
           </div>
 
           <div>
