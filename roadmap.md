@@ -1,8 +1,8 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
 ## Calendar S3
-- [ ] Needs someone tray, card day view, private sales calendar, attention grammar and stage rep visibility.
-- [ ] Focused tests and read-only desktop/phone verification; no publishing.
+- [x] Needs someone tray, card day view, private sales calendar, attention grammar and stage rep visibility.
+- [x] 54 focused tests pass; guarded desktop/phone checks show Cards/Timeline switching, no overflow or runtime errors, two background writes blocked; automatic preview build OK. No publishing.
 
 ## Card consistency C4a (2026-10-08)
 - [x] Share company-logo fallback and field headers/navigation; preserve admin My Jobs and dispatch rail handlers.
