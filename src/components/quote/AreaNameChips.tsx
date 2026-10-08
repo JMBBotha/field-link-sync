@@ -121,11 +121,11 @@ export function CanonicalAreaCreateControl({ existingNames, onCreate }: {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline" data-solid className="option1-create-area h-11 w-full justify-center gap-2 rounded-lg border-dashed font-semibold" data-testid="canonical-add-area">
-          <Plus className="h-4 w-4" /> Create area
+          <Plus className="h-4 w-4" /> Add Area
         </Button>
       </DialogTrigger>
       <DialogContent data-solid data-paper className="option1-solid max-w-2xl shadow-xl">
-        <DialogHeader><DialogTitle>Create area</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Add area</DialogTitle></DialogHeader>
         <CanonicalAreaChoices existingNames={existingNames} onCreate={create} />
       </DialogContent>
     </Dialog>
