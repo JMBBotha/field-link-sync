@@ -67,7 +67,6 @@ import SalesByProductReportPage from "./pages/admin/reports/SalesByProductReport
 import VatSummaryReportPage from "./pages/admin/reports/VatSummaryReportPage";
 import AdminTeamPage from "./pages/admin/AdminTeamPage";
 
-import AdminNetworkAgentsPage from "./pages/admin/AdminNetworkAgentsPage";
 
 import AdminSuppliersPage from "./pages/admin/AdminSuppliersPage";
 import AdminSpecialsPage from "./pages/admin/AdminSpecialsPage";
@@ -222,7 +221,7 @@ const App = () => (
                     <Route path="pdf-documents" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminPDFDocumentsPage /></RequireRole>} />
                     <Route path="brochures" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminBrochuresPage /></RequireRole>} />
                     <Route path="companies" element={<RequireRole allowedRoles={["admin"]}><CompanyManagement /></RequireRole>} />
-                    <Route path="network-agents" element={<RequireRole allowedRoles={["admin"]}><AdminNetworkAgentsPage /></RequireRole>} />
+                    <Route path="network-agents" element={<Navigate to="/admin/team?tab=applications" replace />} />
                   </Route>
 
 

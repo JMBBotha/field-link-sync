@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Loader2, User } from "lucide-react";
+import { mapDispatchCandidates } from "@/lib/teamGroups";
 
 /**
  * The Jobs board's Assign Technician dialog (moved here unchanged so the
@@ -32,43 +33,10 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
   const { data: techs = [] } = useQuery({
     queryKey: ["dispatch-techs", companyId],
     queryFn: async () => {
-      const results: any[] = [];
-
-      // Internal company staff with field_agent role
-      const { data: members } = await supabase
-        .from("company_members")
-        .select("user_id, profiles(id, full_name, participant_type)")
-        .eq("company_id", companyId!);
-      (members || []).forEach((m: any) => {
-        if (m.profiles) results.push({ ...m.profiles, assignment_type: "internal" });
-      });
-
-      // Affiliated independents
-      const { data: affiliations } = await supabase
-        .from("agent_affiliations")
-        .select("profile_id, profiles!agent_affiliations_profile_id_fkey(id, full_name, participant_type)")
-        .eq("company_id", companyId!)
-        .eq("status", "active");
-      (affiliations || []).forEach((a: any) => {
-        if (a.profiles && !results.find((r: any) => r.id === a.profiles.id)) {
-          results.push({ ...a.profiles, assignment_type: "affiliated" });
-        }
-      });
-
-      // Network independents (approved, not already affiliated)
-      const existingIds = results.map((r: any) => r.id);
-      const { data: network } = await supabase
-        .from("profiles")
-        .select("id, full_name, participant_type")
-        .in("participant_type", ["independent_sales", "independent_tech"])
-        .eq("network_status", "approved");
-      (network || []).forEach((p: any) => {
-        if (!existingIds.includes(p.id)) {
-          results.push({ ...p, assignment_type: "network" });
-        }
-      });
-
-      return results;
+      // Only the people who may be offered a job (company + connected freelance technicians)
+      const { data, error } = await supabase.rpc("dispatchable_technicians" as any, { _company_id: companyId! });
+      if (error) throw error;
+      return mapDispatchCandidates(data as any) as any[];
     },
     enabled: !!companyId,
   });

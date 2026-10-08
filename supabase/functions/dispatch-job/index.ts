@@ -9,7 +9,7 @@ import { requireDispatcher } from "../_shared/dispatch.ts";
  *   1. override_assignee_id (if provided)
  *   2. Available company staff (company_members)
  *   3. Affiliated independent agents (agent_affiliations, status='active')
- *   4. Open network independents (profiles, participant_type='independent_tech', network_status='approved')
+ *   (pool = dispatchable_technicians RPC only)
  *   5. If none found → create notification for dispatcher
  *
  * POST body:
@@ -80,125 +80,56 @@ serve(async (req) => {
       );
     }
 
+    // Candidate pool: ONLY dispatchable_technicians (company techs + connected freelance techs)
+    const { data: poolRows, error: poolError } = await supabase.rpc("dispatchable_technicians", { _company_id: job.company_id });
+    if (poolError) {
+      return new Response(
+        JSON.stringify({ error: "Failed to load technicians", detail: poolError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const pool = ((poolRows || []) as any[]).map((r) => ({ id: r.profile_id as string, assignment_type: r.assignment_type as string }));
+
     let assigneeId: string | null = null;
     let assignmentType = "internal";
 
-    // ─── Tier 1: Override assignee ───
-    if (override_assignee_id) {
-      assigneeId = override_assignee_id;
-      // Determine type
-      const { data: member } = await supabase
-        .from("company_members")
-        .select("id")
-        .eq("user_id", override_assignee_id)
-        .eq("company_id", job.company_id)
-        .limit(1);
+    const leastLoaded = async (ids: string[]) => {
+      if (ids.length === 0) return null;
+      const { data: busy } = await supabase
+        .from("assignments")
+        .select("profile_id")
+        .in("profile_id", ids)
+        .in("status", ["proposed", "accepted", "in_progress"]);
+      const load: Record<string, number> = {};
+      ids.forEach((id) => (load[id] = 0));
+      (busy || []).forEach((a: any) => { load[a.profile_id] = (load[a.profile_id] || 0) + 1; });
+      return Object.entries(load).sort((a, b) => a[1] - b[1])[0][0];
+    };
 
-      if (member && member.length > 0) {
-        assignmentType = "internal";
-      } else {
-        const { data: affil } = await supabase
-          .from("agent_affiliations")
-          .select("id")
-          .eq("profile_id", override_assignee_id)
-          .eq("company_id", job.company_id)
-          .eq("status", "active")
-          .limit(1);
-        assignmentType = affil && affil.length > 0 ? "affiliated" : "network";
+    // ─── Tier 1: Override assignee (must be in the pool) ───
+    if (override_assignee_id) {
+      const hit = pool.find((p) => p.id === override_assignee_id);
+      if (!hit) {
+        return new Response(
+          JSON.stringify({ error: "That person can't be assigned jobs" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
+      assigneeId = hit.id;
+      assignmentType = hit.assignment_type;
       console.log(`[dispatch] Tier 1: Override assignee ${assigneeId} (${assignmentType})`);
     }
 
-    // ─── Tier 2: Company staff ───
+    // ─── Tier 2: Company technicians ───
     if (!assigneeId) {
-      const { data: staff } = await supabase
-        .from("company_members")
-        .select("user_id")
-        .eq("company_id", job.company_id);
-
-      if (staff && staff.length > 0) {
-        const staffIds = staff.map((s: any) => s.user_id);
-
-        // Find staff with fewest active assignments today
-        const today = new Date().toISOString().split("T")[0];
-        const { data: busyStaff } = await supabase
-          .from("assignments")
-          .select("profile_id, id")
-          .in("profile_id", staffIds)
-          .in("status", ["proposed", "accepted", "in_progress"]);
-
-        const loadMap: Record<string, number> = {};
-        staffIds.forEach((id: string) => (loadMap[id] = 0));
-        (busyStaff || []).forEach((a: any) => {
-          loadMap[a.profile_id] = (loadMap[a.profile_id] || 0) + 1;
-        });
-
-        // Pick least loaded staff
-        const sorted = Object.entries(loadMap).sort((a, b) => a[1] - b[1]);
-        if (sorted.length > 0) {
-          assigneeId = sorted[0][0];
-          assignmentType = "internal";
-          console.log(`[dispatch] Tier 2: Company staff ${assigneeId} (load: ${sorted[0][1]})`);
-        }
-      }
+      assigneeId = await leastLoaded(pool.filter((p) => p.assignment_type === "internal").map((p) => p.id));
+      if (assigneeId) { assignmentType = "internal"; console.log(`[dispatch] Tier 2: ${assigneeId}`); }
     }
 
-    // ─── Tier 3: Affiliated independents ───
+    // ─── Tier 3: Connected freelance technicians ───
     if (!assigneeId) {
-      const { data: affiliates } = await supabase
-        .from("agent_affiliations")
-        .select("profile_id")
-        .eq("company_id", job.company_id)
-        .eq("status", "active");
-
-      if (affiliates && affiliates.length > 0) {
-        const affilIds = affiliates.map((a: any) => a.profile_id);
-        const { data: busyAffil } = await supabase
-          .from("assignments")
-          .select("profile_id, id")
-          .in("profile_id", affilIds)
-          .in("status", ["proposed", "accepted", "in_progress"]);
-
-        const loadMap: Record<string, number> = {};
-        affilIds.forEach((id: string) => (loadMap[id] = 0));
-        (busyAffil || []).forEach((a: any) => {
-          loadMap[a.profile_id] = (loadMap[a.profile_id] || 0) + 1;
-        });
-
-        const sorted = Object.entries(loadMap).sort((a, b) => a[1] - b[1]);
-        if (sorted.length > 0) {
-          assigneeId = sorted[0][0];
-          assignmentType = "affiliated";
-          console.log(`[dispatch] Tier 3: Affiliated agent ${assigneeId} (load: ${sorted[0][1]})`);
-        }
-      }
-    }
-
-    // ─── Tier 4: Open network independents ───
-    if (!assigneeId) {
-      const { data: networkAgents } = await supabase
-        .from("profiles")
-        .select("id")
-        .in("participant_type", ["independent_sales", "independent_tech"])
-        .eq("network_status", "approved");
-
-      if (networkAgents && networkAgents.length > 0) {
-        // Exclude already affiliated with this company
-        const { data: existingAffil } = await supabase
-          .from("agent_affiliations")
-          .select("profile_id")
-          .eq("company_id", job.company_id);
-
-        const excludeIds = new Set((existingAffil || []).map((a: any) => a.profile_id));
-        const available = networkAgents.filter((a: any) => !excludeIds.has(a.id));
-
-        if (available.length > 0) {
-          // Pick first available (could be enhanced with proximity/load)
-          assigneeId = available[0].id;
-          assignmentType = "network";
-          console.log(`[dispatch] Tier 4: Network agent ${assigneeId}`);
-        }
-      }
+      assigneeId = await leastLoaded(pool.filter((p) => p.assignment_type === "affiliated").map((p) => p.id));
+      if (assigneeId) { assignmentType = "affiliated"; console.log(`[dispatch] Tier 3: ${assigneeId}`); }
     }
 
     // ─── Tier 5: No one available — notify dispatcher ───
@@ -217,7 +148,7 @@ serve(async (req) => {
           user_id: admin.user_id,
           type: "dispatch_failed",
           title: "No Technician Available",
-          body: `Job "${job.title}" could not be auto-dispatched. No available staff, affiliates, or network agents found. Please assign manually.`,
+          body: `Job "${job.title}" could not be auto-dispatched. No available technicians found. Please assign manually.`,
           related_id: job_id,
         });
       }
@@ -225,7 +156,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: false,
-          message: "No available assignees. Dispatcher notified.",
+          message: "No available technicians found. Dispatcher notified.",
           tier_reached: 5,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -277,7 +208,7 @@ serve(async (req) => {
         assignment_id: assignment.id,
         assignee_id: assigneeId,
         assignment_type: assignmentType,
-        tier_used: assignmentType === "internal" ? 2 : assignmentType === "affiliated" ? 3 : 4,
+        tier_used: override_assignee_id ? 1 : assignmentType === "internal" ? 2 : 3,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

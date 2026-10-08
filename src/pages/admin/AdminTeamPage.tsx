@@ -17,7 +17,11 @@ import {
   ChevronDown, ChevronRight, Loader2, Trash2, Clock, Activity,
 } from "lucide-react";
 import { format } from "date-fns";
-import { Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useRole } from "@/hooks/useRole";
+import { staffOf } from "@/lib/teamGroups";
+import TeamApplicationsTab, { TeamFreelancersTab } from "@/components/team/TeamApplicationsTab";
 import { usePendingApplicants } from "@/hooks/usePendingApplicants";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import type { AppRole } from "@/hooks/useRole";
@@ -46,7 +50,12 @@ const AdminTeamPage = () => {
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [availabilityUser, setAvailabilityUser] = useState<string | null>(null);
   const { companyId } = useUserCompanyId();
-  const { pending } = usePendingApplicants();
+  const { count: pendingCount } = usePendingApplicants();
+  const { isAdmin } = useRole();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const tab = tabParam === "freelancers" || tabParam === "applications" ? tabParam : "staff";
+  const setTab = (t: string) => { const n = new URLSearchParams(searchParams); n.set("tab", t); setSearchParams(n, { replace: true }); };
 
 
   // Fetch team members
@@ -63,17 +72,18 @@ const AdminTeamPage = () => {
 
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, full_name, phone, avatar_url, availability_status, updated_at, dispatch_role, participant_type, network_status, company_id")
+        .select("id, full_name, phone, avatar_url, availability_status, updated_at, dispatch_role, participant_type, network_status, company_id, archived_at")
         .in("id", userIds);
       // Only people connected to this company: staff/members, or approved agents with an active affiliation
       const connected = new Set<string>();
+      const listed = new Set<string>();
       if (companyId) {
         const [{ data: mem }, { data: aff }] = await Promise.all([
           supabase.from("company_members").select("user_id").eq("company_id", companyId),
-          supabase.from("agent_affiliations").select("profile_id").eq("company_id", companyId).eq("status", "active"),
+          supabase.from("agent_affiliations").select("profile_id, listed_as_staff").eq("company_id", companyId).eq("status", "active"),
         ]);
         (mem || []).forEach((m: any) => connected.add(m.user_id));
-        (aff || []).forEach((a: any) => connected.add(a.profile_id));
+        (aff || []).forEach((a: any) => { connected.add(a.profile_id); if (a.listed_as_staff) listed.add(a.profile_id); });
       }
 
       const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
@@ -90,6 +100,7 @@ const AdminTeamPage = () => {
 
       return Array.from(grouped.entries()).filter(([userId]) => {
         const p: any = profileMap.get(userId);
+        if (p?.archived_at) return false;
         if (!companyId) return true;
         const indep = p?.participant_type === "independent_sales" || p?.participant_type === "independent_tech";
         if (indep && p?.network_status !== "approved") return false;
@@ -104,6 +115,8 @@ const AdminTeamPage = () => {
           availability: profile?.availability_status || "offline",
           dispatch_role: (profile as any)?.dispatch_role || null,
           participant_type: (profile as any)?.participant_type || null,
+          archived_at: (profile as any)?.archived_at || null,
+          listed_as_staff: listed.has(userId),
           last_active: profile?.updated_at || "",
           roles: info.roles,
           joined: info.created_at,
@@ -218,11 +231,15 @@ const AdminTeamPage = () => {
     },
   });
 
+  const staff = useMemo(
+    () => staffOf(members, members.filter((m) => m.listed_as_staff).map((m) => ({ profile_id: m.id, status: "active", listed_as_staff: true }))),
+    [members],
+  );
   const roleStats = useMemo(() => {
     const stats: Record<string, number> = {};
-    members.forEach((m) => m.roles.forEach((r) => { stats[r] = (stats[r] || 0) + 1; }));
+    staff.forEach((m) => m.roles.forEach((r) => { stats[r] = (stats[r] || 0) + 1; }));
     return stats;
-  }, [members]);
+  }, [staff]);
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
@@ -231,12 +248,12 @@ const AdminTeamPage = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Users className="h-6 w-6 text-primary" />
-            Team Management
+            Team
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">{members.length} team member{members.length !== 1 ? "s" : ""}</p>
+          <p className="text-sm text-muted-foreground mt-1">{staff.length} staff member{staff.length !== 1 ? "s" : ""}</p>
         </div>
 
-        <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        {isAdmin && <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <UserPlus className="h-4 w-4" />
@@ -285,9 +302,21 @@ const AdminTeamPage = () => {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
       </div>
 
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="staff">Staff</TabsTrigger>
+          <TabsTrigger value="freelancers">Freelancers</TabsTrigger>
+          <TabsTrigger value="applications" className="gap-1.5">
+            Applications
+            {pendingCount > 0 && <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">{pendingCount}</Badge>}
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="freelancers" className="mt-4"><TeamFreelancersTab /></TabsContent>
+        <TabsContent value="applications" className="mt-4"><TeamApplicationsTab /></TabsContent>
+        <TabsContent value="staff" className="mt-4 space-y-6">
       {/* Role Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {Object.entries(ROLE_META).map(([key, meta]) => (
@@ -305,11 +334,6 @@ const AdminTeamPage = () => {
         ))}
       </div>
 
-      {pending.length > 0 && (
-        <Link to="/admin/network-agents" className="block text-sm text-primary hover:underline">
-          {pending.length} pending application{pending.length === 1 ? "" : "s"} — review in Network Agents →
-        </Link>
-      )}
       {/* Team Table */}
       <Card className="border-border/50">
         <CardHeader className="pb-3">
@@ -337,7 +361,7 @@ const AdminTeamPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-border/30">
-                {members.map((member) => {
+                {staff.map((member) => {
                   const isExpanded = expandedUser === member.id;
                   return (
                     <Collapsible key={member.id} open={isExpanded} onOpenChange={(open) => setExpandedUser(open ? member.id : null)} asChild>
@@ -374,7 +398,7 @@ const AdminTeamPage = () => {
                                     dispatchRole: v === "auto" ? null : v,
                                   })
                                 }
-                                disabled={member.participant_type === "independent_tech"}
+                                disabled={!isAdmin || member.participant_type === "independent_tech"}
                               >
                                 <SelectTrigger className="h-8 w-[140px] text-xs">
                                   <SelectValue />
@@ -416,7 +440,7 @@ const AdminTeamPage = () => {
                             {member.last_active ? format(new Date(member.last_active), "dd MMM, HH:mm") : "—"}
                           </TableCell>
                           <TableCell>
-                            <Select
+                            {isAdmin && <Select
                               value={member.roles[0]}
                               onValueChange={(newRole) => {
                                 if (newRole !== member.roles[0]) {
@@ -434,7 +458,7 @@ const AdminTeamPage = () => {
                                   </SelectItem>
                                 ))}
                               </SelectContent>
-                            </Select>
+                            </Select>}
                           </TableCell>
                         </TableRow>
                         <CollapsibleContent asChild>
@@ -477,7 +501,7 @@ const AdminTeamPage = () => {
                                   >
                                     <Clock className="h-3 w-3 mr-1" /> Set Availability
                                   </Button>
-                                  {member.roles.map((r) => (
+                                  {isAdmin && member.roles.map((r) => (
                                     <Button
                                       key={r}
                                       variant="outline"
@@ -507,6 +531,8 @@ const AdminTeamPage = () => {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Availability Editor Dialog */}
       {availabilityUser && (

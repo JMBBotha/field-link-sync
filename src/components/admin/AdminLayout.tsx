@@ -84,11 +84,10 @@ const AdminLayout = () => {
     "/admin/audit": "Audit Log",
     "/admin/import": "CSV Import",
     "/admin/settings": "Settings",
-    "/admin/team": "Team Management",
+    "/admin/team": "Team",
     "/admin/billing": "Billing & Subscription",
     "/admin/suppliers": "Supplier Database",
     "/admin/companies": "Company Management",
-    "/admin/network-agents": "Network Agents",
   };
   const pageTitle = pageTitles[location.pathname] || "Admin Dashboard";
   // Dashboard and map pages own their mobile bottom spacing so their map surfaces
