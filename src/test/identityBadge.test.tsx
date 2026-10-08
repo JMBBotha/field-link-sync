@@ -5,7 +5,7 @@ import fieldAgentSource from "@/pages/FieldAgent.tsx?raw";
 
 const state = vi.hoisted(() => ({
   user: { id: "user-1", email: "t@x.co" } as { id: string; email: string } | null,
-  profile: null as { full_name: string | null; email: string | null; dispatch_role: string | null } | null,
+  profile: null as { full_name: string | null; dispatch_role: string | null } | null,
   roles: [] as string[],
 }));
 
@@ -41,7 +41,6 @@ describe("IdentityBadge", () => {
     state.roles = roles as string[];
     state.profile = {
       full_name: "Thabo Mokoena",
-      email: null,
       dispatch_role: isSalesRep ? "sales" : "office",
     };
     renderBadge();
@@ -51,7 +50,7 @@ describe("IdentityBadge", () => {
 
   it("shows first name on phones with the role chip", async () => {
     state.roles = ["field_agent"];
-    state.profile = { full_name: "Thabo Mokoena", email: null, dispatch_role: null };
+    state.profile = { full_name: "Thabo Mokoena", dispatch_role: null };
     renderBadge();
     await screen.findByText("Technician");
     expect(document.querySelector(".sm\\:hidden")).toHaveTextContent("Thabo");
@@ -60,7 +59,8 @@ describe("IdentityBadge", () => {
 
   it("falls back to the email prefix when no full name is saved", async () => {
     state.roles = ["admin"];
-    state.profile = { full_name: null, email: "amy@x.co", dispatch_role: null };
+    state.user = { id: "user-1", email: "amy@x.co" };
+    state.profile = { full_name: null, dispatch_role: null };
     renderBadge();
     expect(await screen.findByText("Admin")).toBeInTheDocument();
     expect(screen.getByTestId("identity-badge")).toHaveTextContent("amy");

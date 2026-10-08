@@ -23,17 +23,16 @@ const IdentityBadge = () => {
         const user = data?.user;
         if (!mounted || !user) return;
         const [profileRes, rolesRes] = await Promise.all([
-          supabase.from("profiles").select("full_name,email,dispatch_role").eq("id", user.id).maybeSingle(),
+          supabase.from("profiles").select("full_name,dispatch_role").eq("id", user.id).maybeSingle(),
           supabase.from("user_roles").select("role").eq("user_id", user.id),
         ]);
         if (!mounted) return;
         const profile = (profileRes.data ?? null) as {
           full_name?: string | null;
-          email?: string | null;
           dispatch_role?: string | null;
         } | null;
         const roles = ((rolesRes.data ?? []) as { role: string }[]).map((r) => r.role);
-        const email = profile?.email || user.email || "";
+        const email = user.email || "";
         const rawName = (profile?.full_name || "").trim() || (email ? email.split("@")[0] : "") || "Me";
         setInfo({ name: rawName, role: roleLabelFor(roles, profile?.dispatch_role) });
       } catch {
