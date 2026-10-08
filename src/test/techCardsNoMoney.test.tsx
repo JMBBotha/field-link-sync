@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { readFileSync } from "node:fs";
+import { Navigation, Phone } from "lucide-react";
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "tech" } }) }));
 vi.mock("@/hooks/useLeadSla", () => ({ useNow: () => new Date("2026-10-08T12:00:00+02:00"), useLeadSla: () => ({ sla: {} }), logLeadContact: vi.fn() }));
@@ -68,5 +69,38 @@ describe("C3 technician cards", () => {
   it("all technician deposit surfaces opt out of amounts", () => {
     for (const path of ["src/components/FieldAgentLeadCard.tsx", "src/pages/FieldSchedulePage.tsx", "src/pages/admin/AdminMyJobsPage.tsx"])
       expect(readFileSync(path, "utf8")).toMatch(/hideAmount/);
+  });
+
+  it("field schedule job rows show Call and Navigate with no rand", () => {
+    const row = { job_id: "j2", job_title: "Install R 900", job_type: "installation", assignment_status: "accepted",
+      job_status: "scheduled", job_scheduled_for: "2026-10-09T14:00:00+02:00",
+      customer_name: "Client R300", customer_phone: "0821234567", job_address: "12 Long Street" };
+    render(<MemoryRouter>
+      <JobCard item={scheduleRowToCard(row)} audience="tech" density="full" onOpen={vi.fn()}
+        actions={<div className="w-full space-y-2">
+          <div className="flex gap-2 pt-1">
+            <Button asChild size="sm" variant="outline" className="flex-1 h-10">
+              <a href="tel:0821234567"><Phone className="h-4 w-4 mr-1.5" /> Call</a>
+            </Button>
+            <Button asChild size="sm" variant="outline" className="flex-1 h-10">
+              <a href="https://www.google.com/maps/dir/?api=1&destination=12%20Long%20Street" target="_blank" rel="noreferrer">
+                <Navigation className="h-4 w-4 mr-1.5" /> Navigate</a>
+            </Button>
+          </div>
+        </div>} />
+    </MemoryRouter>);
+    expect(screen.getByRole("link", { name: /Call/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Navigate/ })).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/R\s?\d/);
+  });
+
+  it("tech job cards show the Proposed badge only for proposed assignments, otherwise the job status", () => {
+    const base = { job_id: "j3", job_title: "Service", job_type: "service", job_scheduled_for: "2026-10-09T14:00:00+02:00" };
+    expect(scheduleRowToCard({ ...base, assignment_status: "proposed", job_status: "scheduled" }).statusKey).toBe("proposed");
+    expect(scheduleRowToCard({ ...base, assignment_status: "accepted", job_status: "scheduled" }).statusKey).toBe("scheduled");
+    expect(assignmentToCard({ status: "proposed", job_id: "j3", jobs: { id: "j3", status: "scheduled" } }).statusKey).toBe("proposed");
+    render(<MemoryRouter><JobCard item={scheduleRowToCard({ ...base, assignment_status: "proposed", job_status: "scheduled" })}
+      audience="tech" density="full" onOpen={vi.fn()} /></MemoryRouter>);
+    expect(screen.getByText("Proposed")).toBeTruthy();
   });
 });
