@@ -168,7 +168,7 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
             {photoCount > 0 && <span className="flex items-center gap-0.5 text-xs text-muted-foreground"><ImageIcon className="h-3 w-3" />{photoCount}</span>}
             {distance && <span className="text-xs text-muted-foreground">{distance}km</span>}
             {lead.status === "in_progress" && lead.started_at && <LeadCardProgress startedAt={lead.started_at} estimatedDurationMinutes={lead.estimated_duration_minutes} estimatedEndTime={lead.estimated_end_time} compact />}
-          </>} action={
+          </>} action={<>
           {/* Active lead - Action buttons */}
           {variant === "active" && (
             <div className="flex gap-1.5">
@@ -227,8 +227,7 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
             </div>
           )}
 
-          } />)}
-        </>)}
+          </>} />)}
         </>
       </div>
     );
