@@ -888,6 +888,9 @@ export type Database = {
           materials_markup_percent: number
           materials_waste_percent: number
           name: string
+          office_address: string | null
+          office_lat: number | null
+          office_lng: number | null
           onboarding_completed: boolean | null
           sales_commission_percent: number
           services: string[] | null
@@ -901,6 +904,9 @@ export type Database = {
           units_markup_percent: number
           updated_at: string | null
           vat_rate: number | null
+          work_days: number[]
+          work_end: string
+          work_start: string
         }
         Insert: {
           created_at?: string
@@ -915,6 +921,9 @@ export type Database = {
           materials_markup_percent?: number
           materials_waste_percent?: number
           name: string
+          office_address?: string | null
+          office_lat?: number | null
+          office_lng?: number | null
           onboarding_completed?: boolean | null
           sales_commission_percent?: number
           services?: string[] | null
@@ -928,6 +937,9 @@ export type Database = {
           units_markup_percent?: number
           updated_at?: string | null
           vat_rate?: number | null
+          work_days?: number[]
+          work_end?: string
+          work_start?: string
         }
         Update: {
           created_at?: string
@@ -942,6 +954,9 @@ export type Database = {
           materials_markup_percent?: number
           materials_waste_percent?: number
           name?: string
+          office_address?: string | null
+          office_lat?: number | null
+          office_lng?: number | null
           onboarding_completed?: boolean | null
           sales_commission_percent?: number
           services?: string[] | null
@@ -955,6 +970,9 @@ export type Database = {
           units_markup_percent?: number
           updated_at?: string | null
           vat_rate?: number | null
+          work_days?: number[]
+          work_end?: string
+          work_start?: string
         }
         Relationships: []
       }
@@ -4988,11 +5006,15 @@ export type Database = {
           location_tracking_enabled: boolean | null
           max_travel_km: number | null
           network_status: string | null
+          office_address: string | null
+          office_lat: number | null
+          office_lng: number | null
           onboarding_completed: boolean
           participant_type: string
           phone: string | null
           search_aliases: string[] | null
           skills: string[] | null
+          start_from: string | null
           stripe_customer_id: string | null
           subscription_plan: string
           subscription_status: string
@@ -5026,11 +5048,15 @@ export type Database = {
           location_tracking_enabled?: boolean | null
           max_travel_km?: number | null
           network_status?: string | null
+          office_address?: string | null
+          office_lat?: number | null
+          office_lng?: number | null
           onboarding_completed?: boolean
           participant_type?: string
           phone?: string | null
           search_aliases?: string[] | null
           skills?: string[] | null
+          start_from?: string | null
           stripe_customer_id?: string | null
           subscription_plan?: string
           subscription_status?: string
@@ -5064,11 +5090,15 @@ export type Database = {
           location_tracking_enabled?: boolean | null
           max_travel_km?: number | null
           network_status?: string | null
+          office_address?: string | null
+          office_lat?: number | null
+          office_lng?: number | null
           onboarding_completed?: boolean
           participant_type?: string
           phone?: string | null
           search_aliases?: string[] | null
           skills?: string[] | null
+          start_from?: string | null
           stripe_customer_id?: string | null
           subscription_plan?: string
           subscription_status?: string
@@ -6218,6 +6248,126 @@ export type Database = {
           srtext?: string | null
         }
         Relationships: []
+      }
+      staff_blocked_time: {
+        Row: {
+          archived_at: string | null
+          company_id: string
+          created_at: string | null
+          created_by: string | null
+          ends_at: string
+          id: string
+          kind: string
+          profile_id: string
+          reason: string | null
+          starts_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          company_id: string
+          created_at?: string | null
+          created_by?: string | null
+          ends_at: string
+          id?: string
+          kind?: string
+          profile_id: string
+          reason?: string | null
+          starts_at: string
+        }
+        Update: {
+          archived_at?: string | null
+          company_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          ends_at?: string
+          id?: string
+          kind?: string
+          profile_id?: string
+          reason?: string | null
+          starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_blocked_time_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_home_bases: {
+        Row: {
+          address: string | null
+          lat: number | null
+          lng: number | null
+          profile_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          lat?: number | null
+          lng?: number | null
+          profile_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          lat?: number | null
+          lng?: number | null
+          profile_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_home_bases_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_work_hours: {
+        Row: {
+          company_id: string
+          day_of_week: number
+          end_time: string | null
+          id: string
+          is_working: boolean
+          profile_id: string
+          start_time: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          day_of_week: number
+          end_time?: string | null
+          id?: string
+          is_working?: boolean
+          profile_id: string
+          start_time?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          day_of_week?: number
+          end_time?: string | null
+          id?: string
+          is_working?: boolean
+          profile_id?: string
+          start_time?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_work_hours_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       status_change_log: {
         Row: {
@@ -8922,6 +9072,7 @@ export type Database = {
       get_tech_earnings: { Args: { p_tech_id?: string }; Returns: Json }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       gettransactionid: { Args: never; Returns: unknown }
+      has_home_base: { Args: { p_profile_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -9891,6 +10042,15 @@ export type Database = {
       st_wrapx: {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
+      }
+      staff_work_window: {
+        Args: { p_date: string; p_profile_id: string }
+        Returns: {
+          end_time: string
+          is_working: boolean
+          source: string
+          start_time: string
+        }[]
       }
       tech_can_see_customer: {
         Args: { _customer: string; _uid: string }
