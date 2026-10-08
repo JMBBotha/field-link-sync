@@ -1219,6 +1219,17 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                 <TimeInput24 value={quickAssignEnd} onChange={e => setQuickAssignEnd(e.target.value)} />
               </div>
             </div>
+            {lane && quickAssignLead && (
+              <AvailabilityPicker lane={lane === "sales" ? "sales" : "service"} date={quickAssignDate} startTime={quickAssignStart}
+                minutes={Math.max(15, toMinutes(quickAssignEnd) - toMinutes(quickAssignStart)) || leadMinutes(quickAssignLead)}
+                lat={(quickAssignLead as any).latitude ?? null} lng={(quickAssignLead as any).longitude ?? null}
+                excludeLeadId={quickAssignLead.id} selectedId={quickAssignAgent}
+                onSelect={(id, d, t) => {
+                  setQuickAssignAgent(id);
+                  if (d) setQuickAssignDate(d);
+                  if (t) { const len = Math.max(15, toMinutes(quickAssignEnd) - toMinutes(quickAssignStart)); setQuickAssignStart(t); setQuickAssignEnd(fromMinutes(toMinutes(t) + len)); }
+                }} />
+            )}
           </div>
             );
           })()}
