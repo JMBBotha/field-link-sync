@@ -96,12 +96,12 @@ const AdminCustomerDetailPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, email")
+        .select("id, full_name")
         .eq("company_id", customer!.company_id!)
         .in("dispatch_role", ["sales", "sales_engineer"])
         .order("full_name");
       if (error) throw error;
-      return (data || []) as { id: string; full_name: string | null; email: string | null }[];
+      return (data || []) as { id: string; full_name: string | null }[];
     },
   });
 
@@ -382,7 +382,7 @@ const AdminCustomerDetailPage = () => {
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
                         {salesReps.map((r) => (
-                          <SelectItem key={r.id} value={r.id}>{r.full_name || r.email || "Unnamed"}</SelectItem>
+                          <SelectItem key={r.id} value={r.id}>{r.full_name || "Unnamed"}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
