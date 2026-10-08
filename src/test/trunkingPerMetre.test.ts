@@ -23,15 +23,15 @@ describe("per-metre trunking pricing", () => {
     expect(isPerMetreTrunking(CAP)).toBe(false);
     expect(isPerMetreTrunking(DRAIN)).toBe(false);
   });
-  it.each([[T1, 88.1667, 264.5], [T2, 10.8333, 32.5], [T3, 31.1533, 93.46]])("%s unit price per metre + 3 m total", (p, rate, total) => {
+  it.each([[T1, 96.98, 290.94], [T2, 11.92, 35.76], [T3, 34.27, 102.81]])("%s unit price per metre + 3 m total", (p, rate, total) => {
     const f = catalogLineFields(p, 3);
     expect(f.unit_price).toBe(rate);
     expect((f as any).total_price).toBe(total);
     expect(f.metadata).toMatchObject({ qty_unit: "metre", supplier_length_m: 3 });
   });
   it("1.5 m and 4 m of TRUNK01", () => {
-    expect((catalogLineFields(T1, 1.5) as any).total_price).toBe(132.25);
-    expect((catalogLineFields(T1, 4) as any).total_price).toBe(352.67);
+    expect((catalogLineFields(T1, 1.5) as any).total_price).toBe(145.47);
+    expect((catalogLineFields(T1, 4) as any).total_price).toBe(387.92);
     expect(perMetreTotal(3, 264.5, 3)).toBe(264.5);
   });
   it("end cap and drain unchanged", () => {
@@ -39,8 +39,8 @@ describe("per-metre trunking pricing", () => {
     expect(c.unit_price).toBe(29.52);
     expect((c as any).total_price).toBeUndefined();
     const d = catalogLineFields(DRAIN, 1);
-    expect(d.unit_price).toBe(56);
-    expect(d.metadata).toMatchObject({ qty_unit: "length", supplier_length_m: 4 });
+    expect(d.unit_price).toBe(15.4); // drain pipe is now a metre line with 10% waste
+    expect(d.metadata).toMatchObject({ qty_unit: "metre", supplier_length_m: 4, waste_percent: 10 });
   });
   it("display label", () => {
     expect(qtyUnitLabel(3, { qty_unit: "metre", supplier_length_m: 3 }, 88.1667)).toBe("3 m · R88.17/m");
@@ -48,7 +48,7 @@ describe("per-metre trunking pricing", () => {
   });
 });
 
-describe("standard install adds 3 m trunking", () => {
+describe("standard install adds 3 m trunking (per metre + waste)", () => {
   const tpl = [{ id: "t", name: "12K", min_btu: 9000, max_btu: 12000, is_active: true, sort_order: 0, items: [
     { id: "i1", role: "trunking_main", bundle_id: null, product_code: "TRUNK01", default_qty: 1, default_length_m: null, included: true, sort_order: 1 },
     { id: "i2", role: "trunking_small", bundle_id: null, product_code: "TRUNK02", default_qty: 1, default_length_m: 2, included: true, sort_order: 2 },
@@ -59,14 +59,14 @@ describe("standard install adds 3 m trunking", () => {
     const plan = planStandardInstall(unit, tpl, [], [T1, T2, CAP]);
     expect(plan.lines.map((l) => l.qty)).toEqual([3, 2, 1]);
     const f = catalogLineFields(plan.lines[0].product, plan.lines[0].qty) as any;
-    expect(f.total_price).toBe(264.5);
+    expect(f.total_price).toBe(290.94);
   });
   it("builder basket line totals exactly the book price and survives reopen", () => {
     const plan = planStandardInstall(unit, tpl, [], [T1, T2, CAP]);
     const b = installBasketItem(plan.lines[0], "u", "t") as any;
     expect(b.install.qty_unit).toBe("metre");
-    expect(calculateBasketItemSell(b)).toBe(264.5);
-    expect(calculateBasketItemSell({ ...b, quantity: 1.5 })).toBe(132.25);
+    expect(calculateBasketItemSell(b)).toBe(290.94);
+    expect(calculateBasketItemSell({ ...b, quantity: 1.5 })).toBe(145.47);
     const re = stubProductFromQuoteItem({ id: "x", unit_price: 88.1667, quantity: 3, metadata: { qty_unit: "metre", supplier_length_m: 3, unit_cost: 44.0833 } });
     expect(calculateBasketItemSell({ instanceId: "x", product: re, quantity: 3 } as any)).toBe(264.5);
     expect(calculateBasketItemSell({ instanceId: "x", product: re, quantity: 4 } as any)).toBe(352.67);
@@ -125,7 +125,7 @@ describe("Mandy per-metre trunking", () => {
   it("missing trunking is added in metres", async () => {
     const { d, log } = deps([items(metreLine)[0], { id: "b", item_name: "Bracket", area_id: "a1", quantity: 1, unit_price: 420, metadata: tag("bracket") }]);
     await runInstallEdit(d as any, { op: "set_qty", role: "trunking_main", metres: 3 });
-    expect(log[0][1]).toMatchObject({ quantity: 3, unit_price: 88.1667, total_price: 264.5 });
+    expect(log[0][1]).toMatchObject({ quantity: 3, unit_price: 96.98, total_price: 290.94 });
   });
 });
 

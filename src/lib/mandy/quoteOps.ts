@@ -418,13 +418,17 @@ export function installBasketItem(l: InstallPlan["lines"][number], unitKey: stri
   const metre = (f.metadata as any)?.qty_unit === "metre";
   // Per-metre trunking: lock ONE length's sell/cost and price per that many metres
   // (computeLineTotal: metres ÷ L × length sell) so 3 m = the exact book price.
-  const L = supplierLen || 1;
-  const unit = metre ? { unit_type: "m", price_per_unit_qty: L, price_per_unit_label: `${L} m`, allows_decimal_qty: true, qty_step: 0.1, min_qty: 0 } : {};
+  const md: any = f.metadata;
+  const waste = metre && md.waste_percent != null;
+  // Waste-priced metre line: lock ONE metre (total = metres x per-metre sell).
+  const L = waste ? 1 : supplierLen || 1;
+  const wasteMeta = waste ? { waste_percent: md.waste_percent, supplier_length_m: supplierLen, pack_cost_ex_vat: md.pack_cost_ex_vat } : {};
+  const unit = metre ? { unit_type: "m", price_per_unit_qty: L, price_per_unit_label: `${L} m`, allows_decimal_qty: true, qty_step: 0.1, min_qty: waste ? 0.1 : 0 } : {};
   const sell = metre ? Math.round(f.unit_price * L * 100) / 100 : f.unit_price;
   const lockedCost = metre && cost != null ? Math.round(cost * L * 100) / 100 : cost;
   return {
     instanceId: `${unitKey}-${l.role}`,
-    product: { ...l.product, ...unit, sold_in_length: false, price_per_metre: null, locked_sell_ex_vat: sell, locked_cost_ex_vat: lockedCost } as PaletteProduct,
+    product: { ...l.product, ...unit, ...wasteMeta, sold_in_length: false, price_per_metre: null, locked_sell_ex_vat: sell, locked_cost_ex_vat: lockedCost } as PaletteProduct,
     quantity: l.qty,
     install: { unitKey, role: l.role, template_id: templateId, supplier_length_m: supplierLen, ...(metre ? { qty_unit: "metre" as const } : {}) },
   };
