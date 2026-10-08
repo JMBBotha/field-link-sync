@@ -130,3 +130,5 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] Test without modifying real leads; guarded browser checks and focused tests only.
 
 Follow-ups only: staff working hours and webhook-secret rotation were intentionally not changed.
+
+- [x] Rename area-card "Create area" button to "Add Area" (owner request 2026-10-08)
