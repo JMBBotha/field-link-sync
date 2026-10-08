@@ -1053,7 +1053,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
               onLeadDragStart={handleDragStart} onScheduleDragStart={handleScheduleDragStart} onDragEnd={handleDragEnd}
               onAssignLead={lead => { setQuickAssignLead(lead); setQuickAssignAgent(""); setQuickAssignDate(lead.scheduled_date || format(currentDate, "yyyy-MM-dd")); setQuickAssignStart(hhmm(lead.scheduled_time || "08:00")); setQuickAssignEnd(fromMinutes(toMinutes(lead.scheduled_time || "08:00") + leadMinutes(lead))); }}
               onAssignPool={s => { if (s.job_id) navigate(`/admin/jobs/${s.job_id}`); }} />
-            {(mobile || viewMode === "day") && (mobile || dayStyle === "cards" || isSalesRep) ? (
+            {viewMode === "day" && (mobile || dayStyle === "cards" || isSalesRep) ? (
               <DayCards date={format(currentDate, "yyyy-MM-dd")} groups={groupAgentsByLane(dispatchAgents, laneById)}
                 schedules={schedulesForDates.get(format(currentDate, "yyyy-MM-dd")) || []} leads={allLeads} sales={isSalesRep}
                 isAgentOnline={isAgentOnline} onJobInfoClick={(lead, schedule) => { setJobInfoLead(lead); setJobInfoSchedule(schedule); }}
@@ -1669,6 +1669,7 @@ const WeekTimeline = ({
                   >
                     <div className="space-y-0.5">
                       {daySchedules.map(schedule => {
+                        if (sales && !schedule.leads) return <BusyBlock key={schedule.id} schedule={schedule} />;
                         const status = schedule.leads?.status || "pending";
                         return (
                           <div
