@@ -15,6 +15,7 @@ export function usePendingApplicants() {
         .select("id, full_name, phone, skills, participant_type, created_at")
         .in("participant_type", ["independent_sales", "independent_tech"] as any)
         .eq("network_status", "pending")
+        .is("archived_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as any[];

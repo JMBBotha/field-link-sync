@@ -129,8 +129,7 @@ const AdminSidebar = ({
           ],
         },
         { path: "/admin/price-lists", label: "Price lists", icon: BookOpen, roles: ["admin", "dispatcher"] },
-        { path: "/admin/team", label: "Team Members", icon: Users, roles: ["admin"] },
-        { path: "/admin/network-agents", label: "Network Agents", icon: UserPlus, roles: ["admin"], badge: pendingApplicants > 0 ? pendingApplicants : undefined },
+        { path: "/admin/team", label: "Team", icon: Users, roles: ["admin"], badge: pendingApplicants > 0 ? pendingApplicants : undefined },
         ...(isSalesRep ? [] : [{
           path: "/admin/reports",
           label: "Reports",
