@@ -25,7 +25,7 @@ import AssignTechDialog from "@/components/jobs/AssignTechDialog";
 import RequireRole from "@/components/RequireRole";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import JobCard from "@/components/cards/JobCard";
-import { jobToCard, visitToCard } from "@/lib/cardModel";
+import { jobToCard, visitToCard, visibleVisitEntries } from "@/lib/cardModel";
 import { STATUS_PILL } from "@/lib/dispatchCards";
 import { loadEntries } from "@/lib/todaysJobs";
 import AttentionStrip from "@/components/jobs/AttentionStrip";
@@ -123,7 +123,7 @@ const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => 
 
   // Group jobs by status
   const board = useMemo(
-    () => groupBoardRows(filterBoardRows(buildBoardRows(jobs as any[], booked.entries), filters, booked.names), showCancelled),
+    () => groupBoardRows(filterBoardRows(buildBoardRows(jobs as any[], visibleVisitEntries(booked.entries)), filters, booked.names), showCancelled),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [jobs, booked.entries, booked.names, showCancelled, searchParams.toString()],
   );

@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { laneOf, LANE_META, type LeadLane } from "@/lib/leadLane";
 import { boardLane, rowTarget, type Person } from "@/lib/jobsBoard";
 import JobCard from "@/components/cards/JobCard";
-import { jobToCard, visitToCard } from "@/lib/cardModel";
+import { jobToCard, visitToCard, visibleVisitEntries } from "@/lib/cardModel";
 import { loadEntries, todayInJohannesburg } from "@/lib/todaysJobs";
 import { sortDispatchJobs, techStrip, activeAssignee, NEXT_STATUS, type DJob } from "@/lib/dispatchCards";
 import LeadCardV2 from "@/components/leads/LeadCardV2";
@@ -87,7 +87,7 @@ export default function DispatchCards() {
   );
   const cards = [
     ...shown.map((job) => ({ item: jobToCard(job), job, entry: null })),
-    ...booked.entries.filter((e) => !e.job_id && e.lead_id && e.date === day && !["cancelled", "canceled"].includes(e.status || ""))
+    ...visibleVisitEntries(booked.entries).filter((e) => !e.job_id && e.lead_id && e.date === day && !["cancelled", "canceled"].includes(e.status || ""))
       .map((entry) => ({ item: visitToCard(entry, booked.names), job: null, entry })),
   ].filter(({ item }) => lane === "all" || item.lane === lane)
     .sort((a, b) => a.item.urgency.rank - b.item.urgency.rank

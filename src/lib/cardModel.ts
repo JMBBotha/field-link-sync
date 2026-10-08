@@ -1,6 +1,19 @@
+import { format } from "date-fns";
 import { activeAssignee, jobUrgency, type DJob, type Urgency } from "@/lib/dispatchCards";
 import { boardLane, isCancelled, rowAssignee, type Person } from "@/lib/jobsBoard";
 import type { CalendarEntry } from "@/lib/todaysJobs";
+
+/** "Overdue · 9 Jan" for a card more than 24 h late; date-only values keep their calendar day. */
+export function overdueLabel(scheduledFor: string | null): string {
+  if (!scheduledFor) return "Overdue";
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(scheduledFor) ? new Date(`${scheduledFor}T12:00:00`) : new Date(scheduledFor);
+  return isNaN(d.getTime()) ? "Overdue" : `Overdue · ${format(d, "d MMM")}`;
+}
+
+/** Booked visits the user can't actually see: no job row AND the lead was hidden (empty customer name). */
+export function visibleVisitEntries<T extends Pick<CalendarEntry, "job_id" | "customer_name">>(entries: T[]): T[] {
+  return entries.filter((e) => e.job_id || String(e.customer_name || "").trim() !== "");
+}
 
 export type CardJob = {
   kind: "job" | "visit"; id: string; title: string; scheduledFor: string | null; statusKey: string;
