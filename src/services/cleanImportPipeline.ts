@@ -1,10 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
+import { archiveSupplierProducts, deactivatePdfUploads } from "@/services/catalogArchive";
 import { validateProduct, VALIDATION_RULES, VALID_PRODUCT_CATEGORIES, type ProductCategory } from "@/config/pdfExtractionConfig";
 
 /**
  * CLEAN IMPORT PIPELINE
- * Enforces: DELETE ALL old data for this supplier → THEN insert new data
- * Never upserts. Never merges. Always fresh.
+ * "Clean" = archive old products + deactivate old books (never deletes).
  *
  * Validation uses shared rules from pdfExtractionConfig.ts
  */
@@ -17,126 +17,10 @@ export async function cleanImportForSupplier(supplierId: string): Promise<{
   deletedProducts: number;
   deletedPdfs: number;
 }> {
-  // DISABLED: full hard-delete purge bypasses the import review gate.
-  // Use archive + Documents > AI Import (reviewed diff) instead.
-  throw new Error("Permanent purge is disabled. Archive products, then re-import through AI Import review.");
-  // eslint-disable-next-line no-unreachable
-  console.log(`[CleanImport] Starting full purge for supplier ${supplierId}`);
-
-  // ─── PHASE 1: Get all existing IDs ───
-  const { data: existingProducts } = await (supabase.from("supplier_products") as any)
-    .select("id")
-    .eq("supplier_id", supplierId);
-  const productIds = (existingProducts || []).map((p: any) => p.id);
-
-  const { data: existingPdfs } = await (supabase.from("pdf_uploads") as any)
-    .select("id, file_path, storage_path, file_url")
-    .eq("supplier_id", supplierId);
-  const pdfIds = (existingPdfs || []).map((p: any) => p.id);
-
-  // ─── PHASE 2: Delete ALL dependent records (batch to avoid URL length issues) ───
-  if (productIds.length > 0) {
-    for (let i = 0; i < productIds.length; i += 200) {
-      const batch = productIds.slice(i, i + 200);
-      await safeDelete("quote_items", "product_id", batch);
-      await safeDelete("job_used_parts", "product_id", batch);
-      await safeDelete("inventory_stock", "product_id", batch);
-      await safeDelete("bundle_items", "supplier_product_id", batch);
-      await safeDelete("pdf_product_regions", "product_id", batch);
-    }
-  }
-
-  // ─── PHASE 3: Delete ALL PDF-related records ───
-  if (pdfIds.length > 0) {
-    await safeDelete("pdf_product_regions", "pdf_upload_id", pdfIds);
-  }
-
-  // ─── PHASE 4: Delete ALL products ───
-  await (supabase.from("supplier_products") as any).delete().eq("supplier_id", supplierId);
-
-  // ─── PHASE 5: Delete ALL pdf_upload records ───
-  await (supabase.from("pdf_uploads") as any).delete().eq("supplier_id", supplierId);
-
-  // ─── PHASE 6: Delete stored PDF page cache (supplier_pdf_pages) ───
-  try {
-    const { data: pages } = await (supabase.from("supplier_pdf_pages") as any)
-      .select("page_image_url, pdf_filename")
-      .eq("supplier_id", supplierId);
-
-    if (pages && pages.length > 0) {
-      const imagePaths = pages
-        .map((p: any) => {
-          const url = p.page_image_url || "";
-          const match = url.match(/supplier-pdf-pages\/(.+)$/);
-          return match ? match[1] : null;
-        })
-        .filter(Boolean) as string[];
-
-      if (imagePaths.length > 0) {
-        await supabase.storage.from("supplier-pdf-pages").remove(imagePaths);
-      }
-    }
-    await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierId);
-  } catch (_) {
-    // Table may not have data, that's fine
-  }
-
-  // ─── PHASE 7: Delete actual files from Storage ───
-  for (const pdf of existingPdfs || []) {
-    const rawPath = pdf.file_path || pdf.storage_path || pdf.file_url || "";
-    const match = rawPath.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)/);
-    const cleanPath = match ? match[1] : rawPath;
-    if (cleanPath) {
-      for (const bucket of ["pdfs", "price-lists", "supplier-pdfs", "supplier-pdf-pages"]) {
-        try {
-          await supabase.storage.from(bucket).remove([cleanPath]);
-        } catch (_) {}
-      }
-    }
-  }
-
-  // ─── PHASE 8: Sweep storage folders ───
-  for (const bucket of ["pdfs", "price-lists", "supplier-pdfs", "supplier-pdf-pages", "product-image"]) {
-    try {
-      const { data: files } = await supabase.storage.from(bucket).list(supplierId);
-      if (files?.length) {
-        for (const item of files) {
-          if (!item.id) {
-            const { data: nested } = await supabase.storage.from(bucket).list(`${supplierId}/${item.name}`);
-            if (nested?.length) {
-              await supabase.storage.from(bucket).remove(nested.map((f) => `${supplierId}/${item.name}/${f.name}`));
-            }
-          }
-        }
-        const filePaths = files.filter((f) => f.id).map((f) => `${supplierId}/${f.name}`);
-        if (filePaths.length > 0) {
-          await supabase.storage.from(bucket).remove(filePaths);
-        }
-      }
-    } catch (_) {}
-  }
-
-  // ─── PHASE 9: Verify clean state ───
-  const { count: remainingProducts } = await (supabase.from("supplier_products") as any)
-    .select("*", { count: "exact", head: true })
-    .eq("supplier_id", supplierId);
-
-  if ((remainingProducts || 0) > 0) {
-    console.error(`[CleanImport] FAILED — ${remainingProducts} products still remain!`);
-    throw new Error("Clean import verification failed — old data still exists");
-  }
-
-  console.log(`[CleanImport] Purge complete — 0 products, 0 PDFs for supplier ${supplierId}`);
-  return { success: true, deletedProducts: productIds.length, deletedPdfs: pdfIds.length };
-}
-
-/** Safe delete that won't throw if table/column doesn't exist */
-async function safeDelete(table: string, column: string, ids: string[]) {
-  try {
-    await (supabase.from(table as any) as any).delete().in(column, ids);
-  } catch (_) {
-    // Table or column may not exist — that's OK during cleanup
-  }
+  // Archive only: never deletes products, books or quote lines.
+  const deletedProducts = await archiveSupplierProducts(supplierId);
+  const deletedPdfs = await deactivatePdfUploads({ supplierId });
+  return { success: true, deletedProducts, deletedPdfs };
 }
 
 /**
