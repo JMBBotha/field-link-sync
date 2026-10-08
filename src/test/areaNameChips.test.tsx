@@ -54,7 +54,7 @@ describe("shared area name chips", () => {
     fireEvent.click(screen.getByRole("button", { name: "Main bedroom" }));
     expect(create).toHaveBeenCalledWith("Main bedroom");
     view.rerender(<CanonicalAreaCreateControl existingNames={["Main bedroom"]} onCreate={create} />);
-    expect(screen.getByRole("button", { name: "Create area" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add Area" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Guest bedroom" })).not.toBeInTheDocument();
   });
 });
