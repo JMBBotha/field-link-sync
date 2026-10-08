@@ -8,7 +8,7 @@ describe("canonical quote builder", () => {
     render(<CanonicalAreaCreateControl existingNames={[]} onCreate={vi.fn()} />);
     const choices = screen.getByTestId("canonical-area-choices");
     expect(within(choices).getAllByRole("button").map((button) => button.textContent?.trim())).toEqual([
-      "Main bedroom", "Guest bedroom", "Lounge", "Office", "Other",
+      "Main bedroom", "Guest bedroom", "Lounge", "Office", "Other…",
     ]);
     expect(OTHER_AREA_PICKS).toEqual(["Bedroom", "Bedroom 1", "Kitchen", "Dining room", "Study"]);
   });

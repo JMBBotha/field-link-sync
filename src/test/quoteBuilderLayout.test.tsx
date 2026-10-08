@@ -100,10 +100,15 @@ describe("quote builder layout", () => {
         }}
       />,
     );
+    expect(screen.getAllByRole("columnheader", { name: "QTY" })).toHaveLength(3);
+    expect(screen.getByTestId("estimate-areas-card")).toHaveAttribute("data-solid");
     for (const a of list) {
       const el = screen.getByTestId(`area-add-${a.id}`);
       expect(el.closest("[data-pdf-hide]")).toBeTruthy();
       expect(el.closest(`[data-area-id="${a.id}"]`)).toBeTruthy();
+      expect(el.closest("[data-html2canvas-ignore]")).toBeTruthy();
+      const table = el.closest("section")?.querySelector("table");
+      expect(table && el.compareDocumentPosition(table)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     }
   });
 });

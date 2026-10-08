@@ -1046,3 +1046,52 @@ All colors MUST be HSL.
   .estimate-lines tr.estimate-line[data-install-collapsed="true"] { display: revert !important; }
   .estimate-lines tr.estimate-install-summary { display: none !important; }
 }
+
+/* Option 1: intentionally solid staff quote paper, independent of glass. */
+:root {
+  --quote-paper: 0 0% 100%;
+  --quote-ink: 222 47% 11%;
+  --quote-text: 215 25% 27%;
+  --quote-muted: 215 16% 47%;
+  --quote-edge: 214 32% 91%;
+  --quote-control-edge: 213 27% 84%;
+  --quote-band: 210 40% 98%;
+  --quote-blue: 221 83% 53%;
+  --quote-chip-blue: 224 76% 48%;
+  --quote-chip-fill: 214 100% 97%;
+  --quote-chip-edge: 213 97% 87%;
+  --quote-danger: 0 72% 51%;
+  --quote-shadow: 0 2px 8px hsl(215 25% 27% / 0.08);
+}
+.option1-solid {
+  color: hsl(var(--quote-ink)); background: hsl(var(--quote-paper)) !important;
+  border-color: hsl(var(--quote-edge)) !important; box-shadow: var(--quote-shadow); backdrop-filter: none !important;
+}
+.option1-title, .option1-name-input, .option1-line-copy { color: hsl(var(--quote-ink)); }
+.option1-title:hover { background: transparent; }
+.option1-title-row { border-color: hsl(var(--quote-edge)); }
+.option1-area + .option1-area { border-top: 1px solid hsl(var(--quote-edge)); padding-top: 1rem; }
+.option1-name-chip { background: hsl(var(--quote-chip-fill)); color: hsl(var(--quote-chip-blue)); border-color: hsl(var(--quote-chip-edge)); }
+.option1-other-chip, .option1-add-secondary { background: hsl(var(--quote-paper)); color: hsl(var(--quote-text)); border-color: hsl(var(--quote-control-edge)); }
+.option1-name-chip:hover, .option1-other-chip:hover, .option1-add-secondary:hover { background: hsl(var(--quote-chip-fill)); color: hsl(var(--quote-chip-blue)); }
+.option1-add-unit { background: hsl(var(--labour-outline)); color: hsl(var(--quote-paper)); border-color: hsl(var(--labour-outline)); box-shadow: 0 0 0 3px hsl(var(--labour-outline) / 0.25); }
+.option1-add-unit:hover { background: hsl(var(--labour-outline) / 0.9); color: hsl(var(--quote-paper)); }
+.option1-add-secondary[aria-pressed="true"] { border-color: hsl(var(--labour-outline)); box-shadow: 0 0 0 2px hsl(var(--labour-outline) / 0.15); }
+.option1-collapse { color: hsl(var(--quote-text)); }
+.option1-delete { color: hsl(var(--quote-muted)); }
+.option1-delete:hover { color: hsl(var(--quote-danger)); background: transparent; }
+.option1-create-area { background: hsl(var(--quote-paper)); color: hsl(var(--quote-blue)); border-color: hsl(var(--quote-chip-edge)); }
+.option1-create-area:hover { background: hsl(var(--quote-chip-fill)); color: hsl(var(--quote-blue)); }
+.option1-labour { background: hsl(var(--quote-paper)) !important; color: hsl(var(--quote-text)); border-color: hsl(var(--labour-outline)) !important; }
+.option1-labour button, .option1-labour input { color: inherit; }
+.app-surface .option1-solid table thead, .app-surface .option1-solid table thead tr, .option1-table-header { background: hsl(var(--quote-band)) !important; color: hsl(var(--quote-blue)); backdrop-filter: none; }
+.option1-install-bar { background: hsl(var(--quote-band)); color: hsl(var(--quote-text)); }
+.option1-install-bar:hover { background: hsl(var(--quote-edge)); }
+.option1-line-copy [contenteditable] { overflow-wrap: anywhere; white-space: pre-wrap; }
+.option1-line-copy [contenteditable]:focus { outline: 1px solid hsl(var(--quote-control-edge)); }
+.option1-solid input, .option1-solid select { backdrop-filter: none !important; box-shadow: none; }
+@media (max-width: 639px) {
+  .estimate-editing > div { padding: 1rem; }
+  .estimate-editing [aria-label="Labour mode"] { width: min(240px, 100%); }
+  .option1-labour > span:first-child { flex-basis: 100%; }
+}
