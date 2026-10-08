@@ -20,7 +20,7 @@ describe("shared JobCard", () => {
     expect(screen.getByText("starts in 30m")).toBeTruthy();
     expect(screen.getByRole("button", { name: density === "full" ? "Assign tech" : "Assign" })).toBeTruthy();
     if (density === "compact") {
-      fireEvent.click(screen.getByRole("button", { name: "Job actions" }));
+      fireEvent.keyDown(screen.getByRole("button", { name: "Job actions" }), { key: "Enter", code: "Enter" });
       expect(screen.getByRole("menuitem", { name: "Auto" })).toBeTruthy();
     } else expect(screen.getByRole("button", { name: "Auto" })).toBeTruthy();
   });
@@ -30,7 +30,7 @@ describe("shared JobCard", () => {
       density="full" audience="tech" onOpen={vi.fn()} onAssign={vi.fn()} onAuto={vi.fn()}
       actions={<span>Invoice R 900 Assign Auto</span>}
       menuItems={[{ label: "Open invoice", onSelect: vi.fn() }, { label: "Assign", onSelect: vi.fn() }, { label: "Auto", onSelect: vi.fn() }, { label: "Open job", onSelect: vi.fn() }]} />);
-    fireEvent.click(screen.getByRole("button", { name: "Job actions" }));
+    fireEvent.keyDown(screen.getByRole("button", { name: "Job actions" }), { key: "Enter", code: "Enter" });
     expect(document.body.textContent).not.toMatch(/R\s?\d/);
     expect(document.body.textContent).not.toMatch(/Assign|Auto|Invoice|invoice/);
     expect(container.querySelector("[data-dispatch-card]" )?.getAttribute("aria-label")).not.toMatch(/R\s?\d/);
