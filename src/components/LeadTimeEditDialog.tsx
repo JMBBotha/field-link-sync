@@ -18,6 +18,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 
 interface Lead {
   id: string;
@@ -216,8 +217,7 @@ const LeadTimeEditDialog = ({
                     />
                   </PopoverContent>
                 </Popover>
-                <Input
-                  type="time"
+                <TimeInput24
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
                   className="w-28"
@@ -251,8 +251,7 @@ const LeadTimeEditDialog = ({
                     />
                   </PopoverContent>
                 </Popover>
-                <Input
-                  type="time"
+                <TimeInput24
                   value={completedTime}
                   onChange={(e) => setCompletedTime(e.target.value)}
                   className="w-28"

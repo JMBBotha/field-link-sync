@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 
 interface Lead {
   id: string;
@@ -233,8 +234,7 @@ const AgentChangeRequestDialog = ({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-sm">Start Time</Label>
-              <Input
-                type="time"
+              <TimeInput24
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
                 className="w-full"
@@ -242,8 +242,7 @@ const AgentChangeRequestDialog = ({
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm">End Time</Label>
-              <Input
-                type="time"
+              <TimeInput24
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
                 className="w-full"

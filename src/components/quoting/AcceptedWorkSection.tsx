@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
 import { useClashGuard } from "@/components/scheduling/ClashGuard";
 import { minutesToInterval } from "@/lib/schedulingDefaults";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 
 interface Props {
   quoteId: string;
@@ -409,7 +410,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
               </div>
               <div className="space-y-1.5">
                 <Label>Start time</Label>
-                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                <TimeInput24 value={startTime} onChange={(e) => setStartTime(e.target.value)} />
               </div>
             </div>
 

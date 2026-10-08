@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Clock, Save, Loader2 } from "lucide-react";
 import { hhmm } from "@/lib/schedulingDefaults";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -114,9 +115,9 @@ const AgentAvailabilityEditor = ({ agentId }: Props) => {
                 </span>
                 {day.is_available && (
                   <div className="flex items-center gap-2">
-                    <Input type="time" value={day.start_time} onChange={(e) => updateDay(day.day_of_week, "start_time", e.target.value)} className="w-28 h-8 text-sm" />
+                    <TimeInput24 value={day.start_time} onChange={(e) => updateDay(day.day_of_week, "start_time", e.target.value)} className="w-28 h-8 text-sm" />
                     <span className="text-muted-foreground text-xs">to</span>
-                    <Input type="time" value={day.end_time} onChange={(e) => updateDay(day.day_of_week, "end_time", e.target.value)} className="w-28 h-8 text-sm" />
+                    <TimeInput24 value={day.end_time} onChange={(e) => updateDay(day.day_of_week, "end_time", e.target.value)} className="w-28 h-8 text-sm" />
                   </div>
                 )}
               </div>

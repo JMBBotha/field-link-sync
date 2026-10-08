@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 
 interface BaseProps {
   label: string;
@@ -255,8 +256,7 @@ export const EditableDateTime = ({
           onKeyDown={(e) => e.key === "Enter" && flush()}
           className="h-8 text-sm"
         />
-        <Input
-          type="time"
+        <TimeInput24
           value={t}
           disabled={disabled || !d}
           onChange={(e) => setT(e.target.value)}

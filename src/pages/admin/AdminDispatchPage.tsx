@@ -45,6 +45,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import NeedsSomeoneTray from "@/components/calendar/NeedsSomeoneTray";
 import DayCards, { BusyBlock } from "@/components/calendar/DayCards";
 import { hoursLabel, calendarText, salesCalendarPeople, mergedMinutes, type WorkWindow, type BlockedTime } from "@/components/calendar/calendarModel";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 
 // ─── Types ───
 interface Lead {
@@ -1211,11 +1212,11 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm">Start Time</Label>
-                <Input type="time" value={quickAssignStart} onChange={e => setQuickAssignStart(e.target.value)} />
+                <TimeInput24 value={quickAssignStart} onChange={e => setQuickAssignStart(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm">End Time</Label>
-                <Input type="time" value={quickAssignEnd} onChange={e => setQuickAssignEnd(e.target.value)} />
+                <TimeInput24 value={quickAssignEnd} onChange={e => setQuickAssignEnd(e.target.value)} />
               </div>
             </div>
           </div>

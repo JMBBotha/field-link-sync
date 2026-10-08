@@ -145,7 +145,7 @@ const EntityDetailsForm = ({
             case "date":
               return <EditableField {...shared} type="date" />;
             case "time":
-              return <EditableField {...shared} type="time" />;
+              return <EditableField {...shared} type="time24" />;
             case "email":
               return <EditableField {...shared} type="email" />;
             case "tel":

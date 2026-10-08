@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import AddressMapField from "@/components/entity/AddressMapField";
 import { hhmm } from "@/lib/schedulingDefaults";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -48,9 +49,9 @@ export default function CompanyWorkHoursCard() {
           </label>
         ))}</div>
         <div className="flex items-center gap-2">
-          <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="w-28" />
+          <TimeInput24 value={start} onChange={(e) => setStart(e.target.value)} className="w-28" />
           <span className="text-xs text-muted-foreground">to</span>
-          <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="w-28" />
+          <TimeInput24 value={end} onChange={(e) => setEnd(e.target.value)} className="w-28" />
         </div>
         <AddressMapField label="Office address" value={office.address} lat={office.lat} lng={office.lng} onSave={async (v) => setOffice(v)} />
         <Button onClick={save} disabled={saving || !companyId}>Save</Button>
