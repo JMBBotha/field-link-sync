@@ -1,5 +1,5 @@
 # AGENTS
-- Catalogue writes from price lists/PDFs go only through ImportPreviewModal review (applyProductDiff needs reviewGatePassed); auto-catalog only proposes; browser checks use scripts/browser/readonly_guard.py — no silent inserts.
+- Catalogue writes from price lists/PDFs go only through ImportPreviewModal review (applyProductDiff needs reviewGatePassed); auto-catalog only proposes; browser checks use scripts/browser/readonly_guard.py — no silent inserts. Catalogue delete = archive via services/catalogArchive (never touch quote_items); quote-facing product reads use lib/liveProducts (live_supplier_products) — so only the live price list is quotable.
 - Estimate page and Build quote share one Option-1 area card; Create area stays inside before totals; old Build/Build Area Quote tabs are hidden. Dispatch uses active profiles.dispatch_role and lead-lane recipients, not user_roles.
 - Labour editors retain the labour-outline token over glass edges; PDF radio uses selection and personal favourite state, never double-tap timing, so separate clicks follow the same cycle.
 - Standard-install lines link to their unit via metadata.install.unit_item_id (never parent_item_id); replace-all builder saves must remap it to the unit's new id (remapInstallUnitIds) — otherwise Mandy's install edits lose the lines.
