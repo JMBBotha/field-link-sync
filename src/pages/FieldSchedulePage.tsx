@@ -4,9 +4,10 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchTodaysJobs, loadEntries, todayInJohannesburg } from "@/lib/todaysJobs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent } from "@/components/ui/card";
+import JobCard from "@/components/cards/JobCard";
+import { scheduleRowToCard } from "@/lib/cardModel";
 import { Button } from "@/components/ui/button";
-import { MapPin, CalendarDays, Phone, Navigation, RefreshCw } from "lucide-react";
+import { CalendarDays, Phone, Navigation, RefreshCw } from "lucide-react";
 import { JobCardListSkeleton } from "@/components/ui/skeletons";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
 import DepositPaymentChip, { type DepositChipState } from "@/components/shared/DepositPaymentChip";
@@ -30,13 +31,6 @@ type MyAssignedJobRow = {
   deposit_invoice_amount_paid: number | null;
   deposit_invoice_remaining: number | null;
   deposit_chip_state: string | null;
-};
-
-const STATUS_TONE: Record<string, string> = {
-  proposed: "bg-amber-100 text-amber-800",
-  accepted: "bg-blue-100 text-blue-800",
-  in_progress: "bg-green-100 text-green-800",
-  completed: "bg-muted text-muted-foreground",
 };
 
 const bucketLabel = (d: Date) => {
@@ -144,21 +138,8 @@ const FieldSchedulePage = () => {
             ) : (
               <div className="grid gap-2">
                 {day.open.map((e) => (
-                  <Card
-                    key={e.key}
-                    className="cursor-pointer active:scale-[0.99] transition-transform"
-                    onClick={() => e.job_id ? navigate(`/field/jobs/${e.job_id}`) : e.lead_id && navigate(`/field?lead=${e.lead_id}`)}
-                  >
-                    <CardContent className="p-3 flex items-center gap-3">
-                      <span className="font-semibold tabular-nums">{String(e.start_time || "").slice(0, 5)}</span>
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{e.customer_name || "Job"}</div>
-                        {e.customer_address && (
-                          <div className="text-xs text-muted-foreground truncate">{e.customer_address}</div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <JobCard key={e.key} item={scheduleRowToCard(e)} audience="tech" density="compact"
+                    onOpen={() => e.job_id ? navigate(`/field/jobs/${e.job_id}`) : e.lead_id && navigate(`/field?lead=${e.lead_id}`)} />
                 ))}
               </div>
             )}
@@ -170,15 +151,9 @@ const FieldSchedulePage = () => {
             <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Booked visits</h2>
             <div className="grid gap-2">
               {visits.map((e) => (
-                <Card key={e.key} className="cursor-pointer active:scale-[0.99] transition-transform" onClick={() => e.lead_id && navigate(`/field?lead=${e.lead_id}`)}>
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <span className="font-semibold tabular-nums">{format(new Date(`${e.date}T00:00:00`), "dd MMM")} {String(e.start_time || "").slice(0, 5)}</span>
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{e.customer_name || "Visit"}</div>
-                      {e.customer_address && <div className="text-xs text-muted-foreground truncate">{e.customer_address}</div>}
-                    </div>
-                  </CardContent>
-                </Card>
+                <JobCard key={e.key} item={scheduleRowToCard(e)} audience="tech" density="compact"
+                  onOpen={() => e.lead_id && navigate(`/field?lead=${e.lead_id}`)}
+                  actions={<span className="text-xs text-muted-foreground">{format(new Date(`${e.date}T00:00:00`), "dd MMM")}</span>} />
               ))}
             </div>
           </section>
@@ -203,25 +178,8 @@ const FieldSchedulePage = () => {
                 </div>
                 <div className="grid gap-2">
                   {bucket.items.map((r) => (
-                    <Card
-                      key={r.assignment_id}
-                      className="overflow-hidden active:scale-[0.99] transition-transform cursor-pointer"
-                      onClick={() => navigate(`/field/jobs/${r.job_id}`)}
-                    >
-                      <CardContent className="p-4 space-y-2">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-lg font-semibold tabular-nums">
-                                {format(new Date(r.job_scheduled_for!), "HH:mm")}
-                              </span>
-                              <span
-                                className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                                  STATUS_TONE[r.assignment_status ?? "proposed"] ?? STATUS_TONE.proposed
-                                }`}
-                              >
-                                {(r.assignment_status ?? "proposed").replace(/_/g, " ")}
-                              </span>
+                    <JobCard key={r.assignment_id} item={scheduleRowToCard(r)} audience="tech" density="full"
+                      onOpen={() => navigate(`/field/jobs/${r.job_id}`)} actions={<div className="w-full space-y-2">
                               {r.job_type === "installation" && r.deposit_invoice_id && (
                                 <DepositPaymentChip
                                   invoice={{
@@ -234,24 +192,10 @@ const FieldSchedulePage = () => {
                                     chip_state: (r.deposit_chip_state as DepositChipState | null) ?? null,
                                   }}
 
-                                  accepted
+                                  accepted hideAmount
                                   className="text-[10px]"
                                 />
                               )}
-                            </div>
-                            <div className="font-medium leading-tight truncate">{r.job_title ?? "Job"}</div>
-                            {r.customer_name && (
-                              <div className="text-sm text-muted-foreground truncate">{r.customer_name}</div>
-                            )}
-                            {r.job_address && (
-                              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
-                                <MapPin className="h-3.5 w-3.5 shrink-0" />
-                                <span className="truncate">{r.job_address}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
                         {(r.customer_phone || r.job_address) && (
                           <div className="flex gap-2 pt-1">
                             {r.customer_phone && (
@@ -286,8 +230,7 @@ const FieldSchedulePage = () => {
                             )}
                           </div>
                         )}
-                      </CardContent>
-                    </Card>
+                      </div>} />
                   ))}
                 </div>
               </section>
@@ -300,14 +243,8 @@ const FieldSchedulePage = () => {
                 </h2>
                 <div className="grid gap-2">
                   {unscheduled.map((r) => (
-                    <Card
-                      key={r.assignment_id}
-                      className="cursor-pointer active:scale-[0.99] transition-transform"
-                      onClick={() => navigate(`/field/jobs/${r.job_id}`)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="font-medium truncate">{r.job_title ?? "Job"}</div>
+                    <JobCard key={r.assignment_id} item={scheduleRowToCard(r)} audience="tech" density="full"
+                      onOpen={() => navigate(`/field/jobs/${r.job_id}`)} actions={<>
                           {r.job_type === "installation" && r.deposit_invoice_id && (
                             <DepositPaymentChip
                               invoice={{
@@ -319,16 +256,11 @@ const FieldSchedulePage = () => {
                                 remaining: r.deposit_invoice_remaining,
                                 chip_state: (r.deposit_chip_state as DepositChipState | null) ?? null,
                               }}
-                              accepted
+                              accepted hideAmount
                               className="text-[10px] shrink-0"
                             />
                           )}
-                        </div>
-                        {r.customer_name && (
-                          <div className="text-sm text-muted-foreground truncate">{r.customer_name}</div>
-                        )}
-                      </CardContent>
-                    </Card>
+                    </>} />
                   ))}
                 </div>
               </section>

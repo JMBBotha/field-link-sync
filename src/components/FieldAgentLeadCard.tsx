@@ -1,11 +1,9 @@
 import { forwardRef, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Navigation, AlertCircle, Loader2, ImageIcon } from "lucide-react";
+import { Navigation, Loader2, ImageIcon } from "lucide-react";
 import LeadCardProgress from "@/components/LeadCardProgress";
-import BookingBadge from "@/components/BookingBadge";
 import DepositPaymentChip, { type DepositInvoiceLike } from "@/components/shared/DepositPaymentChip";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 import { cn } from "@/lib/utils";
@@ -53,25 +51,9 @@ interface FieldAgentLeadCardProps {
   estimateUrl?: string | null;
 }
 
-const formatTimeAgo = (createdAt: string): string => {
-  const now = new Date();
-  const created = new Date(createdAt);
-  const diffMs = now.getTime() - created.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d ago`;
-};
-
 const getPriorityColor = (priority: string | undefined): string | null => {
-  if (priority === "urgent") return "#ef4444";
-  if (priority === "high") return "#f97316";
+  if (priority === "urgent") return "bg-destructive";
+  if (priority === "high") return "bg-warning";
   return null;
 };
 
@@ -139,7 +121,7 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
     };
 
     return (
-      <Card
+      <div
         ref={(el) => {
           // Handle both forwardRef and internal ref
           (cardRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
@@ -151,18 +133,8 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
         }}
         data-lead-id={lead.id}
         className={cn(
-          "cursor-pointer transition-all duration-200 relative shadow-md border-border/50 dark:border-blue-400/20",
-          // Default gradient
-          "bg-gradient-to-r from-blue-100 to-slate-50 dark:from-[#0a1628]/60 dark:via-[#1a3a6a]/50 dark:to-[#0a1628]/60 dark:backdrop-blur-md",
-          // Hover state with subtle scale
-          "hover:scale-[1.02] hover:shadow-lg hover:from-blue-50 hover:to-white dark:hover:from-[#0f2240]/65 dark:hover:via-[#1e4d8a]/55 dark:hover:to-[#0f2240]/65",
-          // Highlighted state - ring animation
-          isHighlighted && [
-            "ring-2 ring-primary ring-offset-2",
-            "from-blue-200 to-blue-50",
-            "shadow-lg shadow-primary/20",
-            "scale-[1.02]",
-          ],
+          "relative",
+          isHighlighted && "ring-2 ring-primary ring-offset-2 rounded-xl",
           // Dimmed state
           isDimmed && "opacity-50 grayscale-[30%]"
         )}
@@ -171,8 +143,7 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
         {/* Priority indicator dot */}
         {priorityColor && (
           <div
-            className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-card z-10"
-            style={{ backgroundColor: priorityColor }}
+            className={cn("absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-card z-10", priorityColor)}
           />
         )}
 
@@ -181,67 +152,23 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
           <div className="absolute inset-0 rounded-lg bg-primary/5 pointer-events-none" />
         )}
 
-        <CardContent className="p-3 space-y-2">
+        <>
           {variant === "available" ? (
-            <LeadCardV2 lead={lead as any} hideContact className="border-0 border-l-0 bg-transparent p-0 shadow-none" action={onAccept ? (
-              <Button size="sm" className="h-8 rounded-full px-4 font-semibold" style={{ backgroundColor: "#0077B6", color: "#FFFFFF" }} disabled={!!loadingAction}
+            <LeadCardV2 audience="tech" lead={lead} hideContact action={onAccept ? (
+              <Button size="sm" className="h-8 rounded-full px-4 font-semibold" disabled={!!loadingAction}
                 onClick={(e) => { e.stopPropagation(); onAccept(lead.id); }}>
                 {loadingAction === "accept" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Accept Lead"}
               </Button>
             ) : <span />} extra={distance ? <span className="text-xs text-muted-foreground">{distance}km</span> : undefined} />
-          ) : (<>
-          {/* Booking badge */}
-          <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={lead.scheduled_time} status={lead.status} />
-          <div className="flex items-start justify-between">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="font-medium text-sm truncate text-foreground">{lead.customer_name}</p>
-                {lead.priority === "urgent" && (
-                  <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground truncate">{lead.service_type}</p>
-            </div>
-            <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-2">
-              {getStatusBadge(lead.status)}
-              {invoice?.id && (
-                <DepositPaymentChip
-                  invoice={invoice}
-                  accepted={["accepted", "in_progress", "completed"].includes(lead.status)}
-                  className="text-[10px]"
-                />
-              )}
-              {estimateUrl && (
-                <Link
-                  to={estimateUrl}
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-[10px] font-medium text-primary hover:underline"
-                >
-                  Open job sheet
-                </Link>
-              )}
-              <div className="flex items-center gap-1.5">
-                {photoCount > 0 && (
-                  <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                    <ImageIcon className="h-3 w-3" />
-                    {photoCount}
-                  </span>
-                )}
-                {distance && (
-                  <span className="text-xs text-muted-foreground">{distance}km</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {lead.created_at && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3 w-3 flex-shrink-0" />
-              {formatTimeAgo(lead.created_at)}
-            </p>
-          )}
-
-
+          ) : (
+          <LeadCardV2 audience="tech" lead={lead} extra={<>
+            {getStatusBadge(lead.status)}
+            {invoice?.id && <DepositPaymentChip invoice={invoice} hideAmount accepted={["accepted", "in_progress", "completed"].includes(lead.status)} className="text-[10px]" />}
+            {estimateUrl && <Link to={estimateUrl} onClick={(e) => e.stopPropagation()} className="text-[10px] font-medium text-primary hover:underline">Open job sheet</Link>}
+            {photoCount > 0 && <span className="flex items-center gap-0.5 text-xs text-muted-foreground"><ImageIcon className="h-3 w-3" />{photoCount}</span>}
+            {distance && <span className="text-xs text-muted-foreground">{distance}km</span>}
+            {lead.status === "in_progress" && lead.started_at && <LeadCardProgress startedAt={lead.started_at} estimatedDurationMinutes={lead.estimated_duration_minutes} estimatedEndTime={lead.estimated_end_time} compact />}
+          </>} action={<>
           {/* Active lead - Action buttons */}
           {variant === "active" && (
             <div className="flex gap-1.5">
@@ -249,7 +176,7 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
                 <Button
                   size="sm"
                   className="flex-1 h-8 text-xs rounded-full font-semibold"
-                  style={{ backgroundColor: "#0077B6", color: "#FFFFFF" }}
+                 
                   onClick={(e) => {
                     e.stopPropagation();
                     onStart(lead);
@@ -300,18 +227,9 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
             </div>
           )}
 
-          {/* Job Progress Bar for in_progress leads */}
-          {lead.status === "in_progress" && lead.started_at && (
-            <LeadCardProgress
-              startedAt={lead.started_at}
-              estimatedDurationMinutes={lead.estimated_duration_minutes}
-              estimatedEndTime={lead.estimated_end_time}
-              compact
-            />
-          )}
-          </>)}
-        </CardContent>
-      </Card>
+          </>} />)}
+        </>
+      </div>
     );
   }
 );

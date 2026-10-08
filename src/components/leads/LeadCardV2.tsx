@@ -12,6 +12,10 @@ import { isCallDump } from "@/lib/callSummary";
 import { logLeadContact, useLeadSla, useNow } from "@/hooks/useLeadSla";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import CallSummary from "@/components/leads/CallSummary";
+import BookingBadge from "@/components/BookingBadge";
+import { hhmm as bookingTime } from "@/lib/schedulingDefaults";
+import { useAuth } from "@/contexts/AuthContext";
+import { techCardContent } from "@/components/cards/JobCard";
 
 export type LeadV2 = {
   id: string; customer_name?: string | null; customer_address?: string | null; customer_phone?: string | null; phone?: string | null;
@@ -19,6 +23,7 @@ export type LeadV2 = {
   created_at?: string | null; assigned_agent_id?: string | null; first_contact_at?: string | null; contact_attempts?: number | null;
   stage2_done_at?: string | null; sla_breached_at?: string | null; quote_sla_breached_at?: string | null;
   call_summary?: string | null; call_area?: string | null; call_urgency?: string | null; call_next_action?: string | null;
+  scheduled_date?: string | null; scheduled_time?: string | null;
 };
 
 const TONE: Record<Tone, { text: string; bar: string; dot: string }> = {
@@ -61,10 +66,14 @@ type Props = {
   /** Hide phone / Call / WhatsApp (e.g. techs browsing unaccepted leads). */
   hideContact?: boolean;
   density?: "full" | "compact";
+  audience?: "office" | "sales" | "tech";
 };
 
 /** Lead card v2: lane + source tags, live two-stage clock, Call/WhatsApp (logs contact), one-line call summary, UNASSIGNED + Assign. */
-export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, action, extra, className, hideContact, density = "full" }: Props) {
+export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, action, extra, className, hideContact, density = "full", audience = "office" }: Props) {
+  const { user } = useAuth();
+  const tech = audience === "tech";
+  const text = (value?: string | null) => tech ? (value || "").replace(/R\s?\d[\d\s,.]*/g, "") : value;
   const now = useNow();
   const { sla } = useLeadSla();
   const qc = useQueryClient();
@@ -76,7 +85,7 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
   const phone = lead.customer_phone || lead.phone || "";
   const unassigned = !lead.assigned_agent_id;
   const compact = density === "compact";
-  const who = assigneeName ?? staff.find((s) => s.id === lead.assigned_agent_id)?.full_name ?? null;
+  const who = tech && lead.assigned_agent_id === user?.id ? "You" : assigneeName ?? staff.find((s) => s.id === lead.assigned_agent_id)?.full_name ?? null;
   const pool = lane === "service" ? technicians : lane === "sales" ? salesStaff : staff;
   const attempts = Number(lead.contact_attempts) || 0;
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
@@ -116,7 +125,7 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
           </span>
           <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{sourceLabel(lead)}</span>
         </div>
-        {clock && (
+        {tech ? <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={bookingTime(lead.scheduled_time)} status={lead.status || undefined} /> : clock && (
           <div className="shrink-0 text-right leading-tight" data-testid="lead-clock">
             <div className={cn("font-bold tabular-nums", clock.stage === 0 || clock.stage === 3 ? "text-sm" : "text-xl", TONE[clock.tone].text)}>{clock.big}</div>
             <div className="text-[10px] text-muted-foreground">{clock.sub}</div>
@@ -124,17 +133,17 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
         )}
       </div>
       <div className="min-w-0">
-        <p className="truncate text-[15px] font-semibold leading-tight">{lead.customer_name || "New lead"}</p>
+        <p className="truncate text-[15px] font-semibold leading-tight">{text(lead.customer_name) || "New lead"}</p>
         {lead.customer_address && (
           <p className="mt-0.5 flex items-start gap-1 text-xs text-muted-foreground">
-            <MapPin className="mt-px h-3.5 w-3.5 shrink-0" /><span className="min-w-0 line-clamp-2 break-words">{compact ? lead.customer_address.split(",")[0] : lead.customer_address}</span>
+            <MapPin className="mt-px h-3.5 w-3.5 shrink-0" /><span className="min-w-0 line-clamp-2 break-words">{text(compact ? lead.customer_address.split(",")[0] : lead.customer_address)}</span>
           </p>
         )}
       </div>
       {phone && !hideContact && !compact && (
         <div className="flex flex-wrap items-center gap-1.5" onClick={stop}>
           <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-sm font-semibold tabular-nums">{phone}</span>
+          <span className="text-sm font-semibold tabular-nums">{text(phone)}</span>
           <Button asChild size="sm" className="h-7 px-2.5 text-xs"><a href={`tel:${phone}`} onClick={() => setAsking(true)}>Call</a></Button>
           <Button asChild size="sm" variant="outline" className="h-7 px-2.5 text-xs">
             <a href={waLink(phone)} target="_blank" rel="noopener noreferrer" onClick={() => log("whatsapp", "sent")}>WhatsApp</a>
@@ -149,15 +158,15 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
         </div>
       )}
       {!compact && <div className="flex flex-wrap gap-1" onClick={stop}>
-        <CallSummary lead={lead} compact />
+        <CallSummary lead={tech ? { ...lead, call_summary: text(lead.call_summary), notes: text(lead.notes) } : lead} compact />
         {/call ?back/i.test(lead.call_next_action || "") && <span className="rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-[10px] text-red-700">Call back requested</span>}
         {attempts > 0 && !lead.first_contact_at && <span className="rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-[10px] text-sky-800">{attempts} attempt{attempts === 1 ? "" : "s"} · no answer</span>}
       </div>}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5" onClick={stop}>
-        {(!compact ? action : null) ?? (unassigned ? (
+        {(!compact && !tech ? action : null) ?? (unassigned ? (
           <div className="flex items-center gap-1.5">
             <span className="rounded border border-red-500 px-1.5 py-0.5 text-[10px] font-bold text-red-600">UNASSIGNED</span>
-            {!compact && (onAssign ? (
+            {!compact && !tech && (onAssign ? (
               <Button size="sm" variant="destructive" className="h-6 px-2 text-[11px]" onClick={onAssign}>Assign <ChevronDown className="ml-0.5 h-3 w-3" /></Button>
             ) : (
               <DropdownMenu>
@@ -175,12 +184,12 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
         ) : (
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{initials(who)}</span>
-            <span className="truncate text-xs font-medium">{who || "Assigned"}</span>
+            <span className="truncate text-xs font-medium">{text(who) || "Assigned"}</span>
           </div>
         ))}
-        {compact ? action : clock?.alerted ? <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">🔔 {clock.alerted}</span>
+        {tech ? techCardContent(action) : compact ? action : clock?.alerted ? <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">🔔 {clock.alerted}</span>
           : clock ? <Steps clock={clock} lead={lead} /> : null}
-        {extra}
+        {tech ? techCardContent(extra) : extra}
       </div>
     </div>
   );

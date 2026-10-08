@@ -5,22 +5,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useOfflineContext } from "@/contexts/OfflineContext";
-import { Card, CardContent } from "@/components/ui/card";
+import JobCard from "@/components/cards/JobCard";
+import { assignmentToCard } from "@/lib/cardModel";
+import { useRole } from "@/hooks/useRole";
 import { Button } from "@/components/ui/button";
-import { MapPin, CalendarDays, CheckCircle, XCircle, Play, RefreshCw, CloudOff, FileText } from "lucide-react";
+import { CalendarDays, CheckCircle, XCircle, Play, RefreshCw, CloudOff, FileText } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { JobCardListSkeleton } from "@/components/ui/skeletons";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
 import DepositPaymentChip, { type DepositChipState } from "@/components/shared/DepositPaymentChip";
 import { format } from "date-fns";
-
-const STATUS_COLORS: Record<string, string> = {
-  proposed: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-  accepted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  in_progress: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-  completed: "bg-muted text-muted-foreground",
-  rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-};
 
 type MyAssignedJobRow = {
   assignment_id: string;
@@ -82,6 +76,8 @@ const AdminMyJobsPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { isFieldAgent, isAdmin, isDispatcher } = useRole();
+  const hideAmount = isFieldAgent && !isAdmin && !isDispatcher;
   const navigate = useNavigate();
   const { isOnline, queueOperation } = useOfflineContext();
   const { pathname } = useLocation();
@@ -244,40 +240,10 @@ const AdminMyJobsPage = () => {
             const job = assignment.jobs;
             if (!job) return null;
             return (
-              <Card key={assignment.id} className="overflow-hidden">
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-base leading-tight">{job.title}</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[assignment.status]}`}>
-                          {assignment.status.replace(/_/g, " ")}
-                        </span>
-                        {assignment.job_type === "installation" && assignment.depositInvoice?.id && (
-                          <DepositPaymentChip
-                            invoice={assignment.depositInvoice}
-                            accepted
-                            className="text-[10px]"
-                          />
-                        )}
-                      </div>
-                      {job.customers?.name && (
-                        <div className="text-sm text-muted-foreground">{job.customers.name}</div>
-                      )}
-                      {job.address && (
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <MapPin className="h-3.5 w-3.5 shrink-0" />
-                          <span className="truncate">{job.address}</span>
-                        </div>
-                      )}
-                      {job.scheduled_for && (
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-                          {format(new Date(job.scheduled_for), "dd MMM yyyy, HH:mm")}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+              <JobCard key={assignment.id} item={assignmentToCard(assignment)} audience="tech" density="full"
+                onOpen={() => navigate(`/field/jobs/${job.id}`)} actions={<div className="w-full space-y-3">
+                  {job.scheduled_for && <div className="text-xs text-muted-foreground">{format(new Date(job.scheduled_for), "dd MMM yyyy")}</div>}
+                  {assignment.job_type === "installation" && assignment.depositInvoice?.id && <DepositPaymentChip invoice={assignment.depositInvoice} accepted hideAmount={hideAmount} className="text-[10px]" />}
                   {!isOnline && ["proposed", "accepted", "in_progress"].includes(assignment.status) && (
                     <div className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-md px-2 py-1">
                       <CloudOff className="h-3 w-3" /> Offline — actions will queue and sync when you reconnect
@@ -348,8 +314,7 @@ const AdminMyJobsPage = () => {
                       </>
                     );
                   })()}
-                </CardContent>
-              </Card>
+                </div>} />
             );
           })}
         </div>
