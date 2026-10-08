@@ -22,4 +22,4 @@
 - Dispatch Cards, Board and Upcoming Jobs render JobCard through cardModel adapters; callers own mutations and drag props — one presentation without changing dispatch behaviour.
 <!-- LOVABLE:END -->
 - Booking lengths/hours: lib/schedulingDefaults.ts (mirrored in SQL default_booking_minutes); office bookings call useClashGuard().confirmBooking (booking_clashes) before saving, robots skip overlaps — one clash rule everywhere.
-- Booking person pickers use AvailabilityPicker (rank_booking_candidates / suggest_booking_slots decide visibility); off-blocks read staff_busy_blocks; times use TimeInput24 (guarded by time24.test) — one place for ranking and privacy.
+- Booking person pickers use AvailabilityPicker (rank_booking_candidates / suggest_booking_slots decide visibility); off-blocks read staff_busy_blocks; times use TimeInput24 (guarded by time24.test).
