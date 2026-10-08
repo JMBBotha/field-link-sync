@@ -48,7 +48,9 @@ export default function JobCard({ item, density, audience, actions, menuItems = 
         <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold", unassigned ? "border border-destructive text-destructive" : pill.className)}>{pill.label}</span>
         {["urgent", "high"].includes(String(item.priority || "").toLowerCase()) && <span className="rounded border border-destructive/60 px-1.5 text-[10px] font-bold uppercase text-destructive">{item.priority}</span>}
         <span className="ml-auto text-xs font-semibold">
-          {key === "late" && mins !== null ? <span className="text-destructive">Late {fmtMins(-mins)}</span>
+          {key === "late" && mins !== null ? (mins < -(24 * 60)
+            ? <span className="text-destructive">{overdueLabel(item.scheduledFor)}</span>
+            : <span className="text-destructive">Late {fmtMins(-mins)}</span>)
             : onSiteMins != null ? <span className="text-muted-foreground">{fmtMins(onSiteMins)} on site</span>
             : (key === "unassigned" || key === "soon") && mins !== null && mins <= 120 ? <span className="text-destructive">starts in {fmtMins(mins)}</span> : null}
         </span>
