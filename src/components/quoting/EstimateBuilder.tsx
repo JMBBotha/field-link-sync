@@ -33,6 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { formatRand } from "@/utils/formatRand";
 import { useActiveSpecials } from "@/hooks/useActiveSpecials";
+import LabourModeSwitch, { useLabourModeSwitch } from "@/components/quoting/LabourModeSwitch";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import QuoteQuickEditor from "@/components/quoting/QuoteQuickEditor";
 import StaffMarginCard, { lineUnitCostOrNull } from "@/components/quoting/StaffMarginCard";
@@ -117,7 +118,6 @@ export default function EstimateBuilder({
     if (selectedLineId === id) setSelectedLineId(null);
     onChanged?.();
   };
-  const [modeBusy, setModeBusy] = useState(false);
   const { products: liveProducts } = useQuoteBuilderProducts();
   const { bundles } = useQuoteBuilderBundles();
   const { toast } = useToast();
@@ -271,23 +271,8 @@ export default function EstimateBuilder({
     onChanged?.();
   };
 
-  const switchLabourMode = async (next: "per_area" | "job") => {
-    if (next === labourMode || modeBusy) return;
-    if (!window.confirm(next === "job" ? "Move all labour hours to one job line?" : "Split job labour back into the areas?")) return;
-    setModeBusy(true);
-    try {
-      const unitsByArea: Record<string, number> = {};
-      for (const a of areas) unitsByArea[a.id] = countAcUnits(topLevel.filter((i) => i.area_id === a.id).map(withProduct));
-      const { error } = await trackQuoteWrite<any>((supabase as any).rpc("set_quote_labour_mode", { p_quote_id: quoteId, p_mode: next, p_per_unit_hours: perUnitHours, p_area_units: unitsByArea }));
-      if (error) throw error;
-      await refetch();
-      onChanged?.();
-    } catch (e: any) {
-      toast({ title: "Could not change labour mode", description: e.message, variant: "destructive" });
-    } finally {
-      setModeBusy(false);
-    }
-  };
+  const labourSwitch = useLabourModeSwitch(perUnitHours, (areaId) => countAcUnits(topLevel.filter((i) => i.area_id === areaId).map(withProduct)), onChanged);
+  const switchLabourMode = (next: "per_area" | "job") => labourSwitch.switchTo(next);
 
   const addLabourForArea = async (rawAreaId: string) => {
     const areaId = labourTargetAreaId(labourMode, rawAreaId);
@@ -421,14 +406,6 @@ export default function EstimateBuilder({
             {editAreas.some((area) => area.lines.length > 0 && collapsedAreaKeys.has(area.id ?? "unassigned")) ? "Expand all" : "Collapse all"}
           </Button>
         )}
-        <span className="text-xs text-muted-foreground">Labour</span>
-        <Select value={labourMode} onValueChange={(v) => void switchLabourMode(v as "per_area" | "job")} disabled={modeBusy}>
-          <SelectTrigger aria-label="Labour mode" className="h-8 w-[240px] text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="per_area">Per unit ({perUnitHours} h each, per area)</SelectItem>
-            <SelectItem value="job">One total for the whole job</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
       <EstimateDocument
         estimateNumber={quoteNumber}
@@ -623,7 +600,9 @@ export default function EstimateBuilder({
           jobLabour: labourMode === "job"
             ? { lines: jobModeLabourLines(topLevel, areas).map((i) => ({ ...lineFor(i), acUnitCount: quoteUnitCount })), defaultHours: defaultLabourHours(quoteUnitCount, perUnitHours), onAdd: () => void addJobLabour() }
             : undefined,
-
+          labourModeToggle: (
+            <LabourModeSwitch className="my-3" checked={labourMode === "job"} disabled={labourSwitch.busy} onChange={(job) => void switchLabourMode(job ? "job" : "per_area")} />
+          ),
         }}
       />
 
