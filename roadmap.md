@@ -1,8 +1,8 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
 ## Card consistency C2 (2026-10-08)
-- [ ] Share QuoteCard and AttentionChips, add compact lead cards and wrapping expandable stage blocks; preserve queries, actions and drag behaviour.
-- [ ] Run focused card/pipeline tests and verify the read-only screen.
+- [x] Share QuoteCard and AttentionChips, add compact lead cards and wrapping expandable stage blocks; preserve query filters, actions and drag behaviour.
+- [x] Eight focused card/pipeline tests pass, including collapsed drops and expansion. Signed-in guarded browser checks confirm 3/2/1 columns, expansion/collapse and Cards view with no overflow or runtime errors; two background write attempts blocked, no backend writes. Preview build OK.
 
 ## Card consistency C1 (2026-10-08)
 - [x] Share JobCard and cardModel across Dispatch Cards, Board and Upcoming Jobs; preserve mutations and query filters.
