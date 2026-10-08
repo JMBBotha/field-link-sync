@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSalesRep } from "@/hooks/useSalesRep";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ const AdminCustomersPage = () => {
   const [showCreateLead, setShowCreateLead] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isSalesRep } = useSalesRep();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
@@ -179,7 +181,7 @@ const AdminCustomersPage = () => {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Clients</h1>
-          <p className="text-sm text-muted-foreground">{customers.length} customers in database</p>
+          <p className="text-sm text-muted-foreground">{isSalesRep ? `${customers.length} of your clients` : `${customers.length} customers in database`}</p>
         </div>
         <div className="flex gap-2">
           <DropdownMenu>
