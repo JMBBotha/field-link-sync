@@ -218,7 +218,7 @@ const AcceptLeadDialog = ({
           )}
 
           <div className="rounded-lg border border-border bg-muted/30 p-3">
-            <AppointmentPicker value={appt} onChange={setAppt} assignmentLane={laneFromServiceType(lead?.service_type) ?? "service"} />
+            <AppointmentPicker value={appt} onChange={setAppt} assignmentLane={laneFromServiceType(lead?.service_type) ?? "service"} lat={lead?.latitude} lng={lead?.longitude} excludeLeadId={lead?.id} />
           </div>
         </div>
 

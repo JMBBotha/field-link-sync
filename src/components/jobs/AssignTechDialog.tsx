@@ -12,6 +12,7 @@ import { Loader2, User } from "lucide-react";
 import { mapDispatchCandidates } from "@/lib/teamGroups";
 import { useClashGuard } from "@/components/scheduling/ClashGuard";
 import { fromMinutes, jobMinutes, sastParts, toMinutes } from "@/lib/schedulingDefaults";
+import AvailabilityPicker from "@/components/scheduling/AvailabilityPicker";
 
 /**
  * The Jobs board's Assign Technician dialog (moved here unchanged so the
@@ -43,6 +44,18 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
       excludeJobId: jobId, entity: { type: "job", id: jobId },
     });
   };
+  // S5: the job's slot + location for the ranked picker (read-only).
+  const { data: jobSlot } = useQuery({
+    queryKey: ["assign-tech-job-slot", jobId],
+    enabled: !!jobId,
+    queryFn: async () => {
+      const { data } = await supabase.from("jobs").select("scheduled_for, estimated_duration, job_type, lat, lng").eq("id", jobId!).maybeSingle();
+      const j = data as any;
+      if (!j?.scheduled_for) return null;
+      const { date, time } = sastParts(j.scheduled_for);
+      return { date, time, minutes: jobMinutes(j), lat: j.lat != null ? Number(j.lat) : null, lng: j.lng != null ? Number(j.lng) : null };
+    },
+  });
   // Fetch available techs: internal staff + affiliated independents + network
   const { data: techs = [] } = useQuery({
     queryKey: ["dispatch-techs", companyId],
@@ -120,12 +133,17 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
     <>
       {/* Assign Tech Modal */}
       <Dialog open={!!assignJobId} onOpenChange={open => { if (!open) setAssignJobId(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Assign Technician</DialogTitle>
             <DialogDescription>Select a technician to assign to this job</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {jobSlot && assignJobId && (
+              <AvailabilityPicker lane="service" date={jobSlot.date} startTime={jobSlot.time} minutes={jobSlot.minutes}
+                lat={jobSlot.lat} lng={jobSlot.lng} excludeJobId={assignJobId} selectedId={selectedTechId}
+                onSelect={(id) => setSelectedTechId(id)} />
+            )}
             {[
               { label: "Internal Staff", items: techGroups.internal },
               { label: "Affiliated Independents", items: techGroups.affiliated },

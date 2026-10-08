@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 
 interface Lead {
   id: string;
@@ -47,7 +48,7 @@ const AgentChangeRequestDialog = ({
   const [submitting, setSubmitting] = useState(false);
 
   // Helper to format time consistently
-  const formatDateTime = (dateStr: string) => format(new Date(dateStr), "MMM d, h:mm a");
+  const formatDateTime = (dateStr: string) => format(new Date(dateStr), "MMM d, HH:mm");
 
   // Job date
   const [jobDate, setJobDate] = useState<Date | undefined>(() => {
@@ -78,10 +79,10 @@ const AgentChangeRequestDialog = ({
   const getCurrentValues = (): string => {
     const parts: string[] = [];
     if (lead.actual_start_time) {
-      parts.push(`Started: ${format(new Date(lead.actual_start_time), "MMM d, h:mm a")}`);
+      parts.push(`Started: ${format(new Date(lead.actual_start_time), "MMM d, HH:mm")}`);
     }
     if (lead.completed_at) {
-      parts.push(`Completed: ${format(new Date(lead.completed_at), "MMM d, h:mm a")}`);
+      parts.push(`Completed: ${format(new Date(lead.completed_at), "MMM d, HH:mm")}`);
     }
     if (parts.length === 0) {
       return "No times recorded";
@@ -142,7 +143,7 @@ const AgentChangeRequestDialog = ({
       else durationStr = `${mins}m`;
 
       // Format requested value in same style as current value display
-      const requestedValue = `${format(jobDate, "MMM d")}: ${format(startDateTime, "h:mm a")} → ${format(endDateTime, "h:mm a")} (${durationStr})`;
+      const requestedValue = `${format(jobDate, "MMM d")}: ${format(startDateTime, "HH:mm")} → ${format(endDateTime, "HH:mm")} (${durationStr})`;
 
       // Store ISO values in reason field as JSON for approval processing
       const requestData = JSON.stringify({
@@ -233,8 +234,7 @@ const AgentChangeRequestDialog = ({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-sm">Start Time</Label>
-              <Input
-                type="time"
+              <TimeInput24
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
                 className="w-full"
@@ -242,8 +242,7 @@ const AgentChangeRequestDialog = ({
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm">End Time</Label>
-              <Input
-                type="time"
+              <TimeInput24
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
                 className="w-full"

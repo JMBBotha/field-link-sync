@@ -43,6 +43,7 @@ import { laneFromServiceType, leadLaneFields, type LeadLane } from "@/lib/leadLa
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import { useUnifiedClients, type UnifiedClient } from "@/hooks/useUnifiedClients";
 import ClientTypeahead from "./ClientTypeahead";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 
 interface CreateLeadDialogProps {
   open: boolean;
@@ -701,8 +702,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
                   />
                 </PopoverContent>
               </Popover>
-              <Input
-                type="time"
+              <TimeInput24
                 value={scheduledTime}
                 onChange={(e) => setScheduledTime(e.target.value)}
                 className="w-28"

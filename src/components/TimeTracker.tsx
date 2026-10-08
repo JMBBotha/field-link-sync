@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 
 interface TimeTrackerProps {
   leadId: string;
@@ -102,11 +103,11 @@ const TimeTracker = ({ leadId, agentId, onSaved }: TimeTrackerProps) => {
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label className="text-xs">Start Time</Label>
-          <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="text-sm" />
+          <TimeInput24 value={startTime} onChange={(e) => setStartTime(e.target.value)} className="text-sm" />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">End Time</Label>
-          <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="text-sm" />
+          <TimeInput24 value={endTime} onChange={(e) => setEndTime(e.target.value)} className="text-sm" />
         </div>
       </div>
 

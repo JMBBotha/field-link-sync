@@ -29,6 +29,7 @@ import { Loader2, Clock, CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import LocationPicker from "./LocationPicker";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 
 interface Lead {
   id: string;
@@ -334,8 +335,7 @@ const EditLeadDialog = ({ lead, open, onOpenChange, onSuccess }: EditLeadDialogP
                   />
                 </PopoverContent>
               </Popover>
-              <Input
-                type="time"
+              <TimeInput24
                 value={scheduledTime}
                 onChange={(e) => setScheduledTime(e.target.value)}
                 className="w-28"

@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import AddressMapField from "@/components/entity/AddressMapField";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 
 const sastIso = (date: string, time: string) => new Date(`${date}T${time}:00+02:00`).toISOString();
 const sastLabel = (iso: string) => new Date(iso).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
@@ -94,7 +95,7 @@ export default function StaffBaseControls({ profileId, self }: { profileId: stri
               <SelectContent><SelectItem value="leave">Leave</SelectItem><SelectItem value="blocked">Blocked</SelectItem></SelectContent>
             </Select>
             <label className="flex items-center gap-2 text-sm"><Switch checked={allDay} onCheckedChange={setAllDay} />All day</label>
-            {!allDay && <div className="flex items-center gap-2"><Input type="time" value={from} onChange={(e) => setFrom(e.target.value)} /><span className="text-xs">to</span><Input type="time" value={to} onChange={(e) => setTo(e.target.value)} /></div>}
+            {!allDay && <div className="flex items-center gap-2"><TimeInput24 value={from} onChange={(e) => setFrom(e.target.value)} /><span className="text-xs">to</span><TimeInput24 value={to} onChange={(e) => setTo(e.target.value)} /></div>}
             <Input placeholder="Reason (optional)" value={reason} onChange={(e) => setReason(e.target.value)} className="sm:col-span-2" />
           </div>
           <Button onClick={addBlocked} className="w-full">Add</Button>

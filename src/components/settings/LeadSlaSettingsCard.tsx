@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useLeadSla } from "@/hooks/useLeadSla";
 import { cn } from "@/lib/utils";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -36,7 +37,7 @@ export default function LeadSlaSettingsCard() {
   };
   const time = (k: "open" | "close" | "amber", label: string) => (
     <div className="space-y-1"><Label className="text-xs">{label}</Label>
-      <Input type="time" value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} className="h-8" /></div>
+      <TimeInput24 value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} className="h-8" /></div>
   );
   return (
     <Card className="mt-4">

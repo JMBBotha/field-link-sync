@@ -45,6 +45,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import NeedsSomeoneTray from "@/components/calendar/NeedsSomeoneTray";
 import DayCards, { BusyBlock } from "@/components/calendar/DayCards";
 import { hoursLabel, calendarText, salesCalendarPeople, mergedMinutes, type WorkWindow, type BlockedTime } from "@/components/calendar/calendarModel";
+import { TimeInput24 } from "@/components/ui/time-input-24";
+import AvailabilityPicker from "@/components/scheduling/AvailabilityPicker";
 
 // ─── Types ───
 interface Lead {
@@ -296,14 +298,18 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
       return out;
     },
   });
+  // S5: off-blocks come from staff_busy_blocks (reason only for admins / the person; others see Off / Busy).
   const { data: blockedTimes = [] } = useQuery({
     queryKey: ["staff-blocked-time", dayKey],
     queryFn: async () => {
-      const from = new Date(`${dayKey}T00:00:00+02:00`), to = new Date(from.getTime() + 86400000);
-      const { data, error } = await supabase.from("staff_blocked_time").select("id, profile_id, starts_at, ends_at, kind, reason")
-        .is("archived_at", null).lt("starts_at", to.toISOString()).gt("ends_at", from.toISOString());
+      const { data, error } = await supabase.rpc("staff_busy_blocks", { p_from: dayKey, p_to: dayKey });
       if (error) return [];
-      return (data || []) as BlockedTime[];
+      return ((data || []) as any[]).map((r, i): BlockedTime => ({
+        id: `${r.profile_id}-${i}`, profile_id: r.profile_id, kind: r.kind,
+        starts_at: `${r.block_date}T${hhmm(r.start_time)}:00+02:00`,
+        ends_at: `${r.block_date}T${String(r.end_time).startsWith("23:59") ? "23:59:59" : hhmm(r.end_time) + ":00"}+02:00`,
+        reason: r.label && !["Off", "Busy", "Blocked"].includes(r.label) ? r.label : null,
+      }));
     },
   });
 
@@ -1135,7 +1141,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
       {clashDialog}
       {/* ─── Quick Assign Dialog ─── */}
       <Dialog open={!!quickAssignLead} onOpenChange={(open) => { if (!open) setQuickAssignLead(null); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Assign Lead</DialogTitle>
             <DialogDescription>
@@ -1207,13 +1213,24 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm">Start Time</Label>
-                <Input type="time" value={quickAssignStart} onChange={e => setQuickAssignStart(e.target.value)} />
+                <TimeInput24 value={quickAssignStart} onChange={e => setQuickAssignStart(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm">End Time</Label>
-                <Input type="time" value={quickAssignEnd} onChange={e => setQuickAssignEnd(e.target.value)} />
+                <TimeInput24 value={quickAssignEnd} onChange={e => setQuickAssignEnd(e.target.value)} />
               </div>
             </div>
+            {lane && quickAssignLead && (
+              <AvailabilityPicker lane={lane === "sales" ? "sales" : "service"} date={quickAssignDate} startTime={quickAssignStart}
+                minutes={Math.max(15, toMinutes(quickAssignEnd) - toMinutes(quickAssignStart)) || leadMinutes(quickAssignLead)}
+                lat={(quickAssignLead as any).latitude ?? null} lng={(quickAssignLead as any).longitude ?? null}
+                excludeLeadId={quickAssignLead.id} selectedId={quickAssignAgent}
+                onSelect={(id, d, t) => {
+                  setQuickAssignAgent(id);
+                  if (d) setQuickAssignDate(d);
+                  if (t) { const len = Math.max(15, toMinutes(quickAssignEnd) - toMinutes(quickAssignStart)); setQuickAssignStart(t); setQuickAssignEnd(fromMinutes(toMinutes(t) + len)); }
+                }} />
+            )}
           </div>
             );
           })()}

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import type { LeadLane } from "@/lib/leadLane";
+import AvailabilityPicker from "./AvailabilityPicker";
 
 export interface AppointmentValue {
   /** ISO date "YYYY-MM-DD" */
@@ -29,6 +30,11 @@ interface AppointmentPickerProps {
   showAgentPicker?: boolean;
   assignmentLane?: LeadLane;
   className?: string;
+  /** Booking location for distance ranking (optional). */
+  lat?: number | null;
+  lng?: number | null;
+  excludeLeadId?: string | null;
+  excludeJobId?: string | null;
 }
 
 const DURATIONS = [
@@ -54,7 +60,7 @@ const toMinutes = (t: string) => {
   return h * 60 + (m || 0);
 };
 
-const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignmentLane = "service", className }: AppointmentPickerProps) => {
+const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignmentLane = "service", className, lat, lng, excludeLeadId, excludeJobId }: AppointmentPickerProps) => {
   const [calendarOpen, setCalendarOpen] = useState(false);
 
   const selectedDate = useMemo(() => {
@@ -290,7 +296,15 @@ const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignment
                 </span>
               </button>
 
-              {agents.map((a: any) => {
+              {value.date && value.startTime ? (
+                <AvailabilityPicker
+                  lane={assignmentLane === "sales" ? "sales" : "service"}
+                  date={value.date} startTime={value.startTime} minutes={value.durationMinutes}
+                  lat={lat} lng={lng} excludeLeadId={excludeLeadId} excludeJobId={excludeJobId}
+                  selectedId={value.agentId}
+                  onSelect={(id, d, t) => onChange({ ...value, agentId: id, ...(d ? { date: d } : {}), ...(t ? { startTime: t } : {}) })}
+                />
+              ) : agents.map((a: any) => {
                 const st = agentStatus.get(a.id);
                 const selected = value.agentId === a.id;
                 return (

@@ -23,7 +23,7 @@ const formatDuration = (minutes: number): string => {
 };
 
 const formatCompactTime = (dateStr: string): string => {
-  return format(new Date(dateStr), "h:mm a");
+  return format(new Date(dateStr), "HH:mm");
 };
 
 const formatCompactDate = (dateStr: string): string => {
@@ -107,7 +107,7 @@ export function JobScheduleDisplay({
       return (
         <span className="text-xs">
           <span className="text-muted-foreground">Completed: </span>
-          <span className="font-medium">{format(new Date(completedAt), "MMM d 'at' h:mm a")}</span>
+          <span className="font-medium">{format(new Date(completedAt), "MMM d 'at' HH:mm")}</span>
         </span>
       );
     }

@@ -29,6 +29,13 @@
       "when": 1791479567284,
       "tag": "0003_calendar_s4_work_hours",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791480540773,
+      "tag": "0004_calendar_s5_availability_picker",
+      "breakpoints": true
     }
   ]
 }

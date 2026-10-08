@@ -21,6 +21,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
 import { useClashGuard } from "@/components/scheduling/ClashGuard";
 import { minutesToInterval } from "@/lib/schedulingDefaults";
+import { TimeInput24 } from "@/components/ui/time-input-24";
+import AvailabilityPicker from "@/components/scheduling/AvailabilityPicker";
 
 interface Props {
   quoteId: string;
@@ -52,6 +54,22 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
   const { technicians } = useLaneStaff();
   const { confirmBooking, flushOverride, dialog: clashDialog } = useClashGuard();
 
+  const { data: siteLoc } = useQuery({
+    queryKey: ["accepted-work-site-loc", quoteId],
+    enabled: !!quoteId,
+    queryFn: async () => {
+      const { data: q } = await supabase.from("quotes").select("lead_id, customer_id").eq("id", quoteId).maybeSingle();
+      if (q?.lead_id) {
+        const { data: l } = await supabase.from("leads").select("latitude, longitude").eq("id", q.lead_id).maybeSingle();
+        if (l?.latitude != null) return { lat: Number(l.latitude), lng: Number(l.longitude) };
+      }
+      if (q?.customer_id) {
+        const { data: c } = await supabase.from("customers").select("latitude, longitude").eq("id", q.customer_id).maybeSingle();
+        if (c?.latitude != null) return { lat: Number(c.latitude), lng: Number(c.longitude) };
+      }
+      return null;
+    },
+  });
   const [busy, setBusy] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [date, setDate] = useState("");
@@ -409,7 +427,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
               </div>
               <div className="space-y-1.5">
                 <Label>Start time</Label>
-                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                <TimeInput24 value={startTime} onChange={(e) => setStartTime(e.target.value)} />
               </div>
             </div>
 
@@ -439,6 +457,11 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
               <p className="text-xs text-muted-foreground">
                 A named technician also gets a calendar slot under Technical on dispatch.
               </p>
+              {date && (
+                <AvailabilityPicker lane="service" date={date} startTime={startTime} minutes={duration}
+                  lat={siteLoc?.lat} lng={siteLoc?.lng} excludeJobId={installJob?.id ?? null} selectedId={techId}
+                  onSelect={(id, d, t) => { setTechId(id); if (d) setDate(d); if (t) setStartTime(t); }} />
+              )}
             </div>
           </div>
 
