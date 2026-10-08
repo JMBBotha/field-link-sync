@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { archiveProductIds, archiveSupplierProducts } from "@/services/catalogArchive";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -135,16 +136,13 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
 
   const deleteAllProductsMutation = useMutation({
     mutationFn: async (supplierId: string) => {
-      const { error } = await (supabase.from("supplier_products") as any)
-        .delete()
-        .eq("supplier_id", supplierId);
-      if (error) throw error;
+      await archiveSupplierProducts(supplierId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
       queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
       queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
-      toast({ title: "All products deleted for this supplier" });
+      toast({ title: "All products archived for this supplier" });
       setDeleteAllSupplierId(null);
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),

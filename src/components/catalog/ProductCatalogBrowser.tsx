@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback, ReactNode, KeyboardEvent } f
 import Fuse from "fuse.js";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { archiveProductIds, archiveSupplierProducts } from "@/services/catalogArchive";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -201,12 +202,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       bulkDeleteCountRef.current = ids.length;
-      const batchSize = 50;
-      for (let i = 0; i < ids.length; i += batchSize) {
-        const batch = ids.slice(i, i + batchSize);
-        const { error } = await supabase.from("supplier_products" as any).delete().in("id", batch);
-        if (error) throw error;
-      }
+      await archiveProductIds(ids);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
@@ -217,9 +213,9 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
       setBulkSelected(new Set());
       setBulkConfirmOpen(false);
       setBulkAction(null);
-      toast({ title: `${count} product${count !== 1 ? "s" : ""} deleted`, description: "The supplier record remains intact." });
+      toast({ title: `${count} product${count !== 1 ? "s" : ""} archived`, description: "Existing quotes are not changed. Archived products can't be quoted." });
     },
-    onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: "Archive failed", description: err.message, variant: "destructive" }),
   });
 
   const executeBulkAction = () => {

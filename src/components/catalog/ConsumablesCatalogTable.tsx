@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { archiveProductIds, archiveSupplierProducts } from "@/services/catalogArchive";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,15 +106,12 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const { error } = await (supabase.from("supplier_products") as any)
-        .delete()
-        .in("id", ids);
-      if (error) throw error;
+      await archiveProductIds(ids);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
       queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
-      toast({ title: `${selectedIds.size} products deleted` });
+      toast({ title: `${selectedIds.size} products archived` });
       setSelectedIds(new Set());
       setConfirmBulkDelete(false);
     },
