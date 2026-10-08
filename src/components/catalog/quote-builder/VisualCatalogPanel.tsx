@@ -3,6 +3,7 @@ import { liveProducts } from "@/lib/liveProducts";
 import { deriveSearchTags } from "@/lib/productSearchTags";
 /* eslint-disable -- visual catalog panel */
 import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
+import { buildSupplierOptions, countLivePages, resolveSavedSupplier } from "./supplierOptions";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { inclVatFromExcl } from "@/lib/pricing";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -65,6 +66,8 @@ interface VisualCatalogPanelProps {
   pdfSelection?: PdfSelectionHandlers;
   /** Read-only price-list view (/admin/price-lists): hides delete and skips auto-cataloguing. */
   readOnly?: boolean;
+  /** localStorage key to remember the chosen supplier (price lists page only). */
+  rememberSupplierKey?: string;
 }
 
 interface PdfPage {
@@ -83,11 +86,14 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 const PINCH_BOUNCE = 0.12;
 
-const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddProductToBasket, onAddSelectedToQuote, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef, wizardOpen, pdfSelection, readOnly = false }: VisualCatalogPanelProps) => {
+const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddProductToBasket, onAddSelectedToQuote, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef, wizardOpen, pdfSelection, readOnly = false, rememberSupplierKey }: VisualCatalogPanelProps) => {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
-  const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
+  const [selectedSupplier, setSelectedSupplier] = useState<string>(() => {
+    if (!rememberSupplierKey) return "all";
+    try { return localStorage.getItem(rememberSupplierKey) || "all"; } catch { return "all"; }
+  });
   const [visiblePageIndex, setVisiblePageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1);
@@ -274,16 +280,22 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
   // UUID pattern to filter out raw IDs that shouldn't appear as display names
   const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  const { data: supplierOptions = [] } = useQuery({
+  const { data: supplierData } = useQuery({
     queryKey: ["visual-panel-suppliers"],
     enabled: open,
     queryFn: async () => {
-      const { data } = await (supabase.from("supplier_pdf_pages") as any).select("supplier_id").neq("supplier_id", "").order("supplier_id");
-      if (!data) return [];
-      return [...new Set((data as any[]).map((d) => d.supplier_id))].filter((s: string) => s && s.trim() !== '') as string[];
+      const { data } = await (supabase.from("supplier_pdf_pages") as any).select("supplier_id, pdf_upload_id, pdf_filename, page_number").neq("supplier_id", "").order("supplier_id");
+      if (!data) return { ids: [] as string[], counts: {} as Record<string, number> };
+      const { data: inactiveUploads } = await (supabase.from("pdf_uploads") as any)
+        .select("id").eq("is_active", false).limit(2000);
+      const inactiveIds = new Set<string>((inactiveUploads || []).map((u: any) => u.id));
+      const counts = countLivePages(data as any[], inactiveIds);
+      return { ids: Object.keys(counts).filter((s) => counts[s] > 0).sort(), counts };
     },
     staleTime: 60000,
   });
+  const supplierOptions = useMemo(() => supplierData?.ids ?? [], [supplierData]);
+  const supplierCounts = useMemo(() => supplierData?.counts ?? {}, [supplierData]);
 
   const { data: supplierNameMap = {} } = useQuery({
     queryKey: ["visual-panel-supplier-names", supplierOptions],
@@ -393,6 +405,24 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
   }, [open, pages.length, categoryPageMap]);
 
   const currentPage = pages[visiblePageIndex] || pages[0] || null;
+
+  const supplierChoices = useMemo(() => buildSupplierOptions(supplierOptions, supplierNameMap, supplierCounts), [supplierOptions, supplierNameMap, supplierCounts]);
+  const allSupplierPages = supplierChoices.reduce((n, o) => n + o.count, 0);
+
+  // Remembered supplier no longer listed -> back to all.
+  useEffect(() => {
+    if (!rememberSupplierKey || !supplierData) return;
+    if (supplierOptions.length > 0 && Object.keys(supplierNameMap).length === 0) return; // names still loading
+    if (resolveSavedSupplier(selectedSupplier, supplierChoices) !== selectedSupplier) setSelectedSupplier("all");
+  }, [rememberSupplierKey, supplierData, supplierOptions, supplierChoices, supplierNameMap, selectedSupplier]);
+
+  const firstSupplierRun = useRef(true);
+  useEffect(() => {
+    if (firstSupplierRun.current) { firstSupplierRun.current = false; return; }
+    setVisiblePageIndex(0);
+    scrollContainerRef.current?.scrollTo({ top: 0 });
+    if (rememberSupplierKey) { try { localStorage.setItem(rememberSupplierKey, selectedSupplier); } catch { /* ignore */ } }
+  }, [selectedSupplier, rememberSupplierKey]);
 
   const currentSupplierName = currentPage ? (supplierNameMap[currentPage.supplier_id] || currentPage.supplier_id) : "";
   const currentFilename = currentPage?.pdf_filename || "";
@@ -772,10 +802,10 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
               size="sm"
               className="h-7 shrink-0 gap-1 text-[11px]"
               onClick={onClose}
-              title="Close the PDF viewer and return to the quote builder"
+              title={readOnly ? "Close price lists" : "Close the PDF viewer and return to the quote builder"}
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              Back to Quote Builder
+              {readOnly ? "Back" : "Back to Quote Builder"}
             </Button>
 
             {/* Page / Width toggle — pinned OUTSIDE the scrolling toolbar so it is
@@ -898,13 +928,6 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
                 </Tooltip>
               </div>
 
-              <Select value={selectedSupplier} onValueChange={(v) => { setSelectedSupplier(v); }}>
-                <SelectTrigger className="h-7 w-32 text-[10px]"><SelectValue placeholder="All Suppliers" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Suppliers</SelectItem>
-                  {supplierOptions.filter((s) => s && s.trim() !== '' && !UUID_PATTERN.test(supplierNameMap[s] || s)).map((s) => (<SelectItem key={s} value={s}>{supplierNameMap[s] || s}</SelectItem>))}
-                </SelectContent>
-              </Select>
 
               {pdfSelection && pdfSelection.selectedFromPdf.length > 0 && (
                 <Button
@@ -929,6 +952,19 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
                   Add {pdfSelection.selectedFromPdf.length} to quote
                 </Button>
               )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 px-3 py-1.5 border-b bg-card shrink-0">
+            <span className="text-xs text-muted-foreground shrink-0">Supplier</span>
+            <div className="flex-1 min-w-0 sm:max-w-sm">
+              <Select value={selectedSupplier} onValueChange={(v) => { setSelectedSupplier(v); }}>
+                <SelectTrigger className="h-9 w-full text-sm"><SelectValue placeholder="All suppliers" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All suppliers ({allSupplierPages})</SelectItem>
+                  {supplierChoices.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label} ({o.count})</SelectItem>))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
