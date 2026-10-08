@@ -56,7 +56,7 @@ const AcceptLeadDialog = ({
   onDone,
   defaultAgentId,
 }: AcceptLeadDialogProps) => {
-  const { acceptAndSchedule, submitting } = useAcceptLead();
+  const { acceptAndSchedule, submitting, clashDialog } = useAcceptLead();
   const [appt, setAppt] = useState<AppointmentValue>(defaultAppointment());
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -126,6 +126,7 @@ const AcceptLeadDialog = ({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
         <DialogHeader>
@@ -241,6 +242,8 @@ const AcceptLeadDialog = ({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {clashDialog}
+    </>
   );
 };
 

@@ -19,6 +19,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
+import { useClashGuard } from "@/components/scheduling/ClashGuard";
+import { minutesToInterval } from "@/lib/schedulingDefaults";
 
 interface Props {
   quoteId: string;
@@ -48,6 +50,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { technicians } = useLaneStaff();
+  const { confirmBooking, flushOverride, dialog: clashDialog } = useClashGuard();
 
   const [busy, setBusy] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -165,6 +168,14 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
   const handlePassToInstall = async () => {
     if (!quote || !invoice?.id) return;
     if (!date) return; // Date is required — never submit without it
+    if (techId) {
+      const ok = await confirmBooking({
+        profileId: techId, date, start: startTime || "08:00", end: addMinutesToTime(startTime || "08:00", duration),
+        excludeJobId: installJob?.id ?? null,
+        entity: installJob?.id ? { type: "job", id: installJob.id } : quote.lead_id ? { type: "lead", id: quote.lead_id } : { type: "job", id: "" },
+      });
+      if (!ok) return;
+    }
     setBusy("install");
     try {
       // Idempotent: never create a second installation job for this quote.
@@ -195,7 +206,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
           lng = lng ?? (cust as any)?.longitude ?? null;
         }
 
-        const scheduledFor = date ? new Date(`${date}T${startTime || "08:00"}:00`).toISOString() : null;
+        const scheduledFor = date ? `${date}T${startTime || "08:00"}:00+02:00` : null;
 
         const { data: job, error: jobErr } = await supabase
           .from("jobs")
@@ -213,12 +224,19 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
             lat,
             lng,
             scheduled_for: scheduledFor,
+            estimated_duration: minutesToInterval(duration),
             created_by: user?.id ?? null,
           } as any])
           .select("id")
           .single();
         if (jobErr || !job) throw jobErr || new Error("Could not create the installation job");
         jobId = job.id;
+        void flushOverride({ type: "job", id: job.id });
+      } else {
+        // Keep the chosen length on the existing job so later time changes keep it
+        const { error: durErr } = await supabase.from("jobs")
+          .update({ estimated_duration: minutesToInterval(duration) } as any).eq("id", jobId);
+        if (durErr) console.warn("Install duration not saved", durErr);
       }
 
       if (techId && jobId) {
@@ -437,6 +455,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {clashDialog}
     </section>
   );
 };

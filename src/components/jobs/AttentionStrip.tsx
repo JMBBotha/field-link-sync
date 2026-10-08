@@ -4,6 +4,7 @@ import AttentionChips from "@/components/jobs/AttentionChips";
 import { leadClock } from "@/lib/leadClock";
 import { isTestLead } from "@/lib/callSummary";
 import { useLeadSla, useNow } from "@/hooks/useLeadSla";
+import { useDoubleBookings } from "@/hooks/useDoubleBookings";
 
 type Chip = { key: string; n: number; label: string; tone: "red" | "orange" | "blue"; to: string };
 
@@ -11,6 +12,7 @@ type Chip = { key: string; n: number; label: string; tone: "red" | "orange" | "b
 export default function AttentionStrip({ className }: { className?: string }) {
   const now = useNow();
   const { sla } = useLeadSla();
+  const { count: doubleBookings } = useDoubleBookings();
   const { data } = useQuery({
     queryKey: ["attention-strip"],
     refetchInterval: 60_000,
@@ -39,6 +41,7 @@ export default function AttentionStrip({ className }: { className?: string }) {
   const chips = ([
     { key: "contact", n: clocks.filter((c) => c?.stage === 1 && c.tone === "red").length, label: `leads past ${sla.contactMinutes}-min contact`, tone: "red", to: "/admin/dispatch" },
     { key: "quote", n: clocks.filter((c) => c?.stage === 2 && c.tone === "red").length, label: "quote/visit overdue", tone: "red", to: "/admin/dispatch" },
+    { key: "double", n: doubleBookings, label: "double bookings", tone: "red", to: "/admin/dispatch" },
     { key: "late", n: data?.lateJobs || 0, label: "jobs late to start", tone: "red", to: "/admin/jobs?tab=dispatch&view=cards" },
     { key: "paid", n: data?.paidNoJob || 0, label: "deposits paid, no job booked", tone: "red", to: "/admin/jobs?tab=pipeline&view=stages" },
     { key: "unassigned", n: leads.filter((l) => !l.assigned_agent_id).length, label: "unassigned leads", tone: "orange", to: "/admin/dispatch" },

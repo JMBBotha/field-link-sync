@@ -35,6 +35,10 @@ import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { KpiGridSkeleton, JobCardListSkeleton } from "@/components/ui/skeletons";
 import LeadCardV2 from "@/components/leads/LeadCardV2";
 import AttentionStrip from "@/components/jobs/AttentionStrip";
+import { hhmm, leadMinutes, fromMinutes, toMinutes } from "@/lib/schedulingDefaults";
+import { overlapMap } from "@/lib/clash";
+import { useClashGuard } from "@/components/scheduling/ClashGuard";
+import { useDoubleBookings } from "@/hooks/useDoubleBookings";
 
 // ─── Types ───
 interface Lead {
@@ -50,6 +54,7 @@ interface Lead {
   scheduled_date: string | null;
   scheduled_time: string | null;
   assigned_agent_id: string | null;
+  estimated_duration_minutes?: number | null;
   primary_intent?: string | null;
   customer_id?: string | null;
   notes: string | null;
@@ -82,7 +87,12 @@ interface Schedule {
   end_time: string;
   notes: string | null;
   leads?: { customer_name: string; service_type: string; status: string; priority: string; customer_address: string; latitude: number; longitude: number } | null;
+  jobs?: { status?: string | null } | null;
+  /** Another tile of the same person that overlaps this one (calendar badge). */
+  clash?: { start: string; end: string; label: string } | null;
 }
+
+const isCancelled = (s?: string | null) => ["cancelled", "canceled"].includes(String(s || "").toLowerCase());
 
 
 // ─── Constants ───
@@ -128,6 +138,8 @@ const minutesToPx = (mins: number, pxPerHour: number) => (mins / 60) * pxPerHour
 /** embedded = Dispatch · Calendar inside the Jobs hub: the hub supplies the title and the attention strip. */
 const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) => {
   const { toast } = useToast();
+  const { confirmBooking, dialog: clashDialog } = useClashGuard();
+  const { count: doubleBookings } = useDoubleBookings();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isOnline: isPresenceOnline } = usePresence("dispatch-presence");
@@ -273,7 +285,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     queryFn: async () => {
       const { data, error } = await supabase
         .from("job_schedules")
-        .select("*, leads(id, customer_name, service_type, status, priority, customer_address, latitude, longitude)")
+        .select("*, leads(id, customer_name, service_type, status, priority, customer_address, latitude, longitude), jobs(status)")
         .order("scheduled_date");
       if (error) throw error;
       return data as Schedule[];
@@ -285,23 +297,25 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
    * even if no job_schedules row exists yet. Synthesize a schedule-shaped tile for those.
    */
   const schedules = useMemo<Schedule[]>(() => {
-    // Only lead-level (non-install) rows suppress the synthesized sales tile —
-    // an installation row shares lead_id but is a separate calendar job.
-    const withRow = new Set(rawSchedules.filter(s => !s.job_id).map(s => s.lead_id));
+    // Lead-level rows suppress the synthesized tile; so does a job-keyed row for the
+    // same lead + same person + same date (one tile per visit). A different person
+    // or date (sales visit vs later install) keeps its own tile.
+    const live = rawSchedules.filter(s => !isCancelled(s.jobs?.status) && !isCancelled(s.leads?.status));
+    const withRow = new Set(live.filter(s => !s.job_id).map(s => s.lead_id));
+    const jobRowKey = new Set(live.filter(s => s.job_id).map(s => `${s.lead_id}|${s.agent_id}|${s.scheduled_date}`));
 
     const synthetic: Schedule[] = allLeads
-      .filter(l => l.assigned_agent_id && l.scheduled_date && !withRow.has(l.id))
+      .filter(l => l.assigned_agent_id && l.scheduled_date && !isCancelled(l.status) && !withRow.has(l.id)
+        && !jobRowKey.has(`${l.id}|${l.assigned_agent_id}|${l.scheduled_date}`))
       .map(l => {
-        const start = (l.scheduled_time || "08:00").slice(0, 8);
-        const [h, m] = start.split(":").map(Number);
-        const endH = Math.min((h || 8) + 2, 23);
+        const start = hhmm(l.scheduled_time || "08:00");
         return {
           id: `lead-${l.id}`,
           lead_id: l.id,
           agent_id: l.assigned_agent_id as string,
           scheduled_date: l.scheduled_date as string,
           start_time: start,
-          end_time: `${String(endH).padStart(2, "0")}:${String(m || 0).padStart(2, "0")}`,
+          end_time: fromMinutes(toMinutes(start) + leadMinutes(l)),
           notes: null,
           leads: {
             customer_name: l.customer_name,
@@ -314,7 +328,12 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
           },
         } as Schedule;
       });
-    return [...rawSchedules, ...synthetic];
+    const all = [...live, ...synthetic];
+    const clashes = overlapMap(all.map(s => ({ ...s, label: s.leads?.customer_name || "Booking" })));
+    return all.map(s => {
+      const o = clashes.get(s.id);
+      return o ? { ...s, clash: { start: hhmm(o.start_time), end: hhmm(o.end_time), label: o.leads?.customer_name || "Booking" } } : s;
+    });
   }, [rawSchedules, allLeads]);
 
 
@@ -448,7 +467,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
         // assignment and lane untouched.
         const { error: jobErr } = await supabase
           .from("jobs")
-          .update({ scheduled_for: new Date(`${date}T${startTime}`).toISOString() } as any)
+          .update({ scheduled_for: `${date}T${hhmm(startTime)}:00+02:00` } as any)
           .eq("id", targetJobId);
         if (jobErr) throw jobErr;
         const { data: existingAssignment } = await supabase
@@ -459,7 +478,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
           .limit(1);
         const { error: asgErr } = existingAssignment?.[0]
           ? await supabase.from("assignments").update({ profile_id: agentId } as any).eq("id", existingAssignment[0].id)
-          : await supabase.from("assignments").insert([{ job_id: targetJobId, profile_id: agentId, assignment_type: "primary" } as any]);
+          : await supabase.from("assignments").insert([{ job_id: targetJobId, profile_id: agentId, assignment_type: "internal", status: "accepted" } as any]);
         if (asgErr) throw asgErr;
       } else {
         // Update lead — check the row really changed (RLS can turn an update into a silent no-op)
@@ -569,7 +588,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     }
   };
 
-  const handleDrop = (e: React.DragEvent, agentId: string, dateStr: string, dropHour: number, keepStart = false) => {
+  const handleDrop = async (e: React.DragEvent, agentId: string, dateStr: string, dropHour: number, keepStart = false) => {
     e.preventDefault();
     setDragOverSlot(null);
     setIsDragging(false);
@@ -590,14 +609,20 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     const startTime = toHHMM(startMin);
     const endTime = dragDur ? toHHMM(Math.min(startMin + dragDur, 23 * 60 + 59)) : toHHMM(Math.min(startMin + 120, 20 * 60));
 
-    // Check for overlapping bookings
+    // Clash check over the full duration, excluding the dragged booking itself
     const slotKey = `${agentId}-${dateStr}-${hour}`;
-    const conflict = hasConflict(agentId, dateStr, hour);
-    if (conflict) {
-      setShakeSlot(slotKey);
-      setTimeout(() => setShakeSlot(null), 600);
-      toast({ title: "⚠️ Time conflict", description: "This slot already has a booking. Choose a different time.", variant: "destructive" });
-      return;
+    for (const lid of leadIds) {
+      const ok = await confirmBooking({
+        profileId: agentId, date: dateStr, start: startTime, end: endTime,
+        excludeJobId: draggedJobId, excludeLeadId: draggedJobId ? null : lid,
+        entity: draggedJobId ? { type: "job", id: draggedJobId } : { type: "lead", id: lid },
+      });
+      if (!ok) {
+        setShakeSlot(slotKey);
+        setTimeout(() => setShakeSlot(null), 600);
+        setDraggingLead(null);
+        return;
+      }
     }
 
     // Assign all dragged leads
@@ -810,6 +835,11 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
               <CalendarDays className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-bold">Dispatch calendar</h2>
             </div>
+          )}
+          {doubleBookings > 0 && (
+            <span className="rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive" data-testid="double-bookings-chip">
+              ⚠ {doubleBookings} double booking{doubleBookings === 1 ? "" : "s"}
+            </span>
           )}
           <div className="hidden md:flex items-center gap-3">
             <StatBadge icon={<AlertTriangle className="h-3.5 w-3.5" />} label="Unassigned" value={stats.unassigned} variant="warning" />
@@ -1048,6 +1078,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
         </div>
       </div>
 
+      {clashDialog}
       {/* ─── Quick Assign Dialog ─── */}
       <Dialog open={!!quickAssignLead} onOpenChange={(open) => { if (!open) setQuickAssignLead(null); }}>
         <DialogContent className="sm:max-w-md">
@@ -1137,8 +1168,13 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
             <Button
               disabled={!quickAssignAgent || !laneOf(quickAssignLead || {}) || assignMutation.isPending}
 
-              onClick={() => {
+              onClick={async () => {
                 if (!quickAssignLead || !quickAssignAgent) return;
+                const ok = await confirmBooking({
+                  profileId: quickAssignAgent, date: quickAssignDate, start: quickAssignStart, end: quickAssignEnd,
+                  excludeLeadId: quickAssignLead.id, entity: { type: "lead", id: quickAssignLead.id },
+                });
+                if (!ok) return;
                 assignMutation.mutate(
                   { leadId: quickAssignLead.id, agentId: quickAssignAgent, date: quickAssignDate, startTime: quickAssignStart, endTime: quickAssignEnd },
                   { onSuccess: () => setQuickAssignLead(null) }
@@ -1189,7 +1225,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                 <>
                   <Separator />
                   <p className="text-xs text-muted-foreground">
-                    Calendar slot: {liveSlot.scheduled_date} · {liveSlot.start_time} – {liveSlot.end_time}
+                    Calendar slot: {liveSlot.scheduled_date} · {hhmm(liveSlot.start_time)} – {hhmm(liveSlot.end_time)}
                   </p>
                 </>
               )}
@@ -1349,7 +1385,7 @@ const TechPoolTile = ({
     onClick={() => schedule.job_id && onOpen(schedule.job_id)}
     className={`rounded-md border border-dashed border-emerald-500 bg-emerald-500/15 px-1.5 py-1 text-[10px] cursor-pointer overflow-y-auto ${compact ? "" : "absolute left-1 right-1"}`}
     style={style}
-    title={`${schedule.leads?.customer_name || "Installation"} • ${schedule.start_time} • Unassigned · first-accept`}
+    title={`${schedule.leads?.customer_name || "Installation"} • ${hhmm(schedule.start_time)} • Unassigned · first-accept`}
   >
     <p className="font-semibold leading-tight break-words">{schedule.leads?.customer_name || "Installation"}</p>
     <span className="mt-0.5 inline-block rounded bg-emerald-500/30 px-1 text-[9px] font-medium">
@@ -1570,7 +1606,7 @@ const DayTimeline = ({
                         borderColor: STATUS_COLORS[status] || "#6b7280",
                         color: "white",
                       }}
-                      title={`${schedule.leads?.customer_name} • ${schedule.start_time}–${schedule.end_time}`}
+                      title={schedule.clash ? `Overlaps ${schedule.clash.start}–${schedule.clash.end} with ${schedule.clash.label}` : `${schedule.leads?.customer_name} • ${hhmm(schedule.start_time)}–${hhmm(schedule.end_time)}`}
                       onClick={() => {
                         const lead = allLeads.find(l => l.id === schedule.lead_id);
                         if (lead) { onJobInfoClick(lead, schedule); }
@@ -1589,9 +1625,10 @@ const DayTimeline = ({
                           </button>
                         ) : null;
                       })()}
+                      {schedule.clash && <span className="inline-block rounded bg-destructive px-1 text-[9px] font-bold text-destructive-foreground" data-testid="clash-badge">⚠ Clash</span>}
                       <p className="font-semibold leading-tight break-words">{schedule.leads?.customer_name || "Job"}</p>
                       {height > 30 && <p className="break-words opacity-80">{schedule.leads?.service_type}</p>}
-                      {height > 45 && <p className="opacity-60">{schedule.start_time}–{schedule.end_time}</p>}
+                      {height > 45 && <p className="opacity-60">{hhmm(schedule.start_time)}–{hhmm(schedule.end_time)}</p>}
                       {height > 60 && isInstallSchedule(schedule) && (
                         <span className="mt-0.5 inline-block"><InstallDepositChip leadId={schedule.lead_id} compact /></span>
                       )}
@@ -1784,13 +1821,13 @@ const WeekTimeline = ({
                             onDragStart={(e) => onScheduleDragStart(e, schedule)}
                             className="rounded px-1.5 py-0.5 text-[10px] text-white cursor-pointer break-words"
                             style={{ backgroundColor: STATUS_COLORS[status] || "#6b7280" }}
-                            title={`${schedule.leads?.customer_name} ${schedule.start_time}–${schedule.end_time}`}
+                            title={schedule.clash ? `Overlaps ${schedule.clash.start}–${schedule.clash.end} with ${schedule.clash.label}` : `${schedule.leads?.customer_name} ${hhmm(schedule.start_time)}–${hhmm(schedule.end_time)}`}
                             onClick={() => {
                               const lead = allLeads.find(l => l.id === schedule.lead_id);
                               if (lead) onJobInfoClick(lead, schedule);
                             }}
                           >
-                            <span className="font-medium">{schedule.start_time}</span> {schedule.leads?.customer_name || "Job"}
+                            {schedule.clash && <span className="mr-1 rounded bg-destructive px-1 font-bold text-destructive-foreground" data-testid="clash-badge">⚠ Clash</span>}<span className="font-medium">{hhmm(schedule.start_time)}</span> {schedule.leads?.customer_name || "Job"}
                             {isInstallSchedule(schedule) && (
                               <span className="ml-1 inline-block align-middle"><InstallDepositChip leadId={schedule.lead_id} compact /></span>
                             )}
