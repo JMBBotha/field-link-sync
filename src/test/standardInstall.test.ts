@@ -55,10 +55,10 @@ describe("standard install", () => {
     expect(pickInstallTemplate(TEMPLATES, 30000)).toBeNull();
   });
 
-  it("prices install lines at book value per supplier length", () => {
+  it("prices install lines (length items per metre with 10% waste)", () => {
     setActiveQuoteMarkupRates({ units: 25, materials: 100 } as any);
     const price = (code: string) => catalogLineFields(LIVE.find((p) => p.product_code === code), 1).unit_price;
-    expect((catalogLineFields(LIVE.find((p) => p.product_code === "TRUNK01"), 3) as any).total_price).toBe(264.5); // per metre: 3 m = one length
+    expect((catalogLineFields(LIVE.find((p) => p.product_code === "TRUNK01"), 3) as any).total_price).toBe(290.94); // per metre with 10% waste
     expect((catalogLineFields(LIVE.find((p) => p.product_code === "TRUNK02"), 3) as any).total_price).toBe(32.5);
     expect(price("DPIPE01")).toBeCloseTo(56, 2);
     expect(price("TRUNKCAP01")).toBeCloseTo(29.52, 2);
