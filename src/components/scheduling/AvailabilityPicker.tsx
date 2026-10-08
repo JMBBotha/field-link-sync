@@ -35,7 +35,7 @@ export function statusLabel(p: Pick<RankedPerson, "status" | "reason" | "blocks"
   if (p.status === "off") return "Off";
   if (p.status === "leave") return "On leave";
   if (p.status === "busy") {
-    const m = p.reason.match(/Busy (\d{2}:\d{2}–\d{2}:\d{2})/);
+    const m = p.reason.match(/(?:Busy|Booked|Blocked|Off) (\d{2}:\d{2}–\d{2}:\d{2})/);
     return m ? `Busy ${m[1]}` : "Busy";
   }
   return "Free";
@@ -96,7 +96,7 @@ export function AvailabilityPicker({ lane, date, startTime, minutes, lat, lng, e
               <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
                 chip === "Free" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
                   : chip.startsWith("Busy") ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground")}>{chip}</span>
-              <span className="ml-auto inline-flex items-center gap-0.5 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{p.km != null ? `${p.km} km` : "km ?"}</span>
+              <span className="ml-auto inline-flex items-center gap-0.5 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{p.km != null ? `${p.km} km` : "no location"}</span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground break-words">{p.reason}</p>
             <div className="relative mt-1.5 h-2 w-full overflow-hidden rounded bg-muted" aria-hidden>

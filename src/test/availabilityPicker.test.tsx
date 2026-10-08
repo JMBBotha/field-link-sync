@@ -47,7 +47,7 @@ describe("AvailabilityPicker", () => {
     expect(rows[2].textContent).toContain("Busy 09:00–12:00");
     expect(rows[2].textContent).toContain("next free 12:30");
     expect(rows[3].textContent).toContain("Off");
-    expect(rows[3].textContent).toContain("km ?");
+    expect(rows[3].textContent).toContain("no location");
   });
 
   it("suggested slot tap fills person, date and time", async () => {

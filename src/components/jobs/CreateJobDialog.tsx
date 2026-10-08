@@ -408,7 +408,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
                 Date · Time · Technician
               </span>
             </div>
-            <AppointmentPicker value={appt} onChange={setAppt} />
+            <AppointmentPicker value={appt} onChange={setAppt} lat={lat} lng={lng} />
           </div>
           <div>
             <Label>Priority</Label>
