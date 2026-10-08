@@ -588,7 +588,7 @@ export default function EstimateBuilder({
             return (
               <div className="space-y-2" onClick={(event) => event.stopPropagation()} data-area-key={key}>
                 <div className="flex flex-wrap gap-2" data-testid="canonical-add-actions">
-                  {([['unit', '+ Add unit'], ['service', '+ Add service'], ['material', '+ Add material'], ['selected', '★ Selected / Favourites']] as const).map(([mode, label]) => (
+                  {([['unit', '+ Add unit'], ['service', '+ Add service'], ['material', '+ Add material'], ['selected', '★ Selected']] as const).map(([mode, label]) => (
                     <Button key={mode} type="button" size="sm" variant="outline" data-solid aria-pressed={open === mode}
                       className={`h-9 rounded-md px-3 text-sm ${mode === "unit" ? "option1-add-unit" : "option1-add-secondary"}`}
                       onClick={() => setOpenAdd(open === mode ? null : { key, mode })}>{label}</Button>
