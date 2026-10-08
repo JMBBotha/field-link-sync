@@ -26,6 +26,8 @@ import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { fetchQuoteInvoice } from "@/lib/depositInvoice";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import QuoteActionBar from "@/components/quoting/QuoteActionBar";
+import { useQuoteDocumentActions } from "@/hooks/useQuoteDocumentActions";
 import { QuoteProvider, usePendingQuoteWrites, waitForQuoteWrites } from "@/contexts/QuoteContext";
 import { missingLabourFor, normalizeLabourMode } from "@/lib/areaLabour";
 import { blockR0Quote } from "@/lib/zeroPriceGuard";
@@ -46,22 +48,8 @@ const AdminEstimateDetailPage = () => {
   const qc = useQueryClient();
   const { settings } = useCompanySettings();
   const [busy, setBusy] = useState<string | null>(null);
-  const [clientPdf, setClientPdf] = useState(false);
-  const [sendOpen, setSendOpen] = useState(false);
-  const [missingLabour, setMissingLabour] = useState<{ id: string; name: string }[]>([]);
-  const checkLabour = async () => {
-    const [areaRes, lineRes, modeRes] = await Promise.all([
-      supabase.from("quote_areas").select("id, name").eq("quote_id", id).order("sort_order"),
-      supabase.from("quote_items").select("id, area_id, parent_item_id, item_name, item_type, quantity, metadata, unit_price").eq("quote_id", id),
-      (supabase.from("quotes") as any).select("labour_mode").eq("id", id).maybeSingle(),
-    ]);
-    if (areaRes.error) throw areaRes.error;
-    if (lineRes.error) throw lineRes.error;
-    const missing = missingLabourFor(normalizeLabourMode(modeRes.data?.labour_mode), (areaRes.data || []) as any[], (lineRes.data || []) as any[], settings.default_install_labour_hours);
-    if (missing.length) { setMissingLabour(missing); return false; }
-    if (blockR0Quote((lineRes.data || []) as any[], toast)) return false;
-    return true;
-  };
+  const docActions = useQuoteDocumentActions(id);
+  const { checkLabour, handlePdf } = docActions;
   const staffActions = useQuoteStaffActions(undefined, checkLabour);
   const pendingWrites = usePendingQuoteWrites();
   const [leaving, setLeaving] = useState(false);
@@ -131,69 +119,6 @@ const AdminEstimateDetailPage = () => {
     qc.invalidateQueries({ queryKey: ["quote-document-items", id] });
   };
 
-  /**
-   * Explicit Save: flush any focused field (inline edits commit on blur), recompute
-   * totals from the persisted lines, and confirm. Status is never advanced here —
-   * a draft stays a draft; Send is the only thing that changes status.
-   */
-  const handleSave = async () => {
-    if (!await checkLabour()) return;
-    setBusy("save");
-    try {
-      (document.activeElement as HTMLElement | null)?.blur?.();
-      await new Promise((r) => setTimeout(r, 250));
-
-      const { data: lines, error: linesErr } = await supabase
-        .from("quote_items")
-        .select("quantity, unit_price, parent_item_id")
-        .eq("quote_id", id);
-      if (linesErr) throw linesErr;
-
-      const sub = (lines || [])
-        .filter((l: any) => !l.parent_item_id)
-        .reduce((s: number, l: any) => s + Number(l.quantity || 0) * Number(l.unit_price || 0), 0);
-      const rate = Number(quote?.vat_rate) || 0.15;
-      const dType = quote?.discount_type as string | null;
-      const dVal = Number(quote?.discount_value || 0);
-      const disc = dType === "percentage" || dType === "percent" ? (sub * dVal) / 100 : dType === "fixed" ? dVal : 0;
-      const net = sub - disc;
-
-      const { error: upErr } = await supabase
-        .from("quotes")
-        .update({
-          subtotal: Math.round(sub * 100) / 100,
-          vat_amount: Math.round(net * rate * 100) / 100,
-          total: Math.round(net * (1 + rate) * 100) / 100,
-        })
-        .eq("id", id);
-      if (upErr) throw upErr;
-
-      refreshDocument();
-      const isDraft = String(quote?.status || "").toLowerCase() === "draft";
-      toast({ title: isDraft ? "Saved as draft" : "Saved" });
-    } catch (e: any) {
-      toast({ title: "Could not save", description: e.message, variant: "destructive" });
-    }
-    setBusy(null);
-  };
-
-
-  // Send uses the exact same flow as the quote builder: ensure public_token
-  // + status/sent_at via the shared helper, then open the shared dialog.
-  const handleSend = async () => {
-    if (!await checkLabour()) return;
-    setBusy("send");
-    try {
-      await ensureQuoteReadyToSend(id);
-      qc.invalidateQueries({ queryKey: ["quote-document", id] });
-      qc.invalidateQueries({ queryKey: ["quotes"] });
-      setSendOpen(true);
-    } catch (e: any) {
-      toast({ title: "Could not prepare quote for sending", description: e.message, variant: "destructive" });
-    }
-    setBusy(null);
-  };
-
   // Mandy on the full builder hands "make the PDF" off here (?mandy=pdf); run it once.
   const [searchParams, setSearchParams] = useSearchParams();
   const mandyPdfRan = useRef(false);
@@ -203,41 +128,6 @@ const AdminEstimateDetailPage = () => {
     setSearchParams({}, { replace: true });
     void handlePdf();
   }, [searchParams, quote, isLoading, itemsFetched]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handlePdf = async () => {
-    if (!await checkLabour()) return "Remember labour before generating the PDF.";
-    setBusy("pdf");
-    try {
-      await waitForQuoteWrites(5000);
-      setClientPdf(true);
-      const extras = await loadQuoteBrochuresForPdf((quote as any)?.id);
-      const captureSelector = await waitForClientPdfRoot(quote!.id);
-      await generateDocumentPdf({
-        ...extras,
-        docType: "Quote",
-        docNumber: quote?.quote_number || "DRAFT",
-        companyName: settings.company_name || "0800-BE-COOL",
-        companyAddress: settings.physical_address,
-        vatNumber: settings.vat_number,
-        customerName: customer.name || quote?.customer_name || "Customer",
-        customerAddress: customer.address || undefined,
-        customerEmail: customer.email || undefined,
-        issueDate: quote?.created_at,
-        lineItems: items,
-        subtotal,
-        taxRate: Number(quote?.vat_rate) || 0.15,
-        taxAmount,
-        total,
-        notes: quote?.notes || undefined,
-        captureSelector,
-      });
-    } catch (e: any) {
-      toast({ title: "PDF failed", description: e.message, variant: "destructive" });
-    } finally {
-      setClientPdf(false);
-    }
-    setBusy(null);
-  };
 
   const handleConvert = async () => {
     if (!user?.id) return;
@@ -329,25 +219,10 @@ const AdminEstimateDetailPage = () => {
 
 
       {/* Actions */}
+      <QuoteActionBar busy={docActions.busy} onSave={docActions.handleSave} onPdf={() => void handlePdf()} onSend={docActions.handleSend} onPrint={docActions.handlePrint} className="pt-2" />
       <div className="flex flex-wrap justify-end gap-2 pt-2 print:hidden">
         <Button variant="outline" onClick={() => navigate(`/admin/quote-builder?quoteId=${quote.id}`)}>
           <Pencil className="mr-2 h-4 w-4" /> Full builder / Visual PDF
-        </Button>
-        <Button variant="outline" onClick={handleSave} disabled={busy === "save"}>
-          {busy === "save" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          Save
-        </Button>
-        <Button variant="outline" onClick={handleSend} disabled={busy === "send"}>
-          {busy === "send" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-          Send
-        </Button>
-
-        <Button variant="outline" onClick={handlePdf} disabled={busy === "pdf"}>
-          {busy === "pdf" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-          PDF
-        </Button>
-        <Button variant="outline" onClick={async () => { if (await checkLabour()) window.print(); }}>
-          <Printer className="mr-2 h-4 w-4" /> Print
         </Button>
         <TooltipProvider>
           <Tooltip>
@@ -376,23 +251,7 @@ const AdminEstimateDetailPage = () => {
         </TooltipProvider>
       </div>
 
-      {clientPdf && <ClientQuotePdfRoot quoteId={quote.id} />}
-      <SendQuoteDialog
-        open={sendOpen}
-        onOpenChange={setSendOpen}
-        quoteId={quote.id}
-        quoteNumber={quote.quote_number}
-        customerId={quote.customer_id}
-        customerName={customer.name || quote.customer_name || "Customer"}
-      />
-      <Dialog open={missingLabour.length > 0} onOpenChange={(open) => { if (!open) setMissingLabour([]); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Labour missing</DialogTitle><DialogDescription>Add labour to every populated area before continuing.</DialogDescription></DialogHeader>
-          <div className="space-y-1">
-            {missingLabour.map((area) => <Button key={area.id} type="button" variant="ghost" className="w-full justify-start" onClick={() => { setMissingLabour([]); window.setTimeout(() => document.getElementById(`area-labour-${area.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>{area.name}</Button>)}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {docActions.portals}
     </div>
   );
 };
