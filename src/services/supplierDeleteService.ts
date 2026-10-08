@@ -185,67 +185,36 @@ export async function getSupplierDeleteCounts(supplierId: string) {
 }
 
 /**
- * Clears all products, their dependents, PDF uploads, documents,
- * AND all associated files from Supabase Storage.
- * Keeps the supplier record intact for re-upload.
+ * Archives all products for this supplier and deactivates its PDF books.
+ * Never deletes products, books or quote lines (existing quotes unchanged).
  */
 export async function deleteSupplierProductsOnly(supplierId: string): Promise<{
   success: true;
   deletedProducts: number;
   deletedPdfPages: number;
 }> {
-  const productIds = await getProductIds(supplierId);
-
-  // 1. Purge product images from storage BEFORE deleting product records
-  await purgeProductImages(productIds);
-
-  // 2. Explicit cleanup of SET NULL FK children
-  if (productIds.length > 0) {
-    await deleteBatched("quote_items", "product_id", productIds);
-    await deleteBatched("job_used_parts", "product_id", productIds);
-    await deleteBatched("pdf_product_regions", "product_id", productIds);
-  }
-
-  // 3. Delete products (CASCADE handles inventory_stock + bundle_items)
-  await (supabase.from("supplier_products") as any).delete().eq("supplier_id", supplierId);
-
-  // 4. Delete PDF uploads DB records
-  await (supabase.from("pdf_uploads") as any).delete().eq("supplier_id", supplierId);
-
-  // 5. Purge supplier document files from storage, then delete DB records
-  await purgeSupplierDocumentFiles(supplierId);
-  await (supabase.from("supplier_documents") as any).delete().eq("supplier_id", supplierId);
-
-  // 6. Delete price_list_uploads
-  await (supabase.from("price_list_uploads") as any).delete().eq("supplier_id", supplierId);
-
-  // 7. Purge PDF page images from storage, then delete DB records
-  const deletedPdfPages = await purgeSupplierPdfPageImages(supplierId);
-  await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierId);
-
-  // 8. Final sweep — purge any remaining files in storage folders for this supplier
-  for (const bucket of STORAGE_BUCKETS) {
-    await purgeStorageFolder(bucket, supplierId);
-  }
-
-  return { success: true, deletedProducts: productIds.length, deletedPdfPages };
+  const archived = await archiveSupplierProducts(supplierId);
+  await deactivatePdfUploads({ supplierId });
+  return { success: true, deletedProducts: archived, deletedPdfPages: 0 };
 }
 
 /**
- * Removes EVERYTHING: products, PDFs, contacts, documents, storage files,
- * and the supplier record itself.
+ * Removes the supplier record — blocked while the supplier has any products
+ * (live or archived), because products are never hard-deleted.
  */
 export async function deleteSupplierCompletely(supplierId: string) {
-  const result = await deleteSupplierProductsOnly(supplierId);
-
-  // Explicit cleanup of remaining supplier-level children
+  const { count } = await (supabase.from("supplier_products") as any)
+    .select("id", { count: "exact", head: true })
+    .eq("supplier_id", supplierId);
+  if ((count ?? 0) > 0) {
+    throw new Error(
+      `This supplier has ${count} products. Products are never deleted — archive them instead. Existing quotes are not changed.`,
+    );
+  }
   await (supabase.from("supplier_contacts") as any).delete().eq("supplier_id", supplierId);
-  await (supabase.from("stock_receipts") as any).delete().eq("supplier_id", supplierId);
-
-  // Delete the supplier record itself
-  await supabase.from("suppliers").delete().eq("id", supplierId);
-
-  return { success: true, ...result };
+  const { error } = await supabase.from("suppliers").delete().eq("id", supplierId);
+  if (error) throw error;
+  return { success: true, deletedProducts: 0, deletedPdfPages: 0 };
 }
 
 /**
