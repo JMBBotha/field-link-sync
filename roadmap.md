@@ -1,5 +1,9 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
+## Calendar S1 + S2 (2026-10-08)
+- [x] One tile per visit, HH:MM labels, cancelled hidden, assignment value normaliser, SAST new-job times, install duration saved.
+- [x] booking_clashes / open_double_bookings, robots skip overlaps (find_dispatch_candidates*, dispatch-job deployed), ClashGuard on all office booking paths, clash badges + double-bookings chip. Focused tests pass.
+
 ## Card consistency C2 (2026-10-08)
 - [x] Share QuoteCard and AttentionChips, add compact lead cards and wrapping expandable stage blocks; preserve query filters, actions and drag behaviour.
 - [x] Eight focused card/pipeline tests pass, including collapsed drops and expansion. Signed-in guarded browser checks confirm 3/2/1 columns, expansion/collapse and Cards view with no overflow or runtime errors; two background write attempts blocked, no backend writes. Preview build OK.

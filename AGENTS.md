@@ -22,3 +22,4 @@
 <!-- LOVABLE:BEGIN -->
 - Dispatch Cards, Board and Upcoming Jobs render JobCard through cardModel adapters; callers own mutations and drag props — one presentation without changing dispatch behaviour.
 <!-- LOVABLE:END -->
+- Booking lengths/working hours live in src/lib/schedulingDefaults.ts (mirrored in SQL default_booking_minutes); every office booking path calls useClashGuard().confirmBooking (booking_clashes RPC) before saving and robots skip 'overlap' people — so double bookings are warned once, server-side, the same way everywhere.
