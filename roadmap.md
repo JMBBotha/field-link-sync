@@ -1,8 +1,8 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
 ## Card consistency C1 (2026-10-08)
-- [ ] Share JobCard and cardModel across Dispatch Cards, Board and Upcoming Jobs; preserve mutations and query filters.
-- [ ] Verify rendering, drag props, technician privacy and chip filters with focused tests and read-only browser checks.
+- [x] Share JobCard and cardModel across Dispatch Cards, Board and Upcoming Jobs; preserve mutations and query filters.
+- [x] 29 focused tests pass; full suite 861/862 (existing Mandy map-status failure). Signed-in read-only Cards/Board/Calendar checks confirm shared cards, menu Quick view, chip filters, all-view New job/Refresh and no phone overflow; no writes exercised.
 
 ## Owner-approved Option 1 (2026-10-08)
 - [x] Share solid Option 1 area card, rename chips, add row, tap-edit labour and creation control on estimate/Build quote; hide legacy tabs.

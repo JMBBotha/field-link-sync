@@ -35,10 +35,10 @@ import { AlertTriangle, Eye, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const COLUMNS = [
-  { key: "scheduled", label: "Scheduled", color: STATUS_PILL.scheduled.bar.replace("border-l-", "border-t-") },
-  { key: "dispatched", label: "En route", color: STATUS_PILL.dispatched.bar.replace("border-l-", "border-t-") },
-  { key: "in_progress", label: "On site", color: STATUS_PILL.in_progress.bar.replace("border-l-", "border-t-") },
-  { key: "completed", label: "Done", color: STATUS_PILL.completed.bar.replace("border-l-", "border-t-") },
+  { key: "scheduled", label: "Scheduled", color: STATUS_PILL.scheduled.bar },
+  { key: "dispatched", label: "En route", color: STATUS_PILL.dispatched.bar },
+  { key: "in_progress", label: "On site", color: STATUS_PILL.in_progress.bar },
+  { key: "completed", label: "Done", color: STATUS_PILL.completed.bar },
 ] as const;
 
 const PRIORITY_VARIANT: Record<string, "destructive" | "default" | "secondary" | "outline"> = {
@@ -328,12 +328,12 @@ const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => 
           {COLUMNS.map(col => (
             <div
               key={col.key}
-              className={`rounded-xl border-t-4 ${col.color} bg-card min-h-[300px] flex flex-col min-w-0 shrink-0 basis-[85%] sm:basis-[48%] snap-start md:basis-auto md:shrink`}
+              className="rounded-xl bg-card min-h-[300px] flex flex-col min-w-0 shrink-0 basis-[85%] sm:basis-[48%] snap-start md:basis-auto md:shrink"
               onDragOver={e => e.preventDefault()}
               onDrop={e => handleDrop(e, col.key)}
             >
               <div className="p-3 flex items-center justify-between">
-                <span className="font-semibold text-sm text-foreground">{col.label}</span>
+                <span className={`border-l-4 pl-2 font-semibold text-sm text-foreground ${col.color}`}>{col.label}</span>
                 <Badge variant="outline" className="text-[10px]">{grouped[col.key]?.length || 0}</Badge>
               </div>
               <ScrollArea className="flex-1 min-w-0 px-2 pb-2 [&_[data-radix-scroll-area-viewport]>div]:!block">
