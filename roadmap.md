@@ -1,5 +1,9 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
+## Card consistency C3 (2026-10-08)
+- [ ] Share technician lead/job/schedule cards and sales appointment cards; preserve actions, navigation and queries, hide technician money.
+- [ ] Run focused technician/card/appointment/dispatch tests and verify rendering without data writes.
+
 ## Calendar S1 + S2 (2026-10-08)
 - [x] One tile per visit, HH:MM labels, cancelled hidden, assignment value normaliser, SAST new-job times, install duration saved.
 - [x] booking_clashes / open_double_bookings, robots skip overlaps (find_dispatch_candidates*, dispatch-job deployed), ClashGuard on all office booking paths, clash badges + double-bookings chip. Focused tests pass.
