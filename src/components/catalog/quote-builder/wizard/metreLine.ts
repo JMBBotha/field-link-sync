@@ -20,10 +20,13 @@ export const isMetreStub = (p: PaletteProduct) => (p as any)?.qty_unit === "metr
 
 export function metreStubProduct(p: PaletteProduct): PaletteProduct {
   const f = catalogLineFields(p, 1);
-  return stubProductFromQuoteItem({
+  const stub = stubProductFromQuoteItem({
     id: p.id, product_id: p.id, item_number: f.item_number, item_name: f.item_name, item_type: p.product_category || p.category || "Consumables",
     description: f.description, unit_price: f.unit_price, quantity: 1, length: null, supplier: f.supplier, metadata: f.metadata,
   });
+  // Keep the 4-dp cost per metre (incl waste) so the saved unit_cost matches the main builder.
+  const c = Number(f.metadata.unit_cost);
+  return { ...stub, cost_price: c, cost_excl_vat: c, locked_cost_ex_vat: c } as PaletteProduct;
 }
 
 export const clampMetres = (v: number) => Math.max(0.1, Math.round((Number(v) || 0.1) * 10) / 10);
