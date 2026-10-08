@@ -420,9 +420,6 @@ const AdminSuppliersPage = () => {
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => openDeleteDialog(s, "products")}>
-                                <Package className="h-4 w-4 mr-2" /> Clean Products Only
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openDeleteDialog(s, "products")}>
                                 <Trash2 className="h-4 w-4 mr-2" /> Archive Products & Price Lists
                               </DropdownMenuItem>
                               <DropdownMenuItem
