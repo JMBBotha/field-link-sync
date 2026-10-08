@@ -44,7 +44,7 @@ import { useRole } from "@/hooks/useRole";
 import { useIsMobile } from "@/hooks/use-mobile";
 import NeedsSomeoneTray from "@/components/calendar/NeedsSomeoneTray";
 import DayCards, { BusyBlock } from "@/components/calendar/DayCards";
-import { bookingMinutes, hoursLabel, calendarText, salesCalendarPeople } from "@/components/calendar/calendarModel";
+import { hoursLabel, calendarText, salesCalendarPeople, mergedMinutes, type WorkWindow, type BlockedTime } from "@/components/calendar/calendarModel";
 
 // ─── Types ───
 interface Lead {
@@ -280,6 +280,32 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
       return a.full_name.localeCompare(b.full_name);
     });
   }, [salesStaff, technicians, agents, laneById, isSalesRep, userId, salesLoading]);
+
+  // S4: each person's real working window for the visible day (fallback 9 h if the call fails) + blocked time (RLS-limited).
+  const dayKey = format(currentDate, "yyyy-MM-dd");
+  const { data: workWindows = {} } = useQuery({
+    queryKey: ["staff-work-window", dayKey, dispatchAgents.map(a => a.id).join(",")],
+    enabled: dispatchAgents.length > 0,
+    queryFn: async () => {
+      const out: Record<string, WorkWindow | undefined> = {};
+      await Promise.all(dispatchAgents.map(async a => {
+        const { data, error } = await supabase.rpc("staff_work_window", { p_profile_id: a.id, p_date: dayKey });
+        const row = !error && Array.isArray(data) ? data[0] : null;
+        if (row) out[a.id] = { is_working: !!row.is_working, start_time: hhmm(row.start_time), end_time: hhmm(row.end_time), source: row.source };
+      }));
+      return out;
+    },
+  });
+  const { data: blockedTimes = [] } = useQuery({
+    queryKey: ["staff-blocked-time", dayKey],
+    queryFn: async () => {
+      const from = new Date(`${dayKey}T00:00:00+02:00`), to = new Date(from.getTime() + 86400000);
+      const { data, error } = await supabase.from("staff_blocked_time").select("id, profile_id, starts_at, ends_at, kind, reason")
+        .is("archived_at", null).lt("starts_at", to.toISOString()).gt("ends_at", from.toISOString());
+      if (error) return [];
+      return (data || []) as BlockedTime[];
+    },
+  });
 
   const { data: agentLocations = [] } = useQuery({
     queryKey: ["dispatch-agent-locations"],
@@ -856,7 +882,6 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
             </span>
           )}
           <div className="hidden md:flex items-center gap-3">
-            <StatBadge icon={<AlertTriangle className="h-3.5 w-3.5" />} label="Unassigned" value={stats.unassigned} variant="warning" />
             <StatBadge icon={<Zap className="h-3.5 w-3.5" />} label="In Progress" value={stats.inProgress} variant="success" />
             <StatBadge icon={<Users className="h-3.5 w-3.5" />} label="Online" value={`${stats.onlineAgents}/${stats.totalAgents}`} variant="primary" />
           </div>
@@ -1058,7 +1083,8 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                 schedules={schedulesForDates.get(format(currentDate, "yyyy-MM-dd")) || []} leads={allLeads} sales={isSalesRep}
                 isAgentOnline={isAgentOnline} onJobInfoClick={(lead, schedule) => { setJobInfoLead(lead); setJobInfoSchedule(schedule); }}
                 onScheduleDragStart={handleScheduleDragStart} onDragEnd={handleDragEnd} onDrop={handleDrop} onDragOver={handleDragOver}
-                dragOverSlot={dragOverSlot} onSlotDragEnter={handleSlotDragEnter} onSlotDragLeave={handleSlotDragLeave} />
+                dragOverSlot={dragOverSlot} onSlotDragEnter={handleSlotDragEnter} onSlotDragLeave={handleSlotDragLeave}
+                windows={workWindows} blocked={blockedTimes} showReason={id => isAdmin || isDispatcher || id === userId} />
             ) : viewMode === "day" ? (
               <DayTimeline
                 date={currentDate}
@@ -1647,7 +1673,7 @@ const WeekTimeline = ({
                   <LaneBadge lane={laneById.get(agent.id) ?? null} />
                   {isAgentOnline(agent.id) && <span className="text-[9px] text-success font-semibold ml-auto shrink-0">Online</span>}
                 </div>
-                 <p className="text-[10px] text-muted-foreground">{hoursLabel(Array.from(schedulesMap.values()).flat().filter(s => s.agent_id === agent.id).reduce((n, s) => n + bookingMinutes(s), 0))} booked</p>
+                 <p className="text-[10px] text-muted-foreground">{hoursLabel(dates.reduce((n, d) => n + mergedMinutes((schedulesMap.get(format(d, "yyyy-MM-dd")) || []).filter(s => s.agent_id === agent.id)), 0))} booked</p>
               </td>
               {dates.map(d => {
                 const dateStr = format(d, "yyyy-MM-dd");

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Clock, Save, Loader2 } from "lucide-react";
+import { hhmm } from "@/lib/schedulingDefaults";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -18,64 +19,68 @@ interface DaySchedule {
   is_available: boolean;
 }
 
-const DEFAULT_SCHEDULE: DaySchedule[] = DAYS.map((_, i) => ({
-  day_of_week: i,
-  start_time: "08:00",
-  end_time: "17:00",
-  is_available: i >= 1 && i <= 5, // Mon-Fri on by default
-}));
+const fromCompany = (c?: { work_days: number[] | null; work_start: string | null; work_end: string | null } | null): DaySchedule[] =>
+  DAYS.map((_, i) => ({
+    day_of_week: i,
+    start_time: hhmm(c?.work_start || "08:00"),
+    end_time: hhmm(c?.work_end || "17:00"),
+    is_available: c?.work_days ? c.work_days.includes(i) : i >= 1 && i <= 5,
+  }));
 
 interface Props {
   agentId?: string; // if not provided, uses current user
 }
 
+/** Reads/writes staff_work_hours (never agent_availability). Shows the company default when the person has no rows. */
 const AgentAvailabilityEditor = ({ agentId }: Props) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [schedule, setSchedule] = useState<DaySchedule[]>(DEFAULT_SCHEDULE);
+  const [schedule, setSchedule] = useState<DaySchedule[]>(fromCompany());
+  const [usingDefault, setUsingDefault] = useState(true);
   const userId = agentId ?? user?.id ?? null;
 
-  const { isLoading } = useQuery({
-    queryKey: ["agent-availability", userId],
+  const { data: companyId, isLoading } = useQuery({
+    queryKey: ["staff-work-hours", userId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("agent_availability")
-        .select("*")
-        .eq("agent_id", userId!);
+      const { data: prof } = await supabase.from("profiles").select("company_id").eq("id", userId!).maybeSingle();
+      const cid = prof?.company_id ?? null;
+      const { data: company } = cid
+        ? await supabase.from("companies").select("work_days, work_start, work_end").eq("id", cid).maybeSingle()
+        : { data: null };
+      const base = fromCompany(company);
+      const { data, error } = await supabase.from("staff_work_hours").select("*").eq("profile_id", userId!);
       if (error) throw error;
-      if (data && data.length > 0) {
-        const merged = DEFAULT_SCHEDULE.map((d) => {
-          const existing = data.find((r: any) => r.day_of_week === d.day_of_week);
-          return existing
-            ? { day_of_week: existing.day_of_week, start_time: existing.start_time?.slice(0, 5) || "08:00", end_time: existing.end_time?.slice(0, 5) || "17:00", is_available: existing.is_available }
-            : d;
-        });
-        setSchedule(merged);
-      }
-      return data;
+      setUsingDefault(!data?.length);
+      setSchedule(base.map((d) => {
+        const r = data?.find((x) => x.day_of_week === d.day_of_week);
+        return r ? { day_of_week: d.day_of_week, start_time: hhmm(r.start_time || d.start_time), end_time: hhmm(r.end_time || d.end_time), is_available: r.is_working } : d;
+      }));
+      return cid;
     },
     enabled: !!userId,
   });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!userId) throw new Error("No user");
-      // Upsert all 7 days
+      if (!userId || !companyId) throw new Error("No user or company");
       const rows = schedule.map((d) => ({
-        agent_id: userId,
+        profile_id: userId,
+        company_id: companyId,
         day_of_week: d.day_of_week,
         start_time: d.start_time + ":00",
         end_time: d.end_time + ":00",
-        is_available: d.is_available,
+        is_working: d.is_available,
         updated_at: new Date().toISOString(),
       }));
-      const { error } = await supabase.from("agent_availability").upsert(rows, { onConflict: "agent_id,day_of_week" });
+      const { error } = await supabase.from("staff_work_hours").upsert(rows, { onConflict: "profile_id,day_of_week" });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Availability saved" });
-      queryClient.invalidateQueries({ queryKey: ["agent-availability"] });
+      toast({ title: "Working hours saved" });
+      setUsingDefault(false);
+      queryClient.invalidateQueries({ queryKey: ["staff-work-hours"] });
+      queryClient.invalidateQueries({ queryKey: ["staff-work-window"] });
     },
     onError: (err: any) => toast({ title: "Save failed", description: err.message, variant: "destructive" }),
   });
@@ -91,6 +96,7 @@ const AgentAvailabilityEditor = ({ agentId }: Props) => {
           <Clock className="h-4 w-4 text-primary" />
           Weekly Availability
         </CardTitle>
+        {usingDefault && !isLoading && <p className="text-xs text-muted-foreground">Showing the company's working hours.</p>}
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading ? (
@@ -108,19 +114,9 @@ const AgentAvailabilityEditor = ({ agentId }: Props) => {
                 </span>
                 {day.is_available && (
                   <div className="flex items-center gap-2">
-                    <Input
-                      type="time"
-                      value={day.start_time}
-                      onChange={(e) => updateDay(day.day_of_week, "start_time", e.target.value)}
-                      className="w-28 h-8 text-sm"
-                    />
+                    <Input type="time" value={day.start_time} onChange={(e) => updateDay(day.day_of_week, "start_time", e.target.value)} className="w-28 h-8 text-sm" />
                     <span className="text-muted-foreground text-xs">to</span>
-                    <Input
-                      type="time"
-                      value={day.end_time}
-                      onChange={(e) => updateDay(day.day_of_week, "end_time", e.target.value)}
-                      className="w-28 h-8 text-sm"
-                    />
+                    <Input type="time" value={day.end_time} onChange={(e) => updateDay(day.day_of_week, "end_time", e.target.value)} className="w-28 h-8 text-sm" />
                   </div>
                 )}
               </div>

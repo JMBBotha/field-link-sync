@@ -16,11 +16,16 @@ export function visibleVisitEntries<T extends Pick<CalendarEntry, "job_id" | "cu
   return entries.filter((e) => e.job_id || String(e.customer_name || "").trim() !== "");
 }
 
+/** Technical work whose type/title mentions "install" shows INSTALL; sales stays SALES. */
+export function chipLane(lane: CardJob["lane"], ...texts: (string | null | undefined)[]): CardJob["lane"] {
+  return lane !== "sales" && texts.some(t => /install/i.test(t || "")) ? "install" : lane;
+}
+
 export type CardJob = {
   kind: "job" | "visit"; id: string; title: string; scheduledFor: string | null; statusKey: string;
   priority?: string | null; place?: string | null; clientName?: string | null;
   assigneeName?: string | null; assigneePhone?: string | null; clientPhone?: string | null;
-  lane: "sales" | "service"; callSummary?: string | null; notes?: string | null;
+  lane: "sales" | "service" | "install"; callSummary?: string | null; notes?: string | null;
   urgency: Urgency & { onSiteMins?: number | null };
 };
 type JobSource = DJob & {
@@ -72,7 +77,8 @@ export function assignmentToCard(assignment: AssignmentCardSource): CardJob {
   const card = jobToCard({ ...job, job_type: assignment.job_type, status: assignment.status,
     assignments: [{ profile_id: "self", status: assignment.status, profiles: { full_name: "You" } }] });
   const proposed = String(assignment.status || "").toLowerCase().trim() === "proposed";
-  return { ...card, statusKey: proposed ? "proposed" : (job.status || assignment.status), assigneeName: "You" };
+  return { ...card, statusKey: proposed ? "proposed" : (job.status || assignment.status), assigneeName: "You",
+    lane: chipLane(card.lane, assignment.job_type, job.title) };
 }
 
 type ScheduleCardSource = {
@@ -84,7 +90,7 @@ type ScheduleCardSource = {
 export function scheduleRowToCard(row: ScheduleCardSource | CalendarEntry): CardJob {
   if ("key" in row) {
     const card = visitToCard(row, row.agent_id ? { [row.agent_id]: { full_name: "You" } } : {});
-    return { ...card, scheduledFor: row.start_time ? `${row.date}T${hhmm(row.start_time)}:00+02:00` : row.date };
+    return { ...card, lane: chipLane(card.lane, (row as any).service_type, (row as any).job_type, card.title === row.customer_name ? null : card.title), scheduledFor: row.start_time ? `${row.date}T${hhmm(row.start_time)}:00+02:00` : row.date };
   }
   return assignmentToCard({ status: row.assignment_status || row.job_status || "proposed", job_id: row.job_id,
     job_type: row.job_type, jobs: { id: row.job_id, title: row.job_title, address: row.job_address,

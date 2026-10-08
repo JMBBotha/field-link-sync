@@ -34,7 +34,7 @@ type MyAssignedJobRow = {
 };
 
 const bucketLabel = (d: Date) => {
-  if (isToday(d)) return "Today";
+  if (isToday(d)) return "All assigned today";
   if (isTomorrow(d)) return "Tomorrow";
   if (isThisWeek(d, { weekStartsOn: 1 })) return format(d, "EEEE");
   return format(d, "EEE, dd MMM");
@@ -112,7 +112,8 @@ const FieldSchedulePage = () => {
   return (
     <FieldShell title="Schedule">
       <div className="space-y-4">
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end gap-2">
+          <Button size="sm" variant="outline" onClick={() => navigate("/field/my-base")}>My hours &amp; base</Button>
           <Button
             size="sm"
             variant="outline"
