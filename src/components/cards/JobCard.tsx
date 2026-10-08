@@ -15,9 +15,10 @@ import { hhmm, sastParts } from "@/lib/schedulingDefaults";
 export function techCardContent(content: ReactNode): ReactNode {
   return Children.map(content, (child) => {
     if (typeof child === "string") return /assign|\bauto\b|invoice|move[- ]to|next[- ]status/i.test(child) ? null : child.replace(/R\s?\d[\d\s,.]*/g, "");
-    if (!isValidElement<{ children?: ReactNode; href?: string; to?: string; "aria-label"?: string }>(child)) return child;
+    if (!isValidElement<{ children?: ReactNode; href?: string; to?: string; invoice?: unknown; hideAmount?: boolean; "aria-label"?: string }>(child)) return child;
     const props = child.props;
-    if (props.href || (props.to && !/^\/field\/(jobs|job-sheet)/.test(props.to))) return null;
+    if (props.href || (props.to && !/^\/field\/(jobs|job-sheet)/.test(props.to) && !/job sheet/i.test(String(props.children)))) return null;
+    if (props.invoice) return cloneElement(child, { hideAmount: true });
     if (/assign|\bauto\b|invoice|move[- ]to|next[- ]status|client/i.test(props["aria-label"] || "")) return null;
     if (typeof props.children === "string" && /assign|\bauto\b|invoice|move[- ]to|next[- ]status/i.test(props.children)) return null;
     return props.children === undefined ? child : cloneElement(child, {}, techCardContent(props.children));
