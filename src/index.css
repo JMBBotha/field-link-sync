@@ -1068,7 +1068,7 @@ All colors MUST be HSL.
   border-color: hsl(var(--quote-edge)) !important; box-shadow: var(--quote-shadow); backdrop-filter: none !important;
 }
 .option1-title, .option1-name-input, .option1-line-copy { color: hsl(var(--quote-ink)); }
-.option1-title:hover { background: transparent; }
+.option1-title:hover, .option1-title:focus, .option1-title:active { background: transparent !important; color: hsl(var(--quote-ink)) !important; }
 .option1-title-row { border-color: hsl(var(--quote-edge)); }
 .option1-area + .option1-area { border-top: 1px solid hsl(var(--quote-edge)); padding-top: 1rem; }
 .option1-name-chip { background: hsl(var(--quote-chip-fill)); color: hsl(var(--quote-chip-blue)); border-color: hsl(var(--quote-chip-edge)); }
