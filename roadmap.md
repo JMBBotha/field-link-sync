@@ -132,3 +132,4 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 Follow-ups only: staff working hours and webhook-secret rotation were intentionally not changed.
 
 - [x] Rename area-card "Create area" button to "Add Area" (owner request 2026-10-08)
+- [x] Selected button: label "★ Selected", shows PDF basket picks only (no Favourites) — owner request 2026-10-08
