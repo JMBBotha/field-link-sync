@@ -132,6 +132,8 @@ export interface EstimateEditing {
   onRemoveLabour?: (id: string) => void;
   /** Labour mode 'job': one Job labour row after the last area; areas show no labour row. */
   jobLabour?: { lines: EstimateEditLine[]; defaultHours: number; onAdd: () => void };
+  /** Staff-only "Labour: one total for whole job" switch, under the last labour row (never printed). */
+  labourModeToggle?: ReactNode;
 }
 
 
@@ -777,9 +779,11 @@ const EstimateDocument = ({
                   onAdd={editing.jobLabour.onAdd}
                   onChange={editing.onLabourChange}
                   onRemove={editing.onRemoveLabour}
+                  editTotal
                 />
               </section>
             )}
+            {editing.labourModeToggle}
 
             {!!editing.unassignedLabour?.length && (
               <div className="border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 print:hidden" data-testid="unassigned-labour">
