@@ -1,4 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import JobCard from "@/components/cards/JobCard";
+import { jobToCard } from "@/lib/cardModel";
 import LeadCardV2 from "@/components/leads/LeadCardV2";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -498,7 +500,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                 <Briefcase className="h-4 w-4 text-primary" /> Upcoming Jobs
               </CardTitle>
               <Button variant="ghost" size="sm" asChild className="h-7 shrink-0 px-2 text-xs">
-                <Link to="/admin/jobs/dispatch">Dispatch</Link>
+                <Link to="/admin/jobs?tab=dispatch&view=board">Dispatch</Link>
               </Button>
             </div>
             <div className="surface-segment grid w-full grid-cols-3 p-0.5 md:inline-flex md:w-auto md:self-start">
@@ -524,24 +526,8 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               </p>
             ) : (
               stats.todayJobs.map((job: any) => (
-                <Link
-                  key={job.id}
-                  to={`/admin/jobs/${job.id}`}
-                  className="surface-row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 p-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{job.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {job.address || "No address"}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {job.scheduled_for ? format(new Date(job.scheduled_for), "dd MMM · HH:mm") : "—"}
-                    </p>
-                  </div>
-                  <Badge variant={job.status === "in_progress" ? "default" : "secondary"} className="max-w-16 shrink-0 truncate text-[10px] px-1.5 py-0 capitalize">
-                    {getCompactStatus(job.status)}
-                  </Badge>
-                </Link>
+                <JobCard key={job.id} item={jobToCard(job)} density="compact" audience={isSalesRep ? "sales" : "office"}
+                  onOpen={() => navigate(`/admin/jobs/${job.id}`)} />
               ))
             )}
           </CardContent>

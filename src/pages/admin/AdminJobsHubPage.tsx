@@ -1,10 +1,11 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useSearchParams, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useRole } from "@/hooks/useRole";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LayoutGrid, Columns3, Plus, CalendarDays } from "lucide-react";
+import { LayoutGrid, Columns3, Plus, CalendarDays, RefreshCw } from "lucide-react";
 import AdminDispatchPage from "@/pages/admin/AdminDispatchPage";
 import PipelineBoard, { usePipelineData, pipelineOpenValue } from "@/components/jobs/PipelineBoard";
 import DispatchCards from "@/components/jobs/DispatchCards";
@@ -49,6 +50,7 @@ export function DispatchCalendarRedirect() {
 export default function AdminJobsHubPage() {
   const [sp, setSp] = useSearchParams();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { isAdmin, isDispatcher, loading } = useRole();
   const { isSalesRep, loading: repLoading } = useSalesRep();
   const pipe = usePipelineData();
@@ -103,7 +105,10 @@ export default function AdminJobsHubPage() {
           <Button size="sm" className="ml-auto gap-1" onClick={() => navigate("/admin/quote-builder")}><Plus className="h-4 w-4" /> New quote</Button>
         ) : (
           <div className="ml-auto flex items-center gap-2">
-            {view === "cards" && <Button size="sm" className="gap-1" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4" /> New job</Button>}
+            <Button size="icon" variant="outline" className="h-8 w-8" aria-label="Refresh dispatch" title="Refresh dispatch" onClick={() => {
+              ["dispatch-cards", "jobs-dispatch", "jobs-dispatch-booked", "dispatch-cards-leads", "attention-strip"].forEach((key) => qc.invalidateQueries({ queryKey: [key] }));
+            }}><RefreshCw className="h-4 w-4" /></Button>
+            <Button size="sm" className="gap-1" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4" /> New job</Button>
           </div>
         )}
       </div>
