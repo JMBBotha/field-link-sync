@@ -91,3 +91,4 @@ export function scheduleRowToCard(row: ScheduleCardSource | CalendarEntry): Card
       status: row.job_status, scheduled_for: row.job_scheduled_for,
       customers: { name: row.customer_name, phone: row.customer_phone } } });
 }
+

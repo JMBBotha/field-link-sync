@@ -51,6 +51,7 @@ describe("PipelineBoard", () => {
     expect(screen.getByText("Marissa Ellis")).toBeTruthy();
     expect(screen.getByText("PAID · NO JOB")).toBeTruthy();
     expect(screen.getByText("EXPIRED")).toBeTruthy();
+    expect(document.querySelectorAll("[data-rep-initials]").length).toBe(0);
     expect(screen.getAllByText(/Book job/).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText(/deposits paid · no job booked/));
     expect(screen.queryByText("Bianca")).toBeNull();
