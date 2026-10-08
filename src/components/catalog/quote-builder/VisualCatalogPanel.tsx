@@ -417,12 +417,26 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
   }, [rememberSupplierKey, supplierData, supplierOptions, supplierChoices, supplierNameMap, selectedSupplier]);
 
   const firstSupplierRun = useRef(true);
+  const pendingTopRef = useRef(false);
   useEffect(() => {
     if (firstSupplierRun.current) { firstSupplierRun.current = false; return; }
     setVisiblePageIndex(0);
-    scrollContainerRef.current?.scrollTo({ top: 0 });
+    pendingTopRef.current = true;
     if (rememberSupplierKey) { try { localStorage.setItem(rememberSupplierKey, selectedSupplier); } catch { /* ignore */ } }
   }, [selectedSupplier, rememberSupplierKey]);
+
+  // Supplier changed: jump to page 1 instantly once that supplier's pages are rendered.
+  useEffect(() => {
+    if (!pendingTopRef.current || pagesLoading || pages.length === 0) return;
+    if (selectedSupplier !== "all" && pages.some((p) => p.supplier_id !== selectedSupplier)) return;
+    const raf = requestAnimationFrame(() => {
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+      setVisiblePageIndex(0);
+      pendingTopRef.current = false;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [pages, pagesLoading, selectedSupplier]);
+
 
   const currentSupplierName = currentPage ? (supplierNameMap[currentPage.supplier_id] || currentPage.supplier_id) : "";
   const currentFilename = currentPage?.pdf_filename || "";
