@@ -57,6 +57,7 @@ export const STATUS_PILL: Record<string, { label: string; className: string; bar
   dispatched: { label: "EN ROUTE", className: "bg-orange-500 text-white", bar: "border-l-orange-500" },
   in_progress: { label: "ON SITE", className: "bg-emerald-600 text-white", bar: "border-l-emerald-600" },
   completed: { label: "DONE", className: "bg-slate-400 text-white", bar: "border-l-slate-400" },
+  proposed: { label: "Proposed", className: "bg-amber-500 text-white", bar: "border-l-amber-500" },
 };
 export function pillFor(j: DJob) {
   const s = norm(j.status);

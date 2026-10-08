@@ -11,19 +11,23 @@ import { overdueLabel, type CardJob } from "@/lib/cardModel";
 import { cn } from "@/lib/utils";
 import { hhmm, sastParts } from "@/lib/schedulingDefaults";
 
+/** One node at a time so single-child elements (Radix Slot / asChild buttons) keep working. */
+const techNode = (node: ReactNode): ReactNode => {
+  if (typeof node === "string") return /assign|\bauto\b|invoice|move[- ]to|next[- ]status/i.test(node) ? null : node.replace(/R\s?\d[\d\s,.]*/g, "");
+  if (Array.isArray(node)) return Children.map(node, (child) => techNode(child));
+  if (!isValidElement<{ children?: ReactNode; href?: string; to?: string; invoice?: unknown; hideAmount?: boolean; "aria-label"?: string }>(node)) return node;
+  const props = node.props;
+  if ((props.href && !/^(tel:|https:\/\/www\.google\.com\/maps\/dir\/)/.test(props.href)) ||
+    (props.to && !/^\/field\/(jobs|job-sheet)/.test(props.to) && !/job sheet/i.test(String(props.children)))) return null;
+  if (props.invoice) return cloneElement(node, { hideAmount: true });
+  if (/assign|\bauto\b|invoice|move[- ]to|next[- ]status|client/i.test(props["aria-label"] || "")) return null;
+  if (typeof props.children === "string" && /assign|\bauto\b|invoice|move[- ]to|next[- ]status/i.test(props.children)) return null;
+  return props.children === undefined ? node : cloneElement(node, {}, techNode(props.children));
+};
+
 /** Keep caller-owned technician controls, but discard office controls and client links. */
 export function techCardContent(content: ReactNode): ReactNode {
-  return Children.map(content, (child) => {
-    if (typeof child === "string") return /assign|\bauto\b|invoice|move[- ]to|next[- ]status/i.test(child) ? null : child.replace(/R\s?\d[\d\s,.]*/g, "");
-    if (!isValidElement<{ children?: ReactNode; href?: string; to?: string; invoice?: unknown; hideAmount?: boolean; "aria-label"?: string }>(child)) return child;
-    const props = child.props;
-    if ((props.href && !/^(tel:|https:\/\/www\.google\.com\/maps\/dir\/)/.test(props.href)) ||
-      (props.to && !/^\/field\/(jobs|job-sheet)/.test(props.to) && !/job sheet/i.test(String(props.children)))) return null;
-    if (props.invoice) return cloneElement(child, { hideAmount: true });
-    if (/assign|\bauto\b|invoice|move[- ]to|next[- ]status|client/i.test(props["aria-label"] || "")) return null;
-    if (typeof props.children === "string" && /assign|\bauto\b|invoice|move[- ]to|next[- ]status/i.test(props.children)) return null;
-    return props.children === undefined ? child : cloneElement(child, {}, techCardContent(props.children));
-  });
+  return Children.map(content, (child) => techNode(child));
 }
 
 export type { CardJob } from "@/lib/cardModel";

@@ -71,7 +71,8 @@ export function assignmentToCard(assignment: AssignmentCardSource): CardJob {
   const job = assignment.jobs;
   const card = jobToCard({ ...job, job_type: assignment.job_type, status: assignment.status,
     assignments: [{ profile_id: "self", status: assignment.status, profiles: { full_name: "You" } }] });
-  return { ...card, statusKey: assignment.status, assigneeName: "You" };
+  const proposed = String(assignment.status || "").toLowerCase().trim() === "proposed";
+  return { ...card, statusKey: proposed ? "proposed" : (job.status || assignment.status), assigneeName: "You" };
 }
 
 type ScheduleCardSource = {
