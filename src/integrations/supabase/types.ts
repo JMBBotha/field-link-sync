@@ -46,6 +46,7 @@ export type Database = {
           company_id: string
           created_at: string | null
           id: string
+          listed_as_staff: boolean
           profile_id: string
           status: string | null
         }
@@ -56,6 +57,7 @@ export type Database = {
           company_id: string
           created_at?: string | null
           id?: string
+          listed_as_staff?: boolean
           profile_id: string
           status?: string | null
         }
@@ -66,6 +68,7 @@ export type Database = {
           company_id?: string
           created_at?: string | null
           id?: string
+          listed_as_staff?: boolean
           profile_id?: string
           status?: string | null
         }
@@ -4965,6 +4968,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          archived_at: string | null
           availability_status: string | null
           avatar_url: string | null
           company_id: string | null
@@ -5002,6 +5006,7 @@ export type Database = {
           workshop_lng: number | null
         }
         Insert: {
+          archived_at?: string | null
           availability_status?: string | null
           avatar_url?: string | null
           company_id?: string | null
@@ -5039,6 +5044,7 @@ export type Database = {
           workshop_lng?: number | null
         }
         Update: {
+          archived_at?: string | null
           availability_status?: string | null
           avatar_url?: string | null
           company_id?: string | null
@@ -8419,6 +8425,15 @@ export type Database = {
       decline_quote_by_token: { Args: { p_token: string }; Returns: boolean }
       delete_job_used_part: { Args: { p_id: string }; Returns: boolean }
       disablelongtransactions: { Args: never; Returns: string }
+      dispatchable_technicians: {
+        Args: { _company_id: string }
+        Returns: {
+          assignment_type: string
+          full_name: string
+          participant_type: string
+          profile_id: string
+        }[]
+      }
       dropgeometrycolumn:
         | {
             Args: {
