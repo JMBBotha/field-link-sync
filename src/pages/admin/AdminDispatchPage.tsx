@@ -296,14 +296,18 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
       return out;
     },
   });
+  // S5: off-blocks come from staff_busy_blocks (reason only for admins / the person; others see Off / Busy).
   const { data: blockedTimes = [] } = useQuery({
     queryKey: ["staff-blocked-time", dayKey],
     queryFn: async () => {
-      const from = new Date(`${dayKey}T00:00:00+02:00`), to = new Date(from.getTime() + 86400000);
-      const { data, error } = await supabase.from("staff_blocked_time").select("id, profile_id, starts_at, ends_at, kind, reason")
-        .is("archived_at", null).lt("starts_at", to.toISOString()).gt("ends_at", from.toISOString());
+      const { data, error } = await supabase.rpc("staff_busy_blocks", { p_from: dayKey, p_to: dayKey });
       if (error) return [];
-      return (data || []) as BlockedTime[];
+      return ((data || []) as any[]).map((r, i): BlockedTime => ({
+        id: `${r.profile_id}-${i}`, profile_id: r.profile_id, kind: r.kind,
+        starts_at: `${r.block_date}T${hhmm(r.start_time)}:00+02:00`,
+        ends_at: `${r.block_date}T${String(r.end_time).startsWith("23:59") ? "23:59:59" : hhmm(r.end_time) + ":00"}+02:00`,
+        reason: r.label && !["Off", "Busy", "Blocked"].includes(r.label) ? r.label : null,
+      }));
     },
   });
 
