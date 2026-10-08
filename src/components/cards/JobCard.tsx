@@ -7,7 +7,7 @@ import RowMenu, { type RowMenuItem } from "@/components/shared/RowMenu";
 import CallSummary from "@/components/leads/CallSummary";
 import { pillFor, NEXT_STATUS, fmtMins } from "@/lib/dispatchCards";
 import { LANE_META } from "@/lib/leadLane";
-import type { CardJob } from "@/lib/cardModel";
+import { overdueLabel, type CardJob } from "@/lib/cardModel";
 import { cn } from "@/lib/utils";
 
 export type { CardJob } from "@/lib/cardModel";
