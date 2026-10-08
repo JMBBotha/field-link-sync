@@ -9,7 +9,7 @@
  * the tool schemas do not accept those fields.
  */
 
-import { OPS_ROLES } from "./recordAccess.ts";
+import { isSalesRepServer, OPS_ROLES } from "./recordAccess.ts";
 import { getOwnedScope, type OwnershipDb } from "./ownership.ts";
 
 export type Persona = "ops" | "technician" | "sales" | "client";
@@ -176,4 +176,13 @@ export async function logAssistantAudit(db: any, e: AssistantAuditEntry): Promis
   } catch (err) {
     console.error("[assistant-audit] failed", err instanceof Error ? err.message : err);
   }
+}
+
+/** Caller roles for the assistant; a sales rep is reported as ["sales"] (no dispatcher). */
+export async function loadCallerRoles(db: OwnershipDb, userId: string): Promise<string[]> {
+  const { data, error } = await db.from("user_roles").select("role").eq("user_id", userId);
+  if (error) throw error;
+  const roles = ((data ?? []) as { role: string }[]).map((r) => r.role);
+  if (await isSalesRepServer(db, userId, roles)) return ["sales"];
+  return roles;
 }

@@ -18,6 +18,7 @@ import { OPS_ROLES } from "./recordAccess.ts";
 // deno-lint-ignore no-explicit-any
 export interface OwnershipDb {
   from(table: string): any;
+  rpc?(fn: string, args?: any): any;
 }
 
 export function isOpsRole(roles: string[] | null | undefined): boolean {
@@ -57,12 +58,13 @@ export async function getOwnedScope(
   const [leadsRes, assignRes, createdJobsRes, quotesRes, invoicesRes, offersRes] =
     await Promise.all([
       db.from("leads").select("id, customer_id")
-        .eq("assigned_agent_id", userId).eq("company_id", companyId).is("deleted_at", null),
+        .or(`assigned_agent_id.eq.${userId},created_by.eq.${userId}`).eq("company_id", companyId).is("deleted_at", null),
       db.from("assignments").select("job_id").eq("profile_id", userId),
       db.from("jobs").select("id, customer_id, lead_id")
         .eq("created_by", userId).eq("company_id", companyId),
       db.from("quotes").select("id, customer_id, lead_id")
-        .eq("sales_engineer_id", userId).eq("company_id", companyId),
+        .or(`sales_engineer_id.eq.${userId},owner_id.eq.${userId},created_by.eq.${userId}`)
+        .eq("company_id", companyId),
       db.from("invoices").select("customer_id")
         .eq("agent_id", userId).eq("company_id", companyId),
       db.from("offers").select("lead_id").eq("staff_id", userId).eq("status", "accepted"),
@@ -79,6 +81,16 @@ export async function getOwnedScope(
     quoteIds.add(q.id);
     addCustomer(q.customer_id);
     if (q.lead_id) leadIds.add(q.lead_id);
+  }
+
+  if (typeof db.rpc === "function") {
+    try {
+      const res = await db.rpc("rep_customer_ids", { _uid: userId });
+      if (res && !res.error) {
+        const rows = Array.isArray(res.data) ? res.data : res.data ? [res.data] : [];
+        for (const r of rows) addCustomer(typeof r === "object" && r ? r.rep_customer_ids : r);
+      }
+    } catch { /* no extra ids */ }
   }
 
   const assignedJobIds = ((assignRes.data ?? []) as { job_id: string }[]).map((a) => a.job_id);

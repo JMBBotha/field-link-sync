@@ -4,6 +4,8 @@ import CallHistoryPanel from "@/components/calls/CallHistoryPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useRole } from "@/hooks/useRole";
+import { useSalesRep } from "@/hooks/useSalesRep";
 import { format, subMonths, startOfMonth } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,6 +75,10 @@ const AdminCustomerDetailPage = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const { isAdmin } = useRole();
+  const { isSalesRep } = useSalesRep();
+  const canAssignRep = isAdmin && !isSalesRep;
+  const [savingRep, setSavingRep] = useState(false);
 
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer-detail", id],
@@ -83,6 +89,35 @@ const AdminCustomerDetailPage = () => {
       return data;
     },
   });
+
+  const { data: salesReps = [] } = useQuery({
+    queryKey: ["customer-sales-reps", customer?.company_id],
+    enabled: canAssignRep && !!customer?.company_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("company_id", customer!.company_id!)
+        .in("dispatch_role", ["sales", "sales_engineer"])
+        .order("full_name");
+      if (error) throw error;
+      return (data || []) as { id: string; full_name: string | null }[];
+    },
+  });
+
+  const saveAssignedRep = async (value: string) => {
+    if (!id) return;
+    setSavingRep(true);
+    const assigned = value === "none" ? null : value;
+    const { error } = await supabase.from("customers").update({ assigned_rep_id: assigned }).eq("id", id);
+    setSavingRep(false);
+    if (error) {
+      toast({ title: "Could not save sales rep", description: error.message, variant: "destructive" });
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["customer-detail", id] });
+    toast({ title: assigned ? "Dedicated sales rep saved" : "Dedicated sales rep removed" });
+  };
 
   // Tell the voice assistant which client is open on screen.
   useRegisterAssistantContext({
@@ -335,6 +370,24 @@ const AdminCustomerDetailPage = () => {
             {/* Contact card */}
             <Card className="lg:col-span-1 bg-card">
               <CardContent className="p-6 space-y-4">
+                {canAssignRep && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Dedicated sales rep</Label>
+                    <Select
+                      value={(customer as any).assigned_rep_id ?? "none"}
+                      onValueChange={saveAssignedRep}
+                      disabled={savingRep}
+                    >
+                      <SelectTrigger className="h-9"><SelectValue placeholder="None" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {salesReps.map((r) => (
+                          <SelectItem key={r.id} value={r.id}>{r.full_name || "Unnamed"}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="flex flex-col items-center text-center gap-3">
                   <Avatar className="h-20 w-20">
                     <AvatarFallback className="bg-[#0066CC] text-white text-xl font-bold">

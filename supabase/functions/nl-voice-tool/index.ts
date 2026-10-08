@@ -1,3 +1,4 @@
+import { loadCallerRoles } from "../_shared/assistantScope.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { executeTool, TOOL_KIND, toolSchemas, type ToolName } from "../_shared/nlTools.ts";
 import { verifySession } from "../_shared/voiceSession.ts";
@@ -85,8 +86,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false } },
     );
-    const { data: roleRows } = await db.from("user_roles").select("role").eq("user_id", userId);
-    const roles = ((roleRows ?? []) as { role: string }[]).map((r) => r.role);
+    const roles = await loadCallerRoles(db, userId);
     // Email is looked up server-side from the session's user id (never sent by
     // Vapi) and is only used to resolve client-portal users to their own record.
     const { data: authUser } = await db.auth.admin.getUserById(userId);
