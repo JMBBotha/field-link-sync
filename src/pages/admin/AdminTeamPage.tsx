@@ -26,6 +26,7 @@ import { usePendingApplicants } from "@/hooks/usePendingApplicants";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import type { AppRole } from "@/hooks/useRole";
 import AgentAvailabilityEditor from "@/components/scheduling/AgentAvailabilityEditor";
+import StaffBaseControls from "@/components/scheduling/StaffBaseControls";
 import { resolveLane, type LaneStaffMember } from "@/hooks/useLaneStaff";
 import { LANE_META, UNKNOWN_LANE_META } from "@/lib/leadLane";
 
@@ -542,6 +543,7 @@ const AdminTeamPage = () => {
               <DialogTitle>Set Weekly Availability</DialogTitle>
             </DialogHeader>
             <AgentAvailabilityEditor agentId={availabilityUser} />
+            <StaffBaseControls profileId={availabilityUser} self={false} />
           </DialogContent>
         </Dialog>
       )}

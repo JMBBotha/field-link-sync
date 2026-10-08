@@ -33,6 +33,7 @@ import ClientProposalView from "./components/client/ClientProposalView";
 
 // Admin layout + pages
 import AdminLayout from "./components/admin/AdminLayout";
+import MyBasePage from "./pages/MyBasePage";
 import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminEstimateDetailPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage, AdminHelpPage } from "./pages/admin";
 import AdminQuoteBuilderPage from "./pages/admin/AdminQuoteBuilderPage";
 import AdminQuoteBuilderPageUnified from "./pages/admin/AdminQuoteBuilderPageUnified";
@@ -177,6 +178,7 @@ const App = () => (
                     <Route path="jobs/dispatch" element={<JobsDispatchRedirect />} />
                     <Route path="jobs/:id" element={<AdminJobDetailPage />} />
                     <Route path="my-jobs" element={<AdminMyJobsPage />} />
+                    <Route path="my-base" element={<MyBasePage />} />
                     <Route path="my-appointments" element={<AdminMyAppointmentsPage />} />
                     <Route path="schedule" element={<DispatchCalendarRedirect />} />
                     <Route path="quotes" element={<AdminQuotesPage />} />
@@ -237,6 +239,7 @@ const App = () => (
                   <Route path="/field/my-jobs" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><AdminMyJobsPage /></RequireRole>} />
 
                   {/* Field agent Schedule (agenda view) */}
+                  <Route path="/field/my-base" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><MyBasePage field /></RequireRole>} />
                   <Route path="/field/schedule" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldSchedulePage /></RequireRole>} />
 
                   {/* Tech job sheet: no money, packing list from get_job_packing_list */}

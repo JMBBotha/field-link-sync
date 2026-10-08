@@ -1,4 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import CompanyWorkHoursCard from "@/components/settings/CompanyWorkHoursCard";
 import LeadSlaSettingsCard from "@/components/settings/LeadSlaSettingsCard";
 import { Building2, CreditCard, Wrench, Users, MapPin, Database, BarChart3, Palette } from "lucide-react";
 import AppearanceTab from "@/components/settings/AppearanceTab";
@@ -47,7 +48,7 @@ const AdminSettingsPage = () => {
             <Palette className="h-4 w-4 hidden sm:block" />Appearance
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="company"><CompanyProfileTab /><LeadSlaSettingsCard /></TabsContent>
+        <TabsContent value="company"><CompanyProfileTab /><LeadSlaSettingsCard /><CompanyWorkHoursCard /></TabsContent>
         <TabsContent value="billing"><BillingTab /></TabsContent>
         {showServices && <TabsContent value="services"><ServicesTab /></TabsContent>}
         <TabsContent value="agents"><AgentManagementTab /></TabsContent>

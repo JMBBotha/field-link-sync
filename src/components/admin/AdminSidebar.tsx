@@ -525,6 +525,16 @@ const AdminSidebar = ({
           </>
         )}
         <button
+          onClick={() => { navigate("/admin/my-base"); onMobileClose?.(); }}
+          className={cn(
+            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+            collapsed && "justify-center px-0"
+          )}
+        >
+          <CalendarDays className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+          {!collapsed && <span>My hours &amp; base</span>}
+        </button>
+        <button
           onClick={() => {
             onSignOut();
             onMobileClose?.();
