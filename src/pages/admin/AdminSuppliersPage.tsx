@@ -187,16 +187,16 @@ const AdminSuppliersPage = () => {
     setIsDeleting(true);
     try {
       if (deleteState.mode === "complete") {
-        const result = await deleteSupplierCompletely(deleteState.supplierId);
+        await deleteSupplierCompletely(deleteState.supplierId);
         toast({
-          title: `${deleteState.supplierName} removed completely.`,
+          title: `${deleteState.supplierName} removed.`,
           description: "Supplier removed.",
         });
       } else {
         const result = await deleteSupplierProductsOnly(deleteState.supplierId);
         toast({
           title: `${deleteState.supplierName}: products archived.`,
-          description: `${result.deletedProducts} products, ${result.deletedPdfPages} PDF pages removed.`,
+          description: `${result.deletedProducts} products archived. Existing quotes are not changed.`,
         });
       }
       refreshAll();
@@ -419,18 +419,7 @@ const AdminSuppliersPage = () => {
                                 <FileSpreadsheet className="h-4 w-4 mr-2" /> Upload & Parse CSV
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={async () => {
-                                try {
-                                  const result = await cleanSupplierProducts(s.id);
-                                  toast({
-                                    title: `${s.company_name || s.name}: ${result.deletedProducts} products archived`,
-                                    description: "All products for this supplier have been cleaned up.",
-                                  });
-                                  refreshAll();
-                                } catch (err: any) {
-                                  toast({ title: "Clean failed", description: err.message, variant: "destructive" });
-                                }
-                              }}>
+                              <DropdownMenuItem onClick={() => openDeleteDialog(s, "products")}>
                                 <Package className="h-4 w-4 mr-2" /> Clean Products Only
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => openDeleteDialog(s, "products")}>
