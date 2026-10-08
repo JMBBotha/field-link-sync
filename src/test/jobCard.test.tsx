@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 import JobCard from "@/components/cards/JobCard";
-import { jobToCard, visitToCard, type CardJob } from "@/lib/cardModel";
+import { jobToCard, visitToCard, visibleVisitEntries, type CardJob } from "@/lib/cardModel";
 
 const item: CardJob = {
   kind: "job", id: "j1", title: "Install inverter", scheduledFor: "2026-10-08T09:30:00+02:00",
@@ -54,6 +54,37 @@ describe("shared JobCard", () => {
     fireEvent.click(screen.getByLabelText("Filter unassigned"));
     expect(lane).toHaveBeenCalledTimes(1); expect(assignee).toHaveBeenCalledTimes(1);
     expect(open).not.toHaveBeenCalled();
+  });
+});
+
+describe("overdue late cards", () => {
+  it("3 days late shows 'Overdue ·' with the scheduled date and no Late hours", () => {
+    render(<JobCard item={{ ...item, scheduledFor: "2026-01-09T09:30:00+02:00",
+      urgency: { key: "late", rank: 0, mins: -(3 * 24 * 60 + 26) } }}
+      density="full" audience="office" onOpen={vi.fn()} />);
+    expect(screen.getByText(/Overdue · 9 Jan/)).toBeTruthy();
+    expect(screen.queryByText(/Late/)).toBeNull();
+  });
+  it("late by 24 h or less still shows the Late hours", () => {
+    render(<JobCard item={{ ...item, scheduledFor: "2026-10-08T09:30:00+02:00",
+      urgency: { key: "late", rank: 0, mins: -86 } }}
+      density="full" audience="office" onOpen={vi.fn()} />);
+    expect(screen.getByText("Late 1h 26m")).toBeTruthy();
+  });
+});
+
+describe("visibleVisitEntries", () => {
+  it("drops booked visits with no job row and a hidden (empty-name) lead", () => {
+    expect(visibleVisitEntries([
+      { job_id: null, customer_name: null },
+      { job_id: null, customer_name: "" },
+      { job_id: null, customer_name: "  " },
+      { job_id: null, customer_name: "Visible" },
+      { job_id: "j1", customer_name: null },
+    ])).toEqual([
+      { job_id: null, customer_name: "Visible" },
+      { job_id: "j1", customer_name: null },
+    ]);
   });
 });
 
