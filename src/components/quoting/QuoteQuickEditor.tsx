@@ -176,7 +176,11 @@ export default function QuoteQuickEditor({
   const [itemFocus, setItemFocus] = useState(false);
   const emptySections = useMemo(() => {
     if (mode !== "unit" && mode !== "material" && mode !== "item" && mode !== "selected") return null;
-    if (mode === "selected") return basketProducts.length ? { basket: basketProducts, favs: [] as PaletteProduct[] } : null;
+    if (mode === "selected") {
+      const grouped = groupFavourites(favIds, products, []);
+      const favs = [...grouped.units, ...grouped.materials];
+      return basketProducts.length || favs.length ? { basket: basketProducts, favs } : null;
+    }
     const fits = (p: PaletteProduct) => mode === "item" || (mode === "unit") === isAirConditioningProduct(p);
     const basket: PaletteProduct[] = [];
     const g = groupFavourites(favIds, products, []);
@@ -253,7 +257,7 @@ export default function QuoteQuickEditor({
 
   const routeAdd = async (pending: NonNullable<typeof pendingAdd>, isUnit: boolean, fromFavourites = false) => {
     if (targetAreaId || createTargetArea) {
-      const areaId = targetAreaId || (await createTargetArea!());
+      const areaId = targetAreaId || (await createTargetArea?.());
       if (!areaId) return;
       if (pending.kind === "product") await commitProduct(pending.value, areaId, fromFavourites);
       else await commitCatalogService(pending.value, areaId, fromFavourites);
@@ -353,7 +357,7 @@ export default function QuoteQuickEditor({
   const showServiceList = customOpen || serviceFocus || serviceTerm.trim().length > 0;
 
   return (
-    <div data-testid={mode ? "area-add" : "quote-add-bar"} data-pdf-hide className="print:hidden">
+    <div data-testid={mode ? "area-add" : "quote-add-bar"} data-pdf-hide data-html2canvas-ignore className="print:hidden">
       {specialPrompt.dialog}
       {mode && onClose && (
         <div className="mb-1 flex justify-end">
@@ -380,17 +384,17 @@ export default function QuoteQuickEditor({
             data-area-item-search
             autoFocus={mode === "unit" || mode === "material"}
             readOnly={mode === "selected"}
-            placeholder={mode === "selected" ? "Selected Items from PDF" : mode === "unit" ? "Search units…" : mode === "material" ? "Search materials…" : mode === "item" ? "Search model, size (12k) or name…" : "Add item from catalog…"}
+            placeholder={mode === "selected" ? "Selected / Favourites" : mode === "unit" ? "Search units…" : mode === "material" ? "Search materials…" : mode === "item" ? "Search model, size (12k) or name…" : "Add item from catalog…"}
             className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
           />
           {loadingProducts && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-slate-400" />}
           {(mode === "selected" || mode !== "item" || itemFocus) && (productResults.length > 0 || (!productTerm.trim() && emptySections)) && (
-            <ScrollArea className={`absolute z-30 ${dropdownPos} max-h-64 w-full rounded-md border border-slate-200 bg-white shadow-lg`}>
+            <ScrollArea className={`${mode === "selected" ? "relative mt-2 h-64" : `absolute ${dropdownPos}`} z-30 max-h-64 w-full rounded-md border border-slate-200 bg-white shadow-lg`}>
               <div className="divide-y divide-slate-100" onMouseDown={(e) => { if (mode === "item") e.preventDefault(); }}>
                 {productResults.length > 0
                   ? productResults.map((p) => renderRow(p))
                   : emptySections && (<>
-                       {emptySections.basket.length > 0 && mode !== "selected" && <div className="bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Selected from PDF</div>}
+                       {emptySections.basket.length > 0 && <div className="bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Selected from PDF</div>}
                       {emptySections.basket.map((p) => renderRow(p))}
                        {emptySections.favs.length > 0 && <div className="bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Favourites</div>}
                       {emptySections.favs.map((p) => renderRow(p))}
