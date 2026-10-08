@@ -1,4 +1,5 @@
 import { resolveProductMarkupPercent } from "@/lib/pricing";
+import { liveProducts, filterLiveIds } from "@/lib/liveProducts";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CAPACITY_TIER_CONFIGS } from "@/lib/bundleTierConfig";
@@ -85,7 +86,7 @@ export function useBundleProducts() {
         };
       };
 
-      const { data: byCodeData, error: byCodeError } = await fromTable
+      const { data: byCodeData, error: byCodeError } = await liveProducts()
         .select(SUPPLIER_PRODUCT_SELECT)
         .eq("is_active", true)
         .or("archived.is.null,archived.eq.false")

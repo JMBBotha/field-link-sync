@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { filterLiveIds } from "@/lib/liveProducts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -57,7 +58,10 @@ export function useQuoteFavourites() {
       const { data: mine, error } = await supabase
         .from("product_favorites").select("product_id, created_at").eq("user_id", userId ?? "");
       if (error) throw error;
-      return { source: "personal", ids: (mine ?? []).map((r) => r.product_id) };
+      const all = (mine ?? []).map((r) => r.product_id);
+      // Only favourites still on a live price list can be shown/quoted.
+      const live = await filterLiveIds(all);
+      return { source: "personal", ids: all.filter((id) => live.has(id)) };
     },
   });
 

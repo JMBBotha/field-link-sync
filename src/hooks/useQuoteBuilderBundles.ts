@@ -1,4 +1,5 @@
 import { resolveProductMarkupPercent } from "@/lib/pricing";
+import { filterLiveIds } from "@/lib/liveProducts";
 import { resolveBundlesLive } from "@/lib/bundleResolve";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +36,9 @@ export function useQuoteBuilderBundles() {
         .order("sort_order");
 
       if (iErr) throw iErr;
+      // Bundle items only price from products on a live price list.
+      const liveIds = await filterLiveIds(((itemsData as any[]) || []).map((i) => i.supplier_product_id));
+      ((itemsData as any[]) || []).forEach((i) => { if (!liveIds.has(i.supplier_product_id)) i.supplier_products = null; });
 
       interface BundleItemRow {
         id: string;
