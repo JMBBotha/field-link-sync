@@ -939,7 +939,8 @@ export async function executeTool(
       const from = Number(args.offset ?? 0);
       const cols =
         "id, name, short_name, description, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, is_price_on_request, unit_type";
-      let q = db.from("supplier_products")
+      // Quotable products = live price list only.
+      let q = db.from("live_supplier_products")
         .select(cols)
         .eq("is_active", true)
         .or("archived.is.false,archived.is.null");
@@ -953,7 +954,7 @@ export async function executeTool(
       if (error) throw error;
       if (!data?.length && patterns.length > 1) {
         const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
-        const wide = await db.from("supplier_products").select(cols)
+        const wide = await db.from("live_supplier_products").select(cols)
           .eq("is_active", true).or("archived.is.false,archived.is.null").or(orFilter)
           .range(from, from + take - 1);
         if (wide.error) throw wide.error;
@@ -1396,7 +1397,7 @@ export async function executeTool(
       ).filter((t: string) => !["btu", "btus", "kw"].includes(t));
 
       const baseQuery = () =>
-        db.from("supplier_products").select(cols)
+        db.from("live_supplier_products").select(cols)
           .eq("is_active", true).or("archived.is.false,archived.is.null");
 
       const applyCategory = (q: any) => (args.category ? q.ilike("category", `%${args.category}%`) : q);

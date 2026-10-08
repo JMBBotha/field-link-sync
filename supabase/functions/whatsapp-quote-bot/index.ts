@@ -144,7 +144,7 @@ serve(async (req: Request) => {
 
         case 2: {
           const { data: product } = await supabase
-            .from("supplier_products")
+            .from("live_supplier_products")
             .select("id, name, selling_price")
             .ilike("name", `%${text}%`)
             .limit(1)
