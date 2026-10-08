@@ -1,4 +1,5 @@
 import { readPdfBasket, writePdfBasket, migrateDraftPdfBasket, pdfBasketKey } from "@/lib/pdfBasketStore";
+import { liveProducts } from "@/lib/liveProducts";
 import { resolveBundlesLive } from "@/lib/bundleResolve";
 import { basketInstallFrom } from "@/lib/installTemplates";
 import QuoteBuilderLayout from "@/components/quoting/QuoteBuilderLayout";
@@ -404,7 +405,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   const { data: products = [] } = useQuery({
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any).
+      const { data, error } = await liveProducts().
       select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, pipe_liquid, pipe_gas, is_material_favorite, suggested_consumables, pack_qty, default_markup_percent, is_active, pdf_upload_id, suppliers(name, supplier_type)").
       or("archived.is.null,archived.eq.false").
       order("is_pinned", { ascending: false }).

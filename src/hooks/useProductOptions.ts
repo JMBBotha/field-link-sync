@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { liveProducts } from "@/lib/liveProducts";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/hooks/useRole";
 import { calcSellingPrice, resolveProductMarkupPercent } from "@/lib/pricing";
@@ -61,8 +62,7 @@ export function useProductOptions() {
         .order("sort_order", { nullsFirst: false }),
       techOnly
         ? (supabase.rpc as any)("get_product_sell_options")
-        : supabase
-        .from("supplier_products")
+        : liveProducts()
         .select("id, product_code, short_name, description, cost_price, default_markup_percent, markup_percent, category, is_pinned")
         .eq("is_active", true)
         .order("is_pinned", { ascending: false })

@@ -6,6 +6,7 @@
  * placeholder (never the old price, never silently skipped); the R0 guard blocks send.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { liveProducts } from "@/lib/liveProducts";
 import { resolveProductMarkupPercent } from "@/lib/pricing";
 import { fetchActiveUploadIds, isLiveCatalogProduct } from "@/lib/catalogSoT";
 import { fetchAllPages } from "@/lib/fetchAllPages";
@@ -67,7 +68,7 @@ export function notFoundProduct(model: string, keepId: string | null) {
 
 export async function loadLiveProducts(): Promise<LiveProductRow[]> {
   const [{ data }, active] = await Promise.all([
-    fetchAllPages<any>((from, to) => (supabase.from("supplier_products") as any).select(PRODUCT_COLS).eq("is_active", true).order("id").range(from, to)),
+    fetchAllPages<any>((from, to) => liveProducts().select(PRODUCT_COLS).eq("is_active", true).order("id").range(from, to)),
     fetchActiveUploadIds(),
   ]);
   return ((data || []) as LiveProductRow[]).filter((p) => isLiveCatalogProduct(p as any, active));

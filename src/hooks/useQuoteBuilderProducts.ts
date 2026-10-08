@@ -1,4 +1,5 @@
 import { resolveProductMarkupPercent } from "@/lib/pricing";
+import { liveProducts } from "@/lib/liveProducts";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchVisualCatalogAllowlist, filterToVisualCatalog } from "@/lib/catalogSoT";
@@ -10,8 +11,7 @@ export function useQuoteBuilderProducts() {
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
       const allowPromise = fetchVisualCatalogAllowlist();
-      const { data, error } = await fetchAllPages<any>((from, to) => supabase
-        .from("supplier_products")
+      const { data, error } = await fetchAllPages<any>((from, to) => liveProducts()
         .select(`
           id, product_code, short_name, brand, product_category, category,
           cost_excl_vat, cost_incl_vat, cost_price, default_markup_percent,
