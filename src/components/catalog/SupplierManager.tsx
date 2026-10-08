@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { archiveProductIds, archiveSupplierProducts } from "@/services/catalogArchive";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -135,16 +136,13 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
 
   const deleteAllProductsMutation = useMutation({
     mutationFn: async (supplierId: string) => {
-      const { error } = await (supabase.from("supplier_products") as any)
-        .delete()
-        .eq("supplier_id", supplierId);
-      if (error) throw error;
+      await archiveSupplierProducts(supplierId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
       queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
       queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
-      toast({ title: "All products deleted for this supplier" });
+      toast({ title: "All products archived for this supplier" });
       setDeleteAllSupplierId(null);
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -224,7 +222,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
                         size="icon"
                         className="h-5 w-5 text-destructive hover:text-destructive"
                         onClick={() => setDeleteAllSupplierId(s.id)}
-                        title="Delete all products"
+                        title="Archive all products"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -294,10 +292,10 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
       <AlertDialog open={!!deleteAllSupplierId} onOpenChange={(o) => !o && setDeleteAllSupplierId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete all products?</AlertDialogTitle>
+            <AlertDialogTitle>Archive all products?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete all {deleteAllSupplierId ? (productCounts[deleteAllSupplierId] || 0) : 0} products
-              for supplier "{suppliers.find(s => s.id === deleteAllSupplierId)?.name}". This action cannot be undone.
+              Archive {deleteAllSupplierId ? (productCounts[deleteAllSupplierId] || 0) : 0} products
+              for {suppliers.find(s => s.id === deleteAllSupplierId)?.name}. Existing quotes are not changed. Archived products can't be quoted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -306,7 +304,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteAllSupplierId && deleteAllProductsMutation.mutate(deleteAllSupplierId)}
             >
-              {deleteAllProductsMutation.isPending ? "Deleting..." : "Delete All Products"}
+              {deleteAllProductsMutation.isPending ? "Archiving..." : "Archive All Products"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

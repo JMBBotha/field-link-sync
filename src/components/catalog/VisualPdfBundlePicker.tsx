@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback } from "react";
+import { liveProducts } from "@/lib/liveProducts";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -103,8 +104,7 @@ const VisualPdfBundlePicker = ({ open, onOpenChange, onAddProduct, existingProdu
       const terms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
       if (terms.length === 0) return [];
 
-      const { data, error } = await supabase
-        .from("supplier_products")
+      const { data, error } = await liveProducts()
         .select("id, description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, brand, category, suppliers(name)")
         .or("archived.is.null,archived.eq.false")
         .or(`product_code.ilike.%${terms[0]}%,short_name.ilike.%${terms[0]}%,description.ilike.%${terms[0]}%`)

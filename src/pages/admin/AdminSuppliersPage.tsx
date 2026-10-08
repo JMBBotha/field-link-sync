@@ -36,6 +36,7 @@ import {
   cleanOrphanProducts,
 } from "@/services/supplierDeleteService";
 import { cleanSupplierProducts } from "@/services/priceListDeleteService";
+import { archiveMessage } from "@/services/catalogArchive";
 
 interface SupplierRow {
   id: string;
@@ -166,7 +167,7 @@ const AdminSuppliersPage = () => {
     setCleaningOrphans(true);
     try {
       const cleaned = await cleanOrphanProducts();
-      toast({ title: `${cleaned} orphan products cleaned up` });
+      toast({ title: `${cleaned} orphan products archived` });
       setOrphanCount(0);
       refreshAll();
     } catch (err: any) {
@@ -186,16 +187,16 @@ const AdminSuppliersPage = () => {
     setIsDeleting(true);
     try {
       if (deleteState.mode === "complete") {
-        const result = await deleteSupplierCompletely(deleteState.supplierId);
+        await deleteSupplierCompletely(deleteState.supplierId);
         toast({
-          title: `${deleteState.supplierName} removed completely.`,
-          description: `${result.deletedProducts} products, ${result.deletedPdfPages} PDF pages removed.`,
+          title: `${deleteState.supplierName} removed.`,
+          description: "Supplier removed.",
         });
       } else {
         const result = await deleteSupplierProductsOnly(deleteState.supplierId);
         toast({
-          title: `${deleteState.supplierName} cleared — ready for fresh upload.`,
-          description: `${result.deletedProducts} products, ${result.deletedPdfPages} PDF pages removed.`,
+          title: `${deleteState.supplierName}: products archived.`,
+          description: `${result.deletedProducts} products archived. Existing quotes are not changed.`,
         });
       }
       refreshAll();
@@ -418,28 +419,14 @@ const AdminSuppliersPage = () => {
                                 <FileSpreadsheet className="h-4 w-4 mr-2" /> Upload & Parse CSV
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={async () => {
-                                try {
-                                  const result = await cleanSupplierProducts(s.id);
-                                  toast({
-                                    title: `${s.company_name || s.name}: ${result.deletedProducts} products removed`,
-                                    description: "All products for this supplier have been cleaned up.",
-                                  });
-                                  refreshAll();
-                                } catch (err: any) {
-                                  toast({ title: "Clean failed", description: err.message, variant: "destructive" });
-                                }
-                              }}>
-                                <Package className="h-4 w-4 mr-2" /> Clean Products Only
-                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => openDeleteDialog(s, "products")}>
-                                <Trash2 className="h-4 w-4 mr-2" /> Clear Products & PDFs
+                                <Trash2 className="h-4 w-4 mr-2" /> Archive Products & Price Lists
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={() => openDeleteDialog(s, "complete")}
                               >
-                                <Trash2 className="h-4 w-4 mr-2" /> Delete Supplier Completely
+                                <Trash2 className="h-4 w-4 mr-2" /> Remove Supplier
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -487,27 +474,20 @@ const AdminSuppliersPage = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {deleteState?.mode === "complete" ? "💥 Delete Supplier Completely?" : "🗑️ Clear Products & PDFs?"}
+              {deleteState?.mode === "complete" ? "Remove supplier?" : "Archive products & price lists?"}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p className="font-medium text-foreground text-base">{deleteState?.supplierName}</p>
-                <ul className="list-disc list-inside text-sm space-y-1">
-                  <li>{deleteState?.counts.products ?? 0} products will be deleted</li>
-                  <li>{deleteState?.counts.pdfs ?? 0} PDF catalogs will be removed</li>
-                  <li>PDF files will be permanently deleted from storage</li>
-                  {deleteState?.mode === "complete" && (
-                    <li>{deleteState?.counts.contacts ?? 0} contacts will be removed</li>
-                  )}
-                </ul>
-                {deleteState?.mode === "products" && (
-                  <p className="text-sm text-muted-foreground">
-                    Supplier info will be kept intact — ready for re-upload.
+                {deleteState?.mode === "complete" && (deleteState?.counts.products ?? 0) > 0 ? (
+                  <p className="text-destructive font-medium text-sm">
+                    This supplier has {deleteState?.counts.products} products, so it can't be removed. Archive its products instead. Existing quotes are not changed.
                   </p>
-                )}
-                {deleteState?.mode === "complete" && (
-                  <p className="text-destructive font-semibold text-sm border border-destructive/30 rounded-md p-2 bg-destructive/5">
-                    ⚠️ This also removes all contacts, the supplier record, and all uploaded PDF files. This cannot be undone.
+                ) : deleteState?.mode === "complete" ? (
+                  <p className="text-destructive font-medium text-sm">Remove {deleteState?.supplierName} and its {deleteState?.counts.contacts ?? 0} contacts. It has no products.</p>
+                ) : (
+                  <p className="text-destructive font-medium text-sm">
+                    {archiveMessage(deleteState?.counts.products ?? 0, deleteState?.counts.pdfs ?? 0, deleteState?.supplierName)}
                   </p>
                 )}
               </div>
@@ -518,14 +498,14 @@ const AdminSuppliersPage = () => {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={confirmDelete}
-              disabled={isDeleting}
+              disabled={isDeleting || (deleteState?.mode === "complete" && (deleteState?.counts.products ?? 0) > 0)}
             >
               {isDeleting ? (
-                <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Deleting...</>
+                <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Working...</>
               ) : deleteState?.mode === "complete" ? (
-                "Yes, Delete Everything"
+                "Remove supplier"
               ) : (
-                "Confirm Delete"
+                `Archive ${deleteState?.counts.products ?? 0} products`
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -154,7 +154,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         if (error) throw error;
       }
       invalidateAll();
-      toast({ title: mode === "delete" ? "All products permanently deleted" : "All products archived" });
+      toast({ title: mode === "delete" ? "All products archived and price lists deactivated" : "All products archived" });
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
     } finally {
@@ -667,7 +667,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         pdfsDeleted: purgeResult.deletedPdfs,
       });
       invalidateAll();
-      toast({ title: "All products & PDFs cleared", description: "Upload a new price list below." });
+      toast({ title: "Products archived & price lists deactivated", description: "Existing quotes are not changed. Upload a new price list below." });
       setTimeout(() => priceListInputRef.current?.click(), 300);
     } catch (err: any) {
       toast({ title: "Clear failed", description: err.message, variant: "destructive" });

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { liveProducts } from "@/lib/liveProducts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tag, Plus, Upload, FileText, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,7 +46,7 @@ export default function AdminSpecialsPage() {
     queryFn: async () => {
       const out: { id: string; product_code: string | null; short_name: string | null; supplier_id: string | null; cost_excl_vat: number | null }[] = [];
       for (let from = 0; from < 20000; from += 1000) {
-        const { data } = await (supabase.from("supplier_products") as any)
+        const { data } = await liveProducts()
           .select("id, product_code, short_name, supplier_id, cost_excl_vat").eq("is_active", true).range(from, from + 999);
         out.push(...(data ?? []));
         if (!data || data.length < 1000) break;

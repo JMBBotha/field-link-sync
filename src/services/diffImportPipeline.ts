@@ -17,6 +17,7 @@ import { pipePairFromText, importPipeFields } from "@/lib/kitSizes";
 
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeBrand } from "@/lib/brandNormalize";
+import { buildManualIndex, findManual, resolvePipeCols } from "@/lib/pipeLockCarry";
 
 /** Strip non-numeric chars, e.g. AI-parsed "9000 BTU" → 9000 */
 function sanitizeInt(val: any): number | null {
@@ -314,17 +315,15 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
   console.log(`[DiffImport] Starting import for supplier "${supplierName}" (id: ${supplierId}), ${newRows.length} new, ${updateRows.length} updates, ${archiveRows.length} archives`);
 
   // Pipe sizes set by hand are never overwritten (or nulled) by an import.
+  // Lookup includes ARCHIVED rows (no archived filter) and matches by normalised
+  // code (lowercase, no spaces, no '~hist…' suffix), brand-scoped where known.
   const { data: manualRows } = await (supabase.from("supplier_products" as any) as any)
-    .select("id, product_code, pipe_size, pipe_liquid, pipe_gas")
+    .select("id, product_code, brand, pipe_size, pipe_liquid, pipe_gas")
     .eq("supplier_id", supplierId).eq("pipe_sizes_manual", true);
-  const manualByCode = new Map<string, any>(((manualRows as any[]) || []).map((m) => [String(m.product_code), m]));
+  const manualIndex = buildManualIndex((manualRows as any[]) || []);
   const manualIds = new Set<string>(((manualRows as any[]) || []).map((m) => m.id));
-  const pipeCols = (code: string, text: string | null | undefined) => {
-    const m = manualByCode.get(String(code));
-    if (m) return { pipe_size: m.pipe_size, pipe_liquid: m.pipe_liquid, pipe_gas: m.pipe_gas };
-    const pair = pipePairFromText(text);
-    return { pipe_size: text ?? null, pipe_liquid: pair?.liquid ?? null, pipe_gas: pair?.gas ?? null };
-  };
+  const pipeCols = (code: string, text: string | null | undefined, brand?: string | null) =>
+    resolvePipeCols(manualIndex, code, text, brand);
 
   // ── PHASE 1: INSERT new products (batched) ──
   const BATCH = 50;
@@ -336,7 +335,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       description: row.description,
       category: row.category || "General",
       cost_price: row.cost_price,
-      ...pipeCols(row.product_code, row.pipe_size),
+      ...pipeCols(row.product_code, row.pipe_size, row.brand),
       btu_rating: sanitizeInt(row.btu_rating),
       refrigerant_type: row.refrigerant_type,
       is_price_on_request: row.is_price_on_request,
@@ -390,7 +389,11 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
     };
     updateData.search_tags = deriveSearchTags(updateData) || null;
 
-    if (!manualIds.has(row.existing_id)) Object.assign(updateData, importPipeFields(null, row.pipe_size));
+    if (!manualIds.has(row.existing_id)) {
+      const carried = findManual(manualIndex, row.product_code, row.brand);
+      if (carried) Object.assign(updateData, pipeCols(row.product_code, row.pipe_size, row.brand));
+      else Object.assign(updateData, importPipeFields(null, row.pipe_size));
+    }
     if (row.cost_excl_vat !== undefined) {
       updateData.cost_excl_vat = row.cost_excl_vat;
       updateData.cost_incl_vat = row.cost_incl_vat;

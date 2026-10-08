@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback, ReactNode, KeyboardEvent } f
 import Fuse from "fuse.js";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { archiveProductIds, archiveSupplierProducts } from "@/services/catalogArchive";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -201,12 +202,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       bulkDeleteCountRef.current = ids.length;
-      const batchSize = 50;
-      for (let i = 0; i < ids.length; i += batchSize) {
-        const batch = ids.slice(i, i + batchSize);
-        const { error } = await supabase.from("supplier_products" as any).delete().in("id", batch);
-        if (error) throw error;
-      }
+      await archiveProductIds(ids);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
@@ -217,9 +213,9 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
       setBulkSelected(new Set());
       setBulkConfirmOpen(false);
       setBulkAction(null);
-      toast({ title: `${count} product${count !== 1 ? "s" : ""} deleted`, description: "The supplier record remains intact." });
+      toast({ title: `${count} product${count !== 1 ? "s" : ""} archived`, description: "Existing quotes are not changed. Archived products can't be quoted." });
     },
-    onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: "Archive failed", description: err.message, variant: "destructive" }),
   });
 
   const executeBulkAction = () => {
@@ -247,7 +243,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
     : bulkAction === "supplier"
     ? `Move ${bulkSelected.size} products to "${allSuppliers.find(s => s.id === bulkSupplierId)?.name}"?`
     : bulkAction === "delete"
-    ? `Delete ${bulkSelected.size} product${bulkSelected.size !== 1 ? "s" : ""}? This will permanently remove these products but keep the supplier${supplierNameForBulk ? ` (${supplierNameForBulk})` : ""} intact.`
+    ? `Archive ${bulkSelected.size} product${bulkSelected.size !== 1 ? "s" : ""}${supplierNameForBulk ? ` for ${supplierNameForBulk}` : ""}. Existing quotes are not changed. Archived products can't be quoted.`
     : "";
 
   const addToHistory = useCallback((term: string) => {
@@ -806,7 +802,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
           {/* Delete */}
           <Button size="sm" variant="destructive" className="gap-1.5 text-xs"
             onClick={() => { setBulkAction("delete"); setBulkConfirmOpen(true); }}>
-            <Trash2 className="h-3 w-3" /> Delete
+            <Trash2 className="h-3 w-3" /> Archive
           </Button>
 
           <Button size="sm" variant="ghost" onClick={() => setBulkSelected(new Set())}
@@ -820,7 +816,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
       <AlertDialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{bulkAction === "delete" ? `Delete ${bulkSelected.size} products?` : "Confirm Bulk Action"}</AlertDialogTitle>
+            <AlertDialogTitle>{bulkAction === "delete" ? `Archive ${bulkSelected.size} products?` : "Confirm Bulk Action"}</AlertDialogTitle>
             <AlertDialogDescription>{bulkConfirmMessage}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -829,7 +825,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
               className={bulkAction === "delete" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}>
               {bulkUpdateMutation.isPending || bulkDeleteMutation.isPending
                 ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              {bulkAction === "delete" ? "Confirm Delete" : "Confirm"}
+              {bulkAction === "delete" ? `Archive ${bulkSelected.size} products` : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

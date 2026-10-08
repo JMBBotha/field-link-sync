@@ -2,6 +2,8 @@ import MasterCatalogGate from "@/components/catalog/MasterCatalogGate";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { archiveProductIds, archiveMessage, deactivatePdfUploads } from "@/services/catalogArchive";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -178,86 +180,20 @@ const fetchPdfBlob = async (sourceUrl: string, fileName?: string) => {
   return pdfBlob;
 };
 
+/**
+ * "Delete" a price book = archive the products linked to it and deactivate the
+ * book. Never deletes products, books, files or quote lines.
+ */
 async function deleteSinglePDF(pdf: PDFUploadRow) {
-  const isSynthetic = pdf.id.startsWith("spp-");
-  let productIds: string[] = [];
-
-  if (isSynthetic) {
-    // Synthetic entry from supplier_pdf_pages — find products by supplier_id
-    const supplierId = pdf.supplier_id;
-    if (supplierId) {
-      const { data: products } = await (supabase.from("supplier_products") as any)
-        .select("id")
-        .eq("supplier_id", supplierId);
-      productIds = (products || []).map((p: any) => p.id);
-    }
-  } else {
-    // Legacy pdf_uploads entry — find products by pdf_upload_id first, fall back to supplier_id
-    const { data: products } = await (supabase.from("supplier_products") as any)
-      .select("id")
-      .eq("pdf_upload_id", pdf.id);
-    productIds = (products || []).map((p: any) => p.id);
-    // If no products found by pdf_upload_id, also clean ALL products for this supplier
-    if (productIds.length === 0 && pdf.supplier_id) {
-      const { data: allProducts } = await (supabase.from("supplier_products") as any)
-        .select("id")
-        .eq("supplier_id", pdf.supplier_id);
-      productIds = (allProducts || []).map((p: any) => p.id);
-    }
-  }
-
-  // 2. Delete dependent records then products
-  if (productIds.length > 0) {
-    for (let i = 0; i < productIds.length; i += 500) {
-      const batch = productIds.slice(i, i + 500);
-      await (supabase.from("quote_items") as any).delete().in("product_id", batch);
-      await (supabase.from("job_used_parts") as any).delete().in("product_id", batch);
-      await (supabase.from("inventory_stock") as any).delete().in("product_id", batch);
-      await (supabase.from("bundle_items") as any).delete().in("supplier_product_id", batch);
-      await (supabase.from("pdf_product_regions") as any).delete().in("product_id", batch);
-      await (supabase.from("supplier_products") as any).delete().in("id", batch);
-    }
-  }
-
-  // 3. Delete PDF region overlays (legacy)
-  if (!isSynthetic) {
-    await (supabase.from("pdf_product_regions") as any).delete().eq("pdf_upload_id", pdf.id);
-  }
-
-  // 4. Delete supplier_pdf_pages — use pdf_filename only (supplier_id may be text name, not UUID)
-  if (pdf.file_name) {
-    console.log("[PDF Delete] Deleting supplier_pdf_pages by pdf_filename:", pdf.file_name);
-    const { error: pagesErr, count: pagesCount } = await (supabase.from("supplier_pdf_pages") as any)
-      .delete()
-      .eq("pdf_filename", pdf.file_name)
-      .select("id", { count: "exact", head: true });
-    console.log("[PDF Delete] supplier_pdf_pages delete result:", { error: pagesErr, count: pagesCount });
-  }
-
-  // 5. Delete the pdf_uploads DB record (legacy only)
-  if (!isSynthetic) {
-    await (supabase.from("pdf_uploads") as any).delete().eq("id", pdf.id);
-  }
-
-  // 6. Delete actual file from storage
-  const rawPath = pdf.file_path || pdf.storage_path || pdf.file_url || null;
-  if (rawPath) {
-    const match = rawPath.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)/);
-    const cleanPath = match ? match[1] : rawPath;
-    for (const bucket of STORAGE_BUCKETS) {
-      try { await supabase.storage.from(bucket).remove([cleanPath]); } catch {}
-    }
-  }
-
-  // Also try supplier-specific folder cleanup
-  const supplierId = pdf.supplier_id;
-  if (supplierId && pdf.file_name) {
-    for (const bucket of STORAGE_BUCKETS) {
-      try { await supabase.storage.from(bucket).remove([`${supplierId}/${pdf.file_name}`]); } catch {}
-    }
-  }
-
-  return { success: true, productsDeleted: productIds.length };
+  if (pdf.id.startsWith("spp-")) return { success: true, productsDeleted: 0 };
+  const { data: products } = await (supabase.from("supplier_products") as any)
+    .select("id")
+    .eq("pdf_upload_id", pdf.id)
+    .or("archived.is.null,archived.eq.false");
+  const ids = (products || []).map((p: any) => p.id);
+  await archiveProductIds(ids);
+  await deactivatePdfUploads({ id: pdf.id });
+  return { success: true, productsDeleted: ids.length };
 }
 const PdfPreviewEmbed = ({ url, fileName }: { url: string; fileName?: string | null }) => {
   return (
@@ -290,6 +226,8 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewDebugMessage, setPreviewDebugMessage] = useState<string | null>(null);
   const [purgingOrphans, setPurgingOrphans] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState<{ title: string; message: string; label: string; run: () => Promise<void> } | null>(null);
+  const [activateLinkedCount, setActivateLinkedCount] = useState<number | null>(null);
   const [activateTarget, setActivateTarget] = useState<PDFUploadRow | null>(null);
   const [activateWarning, setActivateWarning] = useState<string | null>(null);
   const [activating, setActivating] = useState(false);
@@ -349,7 +287,12 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
 
   const handleActivateClick = async (pdf: PDFUploadRow) => {
     setActivateWarning(null);
+    setActivateLinkedCount(null);
     setActivateTarget(pdf);
+    void (supabase.from("supplier_products") as any)
+      .select("id", { count: "exact", head: true })
+      .eq("pdf_upload_id", pdf.id)
+      .then(({ count }: any) => setActivateLinkedCount(count ?? 0));
     void runGate(pdf.id);
     try {
       let siblings = (supabase.from("pdf_uploads") as any)
@@ -603,13 +546,13 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
     try {
       const result = await deleteSinglePDF(deleteTarget);
       toast({
-        title: `${deleteTarget.file_name || "PDF"} deleted`,
-        description: `${result.productsDeleted} products removed.`,
+        title: `${deleteTarget.file_name || "PDF"} deactivated`,
+        description: `${result.productsDeleted} products archived. Existing quotes are not changed.`,
       });
       queryClient.invalidateQueries({ queryKey: ["pdf-uploads-manager"] });
       queryClient.invalidateQueries({ queryKey: ["pdf-product-counts"] });
     } catch (err: any) {
-      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+      toast({ title: "Archive failed", description: err.message, variant: "destructive" });
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -627,8 +570,8 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       totalProducts += result.productsDeleted;
     }
     toast({
-      title: `${targets.length} PDFs deleted`,
-      description: `${totalProducts} products removed.`,
+      title: `${targets.length} price lists deactivated`,
+      description: `${totalProducts} products archived. Existing quotes are not changed.`,
     });
     setSelectedIds(new Set());
     setBulkDeleting(false);
@@ -770,41 +713,41 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
           variant="outline"
           size="sm"
           onClick={async () => {
-            setPurgingOrphans(true);
-            try {
-              // Find products whose pdf_upload_id no longer exists in pdf_uploads
-              const pdfIds = pdfUploads.map(p => p.id);
-              const { data: orphans } = await (supabase.from("supplier_products") as any)
-                .select("id, pdf_upload_id")
-                .not("pdf_upload_id", "is", null);
-              const orphanProducts = (orphans || []).filter((p: any) => !pdfIds.includes(p.pdf_upload_id));
-              if (orphanProducts.length === 0) {
-                toast({ title: "No orphaned products found", description: "All products are linked to existing PDFs." });
-              } else {
-                const orphanIds = orphanProducts.map((p: any) => p.id);
-                for (let i = 0; i < orphanIds.length; i += 500) {
-                  const batch = orphanIds.slice(i, i + 500);
-                  await (supabase.from("quote_items") as any).delete().in("product_id", batch);
-                  await (supabase.from("job_used_parts") as any).delete().in("product_id", batch);
-                  await (supabase.from("inventory_stock") as any).delete().in("product_id", batch);
-                  await (supabase.from("bundle_items") as any).delete().in("supplier_product_id", batch);
-                  await (supabase.from("supplier_products") as any).delete().in("id", batch);
-                }
-                toast({ title: `Purged ${orphanProducts.length} orphaned products`, description: "Products from deleted PDFs have been removed." });
-                queryClient.invalidateQueries({ queryKey: ["pdf-product-counts"] });
-              }
-            } catch (err: any) {
-              toast({ title: "Purge failed", description: err.message, variant: "destructive" });
-            } finally {
-              setPurgingOrphans(false);
+            const pdfIds = new Set(pdfUploads.map(p => p.id));
+            const { data: orphans } = await (supabase.from("supplier_products") as any)
+              .select("id, pdf_upload_id")
+              .not("pdf_upload_id", "is", null)
+              .or("archived.is.null,archived.eq.false");
+            const orphanIds = (orphans || []).filter((p: any) => !pdfIds.has(p.pdf_upload_id)).map((p: any) => p.id);
+            if (orphanIds.length === 0) {
+              toast({ title: "No orphaned products found", description: "All products are linked to existing PDFs." });
+              return;
             }
+            setConfirmArchive({
+              title: "Archive orphaned products?",
+              message: archiveMessage(orphanIds.length, 0),
+              label: `Archive ${orphanIds.length} products`,
+              run: async () => {
+                setPurgingOrphans(true);
+                try {
+                  await archiveProductIds(orphanIds);
+                  toast({ title: `Archived ${orphanIds.length} orphaned products`, description: "Existing quotes are not changed." });
+                  queryClient.invalidateQueries({ queryKey: ["pdf-product-counts"] });
+                  queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+                } catch (err: any) {
+                  toast({ title: "Archive failed", description: err.message, variant: "destructive" });
+                } finally {
+                  setPurgingOrphans(false);
+                }
+              },
+            });
           }}
           disabled={purgingOrphans}
         >
           {purgingOrphans ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
-          Purge Orphaned Products
+          Archive Orphaned Products
         </Button>
-        <span className="text-xs text-muted-foreground">Remove products whose source PDF no longer exists</span>
+        <span className="text-xs text-muted-foreground">Archive products whose source PDF no longer exists</span>
       </div>
 
       {/* Filters */}
@@ -849,11 +792,16 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
           <Button
             variant="destructive"
             size="sm"
-            onClick={handleBulkDelete}
+            onClick={async () => {
+              const targets = filtered.filter((p) => selectedIds.has(p.id) && !p.id.startsWith("spp-"));
+              const ids = targets.map((t) => t.id);
+              const { count } = ids.length ? await (supabase.from("supplier_products") as any).select("id", { count: "exact", head: true }).in("pdf_upload_id", ids).or("archived.is.null,archived.eq.false") : { count: 0 };
+              setConfirmArchive({ title: "Archive selected price lists?", message: archiveMessage(count ?? 0, targets.length), label: `Archive ${count ?? 0} products`, run: handleBulkDelete });
+            }}
             disabled={bulkDeleting}
           >
             {bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
-            Delete Selected
+            Archive Selected
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
             Deselect All
@@ -957,7 +905,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDeleteClick(pdf)}
-                        title="Delete"
+                        title="Archive"
                         className="text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -1050,12 +998,23 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
                 Re-run check
               </Button>
             )}
-            <AlertDialogAction
-              onClick={(e) => { e.preventDefault(); handleActivateConfirm(); }}
-              disabled={activating || gateRunning || !activateOk}
-            >
-              {activating ? "Activating…" : "Activate"}
-            </AlertDialogAction>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <AlertDialogAction
+                      onClick={(e) => { e.preventDefault(); handleActivateConfirm(); }}
+                      disabled={activating || gateRunning || !activateOk || activateLinkedCount === 0}
+                    >
+                      {activating ? "Activating…" : "Activate"}
+                    </AlertDialogAction>
+                  </span>
+                </TooltipTrigger>
+                {activateLinkedCount === 0 && (
+                  <TooltipContent>No products are linked to this price list, so it can't be activated.</TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1066,7 +1025,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
-              Delete PDF Catalog
+              Archive price list
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3 text-sm">
@@ -1076,10 +1035,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
                   <p><span className="font-medium">Uploaded:</span> {deleteTarget ? format(new Date(deleteTarget.created_at), "dd MMM yyyy HH:mm") : ""}</p>
                 </div>
                 <p className="text-destructive font-medium">
-                  ⚠️ This will also delete {deleteProductCount} products parsed from this PDF.
-                </p>
-                <p className="text-muted-foreground">
-                  If these products appear in any quotes, those line items will be cleared.
+                  {archiveMessage(deleteProductCount, deleteTarget?.id.startsWith("spp-") ? 0 : 1, deleteTarget?.suppliers?.name || undefined)}
                 </p>
               </div>
             </AlertDialogDescription>
@@ -1092,7 +1048,29 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
-              Delete PDF & Products
+              Archive {deleteProductCount} products
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Generic archive confirmation */}
+      <AlertDialog open={!!confirmArchive} onOpenChange={(o) => !o && setConfirmArchive(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              {confirmArchive?.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-destructive font-medium">{confirmArchive?.message}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { const c = confirmArchive; setConfirmArchive(null); void c?.run(); }}
+            >
+              {confirmArchive?.label}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -631,7 +631,7 @@ async function searchItems(
 
   const base = () =>
     db
-      .from("supplier_products")
+      .from("live_supplier_products")
       .select(PRODUCT_SELECT)
       .eq("is_active", true)
       .or("archived.is.false,archived.is.null");

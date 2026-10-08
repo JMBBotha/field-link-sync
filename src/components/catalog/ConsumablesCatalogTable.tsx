@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { archiveProductIds, archiveSupplierProducts } from "@/services/catalogArchive";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,15 +106,12 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const { error } = await (supabase.from("supplier_products") as any)
-        .delete()
-        .in("id", ids);
-      if (error) throw error;
+      await archiveProductIds(ids);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
       queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
-      toast({ title: `${selectedIds.size} products deleted` });
+      toast({ title: `${selectedIds.size} products archived` });
       setSelectedIds(new Set());
       setConfirmBulkDelete(false);
     },
@@ -174,7 +172,7 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
         onClear={() => setSelectedIds(new Set())}
         actions={[
           {
-            label: "Delete",
+            label: "Archive",
             icon: <Trash2 className="h-3.5 w-3.5" />,
             onClick: () => setConfirmBulkDelete(true),
             variant: "destructive",
@@ -320,9 +318,9 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
       <AlertDialog open={confirmBulkDelete} onOpenChange={setConfirmBulkDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedIds.size} products?</AlertDialogTitle>
+            <AlertDialogTitle>Archive {selectedIds.size} products?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the selected products. This action cannot be undone.
+              Archive {selectedIds.size} products. Existing quotes are not changed. Archived products can't be quoted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -331,7 +329,7 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => bulkDeleteMutation.mutate([...selectedIds])}
             >
-              {bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
+              {bulkDeleteMutation.isPending ? "Archiving..." : `Archive ${selectedIds.size} products`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

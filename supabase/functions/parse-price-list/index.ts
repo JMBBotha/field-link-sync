@@ -10,6 +10,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
 import { pipePairFromText } from "./pipeSizes.ts";
+import { buildManualIndex, findManual } from "./pipeLock.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -138,6 +139,18 @@ Supplier name for context: ${supplier_name || "Unknown"}`
     let updated = 0;
     let skipped = 0;
 
+    // Manual pipe sizes: lookup INCLUDES archived rows, normalised code match.
+    const { data: manualRows } = await supabase
+      .from("supplier_products")
+      .select("id, product_code, brand, pipe_size, pipe_liquid, pipe_gas")
+      .eq("supplier_id", supplier_id)
+      .eq("pipe_sizes_manual", true);
+    const manualIndex = buildManualIndex((manualRows as any[]) || []);
+    const carry = (code: string) => {
+      const m = findManual(manualIndex, code, null);
+      return m ? { pipe_size: m.pipe_size ?? null, pipe_liquid: m.pipe_liquid ?? null, pipe_gas: m.pipe_gas ?? null, pipe_sizes_manual: true } : null;
+    };
+
     for (const product of enrichedProducts) {
       const { data: existing } = await supabase
         .from("supplier_products")
@@ -153,7 +166,7 @@ Supplier name for context: ${supplier_name || "Unknown"}`
             description: product.description,
             category: product.category,
             // Pipe sizes set by hand are never overwritten or nulled.
-            ...(existing.pipe_sizes_manual ? {} : {
+            ...(existing.pipe_sizes_manual ? {} : carry(product.product_code) ?? {
               ...(product.pipe_size ? { pipe_size: product.pipe_size } : {}),
               ...(() => { const p = pipePairFromText(product.pipe_size); return p ? { pipe_liquid: p.liquid, pipe_gas: p.gas } : {}; })(),
             }),
@@ -167,7 +180,8 @@ Supplier name for context: ${supplier_name || "Unknown"}`
         if (error) { skipped++; } else { updated++; }
       } else {
         const pair = pipePairFromText(product.pipe_size);
-        const { error } = await supabase.from("supplier_products").insert({ ...product, ...(pair ? { pipe_liquid: pair.liquid, pipe_gas: pair.gas } : {}) });
+        const carried = carry(product.product_code);
+        const { error } = await supabase.from("supplier_products").insert({ ...product, ...(carried ?? (pair ? { pipe_liquid: pair.liquid, pipe_gas: pair.gas } : {})) });
         if (error) { skipped++; } else { imported++; }
       }
     }

@@ -1,4 +1,5 @@
 import { productMatchesTerms } from "@/lib/productSearchTags";
+import { liveProducts } from "@/lib/liveProducts";
 import { deriveSearchTags } from "@/lib/productSearchTags";
 /* eslint-disable -- visual catalog panel */
 import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
@@ -1250,7 +1251,7 @@ const LazyPdfPage = ({
         console.warn(`[VisualCatalog] No supplier UUID for "${supplierName}"`);
         return [];
       }
-      const { data } = await (supabase.from("supplier_products") as any)
+      const { data } = await liveProducts()
         .select("id, product_code, short_name, description, cost_excl_vat, cost_price, default_markup_percent, row_bbox, price_bbox")
         .eq("supplier_id", supplierUuid)
         .eq("page_number", page.page_number)
@@ -1567,7 +1568,7 @@ const LazyPdfPage = ({
     queryKey: ["visual-panel-display-catalog", page.id, unmatchedCodes.join(",")],
     enabled: isVisible && unmatchedCodes.length > 0,
     queryFn: async () => {
-      const { data } = await (supabase.from("supplier_products") as any)
+      const { data } = await liveProducts()
         .select("id, product_code, short_name, description, brand, cost_price, cost_excl_vat, cost_incl_vat, selling_price, default_markup_percent, markup_percent, supplier_discount_percent")
         .in("product_code", unmatchedCodes)
         .limit(400);
