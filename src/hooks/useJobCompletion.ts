@@ -4,6 +4,7 @@ import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useToast } from "@/hooks/use-toast";
+import { completeJobsForLead } from "@/lib/completeLeadJobs";
 
 export interface JobCompletionInput {
   leadId: string;
@@ -87,9 +88,8 @@ export function useJobCompletion() {
         .eq("id", input.leadId);
       if (leadErr) throw leadErr;
 
-      if (input.jobId) {
-        await supabase.from("jobs").update({ status: "completed" }).eq("id", input.jobId);
-      }
+      // Close the linked job row(s) too (was: only when a jobId was passed, and errors were ignored).
+      await completeJobsForLead(input.leadId, input.jobId);
 
       return { queued: false };
     },

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { completeJobsForLead } from '@/lib/completeLeadJobs';
 import { supabase } from '@/integrations/supabase/client';
 import { offlineDb, PendingOperation, OperationType } from '@/lib/offlineDb';
 import { useToast } from '@/hooks/use-toast';
@@ -509,12 +510,7 @@ export function useSyncQueue(isOnline: boolean) {
             .eq('id', operation.recordId);
           if (leadErr) throw leadErr;
 
-          if (record.job_id) {
-            await supabase
-              .from('jobs')
-              .update({ status: 'completed' })
-              .eq('id', record.job_id as string);
-          }
+          await completeJobsForLead(operation.recordId, (record.job_id as string | null) ?? null);
           break;
         }
 

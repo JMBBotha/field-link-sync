@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useJobCompletion } from "@/hooks/useJobCompletion";
 import SignaturePad from "./SignaturePad";
+import { findOpenJobIdsForLead } from "@/lib/completeLeadJobs";
 
 interface JobCompletionSheetProps {
   open: boolean;
@@ -98,6 +99,14 @@ const JobCompletionSheet = ({
     enabled: open && !!leadId && isOnline,
   });
 
+  // The lead sheet doesn't know the install job: look it up so job_completions/job_overruns get a job_id.
+  const { data: resolvedJobId = null } = useQuery({
+    queryKey: ["lead-open-job", leadId],
+    queryFn: async () => (await findOpenJobIdsForLead(leadId))[0] ?? null,
+    enabled: open && !!leadId && !jobId && isOnline,
+  });
+  const effectiveJobId = jobId ?? resolvedJobId;
+
   const partsTotal = useMemo(
     () => parts.reduce((sum, p) => sum + Number(p.line_total || 0), 0),
     [parts]
@@ -113,7 +122,7 @@ const JobCompletionSheet = ({
     try {
       const { queued } = await submit({
         leadId,
-        jobId,
+        jobId: effectiveJobId,
         workSummary: summary.trim(),
         customerName: signerName || customerName,
         customerEmail: signerEmail || customerEmail,
@@ -128,7 +137,7 @@ const JobCompletionSheet = ({
       // Only one toast shows at a time, so a failed "Actual on site" save must win over "Job completed".
       let actualError: string | null = null;
       if (user?.id) {
-        try { await saveActualOnSite({ jobId, leadId, userId: user.id, value: actual }); }
+        try { await saveActualOnSite({ jobId: effectiveJobId, leadId, userId: user.id, value: actual }); }
         catch (e) { actualError = (e as { message?: string })?.message || "unknown error"; }
       }
       if (actualError) {
