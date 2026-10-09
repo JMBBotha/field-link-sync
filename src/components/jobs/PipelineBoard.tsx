@@ -16,7 +16,7 @@ import LeadCardV2, { type LeadV2 } from "@/components/leads/LeadCardV2";
 import AttentionChips from "@/components/jobs/AttentionChips";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CalendarPlus, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { CalendarPlus, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileText } from "lucide-react";
 import {
   STAGES, buildDeals, columnSummary, followUps, pipelineChips, matchesChip, dropAction, daysSince,
   fmtRand, fmtRandShort, type Deal, type PipelineStage, type PipelineChipKey, type PipeQuote,
@@ -207,30 +207,20 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
       </div>
 
       {view === "stages" ? (
-        /* First four stages stack in two columns (New lead/Draft, Sent/Viewed); Accepted, Job booked, Lost stay side-by-side. */
-        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-5" data-stage-grid>
-          {([["lead", "draft"], ["sent", "viewed"], ["accepted"], ["booked"], ["lost"]] as PipelineStage[][]).map((keys) => {
+        /* New lead/Draft and Sent/Viewed are playing-card stacks; Accepted and Job booked sit beside them.
+           Lost is a narrow rail on the right (xl) or a slim bar (phone/tablet) that slides open on click/tap or drag-over. */
+        <div className="flex min-w-0 flex-col gap-3 pb-20 lg:pb-0 xl:flex-row xl:items-start" data-stage-layout>
+        <div className="grid min-w-0 flex-1 grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-4" data-stage-grid>
+          {([["lead", "draft"], ["sent", "viewed"], ["accepted"], ["booked"]] as PipelineStage[][]).map((keys) => {
             const colExpanded = keys.some((k) => expanded.has(k));
             return (
               <div key={keys.join("-")} data-stage-column={keys.join("-")}
                 onPointerLeave={(e) => { if (keys.length === 2 && e.pointerType === "mouse") setPeekHover((h) => (h === keys[0] ? null : h)); }}
-                className={cn("flex min-w-0 flex-col", keys.length === 2 ? "gap-0" : "gap-3", colExpanded && "col-span-full sm:col-span-2 xl:col-span-5")}>
+                className={cn("flex min-w-0 flex-col", keys.length === 2 ? "gap-0" : "gap-3", colExpanded && "col-span-full sm:col-span-2 xl:col-span-4")}>
                 {keys.map((key, idx) => {
                   const s = STAGES.find((x) => x.key === key)!;
                   const isBack = keys.length === 2 && idx === 0;
                   const isFront = keys.length === 2 && idx === 1;
-                  if (s.key === "lost" && !showLost) {
-                    const n = columnSummary(shownDeals, "lost").count;
-                    return (
-                      <Button key="lost" variant="ghost" onClick={() => setShowLost(true)}
-                        data-stage-block="lost"
-                        onDragOver={(e) => { e.preventDefault(); setOver("lost"); }}
-                        onDrop={(e) => { e.preventDefault(); if (dragFrom) runDrop(dragFrom.id, dragFrom.stage, "lost"); setOver(null); }}
-                        className={cn("h-auto justify-start rounded-lg bg-muted/60 px-3 py-3 text-xs font-semibold text-muted-foreground", over === "lost" && "ring-2 ring-primary")}>
-                        Lost · {n} <ChevronDown className="ml-auto h-4 w-4" />
-                      </Button>
-                    );
-                  }
                   const sum = s.key === "lead" ? {
                     count: shownLeads.length, total: 0,
                     avgDays: shownLeads.length ? Math.round(shownLeads.reduce((total, l) => total + daysSince(l.created_at, now), 0) / shownLeads.length) : 0,
@@ -263,7 +253,6 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
                         <div className="text-lg font-bold tabular-nums">{s.key === "lead" ? "—" : fmtRandShort(sum.total)}</div>
                         <div className={cn("text-[11px] font-normal text-muted-foreground", isBack && !peekOpen && "hidden")}>{s.hint} · avg {sum.avgDays} d in stage</div>
                       </Button>
-                      {s.key === "lost" && <Button variant="ghost" size="sm" className="mx-3 mb-1 h-6 self-start text-[11px] text-primary" onClick={() => setShowLost(false)}>Hide Lost</Button>}
                       <div className={cn("grid transition-[grid-template-rows] duration-300 ease-out", peekOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}
                         aria-hidden={!peekOpen || undefined} data-peek-body={isBack ? s.key : undefined}
                         {...({ inert: peekOpen ? undefined : "" } as Record<string, unknown>)}>
@@ -288,6 +277,39 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
               </div>
             );
           })}
+        </div>
+        {(() => {
+          const lostOpen = showLost || over === "lost";
+          const lostList = shownDeals.filter((d) => d.stage === "lost").sort((a, b) => b.value - a.value);
+          const lostExpanded = expanded.has("lost");
+          const lostSum = columnSummary(shownDeals, "lost");
+          return (
+            <aside data-stage-block="lost" data-lost-open={lostOpen ? "true" : "false"}
+              onDragOver={(e) => { if (dragFrom) { e.preventDefault(); setOver("lost"); } }}
+              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver((o) => (o === "lost" ? null : o)); }}
+              onDrop={(e) => { e.preventDefault(); if (dragFrom) runDrop(dragFrom.id, dragFrom.stage, "lost"); setOver(null); }}
+              className={cn("flex min-w-0 shrink-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-muted/50 transition-[width] duration-300 ease-out",
+                lostOpen ? "w-full xl:w-72" : "w-full xl:w-11", over === "lost" && "ring-2 ring-primary")}>
+              <div className={cn("h-1.5 shrink-0", BAR.lost)} />
+              <Button variant="ghost" aria-label="Lost stage" aria-expanded={lostOpen} onClick={() => setShowLost((v) => !v)}
+                className={cn("h-auto w-full whitespace-nowrap px-3 py-2 text-xs font-semibold text-muted-foreground",
+                  lostOpen ? "justify-between" : "justify-between xl:min-h-40 xl:flex-col xl:justify-start xl:gap-2 xl:px-0 xl:py-3")}>
+                <span className={cn(!lostOpen && "xl:[writing-mode:vertical-rl] xl:rotate-180")}>Lost · {lostSum.count}</span>
+                {lostOpen
+                  ? <><span className="xl:hidden"><ChevronUp className="h-4 w-4" /></span><span className="hidden xl:inline"><ChevronRight className="h-4 w-4" /></span></>
+                  : <><span className="xl:hidden"><ChevronDown className="h-4 w-4" /></span><span className="hidden xl:inline xl:order-first"><ChevronLeft className="h-4 w-4" /></span></>}
+              </Button>
+              <div className={cn("min-w-0 xl:min-w-72", !lostOpen && "hidden")} aria-hidden={!lostOpen || undefined} data-lost-body>
+                <div className="px-3 pb-1 text-[11px] text-muted-foreground">{fmtRandShort(lostSum.total)} · avg {lostSum.avgDays} d in stage</div>
+                <div className="grid grid-cols-1 gap-2 px-2 pb-2 sm:grid-cols-2 xl:grid-cols-1">
+                  {(lostExpanded ? lostList : lostList.slice(0, 2)).map((d) => dealCard(d, undefined, true))}
+                  {!lostExpanded && lostList.length > 2 && <Button variant="ghost" className="h-8 text-xs text-primary" onClick={() => toggleStage("lost")}>+{lostList.length - 2} more</Button>}
+                  {lostList.length === 0 && <div className="rounded-lg border border-dashed p-3 text-center text-xs text-muted-foreground">No lost quotes. Drag a quote here to mark it lost.</div>}
+                </div>
+              </div>
+            </aside>
+          );
+        })()}
         </div>
       ) : (
         <div className="space-y-3">

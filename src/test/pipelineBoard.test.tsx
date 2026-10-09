@@ -48,7 +48,8 @@ describe("PipelineBoard", () => {
     expect(screen.getByText("Accepted · deposit")).toBeTruthy();
     expect(document.querySelector('[data-stage-column="lead-draft"]')).toBeTruthy();
     expect(document.querySelector('[data-stage-column="sent-viewed"]')).toBeTruthy();
-    expect(document.querySelector('[data-stage-grid]')!.className).toContain("xl:grid-cols-5");
+    expect(document.querySelector('[data-stage-grid]')!.className).toContain("xl:grid-cols-4");
+    expect(document.querySelector('[data-stage-grid] [data-stage-block="lost"]')).toBeNull();
     expect(screen.getByText("Bianca")).toBeTruthy();
     expect(screen.queryByText("Test Dummy Lead QA")).toBeNull();
     expect(screen.getByText("Marissa Ellis")).toBeTruthy();
@@ -117,6 +118,26 @@ describe("PipelineBoard", () => {
     await waitFor(() => expect(screen.getByTestId("accepted-work")).toBeTruthy());
   });
 
+  it("shows Lost as a collapsed side rail that opens on click, closes again, and opens on drag-over", async () => {
+    mount("stages");
+    await waitFor(() => expect(screen.getByText("Bianca")).toBeTruthy());
+    const lost = document.querySelector('[data-stage-block="lost"]') as HTMLElement;
+    expect(lost.tagName).toBe("ASIDE");
+    expect(lost.dataset.lostOpen).toBe("false");
+    expect(lost.className).toContain("xl:w-11");
+    const btn = screen.getByRole("button", { name: "Lost stage" });
+    fireEvent.click(btn);
+    expect(lost.dataset.lostOpen).toBe("true");
+    expect(lost.className).toContain("xl:w-72");
+    fireEvent.click(btn);
+    expect(lost.dataset.lostOpen).toBe("false");
+    const card = screen.getByText("Bianca").closest("[data-deal-card]")!;
+    const dataTransfer = { setData: vi.fn() };
+    fireEvent.dragStart(card, { dataTransfer });
+    fireEvent.dragOver(lost, { dataTransfer });
+    expect(lost.dataset.lostOpen).toBe("true");
+    fireEvent.dragEnd(card);
+  });
   it("hides card rep initials for sales reps but keeps admin per-rep totals", async () => {
     actions.isSalesRep = true;
     mount("cards");
