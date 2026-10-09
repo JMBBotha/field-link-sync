@@ -146,8 +146,8 @@ const App = () => (
                 <Route path="/customer/:token/invoice/:invoiceId" element={<CustomerInvoiceView />} />
                 <Route path="/quote/:token" element={<ClientProposalView />} />
 
-                {/* FreshBooks multi-tenant client dashboards */}
-                <Route path="/client/:companyId" element={<CompanyProvider><FBLayout /></CompanyProvider>}>
+                {/* Archived FreshBooks copy (accounting step 0): admins only; the live accounting is /admin/invoices. */}
+                <Route path="/client/:companyId" element={<RequireRole allowedRoles={["admin"]} denySalesRep><CompanyProvider><FBLayout /></CompanyProvider></RequireRole>}>
                   <Route path="dashboard" element={<FBDashboard />} />
                   <Route path="invoices" element={<FBInvoiceList />} />
                   <Route path="estimates" element={<FBEstimatesList />} />
@@ -164,7 +164,7 @@ const App = () => (
                 </Route>
 
                 {/* Full-page Quote Builder for client portal (outside FBLayout for full-bleed) */}
-                <Route path="/client/:companyId/quote-builder" element={<CompanyProvider><FBQuoteBuilderPage /></CompanyProvider>} />
+                <Route path="/client/:companyId/quote-builder" element={<RequireRole allowedRoles={["admin"]} denySalesRep><CompanyProvider><FBQuoteBuilderPage /></CompanyProvider></RequireRole>} />
 
                 {/* Protected routes */}
                 <Route element={<ProtectedRoute />}>
