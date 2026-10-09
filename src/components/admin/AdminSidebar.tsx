@@ -143,7 +143,7 @@ const AdminSidebar = ({
             { path: "/admin/reports/aging", label: "Accounts Aging", icon: History },
             { path: "/admin/reports/sales-by-client", label: "Sales by Client", icon: Users },
             { path: "/admin/reports/sales-by-product", label: "Sales by Product", icon: ShoppingBag },
-            { path: "/admin/reports/vat", label: "VAT Summary", icon: Receipt },
+            { path: "/admin/reports/vat", label: "VAT Report", icon: Receipt },
             { path: "/admin/analytics", label: "Analytics", icon: LineChart },
           ],
         } as NavItem]),

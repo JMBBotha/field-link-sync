@@ -82,7 +82,7 @@ const AdminLayout = () => {
     "/admin/reports/aging": "Accounts Aging",
     "/admin/reports/sales-by-client": "Sales by Client",
     "/admin/reports/sales-by-product": "Sales by Product",
-    "/admin/reports/vat": "VAT Summary",
+    "/admin/reports/vat": "VAT Report",
     "/admin/analytics": "Analytics",
     "/admin/notifications": "Notifications",
     "/admin/audit": "Audit Log",
