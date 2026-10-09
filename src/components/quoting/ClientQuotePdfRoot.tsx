@@ -56,7 +56,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
     let cancelled = false;
     (async () => {
       try {
-        const [qRes, iRes, aRes, cRes] = await Promise.all([
+        const [qRes, iRes, aRes, cRes, dRes] = await Promise.all([
           (supabase.from("quotes") as any)
             .select(
               "id, quote_number, subtotal, vat_rate, vat_amount, total, notes, valid_until, created_at, customer_name, terms_text, discount_type, discount_value, payment_plan, customers(name, first_name, last_name, company_name, primary_address_line1, email, phone)",
@@ -77,6 +77,13 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
             .order("created_at"),
           (supabase.from("company_settings") as any)
             .select("company_name, physical_address, vat_number, banking_details, default_deposit_percentage, default_payment_terms_days")
+            .limit(1)
+            .maybeSingle(),
+          // Deposit % must match the deposit invoice: latest settings row (same order as create_deposit_invoice_for_quote).
+          (supabase.from("company_settings") as any)
+            .select("default_deposit_percentage")
+            .order("updated_at", { ascending: false, nullsFirst: false })
+            .order("id")
             .limit(1)
             .maybeSingle(),
         ]);
@@ -112,7 +119,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
             imageUrl: it.image_url || null,
           };
         });
-        if (!cancelled) setDoc({ quote: qRes.data, customer, company: cRes.data || null, items, areas: buildClientRollup(lines, areaRows) });
+        if (!cancelled) setDoc({ quote: qRes.data, customer, company: cRes.data ? { ...cRes.data, default_deposit_percentage: dRes.data?.default_deposit_percentage ?? cRes.data.default_deposit_percentage } : null, items, areas: buildClientRollup(lines, areaRows) });
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Could not load the quote for the PDF.");
       }
