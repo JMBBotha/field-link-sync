@@ -1447,6 +1447,7 @@ const FieldAgent = () => {
                   availableStatuses={["all", "accepted", "in_progress"]}
                   counts={activeFilterCounts}
                   compact
+                  className="flex-wrap overflow-x-visible snap-none"
                 />
               </div>
               <div className="flex-1 overflow-y-auto p-2 space-y-2">
@@ -1461,6 +1462,7 @@ const FieldAgent = () => {
                       : null;
                     return (
                       <FieldAgentLeadCard
+                        compact
                         key={lead.id}
                         lead={lead}
                         distance={distance}
@@ -1693,7 +1695,7 @@ const FieldAgent = () => {
                             description: "Active leads updated",
                           });
                         }}
-                        className="h-full p-3 space-y-2"
+                        className="h-full p-3 pb-20 space-y-2"
                       >
                         {activeLeads.length === 0 ? (
                           <div className="text-center py-8 text-muted-foreground text-sm">
@@ -1706,6 +1708,7 @@ const FieldAgent = () => {
                               : null;
                             return (
                               <FieldAgentLeadCard
+                                compact
                                 key={lead.id}
                                 lead={lead}
                                 distance={distance}

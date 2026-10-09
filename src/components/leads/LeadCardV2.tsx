@@ -181,7 +181,7 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
               </DropdownMenu>
             ))}
           </div>
-        ) : (
+        ) : compact && tech && who === "You" ? null : (
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{initials(who)}</span>
             <span className="truncate text-xs font-medium">{text(who) || "Assigned"}</span>

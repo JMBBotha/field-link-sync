@@ -49,6 +49,8 @@ interface FieldAgentLeadCardProps {
   invoice?: DepositInvoiceLike | null;
   /** Linked quote/estimate URL for install jobs (parent-side lookup by lead id). */
   estimateUrl?: string | null;
+  /** Tighter card for dense lists (e.g. "My Active Leads"): no phone row or call summary, smaller padding. */
+  compact?: boolean;
 }
 
 const getPriorityColor = (priority: string | undefined): string | null => {
@@ -57,7 +59,7 @@ const getPriorityColor = (priority: string | undefined): string | null => {
   return null;
 };
 
-const getStatusBadge = (status: string) => {
+const getStatusBadge = (status: string, compact = false) => {
   const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
     pending: { bg: "bg-red-500", text: "text-white", label: "Available" },
     open: { bg: "bg-red-500", text: "text-white", label: "Open" },
@@ -71,7 +73,7 @@ const getStatusBadge = (status: string) => {
   const config = statusConfig[status] || { bg: "bg-gray-500", text: "text-white", label: status };
 
   return (
-    <Badge className={`${config.bg} ${config.text} text-xs`}>
+    <Badge className={cn(config.bg, config.text, compact ? "px-1.5 py-0 text-[10px]" : "text-xs")}>
       {config.label}
     </Badge>
   );
@@ -94,6 +96,7 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
       scrollIntoView = false,
       invoice,
       estimateUrl,
+      compact = false,
     },
     ref
   ) => {
@@ -161,8 +164,8 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
               </Button>
             ) : <span />} extra={distance ? <span className="text-xs text-muted-foreground">{distance}km</span> : undefined} />
           ) : (
-          <LeadCardV2 audience="tech" lead={lead} extra={<>
-            {getStatusBadge(lead.status)}
+          <LeadCardV2 audience="tech" lead={lead} density={compact ? "compact" : "full"} className={compact ? "space-y-1.5 p-2.5" : undefined} extra={<>
+            {getStatusBadge(lead.status, compact)}
             {invoice?.id && <DepositPaymentChip invoice={invoice} hideAmount accepted={["accepted", "in_progress", "completed"].includes(lead.status)} className="text-[10px]" />}
             {estimateUrl && <Link to={estimateUrl} onClick={(e) => e.stopPropagation()} className="text-[10px] font-medium text-primary hover:underline">Open job sheet</Link>}
             {photoCount > 0 && <span className="flex items-center gap-0.5 text-xs text-muted-foreground"><ImageIcon className="h-3 w-3" />{photoCount}</span>}
