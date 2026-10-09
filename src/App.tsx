@@ -48,6 +48,7 @@ import AdminJobDetailPage from "./pages/admin/AdminJobDetailPage";
 import AdminJobsHubPage, { JobsDispatchRedirect, DispatchCalendarRedirect } from "./pages/admin/AdminJobsHubPage";
 import AdminMyJobsPage from "./pages/admin/AdminMyJobsPage";
 import AdminMyAppointmentsPage from "./pages/admin/AdminMyAppointmentsPage";
+import { AdminVisitsPage, AdminVisitDetailPage } from "./pages/admin/AdminVisitsPage";
 import AdminPriceListsPage from "./pages/admin/AdminPriceListsPage";
 import AdminOssExtrasPage from "./pages/admin/AdminOssExtrasPage";
 import FieldSchedulePage from "./pages/FieldSchedulePage";
@@ -181,6 +182,8 @@ const App = () => (
                     <Route path="my-jobs" element={<AdminMyJobsPage />} />
                     <Route path="my-base" element={<MyBasePage />} />
                     <Route path="my-appointments" element={<AdminMyAppointmentsPage />} />
+                    <Route path="visits" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminVisitsPage /></RequireRole>} />
+                    <Route path="visits/:leadId" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminVisitDetailPage /></RequireRole>} />
                     <Route path="schedule" element={<DispatchCalendarRedirect />} />
                     <Route path="quotes" element={<AdminQuotesPage />} />
                     <Route path="estimates/:id" element={<AdminEstimateDetailPage />} />
