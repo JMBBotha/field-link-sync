@@ -58,7 +58,7 @@ BEGIN
            COALESCE(NULLIF(i.line_items->0->>'description', ''), 'Invoice') descr, COALESCE(i.grand_total, 0) debit, 0::numeric credit, i.id inv_id, i.created_at ts
       FROM inv i
     UNION ALL
-    SELECT COALESCE(p.payment_date, p.created_at::date), 2, 'payment', inv.invoice_number,
+    SELECT COALESCE(p.payment_date::date, p.created_at::date), 2, 'payment', inv.invoice_number,
            'Payment' || COALESCE(' (' || NULLIF(p.method, '') || ')', ''), 0, COALESCE(p.amount, 0), inv.id, p.created_at
       FROM public.payments p JOIN inv ON inv.id = p.invoice_id
      WHERE p.status IN ('paid', 'succeeded', 'completed')

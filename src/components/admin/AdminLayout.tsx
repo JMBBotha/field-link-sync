@@ -73,6 +73,7 @@ const AdminLayout = () => {
     "/admin/templates": "Templates",
     "/admin/invoices": "Invoices",
     "/admin/expenses": "Expenses",
+    "/admin/bank": "Bank (FNB)",
     "/admin/agreements": "Agreements",
     "/admin/catalog": "Product Catalog",
     "/admin/inventory": "Inventory",
