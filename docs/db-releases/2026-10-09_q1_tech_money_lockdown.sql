@@ -38,3 +38,13 @@ DO $$ DECLARE f text; d text; BEGIN
     EXECUTE d;
   END IF;
 END $$;
+
+-- 5) (added) get_quotes_for_lead: techs get nothing (was: quotes incl. totals on their assigned leads).
+DO $$ DECLARE d text; BEGIN
+  d := pg_get_functiondef('public.get_quotes_for_lead(uuid)'::regprocedure);
+  IF position('/*rh1*/' in d) = 0 THEN
+    d := replace(d, '(NOT public.is_field_tech_only(auth.uid()) OR public.tech_can_see_lead(auth.uid(), l.id)) /*rh*/', 'NOT public.is_field_tech_only(auth.uid()) /*rh1*/');
+    IF position('/*rh1*/' in d) = 0 THEN RAISE EXCEPTION 'get_quotes_for_lead anchor not found'; END IF;
+    EXECUTE d;
+  END IF;
+END $$;

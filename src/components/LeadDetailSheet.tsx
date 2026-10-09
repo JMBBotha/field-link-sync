@@ -238,7 +238,8 @@ const LeadDetailSheet = ({
       if (error) throw error;
       return (data as { id: string; quote_number: string; status: string; total: number; created_at: string; public_token: string | null }[]) || [];
     },
-    enabled: !!lead?.id,
+    // Techs never see quotes or quote totals (DB returns nothing for them too).
+    enabled: !!lead?.id && !invoiceTechOnly,
   });
 
   if (!lead) return null;
@@ -663,8 +664,9 @@ const LeadDetailSheet = ({
               </div>
             )}
 
-            {/* Quotes linked to this lead */}
-            <div className="rounded-xl border border-border/60 bg-background/60 p-3 space-y-2">
+            {/* Quotes linked to this lead (office/sales only; techs see no money) */}
+            {!invoiceTechOnly && (
+            <div data-lead-quotes className="rounded-xl border border-border/60 bg-background/60 p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Quotes on this lead</h3>
                 {leadQuotes && leadQuotes.length > 0 && (
@@ -716,6 +718,7 @@ const LeadDetailSheet = ({
                 </div>
               )}
             </div>
+            )}
 
             {/* Create Invoice - Completed leads only */}
             {lead?.status === 'completed' && (

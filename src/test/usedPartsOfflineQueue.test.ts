@@ -39,3 +39,11 @@ describe("offline used parts queue", () => {
     expect(byType.create_invoice).toBe(0);
   });
 });
+
+describe("techs see no quote totals on a job", () => {
+  it("LeadDetailSheet hides linked quotes and skips the RPC for tech-only users", () => {
+    const s = src("components/LeadDetailSheet.tsx");
+    expect(s).toContain("enabled: !!lead?.id && !invoiceTechOnly");
+    expect(s).toMatch(/\{!invoiceTechOnly && \(\s*<div data-lead-quotes/);
+  });
+});

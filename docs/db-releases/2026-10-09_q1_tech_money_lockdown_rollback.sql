@@ -25,3 +25,9 @@ DO $$ DECLARE f text; d text; BEGIN
   d := pg_get_functiondef('public.get_quote_summary(uuid)'::regprocedure);
   IF position('/*rh1*/' in d) > 0 THEN EXECUTE replace(d, ' AND NOT public.is_field_tech_only(auth.uid()) /*rh1*/', ''); END IF;
 END $$;
+DO $$ DECLARE d text; BEGIN
+  d := pg_get_functiondef('public.get_quotes_for_lead(uuid)'::regprocedure);
+  IF position('/*rh1*/' in d) > 0 THEN
+    EXECUTE replace(d, 'NOT public.is_field_tech_only(auth.uid()) /*rh1*/', '(NOT public.is_field_tech_only(auth.uid()) OR public.tech_can_see_lead(auth.uid(), l.id)) /*rh*/');
+  END IF;
+END $$;
