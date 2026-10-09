@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { exportToCSV } from "@/lib/csvExport";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { attachPaymentTotals } from "@/lib/depositInvoice";
+import { fetchCreditNotes, type CreditNoteRow } from "@/lib/creditNotes";
 import jsPDF from "jspdf";
 import { formatRand } from "@/utils/formatRand";
 import { parseInvoiceParams, filterInvoices, matchesInvoiceState, clearParams, resolveMoneyFilter, MONEY_LABEL } from "@/lib/drilldown";
@@ -89,6 +90,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
     window.open(buildDepositWhatsAppUrl(inv.invoice_number, Number(inv.grand_total) || 0, publicQuoteUrl(data.public_token)), "_blank", "noopener");
   };
   const [payRows, setPayRows] = useState<any[]>([]);
+  const [creditRows, setCreditRows] = useState<CreditNoteRow[]>([]);
 
   useEffect(() => {
     fetchInvoices();
@@ -112,6 +114,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
       if (results.length) {
         const { data: pays } = await supabase.from("payments").select("invoice_id, amount, status, gateway").in("invoice_id", results.map(r => r.id));
         setPayRows(pays || []);
+        setCreditRows(await fetchCreditNotes(results.map(r => r.id)));
       }
       setInvoices([...results]);
     }
@@ -121,7 +124,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   const filteredInvoices = filterInvoices(invoices, inf)
     .filter(inv => {
       if (!moneyFilter) return true;
-      const { paid, balance } = invoiceMoney(inv as any, payRows);
+      const { paid, balance } = invoiceMoney(inv as any, payRows, creditRows);
       return matchesMoneyFilter(inv as any, paid, balance, moneyFilter);
     })
     .filter(inv =>

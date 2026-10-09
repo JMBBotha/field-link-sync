@@ -31,11 +31,13 @@ const toDateInput = (value: string | Date) => {
 interface PaymentRecorderProps {
   invoiceId: string;
   invoiceTotal: number;
+  /** Issued credit notes on this invoice (accounting step 2); they reduce what is outstanding. */
+  credited?: number;
   /** Called after a payment is recorded / edited / removed so parents can refetch the invoice. */
   onChange?: () => void;
 }
 
-const PaymentRecorder = ({ invoiceId, invoiceTotal, onChange }: PaymentRecorderProps) => {
+const PaymentRecorder = ({ invoiceId, invoiceTotal, credited = 0, onChange }: PaymentRecorderProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAdmin } = useRole();
@@ -69,7 +71,7 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, onChange }: PaymentRecorderP
 
   // Only settled payments count as cash applied (payment allocation SoT).
   const totalPaid = sumSettled(payments as any[]);
-  const outstanding = invoiceBalance(invoiceTotal, totalPaid);
+  const outstanding = invoiceBalance(invoiceTotal, totalPaid + (Number(credited) || 0));
 
   // Default the amount to the outstanding balance until the user edits it.
   const amountValue = amountTouched ? amount : outstanding > 0 ? outstanding.toFixed(2) : "";
@@ -113,7 +115,7 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, onChange }: PaymentRecorderP
 
     const newPaid = totalPaid + amt;
     const nextStatus =
-      newPaid + 0.005 >= invoiceTotal ? "paid" : newPaid > 0 ? "partially_paid" : prevInvoice?.status;
+      newPaid + (Number(credited) || 0) + 0.005 >= invoiceTotal ? "paid" : newPaid > 0 ? "partially_paid" : prevInvoice?.status;
 
     if (prevInvoice) {
       queryClient.setQueryData(invoiceKey, { ...prevInvoice, status: nextStatus, amount_paid: newPaid });
@@ -231,6 +233,12 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, onChange }: PaymentRecorderP
           <span className="text-muted-foreground">Paid</span>
           <span className="text-green-600">{formatZAR(totalPaid)}</span>
         </div>
+        {credited > 0 && (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Credit notes</span>
+            <span>−{formatZAR(credited)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-sm font-bold">
           <span>Outstanding</span>
           <span className={outstanding > 0 ? "text-destructive" : "text-green-600"}>

@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { sumSettled } from "@/lib/payments";
+import { creditedByInvoice } from "@/lib/creditNotes";
 
 /**
  * Company money summary (Johan 2026-09-26).
@@ -29,10 +30,12 @@ const CLOSED = new Set(["paid", "cancelled", "void"]);
 export const isDepositInvoice = (inv: MoneyInvoice) =>
   !!inv.quote_id || (inv.notes ?? "").trim().toUpperCase().startsWith("DEPOSIT");
 
-export function invoiceMoney(inv: MoneyInvoice, payments: MoneyPayment[]) {
+/** Balance = total − settled payments − issued credit notes (accounting step 2). */
+export function invoiceMoney(inv: MoneyInvoice, payments: MoneyPayment[], credits: { invoice_id: string; total: number | string; status?: string | null }[] = []) {
   const paid = sumSettled(payments.filter((p) => p.invoice_id === inv.id));
-  const balance = Math.max(0, r2((Number(inv.grand_total) || 0) - paid));
-  return { paid, balance };
+  const credited = creditedByInvoice(credits.filter((c) => c.invoice_id === inv.id)).get(inv.id) || 0;
+  const balance = Math.max(0, r2((Number(inv.grand_total) || 0) - paid - credited));
+  return { paid, credited, balance };
 }
 
 /** Which dashboard bucket(s) an invoice falls in. */

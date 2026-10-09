@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { generateAndUploadPDF, downloadInvoicePDF, shareInvoice, sendViaWhatsApp } from "@/lib/invoicePDF";
 import { sumSettled } from "@/lib/payments";
 import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
+import CreditNotesPanel from "@/components/invoicing/CreditNotesPanel";
+import { creditedByInvoice, fetchCreditNotes, type CreditNoteRow } from "@/lib/creditNotes";
 import InvoiceDocument from "@/components/invoicing/InvoiceDocument";
 
 
@@ -63,6 +65,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   const [invoice, setInvoice] = useState<any>(null);
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
   const [amountPaid, setAmountPaid] = useState(0);
+  const [credits, setCredits] = useState<CreditNoteRow[]>([]);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const [showMobileBar, setShowMobileBar] = useState(false);
 
@@ -98,6 +101,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     setInvoiceItems((itemsResult.data as unknown as InvoiceItem[]) || []);
     // Only settled payments count as cash applied (payment allocation SoT).
     setAmountPaid(sumSettled(((paymentsResult.data as any[]) || [])));
+    setCredits(await fetchCreditNotes([invoiceId]));
     setLoading(false);
   };
 
@@ -266,6 +270,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         taxAmount={Number(invoice.tax_amount) || 0}
         grandTotal={Number(invoice.grand_total) || 0}
         amountPaid={amountPaid}
+        credited={creditedByInvoice(credits).get(invoice.id) || 0}
         notes={invoice.notes}
       />
 
@@ -281,9 +286,18 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         <PaymentRecorder
           invoiceId={invoice.id}
           invoiceTotal={Number(invoice.grand_total)}
+          credited={creditedByInvoice(credits).get(invoice.id) || 0}
           onChange={() => { fetchInvoice(); onUpdate?.(); }}
         />
       </div>
+
+      {/* Accounting step 2: credit notes / write-offs (office only; reps see their own invoices' notes) */}
+      <CreditNotesPanel
+        invoice={invoice}
+        outstanding={Math.max(0, Math.round(((Number(invoice.grand_total) || 0) - amountPaid - (creditedByInvoice(credits).get(invoice.id) || 0)) * 100) / 100)}
+        credits={credits}
+        onChange={() => { fetchInvoice(); onUpdate?.(); }}
+      />
 
       <div className="print:hidden">
         <div className="w-full space-y-2">

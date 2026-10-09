@@ -23,6 +23,8 @@ export interface InvoiceDocumentProps {
   taxAmount: number;
   grandTotal: number;
   amountPaid?: number;
+  /** Issued credit notes (accounting step 2). */
+  credited?: number;
   notes?: string | null;
 }
 
@@ -62,13 +64,14 @@ const InvoiceDocument = ({
   taxAmount,
   grandTotal,
   amountPaid = 0,
+  credited = 0,
   notes,
 }: InvoiceDocumentProps) => {
   const { settings } = useCompanySettings();
   const bank = settings.banking_details || {};
   const vatPercent = toPercent(taxRate);
   const accountType = String(bank.account_type || "").match(/^[A-Za-z ]+/)?.[0].trim() || bank.account_type || "";
-  const amountDue = Math.max(0, (Number(grandTotal) || 0) - (Number(amountPaid) || 0));
+  const amountDue = Math.max(0, (Number(grandTotal) || 0) - (Number(amountPaid) || 0) - (Number(credited) || 0));
 
   return (
     <div
@@ -173,6 +176,12 @@ const InvoiceDocument = ({
               <span>Amount Paid</span>
               <span>{(Number(amountPaid) || 0) > 0 ? `-${formatCurrency(amountPaid)}` : formatCurrency(0)}</span>
             </div>
+            {(Number(credited) || 0) > 0 && (
+              <div className="flex justify-between text-slate-600">
+                <span>Credit notes</span>
+                <span>-{formatCurrency(credited)}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between border-t-2 border-[#1B3A5C] pt-2 text-[15px] font-bold text-[#1B3A5C]">
               <span>Amount Due (ZAR)</span>
               <span className="text-lg">{formatCurrency(amountDue)}</span>

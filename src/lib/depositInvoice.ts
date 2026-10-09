@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { SETTLED_PAYMENT_STATUSES } from "@/lib/payments";
+import { creditedByInvoice, fetchCreditNotes } from "@/lib/creditNotes";
 
 export interface DepositInvoiceRow {
   id: string;
@@ -62,11 +63,13 @@ export async function attachPaymentTotals<
     for (const p of data as any[]) {
       paidByInvoice.set(p.invoice_id, (paidByInvoice.get(p.invoice_id) || 0) + (Number(p.amount) || 0));
     }
+    // Accounting step 2: issued credit notes also reduce what is still owed (not readable → none).
+    const credited = creditedByInvoice(await fetchCreditNotes(ids));
     for (const inv of invoices) {
       if (!inv.id) continue;
       const paid = paidByInvoice.get(inv.id) || 0;
       inv.amount_paid = paid;
-      inv.remaining = Math.max(0, (Number(inv.grand_total) || 0) - paid);
+      inv.remaining = Math.max(0, Math.round(((Number(inv.grand_total) || 0) - paid - (credited.get(inv.id) || 0)) * 100) / 100);
     }
   } catch {
     // payments not readable — chip falls back to status/grand_total
