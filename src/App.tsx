@@ -69,6 +69,7 @@ import SalesByClientReportPage from "./pages/admin/reports/SalesByClientReportPa
 import SalesByProductReportPage from "./pages/admin/reports/SalesByProductReportPage";
 import VatSummaryReportPage from "./pages/admin/reports/VatSummaryReportPage";
 import AdminTeamPage from "./pages/admin/AdminTeamPage";
+import AdminAreasPage from "./pages/admin/AdminAreasPage";
 
 
 import AdminSuppliersPage from "./pages/admin/AdminSuppliersPage";
@@ -218,6 +219,7 @@ const App = () => (
                     <Route path="import" element={<RequireRole allowedRoles={["admin"]}><AdminImportPage /></RequireRole>} />
                     <Route path="settings" element={<RequireRole allowedRoles={["admin"]}><AdminSettingsPage /></RequireRole>} />
                     <Route path="team" element={<RequireRole allowedRoles={["admin"]}><AdminTeamPage /></RequireRole>} />
+                    <Route path="areas" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminAreasPage /></RequireRole>} />
                     <Route path="billing" element={<Navigate to="/admin/invoices" replace />} />
                     <Route path="specials" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSpecialsPage /></RequireRole>} />
                     <Route path="suppliers" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSuppliersPage /></RequireRole>} />

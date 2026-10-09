@@ -480,6 +480,7 @@ const AdminSidebar = ({
       <div className={cn("border-t border-nav-border px-2 py-2 space-y-px", collapsed && "px-1")}>
         {[
           ...(isSalesRep ? [] : [{ path: "/admin/settings", label: "Settings", icon: Settings }]),
+          ...(isSalesRep || !isAdmin ? [] : [{ path: "/admin/areas", label: "Areas", icon: MapPin }]),
           { path: "/admin/help", label: "Help", icon: HelpCircle },
         ].map((item) => (
           <button
