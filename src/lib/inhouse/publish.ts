@@ -54,7 +54,7 @@ export async function publishInhouseBook(args: { supplierId: string; supplierNam
   const folder = `${supplierId}/in-house`;
 
   const pdfPath = `${folder}/${fileName}`;
-  const up = await supabase.storage.from("supplier-pdfs").upload(pdfPath, new Blob([book.bytes], { type: "application/pdf" }), { upsert: true, contentType: "application/pdf" });
+  const up = await supabase.storage.from("supplier-pdfs").upload(pdfPath, new Blob([new Uint8Array(book.bytes)], { type: "application/pdf" }), { upsert: true, contentType: "application/pdf" });
   if (up.error) throw new Error(`PDF upload failed: ${up.error.message}`);
   const pdfUrl = supabase.storage.from("supplier-pdfs").getPublicUrl(pdfPath).data.publicUrl;
 
