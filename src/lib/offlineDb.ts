@@ -125,6 +125,7 @@ export type OperationType =
   | 'update_lead' 
   | 'update_job_status'
   | 'create_invoice' 
+  | 'create_used_part'
   | 'update_invoice' 
   | 'update_equipment'
   | 'update_agent_location'
@@ -355,6 +356,7 @@ class OfflineDatabase extends Dexie {
       update_lead: 0,
       update_job_status: 0,
       create_invoice: 0,
+      create_used_part: 0,
       update_invoice: 0,
       update_equipment: 0,
       update_agent_location: 0,

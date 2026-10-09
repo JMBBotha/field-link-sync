@@ -149,7 +149,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
         console.log("[Parts] Added part online:", product.product_code);
       } else if (queueOperation) {
         const tempId = crypto.randomUUID();
-        await queueOperation("create_invoice" as any, "job_used_parts", tempId, partData);
+        await queueOperation("create_used_part", "job_used_parts", tempId, partData);
         console.log("[Parts] Queued part offline:", product.product_code);
       }
     },

@@ -25,6 +25,7 @@ export function useSyncQueue(isOnline: boolean) {
       update_lead: 0,
       update_job_status: 0,
       create_invoice: 0,
+      create_used_part: 0,
       update_invoice: 0,
       update_equipment: 0,
       update_agent_location: 0,
@@ -320,6 +321,16 @@ export function useSyncQueue(isOnline: boolean) {
             .from('invoices')
             .insert(operation.data);
           
+          if (error) throw error;
+          break;
+        }
+        
+        case 'create_used_part': {
+          // Offline-added job materials (no prices) -> job_used_parts, never invoices
+          const { error } = await supabase
+            .from('job_used_parts' as any)
+            .insert(operation.data as any);
+
           if (error) throw error;
           break;
         }
