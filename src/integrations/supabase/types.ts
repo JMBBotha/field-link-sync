@@ -881,6 +881,7 @@ export type Database = {
           default_rate: number | null
           gp_target_percent: number
           id: string
+          install_handoff_default: string
           is_master: boolean
           labour_cost_per_hour: number | null
           labour_tech_share_percent: number
@@ -914,6 +915,7 @@ export type Database = {
           default_rate?: number | null
           gp_target_percent?: number
           id?: string
+          install_handoff_default?: string
           is_master?: boolean
           labour_cost_per_hour?: number | null
           labour_tech_share_percent?: number
@@ -947,6 +949,7 @@ export type Database = {
           default_rate?: number | null
           gp_target_percent?: number
           id?: string
+          install_handoff_default?: string
           is_master?: boolean
           labour_cost_per_hour?: number | null
           labour_tech_share_percent?: number
@@ -1235,6 +1238,7 @@ export type Database = {
       company_settings: {
         Row: {
           banking_details: Json | null
+          company_id: string | null
           company_name: string
           created_at: string
           default_deposit_percentage: number | null
@@ -1252,6 +1256,7 @@ export type Database = {
         }
         Insert: {
           banking_details?: Json | null
+          company_id?: string | null
           company_name?: string
           created_at?: string
           default_deposit_percentage?: number | null
@@ -1269,6 +1274,7 @@ export type Database = {
         }
         Update: {
           banking_details?: Json | null
+          company_id?: string | null
           company_name?: string
           created_at?: string
           default_deposit_percentage?: number | null
@@ -1284,7 +1290,22 @@ export type Database = {
           updated_at?: string
           vat_number?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "company_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
       }
       customer_feedback: {
         Row: {
@@ -2390,6 +2411,54 @@ export type Database = {
           name?: string
           pipe_size?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      internal_skus: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string | null
+          family: string
+          id: string
+          is_active: boolean
+          name: string
+          size_code: string | null
+          sku_code: string
+          type_code: string | null
+          unit: string
+          updated_at: string
+          variant: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          family: string
+          id?: string
+          is_active?: boolean
+          name: string
+          size_code?: string | null
+          sku_code: string
+          type_code?: string | null
+          unit?: string
+          updated_at?: string
+          variant?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          family?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          size_code?: string | null
+          sku_code?: string
+          type_code?: string | null
+          unit?: string
+          updated_at?: string
+          variant?: string | null
         }
         Relationships: []
       }
@@ -3518,6 +3587,67 @@ export type Database = {
           },
         ]
       }
+      lead_routing_log: {
+        Row: {
+          area_id: string | null
+          created_at: string
+          decided_by: string | null
+          from_company: string | null
+          id: string
+          km: number | null
+          lead_id: string
+          mode: string
+          reason: string | null
+          to_company: string | null
+        }
+        Insert: {
+          area_id?: string | null
+          created_at?: string
+          decided_by?: string | null
+          from_company?: string | null
+          id?: string
+          km?: number | null
+          lead_id: string
+          mode: string
+          reason?: string | null
+          to_company?: string | null
+        }
+        Update: {
+          area_id?: string | null
+          created_at?: string
+          decided_by?: string | null
+          from_company?: string | null
+          id?: string
+          km?: number | null
+          lead_id?: string
+          mode?: string
+          reason?: string | null
+          to_company?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_routing_log_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "service_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_routing_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_routing_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_sla_settings: {
         Row: {
           close_time: string
@@ -4340,8 +4470,10 @@ export type Database = {
           distance_km: number | null
           expires_at: string
           id: string
+          job_id: string | null
           lead_id: string
           offer_type: string
+          respond_by: string | null
           responded_at: string | null
           sequence: number
           staff_id: string
@@ -4354,8 +4486,10 @@ export type Database = {
           distance_km?: number | null
           expires_at?: string
           id?: string
+          job_id?: string | null
           lead_id: string
           offer_type?: string
+          respond_by?: string | null
           responded_at?: string | null
           sequence?: number
           staff_id: string
@@ -4368,8 +4502,10 @@ export type Database = {
           distance_km?: number | null
           expires_at?: string
           id?: string
+          job_id?: string | null
           lead_id?: string
           offer_type?: string
+          respond_by?: string | null
           responded_at?: string | null
           sequence?: number
           staff_id?: string
@@ -4377,6 +4513,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "offers_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "offers_lead_id_fkey"
             columns: ["lead_id"]
@@ -6231,6 +6374,93 @@ export type Database = {
           },
         ]
       }
+      service_area_staff: {
+        Row: {
+          area_id: string
+          created_at: string
+          profile_id: string
+        }
+        Insert: {
+          area_id: string
+          created_at?: string
+          profile_id: string
+        }
+        Update: {
+          area_id?: string
+          created_at?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_area_staff_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "service_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_area_staff_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_areas: {
+        Row: {
+          active: boolean
+          center_lat: number
+          center_lng: number
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+          priority: number
+          radius_km: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          center_lat: number
+          center_lng: number
+          company_id?: string
+          created_at?: string
+          id?: string
+          name: string
+          priority?: number
+          radius_km?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          center_lat?: number
+          center_lng?: number
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          priority?: number
+          radius_km?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_areas_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_areas_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       spatial_ref_sys: {
         Row: {
           auth_name: string | null
@@ -6950,6 +7180,74 @@ export type Database = {
           },
         ]
       }
+      supplier_sku_map: {
+        Row: {
+          active_from: string
+          active_to: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          sku_id: string
+          source: string
+          supplier_code: string | null
+          supplier_id: string
+          supplier_product_id: string | null
+        }
+        Insert: {
+          active_from?: string
+          active_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          sku_id: string
+          source?: string
+          supplier_code?: string | null
+          supplier_id: string
+          supplier_product_id?: string | null
+        }
+        Update: {
+          active_from?: string
+          active_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          sku_id?: string
+          source?: string
+          supplier_code?: string | null
+          supplier_id?: string
+          supplier_product_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_sku_map_sku_id_fkey"
+            columns: ["sku_id"]
+            isOneToOne: false
+            referencedRelation: "internal_skus"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_sku_map_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_sku_map_supplier_product_id_fkey"
+            columns: ["supplier_product_id"]
+            isOneToOne: false
+            referencedRelation: "live_supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_sku_map_supplier_product_id_fkey"
+            columns: ["supplier_product_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_specials: {
         Row: {
           created_at: string
@@ -7161,6 +7459,7 @@ export type Database = {
           email: string
           id: string
           invited_by: string | null
+          password_set_at: string | null
           role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
@@ -7172,6 +7471,7 @@ export type Database = {
           email: string
           id?: string
           invited_by?: string | null
+          password_set_at?: string | null
           role: Database["public"]["Enums"]["app_role"]
         }
         Update: {
@@ -7183,6 +7483,7 @@ export type Database = {
           email?: string
           id?: string
           invited_by?: string | null
+          password_set_at?: string | null
           role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: [
@@ -8336,6 +8637,24 @@ export type Database = {
         Returns: number
       }
       _mins_time: { Args: { p: number }; Returns: string }
+      _p3_handoff_role: {
+        Args: { _quote: string; _uid: string }
+        Returns: string
+      }
+      _p3_is_tech: {
+        Args: { _company: string; _pid: string }
+        Returns: boolean
+      }
+      _p3_notify_unclaimed: { Args: { p_job: string }; Returns: undefined }
+      _p3_offer_round: {
+        Args: { p_job: string; p_round: number }
+        Returns: number
+      }
+      _p3_suburb: { Args: { _addr: string }; Returns: string }
+      _p6_km: {
+        Args: { lat1: number; lat2: number; lng1: number; lng2: number }
+        Returns: number
+      }
       _person_bookings: {
         Args: { p_date: string; p_profile_id: string }
         Returns: {
@@ -8393,6 +8712,16 @@ export type Database = {
           work_start: string
         }[]
       }
+      _rep_lead_fit: {
+        Args: { p_lead: string; p_profile: string }
+        Returns: {
+          best_start: string
+          fits: boolean
+          km: number
+          label: string
+          reason: string
+        }[]
+      }
       _slot_fits: {
         Args: {
           p_b: Json
@@ -8402,6 +8731,26 @@ export type Database = {
           p_ws: number
         }
         Returns: boolean
+      }
+      _slot_travel_eval: {
+        Args: {
+          b: Json
+          p_lat: number
+          p_lng: number
+          v_bl: string
+          v_blat: number
+          v_blng: number
+          v_m: number
+          v_req: number
+          we: number
+          ws: number
+        }
+        Returns: {
+          fits: boolean
+          km: number
+          label: string
+          reason: string
+        }[]
       }
       _snapshot_sales_commission: {
         Args: { p_quote_id: string }
@@ -8478,6 +8827,45 @@ export type Database = {
         Returns: unknown
       }
       _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      _staff_slot_fit: {
+        Args: {
+          p_after?: string
+          p_date: string
+          p_exclude_lead: string
+          p_lat: number
+          p_lng: number
+          p_minutes: number
+          p_profile: string
+          p_start: string
+        }
+        Returns: {
+          best_start: string
+          fits: boolean
+          km: number
+          label: string
+          reason: string
+        }[]
+      }
+      _tech_offer_fit: {
+        Args: { p_lead: string; p_profile: string }
+        Returns: {
+          fits: boolean
+          km: number
+          label: string
+          minutes: number
+          minutes_source: string
+          reason: string
+          slot_date: string
+          slot_start: string
+        }[]
+      }
+      _tech_offer_minutes: {
+        Args: { p_lead: string }
+        Returns: {
+          minutes: number
+          source: string
+        }[]
+      }
       accept_quote: {
         Args: { p_quote_id: string; p_version_id: string }
         Returns: string
@@ -8552,6 +8940,14 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      apply_team_invite: {
+        Args: { p_email: string; p_user: string }
+        Returns: string
+      }
+      area_slot_suggestions: {
+        Args: { p_date: string; p_lead: string; p_minutes?: number }
+        Returns: Json
+      }
       backfill_leads_to_customers: { Args: never; Returns: Json }
       booking_clashes: {
         Args: {
@@ -8584,6 +8980,7 @@ export type Database = {
         Returns: number
       }
       caller_company_id: { Args: never; Returns: string }
+      caller_sees_lead: { Args: { _lead: string }; Returns: boolean }
       can_access_receipt_folder: { Args: { _folder: string }; Returns: boolean }
       can_log_job_overrun: {
         Args: { _job_id: string; _uid: string }
@@ -8629,9 +9026,25 @@ export type Database = {
         }[]
       }
       check_lead_sla: { Args: never; Returns: number }
+      claim_install_offer: { Args: { p_offer_id: string }; Returns: Json }
       claim_offer: {
         Args: { p_offer_id: string; p_staff_id: string }
         Returns: Json
+      }
+      company_profile_safe: {
+        Args: never
+        Returns: {
+          company_id: string
+          company_name: string
+          default_deposit_percentage: number
+          default_payment_terms_days: number
+          logo_storage_path: string
+          logo_url: string
+          office_address: string
+          physical_address: string
+          postal_address: string
+          vat_number: string
+        }[]
       }
       convert_lead_to_customer: { Args: { p_lead_id: string }; Returns: string }
       convert_time_to_invoice_items: {
@@ -8656,6 +9069,7 @@ export type Database = {
         Returns: string
       }
       create_quote_version: { Args: { p_quote_id: string }; Returns: string }
+      decline_install_offer: { Args: { p_offer_id: string }; Returns: Json }
       decline_quote_by_token: { Args: { p_token: string }; Returns: boolean }
       default_booking_minutes: { Args: { p_kind: string }; Returns: number }
       delete_job_used_part: { Args: { p_id: string }; Returns: boolean }
@@ -8880,6 +9294,16 @@ export type Database = {
           sales_commission_percent: number
         }[]
       }
+      get_company_pricing_settings: {
+        Args: { p_company_id: string }
+        Returns: {
+          company_id: string
+          default_rate: number
+          materials_markup_percent: number
+          materials_waste_percent: number
+          units_markup_percent: number
+        }[]
+      }
       get_company_tech_pay_settings: {
         Args: { p_company_id: string }
         Returns: Json
@@ -9025,6 +9449,17 @@ export type Database = {
           unit_cost: number
         }[]
       }
+      get_lead_offer_flags: {
+        Args: never
+        Returns: {
+          customer_name: string
+          detail: string
+          issue: string
+          lead_id: string
+          scheduled_date: string
+          scheduled_time: string
+        }[]
+      }
       get_my_appointments: {
         Args: { p_days?: number }
         Returns: {
@@ -9069,6 +9504,32 @@ export type Database = {
         }[]
       }
       get_my_earnings: { Args: { p_quote_id?: string }; Returns: Json }
+      get_my_visits: {
+        Args: { p_days?: number }
+        Returns: {
+          address: string
+          customer_id: string
+          customer_name: string
+          has_install_job: boolean
+          is_mine: boolean
+          lat: number
+          lead_id: string
+          lng: number
+          notes: string
+          offer_km: number
+          offer_label: string
+          phone: string
+          primary_intent: string
+          quote_accepted: boolean
+          quote_id: string
+          quote_number: string
+          quote_status: string
+          quote_total: number
+          scheduled_date: string
+          scheduled_time: string
+          status: string
+        }[]
+      }
       get_or_create_customer_token: {
         Args: { p_customer_id: string }
         Returns: string
@@ -9126,6 +9587,17 @@ export type Database = {
       get_tech_earnings: { Args: { p_tech_id?: string }; Returns: Json }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       gettransactionid: { Args: never; Returns: unknown }
+      hand_to_technician: {
+        Args: {
+          p_date: string
+          p_minutes: number
+          p_mode: string
+          p_quote_id: string
+          p_start: string
+          p_tech_id?: string
+        }
+        Returns: Json
+      }
       has_home_base: { Args: { p_profile_id: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -9138,6 +9610,7 @@ export type Database = {
         Args: { p_product_id: string }
         Returns: undefined
       }
+      install_handoff_status: { Args: { p_quote_id: string }; Returns: Json }
       invoice_amount_paid: { Args: { p_invoice_id: string }; Returns: number }
       is_agent_available_now: { Args: { p_agent_id: string }; Returns: boolean }
       is_approved_network_member: { Args: { _uid: string }; Returns: boolean }
@@ -9203,6 +9676,8 @@ export type Database = {
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
       mark_overdue_maintenance: { Args: never; Returns: number }
+      me_needs_password: { Args: never; Returns: boolean }
+      my_install_offers: { Args: never; Returns: Json }
       normalize_phone: { Args: { phone: string }; Returns: string }
       open_double_bookings: {
         Args: { p_from: string; p_to: string }
@@ -9222,6 +9697,20 @@ export type Database = {
         Args: { _job_id: string; _lead_id: string }
         Returns: string
       }
+      p4_co_ok: { Args: { _co: string }; Returns: boolean }
+      p4_customer_ok: { Args: { _c: string }; Returns: boolean }
+      p4_invoice_ok: { Args: { _i: string }; Returns: boolean }
+      p4_is_ops: { Args: never; Returns: boolean }
+      p4_is_platform: { Args: never; Returns: boolean }
+      p4_job_ok: { Args: { _job: string }; Returns: boolean }
+      p4_lead_ok: { Args: { _lead: string }; Returns: boolean }
+      p4_quote_ok: { Args: { _q: string }; Returns: boolean }
+      p4_user_ok: { Args: { _u: string }; Returns: boolean }
+      p5_profile_visible: {
+        Args: { _co: string; _p: string }
+        Returns: boolean
+      }
+      p6_area_ok: { Args: { _admin: boolean; _area: string }; Returns: boolean }
       past_quote_analytics: {
         Args: { p_job_type?: string }
         Returns: {
@@ -9231,6 +9720,7 @@ export type Database = {
           usage_count: number
         }[]
       }
+      photo_folder_lead: { Args: { _name: string }; Returns: string }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
         | { Args: { use_typmod?: boolean }; Returns: string }
@@ -9271,6 +9761,18 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      process_install_offers: { Args: never; Returns: number }
+      publish_inhouse_book: {
+        Args: {
+          p_file_name: string
+          p_items: Json
+          p_pages: Json
+          p_pdf_url: string
+          p_storage_path: string
+          p_supplier_id: string
+        }
+        Returns: string
+      }
       quote_conversion_funnel: {
         Args: never
         Returns: {
@@ -9331,7 +9833,20 @@ export type Database = {
         Returns: boolean
       }
       rep_customer_ids: { Args: { _uid: string }; Returns: string[] }
+      rep_offerable_leads: {
+        Args: never
+        Returns: {
+          km: number
+          label: string
+          lead_id: string
+        }[]
+      }
+      rep_owns_job: { Args: { _job: string; _uid: string }; Returns: boolean }
       rep_owns_lead: { Args: { _lead: string; _uid: string }; Returns: boolean }
+      rep_owns_quote: {
+        Args: { _quote: string; _uid: string }
+        Returns: boolean
+      }
       replace_quote_from_builder: {
         Args: {
           p_areas: Json
@@ -9372,6 +9887,10 @@ export type Database = {
       rh_assert: { Args: { _block_sales: boolean }; Returns: undefined }
       rh_ops_ok: { Args: { _company: string }; Returns: boolean }
       rh_photo_ok: { Args: { _name: string; _owner: string }; Returns: boolean }
+      route_lead_to_company: {
+        Args: { p_apply?: boolean; p_lead: string }
+        Returns: Json
+      }
       schedule_in_user_company: {
         Args: { _job: string; _lead: string; _uid: string }
         Returns: boolean
@@ -9519,6 +10038,7 @@ export type Database = {
         }
         Returns: Json
       }
+      set_install_handoff_default: { Args: { p_mode: string }; Returns: Json }
       set_quote_labour_mode: {
         Args: {
           p_area_units?: Json
@@ -10172,6 +10692,7 @@ export type Database = {
         Args: { _lead: string; _uid: string }
         Returns: boolean
       }
+      tech_offers: { Args: { p_profile?: string }; Returns: Json }
       tech_owns_lead: {
         Args: { _lead: string; _uid: string }
         Returns: boolean
