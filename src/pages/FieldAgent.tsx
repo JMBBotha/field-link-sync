@@ -1544,7 +1544,7 @@ const FieldAgent = () => {
                         onStart={openLeadDetail}
                         onComplete={handleCardComplete}
                         onRelease={handleReleaseLead}
-                        invoice={installInvoicesByLead[lead.id] ?? null}
+                        invoice={canInvoice ? (installInvoicesByLead[lead.id] ?? null) : null}
                         estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
                         loadingAction={loadingAction}
                         scrollIntoView={highlightedLeadId === lead.id}
@@ -1569,7 +1569,7 @@ const FieldAgent = () => {
                         onCardClick={openLeadDetail}
                         onComplete={handleCardComplete}
                         loadingAction={loadingAction}
-                        invoice={installInvoicesByLead[lead.id] ?? null}
+                        invoice={canInvoice ? (installInvoicesByLead[lead.id] ?? null) : null}
                         estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
                       />
                     ))}
@@ -1750,7 +1750,7 @@ const FieldAgent = () => {
                                 onCardClick={openLeadDetail}
                                 onAccept={handleAcceptLead}
                                 loadingAction={loadingAction}
-                                invoice={installInvoicesByLead[lead.id] ?? null}
+                                invoice={canInvoice ? (installInvoicesByLead[lead.id] ?? null) : null}
                         estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
                               />
                             );
@@ -1795,7 +1795,7 @@ const FieldAgent = () => {
                                 onComplete={handleCardComplete}
                                 onRelease={handleReleaseLead}
                                 loadingAction={loadingAction}
-                                invoice={installInvoicesByLead[lead.id] ?? null}
+                                invoice={canInvoice ? (installInvoicesByLead[lead.id] ?? null) : null}
                         estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
                               />
                             );
@@ -1835,7 +1835,7 @@ const FieldAgent = () => {
                                 onCardClick={openLeadDetail}
                                 onComplete={handleCardComplete}
                                 loadingAction={loadingAction}
-                                invoice={installInvoicesByLead[lead.id] ?? null}
+                                invoice={canInvoice ? (installInvoicesByLead[lead.id] ?? null) : null}
                         estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
                               />
                             ))}
@@ -1960,7 +1960,7 @@ const FieldAgent = () => {
                     onStart={openLeadDetail}
                     onComplete={handleCardComplete}
                     onRelease={handleReleaseLead}
-                    invoice={installInvoicesByLead[lead.id] ?? null}
+                    invoice={canInvoice ? (installInvoicesByLead[lead.id] ?? null) : null}
                         estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
                     loadingAction={loadingAction}
                   />

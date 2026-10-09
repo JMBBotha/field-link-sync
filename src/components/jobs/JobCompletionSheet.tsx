@@ -106,21 +106,27 @@ const JobCompletionSheet = ({
     },
   });
 
-  // Catalogue names/codes only (prices are stripped here; the office prices extras on approval).
+  // Catalogue names/models only; the office prices extras on approval.
   const { data: catalogue = [] } = useQuery({
     queryKey: ["completion-catalogue"],
     enabled: open && asQuoted === false && isOnline,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data } = await (supabase.rpc as any)("get_product_sell_options");
-      return ((data || []) as CatalogueRow[]).map((r) => ({ id: r.id, product_code: r.product_code, short_name: r.short_name }));
+      // Price-free tech catalogue (id, name, model, category, unit, length) — the server never sends prices to techs.
+      const { data } = await (supabase.rpc as any)("get_tech_catalogue");
+      return ((data || []) as { id: string; name: string | null; model: string | null }[])
+        .map((r) => ({ id: r.id, product_code: r.model, short_name: r.name }));
     },
   });
   const term = search.trim().toLowerCase();
   const hits = term.length >= 2
     ? catalogue.filter((h) => (h.short_name || "").toLowerCase().includes(term) || (h.product_code || "").toLowerCase().includes(term)).slice(0, 8)
     : [];
-  const byCode = useMemo(() => new Map(catalogue.filter((c) => c.product_code).map((c) => [c.product_code as string, c])), [catalogue]);
+  const byCode = useMemo(() => {
+    const m = new Map<string, CatalogueRow>();
+    for (const c of catalogue) { if (c.product_code) m.set(c.product_code, c); if (c.short_name) m.set(`n:${c.short_name.toLowerCase()}`, c); }
+    return m;
+  }, [catalogue]);
 
   const addExtra = (e: CompletionExtra) => setExtras((xs) => {
     const i = xs.findIndex((x) => (e.product_id && x.product_id === e.product_id) || (!e.product_id && !x.product_id && x.name === e.name));
@@ -257,7 +263,7 @@ const JobCompletionSheet = ({
                       {packing.map((p) => (
                         <button key={`${p.item_code}|${p.item_name}`} type="button" data-no-min
                           className="rounded-full border border-border bg-muted px-3 py-1.5 text-sm hover:bg-muted/70"
-                          onClick={() => addExtra({ product_id: (p.item_code && byCode.get(p.item_code)?.id) || null, name: p.item_name as string, qty: 1 })}>
+                          onClick={() => addExtra({ product_id: (p.item_code && byCode.get(p.item_code)?.id) || byCode.get(`n:${(p.item_name || "").toLowerCase()}`)?.id || null, name: p.item_name as string, qty: 1 })}>
                           + {p.item_name}
                         </button>
                       ))}

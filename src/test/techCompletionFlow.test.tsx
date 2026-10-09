@@ -88,7 +88,7 @@ describe("Techs never create or see invoices", () => {
   it("FieldAgent completed cards: Create Invoice + deposit chip office-only; techs get 'Sent to office'", () => {
     const fa = src("src/pages/FieldAgent.tsx");
     expect(fa).toContain("const canInvoice = roleIsAdmin || roleIsDispatcher;");
-    expect((fa.match(/\{canInvoice \? \(/g) || []).length).toBe(2);
+    expect((fa.match(/\{canInvoice \? \(\n/g) || []).length).toBe(2);
     expect((fa.match(/<TechOfficeChip /g) || []).length).toBe(2);
     expect((fa.match(/canInvoice && installInvoicesByLead/g) || []).length).toBe(2);
   });

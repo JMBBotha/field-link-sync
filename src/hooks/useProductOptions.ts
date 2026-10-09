@@ -61,7 +61,7 @@ export function useProductOptions() {
         .eq("is_active", true)
         .order("sort_order", { nullsFirst: false }),
       techOnly
-        ? (supabase.rpc as any)("get_product_sell_options")
+        ? (supabase.rpc as any)("get_tech_catalogue") // techs: no prices from the server
         : liveProducts()
         .select("id, product_code, short_name, description, cost_price, default_markup_percent, markup_percent, category, is_pinned")
         .eq("is_active", true)
@@ -92,13 +92,13 @@ export function useProductOptions() {
           })),
           ...(techOnly ? (prodData as any[]).map((row) => ({
             id: row.id,
-            name: row.short_name || row.description,
-            description: row.description,
-            rate: Number(row.sell_excl_vat),
+            name: row.name,
+            description: row.name,
+            rate: 0,
             category: row.category,
-            isFavorite: !!row.is_pinned,
+            isFavorite: false,
             source: "product" as const,
-            productCode: row.product_code || "",
+            productCode: row.model || "",
           })) : (prodData as any[]).map((p) => ({
             id: p.id,
             name: p.short_name || p.description,

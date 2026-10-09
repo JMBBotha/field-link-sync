@@ -19,15 +19,15 @@ export default function ActualOnSiteStep({ value, onChange }: { value: ActualOnS
   const [q, setQ] = useState("");
   const [other, setOther] = useState("");
   const term = q.trim();
-  // Names/codes only, from the sell-only catalogue RPC (techs cannot read the products table).
+  // Names/models only, from the price-free tech catalogue RPC.
   const { data: catalogue = [] } = useQuery({
     queryKey: ["actual-onsite-catalogue"],
     enabled: term.length >= 2,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data } = await (supabase.rpc as any)("get_product_sell_options");
-      return ((data || []) as { id: string; product_code: string | null; short_name: string | null }[])
-        .map((r) => ({ id: r.id, product_code: r.product_code, short_name: r.short_name }));
+      const { data } = await (supabase.rpc as any)("get_tech_catalogue"); // price-free
+      return ((data || []) as { id: string; name: string | null; model: string | null }[])
+        .map((r) => ({ id: r.id, product_code: r.model, short_name: r.name }));
     },
   });
   const needle = term.toLowerCase();

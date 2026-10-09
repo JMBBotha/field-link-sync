@@ -17,7 +17,8 @@ describe("tech cost lockdown — tech screens use RPCs", () => {
     expect(sheet).not.toMatch(/sell_excl_vat/);
     const onsite = readFileSync("src/components/jobs/ActualOnSiteStep.tsx", "utf8");
     expect(onsite).not.toMatch(/supplier_products/);
-    expect(onsite).toMatch(/get_product_sell_options/);
+    expect(onsite).toMatch(/get_tech_catalogue/);
+    expect(onsite).not.toMatch(/get_product_sell_options/);
   });
   it("lead sheet falls back to deposit chips (no invoice amounts) for techs", () => {
     const lead = readFileSync("src/components/LeadDetailSheet.tsx", "utf8");

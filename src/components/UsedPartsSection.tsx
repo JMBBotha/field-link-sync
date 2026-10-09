@@ -80,11 +80,18 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
 
   // Sell-only catalogue (no cost) — the same RPC techs use for sell prices.
   const { data: sellOptions } = useQuery({
-    queryKey: ["product-sell-options"],
+    queryKey: ["product-sell-options", showCost],
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("get_product_sell_options");
+      if (showCost) {
+        const { data, error } = await (supabase.rpc as any)("get_product_sell_options");
+        if (error) throw error;
+        return (data || []) as SellOption[];
+      }
+      // Techs: price-free catalogue (the server fills part cost on insert).
+      const { data, error } = await (supabase.rpc as any)("get_tech_catalogue");
       if (error) throw error;
-      return (data || []) as SellOption[];
+      return ((data || []) as { id: string; name: string | null; model: string | null; category: string | null }[])
+        .map((r) => ({ id: r.id, product_code: r.model, short_name: r.name, description: r.name, category: r.category, is_pinned: false, sell_excl_vat: null })) as unknown as SellOption[];
     },
     enabled: isOnline && (searchOpen || searchQuery.length >= 2),
     staleTime: 5 * 60_000,
