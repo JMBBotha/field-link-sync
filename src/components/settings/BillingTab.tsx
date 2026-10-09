@@ -8,6 +8,7 @@ import { Loader2, Save } from "lucide-react";
 import MarginSettingsCard from "@/components/settings/MarginSettingsCard";
 import LabourNormsCard from "@/components/settings/LabourNormsCard";
 import NetworkMembersCard from "@/components/settings/NetworkMembersCard";
+import NetworkPerformanceCard from "@/components/settings/NetworkPerformanceCard";
 
 const BillingTab = () => {
   const { settings, isLoading, saveSettings, isSaving } = useCompanySettings();
@@ -47,6 +48,7 @@ const BillingTab = () => {
 
       <MarginSettingsCard />
       <LabourNormsCard />
+      <NetworkPerformanceCard />
       <NetworkMembersCard />
 
       <Card>

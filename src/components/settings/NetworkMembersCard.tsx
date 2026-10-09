@@ -24,7 +24,8 @@ export default function NetworkMembersCard() {
     enabled: canWrite,
     queryFn: async () => {
       const [c, m] = await Promise.all([
-        (supabase.from("companies") as any).select("id, name, is_master").order("name"),
+        // names only via the server (other companies' rows aren't readable directly any more)
+        (supabase.rpc as any)("network_company_names").then((r: any) => (r.error ? (supabase.from("companies") as any).select("id, name, is_master").order("name") : r)),
         (supabase.from("company_network_members") as any).select("id, master_company_id, member_company_id, status, decided_at"),
       ]);
       if (c.error) throw c.error;
