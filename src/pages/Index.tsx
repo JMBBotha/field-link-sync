@@ -29,7 +29,8 @@ const Index = () => {
             "Checking your access is taking too long.",
           );
           if (error) throw error;
-          const hasAdminRole = roles?.some(r => r.role === "admin");
+          // Same rule as postLoginRedirect: office roles (incl. sales reps) start in the admin layout, techs on /field.
+          const hasAdminRole = roles?.some(r => ["admin", "dispatcher", "viewer"].includes(r.role));
           navigate(hasAdminRole ? "/admin" : "/field");
         }
       } catch (err) {

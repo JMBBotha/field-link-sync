@@ -1,3 +1,8 @@
+/**
+ * ARCHIVED (2026-10-09, one quote system for every role): not routed; /admin/quote-builder renders AdminQuoteBuilderPageUnified.
+ * Kept for reference only; do not route to it. The current builder is AdminQuoteBuilderPageUnified
+ * (/admin/quote-builder and /field/quote-builder) with role-based visibility.
+ */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { r2, VAT_RATE, inclVatFromExcl } from "@/lib/pricing";
 import { useNavigate, useSearchParams } from "react-router-dom";

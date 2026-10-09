@@ -1,3 +1,8 @@
+/**
+ * ARCHIVED (2026-10-09, one quote system for every role): not mounted anywhere.
+ * Kept for reference only; do not route to it. The current builder is AdminQuoteBuilderPageUnified
+ * (/admin/quote-builder and /field/quote-builder) with role-based visibility.
+ */
 import { useState } from "react";
 import { PenTool, X } from "lucide-react";
 import { Button } from "@/components/ui/button";

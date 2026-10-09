@@ -228,7 +228,7 @@ const LeadHeatmap = () => {
 
   return (
     <div className="relative h-full w-full">
-      <div ref={mapContainerRef} className="absolute inset-0" />
+      <div ref={mapContainerRef} className="absolute inset-0" style={{ position: "absolute", inset: 0 }} />
 
       {/* Controls overlay */}
       <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">

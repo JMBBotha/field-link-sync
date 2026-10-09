@@ -11,6 +11,7 @@ import MandyDock from "@/components/mandy/MandyDock";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import RequireRole from "@/components/RequireRole";
+import SalesRepFieldRedirect from "@/components/SalesRepFieldRedirect";
 import RequireOwner from "@/components/RequireOwner";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import VersionBanner from "@/components/VersionBanner";
@@ -38,7 +39,6 @@ import AdminBankPage from "./pages/admin/AdminBankPage";
 import AdminLayout from "./components/admin/AdminLayout";
 import MyBasePage from "./pages/MyBasePage";
 import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminEstimateDetailPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage, AdminHelpPage } from "./pages/admin";
-import AdminQuoteBuilderPage from "./pages/admin/AdminQuoteBuilderPage";
 import AdminQuoteBuilderPageUnified from "./pages/admin/AdminQuoteBuilderPageUnified";
 import AdminProposalBuilderPage from "./pages/admin/AdminProposalBuilderPage";
 import AdminCatalogPage from "./pages/admin/AdminCatalogPage";
@@ -98,7 +98,6 @@ import FBProjectsList from "./components/freshbooks/FBProjectsList";
 import CompanyManagement from "./components/freshbooks/CompanyManagement";
 import FBCreateInvoicePage from "./pages/FBCreateInvoicePage";
 import FBCreateEstimatePage from "./pages/FBCreateEstimatePage";
-import FBQuoteBuilderPage from "./pages/FBQuoteBuilderPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -168,7 +167,8 @@ const App = () => (
                 </Route>
 
                 {/* Full-page Quote Builder for client portal (outside FBLayout for full-bleed) */}
-                <Route path="/client/:companyId/quote-builder" element={<RequireRole allowedRoles={["admin"]} denySalesRep><CompanyProvider><FBQuoteBuilderPage /></CompanyProvider></RequireRole>} />
+                {/* Legacy client-portal builder archived (src/pages/FBQuoteBuilderPage.tsx kept): every role uses the one current builder. */}
+                <Route path="/client/:companyId/quote-builder" element={<Navigate to="/admin/quote-builder" replace />} />
 
                 {/* Protected routes */}
                 <Route element={<ProtectedRoute />}>
@@ -245,15 +245,15 @@ const App = () => (
                   <Route path="/admin/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminQuoteBuilderPageUnified mode="admin" /></RequireRole>} />
 
                   {/* Agent Quote Builder — same component, agent mode */}
-                  <Route path="/field/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]} redirectTo="/field" redirectOnDeny><AdminQuoteBuilderPageUnified mode="agent" /></RequireRole>} />
+                  <Route path="/field/quote-builder" element={<SalesRepFieldRedirect><RequireRole allowedRoles={["admin", "dispatcher"]} redirectTo="/field" redirectOnDeny><AdminQuoteBuilderPageUnified mode="agent" /></RequireRole></SalesRepFieldRedirect>} />
 
 
                   {/* Field agent My Jobs — accessible without AdminLayout */}
-                  <Route path="/field/my-jobs" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><AdminMyJobsPage /></RequireRole>} />
+                  <Route path="/field/my-jobs" element={<SalesRepFieldRedirect><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><AdminMyJobsPage /></RequireRole></SalesRepFieldRedirect>} />
 
                   {/* Field agent Schedule (agenda view) */}
-                  <Route path="/field/my-base" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><MyBasePage field /></RequireRole>} />
-                  <Route path="/field/schedule" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldSchedulePage /></RequireRole>} />
+                  <Route path="/field/my-base" element={<SalesRepFieldRedirect><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><MyBasePage field /></RequireRole></SalesRepFieldRedirect>} />
+                  <Route path="/field/schedule" element={<SalesRepFieldRedirect><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldSchedulePage /></RequireRole></SalesRepFieldRedirect>} />
 
                   {/* Tech job sheet: no money, packing list from get_job_packing_list */}
                   <Route path="/field/jobs/:id" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldJobSheetPage /></RequireRole>} />
@@ -261,8 +261,8 @@ const App = () => (
                   {/* Tech "My earnings" (Job 6) */}
                   <Route path="/field/earnings" element={<RequireRole allowedRoles={["field_agent", "admin"]}><FieldEarningsPage /></RequireRole>} />
 
-                  {/* Field Agent */}
-                  <Route path="/field" element={<FieldAgent />} />
+                  {/* Field Agent — technicians (and admins/office). Sales reps go to My visits (SalesRepFieldRedirect). */}
+                  <Route path="/field" element={<SalesRepFieldRedirect><FieldAgent /></SalesRepFieldRedirect>} />
 
                   {/* Redirects from old standalone routes */}
                   <Route path="/invoices" element={<Navigate to="/admin/invoices" replace />} />

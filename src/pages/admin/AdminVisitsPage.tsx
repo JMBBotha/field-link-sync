@@ -5,6 +5,9 @@ import { ArrowLeft, CalendarDays, FileText, MapPin, Navigation, Phone, PlusCircl
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
 import PullToRefresh from "@/components/PullToRefresh";
 import AcceptLeadDialog from "@/components/leads/AcceptLeadDialog";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
@@ -111,6 +114,10 @@ export const AdminVisitDetailPage = () => {
   const { toast } = useToast();
   const { data, isLoading } = useMyVisits(60);
   const [accepting, setAccepting] = useState(false);
+  // Release (hand the visit back to the pool) — was only on /field; sales no longer use /field.
+  const [releaseOpen, setReleaseOpen] = useState(false);
+  const [releaseReason, setReleaseReason] = useState("");
+  const [releasing, setReleasing] = useState(false);
   const r = (data ?? []).find((x) => x.lead_id === leadId);
   if (isLoading) return <p className="p-4 text-sm text-muted-foreground">Loading…</p>;
   if (!r) return (
@@ -129,6 +136,27 @@ export const AdminVisitDetailPage = () => {
     const p = new URLSearchParams({ leadId: r.lead_id, customerId: r.customer_id, quoteName: `Quote - ${r.customer_name ?? ""}` });
     navigate(`/admin/quote-builder?${p.toString()}`);
   };
+  const confirmRelease = async () => {
+    if (!user?.id) return;
+    setReleasing(true);
+    // Same write /field's Release makes (release_lead RPC no longer exists); RLS limits it to my own lead.
+    const { error } = await supabase
+      .from("leads")
+      .update({ status: "pending", assigned_agent_id: null, accepted_at: null } as never)
+      .eq("id", r.lead_id)
+      .eq("assigned_agent_id", user.id);
+    setReleasing(false);
+    if (error) {
+      toast({ title: "Could not release this visit", description: error.message, variant: "destructive" });
+      return;
+    }
+    console.info("[visits] released", r.lead_id, releaseReason || "No reason provided");
+    setReleaseOpen(false);
+    qc.invalidateQueries({ queryKey: ["my-visits"] });
+    toast({ title: "Visit released", description: "It's back in the available list for others." });
+    navigate("/admin/visits");
+  };
+  const canRelease = tab === "upcoming" && !r.quote_accepted && !r.has_install_job;
   return (
     <div className="p-3 sm:p-6 space-y-3 max-w-3xl" data-testid="visit-detail">
       <Button variant="ghost" className="min-h-[44px] -ml-2" onClick={() => navigate("/admin/visits")}>
@@ -178,6 +206,26 @@ export const AdminVisitDetailPage = () => {
           <AcceptedWorkSection quoteId={r.quote_id} />
         </div>
       )}
+
+      {canRelease && (
+        <Button variant="outline" className="w-full min-h-[44px]" onClick={() => { setReleaseReason(""); setReleaseOpen(true); }} data-testid="visit-release">
+          Release this visit
+        </Button>
+      )}
+
+      <Dialog open={releaseOpen} onOpenChange={setReleaseOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Release this visit?</DialogTitle>
+            <DialogDescription>It goes back to the available list so someone else can take it.</DialogDescription>
+          </DialogHeader>
+          <Textarea placeholder="Reason (optional)" value={releaseReason} onChange={(e) => setReleaseReason(e.target.value)} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReleaseOpen(false)}>Cancel</Button>
+            <Button onClick={confirmRelease} disabled={releasing} data-testid="visit-release-confirm">{releasing ? "Releasing…" : "Release"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AcceptLeadDialog
         lead={{ id: r.lead_id, customer_id: r.customer_id, customer_name: r.customer_name, customer_address: r.address,

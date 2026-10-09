@@ -22,6 +22,14 @@ import { primeMapboxToken } from "@/lib/mapboxToken";
   }
 })();
 
+// No service worker is used. Unregister any stray one (old installs/extensions) so a cached shell can
+// never pin an old bundle; VersionBanner handles "new version available" for open tabs.
+try {
+  navigator.serviceWorker?.getRegistrations?.().then((regs) => regs.forEach((r) => void r.unregister())).catch(() => {});
+} catch {
+  /* ignore */
+}
+
 // Fetch shared Mapbox public token early so map components never prompt the user.
 primeMapboxToken();
 

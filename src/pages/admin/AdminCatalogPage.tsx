@@ -11,7 +11,7 @@ import ProductCatalogBrowser from "@/components/catalog/ProductCatalogBrowser";
 import SupplierComparison from "@/components/catalog/SupplierComparison";
 import ConsumablesCatalogTable from "@/components/catalog/ConsumablesCatalogTable";
 import BundlesList from "@/components/catalog/BundlesList";
-import QuoteBuilderTab from "@/components/catalog/QuoteBuilderTab";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -31,6 +31,9 @@ type ProductCategoryFilter = typeof PRODUCT_CATEGORIES[number]["value"];
 const AdminCatalogPage = () => {
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
   const [tab, setTab] = useState("browse");
+  const navigate = useNavigate();
+  // One quote system for every role: the "Quote Builder" tab opens the same builder as Quotes → New (no separate catalog builder).
+  const onTab = (v: string) => { if (v === "quote-builder") navigate("/admin/quote-builder"); else setTab(v); };
   const [importKey, setImportKey] = useState(0);
   const [categoryFilter, setCategoryFilter] = useState<ProductCategoryFilter>("all");
   const [scanning, setScanning] = useState(false);
@@ -239,7 +242,7 @@ const AdminCatalogPage = () => {
 
       <BrandDiscountsSection />
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={tab} onValueChange={onTab}>
         <TabsList>
           <TabsTrigger value="browse" className="gap-1.5">
             <Search className="h-3.5 w-3.5" /> Browse
@@ -297,9 +300,6 @@ const AdminCatalogPage = () => {
           <BundlesList />
         </TabsContent>
 
-        <TabsContent value="quote-builder" className="mt-4">
-          <QuoteBuilderTab />
-        </TabsContent>
       </Tabs>
 
       <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>

@@ -156,7 +156,8 @@ const AdminSidebar = ({
     { path: "/admin/audit", label: "Audit Log", icon: History },
     { path: "/admin/import", label: "Import", icon: Upload },
     { path: "/admin/companies", label: "Companies", icon: Building2 },
-    { path: "/field", label: "Field Agent View", icon: Users },
+    // Sales reps don't use /field (they'd be redirected to My visits anyway).
+    ...(isSalesRep ? [] : [{ path: "/field", label: "Field Agent View", icon: Users } as NavItem]),
   ];
 
   const hasRole = (allowed?: AppRole[]) => {

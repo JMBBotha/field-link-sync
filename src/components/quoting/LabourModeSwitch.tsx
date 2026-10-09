@@ -47,11 +47,31 @@ export function useLabourModeSwitch(perUnitHours: number, unitsFor?: (areaId: st
   return { mode, busy, switchTo };
 }
 
+export const LABOUR_SWITCH_OFF_TEXT = "Per area";
+export const LABOUR_SWITCH_ON_TEXT = "One total for whole job";
+
+/**
+ * High-visibility toggle (Johan 2026-10-09): ON = strong orange like the labour rows,
+ * OFF = darker slate track + border, white thumb with shadow in both themes, labels on both sides.
+ * Own solid white pill with fixed hex colours (data-paper/data-solid, bg-[#ffffff], text-[#…]) so the app's dark-mode
+ * remaps (.bg-white glass, .estimate-editing text ladder) can't turn it grey; reads the same on white paper and dark panels.
+ */
 export default function LabourModeSwitch({ checked, disabled, onChange, className = "" }: { checked: boolean; disabled?: boolean; onChange: (job: boolean) => void; className?: string }) {
+  const side = (active: boolean) =>
+    active ? "font-semibold text-[#c2410c]" : "font-medium text-[#334155]";
   return (
-    <label data-testid="labour-mode-switch" className={`flex items-center gap-2 text-sm print:hidden ${className}`} data-pdf-hide data-html2canvas-ignore>
-      <Switch aria-label={LABOUR_SWITCH_LABEL} checked={checked} disabled={disabled} onCheckedChange={(v) => onChange(!!v)} />
-      <span>{LABOUR_SWITCH_LABEL}</span>
-    </label>
+    <div data-testid="labour-mode-switch" data-paper data-solid className={`inline-flex max-w-full flex-wrap items-center gap-x-1.5 gap-y-1 rounded-full bg-[#ffffff] px-2.5 py-1 text-xs ring-1 ring-[#94a3b8] sm:gap-x-2 sm:px-3 sm:text-sm print:hidden ${className}`} data-pdf-hide data-html2canvas-ignore>
+      <span className="hidden font-medium text-[#1e293b] sm:inline">Labour:</span>
+      <button type="button" data-no-min disabled={disabled} onClick={() => onChange(false)} className={`whitespace-nowrap rounded px-0.5 ${side(!checked)}`}>{LABOUR_SWITCH_OFF_TEXT}</button>
+      <Switch
+        data-no-min
+        aria-label={LABOUR_SWITCH_LABEL}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={(v) => onChange(!!v)}
+        className="h-6 w-11 border-2 shadow-inner data-[state=unchecked]:border-slate-500 data-[state=unchecked]:bg-slate-400 data-[state=checked]:border-orange-600 data-[state=checked]:bg-orange-500 [&>span]:bg-white [&>span]:shadow-[0_1px_3px_rgba(0,0,0,0.45)] [&>span]:ring-1 [&>span]:ring-black/10"
+      />
+      <button type="button" data-no-min disabled={disabled} onClick={() => onChange(true)} className={`whitespace-nowrap rounded px-0.5 ${side(checked)}`}>{LABOUR_SWITCH_ON_TEXT}</button>
+    </div>
   );
 }

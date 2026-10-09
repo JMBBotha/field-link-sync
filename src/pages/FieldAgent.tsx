@@ -126,6 +126,9 @@ const FieldAgent = () => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [, setMapboxToken] = useState<string>("");
   const [showTokenInput, setShowTokenInput] = useState(true);
+  // Clear map states instead of a blank middle (Johan 18:58)
+  const [locationError, setLocationError] = useState<null | "denied" | "unavailable">(null);
+  const [mapError, setMapError] = useState<string | null>(null);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<"available" | "active" | "completed">("available");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -267,6 +270,13 @@ const FieldAgent = () => {
     }
   }, [locationEnabled, mapLoaded, showTokenInput, showMapOnMobile]);
 
+  // Never spin forever: if the map hasn't loaded after 20s, say so.
+  useEffect(() => {
+    if (!locationEnabled || mapLoaded || mapError || showTokenInput || !showMapOnMobile) return;
+    const t = window.setTimeout(() => setMapError("The map took too long to load (check your connection)."), 20000);
+    return () => window.clearTimeout(t);
+  }, [locationEnabled, mapLoaded, mapError, showTokenInput, showMapOnMobile]);
+
   // Keep the map canvas sized correctly when returning to the Map tab
   useEffect(() => {
     if (showMapOnMobile && mapLoaded && mapInstanceRef.current) {
@@ -391,10 +401,12 @@ const FieldAgent = () => {
               { onConflict: "agent_id" }
             );
 
+          setLocationError(null);
           setLocationEnabled(true);
         },
         (error) => {
           console.error("Location error:", error);
+          setLocationError(error?.code === 1 ? "denied" : "unavailable");
           toast({
             title: "Location Error",
             description: "Unable to access your location",
@@ -674,6 +686,7 @@ const FieldAgent = () => {
     const token = (getMapboxTokenSync() || "").trim();
     if (!token || !token.startsWith("pk.")) {
       console.error("[Mapbox] Missing/invalid public token");
+      setMapError("The map key could not be loaded.");
       return;
     }
 
@@ -710,8 +723,12 @@ const FieldAgent = () => {
       // Apply offsets immediately (controls are typically mounted right after addControl)
       applyMapChromeBottomOffset();
 
+      setMapError(null);
       mapInstanceRef.current.on("load", () => {
         setMapLoaded(true);
+        setMapError(null);
+        // Mapbox CSS can land after layout; make sure the canvas fills the box.
+        try { mapInstanceRef.current?.resize(); } catch { /* ignore */ }
 
         // Re-apply offsets after map style finishes loading
         applyMapChromeBottomOffset();
@@ -728,10 +745,12 @@ const FieldAgent = () => {
           });
           setShowTokenInput(true);
           setMapLoaded(false);
+          setMapError("The map key was rejected.");
         }
       });
     } catch (error) {
       console.error("[Mapbox] initializeMap threw:", error);
+      setMapError("This browser could not start the map.");
       toast({
         title: "Map Error",
         description: "Failed to initialize map. Please check your token.",
@@ -1337,18 +1356,42 @@ const FieldAgent = () => {
         <div className={`flex-1 relative ${showMapOnMobile ? "" : "hidden"}`}>
           {/* Map Container */}
           {!locationEnabled ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
-              <div className="text-center space-y-2 bg-card p-6 rounded-lg border shadow-lg">
-                <Navigation className="h-8 w-8 text-primary mx-auto animate-pulse" />
-                <p className="text-sm font-medium">Waiting for location access...</p>
-                <p className="text-xs text-muted-foreground">Please allow location permissions</p>
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10" data-testid="map-location-msg">
+              <div className="text-center space-y-2 bg-card p-6 rounded-lg border shadow-lg max-w-xs">
+                <Navigation className={`h-8 w-8 text-primary mx-auto ${locationError ? "" : "animate-pulse"}`} />
+                <p className="text-sm font-semibold">Allow location to see the map</p>
+                <p className="text-xs text-muted-foreground">
+                  {locationError === "denied"
+                    ? "Location is blocked for this site. Turn it on in your browser's site settings, then tap Try again."
+                    : locationError === "unavailable"
+                      ? "We couldn't get your location (no GPS on this device?). Tap Try again."
+                      : "Waiting for your location… please allow location access."}
+                </p>
+                {locationError && (
+                  <Button size="sm" variant="outline" onClick={() => { setLocationError(null); stopLocationTracking(); startLocationTracking(); }}>
+                    Try again
+                  </Button>
+                )}
               </div>
             </div>
           ) : (
             <>
-              <div ref={mapRef} className="absolute inset-0" />
+              {/* Inline position/size: mapbox-gl.css sets .mapboxgl-map{position:relative},
+                  which beat the Tailwind "absolute inset-0" and collapsed the map to 0px (blank middle). */}
+              <div ref={mapRef} className="absolute inset-0" style={{ position: "absolute", inset: 0 }} data-testid="field-map" />
 
-              {!mapLoaded && (
+              {mapError ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10" data-testid="map-unavailable-msg">
+                  <div className="text-center space-y-2 bg-card p-6 rounded-lg border shadow-lg max-w-xs">
+                    <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
+                    <p className="text-sm font-semibold">Map unavailable</p>
+                    <p className="text-xs text-muted-foreground">{mapError} Your leads still work in the side panels.</p>
+                    <Button size="sm" variant="outline" onClick={() => { setMapError(null); setMapLoaded(false); window.setTimeout(() => initializeMap(), 50); }}>
+                      Try again
+                    </Button>
+                  </div>
+                </div>
+              ) : !mapLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
                   <div className="text-center space-y-2 bg-card p-6 rounded-lg border shadow-lg">
                     <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
