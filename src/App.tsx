@@ -30,6 +30,7 @@ import SetPassword from "./pages/SetPassword";
 import IdleLogoutGate from "@/components/IdleLogoutGate";
 import ClientProposalView from "./components/client/ClientProposalView";
 import PublicStatement from "./pages/PublicStatement";
+import AdminExpensesPage from "./pages/admin/AdminExpensesPage";
 
 
 // Admin layout + pages
@@ -194,6 +195,7 @@ const App = () => (
                     <Route path="templates" element={<AdminProposalsPage />} />
                     <Route path="invoices" element={<AdminInvoicesPage />} />
                     <Route path="invoices/:id" element={<AdminInvoicesPage />} />
+                    <Route path="expenses" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminExpensesPage /></RequireRole>} />
                     <Route path="money" element={<RequireRole allowedRoles={["admin"]}><RequireOwner><AdminMoneyPage /></RequireOwner></RequireRole>} />
                     <Route path="my-commission" element={<AdminMyCommissionPage />} />
                     <Route path="help" element={<AdminHelpPage />} />

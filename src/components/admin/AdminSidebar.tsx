@@ -99,6 +99,8 @@ const AdminSidebar = ({
           icon: Receipt,
           roles: ["admin", "dispatcher", "viewer"],
         },
+        // Accounting (steps 4-5): office only, hidden for salespeople.
+        ...(isSalesRep ? [] : [{ path: "/admin/expenses", label: "Expenses", icon: Wallet, roles: ["admin", "dispatcher"] } as NavItem]),
         {
           path: "/admin/jobs",
           label: "Jobs & Dispatch",
