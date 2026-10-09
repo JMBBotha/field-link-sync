@@ -49,6 +49,7 @@ import AdminJobsHubPage, { JobsDispatchRedirect, DispatchCalendarRedirect } from
 import AdminMyJobsPage from "./pages/admin/AdminMyJobsPage";
 import AdminMyAppointmentsPage from "./pages/admin/AdminMyAppointmentsPage";
 import AdminPriceListsPage from "./pages/admin/AdminPriceListsPage";
+import AdminOssExtrasPage from "./pages/admin/AdminOssExtrasPage";
 import FieldSchedulePage from "./pages/FieldSchedulePage";
 import FieldJobSheetPage from "./pages/FieldJobSheetPage";
 
@@ -195,6 +196,7 @@ const App = () => (
                     <Route path="agreements" element={<ServiceAgreements />} />
                     <Route path="catalog" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminCatalogPage /></RequireRole>} />
                     <Route path="price-lists" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminPriceListsPage /></RequireRole>} />
+                    <Route path="oss-extras" element={<RequireRole allowedRoles={["admin"]}><AdminOssExtrasPage /></RequireRole>} />
                     <Route path="maintenance" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminMaintenancePage /></RequireRole>} />
                     <Route path="customers" element={<AdminCustomersPage />} />
                     <Route path="customers/:id" element={<AdminCustomerDetailPage />} />

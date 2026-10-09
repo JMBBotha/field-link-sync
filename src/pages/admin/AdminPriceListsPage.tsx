@@ -7,6 +7,7 @@ import { resolveProductMarkupPercent } from "@/lib/pricing";
 import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import { usePdfBasket } from "@/lib/pdfBasketStore";
 import type { PdfSelectedProduct, PdfSelectionHandlers } from "@/types/pdfSelection";
+import OssExtrasLink from "@/components/catalog/OssExtrasLink";
 
 /**
  * Read-only Visual PDF price lists (central catalogue) — STEP 3, 2026-09-30.
@@ -70,6 +71,7 @@ const AdminPriceListsPage = () => {
 
   return (
     <div className="h-[calc(100vh-4rem)] min-h-[480px] flex flex-col">
+      <OssExtrasLink />
       <VisualCatalogPanel
         readOnly
         showCost
