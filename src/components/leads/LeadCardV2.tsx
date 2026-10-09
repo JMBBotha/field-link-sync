@@ -63,6 +63,8 @@ type Props = {
   lead: LeadV2; onOpen?: () => void; onAssign?: () => void; assigneeName?: string | null;
   /** Replaces the assignee row (e.g. "Accept Lead" for field agents). */
   action?: ReactNode; extra?: ReactNode; className?: string;
+  /** Tech cards: chips shown beside the booking badge (e.g. "≈ 3.5 h"). */
+  badgeExtra?: ReactNode;
   /** Hide phone / Call / WhatsApp (e.g. techs browsing unaccepted leads). */
   hideContact?: boolean;
   density?: "full" | "compact";
@@ -70,7 +72,7 @@ type Props = {
 };
 
 /** Lead card v2: lane + source tags, live two-stage clock, Call/WhatsApp (logs contact), one-line call summary, UNASSIGNED + Assign. */
-export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, action, extra, className, hideContact, density = "full", audience = "office" }: Props) {
+export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, action, extra, className, hideContact, density = "full", audience = "office", badgeExtra }: Props) {
   const { user } = useAuth();
   const tech = audience === "tech";
   const text = (value?: string | null) => tech ? (value || "").replace(/R\s?\d[\d\s,.]*/g, "") : value;
@@ -125,7 +127,12 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
           </span>
           <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{sourceLabel(lead)}</span>
         </div>
-        {tech ? <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={bookingTime(lead.scheduled_time)} status={lead.status || undefined} /> : clock && (
+        {tech ? (badgeExtra ? (
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+            <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={bookingTime(lead.scheduled_time)} status={lead.status || undefined} />
+            {badgeExtra}
+          </div>
+        ) : <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={bookingTime(lead.scheduled_time)} status={lead.status || undefined} />) : clock && (
           <div className="shrink-0 text-right leading-tight" data-testid="lead-clock">
             <div className={cn("font-bold tabular-nums", clock.stage === 0 || clock.stage === 3 ? "text-sm" : "text-xl", TONE[clock.tone].text)}>{clock.big}</div>
             <div className="text-[10px] text-muted-foreground">{clock.sub}</div>

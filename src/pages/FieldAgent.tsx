@@ -46,6 +46,9 @@ import { Filter } from "lucide-react";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
 import RoleAccentStrip from "@/components/RoleAccentStrip";
 import AcceptLeadDialog from "@/components/leads/AcceptLeadDialog";
+import { useQueryClient } from "@tanstack/react-query";
+import { useTechOffers } from "@/hooks/useTechOffers";
+import { applyTechOffers, type TechOffer } from "@/lib/leadOffers";
 
 interface Lead {
   id: string;
@@ -126,10 +129,13 @@ const FieldAgent = () => {
   const [mobileTab, setMobileTab] = useState<"available" | "active" | "completed">("available");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
-  const [acceptDialogLead, setAcceptDialogLead] = useState<Lead | null>(null);
+  const [acceptDialogLead, setAcceptDialogLead] = useState<(Lead & { techOffer?: TechOffer }) | null>(null);
+  const queryClient = useQueryClient();
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const { session, loading: authLoading } = useAuth();
   const currentUserId = session?.user.id;
+  // Tech offers: server keeps only service leads that fit my day (hours, bookings, blocked time, travel, 15 km).
+  const techOffers = useTechOffers(!!currentUserId);
   const [userName, setUserName] = useState<string>("");
   const [showMapOnMobile, setShowMapOnMobile] = useState(false);
   const [isAvailableForLeads, setIsAvailableForLeads] = useState(true);
@@ -415,7 +421,8 @@ const FieldAgent = () => {
   const handleAcceptLead = async (leadId: string) => {
     const lead = leads.find((l) => l.id === leadId);
     if (!lead) return;
-    setAcceptDialogLead(lead);
+    const techOffer = techOffers.data?.applies ? techOffers.data.offers.find((o) => o.lead_id === leadId) : undefined;
+    setAcceptDialogLead({ ...lead, techOffer });
   };
 
   const handleAcceptDialogDone = (leadId: string, customerId?: string | null) => {
@@ -999,7 +1006,7 @@ const FieldAgent = () => {
   }, [currentLocation, toast]);
 
   // Filter and sort leads - MUST be before early returns to follow React hook rules
-  const availableLeads = useMemo(() => leads
+  const availableLeads = useMemo(() => applyTechOffers(leads
     .filter(l =>
       ["pending", "open", "released"].includes(l.status) && !l.assigned_agent_id
     )
@@ -1010,7 +1017,7 @@ const FieldAgent = () => {
       if (priorityA !== priorityB) return priorityA - priorityB;
       // Then by created_at
       return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-    }), [leads]);
+    }), techOffers.data), [leads, techOffers.data]);
 
   // Includes leads the office booked for me on the calendar (drag/assign leaves them "pending")
   const activeLeads = useMemo(() => leads.filter(l =>
@@ -1414,6 +1421,7 @@ const FieldAgent = () => {
                         lead={lead}
                         distance={distance}
                         variant="available"
+                        offer={lead.techOffer}
                         isHighlighted={highlightedLeadId === lead.id}
                         isDimmed={visibleLeadIds.size > 0 && !isLeadVisible(lead.id)}
                         onCardClick={openLeadDetail}
@@ -1672,6 +1680,7 @@ const FieldAgent = () => {
                                 lead={lead}
                                 distance={distance}
                                 variant="available"
+                                offer={lead.techOffer}
                                 onCardClick={openLeadDetail}
                                 onAccept={handleAcceptLead}
                                 loadingAction={loadingAction}
@@ -1905,6 +1914,7 @@ const FieldAgent = () => {
                     lead={lead}
                     distance={currentLocation ? calculateDistance(currentLocation.lat, currentLocation.lng, lead.latitude, lead.longitude).toFixed(1) : null}
                     variant="available"
+                    offer={lead.techOffer}
                     onCardClick={openLeadDetail}
                     onAccept={handleAcceptLead}
                     loadingAction={loadingAction}
@@ -1997,10 +2007,16 @@ const FieldAgent = () => {
           } : null}
           open={!!acceptDialogLead}
           defaultAgentId={currentUserId}
+          defaults={acceptDialogLead?.techOffer?.slot_date && acceptDialogLead.techOffer.slot_start ? {
+            date: acceptDialogLead.techOffer.slot_date,
+            startTime: acceptDialogLead.techOffer.slot_start.slice(0, 5),
+            durationMinutes: acceptDialogLead.techOffer.minutes ?? 120,
+          } : undefined}
           onOpenChange={(o) => { if (!o) setAcceptDialogLead(null); }}
           onDone={() => {
             const l = acceptDialogLead;
             setAcceptDialogLead(null);
+            queryClient.invalidateQueries({ queryKey: ["tech-offers"] });
             if (l) handleAcceptDialogDone(l.id, l.customer_id);
           }}
         />

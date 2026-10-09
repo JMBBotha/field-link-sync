@@ -38,6 +38,8 @@ interface AcceptLeadDialogProps {
   onDone?: (jobId: string) => void;
   /** Pre-select this agent (e.g. current user on Field Agent view). */
   defaultAgentId?: string;
+  /** Pre-fill the slot (e.g. the tech offer's fitting date/time and job length). */
+  defaults?: Partial<Pick<AppointmentValue, "date" | "startTime" | "durationMinutes">>;
 }
 
 const defaultAppointment = (): AppointmentValue => {
@@ -57,6 +59,7 @@ const AcceptLeadDialog = ({
   onOpenChange,
   onDone,
   defaultAgentId,
+  defaults,
 }: AcceptLeadDialogProps) => {
   const { acceptAndSchedule, submitting, clashDialog } = useAcceptLead();
   // Dispatch lockdown: salespeople can only book themselves (no assigning techs).
@@ -75,6 +78,7 @@ const AcceptLeadDialog = ({
     if (!open || !lead) return;
     setAppt({
       ...defaultAppointment(),
+      ...(defaults ?? {}),
       agentId: selfOnlyId || defaultAgentId || "",
     });
     setTitle(lead.service_type || `Job for ${lead.customer_name || "customer"}`);

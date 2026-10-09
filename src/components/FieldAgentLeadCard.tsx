@@ -2,7 +2,8 @@ import { forwardRef, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Navigation, Loader2, ImageIcon } from "lucide-react";
+import { Navigation, Loader2, ImageIcon, MapPin } from "lucide-react";
+import { durationText, offerText, slotText, type TechOffer } from "@/lib/leadOffers";
 import LeadCardProgress from "@/components/LeadCardProgress";
 import DepositPaymentChip, { type DepositInvoiceLike } from "@/components/shared/DepositPaymentChip";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
@@ -51,6 +52,8 @@ interface FieldAgentLeadCardProps {
   estimateUrl?: string | null;
   /** Tighter card for dense lists (e.g. "My Active Leads"): no phone row or call summary, smaller padding. */
   compact?: boolean;
+  /** Tech offer fit (tech_offers RPC): duration chip, km + "near …" label, fitting slot. */
+  offer?: TechOffer;
 }
 
 const getPriorityColor = (priority: string | undefined): string | null => {
@@ -97,6 +100,7 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
       invoice,
       estimateUrl,
       compact = false,
+      offer,
     },
     ref
   ) => {
@@ -162,7 +166,19 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
                 onClick={(e) => { e.stopPropagation(); onAccept(lead.id); }}>
                 {loadingAction === "accept" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Accept Lead"}
               </Button>
-            ) : <span />} extra={distance ? <span className="text-xs text-muted-foreground">{distance}km</span> : undefined} />
+            ) : <span />} badgeExtra={offer && (offer.minutes || offer.slot_start) ? <>
+              {!lead.scheduled_date && offer.slot_date ? (
+                <Badge data-testid="offer-slot" className="border-0 bg-sky-500 px-2 py-0.5 text-[10px] font-bold text-white">{slotText(offer.slot_date, offer.slot_start)}</Badge>
+              ) : offer.slot_start ? (
+                <Badge data-testid="offer-time" variant="outline" className="px-2 py-0.5 text-[11px] font-bold tabular-nums">{offer.slot_start.slice(0, 5)}</Badge>
+              ) : null}
+              {offer.minutes ? (
+                <Badge data-testid="offer-duration" variant="outline" title={offer.minutes_source === "quote" ? "From the quote's labour hours" : offer.minutes_source === "booking" ? "Booked job length" : "Typical job length"}
+                  className="border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-foreground">{durationText(offer.minutes)}</Badge>
+              ) : null}
+            </> : undefined} extra={offer && (offer.km != null || offer.label) ? (
+              <span data-testid="offer-near" className="flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"><MapPin className="h-3 w-3" />{offerText(offer.km, offer.label)}</span>
+            ) : distance ? <span className="text-xs text-muted-foreground">{distance}km</span> : undefined} />
           ) : (
           <LeadCardV2 audience="tech" lead={lead} density={compact ? "compact" : "full"} className={compact ? "space-y-1.5 p-2.5" : undefined} extra={<>
             {getStatusBadge(lead.status, compact)}
