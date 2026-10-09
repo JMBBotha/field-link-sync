@@ -176,6 +176,14 @@ const Auth = () => {
     );
   }
 
+  // Shared by "Forgot password?" and the invited-staff note: email a link to /set-password.
+  const sendPasswordLink = async () => {
+    const em = ((document.getElementById("email") as HTMLInputElement)?.value || email).trim();
+    if (!em) return toast({ title: "Enter your email first", variant: "destructive" });
+    const { error } = await supabase.auth.resetPasswordForEmail(em, { redirectTo: `${window.location.origin}/set-password` });
+    toast(error ? { title: "Error", description: error.message, variant: "destructive" } : { title: "Check your email for a link to set a new password" });
+  };
+
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
       <BackgroundVideo />
@@ -241,12 +249,16 @@ const Auth = () => {
             />
           </div>
           {isLogin && (
-            <button type="button" className="block ml-auto -mt-2 text-xs text-white/70 hover:text-white underline" onClick={async () => {
-              const em = ((document.getElementById("email") as HTMLInputElement)?.value || email).trim();
-              if (!em) return toast({ title: "Enter your email first", variant: "destructive" });
-              const { error } = await supabase.auth.resetPasswordForEmail(em, { redirectTo: `${window.location.origin}/set-password` });
-              toast(error ? { title: "Error", description: error.message, variant: "destructive" } : { title: "Check your email for a link to set a new password" });
-            }}>Forgot password?</button>
+            <button type="button" className="block ml-auto -mt-2 text-xs text-white/70 hover:text-white underline" onClick={sendPasswordLink}>Forgot password?</button>
+          )}
+          {isLogin && (
+            <div data-testid="invite-password-note" className="rounded-md border border-[hsl(25,95%,53%)]/60 bg-[hsl(25,95%,53%)]/15 px-3 py-2 text-sm text-white">
+              <strong>Invited to the team?</strong> You don't have a password yet.{" "}
+              <button type="button" className="underline font-semibold text-white hover:text-white/90" onClick={sendPasswordLink}>
+                Tap Forgot password
+              </button>{" "}
+              to get a link and set one.
+            </div>
           )}
           <Button
             type="submit"
