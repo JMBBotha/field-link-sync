@@ -16,6 +16,7 @@ import AdminAlertsPanel from "@/components/AdminAlertsPanel";
 import MoneySummaryCard from "@/components/admin/MoneySummaryCard";
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import ReadyToInvoiceCard from "@/components/admin/ReadyToInvoiceCard";
+import InvoiceRequestsCard from "@/components/admin/InvoiceRequestsCard";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import AdminMapPage from "@/pages/admin/AdminMapPage";
 import KpiHoverPreview from "@/components/admin/KpiHoverPreview";
@@ -333,6 +334,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       {isSalesRep && <MyAppointmentsCard limit={5} />}
 
       {!isSalesRep && <LeadOfferFlagsCard />}
+      {!isSalesRep && <InvoiceRequestsCard />}
       {!isSalesRep && <ReadyToInvoiceCard />}
 
       {/* Core 5 KPI Cards */}

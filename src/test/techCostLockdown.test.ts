@@ -12,7 +12,9 @@ describe("tech cost lockdown — tech screens use RPCs", () => {
     expect(used).toMatch(/delete_job_used_part/);
     const sheet = readFileSync("src/components/jobs/JobCompletionSheet.tsx", "utf8");
     expect(sheet).not.toMatch(/from\("job_used_parts"/);
-    expect(sheet).toMatch(/get_job_used_parts/);
+    // Finish-job form (Johan 23:11): names/qty only from the packing list + sell-options RPC (prices stripped).
+    expect(sheet).toMatch(/get_job_packing_list/);
+    expect(sheet).not.toMatch(/sell_excl_vat/);
     const onsite = readFileSync("src/components/jobs/ActualOnSiteStep.tsx", "utf8");
     expect(onsite).not.toMatch(/supplier_products/);
     expect(onsite).toMatch(/get_product_sell_options/);

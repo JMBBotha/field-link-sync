@@ -41,6 +41,7 @@ import LeadListFilterPills, { LeadListStatus } from "@/components/LeadListFilter
 import FieldAgentLeadCard from "@/components/FieldAgentLeadCard";
 import DepositPaymentChip, { type DepositInvoiceLike } from "@/components/shared/DepositPaymentChip";
 import CompletedJobsFilterDrawer from "@/components/CompletedJobsFilterDrawer";
+import { TechOfficeChip, useMyInvoiceRequests } from "@/components/jobs/TechOfficeStatus";
 import { useCompletedJobsFilter } from "@/hooks/useCompletedJobsFilter";
 import { Filter } from "lucide-react";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
@@ -164,6 +165,9 @@ const FieldAgent = () => {
   const navigate = useNavigate();
   const { isAdmin: roleIsAdmin, isDispatcher: roleIsDispatcher } = useRole();
   const canOpenQuoteBuilder = roleIsAdmin || roleIsDispatcher;
+  // Techs never create or see invoices (Johan 23:11); office users on /field keep the invoice button.
+  const canInvoice = roleIsAdmin || roleIsDispatcher;
+  const [autoStartCompletion, setAutoStartCompletion] = useState(false);
   const location = useLocation();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -959,6 +963,13 @@ const FieldAgent = () => {
     };
   }, []);
 
+  const handleCardComplete = (leadId: string) => {
+    const lead = leads.find((l) => l.id === leadId);
+    if (!lead) return;
+    setAutoStartCompletion(true);
+    openLeadDetail(lead);
+  };
+
   const openLeadDetail = useCallback((lead: Lead) => {
     console.log('[FieldAgent] openLeadDetail called:', { leadId: lead.id, lat: lead.latitude, lng: lead.longitude });
     
@@ -1062,6 +1073,8 @@ const FieldAgent = () => {
       .filter(l => l.status === "completed" && l.assigned_agent_id === currentUserId)
       .sort((a, b) => new Date(b.completed_at || b.created_at || 0).getTime() - new Date(a.completed_at || a.created_at || 0).getTime());
   }, [leads, currentUserId, completedJobsFilter.isFiltered, completedJobsFilter.jobs]);
+  // Tech view of completed jobs: office request status instead of invoices.
+  const { data: myInvoiceRequests } = useMyInvoiceRequests(canInvoice ? [] : completedLeads.map((l) => l.id));
 
   const inProgressLeads = useMemo(() => leads
     .filter(l => l.status === "in_progress" && l.assigned_agent_id === currentUserId)
@@ -1109,12 +1122,16 @@ const FieldAgent = () => {
   }, [activeLeads, activeListFilter]);
 
   // Home list: today's jobs for this technician (scheduled today, not closed)
+  // Jobs in progress always show first (whatever day they were booked), then today's and overdue bookings,
+  // so a tech on a phone can always reach Complete (Johan 23:11 button check).
   const todaysJobs = useMemo(() => {
-    const todayKey = new Date().toDateString();
-    return activeLeads
-      .filter(l => l.scheduled_date && new Date(l.scheduled_date).toDateString() === todayKey)
+    const end = new Date(); end.setHours(23, 59, 59, 999);
+    const due = activeLeads
+      .filter(l => l.status !== "in_progress" && l.scheduled_date && new Date(l.scheduled_date) <= end)
       .sort((a, b) => new Date(a.scheduled_date || 0).getTime() - new Date(b.scheduled_date || 0).getTime());
-  }, [activeLeads]);
+    const seen = new Set<string>();
+    return [...inProgressLeads, ...due].filter(l => !seen.has(l.id) && seen.add(l.id));
+  }, [activeLeads, inProgressLeads]);
 
   // Deposit invoices for install jobs linked to my active leads (chip on lead tiles)
   const [installInvoicesByLead, setInstallInvoicesByLead] = useState<Record<string, DepositInvoiceLike>>({});
@@ -1525,7 +1542,7 @@ const FieldAgent = () => {
                         isDimmed={visibleLeadIds.size > 0 && !isLeadVisible(lead.id)}
                         onCardClick={openLeadDetail}
                         onStart={openLeadDetail}
-                        onComplete={handleCompleteJob}
+                        onComplete={handleCardComplete}
                         onRelease={handleReleaseLead}
                         invoice={installInvoicesByLead[lead.id] ?? null}
                         estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
@@ -1550,7 +1567,7 @@ const FieldAgent = () => {
                         lead={lead}
                         variant="active"
                         onCardClick={openLeadDetail}
-                        onComplete={handleCompleteJob}
+                        onComplete={handleCardComplete}
                         loadingAction={loadingAction}
                         invoice={installInvoicesByLead[lead.id] ?? null}
                         estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
@@ -1589,7 +1606,7 @@ const FieldAgent = () => {
                             </div>
                             <div className="flex flex-col items-end gap-1">
                               {getStatusBadge(lead.status)}
-                              {installInvoicesByLead[lead.id]?.id && (
+                              {canInvoice && installInvoicesByLead[lead.id]?.id && (
                                 <DepositPaymentChip
                                   invoice={installInvoicesByLead[lead.id]}
                                   accepted
@@ -1607,6 +1624,7 @@ const FieldAgent = () => {
                               )}
                             </div>
                           </div>
+                          {canInvoice ? (
                           <Button
                             variant="default"
                             size="sm"
@@ -1620,6 +1638,9 @@ const FieldAgent = () => {
                             <FileText className="mr-1.5 h-4 w-4" />
                             Create Invoice
                           </Button>
+                          ) : (
+                            <TechOfficeChip row={myInvoiceRequests?.[lead.id]} className="text-xs" />
+                          )}
                         </CardContent>
                       </Card>
                     ))
@@ -1771,7 +1792,7 @@ const FieldAgent = () => {
                                 variant="active"
                                 onCardClick={openLeadDetail}
                                 onStart={openLeadDetail}
-                                onComplete={handleCompleteJob}
+                                onComplete={handleCardComplete}
                                 onRelease={handleReleaseLead}
                                 loadingAction={loadingAction}
                                 invoice={installInvoicesByLead[lead.id] ?? null}
@@ -1812,7 +1833,7 @@ const FieldAgent = () => {
                                 lead={lead}
                                 variant="active"
                                 onCardClick={openLeadDetail}
-                                onComplete={handleCompleteJob}
+                                onComplete={handleCardComplete}
                                 loadingAction={loadingAction}
                                 invoice={installInvoicesByLead[lead.id] ?? null}
                         estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
@@ -1851,7 +1872,7 @@ const FieldAgent = () => {
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
                                       {getStatusBadge(lead.status)}
-                                      {installInvoicesByLead[lead.id]?.id && (
+                                      {canInvoice && installInvoicesByLead[lead.id]?.id && (
                                         <DepositPaymentChip
                                           invoice={installInvoicesByLead[lead.id]}
                                           accepted
@@ -1875,6 +1896,7 @@ const FieldAgent = () => {
                                       {formatTimeAgo(lead.created_at)}
                                     </p>
                                   )}
+                                  {canInvoice ? (
                                   <Button
                                     variant="default"
                                     size="lg"
@@ -1888,6 +1910,9 @@ const FieldAgent = () => {
                                     <FileText className="mr-2 h-5 w-5" />
                                     Create Invoice
                                   </Button>
+                                  ) : (
+                                    <TechOfficeChip row={myInvoiceRequests?.[lead.id]} className="text-xs" />
+                                  )}
                                 </CardContent>
                               </Card>
                             ))
@@ -1933,6 +1958,8 @@ const FieldAgent = () => {
                     variant="active"
                     onCardClick={openLeadDetail}
                     onStart={openLeadDetail}
+                    onComplete={handleCardComplete}
+                    onRelease={handleReleaseLead}
                     invoice={installInvoicesByLead[lead.id] ?? null}
                         estimateUrl={installQuoteByLead[lead.id] ? `/field/jobs/${installQuoteByLead[lead.id]}` : null}
                     loadingAction={loadingAction}
@@ -1975,6 +2002,8 @@ const FieldAgent = () => {
         <LeadDetailSheet
           lead={selectedLead}
           open={detailSheetOpen}
+          autoStartCompletion={autoStartCompletion}
+          onAutoStartHandled={() => setAutoStartCompletion(false)}
           onClose={() => setDetailSheetOpen(false)}
           onAccept={handleAcceptLead}
           onStart={handleStartJob}

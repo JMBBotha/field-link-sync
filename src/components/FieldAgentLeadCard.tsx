@@ -120,8 +120,12 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
 
     const handleNavigate = (e: React.MouseEvent) => {
       e.stopPropagation();
+      // Coordinates when we have them, else the address (was "destination=null,null").
+      const dest = lead.latitude != null && lead.longitude != null
+        ? `${lead.latitude},${lead.longitude}`
+        : encodeURIComponent(lead.customer_address || "");
       window.open(
-        `https://www.google.com/maps/dir/?api=1&destination=${lead.latitude},${lead.longitude}`,
+        `https://www.google.com/maps/dir/?api=1&destination=${dest}`,
         "_blank",
         "noopener,noreferrer"
       );
@@ -221,7 +225,8 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
                   )}
                 </Button>
               )}
-              {onRelease && (
+              {/* Release only before the job starts; once started the tech finishes it (Johan 23:11 button check). */}
+              {onRelease && lead.status !== "in_progress" && (
                 <Button
                   variant="outline"
                   size="sm"

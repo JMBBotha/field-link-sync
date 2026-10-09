@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import CallSummary from "@/components/leads/CallSummary";
 import { isCallDump } from "@/lib/callSummary";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import InvoiceForm from "./InvoiceForm";
 import JobCompletionFlow from "./JobCompletionFlow";
+import TechOfficeStatus from "./jobs/TechOfficeStatus";
 import CustomerProfile from "./CustomerProfile";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import JobDurationPicker from "./JobDurationPicker";
@@ -79,6 +80,9 @@ interface LeadDetailSheetProps {
   onAccept: (leadId: string) => Promise<void>;
   onStart: (leadId: string, durationMinutes: number) => Promise<void>;
   onComplete: (leadId: string, equipmentId?: string | null) => Promise<void>;
+  /** Open the Finish-job form straight away (card "Complete" button). */
+  autoStartCompletion?: boolean;
+  onAutoStartHandled?: () => void;
   onRelease: (leadId: string) => void | Promise<void>;
   currentUserId?: string;
   loadingAction: string | null;
@@ -156,6 +160,8 @@ const LeadDetailSheet = ({
   onAccept,
   onStart,
   onComplete,
+  autoStartCompletion,
+  onAutoStartHandled,
   onRelease,
   currentUserId,
   loadingAction,
@@ -225,7 +231,8 @@ const LeadDetailSheet = ({
         ? { id: c.invoice_id, invoice_number: null, status: c.chip_state === 'paid' ? 'paid' : 'sent', grand_total: null, remaining: Number(c.remaining) }
         : null;
     },
-    enabled: !!lead?.id && lead?.status === 'completed',
+    // Techs never see invoices (Johan 23:11): no query at all for them.
+    enabled: !!lead?.id && lead?.status === 'completed' && !invoiceTechOnly,
   });
 
   // Fetch linked quotes for this lead (security definer so any user who can
@@ -242,6 +249,14 @@ const LeadDetailSheet = ({
     // Techs never see quotes or quote totals (DB returns nothing for them too).
     enabled: !!lead?.id && !invoiceTechOnly,
   });
+
+  // Card "Complete" opens the Finish-job form directly (was: completed with no form at all).
+  useEffect(() => {
+    if (open && autoStartCompletion && lead?.status === "in_progress") {
+      setShowSignOff(true);
+      onAutoStartHandled?.();
+    }
+  }, [open, autoStartCompletion, lead?.status, onAutoStartHandled]);
 
   if (!lead) return null;
 
@@ -721,8 +736,11 @@ const LeadDetailSheet = ({
             </div>
             )}
 
-            {/* Create Invoice - Completed leads only */}
-            {lead?.status === 'completed' && (
+            {/* Invoice (office only) — techs see 'Sent to office' instead (Johan 23:11) */}
+            {invoiceTechOnly ? (
+              lead?.status === 'completed' ? <TechOfficeStatus leadId={lead.id} /> : null
+            ) : (
+              lead?.status === 'completed' && (
               leadInvoice ? (
                 <div className={`w-full flex items-center justify-between p-3 rounded-lg border ${
                   leadInvoice.status === 'paid' 
@@ -762,8 +780,8 @@ const LeadDetailSheet = ({
                   Create Invoice
                 </Button>
               )
+            )
             )}
-
 
             {/* Job Schedule Display - shows dates and times */}
             <JobScheduleDisplay
@@ -960,7 +978,10 @@ const LeadDetailSheet = ({
                 </div>
               )}
 
-              {isCompleted && (
+              {invoiceTechOnly ? (
+              lead?.status === 'completed' ? <TechOfficeStatus leadId={lead.id} /> : null
+            ) : (
+              isCompleted && (
                 leadInvoice ? (
                   <div className={`w-full flex items-center justify-between p-3 rounded-lg border ${
                     leadInvoice.status === 'paid' 
@@ -998,9 +1019,10 @@ const LeadDetailSheet = ({
                     Create Invoice
                   </Button>
                 )
-              )}
+              )
+            )}
 
-              {/* Created timestamp at bottom */}
+            {/* Created timestamp at bottom */}
               {lead.created_at && (
                 <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground pt-2">
                   <Clock className="h-3 w-3" />
@@ -1125,6 +1147,9 @@ const LeadDetailSheet = ({
         onOpenChange={setShowSignOff}
         leadId={lead.id}
         customerName={lead.customer_name}
+        startedAt={lead.actual_start_time || lead.started_at}
+        scheduledDate={lead.scheduled_date}
+        scheduledTime={(lead as { scheduled_time?: string | null }).scheduled_time}
         onCompleted={handleSignedOff}
       />
 

@@ -70,6 +70,7 @@ describe("completion flows use the helper", () => {
     expect(src("hooks/useSyncQueue.ts")).toContain("await completeJobsForLead(operation.recordId");
     const sheet = src("components/jobs/JobCompletionSheet.tsx");
     expect(sheet).toContain("jobId: effectiveJobId");
-    expect(sheet).toContain("saveActualOnSite({ jobId: effectiveJobId");
+    // Extras/extra time now go server-side with the invoice request (which also writes job_overruns).
+    expect(sheet).toContain("p_job_id: effectiveJobId");
   });
 });
