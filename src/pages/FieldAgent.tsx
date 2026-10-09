@@ -49,6 +49,7 @@ import AcceptLeadDialog from "@/components/leads/AcceptLeadDialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTechOffers } from "@/hooks/useTechOffers";
 import { applyTechOffers, type TechOffer } from "@/lib/leadOffers";
+import InstallOfferCards from "@/components/field/InstallOfferCards";
 
 interface Lead {
   id: string;
@@ -1665,6 +1666,7 @@ const FieldAgent = () => {
                         }}
                         className="h-full p-3 space-y-2"
                       >
+                        <InstallOfferCards />
                         {availableLeads.length === 0 ? (
                           <div className="text-center py-8 text-muted-foreground text-sm">
                             No available leads
@@ -1903,6 +1905,7 @@ const FieldAgent = () => {
                 <h2 className="font-semibold text-sm">Available offers</h2>
                 <Badge variant="secondary" className="text-xs">{displayedAvailableLeads.length}</Badge>
               </div>
+              <InstallOfferCards />
               {!isAvailableForLeads ? (
                 <p className="text-xs text-muted-foreground py-4 text-center">You're offline — turn on availability to see offers.</p>
               ) : displayedAvailableLeads.length === 0 ? (

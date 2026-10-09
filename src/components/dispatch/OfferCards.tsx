@@ -49,6 +49,7 @@ const OfferCards = () => {
       .select("id, lead_id, offer_type, distance_km, expires_at, status, lead:leads(customer_name, customer_address, service_type, priority)")
       .eq("staff_id", user.id)
       .eq("status", "pending")
+      .neq("offer_type", "install") // install offers have their own technician inbox (InstallOfferCards)
       .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false });
     setOffers((data as unknown as OfferRow[]) ?? []);

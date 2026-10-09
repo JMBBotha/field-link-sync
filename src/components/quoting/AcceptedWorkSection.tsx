@@ -23,6 +23,7 @@ import { useClashGuard } from "@/components/scheduling/ClashGuard";
 import { minutesToInterval } from "@/lib/schedulingDefaults";
 import { TimeInput24 } from "@/components/ui/time-input-24";
 import AvailabilityPicker from "@/components/scheduling/AvailabilityPicker";
+import { defaultModeFor, handoffModesFor, handoffStatusText, type HandoffMode, type HandoffStatus } from "@/lib/installHandoff";
 
 interface Props {
   quoteId: string;
@@ -76,6 +77,24 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
   const [startTime, setStartTime] = useState("08:00");
   const [duration, setDuration] = useState(240);
   const [techId, setTechId] = useState("");
+  const [mode, setMode] = useState<HandoffMode>("pick");
+
+  // P3: server-side hand-off status (who may hand over, company default, offers in flight)
+  const { data: handoff, refetch: refetchHandoff } = useQuery({
+    queryKey: ["install-handoff-status", quoteId],
+    enabled: !!quoteId,
+    refetchInterval: (q: any) => ((q?.state?.data as HandoffStatus | null)?.pending ? 15000 : false),
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("install_handoff_status", { p_quote_id: quoteId });
+      if (error) throw error;
+      return (data ?? null) as HandoffStatus | null;
+    },
+  });
+  const modes = handoffModesFor(handoff?.role);
+  const openHandoff = (m?: HandoffMode) => {
+    setMode(m && modes.includes(m) ? m : defaultModeFor(handoff?.role, handoff?.default_mode));
+    setDialogOpen(true);
+  };
 
   const { data: quote } = useQuery({
     queryKey: ["accepted-work-quote", quoteId],
@@ -186,7 +205,12 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
   const handlePassToInstall = async () => {
     if (!quote || !invoice?.id) return;
     if (!date) return; // Date is required — never submit without it
-    if (techId) {
+    const pick = mode === "pick";
+    if (pick && !techId) {
+      toast({ title: "Pick a technician", description: "Or choose Offer to my technicians.", variant: "destructive" });
+      return;
+    }
+    if (pick) {
       const ok = await confirmBooking({
         profileId: techId, date, start: startTime || "08:00", end: addMinutesToTime(startTime || "08:00", duration),
         excludeJobId: installJob?.id ?? null,
@@ -196,109 +220,33 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
     }
     setBusy("install");
     try {
-      // Idempotent: never create a second installation job for this quote.
-      let jobId = installJob?.id as string | undefined;
-
-      if (!jobId) {
-        let address: string | null = null;
-        let lat: number | null = null;
-        let lng: number | null = null;
-        if (quote.lead_id) {
-          const { data: lead } = await supabase
-            .from("leads")
-            .select("customer_address, latitude, longitude")
-            .eq("id", quote.lead_id)
-            .maybeSingle();
-          address = (lead as any)?.customer_address ?? null;
-          lat = (lead as any)?.latitude ?? null;
-          lng = (lead as any)?.longitude ?? null;
-        }
-        if (!address && quote.customer_id) {
-          const { data: cust } = await supabase
-            .from("customers")
-            .select("address, latitude, longitude")
-            .eq("id", quote.customer_id)
-            .maybeSingle();
-          address = (cust as any)?.address ?? address;
-          lat = lat ?? (cust as any)?.latitude ?? null;
-          lng = lng ?? (cust as any)?.longitude ?? null;
-        }
-
-        const scheduledFor = date ? `${date}T${startTime || "08:00"}:00+02:00` : null;
-
-        const { data: job, error: jobErr } = await supabase
-          .from("jobs")
-          .insert([{
-            company_id: quote.company_id,
-            customer_id: quote.customer_id,
-            lead_id: quote.lead_id,
-            quote_id: quote.id,
-            invoice_id: invoice.id,
-            job_type: "installation",
-            status: "scheduled",
-            title: `Installation — ${quote.customer_name || "Customer"}`,
-            description: `Installation from accepted quote ${quote.quote_number || ""}`.trim(),
-            address,
-            lat,
-            lng,
-            scheduled_for: scheduledFor,
-            estimated_duration: minutesToInterval(duration),
-            created_by: user?.id ?? null,
-          } as any])
-          .select("id")
-          .single();
-        if (jobErr || !job) throw jobErr || new Error("Could not create the installation job");
-        jobId = job.id;
-        void flushOverride({ type: "job", id: job.id });
-      } else {
-        // Keep the chosen length on the existing job so later time changes keep it
-        const { error: durErr } = await supabase.from("jobs")
-          .update({ estimated_duration: minutesToInterval(duration) } as any).eq("id", jobId);
-        if (durErr) console.warn("Install duration not saved", durErr);
-      }
-
-      if (techId && jobId) {
-        const { error: asgErr } = await supabase.from("assignments").insert([{
-          job_id: jobId,
-          profile_id: techId,
-          assignment_type: "internal",
-          assigned_by: user?.id ?? null,
-        } as any]);
-        if (asgErr) throw asgErr;
-      }
-
-      // Calendar row for the install day, keyed to the installation JOB so it can
-      // never collide with the salesperson's own visit row on the same lead.
-      // No named tech => agent_id null => shows in the Technical pool as first-accept.
-      let scheduleLeadId: string | null = quote.lead_id ?? null;
-      if (!scheduleLeadId && jobId) {
-        const { data: jl } = await supabase.from("jobs").select("lead_id").eq("id", jobId).maybeSingle();
-        scheduleLeadId = (jl as any)?.lead_id ?? null;
-      }
-      if (scheduleLeadId && date && jobId) {
-        const row = {
-          lead_id: scheduleLeadId,
-          job_id: jobId,
-          agent_id: techId || null,
-          scheduled_date: date,
-          start_time: startTime || "08:00",
-          end_time: addMinutesToTime(startTime || "08:00", duration),
-          notes: `Installation — quote ${quote.quote_number || ""}`.trim(),
-        };
-        // The assignment trigger may already have created this job's row: update it, never add a second tile
-        const { data: existingRow } = await supabase.from("job_schedules").select("id").eq("job_id", jobId).limit(1);
-        const { error: schedErr } = existingRow?.[0]
-          ? await supabase.from("job_schedules").update(row as any).eq("id", existingRow[0].id)
-          : await supabase.from("job_schedules").insert([row as any]);
-        if (schedErr) console.warn("Install calendar row not saved", schedErr);
-      }
-
-
+      // One controlled server-side step: job (idempotent per quote), calendar row, then the tech or the offers.
+      const { data, error } = await (supabase as any).rpc("hand_to_technician", {
+        p_quote_id: quote.id,
+        p_date: date,
+        p_start: startTime || "08:00",
+        p_minutes: duration,
+        p_mode: mode,
+        p_tech_id: pick ? techId : null,
+      });
+      if (error) throw error;
+      const res = data as { ok: boolean; job_id?: string; message?: string; offered?: number };
+      if (res?.job_id && pick) void flushOverride({ type: "job", id: res.job_id });
       await qc.invalidateQueries({ queryKey: ["accepted-work-install-job", quoteId] });
+      await refetchHandoff();
       qc.invalidateQueries({ queryKey: ["jobs"] });
       qc.invalidateQueries({ queryKey: ["dispatch-schedules"] });
-      setDialogOpen(false);
-      toast({ title: "Passed to Technical ✅", description: "Installation job created on the technical lane." });
+      qc.invalidateQueries({ queryKey: ["my-visits"] });
+      if (!res?.ok) {
+        toast({ title: "Not handed over", description: res?.message, variant: "destructive" });
+      } else if (!pick && !res.offered) {
+        toast({ title: "No technician is free then", description: res.message });
+        if (modes.includes("pick")) { setMode("pick"); setBusy(null); return; } // office: switch to Pick
+        setDialogOpen(false);
+      } else {
+        setDialogOpen(false);
+        toast({ title: pick ? "Passed to Technical ✅" : "Offered to technicians", description: res.message });
+      }
     } catch (e: any) {
       toast({ title: "Handover failed", description: e.message, variant: "destructive" });
     }
@@ -371,21 +319,31 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
                 ? ` — ${format(new Date(installJob.scheduled_for), "d MMM yyyy HH:mm")}`
                 : " — not scheduled"}
               <Badge variant="secondary" className="ml-2 align-middle">{installJob.status}</Badge>
+              {handoffStatusText(handoff) && (
+                <span className="mt-0.5 block text-xs text-muted-foreground" data-testid="handoff-status">{handoffStatusText(handoff)}</span>
+              )}
             </span>
           ) : (
             <span className="text-muted-foreground">Hand the job over to the installation team.</span>
           )}
         </div>
         {installJob ? (
-          <Button variant="outline" size="sm" onClick={() => navigate(`/admin/jobs/${installJob.id}`)}>
-            Open job <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-          </Button>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {handoff && !handoff.technician && !handoff.pending && (modes.includes("pick") || !handoff.unclaimed) && (
+              <Button size="sm" variant="brand" onClick={() => openHandoff(handoff.unclaimed ? "pick" : undefined)} data-testid="handoff-again">
+                {modes.includes("pick") ? "Pick technician" : "Offer again"}
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => navigate(`/admin/jobs/${installJob.id}`)}>
+              Open job <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+            </Button>
+          </div>
         ) : (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
-                  <Button size="sm" variant="brand" disabled={!hasDeposit} onClick={() => setDialogOpen(true)}>
+                  <Button size="sm" variant="brand" disabled={!hasDeposit || !handoff} onClick={() => openHandoff()} data-testid="handoff-open">
                     Pass to Technical / Installation
                   </Button>
                 </span>
@@ -443,26 +401,46 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Technician</Label>
-              <Select value={techId || "unassigned"} onValueChange={(v) => setTechId(v === "unassigned" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Leave open for first-accept" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Leave open (first-accept)</SelectItem>
-                  {technicians.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                A named technician also gets a calendar slot under Technical on dispatch.
+            {modes.length > 1 ? (
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Hand-off" data-testid="handoff-modes">
+                {modes.map((m) => (
+                  <Button key={m} type="button" role="radio" aria-checked={mode === m} variant={mode === m ? "brand" : "outline"}
+                    className="h-auto min-h-11 whitespace-normal py-2 text-xs" onClick={() => setMode(m)} data-testid={`handoff-mode-${m}`}>
+                    {m === "pick" ? "Pick technician" : "Offer to my technicians (first to accept, 15 min)"}
+                  </Button>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground" data-testid="handoff-offer-only">
+                Your technicians get an offer in the app; the first to accept within 15 minutes gets the job. If nobody takes it, the office picks one.
               </p>
-              {date && (
-                <AvailabilityPicker lane="service" date={date} startTime={startTime} minutes={duration}
-                  lat={siteLoc?.lat} lng={siteLoc?.lng} excludeJobId={installJob?.id ?? null} selectedId={techId}
-                  onSelect={(id, d, t) => { setTechId(id); if (d) setDate(d); if (t) setStartTime(t); }} />
-              )}
-            </div>
+            )}
+
+            {mode === "pick" ? (
+              <div className="space-y-1.5">
+                <Label>Technician</Label>
+                <Select value={techId || undefined} onValueChange={setTechId}>
+                  <SelectTrigger><SelectValue placeholder="Choose a technician" /></SelectTrigger>
+                  <SelectContent>
+                    {technicians.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  The technician also gets a calendar slot under Technical on dispatch.
+                </p>
+                {date && (
+                  <AvailabilityPicker lane="service" date={date} startTime={startTime} minutes={duration}
+                    lat={siteLoc?.lat} lng={siteLoc?.lng} excludeJobId={installJob?.id ?? null} selectedId={techId}
+                    onSelect={(id, d, t) => { setTechId(id); if (d) setDate(d); if (t) setStartTime(t); }} />
+                )}
+              </div>
+            ) : modes.length > 1 ? (
+              <p className="text-xs text-muted-foreground">
+                Offered in the app only (no WhatsApp). Techs who are busy then are skipped. Nobody in 15 min: one more round, then you're asked to pick.
+              </p>
+            ) : null}
           </div>
 
           <DialogFooter>
@@ -470,10 +448,11 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
             <Button
               variant="brand"
               onClick={handlePassToInstall}
-              disabled={busy === "install" || !hasDeposit || !date}
+              disabled={busy === "install" || !hasDeposit || !date || (mode === "pick" && !techId)}
+              data-testid="handoff-confirm"
             >
               {busy === "install" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create installation job
+              {mode === "pick" ? "Create installation job" : "Offer to technicians"}
             </Button>
           </DialogFooter>
         </DialogContent>
