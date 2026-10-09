@@ -29,6 +29,7 @@ import AgentAvailabilityEditor from "@/components/scheduling/AgentAvailabilityEd
 import StaffBaseControls from "@/components/scheduling/StaffBaseControls";
 import { resolveLane, type LaneStaffMember } from "@/hooks/useLaneStaff";
 import { LANE_META, UNKNOWN_LANE_META } from "@/lib/leadLane";
+import { inviteOptionKey } from "@/lib/invitePassword";
 
 const ROLE_META: Record<string, { label: string; color: string; icon: React.ElementType; description: string }> = {
   admin: { label: "Admin", color: "bg-purple-600 text-purple-50", icon: Shield, description: "Full access to all features" },
@@ -206,6 +207,21 @@ const AdminTeamPage = () => {
     },
   });
 
+  // Pending (not yet accepted) invites, so an admin can see who was invited and resend the link.
+  const { data: pendingInvites = [] } = useQuery({
+    queryKey: ["team-invites", companyId],
+    enabled: isAdmin && !!companyId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("team_invites")
+        .select("id, email, role, dispatch_role, created_at")
+        .is("accepted_at", null)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; email: string; role: string; dispatch_role: string | null; created_at: string }>;
+    },
+  });
+
   // Invite user mutation
   const inviteMutation = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: string }) => {
@@ -222,6 +238,7 @@ const AdminTeamPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team-members"] });
+      queryClient.invalidateQueries({ queryKey: ["team-invites"] });
       setInviteOpen(false);
       setInviteEmail("");
       setInviteRole("field_agent");
@@ -318,6 +335,32 @@ const AdminTeamPage = () => {
         <TabsContent value="freelancers" className="mt-4"><TeamFreelancersTab /></TabsContent>
         <TabsContent value="applications" className="mt-4"><TeamApplicationsTab /></TabsContent>
         <TabsContent value="staff" className="mt-4 space-y-6">
+      {isAdmin && pendingInvites.length > 0 && (
+        <Card className="border-border/50" data-testid="pending-invites">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Pending invites ({pendingInvites.length})</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pendingInvites.map((inv) => {
+              const key = inviteOptionKey(inv);
+              return (
+                <div key={inv.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/50 p-2 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{inv.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {INVITE_OPTIONS[key]?.label ?? inv.role} · invited {format(new Date(inv.created_at), "d MMM HH:mm")} · waiting for them to open the link
+                    </p>
+                  </div>
+                  <Button size="sm" variant="outline" disabled={inviteMutation.isPending}
+                    onClick={() => inviteMutation.mutate({ email: inv.email, role: key })}>
+                    Resend link
+                  </Button>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
       {/* Role Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {Object.entries(ROLE_META).map(([key, meta]) => (

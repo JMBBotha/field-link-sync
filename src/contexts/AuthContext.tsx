@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { redirectIfPasswordMissing } from '@/lib/invitePassword';
 
 interface AuthContextValue {
   session: Session | null;
@@ -54,6 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Invitees (magic link, no password yet) go to /set-password wherever the link landed. Once per user per load.
+  const pwCheckedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const uid = user?.id;
+    if (!uid || pwCheckedRef.current === uid) return;
+    pwCheckedRef.current = uid;
+    void redirectIfPasswordMissing();
+  }, [user?.id]);
 
   const value: AuthContextValue = { session, user, loading };
 
