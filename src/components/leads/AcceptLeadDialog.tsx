@@ -29,6 +29,7 @@ import { format } from "date-fns";
 import { laneFromServiceType } from "@/lib/leadLane";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRole } from "@/hooks/useRole";
 
 interface AcceptLeadDialogProps {
   lead: AcceptLeadInput | null;
@@ -65,7 +66,9 @@ const AcceptLeadDialog = ({
   // Dispatch lockdown: salespeople can only book themselves (no assigning techs).
   const { isSalesRep } = useSalesRep();
   const { user } = useAuth();
-  const selfOnlyId = isSalesRep ? user?.id : undefined;
+  // P4: only office (admin/dispatcher) may book someone else; technicians book themselves (DB enforces too).
+  const { isAdmin, isDispatcher, loading: roleLoading } = useRole();
+  const selfOnlyId = isSalesRep || (!roleLoading && !isAdmin && !isDispatcher) ? user?.id : undefined;
   const [appt, setAppt] = useState<AppointmentValue>(defaultAppointment());
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
