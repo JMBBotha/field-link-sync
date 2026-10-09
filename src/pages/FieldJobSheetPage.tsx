@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, CheckCircle2, MapPin, Package, Phone, Play } from "lucide-react";
 import FieldShell from "@/components/field/FieldShell";
+import { SitePhotosReadOnly } from "@/components/photos/SitePhotosSection";
 import { useToast } from "@/hooks/use-toast";
 import { packQtyText, groupPackingList, loadTicks, saveTicks, type PackingRow } from "@/lib/packingList";
 
@@ -21,7 +22,7 @@ export default function FieldJobSheetPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("jobs")
-        .select("id, title, description, address, scheduled_for, status, job_type, customers(name, phone, address), leads(customer_address)")
+        .select("id, lead_id, title, description, address, scheduled_for, status, job_type, customers(name, phone, address), leads(customer_address)")
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
@@ -114,6 +115,9 @@ export default function FieldJobSheetPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* P2: salesperson's site photos for this job's lead (read-only, no money) */}
+      {job.data?.lead_id && <SitePhotosReadOnly leadId={job.data.lead_id} />}
 
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 font-semibold"><Package className="h-4 w-4" /> Packing list</h2>

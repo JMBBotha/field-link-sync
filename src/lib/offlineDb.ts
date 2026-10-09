@@ -77,7 +77,7 @@ export interface OfflinePhoto {
   fileName: string;
   mimeType: string;
   caption?: string | null;
-  photoType: 'before' | 'after';
+  photoType: 'before' | 'after' | 'site';
   capturedAt: number;
   uploaded: boolean;
   markedForDeletion?: boolean;

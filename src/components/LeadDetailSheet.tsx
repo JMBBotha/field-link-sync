@@ -43,6 +43,7 @@ import { useRole } from "@/hooks/useRole";
 import { CheckCircle2 } from "lucide-react";
 import QuickTemplateDialog from "./quoting/QuickTemplateDialog";
 import AcceptLeadDialog from "./leads/AcceptLeadDialog";
+import { SitePhotosReadOnly } from "./photos/SitePhotosSection";
 import LeadClassificationPanel from "./leads/LeadClassificationPanel";
 
 
@@ -814,6 +815,9 @@ const LeadDetailSheet = ({
                 compact
               />
             </div>
+
+            {/* P2: salesperson's site photos (read-only here; hidden when none) */}
+            <SitePhotosReadOnly leadId={lead.id} />
 
 
             {/* Action Buttons */}

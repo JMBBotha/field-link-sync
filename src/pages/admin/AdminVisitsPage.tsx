@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import PullToRefresh from "@/components/PullToRefresh";
 import AcceptLeadDialog from "@/components/leads/AcceptLeadDialog";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
+import SitePhotosSection from "@/components/photos/SitePhotosSection";
 import { useMyVisits } from "@/hooks/useMyVisits";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -101,7 +102,7 @@ export const AdminVisitsPage = () => {
   );
 };
 
-/** /admin/visits/:leadId: visit detail for the rep (P1). Site photos arrive in P2. */
+/** /admin/visits/:leadId: visit detail for the rep (P1) with site photos (P2). */
 export const AdminVisitDetailPage = () => {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
@@ -169,6 +170,8 @@ export const AdminVisitDetailPage = () => {
           )}
         </div>
       )}
+
+      {tab !== "available" && <SitePhotosSection leadId={r.lead_id} />}
 
       {r.quote_accepted && r.quote_id && (
         <div className="rounded-xl border border-border/60 bg-card p-4" data-testid="visit-handover">

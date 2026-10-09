@@ -417,7 +417,7 @@ export function useSyncQueue(isOnline: boolean) {
               storage_path: storagePath,
               caption: caption || null,
               photo_type: offlinePhoto.photoType || operation.data.photo_type || 'after',
-              uploaded_by: operation.data.uploaded_by,
+              uploaded_by: operation.data.uploaded_by ?? operation.data.agentId ?? null,
               synced_from_offline: true,
             });
 

@@ -4,7 +4,7 @@ import { offlineDb } from '@/lib/offlineDb';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-export type PhotoType = 'before' | 'after';
+export type PhotoType = 'before' | 'after' | 'site';
 
 interface UseJobPhotosOptions {
   leadId: string;

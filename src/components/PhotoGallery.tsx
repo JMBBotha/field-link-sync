@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { photoDisplayPath, signedPhotoUrl } from "@/lib/photoUrls";
 import { Cloud, Clock, Plus, Trash2 } from 'lucide-react';
 import { offlineDb } from '@/lib/offlineDb';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,19 +60,19 @@ export function PhotoGallery({
       if (isOnline) {
         const { data: dbPhotos } = await supabase
           .from('job_photos')
-          .select('id, storage_path, caption, photo_type')
+          .select('id, storage_path, annotated_path, caption, photo_type')
           .eq('lead_id', leadId)
+          .in('photo_type', ['before', 'after']) // site photos have their own section (P2)
           .order('created_at', { ascending: false });
 
         if (dbPhotos) {
           for (const photo of dbPhotos) {
-            const { data: urlData } = supabase.storage
-              .from('job-photos')
-              .getPublicUrl(photo.storage_path);
+            // job-photos is private: signed URL (annotated copy first)
+            const signed = await signedPhotoUrl(photoDisplayPath(photo as { storage_path: string; annotated_path?: string | null }));
             
             items.push({
               id: photo.id,
-              url: urlData.publicUrl,
+              url: signed,
               caption: photo.caption,
               photoType: (photo.photo_type as 'before' | 'after') || 'after',
               isQueued: false,
@@ -84,12 +85,12 @@ export function PhotoGallery({
       // Load queued photos from IndexedDB
       const offlinePhotos = await offlineDb.getPhotosForLead(leadId);
       for (const photo of offlinePhotos) {
-        if (!photo.uploaded && !photo.markedForDeletion) {
+        if (!photo.uploaded && !photo.markedForDeletion && photo.photoType !== 'site') {
           items.push({
             id: photo.id,
             url: photo.base64Data,
             caption: photo.caption,
-            photoType: photo.photoType || 'after',
+            photoType: (photo.photoType as 'before' | 'after') || 'after',
             isQueued: true,
           });
         }

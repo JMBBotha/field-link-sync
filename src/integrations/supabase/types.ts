@@ -3023,6 +3023,8 @@ export type Database = {
       }
       job_photos: {
         Row: {
+          annotated_path: string | null
+          annotation: Json | null
           caption: string | null
           created_at: string
           id: string
@@ -3033,6 +3035,8 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
+          annotated_path?: string | null
+          annotation?: Json | null
           caption?: string | null
           created_at?: string
           id?: string
@@ -3043,6 +3047,8 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
+          annotated_path?: string | null
+          annotation?: Json | null
           caption?: string | null
           created_at?: string
           id?: string
