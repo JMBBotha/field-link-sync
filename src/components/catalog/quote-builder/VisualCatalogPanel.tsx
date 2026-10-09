@@ -685,9 +685,10 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
 
   const { ids: quoteFavIds, toggle: toggleQuoteFavourite } = useQuoteFavourites();
   const handleToggleFavorite = useCallback(async (product: PaletteProduct) => {
-    // Per-user favourites (product_favorites); shared is_pinned set is only the fallback.
+    // Per-user favourites (product_favorites) — also on the read-only price lists.
+    // Never written to supplier_products (master catalogue; sales can't write it).
     const added = await toggleQuoteFavourite(product.id);
-    if (added === null) return; // hook already showed "Couldn't update favourite"
+    if (added === null) return; // hook already showed a "Couldn't update favourite" toast
     toast({ title: added ? "★ Added to favorites" : "Removed from favorites", duration: 2000 });
   }, [toggleQuoteFavourite]);
 
@@ -1036,7 +1037,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
                           basketProductCounts={basketProductCounts}
                           onProductClick={handleProductClick}
                           onQuickAddProduct={readOnly ? undefined : handleQuickAddProduct}
-                          onToggleFavorite={readOnly ? undefined : handleToggleFavorite}
+                          onToggleFavorite={handleToggleFavorite}
                           onRemoveRegion={readOnly ? undefined : handleRemoveRegion}
                           scrollContainerRef={scrollContainerRef}
                           onCategoriesDetected={handlePageCategories}

@@ -1,17 +1,41 @@
+import { useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import VisualCatalogPanel from "@/components/catalog/quote-builder/VisualCatalogPanel";
 import { resolveProductMarkupPercent } from "@/lib/pricing";
 import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
+import { usePdfBasket } from "@/lib/pdfBasketStore";
+import type { PdfSelectedProduct, PdfSelectionHandlers } from "@/types/pdfSelection";
 
 /**
  * Read-only Visual PDF price lists (central catalogue) — STEP 3, 2026-09-30.
- * Reps and staff browse the books here without opening a quote. Writes stay master-admin only (server RLS);
- * readOnly hides the delete/auto-catalogue actions.
+ * Reps and staff browse the books here without opening a quote. Catalogue writes stay master-admin only
+ * (server RLS); readOnly hides the delete/auto-catalogue actions.
+ * Selecting rows is still allowed: picks go into the draft PDF basket (fls.pdfBasket.draft), and
+ * "Add N to quote" opens a new quote, which adopts that basket once it has an id.
+ * Favourites are per user (product_favorites), never the master catalogue.
  */
 const AdminPriceListsPage = () => {
   const navigate = useNavigate();
+  const [basket, saveBasket] = usePdfBasket(null);
+  const basketRef = useRef<PdfSelectedProduct[]>(basket);
+  basketRef.current = basket;
+  const setSelectedFromPdf = useCallback<PdfSelectionHandlers["setSelectedFromPdf"]>((next) => {
+    const value = typeof next === "function" ? next(basketRef.current) : next;
+    basketRef.current = value;
+    saveBasket(value);
+  }, [saveBasket]);
+  const pdfSelection = useMemo<PdfSelectionHandlers>(() => ({
+    selectedFromPdf: basket,
+    setSelectedFromPdf,
+    handleSelectProduct: (product) => setSelectedFromPdf((prev) => (
+      prev.some((p) => p.code === product.code)
+        ? prev.filter((p) => p.code !== product.code)
+        : [...prev, { ...product, quantity: 1, unitType: "units" } as PdfSelectedProduct]
+    )),
+    updateSelectedItem: (code, updates) => setSelectedFromPdf((prev) => prev.map((i) => (i.code === code ? { ...i, ...updates } : i))),
+  }), [basket, setSelectedFromPdf]);
   const { data: products = [] } = useQuery({
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
@@ -54,6 +78,8 @@ const AdminPriceListsPage = () => {
         onClose={() => navigate("/admin")}
         baskets={[]}
         onAddProductToBasket={() => {}}
+        pdfSelection={pdfSelection}
+        onAddSelectedToQuote={() => navigate("/admin/quote-builder")}
         products={products}
       />
     </div>

@@ -183,6 +183,10 @@ export const selectRegion = (
     });
     return;
   }
+  if (!pdfSelection && !(baskets.length > 0 && onAddProductToBasket)) {
+    toast({ title: "Open a quote to add products", description: "Start or open a quote, then select products from the PDF.", variant: "destructive" });
+    return;
+  }
   const product = regionProduct(region, supplierDiscountPercent);
   const code = regionSelectionCode(region);
   const alreadySelectedInPdf = !!pdfSelection?.selectedFromPdf.some((item) => item.code === code);

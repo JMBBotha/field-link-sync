@@ -45,8 +45,17 @@ export function useQuoteFavourites() {
   const [userId, setUserId] = useState<string | null>(null);
   useEffect(() => {
     let off = false;
-    supabase.auth.getUser().then(({ data }) => { if (!off) setUserId(data.user?.id ?? null); });
-    return () => { off = true; };
+    // getSession is local (no network); getUser is only the fallback. A failed
+    // /auth/v1/user call used to leave userId null and make every toggle a silent no-op.
+    const auth = supabase.auth as typeof supabase.auth & { getSession?: typeof supabase.auth.getSession };
+    const fromSession = auth.getSession
+      ? auth.getSession().then(({ data }) => data.session?.user?.id ?? null).catch(() => null)
+      : Promise.resolve(null);
+    fromSession
+      .then((id) => id ?? supabase.auth.getUser().then(({ data }) => data.user?.id ?? null).catch(() => null))
+      .then((id) => { if (!off) setUserId(id); });
+    const sub = auth.onAuthStateChange?.((_e, session) => { if (!off && session?.user?.id) setUserId(session.user.id); });
+    return () => { off = true; sub?.data?.subscription?.unsubscribe?.(); };
   }, []);
   const key = ["quote-favourites", userId];
 
@@ -69,7 +78,10 @@ export function useQuoteFavourites() {
   const ids = new Set(state.ids);
 
   const toggle = useCallback(async (productId: string): Promise<boolean | null> => {
-    if (!userId) return null;
+    if (!userId) {
+      toast({ title: "Couldn't update favourite", description: "Your sign-in has expired. Sign in again and retry.", variant: "destructive" });
+      return null;
+    }
     await qc.cancelQueries({ queryKey: key });
     const prev = qc.getQueryData<FavState>(key) ?? state;
     const plan = planFavouriteToggle(prev.source, prev.ids, productId);
@@ -89,7 +101,12 @@ export function useQuoteFavourites() {
     } catch (err) {
       console.error("[favourites] toggle failed", err);
       qc.setQueryData<FavState>(key, prev);
-      toast({ title: "Couldn't update favourite", variant: "destructive" });
+      const msg = (err as { message?: string })?.message || "";
+      toast({
+        title: "Couldn't update favourite",
+        description: /row-level security|permission|42501/i.test(msg) ? "You don't have permission to save this favourite." : "Please try again.",
+        variant: "destructive",
+      });
       return null;
     } finally {
       qc.invalidateQueries({ queryKey: key });
