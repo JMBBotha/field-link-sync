@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { trustedCompanyId } from "../_shared/leadIntake.ts";
+import { websiteLeadCompanyId } from "../_shared/websiteIntake.ts";
 
 /**
  * ingest-lead — unified lead intake for Vapi calls, website forms,
@@ -345,6 +346,10 @@ Deno.serve(async (req) => {
 
     // ---- resolve company ------------------------------------------------
     let companyId: string | null = trustedCompanyId(req, body.company_id);
+    if (!companyId && source === "website_form") {
+      // P9: website-form leads only; other sources keep the old fallback.
+      companyId = await websiteLeadCompanyId(supabase);
+    }
     if (!companyId) {
       const { data: firstCompany } = await supabase
         .from("companies").select("id").order("created_at", { ascending: true }).limit(1).maybeSingle();

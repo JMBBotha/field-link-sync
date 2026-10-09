@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { trustedCompanyId } from "../_shared/leadIntake.ts";
+import { websiteLeadCompanyId } from "../_shared/websiteIntake.ts";
 import { sendAppointmentConfirmation } from "../_shared/appointmentConfirmation.ts";
 
 /**
@@ -145,6 +146,11 @@ serve(async (req) => {
           .single();
         if (custData?.company_id) resolvedCompanyId = custData.company_id;
       }
+    }
+
+    if (!resolvedCompanyId) {
+      // P9: new website leads go to the configured website company (0800-BE-COOL).
+      resolvedCompanyId = await websiteLeadCompanyId(supabase);
     }
 
     if (!resolvedCompanyId) {

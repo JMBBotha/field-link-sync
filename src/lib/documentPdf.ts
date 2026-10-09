@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import { fetchCompanyProfileSafe } from "@/lib/companyProfileSafe";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
 import { buildTermsBlocks, type TermsCompanyInfo } from "./defaultTerms";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,7 +81,9 @@ export async function fetchTermsCompanyInfo(fallbackName?: string): Promise<Term
       .maybeSingle();
 
     if (error || !data) {
-      return { companyName: fallbackName };
+      // Techs can't read company_settings (P9): name only, never banking.
+      const safe = await fetchCompanyProfileSafe();
+      return { companyName: safe?.company_name || fallbackName };
     }
 
     const banking = (data.banking_details as Record<string, string> | null) || {};
