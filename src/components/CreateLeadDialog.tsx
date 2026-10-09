@@ -238,13 +238,17 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   }, [latitude, longitude, effectiveRadius, findNearbyAgents, canBroadcast, laneById]);
 
 
+  // Lead filtering (9 Oct): office/app entry needs an appointment date AND time (salespeople are only offered
+  // leads whose slot fits their day). Mandy/website leads are not affected (no DB constraint).
+  const hasAppointment = !!scheduledDate && /^\d{1,2}:\d{2}/.test(scheduledTime || "");
   const isFormValid =
     formData.customer_name.trim() !== "" &&
     formData.customer_phone.trim() !== "" &&
     formData.customer_address.trim() !== "" &&
     formData.service_type.trim() !== "" &&
     latitude !== null &&
-    longitude !== null;
+    longitude !== null &&
+    hasAppointment;
 
   const handleLocationChange = (
     lat: number,
@@ -267,6 +271,10 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!latitude || !longitude) return;
+    if (!hasAppointment) {
+      toast({ title: "Add the appointment date and time", description: "A lead can't be saved without them.", variant: "destructive" });
+      return;
+    }
 
     setLoading(true);
 
@@ -677,7 +685,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
 
           {/* Scheduled Date & Time */}
           <div className="space-y-2">
-            <Label>Scheduled Date & Time (Optional)</Label>
+            <Label>Appointment date & time <span className="text-destructive">*</span></Label>
             <div className="flex gap-2">
               <Popover>
                 <PopoverTrigger asChild>
@@ -709,6 +717,11 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
                 placeholder="Time"
               />
             </div>
+            {!hasAppointment && (
+              <p className="text-xs text-muted-foreground" data-testid="lead-needs-appointment">
+                Required: pick the date and time of the appointment.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

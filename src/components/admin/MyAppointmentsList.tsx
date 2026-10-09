@@ -5,9 +5,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { appointmentLinks, formatAppointmentWhen, type MyAppointment } from "@/lib/appointments";
 import JobCard from "@/components/cards/JobCard";
 import { scheduleRowToCard } from "@/lib/cardModel";
+import { offerText, type WithOffer } from "@/lib/leadOffers";
 
 interface Props {
-  rows: MyAppointment[] | undefined;
+  rows: WithOffer<MyAppointment>[] | undefined;
   loading?: boolean;
   error?: unknown;
   limit?: number;
@@ -42,6 +43,9 @@ export default function MyAppointmentsList({ rows, loading, error, limit }: Prop
               <CalendarDays className="h-4 w-4 text-primary shrink-0" />
               <span>{formatAppointmentWhen(a.scheduled_date, a.scheduled_time)}</span>
               {!a.is_mine && <Badge variant="outline" className="text-[10px]">Available</Badge>}
+              {!a.is_mine && offerText(a.offer_km, a.offer_label) && (
+                <span className="text-xs text-muted-foreground" data-testid="offer-distance">{offerText(a.offer_km, a.offer_label)}</span>
+              )}
             </div>
             {a.address && (
               <div className="flex items-start gap-1 text-xs text-muted-foreground">

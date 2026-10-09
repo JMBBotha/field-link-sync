@@ -34,6 +34,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import MyAppointmentsCard from "@/components/admin/MyAppointmentsCard";
+import LeadOfferFlagsCard from "@/components/admin/LeadOfferFlagsCard";
 import { fetchTodaysJobs, fetchOverdue, todayInJohannesburg, loadEntries } from "@/lib/todaysJobs";
 import { buildBoardRows } from "@/lib/jobsBoard";
 import { fetchMoneySummary } from "@/lib/moneySummary";
@@ -331,6 +332,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       {/* Rep: own upcoming appointments (STEP 3) */}
       {isSalesRep && <MyAppointmentsCard limit={5} />}
 
+      {!isSalesRep && <LeadOfferFlagsCard />}
       {!isSalesRep && <ReadyToInvoiceCard />}
 
       {/* Core 5 KPI Cards */}
