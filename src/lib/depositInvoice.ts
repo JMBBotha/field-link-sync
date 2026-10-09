@@ -18,6 +18,7 @@ export async function fetchQuoteInvoice(quoteId: string): Promise<DepositInvoice
     .from("invoices")
     .select("id, invoice_number, status, grand_total, paid_date, notes")
     .eq("quote_id", quoteId)
+    .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
   if (error) throw error;

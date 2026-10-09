@@ -23,6 +23,7 @@ import RowMenu from "@/components/shared/RowMenu";
 import { useQuoteStaffActions } from "@/components/quoting/useQuoteStaffActions";
 
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
+import PaymentPlanPicker from "@/components/quoting/PaymentPlanPicker";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { fetchQuoteInvoice } from "@/lib/depositInvoice";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -191,6 +192,8 @@ const AdminEstimateDetailPage = () => {
           Created {new Date(quote.created_at).toLocaleDateString("en-ZA")}
         </span>
       </div>
+
+      <PaymentPlanPicker quoteId={quote.id} />
 
       <AcceptedWorkSection quoteId={quote.id} />
 

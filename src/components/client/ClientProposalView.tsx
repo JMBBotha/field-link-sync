@@ -283,6 +283,7 @@ const ClientProposalView = () => {
           discountAmount={discountAmount}
           discountLabel={discountLabel}
           companyOverride={company}
+          paymentPlan={(quote as any).payment_plan ?? null}
         />
 
         {/* Optional extra proposal sections (below the document) */}

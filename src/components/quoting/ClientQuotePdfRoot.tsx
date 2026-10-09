@@ -59,7 +59,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
         const [qRes, iRes, aRes, cRes] = await Promise.all([
           (supabase.from("quotes") as any)
             .select(
-              "id, quote_number, subtotal, vat_rate, vat_amount, total, notes, valid_until, created_at, customer_name, terms_text, discount_type, discount_value, customers(name, first_name, last_name, company_name, primary_address_line1, email, phone)",
+              "id, quote_number, subtotal, vat_rate, vat_amount, total, notes, valid_until, created_at, customer_name, terms_text, discount_type, discount_value, payment_plan, customers(name, first_name, last_name, company_name, primary_address_line1, email, phone)",
             )
             .eq("id", quoteId)
             .maybeSingle(),
@@ -157,6 +157,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
           discountAmount={discount.amount}
           discountLabel={discount.label}
           companyOverride={doc.company}
+          paymentPlan={q.payment_plan ?? null}
         />
       )}
     </div>

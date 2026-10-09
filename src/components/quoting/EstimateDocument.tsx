@@ -13,6 +13,7 @@ import AreaLabourRow from "@/components/quoting/AreaLabourRow";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { formatRand } from "@/utils/formatRand";
+import { planTermsSentence, type PaymentPlan } from "@/lib/paymentPlans";
 
 export interface EstimateDocLineItem {
   description: string;
@@ -176,6 +177,8 @@ export interface EstimateDocumentProps {
    */
   clientAreas?: ClientRollupArea[];
   presentationMode?: "flat" | "clientRollup";
+  /** Accounting step 1: the quote's payment plan (null = company deposit %). */
+  paymentPlan?: PaymentPlan | null;
 }
 
 
@@ -309,6 +312,7 @@ const EstimateDocument = ({
   editing,
   clientAreas,
   presentationMode,
+  paymentPlan,
 }: EstimateDocumentProps) => {
   const editRootRef = useRef<HTMLDivElement | null>(null);
   const flashId = useNewLineScroll(
@@ -927,7 +931,7 @@ const EstimateDocument = ({
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Terms</p>
             <p className="mt-1 whitespace-pre-line">
               {cleanTerms ||
-                `This estimate is valid for 30 days from the date of issue. All prices exclude VAT, which is shown separately at ${vatPercent}%. A ${settings.default_deposit_percentage || 70}% deposit is payable on acceptance; the balance is due within ${settings.default_payment_terms_days || 30} days of completion.`}
+                `This estimate is valid for 30 days from the date of issue. All prices exclude VAT, which is shown separately at ${vatPercent}%. ${planTermsSentence(paymentPlan, settings.default_deposit_percentage, settings.default_payment_terms_days)}`}
             </p>
           </div>
 

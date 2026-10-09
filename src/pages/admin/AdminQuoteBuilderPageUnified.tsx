@@ -19,6 +19,7 @@ import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { formatRand } from "@/utils/formatRand";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
+import PaymentPlanPicker from "@/components/quoting/PaymentPlanPicker";
 import { openMandyQuoteMode } from "@/lib/mandy/registry";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
@@ -1348,6 +1349,13 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
           </TabsList>
         </div>
       </Tabs>
+
+      {/* Accounting step 1: how this quote is paid (locked once invoiced) */}
+      {quoteId && meta?.status !== "declined" && (
+        <div className="shrink-0 px-3 pb-2">
+          <PaymentPlanPicker quoteId={quoteId} />
+        </div>
+      )}
 
       {/* Post-acceptance: deposit invoice + hand over to installation */}
       {quoteId && meta?.status === "accepted" && (

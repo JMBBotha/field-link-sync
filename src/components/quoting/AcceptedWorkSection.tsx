@@ -23,6 +23,7 @@ import { useClashGuard } from "@/components/scheduling/ClashGuard";
 import { minutesToInterval } from "@/lib/schedulingDefaults";
 import { TimeInput24 } from "@/components/ui/time-input-24";
 import AvailabilityPicker from "@/components/scheduling/AvailabilityPicker";
+import { isValidPlan, stageOf, type PaymentPlan } from "@/lib/paymentPlans";
 import { defaultModeFor, handoffModesFor, handoffStatusText, type HandoffMode, type HandoffStatus } from "@/lib/installHandoff";
 
 interface Props {
@@ -102,7 +103,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("quotes")
-        .select("id, quote_number, status, company_id, customer_id, lead_id, customer_name, sales_engineer_id, public_token, total, customers(email, phone, name)")
+        .select("id, quote_number, status, company_id, customer_id, lead_id, customer_name, sales_engineer_id, public_token, total, payment_plan, customers(email, phone, name)")
         .eq("id", quoteId)
         .maybeSingle();
       if (error) throw error;
@@ -115,6 +116,32 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
     enabled: !!quoteId,
     queryFn: () => fetchQuoteInvoice(quoteId),
   });
+
+  // Accounting step 1: progress-stage invoices for plans like 20/60/20 (final stage = balance on completion).
+  const plan: PaymentPlan | null = isValidPlan(quote?.payment_plan) ? quote.payment_plan : null;
+  const { data: stageInvoices = [] } = useQuery({
+    queryKey: ["accepted-work-stage-invoices", quoteId],
+    enabled: !!quoteId && !!plan && plan.stages.length >= 3,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("invoices").select("id, invoice_number, status, grand_total, paid_date, notes")
+        .eq("quote_id", quoteId).like("notes", "STAGE%").order("created_at");
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+  const handleCreateStage = async () => {
+    setBusy("stage");
+    try {
+      const { error } = await (supabase as any).rpc("create_stage_invoice_for_quote", { p_quote_id: quoteId });
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ["accepted-work-stage-invoices", quoteId] });
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      toast({ title: "Progress invoice created (draft)", description: "Nothing was sent to the client." });
+    } catch (e: any) {
+      toast({ title: "Could not create the progress invoice", description: e.message, variant: "destructive" });
+    }
+    setBusy(null);
+  };
 
   const { data: installJob } = useQuery({
     queryKey: ["accepted-work-install-job", quoteId],
@@ -307,6 +334,36 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
           </Button>
         )}
       </div>
+
+      {/* Accounting step 1 — progress stages (e.g. the 60% of 20/60/20) */}
+      {plan && plan.stages.length >= 3 && plan.stages.slice(1, -1).map((st, i) => {
+        const k = i + 2;
+        const inv = stageInvoices.find((x) => stageOf(x.notes) === k);
+        const ready = hasDeposit && stageInvoices.filter((x) => (stageOf(x.notes) ?? 0) < k).length === k - 2;
+        return (
+          <div key={k} data-testid="stage-row" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted/40 px-3 py-2.5">
+            <div className="flex items-center gap-2 text-sm">
+              <ReceiptText className="h-4 w-4 text-muted-foreground" />
+              {inv ? (
+                <span>{st.label || "Progress payment"} ({st.pct}%) invoice <span className="font-semibold">{inv.invoice_number}</span>{" "}
+                  <Badge variant="secondary" className="ml-1 align-middle">{inv.status === "partially_paid" ? "part paid" : inv.status}</Badge></span>
+              ) : (
+                <span className="text-muted-foreground">Stage {k} of {plan.stages.length}: {st.label || "Progress payment"} ({st.pct}%) not invoiced yet.</span>
+              )}
+            </div>
+            {inv ? (
+              <Button variant="outline" size="sm" onClick={() => navigate(`/admin/invoices?highlight=${inv.id}`)}>
+                View invoice <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" onClick={handleCreateStage} disabled={!ready || busy === "stage"} title={ready ? "Creates a draft invoice; nothing is sent" : "Create the deposit invoice first"}>
+                {busy === "stage" && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                Create {st.pct}% invoice
+              </Button>
+            )}
+          </div>
+        );
+      })}
 
       {/* Step 2 — pass to technical */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted/40 px-3 py-2.5">
