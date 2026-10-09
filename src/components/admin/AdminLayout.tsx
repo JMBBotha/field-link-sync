@@ -23,6 +23,7 @@ import { useAssistantContextTracker } from "@/hooks/useAssistantContextTracker";
 import { WelcomeTourDialog } from "@/components/admin/WelcomeTourDialog";
 import CompanyLogo from "@/components/shared/CompanyLogo";
 import IdentityBadge from "@/components/IdentityBadge";
+import RoleAccentStrip from "@/components/RoleAccentStrip";
 import { withTimeout } from "@/lib/withTimeout";
 
 const AdminLayout = () => {
@@ -262,6 +263,7 @@ const AdminLayout = () => {
             </Button>
           </div>
         </header>
+        <RoleAccentStrip />
 
 
         {/* Mobile search lives in the header icon (GlobalSearchDialog) — no fat sticky strip */}

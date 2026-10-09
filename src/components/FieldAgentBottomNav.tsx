@@ -2,6 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { Home, ClipboardList, CalendarDays, Map, CloudOff, RefreshCw, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOfflineContext } from "@/contexts/OfflineContext";
+import { useRoleColours } from "@/hooks/useSignedInIdentity";
 
 /**
  * Mobile bottom navigation for field technicians.
@@ -20,6 +21,7 @@ const FieldAgentBottomNav = () => {
   const { pathname, search } = useLocation();
   const { isOnline, syncStatus } = useOfflineContext();
   const pending = syncStatus?.pendingCount ?? 0;
+  const { colours } = useRoleColours();
 
   return (
     <>
@@ -62,11 +64,11 @@ const FieldAgentBottomNav = () => {
                 to={tab.to}
                 className={cn(
                   "flex flex-col items-center justify-center gap-1 relative transition-colors active:scale-[0.96]",
-                  active ? "text-primary" : "text-muted-foreground"
+                  active ? (colours?.navText ?? "text-primary") : "text-muted-foreground"
                 )}
               >
                 {active && (
-                  <span className="absolute top-1 h-1 w-8 rounded-full bg-primary" />
+                  <span className={cn("absolute top-1 h-1 w-8 rounded-full", colours?.navBar ?? "bg-primary")} />
                 )}
                 <tab.icon className="h-6 w-6" strokeWidth={active ? 2.4 : 2} />
                 <span className="text-[11px] font-medium leading-none">{tab.label}</span>

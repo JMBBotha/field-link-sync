@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { Home, Briefcase, Map, Menu, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRoleColours } from "@/hooks/useSignedInIdentity";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { jobsTabFor } from "@/lib/visits";
 
@@ -17,6 +18,7 @@ const tabs = [
 const AdminBottomNav = ({ onOpenMenu }: AdminBottomNavProps) => {
   const { pathname } = useLocation();
   const { isSalesRep } = useSalesRep();
+  const { colours } = useRoleColours();
   // Reps: Map is hidden (step 2); its slot becomes the read-only PDF price lists.
   const visibleTabs = isSalesRep
     ? [
@@ -46,10 +48,10 @@ const AdminBottomNav = ({ onOpenMenu }: AdminBottomNavProps) => {
               to={tab.to}
               className={cn(
                 "flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition-colors",
-                active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                active ? (colours?.navText ?? "text-primary") : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {active && <span className="absolute top-1 h-1 w-8 rounded-full bg-primary" />}
+              {active && <span className={cn("absolute top-1 h-1 w-8 rounded-full", colours?.navBar ?? "bg-primary")} />}
               <tab.icon className="h-5 w-5" />
               <span className="text-[10px] font-medium">{tab.label}</span>
             </NavLink>

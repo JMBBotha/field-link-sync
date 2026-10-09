@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import CompanyLogo from "@/components/shared/CompanyLogo";
 import IdentityBadge from "@/components/IdentityBadge";
+import RoleAccentStrip from "@/components/RoleAccentStrip";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 
@@ -33,6 +34,7 @@ export default function FieldShell({ title, back = false, children }: FieldShell
           </Badge>
         </div>
       </header>
+      <RoleAccentStrip />
       <main className="mx-auto max-w-3xl p-4 pb-32">{children}</main>
       <FieldAgentBottomNav />
     </div>

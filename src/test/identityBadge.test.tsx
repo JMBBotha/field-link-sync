@@ -4,6 +4,8 @@ import IdentityBadge from "@/components/IdentityBadge";
 import fieldAgentSource from "@/pages/FieldAgent.tsx?raw";
 import adminLayoutSource from "@/components/admin/AdminLayout.tsx?raw";
 import fieldShellSource from "@/components/field/FieldShell.tsx?raw";
+import fieldNavSource from "@/components/FieldAgentBottomNav.tsx?raw";
+import adminNavSource from "@/components/admin/AdminBottomNav.tsx?raw";
 
 const state = vi.hoisted(() => ({
   user: { id: "user-1", email: "t@x.co" } as { id: string; email: string } | null,
@@ -55,6 +57,27 @@ describe("IdentityBadge", () => {
     renderBadge();
     expect(await screen.findByText(label as string)).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("identity-badge")).toHaveTextContent("Thabo Mokoena"));
+  });
+
+  it.each([
+    [["admin"], null, "admin", "bg-orange-500"],
+    [["dispatcher"], "sales", "sales", "bg-blue-600"],
+    [["field_agent"], null, "tech", "bg-emerald-600"],
+    [["dispatcher"], "office", "office", "bg-orange-500"],
+  ])("roles %j (%s) colour the pill %s", async (roles, dispatchRole, kind, cls) => {
+    state.roles = roles as string[];
+    state.profile = { full_name: "Lisa Naidoo", dispatch_role: dispatchRole as string | null };
+    renderBadge();
+    await waitFor(() => expect(screen.getByTestId("identity-badge")).toHaveAttribute("data-role-kind", kind as string));
+    expect(screen.getByTestId("identity-badge").className).toContain(cls as string);
+  });
+
+  it("role accent strip and bottom navs use the shared role colours", () => {
+    expect(adminLayoutSource).toContain("<RoleAccentStrip />");
+    expect(fieldAgentSource).toContain("<RoleAccentStrip />");
+    expect(fieldShellSource).toContain("<RoleAccentStrip />");
+    expect(fieldNavSource).toContain("useRoleColours");
+    expect(adminNavSource).toContain("useRoleColours");
   });
 
   it("shows first name on phones with the role chip", async () => {

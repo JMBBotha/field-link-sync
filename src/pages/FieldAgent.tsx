@@ -44,6 +44,7 @@ import CompletedJobsFilterDrawer from "@/components/CompletedJobsFilterDrawer";
 import { useCompletedJobsFilter } from "@/hooks/useCompletedJobsFilter";
 import { Filter } from "lucide-react";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
+import RoleAccentStrip from "@/components/RoleAccentStrip";
 import AcceptLeadDialog from "@/components/leads/AcceptLeadDialog";
 
 interface Lead {
@@ -1278,6 +1279,7 @@ const FieldAgent = () => {
             </Button>
           </div>
         </header>
+        <RoleAccentStrip />
 
         {/* Offline Banner */}
         {!isOnline && (
