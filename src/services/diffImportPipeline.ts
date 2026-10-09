@@ -91,7 +91,7 @@ export async function buildProductDiff(
 ): Promise<DiffRow[]> {
   const { data: existing, error: fetchErr } = await supabase
     .from("supplier_products" as any)
-    .select("id, product_code, cost_price, archived, description, brand, product_category, category")
+    .select("id, product_code, cost_price, archived, description, brand, product_category, category, subcategory")
     .eq("supplier_id", supplierId)
     .limit(5000);
 
@@ -105,6 +105,8 @@ export async function buildProductDiff(
     { id: string; cost_price: number; archived: boolean; description: string; brand: string | null; product_category: string | null; category: string | null }
   >();
   (existing || []).forEach((e: any) => {
+    // One Stop Shop in-house extras are not on any supplier file: never diff (or archive) them.
+    if (e.subcategory === "In-house") return;
     existingMap.set((e.product_code || "").toUpperCase(), {
       id: e.id,
       cost_price: e.cost_price || 0,

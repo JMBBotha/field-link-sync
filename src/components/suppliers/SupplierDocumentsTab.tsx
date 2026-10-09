@@ -289,7 +289,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
 
       const { data: oldPages } = await (supabase.from("supplier_pdf_pages" as any) as any)
         .select("page_image_url")
-        .in("supplier_id", aliasArr);
+        .in("supplier_id", aliasArr)
+        .or("brand.is.null,brand.neq.In-house"); // keep the One Stop Shop in-house extras book
       if (oldPages && oldPages.length > 0) {
         const imagePaths = oldPages
           .map((p: any) => {
@@ -302,7 +303,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           await supabase.storage.from("supplier-pdf-pages").remove(imagePaths);
         }
       }
-      await (supabase.from("supplier_pdf_pages" as any) as any).delete().in("supplier_id", aliasArr);
+      await (supabase.from("supplier_pdf_pages" as any) as any).delete().in("supplier_id", aliasArr).or("brand.is.null,brand.neq.In-house");
 
       // ── Process the new PDF ──
       setPriceListProgress("Loading PDF...");
@@ -402,7 +403,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       await (supabase.from("pdf_uploads") as any)
         .update({ is_active: false, status: "archived" })
         .eq("supplier_id", supplierId)
-        .neq("id", newUploadId);
+        .neq("id", newUploadId)
+        .or("price_list_type.is.null,price_list_type.neq.in_house"); // in-house extras book stays live
       await (supabase.from("pdf_uploads") as any)
         .update({ is_active: true, status: "parsed", activated_at: new Date().toISOString() })
         .eq("id", newUploadId);

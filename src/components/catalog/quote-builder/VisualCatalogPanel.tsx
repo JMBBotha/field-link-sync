@@ -79,6 +79,8 @@ interface PdfPage {
   pdf_storage_path: string | null;
   price_column_bbox?: { x_frac: number; w_frac: number } | null;
   pdf_upload_id?: string | null;
+  /** 'In-house' = Field Lynk-generated One Stop Shop extras book (exact stored row boxes, no text extraction). */
+  brand?: string | null;
 }
 
 /** Zoom 1 = page image rendered at full container width (fit-width). */
@@ -337,7 +339,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
     enabled: open,
     queryFn: async () => {
       let query = (supabase.from("supplier_pdf_pages") as any)
-        .select("id, supplier_id, pdf_filename, page_number, page_image_url, pdf_storage_path, price_column_bbox, pdf_upload_id")
+        .select("id, supplier_id, pdf_filename, page_number, page_image_url, pdf_storage_path, price_column_bbox, pdf_upload_id, brand")
         .order("supplier_id").order("pdf_filename").order("page_number");
       if (selectedSupplier !== "all") query = query.eq("supplier_id", selectedSupplier);
       const { data, error } = await query.limit(500);
@@ -1243,6 +1245,8 @@ const LazyPdfPage = ({
   const divRef = useRef<HTMLDivElement | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const hasPdfSource = !!page.pdf_storage_path;
+  // In-house book pages: regions come only from the boxes stored when the PDF was generated.
+  const isInhouseBook = page.brand === "In-house" && !!page.pdf_upload_id;
 
   // Lazy visibility detection
   useEffect(() => {
@@ -1289,9 +1293,17 @@ const LazyPdfPage = ({
   // NOTE: page.supplier_id stores the supplier *name* (legacy), while supplier_products.supplier_id
   // stores a UUID. Resolve the UUID via the suppliers table by name (trimmed).
   const { data: ocrRegions = [] } = useQuery({
-    queryKey: ["visual-panel-ocr-bboxes", page.supplier_id, page.page_number],
+    queryKey: ["visual-panel-ocr-bboxes", page.supplier_id, page.page_number, isInhouseBook ? page.pdf_upload_id : null],
     enabled: isVisible,
     queryFn: async () => {
+      if (isInhouseBook) {
+        const { data } = await liveProducts()
+          .select("id, product_code, short_name, description, cost_excl_vat, cost_price, default_markup_percent, row_bbox, price_bbox")
+          .eq("pdf_upload_id", page.pdf_upload_id)
+          .eq("page_number", page.page_number)
+          .not("row_bbox", "is", null);
+        return data || [];
+      }
       const supplierName = (page.supplier_id || "").trim();
       if (!supplierName) return [];
       // Use wildcards: legacy supplier names may have trailing whitespace in DB
@@ -1308,7 +1320,8 @@ const LazyPdfPage = ({
         .select("id, product_code, short_name, description, cost_excl_vat, cost_price, default_markup_percent, row_bbox, price_bbox")
         .eq("supplier_id", supplierUuid)
         .eq("page_number", page.page_number)
-        .not("row_bbox", "is", null);
+        .not("row_bbox", "is", null)
+        .or("subcategory.is.null,subcategory.neq.In-house"); // in-house extras live on their own book
       console.log(`[VisualCatalog] OCR bbox query: supplier="${supplierName}" uuid=${supplierUuid} page=${page.page_number} → ${(data || []).length} regions`);
       return data || [];
     },
@@ -1333,7 +1346,7 @@ const LazyPdfPage = ({
   });
 
    // Live extraction for this page — enable even without hasPdfSource so fallback kicks in
-  const queryEnabled = isVisible && hasPdfSource && activeProducts.length > 0;
+  const queryEnabled = isVisible && hasPdfSource && activeProducts.length > 0 && !isInhouseBook;
   
   // Debug: log why query might not be enabled
   useEffect(() => {
