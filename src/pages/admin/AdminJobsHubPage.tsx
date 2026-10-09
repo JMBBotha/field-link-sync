@@ -67,7 +67,9 @@ export default function AdminJobsHubPage() {
     return n && viewsFor(t).includes(n as View) ? (n as View) : null;
   };
   const urlTab = sp.get("tab");
-  const tab: Tab = urlTab === "pipeline" || urlTab === "dispatch" ? urlTab : ((store("fls.jobs.tab") as Tab) || defTab);
+  const wantTab: Tab = urlTab === "pipeline" || urlTab === "dispatch" ? urlTab : ((store("fls.jobs.tab") as Tab) || defTab);
+  // Dispatch lockdown (9 Oct): salespeople never get the Dispatch tab (URL or remembered).
+  const tab: Tab = isSalesRep ? "pipeline" : wantTab;
   const view: View = fixView(tab, sp.get("view")) || fixView(tab, store(`fls.jobs.view.${tab}`)) || defViewFor(tab);
 
   const go = (t: Tab, v?: View) => {
@@ -86,7 +88,7 @@ export default function AdminJobsHubPage() {
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="mr-2 text-2xl font-bold tracking-tight">Jobs</h1>
         <div className="inline-flex rounded-lg border bg-muted/60 p-1" role="tablist">
-          {(["pipeline", "dispatch"] as Tab[]).map((t) => (
+          {((isSalesRep ? ["pipeline"] : ["pipeline", "dispatch"]) as Tab[]).map((t) => (
             <button key={t} role="tab" aria-selected={tab === t} onClick={() => go(t)}
               className={cn("rounded-md px-3 py-1.5 text-sm font-semibold", tab === t ? "bg-background shadow" : "text-muted-foreground")}>
               {t === "pipeline" ? <>Pipeline · coming <span className="text-xs font-normal text-muted-foreground">{fmtRandShort(open)}</span></> : <>Dispatch · live</>}

@@ -501,9 +501,11 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               <CardTitle className="text-sm md:text-base flex items-center gap-2 min-w-0 truncate">
                 <Briefcase className="h-4 w-4 text-primary" /> Upcoming Jobs
               </CardTitle>
-              <Button variant="ghost" size="sm" asChild className="h-7 shrink-0 px-2 text-xs">
-                <Link to="/admin/jobs?tab=dispatch&view=board">Dispatch</Link>
-              </Button>
+              {!isSalesRep && (
+                <Button variant="ghost" size="sm" asChild className="h-7 shrink-0 px-2 text-xs">
+                  <Link to="/admin/jobs?tab=dispatch&view=board">Dispatch</Link>
+                </Button>
+              )}
             </div>
             <div className="surface-segment grid w-full grid-cols-3 p-0.5 md:inline-flex md:w-auto md:self-start">
               {(["day", "week", "month"] as const).map((r) => (

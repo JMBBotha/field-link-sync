@@ -174,7 +174,7 @@ const App = () => (
                     <Route path="jobs-map" element={<RequireRole allowedRoles={["admin","dispatcher","viewer","field_agent"]} denySalesRep><AdminJobsMapPage /></RequireRole>} />
                     {/* Dispatch calendar + old Schedule now live in Jobs → Dispatch · Calendar (hub role check applies); params kept. */}
                     <Route path="dispatch" element={<DispatchCalendarRedirect />} />
-                    <Route path="unassigned-queue" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminUnassignedQueuePage /></RequireRole>} />
+                    <Route path="unassigned-queue" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminUnassignedQueuePage /></RequireRole>} />
 
                     <Route path="jobs" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} redirectTo="/admin/my-jobs" redirectOnDeny><AdminJobsHubPage /></RequireRole>} />
                     <Route path="jobs/dispatch" element={<JobsDispatchRedirect />} />

@@ -27,6 +27,8 @@ import AppointmentPicker, {
 import { useAcceptLead, type AcceptLeadInput } from "@/hooks/useAcceptLead";
 import { format } from "date-fns";
 import { laneFromServiceType } from "@/lib/leadLane";
+import { useSalesRep } from "@/hooks/useSalesRep";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AcceptLeadDialogProps {
   lead: AcceptLeadInput | null;
@@ -57,6 +59,10 @@ const AcceptLeadDialog = ({
   defaultAgentId,
 }: AcceptLeadDialogProps) => {
   const { acceptAndSchedule, submitting, clashDialog } = useAcceptLead();
+  // Dispatch lockdown: salespeople can only book themselves (no assigning techs).
+  const { isSalesRep } = useSalesRep();
+  const { user } = useAuth();
+  const selfOnlyId = isSalesRep ? user?.id : undefined;
   const [appt, setAppt] = useState<AppointmentValue>(defaultAppointment());
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -69,14 +75,14 @@ const AcceptLeadDialog = ({
     if (!open || !lead) return;
     setAppt({
       ...defaultAppointment(),
-      agentId: defaultAgentId || "",
+      agentId: selfOnlyId || defaultAgentId || "",
     });
     setTitle(lead.service_type || `Job for ${lead.customer_name || "customer"}`);
     setDescription(lead.notes || "");
     setPriority(lead.priority || "normal");
     setAddress(lead.customer_address || "");
     setLocationId("");
-  }, [open, lead]);
+  }, [open, lead, selfOnlyId]);
 
   // Alternate customer locations (only shown when >1 exists)
   const { data: locations = [] } = useQuery({
@@ -112,7 +118,7 @@ const AcceptLeadDialog = ({
         : address;
 
     const result = await acceptAndSchedule(lead, {
-      appointment: appt,
+      appointment: selfOnlyId ? { ...appt, agentId: selfOnlyId } : appt,
       title: title.trim() || "Untitled job",
       description: description.trim(),
       priority,
@@ -218,7 +224,7 @@ const AcceptLeadDialog = ({
           )}
 
           <div className="rounded-lg border border-border bg-muted/30 p-3">
-            <AppointmentPicker value={appt} onChange={setAppt} assignmentLane={laneFromServiceType(lead?.service_type) ?? "service"} lat={lead?.latitude} lng={lead?.longitude} excludeLeadId={lead?.id} />
+            <AppointmentPicker value={selfOnlyId ? { ...appt, agentId: selfOnlyId } : appt} onChange={(v) => setAppt(selfOnlyId ? { ...v, agentId: selfOnlyId } : v)} showAgentPicker={!selfOnlyId} assignmentLane={laneFromServiceType(lead?.service_type) ?? "service"} lat={lead?.latitude} lng={lead?.longitude} excludeLeadId={lead?.id} />
           </div>
         </div>
 

@@ -106,7 +106,8 @@ const AdminSidebar = ({
           children: [
             // Dispatch calendar + Schedule are views inside Dispatch now (old URLs redirect); techs use /field.
             { path: "/admin/jobs?tab=pipeline", label: "Sales pipeline", icon: BarChart3, roles: ["admin", "dispatcher", "viewer"] },
-            { path: "/admin/jobs?tab=dispatch", label: "Dispatch", icon: ClipboardList, roles: ["admin", "dispatcher", "viewer"] },
+            // Dispatch lockdown: hidden for salespeople (dispatcher + sales lane).
+            ...(isSalesRep ? [] : [{ path: "/admin/jobs?tab=dispatch", label: "Dispatch", icon: ClipboardList, roles: ["admin", "dispatcher", "viewer"] } as NavItem]),
           ],
         },
         ...(isSalesRep ? [{ path: "/admin/visits", label: "My visits", icon: MapPin } as NavItem] : []),
