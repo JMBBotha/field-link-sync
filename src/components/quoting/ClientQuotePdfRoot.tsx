@@ -77,6 +77,9 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
             .order("created_at"),
           (supabase.from("company_settings") as any)
             .select("company_name, physical_address, vat_number, banking_details, default_deposit_percentage, default_payment_terms_days")
+            // Same row as invoices/statements: the newest settings row.
+            .order("updated_at", { ascending: false, nullsFirst: false })
+            .order("id")
             .limit(1)
             .maybeSingle(),
           // Deposit % must match the deposit invoice: latest settings row (same order as create_deposit_invoice_for_quote).

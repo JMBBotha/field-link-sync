@@ -77,6 +77,8 @@ export async function fetchTermsCompanyInfo(fallbackName?: string): Promise<Term
     const { data, error } = await supabase
       .from("company_settings")
       .select("company_name, banking_details")
+      .order("updated_at", { ascending: false, nullsFirst: false })
+      .order("id")
       .limit(1)
       .maybeSingle();
 

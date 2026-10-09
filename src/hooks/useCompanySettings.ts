@@ -50,7 +50,8 @@ export const useCompanySettings = () => {
       const { data, error } = await supabase
         .from("company_settings")
         .select("*")
-        .order("updated_at", { ascending: false })
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .order("id")
         .limit(1)
         .maybeSingle();
       if (error) throw error;
