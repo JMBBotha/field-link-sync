@@ -29,6 +29,7 @@ import IndependentSignup from "./pages/IndependentSignup";
 import SetPassword from "./pages/SetPassword";
 import IdleLogoutGate from "@/components/IdleLogoutGate";
 import ClientProposalView from "./components/client/ClientProposalView";
+import PublicStatement from "./pages/PublicStatement";
 
 
 // Admin layout + pages
@@ -145,6 +146,7 @@ const App = () => (
                 <Route path="/customer/:token/invoices" element={<CustomerInvoiceView />} />
                 <Route path="/customer/:token/invoice/:invoiceId" element={<CustomerInvoiceView />} />
                 <Route path="/quote/:token" element={<ClientProposalView />} />
+                <Route path="/statement/:token" element={<PublicStatement />} />
 
                 {/* Archived FreshBooks copy (accounting step 0): admins only; the live accounting is /admin/invoices. */}
                 <Route path="/client/:companyId" element={<RequireRole allowedRoles={["admin"]} denySalesRep><CompanyProvider><FBLayout /></CompanyProvider></RequireRole>}>

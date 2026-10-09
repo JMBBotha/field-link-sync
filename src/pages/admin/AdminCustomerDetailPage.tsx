@@ -36,6 +36,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { cn } from "@/lib/utils";
 import { formatRand } from "@/utils/formatRand";
 import CustomerLocationsManager from "@/components/customers/CustomerLocationsManager";
+import CustomerStatementPanel from "@/components/customers/CustomerStatementPanel";
+import CustomerNotesPanel from "@/components/customers/CustomerNotesPanel";
 import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import { useRegisterAssistantContext } from "@/hooks/useAssistantContextTracker";
@@ -78,6 +80,8 @@ const AdminCustomerDetailPage = () => {
   const { isAdmin } = useRole();
   const { isSalesRep } = useSalesRep();
   const canAssignRep = isAdmin && !isSalesRep;
+  // Statements are company finance: office staff only (RPC enforces the same).
+  const canSeeStatement = isAdmin && !isSalesRep;
   const [savingRep, setSavingRep] = useState(false);
 
   const { data: customer, isLoading } = useQuery({
@@ -471,6 +475,8 @@ const AdminCustomerDetailPage = () => {
                     <TabsTrigger value="jobs">
                       Jobs {jobs.length > 0 && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{jobs.length}</span>}
                     </TabsTrigger>
+                    {canSeeStatement && <TabsTrigger value="statement" data-testid="tab-statement">Statement</TabsTrigger>}
+                    <TabsTrigger value="notes" data-testid="tab-notes">Notes</TabsTrigger>
                     <TabsTrigger value="contacts">Contacts</TabsTrigger>
                     <TabsTrigger value="credits">Credits</TabsTrigger>
                     <TabsTrigger value="estimates">Estimates</TabsTrigger>
@@ -591,6 +597,14 @@ const AdminCustomerDetailPage = () => {
 
                 <TabsContent value="contacts" className="p-6 text-sm text-muted-foreground">
                   Additional contacts will appear here.
+                </TabsContent>
+                {canSeeStatement && (
+                  <TabsContent value="statement" className="p-0 mt-0">
+                    <CustomerStatementPanel customerId={customer.id} />
+                  </TabsContent>
+                )}
+                <TabsContent value="notes" className="p-0 mt-0">
+                  <CustomerNotesPanel customerId={customer.id} companyId={customer.company_id ?? null} />
                 </TabsContent>
                 <TabsContent value="credits" className="p-6 text-sm text-muted-foreground">
                   No credits on file.
