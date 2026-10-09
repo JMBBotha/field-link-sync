@@ -1,8 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Team invites (Q4): an invitee signs in by magic link and must then set a password. If the link lands on
- * another page (e.g. the redirect URL isn't allow-listed), send them to /set-password. Never throws.
+ * Team invites (Q4/Q4b): the invite applies when the invitee confirms their email via the link; until they set a
+ * password, me_needs_password() is true and we send them to /set-password wherever the link landed. Never throws.
  */
 export async function redirectIfPasswordMissing(loc: Pick<Location, "pathname" | "replace"> = window.location): Promise<boolean> {
   if (loc.pathname === "/set-password") return false;

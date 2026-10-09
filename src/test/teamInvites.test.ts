@@ -51,6 +51,7 @@ describe("Q4 team invites: invitee without a password lands on /set-password", (
     const team = readFileSync(resolve(__dirname, "../pages/admin/AdminTeamPage.tsx"), "utf8");
     expect(team).toContain('data-testid="pending-invites"');
     expect(team).toContain("Resend link");
+    expect(team).toContain("applies when they open the email link");
     expect(team).toMatch(/\.from\("team_invites"\)\s*\.select\("id, email, role, dispatch_role, created_at"\)/);
     expect(readFileSync(resolve(__dirname, "../contexts/AuthContext.tsx"), "utf8")).toContain("redirectIfPasswordMissing()");
   });

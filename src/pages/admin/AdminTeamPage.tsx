@@ -225,8 +225,8 @@ const AdminTeamPage = () => {
   // Invite user mutation
   const inviteMutation = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: string }) => {
-      // Invite row (company + role + lane) is applied by handle_new_user when the invitee first
-      // opens the magic link; they then set a password on /set-password.
+      // Invite row (company + role + lane) is applied in the DB when the invitee CONFIRMS their email by
+      // opening the link (auth_user_invite_events); the app then sends them to /set-password (me_needs_password).
       const opt = INVITE_OPTIONS[role], clean = email.trim().toLowerCase();
       if (!companyId) throw new Error("Your account has no company, so the invite can't be linked");
       const inv = () => (supabase as any).from("team_invites");
@@ -348,7 +348,7 @@ const AdminTeamPage = () => {
                   <div className="min-w-0">
                     <p className="truncate font-medium">{inv.email}</p>
                     <p className="text-xs text-muted-foreground">
-                      {INVITE_OPTIONS[key]?.label ?? inv.role} · invited {format(new Date(inv.created_at), "d MMM HH:mm")} · waiting for them to open the link
+                      {INVITE_OPTIONS[key]?.label ?? inv.role} · invited {format(new Date(inv.created_at), "d MMM HH:mm")} · applies when they open the email link
                     </p>
                   </div>
                   <Button size="sm" variant="outline" disabled={inviteMutation.isPending}
