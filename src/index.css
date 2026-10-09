@@ -1099,3 +1099,42 @@ All colors MUST be HSL.
   .estimate-editing [aria-label="Labour mode"] { width: min(240px, 100%); }
   .option1-labour > span:first-child { flex-basis: 100%; }
 }
+
+/* ── Pop-ups (glass dialogs, sheets, popovers, menus, toasts): text readability only ──
+   The glass itself (tint, opacity, blur, border, background) is deliberately untouched.
+   1. Soft shadow under white text so it lifts off the frosted backdrop.
+   2. Muted/grey text lifted to a higher-contrast shade (well above WCAG AA 4.5:1). */
+:is([role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"],
+    [data-radix-popper-content-wrapper] > *, [data-sonner-toast]) {
+  --popup-muted-text: 215 20% 36%;
+}
+.dark :is([role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"],
+    [data-radix-popper-content-wrapper] > *, [data-sonner-toast]) {
+  --popup-muted-text: 214 32% 87%;
+  /* Dark mode body text is white: give it a soft dark halo. */
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.55), 0 0 1px rgb(0 0 0 / 0.35);
+}
+/* White text on coloured chips/buttons (both modes). */
+:is([role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"],
+    [data-radix-popper-content-wrapper] > *, [data-sonner-toast]) :is(.text-white, .text-primary-foreground) {
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.45);
+}
+/* Grey/muted text: lighter in dark mode, darker in light mode. */
+:is([role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"],
+    [data-radix-popper-content-wrapper] > *, [data-sonner-toast]) :is(
+  .text-muted-foreground, .text-muted-foreground\/40, .text-muted-foreground\/50,
+  .text-muted-foreground\/60, .text-muted-foreground\/70, .text-muted-foreground\/80,
+  .text-slate-400, .text-slate-500, .text-slate-600,
+  .text-gray-400, .text-gray-500, .text-gray-600,
+  .text-zinc-400, .text-zinc-500, .text-neutral-400, .text-neutral-500
+):not(.bg-white *):not([data-paper] *):not(.pdf-page *):not([data-pdf-capture-root] *) {
+  color: hsl(var(--popup-muted-text)) !important;
+}
+.dark :is([role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"],
+    [data-radix-popper-content-wrapper] > *, [data-sonner-toast]) ::placeholder {
+  color: hsl(var(--popup-muted-text) / 0.8);
+}
+/* White "paper" previews inside pop-ups (quotes, PDFs) keep crisp, shadow-free text. */
+:is([role="dialog"], [role="alertdialog"]) :is(.bg-white, [data-paper], .pdf-page, [data-pdf-capture-root]) {
+  text-shadow: none;
+}
