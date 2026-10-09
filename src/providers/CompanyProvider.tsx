@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo, ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchCompanyPricing } from "@/lib/companyPricing";
 import { useAuth } from "@/contexts/AuthContext";
 import type { TablesInsert } from "@/integrations/supabase/types";
 
@@ -68,7 +69,7 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
       const col = isUUID(paramId) ? "id" : "slug";
       const { data, error } = await supabase
         .from("companies")
-        .select("id, name, slug, logo_url, vat_rate, default_rate, services, onboarding_completed")
+        .select("id, name, slug, logo_url, vat_rate, services, onboarding_completed")
         .eq(col, paramId)
         .maybeSingle();
 
@@ -81,7 +82,10 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
 
       if (data) {
         console.log("Company found:", data.id, data.name);
-        setCompany(data as Company);
+        // default_rate is server-gated (P10): techs get null.
+        const pricing = await fetchCompanyPricing(data.id);
+        if (!mountedRef.current || seq !== fetchSeqRef.current) return;
+        setCompany({ ...(data as Omit<Company, "default_rate">), default_rate: pricing?.default_rate ?? null });
       } else {
         console.log("No company found, auto-creating test company for:", paramId);
         const insertPayload: TablesInsert<"companies"> = isUUID(paramId)
@@ -91,7 +95,7 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
         const { data: newCompany, error: insertError } = await supabase
           .from("companies")
           .insert(insertPayload)
-          .select("id, name, slug, logo_url, vat_rate, default_rate, services, onboarding_completed")
+          .select("id, name, slug, logo_url, vat_rate, services, onboarding_completed")
           .single();
 
         if (!mountedRef.current || seq !== fetchSeqRef.current) return;
@@ -99,7 +103,7 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
           console.error("Auto-create company error:", insertError);
         } else if (newCompany) {
           console.log("Auto-created company:", newCompany.id);
-          setCompany(newCompany as Company);
+          setCompany({ ...(newCompany as Omit<Company, "default_rate">), default_rate: null });
         }
       }
     } catch (e: unknown) {

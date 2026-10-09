@@ -10,6 +10,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchCompanyPricing } from "@/lib/companyPricing";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import type { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
@@ -253,11 +254,9 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   useEffect(() => {
     if (!companyId) return;
     let cancelled = false;
-    void (supabase.from("companies") as any)
-      .select("units_markup_percent, materials_markup_percent, materials_waste_percent")
-      .eq("id", companyId)
-      .maybeSingle()
-      .then(({ data }: { data: { units_markup_percent: number | null; materials_markup_percent: number | null; materials_waste_percent?: number | null } | null }) => {
+    // Markups/waste come from the server (P10); techs get nothing and keep defaults.
+    void fetchCompanyPricing(companyId)
+      .then((data) => {
         if (cancelled || !data) return;
         setCompanyWaste(Number(data.materials_waste_percent ?? DEFAULT_MATERIALS_WASTE_PERCENT));
         setCompanyMarkupRates({

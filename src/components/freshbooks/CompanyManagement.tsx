@@ -36,7 +36,7 @@ const CompanyManagement = () => {
   const { data: companies = [], isLoading } = useQuery({
     queryKey: ["all-companies"],
     queryFn: async () => {
-      const { data } = await supabase.from("companies").select("id, name, slug, logo_url, status, created_at, updated_at, onboarding_completed, is_master, custom_service_limit, vat_rate, default_rate, services").order("created_at", { ascending: false });
+      const { data } = await supabase.from("companies").select("id, name, slug, logo_url, status, created_at, updated_at, onboarding_completed, is_master, custom_service_limit, vat_rate, services").order("created_at", { ascending: false });
       return data || [];
     },
   });

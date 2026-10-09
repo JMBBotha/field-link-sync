@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchCompanyPricing } from "@/lib/companyPricing";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/useRole";
 import { useToast } from "@/hooks/use-toast";
@@ -50,9 +51,8 @@ export default function MarginSettingsCard() {
     queryKey: ["materials-waste", data?.id],
     enabled: !!data?.id,
     queryFn: async () => {
-      const { data: w, error } = await (supabase.from("companies") as any).select("materials_waste_percent").eq("id", data!.id).maybeSingle();
-      if (error) throw error;
-      return w as { materials_waste_percent: number } | null;
+      const w = await fetchCompanyPricing(data!.id);
+      return w ? { materials_waste_percent: Number(w.materials_waste_percent ?? 10) } : null;
     },
   });
   useEffect(() => { if (wasteRow) setWaste(String(wasteRow.materials_waste_percent ?? 10)); }, [wasteRow]);
