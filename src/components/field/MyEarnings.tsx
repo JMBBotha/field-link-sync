@@ -9,7 +9,6 @@ import { formatRand } from "@/utils/formatRand";
 import { formatSastDate } from "@/lib/salesTracker";
 import { BUCKET_LABEL, bucketOf, byJob, summarizeMine, type MyEarningRow } from "@/lib/myEarnings";
 import { cn } from "@/lib/utils";
-import { PeekCard, usePeekStack } from "@/components/shared/CardStack";
 
 const money = (v: number) => formatRand(Number(v) || 0);
 
@@ -113,28 +112,5 @@ export function MyEarningsView() {
         </>
       )}
     </div>
-  );
-}
-
-/** Collapsed-by-default earnings strip (this month's total); opens on hover (desktop) or click/tap (pinned). */
-export function MyEarningsPeek({ className, overlapBelow }: { className?: string; overlapBelow?: boolean }) {
-  const { data: rows = [], isLoading } = useMyTechEarnings();
-  const peek = usePeekStack<"earnings">();
-  const open = peek.isOpen("earnings");
-  const month = summarizeMine(rows).month;
-  return (
-    <PeekCard id="earnings" open={open} onToggle={() => peek.toggle("earnings")}
-      onPointerEnter={peek.enter("earnings")} onPointerLeave={peek.leave("earnings")}
-      overlap={overlapBelow ? "below" : "none"} className={cn("shrink-0", className)}
-      title={<><Wallet className="h-3.5 w-3.5 shrink-0 text-green-600" />My earnings</>}
-      summary={<span className="text-[11px] font-normal text-muted-foreground" data-testid="earn-strip-month">
-        {isLoading ? "…" : rows.length ? <>This month <b className="text-foreground">{money(month)}</b></> : "None yet"}</span>}>
-      <div className="space-y-2 px-2 pb-4 pt-1" data-testid="my-earnings-card">
-        {isLoading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" />
-          : rows.length === 0 ? <p className="text-xs text-muted-foreground" data-testid="earn-empty">{EMPTY}</p>
-          : <Totals rows={rows} compact />}
-        <Link to="/field/earnings" className="flex items-center justify-end text-xs text-primary hover:underline">All my earnings <ChevronRight className="h-3 w-3" /></Link>
-      </div>
-    </PeekCard>
   );
 }

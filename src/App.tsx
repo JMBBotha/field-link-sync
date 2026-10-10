@@ -38,9 +38,9 @@ import AdminBankPage from "./pages/admin/AdminBankPage";
 // Admin layout + pages
 import AdminLayout from "./components/admin/AdminLayout";
 import MyBasePage from "./pages/MyBasePage";
-import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage, AdminHelpPage } from "./pages/admin";
-import EstimateToBuilderRedirect from "@/components/quoting/EstimateToBuilderRedirect";
+import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminEstimateDetailPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage, AdminHelpPage } from "./pages/admin";
 import AdminQuoteBuilderPageUnified from "./pages/admin/AdminQuoteBuilderPageUnified";
+import AdminProposalBuilderPage from "./pages/admin/AdminProposalBuilderPage";
 import AdminCatalogPage from "./pages/admin/AdminCatalogPage";
 import AdminUnassignedQueuePage from "./pages/admin/AdminUnassignedQueuePage";
 import AdminJobsMapPage from "./pages/admin/AdminJobsMapPage";
@@ -97,6 +97,7 @@ import FBClientPortal from "./components/freshbooks/FBClientPortal";
 import FBProjectsList from "./components/freshbooks/FBProjectsList";
 import CompanyManagement from "./components/freshbooks/CompanyManagement";
 import FBCreateInvoicePage from "./pages/FBCreateInvoicePage";
+import FBCreateEstimatePage from "./pages/FBCreateEstimatePage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -160,7 +161,7 @@ const App = () => (
                   <Route path="payments" element={<FBPaymentsList />} />
                   <Route path="projects" element={<FBProjectsList />} />
                   <Route path="invoices/new" element={<FBCreateInvoicePage />} />
-                  <Route path="estimates/new" element={<Navigate to="/admin/quote-builder" replace />} />
+                  <Route path="estimates/new" element={<FBCreateEstimatePage />} />
                   <Route path="portal" element={<FBClientPortal />} />
                   <Route path="audit" element={<AuditLogViewer />} />
                 </Route>
@@ -190,7 +191,7 @@ const App = () => (
                     <Route path="visits/:leadId" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminVisitDetailPage /></RequireRole>} />
                     <Route path="schedule" element={<DispatchCalendarRedirect />} />
                     <Route path="quotes" element={<AdminQuotesPage />} />
-                    <Route path="estimates/:id" element={<EstimateToBuilderRedirect />} />
+                    <Route path="estimates/:id" element={<AdminEstimateDetailPage />} />
 
                     <Route path="templates" element={<AdminProposalsPage />} />
                     <Route path="invoices" element={<AdminInvoicesPage />} />
@@ -240,7 +241,7 @@ const App = () => (
 
 
                   {/* Unified Quote Builder — single source of truth (quote_items + quote_areas). */}
-                  <Route path="/admin/proposal-builder" element={<Navigate to="/admin/quote-builder" replace />} />
+                  <Route path="/admin/proposal-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminProposalBuilderPage /></RequireRole>} />
                   <Route path="/admin/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminQuoteBuilderPageUnified mode="admin" /></RequireRole>} />
 
                   {/* Agent Quote Builder — same component, agent mode */}

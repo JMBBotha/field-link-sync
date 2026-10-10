@@ -20,7 +20,6 @@ import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { formatRand } from "@/utils/formatRand";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import PaymentPlanPicker from "@/components/quoting/PaymentPlanPicker";
-import QuoteRecordStrip from "@/components/quoting/QuoteRecordStrip";
 import { openMandyQuoteMode } from "@/lib/mandy/registry";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
@@ -246,9 +245,9 @@ function BuilderMandyActions({ bridgeRef, onRemount }: { bridgeRef: MutableRefOb
       beforeWrite={async () => (bridgeRef.current ? bridgeRef.current.beforeWrite() : null)}
       afterRefresh={() => { bridgeRef.current?.prepareRemount(); onRemount(); }}
       onPdf={async () => {
-        // One builder (Johan 09:49): the PDF runs right here (Inner picks up ?mandy=pdf).
-        navigate(`/admin/quote-builder?quoteId=${quoteId}&mandy=pdf`, { replace: true });
-        return `Building the PDF for ${meta?.quote_number || "the quote"} — the download starts in a moment.`;
+        // The branded PDF (roll-up + brochures) is built on the quote page; hand off there.
+        navigate(`/admin/estimates/${quoteId}?mandy=pdf`);
+        return `Opened ${meta?.quote_number || "the quote"} to build its PDF — the download starts once the page loads.`;
       }}
     />
   );
@@ -1123,15 +1122,6 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   const flushSaveRef = useRef<(() => Promise<void>) | null>(null);
   flushSaveRef.current = flushSave;
   const docActions = useQuoteDocumentActions(quoteId, { beforeWrite: () => flushSaveRef.current?.() });
-  // Mandy "make the PDF" (and old /admin/estimates/:id?mandy=pdf links) run once here.
-  const [mandyParams, setMandyParams] = useSearchParams();
-  const mandyPdfRan = useRef(false);
-  useEffect(() => {
-    if (mandyParams.get("mandy") !== "pdf" || mandyPdfRan.current || !quoteId || ctxLoading) return;
-    mandyPdfRan.current = true;
-    const next = new URLSearchParams(mandyParams); next.delete("mandy"); setMandyParams(next, { replace: true });
-    void docActions.handlePdf();
-  }, [mandyParams, quoteId, ctxLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced auto-save while editing.
   useEffect(() => {
@@ -1359,11 +1349,6 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
           </TabsList>
         </div>
       </Tabs>
-
-      {/* Record strip from the archived estimate page: status, deposit, staff menu, Convert to Invoice */}
-      {quoteId && meta && (
-        <div className="shrink-0 px-3 pb-2"><QuoteRecordStrip quote={meta} checkLabour={docActions.checkLabour} /></div>
-      )}
 
       {/* Accounting step 1: how this quote is paid (locked once invoiced) */}
       {quoteId && meta?.status !== "declined" && (

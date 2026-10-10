@@ -286,8 +286,8 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
 
 
   const openDoc = (doc: (typeof docs)[number]) => {
-    // One builder for every role and document (Johan 09:49).
-    navigate(doc.kind === "proposal" ? "/admin/quote-builder" : `/admin/quote-builder?quoteId=${doc.id}`);
+    if (doc.kind === "proposal") navigate(`/admin/proposal-builder?proposalId=${doc.id}`);
+    else navigate(`/admin/estimates/${doc.id}`);
   };
 
   // Mandy "open the top one": the first row of THIS list, in its current sort + filters.
@@ -323,6 +323,9 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
           <DropdownMenuContent align="end" className="w-56 bg-popover">
             <DropdownMenuItem onClick={onCreateNew}>
               <FileText className="mr-2 h-4 w-4" /> Estimate
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/admin/proposal-builder")}>
+              <FileSignature className="mr-2 h-4 w-4" /> Proposal
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

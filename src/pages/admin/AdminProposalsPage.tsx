@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Paperclip } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import ProposalBuilder from "@/components/proposals/ProposalBuilder";
 import QuoteStatusBadge from "@/components/quoting/QuoteStatusBadge";
 import BrochureManagement from "@/components/brochures/BrochureManagement";
 
@@ -14,9 +14,7 @@ const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
 const AdminProposalsPage = () => {
-  // One builder (Johan 09:49): a quote opens in /admin/quote-builder; the old ProposalBuilder is archived.
-  const navigate = useNavigate();
-  const setSelectedQuoteId = (id: string) => navigate(`/admin/quote-builder?quoteId=${id}`);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
 
   const { data: quotes = [], isLoading } = useQuery({
     queryKey: ["quotes-for-proposals"],
@@ -30,6 +28,10 @@ const AdminProposalsPage = () => {
       return data;
     },
   });
+
+  if (selectedQuoteId) {
+    return <ProposalBuilder quoteId={selectedQuoteId} onBack={() => setSelectedQuoteId(null)} />;
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-4">

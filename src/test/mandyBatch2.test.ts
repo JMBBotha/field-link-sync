@@ -113,7 +113,7 @@ describe("open latest / top of list", () => {
     const open = vi.fn();
     const r = topOfListResult([{ id: "a", ref: "Q-1", kind: "estimate" }, { id: "b", ref: "Q-2", kind: "estimate" }], open);
     expect(open).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }));
-    expect(r.data?.route).toBe("/admin/quote-builder?quoteId=a");
+    expect(r.data?.route).toBe("/admin/estimates/a");
   });
 });
 

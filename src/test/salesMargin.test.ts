@@ -88,7 +88,7 @@ describe("margin maths", () => {
   it("keeps salesperson and technician earnings independent in staff UI", () => {
     const src = readFileSync("src/components/quoting/StaffMarginCard.tsx", "utf8");
     expect(src).toContain("% of profit on parts &amp; materials");
-    expect(src).not.toContain("No commission on labour"); // Johan 09:50: note removed, calculation unchanged
+    expect(src).toContain("No commission on labour.");
     expect(src).toContain("% of labour");
     expect(src).toContain("Company keeps from labour");
     expect(src).toContain("Paid on completion ");
