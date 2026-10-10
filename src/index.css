@@ -1166,3 +1166,6 @@ All colors MUST be HSL.
 .option1-title-row svg { color: #475569; }
 /* + Add unit: white on brand orange was 2.8:1; darker orange keeps the look at 5.2:1. */
 .option1-add-unit, .option1-add-unit:hover { background: #c2410c !important; border-color: #c2410c !important; color: #ffffff !important; }
+/* Line options (hamburger) button keeps dark ink on the white quote paper in dark mode (Johan 21:29). */
+.option1-solid .line-options,
+.dark .app-surface .estimate-page .estimate-editing .option1-solid .line-options { background: #ffffff !important; color: #1e293b !important; border-color: #64748b !important; }

@@ -3,7 +3,7 @@ import QtyStepper from "./QtyStepper";
 import { AreaNameLabel, isDefaultAreaName } from "@/components/quote/AreaNameLabel";
 import { SpecialChip } from "@/components/specials/SpecialsUi";
 import { useRef, useState, type ReactNode } from "react";
-import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { ArrowRightLeft, ChevronDown, ChevronRight, Copy, Menu, Plus, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNewLineScroll } from "@/hooks/useNewLineScroll";
 import { useIsPhone } from "@/hooks/useIsPhone";
@@ -689,24 +689,24 @@ const EstimateDocument = ({
                             {formatRand(lineAmount(line))}
                           </td>
                           <td className="py-2 text-right print:hidden">
-                            <div className="flex items-center justify-end gap-1">
+                            <div className="flex items-center justify-end gap-1 max-sm:flex-col max-sm:items-end">
                             {(editing.onMoveLine || editing.onDuplicateLine) && editing.areas.some((a) => a.id && a.id !== area.id) && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <button type="button" aria-label="Line actions" onClick={(e) => e.stopPropagation()}
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
-                                    <MoreHorizontal className="h-4 w-4" />
+                                  <button type="button" aria-label="Line options" title="Line options" data-testid="line-options" onClick={(e) => e.stopPropagation()}
+                                    className="line-options inline-flex h-11 w-11 items-center justify-center rounded-md border border-slate-400 bg-white text-slate-800 hover:bg-slate-100">
+                                    <Menu className="h-5 w-5" />
                                   </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                  {editing.onMoveLine && <DropdownMenuLabel className="text-xs">Move to…</DropdownMenuLabel>}
+                                <DropdownMenuContent align="end" sideOffset={6} collisionPadding={8} data-testid="line-options-menu" className="min-w-[13rem] max-w-[calc(100vw-1rem)] p-1" onClick={(e) => e.stopPropagation()}>
+                                  {editing.onMoveLine && <DropdownMenuLabel className="flex items-center gap-2 text-sm font-semibold"><ArrowRightLeft className="h-4 w-4" />Move to…</DropdownMenuLabel>}
                                   {editing.onMoveLine && editing.areas.filter((a) => a.id && a.id !== area.id).map((a) => (
-                                    <DropdownMenuItem key={`m-${a.id}`} onSelect={() => editing.onMoveLine?.(line.id, a.id as string)}>{a.name}</DropdownMenuItem>
+                                    <DropdownMenuItem key={`m-${a.id}`} className="min-h-11 pl-8 text-sm" onSelect={() => editing.onMoveLine?.(line.id, a.id as string)}>{a.name}</DropdownMenuItem>
                                   ))}
                                   {editing.onMoveLine && editing.onDuplicateLine && <DropdownMenuSeparator />}
-                                  {editing.onDuplicateLine && <DropdownMenuLabel className="text-xs">Duplicate to…</DropdownMenuLabel>}
+                                  {editing.onDuplicateLine && <DropdownMenuLabel className="flex items-center gap-2 text-sm font-semibold"><Copy className="h-4 w-4" />Duplicate to…</DropdownMenuLabel>}
                                   {editing.onDuplicateLine && editing.areas.filter((a) => a.id).map((a) => (
-                                    <DropdownMenuItem key={`d-${a.id}`} onSelect={() => editing.onDuplicateLine?.(line.id, a.id as string)}>{a.name}{a.id === area.id ? " (this area)" : ""}</DropdownMenuItem>
+                                    <DropdownMenuItem key={`d-${a.id}`} className="min-h-11 pl-8 text-sm" onSelect={() => editing.onDuplicateLine?.(line.id, a.id as string)}>{a.name}{a.id === area.id ? " (this area)" : ""}</DropdownMenuItem>
                                   ))}
                                 </DropdownMenuContent>
                               </DropdownMenu>
