@@ -43,8 +43,9 @@ import DepositPaymentChip, { type DepositInvoiceLike } from "@/components/shared
 import CompletedJobsFilterDrawer from "@/components/CompletedJobsFilterDrawer";
 import { TechOfficeChip, useMyInvoiceRequests } from "@/components/jobs/TechOfficeStatus";
 import { useCompletedJobsFilter } from "@/hooks/useCompletedJobsFilter";
-import { Filter } from "lucide-react";
+import { Filter, Wallet } from "lucide-react";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
+import { MyEarningsCard } from "@/components/field/MyEarnings";
 import RoleAccentStrip from "@/components/RoleAccentStrip";
 import AcceptLeadDialog from "@/components/leads/AcceptLeadDialog";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1244,6 +1245,12 @@ const FieldAgent = () => {
           <div className="flex min-w-0 items-center gap-1.5 md:gap-2 xl:gap-3">
             <CompanyLogo className="h-8 w-auto max-w-[6.5rem] shrink-0 object-contain sm:max-w-none md:h-12 xl:h-[4.5rem]" />
             <h1 className="sr-only">Field Agent{userName ? ` – ${userName}` : ""}</h1>
+            {!canInvoice && (
+              <Button variant="ghost" size="sm" onClick={() => navigate("/field/earnings")} aria-label="My earnings" title="My earnings" data-testid="hdr-my-earnings"
+                className="hidden md:flex shrink-0 gap-1 px-2 xl:px-3 text-white hover:bg-white/20">
+                <Wallet className="h-4 w-4" /><span>My earnings</span>
+              </Button>
+            )}
             {(roleIsAdmin || roleIsDispatcher || canOpenQuoteBuilder) && (
               <>
                 <div className="hidden md:block h-6 w-px shrink-0 bg-white/30" />
@@ -1498,7 +1505,8 @@ const FieldAgent = () => {
           </div>
 
           {/* Desktop: Right Panel - Active Leads */}
-          <div className="hidden md:flex absolute right-3 top-3 bottom-3 w-72 z-10 flex-col pointer-events-none">
+          <div className="hidden md:flex absolute right-3 top-3 bottom-3 w-72 z-10 flex-col gap-2 pointer-events-none">
+            {!canInvoice && <MyEarningsCard className="pointer-events-auto shrink-0" />}
             <div
               className="backdrop-blur-md border border-white/20 rounded-lg shadow-[0_0_30px_rgba(34,197,94,0.15)] overflow-hidden flex flex-col max-h-full pointer-events-auto"
               style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%)' }}
@@ -1941,6 +1949,7 @@ const FieldAgent = () => {
         {/* Home list (default /field view — not the map) */}
         {!showMapOnMobile && (
           <div className="flex-1 overflow-y-auto px-3 md:px-6 py-3 space-y-6 pb-24">
+            {!canInvoice && <MyEarningsCard />}
             {/* Today's jobs for this technician */}
             <section className="space-y-2">
               <div className="flex items-center gap-2">

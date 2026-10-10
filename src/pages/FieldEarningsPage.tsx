@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import FieldShell from "@/components/field/FieldShell";
+import { MyEarningsView } from "@/components/field/MyEarnings";
+import { useRole } from "@/hooks/useRole";
 import { formatRand } from "@/utils/formatRand";
 import { formatSastDate } from "@/lib/salesTracker";
 import {
@@ -68,6 +70,15 @@ function ReducePanel({ row, onDone }: { row: TechEarningRow; onDone: () => void 
 }
 
 export default function FieldEarningsPage() {
+  const { isFieldAgent, isAdmin, isDispatcher, loading: roleLoading } = useRole();
+  // Techs: own labour share only (get_my_tech_earnings) — no quote numbers or percentages (Johan 09:27).
+  if (!roleLoading && isFieldAgent && !isAdmin && !isDispatcher) {
+    return <FieldShell title="My earnings"><MyEarningsView /></FieldShell>;
+  }
+  return <OwnerEarnings />;
+}
+
+function OwnerEarnings() {
   const [techId, setTechId] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [reducing, setReducing] = useState<string | null>(null);
