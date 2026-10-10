@@ -282,7 +282,7 @@ const NotificationsList = ({
                             )}
                           </div>
                           {notification.body && (
-                            <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                            <p className={`text-xs text-muted-foreground mt-0.5 ${notification.type === "call_logged" ? "whitespace-pre-line line-clamp-4" : "line-clamp-2"}`}>
                               {notification.body}
                             </p>
                           )}
@@ -295,8 +295,13 @@ const NotificationsList = ({
                             )}
                           </p>
                           {notification.type === "call_logged" && (
-                            <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="mt-2 space-y-1" onClick={(e) => e.stopPropagation()}>
                               <CallRecordingPlayer callId={notification.related_id} />
+                              <button type="button" data-testid="view-transcript"
+                                className="text-[11px] font-medium text-primary hover:underline"
+                                onClick={() => { const leadId = (notification as any).metadata?.lead_id; onClose?.(); navigate(leadId ? `/admin/dispatch?lead=${leadId}` : "/admin/calls"); }}>
+                                View transcript
+                              </button>
                             </div>
                           )}
                         </div>

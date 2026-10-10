@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { buildCallBellBody } from "../_shared/callBellSummary.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
@@ -313,6 +314,9 @@ async function notifyCallLogged(admin: any, params: {
   category: string;
   summary: string | null;
   durationSeconds: number;
+  leadId?: string | null;
+  serviceType?: string | null;
+  urgency?: string | null;
 }) {
   try {
     let userIds: string[] = [];
@@ -346,13 +350,21 @@ async function notifyCallLogged(admin: any, params: {
       return;
     }
 
-    const who = params.callerName || params.callerPhone || "Unknown caller";
-    const tag = params.isExistingClient ? "Existing client" : "New lead";
+    // Short 2-4 line summary (Johan 14:03); the full transcript stays on the lead / call record.
+    let area: string | null = null;
+    if (params.leadId) {
+      const { data: lead } = await admin.from("leads").select("customer_address, call_area").eq("id", params.leadId).maybeSingle();
+      area = (lead?.call_area || lead?.customer_address || null) as string | null;
+    }
+    const body = buildCallBellBody({
+      callerName: params.callerName, callerPhone: params.callerPhone, isExistingClient: params.isExistingClient,
+      category: params.category, serviceType: params.serviceType ?? null, urgency: params.urgency ?? null, area, summary: params.summary,
+    });
     const rows = [...new Set(userIds)].map((uid) => ({
       user_id: uid,
       type: "call_logged",
       title: `Call Logged — ${params.category}`,
-      body: `${who} (${params.callerPhone || "no number"}) · ${tag} · ${Math.round(params.durationSeconds)}s${params.summary ? ` — ${params.summary.slice(0, 180)}` : ""}`,
+      body,
       read: false,
       related_id: params.callId,
       metadata: {
@@ -361,6 +373,8 @@ async function notifyCallLogged(admin: any, params: {
         caller_phone: params.callerPhone,
         category: params.category,
         is_existing_client: params.isExistingClient,
+        lead_id: params.leadId ?? null,
+        duration_seconds: Math.round(params.durationSeconds),
       },
     }));
     const { error } = await admin.from("notifications").insert(rows);
@@ -653,6 +667,9 @@ async function recordCall(input: {
         category,
         summary: input.summary,
         durationSeconds: row.duration_seconds,
+        leadId,
+        serviceType: input.serviceType,
+        urgency: input.urgency,
       });
     }
 

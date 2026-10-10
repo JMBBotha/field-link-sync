@@ -195,7 +195,8 @@ ${rowHtml("Duration", esc(dur))}
 ${report ? rowHtml("Service type", esc(report.service_type)) : ""}
 ${report ? rowHtml("Address confirmed", report.address_confirmed ? "Yes" : "No") : ""}
 ${report?.address ? rowHtml("Address", esc(report.address)) : ""}
-${leadId ? rowHtml("Lead", `<a href="${APP_URL}/admin/map?lead=${leadId}">Open lead</a>`) : ""}
+${leadId ? rowHtml("Lead", `<a href="${APP_URL}/admin/dispatch?lead=${leadId}">Open lead (summary + full transcript)</a>`) : ""}
+${call.provider === "vapi" && call.provider_call_id ? rowHtml("Recording", `<a href="${APP_URL}/admin/calls?call=${callId}">Listen to the recording in the app</a> (sign-in needed; recordings stay private)`) : ""}
 </table>
 ${report ? `<h3 style="margin:16px 0 6px;font-size:15px;">Breakdown</h3><div style="font-size:14px;white-space:pre-wrap;">${esc(report.breakdown)}</div>
 <h3 style="margin:16px 0 6px;font-size:15px;">Next action</h3><p style="font-size:14px;margin:0;">${esc(report.next_action)}</p>` : ""}
