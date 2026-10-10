@@ -1329,7 +1329,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
 
 
       {/* Builder mode tabs */}
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="relative z-[10001] shrink-0">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className={`relative z-[10001] shrink-0 ${activeTab === "visual" ? "max-sm:hidden vpdf-desk" : ""}`}>
         <div className="flex flex-wrap items-center justify-center gap-y-1 py-1 bg-muted/40">
           <TabsList className="h-8 bg-muted">
             <TabsTrigger value="quote" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4 font-semibold">Build quote</TabsTrigger>

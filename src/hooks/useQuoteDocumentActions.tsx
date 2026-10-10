@@ -8,7 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
-import { generateDocumentPdf } from "@/lib/documentPdf";
+import { generateDocumentPdf, generateDocumentPdfBlob } from "@/lib/documentPdf";
+import QuotePdfViewer, { isPhoneViewport } from "@/components/quoting/QuotePdfViewer";
 import { loadQuoteBrochuresForPdf } from "@/lib/quoteBrochuresForPdf";
 import ClientQuotePdfRoot, { waitForClientPdfRoot } from "@/components/quoting/ClientQuotePdfRoot";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
@@ -29,6 +30,8 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
   const [busy, setBusy] = useState<QuoteDocBusy>(null);
   const [clientPdf, setClientPdf] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
+  const [pdfView, setPdfView] = useState<{ url: string; fileName: string; title: string } | null>(null);
+  const closePdfView = () => setPdfView((v) => { if (v) URL.revokeObjectURL(v.url); return null; });
   const [missingLabour, setMissingLabour] = useState<{ id: string; name: string }[]>([]);
 
   const { data: quote } = useQuery({
@@ -127,7 +130,7 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
       setClientPdf(true);
       const extras = await loadQuoteBrochuresForPdf(id);
       const captureSelector = await waitForClientPdfRoot(id);
-      await generateDocumentPdf({
+      const pdfOpts = {
         ...extras,
         docType: "Quote",
         docNumber: q.quote_number || "DRAFT",
@@ -145,7 +148,15 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
         total: Number(q.total) || 0,
         notes: q.notes || undefined,
         captureSelector,
-      });
+      };
+      if (isPhoneViewport()) {
+        // Phones: show the PDF inside the app (with Back/Save/Share/Download/Home), not a bare browser tab.
+        const blob = await generateDocumentPdfBlob(pdfOpts as any);
+        const num = q.quote_number || "DRAFT";
+        setPdfView({ url: URL.createObjectURL(blob), fileName: `Quote-${num}.pdf`, title: `Quote ${num}` });
+      } else {
+        await generateDocumentPdf(pdfOpts as any);
+      }
     } catch (e: any) {
       toast({ title: "PDF failed", description: e?.message, variant: "destructive" });
     } finally {
@@ -164,6 +175,10 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
   const portals: ReactNode = id ? (
     <>
       {clientPdf && <ClientQuotePdfRoot quoteId={id} />}
+      {pdfView && (
+        <QuotePdfViewer {...pdfView} busySave={busy === "save"} onBack={closePdfView}
+          onSave={() => void handleSave()} onShare={() => { closePdfView(); void handleSend(); }} />
+      )}
       <SendQuoteDialog open={sendOpen} onOpenChange={setSendOpen} quoteId={id} quoteNumber={quote?.quote_number || "Draft"} customerId={quote?.customer_id ?? null} customerName={customer.name || quote?.customer_name || "Customer"} />
       <Dialog open={missingLabour.length > 0} onOpenChange={(open) => { if (!open) setMissingLabour([]); }}>
         <DialogContent className="sm:max-w-md">

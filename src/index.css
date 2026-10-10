@@ -1139,3 +1139,9 @@ All colors MUST be HSL.
 :is([role="dialog"], [role="alertdialog"]) :is(.bg-white, [data-paper], .pdf-page, [data-pdf-capture-root]) {
   text-shadow: none;
 }
+
+/* Visual PDF toolbar (Johan 20:20): a phone in landscape (short + touch) keeps the compact phone toolbar. */
+@media (pointer: coarse) and (max-height: 500px) {
+  .vpdf-desk { display: none !important; }
+  .vpdf-phone { display: inline !important; }
+}

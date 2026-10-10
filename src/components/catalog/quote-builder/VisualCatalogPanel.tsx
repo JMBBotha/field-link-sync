@@ -824,7 +824,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
               title={readOnly ? "Close price lists" : "Close the PDF viewer and return to the quote builder"}
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              {readOnly ? "Back" : "Back to Quote Builder"}
+              {readOnly ? "Back" : <><span className="vpdf-phone sm:hidden">Back</span><span className="vpdf-desk hidden sm:inline">Back to Quote Builder</span></>}
             </Button>
 
             {/* Page / Width toggle — pinned OUTSIDE the scrolling toolbar so it is
@@ -843,21 +843,24 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
             </Button>
 
             <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto">
-              <FileImage className="h-4 w-4 text-primary shrink-0" />
-              <div className="min-w-0 flex-1">
+              {/* Phones: supplier name is shown by the Supplier picker below — no duplicate icon/title (Johan 20:20). */}
+              <FileImage className="vpdf-desk hidden sm:block h-4 w-4 text-primary shrink-0" />
+              <div className="vpdf-desk hidden sm:block min-w-0 flex-1">
                 <p className="text-xs font-semibold truncate text-foreground">{currentSupplierName || "Visual Catalog"}</p>
                 {currentFilename && <p className="text-[10px] text-muted-foreground truncate">{currentFilename}</p>}
               </div>
               {currentPage && (
+                <span className="vpdf-desk hidden sm:inline-flex" data-testid="vpdf-diagnostic">
                 <DaikinOverlayDiagnostic
                   currentSupplierName={(currentPage.supplier_id || "").trim()}
                   currentPageNumber={currentPage.page_number ?? null}
                 />
+                </span>
               )}
               {currentPage && !readOnly && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 text-destructive hover:bg-destructive/10" disabled={deleting}>
+                    <Button variant="ghost" size="icon" className="vpdf-desk hidden sm:inline-flex h-6 w-6 shrink-0 text-destructive hover:bg-destructive/10" disabled={deleting}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </AlertDialogTrigger>
@@ -891,20 +894,22 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
 
               {/* Page indicator + quick-jump buttons */}
               {pages.length > 0 && (
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goToPage(-1)} disabled={visiblePageIndex === 0}>
+                <div className="ml-auto flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" className="vpdf-desk hidden sm:inline-flex h-7 w-7" onClick={() => goToPage(-1)} disabled={visiblePageIndex === 0}>
                     <span className="text-xs">◀</span>
                   </Button>
-                  <span className="text-[10px] font-medium text-muted-foreground min-w-[60px] text-center">
-                    Page {visiblePageIndex + 1} of {pages.length}
+                  <span data-testid="vpdf-page-indicator" className="text-[11px] font-medium text-muted-foreground text-center tabular-nums sm:min-w-[60px] sm:text-[10px]">
+                    <span className="vpdf-phone sm:hidden">{visiblePageIndex + 1}/{pages.length}</span>
+                    <span className="vpdf-desk hidden sm:inline">Page {visiblePageIndex + 1} of {pages.length}</span>
                   </span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goToPage(1)} disabled={visiblePageIndex >= pages.length - 1}>
+                  <Button variant="ghost" size="icon" className="vpdf-desk hidden sm:inline-flex h-7 w-7" onClick={() => goToPage(1)} disabled={visiblePageIndex >= pages.length - 1}>
                     <span className="text-xs">▶</span>
                   </Button>
                 </div>
               )}
 
-              <div className="flex items-center gap-0.5 shrink-0">
+              {/* Zoom / magnifier / HD: desktop only — phones pinch-zoom (Johan 20:20). */}
+              <div className="vpdf-desk hidden sm:flex items-center gap-0.5 shrink-0" data-testid="vpdf-zoom-tools">
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.max(minZoomRef.current, Math.round((z - 0.25) * 100) / 100)); }}>
                   <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
