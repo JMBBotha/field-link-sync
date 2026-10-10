@@ -21,10 +21,10 @@ const IdentityBadge = () => {
       data-testid="identity-badge"
       data-role-kind={info.pending ? undefined : kind}
       title={`${info.name} · ${info.role}`}
-      className={cn("flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full py-1 pl-2.5 pr-1.5 text-xs font-semibold text-white ring-1 ring-white/40 xl:pl-3 xl:pr-2", c.pill)}
+      className={cn("flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full py-1 pl-2 pr-1 sm:pl-2.5 sm:pr-1.5 text-xs font-semibold text-white ring-1 ring-white/40 xl:pl-3 xl:pr-2", c.pill)}
     >
       {/* Phones/tablets: first name + role chip; desktop (≥1280): "Full Name · Role". */}
-      <span className="max-w-[7rem] truncate xl:max-w-[14rem]">
+      <span className="max-w-[4.5rem] truncate sm:max-w-[7rem] xl:max-w-[14rem]">
         <span className="xl:hidden">{firstName}</span>
         <span className="hidden xl:inline">{info.name}</span>
       </span>

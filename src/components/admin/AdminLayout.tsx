@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -222,17 +224,17 @@ const AdminLayout = () => {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <CompanyLogo className="h-8 lg:hidden shrink-0" />
-            <h1 className="text-base sm:text-lg font-bold text-primary-foreground truncate">{pageTitle}</h1>
+            <CompanyLogo data-testid="header-logo" className="hidden min-[360px]:block h-6 w-auto max-w-[64px] min-w-0 shrink object-contain object-left sm:h-8 sm:max-w-none sm:shrink-0 lg:hidden" />
+            <h1 className="hidden min-[400px]:block min-w-0 text-base sm:text-lg font-bold text-primary-foreground truncate">{pageTitle}</h1>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
             <IdentityBadge />
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setSearchOpen(true)}
-              className="text-blue-100 hover:bg-white/10 hover:text-primary-foreground gap-1.5"
+              className="text-blue-100 hover:bg-white/10 hover:text-primary-foreground gap-1.5 h-9 w-9 px-0 sm:w-auto sm:px-3"
               title="Search (⌘K)"
             >
               <Search className="h-4 w-4" />
@@ -244,7 +246,7 @@ const AdminLayout = () => {
               variant="ghost"
               size="sm"
               onClick={() => openMandyVoice()}
-              className="text-blue-100 hover:bg-white/10 hover:text-primary-foreground gap-1.5"
+              className="hidden sm:inline-flex text-blue-100 hover:bg-white/10 hover:text-primary-foreground gap-1.5"
               title="Talk to the operations assistant"
             >
               <Sparkle className="h-4 w-4" />
@@ -258,11 +260,27 @@ const AdminLayout = () => {
               variant="ghost"
               size="icon"
               onClick={toggleTheme}
-              className="text-blue-100 hover:bg-white/10 hover:text-primary-foreground h-9 w-9"
+              className="hidden sm:inline-flex text-blue-100 hover:bg-white/10 hover:text-primary-foreground h-9 w-9"
               title={resolvedTheme === "light" ? "Switch to dark mode" : "Switch to light mode"}
             >
               {resolvedTheme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </Button>
+            {/* Phones (<640px): Ask Mandy + theme live in a compact "More" menu so the logo and name pill never overlap */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="More" data-testid="header-more"
+                  className="sm:hidden text-blue-100 hover:bg-white/10 hover:text-primary-foreground h-9 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => openMandyVoice()}><Sparkle className="mr-2 h-4 w-4" />Ask Mandy</DropdownMenuItem>
+                <DropdownMenuItem onClick={toggleTheme}>
+                  {resolvedTheme === "light" ? <Moon className="mr-2 h-4 w-4" /> : <Sun className="mr-2 h-4 w-4" />}
+                  {resolvedTheme === "light" ? "Dark mode" : "Light mode"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
         <RoleAccentStrip />

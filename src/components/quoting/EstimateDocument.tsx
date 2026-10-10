@@ -1,4 +1,5 @@
 import { CanonicalAreaChoices, CanonicalAreaCreateControl } from "@/components/quote/AreaNameChips";
+import QtyStepper from "./QtyStepper";
 import { AreaNameLabel, isDefaultAreaName } from "@/components/quote/AreaNameLabel";
 import { SpecialChip } from "@/components/specials/SpecialsUi";
 import { useRef, useState, type ReactNode } from "react";
@@ -667,46 +668,18 @@ const EstimateDocument = ({
                           </td>
                           <td className="py-2 text-right">
                             {line.kitBundleId && line.kitPerMetre && editing.onKitLengthChange ? (
-                              <div className="flex items-center justify-end gap-1">
-                                <input
-                                  key={`${line.id}-len-${line.kitLength ?? 3}`}
-                                  type="number"
-                                  step="any"
-                                  min="0.1"
-                                  inputMode="decimal"
-                                  defaultValue={line.kitLength ?? 3}
-                                  aria-label="Kit length (m)"
-                                  onClick={(e) => e.stopPropagation()}
-                                  onBlur={(e) => {
-                                    const saved = line.kitLength ?? 3;
-                                    const v = Number(e.target.value);
-                                    if (e.target.value.trim() === "" || !Number.isFinite(v) || v < 0.1) { e.target.value = String(saved); return; }
-                                    if (v !== saved) editing.onKitLengthChange?.(line.id, v);
-                                  }}
-                                  className={`${inputBase} text-right text-slate-600`}
-                                />
-                                <span className="text-[11px] text-slate-500">m</span>
+                              <div className="flex items-center justify-end">
+                                <QtyStepper value={line.kitLength ?? 3} min={0.1} step={1} ariaLabel="Kit length (m)" unit="m"
+                                  onCommit={(v) => editing.onKitLengthChange?.(line.id, v)} />
                               </div>
                             ) : (
-                            <input
-                              key={`${line.id}-qty`}
-                              type="number"
-                              step={line.perMetre ? "0.1" : "1"}
-                              min={line.perMetre ? "0.1" : "0"}
-                              inputMode={line.perMetre ? "decimal" : undefined}
-                              data-line-qty={line.id}
-                              defaultValue={line.quantity}
-                              aria-label={line.perMetre ? "Metres" : "Quantity"}
-                              onBlur={(e) => {
-                                const v = Number(e.target.value);
-                                // Metre lines: 0 m is not allowed (min 0.1 m).
-                                if (line.perMetre && !(v >= 0.1)) { e.target.value = String(line.quantity); return; }
-                                if (Number.isFinite(v) && v !== line.quantity) {
-                                  editing.onLineChange(line.id, { quantity: v });
-                                }
-                              }}
-                              className={`${inputBase} text-right text-slate-600`}
-                            />
+                            <>
+                            <QtyStepper value={line.quantity} min={line.perMetre ? 0.1 : 0} step={1}
+                              ariaLabel={line.perMetre ? "Metres" : "Quantity"}
+                              inputProps={{ "data-line-qty": line.id }}
+                              onCommit={(v) => editing.onLineChange(line.id, { quantity: v })} />
+                            <span className="hidden print:inline">{line.quantity}</span>
+                            </>
                             )}
                             {line.unitText && !(line.kitBundleId && line.kitPerMetre && editing.onKitLengthChange) && (
                               <div data-testid="qty-unit" className="whitespace-nowrap text-[10px] text-slate-500 print:hidden">{line.unitText}</div>
