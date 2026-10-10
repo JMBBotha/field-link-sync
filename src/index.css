@@ -1080,8 +1080,9 @@ All colors MUST be HSL.
 .option1-collapse { color: hsl(var(--quote-text)); }
 .option1-delete { color: hsl(var(--quote-muted)); }
 .option1-delete:hover { color: hsl(var(--quote-danger)); background: transparent; }
-.option1-create-area { background: hsl(var(--quote-paper)); color: hsl(var(--quote-blue)); border-color: hsl(var(--quote-chip-edge)); }
-.option1-create-area:hover { background: hsl(var(--quote-chip-fill)); color: hsl(var(--quote-blue)); }
+/* + Add Area (Johan 10:55): solid blue, compact, left-aligned — clearly a button in light and dark. */
+.option1-create-area { background: #2563eb !important; color: #ffffff !important; border: 1px solid #1d4ed8 !important; }
+.option1-create-area:hover { background: #1d4ed8 !important; color: #ffffff !important; }
 .option1-labour { background: hsl(var(--quote-paper)) !important; color: hsl(var(--quote-text)); border-color: hsl(var(--labour-outline)) !important; }
 .option1-labour button, .option1-labour input { color: inherit; }
 .app-surface .option1-solid table thead, .app-surface .option1-solid table thead tr, .option1-table-header { background: hsl(var(--quote-band)) !important; color: hsl(var(--quote-blue)); backdrop-filter: none; }
@@ -1091,7 +1092,7 @@ All colors MUST be HSL.
 .option1-line-copy [contenteditable]:focus { outline: 1px solid hsl(var(--quote-control-edge)); }
 .option1-line-copy [contenteditable]:empty { display: inline-block; min-width: 2rem; min-height: 1em; }
 .option1-solid .option1-add-unit, .option1-solid .option1-add-secondary { min-height: 2.25rem; height: 2.25rem; }
-.option1-solid .option1-create-area { min-height: 2.875rem; }
+.option1-solid .option1-create-area { min-height: 2.25rem; }
 .option1-labour button { min-height: 1.75rem; height: 1.75rem; }
 .option1-solid input, .option1-solid select { backdrop-filter: none !important; box-shadow: none; }
 @media (max-width: 639px) {

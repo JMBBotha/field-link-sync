@@ -120,7 +120,7 @@ export function CanonicalAreaCreateControl({ existingNames, onCreate }: {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" data-solid className="option1-create-area h-11 w-full justify-center gap-2 rounded-lg border-dashed font-semibold" data-testid="canonical-add-area">
+        <Button type="button" variant="outline" data-solid data-no-min className="option1-create-area h-9 w-auto self-start justify-start gap-1.5 rounded-lg px-4 text-sm font-semibold shadow-sm" data-testid="canonical-add-area">
           <Plus className="h-4 w-4" /> Add Area
         </Button>
       </DialogTrigger>
