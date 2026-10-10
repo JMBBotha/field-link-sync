@@ -1,3 +1,4 @@
+/** ARCHIVED (Johan 09:49): one quote builder for everyone (/admin/quote-builder). Not routed; kept for reference. */
 import { useNavigate } from "react-router-dom";
 import { useCompany } from "@/providers/CompanyProvider";
 import ProposalBuilder from "@/components/proposals/ProposalBuilder";

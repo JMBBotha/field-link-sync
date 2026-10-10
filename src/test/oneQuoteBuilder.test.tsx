@@ -23,7 +23,7 @@ describe("one quote builder for every role", () => {
       expect(l).not.toContain("denySalesRep");
     }
     // the estimate page (opening an existing quote) is one route with no role split
-    expect(routeFor("estimates/:id")).toContain("<AdminEstimateDetailPage />");
+    expect(routeFor("estimates/:id")).toContain("<EstimateToBuilderRedirect />");
   });
   it("no legacy builder is routed or rendered for any role", () => {
     expect(app).not.toMatch(/<FBQuoteBuilderPage|<AdminQuoteBuilderPage[ />]/);
@@ -48,9 +48,9 @@ describe("labour toggle visibility", () => {
     expect(screen.getByText(LABOUR_SWITCH_OFF_TEXT)).toBeTruthy();
     expect(screen.getByText(LABOUR_SWITCH_ON_TEXT)).toBeTruthy();
     const sw = screen.getByRole("switch", { name: LABOUR_SWITCH_LABEL });
-    expect(sw.className).toContain("data-[state=checked]:bg-orange-500");
-    expect(sw.className).toContain("data-[state=unchecked]:bg-slate-400");
-    expect(sw.className).toContain("data-[state=unchecked]:border-slate-500");
+    expect(sw.className).toContain("data-[state=checked]:bg-orange-600");
+    expect(sw.className).toContain("data-[state=unchecked]:bg-orange-200");
+    expect(sw.className).toContain("data-[state=unchecked]:border-orange-400");
     expect(sw.className).toContain("[&>span]:bg-white");
     expect(sw.hasAttribute("data-no-min")).toBe(true);
     fireEvent.click(screen.getByText(LABOUR_SWITCH_ON_TEXT));

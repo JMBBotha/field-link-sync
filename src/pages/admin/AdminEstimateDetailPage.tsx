@@ -1,3 +1,8 @@
+/**
+ * ARCHIVED (Johan 09:49): one quote builder for everyone. /admin/estimates/:id now redirects to
+ * /admin/quote-builder?quoteId=:id (EstimateToBuilderRedirect); status, staff menu and Convert to Invoice live in QuoteRecordStrip.
+ * Kept for reference only; not routed.
+ */
 import { usePdfBasket } from "@/lib/pdfBasketStore";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";

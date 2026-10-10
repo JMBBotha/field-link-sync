@@ -1,3 +1,4 @@
+/** ARCHIVED (Johan 09:49): one quote builder for everyone (/admin/quote-builder). Not routed; kept for reference. */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";

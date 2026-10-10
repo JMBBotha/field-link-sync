@@ -69,7 +69,7 @@ export default function LabourModeSwitch({ checked, disabled, onChange, classNam
         checked={checked}
         disabled={disabled}
         onCheckedChange={(v) => onChange(!!v)}
-        className="h-6 w-11 border-2 shadow-inner data-[state=unchecked]:border-slate-500 data-[state=unchecked]:bg-slate-400 data-[state=checked]:border-orange-600 data-[state=checked]:bg-orange-500 [&>span]:bg-white [&>span]:shadow-[0_1px_3px_rgba(0,0,0,0.45)] [&>span]:ring-1 [&>span]:ring-black/10"
+        className="h-6 w-11 border-2 shadow-inner data-[state=unchecked]:border-orange-400 data-[state=unchecked]:bg-orange-200 data-[state=checked]:border-orange-700 data-[state=checked]:bg-orange-600 [&>span]:bg-white [&>span]:shadow-[0_1px_3px_rgba(0,0,0,0.45)] [&>span]:ring-1 [&>span]:ring-black/10"
       />
       <button type="button" data-no-min disabled={disabled} onClick={() => onChange(true)} className={`whitespace-nowrap rounded px-0.5 ${side(checked)}`}>{LABOUR_SWITCH_ON_TEXT}</button>
     </div>

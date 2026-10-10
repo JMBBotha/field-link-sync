@@ -1,3 +1,4 @@
+/** ARCHIVED (Johan 09:49): one quote builder for everyone (/admin/quote-builder). Not routed; kept for reference. */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";

@@ -24,7 +24,7 @@ describe("My earnings (Johan 09:27)", () => {
   });
   it("reachable: /field card (phone + desktop), desktop header link, field-shell desktop nav; techs get the own view", () => {
     const fa = src("src/pages/FieldAgent.tsx");
-    expect((fa.match(/<MyEarningsCard/g) || []).length).toBe(2);
+    expect((fa.match(/<MyEarningsPeek/g) || []).length).toBe(2);
     expect(fa).toContain('data-testid="hdr-my-earnings"');
     expect(src("src/components/field/FieldShell.tsx")).toContain('to="/field/earnings"');
     const page = src("src/pages/FieldEarningsPage.tsx");

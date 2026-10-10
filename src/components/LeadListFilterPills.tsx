@@ -188,3 +188,23 @@ const LeadListFilterPills = ({
 };
 
 export default LeadListFilterPills;
+
+/** One-row compact segmented control (small text, counts inline) for narrow panels. */
+export function LeadListSegmented({ activeFilter, onFilterChange, availableStatuses = ["all", "accepted", "in_progress"], counts, className }: Omit<LeadListFilterPillsProps, "compact">) {
+  const visible = filterConfigs.filter((f) => availableStatuses.includes(f.value));
+  return (
+    <div role="radiogroup" aria-label="Filter leads" data-segmented className={cn("flex w-full min-w-0 rounded-md bg-muted p-0.5", className)}>
+      {visible.map((f) => {
+        const on = activeFilter === f.value;
+        return (
+          <button key={f.value} type="button" role="radio" aria-checked={on} data-no-min onClick={() => onFilterChange(f.value)}
+            className={cn("flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded px-1.5 py-1 text-[11px] font-medium transition-colors",
+              on ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+            <span className="truncate">{f.label}</span>
+            {counts && <span className="tabular-nums opacity-70">{counts[f.value] ?? 0}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}

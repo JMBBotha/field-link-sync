@@ -1,3 +1,4 @@
+/** ARCHIVED (Johan 09:49): one quote builder for everyone (/admin/quote-builder). Not routed; kept for reference. */
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload, FileDown, Send, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";

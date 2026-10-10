@@ -44,8 +44,11 @@ import CompletedJobsFilterDrawer from "@/components/CompletedJobsFilterDrawer";
 import { TechOfficeChip, useMyInvoiceRequests } from "@/components/jobs/TechOfficeStatus";
 import { useCompletedJobsFilter } from "@/hooks/useCompletedJobsFilter";
 import { Filter, Wallet } from "lucide-react";
+import { cn } from "@/lib/utils";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
-import { MyEarningsCard } from "@/components/field/MyEarnings";
+import { MyEarningsPeek } from "@/components/field/MyEarnings";
+import { PeekCard, frontCardClass, usePeekStack } from "@/components/shared/CardStack";
+import { LeadListSegmented } from "@/components/LeadListFilterPills";
 import RoleAccentStrip from "@/components/RoleAccentStrip";
 import AcceptLeadDialog from "@/components/leads/AcceptLeadDialog";
 import { useQueryClient } from "@tanstack/react-query";
@@ -188,6 +191,7 @@ const FieldAgent = () => {
 
   // Completed jobs filter
   const completedJobsFilter = useCompletedJobsFilter();
+  const fieldPeek = usePeekStack<"completed">();
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
   const [releaseLeadId, setReleaseLeadId] = useState<string | null>(null);
@@ -1504,32 +1508,25 @@ const FieldAgent = () => {
             </div>
           </div>
 
-          {/* Desktop: Right Panel - Active Leads */}
-          <div className="hidden md:flex absolute right-3 top-3 bottom-3 w-72 z-10 flex-col gap-2 pointer-events-none">
-            {!canInvoice && <MyEarningsCard className="pointer-events-auto shrink-0" />}
-            <div
-              className="backdrop-blur-md border border-white/20 rounded-lg shadow-[0_0_30px_rgba(34,197,94,0.15)] overflow-hidden flex flex-col max-h-full pointer-events-auto"
-              style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%)' }}
-            >
-              <div className="p-3 border-b border-white/10 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                    <h3 className="font-semibold text-sm text-foreground">My Active Leads</h3>
-                  </div>
-                  <Badge variant="secondary" className="text-xs">{filteredActiveLeads.length}</Badge>
+          {/* Desktop: Right Panel — playing-card stack (pipeline pattern, Johan 09:44):
+              My earnings (slim strip, opens on hover/tap) → My Active Leads (main card) → Completed (peeks underneath, opens on tap). */}
+          <div className="hidden md:flex absolute right-3 top-3 bottom-3 w-72 z-10 flex-col pointer-events-none" data-field-stack>
+            {!canInvoice && <MyEarningsPeek className="pointer-events-auto" />}
+            <div className={cn(frontCardClass, canInvoice && "!mt-0", "flex min-h-0 flex-1 flex-col overflow-hidden pointer-events-auto")} data-card-stack="front" data-stack-id="active">
+              <div className="p-2 border-b border-border/60 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
+                  <h3 className="font-semibold text-sm text-foreground">My Active Leads</h3>
+                  <Badge variant="secondary" className="ml-auto text-xs">{filteredActiveLeads.length}</Badge>
                 </div>
-                {/* Filter Pills */}
-                <LeadListFilterPills
+                <LeadListSegmented
                   activeFilter={activeListFilter}
                   onFilterChange={setActiveListFilter}
                   availableStatuses={["all", "accepted", "in_progress"]}
                   counts={activeFilterCounts}
-                  compact
-                  className="flex-wrap overflow-x-visible snap-none"
                 />
               </div>
-              <div className="flex-1 overflow-y-auto p-2 space-y-2">
+              <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2" data-active-list>
                 {filteredActiveLeads.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground text-sm">
                     No active leads
@@ -1584,21 +1581,20 @@ const FieldAgent = () => {
                   </>
                 )}
 
-                {/* Completed Leads Section */}
-                <>
-                  <div className="flex items-center gap-2 pt-3 pb-1 border-t border-white/10">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-foreground" />
-                    <span className="font-semibold text-xs text-foreground">Completed</span>
-                    <Badge variant="secondary" className="text-xs ml-auto">{completedLeads.length}</Badge>
-                    <Button
-                      variant={completedJobsFilter.isFiltered ? "default" : "ghost"}
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => setFilterDrawerOpen(true)}
-                    >
-                      <Filter className="h-3 w-3" />
-                    </Button>
-                  </div>
+              </div>
+            </div>
+            <PeekCard id="completed" overlap="below" className="pointer-events-auto shrink-0"
+              open={fieldPeek.isOpen("completed")} onToggle={() => fieldPeek.toggle("completed")}
+              onPointerEnter={fieldPeek.enter("completed")} onPointerLeave={fieldPeek.leave("completed")}
+              title={<><CheckCircle2 className="h-3.5 w-3.5 shrink-0" />Completed</>}
+              summary={<Badge variant="secondary" className="text-[10px]" data-testid="completed-count">{completedLeads.length}</Badge>}
+              bodyClassName="">
+              <div className="max-h-[45vh] overflow-y-auto space-y-2 px-2 pb-2" data-completed-list>
+                <div className="flex justify-end">
+                  <Button variant={completedJobsFilter.isFiltered ? "default" : "ghost"} size="sm" data-no-min className="h-6 gap-1 px-2 text-[11px]" onClick={() => setFilterDrawerOpen(true)}>
+                    <Filter className="h-3 w-3" />Filter
+                  </Button>
+                </div>
                   {completedLeads.length > 0 ? (
                     completedLeads.map((lead) => (
                       <Card
@@ -1657,9 +1653,8 @@ const FieldAgent = () => {
                       {completedJobsFilter.isFiltered ? "No jobs match filters" : "No completed jobs"}
                     </div>
                   )}
-                </>
               </div>
-            </div>
+            </PeekCard>
           </div>
 
           {/* Mobile toggle moved to footer */}
@@ -1949,7 +1944,7 @@ const FieldAgent = () => {
         {/* Home list (default /field view — not the map) */}
         {!showMapOnMobile && (
           <div className="flex-1 overflow-y-auto px-3 md:px-6 py-3 space-y-6 pb-24">
-            {!canInvoice && <MyEarningsCard />}
+            {!canInvoice && <MyEarningsPeek />}
             {/* Today's jobs for this technician */}
             <section className="space-y-2">
               <div className="flex items-center gap-2">
