@@ -651,7 +651,7 @@ const EstimateDocument = ({
                                   editing.onLineChange(line.id, { unit_price: v });
                                 }
                               }}
-                              className={`${inputBase} text-right text-slate-600`}
+                              className={`${inputBase} line-price text-right text-slate-700`}
                             />
                             {line.staffNote && (
                               <div data-html2canvas-ignore className="text-[10px] text-slate-400 print:hidden">{line.staffNote}</div>
@@ -685,7 +685,7 @@ const EstimateDocument = ({
                               <div data-testid="qty-unit" className="whitespace-nowrap text-[10px] text-slate-500 print:hidden">{line.unitText}</div>
                             )}
                           </td>
-                          <td className="py-2 text-right font-bold text-slate-900">
+                          <td className="line-total py-2 text-right font-bold text-slate-900">
                             {formatRand(lineAmount(line))}
                           </td>
                           <td className="py-2 text-right print:hidden">
@@ -716,7 +716,7 @@ const EstimateDocument = ({
                               aria-label="Remove line"
                               title="Remove line"
                               onClick={() => editing.onDeleteLine(line.id)}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-300 bg-red-50 text-red-600 shadow-sm hover:bg-red-100 hover:text-red-700"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-300 bg-red-50 text-red-700 shadow-sm hover:bg-red-100 hover:text-red-800"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>

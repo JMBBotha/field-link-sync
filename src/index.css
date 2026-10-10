@@ -1145,3 +1145,24 @@ All colors MUST be HSL.
   .vpdf-desk { display: none !important; }
   .vpdf-phone { display: inline !important; }
 }
+
+/* Quote line contrast (Johan 21:14). The area card (.option1-solid) is WHITE paper in both themes, but the
+   dark .estimate-editing ladder above recolours text/inputs light for a dark surface -> white-on-white.
+   Inside the paper, restore dark ink on light controls (all >= 4.5:1, measured at 390px). */
+.dark .estimate-editing .option1-solid :is(.text-slate-900, .text-slate-800, .line-total) { color: #0f172a !important; }
+.dark .estimate-editing .option1-solid :is(.text-slate-700, .text-slate-600, .line-price) { color: #334155 !important; }
+.dark .estimate-editing .option1-solid :is(.text-slate-500, .text-slate-400) { color: #475569 !important; }
+.dark .estimate-editing .option1-solid :is(input, textarea) { color: #0f172a; caret-color: #1B3A5C; }
+.dark .estimate-editing .option1-solid :is(input, textarea)::placeholder { color: #64748b; }
+.dark .estimate-editing .option1-solid .bg-white:not(img),
+.dark .app-surface .estimate-page .estimate-editing .option1-solid .bg-white:not(img) { background-color: #ffffff !important; }
+.dark .estimate-editing .option1-solid :is(.border-slate-300, .border-slate-200) { border-color: #94a3b8 !important; }
+.dark .estimate-editing .option1-solid .border-slate-100 { border-color: #e2e8f0 !important; }
+.dark .estimate-editing .option1-solid .bg-sky-50\/60 { background-color: #e0f2fe !important; }
+.dark .estimate-editing .option1-solid .text-sky-700 { color: #0369a1 !important; }
+.dark .estimate-editing .option1-solid .text-\[\#1B3A5C\] { color: #1B3A5C !important; }
+.option1-solid .qty-box,
+.dark .app-surface .estimate-page .estimate-editing .option1-solid .qty-box { background: #ffffff !important; color: #0f172a !important; border-color: #94a3b8 !important; }
+.option1-title-row svg { color: #475569; }
+/* + Add unit: white on brand orange was 2.8:1; darker orange keeps the look at 5.2:1. */
+.option1-add-unit, .option1-add-unit:hover { background: #c2410c !important; border-color: #c2410c !important; color: #ffffff !important; }

@@ -11,7 +11,7 @@ describe("QtyStepper (Johan 19:51)", () => {
     expect(stepQty(0.5, -1, 0.1)).toBe(0.1);
     expect(stepQty(0, -1, 0)).toBe(0);
   });
-  it("right-aligned decimal input, select on focus, Enter commits, steppers", () => {
+  it("right-aligned decimal input, select on focus, Enter commits, no -/+ buttons (Johan 21:15)", () => {
     const on = vi.fn();
     const { rerender } = render(<QtyStepper value={2} min={0} step={1} ariaLabel="Quantity" onCommit={on} />);
     const i = screen.getByLabelText("Quantity") as HTMLInputElement;
@@ -20,9 +20,10 @@ describe("QtyStepper (Johan 19:51)", () => {
     fireEvent.focus(i); expect(i.selectionStart).toBe(0); expect(i.selectionEnd).toBe(1);
     fireEvent.change(i, { target: { value: "7" } }); fireEvent.blur(i);
     expect(on).toHaveBeenLastCalledWith(7);
-    fireEvent.click(screen.getByLabelText("Increase Quantity")); expect(on).toHaveBeenLastCalledWith(3);
-    rerender(<QtyStepper value={0.1} min={0.1} step={1} ariaLabel="Metres" onCommit={on} />);
-    expect((screen.getByLabelText("Decrease Metres") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByLabelText("Increase Quantity")).toBeNull(); expect(screen.queryByLabelText("Decrease Quantity")).toBeNull();
+    rerender(<QtyStepper value={0.5} min={0.1} step={1} ariaLabel="Metres" onCommit={on} />);
+    const m = screen.getByLabelText("Metres") as HTMLInputElement; on.mockClear();
+    fireEvent.change(m, { target: { value: "0" } }); fireEvent.blur(m); expect(on).not.toHaveBeenCalled();
   });
   it("estimate lines use it; admin header has phone More menu + shrinking logo", () => {
     const e = readFileSync("src/components/quoting/EstimateDocument.tsx", "utf8");
