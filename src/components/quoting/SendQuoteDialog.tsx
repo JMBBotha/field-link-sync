@@ -10,6 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
 import { generateDocumentPdfBlob } from "@/lib/documentPdf";
+import { savePdfFile } from "@/components/quoting/QuotePdfViewer";
 import { loadQuoteBrochuresForPdf } from "@/lib/quoteBrochuresForPdf";
 import ClientQuotePdfRoot, { waitForClientPdfRoot } from "./ClientQuotePdfRoot";
 import WhatsAppShareButton from "@/components/WhatsAppShareButton";
@@ -200,11 +201,9 @@ const SendQuoteDialog = ({
     try {
       const blob = await buildPdf();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${quoteNumber || "quote"}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      // Phones: share sheet with the file (stays in the app), else a blob download (Johan 20:51).
+      await savePdfFile(url, `${quoteNumber || "quote"}.pdf`);
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (err) {
       toast({
         title: "PDF failed",

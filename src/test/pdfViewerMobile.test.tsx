@@ -33,3 +33,14 @@ describe("Visual PDF toolbar on phones (Johan 20:20)", () => {
     expect(u).toContain('activeTab === "visual" ? "max-sm:hidden vpdf-desk" : ""');
   });
 });
+
+describe("Quote PDF viewer stays in the app (Johan 20:51)", () => {
+  it("renders pages in-app with pdf.js (no object/iframe, no bare 'Open / download' link); fixed header + bottom bar", () => {
+    const v = readFileSync("src/components/quoting/QuotePdfViewer.tsx", "utf8");
+    expect(v).not.toMatch(/<object|<iframe|Open \/ download/);
+    expect(v).toContain('import("pdfjs-dist")');
+    expect(v).toMatch(/data-testid="pdf-viewer-actions" className="fixed inset-x-0 bottom-0/);
+    expect(v).toContain("env(safe-area-inset-bottom)");
+    expect(v).toMatch(/nav\.share\(\{ files: \[file\]/);
+  });
+});
