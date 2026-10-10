@@ -151,7 +151,6 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
         {showSales && (<div className="rounded-md border border-border p-3">
           <p className="font-semibold">{salespersonLabel}</p>
           <p>{settings.salesSharePercent}% of profit on parts &amp; materials: <span className="font-semibold tabular-nums">{money(m.salesShare)}</span></p>
-          <p className="text-[11px] text-muted-foreground">No commission on labour.</p>
           {isOwner && (<p className="text-[11px] text-muted-foreground">Company keeps {money(m.salesCompanyShare)}</p>)}
           {m.salesShareIfPricedCorrectly != null && (
             <p>If priced correctly: <span className="font-semibold tabular-nums">{money(m.salesShareIfPricedCorrectly)}</span></p>

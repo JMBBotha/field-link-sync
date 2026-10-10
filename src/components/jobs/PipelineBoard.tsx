@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { usePeekStack, PeekBody } from "@/components/shared/CardStack";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -100,13 +101,8 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
   });
   const [bookId, setBookId] = useState<string | null>(null);
   // Playing-card stacks: New lead behind Draft, Sent behind Viewed. Back card opens on mouse hover or click/tap (pinned).
-  const [peekHover, setPeekHover] = useState<PipelineStage | null>(null);
-  const [peekPinned, setPeekPinned] = useState<Set<PipelineStage>>(() => new Set());
-  const togglePeek = (key: PipelineStage) => setPeekPinned((current) => {
-    const next = new Set(current);
-    if (next.has(key)) next.delete(key); else next.add(key);
-    return next;
-  });
+  const peek = usePeekStack<PipelineStage>();
+  const togglePeek = peek.toggle;
   const [dragFrom, setDragFrom] = useState<{ id: string; stage: PipelineStage } | null>(null);
   const [over, setOver] = useState<PipelineStage | null>(null);
   const setHideTest = (v: boolean) => { localStorage.setItem("fls.pipeline.hideTest", v ? "1" : "0"); setHideTestState(v); qc.invalidateQueries({ queryKey: ["pipeline"] }); };
@@ -215,7 +211,7 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
             const colExpanded = keys.some((k) => expanded.has(k));
             return (
               <div key={keys.join("-")} data-stage-column={keys.join("-")}
-                onPointerLeave={(e) => { if (keys.length === 2 && e.pointerType === "mouse") setPeekHover((h) => (h === keys[0] ? null : h)); }}
+                onPointerLeave={keys.length === 2 ? peek.leave(keys[0]) : undefined}
                 className={cn("flex min-w-0 flex-col", keys.length === 2 ? "gap-0" : "gap-3", colExpanded && "col-span-full sm:col-span-2 xl:col-span-4")}>
                 {keys.map((key, idx) => {
                   const s = STAGES.find((x) => x.key === key)!;
@@ -229,12 +225,12 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
                   const isExpanded = expanded.has(s.key);
                   const remaining = sum.count - 2;
                   // Back card is "open" when hovered (mouse), pinned by click/tap, a drag is over it, or fully expanded.
-                  const peekOpen = !isBack || isExpanded || peekPinned.has(s.key) || peekHover === s.key || over === s.key;
+                  const peekOpen = !isBack || isExpanded || peek.isOpen(s.key) || over === s.key;
                   return (
                     <div key={s.key} data-stage-block={s.key}
                       data-card-stack={isBack ? "back" : isFront ? "front" : undefined}
                       data-peek-open={isBack ? (peekOpen ? "true" : "false") : undefined}
-                      onPointerEnter={isBack ? (e) => { if (e.pointerType === "mouse") setPeekHover(s.key); } : undefined}
+                      onPointerEnter={isBack ? peek.enter(s.key) : undefined}
                       onDragOver={(e) => { if (dragFrom) { e.preventDefault(); setOver(s.key); } }}
                       onDragLeave={() => setOver((o) => (o === s.key ? null : o))}
                       onDrop={(e) => { e.preventDefault(); if (dragFrom) runDrop(dragFrom.id, dragFrom.stage, s.key); setOver(null); }}
@@ -253,10 +249,7 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
                         <div className="text-lg font-bold tabular-nums">{s.key === "lead" ? "—" : fmtRandShort(sum.total)}</div>
                         <div className={cn("text-[11px] font-normal text-muted-foreground", isBack && !peekOpen && "hidden")}>{s.hint} · avg {sum.avgDays} d in stage</div>
                       </Button>
-                      <div className={cn("grid transition-[grid-template-rows] duration-300 ease-out", peekOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}
-                        aria-hidden={!peekOpen || undefined} data-peek-body={isBack ? s.key : undefined}
-                        {...({ inert: peekOpen ? undefined : "" } as Record<string, unknown>)}>
-                      <div className="min-h-0 overflow-hidden">
+                      <PeekBody open={peekOpen} id={isBack ? s.key : undefined}>
                       <div className={cn("grid grid-cols-1 gap-2 px-2 pb-2", peekOpen && "min-h-24", isFront && "pb-3", isExpanded && "md:grid-cols-2 lg:grid-cols-3")}>
                         {s.key === "lead"
                           ? (isExpanded ? shownLeads : shownLeads.slice(0, 2)).map(leadCard)
@@ -268,8 +261,7 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
                           </div>
                         )}
                       </div>
-                      </div>
-                      </div>
+                      </PeekBody>
                       {isBack && !peekOpen && <div className="h-3" aria-hidden />}
                     </div>
                   );
