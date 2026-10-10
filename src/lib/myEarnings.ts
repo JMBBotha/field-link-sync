@@ -48,3 +48,41 @@ export function byJob(rows: MyEarningRow[]) {
   }
   return [...m.values()];
 }
+
+/** Monday (SAST calendar) of the week containing a YYYY-MM-DD date. */
+export function weekStart(d: string): string {
+  const [y, m, day] = d.split("-").map(Number);
+  const dt = new Date(y, m - 1, day); dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7));
+  return ymd(dt);
+}
+/** This month vs last month (by job date). */
+export function monthCompare(rows: MyEarningRow[], now = new Date()) {
+  const t = sastToday(now);
+  const thisFrom = ymd(new Date(t.getFullYear(), t.getMonth(), 1));
+  const lastFrom = ymd(new Date(t.getFullYear(), t.getMonth() - 1, 1));
+  const sum = (f: (d: string) => boolean) => r2(rows.filter((r) => r.job_date && f(r.job_date)).reduce((a, r) => a + (Number(r.amount) || 0), 0));
+  const current = sum((d) => d >= thisFrom && d <= ymd(t)), last = sum((d) => d >= lastFrom && d < thisFrom);
+  return { current, last, diff: r2(current - last), trend: current > last ? "up" : current < last ? "down" : "same" as "up" | "down" | "same" };
+}
+/** Totals for the last `n` weeks (oldest first), current week last. */
+export function lastWeeks(rows: MyEarningRow[], n = 8, now = new Date()) {
+  const cur = weekStart(ymd(sastToday(now)));
+  const weeks: { start: string; total: number }[] = [];
+  for (let i = n - 1; i >= 0; i--) { const [y, m, d] = cur.split("-").map(Number); weeks.push({ start: ymd(new Date(y, m - 1, d - 7 * i)), total: 0 }); }
+  for (const r of rows) {
+    if (!r.job_date) continue;
+    const w = weeks.find((x) => x.start === weekStart(r.job_date!));
+    if (w) w.total = r2(w.total + (Number(r.amount) || 0));
+  }
+  return weeks;
+}
+/** Per-job lines grouped by week (newest week first); undated jobs last. */
+export function jobsByWeek(rows: MyEarningRow[]) {
+  const groups = new Map<string, ReturnType<typeof byJob>>();
+  for (const j of byJob(rows)) {
+    const k = j.job_date ? weekStart(j.job_date) : "undated";
+    groups.set(k, [...(groups.get(k) ?? []), j]);
+  }
+  return [...groups].sort(([a], [b]) => (a === "undated" ? 1 : b === "undated" ? -1 : b.localeCompare(a)))
+    .map(([start, jobs]) => ({ start, jobs, total: r2(jobs.reduce((a, j) => a + j.total, 0)) }));
+}

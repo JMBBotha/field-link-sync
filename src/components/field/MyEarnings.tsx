@@ -1,13 +1,14 @@
 /** Tech "My earnings" summary card (/field) and full view (/field/earnings). Own labour share only. */
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { ChevronRight, Loader2, Wallet } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, CheckCircle2, ChevronRight, Clock, Loader2, Minus, MinusCircle, PiggyBank, ShieldCheck, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatRand } from "@/utils/formatRand";
 import { formatSastDate } from "@/lib/salesTracker";
-import { BUCKET_LABEL, bucketOf, byJob, summarizeMine, type MyEarningRow } from "@/lib/myEarnings";
+import { BUCKET_LABEL, bucketOf, jobsByWeek, lastWeeks, monthCompare, summarizeMine, type MyEarningRow } from "@/lib/myEarnings";
 import { cn } from "@/lib/utils";
 import { PeekCard, usePeekStack } from "@/components/shared/CardStack";
 
@@ -61,53 +62,134 @@ export function MyEarningsCard({ className }: { className?: string }) {
   );
 }
 
-const BADGE: Record<string, string> = {
-  pending: "bg-amber-500/15 text-amber-700 dark:text-amber-300", paid: "bg-green-600/15 text-green-700 dark:text-green-300",
-  held: "bg-sky-500/15 text-sky-700 dark:text-sky-300", reduced: "bg-muted text-muted-foreground",
+const CHIP: Record<string, { cls: string; Icon: typeof Clock }> = {
+  pending: { cls: "bg-amber-100 text-amber-800 ring-amber-300 dark:bg-amber-500/15 dark:text-amber-200", Icon: Clock },
+  paid: { cls: "bg-emerald-100 text-emerald-800 ring-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-200", Icon: CheckCircle2 },
+  held: { cls: "bg-sky-100 text-sky-800 ring-sky-300 dark:bg-sky-500/15 dark:text-sky-200", Icon: ShieldCheck },
+  reduced: { cls: "bg-muted text-muted-foreground ring-border", Icon: MinusCircle },
 };
+const dayBadge = (d: string | null) => {
+  if (!d) return { day: "—", mon: "" };
+  const dt = new Date(`${d}T12:00:00`);
+  return { day: String(dt.getDate()), mon: dt.toLocaleDateString("en-ZA", { month: "short" }) };
+};
+const weekLabel = (start: string) => start === "undated" ? "Date to be set" : `Week of ${formatSastDate(start)}`;
+
+/** Big Back: previous screen, or /field when opened directly. */
+export function BigBack() {
+  const navigate = useNavigate();
+  const back = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/field"));
+  return (
+    <Button onClick={back} variant="outline" className="h-12 gap-2 border-emerald-600 px-5 text-base font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300" data-testid="earn-back">
+      <ArrowLeft className="h-5 w-5" /> Back
+    </Button>
+  );
+}
+
+function Hero({ rows }: { rows: MyEarningRow[] }) {
+  const c = monthCompare(rows);
+  const s = summarizeMine(rows);
+  const Trend = c.trend === "up" ? TrendingUp : c.trend === "down" ? TrendingDown : Minus;
+  return (
+    <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 p-4 text-white shadow-lg" data-testid="earn-hero">
+      <p className="text-sm text-emerald-100">This month</p>
+      <p className="text-4xl font-extrabold tabular-nums" data-testid="earn-month">{money(c.current)}</p>
+      <p className="mt-1 flex items-center gap-1 text-sm text-emerald-50" data-testid="earn-trend">
+        <Trend className="h-4 w-4" />
+        {c.last === 0 && c.current === 0 ? "Nothing yet this month"
+          : c.trend === "same" ? "Same as last month"
+          : `${money(Math.abs(c.diff))} ${c.trend === "up" ? "more" : "less"} than last month`}
+      </p>
+      <p className="mt-2 text-xs text-emerald-100">This week <b className="tabular-nums text-white" data-testid="earn-week">{money(s.week)}</b></p>
+    </div>
+  );
+}
+
+function WeekBars({ rows }: { rows: MyEarningRow[] }) {
+  const weeks = lastWeeks(rows, 8);
+  const max = Math.max(...weeks.map((w) => w.total), 1);
+  return (
+    <Card className="surface-card-solid"><CardContent className="p-3">
+      <p className="mb-2 text-sm font-semibold">Last 8 weeks</p>
+      <div className="flex h-28 items-end gap-1.5" data-testid="earn-bars" role="img" aria-label="Earnings per week, last 8 weeks">
+        {weeks.map((w, i) => (
+          <div key={w.start} className="flex h-full flex-1 flex-col items-center justify-end gap-1" title={`${weekLabel(w.start)}: ${money(w.total)}`}>
+            <div className={cn("w-full rounded-t-md", i === weeks.length - 1 ? "bg-emerald-600" : "bg-emerald-300 dark:bg-emerald-700")}
+              style={{ height: `${Math.max(4, (w.total / max) * 100)}%` }} />
+            <span className="text-[9px] text-muted-foreground">{dayBadge(w.start).day} {dayBadge(w.start).mon}</span>
+          </div>
+        ))}
+      </div>
+    </CardContent></Card>
+  );
+}
+
+function StatusChips({ rows }: { rows: MyEarningRow[] }) {
+  const s = summarizeMine(rows);
+  const items: [string, string, number][] = [["pending", "Pending", s.pending], ["paid", "Paid", s.paid], ["held", "Retention held", s.held]];
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {items.map(([k, label, v]) => { const { cls, Icon } = CHIP[k]; return (
+        <div key={k} className={cn("rounded-xl p-2 ring-1", cls)} data-testid={`earn-${k}`}>
+          <p className="flex items-center gap-1 text-[11px] font-medium"><Icon className="h-3.5 w-3.5 shrink-0" />{label}</p>
+          <p className="text-sm font-bold tabular-nums sm:text-base">{money(v)}</p>
+        </div>
+      ); })}
+    </div>
+  );
+}
 
 export function MyEarningsView() {
   const { data: rows = [], isLoading } = useMyTechEarnings();
   return (
     <div className="space-y-3" data-testid="my-earnings">
-      <p className="text-[11px] text-muted-foreground">
-        Your share of the labour only: part is paid when the job is completed, and a retention is held and released later unless there's a callback.
-      </p>
+      <BigBack />
       {isLoading && <div className="flex justify-center p-6"><Loader2 className="h-5 w-5 animate-spin" /></div>}
       {!isLoading && rows.length === 0 && (
-        <Card className="surface-card-solid"><CardContent className="p-6 text-center text-sm text-muted-foreground" data-testid="earn-empty">{EMPTY}</CardContent></Card>
+        <Card className="surface-card-solid"><CardContent className="flex flex-col items-center gap-3 p-8 text-center" data-testid="earn-empty">
+          <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/15">
+            <PiggyBank className="h-10 w-10 text-emerald-600" />
+            <Sparkles className="absolute -right-1 -top-1 h-6 w-6 text-amber-400" />
+          </div>
+          <p className="text-base font-semibold">No earnings yet</p>
+          <p className="max-w-xs text-sm text-muted-foreground">{EMPTY}</p>
+        </CardContent></Card>
       )}
       {!isLoading && rows.length > 0 && (
         <>
-          <Card className="surface-card-solid"><CardContent className="p-3"><Totals rows={rows} /></CardContent></Card>
-          <h2 className="pt-1 text-sm font-semibold">Per job</h2>
-          <div className="space-y-2" data-testid="earn-jobs">
-            {byJob(rows).map((j) => (
-              <Card key={j.key} className="surface-card-solid">
-                <CardContent className="p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm">{j.job_name}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {j.job_date ? formatSastDate(j.job_date) : "Date to be set"} · {j.hours != null ? `${j.hours} h` : "hours —"}
-                      </p>
-                    </div>
-                    <span className="font-semibold tabular-nums">{money(j.total)}</span>
-                  </div>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {j.parts.map((p) => {
-                      const b = bucketOf(p);
-                      return (
-                        <Badge key={p.row_key} className={cn("border-0 text-[11px] font-medium", BADGE[b])}>
-                          {p.kind === "retention" ? "Retention" : "On completion"}: {money(p.amount)} · {BUCKET_LABEL[b]}
-                          {b === "held" && p.release_after ? ` until ${formatSastDate(p.release_after)}` : ""}
-                          {b === "paid" && p.paid_at ? ` ${formatSastDate(p.paid_at)}` : ""}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
+          <Hero rows={rows} />
+          <StatusChips rows={rows} />
+          <WeekBars rows={rows} />
+          <p className="text-[11px] text-muted-foreground">Your share of the labour only: part is paid when the job is completed, and a retention is held and released later unless there's a callback.</p>
+          <div className="space-y-4" data-testid="earn-jobs">
+            {jobsByWeek(rows).map((g) => (
+              <section key={g.start} className="space-y-2" data-testid="earn-week-group">
+                <div className="flex items-baseline justify-between"><h2 className="text-sm font-semibold">{weekLabel(g.start)}</h2><span className="text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">{money(g.total)}</span></div>
+                {g.jobs.map((j) => { const d = dayBadge(j.job_date); return (
+                  <Card key={j.key} className="surface-card-solid overflow-hidden">
+                    <CardContent className="flex gap-3 p-3">
+                      <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg bg-emerald-600 text-white">
+                        <span className="text-lg font-bold leading-none">{d.day}</span><span className="text-[10px] uppercase">{d.mon}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="truncate text-sm font-medium">{j.job_name}</p>
+                          <span className="shrink-0 whitespace-nowrap font-bold tabular-nums">{money(j.total)}</span>
+                        </div>
+                        <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock className="h-3 w-3" />{j.hours != null ? `${j.hours} h` : "hours —"}</p>
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {j.parts.map((p) => { const b = bucketOf(p); const { cls, Icon } = CHIP[b]; return (
+                            <span key={p.row_key} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1", cls)}>
+                              <Icon className="h-3 w-3" />{p.kind === "retention" ? "Retention" : "On completion"} {money(p.amount)} · {BUCKET_LABEL[b]}
+                              {b === "held" && p.release_after ? ` until ${formatSastDate(p.release_after)}` : ""}
+                            </span>
+                          ); })}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ); })}
+              </section>
             ))}
           </div>
         </>
