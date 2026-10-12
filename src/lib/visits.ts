@@ -25,12 +25,12 @@ export interface VisitRow {
 
 export type VisitTab = "available" | "upcoming" | "handover" | "done";
 
-const CLOSED = new Set(["completed", "converted", "cancelled"]);
+const CLOSED = new Set(["completed", "converted", "cancelled", "resolved_before_visit"]);
 
 export function visitTab(r: VisitRow): VisitTab | null {
   if (!r.is_mine) return r.status === "pending" ? "available" : null;
   if (r.quote_accepted && !r.has_install_job) return "handover";
-  if (r.has_install_job || CLOSED.has(r.status ?? "")) return r.status === "cancelled" ? null : "done";
+  if (r.has_install_job || CLOSED.has(r.status ?? "")) return r.status === "cancelled" || r.status === "resolved_before_visit" ? null : "done";
   return "upcoming";
 }
 

@@ -15,7 +15,7 @@ export const toneForStatus = (status?: string | null): StatusTone => {
   const s = (status || "").toLowerCase().replace(/[_-]/g, " ").trim();
   if (["paid", "accepted", "approved", "completed", "active", "won"].includes(s))
     return "green";
-  if (["overdue", "declined", "rejected", "cancelled", "canceled", "failed", "lost"].includes(s))
+  if (["overdue", "declined", "rejected", "cancelled", "canceled", "failed", "lost", "resolved before visit"].includes(s))
     return "red";
   if (["sent", "viewed", "pending", "in progress", "scheduled", "claimed"].includes(s))
     return "blue";

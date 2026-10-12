@@ -14,7 +14,7 @@ const WORDS: [RegExp, LeadStatusFilter][] = [
   [/\b(claimed|accepted|assigned|booked)\b/, "accepted"],
   [/\b(in[ _-]?progress|busy|on ?site|working|started|active)\b/, "in_progress"],
   [/\b(completed?|done|finished|closed|converted)\b/, "completed"],
-  [/\b(cancell?ed)\b/, "cancelled"],
+  [/\b(cancell?ed|resolved)\b/, "cancelled"],
 ];
 
 /** Spoken status word → real value, or null when it isn't a map status (e.g. "emergency"). */
@@ -41,7 +41,7 @@ const UTTERANCE_WORDS: [RegExp, LeadStatusFilter][] = [
   [/\b(claimed|accepted)\b/, "accepted"],
   [/\bin[ _-]?progress\b|\bon ?site\b/, "in_progress"],
   [/\b(completed|finished|converted)\b/, "completed"],
-  [/\b(cancell?ed)\b/, "cancelled"],
+  [/\b(cancell?ed|resolved)\b/, "cancelled"],
 ];
 export function statusFromUtterance(text: string): LeadStatusFilter | null {
   const t = (text || "").toLowerCase();

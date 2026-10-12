@@ -69,7 +69,7 @@ const FieldSchedulePage = () => {
     enabled: !!user,
     queryFn: async () =>
       (await loadEntries({ from: dayDate, agentId: user!.id }))
-        .filter((e) => !e.job_id && e.date > dayDate && !["completed", "cancelled"].includes(String(e.status || "")))
+        .filter((e) => !e.job_id && e.date > dayDate && !["completed", "cancelled", "resolved_before_visit"].includes(String(e.status || "")))
         .sort((a, b) => (a.date + (a.start_time || "")).localeCompare(b.date + (b.start_time || ""))),
   });
 

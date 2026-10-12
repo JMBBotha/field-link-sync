@@ -11813,6 +11813,7 @@ export type Database = {
         | "completed"
         | "lost"
         | "cancelled"
+        | "resolved_before_visit"
       lead_priority_level: "emergency" | "same_day" | "standard"
       lead_source:
         | "vapi_call"
@@ -11987,6 +11988,7 @@ export const Constants = {
         "completed",
         "lost",
         "cancelled",
+        "resolved_before_visit",
       ],
       lead_priority_level: ["emergency", "same_day", "standard"],
       lead_source: [

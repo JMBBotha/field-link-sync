@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { RESOLVED_BEFORE_VISIT } from "@/lib/leadStatus";
 import CallSummary from "@/components/leads/CallSummary";
 import { hasValidCoords } from "@/lib/leadCoords";
 import { leadStatusCategory } from "@/lib/leadStatusCategory";
@@ -220,6 +221,9 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
     if (newStatus === "completed") {
       updates.completed_at = new Date().toISOString();
     }
+    if (newStatus === RESOLVED_BEFORE_VISIT) {
+      updates.lead_status = newStatus;
+    }
     if (newStatus === "pending") {
       updates.assigned_agent_id = null;
       updates.accepted_at = null;
@@ -295,13 +299,13 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
     };
 
     return (
-      <Badge className={colors[category] || "bg-muted"}>
-        {labels[category] || status.replace("_", " ")}
+      <Badge className={status === RESOLVED_BEFORE_VISIT ? "bg-muted text-foreground" : colors[category] || "bg-muted"}>
+        {status === RESOLVED_BEFORE_VISIT ? "Resolved before visit" : labels[category] || status.replace("_", " ")}
       </Badge>
     );
   };
 
-  const statusOptions = ["pending", "accepted", "in_progress", "completed", "cancelled"];
+  const statusOptions = ["pending", "accepted", "in_progress", "completed", "cancelled", RESOLVED_BEFORE_VISIT];
 
   const openNavigation = (address: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -573,7 +577,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
                     onClick={() => handleStatusChange(lead.id, status)}
                     disabled={lead.status === status}
                   >
-                    Mark as {status.replace("_", " ")}
+                    Mark as {status === RESOLVED_BEFORE_VISIT ? "Resolved before visit" : status.replace("_", " ")}
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
@@ -644,7 +648,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
                       onClick={() => handleStatusChange(lead.id, status)}
                       disabled={lead.status === status}
                     >
-                      Mark as {status.replace("_", " ")}
+                      Mark as {status === RESOLVED_BEFORE_VISIT ? "Resolved before visit" : status.replace("_", " ")}
                     </DropdownMenuItem>
                   ))}
                   <DropdownMenuSeparator />

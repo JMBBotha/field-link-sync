@@ -8,14 +8,14 @@ import { useUserCompanyId } from "@/hooks/useUserCompanyId";
  *
  * A lead is in the inbox when ALL of:
  *  - deleted_at is null
- *  - lead_status NOT in (completed, lost, cancelled)
- *  - status NOT in (completed, converted, cancelled)
+ *  - lead_status NOT in (completed, lost, cancelled, resolved_before_visit)
+ *  - status NOT in (completed, converted, cancelled, resolved_before_visit)
  *  - assigned_agent_id is null OR scheduled_date is null
  *
  * The badge only clears once the lead is BOTH assigned AND scheduled.
  */
-export const CLOSED_LEAD_STATUS = ["completed", "lost", "cancelled"];
-export const CLOSED_STATUS = ["completed", "converted", "cancelled"];
+export const CLOSED_LEAD_STATUS = ["completed", "lost", "cancelled", "resolved_before_visit"];
+export const CLOSED_STATUS = ["completed", "converted", "cancelled", "resolved_before_visit"];
 
 export interface InboxLeadLike {
   deleted_at?: string | null;

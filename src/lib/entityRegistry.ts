@@ -58,6 +58,7 @@ const LEAD_STATUS = [
   "in_progress",
   "completed",
   "cancelled",
+  "resolved_before_visit",
 ].map((v) => ({ value: v, label: v.replace(/_/g, " ") }));
 
 const JOB_STATUS = [

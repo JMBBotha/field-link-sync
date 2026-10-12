@@ -862,7 +862,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     if (!selectedAgentId) return;
 
     const agentLeads = leads
-      .filter((l) => l.status !== "completed" && l.status !== "cancelled")
+      .filter((l) => l.status !== "completed" && l.status !== "cancelled" && l.status !== "resolved_before_visit")
       .filter((l) => {
         // In a full implementation you'd check assigned_agent_id
         // For now show all active leads as a potential route

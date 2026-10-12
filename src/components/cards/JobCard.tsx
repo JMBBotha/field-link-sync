@@ -43,7 +43,7 @@ export default function JobCard({ item, density, audience, actions, menuItems = 
   const tech = audience === "tech";
   const text = (value?: string | null) => tech ? (value || "").replace(/R\s?\d[\d\s,.]*/g, "") : value;
   const unassigned = item.statusKey === "unassigned";
-  const closed = ["completed", "cancelled", "canceled"].includes(item.statusKey);
+  const closed = ["completed", "cancelled", "canceled", "resolved_before_visit"].includes(item.statusKey);
   const pill = pillFor({ id: item.id, status: item.statusKey,
     assignments: item.assigneeName ? [{ profile_id: "assigned" }] : [] });
   const { key, mins, onSiteMins } = item.urgency;

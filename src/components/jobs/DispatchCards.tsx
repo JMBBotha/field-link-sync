@@ -87,7 +87,7 @@ export default function DispatchCards() {
   );
   const cards = [
     ...shown.map((job) => ({ item: jobToCard(job), job, entry: null })),
-    ...visibleVisitEntries(booked.entries).filter((e) => !e.job_id && e.lead_id && e.date === day && !["cancelled", "canceled"].includes(e.status || ""))
+    ...visibleVisitEntries(booked.entries).filter((e) => !e.job_id && e.lead_id && e.date === day && !["cancelled", "canceled", "resolved_before_visit"].includes(e.status || ""))
       .map((entry) => ({ item: visitToCard(entry, booked.names), job: null, entry })),
   ].filter(({ item }) => lane === "all" || item.lane === lane)
     .sort((a, b) => a.item.urgency.rank - b.item.urgency.rank

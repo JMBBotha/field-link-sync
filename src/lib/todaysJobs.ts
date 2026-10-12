@@ -6,9 +6,9 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 
-export const CLOSED_STATUSES = ["completed", "cancelled", "canceled"];
+export const CLOSED_STATUSES = ["completed", "cancelled", "canceled", "resolved_before_visit"];
 const isClosed = (s?: string | null) => CLOSED_STATUSES.includes(String(s || "").toLowerCase());
-const isCancelled = (s?: string | null) => ["cancelled", "canceled"].includes(String(s || "").toLowerCase());
+const isCancelled = (s?: string | null) => ["cancelled", "canceled", "resolved_before_visit"].includes(String(s || "").toLowerCase());
 const isCompleted = (s?: string | null) => String(s || "").toLowerCase() === "completed";
 
 /** 'YYYY-MM-DD' in Africa/Johannesburg. Never toISOString. */
