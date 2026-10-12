@@ -92,14 +92,40 @@ export function useAcceptLead() {
         estimated_end_time: endDate.toISOString(),
         accepted_at: new Date().toISOString(),
       };
-      const { error: leadErr } = await supabase
+      const { data: updatedRows, error: leadErr } = await supabase
         .from("leads")
         .update(leadPatch)
-        .eq("id", lead.id);
+        .eq("id", lead.id)
+        .select("id");
       if (leadErr) throw leadErr;
 
+      // 0 rows = RLS hid the row (a tech taking an unassigned offer). Claim it through the
+      // server function instead; it re-checks company, still-free, fit/clash and same-client,
+      // and creates the job + assignment the tech can't insert directly.
+      let viaServer: string | null = null;
+      if (!updatedRows || updatedRows.length === 0) {
+        if (appointment.agentId !== user.id) {
+          throw new Error("You don't have permission to change this lead. Ask the office to assign it.");
+        }
+        const { data: res, error: rpcErr } = await (supabase as any).rpc("tech_accept_lead", {
+          p_lead: lead.id,
+          p_date: appointment.date,
+          p_time: appointment.startTime,
+          p_minutes: appointment.durationMinutes,
+          p_end: endDate.toISOString(),
+          p_title: title,
+          p_description: description || null,
+          p_priority: priority || null,
+          p_address: address || null,
+          p_location_id: locationId || null,
+        });
+        if (rpcErr) throw new Error(rpcErr.message);
+        if (!res?.job_id) throw new Error("This offer couldn't be accepted. Please refresh and try again.");
+        viaServer = res.job_id as string;
+      }
+
       // 2) Find or create the linked job
-      const { data: existingJob } = await supabase
+      const { data: existingJob } = viaServer ? { data: { id: viaServer } } : await supabase
         .from("jobs")
         .select("id")
         .eq("lead_id", lead.id)
@@ -120,7 +146,9 @@ export function useAcceptLead() {
         location_id: locationId || null,
       };
 
-      if (jobId) {
+      if (viaServer) {
+        // job, assignment and activity log already written server-side
+      } else if (jobId) {
         const { error: updErr } = await supabase
           .from("jobs")
           .update(jobPatch)
@@ -144,7 +172,7 @@ export function useAcceptLead() {
       }
 
       // 3) Assignment (only when technician chosen)
-      if (appointment.agentId && jobId) {
+      if (!viaServer && appointment.agentId && jobId) {
         const { data: existingAssign } = await supabase
           .from("assignments")
           .select("id")
@@ -168,7 +196,7 @@ export function useAcceptLead() {
       }
 
       // 4) Activity log (best-effort)
-      if (jobId) {
+      if (jobId && !viaServer) {
         await supabase.from("job_activity_log").insert({
           job_id: jobId,
           user_id: user.id,
