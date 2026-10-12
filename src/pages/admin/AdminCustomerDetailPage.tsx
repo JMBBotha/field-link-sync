@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 import { formatRand } from "@/utils/formatRand";
 import CustomerLocationsManager from "@/components/customers/CustomerLocationsManager";
 import CustomerContactsManager from "@/components/customers/CustomerContactsManager";
+import CustomerSitesManager, { sitesLabel } from "@/components/customers/CustomerSitesManager";
 import CustomerStatementPanel from "@/components/customers/CustomerStatementPanel";
 import CustomerNotesPanel from "@/components/customers/CustomerNotesPanel";
 import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
@@ -122,6 +123,22 @@ const AdminCustomerDetailPage = () => {
     }
     qc.invalidateQueries({ queryKey: ["customer-detail", id] });
     toast({ title: assigned ? "Dedicated sales rep saved" : "Dedicated sales rep removed" });
+  };
+
+  const [savingType, setSavingType] = useState(false);
+  const saveClientType = async (value: string) => {
+    if (!id) return;
+    setSavingType(true);
+    const client_type = value === "unset" ? null : value;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- client_type not yet in generated types
+    const { error } = await (supabase as any).from("customers").update({ client_type }).eq("id", id);
+    setSavingType(false);
+    if (error) {
+      toast({ title: "Could not save client type", description: error.message, variant: "destructive" });
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["customer-detail", id] });
+    toast({ title: "Client type saved" });
   };
 
   // Tell the voice assistant which client is open on screen.
@@ -393,6 +410,22 @@ const AdminCustomerDetailPage = () => {
                     </Select>
                   </div>
                 )}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Client type</Label>
+                  <Select
+                    value={(customer as any).client_type ?? "unset"}
+                    onValueChange={saveClientType}
+                    disabled={savingType}
+                  >
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Not set" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unset">Not set</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                      <SelectItem value="company">Company</SelectItem>
+                      <SelectItem value="developer">Developer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex flex-col items-center text-center gap-3">
                   <Avatar className="h-20 w-20">
                     <AvatarFallback className="bg-[#0066CC] text-white text-xl font-bold">
@@ -479,6 +512,7 @@ const AdminCustomerDetailPage = () => {
                     {canSeeStatement && <TabsTrigger value="statement" data-testid="tab-statement">Statement</TabsTrigger>}
                     <TabsTrigger value="notes" data-testid="tab-notes">Notes</TabsTrigger>
                     <TabsTrigger value="contacts">Contacts</TabsTrigger>
+                    <TabsTrigger value="sites">{sitesLabel((customer as any).client_type)}</TabsTrigger>
                     <TabsTrigger value="credits">Credits</TabsTrigger>
                     <TabsTrigger value="estimates">Estimates</TabsTrigger>
                   </TabsList>
@@ -598,6 +632,9 @@ const AdminCustomerDetailPage = () => {
 
                 <TabsContent value="contacts" className="p-0 mt-0">
                   <CustomerContactsManager customerId={customer.id} />
+                </TabsContent>
+                <TabsContent value="sites" className="p-0 mt-0">
+                  <CustomerSitesManager customerId={customer.id} clientType={(customer as any).client_type} />
                 </TabsContent>
                 {canSeeStatement && (
                   <TabsContent value="statement" className="p-0 mt-0">
