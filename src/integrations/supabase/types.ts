@@ -225,18 +225,21 @@ export type Database = {
           created_at: string
           email_webhook_token: string
           id: number
+          lead_call_token: string | null
         }
         Insert: {
           call_report_token?: string | null
           created_at?: string
           email_webhook_token?: string
           id?: number
+          lead_call_token?: string | null
         }
         Update: {
           call_report_token?: string | null
           created_at?: string
           email_webhook_token?: string
           id?: number
+          lead_call_token?: string | null
         }
         Relationships: []
       }
@@ -4132,6 +4135,144 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_call_attempts: {
+        Row: {
+          company_id: string
+          created_at: string
+          digits: string | null
+          dry_run: boolean
+          id: string
+          km: number | null
+          lead_id: string
+          minutes: number | null
+          person_name: string | null
+          phone: string | null
+          position: number
+          profile_id: string | null
+          reason: string | null
+          slot_date: string | null
+          slot_start: string | null
+          status: string
+          twilio_call_sid: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          digits?: string | null
+          dry_run?: boolean
+          id?: string
+          km?: number | null
+          lead_id: string
+          minutes?: number | null
+          person_name?: string | null
+          phone?: string | null
+          position?: number
+          profile_id?: string | null
+          reason?: string | null
+          slot_date?: string | null
+          slot_start?: string | null
+          status?: string
+          twilio_call_sid?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          digits?: string | null
+          dry_run?: boolean
+          id?: string
+          km?: number | null
+          lead_id?: string
+          minutes?: number | null
+          person_name?: string | null
+          phone?: string | null
+          position?: number
+          profile_id?: string | null
+          reason?: string | null
+          slot_date?: string | null
+          slot_start?: string | null
+          status?: string
+          twilio_call_sid?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_call_attempts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_call_attempts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_call_settings: {
+        Row: {
+          allowlist: string[]
+          call_days: number[]
+          call_end: string
+          call_start: string
+          company_id: string
+          enabled: boolean
+          from_number: string | null
+          max_people: number
+          mode: string
+          ring_seconds: number
+          test_only: boolean
+          updated_at: string
+        }
+        Insert: {
+          allowlist?: string[]
+          call_days?: number[]
+          call_end?: string
+          call_start?: string
+          company_id: string
+          enabled?: boolean
+          from_number?: string | null
+          max_people?: number
+          mode?: string
+          ring_seconds?: number
+          test_only?: boolean
+          updated_at?: string
+        }
+        Update: {
+          allowlist?: string[]
+          call_days?: number[]
+          call_end?: string
+          call_start?: string
+          company_id?: string
+          enabled?: boolean
+          from_number?: string | null
+          max_people?: number
+          mode?: string
+          ring_seconds?: number
+          test_only?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_call_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_call_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       lead_change_requests: {
         Row: {
           created_at: string
@@ -5787,6 +5928,7 @@ export type Database = {
           job_title: string | null
           jobs_limit: number
           last_availability_update: string | null
+          lead_contact_pref: string
           location_tracking_enabled: boolean | null
           max_travel_km: number | null
           network_status: string | null
@@ -5833,6 +5975,7 @@ export type Database = {
           job_title?: string | null
           jobs_limit?: number
           last_availability_update?: string | null
+          lead_contact_pref?: string
           location_tracking_enabled?: boolean | null
           max_travel_km?: number | null
           network_status?: string | null
@@ -5879,6 +6022,7 @@ export type Database = {
           job_title?: string | null
           jobs_limit?: number
           last_availability_update?: string | null
+          lead_contact_pref?: string
           location_tracking_enabled?: boolean | null
           max_travel_km?: number | null
           network_status?: string | null
@@ -10464,6 +10608,34 @@ export type Database = {
           expenses: number
           profit: number
           revenue: number
+        }[]
+      }
+      lead_call_accept: { Args: { p_attempt: string }; Returns: Json }
+      lead_call_candidates: {
+        Args: { p_lead: string }
+        Returns: {
+          full_name: string
+          km: number
+          minutes: number
+          phone: string
+          pref: string
+          profile_id: string
+          role: string
+          slot_date: string
+          slot_start: string
+        }[]
+      }
+      lead_call_statuses: {
+        Args: never
+        Returns: {
+          at: string
+          dry_run: boolean
+          lead_id: string
+          n_called: number
+          n_no_answer: number
+          n_passed: number
+          person: string
+          state: string
         }[]
       }
       lead_duplicate_flags: {
