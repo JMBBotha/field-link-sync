@@ -756,7 +756,7 @@ serve(async (req) => {
           ? `Hi ${firstName}, welcome back to 0800BeCool. I see you contacted us ${lastCall.when.replace(/^.*\(/, "").replace(/\)$/, "")} about your ${String(lastCall.service_type || "job").toLowerCase()}. Are you calling about that?`
           : `Hi ${firstName}, welcome back to 0800BeCool. How can I help you today?`;
       } else if (callerNumber) {
-        firstMessage = "Hi, you've reached 0800BeCool. I don't have your number on file yet — may I start with your name please?";
+        firstMessage = "Hi, you've reached 0800BeCool. May I start with your name please?";
       }
 
       // Everything Mandy says about dates must be anchored to SA local time.
