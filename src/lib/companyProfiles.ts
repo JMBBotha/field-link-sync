@@ -34,20 +34,53 @@ export interface CompanyProfile {
 
 const s = (v: unknown) => String(v ?? "").replace(/[[\]{}()]/g, "").replace(/\s+/g, " ").trim();
 
-/** Right-hand company block lines for a document. No profile = today's fixed block (unchanged). */
+/**
+ * Per-field value from the company's own record. Only when that field is empty AND the record is
+ * MASSAIR CT's (whose fixed values live in companyIdentity.ts) do we fall back to the fixed value,
+ * so another company never prints CT's phone/web/etc.
+ */
+function field(p: Partial<CompanyProfile>, v: string | null | undefined, ctFallback: string): string {
+  const val = s(v);
+  if (val) return String(v).trim();
+  return p.company_id === COMPANY.companyId ? ctFallback : "";
+}
+
+/** Resolved company identity for a document header/footer, record first. */
+export function profileIdentity(p?: Partial<CompanyProfile> | null) {
+  if (!p || !p.legal_name) {
+    return { legalName: COMPANY.legalName, tel: COMPANY.tel, vatNo: COMPANY.vatNo, addressLines: [...COMPANY.addressLines],
+      email: COMPANY.email, web: COMPANY.web, whatsapp: COMPANY.whatsapp, fromRecord: false };
+  }
+  const addr = ((p.address_lines || []).map((l) => String(l || "").trim()).filter(Boolean));
+  return {
+    legalName: p.legal_name.trim(),
+    tel: field(p, p.phone, COMPANY.tel),
+    vatNo: field(p, p.vat_number, COMPANY.vatNo).replace(/[[\]{}()]/g, "").trim(),
+    addressLines: addr.length ? addr : (p.company_id === COMPANY.companyId ? [...COMPANY.addressLines] : []),
+    email: field(p, p.email, COMPANY.email),
+    web: field(p, p.website, COMPANY.web),
+    whatsapp: field(p, p.whatsapp, COMPANY.whatsapp),
+    fromRecord: true,
+  };
+}
+
+/** Right-hand company block lines for a document, from the company record. No record = fixed fallback block. */
 export function profileBlockLines(p?: Partial<CompanyProfile> | null): string[] {
   if (!p || !p.legal_name) return COMPANY_BLOCK_LINES;
-  return [
-    p.legal_name,
-    ...(p.phone ? [p.phone] : []),
-    ...(p.vat_number && s(p.vat_number) ? [`VAT No ${s(p.vat_number)}`] : []),
-    ...((p.address_lines || []).filter(Boolean) as string[]),
-  ];
+  const i = profileIdentity(p);
+  return [i.legalName, ...(i.tel ? [i.tel] : []), ...(i.vatNo ? [`VAT No ${i.vatNo}`] : []), ...i.addressLines];
 }
 
 export function profileContactLine(p?: Partial<CompanyProfile> | null): string {
   if (!p || !p.legal_name) return COMPANY_CONTACT_LINE;
-  return [p.whatsapp && `WhatsApp/Cell ${p.whatsapp}`, p.email, p.website].filter(Boolean).join(" · ");
+  const i = profileIdentity(p);
+  return [i.whatsapp && `WhatsApp/Cell ${i.whatsapp}`, i.email, i.web].filter(Boolean).join(" · ");
+}
+
+/** One-line footer: name · tel · VAT · address (record first). */
+export function profileFooterLine(p?: Partial<CompanyProfile> | null): string {
+  const i = profileIdentity(p);
+  return [i.legalName, i.tel, i.vatNo ? `VAT No ${i.vatNo}` : null, i.addressLines.join(", ")].filter(Boolean).join(" · ");
 }
 
 export interface ProfileBanking {
@@ -97,8 +130,7 @@ export function profileTermsInfo(p?: Partial<CompanyProfile> | null): TermsCompa
     branchCode: b.branch_code || undefined,
     accountType: b.account_type || undefined,
     customText: p.terms_text ? fillTermsPlaceholders(p.terms_text, p) : undefined,
-    footerLine: [p.legal_name, p.phone, p.vat_number && s(p.vat_number) ? `VAT No ${s(p.vat_number)}` : null, (p.address_lines || []).join(", ")]
-      .filter(Boolean).join(" · "),
+    footerLine: profileFooterLine(p),
     contactLine: profileContactLine(p),
   };
 }

@@ -2,16 +2,21 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { buildTermsBlocks } from "@/lib/defaultTerms";
 import { COMPANY, cleanBanking } from "@/lib/companyIdentity";
+import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
 
 /**
  * "Full terms and conditions" on the client quote/accept page (Johan 2026-10-12).
  * Same text as the T&C pages in every quote PDF (buildTermsBlocks), same company name + banking source.
  */
-export default function FullTermsSection({ banking }: { banking?: unknown }) {
+export default function FullTermsSection({ banking, profile }: { banking?: unknown; profile?: Partial<CompanyProfile> | null }) {
   const [open, setOpen] = useState(false);
-  const b = cleanBanking(banking);
+  // Company record first (Johan 2026-10-12); settings banking / fixed name only as fallback.
+  const s = cleanBanking(banking);
+  const r = profileBanking(profile);
+  const b = r ? { account_name: r.account_name || s.account_name, bank_name: r.bank_name || s.bank_name, account_number: r.account_number || s.account_number,
+    branch_code: r.branch_code || s.branch_code, account_type: r.account_type || s.account_type } : s;
   const blocks = buildTermsBlocks({
-    companyName: COMPANY.legalName,
+    companyName: profile?.legal_name || COMPANY.legalName,
     bankName: b.bank_name || undefined, accountName: b.account_name,
     accountNumber: b.account_number || undefined, branchCode: b.branch_code || undefined, accountType: b.account_type || undefined,
   });

@@ -1,4 +1,4 @@
-import { COMPANY_BLOCK_LINES, COMPANY_CONTACT_LINE } from "@/lib/companyIdentity";
+import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
 import { profileBlockLines, profileContactLine, type CompanyProfile } from "@/lib/companyProfiles";
 interface DocumentHeaderProps {
   logoUrl?: string | null;
@@ -9,6 +9,8 @@ interface DocumentHeaderProps {
   phone?: string;
   /** Issuing company profile (invoices). Omit = the fixed block. */
   profile?: Partial<CompanyProfile> | null;
+  /** Document's company; omit = signed-in user's company. Header always reads that company's record. */
+  companyId?: string | null;
 }
 
 /**
@@ -25,9 +27,11 @@ const DocumentHeader = ({
   vatNumber,
   phone,
   profile,
+  companyId,
 }: DocumentHeaderProps) => {
-  const blockLines = profile?.legal_name ? profileBlockLines(profile) : COMPANY_BLOCK_LINES;
-  const contactLine = profile?.legal_name ? profileContactLine(profile) : COMPANY_CONTACT_LINE;
+  const p = useDocumentCompanyProfile(companyId, profile);
+  const blockLines = profileBlockLines(p);
+  const contactLine = profileContactLine(p);
   return (
     <div>
       {/* HEADER ROW */}
@@ -47,8 +51,8 @@ const DocumentHeader = ({
           )}
         </div>
 
-        {/* RIGHT: company block, single source src/lib/companyIdentity.ts (Johan 2026-10-12) */}
-        <div data-testid="company-block" className="flex flex-col items-end text-right gap-0">
+        {/* RIGHT: company block from the company record (company_profiles), fixed block only as fallback (Johan 2026-10-12) */}
+        <div data-testid="company-block" data-company-source={p?.legal_name ? "record" : "fallback"} className="flex flex-col items-end text-right gap-0">
           {blockLines.map((l, i) => (
             <p key={l} className={`text-[13px] leading-snug ${i === 0 ? "font-semibold text-foreground" : "text-foreground/80"}`}>{l}</p>
           ))}

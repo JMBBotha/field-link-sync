@@ -428,6 +428,7 @@ export default function EstimateBuilder({
         }
         notes={notes}
         termsText={termsText}
+        companyId={meta?.company_id ?? null}
         editing={{
           areaCreationControl,
           areas: editAreas,

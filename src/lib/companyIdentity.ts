@@ -1,10 +1,15 @@
 /**
- * ONE source for the company block on every client document (Johan 2026-10-12 09:14):
+ * LAST-RESORT FALLBACK ONLY (Johan 2026-10-12 16:02): company details on documents come from the
+ * company's own record (company_profiles, see src/lib/companyProfiles.ts). These fixed values are used
+ * only when no record could be loaded, or per field for MASSAIR CT when its record leaves a field empty.
+ * Originally: ONE source for the company block on every client document (Johan 2026-10-12 09:14):
  * quotes, quote PDFs, client quote page, invoices, deposit invoices, statements, credit notes,
  * T&C pages and email footers. Exact wording from Johan. Banking is NOT here: it always comes
  * from company_settings (newest row) via cleanBanking() below, so nobody invents account numbers.
  */
 export const COMPANY = {
+  /** The company these fixed values belong to (MASSAIR CT). Used ONLY as a per-field last resort for that company. */
+  companyId: "361bf031-9cdb-4d7f-9bde-9eb95fa4725e",
   legalName: "MASSAIR CT (PTY) Ltd",
   brand: "0800-BE-COOL AC Super Service",
   tel: "(021) 802-2889",

@@ -1,4 +1,5 @@
 import FullTermsSection from "@/components/client/FullTermsSection";
+import type { CompanyProfile } from "@/lib/companyProfiles";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -76,6 +77,8 @@ const ClientProposalView = () => {
   const [clientAreas, setClientAreas] = useState<ClientRollupArea[]>([]);
   const [customer, setCustomer] = useState<PublicCustomer | null>(null);
   const [company, setCompany] = useState<PublicCompany | null>(null);
+  // The quote company's own record (get_public_quote 'profile'): header + banking (Johan 2026-10-12).
+  const [companyProfile, setCompanyProfile] = useState<Partial<CompanyProfile> | null>(null);
   const [sections, setSections] = useState<ProposalSection[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [acceptedName, setAcceptedName] = useState("");
@@ -129,6 +132,7 @@ const ClientProposalView = () => {
       setSections(bundle.sections || []);
       setCustomer(bundle.customer || null);
       setCompany(bundle.company || null);
+      setCompanyProfile(bundle.profile || null);
 
       // Prefill the accept name once from the quote's customer (still editable).
       const prefill =
@@ -284,10 +288,11 @@ const ClientProposalView = () => {
           discountAmount={discountAmount}
           discountLabel={discountLabel}
           companyOverride={company}
+          companyProfile={companyProfile}
           paymentPlan={(quote as any).payment_plan ?? null}
         />
 
-        <FullTermsSection banking={company?.banking_details} />
+        <FullTermsSection banking={company?.banking_details} profile={companyProfile} />
 
         {/* Optional extra proposal sections (below the document) */}
         {sections.map((section) => (

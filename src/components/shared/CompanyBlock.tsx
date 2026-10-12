@@ -1,16 +1,23 @@
-import { COMPANY_BLOCK_LINES, COMPANY_CONTACT_LINE } from "@/lib/companyIdentity";
 import { profileBlockLines, profileContactLine, type CompanyProfile } from "@/lib/companyProfiles";
+import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
 
 /**
  * Right-aligned company block for quote/invoice documents.
- * With a `profile` (invoices: the issuing company) it prints that company's own name/VAT/address;
- * without one it prints the fixed block from src/lib/companyIdentity.ts (unchanged).
+ * Always from the company's own record (Johan 2026-10-12): `profile` if the caller has one
+ * (invoice issuing company / public RPC), else the default company_profiles row for `companyId`
+ * (or the signed-in user's company). Fixed block in companyIdentity.ts only if no record loads.
  */
-export default function CompanyBlock({ className = "", profile }: { className?: string; profile?: Partial<CompanyProfile> | null }) {
-  const [name, ...rest] = profile?.legal_name ? profileBlockLines(profile) : COMPANY_BLOCK_LINES;
-  const contact = profile?.legal_name ? profileContactLine(profile) : COMPANY_CONTACT_LINE;
+export default function CompanyBlock({ className = "", profile, companyId, fetchProfile = true }: {
+  className?: string;
+  profile?: Partial<CompanyProfile> | null;
+  companyId?: string | null;
+  fetchProfile?: boolean;
+}) {
+  const p = useDocumentCompanyProfile(companyId, profile, fetchProfile);
+  const [name, ...rest] = profileBlockLines(p);
+  const contact = profileContactLine(p);
   return (
-    <div data-testid="company-block" className={`text-right text-[12px] leading-relaxed text-slate-600 ${className}`}>
+    <div data-testid="company-block" data-company-source={p?.legal_name ? "record" : "fallback"} className={`text-right text-[12px] leading-relaxed text-slate-600 ${className}`}>
       <p className="text-[15px] font-bold text-[#1B3A5C]">{name}</p>
       {rest.map((l) => <p key={l}>{l}</p>)}
       {contact && <p className="text-[11px]">{contact}</p>}

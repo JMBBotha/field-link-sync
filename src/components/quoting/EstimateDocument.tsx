@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { formatRand } from "@/utils/formatRand";
 import CompanyBlock from "@/components/shared/CompanyBlock";
 import { cleanBanking } from "@/lib/companyIdentity";
+import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
+import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
 import { planTermsSentence, type PaymentPlan } from "@/lib/paymentPlans";
 
 export interface EstimateDocLineItem {
@@ -172,6 +174,10 @@ export interface EstimateDocumentProps {
     default_deposit_percentage?: number | null;
     default_payment_terms_days?: number | null;
   } | null;
+  /** The document's company (quote.company_id): header + banking come from its own record. */
+  companyId?: string | null;
+  /** Company record already in hand (public RPC); skips the lookup. */
+  companyProfile?: Partial<CompanyProfile> | null;
   editing?: EstimateEditing;
   /**
    * Client-facing roll-up: one block per area (unit + blurb + single area
@@ -266,16 +272,32 @@ const toPercent = (rate?: number | null) => {
 };
 
 /**
- * Older quotes stored a hard-coded banking-details block inside terms_text.
- * Banking details now come from company settings (single source of truth), so
- * strip any legacy banking block out of the terms copy to avoid showing two
- * conflicting account numbers.
+ * Older quotes store a typed "Banking Details:" clause (6.1 Account Name ... 6.5 Branch Code) inside
+ * terms_text. Banking now comes from the company record and is printed in its own "Banking Details"
+ * block at the bottom of this document, so ONLY that clause's lines are replaced by a pointer to the
+ * block (avoids two, possibly conflicting, account numbers). Everything before AND after it
+ * (Deposit Reference, Confidentiality, Termination, Dispute Resolution, Importance of Servicing...)
+ * is kept. Before 2026-10-12 this cut everything from "Banking Details" to the end.
  */
-const stripLegacyBanking = (terms?: string | null) => {
+const BANKING_LINE = /^\s*(?:(\d+)\.\d+\s*)?(?:account\s*(?:name|type|holder|no\.?|number)?|acc(?:ount)?\s*no\.?|bank(?:\s*name)?|branch(?:\s*(?:code|name))?|swift|reference\s*:)\b[^\n]*$/i;
+export const stripLegacyBanking = (terms?: string | null) => {
   if (!terms) return terms ?? null;
-  const cleaned = terms
-    .replace(/\n?\s*banking\s*details\s*:?[\s\S]*$/i, "")
-    .trimEnd();
+  const lines = terms.replace(/\r\n?/g, "\n").split("\n");
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^\s*(?:(\d+)[.)]?\s*)?banking\s*details\s*:?\s*(.*)$/i);
+    if (!m) { out.push(lines[i]); continue; }
+    let num = m[1] || "";
+    let j = i + 1;
+    while (j < lines.length && lines[j].trim() !== "" && BANKING_LINE.test(lines[j])) {
+      num = num || (lines[j].match(BANKING_LINE)?.[1] ?? "");
+      j++;
+    }
+    out.push("Banking Details:");
+    out.push(`${num ? `${num}.1 ` : ""}See the Banking Details below.`);
+    i = j - 1;
+  }
+  const cleaned = out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
   return cleaned.length > 0 ? cleaned : null;
 };
 
@@ -312,6 +334,8 @@ const EstimateDocument = ({
   discountAmount = 0,
   discountLabel,
   companyOverride,
+  companyId,
+  companyProfile,
   editing,
   clientAreas,
   presentationMode,
@@ -338,7 +362,19 @@ const EstimateDocument = ({
         banking_details: companyOverride.banking_details || {},
       }
     : authedSettings;
-  const bank = cleanBanking(settings.banking_details);
+  // Company record first (Johan 2026-10-12): public pages pass it in; staff pages load it (RLS-scoped).
+  const record = useDocumentCompanyProfile(companyId, companyProfile, !companyOverride || !!companyId);
+  const recBank = profileBanking(record);
+  const setBank = cleanBanking(settings.banking_details);
+  const bank = recBank
+    ? {
+        account_name: recBank.account_name || setBank.account_name,
+        bank_name: recBank.bank_name || setBank.bank_name,
+        account_number: recBank.account_number || setBank.account_number,
+        branch_code: recBank.branch_code || setBank.branch_code,
+        account_type: recBank.account_type || setBank.account_type,
+      }
+    : setBank;
 
   const vatPercent = toPercent(taxRate);
   const accountType = bank.account_type;
@@ -359,7 +395,7 @@ const EstimateDocument = ({
           <div className="rounded-2xl border border-slate-200 bg-[#1B3A5C] p-3 shadow-sm">
             <img src={logo} alt="Company logo" className="h-16 w-auto object-contain" />
           </div>
-          <CompanyBlock />
+          <CompanyBlock profile={record} fetchProfile={false} />
         </div>
 
         {/* ── Title ── */}
