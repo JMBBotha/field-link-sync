@@ -137,7 +137,7 @@ export async function verifyYocoWebhook(
 
   const key = await crypto.subtle.importKey(
     "raw",
-    secretBytes,
+    new Uint8Array(secretBytes),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
