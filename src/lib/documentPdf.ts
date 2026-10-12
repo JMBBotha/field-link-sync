@@ -133,6 +133,11 @@ const addTermsFooter = (doc: jsPDF, company: TermsCompanyInfo) => {
   doc.text(company.contactLine || COMPANY_CONTACT_LINE, pageWidth / 2, pageHeight - 13, { maxWidth: pageWidth - margin * 2, align: "center" });
 };
 
+/** Quotes carry their own terms + banking from the company record; no extra fixed pages. */
+export function shouldAppendFixedTerms(docType: string | undefined): boolean {
+  return docType !== "Quote";
+}
+
 function appendTermsPages(doc: jsPDF, company: TermsCompanyInfo) {
   const termsBlocks = buildTermsBlocks(company);
   if (!termsBlocks || termsBlocks.length === 0) return;
@@ -296,8 +301,12 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       }
     }
 
-    const termsCompany = opts.termsCompany || (await fetchTermsCompanyInfo(opts.companyName));
-    appendTermsPages(doc, termsCompany);
+    // Quotes end after their own terms + banking block (rendered from the company record in the
+    // captured page). The fixed appended terms pages are kept for invoices/other documents only.
+    if (shouldAppendFixedTerms(opts.docType)) {
+      const termsCompany = opts.termsCompany || (await fetchTermsCompanyInfo(opts.companyName));
+      appendTermsPages(doc, termsCompany);
+    }
 
     if ((opts.brochures && opts.brochures.length > 0) || (opts.imagePages && opts.imagePages.length > 0)) {
       const quoteBytes = doc.output("arraybuffer");

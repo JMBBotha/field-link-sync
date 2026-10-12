@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import CompanyLogo from "@/components/shared/CompanyLogo";
+import { sidebarRoleLabel } from "@/lib/sidebarRoleLabel";
 import { useLeadInbox, INBOX_ROUTE } from "@/hooks/useLeadInbox";
 import { usePendingApplicants } from "@/hooks/usePendingApplicants";
 
@@ -46,6 +47,8 @@ const AdminSidebar = ({
 }: AdminSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // Bottom "Settings & account" block: closed by default to keep the menu short.
+  const [accountOpen, setAccountOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin, isDispatcher, isFieldAgent, roles } = useRole();
@@ -56,13 +59,7 @@ const AdminSidebar = ({
 
 
   const companyName = settings?.company_name?.trim() || "My Company";
-  const roleLabel = isAdmin
-    ? "Owner"
-    : isDispatcher
-      ? "Dispatcher"
-      : isFieldAgent
-        ? "Technician"
-        : "Viewer";
+  const roleLabel = sidebarRoleLabel(roles, isSalesRep);
 
   const { data: lowStockItems = [] } = useQuery({
     queryKey: ["low-stock-items-sidebar"],
@@ -265,15 +262,15 @@ const AdminSidebar = ({
       <button
         onClick={() => handleNav(item.path)}
         className={cn(
-          "w-full flex items-center gap-3 rounded-md text-[13.5px] font-medium transition-colors relative",
-          collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2",
-          depth > 0 && !collapsed && "pl-10 py-1.5 text-[13px]",
+          "w-full flex items-center gap-2.5 rounded-md text-[12.5px] font-medium leading-tight transition-colors relative",
+          collapsed ? "justify-center px-0 py-2" : "px-3 py-[5px]",
+          depth > 0 && !collapsed && "pl-9 py-1 text-[12px]",
           active
             ? "bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-white/80"
             : "text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]",
         )}
       >
-        <item.icon className={cn("h-[17px] w-[17px] shrink-0", active ? "opacity-100" : "opacity-80")} strokeWidth={1.75} />
+        <item.icon className={cn("h-4 w-4 shrink-0", active ? "opacity-100" : "opacity-80")} strokeWidth={1.75} />
         {!collapsed && <span className="truncate">{item.label}</span>}
         {!collapsed && item.badge && item.badge > 0 ? (
           <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-[10px]">
@@ -310,9 +307,9 @@ const AdminSidebar = ({
       if (badged && item.path === "/admin/catalog") {
         const btn = (
           <button
-            className="w-full flex items-center justify-center gap-3 rounded-md px-0 py-2.5 text-[13.5px] font-medium transition-colors relative text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]"
+            className="w-full flex items-center justify-center gap-3 rounded-md px-0 py-2 text-[12.5px] font-medium transition-colors relative text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]"
           >
-            <item.icon className="h-[17px] w-[17px] shrink-0 opacity-80" strokeWidth={1.75} />
+            <item.icon className="h-4 w-4 shrink-0 opacity-80" strokeWidth={1.75} />
             <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-[9px] text-white font-bold px-1">
               {item.badge! > 99 ? "99+" : item.badge}
             </span>
@@ -345,13 +342,13 @@ const AdminSidebar = ({
           }
         }}
         className={cn(
-          "w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-colors relative",
+          "w-full flex items-center gap-2.5 px-3 py-[5px] rounded-md text-[12.5px] font-medium leading-tight transition-colors relative",
           active
             ? "bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-white/80"
             : "text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]",
         )}
       >
-        <item.icon className="h-[17px] w-[17px] shrink-0" strokeWidth={1.75} />
+        <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
         <span className="truncate">{item.label}</span>
         {badged ? (
           <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-[10px]">
@@ -386,14 +383,14 @@ const AdminSidebar = ({
       {/* Company switcher */}
       <div
         className={cn(
-          "relative border-b border-nav-border px-4 py-4",
-          collapsed && "px-2 py-3"
+          "relative border-b border-nav-border px-3 py-2",
+          collapsed && "px-2 py-2"
         )}
       >
         <button
           onClick={() => handleNav(isSalesRep ? "/admin" : "/admin/settings")}
           className={cn(
-            "flex w-full flex-col items-center gap-2 rounded-md p-2 transition-colors hover:bg-white/[0.07]",
+            "flex w-full flex-col items-center gap-1 rounded-md p-1.5 transition-colors hover:bg-white/[0.07]",
             collapsed && "gap-0 p-1"
           )}
           title={companyName}
@@ -401,7 +398,7 @@ const AdminSidebar = ({
           <CompanyLogo
             className={cn(
               "w-full object-contain",
-              collapsed ? "h-8 w-8" : "max-h-20 px-2"
+              collapsed ? "h-8 w-8" : "max-h-14 px-2"
             )}
           />
 
@@ -431,7 +428,7 @@ const AdminSidebar = ({
 
 
       {/* New Lead button */}
-      <div className={cn("px-3 pt-3 pb-2", collapsed && "px-2")}>
+      <div className={cn("px-3 pt-2 pb-1.5", collapsed && "px-2")}>
         <div className={cn("flex items-center gap-1.5", collapsed && "flex-col gap-1")}>
           <Button
             variant="brand"
@@ -471,16 +468,34 @@ const AdminSidebar = ({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5">
+      <nav className="flex-1 overflow-y-auto px-2 pb-1 space-y-px">
         {visibleGroups.map((group) => (
-          <div key={group.title} className="space-y-0.5">
+          <div key={group.title} className="space-y-px">
             {group.items.map((item) => renderItem(item))}
           </div>
         ))}
       </nav>
 
       {/* Secondary links */}
-      <div className={cn("border-t border-nav-border px-2 py-2 space-y-px", collapsed && "px-1")}>
+      <div className={cn("border-t border-nav-border px-2 py-1 space-y-px", collapsed && "px-1")} data-testid="settings-account-group">
+        <button
+          onClick={() => setAccountOpen((v) => !v)}
+          aria-expanded={accountOpen}
+          title="Settings & account"
+          className={cn(
+            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] font-medium text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+            collapsed && "justify-center px-0"
+          )}
+        >
+          <Settings className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+          {!collapsed && (
+            <>
+              <span>Settings &amp; account</span>
+              <ChevronDown className={cn("ml-auto h-3.5 w-3.5 opacity-70 transition-transform", accountOpen && "rotate-180")} />
+            </>
+          )}
+        </button>
+        {accountOpen && (<>
         {[
           ...(isSalesRep ? [] : [{ path: "/admin/settings", label: "Settings", icon: Settings }]),
           ...(isSalesRep || !isAdmin ? [] : [{ path: "/admin/areas", label: "Areas", icon: MapPin }]),
@@ -554,6 +569,7 @@ const AdminSidebar = ({
           <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.75} />
           {!collapsed && <span>Sign Out</span>}
         </button>
+        </>)}
       </div>
 
       {/* Collapse toggle - desktop only */}

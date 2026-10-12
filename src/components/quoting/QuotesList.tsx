@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRegisterMandyActions } from "@/lib/mandy/registry";
 import { quotesListCompare } from "@/lib/mandy/latestQuote";
-import { topOfListResult } from "@/lib/mandy/topOfList";
+import { topOfListResult, legacyProposalRoute } from "@/lib/mandy/topOfList";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -286,7 +286,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
 
 
   const openDoc = (doc: (typeof docs)[number]) => {
-    if (doc.kind === "proposal") navigate(`/admin/proposal-builder?proposalId=${doc.id}`);
+    if (doc.kind === "proposal") navigate(legacyProposalRoute(doc));
     else navigate(`/admin/estimates/${doc.id}`);
   };
 
@@ -323,9 +323,6 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
           <DropdownMenuContent align="end" className="w-56 bg-popover">
             <DropdownMenuItem onClick={onCreateNew}>
               <FileText className="mr-2 h-4 w-4" /> Estimate
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate("/admin/proposal-builder")}>
-              <FileSignature className="mr-2 h-4 w-4" /> Proposal
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

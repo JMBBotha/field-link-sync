@@ -51,7 +51,7 @@ const AdminBankPage = lazy(() => import("./pages/admin/AdminBankPage"));
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 const MyBasePage = lazy(() => import("./pages/MyBasePage"));
 const AdminQuoteBuilderPageUnified = lazy(() => import("./pages/admin/AdminQuoteBuilderPageUnified"));
-const AdminProposalBuilderPage = lazy(() => import("./pages/admin/AdminProposalBuilderPage"));
+import LegacyBuilderRedirect from "./components/routing/LegacyBuilderRedirect";
 const AdminCatalogPage = lazy(() => import("./pages/admin/AdminCatalogPage"));
 const AdminUnassignedQueuePage = lazy(() => import("./pages/admin/AdminUnassignedQueuePage"));
 const AdminJobsMapPage = lazy(() => import("./pages/admin/AdminJobsMapPage"));
@@ -99,7 +99,6 @@ const FBClientPortal = lazy(() => import("./components/freshbooks/FBClientPortal
 const FBProjectsList = lazy(() => import("./components/freshbooks/FBProjectsList"));
 const CompanyManagement = lazy(() => import("./components/freshbooks/CompanyManagement"));
 const FBCreateInvoicePage = lazy(() => import("./pages/FBCreateInvoicePage"));
-const FBCreateEstimatePage = lazy(() => import("./pages/FBCreateEstimatePage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -164,7 +163,7 @@ const App = () => (
                   <Route path="payments" element={<FBPaymentsList />} />
                   <Route path="projects" element={<FBProjectsList />} />
                   <Route path="invoices/new" element={<FBCreateInvoicePage />} />
-                  <Route path="estimates/new" element={<FBCreateEstimatePage />} />
+                  <Route path="estimates/new" element={<LegacyBuilderRedirect />} />
                   <Route path="portal" element={<FBClientPortal />} />
                   <Route path="audit" element={<AuditLogViewer />} />
                 </Route>
@@ -245,7 +244,7 @@ const App = () => (
 
 
                   {/* Unified Quote Builder — single source of truth (quote_items + quote_areas). */}
-                  <Route path="/admin/proposal-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminProposalBuilderPage /></RequireRole>} />
+                  <Route path="/admin/proposal-builder" element={<LegacyBuilderRedirect />} />
                   <Route path="/admin/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminQuoteBuilderPageUnified mode="admin" /></RequireRole>} />
 
                   {/* Agent Quote Builder — same component, agent mode */}
