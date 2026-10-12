@@ -777,13 +777,11 @@ serve(async (req) => {
 
       const unknownScript = [
         `CALLER IDENTITY: NOT RECOGNISED (${callerNumber ? `caller ID ${callerNumber}` : "number withheld"}). Treat as a NEW caller.`,
-        `FALLBACK FLOW — complete these steps BEFORE discussing the job, one question at a time:`,
-        `1. Ask for their full name and wait for the answer. Repeat it back to confirm if it is unusual.`,
-        callerNumber
-          ? `2. Confirm the contact number: say "I have your number as ${spokenNumber} — is that the best number to reach you on?" If they say no, ask for the correct number, read it back digit by digit and get a yes before continuing.`
-          : `2. Their number is withheld, so ask for the best contact number, read it back digit by digit and get a yes before continuing.`,
-        `3. Only once you have a confirmed name AND a confirmed phone number, continue: ask what they need help with and their address.`,
-        `Never guess or invent a name. If they refuse to give a name, use "Unknown Caller" but still confirm a callback number.`,
+        `INTAKE FLOW — one question at a time:`,
+        `1. Ask for their name and wait for the answer. Repeat it back to confirm if it is unusual. Then ask what they need help with.`,
+        `2. Do NOT ask for, read back or confirm their phone number or address at the start of the call. ${callerNumber ? "The caller ID is already stored — never read it out." : ""}`,
+        `3. Ask for the address ONLY when booking an appointment. Ask for a phone number ONLY if they want a firm appointment or a call-back (for a call-back ask only for the number, not the address).${callerNumber ? ` When you need the number, ask "Is the number you're calling from the best one to reach you on?" without reading it out; if yes, use the caller ID.` : " Their number is withheld, so when you need it ask for the best number and read it back digit by digit."}`,
+        `Never guess or invent a name. If they refuse to give a name, use "Unknown Caller".`,
         `There is NO appointment on file for this caller — never confirm or imply an existing booking.`,
       ].filter(Boolean).join("\n");
 
@@ -796,8 +794,8 @@ serve(async (req) => {
           ? [
               `CALLER IDENTITY (already verified from caller ID ${callerNumber}) — do NOT ask who is calling and do NOT ask them to hold while you check.`,
               context.customer_address
-                ? `SERVICE ADDRESS ON FILE: ${context.customer_address}. Read it back and ask them to confirm it — NEVER say you have no address on file.`
-                : `NO address on file — ask for the service address and read it back.`,
+                ? `SERVICE ADDRESS ON FILE: ${context.customer_address}. Only when booking an appointment, read it back (street and suburb) and ask them to confirm it — NEVER say you have no address on file. Do not raise it otherwise.`
+                : `NO address on file — ask for the service address only when booking an appointment, and read it back.`,
               context.greeting_hint,
               context.last_call
                 ? `Last contact: ${context.last_call.when} — ${context.last_call.service_type} (${context.last_call.status}). Discussed: ${context.last_call.summary} Appointment: ${context.last_call.appointment}`
