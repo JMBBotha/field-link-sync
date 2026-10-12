@@ -1,4 +1,5 @@
 import { COMPANY, COMPANY_CONTACT_LINE, cleanBanking } from "./companyIdentity";
+import { computePageCuts, isUniformRow } from "./pdfPageBreaks";
 import jsPDF from "jspdf";
 import { fetchCompanyProfileSafe } from "@/lib/companyProfileSafe";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
@@ -280,25 +281,30 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     if (scaledHeight <= usableHeight) {
       doc.addImage(imgData, "PNG", margin, margin, usableWidth, scaledHeight);
     } else {
-      let remainingHeight = scaledHeight;
+      // Split at quiet pixel rows (gaps between lines/blocks) so no text line is cut in half.
+      const pageRows = Math.floor((usableHeight / scaledHeight) * capturedCanvas.height);
+      const srcCtx = capturedCanvas.getContext("2d");
+      const pixels = srcCtx?.getImageData(0, 0, capturedCanvas.width, capturedCanvas.height).data;
+      const cuts = pixels
+        ? computePageCuts((y) => isUniformRow(pixels, capturedCanvas.width, y), capturedCanvas.height, pageRows)
+        : computePageCuts(() => true, capturedCanvas.height, pageRows, 0);
       let sourceY = 0;
-      let page = 0;
-      while (remainingHeight > 0) {
+      cuts.forEach((cut, page) => {
         if (page > 0) doc.addPage();
-        const sliceHeight = Math.min(usableHeight, remainingHeight);
-        const sourceSliceH = (sliceHeight / scaledHeight) * capturedCanvas.height;
+        const sourceSliceH = cut - sourceY;
         const sliceCanvas = document.createElement("canvas");
         sliceCanvas.width = capturedCanvas.width;
         sliceCanvas.height = sourceSliceH;
         const ctx = sliceCanvas.getContext("2d");
         if (ctx) {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
           ctx.drawImage(capturedCanvas, 0, sourceY, capturedCanvas.width, sourceSliceH, 0, 0, capturedCanvas.width, sourceSliceH);
         }
+        const sliceHeight = (sourceSliceH / capturedCanvas.height) * scaledHeight;
         doc.addImage(sliceCanvas.toDataURL("image/png"), "PNG", margin, margin, usableWidth, sliceHeight);
-        sourceY += sourceSliceH;
-        remainingHeight -= sliceHeight;
-        page++;
-      }
+        sourceY = cut;
+      });
     }
 
     // Quotes end after their own terms + banking block (rendered from the company record in the
