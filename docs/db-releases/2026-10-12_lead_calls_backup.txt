@@ -1,0 +1,1 @@
+-- Backup note: before 2026-10-12_lead_calls.sql none of these objects existed (pre-check 13:2x SAST: lead_call_attempts null, profiles.lead_contact_pref absent, app_webhook_config has no lead_call_token). Rollback = drop them (see _rollback.sql). No existing data is modified.

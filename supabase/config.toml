@@ -97,3 +97,6 @@ verify_jwt = false
 
 [functions.call-report]
 verify_jwt = false
+
+[functions.lead-offer-call]
+verify_jwt = false

@@ -1,0 +1,12 @@
+BEGIN;
+DROP TRIGGER IF EXISTS trg_lead_call_kickoff ON public.leads;
+DROP FUNCTION IF EXISTS public._lead_call_kickoff();
+DROP FUNCTION IF EXISTS public.lead_call_statuses();
+DROP FUNCTION IF EXISTS public.lead_call_accept(uuid);
+DROP FUNCTION IF EXISTS public.lead_call_candidates(uuid);
+DROP TABLE IF EXISTS public.lead_call_attempts;
+DROP TABLE IF EXISTS public.lead_call_settings;
+ALTER TABLE public.app_webhook_config DROP COLUMN IF EXISTS lead_call_token;
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_lead_contact_pref_chk;
+ALTER TABLE public.profiles DROP COLUMN IF EXISTS lead_contact_pref;
+COMMIT;
