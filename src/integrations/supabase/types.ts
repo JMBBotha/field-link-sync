@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
@@ -1304,6 +1304,102 @@ export type Database = {
           },
         ]
       }
+      company_profiles: {
+        Row: {
+          account_name: string | null
+          account_number: string | null
+          account_type: string | null
+          address_lines: string[]
+          archived_at: string | null
+          bank_name: string | null
+          branch_code: string | null
+          company_id: string
+          created_at: string
+          email: string | null
+          id: string
+          invoice_prefix: string
+          is_default: boolean
+          legal_name: string
+          next_invoice_no: number
+          number_pad: number
+          phone: string | null
+          terms_text: string | null
+          trading_name: string | null
+          updated_at: string
+          use_shared_sequence: boolean
+          vat_number: string | null
+          website: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          account_name?: string | null
+          account_number?: string | null
+          account_type?: string | null
+          address_lines?: string[]
+          archived_at?: string | null
+          bank_name?: string | null
+          branch_code?: string | null
+          company_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          invoice_prefix?: string
+          is_default?: boolean
+          legal_name: string
+          next_invoice_no?: number
+          number_pad?: number
+          phone?: string | null
+          terms_text?: string | null
+          trading_name?: string | null
+          updated_at?: string
+          use_shared_sequence?: boolean
+          vat_number?: string | null
+          website?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          account_name?: string | null
+          account_number?: string | null
+          account_type?: string | null
+          address_lines?: string[]
+          archived_at?: string | null
+          bank_name?: string | null
+          branch_code?: string | null
+          company_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          invoice_prefix?: string
+          is_default?: boolean
+          legal_name?: string
+          next_invoice_no?: number
+          number_pad?: number
+          phone?: string | null
+          terms_text?: string | null
+          trading_name?: string | null
+          updated_at?: string
+          use_shared_sequence?: boolean
+          vat_number?: string | null
+          website?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       company_quote_counters: {
         Row: {
           company_id: string
@@ -1351,6 +1447,7 @@ export type Database = {
           default_install_labour_hours: number
           default_payment_terms_days: number | null
           id: string
+          is_primary: boolean
           logo_storage_path: string | null
           payfast_merchant_id: string | null
           payfast_merchant_key: string | null
@@ -1369,6 +1466,7 @@ export type Database = {
           default_install_labour_hours?: number
           default_payment_terms_days?: number | null
           id?: string
+          is_primary?: boolean
           logo_storage_path?: string | null
           payfast_merchant_id?: string | null
           payfast_merchant_key?: string | null
@@ -1387,6 +1485,7 @@ export type Database = {
           default_install_labour_hours?: number
           default_payment_terms_days?: number | null
           id?: string
+          is_primary?: boolean
           logo_storage_path?: string | null
           payfast_merchant_id?: string | null
           payfast_merchant_key?: string | null
@@ -2939,9 +3038,15 @@ export type Database = {
           description: string
           id: string
           invoice_id: string
+          line_name: string | null
+          line_type: string
           quantity: number
+          room_label: string | null
           service_id: string | null
+          sort_order: number
           unit_price: number
+          vat_amount: number | null
+          vat_rate: number
         }
         Insert: {
           amount?: number
@@ -2949,9 +3054,15 @@ export type Database = {
           description: string
           id?: string
           invoice_id: string
+          line_name?: string | null
+          line_type?: string
           quantity?: number
+          room_label?: string | null
           service_id?: string | null
+          sort_order?: number
           unit_price?: number
+          vat_amount?: number | null
+          vat_rate?: number
         }
         Update: {
           amount?: number
@@ -2959,9 +3070,15 @@ export type Database = {
           description?: string
           id?: string
           invoice_id?: string
+          line_name?: string | null
+          line_type?: string
           quantity?: number
+          room_label?: string | null
           service_id?: string | null
+          sort_order?: number
           unit_price?: number
+          vat_amount?: number | null
+          vat_rate?: number
         }
         Relationships: [
           {
@@ -3108,14 +3225,23 @@ export type Database = {
       invoices: {
         Row: {
           agent_id: string
+          billed_to_vat_number: string | null
           company_id: string | null
+          company_profile_id: string | null
           created_at: string
           customer_address: string | null
           customer_email: string | null
           customer_id: string | null
           customer_name: string
           customer_phone: string | null
+          deposit_amount: number | null
+          deposit_type: string | null
+          deposit_value: number | null
+          discount_amount: number
+          discount_type: string | null
+          discount_value: number | null
           due_date: string | null
+          duplicated_from: string | null
           equipment_id: string | null
           grand_total: number
           id: string
@@ -3130,7 +3256,9 @@ export type Database = {
           payfast_url: string | null
           payment_method: string | null
           pdf_url: string | null
+          profile_snapshot: Json | null
           quote_id: string | null
+          sent_at: string | null
           status: string
           subtotal: number
           tax_amount: number
@@ -3140,14 +3268,23 @@ export type Database = {
         }
         Insert: {
           agent_id: string
+          billed_to_vat_number?: string | null
           company_id?: string | null
+          company_profile_id?: string | null
           created_at?: string
           customer_address?: string | null
           customer_email?: string | null
           customer_id?: string | null
           customer_name: string
           customer_phone?: string | null
+          deposit_amount?: number | null
+          deposit_type?: string | null
+          deposit_value?: number | null
+          discount_amount?: number
+          discount_type?: string | null
+          discount_value?: number | null
           due_date?: string | null
+          duplicated_from?: string | null
           equipment_id?: string | null
           grand_total?: number
           id?: string
@@ -3162,7 +3299,9 @@ export type Database = {
           payfast_url?: string | null
           payment_method?: string | null
           pdf_url?: string | null
+          profile_snapshot?: Json | null
           quote_id?: string | null
+          sent_at?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
@@ -3172,14 +3311,23 @@ export type Database = {
         }
         Update: {
           agent_id?: string
+          billed_to_vat_number?: string | null
           company_id?: string | null
+          company_profile_id?: string | null
           created_at?: string
           customer_address?: string | null
           customer_email?: string | null
           customer_id?: string | null
           customer_name?: string
           customer_phone?: string | null
+          deposit_amount?: number | null
+          deposit_type?: string | null
+          deposit_value?: number | null
+          discount_amount?: number
+          discount_type?: string | null
+          discount_value?: number | null
           due_date?: string | null
+          duplicated_from?: string | null
           equipment_id?: string | null
           grand_total?: number
           id?: string
@@ -3194,7 +3342,9 @@ export type Database = {
           payfast_url?: string | null
           payment_method?: string | null
           pdf_url?: string | null
+          profile_snapshot?: Json | null
           quote_id?: string | null
+          sent_at?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
@@ -3218,11 +3368,46 @@ export type Database = {
             referencedColumns: ["company_id"]
           },
           {
+            foreignKeyName: "invoices_company_profile_id_fkey"
+            columns: ["company_profile_id"]
+            isOneToOne: false
+            referencedRelation: "company_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "invoices_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_duplicated_from_fkey"
+            columns: ["duplicated_from"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_duplicated_from_fkey"
+            columns: ["duplicated_from"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoices_duplicated_from_fkey"
+            columns: ["duplicated_from"]
+            isOneToOne: false
+            referencedRelation: "v_accounts_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoices_duplicated_from_fkey"
+            columns: ["duplicated_from"]
+            isOneToOne: false
+            referencedRelation: "v_sales_by_product_detail"
+            referencedColumns: ["invoice_id"]
           },
           {
             foreignKeyName: "invoices_equipment_id_fkey"
@@ -5599,6 +5784,7 @@ export type Database = {
           home_location: unknown
           home_radius_m: number | null
           id: string
+          job_title: string | null
           jobs_limit: number
           last_availability_update: string | null
           location_tracking_enabled: boolean | null
@@ -5611,6 +5797,9 @@ export type Database = {
           participant_type: string
           phone: string | null
           search_aliases: string[] | null
+          signature_email: string | null
+          signature_enabled: boolean
+          signature_phone: string | null
           skills: string[] | null
           start_from: string | null
           stripe_customer_id: string | null
@@ -5641,6 +5830,7 @@ export type Database = {
           home_location?: unknown
           home_radius_m?: number | null
           id: string
+          job_title?: string | null
           jobs_limit?: number
           last_availability_update?: string | null
           location_tracking_enabled?: boolean | null
@@ -5653,6 +5843,9 @@ export type Database = {
           participant_type?: string
           phone?: string | null
           search_aliases?: string[] | null
+          signature_email?: string | null
+          signature_enabled?: boolean
+          signature_phone?: string | null
           skills?: string[] | null
           start_from?: string | null
           stripe_customer_id?: string | null
@@ -5683,6 +5876,7 @@ export type Database = {
           home_location?: unknown
           home_radius_m?: number | null
           id?: string
+          job_title?: string | null
           jobs_limit?: number
           last_availability_update?: string | null
           location_tracking_enabled?: boolean | null
@@ -5695,6 +5889,9 @@ export type Database = {
           participant_type?: string
           phone?: string | null
           search_aliases?: string[] | null
+          signature_email?: string | null
+          signature_enabled?: boolean
+          signature_phone?: string | null
           skills?: string[] | null
           start_from?: string | null
           stripe_customer_id?: string | null
@@ -9599,6 +9796,7 @@ export type Database = {
           vat_number: string
         }[]
       }
+      company_profile_snapshot: { Args: { p_profile: string }; Returns: Json }
       confirm_bank_line: {
         Args: {
           p_category?: string
@@ -9645,6 +9843,7 @@ export type Database = {
       decline_install_offer: { Args: { p_offer_id: string }; Returns: Json }
       decline_quote_by_token: { Args: { p_token: string }; Returns: boolean }
       default_booking_minutes: { Args: { p_kind: string }; Returns: number }
+      default_company_profile: { Args: { p_company: string }; Returns: string }
       delete_job_used_part: { Args: { p_id: string }; Returns: boolean }
       disablelongtransactions: { Args: never; Returns: string }
       dispatchable_technicians: {
@@ -9686,10 +9885,15 @@ export type Database = {
           }
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string }
+      duplicate_invoice: { Args: { p_invoice: string }; Returns: string }
       earnings_sales_rule: { Args: { p_company_id: string }; Returns: Json }
       earnings_tech_rule: { Args: { p_company_id: string }; Returns: Json }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      finalise_new_invoice: {
+        Args: { p_invoice: string; p_status: string }
+        Returns: undefined
+      }
       find_dispatch_candidates: {
         Args: {
           p_lead_id: string
@@ -10313,6 +10517,7 @@ export type Database = {
       mark_overdue_maintenance: { Args: never; Returns: number }
       me_needs_password: { Args: never; Returns: boolean }
       my_install_offers: { Args: never; Returns: Json }
+      next_invoice_number: { Args: { p_profile: string }; Returns: string }
       normalize_phone: { Args: { phone: string }; Returns: string }
       open_double_bookings: {
         Args: { p_from: string; p_to: string }
@@ -11332,6 +11537,21 @@ export type Database = {
           slot_date: string
           slot_start: string
         }[]
+      }
+      tech_accept_lead: {
+        Args: {
+          p_address?: string
+          p_date: string
+          p_description?: string
+          p_end?: string
+          p_lead: string
+          p_location_id?: string
+          p_minutes: number
+          p_priority?: string
+          p_time: string
+          p_title?: string
+        }
+        Returns: Json
       }
       tech_can_see_customer: {
         Args: { _customer: string; _uid: string }
