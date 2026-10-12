@@ -47,9 +47,17 @@ export const useCompanySettings = () => {
   const { data: settings, isLoading } = useQuery({
     queryKey: ["company-settings"],
     queryFn: async () => {
+      // Own company's PRIMARY row only (no "newest row of any company" fallback, 12 Oct 2026).
+      const { data: auth } = await supabase.auth.getUser();
+      const { getUserCompanyId } = await import("@/lib/tenantUtils");
+      const companyId = await getUserCompanyId(auth.user?.id);
+      if (!companyId) return null;
       const { data, error } = await supabase
         .from("company_settings")
         .select("*")
+        .eq("company_id", companyId)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .order("is_primary" as any, { ascending: false })
         .order("updated_at", { ascending: false, nullsFirst: false })
         .order("id")
         .limit(1)

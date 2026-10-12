@@ -25,6 +25,11 @@ export interface TermsCompanyInfo {
   accountNumber?: string;
   branchCode?: string;
   accountType?: string;
+  /** A company's own terms text (company_profiles.terms_text, placeholders already filled). Replaces the standard copy. */
+  customText?: string;
+  /** Footer line on the terms pages (company name · tel · VAT · address). Defaults to the fixed block. */
+  footerLine?: string;
+  contactLine?: string;
 }
 
 const FALLBACK_COMPANY_NAME = "Our Company";
@@ -38,6 +43,14 @@ const FALLBACK_COMPANY_NAME = "Our Company";
  * (unrelated) company's details.
  */
 export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] => {
+  if (company.customText && company.customText.trim()) {
+    return [
+      { type: "title", text: "Terms" },
+      { type: "spacer", text: "" },
+      ...company.customText.split(/\n\s*\n/).map((para) => para.trim()).filter(Boolean)
+        .map((para): TermsBlock => (/^[^\n]{1,60}:$/.test(para) ? { type: "heading", text: para } : { type: "paragraph", text: para })),
+    ];
+  }
   const name = (company.companyName || FALLBACK_COMPANY_NAME).trim();
 
   const hasBankingDetails = Boolean(

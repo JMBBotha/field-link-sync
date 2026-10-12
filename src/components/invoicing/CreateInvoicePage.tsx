@@ -19,6 +19,10 @@ import DocumentHeader from "@/components/shared/DocumentHeader";
 import StickyActionBar from "@/components/shared/StickyActionBar";
 import { blockR0 } from "@/lib/zeroPriceGuard";
 import { useInvoiceAutofill, type AutofillFlag } from "@/hooks/useInvoiceAutofill";
+import {
+  fetchCompanyProfiles, invoiceTotals, depositAmount as calcDeposit, depositDue, profileBanking, fillTermsPlaceholders,
+  type CompanyProfile, type DepositType, VAT_PERCENT,
+} from "@/lib/companyProfiles";
 
 /* ────────── Types ────────── */
 
@@ -29,6 +33,10 @@ interface LineItem {
   markup?: number;
   amount: number;
   service_id?: string | null;
+  /** Short name printed in bold on the invoice (optional). */
+  line_name?: string;
+  room_label?: string;
+  line_type?: "item" | "unit" | "installation" | "labour" | "deposit" | "other";
   /** Editor-only marker (never saved): tech-sourced line to check, or a deposit credit. */
   flag?: AutofillFlag;
 }
@@ -49,6 +57,8 @@ interface Lead {
 
 interface CreateInvoicePageProps {
   agentId: string;
+  /** Open an existing DRAFT invoice for editing (sent invoices are locked). */
+  editInvoiceId?: string | null;
   onBack: () => void;
   onSuccess: () => void;
   prefillLead?: {
@@ -103,6 +113,7 @@ const CreateInvoicePage = ({
   prefillLead,
   prefillFromProposal,
   prefillFromLead,
+  editInvoiceId,
 }: CreateInvoicePageProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -152,8 +163,24 @@ const CreateInvoicePage = ({
   const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
   const [discountValue, setDiscountValue] = useState(0);
 
-  // Tax
-  const [taxRate] = useState(15);
+  // Tax: 15% on every line (enforced in the database too)
+  const taxRate = VAT_PERCENT;
+
+  // Issuing company (Massair CT / Massair Ind CC …)
+  const [profiles, setProfiles] = useState<CompanyProfile[]>([]);
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const profile = profiles.find((p) => p.id === profileId) || null;
+
+  // Client VAT number (printed under Billed To; saved back to the client record)
+  const [clientVat, setClientVat] = useState("");
+
+  // Deposit request (% of the VAT-inclusive total, or a fixed amount)
+  const [depositType, setDepositType] = useState<DepositType | null>(null);
+  const [depositValue, setDepositValue] = useState(0);
+
+  // Editing an existing draft
+  const [editLoaded, setEditLoaded] = useState(!editInvoiceId);
+  const [editLeadId, setEditLeadId] = useState<string | null>(null);
 
   // Amounts
   const [amountPaid, setAmountPaid] = useState(0);
@@ -199,17 +226,21 @@ const CreateInvoicePage = ({
   });
 
   /* ─── Derived ─── */
-  const subtotal = lineItems.reduce((s, i) => s + i.amount, 0);
-  const discountAmount = discountType === "percent" ? subtotal * (discountValue / 100) : discountValue;
-  const taxableAmount = subtotal - discountAmount;
-  const taxAmount = taxableAmount * (taxRate / 100);
-  const grandTotal = taxableAmount + taxAmount;
+  const totals = invoiceTotals(lineItems.map((i) => i.amount), showDiscount && discountValue > 0 ? { type: discountType, value: discountValue } : null);
+  const subtotal = totals.subtotal;
+  const discountAmount = totals.discountAmount;
+  const taxAmount = totals.vat;
+  const grandTotal = totals.total;
   const amountDue = grandTotal - amountPaid;
+  const depositRequested = calcDeposit(grandTotal, depositType, depositValue);
+  const depositOutstanding = depositDue(depositRequested, amountPaid);
 
   /* ─── Fetch data ─── */
   useEffect(() => {
-    supabase.rpc("generate_invoice_number").then(({ data }) => {
-      if (data) setInvoiceNumber(data as string);
+    // Invoice number is given on save, from the chosen company's own series (no numbers wasted on open).
+    fetchCompanyProfiles().then((list) => {
+      setProfiles(list);
+      setProfileId((prev) => prev || list.find((p) => p.is_default)?.id || list[0]?.id || null);
     });
     supabase
       .from("customers")
@@ -234,11 +265,12 @@ const CreateInvoicePage = ({
     if (!cid) return;
     supabase
       .from("customers")
-      .select("email, name, phone, address")
+      .select("email, name, phone, address, vat_number")
       .eq("id", cid)
       .single()
       .then(({ data }) => {
         if (data) {
+          if ((data as any).vat_number) setClientVat((prev) => prev || (data as any).vat_number);
           if (data.email) setCustomerEmail(data.email);
           if (!customerName && data.name) setCustomerName(data.name);
           if (!customerPhone && data.phone) setCustomerPhone(data.phone);
@@ -269,9 +301,70 @@ const CreateInvoicePage = ({
     setNotes((prev) => (!prev.trim() || prev === lastAuto ? autofill.notes : prev));
   }, [autofill]);
 
-  // Terms from company settings
+  // Load an existing draft for editing
+  useEffect(() => {
+    if (!editInvoiceId) return;
+    (async () => {
+      const [{ data: inv }, { data: items }] = await Promise.all([
+        supabase.from("invoices").select("*").eq("id", editInvoiceId).single(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        supabase.from("invoice_items").select("*").eq("invoice_id", editInvoiceId).order("sort_order" as any).order("created_at"),
+      ]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const i = inv as any;
+      if (!i) { toast({ title: "Invoice not found", variant: "destructive" }); onBack(); return; }
+      if (i.status !== "draft") { toast({ title: "This invoice is locked", description: "Sent invoices can't be edited. Duplicate it instead.", variant: "destructive" }); onBack(); return; }
+      setInvoiceNumber(i.invoice_number);
+      setSelectedCustomerId(i.customer_id);
+      setCustomerName(i.customer_name || "");
+      setCustomerPhone(i.customer_phone || "");
+      setCustomerAddress(i.customer_address || "");
+      setCustomerEmail(i.customer_email || "");
+      setClientVat(i.billed_to_vat_number || "");
+      if (i.issue_date) setIssueDate(i.issue_date);
+      if (i.due_date) setDueDate(i.due_date);
+      setNotes(i.notes || "");
+      setLeadId(i.lead_id || "");
+      setEditLeadId(i.lead_id || null);
+      setAutoQuoteId(i.quote_id || null);
+      if (i.company_profile_id) setProfileId(i.company_profile_id);
+      if (i.discount_type && Number(i.discount_value) > 0) { setShowDiscount(true); setDiscountType(i.discount_type); setDiscountValue(Number(i.discount_value)); }
+      if (i.deposit_type) { setDepositType(i.deposit_type); setDepositValue(Number(i.deposit_value) || 0); }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const src: any[] = (items && items.length ? items : (i.line_items || []));
+      setLineItems(src.length ? src.map((r) => ({
+        description: r.description || "",
+        quantity: Number(r.quantity) || 1,
+        rate: Number(r.unit_price ?? r.rate) || 0,
+        markup: 0,
+        amount: Number(r.amount) || 0,
+        service_id: r.service_id || null,
+        line_name: r.line_name || "",
+        room_label: r.room_label || "",
+        line_type: r.line_type || "item",
+        ...(Number(r.amount) < 0 ? { flag: "credit" as AutofillFlag } : {}),
+      })) : [{ description: "", quantity: 1, rate: 0, amount: 0 }]);
+      appliedKey.current = "edit"; // don't let job autofill overwrite saved lines
+      setEditLoaded(true);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editInvoiceId]);
+
+  // Terms: the chosen company's own terms (if set) or its banking details
   useEffect(() => {
     const parts: string[] = [];
+    if (profile) {
+      if (profile.terms_text) { setTerms(fillTermsPlaceholders(profile.terms_text, profile)); return; }
+      const pb = profileBanking(profile)!;
+      parts.push("Banking Details:");
+      if (pb.bank_name) parts.push(`Bank: ${pb.bank_name}`);
+      if (pb.account_name) parts.push(`Account name: ${pb.account_name}`);
+      if (pb.account_number) parts.push(`Account: ${pb.account_number}`);
+      if (pb.branch_code) parts.push(`Branch: ${pb.branch_code}`);
+      if (pb.account_type) parts.push(`Type: ${pb.account_type}`);
+      setTerms(parts.join("\n"));
+      return;
+    }
     const b = companySettings.banking_details;
     if (b && (b.bank_name || b.account_number)) {
       parts.push("Banking Details:");
@@ -281,7 +374,7 @@ const CreateInvoicePage = ({
       if (b.account_type) parts.push(`Type: ${b.account_type}`);
     }
     setTerms(parts.join("\n"));
-  }, [companySettings]);
+  }, [companySettings, profile]);
 
   /* ─── Logo URL ─── */
   const logoUrl = useMemo(() => {
@@ -306,7 +399,11 @@ const CreateInvoicePage = ({
   const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
     const items = [...lineItems];
     const item = { ...items[index] };
-    if (field === "description") {
+    if (field === "line_name" || field === "room_label") {
+      item[field] = value as string;
+    } else if (field === "line_type") {
+      item.line_type = value as LineItem["line_type"];
+    } else if (field === "description") {
       item.description = value as string;
     } else if (field === "quantity") {
       item.quantity = Math.max(0, Number(value) || 0);
@@ -329,6 +426,7 @@ const CreateInvoicePage = ({
   const pickOption = (opt: ProductOption, index: number) => {
     const items = [...lineItems];
     items[index] = {
+      ...items[index],
       description: opt.name,
       quantity: 1,
       rate: opt.rate,
@@ -340,6 +438,11 @@ const CreateInvoicePage = ({
   };
 
   const addLineItem = () => setLineItems([...lineItems, { description: "", quantity: 1, rate: 0, markup: 0, amount: 0 }]);
+  /** Separate installation line for a room (FreshBooks style: unit line + installation line per room). */
+  const addInstallLine = (room?: string) => setLineItems([...lineItems, {
+    description: "Installation", line_name: "Installation", room_label: room || "", line_type: "installation",
+    quantity: 1, rate: 0, markup: 0, amount: 0,
+  }]);
   const removeLineItem = (i: number) => {
     if (lineItems.length > 1) setLineItems(lineItems.filter((_, idx) => idx !== i));
   };
@@ -370,6 +473,7 @@ const CreateInvoicePage = ({
 
   /* ─── Save ─── */
   const saveInvoice = async (status: "draft" | "sent" | "paid") => {
+    if (!editLoaded) return;
     if (blockR0(lineItems, toast)) return;
     if (!customerName.trim()) {
       toast({ title: "Error", description: "Please select or enter a client", variant: "destructive" });
@@ -383,21 +487,17 @@ const CreateInvoicePage = ({
       toast({ title: "Error", description: "The deposit credit is more than the invoice lines", variant: "destructive" });
       return;
     }
+    if (depositType && (depositValue <= 0 || (depositType === "percent" ? depositValue > 100 : depositValue > grandTotal))) {
+      toast({ title: "Check the deposit", description: depositType === "percent" ? "Deposit % must be between 1 and 100" : "Deposit can't be more than the total", variant: "destructive" });
+      return;
+    }
 
     setLoading(true);
     try {
-      let finalNumber = invoiceNumber;
-      if (!finalNumber) {
-        const { data, error } = await supabase.rpc("generate_invoice_number");
-        if (error) throw error;
-        finalNumber = data as string;
-        setInvoiceNumber(finalNumber);
-      }
-
       const { getUserCompanyId } = await import("@/lib/tenantUtils");
       const company_id = await getUserCompanyId(user?.id);
 
-      let finalLeadId = leadId;
+      let finalLeadId = leadId || editLeadId || "";
       if (!finalLeadId) {
         const { data: newLead, error: leadError } = await supabase
           .from("leads")
@@ -405,7 +505,7 @@ const CreateInvoicePage = ({
             customer_name: customerName,
             customer_phone: customerPhone || "N/A",
             customer_address: customerAddress || "N/A",
-            service_type: lineItems[0]?.description || "Invoice",
+            service_type: lineItems[0]?.line_name || lineItems[0]?.description || "Invoice",
             status: "completed",
             assigned_agent_id: agentId,
             latitude: 0,
@@ -425,60 +525,99 @@ const CreateInvoicePage = ({
         .filter((i) => i.description && (i.amount > 0 || (i.flag === "credit" && i.amount < 0)))
         .map((i) => ({
           description: i.description,
+          line_name: i.line_name?.trim() || null,
+          room_label: i.room_label?.trim() || null,
+          line_type: i.flag === "credit" ? "deposit" : (i.line_type || "item"),
           quantity: i.quantity,
           rate: Math.round(i.rate * (1 + (i.markup || 0) / 100) * 100) / 100,
           amount: Math.round(i.amount * 100) / 100,
           service_id: i.service_id || null,
         }));
 
-      const { data: insertedInvoice, error } = await supabase
-        .from("invoices")
-        .insert({
-          invoice_number: finalNumber,
-          lead_id: finalLeadId,
-          quote_id: autoQuoteId,
-          agent_id: agentId,
-          company_id,
-          customer_name: customerName,
-          customer_phone: customerPhone || null,
-          customer_address: customerAddress || null,
-          customer_email: customerEmail || null,
-          customer_id: selectedCustomerId || null,
-          line_items: validItems,
-          subtotal,
-          tax_rate: taxRate,
-          tax_amount: taxAmount,
-          grand_total: grandTotal,
-          payment_method: null,
-          notes: notes || null,
-          status,
-          due_date: dueDate || null,
-          issue_date: issueDate,
-          paid_date: status === "paid" ? new Date().toISOString().split("T")[0] : null,
-        } as any)
-        .select("id")
-        .single();
+      const vat = clientVat.trim() || null;
+      const header = {
+        lead_id: finalLeadId,
+        quote_id: autoQuoteId,
+        customer_name: customerName,
+        customer_phone: customerPhone || null,
+        customer_address: customerAddress || null,
+        customer_email: customerEmail || null,
+        customer_id: selectedCustomerId || null,
+        billed_to_vat_number: vat,
+        company_profile_id: profileId,
+        line_items: validItems,
+        subtotal,
+        tax_rate: taxRate,
+        tax_amount: taxAmount,
+        grand_total: grandTotal,
+        discount_type: discountAmount > 0 ? discountType : null,
+        discount_value: discountAmount > 0 ? discountValue : null,
+        discount_amount: discountAmount,
+        deposit_type: depositType,
+        deposit_value: depositType ? depositValue : null,
+        notes: notes || null,
+        due_date: dueDate || null,
+        issue_date: issueDate,
+      };
 
-      if (error) throw error;
+      // Always write as DRAFT first (lines can only change on a draft), then send/mark paid as a last, explicit step.
+      let invoiceId = editInvoiceId || null;
+      let finalNumber = invoiceNumber;
+      if (invoiceId) {
+        const { error } = await supabase.from("invoices").update({ ...header, updated_at: new Date().toISOString() } as any).eq("id", invoiceId);
+        if (error) throw error;
+        const { error: delErr } = await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
+        if (delErr) throw delErr;
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: num, error: numErr } = await (supabase.rpc as any)("next_invoice_number", { p_profile: profileId });
+        if (numErr) throw numErr;
+        finalNumber = num as string;
+        setInvoiceNumber(finalNumber);
+        const { data: inserted, error } = await supabase
+          .from("invoices")
+          .insert({ ...header, invoice_number: finalNumber, agent_id: agentId, company_id, payment_method: null, status: "draft" } as any)
+          .select("id")
+          .single();
+        if (error) throw error;
+        invoiceId = inserted.id;
+      }
 
-      // Insert normalized invoice_items
-      if (insertedInvoice && validItems.length > 0) {
-        await supabase.from("invoice_items").insert(
-          validItems.map((i) => ({
-            invoice_id: insertedInvoice.id,
+      if (validItems.length > 0) {
+        const { error: itemsErr } = await supabase.from("invoice_items").insert(
+          validItems.map((i, idx) => ({
+            invoice_id: invoiceId,
             service_id: i.service_id || null,
             description: i.description,
+            line_name: i.line_name,
+            room_label: i.room_label,
+            line_type: i.line_type,
+            sort_order: idx,
+            vat_rate: VAT_PERCENT,
             quantity: i.quantity,
             unit_price: i.rate, // sell price (see validItems)
             amount: i.amount,
           })) as any
         );
+        if (itemsErr) throw itemsErr;
+      }
+
+      // Client record keeps its VAT number (shown under Billed To next time)
+      if (selectedCustomerId && vat) {
+        await supabase.from("customers").update({ vat_number: vat } as any).eq("id", selectedCustomerId);
+      }
+
+      if (status !== "draft") {
+        // Explicit click only. The client notification below is the one message (same as before).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: stErr } = await (supabase.rpc as any)("finalise_new_invoice", { p_invoice: invoiceId, p_status: status });
+        if (stErr) throw stErr;
       }
 
       // Notification
-      if (selectedCustomerId && status !== "draft" && insertedInvoice) {
+      if (selectedCustomerId && status !== "draft" && invoiceId) {
         try {
-          await notifyInvoiceSent(selectedCustomerId, insertedInvoice.id, finalNumber, formatCurrency(grandTotal));
+          await notifyInvoiceSent(selectedCustomerId, invoiceId, finalNumber, formatCurrency(grandTotal));
         } catch (e) {
           console.error("[Notification] Error:", e);
         }
@@ -486,13 +625,13 @@ const CreateInvoicePage = ({
 
       clearDraft();
       toast({
-        title: "Invoice Created! 💰",
+        title: editInvoiceId ? "Invoice saved" : "Invoice Created! 💰",
         description: `${finalNumber} – ${status === "paid" ? "Paid" : status === "sent" ? "Sent" : "Draft"}`,
       });
       onSuccess();
     } catch (error: any) {
-      console.error("Invoice creation error:", error);
-      toast({ title: "Error", description: error.message || "Failed to create invoice", variant: "destructive" });
+      console.error("Invoice save error:", error);
+      toast({ title: "Error", description: error.message || "Failed to save invoice", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -526,15 +665,15 @@ const CreateInvoicePage = ({
 
       {/* ── Top bar ── */}
       <div className="sticky top-0 z-40 bg-background border-b px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
-        <h1 className="text-base sm:text-lg font-bold text-foreground whitespace-nowrap">New Invoice</h1>
+        <h1 className="text-base sm:text-lg font-bold text-foreground whitespace-nowrap">{editInvoiceId ? "Edit Draft Invoice" : "New Invoice"}</h1>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={exitGuard.requestExit}>
             Cancel
           </Button>
-          <Button variant="outline" size="sm" className="hidden lg:inline-flex" onClick={() => saveInvoice("draft")} disabled={loading}>
+          <Button variant="outline" size="sm" className="hidden lg:inline-flex" onClick={() => saveInvoice("draft")} disabled={loading || !editLoaded}>
             Save Draft
           </Button>
-          <Button size="sm" className="hidden lg:inline-flex text-white" style={{ backgroundColor: "#0077B6" }} onClick={() => saveInvoice("sent")} disabled={loading}>
+          <Button size="sm" className="hidden lg:inline-flex text-white" style={{ backgroundColor: "#0077B6" }} onClick={() => saveInvoice("sent")} disabled={loading || !editLoaded}>
             {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
             Send To…
           </Button>
@@ -549,7 +688,27 @@ const CreateInvoicePage = ({
           companyName={companySettings.company_name}
           physicalAddress={companySettings.physical_address}
           vatNumber={companySettings.vat_number}
+          profile={profile}
         />
+
+        {/* ── ISSUING COMPANY ── */}
+        {profiles.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2 text-sm print:hidden" data-html2canvas-ignore>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Invoice from</span>
+            <select
+              value={profileId || ""}
+              onChange={(e) => setProfileId(e.target.value)}
+              disabled={!!editInvoiceId}
+              className="border rounded px-2 py-1 text-sm bg-background"
+              data-testid="company-profile-picker"
+            >
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>{p.legal_name}{p.vat_number ? "" : " (no VAT no.)"}</option>
+              ))}
+            </select>
+            {editInvoiceId && <span className="text-[11px] text-muted-foreground">To change company, duplicate the invoice.</span>}
+          </div>
+        )}
 
         {/* ── BILLED TO + DATES ROW ── */}
         <div className="space-y-1">
@@ -561,6 +720,7 @@ const CreateInvoicePage = ({
                   <p className="text-sm font-semibold text-foreground">{customerName}</p>
                   {customerAddress && <p className="text-xs text-muted-foreground">{customerAddress}</p>}
                   {customerEmail && <p className="text-xs text-muted-foreground">{customerEmail}</p>}
+                  <GhostInput placeholder="Client VAT No (optional)" value={clientVat} onChange={(e) => setClientVat(e.target.value)} className="!px-0 text-xs" data-testid="client-vat-input" />
                   <button onClick={() => setShowCustomerPicker(true)} className="text-[11px] text-primary hover:underline mt-1">Change</button>
                 </div>
               ) : (
@@ -594,7 +754,7 @@ const CreateInvoicePage = ({
 
             <div className="space-y-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tax Invoice Number</p>
-              <p className="text-sm font-medium text-foreground px-2 py-1.5">{invoiceNumber || "Generating…"}</p>
+              <p className="text-sm font-medium text-foreground px-2 py-1.5">{invoiceNumber || (profile ? `${profile.invoice_prefix}… (given on save)` : "Given on save")}</p>
             </div>
 
             <div className="space-y-1">
@@ -661,6 +821,17 @@ const CreateInvoicePage = ({
                     {item.flag === "tech" ? "From tech – check" : "Deposit credit"}
                   </span>
                 )}
+                <div className="mt-1 flex gap-1">
+                  <GhostInput placeholder="Line name" value={item.line_name || ""} onChange={(e) => updateLineItem(idx, "line_name", e.target.value)} className="!py-0.5 text-xs" />
+                  <GhostInput placeholder="Room / area" value={item.room_label || ""} onChange={(e) => updateLineItem(idx, "room_label", e.target.value)} className="!py-0.5 text-xs w-28" />
+                  <select value={item.line_type || "item"} onChange={(e) => updateLineItem(idx, "line_type", e.target.value)} className="text-[11px] border rounded px-1 bg-background">
+                    <option value="item">Item</option>
+                    <option value="unit">Unit</option>
+                    <option value="installation">Installation</option>
+                    <option value="labour">Labour</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <GhostInput type="number" min="0" step="0.01" className="text-right" value={item.rate || ""} onChange={(e) => updateLineItem(idx, "rate", e.target.value)} placeholder="0.00" />
@@ -683,6 +854,10 @@ const CreateInvoicePage = ({
           <button onClick={addLineItem} className="w-full text-left px-2 py-2.5 text-sm text-primary hover:bg-primary/5 rounded mt-1 flex items-center gap-1.5 transition-colors">
             <Plus className="h-4 w-4" /> Add a Line
           </button>
+          <button onClick={() => addInstallLine([...lineItems].reverse().find((i) => i.room_label)?.room_label)} className="w-full text-left px-2 py-1.5 text-sm text-primary hover:bg-primary/5 rounded flex items-center gap-1.5 transition-colors">
+            <Plus className="h-4 w-4" /> Add an Installation line (per room)
+          </button>
+          <p className="px-2 text-[11px] text-muted-foreground">Every line carries {VAT_PERCENT}% VAT.</p>
         </div>
 
         <div className="h-px bg-border" />
@@ -724,6 +899,23 @@ const CreateInvoicePage = ({
               <span>Amount Due (ZAR)</span>
               <span>{formatCurrency(amountDue)}</span>
             </div>
+            {!depositType ? (
+              <button onClick={() => { setDepositType("percent"); setDepositValue(50); }} className="text-sm text-primary hover:underline" data-testid="request-deposit">+ Request a Deposit</button>
+            ) : (
+              <div className="space-y-1 rounded border border-amber-300 bg-amber-50 p-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Deposit</span>
+                  <select value={depositType} onChange={(e) => setDepositType(e.target.value as DepositType)} className="text-xs border rounded px-1.5 py-1 bg-background">
+                    <option value="percent">% of total incl. VAT</option>
+                    <option value="fixed">ZAR</option>
+                  </select>
+                  <GhostInput type="number" min="0" className="w-20 text-right" value={depositValue || ""} onChange={(e) => setDepositValue(Number(e.target.value) || 0)} />
+                  <button onClick={() => { setDepositType(null); setDepositValue(0); }} className="text-muted-foreground hover:text-destructive"><X className="h-4 w-4" /></button>
+                </div>
+                <div className="flex justify-between text-sm"><span>Deposit Requested</span><span>{formatCurrency(depositRequested)}</span></div>
+                <div className="flex justify-between text-sm font-bold"><span>Deposit Due</span><span>{formatCurrency(depositOutstanding)}</span></div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -785,13 +977,13 @@ const CreateInvoicePage = ({
 
       {/* ── Bottom action bar ── */}
       <StickyActionBar className="mx-0 px-3 sm:px-4 gap-1.5 sm:gap-2 [&>button]:px-2 sm:[&>button]:px-3">
-        <Button variant="outline" size="sm" onClick={() => saveInvoice("paid")} disabled={loading}>
+        <Button variant="outline" size="sm" onClick={() => saveInvoice("paid")} disabled={loading || !editLoaded}>
           Mark Paid
         </Button>
-        <Button variant="outline" size="sm" onClick={() => saveInvoice("draft")} disabled={loading}>
+        <Button variant="outline" size="sm" onClick={() => saveInvoice("draft")} disabled={loading || !editLoaded}>
           Save Draft
         </Button>
-        <Button size="sm" className="text-white" style={{ backgroundColor: "#0077B6" }} onClick={() => saveInvoice("sent")} disabled={loading}>
+        <Button size="sm" className="text-white" style={{ backgroundColor: "#0077B6" }} onClick={() => saveInvoice("sent")} disabled={loading || !editLoaded}>
           {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
           Send Invoice
         </Button>

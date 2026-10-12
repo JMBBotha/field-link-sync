@@ -3,12 +3,16 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import CompanyBlock from "@/components/shared/CompanyBlock";
 import { cleanBanking } from "@/lib/companyIdentity";
 import { formatRand } from "@/utils/formatRand";
+import { profileBanking, depositDue, type CompanyProfile } from "@/lib/companyProfiles";
 
 export interface InvoiceDocLineItem {
   description: string;
   quantity: number;
   unit_price: number;
   amount: number;
+  /** Short line name (bold); description shows underneath. */
+  line_name?: string | null;
+  room_label?: string | null;
 }
 
 export interface InvoiceDocumentProps {
@@ -28,6 +32,14 @@ export interface InvoiceDocumentProps {
   /** Issued credit notes (accounting step 2). */
   credited?: number;
   notes?: string | null;
+  /** Issuing company (name, VAT, address, banking). Omit = today's fixed block + primary settings banking. */
+  profile?: Partial<CompanyProfile> | null;
+  /** Client's VAT number, printed under Billed To. */
+  billedToVat?: string | null;
+  discountAmount?: number;
+  /** Requested deposit in rand (already worked out on the VAT-inclusive total). */
+  depositAmount?: number | null;
+  depositLabel?: string | null;
 }
 
 const formatCurrency = (amount: number) => {
@@ -68,9 +80,16 @@ const InvoiceDocument = ({
   amountPaid = 0,
   credited = 0,
   notes,
+  profile,
+  billedToVat,
+  discountAmount = 0,
+  depositAmount,
+  depositLabel,
 }: InvoiceDocumentProps) => {
   const { settings } = useCompanySettings();
-  const bank = cleanBanking(settings.banking_details);
+  const bank = profileBanking(profile) || cleanBanking(settings.banking_details);
+  const deposit = Number(depositAmount) || 0;
+  const depositOutstanding = depositDue(deposit, (Number(amountPaid) || 0) + (Number(credited) || 0));
   const vatPercent = toPercent(taxRate);
   const accountType = bank.account_type;
   const amountDue = Math.max(0, (Number(grandTotal) || 0) - (Number(amountPaid) || 0) - (Number(credited) || 0));
@@ -86,7 +105,7 @@ const InvoiceDocument = ({
           <div className="rounded-2xl border border-slate-200 bg-[#1B3A5C] p-3 shadow-sm">
             <img src={logo} alt="Company logo" className="h-16 w-auto object-contain" />
           </div>
-          <CompanyBlock />
+          <CompanyBlock profile={profile} />
         </div>
 
         {/* ── Meta row: Billed To / Date / Number / Amount Due ── */}
@@ -97,6 +116,7 @@ const InvoiceDocument = ({
             {customerAddress && <p className="text-[12px] leading-snug text-slate-600">{customerAddress}</p>}
             {customerEmail && <p className="text-[12px] text-slate-600">{customerEmail}</p>}
             {customerPhone && <p className="text-[12px] text-slate-600">{customerPhone}</p>}
+            {billedToVat && billedToVat.trim() && <p className="text-[12px] text-slate-600" data-testid="billed-to-vat">VAT No {billedToVat.trim()}</p>}
           </div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Date of Issue</p>
@@ -126,10 +146,14 @@ const InvoiceDocument = ({
           </thead>
           <tbody>
             {items.map((item, idx) => {
-              const [name, ...detailLines] = item.description.split("\n");
+              const descLines = (item.description || "").split("\n");
+              const [name, ...detailLines] = item.line_name && item.line_name.trim()
+                ? [item.line_name.trim(), ...descLines.filter((l) => l.trim() && l.trim() !== item.line_name!.trim())]
+                : descLines;
               return (
                 <tr key={idx} className="border-b border-slate-100 align-top">
                   <td className="py-3 pr-4 text-slate-800">
+                    {item.room_label && <p className="text-[10px] uppercase tracking-wider text-slate-400">{item.room_label}</p>}
                     <p className="font-medium">{name}</p>
                     {detailLines.map((line, li) => (
                       <p key={li} className="mt-0.5 text-[11px] text-slate-500">{line}</p>
@@ -156,6 +180,12 @@ const InvoiceDocument = ({
               <span>Subtotal</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
+            {(Number(discountAmount) || 0) > 0 && (
+              <div className="flex justify-between text-slate-600">
+                <span>Discount</span>
+                <span>-{formatCurrency(discountAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-slate-600">
               <span>VAT ({vatPercent}%)</span>
               <span>{formatCurrency(taxAmount)}</span>
@@ -178,6 +208,18 @@ const InvoiceDocument = ({
               <span>Amount Due (ZAR)</span>
               <span className="text-lg">{formatCurrency(amountDue)}</span>
             </div>
+            {deposit > 0 && (
+              <div data-testid="deposit-box" className="mt-3 space-y-1 rounded-md border border-amber-300 bg-amber-50 p-2">
+                <div className="flex justify-between text-slate-700">
+                  <span>Deposit Requested{depositLabel ? ` (${depositLabel})` : ""}</span>
+                  <span>{formatCurrency(deposit)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-[#1B3A5C]">
+                  <span>Deposit Due</span>
+                  <span>{formatCurrency(depositOutstanding)}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

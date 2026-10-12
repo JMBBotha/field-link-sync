@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Loader2, Send, CheckCircle, Printer, Download, Share2, Phone, Mail, MapPin, MessageCircle } from "lucide-react";
+import { ArrowLeft, Loader2, Send, CheckCircle, Printer, Download, Share2, Phone, Mail, MapPin, MessageCircle, Copy, Pencil, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +11,9 @@ import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
 import CreditNotesPanel from "@/components/invoicing/CreditNotesPanel";
 import { creditedByInvoice, fetchCreditNotes, type CreditNoteRow } from "@/lib/creditNotes";
 import InvoiceDocument from "@/components/invoicing/InvoiceDocument";
+import CreateInvoicePage from "@/components/invoicing/CreateInvoicePage";
+import { useAuth } from "@/contexts/AuthContext";
+import { documentProfile, fetchCompanyProfiles, profileTermsInfo, type CompanyProfile } from "@/lib/companyProfiles";
 
 
 import HelpTip from "@/components/help/HelpTip";
@@ -22,6 +25,8 @@ interface LineItem {
   unit_price: number;
   rate?: number;
   amount: number;
+  line_name?: string | null;
+  room_label?: string | null;
 }
 
 interface InvoiceItem {
@@ -31,6 +36,9 @@ interface InvoiceItem {
   unit_price: number;
   amount: number;
   service_id: string | null;
+  line_name?: string | null;
+  room_label?: string | null;
+  sort_order?: number | null;
 }
 
 interface InvoiceDetailPageProps {
@@ -68,6 +76,12 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   const [credits, setCredits] = useState<CreditNoteRow[]>([]);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const [showMobileBar, setShowMobileBar] = useState(false);
+  const [profiles, setProfiles] = useState<CompanyProfile[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState(false);
+  const { user } = useAuth();
+
+  useEffect(() => { fetchCompanyProfiles().then(setProfiles); }, []);
 
   useEffect(() => {
     fetchInvoice();
@@ -88,7 +102,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     setLoading(true);
     const [invoiceResult, itemsResult, paymentsResult] = await Promise.all([
       supabase.from("invoices").select("*").eq("id", invoiceId).single(),
-      supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId).order("created_at", { ascending: true }),
+      supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId).order("sort_order" as any, { ascending: true }).order("created_at", { ascending: true }),
       supabase.from("payments").select("amount, status, gateway").eq("invoice_id", invoiceId),
     ]);
 
@@ -108,13 +122,16 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
 
   // Use invoice_items if available, otherwise fall back to JSONB line_items
   const displayItems: LineItem[] = invoiceItems.length > 0
-    ? invoiceItems.map(i => ({ description: i.description, quantity: i.quantity, unit_price: i.unit_price, amount: i.amount }))
+    ? invoiceItems.map(i => ({ description: i.description, quantity: i.quantity, unit_price: i.unit_price, amount: i.amount, line_name: i.line_name, room_label: i.room_label }))
     : (invoice?.line_items as any[] || []).map((i: any) => ({
         description: i.description,
         quantity: i.quantity,
         unit_price: i.rate || i.unit_price || 0,
         amount: i.amount,
       }));
+
+  const docProfile = documentProfile(invoice, profiles);
+  const isDraft = invoice?.status === "draft";
 
   // Only non-payment transitions (draft → sent). Paid/partially_paid are
   // derived by the DB from recorded payments — never written here.
@@ -157,7 +174,22 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     grand_total: invoice.grand_total,
     payment_method: invoice.payment_method,
     notes: invoice.notes,
+    termsCompany: profileTermsInfo(docProfile),
   });
+
+  const handleDuplicate = async () => {
+    setDuplicating(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("duplicate_invoice", { p_invoice: invoice.id });
+    setDuplicating(false);
+    if (error || !data) {
+      toast({ title: "Couldn't duplicate", description: error?.message || "Try again", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Duplicated as a new draft", description: "Check the client, dates and lines, then save." });
+    onUpdate?.();
+    setEditingId(data as string);
+  };
 
   const handleDownloadPDF = async () => {
     setGeneratingPDF(true);
@@ -202,6 +234,17 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     }
     setGeneratingPDF(false);
   };
+
+  if (editingId) {
+    return (
+      <CreateInvoicePage
+        agentId={user?.id || invoice?.agent_id || ""}
+        editInvoiceId={editingId}
+        onBack={() => { setEditingId(null); fetchInvoice(); }}
+        onSuccess={() => { setEditingId(null); onUpdate?.(); onBack(); }}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -272,6 +315,11 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         amountPaid={amountPaid}
         credited={creditedByInvoice(credits).get(invoice.id) || 0}
         notes={invoice.notes}
+        profile={docProfile}
+        billedToVat={invoice.billed_to_vat_number}
+        discountAmount={Number(invoice.discount_amount) || 0}
+        depositAmount={Number(invoice.deposit_amount) || 0}
+        depositLabel={invoice.deposit_type === "percent" ? `${Number(invoice.deposit_value)}% of total incl. VAT` : null}
       />
 
 
@@ -301,6 +349,20 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
 
       <div className="print:hidden">
         <div className="w-full space-y-2">
+          <div className="flex gap-2">
+            {isDraft ? (
+              <Button variant="outline" className="flex-1 h-11 rounded-lg" onClick={() => setEditingId(invoice.id)}>
+                <Pencil className="h-4 w-4 mr-2" /> Edit draft
+              </Button>
+            ) : (
+              <p className="flex flex-1 items-center gap-1.5 text-xs text-muted-foreground">
+                <Lock className="h-3.5 w-3.5" /> Sent invoices are locked. Duplicate it, or use a credit note.
+              </p>
+            )}
+            <Button variant="outline" className="flex-1 h-11 rounded-lg" onClick={handleDuplicate} disabled={duplicating}>
+              {duplicating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Copy className="h-4 w-4 mr-2" />} Duplicate
+            </Button>
+          </div>
           {/* Primary action based on status */}
           {invoice.status === "draft" && (
             <Button

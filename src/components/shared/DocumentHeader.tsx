@@ -1,4 +1,5 @@
 import { COMPANY_BLOCK_LINES, COMPANY_CONTACT_LINE } from "@/lib/companyIdentity";
+import { profileBlockLines, profileContactLine, type CompanyProfile } from "@/lib/companyProfiles";
 interface DocumentHeaderProps {
   logoUrl?: string | null;
   companyName?: string;
@@ -6,6 +7,8 @@ interface DocumentHeaderProps {
   physicalAddress?: string;
   vatNumber?: string;
   phone?: string;
+  /** Issuing company profile (invoices). Omit = the fixed block. */
+  profile?: Partial<CompanyProfile> | null;
 }
 
 /**
@@ -21,7 +24,10 @@ const DocumentHeader = ({
   physicalAddress,
   vatNumber,
   phone,
+  profile,
 }: DocumentHeaderProps) => {
+  const blockLines = profile?.legal_name ? profileBlockLines(profile) : COMPANY_BLOCK_LINES;
+  const contactLine = profile?.legal_name ? profileContactLine(profile) : COMPANY_CONTACT_LINE;
   return (
     <div>
       {/* HEADER ROW */}
@@ -43,10 +49,10 @@ const DocumentHeader = ({
 
         {/* RIGHT: company block, single source src/lib/companyIdentity.ts (Johan 2026-10-12) */}
         <div data-testid="company-block" className="flex flex-col items-end text-right gap-0">
-          {COMPANY_BLOCK_LINES.map((l, i) => (
+          {blockLines.map((l, i) => (
             <p key={l} className={`text-[13px] leading-snug ${i === 0 ? "font-semibold text-foreground" : "text-foreground/80"}`}>{l}</p>
           ))}
-          <p className="text-[12px] text-foreground/70 leading-snug">{COMPANY_CONTACT_LINE}</p>
+          <p className="text-[12px] text-foreground/70 leading-snug">{contactLine}</p>
         </div>
       </div>
 

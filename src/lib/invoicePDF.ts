@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { generateDocumentPdf, generateDocumentPdfBlob } from "./documentPdf";
+import type { TermsCompanyInfo } from "./defaultTerms";
 
 interface InvoiceLineItem {
   description: string;
@@ -25,6 +26,8 @@ interface InvoiceData {
   grand_total: number;
   payment_method?: string | null;
   notes?: string | null;
+  /** Issuing company's terms/banking for the terms pages (no other company's details). */
+  termsCompany?: TermsCompanyInfo | null;
 }
 
 const formatCurrency = (amount: number) =>
@@ -61,6 +64,7 @@ const toDocumentPdfOptions = (invoice: InvoiceData) => ({
   total: invoice.grand_total,
   notes: invoice.notes || undefined,
   captureSelector: '[data-pdf-capture-root="invoice"]',
+  termsCompany: invoice.termsCompany || null,
 });
 
 /** Print = the same full PDF as Download (invoice + T&C pages). */

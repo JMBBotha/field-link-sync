@@ -29,6 +29,8 @@ interface DocumentPdfOptions {
   brochures?: BrochureAttachment[];
   imagePages?: string[];
   captureSelector?: string;
+  /** Terms page for a specific issuing company (invoices). Omit = the signed-in company's primary settings. */
+  termsCompany?: TermsCompanyInfo | null;
 }
 
 const CAPTURE_MODE_CLASS = "pdf-capture-mode";
@@ -73,11 +75,20 @@ async function waitForCaptureFrame() {
  * always matches the actual signed-in company—never a leftover hardcoded
  * placeholder company—even if a future call site forgets to pass it through.
  */
+/** The signed-in user's own company (never another company's settings row). */
+async function callerCompanyId(): Promise<string | null> {
+  const { data } = await supabase.auth.getUser();
+  const { getUserCompanyId } = await import("./tenantUtils");
+  return getUserCompanyId(data.user?.id);
+}
+
 export async function fetchTermsCompanyInfo(fallbackName?: string): Promise<TermsCompanyInfo> {
   try {
     const { data, error } = await supabase
       .from("company_settings")
       .select("company_name, banking_details")
+      .eq("company_id", (await callerCompanyId()) ?? "00000000-0000-0000-0000-000000000000")
+      .order("is_primary" as any, { ascending: false })
       .order("updated_at", { ascending: false, nullsFirst: false })
       .order("id")
       .limit(1)
@@ -112,14 +123,14 @@ const addTermsFooter = (doc: jsPDF, company: TermsCompanyInfo) => {
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
 
-  const footerText = `${COMPANY.legalName} · ${COMPANY.tel} · VAT No ${COMPANY.vatNo} · ${COMPANY.addressLines.join(", ")}`;
+  const footerText = company.footerLine || `${COMPANY.legalName} · ${COMPANY.tel} · VAT No ${COMPANY.vatNo} · ${COMPANY.addressLines.join(", ")}`;
 
   doc.text(footerText, pageWidth / 2, pageHeight - 18, {
     maxWidth: pageWidth - margin * 2,
     align: "center",
   });
   doc.setFontSize(8);
-  doc.text(COMPANY_CONTACT_LINE, pageWidth / 2, pageHeight - 13, { maxWidth: pageWidth - margin * 2, align: "center" });
+  doc.text(company.contactLine || COMPANY_CONTACT_LINE, pageWidth / 2, pageHeight - 13, { maxWidth: pageWidth - margin * 2, align: "center" });
 };
 
 function appendTermsPages(doc: jsPDF, company: TermsCompanyInfo) {
@@ -285,7 +296,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       }
     }
 
-    const termsCompany = await fetchTermsCompanyInfo(opts.companyName);
+    const termsCompany = opts.termsCompany || (await fetchTermsCompanyInfo(opts.companyName));
     appendTermsPages(doc, termsCompany);
 
     if ((opts.brochures && opts.brochures.length > 0) || (opts.imagePages && opts.imagePages.length > 0)) {
