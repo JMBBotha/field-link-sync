@@ -36,6 +36,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { cn } from "@/lib/utils";
 import { formatRand } from "@/utils/formatRand";
 import CustomerLocationsManager from "@/components/customers/CustomerLocationsManager";
+import CustomerContactsManager from "@/components/customers/CustomerContactsManager";
 import CustomerStatementPanel from "@/components/customers/CustomerStatementPanel";
 import CustomerNotesPanel from "@/components/customers/CustomerNotesPanel";
 import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
@@ -595,8 +596,8 @@ const AdminCustomerDetailPage = () => {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="contacts" className="p-6 text-sm text-muted-foreground">
-                  Additional contacts will appear here.
+                <TabsContent value="contacts" className="p-0 mt-0">
+                  <CustomerContactsManager customerId={customer.id} />
                 </TabsContent>
                 {canSeeStatement && (
                   <TabsContent value="statement" className="p-0 mt-0">
