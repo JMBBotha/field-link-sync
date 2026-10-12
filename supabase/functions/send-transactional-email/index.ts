@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { renderSignatureHtml, renderReminderSignatureHtml } from "../_shared/emailSignature.ts";
+import { loadSignaturePerson, replyToFor } from "../_shared/signaturePerson.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,7 +42,15 @@ serve(async (req) => {
       return json(401, { error: "UNAUTHORIZED" });
     }
 
-    const { to, subject, html, reply_to } = await req.json();
+    const { to, subject, html: rawHtml, reply_to, sender_user_id, signature_mode } = await req.json();
+    // Signature (Johan 12 Oct): "person" = whoever sent it (+ reply-to them), "reminder" = salesperson + company,
+    // "company" = company block only; no mode = html untouched (old callers). Inserted before </body> once.
+    const person = signature_mode === "person" || signature_mode === "reminder" ? await loadSignaturePerson(supabase, sender_user_id) : null;
+    const sigHtml = signature_mode === "reminder" ? renderReminderSignatureHtml(person) : renderSignatureHtml(person);
+    const html = signature_mode && typeof rawHtml === "string" && !rawHtml.includes("data-email-signature")
+      ? (rawHtml.includes("</body>") ? rawHtml.replace("</body>", `<div style="max-width:600px;margin:0 auto;padding:0 16px">${sigHtml}</div></body>`) : rawHtml + sigHtml)
+      : rawHtml;
+    const replyTo = reply_to || replyToFor(person);
     if (!to || typeof to !== "string" || !subject || !html) {
       return json(400, { error: "BAD_REQUEST", message: "to, subject and html are required" });
     }
@@ -59,7 +69,7 @@ serve(async (req) => {
         to: [to],
         subject,
         html,
-        ...(reply_to ? { reply_to } : {}),
+        ...(replyTo ? { reply_to: replyTo } : {}),
       }),
     });
 
@@ -77,6 +87,6 @@ serve(async (req) => {
     return json(200, { success: true, id: result.id });
   } catch (err) {
     console.error("send-transactional-email error:", err);
-    return json(500, { error: "INTERNAL_ERROR", message: String(err?.message ?? err) });
+    return json(500, { error: "INTERNAL_ERROR", message: String((err as any)?.message ?? err) });
   }
 });

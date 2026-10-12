@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { renderReminderSignatureHtml, renderSignatureText } from "../_shared/emailSignature.ts";
+import { loadSignaturePerson, replyToFor } from "../_shared/signaturePerson.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,7 +13,7 @@ function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(value);
 }
 
-function buildReminderHtml(clientName: string, quoteNumber: string, dueDate: string, totalAmount: number, daysLeft: number, unsubscribeUrl: string): string {
+function buildReminderHtml(clientName: string, quoteNumber: string, dueDate: string, totalAmount: number, daysLeft: number, unsubscribeUrl: string, signatureHtml = ""): string {
   const formattedTotal = formatZAR(totalAmount);
   const currentYear = new Date().getFullYear();
   const urgencyColor = daysLeft <= 3 ? "#dc2626" : "#f59e0b";
@@ -104,11 +106,7 @@ function buildReminderHtml(clientName: string, quoteNumber: string, dueDate: str
 
   <tr>
     <td style="padding:24px 32px 16px;">
-      <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#111827;">MASSAIR CT (PTY) Ltd</p>
-      <p style="margin:0 0 2px;font-size:12px;color:#6b7280;">(021) 802-2889 · VAT No 4630313080</p>
-      <p style="margin:0 0 2px;font-size:12px;color:#6b7280;">9A Cabernet Rd, Blackheath Ind, Cape Town, 7580</p>
-      <p style="margin:0 0 2px;font-size:12px;color:#6b7280;">WhatsApp/Cell 069 683 8624 · info@0800becool.co.za</p>
-      <p style="margin:0;font-size:12px;color:#6b7280;">www.0800becool.co.za</p>
+      ${signatureHtml || renderReminderSignatureHtml(null)}
     </td>
   </tr>
 
@@ -231,6 +229,8 @@ serve(async (req) => {
       const daysLeft = Math.max(0, Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
 
       const totalAmount = Number(est.amount) + Number(est.tax);
+      // Automatic reminder: double signature = the quote's salesperson + the company block (Johan 12 Oct).
+      const salesperson = await loadSignaturePerson(supabase, est.sales_engineer_id || est.created_by || body.sales_user_id || null);
       const clientName = est.fb_contacts?.name || "Valued Customer";
 
       const htmlBody = buildReminderHtml(
@@ -240,15 +240,17 @@ serve(async (req) => {
         totalAmount,
         daysLeft,
         unsubscribeUrl,
+        renderReminderSignatureHtml(salesperson),
       );
 
-      const textFallback = `Dear ${clientName},\n\nFriendly reminder: your quote ${est.estimate_number} totalling ${formatZAR(totalAmount)} expires in ${daysLeft} days (${dueDate}).\n\nTo accept, reply to this email or call (021) 802-2889.\n\nMASSAIR CT (PTY) Ltd · VAT No 4630313080 · 9A Cabernet Rd, Blackheath Ind, Cape Town, 7580\n\nKind regards,\n0800-BE-COOL! Team`;
+      const textFallback = `Dear ${clientName},\n\nFriendly reminder: your quote ${est.estimate_number} totalling ${formatZAR(totalAmount)} expires in ${daysLeft} days (${dueDate}).\n\nTo accept, reply to this email or call (021) 802-2889.\n\nKind regards,\n\n${salesperson ? renderSignatureText(salesperson) + "\n\n" : ""}${renderSignatureText(null)}`;
 
       const resendRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           from: "quotes@0800becool.co.za",
+          ...(replyToFor(salesperson) ? { reply_to: replyToFor(salesperson) } : {}),
           to: [email],
           subject: `⏰ Reminder: Your 0800BeCool Quote ${est.estimate_number} expires in ${daysLeft} days`,
           html: htmlBody,

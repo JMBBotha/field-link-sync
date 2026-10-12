@@ -37,6 +37,7 @@ import { CompanyProvider } from "./providers/CompanyProvider";
 const CustomerPortal = lazy(() => import("./pages/CustomerPortal"));
 const AdminMoneyPage = lazy(() => import("./pages/admin/AdminMoneyPage"));
 const AdminMyCommissionPage = lazy(() => import("./pages/admin/AdminMyCommissionPage"));
+const MySignaturePage = lazy(() => import("./pages/admin/MySignaturePage"));
 const FieldEarningsPage = lazy(() => import("./pages/FieldEarningsPage"));
 const CustomerFeedbackForm = lazy(() => import("./components/CustomerFeedbackForm"));
 const CustomerInvoiceView = lazy(() => import("./components/CustomerInvoiceView"));
@@ -202,6 +203,7 @@ const App = () => (
                     <Route path="bank" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminBankPage /></RequireRole>} />
                     <Route path="money" element={<RequireRole allowedRoles={["admin"]}><RequireOwner><AdminMoneyPage /></RequireOwner></RequireRole>} />
                     <Route path="my-commission" element={<AdminMyCommissionPage />} />
+                    <Route path="my-signature" element={<MySignaturePage />} />
                     <Route path="help" element={<AdminHelpPage />} />
 
                     
