@@ -4161,6 +4161,7 @@ export type Database = {
           customer_name: string
           customer_phone: string
           deleted_at: string | null
+          dup_ok: boolean
           email: string | null
           equipment_id: string | null
           estimated_duration_minutes: number | null
@@ -4196,6 +4197,7 @@ export type Database = {
           raw_payload: Json | null
           scheduled_date: string | null
           scheduled_time: string | null
+          second_visit_of: string | null
           service_type: string
           sla_breached_at: string | null
           source: Database["public"]["Enums"]["lead_source"]
@@ -4235,6 +4237,7 @@ export type Database = {
           customer_name: string
           customer_phone: string
           deleted_at?: string | null
+          dup_ok?: boolean
           email?: string | null
           equipment_id?: string | null
           estimated_duration_minutes?: number | null
@@ -4270,6 +4273,7 @@ export type Database = {
           raw_payload?: Json | null
           scheduled_date?: string | null
           scheduled_time?: string | null
+          second_visit_of?: string | null
           service_type: string
           sla_breached_at?: string | null
           source?: Database["public"]["Enums"]["lead_source"]
@@ -4309,6 +4313,7 @@ export type Database = {
           customer_name?: string
           customer_phone?: string
           deleted_at?: string | null
+          dup_ok?: boolean
           email?: string | null
           equipment_id?: string | null
           estimated_duration_minutes?: number | null
@@ -4344,6 +4349,7 @@ export type Database = {
           raw_payload?: Json | null
           scheduled_date?: string | null
           scheduled_time?: string | null
+          second_visit_of?: string | null
           service_type?: string
           sla_breached_at?: string | null
           source?: Database["public"]["Enums"]["lead_source"]
@@ -4400,6 +4406,20 @@ export type Database = {
           {
             foreignKeyName: "leads_merged_into_id_fkey"
             columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_second_visit_of_fkey"
+            columns: ["second_visit_of"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "leads_second_visit_of_fkey"
+            columns: ["second_visit_of"]
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
@@ -9094,6 +9114,30 @@ export type Database = {
       }
       _apply_commission_snapshot: { Args: { e: Json }; Returns: Json }
       _bank_norm: { Args: { t: string }; Returns: string }
+      _client_open_bookings: {
+        Args: {
+          p_address: string
+          p_company: string
+          p_customer: string
+          p_email: string
+          p_exclude: string
+          p_name: string
+          p_phone: string
+        }
+        Returns: {
+          booked: boolean
+          customer_name: string
+          dup_ok: boolean
+          lead_id: string
+          match: string
+          scheduled_date: string
+          scheduled_time: string
+          second_visit_of: string
+          status: string
+          tech_id: string
+          tech_name: string
+        }[]
+      }
       _create_balance_invoice: { Args: { p_quote_id: string }; Returns: string }
       _create_tech_ledger_for_job: {
         Args: { p_job_id: string }
@@ -9118,6 +9162,7 @@ export type Database = {
         Returns: number
       }
       _mins_time: { Args: { p: number }; Returns: string }
+      _norm_addr: { Args: { a: string }; Returns: string }
       _p3_handoff_role: {
         Args: { _quote: string; _uid: string }
         Returns: string
@@ -9203,6 +9248,7 @@ export type Database = {
           reason: string
         }[]
       }
+      _same_client_booked: { Args: { p_lead: string }; Returns: boolean }
       _slot_fits: {
         Args: {
           p_b: Json
@@ -9514,6 +9560,29 @@ export type Database = {
       claim_offer: {
         Args: { p_offer_id: string; p_staff_id: string }
         Returns: Json
+      }
+      client_open_bookings: {
+        Args: {
+          p_address?: string
+          p_customer_id?: string
+          p_email?: string
+          p_exclude_lead?: string
+          p_name?: string
+          p_phone: string
+        }
+        Returns: {
+          booked: boolean
+          customer_name: string
+          dup_ok: boolean
+          lead_id: string
+          match: string
+          scheduled_date: string
+          scheduled_time: string
+          second_visit_of: string
+          status: string
+          tech_id: string
+          tech_name: string
+        }[]
       }
       company_profile_safe: {
         Args: never
@@ -9851,6 +9920,7 @@ export type Database = {
           customer_name: string
           customer_phone: string
           deleted_at: string | null
+          dup_ok: boolean
           email: string | null
           equipment_id: string | null
           estimated_duration_minutes: number | null
@@ -9886,6 +9956,7 @@ export type Database = {
           raw_payload: Json | null
           scheduled_date: string | null
           scheduled_time: string | null
+          second_visit_of: string | null
           service_type: string
           sla_breached_at: string | null
           source: Database["public"]["Enums"]["lead_source"]
@@ -10191,6 +10262,20 @@ export type Database = {
           revenue: number
         }[]
       }
+      lead_duplicate_flags: {
+        Args: never
+        Returns: {
+          lead_id: string
+          match: string
+          n_others: number
+          other_booked: boolean
+          other_date: string
+          other_lead_id: string
+          other_status: string
+          other_tech: string
+          other_time: string
+        }[]
+      }
       lead_fill_call_summary: { Args: { p_lead: string }; Returns: boolean }
       lead_is_test: { Args: { p_name: string }; Returns: boolean }
       lead_sla_next_open: {
@@ -10413,6 +10498,10 @@ export type Database = {
       request_call_report: {
         Args: { p_call_id: string; p_force?: boolean; p_test?: boolean }
         Returns: number
+      }
+      resolve_duplicate_lead: {
+        Args: { p_action: string; p_lead: string; p_target: string }
+        Returns: Json
       }
       revenue_by_agent: {
         Args: never
