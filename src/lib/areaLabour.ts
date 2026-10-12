@@ -1,4 +1,4 @@
-import { isAcUnitLine, type AcUnitLineInput, type AcUnitProductInput } from "@/lib/lineDisplay";
+import { isAcUnitLine, isClearlyNotAcUnit, type AcUnitLineInput, type AcUnitProductInput } from "@/lib/lineDisplay";
 import { isLabourItem, labourFields } from "@/lib/labour";
 
 export interface AreaLabourLine extends AcUnitLineInput {
@@ -139,6 +139,11 @@ export function reconcileAutoLabour<T extends AreaLabourLine>(items: T[], areas:
     const hours = defaultLabourHours(countAcUnits(scope), perUnit);
     const existing = scope.find((i) => isLabourItem(i) && i.metadata?.labour_auto === true);
     const savedRate = Number(existing?.metadata?.rate ?? (existing as any)?.unit_price) || rate;
+    if (!(hours > 0) && existing && scope.some((i) => !isLabourItem(i) && !isClearlyNotAcUnit(i, i.product))) {
+      // Detection could not prove there are no units left (e.g. a model-code-only line): keep the labour as it is.
+      result.push(existing);
+      continue;
+    }
     if (!(hours > 0 && savedRate > 0)) continue;
     const fields = labourFields(hours, savedRate, !!existing?.metadata?.rate_overridden, true);
     result.push({ ...existing, ...fields, id: existing?.id ?? `auto-labour-${areaId ?? "job"}`, area_id: areaId, parent_item_id: null,

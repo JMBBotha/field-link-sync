@@ -25,6 +25,7 @@ import { Plus, ChevronDown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { installTag, qtyUnitLabel, BRACKET_OPTIONS } from "@/lib/installTemplates";
+import { AC_PRODUCT_FIELDS } from "@/lib/acProductInfo";
 import { qtyLabel, shortInstallName, kitTitleFromMetadata, kitContents, isAcUnitLine } from "@/lib/lineDisplay";
 import { catalogLineFields, kitSwapPatch, isMetreLine, metreLineTotal, kitLengthPatch } from "@/lib/mandy/quoteOps";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
@@ -153,7 +154,7 @@ export default function EstimateBuilder({
     staleTime: 300_000,
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any)
-        .select("id, image_url, product_category, category, subcategory")
+        .select(`image_url, ${AC_PRODUCT_FIELDS}`)
         .in("id", productIds);
       if (error) throw error;
       return Object.fromEntries((data || []).map((p: any) => [p.id, p]));

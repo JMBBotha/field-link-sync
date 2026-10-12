@@ -1,5 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import JobCard from "@/components/cards/JobCard";
+
+/** Upcoming Jobs needs the assignments + tech profile embed, or every card reads "Unassigned" (jobToCard -> activeAssignee). */
+export const UPCOMING_JOBS_SELECT = "id, title, status, priority, scheduled_for, started_at, job_type, address, customer_id, customers(name, phone), assignments(id, profile_id, status, profiles!assignments_profile_id_fkey(full_name, phone))";
 import { jobToCard } from "@/lib/cardModel";
 import LeadCardV2 from "@/components/leads/LeadCardV2";
 import { supabase } from "@/integrations/supabase/client";
@@ -195,7 +198,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         supabase.from("notifications").select("id, type, title, body, created_at").order("created_at", { ascending: false }).limit(15),
         fetchOverdueMaintenanceCount(),
         supabase.from("leads").select("*").eq("status", "pending").gte("created_at", leadsRangeSince).order("created_at", { ascending: false }).limit(20),
-        supabase.from("jobs").select("id, title, status, scheduled_for, address, customer_id").gte("scheduled_for", jobsRangeBounds.start).lt("scheduled_for", jobsRangeBounds.end).order("scheduled_for", { ascending: true }).limit(20),
+        supabase.from("jobs").select(UPCOMING_JOBS_SELECT).gte("scheduled_for", jobsRangeBounds.start).lt("scheduled_for", jobsRangeBounds.end).order("scheduled_for", { ascending: true }).limit(20),
 
       ]);
 

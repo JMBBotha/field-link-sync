@@ -23,6 +23,12 @@ import { needsDefaultArea, getDefaultAreaName } from "@/utils/quoteTransformers"
 import { DEFAULT_CATEGORY_MARKUPS, setActiveQuoteMarkupRates, setActiveMaterialsWastePercent, DEFAULT_MATERIALS_WASTE_PERCENT, type CategoryMarkupRates } from "@/lib/pricing";
 import { metrePriceFromPackPerMetre } from "@/lib/priceGuard";
 import { isJobLabour, normalizeLabourMode, planLabourInsert, syncAutoLabour, countAcUnits } from "@/lib/areaLabour";
+import { withAcProducts } from "@/lib/acProductInfo";
+import { isClearlyNotAcUnit } from "@/lib/lineDisplay";
+
+/** A unit add/change/delete may change auto labour. Catalogue lines are checked against product data in reconcile,
+ *  so anything that is not clearly a material/kit/labour line triggers it (model-code-only names included). */
+const mayAffectLabour = (i: QuoteItem) => !i.parent_item_id && (countAcUnits([i as any]) > 0 || !isClearlyNotAcUnit(i as any));
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { isLabourItem } from "@/lib/labour";
 import { runSerialPerQuote } from "@/utils/persistQuoteFromBaskets";
@@ -441,7 +447,8 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
         if (res.error || !res.data) throw new Error(res.error?.message || "Labour was not saved.");
         return res.data as QuoteItem;
       };
-      await syncAutoLabour(itemsRef.current, areasRef.current, normalizeLabourMode(meta?.labour_mode), labourSettings.default_install_labour_hours, labourSettings.default_hourly_rate, {
+      const lines = await withAcProducts(itemsRef.current as any[]);
+      await syncAutoLabour(lines, areasRef.current, normalizeLabourMode(meta?.labour_mode), labourSettings.default_install_labour_hours, labourSettings.default_hourly_rate, {
         add: async (row) => {
           const id = crypto.randomUUID();
           optimisticIdsRef.current.add(id);
@@ -516,7 +523,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     const real = data as unknown as QuoteItem;
     setItems((prev) => prev.map((i) => i.id === optimisticId ? real : i));
     setTimeout(() => optimisticIdsRef.current.delete(optimisticId), 5000);
-    if (countAcUnits([real]) > 0) await reconcileLabour();
+    if (mayAffectLabour(real)) await reconcileLabour();
     return real;
   }, [quoteId, meta?.labour_mode, reconcileLabour]);
 
@@ -539,7 +546,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       revert(fetchAll);
       return false;
     }
-    if (before && (countAcUnits([before]) > 0 || countAcUnits([{ ...before, ...patch }]) > 0) && (patch.quantity != null || patch.area_id !== undefined || patch.product_id !== undefined || patch.item_name !== undefined)) await reconcileLabour();
+    if (before && (mayAffectLabour(before) || mayAffectLabour({ ...before, ...patch } as QuoteItem)) && (patch.quantity != null || patch.area_id !== undefined || patch.product_id !== undefined || patch.item_name !== undefined)) await reconcileLabour();
     return true;
   }, [fetchAll, reconcileLabour]);
 
@@ -554,7 +561,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       revert(fetchAll);
       return false;
     }
-    if (before && countAcUnits([before]) > 0) await reconcileLabour();
+    if (before && mayAffectLabour(before)) await reconcileLabour();
     return true;
   }, [fetchAll, reconcileLabour]);
 
@@ -572,7 +579,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       revert(fetchAll);
       return false;
     }
-    if (before && countAcUnits([before]) > 0) await reconcileLabour();
+    if (before && mayAffectLabour(before)) await reconcileLabour();
     return true;
   }, [fetchAll, reconcileLabour]);
 

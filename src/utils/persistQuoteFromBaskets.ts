@@ -16,6 +16,7 @@ import { remapInstallUnitIds } from "@/lib/installTemplates";
 import type { Basket } from "@/components/catalog/QuoteBuilderTab";
 import { stampChanged, stampFromRows, type QuoteLineStamp } from "@/lib/quoteLineStamp";
 import { normalizeLabourMode, reconcileAutoLabour, syncAutoLabour } from "@/lib/areaLabour";
+import { withAcProducts } from "@/lib/acProductInfo";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -111,7 +112,7 @@ async function persistOnce(
   const mode = normalizeLabourMode(qd?.labour_mode);
   const perUnit = Number(settings?.default_install_labour_hours) || 3.5;
   const rate = Number(settings?.default_hourly_rate) || 0;
-  const working = reconcileAutoLabour([...items, ...projectedLabour], areas, mode, perUnit, rate);
+  const working = reconcileAutoLabour([...(await withAcProducts(items as any[])), ...projectedLabour], areas, mode, perUnit, rate);
   const checked = async (request: any) => {
     const res = await request.select("id");
     if (res.error || !res.data?.length) throw new Error(res.error?.message || "Automatic labour was not saved.");
@@ -175,7 +176,7 @@ async function persistOnce(
   const freshLabour = await supabase.from("quote_items").select("*").eq("quote_id", quoteId).eq("item_type", LABOUR_ITEM_TYPE);
   if (freshLabour.error) throw freshLabour.error;
   const currentLabour = (freshLabour.data || []).filter((row) => !row.parent_item_id && isLabourItem(row));
-  await syncAutoLabour([...itemRows, ...currentLabour], areaRows, mode, perUnit, rate, {
+  await syncAutoLabour([...(await withAcProducts(itemRows as any[])), ...currentLabour], areaRows, mode, perUnit, rate, {
     add: async (fields) => { await checked(supabase.from("quote_items").insert({ ...fields, id: crypto.randomUUID(), quote_id: quoteId, source: "labour", sort_order: itemRows.length })); },
     update: async (id, fields) => { await checked(supabase.from("quote_items").update(fields).eq("id", id).eq("quote_id", quoteId)); },
     remove: async (id) => { await checked(supabase.from("quote_items").delete().eq("id", id).eq("quote_id", quoteId)); },
