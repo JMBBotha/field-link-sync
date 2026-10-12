@@ -41,3 +41,12 @@ describe("P2 galleries", () => {
     expect(sec).toContain('uploadPhoto(f, "site")');
   });
 });
+
+describe("site photos: assigned staff can upload and delete", () => {
+  it("gates upload/delete on photo_lead_ok and offers delete", () => {
+    const s = readFileSync("src/components/photos/SitePhotosSection.tsx", "utf8");
+    expect(s).toContain('"photo_lead_ok"');
+    expect(s).toContain('data-testid="site-photo-delete"');
+    expect(s).toContain("!readOnly && canManage");
+  });
+});

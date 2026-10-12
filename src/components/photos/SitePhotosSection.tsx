@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, ImagePlus, Loader2, PenLine, X } from "lucide-react";
+import { Camera, ImagePlus, Loader2, PenLine, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -79,6 +79,31 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
     } finally { setSaving(false); }
   };
 
+  // assigned tech/salesperson (or office) may upload + delete; RLS enforces the same rule (photo_lead_ok)
+  const canManage = useQuery({
+    queryKey: ["photo-lead-ok", leadId],
+    enabled: !!leadId && !readOnly,
+    queryFn: async () => {
+      const { data } = await (supabase.rpc as any)("photo_lead_ok", { _lead: leadId });
+      return data === true;
+    },
+  }).data === true;
+
+  const deletePhoto = async (p: SitePhoto) => {
+    if (!window.confirm("Delete this photo? This can't be undone.")) return;
+    try {
+      const paths = [p.storage_path, p.annotated_path].filter(Boolean) as string[];
+      const { error } = await (supabase.from("job_photos") as any).delete().eq("id", p.id);
+      if (error) throw error;
+      await supabase.storage.from("job-photos").remove(paths);
+      toast({ title: "Photo deleted" });
+      setOpen(null);
+      qc.invalidateQueries({ queryKey: ["site-photos", leadId] });
+    } catch (e: any) {
+      toast({ title: "Couldn't delete the photo", description: e?.message, variant: "destructive" });
+    }
+  };
+
   const list = photos.data ?? [];
   if (readOnly && list.length === 0) return null;
   return (
@@ -87,7 +112,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
         <h2 className="text-sm font-semibold">Site photos{list.length ? ` (${list.length})` : ""}</h2>
         {photos.isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
       </div>
-      {!readOnly && (
+      {!readOnly && canManage && (
         <div className="grid grid-cols-2 gap-2">
           <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { onFiles(e.target.files); e.target.value = ""; }} />
           <input ref={galRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { onFiles(e.target.files); e.target.value = ""; }} />
@@ -117,6 +142,9 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
             {!readOnly && (open.uploaded_by === user?.id) ? (
               <Button variant="secondary" className="min-h-[44px]" onClick={() => setEditing(open)} data-testid="site-photo-annotate"><PenLine className="h-4 w-4 mr-1" />Mark up</Button>
             ) : <span />}
+            {!readOnly && canManage && (
+              <Button variant="destructive" className="min-h-[44px]" onClick={() => deletePhoto(open)} data-testid="site-photo-delete"><Trash2 className="h-4 w-4 mr-1" />Delete</Button>
+            )}
             <Button variant="ghost" className="min-h-[44px] text-white" onClick={() => setOpen(null)} aria-label="Close"><X className="h-5 w-5" /></Button>
           </div>
           <div className="flex-1 min-h-0 flex items-center justify-center p-2"><img src={open.url} alt="Site photo" className="max-h-full max-w-full object-contain" /></div>

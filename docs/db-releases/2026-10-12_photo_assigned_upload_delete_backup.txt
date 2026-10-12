@@ -1,0 +1,9 @@
+Prior state 2026-10-12 ~18:15 SAST (after quote_photos_private.sql, before photo_assigned_upload_delete.sql)
+- public.quote_photo_ok(text,boolean): as in 2026-10-12_quote_photos_private.sql
+- storage: qp_select/qp_insert/qp_update/qp_delete (quote_photo_ok), jp_delete, jp_update (2026-10-12_quote_photos_private.sql),
+  p2_job_photos_insert (2026-10-09_p2_site_photos.sql), p2_job_photos_select unchanged.
+- job_photos table: p2_photos_insert / p2_photos_delete / p2_photos_update (2026-10-09_p2_site_photos.sql); select policies unchanged.
+- quote_attachments: "Users can insert/view/delete quote attachments" = quotes.sales_engineer_id = auth.uid() OR admin; p4_parent_scope unchanged.
+- Salespeople model: role 'dispatcher' + profiles.dispatch_role='sales' (is_sales_rep); assignment via rep_owns_lead (lead assigned_agent_id/created_by, quote sales_engineer_id/owner_id/created_by).
+  Techs: field_agent or dispatch_role 'technician' (is_field_tech_only); assignment via tech_owns_lead (lead assigned_agent_id, job assignments, job_schedules, completions).
+  Admins (has_role admin) stay company-wide; non-sales, non-tech dispatchers stay company-wide.
