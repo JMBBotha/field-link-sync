@@ -151,6 +151,8 @@ export interface EstimateDocumentProps {
   customerCompany?: string | null;
   customerAddress?: string | null;
   customerEmail?: string | null;
+  /** Client's VAT number, printed under Prepared For when present. */
+  customerVat?: string | null;
   customerPhone?: string | null;
   items: EstimateDocLineItem[];
   subtotal: number;
@@ -323,6 +325,7 @@ const EstimateDocument = ({
   customerCompany,
   customerAddress,
   customerEmail,
+  customerVat,
   customerPhone,
   items,
   subtotal,
@@ -413,6 +416,7 @@ const EstimateDocument = ({
             {customerAddress && <p className="text-[12px] leading-snug text-slate-600">{customerAddress}</p>}
             {customerEmail && <p className="text-[12px] text-slate-600">{customerEmail}</p>}
             {customerPhone && <p className="text-[12px] text-slate-600">{customerPhone}</p>}
+            {customerVat && customerVat.trim() && <p className="text-[12px] text-slate-600" data-testid="customer-vat">VAT No {customerVat.trim()}</p>}
           </div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Date</p>

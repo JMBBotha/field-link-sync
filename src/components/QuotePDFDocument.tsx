@@ -40,6 +40,8 @@ export interface QuotePDFData {
   validUntil: string;
   clientName: string;
   clientEmail: string;
+  /** Client's VAT number, printed under Prepared For when present. */
+  clientVat?: string | null;
   items: QuotePDFLineItem[];
   subtotal: number;
   vatRate: number;
@@ -215,6 +217,7 @@ export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
             <Text style={s.metaLabel}>Prepared For</Text>
             <Text style={s.metaValue}>{data.clientName || "—"}</Text>
             {data.clientEmail && <Text style={{ fontSize: 8, color: GRAY }}>{data.clientEmail}</Text>}
+            {data.clientVat && data.clientVat.trim() ? <Text style={{ fontSize: 8, color: GRAY }}>{`VAT No ${data.clientVat.trim()}`}</Text> : null}
           </View>
           <View style={{ alignItems: "flex-end" as const }}>
             <Text style={s.metaLabel}>Quote #</Text>

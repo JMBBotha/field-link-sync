@@ -59,6 +59,7 @@ interface Props {
   customerAddress?: string | null;
   customerEmail?: string | null;
   customerPhone?: string | null;
+  customerVat?: string | null;
   vatRate: number;
   notes?: string | null;
   termsText?: string | null;
@@ -89,6 +90,7 @@ export default function EstimateBuilder({
   customerAddress,
   customerEmail,
   customerPhone,
+  customerVat,
   vatRate,
   notes,
   termsText,
@@ -417,6 +419,7 @@ export default function EstimateBuilder({
         customerAddress={customerAddress}
         customerEmail={customerEmail}
         customerPhone={customerPhone}
+        customerVat={customerVat}
         items={[]}
         subtotal={subtotal}
         taxRate={vatRate}

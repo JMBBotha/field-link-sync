@@ -31,6 +31,7 @@ interface BrandedQuotePreviewProps {
     customer_address?: string;
     customer_phone?: string;
     customer_email?: string;
+    customer_vat_number?: string | null;
     valid_until?: string;
     notes?: string;
     reference_text?: string;
@@ -118,6 +119,7 @@ const BrandedQuotePreview = ({ open, onOpenChange, quote }: BrandedQuotePreviewP
             {quote.customer_phone && <span>{quote.customer_phone}</span>}
             {quote.customer_email && <span>{quote.customer_email}</span>}
           </div>
+          {quote.customer_vat_number && quote.customer_vat_number.trim() && <p className="text-sm text-muted-foreground" data-testid="customer-vat">VAT No {quote.customer_vat_number.trim()}</p>}
         </div>
 
         {/* ── Pricing Table ── */}

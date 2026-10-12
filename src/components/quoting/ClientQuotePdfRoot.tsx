@@ -42,7 +42,7 @@ const tidyName = (value?: string | null) => (value || "").replace(/\s+/g, " ").t
 
 type Loaded = {
   quote: any;
-  customer: { name: string | null; company_name: string | null; address: string | null; email: string | null; phone: string | null } | null;
+  customer: { name: string | null; company_name: string | null; address: string | null; email: string | null; phone: string | null; vat_number?: string | null } | null;
   company: any;
   items: EstimateDocLineItem[];
   areas: ClientRollupArea[];
@@ -59,7 +59,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
         const [qRes, iRes, aRes, cRes, dRes] = await Promise.all([
           (supabase.from("quotes") as any)
             .select(
-              "id, company_id, quote_number, subtotal, vat_rate, vat_amount, total, notes, valid_until, created_at, customer_name, terms_text, discount_type, discount_value, payment_plan, customers(name, first_name, last_name, company_name, primary_address_line1, email, phone)",
+              "id, company_id, quote_number, subtotal, vat_rate, vat_amount, total, notes, valid_until, created_at, customer_name, terms_text, discount_type, discount_value, payment_plan, customers(name, first_name, last_name, company_name, primary_address_line1, email, phone, vat_number)",
             )
             .eq("id", quoteId)
             .maybeSingle(),
@@ -105,6 +105,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
               address: c.primary_address_line1 ?? null,
               email: c.email ?? null,
               phone: c.phone ?? null,
+              vat_number: c.vat_number ?? null,
             }
           : null;
         // Same line shape as the /quote page (only used if a quote has no roll-up blocks).
@@ -155,6 +156,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
           customerAddress={doc.customer?.address}
           customerEmail={doc.customer?.email}
           customerPhone={doc.customer?.phone}
+          customerVat={doc.customer?.vat_number}
           items={doc.items}
           presentationMode="clientRollup"
           clientAreas={doc.areas}

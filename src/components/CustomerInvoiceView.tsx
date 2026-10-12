@@ -201,6 +201,9 @@ const CustomerInvoiceView = () => {
                 {selectedInvoice.customer_address && (
                   <p className="text-sm text-muted-foreground">{selectedInvoice.customer_address}</p>
                 )}
+                {(selectedInvoice as any).billed_to_vat_number && String((selectedInvoice as any).billed_to_vat_number).trim() && (
+                  <p className="text-sm text-muted-foreground" data-testid="billed-to-vat">VAT No {String((selectedInvoice as any).billed_to_vat_number).trim()}</p>
+                )}
               </div>
 
               {/* Line Items */}

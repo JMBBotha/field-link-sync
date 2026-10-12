@@ -73,7 +73,7 @@ const AdminEstimateDetailPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("quotes")
-        .select("*, customers(name, company_name, address, email, phone)")
+        .select("*, customers(name, company_name, address, email, phone, vat_number)")
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
@@ -213,6 +213,7 @@ const AdminEstimateDetailPage = () => {
           customerAddress={customer.address}
           customerEmail={customer.email}
           customerPhone={customer.phone}
+          customerVat={customer.vat_number}
           vatRate={Number(quote.vat_rate) || 0.15}
           notes={quote.notes}
           termsText={quote.terms_text}

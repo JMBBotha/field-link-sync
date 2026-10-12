@@ -276,6 +276,7 @@ const ClientProposalView = () => {
           customerAddress={customer?.address}
           customerEmail={customer?.email}
           customerPhone={customer?.phone}
+          customerVat={(customer as any)?.vat_number}
           items={lineItems}
           presentationMode="clientRollup"
           clientAreas={clientAreas}
