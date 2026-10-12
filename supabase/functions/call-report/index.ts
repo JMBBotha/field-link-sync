@@ -1,7 +1,11 @@
 // Call report: Grok summary of a phone call + email to the admin.
 // Reads public.vapi_calls only; never writes to it.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key",
+};
 
 const GROK_MODEL = "grok-4.3";
 const APP_URL = "https://field-link-sync.lovable.app";
