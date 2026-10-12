@@ -104,10 +104,11 @@ function buildReminderHtml(clientName: string, quoteNumber: string, dueDate: str
 
   <tr>
     <td style="padding:24px 32px 16px;">
-      <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#111827;">0800-BE-COOL! AC Super Service</p>
-      <p style="margin:0 0 2px;font-size:12px;color:#6b7280;">📞 0800 232 665</p>
-      <p style="margin:0 0 2px;font-size:12px;color:#6b7280;">✉️ info@0800becool.co.za</p>
-      <p style="margin:0;font-size:12px;color:#6b7280;">🌐 www.0800becool.co.za</p>
+      <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#111827;">MASSAIR CT (PTY) Ltd</p>
+      <p style="margin:0 0 2px;font-size:12px;color:#6b7280;">(021) 802-2889 · VAT No 4630313080</p>
+      <p style="margin:0 0 2px;font-size:12px;color:#6b7280;">9A Cabernet Rd, Blackheath Ind, Cape Town, 7580</p>
+      <p style="margin:0 0 2px;font-size:12px;color:#6b7280;">WhatsApp/Cell 069 683 8624 · info@0800becool.co.za</p>
+      <p style="margin:0;font-size:12px;color:#6b7280;">www.0800becool.co.za</p>
     </td>
   </tr>
 
@@ -241,7 +242,7 @@ serve(async (req) => {
         unsubscribeUrl,
       );
 
-      const textFallback = `Dear ${clientName},\n\nFriendly reminder: your quote ${est.estimate_number} totalling ${formatZAR(totalAmount)} expires in ${daysLeft} days (${dueDate}).\n\nTo accept, reply to this email or call 0800 232 665.\n\nKind regards,\n0800-BE-COOL! Team`;
+      const textFallback = `Dear ${clientName},\n\nFriendly reminder: your quote ${est.estimate_number} totalling ${formatZAR(totalAmount)} expires in ${daysLeft} days (${dueDate}).\n\nTo accept, reply to this email or call (021) 802-2889.\n\nMASSAIR CT (PTY) Ltd · VAT No 4630313080 · 9A Cabernet Rd, Blackheath Ind, Cape Town, 7580\n\nKind regards,\n0800-BE-COOL! Team`;
 
       const resendRes = await fetch("https://api.resend.com/emails", {
         method: "POST",

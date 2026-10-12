@@ -1,3 +1,4 @@
+import { COMPANY, COMPANY_CONTACT_LINE } from "@/lib/companyIdentity";
 import {
   Dialog,
   DialogContent,
@@ -176,8 +177,8 @@ const ProposalPreview = ({ open, onOpenChange, sections, quote }: ProposalPrevie
 
         {/* Footer */}
         <div className="bg-muted/50 p-6 text-center text-sm text-muted-foreground">
-          <p className="font-semibold">AC Super Service</p>
-          <p>📞 0800-BE-COOL • 📧 info@acsuperservice.co.za</p>
+          <p className="font-semibold">{COMPANY.legalName} · {COMPANY.tel} · VAT No {COMPANY.vatNo}</p>
+          <p>{COMPANY_CONTACT_LINE}</p>
           <p className="text-xs mt-1">This proposal is confidential and intended solely for the named recipient.</p>
         </div>
       </DialogContent>

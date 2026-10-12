@@ -39,7 +39,6 @@ const FALLBACK_COMPANY_NAME = "Our Company";
  */
 export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] => {
   const name = (company.companyName || FALLBACK_COMPANY_NAME).trim();
-  const nameUpper = name.toUpperCase();
 
   const hasBankingDetails = Boolean(
     company.bankName || company.accountNumber || company.branchCode || company.accountType
@@ -48,7 +47,7 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
   const bankingSection: TermsBlock[] = hasBankingDetails
     ? [
         { type: "heading", text: "Banking Details:" },
-        { type: "banking", text: `7.1 Account Name: ${(company.accountName || name).toUpperCase()}` },
+        { type: "banking", text: `7.1 Account Name: ${company.accountName || name}` },
         ...(company.bankName ? [{ type: "banking", text: `7.2 Bank: ${company.bankName}` } as TermsBlock] : []),
         ...(company.accountType ? [{ type: "banking", text: `7.3 Account Type: ${company.accountType}` } as TermsBlock] : []),
         ...(company.accountNumber ? [{ type: "banking", text: `7.4 Account Number: ${company.accountNumber}` } as TermsBlock] : []),
@@ -70,7 +69,7 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
     { type: "paragraph", text: "2.1 To provide the best possible price, the cost of the unit/s is to be paid in full as acceptance of our quotation. The remainder of the installation amount is payable upon completion of the project." },
     { type: "paragraph", text: "2.2 All products supplied carry our full warranty as set out in section 5 below." },
     { type: "paragraph", text: "2.3 Unless previously arranged with management, it will be assumed that you, the client, will be responsible for payment." },
-    { type: "paragraph", text: `2.4 All goods remain the property of ${nameUpper} until paid in full.` },
+    { type: "paragraph", text: `2.4 All goods remain the property of ${name} until paid in full.` },
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Electrical Work:" },
@@ -84,7 +83,7 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
 
     { type: "heading", text: "Warranty:" },
     { type: "paragraph", text: "5.1 Two years warranty on all moving parts and a 3-year manufacturer's warranty on the compressor, subject to a service contract." },
-    { type: "paragraph", text: `5.2 Our service contract extends the manufacturer's warranty on the compressor to 5 years. If the compressor fails, we will install the replacement compressor free of charge. Please note that this warranty is only valid on new units supplied and installed by ${nameUpper}.` },
+    { type: "paragraph", text: `5.2 Our service contract extends the manufacturer's warranty on the compressor to 5 years. If the compressor fails, we will install the replacement compressor free of charge. Please note that this warranty is only valid on new units supplied and installed by ${name}.` },
     { type: "paragraph", text: "5.3 This warranty is in addition to, and does not replace or limit, any rights you have under the Consumer Protection Act 68 of 2008." },
     { type: "spacer", text: "" },
 

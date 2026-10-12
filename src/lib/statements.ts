@@ -1,3 +1,4 @@
+import { cleanBanking, companyBlockHtml } from "@/lib/companyIdentity";
 import { formatRand } from "@/utils/formatRand";
 
 export interface StatementRow {
@@ -52,9 +53,10 @@ export const statementLinkUrl = (token: string, origin = typeof window !== "unde
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
 
-function bankLines(b: any): string {
-  if (!b || typeof b !== "object") return "";
-  const parts = [b.bank_name || b.bank, b.account_name, b.account_number && `Acc ${b.account_number}`, b.branch_code && `Branch ${b.branch_code}`].filter(Boolean);
+function bankLines(raw: any): string {
+  if (!raw || typeof raw !== "object") return "";
+  const b = cleanBanking(raw);
+  const parts = [b.bank_name, b.account_name, b.account_number && `Acc ${b.account_number}`, b.branch_code && `Branch ${b.branch_code}`, b.account_type].filter(Boolean);
   return parts.length ? `<p class="muted">Banking: ${esc(parts.join(" · "))}</p>` : "";
 }
 
@@ -70,7 +72,7 @@ table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13px}td,th{p
 .tot td{font-weight:700;border-top:2px solid #1B3A5C}.muted{color:#64748b;font-size:13px}.hdr{display:flex;justify-content:space-between;gap:24px}</style></head><body>
 <div class="hdr"><div><h1>Statement</h1><p class="muted">${esc(st.from)} to ${esc(st.to)}</p>
 <p><strong>${esc(st.customer?.name)}</strong>${st.customer?.company_name ? `<br/>${esc(st.customer.company_name)}` : ""}<br/>${esc(st.customer?.address)}</p></div>
-<div style="text-align:right"><strong>${esc(c.company_name)}</strong><br/><span class="muted">${esc(c.physical_address)}${c.vat_number ? `<br/>VAT ${esc(c.vat_number)}` : ""}</span></div></div>
+${companyBlockHtml(esc)}</div>
 <table><tr><th>Date</th><th>Type</th><th>Ref</th><th>Details</th><th class="r">Debit</th><th class="r">Credit</th><th class="r">Balance</th></tr>
 <tr><td>${esc(st.from)}</td><td colspan="5">Opening balance</td><td class="r">${formatRand(Number(st.opening_balance))}</td></tr>
 ${body}

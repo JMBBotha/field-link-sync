@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { generateAndUploadPDF, downloadInvoicePDF, shareInvoice, sendViaWhatsApp } from "@/lib/invoicePDF";
+import { generateAndUploadPDF, downloadInvoicePDF, printInvoicePDF, shareInvoice, sendViaWhatsApp } from "@/lib/invoicePDF";
 import { sumSettled } from "@/lib/payments";
 import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
 import CreditNotesPanel from "@/components/invoicing/CreditNotesPanel";
@@ -230,7 +230,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           <MessageCircle className="h-3.5 w-3.5 mr-1" /> WhatsApp
         </Button>
       )}
-      <Button variant="ghost" size={size} className="h-9 rounded-md text-xs" onClick={() => window.print()}>
+      <Button variant="ghost" size={size} className="h-9 rounded-md text-xs" onClick={() => void printInvoicePDF(getInvoiceDataForPDF())}>
         <Printer className="h-3.5 w-3.5 mr-1" /> Print
       </Button>
     </>

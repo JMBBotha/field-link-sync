@@ -14,6 +14,8 @@ import AreaLabourRow from "@/components/quoting/AreaLabourRow";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { formatRand } from "@/utils/formatRand";
+import CompanyBlock from "@/components/shared/CompanyBlock";
+import { cleanBanking } from "@/lib/companyIdentity";
 import { planTermsSentence, type PaymentPlan } from "@/lib/paymentPlans";
 
 export interface EstimateDocLineItem {
@@ -336,11 +338,10 @@ const EstimateDocument = ({
         banking_details: companyOverride.banking_details || {},
       }
     : authedSettings;
-  const bank = settings.banking_details || {};
+  const bank = cleanBanking(settings.banking_details);
 
   const vatPercent = toPercent(taxRate);
-  const accountType =
-    String(bank.account_type || "").match(/^[A-Za-z ]+/)?.[0].trim() || bank.account_type || "";
+  const accountType = bank.account_type;
   const cleanTerms = stripLegacyBanking(termsText);
 
   return (
@@ -358,17 +359,7 @@ const EstimateDocument = ({
           <div className="rounded-2xl border border-slate-200 bg-[#1B3A5C] p-3 shadow-sm">
             <img src={logo} alt="Company logo" className="h-16 w-auto object-contain" />
           </div>
-          <div className="text-right text-[12px] leading-relaxed text-slate-600">
-            <p className="text-[15px] font-bold text-[#1B3A5C]">
-              {settings.company_name || "0800-BE-COOL AC Super Service"}
-            </p>
-            {settings.physical_address
-              ? settings.physical_address.split("\n").map((line, i) => <p key={i}>{line}</p>)
-              : <p>6 Aviation Crescent, Airport City, Cape Town, 7100</p>}
-            <p>0800 23 2665</p>
-            <p>info@becool.co.za</p>
-            {settings.vat_number && <p>VAT No: {settings.vat_number}</p>}
-          </div>
+          <CompanyBlock />
         </div>
 
         {/* ── Title ── */}
@@ -918,7 +909,7 @@ const EstimateDocument = ({
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Banking Details</p>
             <div className="mt-1 grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-4">
-              <p><span className="text-slate-400">Account Name: </span>{bank.account_name || settings.company_name || "—"}</p>
+              <p><span className="text-slate-400">Account Name: </span>{bank.account_name}</p>
               <p><span className="text-slate-400">Bank: </span>{bank.bank_name || "—"}</p>
               <p><span className="text-slate-400">Account: </span>{bank.account_number || "—"}</p>
               <p><span className="text-slate-400">Branch Code: </span>{bank.branch_code || "—"}</p>

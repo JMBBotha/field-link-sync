@@ -1,5 +1,7 @@
 import logo from "@/assets/logo.png";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import CompanyBlock from "@/components/shared/CompanyBlock";
+import { cleanBanking } from "@/lib/companyIdentity";
 import { formatRand } from "@/utils/formatRand";
 
 export interface InvoiceDocLineItem {
@@ -68,9 +70,9 @@ const InvoiceDocument = ({
   notes,
 }: InvoiceDocumentProps) => {
   const { settings } = useCompanySettings();
-  const bank = settings.banking_details || {};
+  const bank = cleanBanking(settings.banking_details);
   const vatPercent = toPercent(taxRate);
-  const accountType = String(bank.account_type || "").match(/^[A-Za-z ]+/)?.[0].trim() || bank.account_type || "";
+  const accountType = bank.account_type;
   const amountDue = Math.max(0, (Number(grandTotal) || 0) - (Number(amountPaid) || 0) - (Number(credited) || 0));
 
   return (
@@ -84,17 +86,7 @@ const InvoiceDocument = ({
           <div className="rounded-2xl border border-slate-200 bg-[#1B3A5C] p-3 shadow-sm">
             <img src={logo} alt="Company logo" className="h-16 w-auto object-contain" />
           </div>
-          <div className="text-right text-[12px] leading-relaxed text-slate-600">
-            <p className="text-[15px] font-bold text-[#1B3A5C]">
-              {settings.company_name || "0800-BE-COOL AC Super Service"}
-            </p>
-            {settings.physical_address
-              ? settings.physical_address.split("\n").map((line, i) => <p key={i}>{line}</p>)
-              : <p>6 Aviation Crescent, Airport City, Cape Town, 7100</p>}
-            <p>0800 23 2665</p>
-            <p>info@becool.co.za</p>
-            {settings.vat_number && <p>VAT No: {settings.vat_number}</p>}
-          </div>
+          <CompanyBlock />
         </div>
 
         {/* ── Meta row: Billed To / Date / Number / Amount Due ── */}
@@ -202,7 +194,7 @@ const InvoiceDocument = ({
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Banking Details</p>
             <div className="mt-1 grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-4">
-              <p><span className="text-slate-400">Account Name: </span>{bank.account_name || settings.company_name || "—"}</p>
+              <p><span className="text-slate-400">Account Name: </span>{bank.account_name}</p>
               <p><span className="text-slate-400">Bank: </span>{bank.bank_name || "—"}</p>
               <p><span className="text-slate-400">Account: </span>{bank.account_number || "—"}</p>
               <p><span className="text-slate-400">Branch Code: </span>{bank.branch_code || "—"}</p>

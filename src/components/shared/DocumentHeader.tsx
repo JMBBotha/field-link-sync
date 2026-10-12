@@ -1,3 +1,4 @@
+import { COMPANY_BLOCK_LINES, COMPANY_CONTACT_LINE } from "@/lib/companyIdentity";
 interface DocumentHeaderProps {
   logoUrl?: string | null;
   companyName?: string;
@@ -40,28 +41,12 @@ const DocumentHeader = ({
           )}
         </div>
 
-        {/* RIGHT: STACKED IDENTITY – all right-aligned, top-anchored */}
-        <div className="flex flex-col items-end text-right gap-0">
-          {/* Line 1: Registration line (bolder) */}
-          <p className="text-[13px] font-semibold text-foreground leading-snug">
-            CT - {companyName || "Your Company"}
-            {vatNumber ? ` - VAT ${vatNumber}` : ""}
-          </p>
-          {/* Line 2: Phone */}
-          {phone && (
-            <p className="text-[13px] text-foreground/80 leading-snug">{phone}</p>
-          )}
-          {/* Lines 3–6: Address */}
-          <p className="text-[13px] text-foreground/80 leading-snug">6 Aviation Cress</p>
-          <p className="text-[13px] text-foreground/80 leading-snug">Airport City</p>
-          <p className="text-[13px] text-foreground/80 leading-snug">Cape Town</p>
-          <p className="text-[13px] text-foreground/80 leading-snug">7100</p>
-          {/* Line 7: VAT Number */}
-          {vatNumber && (
-            <p className="text-[13px] text-foreground/80 leading-snug">
-              VAT Number {vatNumber}
-            </p>
-          )}
+        {/* RIGHT: company block, single source src/lib/companyIdentity.ts (Johan 2026-10-12) */}
+        <div data-testid="company-block" className="flex flex-col items-end text-right gap-0">
+          {COMPANY_BLOCK_LINES.map((l, i) => (
+            <p key={l} className={`text-[13px] leading-snug ${i === 0 ? "font-semibold text-foreground" : "text-foreground/80"}`}>{l}</p>
+          ))}
+          <p className="text-[12px] text-foreground/70 leading-snug">{COMPANY_CONTACT_LINE}</p>
         </div>
       </div>
 

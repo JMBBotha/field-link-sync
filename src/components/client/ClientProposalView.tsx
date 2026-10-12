@@ -1,3 +1,4 @@
+import FullTermsSection from "@/components/client/FullTermsSection";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -285,6 +286,8 @@ const ClientProposalView = () => {
           companyOverride={company}
           paymentPlan={(quote as any).payment_plan ?? null}
         />
+
+        <FullTermsSection banking={company?.banking_details} />
 
         {/* Optional extra proposal sections (below the document) */}
         {sections.map((section) => (

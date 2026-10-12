@@ -1,3 +1,4 @@
+import { COMPANY, COMPANY_CONTACT_LINE } from "@/lib/companyIdentity";
 import React from "react";
 import {
   Document, Page, Text, View, StyleSheet, Font, Image,
@@ -160,7 +161,7 @@ function TCHeader({ logoUrl }: { logoUrl?: string | null }) {
 function TCFooter() {
   return (
     <Text style={s.tcFooterText} fixed>
-      0800-BE-COOL AC Super Service | www.0800becool.co.za
+      {`${COMPANY.legalName} | ${COMPANY.tel} | VAT No ${COMPANY.vatNo} | ${COMPANY.web}`}
     </Text>
   );
 }
@@ -281,9 +282,9 @@ export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
         </View>
 
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>0800-BE-COOL! AC Super Service</Text>
-          <Text style={s.footerText}>info@0800becool.co.za · 0800 23 2665</Text>
-          <Text style={s.footerText}>www.0800becool.co.za</Text>
+          <Text style={s.footerText}>{`${COMPANY.legalName} · ${COMPANY.tel} · VAT No ${COMPANY.vatNo}`}</Text>
+          <Text style={s.footerText}>{COMPANY.addressLines.join(", ")}</Text>
+          <Text style={s.footerText}>{COMPANY_CONTACT_LINE}</Text>
         </View>
       </Page>
 

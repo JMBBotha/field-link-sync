@@ -10,6 +10,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
 import { generateDocumentPdf, generateDocumentPdfBlob } from "@/lib/documentPdf";
 import QuotePdfViewer, { isPhoneViewport } from "@/components/quoting/QuotePdfViewer";
+import { printPdfBlob } from "@/lib/printPdf";
 import { loadQuoteBrochuresForPdf } from "@/lib/quoteBrochuresForPdf";
 import ClientQuotePdfRoot, { waitForClientPdfRoot } from "@/components/quoting/ClientQuotePdfRoot";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
@@ -118,7 +119,7 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
     }
   };
 
-  const handlePdf = async () => {
+  const handlePdf = async (mode: "download" | "print" = "download") => {
     await flush();
     if (!await checkLabour()) return "Remember labour before generating the PDF.";
     setBusy("pdf");
@@ -149,7 +150,11 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
         notes: q.notes || undefined,
         captureSelector,
       };
-      if (isPhoneViewport()) {
+      if (mode === "print") {
+        // Print = the same full PDF (quote + T&C pages), printed from a hidden frame (Johan 2026-10-12).
+        const blob = await generateDocumentPdfBlob(pdfOpts as any);
+        printPdfBlob(blob);
+      } else if (isPhoneViewport()) {
         // Phones: show the PDF inside the app (with Back/Save/Share/Download/Home), not a bare browser tab.
         const blob = await generateDocumentPdfBlob(pdfOpts as any);
         const num = q.quote_number || "DRAFT";
@@ -165,7 +170,7 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
     }
   };
 
-  const handlePrint = async () => { await flush(); if (await checkLabour()) window.print(); };
+  const handlePrint = async () => { await handlePdf("print"); };
 
   const scrollToLabour = (areaId: string) => {
     setMissingLabour([]);

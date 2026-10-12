@@ -1,3 +1,4 @@
+import { companyBlockHtml } from "@/lib/companyIdentity";
 import { useState } from "react";
 import { FileMinus2, Loader2, Printer, Ban } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,7 +31,7 @@ function printCreditNote(cn: CreditNoteRow, inv: Props["invoice"]) {
 <style>body{font-family:system-ui,sans-serif;color:#1e293b;max-width:720px;margin:40px auto;padding:0 24px}h1{color:#1B3A5C;margin:0}
 table{width:100%;border-collapse:collapse;margin-top:24px}td,th{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left}td.r,th.r{text-align:right}
 .tot td{font-weight:700;border-top:2px solid #1B3A5C}.muted{color:#64748b;font-size:13px}</style></head><body>
-<h1>Credit note ${esc(cn.credit_note_number)}${cn.status === "void" ? " (VOID)" : ""}</h1>
+<div style="display:flex;justify-content:space-between;gap:24px"><h1>Credit note ${esc(cn.credit_note_number)}${cn.status === "void" ? " (VOID)" : ""}</h1>${companyBlockHtml(esc)}</div>
 <p class="muted">Date ${esc(cn.issue_date)} · Against invoice ${esc(inv.invoice_number)}</p>
 <p><strong>${esc(inv.customer_name || "")}</strong><br/>${esc(inv.customer_address || "")}</p>
 <table><tr><th>Description</th><th class="r">Amount</th></tr>

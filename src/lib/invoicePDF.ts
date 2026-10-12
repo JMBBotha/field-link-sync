@@ -63,6 +63,12 @@ const toDocumentPdfOptions = (invoice: InvoiceData) => ({
   captureSelector: '[data-pdf-capture-root="invoice"]',
 });
 
+/** Print = the same full PDF as Download (invoice + T&C pages). */
+export const printInvoicePDF = async (invoice: InvoiceData) => {
+  const { printPdfBlob } = await import("./printPdf");
+  printPdfBlob(await generateDocumentPdfBlob(toDocumentPdfOptions(invoice)));
+};
+
 export const downloadInvoicePDF = async (invoice: InvoiceData) => {
   await generateDocumentPdf(toDocumentPdfOptions(invoice));
 };

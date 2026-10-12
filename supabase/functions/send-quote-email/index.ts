@@ -95,7 +95,7 @@ function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, t
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
         <tr>
           <td align="center">
-            <p style="margin:0;font-size:13px;color:#6b7280;">Reply to this email or call 0800 232 665 to accept your quote.</p>
+            <p style="margin:0;font-size:13px;color:#6b7280;">Reply to this email or call (021) 802-2889 to accept your quote.</p>
           </td>
         </tr>
       </table>`}
@@ -120,10 +120,11 @@ function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, t
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
           <td>
-            <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#111827;">0800-BE-COOL! AC Super Service</p>
-            <p style="margin:0 0 2px;font-size:12px;color:#6b7280;">📞 0800 232 665</p>
-            <p style="margin:0 0 2px;font-size:12px;color:#6b7280;">✉️ info@0800becool.co.za</p>
-            <p style="margin:0;font-size:12px;color:#6b7280;">🌐 www.0800becool.co.za</p>
+            <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#111827;">MASSAIR CT (PTY) Ltd</p>
+            <p style="margin:0 0 2px;font-size:12px;color:#6b7280;">(021) 802-2889 · VAT No 4630313080</p>
+            <p style="margin:0 0 2px;font-size:12px;color:#6b7280;">9A Cabernet Rd, Blackheath Ind, Cape Town, 7580</p>
+            <p style="margin:0 0 2px;font-size:12px;color:#6b7280;">WhatsApp/Cell 069 683 8624 · info@0800becool.co.za</p>
+            <p style="margin:0;font-size:12px;color:#6b7280;">www.0800becool.co.za</p>
           </td>
         </tr>
       </table>
@@ -238,7 +239,7 @@ serve(async (req) => {
     const htmlBody = buildHtmlEmail(clientName, quoteNumber, date, totalAmount || 0, unsubscribeUrl, quoteUrl || null, Boolean(depositRequest));
     const textFallback = depositRequest
       ? `Dear ${clientName || "Valued Customer"},\n\nYour 70% deposit invoice for quote ${quoteRef} is ready.${quoteUrl ? `\n\nView and pay it here: ${quoteUrl}` : ""}\n\nKind regards,\n0800-BE-COOL! Team`
-      : `Dear ${clientName || "Valued Customer"},\n\nYour quote ${quoteRef ? `(${quoteRef}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is ready.${quoteUrl ? `\n\nView and accept it here: ${quoteUrl}` : ""}\n\nThis quote is valid for 30 days. A 70% deposit is required upon acceptance. To accept, reply to this email (keep the reference ${quoteRef || ""} in the subject) or call 0800 232 665.\n\nKind regards,\n0800-BE-COOL! Team`;
+      : `Dear ${clientName || "Valued Customer"},\n\nYour quote ${quoteRef ? `(${quoteRef}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is ready.${quoteUrl ? `\n\nView and accept it here: ${quoteUrl}` : ""}\n\nThis quote is valid for 30 days. A 70% deposit is required upon acceptance. To accept, reply to this email (keep the reference ${quoteRef || ""} in the subject) or call (021) 802-2889.\n\nMASSAIR CT (PTY) Ltd · VAT No 4630313080 · 9A Cabernet Rd, Blackheath Ind, Cape Town, 7580\n\nKind regards,\n0800-BE-COOL! Team`;
 
     const attachments: Array<{ filename: string; content: string }> = [];
     if (pdfBase64) {

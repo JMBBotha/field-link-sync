@@ -1,3 +1,4 @@
+import { COMPANY_BLOCK_LINES, COMPANY_CONTACT_LINE, cleanBanking } from "@/lib/companyIdentity";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Loader2, Printer } from "lucide-react";
@@ -31,9 +32,9 @@ export default function PublicStatement() {
           <p className="mt-2 font-medium">{st.customer?.name}</p>
           {st.customer?.company_name && <p className="text-sm">{st.customer.company_name}</p>}
         </div>
-        <div className="text-right text-sm">
-          <p className="font-semibold">{st.company?.company_name}</p>
-          <p className="whitespace-pre-line text-muted-foreground">{st.company?.physical_address}</p>
+        <div data-testid="company-block" className="text-right text-sm">
+          {COMPANY_BLOCK_LINES.map((l, i) => <p key={l} className={i === 0 ? "font-semibold" : "text-muted-foreground"}>{l}</p>)}
+          <p className="text-xs text-muted-foreground">{COMPANY_CONTACT_LINE}</p>
         </div>
       </div>
       <div className="rounded-lg border p-3"><span className="text-sm text-muted-foreground">Balance due</span><div className="text-2xl font-bold">{formatRand(Number(st.closing_balance))}</div></div>
@@ -54,6 +55,8 @@ export default function PublicStatement() {
           </tbody>
         </table>
       </div>
+      {(() => { const b = cleanBanking(st.company?.banking_details); return b.account_number ? (
+        <p className="text-sm text-muted-foreground" data-testid="statement-banking">Banking: {[b.bank_name, b.account_name, `Acc ${b.account_number}`, b.branch_code && `Branch ${b.branch_code}`, b.account_type].filter(Boolean).join(" · ")}</p>) : null; })()}
       <Button variant="outline" onClick={() => printStatement(st)}><Printer className="mr-1 h-4 w-4" />Print / save PDF</Button>
     </div>
   );

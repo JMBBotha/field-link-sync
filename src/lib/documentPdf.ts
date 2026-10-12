@@ -1,3 +1,4 @@
+import { COMPANY, COMPANY_CONTACT_LINE, cleanBanking } from "./companyIdentity";
 import jsPDF from "jspdf";
 import { fetchCompanyProfileSafe } from "@/lib/companyProfileSafe";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
@@ -85,20 +86,20 @@ export async function fetchTermsCompanyInfo(fallbackName?: string): Promise<Term
     if (error || !data) {
       // Techs can't read company_settings (P9): name only, never banking.
       const safe = await fetchCompanyProfileSafe();
-      return { companyName: safe?.company_name || fallbackName };
+      return { companyName: COMPANY.legalName };
     }
 
-    const banking = (data.banking_details as Record<string, string> | null) || {};
+    const banking = cleanBanking(data.banking_details);
     return {
-      companyName: data.company_name || fallbackName,
-      bankName: banking.bank_name,
+      companyName: COMPANY.legalName,
+      bankName: banking.bank_name || undefined,
       accountName: banking.account_name,
-      accountNumber: banking.account_number,
-      branchCode: banking.branch_code,
-      accountType: banking.account_type,
+      accountNumber: banking.account_number || undefined,
+      branchCode: banking.branch_code || undefined,
+      accountType: banking.account_type || undefined,
     };
   } catch {
-    return { companyName: fallbackName };
+    return { companyName: COMPANY.legalName };
   }
 }
 
@@ -111,12 +112,14 @@ const addTermsFooter = (doc: jsPDF, company: TermsCompanyInfo) => {
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
 
-  const footerText = company.companyName || "Our Company";
+  const footerText = `${COMPANY.legalName} · ${COMPANY.tel} · VAT No ${COMPANY.vatNo} · ${COMPANY.addressLines.join(", ")}`;
 
   doc.text(footerText, pageWidth / 2, pageHeight - 18, {
     maxWidth: pageWidth - margin * 2,
     align: "center",
   });
+  doc.setFontSize(8);
+  doc.text(COMPANY_CONTACT_LINE, pageWidth / 2, pageHeight - 13, { maxWidth: pageWidth - margin * 2, align: "center" });
 };
 
 function appendTermsPages(doc: jsPDF, company: TermsCompanyInfo) {

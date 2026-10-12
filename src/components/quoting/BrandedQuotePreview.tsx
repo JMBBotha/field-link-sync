@@ -1,3 +1,4 @@
+import { COMPANY, COMPANY_CONTACT_LINE } from "@/lib/companyIdentity";
 import {
   Dialog,
   DialogContent,
@@ -85,9 +86,9 @@ const BrandedQuotePreview = ({ open, onOpenChange, quote }: BrandedQuotePreviewP
               ) : (
                 <h1 className="text-2xl font-bold mb-1">{settings.company_name || "BE COOL AC SUPER SERVICE"}</h1>
               )}
-              <p className="text-sm opacity-80">0800-BE-COOL (0800 23 2665)</p>
-              {settings.vat_number && <p className="text-xs opacity-70">VAT No: {settings.vat_number}</p>}
-              {settings.physical_address && <p className="text-xs opacity-70">{settings.physical_address}</p>}
+              <p className="text-sm opacity-80">{COMPANY.legalName} · {COMPANY.tel}</p>
+              <p className="text-xs opacity-70">VAT No {COMPANY.vatNo}</p>
+              <p className="text-xs opacity-70">{COMPANY.addressLines.join(", ")}</p>
             </div>
             <div className="text-right">
               <h2 className="text-2xl font-bold tracking-wide">QUOTATION</h2>
@@ -238,9 +239,9 @@ const BrandedQuotePreview = ({ open, onOpenChange, quote }: BrandedQuotePreviewP
 
         {/* ── Footer ── */}
         <div className="bg-primary/5 px-8 py-4 text-center text-xs text-muted-foreground border-t">
-          <p className="font-semibold">{settings.company_name || "Be Cool AC Super Service (Pty) Ltd"}</p>
-          <p>📞 0800-BE-COOL • 📧 info@becool.co.za</p>
-          {settings.vat_number && <p className="mt-0.5">VAT Reg: {settings.vat_number}</p>}
+          <p className="font-semibold">{COMPANY.legalName}</p>
+          <p>{COMPANY_CONTACT_LINE}</p>
+          <p className="mt-0.5">VAT No {COMPANY.vatNo}</p>
         </div>
       </DialogContent>
     </Dialog>
