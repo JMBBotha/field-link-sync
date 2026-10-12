@@ -1205,17 +1205,24 @@ serve(async (req) => {
             "27" + tail,
           ])];
           const orFilter = variants.map((v) => `customer_phone.eq.${v}`).join(",");
-          const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-          const { data } = await supabaseAdmin
+          // 12 Oct: leads has no updated_at column, so the old select/order here always
+          // errored and every existing-client call (e.g. a reschedule) created a duplicate
+          // lead. Prefer the client's booked visit, then any open lead (any age); skip
+          // merged/deleted and past-dated ones.
+          const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
+          const { data: openRows, error: openErr } = await supabaseAdmin
             .from("leads")
-            .select("id, customer_id, notes, service_type, priority, customer_address, updated_at")
+            .select("id, customer_id, notes, service_type, priority, customer_address, status, assigned_agent_id, scheduled_date, last_activity_at, created_at")
             .or(orFilter)
-            .in("status", ["pending", "new", "accepted", "claimed", "scheduled", "converted"])
-            .gte("created_at", since)
-            .order("updated_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          existing = (data as any) ?? null;
+            .in("status", ["pending", "open", "released", "new", "accepted", "claimed", "scheduled", "in_progress"])
+            .is("deleted_at", null)
+            .is("merged_into_id", null)
+            .order("last_activity_at", { ascending: false, nullsFirst: false })
+            .limit(20);
+          if (openErr) console.warn("[vapi-server-event] open-lead lookup failed:", openErr.message);
+          const live = ((openRows as any[]) ?? []).filter((l) => l.status === "in_progress" || !l.scheduled_date || l.scheduled_date >= today);
+          const isBooked = (l: any) => ["accepted", "claimed", "scheduled", "in_progress"].includes(l.status) || (l.assigned_agent_id && l.scheduled_date);
+          existing = (live.find(isBooked) ?? live[0] ?? null) as any;
         }
 
         if (existing) {
