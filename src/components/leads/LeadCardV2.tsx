@@ -13,6 +13,7 @@ import { logLeadContact, useLeadSla, useNow } from "@/hooks/useLeadSla";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import CallSummary from "@/components/leads/CallSummary";
 import BookingBadge from "@/components/BookingBadge";
+import DuplicateClientBadge from "@/components/leads/DuplicateClientBadge";
 import { hhmm as bookingTime } from "@/lib/schedulingDefaults";
 import { useAuth } from "@/contexts/AuthContext";
 import { techCardContent } from "@/components/cards/JobCard";
@@ -126,6 +127,7 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
             {lane ? LANE_META[lane].short.toUpperCase() : "LANE?"}
           </span>
           <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{sourceLabel(lead)}</span>
+          {!tech && <DuplicateClientBadge leadId={lead.id} />}
         </div>
         {tech ? (badgeExtra ? (
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">

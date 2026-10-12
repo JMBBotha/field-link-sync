@@ -44,6 +44,8 @@ import { useLaneStaff } from "@/hooks/useLaneStaff";
 import { useUnifiedClients, type UnifiedClient } from "@/hooks/useUnifiedClients";
 import ClientTypeahead from "./ClientTypeahead";
 import { TimeInput24 } from "@/components/ui/time-input-24";
+import SameClientDialog from "@/components/leads/SameClientDialog";
+import { type ClientBooking } from "@/lib/sameClient";
 
 interface CreateLeadDialogProps {
   open: boolean;
@@ -60,6 +62,7 @@ interface NearbyAgent {
 const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [dupRows, setDupRows] = useState<ClientBooking[] | null>(null);
   const [formData, setFormData] = useState({
     customer_name: "",
     company_name: "",
@@ -275,7 +278,44 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       toast({ title: "Add the appointment date and time", description: "A lead can't be saved without them.", variant: "destructive" });
       return;
     }
+    // Same-client check (12 Oct): ask before creating a second booking for a client who already has one.
+    setLoading(true);
+    try {
+      const { data: hits } = await (supabase as any).rpc("client_open_bookings", {
+        p_phone: formatPhoneForWhatsApp(formData.customer_phone) || null,
+        p_email: formData.email || null,
+        p_customer_id: linkedCustomerId,
+        p_address: formData.customer_address || null,
+        p_name: formData.customer_name || null,
+      });
+      if (Array.isArray(hits) && hits.length > 0) { setDupRows(hits as ClientBooking[]); setLoading(false); return; }
+    } catch { /* check is best-effort; the server guard still applies */ }
+    await saveLead(null);
+  };
 
+  /** Replace: move the existing booking to the new date/time instead of creating a lead. */
+  const replaceExisting = async (existing: ClientBooking) => {
+    setLoading(true);
+    try {
+      const scheduledDateStr = scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null;
+      const patch: Record<string, any> = { scheduled_date: scheduledDateStr, scheduled_time: scheduledTime || null };
+      if (formData.notes?.trim()) {
+        const { data: cur } = await supabase.from("leads").select("notes").eq("id", existing.lead_id).maybeSingle();
+        patch.notes = [cur?.notes || "", `--- Rebooked from New Lead (${format(new Date(), "d MMM HH:mm")}) ---`, formData.notes.trim()].filter(Boolean).join("\n");
+      }
+      const { error } = await supabase.from("leads").update(patch).eq("id", existing.lead_id);
+      if (error) throw error;
+      toast({ title: "Existing booking moved", description: `${existing.customer_name || "Client"} is now booked for ${scheduledDateStr} ${scheduledTime}. No new lead was created.` });
+      setDupRows(null);
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveLead = async (secondVisitOf: string | null) => {
     setLoading(true);
 
     try {
@@ -362,7 +402,8 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
         customer_id: customerId,
         assigned_agent_id: assignedAgentId,
         ...leadLaneFields(lane),
-      }).select("id").single();
+        ...(secondVisitOf ? { dup_ok: true, second_visit_of: secondVisitOf } : {}),
+      } as any).select("id").single();
 
       if (error) throw error;
 
@@ -415,6 +456,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       setLinkedCustomerId(null);
       setLaneOverride(null);
       setSalesOwnerId("");
+      setDupRows(null);
 
 
       onOpenChange(false);
@@ -871,6 +913,10 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
           </div>
         </form>
       </DialogContent>
+      <SameClientDialog rows={dupRows} busy={loading}
+        onReplace={replaceExisting}
+        onSecondVisit={(b) => saveLead(b.lead_id)}
+        onCancel={() => setDupRows(null)} />
     </Dialog>
   );
 };
