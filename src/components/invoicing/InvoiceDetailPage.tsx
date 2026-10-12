@@ -9,6 +9,7 @@ import { generateAndUploadPDF, downloadInvoicePDF, printInvoicePDF, shareInvoice
 import { sumSettled } from "@/lib/payments";
 import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
 import CreditNotesPanel from "@/components/invoicing/CreditNotesPanel";
+import PurchaseOrdersPanel from "@/components/invoicing/PurchaseOrdersPanel";
 import { creditedByInvoice, fetchCreditNotes, type CreditNoteRow } from "@/lib/creditNotes";
 import InvoiceDocument from "@/components/invoicing/InvoiceDocument";
 import CreateInvoicePage from "@/components/invoicing/CreateInvoicePage";
@@ -338,6 +339,9 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           onChange={() => { fetchInvoice(); onUpdate?.(); }}
         />
       </div>
+
+      {/* Draft supplier POs (office only, manual, never emailed) */}
+      <PurchaseOrdersPanel invoice={invoice} />
 
       {/* Accounting step 2: credit notes / write-offs (office only; reps see their own invoices' notes) */}
       <CreditNotesPanel
