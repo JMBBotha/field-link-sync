@@ -68,6 +68,6 @@ describe("/field map is never a blank box (Johan 18:58)", () => {
     expect(fa).toContain("Map unavailable");
     expect(fa).toMatch(/setMapError\("The map key could not be loaded\."\)/);
     expect(fa).toMatch(/took too long to load/);
-    expect(fa).toMatch(/setLocationError\(error\?\.code === 1 \? "denied" : "unavailable"\)/);
+    expect(fa).toMatch(/setLocationError\("denied"\)[\s\S]*setLocationError\(\(prev\) => prev \?\? "unavailable"\)/);
   });
 });

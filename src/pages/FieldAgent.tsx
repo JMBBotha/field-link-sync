@@ -386,49 +386,76 @@ const FieldAgent = () => {
     };
   };
 
+  const LAST_POS_KEY = "fieldlynk:lastPosition";
+
   const startLocationTracking = () => {
-    if ("geolocation" in navigator) {
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
+    if (!("geolocation" in navigator)) {
+      setLocationError("unavailable");
+      return;
+    }
 
-          setCurrentLocation({ lat: latitude, lng: longitude });
+    // Show the last known position straight away so the map isn't stuck waiting.
+    try {
+      const cached = JSON.parse(localStorage.getItem(LAST_POS_KEY) || "null");
+      if (cached && typeof cached.lat === "number" && typeof cached.lng === "number") {
+        setCurrentLocation({ lat: cached.lat, lng: cached.lng });
+        setLocationEnabled(true);
+      }
+    } catch { /* ignore bad cache */ }
 
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
+    const handlePosition = async (position: GeolocationPosition) => {
+      const { latitude, longitude } = position.coords;
+      setCurrentLocation({ lat: latitude, lng: longitude });
+      setLocationError(null);
+      setLocationEnabled(true);
+      try { localStorage.setItem(LAST_POS_KEY, JSON.stringify({ lat: latitude, lng: longitude, t: Date.now() })); } catch { /* ignore */ }
 
-          await supabase
-            .from("agent_locations")
-            .upsert(
-              {
-                agent_id: user.id,
-                latitude,
-                longitude,
-                is_available: true,
-                last_updated: new Date().toISOString(),
-              },
-              { onConflict: "agent_id" }
-            );
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase
+        .from("agent_locations")
+        .upsert(
+          {
+            agent_id: user.id,
+            latitude,
+            longitude,
+            is_available: true,
+            last_updated: new Date().toISOString(),
+          },
+          { onConflict: "agent_id" }
+        );
+    };
 
-          setLocationError(null);
-          setLocationEnabled(true);
-        },
-        (error) => {
-          console.error("Location error:", error);
-          setLocationError(error?.code === 1 ? "denied" : "unavailable");
+    let fallbackTried = false;
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      handlePosition,
+      (error) => {
+        console.error("Location error:", error);
+        if (error?.code === 1) {
+          setLocationError("denied");
           toast({
-            title: "Location Error",
-            description: "Unable to access your location",
+            title: "Location is off for Field Lynk",
+            description: "iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using. Then tap Try again.",
             variant: "destructive",
           });
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0,
+          return;
         }
-      );
-    }
+        // Timeout / no GPS fix: try a quick low-accuracy fix once (Wi-Fi / cell).
+        if (!fallbackTried) {
+          fallbackTried = true;
+          navigator.geolocation.getCurrentPosition(
+            handlePosition,
+            () => setLocationError((prev) => prev ?? "unavailable"),
+            { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
+          );
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 30000,
+        maximumAge: 15000,
+      }
+    );
   };
 
   const stopLocationTracking = () => {
@@ -629,7 +656,8 @@ const FieldAgent = () => {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 20000,
+          maximumAge: 15000,
         });
       });
 
@@ -1390,9 +1418,9 @@ const FieldAgent = () => {
                 <p className="text-sm font-semibold">Allow location to see the map</p>
                 <p className="text-xs text-muted-foreground">
                   {locationError === "denied"
-                    ? "Location is blocked for this site. Turn it on in your browser's site settings, then tap Try again."
+                    ? "Location is blocked. On iPhone: Settings → Privacy & Security → Location Services → turn on, then Safari Websites → While Using. Then tap Try again."
                     : locationError === "unavailable"
-                      ? "We couldn't get your location (no GPS on this device?). Tap Try again."
+                      ? "We couldn't get a GPS fix yet. Move near a window or outside, check Location Services is on, then tap Try again."
                       : "Waiting for your location… please allow location access."}
                 </p>
                 {locationError && (
