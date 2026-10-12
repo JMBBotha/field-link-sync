@@ -81,7 +81,7 @@ Effort ~1.5-2 days. Credits: 0 for SQL + UI; ~1-2 Lovable credits if the WhatsAp
 - Proposed: classifier sets primary_intent from form dropdown / Mandy `work_type` + reason / AI + keywords + client record lookup (open accepted quote or job -> tech); confidence below threshold -> leave NULL.
   One-tap admin "Tech | Sales" toggle on the lead card, logged in `status_change_log`. Effort ~1 day; credits same as C (shared intake redeploys).
 
-## E) PROPOSAL: escalation ladder (timers per company, working hours only; out-of-hours clocks start at 08:00)
+## E) ON HOLD (Johan 13:27, do not build): escalation ladder (timers per company, working hours only; out-of-hours clocks start at 08:00)
 | Level | When (no accept yet) | Action |
 |---|---|---|
 | 0 | 0 min | Offer + calls to matched staff (built: lead-offer-call) |
@@ -94,3 +94,16 @@ Effort ~1.5-2 days. Credits: 0 for SQL + UI; ~1-2 Lovable credits if the WhatsAp
 - Effort ~1.5-2 days. Credits: ~1 (redeploy lead-offer-call) or 0 with a deploy token. Depends on A/B for "follow-up" and on a voice number for calls.
 
 ## Total proposals effort: A 0.5 d, B 1.5-2 d, C 1.5-2 d, D 1 d, E 1.5-2 d ≈ 6-7.5 days; credits ≈ 4-6 if done via Lovable redeploys (0 with a Supabase deploy token).
+
+## F) PLAN ONLY (not built, nobody called): Mandy outbound call to the CLIENT for web-form and email leads
+- Phone-in leads unchanged. Trigger: a new web-form/email LEAD (classification C), work type known (D), inside working hours (outside: queued for 08:00).
+- Vapi outbound copy of Mandy (new assistant "Mandy – callback", same voice/tools) gets: name, request, address, tech/sales, any requested time, lead_id.
+- Script: thank them, confirm what they asked for, then confirm their requested time or book one with the EXISTING booking rules (`book-appointment` + `_staff_slot_fit`: nearby agents, 15 km, 30-min buffer, same-client check). She UPDATES the existing lead by lead_id (no new lead; `receive-vapi-lead` gets an "update existing lead_id" path).
+- Attempts: 1 call, 1 retry (~30 min later), then WhatsApp template / email fallback ("we tried to call you…"). Voicemail: detect, leave a short message with 0800-BE-COOL number, no booking. Recording + summary to the lead timeline (B) via existing `vapi-server-event` / `call-report`.
+- Safety: master switch OFF, Johan-only test number first, same pattern as lead_call_settings.
+- Shared script (Mandy, staff, and shown on the admin lead card):
+  - Sales enquiry: "We'll send a salesperson for a FREE site visit so we understand the job and quote properly – no surprises when you get the invoice."
+  - Repair/service: "A technician call-out has a call-out fee of R___ (Johan to confirm amount), payable …"
+- POPIA: a form/email enquiry is a request for contact about that service (legitimate interest / consent), so a callback about it is fine; add a line on the web form "We may call or WhatsApp you about this request", state Mandy is a virtual assistant and that the call is recorded, honour "don't call me" (flag on the client), no marketing on these calls.
+- Effort ~2-3 days (assistant config + prompt 0.5 d, outbound trigger/retry/fallback edge fn 1 d, update-existing-lead + booking path 0.5-1 d, card script + timeline 0.5 d). Credits: ~2-3 Lovable credits for edge function deploys (0 with a Supabase deploy token).
+- Cost: Vapi ~USD 0.05/min platform + model/voice/transcriber ≈ USD 0.10-0.20/min all-in (≈ R2-4/min) plus Twilio outbound to SA mobile (≈ R4-7/min). A 2-3 min call ≈ R15-30.
