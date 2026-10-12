@@ -10,7 +10,7 @@
 export const COMPANY = {
   /** The company these fixed values belong to (MASSAIR CT). Used ONLY as a per-field last resort for that company. */
   companyId: "361bf031-9cdb-4d7f-9bde-9eb95fa4725e",
-  legalName: "MASSAIR CT (PTY) Ltd",
+  legalName: "Massair CT (Pty) Ltd",
   brand: "0800-BE-COOL AC Super Service",
   tel: "(021) 802-2889",
   whatsapp: "069 683 8624",

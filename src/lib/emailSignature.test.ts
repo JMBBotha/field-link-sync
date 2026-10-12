@@ -8,7 +8,7 @@ describe("email signature", () => {
   });
   it("shows MASSAIR CT and VAT 4630313080, never Massair Ind", () => {
     const all = renderSignatureHtml({ name: "Lisa", title: "Sales", email: "l@x.co" }) + renderReminderSignatureHtml(null) + renderSignatureText(null);
-    expect(all).toContain("MASSAIR CT");
+    expect(all).toContain("Massair CT (Pty) Ltd");
     expect(all).toContain("4630313080");
     expect(all.toLowerCase()).not.toContain("ind cc");
   });

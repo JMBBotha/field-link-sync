@@ -4,12 +4,12 @@ import { COMPANY_BLOCK_LINES, cleanBanking, companyBlockHtml } from "@/lib/compa
 
 describe("One company block everywhere (Johan 2026-10-12)", () => {
   it("exact wording", () => {
-    expect(COMPANY_BLOCK_LINES).toEqual(["MASSAIR CT (PTY) Ltd", "(021) 802-2889", "VAT No 4630313080", "9A Cabernet Rd, Blackheath Ind", "Cape Town", "7580"]);
+    expect(COMPANY_BLOCK_LINES).toEqual(["Massair CT (Pty) Ltd", "(021) 802-2889", "VAT No 4630313080", "9A Cabernet Rd, Blackheath Ind", "Cape Town", "7580"]);
     expect(companyBlockHtml((s) => s)).toContain("VAT No 4630313080");
   });
   it("banking cleaned, never invented", () => {
     const b = cleanBanking({ bank_name: "FNB", account_number: "63226563591", branch_code: "250 655]", account_type: "Cheque" });
-    expect(b.branch_code).toBe("250 655"); expect(b.account_name).toBe("MASSAIR CT (PTY) Ltd");
+    expect(b.branch_code).toBe("250 655"); expect(b.account_name).toBe("Massair CT (Pty) Ltd");
     expect(cleanBanking({}).account_number).toBe("");
   });
   it("no old hard-coded addresses/phones left in client documents", () => {

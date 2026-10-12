@@ -15,7 +15,7 @@ export const SIGNATURE_IMAGE_BASE = "https://field-link-sync.lovable.app/email";
 
 export const SIGNATURE_COMPANY = {
   brand: "0800-BE-COOL! AC Super Service",
-  legalName: "MASSAIR CT (PTY) Ltd",
+  legalName: "Massair CT (Pty) Ltd",
   tel: "(021) 802-2889",
   telHref: "+27218022889",
   whatsapp: "069 683 8624",
