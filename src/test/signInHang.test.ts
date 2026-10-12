@@ -33,7 +33,7 @@ describe("sign-in never hangs", () => {
       select: () => ({ eq: () => ({ maybeSingle: () => new Promise(() => {}) }) }),
     });
     const p = resolvePostLoginPath("u1", 8000);
-    await vi.advanceTimersByTimeAsync(8000);
+    await vi.advanceTimersByTimeAsync(16000);
     const r = await p;
     expect(r.path).toBe("/admin");
     expect(r.error).toMatch(/taking too long/);

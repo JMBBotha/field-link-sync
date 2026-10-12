@@ -12,21 +12,23 @@ export async function resolvePostLoginPath(
   userId: string,
   timeoutMs = POST_LOGIN_TIMEOUT_MS,
 ): Promise<{ path: string; error: string | null }> {
+  const attempt = async () => {
+    const [profileRes, rolesRes] = await withTimeout(
+      Promise.all([
+        supabase.from("profiles").select("onboarding_completed").eq("id", userId).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", userId),
+      ]),
+      timeoutMs,
+      "Loading your account is taking too long.",
+    );
+    if (profileRes.error) throw profileRes.error;
+    if (rolesRes.error) throw rolesRes.error;
+    return { profile: profileRes.data, roles: rolesRes.data };
+  };
   try {
-    const { data: profile, error: profileErr } = await withTimeout(
-      supabase.from("profiles").select("onboarding_completed").eq("id", userId).maybeSingle(),
-      timeoutMs,
-      "Loading your profile is taking too long.",
-    );
-    if (profileErr) throw profileErr;
+    // One retry: a cold first request after sign-in can be slow or fail once.
+    const { profile, roles } = await attempt().catch(() => attempt());
     if (!profile?.onboarding_completed) return { path: "/onboarding", error: null };
-
-    const { data: roles, error: rolesErr } = await withTimeout(
-      supabase.from("user_roles").select("role").eq("user_id", userId),
-      timeoutMs,
-      "Loading your access is taking too long.",
-    );
-    if (rolesErr) throw rolesErr;
     const hasAdmin = roles?.some((r: { role: string }) => ["admin", "dispatcher", "viewer"].includes(r.role));
     return { path: hasAdmin ? "/admin" : "/field", error: null };
   } catch (e: any) {

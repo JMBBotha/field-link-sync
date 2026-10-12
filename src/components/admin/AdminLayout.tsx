@@ -144,8 +144,8 @@ const AdminLayout = () => {
       const userRoles = roles?.map(r => r.role) || [];
       const hasAdminAccess = userRoles.some(r => ["admin", "dispatcher", "viewer"].includes(r));
       if (!hasAdminAccess) {
-        toast({ title: "Access Denied", description: "You don't have admin panel access", variant: "destructive" });
-        navigate("/field");
+        // Techs/sales who land here (e.g. after a slow first sign-in) just go to their own screen.
+        navigate("/field", { replace: true });
         return;
       }
 

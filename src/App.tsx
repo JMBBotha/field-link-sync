@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,86 +19,86 @@ import VersionBanner from "@/components/VersionBanner";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
-import CustomerPortal from "./pages/CustomerPortal";
-import AdminMoneyPage from "./pages/admin/AdminMoneyPage";
-import AdminMyCommissionPage from "./pages/admin/AdminMyCommissionPage";
-import FieldEarningsPage from "./pages/FieldEarningsPage";
-import CustomerFeedbackForm from "./components/CustomerFeedbackForm";
-import CustomerInvoiceView from "./components/CustomerInvoiceView";
 import NotFound from "./pages/NotFound";
-import UnifiedOnboarding from "./pages/UnifiedOnboarding";
-import IndependentSignup from "./pages/IndependentSignup";
-import SetPassword from "./pages/SetPassword";
 import IdleLogoutGate from "@/components/IdleLogoutGate";
-import ClientProposalView from "./components/client/ClientProposalView";
-import PublicStatement from "./pages/PublicStatement";
-import AdminExpensesPage from "./pages/admin/AdminExpensesPage";
-import AdminBankPage from "./pages/admin/AdminBankPage";
 
 
 // Admin layout + pages
-import AdminLayout from "./components/admin/AdminLayout";
-import MyBasePage from "./pages/MyBasePage";
 import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminEstimateDetailPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage, AdminHelpPage } from "./pages/admin";
-import AdminQuoteBuilderPageUnified from "./pages/admin/AdminQuoteBuilderPageUnified";
-import AdminProposalBuilderPage from "./pages/admin/AdminProposalBuilderPage";
-import AdminCatalogPage from "./pages/admin/AdminCatalogPage";
-import AdminUnassignedQueuePage from "./pages/admin/AdminUnassignedQueuePage";
-import AdminJobsMapPage from "./pages/admin/AdminJobsMapPage";
-import AdminMaintenancePage from "./pages/admin/AdminMaintenancePage";
-import AdminCustomersPage from "./pages/admin/AdminCustomersPage";
-import AdminCustomerDetailPage from "./pages/admin/AdminCustomerDetailPage";
-import AdminJobDetailPage from "./pages/admin/AdminJobDetailPage";
 import AdminJobsHubPage, { JobsDispatchRedirect, DispatchCalendarRedirect } from "./pages/admin/AdminJobsHubPage";
-import AdminMyJobsPage from "./pages/admin/AdminMyJobsPage";
-import AdminMyAppointmentsPage from "./pages/admin/AdminMyAppointmentsPage";
 import { AdminVisitsPage, AdminVisitDetailPage } from "./pages/admin/AdminVisitsPage";
-import AdminPriceListsPage from "./pages/admin/AdminPriceListsPage";
-import AdminOssExtrasPage from "./pages/admin/AdminOssExtrasPage";
-import FieldSchedulePage from "./pages/FieldSchedulePage";
-import FieldJobSheetPage from "./pages/FieldJobSheetPage";
 
 // Lazy-loaded admin pages (simple wrappers)
-import InventoryList from "./components/inventory/InventoryList";
-import ReportBuilder from "./components/reports/ReportBuilder";
-import AnalyticsDashboard from "./components/analytics/AnalyticsDashboard";
-import AdminNotificationSettings from "./components/AdminNotificationSettings";
-import AdminChangeRequestsPage from "./pages/admin/AdminChangeRequestsPage";
-import AuditLogViewer from "./components/audit/AuditLogViewer";
-import AdminSettingsPage from "./components/AdminSettingsPage";
-import ServiceAgreements from "./components/ServiceAgreements";
-import AdminAdvancedReportsPage from "./pages/admin/AdminAdvancedReportsPage";
-import AccountsAgingReportPage from "./pages/admin/reports/AccountsAgingReportPage";
-import SalesByClientReportPage from "./pages/admin/reports/SalesByClientReportPage";
-import SalesByProductReportPage from "./pages/admin/reports/SalesByProductReportPage";
-import VatSummaryReportPage from "./pages/admin/reports/VatSummaryReportPage";
-import AdminTeamPage from "./pages/admin/AdminTeamPage";
-import AdminAreasPage from "./pages/admin/AdminAreasPage";
 
 
-import AdminSuppliersPage from "./pages/admin/AdminSuppliersPage";
-import AdminSpecialsPage from "./pages/admin/AdminSpecialsPage";
-import AdminConsumablesPage from "./pages/admin/AdminConsumablesPage";
-import AdminCallsPage from "./pages/admin/AdminCallsPage";
-import AdminPDFDocumentsPage from "./pages/admin/AdminPDFDocumentsPage";
-import AdminBrochuresPage from "./pages/admin/AdminBrochuresPage";
 
 // FreshBooks multi-tenant
 import { CompanyProvider } from "./providers/CompanyProvider";
-import FBLayout from "./components/freshbooks/FBLayout";
-import FBDashboard from "./components/freshbooks/FBDashboard";
-import FBInvoiceList from "./components/freshbooks/FBInvoiceList";
-import FBEstimatesList from "./components/freshbooks/FBEstimatesList";
-import FBExpensesList from "./components/freshbooks/FBExpensesList";
-import FBTimeTracking from "./components/freshbooks/FBTimeTracking";
-import FBContactsList from "./components/freshbooks/FBContactsList";
-import FBReports from "./components/freshbooks/FBReports";
-import FBPaymentsList from "./components/freshbooks/FBPaymentsList";
-import FBClientPortal from "./components/freshbooks/FBClientPortal";
-import FBProjectsList from "./components/freshbooks/FBProjectsList";
-import CompanyManagement from "./components/freshbooks/CompanyManagement";
-import FBCreateInvoicePage from "./pages/FBCreateInvoicePage";
-import FBCreateEstimatePage from "./pages/FBCreateEstimatePage";
+const CustomerPortal = lazy(() => import("./pages/CustomerPortal"));
+const AdminMoneyPage = lazy(() => import("./pages/admin/AdminMoneyPage"));
+const AdminMyCommissionPage = lazy(() => import("./pages/admin/AdminMyCommissionPage"));
+const FieldEarningsPage = lazy(() => import("./pages/FieldEarningsPage"));
+const CustomerFeedbackForm = lazy(() => import("./components/CustomerFeedbackForm"));
+const CustomerInvoiceView = lazy(() => import("./components/CustomerInvoiceView"));
+const UnifiedOnboarding = lazy(() => import("./pages/UnifiedOnboarding"));
+const IndependentSignup = lazy(() => import("./pages/IndependentSignup"));
+const SetPassword = lazy(() => import("./pages/SetPassword"));
+const ClientProposalView = lazy(() => import("./components/client/ClientProposalView"));
+const PublicStatement = lazy(() => import("./pages/PublicStatement"));
+const AdminExpensesPage = lazy(() => import("./pages/admin/AdminExpensesPage"));
+const AdminBankPage = lazy(() => import("./pages/admin/AdminBankPage"));
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
+const MyBasePage = lazy(() => import("./pages/MyBasePage"));
+const AdminQuoteBuilderPageUnified = lazy(() => import("./pages/admin/AdminQuoteBuilderPageUnified"));
+const AdminProposalBuilderPage = lazy(() => import("./pages/admin/AdminProposalBuilderPage"));
+const AdminCatalogPage = lazy(() => import("./pages/admin/AdminCatalogPage"));
+const AdminUnassignedQueuePage = lazy(() => import("./pages/admin/AdminUnassignedQueuePage"));
+const AdminJobsMapPage = lazy(() => import("./pages/admin/AdminJobsMapPage"));
+const AdminMaintenancePage = lazy(() => import("./pages/admin/AdminMaintenancePage"));
+const AdminCustomersPage = lazy(() => import("./pages/admin/AdminCustomersPage"));
+const AdminCustomerDetailPage = lazy(() => import("./pages/admin/AdminCustomerDetailPage"));
+const AdminJobDetailPage = lazy(() => import("./pages/admin/AdminJobDetailPage"));
+const AdminMyJobsPage = lazy(() => import("./pages/admin/AdminMyJobsPage"));
+const AdminMyAppointmentsPage = lazy(() => import("./pages/admin/AdminMyAppointmentsPage"));
+const AdminPriceListsPage = lazy(() => import("./pages/admin/AdminPriceListsPage"));
+const AdminOssExtrasPage = lazy(() => import("./pages/admin/AdminOssExtrasPage"));
+const FieldSchedulePage = lazy(() => import("./pages/FieldSchedulePage"));
+const FieldJobSheetPage = lazy(() => import("./pages/FieldJobSheetPage"));
+const InventoryList = lazy(() => import("./components/inventory/InventoryList"));
+const ReportBuilder = lazy(() => import("./components/reports/ReportBuilder"));
+const AnalyticsDashboard = lazy(() => import("./components/analytics/AnalyticsDashboard"));
+const AdminNotificationSettings = lazy(() => import("./components/AdminNotificationSettings"));
+const AdminChangeRequestsPage = lazy(() => import("./pages/admin/AdminChangeRequestsPage"));
+const AuditLogViewer = lazy(() => import("./components/audit/AuditLogViewer"));
+const AdminSettingsPage = lazy(() => import("./components/AdminSettingsPage"));
+const ServiceAgreements = lazy(() => import("./components/ServiceAgreements"));
+const AdminAdvancedReportsPage = lazy(() => import("./pages/admin/AdminAdvancedReportsPage"));
+const AccountsAgingReportPage = lazy(() => import("./pages/admin/reports/AccountsAgingReportPage"));
+const SalesByClientReportPage = lazy(() => import("./pages/admin/reports/SalesByClientReportPage"));
+const SalesByProductReportPage = lazy(() => import("./pages/admin/reports/SalesByProductReportPage"));
+const VatSummaryReportPage = lazy(() => import("./pages/admin/reports/VatSummaryReportPage"));
+const AdminTeamPage = lazy(() => import("./pages/admin/AdminTeamPage"));
+const AdminAreasPage = lazy(() => import("./pages/admin/AdminAreasPage"));
+const AdminSuppliersPage = lazy(() => import("./pages/admin/AdminSuppliersPage"));
+const AdminSpecialsPage = lazy(() => import("./pages/admin/AdminSpecialsPage"));
+const AdminConsumablesPage = lazy(() => import("./pages/admin/AdminConsumablesPage"));
+const AdminCallsPage = lazy(() => import("./pages/admin/AdminCallsPage"));
+const AdminPDFDocumentsPage = lazy(() => import("./pages/admin/AdminPDFDocumentsPage"));
+const AdminBrochuresPage = lazy(() => import("./pages/admin/AdminBrochuresPage"));
+const FBLayout = lazy(() => import("./components/freshbooks/FBLayout"));
+const FBDashboard = lazy(() => import("./components/freshbooks/FBDashboard"));
+const FBInvoiceList = lazy(() => import("./components/freshbooks/FBInvoiceList"));
+const FBEstimatesList = lazy(() => import("./components/freshbooks/FBEstimatesList"));
+const FBExpensesList = lazy(() => import("./components/freshbooks/FBExpensesList"));
+const FBTimeTracking = lazy(() => import("./components/freshbooks/FBTimeTracking"));
+const FBContactsList = lazy(() => import("./components/freshbooks/FBContactsList"));
+const FBReports = lazy(() => import("./components/freshbooks/FBReports"));
+const FBPaymentsList = lazy(() => import("./components/freshbooks/FBPaymentsList"));
+const FBClientPortal = lazy(() => import("./components/freshbooks/FBClientPortal"));
+const FBProjectsList = lazy(() => import("./components/freshbooks/FBProjectsList"));
+const CompanyManagement = lazy(() => import("./components/freshbooks/CompanyManagement"));
+const FBCreateInvoicePage = lazy(() => import("./pages/FBCreateInvoicePage"));
+const FBCreateEstimatePage = lazy(() => import("./pages/FBCreateEstimatePage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -130,6 +131,7 @@ const App = () => (
               <MandyActionsProvider>
               <MandyDock />
               <IdleLogoutGate />
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>}>
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<Index />} />
@@ -282,6 +284,7 @@ const App = () => (
                 {/* Catch-all */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </Suspense>
               </MandyActionsProvider>
             </BrowserRouter>
           </ErrorBoundary>
