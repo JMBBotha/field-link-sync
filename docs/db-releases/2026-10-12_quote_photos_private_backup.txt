@@ -1,0 +1,10 @@
+Prior state captured 2026-10-12 ~17:43 SAST (before quote_photos_private.sql)
+buckets: job-photos public=false; quote-photos public=true (no size/mime limits)
+objects: job-photos 18; quote-photos 0. quote_attachments rows: 0. quotes rows referencing quote-photos: 0.
+storage.objects policies touching these buckets:
+- "Admins can delete job photos" DELETE {public}: bucket_id='job-photos' AND has_role(auth.uid(),'admin')
+- "Auth users can delete own quote photos" DELETE {public}: bucket_id='quote-photos' AND auth.uid() IS NOT NULL
+- "Auth users can upload quote photos" INSERT {public} CHECK: bucket_id='quote-photos' AND auth.uid() IS NOT NULL
+- "Signed-in users can list public assets" SELECT {authenticated}: bucket_id = ANY('{company-logos,product-images,quote-photos}')
+- "Uploaders can update their photos" UPDATE {public}: bucket_id='job-photos' AND auth.uid()::text = (storage.foldername(name))[1]
+- "p2_job_photos_insert" / "p2_job_photos_select": unchanged by this release (see 2026-10-09_p2_site_photos.sql)

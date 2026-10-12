@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import browserImageCompression from "browser-image-compression";
+import { quotePhotoFolder, quotePhotoRef } from "@/lib/quotePhotos";
+import QuotePhotoImg from "./QuotePhotoImg";
 import {
   Plus,
   Trash2,
@@ -98,21 +100,19 @@ const VisualSectionEditor = ({
     setUploadingIdx(sectionIdx);
     try {
       const urls: string[] = [];
+      const companyId = await quotePhotoFolder();
       for (const file of Array.from(e.target.files)) {
         const compressed = await browserImageCompression(file, {
           maxSizeMB: 1,
           maxWidthOrHeight: 1920,
           useWebWorker: true,
         });
-        const path = `sections/${quoteId || "unsaved"}/${Date.now()}-${file.name}`;
+        const path = `${companyId}/sections/${quoteId || "unsaved"}/${crypto.randomUUID()}.jpg`;
         const { error: uploadError } = await supabase.storage
           .from("quote-photos")
           .upload(path, compressed);
         if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage
-          .from("quote-photos")
-          .getPublicUrl(path);
-        urls.push(urlData.publicUrl);
+        urls.push(quotePhotoRef(path));
       }
       const updated = [...sections];
       updated[sectionIdx].images = [
@@ -303,7 +303,7 @@ const VisualSectionEditor = ({
                       key={imgIdx}
                       className="relative group rounded-md overflow-hidden border aspect-video"
                     >
-                      <img
+                      <QuotePhotoImg
                         src={url}
                         alt=""
                         className="w-full h-full object-cover"

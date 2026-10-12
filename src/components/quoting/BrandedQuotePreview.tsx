@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { supabase } from "@/integrations/supabase/client";
 import type { VisualSection } from "./VisualSectionEditor";
+import QuotePhotoImg from "./QuotePhotoImg";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -186,7 +187,7 @@ const BrandedQuotePreview = ({ open, onOpenChange, quote }: BrandedQuotePreviewP
                 {section.images?.length > 0 && (
                   <div className={`mb-4 ${section.images.length === 1 ? "" : "grid grid-cols-2 gap-3"}`}>
                     {section.images.map((url, imgIdx) => (
-                      <img
+                      <QuotePhotoImg
                         key={imgIdx}
                         src={url}
                         alt={section.heading || `Image ${imgIdx + 1}`}

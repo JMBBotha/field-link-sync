@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Camera, X, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import browserImageCompression from "browser-image-compression";
+import { quotePhotoFolder, signedQuotePhotoUrl } from "@/lib/quotePhotos";
 
 interface Attachment {
   id?: string;
@@ -30,21 +31,20 @@ const PhotoUploader = ({ quoteId, attachments, onAttachmentsChange }: PhotoUploa
 
     try {
       const newAttachments: Attachment[] = [];
+      const companyId = await quotePhotoFolder();
       for (const file of Array.from(e.target.files)) {
         const compressed = await browserImageCompression(file, {
           maxSizeMB: 1,
           maxWidthOrHeight: 1920,
           useWebWorker: true,
         });
-        const path = `${quoteId}/${Date.now()}-${file.name}`;
+        const path = `${companyId}/${quoteId}/${crypto.randomUUID()}.jpg`;
         const { error: uploadError } = await supabase.storage
           .from("quote-photos")
           .upload(path, compressed);
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabase.storage
-          .from("quote-photos")
-          .getPublicUrl(path);
+        const signedUrl = await signedQuotePhotoUrl(path);
 
         const { error: dbError } = await supabase
           .from("quote_attachments")
@@ -55,7 +55,7 @@ const PhotoUploader = ({ quoteId, attachments, onAttachmentsChange }: PhotoUploa
           storage_path: path,
           filename: file.name,
           caption: "",
-          url: urlData.publicUrl,
+          url: signedUrl,
         });
       }
       onAttachmentsChange([...attachments, ...newAttachments]);
