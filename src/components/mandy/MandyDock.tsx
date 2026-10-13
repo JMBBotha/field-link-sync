@@ -34,6 +34,7 @@ import { honestMessage, routeReached, finalReplyFrom } from "@/lib/mandy/verify"
 import { BUILD_ID, staleWriteRefusal, useBuildStatus, checkForNewBuild, softReload, STALE_WRITE_MESSAGE, hasUnsavedChanges } from "@/lib/buildInfo";
 import { touchedPatch } from "@/lib/mandy/pronouns";
 import { useMandyGo } from "@/lib/mandy/go";
+import { useAssistantConfig } from "@/hooks/useAssistantConfig";
 import { formatForSpeech, formatReplyText } from "@/lib/mandy/speech";
 import { useWorkflowMandyActions } from "@/components/mandy/MandyWorkflowActions";
 import { greetThenListen } from "@/lib/mandy/greetThenListen";
@@ -221,6 +222,7 @@ export default function MandyDock() {
   const { user } = useAuth();
   const { open, setOpen } = useMandyDock();
   const registry = useMandyRegistry();
+  const { cfg: assistantCfg } = useAssistantConfig();
   useGlobalMandyActions();
   useWorkflowMandyActions();
 
@@ -657,7 +659,7 @@ export default function MandyDock() {
       <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
         <div className="flex items-center gap-2 text-xs">
           <span className={`inline-flex h-2 w-2 rounded-full ${phase === "listening" ? "bg-destructive animate-pulse" : phase === "idle" ? "bg-primary" : "bg-primary animate-pulse"}`} />
-          <span className="font-medium text-foreground">Mandy</span>
+          <span className="font-medium text-foreground">{assistantCfg.bot_name || "Mandy"}</span>
           {mode === "quote" && <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">Quote mode</span>}
           <span className="text-muted-foreground">{statusText}</span>
           {(phase === "working" || phase === "hearing") && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}

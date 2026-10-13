@@ -16,6 +16,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireUser, authCorsHeaders } from "../_shared/auth.ts";
 import { toSpeech } from "../_shared/toSpeech.ts";
+import { tierFor, filterTools, routedCallAllowed, safeVoice, safeBotName, toneBlock, MANDY_VOICES, type MandyTier } from "../_shared/mandyPolicy.ts";
 
 const cors = authCorsHeaders;
 const json = (body: unknown, status = 200) =>
@@ -23,7 +24,7 @@ const json = (body: unknown, status = 200) =>
 
 const MODEL = Deno.env.get("XAI_CHAT_MODEL") || "grok-4.20-0309-non-reasoning";
 
-const SYSTEM = `You are Mandy, the in-app operations assistant for a South African air-conditioning company (0800-BE-COOL).
+const SYSTEM = `You control the in-app work assistant for this company.
 You control the app ONLY through the tools provided. The browser runs each tool and returns what actually happened.
 
 Rules:
@@ -162,6 +163,36 @@ const ROUTERS: Record<string, (key: string, messages: Msg[], tools: unknown[], f
 
 export { toSpeech };
 
+
+/** Who is asking: tier (server-side, never trusted from the browser), company, bot name + voice. */
+type MandyCtx = { tier: MandyTier; companyId: string | null; companyName: string; botName: string; voice: string };
+async function loadCtx(userId: string | null, roles: string[]): Promise<MandyCtx> {
+  const fallback: MandyCtx = { tier: "viewer", companyId: null, companyName: "", botName: "Mandy", voice: "liora" };
+  if (!userId) return fallback;
+  try {
+    const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+    const [{ data: prof }, sales, tech] = await Promise.all([
+      db.from("profiles").select("company_id").eq("id", userId).maybeSingle(),
+      db.rpc("is_sales_rep", { _uid: userId }),
+      db.rpc("is_field_tech_only", { _uid: userId }),
+    ]);
+    const companyId = (prof as { company_id?: string } | null)?.company_id ?? null;
+    let companyName = ""; let botName = "Mandy"; let voice = "liora";
+    if (companyId) {
+      const [{ data: co }, { data: cfg }] = await Promise.all([
+        db.from("companies").select("name").eq("id", companyId).maybeSingle(),
+        db.from("company_assistant_config").select("bot_name, voice_id").eq("company_id", companyId).maybeSingle(),
+      ]);
+      companyName = String((co as { name?: string } | null)?.name ?? "");
+      botName = safeBotName((cfg as { bot_name?: string } | null)?.bot_name);
+      voice = safeVoice((cfg as { voice_id?: string } | null)?.voice_id);
+    }
+    return { tier: tierFor(roles, { salesRep: sales.data === true, techOnly: tech.data === true }), companyId, companyName, botName, voice };
+  } catch {
+    return fallback; // least privilege on any failure
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   const auth = await requireUser(req);
@@ -171,6 +202,11 @@ Deno.serve(async (req) => {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json({ error: "Invalid request body." }, 400); }
   const action = String(body.action ?? "");
+  const mctx = await loadCtx(auth.userId, auth.roles);
+
+  if (action === "config") {
+    return json({ bot_name: mctx.botName, voice: mctx.voice, voices: MANDY_VOICES, tier: mctx.tier });
+  }
 
   if (action === "audit") {
     if (!auth.userId) return json({ ok: false });
@@ -182,7 +218,7 @@ Deno.serve(async (req) => {
       user_id: auth.userId,
       company_id: prof?.company_id ?? null,
       tool_name: `mandy_grok:${tool}`,
-      args: { channel: "mandy_grok", ...reqMeta(req), client_build: typeof body.client_build === "string" ? body.client_build.slice(0, 40) : null, ...(typeof body.args === "object" && body.args ? body.args as object : {}) },
+      args: { channel: "mandy_grok", tier: mctx.tier, bot_name: mctx.botName, confirmed: body.confirmed === true, ...reqMeta(req), client_build: typeof body.client_build === "string" ? body.client_build.slice(0, 40) : null, ...(typeof body.args === "object" && body.args ? body.args as object : {}) },
       result: typeof body.result === "object" ? body.result : { text: String(body.result ?? "").slice(0, 500) },
       status: body.ok ? "success" : "error",
       resource_type: "voice_action",
@@ -194,12 +230,13 @@ Deno.serve(async (req) => {
 
   if (action === "tts") {
     const text = String(body.text ?? "").trim().slice(0, 1200);
+    const voiceId = body.preview_voice ? safeVoice(body.preview_voice) : mctx.voice;
     if (!text) return json({ error: "No text." }, 400);
     const spoken = toSpeech(text);
     const res = await fetch("https://api.x.ai/v1/tts", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ text: spoken, voice_id: "liora", language: "en" }),
+      body: JSON.stringify({ text: spoken, voice_id: voiceId, language: "en" }),
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
@@ -225,11 +262,12 @@ Deno.serve(async (req) => {
       return json({ stale_client: true, text: STALE_TEXT, action: null, args: {}, confidence: 1, tool_call: null });
     }
     const messages = Array.isArray(body.messages) ? (body.messages as Msg[]).slice(-40) : [];
-    const tools = Array.isArray(body.tools) ? (body.tools as unknown[]).slice(0, 40) : [];
+    const rawTools = Array.isArray(body.tools) ? (body.tools as unknown[]).slice(0, 40) : [];
+    const { kept: tools, dropped } = filterTools(mctx.tier, rawTools);
     if (!messages.length) return json({ error: "No messages." }, 400);
     const ctx = body.context && typeof body.context === "object" ? JSON.stringify(body.context).slice(0, 1500) : "{}";
     const full: Msg[] = [
-      { role: "system", content: `${SYSTEM}\n\nCurrent screen context (hint only): ${ctx}` },
+      { role: "system", content: `${toneBlock(mctx.botName, mctx.companyName)}\n\n${SYSTEM}\n\nCurrent screen context (hint only): ${ctx}` },
       ...messages,
     ];
     const provider = (Deno.env.get("MANDY_ROUTER_PROVIDER") || "grok").toLowerCase();
@@ -237,7 +275,17 @@ Deno.serve(async (req) => {
     if (!adapter) return json({ error: `Unknown MANDY_ROUTER_PROVIDER "${provider}".` }, 500);
     const out = await adapter(key, full, tools, body.force_text === true);
     if ("error" in out) return json({ error: out.error }, out.status === 429 ? 429 : 502);
-    return json({ ...out, provider });
+    if (!routedCallAllowed(mctx.tier, out.action, out.args ?? {})) {
+      try {
+        const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+        await db.from("nl_audit_log").insert({
+          user_id: auth.userId, company_id: mctx.companyId, tool_name: "mandy_grok:blocked_by_role",
+          args: { channel: "mandy_grok", tier: mctx.tier, action: out.action, dropped }, result: { blocked: true }, status: "error", resource_type: "voice_action",
+        });
+      } catch { /* never block the reply on logging */ }
+      return json({ action: null, args: {}, confidence: 1, text: "Sorry, I can't do that from your account.", tool_call: null, provider, blocked: true });
+    }
+    return json({ ...out, provider, tier: mctx.tier, dropped_tools: dropped.length ? dropped : undefined });
   }
 
   return json({ error: `Unknown action ${action}` }, 400);
