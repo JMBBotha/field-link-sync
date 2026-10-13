@@ -1,14 +1,15 @@
 import FullTermsSection from "@/components/client/FullTermsSection";
 import { useQuoteUnitCards, QuoteUnitCardsView } from "@/components/quoting/QuoteUnitCards";
 import type { CompanyProfile } from "@/lib/companyProfiles";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, CheckCircle, XCircle, Phone } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, CheckCircle, Phone, MessageSquare } from "lucide-react";
 import ClientDepositActions from "@/components/client/ClientDepositActions";
 import { useToast } from "@/hooks/use-toast";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
@@ -90,6 +91,13 @@ const ClientProposalView = () => {
   const [unitLines, setUnitLines] = useState<any[] | null>(null);
   const [showUnitCards, setShowUnitCards] = useState(false);
   const { cards: unitCards } = useQuoteUnitCards(unitLines, { enabled: showUnitCards });
+  // Ask for changes (Johan 2026-10-13 12:07)
+  const [changeState, setChangeState] = useState<{ open: boolean; requested_at: string } | null>(null);
+  const [showChanges, setShowChanges] = useState(false);
+  const [changeMsg, setChangeMsg] = useState("");
+  const [changePhone, setChangePhone] = useState("");
+  const acceptRef = useRef<HTMLDivElement>(null);
+  const changesRef = useRef<HTMLDivElement>(null);
 
 
   useEffect(() => {
@@ -137,6 +145,8 @@ const ClientProposalView = () => {
       setUnitLines(bundle.items || []);
       supabase.rpc("public_quote_show_unit_cards" as never, { p_token: token } as never)
         .then(({ data }: any) => setShowUnitCards(data === true), () => setShowUnitCards(false));
+      supabase.rpc("public_quote_change_state" as never, { p_token: token } as never)
+        .then(({ data }: any) => setChangeState(data && data.open ? data : null), () => setChangeState(null));
       setCustomer(bundle.customer || null);
       setCompany(bundle.company || null);
       setCompanyProfile(bundle.profile || null);
@@ -200,7 +210,34 @@ const ClientProposalView = () => {
     }
   };
 
+  const handleRequestChanges = async () => {
+    if (changeMsg.trim().length < 3) {
+      toast({ title: "Tell us what you'd like changed", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { data: ok, error: e } = await supabase.rpc("request_quote_changes" as never, {
+        p_token: token!, p_message: changeMsg.trim(), p_name: acceptedName.trim() || null, p_phone: changePhone.trim() || null,
+      } as never);
+      if (e) throw e;
+      if (ok) {
+        setChangeState({ open: true, requested_at: new Date().toISOString() });
+        setChangeMsg("");
+        setShowChanges(false);
+        toast({ title: "Request sent", description: "Your consultant will update the quote." });
+      } else {
+        toast({ title: "Unable to send request", description: "This quote can no longer be changed online. Please contact us.", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Failed to send request", description: err?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleDecline = async () => {
+    if (!window.confirm("Decline this quote?")) return;
     setSubmitting(true);
     try {
       const { data: success } = await supabase.rpc("decline_quote_by_token", { p_token: token! });
@@ -239,7 +276,14 @@ const ClientProposalView = () => {
 
   if (!quote) return null;
 
-  const isActionable = ["sent", "viewed", "draft"].includes(quote.status) && !actionDone;
+  // Drafts are not accepted online (Johan 2026-10-13); the database refuses them too.
+  const isActionable = ["sent", "viewed"].includes(quote.status) && !actionDone;
+  const isDraft = quote.status === "draft" && !actionDone;
+  const brandName = (companyProfile as any)?.legal_name || (companyProfile as any)?.trading_name || company?.company_name || "";
+  const headerLogo: string | null = (companyProfile as any)?.logo_url || (/^massair ct\b/i.test(brandName) ? "/email/logo-block-shadow.png" : null);
+  const brandPhone: string | null = (companyProfile as any)?.phone || null;
+  const fmtR = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n || 0);
+  const goTo = (el: HTMLElement | null) => el?.scrollIntoView({ behavior: "smooth", block: "center" });
 
   const discountValue = Number(quote.discount_value) || 0;
   const isPercentDiscount = quote.discount_type === "percent" || quote.discount_type === "percentage";
@@ -254,11 +298,16 @@ const ClientProposalView = () => {
   const customerName = tidyName(customer?.name || quote.customer_name || "") || "Valued Customer";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div className={`min-h-screen bg-gradient-to-b from-blue-50 to-white ${isActionable ? "pb-40" : ""}`}>
       {/* Cover Header */}
       <header className="bg-primary text-white px-4 py-8 print:hidden">
         <div className="max-w-4xl mx-auto text-center">
-          <img src={logo} alt="Be Cool" className="h-16 mx-auto mb-4" />
+          {/* Sending company's own logo (Johan 13 Oct 12:09): profile logo, Massair CT = the designed logo block, else the name. */}
+          {headerLogo ? (
+            <img src={headerLogo} alt={brandName || "Logo"} className="h-16 mx-auto mb-4 bg-white rounded-lg p-1.5" />
+          ) : brandName ? (
+            <div className="text-xl font-extrabold mb-3">{brandName}</div>
+          ) : null}
           <h1 className="text-2xl md:text-3xl font-bold">
             {customerName ? `${customerName} — Quote / Proposal` : "Quote / Proposal"}
           </h1>
@@ -268,6 +317,8 @@ const ClientProposalView = () => {
             <Badge className="mt-3 bg-emerald-500 text-white text-sm px-4 py-1">✅ Accepted</Badge>
           ) : quote.status === "declined" || actionDone === "declined" ? (
             <Badge className="mt-3 bg-red-500 text-white text-sm px-4 py-1">Declined</Badge>
+          ) : changeState?.open ? (
+            <Badge className="mt-3 bg-amber-500 text-white text-sm px-4 py-1">Changes requested</Badge>
           ) : null}
         </div>
       </header>
@@ -319,11 +370,54 @@ const ClientProposalView = () => {
           </Card>
         ))}
 
-        {/* Accept/Decline Actions */}
+        {isDraft && (
+          <Card className="rounded-2xl border-0 shadow-md print:hidden">
+            <CardContent className="p-5 text-center text-sm text-muted-foreground">
+              This quote is still being prepared. You'll be able to accept it once it has been sent to you.
+            </CardContent>
+          </Card>
+        )}
+
+        {isActionable && changeState?.open && (
+          <Card className="rounded-2xl border-0 shadow-md bg-amber-50 border-t-4 border-t-amber-500 print:hidden">
+            <CardContent className="p-5 text-center text-sm text-amber-800">
+              Changes requested on {new Date(changeState.requested_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}. Your consultant will update the quote and send it again.
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Ask for changes */}
+        {isActionable && showChanges && (
+          <div ref={changesRef}>
+            <Card className="rounded-2xl shadow-lg border-2 border-[#F7941D] print:hidden">
+              <CardContent className="p-5 space-y-3">
+                <h3 className="font-semibold text-foreground">Ask for changes</h3>
+                <p className="text-sm text-muted-foreground">Tell us what you'd like changed. Your consultant will update the quote.</p>
+                <Textarea
+                  value={changeMsg}
+                  onChange={(e) => setChangeMsg(e.target.value.slice(0, 2000))}
+                  placeholder="e.g. Can you quote a 12K unit for the main bedroom instead?"
+                  className="rounded-xl min-h-[96px]"
+                />
+                <Input value={changePhone} onChange={(e) => setChangePhone(e.target.value)} placeholder="Best number to reach you (optional)" className="rounded-xl" inputMode="tel" />
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setShowChanges(false)} disabled={submitting}>Cancel</Button>
+                  <Button onClick={handleRequestChanges} disabled={submitting} className="bg-[#0B4FA8] hover:bg-[#0B4FA8]/90 text-white rounded-lg">
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <MessageSquare className="h-4 w-4 mr-2" />}
+                    Send request
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Accept */}
         {isActionable && (
-          <Card className="rounded-2xl shadow-lg border-0 border-t-4 border-t-primary print:hidden">
+          <div ref={acceptRef}>
+          <Card className="rounded-2xl shadow-lg border-0 border-t-4 border-t-emerald-600 print:hidden">
             <CardContent className="p-6 space-y-5">
-              <h3 className="text-lg font-semibold text-center text-foreground">Accept This Quote</h3>
+              <h3 className="text-lg font-semibold text-center text-foreground">Accept this quote</h3>
 
               <div className="space-y-1.5">
                 <p className="text-sm text-muted-foreground">Complete full name</p>
@@ -335,34 +429,22 @@ const ClientProposalView = () => {
                 />
               </div>
 
-              {/* Signature Pad (DPR-correct, touch + mouse) */}
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Signature (optional)</p>
                 <SignaturePad value={signature} onChange={setSignature} height={160} />
               </div>
 
-
-              <div className="flex gap-3">
-                <Button
-                  onClick={handleAccept}
-                  disabled={submitting}
-                  className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white h-12"
-                >
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                  Accept Quote
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleDecline}
-                  disabled={submitting}
-                  className="flex-1 rounded-xl h-12 text-destructive border-destructive/30 hover:bg-destructive/5"
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Decline
-                </Button>
-              </div>
+              <Button
+                onClick={handleAccept}
+                disabled={submitting}
+                className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white h-12 text-base font-bold"
+              >
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                Accept quote · {fmtR(Number(quote.total) || 0)}
+              </Button>
             </CardContent>
           </Card>
+          </div>
         )}
 
         {/* Outcome Messages */}
@@ -398,26 +480,55 @@ const ClientProposalView = () => {
         {/* Footer */}
         <div className="text-center py-6 space-y-3">
           <p className="text-sm text-muted-foreground">Questions? Contact us anytime</p>
-          <div className="flex justify-center gap-3">
-            <Button size="sm" variant="outline" asChild>
-              <a href="tel:0800232665">
-                <Phone className="h-4 w-4 mr-2" />
-                0800-BE-COOL
-              </a>
-            </Button>
-          </div>
+          {brandPhone && (
+            <div className="flex justify-center gap-3">
+              <Button size="sm" variant="outline" asChild>
+                <a href={`tel:${brandPhone.replace(/[^\d+]/g, "")}`}>
+                  <Phone className="h-4 w-4 mr-2" />
+                  {brandPhone}
+                </a>
+              </Button>
+            </div>
+          )}
           <div className="border-t pt-4 mt-4 space-y-2">
             <p className="text-xs text-muted-foreground">
-              By accepting this quote, you consent to AC Super Service processing your personal information
+              By accepting this quote, you consent to {brandName || "us"} processing your personal information
               in accordance with the Protection of Personal Information Act (POPIA).
             </p>
             <p className="text-xs text-muted-foreground">
               <a href="#" className="underline hover:text-foreground">Privacy Policy</a> | <a href="#" className="underline hover:text-foreground">Terms & Conditions</a>
             </p>
           </div>
-          <p className="text-xs text-muted-foreground mt-4">AC Super Service © {new Date().getFullYear()}</p>
+          <p className="text-xs text-muted-foreground mt-4">{brandName} © {new Date().getFullYear()}</p>
         </div>
       </main>
+
+      {/* Sticky action bar (Johan 2026-10-13): total, big green Accept, smaller Ask for changes */}
+      {isActionable && (
+        <div className="fixed inset-x-0 bottom-0 z-40 bg-white shadow-[0_-4px_14px_rgba(0,0,0,0.12)] print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <div className="max-w-4xl mx-auto px-4 py-3">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-muted-foreground">Total incl. VAT</span>
+              <b className="text-[#0B4FA8]">{fmtR(Number(quote.total) || 0)}</b>
+            </div>
+            <Button
+              onClick={() => goTo(acceptRef.current)}
+              disabled={submitting}
+              className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-extrabold"
+            >
+              <CheckCircle className="h-5 w-5 mr-2" /> Accept quote
+            </Button>
+            <div className="flex items-center justify-center gap-4 mt-2">
+              <Button size="sm" variant="outline" className="h-8 text-xs text-[#0B4FA8]" onClick={() => { setShowChanges(true); setTimeout(() => goTo(changesRef.current), 50); }}>
+                Ask for changes
+              </Button>
+              <button type="button" onClick={handleDecline} disabled={submitting} className="text-xs text-muted-foreground underline">
+                Decline
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

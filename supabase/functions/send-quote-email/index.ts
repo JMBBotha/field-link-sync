@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
-import { renderSignatureHtml, renderReminderSignatureHtml, renderSignatureText } from "../_shared/emailSignature.ts";
-import { loadSignaturePerson, replyToFor } from "../_shared/signaturePerson.ts";
+import { renderSignatureHtml, renderReminderSignatureHtml, renderSignatureText, isDesignedCompany, SIGNATURE_IMAGE_BASE, type SignatureCompany } from "../_shared/emailSignature.ts";
+import { loadSignaturePerson, loadSignatureCompany, replyToFor } from "../_shared/signaturePerson.ts";
 import { loadUnitCardsStripHtml } from "../_shared/unitCardsEmail.ts";
 
 const corsHeaders = {
@@ -15,139 +15,77 @@ function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(value);
 }
 
-function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, totalAmount: number, unsubscribeUrl: string, quoteUrl?: string | null, depositRequest = false, signatureHtml = "", unitCardsHtml = ""): string {
+type Brand = { sig: SignatureCompany | null; name: string; phone: string | null; email: string | null; website: string | null; logoUrl: string | null; depositPct: number | null; validUntil: string | null };
+const escH = (v: unknown) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+const firstName = (n?: string | null) => { const t = String(n || "").trim(); if (!t) return ""; return /\b(pty|ltd|cc|inc|trust|construction|estates?)\b/i.test(t) ? t : t.split(/\s+/)[0]; };
+
+// Sender company details come from that company's own record (Johan 13 Oct 12:07: no hardcoding).
+async function loadBrand(sb: any, quoteId?: string | null): Promise<Brand> {
+  const b: Brand = { sig: null, name: "", phone: null, email: null, website: null, logoUrl: null, depositPct: null, validUntil: null };
+  if (!quoteId) return b;
+  try {
+    const { data: q } = await sb.from("quotes").select("company_id, valid_until, payment_plan").eq("id", quoteId).maybeSingle();
+    if (!q?.company_id) return b;
+    const [{ data: prof }, { data: cs }] = await Promise.all([
+      sb.from("company_profiles").select("legal_name, trading_name, phone, email, website, logo_url").eq("company_id", q.company_id).is("archived_at", null).order("is_default", { ascending: false }).order("created_at").limit(1).maybeSingle(),
+      sb.from("company_settings").select("company_name, default_deposit_percentage").eq("company_id", q.company_id).order("is_primary", { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    b.sig = await loadSignatureCompany(sb, q.company_id);
+    b.name = prof?.legal_name || prof?.trading_name || cs?.company_name || "";
+    if (b.sig) b.name = b.sig.legalName;
+    b.phone = prof?.phone || null; b.email = prof?.email || null; b.website = prof?.website || null;
+    // Sending company's own logo at the top; Massair CT = the designed logo block (Johan 13 Oct 12:09).
+    b.logoUrl = prof?.logo_url || (b.sig && isDesignedCompany(b.sig) ? `${SIGNATURE_IMAGE_BASE}/logo-block-shadow.png` : null);
+    const planPct = Number(q?.payment_plan?.stages?.[0]?.pct);
+    const pct = Number.isFinite(planPct) && planPct > 0 ? planPct : Number(cs?.default_deposit_percentage);
+    b.depositPct = Number.isFinite(pct) && pct > 0 && pct <= 100 ? Math.round(pct) : null;
+    b.validUntil = q?.valid_until ? new Date(q.valid_until).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }) : null;
+  } catch (e) { console.error("brand load failed", e); }
+  return b;
+}
+
+function buildHtmlEmail(brand: Brand, clientName: string, quoteNumber: string, date: string, totalAmount: number, unsubscribeUrl: string, quoteUrl?: string | null, depositRequest = false, signatureHtml = "", unitCardsHtml = ""): string {
   const formattedTotal = formatZAR(totalAmount);
   const currentYear = new Date().getFullYear();
+  const company = escH(brand.name || "Your installer");
+  const hi = firstName(clientName);
+  const deposit = brand.depositPct ? `A ${brand.depositPct}% deposit is due on acceptance.` : "";
+  const validity = brand.validUntil ? `This quote is valid until <strong>${escH(brand.validUntil)}</strong>.` : "This quote is valid for <strong>30 days</strong> from the date of issue.";
+  const contact = brand.phone ? `call us on ${escH(brand.phone)}` : "reply to this email";
+  const row = (k: string, v: string, top = true) => `<tr><td style="padding:10px 14px;color:#6b7a8c;${top ? "border-top:1px solid #e3eaf2;" : ""}">${k}</td><td style="padding:10px 14px;text-align:right;${top ? "border-top:1px solid #e3eaf2;" : ""}">${v}</td></tr>`;
 
   return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Your Quote from 0800-BE-COOL!</title>
-</head>
-<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;">
-<tr><td align="center" style="padding:24px 16px;">
-
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-
-  <tr>
-    <td style="background-color:#1B3A5C;padding:28px 32px;text-align:center;">
-      <h1 style="margin:0;font-size:24px;font-weight:800;color:#ffffff;letter-spacing:0.5px;">0800-BE-COOL!</h1>
-      <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.85);letter-spacing:1px;text-transform:uppercase;">AC Super Service — Professional HVAC Solutions</p>
-    </td>
-  </tr>
-
-  <tr>
-    <td style="background-color:#F59E0B;height:6px;font-size:0;line-height:0;">&nbsp;</td>
-  </tr>
-
-  <tr>
-    <td style="padding:32px 32px 24px;">
-      <p style="margin:0 0 20px;font-size:16px;color:#111827;line-height:1.6;">
-        Dear <strong>${clientName || "Valued Customer"}</strong>,
-      </p>
-      <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-        ${depositRequest ? "Thank you for accepting your quotation. Your 70% deposit invoice is ready; use the secure link below to review and pay." : "Thank you for choosing 0800-BE-COOL! AC Super Service. We're pleased to present your air conditioning quotation. Please find the details below and the full quote PDF attached."}
-      </p>
-
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:28px;">
-        <tr>
-          <td style="padding:20px 24px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="padding-bottom:12px;">
-                  <p style="margin:0;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Quote Number</p>
-                  <p style="margin:4px 0 0;font-size:16px;font-weight:700;color:#1B3A5C;">${quoteNumber || "—"}</p>
-                </td>
-                <td style="padding-bottom:12px;text-align:right;">
-                  <p style="margin:0;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Date</p>
-                  <p style="margin:4px 0 0;font-size:14px;color:#111827;">${date}</p>
-                </td>
-              </tr>
-              <tr>
-                <td colspan="2" style="border-top:1px solid #bfdbfe;padding-top:14px;">
-                  <p style="margin:0;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Total Amount (Incl. VAT)</p>
-                  <p style="margin:6px 0 0;font-size:28px;font-weight:800;color:#1B3A5C;">${formattedTotal}</p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-
-      ${quoteUrl ? `
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-        <tr>
-          <td align="center">
-            <a href="${quoteUrl}" style="display:inline-block;background-color:#F59E0B;color:#1B3A5C;text-decoration:none;font-size:16px;font-weight:800;padding:14px 40px;border-radius:8px;letter-spacing:0.3px;">
-              ${depositRequest ? "View &amp; Pay Deposit" : "View &amp; Accept Quote"}
-            </a>
-          </td>
-        </tr>
-        <tr>
-          <td align="center" style="padding-top:12px;">
-            <p style="margin:0;font-size:12px;color:#6b7280;line-height:1.5;">
-              If the button does not work, copy this link into your browser:<br/>
-              <span style="color:#1B3A5C;word-break:break-all;">${quoteUrl}</span>
-            </p>
-          </td>
-        </tr>
-      </table>` : `
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-        <tr>
-          <td align="center">
-            <p style="margin:0;font-size:13px;color:#6b7280;">Reply to this email or call (021) 802-2889 to accept your quote.</p>
-          </td>
-        </tr>
-      </table>`}
-
-      ${unitCardsHtml}
-      <p style="margin:0 0 8px;font-size:13px;color:#6b7280;line-height:1.5;">
-        ⏱ This quotation is valid for <strong>30 days</strong> from the date of issue. A 70% deposit is required upon acceptance.
-      </p>
-      <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.5;">
-        ${depositRequest ? "Your deposit invoice is available from the secure quote link above." : "📎 The full itemised quotation PDF is attached to this email."}
-      </p>
-    </td>
-  </tr>
-
-  <tr>
-    <td style="padding:0 32px;">
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:0;"/>
-    </td>
-  </tr>
-
-  <tr>
-    <td style="padding:24px 32px 16px;">
-      ${signatureHtml || renderSignatureHtml(null)}
-    </td>
-  </tr>
-
-  <tr>
-    <td style="padding:0 32px 12px;">
-      <p style="margin:0;font-size:10px;color:#9ca3af;line-height:1.5;">
-        This email and any attachments are confidential and intended solely for the addressee. If you have received this email in error, please notify the sender immediately and delete this email. Prices quoted are in South African Rand (ZAR) and include VAT at 15% where indicated. Terms and conditions apply — see attached quotation for full details. © ${currentYear} 0800-BE-COOL! AC Super Service. All rights reserved.
-      </p>
-    </td>
-  </tr>
-
-  <tr>
-    <td style="padding:0 32px 24px;">
-      <p style="margin:16px 0 0;font-size:11px;color:#94a3b8;line-height:1.5;">
-        You received this email because you requested a quote or are a valued client of 0800BeCool.
-        <a href="${unsubscribeUrl}" style="color:#64748b;text-decoration:underline;">Unsubscribe from future marketing emails</a>
-      </p>
-    </td>
-  </tr>
-
-</table>
-
-</td></tr>
-</table>
-</body>
-</html>`;
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Your quotation from ${company}</title></head>
+<body style="margin:0;padding:0;background-color:#eef3f9;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef3f9;"><tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:10px;overflow:hidden;">
+  <tr><td style="background:#0B4FA8;background-image:linear-gradient(90deg,#0B4FA8,#1AA7EC);padding:22px 28px;color:#ffffff;">
+    ${brand.logoUrl ? `<div style="background:#ffffff;border-radius:8px;display:inline-block;padding:6px 10px;margin-bottom:10px;"><img src="${escH(brand.logoUrl)}" alt="${company}" width="180" style="display:block;width:180px;max-width:180px;height:auto;border:0;"></div>` : ""}
+    <div style="font-size:20px;font-weight:800;">${company}</div>
+    <div style="font-size:12px;opacity:.9;">${depositRequest ? "Your deposit invoice is ready" : "Your quotation is ready"}</div>
+  </td></tr>
+  <tr><td style="padding:24px 28px;color:#1d2a3a;font-size:14px;line-height:1.5;">
+    ${hi ? `Hi ${escH(hi)},` : "Hello,"}<br><br>
+    ${depositRequest ? `Thank you for accepting your quotation.${brand.depositPct ? ` Your ${brand.depositPct}% deposit invoice is ready.` : " Your deposit invoice is ready."} Use the button below to view and pay it.` : "Thank you for the opportunity. Your quotation is ready to view online."}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;border:1px solid #e3eaf2;border-radius:8px;border-collapse:separate;font-size:13px;">
+      ${row("Quote", `<b>${escH(quoteNumber || "—")}</b>`, false)}
+      ${row("Date", escH(date))}
+      ${!depositRequest && brand.validUntil ? row("Valid until", escH(brand.validUntil)) : ""}
+      <tr><td style="padding:12px 14px;font-weight:800;color:#0B4FA8;border-top:3px solid #F7941D;">Total incl. VAT</td><td style="padding:12px 14px;text-align:right;font-weight:800;color:#0B4FA8;font-size:18px;border-top:3px solid #F7941D;">${formattedTotal}</td></tr>
+    </table>
+    ${quoteUrl ? `<div style="text-align:center;margin:22px 0 8px;"><a href="${escH(quoteUrl)}" style="display:inline-block;background:#F7941D;color:#ffffff;text-decoration:none;font-size:17px;font-weight:800;padding:16px 56px;border-radius:8px;">${depositRequest ? "View &amp; pay deposit" : "View quote"}</a></div>
+    <div style="text-align:center;font-size:12px;color:#6b7a8c;">${depositRequest ? "" : "Open the quote to see every line, then accept it or ask for changes there.<br>"}${depositRequest ? "" : "The full quote PDF is attached."}</div>
+    <div style="text-align:center;font-size:11px;color:#9aa7b5;margin-top:8px;word-break:break-all;">If the button does not work, copy this link: ${escH(quoteUrl)}</div>`
+    : `<p style="text-align:center;font-size:13px;color:#6b7a8c;">To accept, ${contact}.</p>`}
+    <div style="margin-top:22px;">${unitCardsHtml}</div>
+    ${depositRequest ? "" : `<p style="margin:0 0 8px;font-size:12px;color:#6b7a8c;">⏱ ${validity}${deposit ? " " + deposit : ""}</p>`}
+    <div style="margin-top:18px;border-top:1px solid #e3eaf2;padding-top:16px;">${signatureHtml || renderSignatureHtml(null)}</div>
+  </td></tr>
+  <tr><td style="background:#f2f9fe;padding:12px 28px;font-size:10px;color:#9aa7b5;line-height:1.5;">
+    This email and any attachments are confidential and intended solely for the addressee. Prices are in South African Rand (ZAR) and include VAT at 15% where indicated. E&amp;OE. Terms and conditions apply, see the quotation. © ${currentYear} ${company}.<br>
+    You received this email because you asked ${company} for a quote. <a href="${unsubscribeUrl}" style="color:#64748b;">Unsubscribe from marketing emails</a>
+  </td></tr>
+</table></td></tr></table></body></html>`;
 }
 
 serve(async (req) => {
@@ -176,13 +114,15 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: !self ? "No login email" : "RESEND_API_KEY not set" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const me = await loadSignaturePerson(sb, auth.userId);
+      const { data: myProf } = await sb.from("profiles").select("company_id").eq("id", auth.userId).maybeSingle();
+      const myCo = await loadSignatureCompany(sb, myProf?.company_id);
       const mailbox = Deno.env.get("QUOTES_FROM_EMAIL") || "wcquotes@0800becool.co.za";
       const r = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          from: `0800-BE-COOL! Quotes <${mailbox}>`, to: [self], subject: "Test: your email signature",
-          html: `<div style="font-family:Arial,sans-serif;font-size:14px;color:#111827">This is a test of your email signature. Replies go to: ${replyToFor(me) || mailbox}</div>${renderSignatureHtml(me)}<hr/><p style="font-family:Arial;font-size:12px;color:#6b7280">Automatic reminder version:</p>${renderReminderSignatureHtml(me)}`,
+          from: `${(myCo?.legalName || "Quotes").replace(/[<>"]/g, "")} <${mailbox}>`, to: [self], subject: "Test: your email signature",
+          html: `<div style="font-family:Arial,sans-serif;font-size:14px;color:#111827">This is a test of your email signature. Replies go to: ${replyToFor(me) || mailbox}</div>${renderSignatureHtml(me, undefined, myCo)}<hr/><p style="font-family:Arial;font-size:12px;color:#6b7280">Automatic reminder version:</p>${renderReminderSignatureHtml(me, undefined, myCo)}`,
           ...(replyToFor(me) ? { reply_to: replyToFor(me) } : {}),
         }),
       });
@@ -246,12 +186,13 @@ serve(async (req) => {
     
     // Sender mailbox: Western Cape quotes mailbox on the verified 0800becool.co.za domain.
     const QUOTES_MAILBOX = Deno.env.get("QUOTES_FROM_EMAIL") || "wcquotes@0800becool.co.za";
-    const FROM_ADDRESS = `0800-BE-COOL! Quotes <${QUOTES_MAILBOX}>`;
+    const brand = await loadBrand(supabase, quoteId);
+    const FROM_ADDRESS = `${(brand.name || "Quotes").replace(/[<>"]/g, "")} <${QUOTES_MAILBOX}>`;
 
     // Stable quote reference used in the subject, headers and metadata so that
     // client replies can be linked back to the correct quote / customer.
     const quoteRef = quoteNumber || (quoteId ? `Q-${String(quoteId).slice(0, 8)}` : "");
-    const baseSubject = subject || `Your 0800BeCool Quote`;
+    const baseSubject = subject || `Your quote from ${brand.name || "us"}`;
     const emailSubject = quoteRef && !baseSubject.includes(quoteRef)
       ? `${baseSubject} [Ref: ${quoteRef}]`.trim()
       : baseSubject.trim();
@@ -259,11 +200,11 @@ serve(async (req) => {
     const date = new Date().toLocaleDateString("en-ZA");
     // Signature + reply-to: the person who clicked Send (Johan 12 Oct: replies go to the sender's own address).
     const sender = await loadSignaturePerson(supabase, auth.userId);
-    const htmlBody = buildHtmlEmail(clientName, quoteNumber, date, totalAmount || 0, unsubscribeUrl, quoteUrl || null, Boolean(depositRequest), renderSignatureHtml(sender), depositRequest ? "" : await loadUnitCardsStripHtml(supabase, quoteId));
+    const htmlBody = buildHtmlEmail(brand, clientName, quoteNumber, date, totalAmount || 0, unsubscribeUrl, quoteUrl || null, Boolean(depositRequest), renderSignatureHtml(sender, undefined, brand.sig), depositRequest ? "" : await loadUnitCardsStripHtml(supabase, quoteId));
+    const hiTxt = firstName(clientName) ? `Hi ${firstName(clientName)},` : "Hello,";
     const textFallback = depositRequest
-      ? `Dear ${clientName || "Valued Customer"},\n\nYour 70% deposit invoice for quote ${quoteRef} is ready.${quoteUrl ? `\n\nView and pay it here: ${quoteUrl}` : ""}\n\nKind regards,\n0800-BE-COOL! Team`
-      : `Dear ${clientName || "Valued Customer"},\n\nYour quote ${quoteRef ? `(${quoteRef}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is ready.${quoteUrl ? `\n\nView and accept it here: ${quoteUrl}` : ""}\n\nThis quote is valid for 30 days. A 70% deposit is required upon acceptance. To accept, reply to this email (keep the reference ${quoteRef || ""} in the subject) or call (021) 802-2889.\n\nKind regards,\n\n${renderSignatureText(sender)}`;
-
+      ? `${hiTxt}\n\nThank you for accepting quote ${quoteRef}. Your ${brand.depositPct ? brand.depositPct + "% " : ""}deposit invoice is ready.${quoteUrl ? `\n\nView and pay it here: ${quoteUrl}` : ""}\n\nKind regards,\n\n${renderSignatureText(sender, brand.sig)}`
+      : `${hiTxt}\n\nYour quote ${quoteRef ? `(${quoteRef}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is ready.${quoteUrl ? `\n\nView quote: ${quoteUrl}\nYou can accept it or ask for changes there.` : ""}\n\n${brand.validUntil ? `Valid until ${brand.validUntil}.` : "Valid for 30 days."}${brand.depositPct ? ` A ${brand.depositPct}% deposit is due on acceptance.` : ""}\n\nKind regards,\n\n${renderSignatureText(sender, brand.sig)}`;
     const attachments: Array<{ filename: string; content: string }> = [];
     if (pdfBase64) {
       attachments.push({ filename: `Quote-${quoteRef || "draft"}.pdf`, content: pdfBase64 });

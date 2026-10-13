@@ -130,6 +130,17 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
     },
   });
 
+  // Open "Ask for changes" requests from the client page (Johan 2026-10-13). RLS = own company.
+  const { data: changeMsgs = {} } = useQuery({
+    queryKey: ["quote-change-requests-open"],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("quote_change_requests").select("quote_id, message, created_at").eq("status", "open").order("created_at", { ascending: false });
+      const m: Record<string, string> = {};
+      for (const r of data || []) if (!m[r.quote_id]) m[r.quote_id] = r.message;
+      return m;
+    },
+  });
+
   const { data: proposals = [] } = useQuery({
     queryKey: ["visual-proposals", search],
     queryFn: async () => {
@@ -492,6 +503,9 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                         </TableCell>
                         <TableCell>
                           <StatusPill status={doc.status} />
+                          {(changeMsgs as Record<string, string>)[doc.id] && (
+                            <span title={(changeMsgs as Record<string, string>)[doc.id]} className="ml-1 inline-block rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white align-middle">Changes requested</span>
+                          )}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                           {new Date(doc.created_at).toLocaleDateString("en-ZA")}

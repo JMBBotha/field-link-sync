@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { renderSignatureHtml, renderReminderSignatureHtml } from "../_shared/emailSignature.ts";
-import { loadSignaturePerson, replyToFor } from "../_shared/signaturePerson.ts";
+import { loadSignaturePerson, loadSignatureCompany, replyToFor } from "../_shared/signaturePerson.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,11 +42,18 @@ serve(async (req) => {
       return json(401, { error: "UNAUTHORIZED" });
     }
 
-    const { to, subject, html: rawHtml, reply_to, sender_user_id, signature_mode } = await req.json();
+    const { to, subject, html: rawHtml, reply_to, sender_user_id, signature_mode, company_id } = await req.json();
     // Signature (Johan 12 Oct): "person" = whoever sent it (+ reply-to them), "reminder" = salesperson + company,
     // "company" = company block only; no mode = html untouched (old callers). Inserted before </body> once.
     const person = signature_mode === "person" || signature_mode === "reminder" ? await loadSignaturePerson(supabase, sender_user_id) : null;
-    const sigHtml = signature_mode === "reminder" ? renderReminderSignatureHtml(person) : renderSignatureHtml(person);
+    // Sending company's own block (Johan 13 Oct): explicit company_id, else the sender's company; none = Massair CT design.
+    let coId: string | null = company_id || null;
+    if (!coId && sender_user_id && signature_mode) {
+      const { data: sp } = await supabase.from("profiles").select("company_id").eq("id", sender_user_id).maybeSingle();
+      coId = sp?.company_id || null;
+    }
+    const sigCompany = signature_mode ? await loadSignatureCompany(supabase, coId) : null;
+    const sigHtml = signature_mode === "reminder" ? renderReminderSignatureHtml(person, undefined, sigCompany) : renderSignatureHtml(person, undefined, sigCompany);
     const html = signature_mode && typeof rawHtml === "string" && !rawHtml.includes("data-email-signature")
       ? (rawHtml.includes("</body>") ? rawHtml.replace("</body>", `<div style="max-width:600px;margin:0 auto;padding:0 16px">${sigHtml}</div></body>`) : rawHtml + sigHtml)
       : rawHtml;

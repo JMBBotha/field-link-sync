@@ -1,5 +1,20 @@
 // Loads the signature details for a Field Lynk user (service-role client). Deno only.
-import { defaultTitleForRole, type SignaturePerson } from "./emailSignature.ts";
+import { defaultTitleForRole, signatureCompanyFromProfile, type SignatureCompany, type SignaturePerson } from "./emailSignature.ts";
+
+/** The sending company's signature block from its own company_profiles record (default, not archived). */
+// deno-lint-ignore no-explicit-any
+export async function loadSignatureCompany(sb: any, companyId: string | null | undefined): Promise<SignatureCompany | null> {
+  if (!companyId) return null;
+  try {
+    const { data } = await sb.from("company_profiles")
+      .select("legal_name, trading_name, vat_number, phone, whatsapp, email, website, address_lines, logo_url")
+      .eq("company_id", companyId).is("archived_at", null)
+      .order("is_default", { ascending: false }).order("created_at").limit(1).maybeSingle();
+    return signatureCompanyFromProfile(data);
+  } catch {
+    return null;
+  }
+}
 
 // deno-lint-ignore no-explicit-any
 export async function loadSignaturePerson(sb: any, userId: string | null | undefined): Promise<SignaturePerson | null> {
