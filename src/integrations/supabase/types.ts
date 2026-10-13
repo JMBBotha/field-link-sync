@@ -10658,6 +10658,12 @@ export type Database = {
           staff_id: string
         }[]
       }
+      fl_inherit_sync_on: { Args: never; Returns: boolean }
+      fl_inherited_terms: {
+        Args: { _p: Database["public"]["Tables"]["company_profiles"]["Row"] }
+        Returns: string
+      }
+      fl_master_company_id: { Args: never; Returns: string }
       fmt_rand_sql: { Args: { v: number }; Returns: string }
       fuzzy_digits: { Args: { p_text: string }; Returns: string }
       fuzzy_normalize: { Args: { p_text: string }; Returns: string }
