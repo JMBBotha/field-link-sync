@@ -18,17 +18,17 @@ export async function loadUnitCardsStripHtml(supabase: any, quoteId?: string | n
       if (k) keys.add(k);
     }
     if (!keys.size) return "";
-    const { data: media } = await supabase.from("product_media").select("model_key, model_code, display_name, subtitle, image_url, image_status, product_url, support_url").in("model_key", [...keys]).eq("status", "approved");
+    const { data: media } = await supabase.from("product_media").select("model_key, model_code, display_name, subtitle, image_url, image_status").in("model_key", [...keys]).eq("status", "approved");
     const rows = (media || []).filter((m: any) => m.image_status === "ready" && m.image_url);
     if (!rows.length) return "";
     const cells = rows.slice(0, 4).map((m: any) => {
-      const link = m.product_url || m.support_url || "";
+      // No outside links in client emails (Johan 13 Oct 10:57).
       const img = `<img src="${esc(m.image_url)}" alt="${esc(m.model_code)}" width="120" style="display:block;margin:0 auto 6px;max-width:120px;height:auto;border:0;">`;
       return `<td align="center" valign="top" style="padding:8px;width:${Math.floor(100 / Math.min(rows.length, 4))}%;">
-        <div style="background:#eaf6fd;border-radius:8px;padding:10px 6px;">${link ? `<a href="${esc(link)}">${img}</a>` : img}</div>
+        <div style="background:#eaf6fd;border-radius:8px;padding:10px 6px;">${img}</div>
         <div style="font-size:12px;font-weight:700;color:#0B4FA8;margin-top:6px;">${esc(m.display_name || m.model_code)}</div>
         <div style="font-size:11px;color:#6b7a8c;">${esc(m.subtitle || "")}</div>
-        ${link ? `<a href="${esc(link)}" style="font-size:11px;color:#1AA7EC;text-decoration:none;font-weight:700;">${esc(m.model_code)} ↗</a>` : `<span style="font-size:11px;color:#6b7a8c;">${esc(m.model_code)}</span>`}
+        <span style="font-size:11px;color:#6b7a8c;">${esc(m.model_code)}</span>
       </td>`;
     }).join("");
     return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
