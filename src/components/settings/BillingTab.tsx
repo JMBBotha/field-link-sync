@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCompanySettings, CompanySettings } from "@/hooks/useCompanySettings";
 import { Loader2, Save } from "lucide-react";
+import { useIsMainCompany, INHERITED_NOTE } from "@/hooks/useIsMainCompany";
 import MarginSettingsCard from "@/components/settings/MarginSettingsCard";
 import LabourNormsCard from "@/components/settings/LabourNormsCard";
 import NetworkMembersCard from "@/components/settings/NetworkMembersCard";
@@ -13,6 +14,7 @@ import NetworkPerformanceCard from "@/components/settings/NetworkPerformanceCard
 const BillingTab = () => {
   const { settings, isLoading, saveSettings, isSaving } = useCompanySettings();
   const [form, setForm] = useState<CompanySettings>(settings);
+  const { isMain } = useIsMainCompany();
 
   useEffect(() => { setForm(settings); }, [settings]);
 
@@ -25,8 +27,9 @@ const BillingTab = () => {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader><CardTitle>Default Rates</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Default Rates</CardTitle>{!isMain && <p data-testid="inherited-note" className="text-xs text-muted-foreground">{INHERITED_NOTE}</p>}</CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-4">
+          <fieldset disabled={!isMain} className="contents">
           <div>
             <Label>Standard labour rate per hour (R, excl VAT)</Label>
             <Input type="number" min="0" step="0.01" placeholder="Not set" value={form.default_hourly_rate || ""} onChange={(e) => update("default_hourly_rate", parseFloat(e.target.value) || 0)} />
@@ -43,6 +46,7 @@ const BillingTab = () => {
             <Label>Payment Terms (days)</Label>
             <Input type="number" value={form.default_payment_terms_days} onChange={(e) => update("default_payment_terms_days", parseInt(e.target.value) || 30)} />
           </div>
+        </fieldset>
         </CardContent>
       </Card>
 

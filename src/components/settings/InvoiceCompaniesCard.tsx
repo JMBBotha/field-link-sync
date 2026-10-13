@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMainCompany } from "@/hooks/useIsMainCompany";
 import { fetchCompanyProfiles, type CompanyProfile } from "@/lib/companyProfiles";
 
 const FIELDS: { key: keyof CompanyProfile; label: string; wide?: boolean }[] = [
@@ -30,6 +31,7 @@ export default function InvoiceCompaniesCard() {
   const { toast } = useToast();
   const [rows, setRows] = useState<CompanyProfile[]>([]);
   const [saving, setSaving] = useState<string | null>(null);
+  const { isMain } = useIsMainCompany();
 
   useEffect(() => { fetchCompanyProfiles().then(setRows); }, []);
 
@@ -88,8 +90,8 @@ export default function InvoiceCompaniesCard() {
                   onChange={(e) => update(r.id, "address_lines", e.target.value)} className="min-h-[70px]" />
               </div>
               <div className="md:col-span-2">
-                <Label>Terms and conditions (optional, this company only)</Label>
-                <Textarea value={r.terms_text || ""} onChange={(e) => update(r.id, "terms_text", e.target.value)} className="min-h-[100px]" />
+                <Label>Terms and conditions {isMain ? "(main company: used by every company, with each company's own name)" : "(from the main company, with your company name)"}</Label>
+                <Textarea data-testid="terms-text" readOnly={!isMain} value={r.terms_text || ""} onChange={(e) => isMain && update(r.id, "terms_text", e.target.value)} className="min-h-[100px]" />
               </div>
             </div>
             <div className="flex justify-end">

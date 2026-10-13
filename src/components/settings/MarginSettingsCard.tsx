@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { useIsMainCompany, INHERITED_NOTE } from "@/hooks/useIsMainCompany";
 
 /** Admin-only: labour cost rate, GP target, sales share and tech pay split (paid on completion / holdback / tools). */
 export default function MarginSettingsCard() {
@@ -64,6 +65,7 @@ export default function MarginSettingsCard() {
   }, [data]);
   if (!isAdmin || !data) return null;
 
+  const { isMain } = useIsMainCompany();
   const save = async () => {
     const t = Number(target), c = Number(comm), l = labour.trim() === "" ? null : Number(labour);
     const pp = Number(paidPct), hp = Number(heldPct), hd = Number(heldDays), tp = Number(toolsPct);
@@ -93,10 +95,12 @@ export default function MarginSettingsCard() {
   return (
     <Card>
       <CardHeader>
+        {!isMain && <p data-testid="inherited-note" className="text-xs rounded bg-muted px-2 py-1 text-muted-foreground">{INHERITED_NOTE}</p>}
         <CardTitle>Sales &amp; tech earnings (staff only)</CardTitle>
         <p className="text-sm text-muted-foreground">Sales earns on parts &amp; materials profit only. Technicians earn on labour only.</p>
       </CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-4">
+        <fieldset disabled={!isMain} className="contents">
         <div><Label>Labour cost per hour (R, what it costs you)</Label>
           <Input type="number" min="0" step="0.01" placeholder="Not set" value={labour} onChange={(e) => setLabour(e.target.value)} /></div>
         <div><Label>GP target %</Label>
@@ -116,7 +120,8 @@ export default function MarginSettingsCard() {
         <p className="md:col-span-4 text-[11px] text-muted-foreground">
           Company keeps {Math.max(0, 100 - (Number(paidPct) || 0) - (Number(heldPct) || 0))}% of labour (incl. the {Number(toolsPct) || 0}% tools share).
         </p>
-        <div className="md:col-span-4 flex justify-end"><Button onClick={save} disabled={saving}>Save profit settings</Button></div>
+        <div className="md:col-span-4 flex justify-end"><Button onClick={save} disabled={saving || !isMain}>Save profit settings</Button></div>
+        </fieldset>
       </CardContent>
     </Card>
   );

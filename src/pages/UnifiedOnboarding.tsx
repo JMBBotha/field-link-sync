@@ -498,7 +498,10 @@ const UnifiedOnboarding = () => {
         }
 
         // 2. Save company_settings (upsert) — kept for backward compat
-        const { data: existing } = await supabase.from("company_settings").select("id").limit(1).maybeSingle();
+        // Scoped to THIS company (was unscoped -> orphan rows with company_id NULL).
+        // Deposit %, payment terms and rates are inherited from the main company by a DB trigger.
+        const { data: existing } = await supabase.from("company_settings").select("id")
+          .eq("company_id", companyId).order("is_primary", { ascending: false }).limit(1).maybeSingle();
         if (existing) {
           await supabase.from("company_settings").update({
             company_name: adminForm.company_name,
@@ -513,6 +516,8 @@ const UnifiedOnboarding = () => {
           }).eq("id", existing.id);
         } else {
           await supabase.from("company_settings").insert({
+            company_id: companyId,
+            is_primary: true,
             company_name: adminForm.company_name,
             vat_number: adminForm.vat_number,
             physical_address: adminForm.physical_address,
