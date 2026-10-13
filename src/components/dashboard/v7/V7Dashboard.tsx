@@ -24,6 +24,8 @@ export function TonePill({ tone, children }: { tone: Tone; children: React.React
   return <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap", TONE_CLS[tone])}><I className="h-3 w-3" />{children}</span>;
 }
 
+import CashflowDashboardPanel from "@/components/cashflow/CashflowDashboardPanel";
+
 const Panel = ({ title, sub, children, className, testId }: { title?: string; sub?: string; children: React.ReactNode; className?: string; testId?: string }) => (
   <section data-testid={testId} className={cn("rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] p-3 md:p-4 dark:border-white/10 dark:bg-[#111a2b]", className)}>
     {title && <div className="mb-2 flex items-baseline gap-2"><h2 className="text-sm font-semibold text-foreground">{title}</h2>{sub && <span className="text-[11px] text-muted-foreground">{sub}</span>}</div>}
@@ -330,6 +332,9 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
           </Panel>
         )}
       </div>
+
+      {/* Cash flow (owner/admin only; server-checked) */}
+      {office && <CashflowDashboardPanel Panel={Panel} />}
 
       {/* 10. Team workload & earnings (office; earnings column for the company owner only) */}
       {office && (

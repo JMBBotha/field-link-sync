@@ -61,6 +61,14 @@ export default function PurchaseOrdersPanel({ invoice }: { invoice: any }) {
     load();
   };
 
+  const setStatus = async (po: PoRow, status: string) => {
+    const { error } = await db.from("purchase_orders").update({ status, updated_at: new Date().toISOString() }).eq("id", (po as any).id);
+    if (error) return toast({ title: "Could not update PO", description: error.message, variant: "destructive" });
+    toast({ title: status === "received" ? `${po.po_number} received` : `${po.po_number} marked ${status}`,
+      description: status === "received" ? "A draft supplier bill was added under Supplier bills. Check it against the supplier's invoice." : undefined });
+    load();
+  };
+
   const download = async (po: PoRow) => {
     const prof = await fetchCompanyProfile(invoice.company_profile_id);
     const style = documentStyleOf(prof);
@@ -132,6 +140,12 @@ export default function PurchaseOrdersPanel({ invoice }: { invoice: any }) {
             <div className="flex flex-wrap gap-2">
               {picker(po, "supplier_invoice", "Supplier invoice")}
               {picker(po, "delivery_note", "Delivery note")}
+              {["draft", "approved", "sent"].includes(po.status) && (
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setStatus(po, "ordered")}>Mark ordered</Button>
+              )}
+              {["approved", "sent", "ordered"].includes(po.status) && (
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setStatus(po, "received")}>Mark received</Button>
+              )}
             </div>
             {docs.filter((d) => d.po_id === po.id).map((d) => (
               <button key={d.id} onClick={() => openDoc(d)} className="flex items-center gap-1 text-xs text-primary underline">
