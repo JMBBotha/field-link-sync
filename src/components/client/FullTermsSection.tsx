@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { eoeClause } from "@/lib/eoeClause";
 import { buildTermsBlocks } from "@/lib/defaultTerms";
 import { COMPANY, cleanBanking } from "@/lib/companyIdentity";
 import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
@@ -38,6 +39,7 @@ export default function FullTermsSection({ banking, profile }: { banking?: unkno
             default: return <p key={i}>{bl.text}</p>;
           }
         })}
+        <p data-testid="full-terms-eoe" className="pt-3">{eoeClause(profile?.legal_name || COMPANY.legalName, "quote")}</p>
       </div>
     </section>
   );

@@ -1,3 +1,4 @@
+import { withEoe } from "@/lib/eoeClause";
 import type { ReactNode } from "react";
 import logoLight from "@/assets/brand/logo-light.png";
 import logoWhite from "@/assets/brand/logo-white.png";
@@ -180,7 +181,7 @@ export default function BrandDocument(p: BrandDocumentProps) {
         {p.cards.length > 0 && (
           <div className="notes">{p.cards.map((c) => <div className="note" key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
         )}
-        {p.terms && <div className="terms" data-testid="doc-terms"><h4>Terms</h4>{p.terms}</div>}
+        <div className="terms" data-testid="doc-terms"><h4>Terms</h4>{withEoe(p.terms, id.legalName, p.docType)}</div>
       </div>
       <div className="sig">
         {logo && <img className="slogo" src={massair && !recordLogo ? logoLight : logo} alt="" />}

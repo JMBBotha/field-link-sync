@@ -18,6 +18,7 @@ import CompanyBlock from "@/components/shared/CompanyBlock";
 import { cleanBanking } from "@/lib/companyIdentity";
 import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
 import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
+import { withEoe } from "@/lib/eoeClause";
 import { planTermsSentence, type PaymentPlan } from "@/lib/paymentPlans";
 import BrandDocument, { type BrandDocSection } from "@/components/documents/BrandDocument";
 import { foldFlatLines } from "@/lib/clientQuoteRollup";
@@ -985,8 +986,8 @@ const EstimateDocument = ({
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Terms</p>
             <p className="mt-1 whitespace-pre-line">
-              {cleanTerms ||
-                `This estimate is valid for 30 days from the date of issue. All prices exclude VAT, which is shown separately at ${vatPercent}%. ${planTermsSentence(paymentPlan, settings.default_deposit_percentage, settings.default_payment_terms_days)}`}
+              {withEoe(cleanTerms ||
+                `This estimate is valid for 30 days from the date of issue. All prices exclude VAT, which is shown separately at ${vatPercent}%. ${planTermsSentence(paymentPlan, settings.default_deposit_percentage, settings.default_payment_terms_days)}`, settings.company_name, "quote")}
             </p>
           </div>
 
