@@ -17,6 +17,7 @@ import Footer from "@/components/Footer";
 import { useQuery } from "@tanstack/react-query";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminBottomNav from "@/components/admin/AdminBottomNav";
+import NewAdminHeader from "@/components/admin/NewAdminHeader";
 import ClassicAdminSidebar from "@/components/classic/ClassicAdminSidebar";
 import ClassicAdminBottomNav from "@/components/classic/ClassicAdminBottomNav";
 import { useLayoutVersion } from "@/hooks/useLayoutVersion";
@@ -220,6 +221,9 @@ const AdminLayout = () => {
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {!isClassic ? (
+          <NewAdminHeader pageTitle={pageTitle} onMenu={() => setMobileMenuOpen(true)} onSearch={() => setSearchOpen(true)} onCreateLead={() => setShowCreateLead(true)} resolvedTheme={resolvedTheme} toggleTheme={toggleTheme} />
+        ) : (
         <header className="shrink-0 h-14 border-b flex items-center justify-between px-2 sm:px-4 gap-2 z-20 bg-primary dark:bg-gradient-to-r dark:from-[#070e1a] dark:via-[#153258]/90 dark:to-[#070e1a] border-[#006699] dark:border-[#153258]">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <Button
@@ -289,6 +293,7 @@ const AdminLayout = () => {
             </DropdownMenu>
           </div>
         </header>
+        )}
         <RoleAccentStrip />
 
 

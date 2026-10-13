@@ -63,7 +63,7 @@ export function useLeadInbox() {
   useEffect(() => {
     if (!companyId) return;
     const channel = supabase
-      .channel("lead-inbox-rt")
+      .channel(`lead-inbox-rt-${Math.random().toString(36).slice(2, 10)}`) // unique per instance (sidebar + dashboard both mount this hook)
       .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => {
         qc.invalidateQueries({ queryKey: ["lead-inbox"] });
       })

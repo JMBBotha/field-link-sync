@@ -132,7 +132,7 @@ export const useBroadcastSettings = () => {
 
     // Subscribe to settings changes
     const channel = supabase
-      .channel("admin-settings-changes")
+      .channel(`admin-settings-changes-${Math.random().toString(36).slice(2, 10)}`) // unique per hook instance: two mounted copies (e.g. two CreateLeadDialogs) must not share one channel
       .on(
         "postgres_changes",
         {

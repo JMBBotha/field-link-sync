@@ -27,6 +27,8 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   badge?: number;
+  badgeTone?: "red" | "blue";
+  badgeTitle?: string;
   roles?: AppRole[]; // undefined = all authenticated
   children?: NavItem[];
 }
@@ -91,6 +93,20 @@ const AdminSidebar = ({
   });
   const lowStockCount = lowStockItems.length;
 
+  // v7 sidebar badges (existing columns only): quotes awaiting the client (sent, not yet answered) and overdue invoices.
+  const { data: docCounts } = useQuery({
+    queryKey: ["v7-sidebar-doc-counts"],
+    enabled: !techOnly,
+    refetchInterval: 120000,
+    queryFn: async () => {
+      const [q, i] = await Promise.all([
+        supabase.from("quotes").select("id", { count: "exact", head: true }).eq("status", "sent"),
+        isSalesRep ? Promise.resolve({ count: 0 } as any) : supabase.from("invoices").select("id", { count: "exact", head: true }).eq("status", "overdue"),
+      ]);
+      return { quotesOpen: q.count ?? 0, invoicesOverdue: i.count ?? 0 };
+    },
+  });
+
   // FreshBooks-style ordering. Every existing route is preserved —
   // items are only regrouped/relabelled for the accounting-app layout.
   const navGroups: NavGroup[] = [
@@ -104,12 +120,17 @@ const AdminSidebar = ({
           label: "Quotes",
           icon: FileText,
           roles: ["admin", "dispatcher", "viewer"],
+          badge: docCounts?.quotesOpen || undefined,
+          badgeTone: "blue",
+          badgeTitle: "sent, waiting on the client",
         },
         {
           path: "/admin/invoices",
           label: "Invoices",
           icon: Receipt,
           roles: ["admin", "dispatcher", "viewer"],
+          badge: docCounts?.invoicesOverdue || undefined,
+          badgeTitle: "overdue",
         },
         // Accounting (steps 4-5): office only, hidden for salespeople.
         ...(isSalesRep ? [] : [{ path: "/admin/expenses", label: "Expenses", icon: Wallet, roles: ["admin", "dispatcher"] } as NavItem, { path: "/admin/bank", label: "Bank (FNB)", icon: Upload, roles: ["admin", "dispatcher"] } as NavItem]),
@@ -211,6 +232,23 @@ const AdminSidebar = ({
     .map((g) => ({ ...g, items: g.items.map(filterItem).filter(Boolean) as NavItem[] }))
     .filter((g) => g.items.length > 0);
 
+  // v7 section headings (look only; same items, routes and role filters as before).
+  const SECTION_OF: Record<string, string> = {
+    "/admin": "Main", "/admin/customers": "Main", "/admin/quotes": "Main", "/admin/invoices": "Main", "/admin/expenses": "Main", "/admin/bank": "Main",
+    "/admin/jobs": "Operations", "/admin/visits": "Operations", "/admin/my-appointments": "Operations", "/admin/my-commission": "Operations", "/field/earnings": "Operations", "/admin/map": "Operations",
+    "/admin/catalog": "Stock & pricing", "/admin/price-lists": "Stock & pricing",
+    "/admin/team": "Insights & team", "/admin/reports": "Insights & team",
+  };
+  const sections = (() => {
+    const out: { title: string; items: NavItem[] }[] = [];
+    for (const it of visibleGroups.flatMap((g) => g.items)) {
+      const t = SECTION_OF[it.path] || "Main";
+      const last = out[out.length - 1];
+      if (last && last.title === t) last.items.push(it); else out.push({ title: t, items: [it] });
+    }
+    return out;
+  })();
+
   const isActive = (path: string) => {
     if (path === "/admin") return location.pathname === "/admin";
     const [base, query] = path.split("#")[0].split("?");
@@ -281,19 +319,19 @@ const AdminSidebar = ({
           collapsed ? "justify-center px-0 py-2" : "px-3 py-[5px]",
           depth > 0 && !collapsed && "pl-9 py-1 text-[12px]",
           active
-            ? "bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-white/80"
-            : "text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]",
+            ? "bg-white/20 dark:bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-[#F97316]"
+            : "text-white/90 dark:text-nav-foreground/85 hover:text-white hover:bg-white/[0.12]",
         )}
       >
         <item.icon className={cn("h-4 w-4 shrink-0", active ? "opacity-100" : "opacity-80")} strokeWidth={1.75} />
         {!collapsed && <span className="truncate">{item.label}</span>}
         {!collapsed && item.badge && item.badge > 0 ? (
-          <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-[10px]">
+          <Badge variant="destructive" title={item.badgeTitle ? `${item.badge} ${item.badgeTitle}` : undefined} className={cn("ml-auto h-5 min-w-5 flex items-center justify-center p-0 px-1 text-[10px]", item.badgeTone === "blue" && "bg-white/25 text-white hover:bg-white/25")}>
             {item.badge > 99 ? "99+" : item.badge}
           </Badge>
         ) : null}
         {collapsed && item.badge && item.badge > 0 ? (
-          <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-[9px] text-white font-bold px-1">
+          <span className={cn("absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full text-[9px] text-white font-bold px-1", item.badgeTone === "blue" ? "bg-[#0b5e8a]" : "bg-destructive")}>
             {item.badge > 99 ? "99+" : item.badge}
           </span>
         ) : null}
@@ -359,8 +397,8 @@ const AdminSidebar = ({
         className={cn(
           "w-full flex items-center gap-2.5 px-3 py-[5px] rounded-md text-[12.5px] font-medium leading-tight transition-colors relative",
           active
-            ? "bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-white/80"
-            : "text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]",
+            ? "bg-white/20 dark:bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-[#F97316]"
+            : "text-white/90 dark:text-nav-foreground/85 hover:text-white hover:bg-white/[0.12]",
         )}
       >
         <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
@@ -394,11 +432,11 @@ const AdminSidebar = ({
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-nav/90 backdrop-blur-xl supports-[backdrop-filter]:bg-nav/85">
+    <div className="flex flex-col h-full bg-gradient-to-b from-[#1AA7EC] to-[#1590D6] dark:from-[#0b1a2e] dark:to-[#08111f]">
       {/* Company switcher */}
       <div
         className={cn(
-          "relative border-b border-nav-border px-2 py-1.5",
+          "relative border-b border-white/15 px-2 py-1.5",
           collapsed && "px-2 py-2",
           mobileOpen && "pr-10 lg:pr-2"
         )}
@@ -424,9 +462,9 @@ const AdminSidebar = ({
                 <span className="text-center text-[12px] font-bold uppercase leading-tight tracking-wide text-white break-words">
                   {companyName}
                 </span>
-                <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-nav-muted" />
+                <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/75 dark:text-nav-muted" />
               </div>
-              <span className="text-[11px] font-medium text-nav-muted">{roleLabel}</span>
+              <span className="text-[11px] font-medium text-white/75 dark:text-nav-muted">{roleLabel}</span>
             </div>
           )}
         </button>
@@ -435,7 +473,7 @@ const AdminSidebar = ({
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/15 text-[11px] font-bold text-white">{initials}</span>
             <div className="min-w-0">
               <div className="truncate text-[12px] font-semibold text-white">{identity.name}</div>
-              <div className="truncate text-[10.5px] text-nav-muted">{roleLabel}</div>
+              <div className="truncate text-[10.5px] text-white/75 dark:text-nav-muted">{roleLabel}</div>
             </div>
           </div>
         )}
@@ -500,21 +538,26 @@ const AdminSidebar = ({
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 pb-1 space-y-px">
-        {visibleGroups.map((group) => (
-          <div key={group.title} className="space-y-px">
-            {group.items.map((item) => renderItem(item))}
+        {sections.map((sec) => (
+          <div key={sec.title} className="space-y-px pt-1.5 first:pt-0.5" data-testid="sidebar-section">
+            {!collapsed ? (
+              <div className="px-3 pb-0.5 pt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-white/70 dark:text-white/75 dark:text-nav-muted">{sec.title}</div>
+            ) : (
+              <div className="mx-3 my-1 border-t border-white/15" aria-hidden="true" />
+            )}
+            {sec.items.map((item) => renderItem(item))}
           </div>
         ))}
       </nav>
 
       {/* Secondary links */}
-      <div className={cn("border-t border-nav-border px-2 py-1 space-y-px", collapsed && "px-1")} data-testid="settings-account-group">
+      <div className={cn("border-t border-white/15 px-2 py-1 space-y-px", collapsed && "px-1")} data-testid="settings-account-group">
         <button
           onClick={() => setAccountOpen((v) => !v)}
           aria-expanded={accountOpen}
           title="Settings & account"
           className={cn(
-            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] font-medium text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] font-medium text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
             collapsed && "justify-center px-0"
           )}
         >
@@ -537,7 +580,7 @@ const AdminSidebar = ({
             key={item.path}
             onClick={() => handleNav(item.path)}
             className={cn(
-              "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+              "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
               collapsed && "justify-center px-0"
             )}
           >
@@ -550,7 +593,7 @@ const AdminSidebar = ({
             <button
               onClick={() => setAdvancedOpen((v) => !v)}
               className={cn(
-                "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+                "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
                 collapsed && "justify-center px-0"
               )}
             >
@@ -567,7 +610,7 @@ const AdminSidebar = ({
                 key={item.path}
                 onClick={() => handleNav(item.path)}
                 className={cn(
-                  "w-full flex items-center gap-3 rounded-md pl-7 pr-3 py-1 text-[12px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+                  "w-full flex items-center gap-3 rounded-md pl-7 pr-3 py-1 text-[12px] text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
                   collapsed && "justify-center px-0"
                 )}
               >
@@ -581,7 +624,7 @@ const AdminSidebar = ({
         <button
           onClick={() => { navigate("/admin/my-base"); onMobileClose?.(); }}
           className={cn(
-            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
             collapsed && "justify-center px-0"
           )}
         >
@@ -594,7 +637,7 @@ const AdminSidebar = ({
             onMobileClose?.();
           }}
           className={cn(
-            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
             collapsed && "justify-center px-0"
           )}
         >
@@ -604,18 +647,23 @@ const AdminSidebar = ({
         </>)}
       </div>
 
-      {/* Collapse toggle - desktop only */}
-      <div className="hidden lg:block border-t border-nav-border p-1.5">
+      {/* v7 footer row: Sign out · Collapse */}
+      <div className={cn("flex items-center border-t border-white/15 p-1.5", collapsed ? "flex-col gap-1" : "justify-between")} data-testid="sidebar-footer-row">
+        <button onClick={() => { onSignOut(); onMobileClose?.(); }} title="Sign out" className={cn("flex items-center gap-2 rounded-md px-2 py-1 text-[12px] text-white/80 hover:bg-white/10 hover:text-white", collapsed && "justify-center px-0")}>
+          <LogOut className="h-4 w-4" strokeWidth={1.75} />{!collapsed && <span>Sign out</span>}
+        </button>
+      <div className="hidden lg:block">
         <button
           onClick={() => setCollapsed(!collapsed)}
           title={collapsed ? "Show panel" : "Collapse sidebar"}
           aria-label={collapsed ? "Show panel" : "Collapse sidebar"}
           className={collapsed
             ? "mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg ring-2 ring-primary/30 transition hover:scale-110 hover:bg-primary/85 hover:shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring"
-            : "w-full flex items-center justify-center py-1.5 text-nav-muted hover:text-nav-foreground transition-colors"}
+            : "flex items-center px-2 py-1 text-white/80 hover:text-white transition-colors"}
         >
-          {collapsed ? <ChevronRight className="h-5 w-5" strokeWidth={3} /> : <ChevronLeft className="h-4 w-4" />}
+          {collapsed ? <ChevronRight className="h-5 w-5" strokeWidth={3} /> : <><ChevronLeft className="h-4 w-4" /><span className="ml-1 text-[12px]">Collapse</span></>}
         </button>
+      </div>
       </div>
     </div>
   );
@@ -628,7 +676,7 @@ const AdminSidebar = ({
 
       <aside
         className={cn(
-          "flex flex-col shrink-0 transition-all duration-300 z-50 bg-nav/90 border-r border-nav-border/60",
+          "flex flex-col shrink-0 transition-all duration-300 z-50 bg-[#1590D6] dark:bg-[#08111f] border-r border-white/10",
           "hidden lg:flex h-full",
           collapsed ? "w-[64px]" : "w-[232px]",
         )}
@@ -638,7 +686,7 @@ const AdminSidebar = ({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[264px] transform transition-transform duration-300 lg:hidden shadow-2xl bg-nav/95",
+          "fixed inset-y-0 left-0 z-50 w-[264px] transform transition-transform duration-300 lg:hidden shadow-2xl bg-[#1590D6] dark:bg-[#08111f]",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

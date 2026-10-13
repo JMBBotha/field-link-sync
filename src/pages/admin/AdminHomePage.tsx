@@ -86,13 +86,16 @@ const AdminHomePage = () => {
 
         {/* Live map background */}
         <div className="relative flex-1 min-h-0">
+          {/* v7 (New layout): white page, no live-map wash behind the widgets. Classic keeps the map. */}
+          {isClassic && (<>
           <div className="absolute inset-0 pointer-events-none opacity-70" aria-hidden="true">
             <MapView showAllAgents hideChromeControls hideStatusFilters />
           </div>
           <div className="absolute inset-0 bg-background/40 pointer-events-none" aria-hidden="true" />
+          </>)}
 
           {/* Dashboard content floating over the map */}
-          <div className="relative h-full overflow-y-auto p-3 pb-20 md:p-4 md:pb-20 lg:pb-4 space-y-3">
+          <div className={isClassic ? "relative h-full overflow-y-auto p-3 pb-20 md:p-4 md:pb-20 lg:pb-4 space-y-3" : "relative h-full overflow-y-auto p-3 pb-20 md:p-4 md:pb-20 lg:pb-4 space-y-3 bg-white dark:bg-[#0b1220]"}>
             <OfferCards />
             <HomeC
               onNavigate={(tab) => navigate(tabToRoute[tab] || "/admin")}

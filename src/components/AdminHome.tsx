@@ -1,4 +1,5 @@
 import LeadToPaidPanel from "@/components/dashboard/LeadToPaidPanel";
+import V7Dashboard from "@/components/dashboard/v7/V7Dashboard";
 import TechTodayList from "@/components/dashboard/TechTodayList";
 import { useRole } from "@/hooks/useRole";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -336,6 +337,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         )}
       </div>
 
+      {/* v7 dashboard (Johan 13 Oct 12:00): period bar, compare periods, KPIs, gauges, revenue, funnel, inbox, jobs, aging, team. Techs never see it. */}
+      {!techOnly && <V7Dashboard audience={isSalesRep ? "sales" : "office"} />}
+
       {/* Lead → Paid path + Next up (flow.md §10). Sales: BOOKED→ACCEPTED; techs: today's jobs only. */}
       {techOnly ? <TechTodayList /> : <LeadToPaidPanel audience={isSalesRep ? "sales" : "office"} />}
 
@@ -347,12 +351,15 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       {/* Rep: own upcoming appointments (STEP 3) */}
       {isSalesRep && <MyAppointmentsCard limit={5} />}
 
+      {/* Techs never see lead/invoice cards (v7 role rule). */}
+      {!techOnly && (<>
       {!isSalesRep && <LeadOfferFlagsCard />}
       {!isSalesRep && <InvoiceRequestsCard />}
       {!isSalesRep && <ReadyToInvoiceCard />}
+      </>)}
 
-      {/* Core 5 KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+      {/* Core 5 KPI Cards (v7: replaced by the KPI strip above; kept for techs) */}
+      <div className={techOnly ? "grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3" : "hidden"}>
 
 
         {isLoading
@@ -433,6 +440,8 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
             ))}
       </div>
 
+      {/* v7 role rule: techs never see leads, revenue or pipeline value below this line. */}
+      {!techOnly && (<>
       {/* Pipeline health metrics — 90-day window */}
       <PipelineMetrics />
 
@@ -645,6 +654,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         defaultLeadId={jobDialog.leadId}
         defaultCustomerId={jobDialog.customerId}
       />
+      </>)}
     </div>
   );
 };

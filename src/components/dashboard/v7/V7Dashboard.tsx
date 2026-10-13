@@ -1,0 +1,335 @@
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, CartesianGrid, ComposedChart, RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
+import { AlertCircle, Clock, CheckCircle2, PauseCircle, ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useNow, useLeadSla } from "@/hooks/useLeadSla";
+import { useLeadInbox, INBOX_ROUTE } from "@/hooks/useLeadInbox";
+import { useDashboardV7Data, useIsCompanyOwner } from "@/hooks/useDashboardV7Data";
+import {
+  METRICS, metric, delta, periodRange, prevRange, shiftMonths, series, lastMonths, aging, outstanding, funnel, jobBuckets, rand, ts,
+  type PeriodKind, type Range, type MetricKey,
+} from "@/lib/dashboardV7";
+
+/* Johan's colour rules: red = overdue, amber = due soon, blue = on time / next step, grey = done / waiting.
+   Orange is brand only (buttons). Every colour carries a word + icon. White page, grey panels. */
+const C = { red: "#DC2626", amber: "#EAB308", blue: "#1AA7EC", blueDeep: "#1590D6", grey: "#9CA3AF", greyDark: "#6B7280" };
+type Tone = "red" | "amber" | "blue" | "grey";
+const TONE_ICON = { red: AlertCircle, amber: Clock, blue: CheckCircle2, grey: PauseCircle } as const;
+const TONE_CLS: Record<Tone, string> = {
+  red: "bg-[#DC2626] text-white", amber: "bg-[#EAB308] text-[#111827]", blue: "bg-[#1AA7EC] text-white", grey: "bg-[#6B7280] text-white",
+};
+export function TonePill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
+  const I = TONE_ICON[tone];
+  return <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap", TONE_CLS[tone])}><I className="h-3 w-3" />{children}</span>;
+}
+
+const Panel = ({ title, sub, children, className, testId }: { title?: string; sub?: string; children: React.ReactNode; className?: string; testId?: string }) => (
+  <section data-testid={testId} className={cn("rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] p-3 md:p-4 dark:border-white/10 dark:bg-[#111a2b]", className)}>
+    {title && <div className="mb-2 flex items-baseline gap-2"><h2 className="text-sm font-semibold text-foreground">{title}</h2>{sub && <span className="text-[11px] text-muted-foreground">{sub}</span>}</div>}
+    {children}
+  </section>
+);
+
+const PERIODS: { k: PeriodKind; label: string }[] = [
+  { k: "today", label: "Today" }, { k: "week", label: "Week" }, { k: "month", label: "Month" }, { k: "quarter", label: "Quarter" }, { k: "year", label: "Year" }, { k: "custom", label: "Custom" },
+];
+const fmtDate = (t: number) => new Date(t).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Johannesburg" });
+const fmt = (m: (typeof METRICS)[number], v: number | null) => (v == null ? "—" : m.money ? rand(v) : m.pct ? `${v}%` : String(v));
+
+function Delta({ label, v }: { label: string; v: number | null }) {
+  const I = v == null || v === 0 ? Minus : v > 0 ? ArrowUp : ArrowDown;
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[10.5px] text-muted-foreground" title={v == null ? `${label}: no data to compare` : `${label}: ${v > 0 ? "up" : v < 0 ? "down" : "same"} ${Math.abs(v)}%`}>
+      {label}<I className={cn("h-3 w-3", v != null && v > 0 ? "text-[#1590D6]" : "text-[#6B7280]")} />{v == null ? "–" : `${Math.abs(v)}%`}
+    </span>
+  );
+}
+
+function Spark({ data }: { data: number[] }) {
+  const d = data.map((v, i) => ({ i, v }));
+  return (
+    <div className="h-7 w-20">
+      <ResponsiveContainer width="100%" height="100%"><LineChart data={d}><Line type="monotone" dataKey="v" stroke={C.blue} strokeWidth={1.6} dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer>
+    </div>
+  );
+}
+
+function Gauge({ title, pct, caption }: { title: string; pct: number; caption: string }) {
+  const v = Math.max(0, Math.min(100, Math.round(pct)));
+  return (
+    <Panel className="flex flex-col items-center" testId="v7-gauge">
+      <h2 className="text-sm font-semibold">{title}</h2>
+      <div className="relative h-28 w-48">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadialBarChart cx="50%" cy="85%" innerRadius="115%" outerRadius="150%" startAngle={180} endAngle={0} data={[{ v }]} barSize={14}>
+            <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+            <RadialBar dataKey="v" cornerRadius={7} fill={C.blue} background={{ fill: "rgba(156,163,175,0.35)" }} isAnimationActive={false} />
+          </RadialBarChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-x-0 bottom-1 text-center text-3xl font-bold">{v}%</div>
+      </div>
+      <p className="text-[11px] text-muted-foreground">{caption}</p>
+    </Panel>
+  );
+}
+
+const leadKind = (l: any) => {
+  const s = `${l.primary_intent || ""} ${l.service_type || ""}`.toLowerCase();
+  return /quote|sale|install|new/.test(s) ? "sales" : "tech";
+};
+
+export default function V7Dashboard({ audience }: { audience: "office" | "sales" }) {
+  const navigate = useNavigate();
+  const now = useNow();
+  const { sla } = useLeadSla();
+  const { data: isOwner } = useIsCompanyOwner();
+  const office = audience === "office";
+  const owner = office && !!isOwner;
+  const { data, isLoading } = useDashboardV7Data({ office, owner });
+  const { leads: inbox } = useLeadInbox();
+  const [kind, setKind] = useState<PeriodKind>("month");
+  const [cmp, setCmp] = useState<"prev" | "ly">("prev");
+  const [custom, setCustom] = useState<{ from: string; to: string }>({ from: "", to: "" });
+  const nowMin = Math.floor(now / 60_000) * 60_000;
+
+  const customRange: Range | undefined = custom.from && custom.to ? { start: ts(custom.from), end: ts(custom.to) + 86400_000 } : undefined;
+  const sel = periodRange(kind, nowMin, customRange);
+  const base = cmp === "prev" ? prevRange(sel) : shiftMonths(sel, -12);
+  const metrics = METRICS.filter((m) => (!m.office || office) && (!m.owner || owner));
+  const cols: { key: string; label: string; r: Range; selected: boolean }[] = useMemo(() => {
+    const c = [
+      { key: "today", label: "Today", r: periodRange("today", nowMin), selected: kind === "today" },
+      { key: "week", label: "This week", r: periodRange("week", nowMin), selected: kind === "week" },
+      { key: "month", label: "This month (MTD)", r: periodRange("month", nowMin), selected: kind === "month" },
+    ];
+    if (!["today", "week", "month"].includes(kind)) c.push({ key: kind, label: PERIODS.find((p) => p.k === kind)!.label, r: sel, selected: true });
+    return c;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, nowMin, sel.start, sel.end]);
+
+  if (isLoading || !data) {
+    return <Panel testId="v7-loading"><div className="h-40 animate-pulse rounded-lg bg-white/60 dark:bg-white/5" /></Panel>;
+  }
+
+  const val = (k: MetricKey, r: Range) => metric(data, k, r);
+  const months = lastMonths(nowMin);
+  const revenue = series(data, "paid", nowMin);
+  const revenueLy = months.map((m) => metric(data, "paid", shiftMonths(m, -12)) ?? 0);
+  const revData = months.map((m, i) => ({ month: m.label, thisYear: Math.round(revenue[i] / 1000), lastYear: Math.round(revenueLy[i] / 1000) }));
+  const ytd = periodRange("year", nowMin);
+  const sent = val("quotes_sent", sel) ?? 0, accepted = val("quotes_accepted", sel) ?? 0;
+  const invoicedSel = val("invoiced", sel) ?? 0, paidSel = val("paid", sel) ?? 0;
+  const out = outstanding(data.invoices);
+  const ag = aging(data.invoices, nowMin);
+  const agMax = Math.max(1, ...ag.map((a) => a.amount));
+  const fun = funnel(data, sel);
+  const funMax = Math.max(1, fun[0].value);
+  const jb = jobBuckets(data.jobs, nowMin);
+  const jbRows: { k: keyof typeof jb; label: string; tone: Tone; color: string }[] = [
+    { k: "overdue", label: "Overdue", tone: "red", color: C.red },
+    { k: "scheduled", label: "Scheduled", tone: "blue", color: C.blue },
+    { k: "in_progress", label: "In progress", tone: "blue", color: C.blueDeep },
+    { k: "waiting", label: "Waiting for stock", tone: "amber", color: C.amber },
+    { k: "completed", label: "Completed", tone: "grey", color: C.grey },
+  ];
+  const openJobs = jb.overdue + jb.scheduled + jb.in_progress + jb.waiting;
+  const sortedInbox = [...(inbox as any[])].sort((a, b) => ts(a.created_at) - ts(b.created_at)).slice(0, 5);
+  const slaMs = (sla?.contactMinutes ?? 5) * 60_000;
+
+  // Team workload: open assignments per person; earnings only for the company owner (own team).
+  const load: Record<string, number> = {};
+  for (const a of data.assignments) if (a.profile_id && a.jobs?.status !== "completed") load[a.profile_id] = (load[a.profile_id] || 0) + 1;
+  const earn: Record<string, number> = {};
+  const mtd = periodRange("month", nowMin);
+  if (owner) {
+    for (const e of data.earnings || []) if (e.tech_id && (!e.completed_at || ts(e.completed_at) >= mtd.start)) earn[e.tech_id] = (earn[e.tech_id] || 0) + (Number(e.net_amount) || 0);
+    for (const c of data.commissions || []) if (c.rep_id && ts(c.earned_at || c.created_at) >= mtd.start) earn[c.rep_id] = (earn[c.rep_id] || 0) + (Number(c.commission) || 0);
+  }
+  const team = (data.team as any[]).map((p) => ({ ...p, open: load[p.id] || 0, earn: earn[p.id] || 0 })).filter((p) => p.open > 0 || p.earn > 0).sort((a, b) => b.open - a.open).slice(0, 8);
+  const teamMax = Math.max(1, ...team.map((t) => t.open));
+
+  return (
+    <div className="space-y-3 md:space-y-4" data-testid="v7-dashboard">
+      {/* 1. Period bar */}
+      <div className="flex flex-wrap items-center gap-2" data-testid="v7-period-bar">
+        <span className="hidden md:inline text-xs text-muted-foreground">Period</span>
+        <div className="flex flex-wrap gap-1 overflow-x-auto">
+          {PERIODS.map((p) => (
+            <button key={p.k} onClick={() => setKind(p.k)} className={cn("rounded-full border px-3 py-1 text-xs font-medium transition-colors", kind === p.k ? "border-[#1AA7EC] bg-[#1AA7EC] text-white" : "border-[#E5E7EB] bg-white text-foreground hover:bg-[#F3F4F6] dark:border-white/10 dark:bg-transparent")}>{p.label}</button>
+          ))}
+        </div>
+        {kind === "custom" && (
+          <span className="flex items-center gap-1 text-xs">
+            <input type="date" value={custom.from} onChange={(e) => setCustom((c) => ({ ...c, from: e.target.value }))} className="rounded border bg-background px-1 py-0.5" aria-label="From" />
+            –<input type="date" value={custom.to} onChange={(e) => setCustom((c) => ({ ...c, to: e.target.value }))} className="rounded border bg-background px-1 py-0.5" aria-label="To" />
+          </span>
+        )}
+        <span className="text-xs text-muted-foreground">{fmtDate(sel.start)} – {fmtDate(sel.end - 1)}</span>
+        <span className="ml-auto flex items-center gap-1 text-xs">
+          <span className="hidden sm:inline text-muted-foreground">Compare to</span>
+          {(["prev", "ly"] as const).map((c) => (
+            <button key={c} onClick={() => setCmp(c)} className={cn("rounded-full border px-3 py-1 font-medium", cmp === c ? "border-[#1590D6] bg-[#1590D6] text-white" : "border-[#E5E7EB] bg-white dark:border-white/10 dark:bg-transparent")}>{c === "prev" ? "Previous period" : "Last year"}</button>
+          ))}
+        </span>
+      </div>
+
+      {/* 2. Compare periods */}
+      <Panel title="Compare periods" sub="prev = period before · LM = same period last month · LY = same period last year" testId="v7-compare">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead><tr className="text-left text-[11px] text-muted-foreground">
+              <th className="py-1 pr-2 font-medium">Metric</th><th className="py-1 pr-2 font-medium">12 mo</th>
+              {cols.map((c) => <th key={c.key} className={cn("py-1 pr-2 font-medium", c.selected && "text-[#1590D6]")}>{c.label}{c.selected && " · selected"}</th>)}
+            </tr></thead>
+            <tbody>
+              {metrics.map((m) => (
+                <tr key={m.key} className="border-t border-[#E5E7EB] dark:border-white/10">
+                  <td className="py-1.5 pr-2 text-[12.5px] font-medium">{m.label}</td>
+                  <td className="py-1.5 pr-2"><Spark data={series(data, m.key, nowMin)} /></td>
+                  {cols.map((c) => {
+                    const v = val(m.key, c.r);
+                    return (
+                      <td key={c.key} className={cn("py-1.5 pr-2 align-top", c.selected && "bg-white/70 dark:bg-white/5")}>
+                        <div className="text-base font-bold leading-tight">{fmt(m, v)}</div>
+                        <div className="flex flex-wrap gap-x-1.5">
+                          <Delta label="prev" v={delta(v, val(m.key, prevRange(c.r)))} />
+                          <Delta label="LM" v={delta(v, val(m.key, shiftMonths(c.r, -1)))} />
+                          <Delta label="LY" v={delta(v, val(m.key, shiftMonths(c.r, -12)))} />
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      {/* 3. KPI strip */}
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-3" data-testid="v7-kpis">
+        {office && <Panel className="col-span-2 md:col-span-1"><div className="text-[11px] text-muted-foreground">Revenue YTD (paid)</div><div className="text-xl font-bold">{rand(val("paid", ytd) ?? 0)}</div><Spark data={revenue} /></Panel>}
+        {office && <Panel><div className="text-[11px] text-muted-foreground">Paid · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{rand(paidSel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(paidSel, val("paid", base))} /></Panel>}
+        {office && <Panel><div className="text-[11px] text-muted-foreground">Outstanding</div><div className="text-xl font-bold">{rand(out)}</div></Panel>}
+        <Panel><div className="text-[11px] text-muted-foreground">Open jobs</div><div className="text-xl font-bold">{openJobs}</div>{jb.overdue > 0 && <TonePill tone="red">{jb.overdue} overdue</TonePill>}</Panel>
+        <Panel><div className="text-[11px] text-muted-foreground">New leads · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{val("new_leads", sel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(val("new_leads", sel), val("new_leads", base))} /></Panel>
+        {!office && <Panel><div className="text-[11px] text-muted-foreground">Quotes sent</div><div className="text-xl font-bold">{sent}</div></Panel>}
+        {!office && <Panel><div className="text-[11px] text-muted-foreground">Quotes accepted</div><div className="text-xl font-bold">{accepted}</div></Panel>}
+      </div>
+
+      {/* 4. Gauges */}
+      <div className={cn("grid gap-2 md:gap-3", office ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1")}>
+        <Gauge title="Quote conversion" pct={sent ? (accepted / sent) * 100 : 0} caption={`${accepted} of ${sent} accepted`} />
+        {office && <Gauge title="Invoices paid" pct={invoicedSel ? (paidSel / invoicedSel) * 100 : 0} caption={`${rand(paidSel)} of ${rand(invoicedSel)}`} />}
+        {office && <Gauge title="Outstanding share" pct={invoicedSel + out ? (out / Math.max(1, (val("invoiced", ytd) ?? 0))) * 100 : 0} caption={`${rand(out)} of ${rand(val("invoiced", ytd) ?? 0)} invoiced this year`} />}
+      </div>
+
+      {/* 5 + 6. Revenue + funnel */}
+      <div className="grid grid-cols-1 gap-2 md:gap-3 lg:grid-cols-3">
+        {office && (
+          <Panel title="Monthly revenue (R thousands)" sub="paid, last 12 months · dashed = last year" className="lg:col-span-2" testId="v7-revenue">
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={revData} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="rgba(156,163,175,0.3)" />
+                  <XAxis dataKey="month" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <Tooltip formatter={(v: any, n: any) => [`R ${v}k`, n === "thisYear" ? "This year" : "Last year"]} />
+                  <Bar dataKey="thisYear" fill={C.blue} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                  <Line dataKey="lastYear" stroke={C.greyDark} strokeDasharray="4 4" dot={false} strokeWidth={1.5} isAnimationActive={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </Panel>
+        )}
+        <Panel title="Lead funnel" sub={PERIODS.find((p) => p.k === kind)!.label} className={office ? "" : "lg:col-span-3"} testId="v7-funnel">
+          <div className="space-y-1.5">
+            {fun.map((s, i) => (
+              <div key={s.label} className="flex items-center gap-2">
+                <div className="h-7 rounded-md px-2 text-[12px] font-medium leading-7 text-white" style={{ width: `${Math.max(18, (s.value / funMax) * 100)}%`, background: i === fun.length - 1 ? C.blueDeep : C.blue, opacity: 1 - i * 0.12 }}>{s.label}</div>
+                <span className="text-sm font-bold">{s.value}</span>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+
+      {/* 7. New Leads inbox */}
+      <Panel title="New Leads inbox" sub="oldest first · type · route" testId="v7-inbox">
+        {sortedInbox.length === 0 ? <p className="text-sm text-muted-foreground">No uncommitted leads. <TonePill tone="grey">All done</TonePill></p> : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] text-sm">
+              <thead><tr className="text-left text-[11px] text-muted-foreground"><th className="py-1 font-medium">Lead</th><th className="font-medium">Type</th><th className="font-medium">Waiting</th><th className="font-medium">Route to</th></tr></thead>
+              <tbody>
+                {sortedInbox.map((l: any) => {
+                  const w = nowMin - ts(l.created_at); const tone: Tone = w >= slaMs ? "red" : w >= slaMs * 0.4 ? "amber" : "blue";
+                  const mins = Math.floor(w / 60000); const wait = mins < 60 ? `${mins}m` : mins < 1440 ? `${Math.floor(mins / 60)}h` : `${Math.floor(mins / 1440)}d`;
+                  const k = leadKind(l);
+                  return (
+                    <tr key={l.id} className="cursor-pointer border-t border-[#E5E7EB] hover:bg-white/60 dark:border-white/10 dark:hover:bg-white/5" onClick={() => navigate(INBOX_ROUTE)}>
+                      <td className="py-1.5 pr-2 text-[12.5px]">{l.customer_name || "Unnamed"}{l.call_area ? ` · ${l.call_area}` : ""}</td>
+                      <td className="pr-2 text-[12px] text-muted-foreground">{k === "sales" ? "Sales quote" : "Service call-out"}</td>
+                      <td className="pr-2"><TonePill tone={tone}>{tone === "red" ? "Overdue" : tone === "amber" ? "Due soon" : "On time"} · {wait}</TonePill></td>
+                      <td className="text-[12px] font-semibold">{k === "sales" ? "Sales" : "Tech"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
+
+      {/* 8 + 9. Jobs by status + aging */}
+      <div className="grid grid-cols-1 gap-2 md:gap-3 md:grid-cols-2">
+        <Panel title="Jobs by status" testId="v7-jobs">
+          <div className="flex items-center gap-3">
+            <div className="relative h-32 w-32 shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart><Pie data={jbRows.map((r) => ({ name: r.label, value: jb[r.k] }))} dataKey="value" innerRadius="62%" outerRadius="95%" stroke="none" isAnimationActive={false}>{jbRows.map((r) => <Cell key={r.k} fill={r.color} />)}</Pie></PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-bold">{openJobs + jb.completed}</span><span className="text-[10px] text-muted-foreground">jobs</span></div>
+            </div>
+            <ul className="flex-1 space-y-1 text-[12.5px]">
+              {jbRows.map((r) => { const I = TONE_ICON[r.tone]; return <li key={r.k} className="flex items-center gap-1.5"><I className="h-3.5 w-3.5" style={{ color: r.color }} />{r.label}<span className="ml-auto font-bold">{jb[r.k]}</span></li>; })}
+            </ul>
+          </div>
+        </Panel>
+        {office && (
+          <Panel title="Accounts aging" sub="unpaid, by days past due" testId="v7-aging">
+            <div className="space-y-2">
+              {ag.map((a, i) => { const tone: Tone = i === 0 ? "blue" : i === 1 ? "amber" : "red"; const I = TONE_ICON[tone];
+                return (
+                  <div key={a.label}>
+                    <div className="flex items-center justify-between text-[12px]"><span className="flex items-center gap-1"><I className="h-3 w-3" style={{ color: C[tone] }} />{a.label} · {i === 0 ? "current" : i === 1 ? "due soon" : "overdue"}</span><span className="font-semibold">{rand(a.amount)}</span></div>
+                    <div className="h-2 rounded bg-[#E5E7EB] dark:bg-white/10"><div className="h-2 rounded" style={{ width: `${(a.amount / agMax) * 100}%`, background: C[tone] }} /></div>
+                  </div>
+                ); })}
+            </div>
+          </Panel>
+        )}
+      </div>
+
+      {/* 10. Team workload & earnings (office; earnings column for the company owner only) */}
+      {office && (
+        <Panel title="Team workload & earnings" sub={owner ? "open jobs · earnings this month" : "open jobs"} testId="v7-team">
+          {team.length === 0 ? <p className="text-sm text-muted-foreground">No open assignments.</p> : (
+            <table className="w-full text-sm">
+              <thead><tr className="text-left text-[11px] text-muted-foreground"><th className="py-1 font-medium">Person</th><th className="font-medium">Workload (open jobs)</th>{owner && <th className="text-right font-medium">Earnings (MTD)</th>}</tr></thead>
+              <tbody>
+                {team.map((p) => (
+                  <tr key={p.id} className="border-t border-[#E5E7EB] dark:border-white/10">
+                    <td className="py-1.5 pr-2"><div className="text-[12.5px] font-medium">{p.full_name || "—"}</div><div className="text-[10.5px] text-muted-foreground">{p.dispatch_role === "sales" ? "Sales" : p.job_title || "Technician"}</div></td>
+                    <td className="pr-2"><div className="h-2 w-full max-w-[220px] rounded bg-[#E5E7EB] dark:bg-white/10"><div className="h-2 rounded bg-[#1AA7EC]" style={{ width: `${(p.open / teamMax) * 100}%` }} /></div><span className="text-[10.5px] text-muted-foreground">{p.open} jobs</span></td>
+                    {owner && <td className="text-right font-semibold">{rand(p.earn)}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+      )}
+    </div>
+  );
+}
