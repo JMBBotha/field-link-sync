@@ -1,3 +1,6 @@
+import LeadToPaidPanel from "@/components/dashboard/LeadToPaidPanel";
+import TechTodayList from "@/components/dashboard/TechTodayList";
+import { useRole } from "@/hooks/useRole";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import JobCard from "@/components/cards/JobCard";
 
@@ -280,6 +283,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
 
   // Core 5 KPIs — focused on Lead → Job → Invoice flow
   const { isSalesRep } = useSalesRep();
+  const { isAdmin: roleAdmin, isDispatcher: roleDispatcher, isFieldAgent: roleField } = useRole();
+  // Lead rule (Johan 13 Oct): techs never see leads / Create lead; they get Job offers + today's allocated jobs.
+  const techOnly = roleField && !roleAdmin && !roleDispatcher;
   const kpiCardsAll = useMemo(() => [
     { key: "new_leads", label: "New Leads", value: inboxCount, icon: Plus, color: "text-primary", sparkKey: "leads" as const, sparkColor: "#0077B6" },
     { key: "active_jobs", label: "Today's Jobs", value: stats?.activeJobs ?? 0, icon: Clock, color: "text-green-500", sparkKey: "active" as const, sparkColor: "#22c55e" },
@@ -292,9 +298,10 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   ], [stats, jobStats, inboxCount, d1, serviceLeads]);
   const SALES_REP_HIDDEN_KPIS = ["overdue_invoices", "active_techs", "deposits_due"];
   const kpiCards = useMemo(
-    () => (isSalesRep ? kpiCardsAll.filter((k) => !SALES_REP_HIDDEN_KPIS.includes(k.key)) : kpiCardsAll),
+    () => (techOnly ? kpiCardsAll.filter((k) => !["new_leads", "service_leads", "visits_booked"].includes(k.key))
+      : isSalesRep ? kpiCardsAll.filter((k) => !SALES_REP_HIDDEN_KPIS.includes(k.key)) : kpiCardsAll),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [kpiCardsAll, isSalesRep],
+    [kpiCardsAll, isSalesRep, techOnly],
   );
 
   const [showMore, setShowMore] = useState(false);
@@ -321,12 +328,16 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           <h1 className="hidden md:block text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="hidden md:block text-sm text-muted-foreground">Lead → Job → Invoice at a glance</p>
         </div>
+        {!techOnly && (
         <div className="flex flex-wrap gap-2">
           <Button variant="brand" onClick={onCreateLead}><Plus className="mr-2 h-4 w-4" />New Lead</Button>
           <Button variant="brand" onClick={() => onNavigate("quotes")}><Plus className="mr-2 h-4 w-4" />New Quote</Button>
-          
         </div>
+        )}
       </div>
+
+      {/* Lead → Paid path + Next up (flow.md §10). Sales: BOOKED→ACCEPTED; techs: today's jobs only. */}
+      {techOnly ? <TechTodayList /> : <LeadToPaidPanel audience={isSalesRep ? "sales" : "office"} />}
 
       <QuickTemplateDialog
         open={showTemplatePicker}

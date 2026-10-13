@@ -4,6 +4,10 @@ import { cn } from "@/lib/utils";
 import { useRoleColours } from "@/hooks/useSignedInIdentity";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { jobsTabFor } from "@/lib/visits";
+import { useRole } from "@/hooks/useRole";
+import { useLeadInbox } from "@/hooks/useLeadInbox";
+import { useLeadSla } from "@/hooks/useLeadSla";
+import { inboxTone } from "@/lib/leadClock";
 
 interface AdminBottomNavProps {
   onOpenMenu: () => void;
@@ -19,6 +23,12 @@ const AdminBottomNav = ({ onOpenMenu }: AdminBottomNavProps) => {
   const { pathname } = useLocation();
   const { isSalesRep } = useSalesRep();
   const { colours } = useRoleColours();
+  const { isAdmin, isDispatcher, isFieldAgent } = useRole();
+  const { leads } = useLeadInbox();
+  const { sla } = useLeadSla();
+  // New Leads tone dot on Menu (not for techs). Re-evaluated on each 60s inbox refetch / realtime change.
+  const tone = isFieldAgent && !isAdmin && !isDispatcher ? null : inboxTone(leads as any[], Date.now(), sla);
+  const dot = tone ? { red: "bg-[#DC2626]", amber: "bg-[#EAB308]", green: "bg-[#16a34a]", grey: "bg-[#6b7280]" }[tone.tone] : null;
   // Reps: Map is hidden (step 2); its slot becomes the read-only PDF price lists.
   const visibleTabs = isSalesRep
     ? [
@@ -60,9 +70,13 @@ const AdminBottomNav = ({ onOpenMenu }: AdminBottomNavProps) => {
         <button
           type="button"
           onClick={onOpenMenu}
-          className="flex flex-col items-center justify-center gap-0.5 min-h-[48px] text-muted-foreground hover:text-foreground transition-colors"
+          className="relative flex flex-col items-center justify-center gap-0.5 min-h-[48px] text-muted-foreground hover:text-foreground transition-colors"
+          aria-label={tone ? `Menu · New Leads ${tone.tone === "red" ? "overdue" : tone.tone === "amber" ? "due soon" : "waiting"}` : "Menu"}
         >
-          <Menu className="h-5 w-5" />
+          <span className="relative">
+            <Menu className="h-5 w-5" />
+            {dot && <span data-testid="menu-lead-dot" className={cn("absolute -right-1.5 -top-1 h-2.5 w-2.5 rounded-full ring-2 ring-slate-900", dot)} />}
+          </span>
           <span className="text-[10px] font-medium">Menu</span>
         </button>
       </div>

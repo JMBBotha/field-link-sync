@@ -23,6 +23,8 @@ interface NotificationsListProps {
   onMarkAsRead: (id: string) => void;
   onMarkAllRead: (ids?: string[]) => void;
   onClose: () => void;
+  /** Techs never see the Leads filter (lead rule, 13 Oct). */
+  hideLeadsFilter?: boolean;
 }
 
 const typeIcons: Record<string, typeof Bell> = {
@@ -106,6 +108,7 @@ const NotificationsList = ({
   onMarkAsRead,
   onMarkAllRead,
   onClose,
+  hideLeadsFilter,
 }: NotificationsListProps) => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -192,7 +195,7 @@ const NotificationsList = ({
 
         {/* Filters */}
         <div className="shrink-0 flex gap-1 overflow-x-auto px-3 py-2 border-b">
-          {FILTERS.map((f) => (
+          {FILTERS.filter((f) => !(hideLeadsFilter && f.key === "leads")).map((f) => (
             <button
               key={f.key}
               type="button"

@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import NotificationsList, { notificationHref } from "./NotificationsList";
 import { markFollowUpDone } from "./notificationFollowUp";
+import { useRole } from "@/hooks/useRole";
 
 interface Notification {
   id: string;
@@ -29,6 +30,8 @@ const NotificationBell = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const navRef = useRef(navigate);
+  const { isAdmin, isDispatcher, isFieldAgent } = useRole();
+  const techOnly = isFieldAgent && !isAdmin && !isDispatcher;
   navRef.current = navigate;
 
   useEffect(() => {
@@ -160,6 +163,7 @@ const NotificationBell = () => {
       >
         <NotificationsList
           notifications={notifications}
+          hideLeadsFilter={techOnly}
           onMarkAsRead={markAsRead}
           onMarkAllRead={markAllRead}
           onClose={() => setOpen(false)}

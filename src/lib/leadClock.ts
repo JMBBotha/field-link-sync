@@ -61,3 +61,19 @@ export function leadClock(l: LeadClockInput, now: number, s: SlaSettings = DEFAU
     alerted: l.quote_sla_breached_at ? `#2 alerted ${hhmm(l.quote_sla_breached_at)}` : null,
   };
 }
+
+/** Worst tone over the inbox's not-yet-contacted pending leads (AUDIT_v7 R5): green | amber | red | grey (after hours) | null (none). */
+export type InboxTone = "green" | "amber" | "red" | "grey";
+export function inboxTone(leads: LeadClockInput[], now: number, s: SlaSettings = DEFAULT_SLA): { tone: InboxTone; oldestMs: number } | null {
+  const rank: Record<InboxTone, number> = { grey: 0, green: 1, amber: 2, red: 3 };
+  let best: InboxTone | null = null, oldest = 0;
+  for (const l of leads) {
+    if (l.first_contact_at || (l.status && l.status !== "pending")) continue;
+    const c = leadClock(l, now, s);
+    if (!c || c.stage > 1) continue;
+    const tone: InboxTone = c.tone === "grey" ? "grey" : c.tone === "red" ? "red" : c.tone === "green" ? "green" : "amber";
+    if (c.stage === 1 && l.created_at) oldest = Math.max(oldest, now - nextOpen(Date.parse(l.created_at), s));
+    if (best === null || rank[tone] > rank[best]) best = tone;
+  }
+  return best ? { tone: best, oldestMs: oldest } : null;
+}

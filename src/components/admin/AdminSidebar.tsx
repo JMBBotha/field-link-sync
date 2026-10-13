@@ -15,6 +15,11 @@ import CompanyLogo from "@/components/shared/CompanyLogo";
 import { sidebarRoleLabel } from "@/lib/sidebarRoleLabel";
 import { useLeadInbox, INBOX_ROUTE } from "@/hooks/useLeadInbox";
 import { usePendingApplicants } from "@/hooks/usePendingApplicants";
+import { usePlatformOwner } from "@/components/RequirePlatformOwner";
+import { useSignedInIdentity } from "@/hooks/useSignedInIdentity";
+import { useLeadSla, useNow } from "@/hooks/useLeadSla";
+import { inboxTone } from "@/lib/leadClock";
+import { span as hm } from "@/lib/leadFlow";
 
 interface NavItem {
   path: string;
@@ -54,7 +59,16 @@ const AdminSidebar = ({
   const { isAdmin, isDispatcher, isFieldAgent, roles } = useRole();
   const { settings } = useCompanySettings();
   const { isSalesRep } = useSalesRep();
-  const { count: inboxCount } = useLeadInbox();
+  const { count: inboxCount, leads: inboxLeads } = useLeadInbox();
+  const { isPlatformOwner } = usePlatformOwner();
+  const identity = useSignedInIdentity();
+  const { sla } = useLeadSla();
+  const now = useNow();
+  // Lead rule (Johan 13 Oct): techs never see the New Leads inbox or Create lead (also enforced by RLS).
+  const techOnly = isFieldAgent && !isAdmin && !isDispatcher;
+  const tone = techOnly ? null : inboxTone(inboxLeads as any[], Math.floor(now / 30_000) * 30_000, sla);
+  const toneClass = tone ? { red: "bg-[#DC2626] hover:bg-[#DC2626]/90 text-white", amber: "bg-[#EAB308] hover:bg-[#EAB308]/90 text-[#111827]", green: "bg-[#16a34a] hover:bg-[#16a34a]/90 text-white", grey: "bg-[#6b7280] hover:bg-[#6b7280]/90 text-white" }[tone.tone] : "";
+  const initials = (identity?.name || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?";
   const { count: pendingApplicants } = usePendingApplicants();
 
 
@@ -383,14 +397,15 @@ const AdminSidebar = ({
       {/* Company switcher */}
       <div
         className={cn(
-          "relative border-b border-nav-border px-3 py-2",
-          collapsed && "px-2 py-2"
+          "relative border-b border-nav-border px-2 py-1.5",
+          collapsed && "px-2 py-2",
+          mobileOpen && "pr-10 lg:pr-2"
         )}
       >
         <button
           onClick={() => handleNav(isSalesRep ? "/admin" : "/admin/settings")}
           className={cn(
-            "flex w-full flex-col items-center gap-1 rounded-md p-1.5 transition-colors hover:bg-white/[0.07]",
+            "flex w-full flex-col items-center gap-1 rounded-md p-0.5 transition-colors hover:bg-white/[0.07]",
             collapsed && "gap-0 p-1"
           )}
           title={companyName}
@@ -398,7 +413,7 @@ const AdminSidebar = ({
           <CompanyLogo
             className={cn(
               "w-full object-contain",
-              collapsed ? "h-8 w-8" : "max-h-14 px-2"
+              collapsed ? "h-11 w-11" : "max-h-[78px]"
             )}
           />
 
@@ -414,6 +429,15 @@ const AdminSidebar = ({
             </div>
           )}
         </button>
+        {!collapsed && identity && (
+          <div className="mt-1.5 flex items-center gap-2 rounded-md bg-white/[0.06] px-2 py-1.5" data-testid="sidebar-user-row">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/15 text-[11px] font-bold text-white">{initials}</span>
+            <div className="min-w-0">
+              <div className="truncate text-[12px] font-semibold text-white">{identity.name}</div>
+              <div className="truncate text-[10.5px] text-nav-muted">{roleLabel}</div>
+            </div>
+          </div>
+        )}
         {mobileOpen && (
           <Button
             variant="ghost"
@@ -427,18 +451,24 @@ const AdminSidebar = ({
       </div>
 
 
-      {/* New Lead button */}
-      <div className={cn("px-3 pt-2 pb-1.5", collapsed && "px-2")}>
+      {/* New Lead button (hidden for techs) */}
+      {!techOnly && <div className={cn("px-3 pt-2 pb-1.5", collapsed && "px-2")}>
         <div className={cn("flex items-center gap-1.5", collapsed && "flex-col gap-1")}>
           <Button
             variant="brand"
             onClick={() => handleNav(INBOX_ROUTE)}
-            className={cn("relative flex-1 min-w-0", collapsed && "w-full px-0")}
+            className={cn("relative flex-1 min-w-0", collapsed && "w-full px-0", toneClass, tone && !collapsed && "h-auto py-1.5")}
             size={collapsed ? "icon" : "default"}
-            title="New Leads inbox"
+            title={tone ? `New Leads inbox · ${tone.tone === "red" ? "OVERDUE" : tone.tone === "amber" ? "DUE SOON" : tone.tone === "grey" ? "starts " + sla.open : "on time"}` : "New Leads inbox"}
+            data-tone={tone?.tone ?? "none"}
           >
             <Bell className="h-4 w-4" />
-            {!collapsed && <span className="truncate">New Leads</span>}
+            {!collapsed && (
+              <span className="flex min-w-0 flex-col items-start leading-tight">
+                <span className="truncate">New Leads</span>
+                {tone && tone.oldestMs > 0 && <span className="text-[10px] font-semibold opacity-90">{tone.tone === "red" ? "! " : ""}oldest {hm(tone.oldestMs)}</span>}
+              </span>
+            )}
             {inboxCount > 0 && (
               collapsed ? (
                 <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-white">
@@ -465,7 +495,7 @@ const AdminSidebar = ({
             <Plus className="h-4 w-4" />
           </Button>
         </div>
-      </div>
+      </div>}
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 pb-1 space-y-px">
@@ -497,7 +527,7 @@ const AdminSidebar = ({
         </button>
         {accountOpen && (<>
         {[
-          ...(isSalesRep ? [] : [{ path: "/admin/settings", label: "Settings", icon: Settings }]),
+          ...(isSalesRep || !isAdmin ? [] : [{ path: "/admin/settings", label: "Settings", icon: Settings }]),
           ...(isSalesRep || !isAdmin ? [] : [{ path: "/admin/areas", label: "Areas", icon: MapPin }]),
           { path: "/admin/my-signature", label: "My email signature", icon: Mail },
           { path: "/admin/help", label: "Help", icon: HelpCircle },
@@ -514,7 +544,7 @@ const AdminSidebar = ({
             {!collapsed && <span>{item.label}</span>}
           </button>
         ))}
-        {isAdmin && (
+        {isAdmin && isPlatformOwner && (
           <>
             <button
               onClick={() => setAdvancedOpen((v) => !v)}
