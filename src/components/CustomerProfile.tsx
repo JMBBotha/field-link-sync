@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import EquipmentList from "./EquipmentList";
 import InvoiceList from "./InvoiceList";
 import InvoiceDetail from "./InvoiceDetail";
+import { fetchLeadBookings, formatBookingWhen, type BookingInfo } from "@/lib/leadBooking";
 import { format, addYears } from "date-fns";
 
 interface Customer {
@@ -100,6 +101,7 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [bookings, setBookings] = useState<Map<string, BookingInfo>>(new Map());
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [agreements, setAgreements] = useState<Agreement[]>([]);
   const [activeTab, setActiveTab] = useState("info");
@@ -135,6 +137,8 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
       .order("created_at", { ascending: false });
 
     setJobs((jobsData as Job[]) || []);
+    fetchLeadBookings(((jobsData as Job[]) || []).filter((j) => j.status !== "completed" && j.status !== "cancelled").map((j) => j.id))
+      .then(setBookings).catch(() => setBookings(new Map()));
 
     // Fetch feedback
     const { data: feedbackData } = await supabase
@@ -408,7 +412,14 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
                                   {job.completed_at && ` → ${formatDate(job.completed_at)}`}
                                 </p>
                               </div>
-                              {getStatusBadge(job.status)}
+                              {bookings.get(job.id) ? (
+                                <div className="text-right" data-testid="customer-lead-booked">
+                                  <Badge className="bg-blue-600 text-white text-xs">Booked</Badge>
+                                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                    {[bookings.get(job.id)!.techName, formatBookingWhen(bookings.get(job.id)!.when)].filter(Boolean).join(" · ")}
+                                  </p>
+                                </div>
+                              ) : getStatusBadge(job.status)}
                             </div>
                           </CardContent>
                         </Card>

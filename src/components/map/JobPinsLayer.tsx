@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import mapboxgl from "mapbox-gl";
 import type { JobPin } from "@/lib/jobPins";
+import { formatBookingWhen } from "@/lib/leadBooking";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
@@ -28,7 +29,11 @@ export default function JobPinsLayer({ getMap, jobs, visible, jobPath = (id) => 
         const when = j.scheduled_for ? new Date(j.scheduled_for).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Not booked";
         const html = `<div style="min-width:180px"><div style="font-weight:600">${esc(j.customer_name || j.title)}</div>
           <div style="font-size:12px;color:#64748b">${esc(j.title)}</div>
-          <div style="font-size:12px;margin-top:4px">${esc(when)} · ${esc(j.status.replace(/_/g, " "))}</div>
+          ${j.booking ? `<div data-booked-info style="margin-top:6px;padding:5px 7px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px">
+            <div style="font-size:10px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:.03em">Booked</div>
+            <div style="font-size:12px;font-weight:600;color:#1e3a8a">${esc(j.booking.techName || "Tech assigned")}</div>
+            <div style="font-size:11px;color:#1e40af">${esc(formatBookingWhen(j.booking.when) || when)}</div></div>`
+          : `<div style="font-size:12px;margin-top:4px">${esc(when)} · ${esc(j.status.replace(/_/g, " "))}</div>`}
           ${j.address ? `<div style="font-size:11px;color:#64748b">${esc(j.address)}</div>` : ""}
           <button data-open-job="${j.id}" style="margin-top:6px;font-size:12px;color:#2563eb;background:none;border:none;padding:0;cursor:pointer;font-weight:600">Open job →</button></div>`;
         const popup = new mapboxgl.Popup({ offset: 14 }).setHTML(html);

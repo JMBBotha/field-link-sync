@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from "react";
+import { useLeadBooking } from "@/hooks/useLeadBooking";
+import { bookingFromLead, formatBookingWhen, isBookableStatus } from "@/lib/leadBooking";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, MapPin, Phone } from "lucide-react";
 import { toast } from "sonner";
@@ -106,6 +108,9 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
     },
   });
   const unassigned = !lead.assigned_agent_id && !jobTech;
+  const { data: jobBooking } = useLeadBooking(lead.id, isBookableStatus(lead.status));
+  const booking = jobBooking ?? bookingFromLead(lead as any, assigneeName ?? staff.find((s) => s.id === lead.assigned_agent_id)?.full_name ?? null);
+  const bookingWhen = booking ? formatBookingWhen(booking.when) : null;
   const compact = density === "compact";
   const who = tech && lead.assigned_agent_id === user?.id ? "You" : assigneeName ?? staff.find((s) => s.id === lead.assigned_agent_id)?.full_name ?? (jobTech ? (tech && jobTech.id === user?.id ? "You" : jobTech.name) : null);
   const pool = lane === "service" ? technicians : lane === "sales" ? salesStaff : staff;
@@ -169,6 +174,11 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
           </p>
         )}
         <LeadTimingChip notes={lead.notes} className="mt-1" />
+        {booking && (!tech || jobBooking) && (
+          <span data-testid="lead-card-booked" className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-800">
+            <span className="truncate">Booked{booking.techName ? ` · ${tech && booking.techId === user?.id ? "You" : booking.techName}` : ""}{bookingWhen ? ` · ${bookingWhen}` : ""}</span>
+          </span>
+        )}
       </div>
       {phone && !hideContact && !compact && (
         <div className="flex flex-wrap items-center gap-1.5" onClick={stop}>

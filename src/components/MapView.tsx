@@ -16,6 +16,7 @@ import { hasValidCoords, resolveLeadCoords } from "@/lib/leadCoords";
 import { attachPaymentTotals, DepositInvoiceRow } from "@/lib/depositInvoice";
 import { getDepositChipState, depositChipLabel } from "@/components/shared/DepositPaymentChip";
 import { formatRand } from "@/utils/formatRand";
+import { fetchLeadBookings, bookingFromLead, formatBookingWhen, type BookingInfo } from "@/lib/leadBooking";
 
 interface AgentLocation {
   agent_id: string;
@@ -121,6 +122,16 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   const [customerLocations, setCustomerLocations] = useState<any[]>([]);
   // Deposit truth per lead (lead_id -> deposit invoice with settled allocation totals)
   const [depositByLead, setDepositByLead] = useState<Map<string, DepositInvoiceRow>>(new Map());
+  // Live "Booked" info (linked open job's tech + schedule) per lead, for the info popup.
+  const [bookingByLead, setBookingByLead] = useState<Map<string, BookingInfo>>(new Map());
+  const bookingLeadKey = leads.map((l) => `${l.id}:${l.status}`).join(",");
+  useEffect(() => {
+    let cancelled = false;
+    const ids = leads.filter((l) => l.status !== "completed" && l.status !== "cancelled").map((l) => l.id);
+    fetchLeadBookings(ids).then((m) => { if (!cancelled) setBookingByLead(m); }).catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingLeadKey]);
   const searchMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userWatchIdRef = useRef<number | null>(null);
@@ -994,7 +1005,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     if (mapLoaded && mapInstanceRef.current && (agents.length > 0 || leads.length > 0)) {
       updateMarkers();
     }
-  }, [agents, leads, mapLoaded, statusFilters, onLeadClick, depositByLead]);
+  }, [agents, leads, mapLoaded, statusFilters, onLeadClick, depositByLead, bookingByLead]);
 
   const updateMarkers = () => {
     const map = mapInstanceRef.current;
@@ -1031,7 +1042,17 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     const buildLeadPopupHTML = (lead: Lead) => {
       const statusColor = statusColors[lead.status] || "#6b7280";
       const rawLabel = (lead.status || "").replace("_", " ");
-      const statusLabel = (lead.status === "accepted" || lead.status === "claimed") ? "Claimed" : rawLabel;
+      const ownTech = lead.assigned_agent_id ? (agents.find((a) => a.agent_id === lead.assigned_agent_id)?.profiles?.full_name || null) : null;
+      const booking = bookingByLead.get(lead.id) ?? bookingFromLead(lead as any, ownTech);
+      const bookingWhen = booking ? formatBookingWhen(booking.when) : null;
+      const statusLabel = booking ? "Booked" : (lead.status === "accepted" || lead.status === "claimed") ? "Claimed" : rawLabel;
+      const statusColorFinal = booking ? "#2563eb" : statusColor;
+      const bookingHtml = booking ? `
+            <div data-booked-info style="display: flex; flex-direction: column; gap: 1px; margin-top: 6px; padding: 6px 8px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px;">
+              <span style="font-size: 10px; color: #1e40af; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600;">Booked</span>
+              <span style="font-size: 12px; color: #1e3a8a; font-weight: 600;">${escapeHtml(booking.techName || "Tech assigned")}</span>
+              ${bookingWhen ? `<span style="font-size: 11px; color: #1e40af;">${escapeHtml(bookingWhen)}</span>` : ""}
+            </div>` : "";
       const safeName = escapeHtml(lead.customer_name);
       const safeService = escapeHtml(lead.service_type);
       const safeAddress = escapeHtml(lead.customer_address);
@@ -1067,7 +1088,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
               <div style="font-weight: 600; font-size: 14px; color: #1f2937;">${safeName}</div>
               <div style="font-size: 11px; color: #6b7280;">${safeService}</div>
             </div>
-            <span style="background: ${statusColor}; color: white; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 9999px; text-transform: capitalize;">${statusLabel}</span>
+            <span style="background: ${statusColorFinal}; color: white; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 9999px; text-transform: capitalize;">${statusLabel}</span>
           </div>
 
           <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #374151;">
@@ -1089,7 +1110,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
             </div>
             ` : ""}
 
-            ${isClaimed ? `
+            ${bookingHtml}
+
+            ${isClaimed && !booking ? `
             <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 6px 8px; background: #fef3c7; border: 1px solid #fde68a; border-radius: 6px;">
               <svg style="width: 14px; height: 14px; color: #b45309; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
               <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">

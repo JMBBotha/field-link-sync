@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { hasValidCoords } from "@/lib/leadCoords";
 import { geocodeAddress } from "@/lib/geocodeAddress";
+import { fetchJobBookings, type BookingInfo } from "@/lib/leadBooking";
 
 /** Job statuses that are finished and never shown as map pins. */
 export const CLOSED_JOB_STATUSES = ["completed", "cancelled", "canceled", "invoiced", "closed", "paid"];
@@ -16,6 +17,8 @@ export interface JobPin {
   address: string | null;
   scheduled_for: string | null;
   customer_name: string | null;
+  /** Assigned tech + booked slot when the open job has a tech (shown as "Booked"). */
+  booking?: BookingInfo | null;
   lat: number;
   lng: number;
 }
@@ -88,6 +91,7 @@ export async function fetchJobPins(companyId: string, techOnlyUserId?: string | 
     }
   }
 
+  const bookings = await fetchJobBookings(jobs.map((j) => j.id)).catch(() => new Map<string, BookingInfo>());
   const out: JobPin[] = [];
   for (const j of jobs) {
     let c = pickJobCoords(j, leadCoords, customerCoords);
@@ -103,6 +107,7 @@ export async function fetchJobPins(companyId: string, techOnlyUserId?: string | 
       address: j.address ?? null,
       scheduled_for: j.scheduled_for ?? null,
       customer_name: j.customers?.name ?? null,
+      booking: bookings.get(j.id) ?? null,
       lat: c.lat,
       lng: c.lng,
     });

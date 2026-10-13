@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus, FileText, Timer, GitBranch, CloudOff, ChevronRight } from "lucide-react";
 import RandSign from "@/components/icons/RandSign";
 import BookingBadge from "@/components/BookingBadge";
+import { useLeadBooking } from "@/hooks/useLeadBooking";
+import { bookingFromLead, formatBookingWhen, isBookableStatus } from "@/lib/leadBooking";
 import CustomerJobHistory from "@/components/CustomerJobHistory";
 import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
 import HelpTip from "@/components/help/HelpTip";
@@ -259,7 +261,22 @@ const LeadDetailSheet = ({
     }
   }, [open, autoStartCompletion, lead?.status, onAutoStartHandled]);
 
+  // Live booking: linked open job's assigned tech + schedule (or the lead's own tech + date).
+  const { data: jobBooking } = useLeadBooking(lead?.id, open && !!lead && isBookableStatus(lead?.status));
+  const { data: leadTechName } = useQuery({
+    queryKey: ["lead-booking-tech", lead?.assigned_agent_id],
+    enabled: open && !jobBooking && !!lead?.assigned_agent_id && !!lead?.scheduled_date,
+    staleTime: 300_000,
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("full_name").eq("id", lead!.assigned_agent_id!).maybeSingle();
+      return ((data as any)?.full_name as string) || null;
+    },
+  });
+
   if (!lead) return null;
+
+  const booking = jobBooking ?? bookingFromLead(lead as any, leadTechName);
+  const bookingWhen = booking ? formatBookingWhen(booking.when) : null;
 
   const isOwner = lead.assigned_agent_id === currentUserId;
   const isAvailable = ["pending", "open", "released"].includes(lead.status) && !lead.assigned_agent_id;
@@ -508,11 +525,18 @@ const LeadDetailSheet = ({
                 </SheetTitle>
                 <p className="text-sm text-muted-foreground line-clamp-2 break-words">{lead.service_type}</p>
                 <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={(lead as any).scheduled_time} status={lead.status} className="mt-1" />
+                {booking && (
+                  <p className="mt-1 text-xs font-medium text-blue-700" data-testid="lead-booked-line">
+                    Booked{booking.techName ? ` · ${booking.techName}` : ""}{bookingWhen ? ` · ${bookingWhen}` : ""}
+                  </p>
+                )}
                 <LeadTimingChip notes={lead.notes} className="mt-1" />
                 {getPriorityIndicator(lead.priority)}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                {getStatusBadge(lead.status)}
+                {booking ? (
+                  <Badge className="bg-blue-600 text-white text-xs" data-testid="lead-booked-badge">Booked</Badge>
+                ) : getStatusBadge(lead.status)}
                 <Button
                   variant="ghost"
                   size="icon"
