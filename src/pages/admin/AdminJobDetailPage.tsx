@@ -77,6 +77,21 @@ const AdminJobDetailPage = () => {
     },
   });
 
+  const { data: assignedTech } = useQuery({
+    queryKey: ["job-detail-tech", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("assignments")
+        .select("id, profile_id, status, created_at, profiles!assignments_profile_id_fkey(full_name)")
+        .eq("job_id", id!)
+        .order("created_at", { ascending: true })
+        .limit(1);
+      const a: any = data?.[0];
+      return a ? { id: a.id, name: (a.profiles?.full_name || "").trim() || "Technician" } : null;
+    },
+  });
+
   const rawInvoice: any = (job as any)?.invoices ?? null;
   const { data: depositInvoice } = useQuery({
     queryKey: ["job-detail-invoice-payments", rawInvoice?.id],
@@ -175,11 +190,16 @@ const AdminJobDetailPage = () => {
           <Button variant="ghost" size="sm" onClick={() => navigate("/admin/jobs")} className="gap-1.5 -ml-2">
             <ArrowLeft className="h-4 w-4" /> Jobs
           </Button>
-          {canAccessAdmin && (
-            <Button variant="outline" size="sm" className="ml-auto" onClick={() => setAssignOpen(true)}>
-              Assign tech
-            </Button>
-          )}
+          <div className="ml-auto flex min-w-0 items-center gap-2">
+            <span className="min-w-0 truncate text-sm" data-testid="job-tech">
+              {assignedTech ? <>Tech: <span className="font-medium">{assignedTech.name}</span></> : <span className="text-muted-foreground">No tech yet</span>}
+            </span>
+            {canAccessAdmin && (
+              <Button variant="outline" size="sm" className="shrink-0" onClick={() => setAssignOpen(true)}>
+                {assignedTech ? "Change tech" : "Assign tech"}
+              </Button>
+            )}
+          </div>
         </div>
         <AssignTechDialog jobId={assignOpen ? j.id : null} onClose={() => setAssignOpen(false)} />
 

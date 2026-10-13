@@ -16,8 +16,10 @@ import AvailabilityPicker from "@/components/scheduling/AvailabilityPicker";
 
 /**
  * The Jobs board's Assign Technician dialog (moved here unchanged so the
- * job detail page can reuse it). Inserts an assignment and moves a
- * scheduled job to dispatched.
+ * job detail page can reuse it). Saves the job's technician: updates the
+ * existing primary/internal assignment (or inserts one). Assigning never
+ * changes the job status; "dispatched" (en route) only comes from the tech's
+ * "On my way" or the office's "Mark en route".
  */
 const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {} }: {
   jobId: string | null; onClose: () => void; availableOnly?: boolean; dayCounts?: Record<string, number>;
@@ -99,21 +101,41 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
   const assignMutation = useMutation({
     mutationFn: async ({ jobId, techId }: { jobId: string; techId: string }) => {
       const tech = techs.find((t: any) => t.id === techId);
-      const { error } = await supabase.from("assignments").insert({
-        job_id: jobId,
-        profile_id: techId,
-        assigned_by: user?.id || null,
-        assignment_type: tech?.assignment_type || "internal",
-        notes: assignNotes || null,
-      });
-      if (error) throw error;
-      // Move job to dispatched if still scheduled
-      await supabase.from("jobs").update({ status: "dispatched", updated_at: new Date().toISOString() }).eq("id", jobId).eq("status", "scheduled");
+      const { data: existing, error: exErr } = await supabase
+        .from("assignments")
+        .select("id")
+        .eq("job_id", jobId)
+        .in("assignment_type", ["primary", "internal", "affiliated", "network"])
+        .order("created_at", { ascending: true })
+        .limit(1);
+      if (exErr) throw exErr;
+      if (existing?.[0]) {
+        const { data: upd, error } = await supabase.from("assignments").update({
+          profile_id: techId,
+          assigned_by: user?.id || null,
+          assignment_type: tech?.assignment_type || "internal",
+          ...(assignNotes ? { notes: assignNotes } : {}),
+        } as any).eq("id", existing[0].id).select("id");
+        if (error) throw error;
+        if (!upd?.length) throw new Error("Not saved: you don't have permission to change this job's technician.");
+      } else {
+        const { error } = await supabase.from("assignments").insert({
+          job_id: jobId,
+          profile_id: techId,
+          assigned_by: user?.id || null,
+          assignment_type: tech?.assignment_type || "internal",
+          notes: assignNotes || null,
+        });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       toast({ title: "Technician assigned" });
       queryClient.invalidateQueries({ queryKey: ["jobs-dispatch"] });
       queryClient.invalidateQueries({ queryKey: ["job-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["job-detail-tech"] });
+      queryClient.invalidateQueries({ queryKey: ["lead-job-tech"] });
+      queryClient.invalidateQueries({ queryKey: ["dispatch-cards"] });
       setAssignJobId(null);
       setSelectedTechId("");
       setAssignNotes("");
@@ -139,6 +161,11 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
             <DialogDescription>Select a technician to assign to this job</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {assignJobId && jobSlot === null && (
+              <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground">
+                This job has no date yet, so it won't show on the schedule until a date is set.
+              </p>
+            )}
             {jobSlot && assignJobId && (
               <AvailabilityPicker lane="service" date={jobSlot.date} startTime={jobSlot.time} minutes={jobSlot.minutes}
                 lat={jobSlot.lat} lng={jobSlot.lng} excludeJobId={assignJobId} selectedId={selectedTechId}

@@ -209,11 +209,8 @@ serve(async (req) => {
       );
     }
 
-    // Update job status to dispatched
-    await supabase
-      .from("jobs")
-      .update({ status: "dispatched", updated_at: new Date().toISOString() })
-      .eq("id", job_id);
+    // Assigning never changes the job status: "dispatched" (en route) is set only
+    // when the tech taps "On my way" or the office taps "Mark en route".
 
     // Notify the assignee
     await supabase.from("notifications").insert({

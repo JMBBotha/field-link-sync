@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, MapPin, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -88,9 +88,26 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
   const lane = laneOf(lead);
   const clock = leadClock(lead, now, sla);
   const phone = lead.customer_phone || lead.phone || "";
-  const unassigned = !lead.assigned_agent_id;
+  // Installation leads keep no tech of their own: fall back to the linked open job's tech.
+  const { data: jobTech } = useQuery({
+    queryKey: ["lead-job-tech", lead.id],
+    enabled: !lead.assigned_agent_id && !!lead.id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("jobs")
+        .select("id, created_at, assignments(profile_id, created_at, profiles!assignments_profile_id_fkey(full_name))")
+        .eq("lead_id", lead.id)
+        .in("status", ["scheduled", "dispatched", "in_progress", "pending"])
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const a: any = ((data?.[0] as any)?.assignments || []).sort((x: any, y: any) => String(x.created_at).localeCompare(String(y.created_at)))[0];
+      return a ? { id: a.profile_id as string, name: ((a.profiles?.full_name || "") as string).trim() || null } : null;
+    },
+  });
+  const unassigned = !lead.assigned_agent_id && !jobTech;
   const compact = density === "compact";
-  const who = tech && lead.assigned_agent_id === user?.id ? "You" : assigneeName ?? staff.find((s) => s.id === lead.assigned_agent_id)?.full_name ?? null;
+  const who = tech && lead.assigned_agent_id === user?.id ? "You" : assigneeName ?? staff.find((s) => s.id === lead.assigned_agent_id)?.full_name ?? (jobTech ? (tech && jobTech.id === user?.id ? "You" : jobTech.name) : null);
   const pool = lane === "service" ? technicians : lane === "sales" ? salesStaff : staff;
   const attempts = Number(lead.contact_attempts) || 0;
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
