@@ -189,7 +189,7 @@ const ContactDialog = ({
       toast({ title: existing ? "Contact updated" : "Contact added" });
       onOpenChange(false);
       onSaved();
-    } catch (e: Error) {
+    } catch (e: unknown) {
       toast({ title: "Save failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
     } finally {
       setSaving(false);
