@@ -49,7 +49,7 @@ export function ContractGate({ children }: { children: React.ReactNode }) {
           <ul className="list-disc space-y-1.5 pl-5">{terms.map((t) => <li key={t}>{t}</li>)}</ul>
           {isAdmin ? (
             <>
-              <label className="flex items-start gap-2"><Checkbox checked={agree} onCheckedChange={(v) => setAgree(v === true)} /><span>I accept this {co.plan_contract_months}-month agreement on behalf of the company.</span></label>
+              <label className="flex items-start gap-2"><Checkbox className="mt-0.5 shrink-0" checked={agree} onCheckedChange={(v) => setAgree(v === true)} /><span>I accept this {co.plan_contract_months}-month agreement on behalf of the company.</span></label>
               <Input placeholder="Type your full name to sign" value={name} onChange={(e) => setName(e.target.value)} />
               {err && <p className="text-destructive">{err}</p>}
               <Button className="w-full" disabled={!agree || name.trim().length < 3 || busy} onClick={accept}>{busy ? "Saving…" : "Accept and continue"}</Button>
