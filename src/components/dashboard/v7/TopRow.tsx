@@ -5,11 +5,12 @@ import { CalendarClock, Inbox, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { cn } from "@/lib/utils";
+import { EmptyNote } from "@/components/dashboard/v7/V7Dashboard";
 import { periodRange, type PeriodKind } from "@/lib/dashboardV7";
 
 /** v7 top row (Johan call 14:03): Booked jobs + Today's leads. New layout only; no money on these tiles. */
 const Tile = ({ title, icon: I, count, right, children, testId }: { title: string; icon: any; count?: number; right?: React.ReactNode; children: React.ReactNode; testId?: string }) => (
-  <section data-testid={testId} className="flex h-full min-w-0 flex-col rounded-xl border border-[#E5E7EB] bg-white p-3 shadow-sm dark:border-white/10 dark:bg-[#111a2b]">
+  <section data-testid={testId} className="flex h-full min-w-0 flex-col rounded-xl border border-white/70 bg-white/95 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_4px_14px_rgba(15,23,42,0.06)] backdrop-blur-md dark:border-white/10 dark:bg-[#111a2b]/95 p-3">
     <div className="mb-2 flex flex-wrap items-center gap-2">
       <I className="h-4 w-4 text-[#1AA7EC]" />
       <h2 className="text-sm font-semibold">{title}</h2>
@@ -74,7 +75,7 @@ export function BookedJobsTile() {
         <button key={x.k} onClick={() => setK(x.k)} className={cn("rounded-full px-2 py-0.5 text-[11px]", k === x.k ? "bg-[#1AA7EC] text-white" : "text-muted-foreground hover:bg-muted")}>{x.label}</button>
       ))}</div>}>
       {isLoading ? <div className="h-16 animate-pulse rounded bg-muted/60" /> : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No jobs booked {k === "today" ? "today" : k === "week" ? "this week" : "this month"}.</p>
+        <EmptyNote text={`No booked jobs ${k === "today" ? "today" : k === "week" ? "this week" : "this month"}`} action="Book a job" to="/admin/schedule" />
       ) : (
         <ul className="max-h-56 space-y-1 overflow-y-auto pr-1">
           {rows.map((r) => (
@@ -111,7 +112,7 @@ export function TodaysLeadsTile() {
     <Tile title="Today's leads" icon={Inbox} count={rows.length} testId="v7-todays-leads"
       right={<button onClick={() => nav("/admin/dispatch?inbox=1")} className="text-[11px] text-[#0b5e8a] hover:underline dark:text-[#7cc8f0]">Inbox</button>}>
       {isLoading ? <div className="h-16 animate-pulse rounded bg-muted/60" /> : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No new leads yet today.</p>
+        <EmptyNote text="No new leads yet today" action="Add a lead" to="/admin/dispatch?inbox=1" />
       ) : (
         <ul className="max-h-56 space-y-1 overflow-y-auto pr-1">
           {rows.map((l) => (

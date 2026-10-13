@@ -28,11 +28,22 @@ import { DASHBOARD_LAYOUT } from "@/components/dashboard/v7/dashboardLayout";
 import CashflowDashboardPanel from "@/components/cashflow/CashflowDashboardPanel";
 
 const Panel = ({ title, sub, children, className, testId }: { title?: string; sub?: string; children: React.ReactNode; className?: string; testId?: string }) => (
-  <section data-testid={testId} className={cn("rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] p-3 md:p-4 dark:border-white/10 dark:bg-[#111a2b]", className)}>
+  <section data-testid={testId} className={cn("rounded-xl border border-white/70 bg-white/95 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_4px_14px_rgba(15,23,42,0.06)] backdrop-blur-md dark:border-white/10 dark:bg-[#111a2b]/95 p-3 md:p-4", className)}>
     {title && <div className="mb-2 flex items-baseline gap-2"><h2 className="text-sm font-semibold text-foreground">{title}</h2>{sub && <span className="text-[11px] text-muted-foreground">{sub}</span>}</div>}
     {children}
   </section>
 );
+
+/** Compact empty state (Johan 15:04): short message + one action instead of a dead zero or a tall empty chart. */
+export function EmptyNote({ text, action, to }: { text: string; action?: string; to?: string }) {
+  const nav = useNavigate();
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-[#D1D5DB] bg-white/60 px-3 py-2 text-[12.5px] text-muted-foreground dark:border-white/15 dark:bg-white/5" data-testid="v7-empty">
+      <span className="min-w-0">{text}</span>
+      {action && to && <button onClick={() => nav(to)} className="ml-auto shrink-0 rounded-full bg-[#1AA7EC] px-2.5 py-0.5 text-[11px] font-semibold text-white hover:bg-[#1590D6]">{action}</button>}
+    </div>
+  );
+}
 
 const PERIODS: { k: PeriodKind; label: string }[] = [
   { k: "today", label: "Today" }, { k: "week", label: "Week" }, { k: "month", label: "Month" }, { k: "quarter", label: "Quarter" }, { k: "year", label: "Year" }, { k: "custom", label: "Custom" },
@@ -229,7 +240,7 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
     paid_period: (office && <Panel><div className="text-[11px] text-muted-foreground">Paid · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{rand(paidSel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(paidSel, val("paid", base))} /></Panel>),
     outstanding: (office && <Panel><div className="text-[11px] text-muted-foreground">Outstanding (sent, unpaid)</div><div className="text-xl font-bold">{rand(out)}</div></Panel>),
     draft_invoices: (office && <Panel testId="v7-draft-invoices"><div className="text-[11px] text-muted-foreground">Draft invoices (not sent)</div><div className="text-xl font-bold">{rand(dr.amount)}</div><div className="text-[11px] text-muted-foreground">{dr.count} draft{dr.count === 1 ? "" : "s"} · not in outstanding</div></Panel>),
-    open_jobs: (<><Panel><div className="text-[11px] text-muted-foreground">Open jobs</div><div className="text-xl font-bold">{openJobs}</div>{jb.overdue > 0 && <TonePill tone="red">{jb.overdue} overdue</TonePill>}</Panel></>),
+    open_jobs: (<><Panel><div className="text-[11px] text-muted-foreground">Open jobs</div>{openJobs === 0 ? <div className="mt-1"><EmptyNote text="No open jobs" action="Book a job" to="/admin/schedule" /></div> : <div className="text-xl font-bold">{openJobs}</div>}{jb.overdue > 0 && <TonePill tone="red">{jb.overdue} overdue</TonePill>}</Panel></>),
     new_leads: (<><Panel><div className="text-[11px] text-muted-foreground">New leads · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{val("new_leads", sel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(val("new_leads", sel), val("new_leads", base))} /></Panel></>),
     quotes_sent: (!office && <Panel><div className="text-[11px] text-muted-foreground">Quotes sent</div><div className="text-xl font-bold">{sent}</div></Panel>),
     quotes_accepted: (!office && <Panel><div className="text-[11px] text-muted-foreground">Quotes accepted</div><div className="text-xl font-bold">{accepted}</div></Panel>),
@@ -243,7 +254,7 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
                 <button key={k} onClick={() => setRevCmp(k)} className={cn("rounded-full border px-2 py-0.5", revCmp === k ? "border-[#1590D6] bg-[#1590D6] text-white" : "border-[#E5E7EB] bg-white dark:border-white/10 dark:bg-transparent")}>{l}</button>
               ))}
             </div>
-            <div className="h-56">
+            {revData.every((r) => !r.current && !r.ghost) ? <EmptyNote text="No paid invoices in the last 12 months yet" action="Invoices" to="/admin/invoices" /> : <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={revData} margin={{ top: 4, right: 8, left: -18, bottom: 0 }} barGap={-16}>
                   <CartesianGrid vertical={false} stroke="rgba(156,163,175,0.3)" />
@@ -254,21 +265,21 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
                   <Bar dataKey="current" barSize={10} fill={C.blue} radius={[3, 3, 0, 0]} isAnimationActive={false} />
                 </ComposedChart>
               </ResponsiveContainer>
-            </div>
+            </div>}
           </Panel>
         )),
     lead_funnel: (<><Panel title="Lead funnel" sub={PERIODS.find((p) => p.k === kind)!.label} testId="v7-funnel">
-          <div className="space-y-1.5">
+          {fun.every((x) => !x.value) ? <EmptyNote text="No leads in this period yet" action="New lead" to="/admin/dispatch?inbox=1" /> : <div className="space-y-1.5">
             {fun.map((s, i) => (
               <div key={s.label} className="flex items-center gap-2">
                 <div className="h-7 rounded-md px-2 text-[12px] font-medium leading-7 text-white" style={{ width: `${Math.max(18, (s.value / funMax) * 100)}%`, background: i === fun.length - 1 ? C.blueDeep : C.blue, opacity: 1 - i * 0.12 }}>{s.label}</div>
                 <span className="text-sm font-bold">{s.value}</span>
               </div>
             ))}
-          </div>
+          </div>}
         </Panel></>),
     leads_inbox: (<><Panel title="New Leads inbox" sub="oldest first · type · route" testId="v7-inbox">
-        {sortedInbox.length === 0 ? <p className="text-sm text-muted-foreground">No uncommitted leads. <TonePill tone="grey">All done</TonePill></p> : (
+        {sortedInbox.length === 0 ? <EmptyNote text="No leads waiting. All done" action="New lead" to="/admin/dispatch?inbox=1" /> : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px] text-sm">
               <thead><tr className="text-left text-[11px] text-muted-foreground"><th className="py-1 font-medium">Lead</th><th className="font-medium">Type</th><th className="font-medium">Waiting</th><th className="font-medium">Route to</th></tr></thead>
@@ -292,7 +303,7 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
         )}
       </Panel></>),
     job_status: (<><Panel title="Jobs by status" testId="v7-jobs">
-          <div className="flex items-center gap-3">
+          {openJobs + jb.completed === 0 ? <EmptyNote text="No jobs yet" action="Book a job" to="/admin/schedule" /> : <div className="flex items-center gap-3">
             <div className="relative h-32 w-32 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart><Pie data={jbRows.map((r) => ({ name: r.label, value: jb[r.k] }))} dataKey="value" innerRadius="62%" outerRadius="95%" stroke="none" isAnimationActive={false}>{jbRows.map((r) => <Cell key={r.k} fill={r.color} />)}</Pie></PieChart>
@@ -302,7 +313,7 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
             <ul className="flex-1 space-y-1 text-[12.5px]">
               {jbRows.map((r) => { const I = TONE_ICON[r.tone]; return <li key={r.k} className="flex items-center gap-1.5"><I className="h-3.5 w-3.5" style={{ color: r.color }} />{r.label}<span className="ml-auto font-bold">{jb[r.k]}</span></li>; })}
             </ul>
-          </div>
+          </div>}
         </Panel></>),
     aging: (office && (
           <Panel title="Accounts aging" sub="unpaid, by days past due" testId="v7-aging">
@@ -320,7 +331,7 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
     cash_flow: (office && <CashflowDashboardPanel Panel={Panel} />),
     team: (office && (
         <Panel title="Team workload & earnings" sub={owner ? "open jobs · earnings this month" : "open jobs"} testId="v7-team">
-          {team.length === 0 ? <p className="text-sm text-muted-foreground">No open assignments.</p> : (
+          {team.length === 0 ? <EmptyNote text="No open assignments" action="Dispatch" to="/admin/dispatch" /> : (
             <table className="w-full text-sm">
               <thead><tr className="text-left text-[11px] text-muted-foreground"><th className="py-1 font-medium">Person</th><th className="font-medium">Workload (open jobs)</th>{owner && <th className="text-right font-medium">Earnings (MTD)</th>}</tr></thead>
               <tbody>

@@ -1169,3 +1169,17 @@ All colors MUST be HSL.
 /* Line options (hamburger) button keeps dark ink on the white quote paper in dark mode (Johan 21:29). */
 .option1-solid .line-options,
 .dark .app-surface .estimate-page .estimate-editing .option1-solid .line-options { background: #ffffff !important; color: #1e293b !important; border-color: #64748b !important; }
+
+/* New-layout dashboard (Johan 13 Oct 15:04): faint map behind crisp near-opaque white glass cards. Classic untouched. */
+.v7-solid .surface-card, .v7-solid .glass-card, .v7-solid .surface-card-solid {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-color: rgba(229, 231, 235, 0.9);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 4px 14px rgba(15, 23, 42, 0.06);
+  text-shadow: none;
+}
+.dark .v7-solid .surface-card, .dark .v7-solid .glass-card, .dark .v7-solid .surface-card-solid {
+  background-color: rgba(17, 26, 43, 0.95) !important;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.3);
+}

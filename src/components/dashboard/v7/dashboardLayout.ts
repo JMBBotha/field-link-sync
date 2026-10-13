@@ -1,12 +1,13 @@
 /**
  * New-layout dashboard order (Johan 13 Oct 14:05; "changeable later"). Edit this list to reorder:
  * each row lists block ids rendered left→right; blocks a role may not see simply drop out.
- * Slots from AdminHome: todays_leads, ready_to_invoice, booked_jobs, pipeline_health, lead_to_paid.
+ * Johan 13 Oct 15:04: Open leads + Upcoming jobs (top_lists) grouped with the top row as one top section.
+ * Slots from AdminHome: top_lists, todays_leads, ready_to_invoice, booked_jobs, pipeline_health, lead_to_paid.
  */
 export type DashRowCfg = { id: string; title?: string; grid: string; items: string[]; span?: Record<string, string>; office?: boolean };
 export const DASHBOARD_LAYOUT: DashRowCfg[] = [
   { id: "flow", title: "Company flow", grid: "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3",
-    items: ["todays_leads", "ready_to_invoice", "booked_jobs"] },
+    items: ["top_lists", "todays_leads", "ready_to_invoice", "booked_jobs"], span: { top_lists: "md:col-span-2 xl:col-span-3" } },
   { id: "front", title: "Front-end performance", grid: "grid grid-cols-1 gap-3 lg:grid-cols-3",
     items: ["period_bar", "quote_conversion", "pipeline_health", "quotes_sent", "quotes_accepted", "new_leads", "lead_funnel"],
     span: { period_bar: "lg:col-span-3", pipeline_health: "lg:col-span-2", lead_funnel: "lg:col-span-3" } },

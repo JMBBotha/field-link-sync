@@ -343,116 +343,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         <V7Dashboard
           audience={isSalesRep ? "sales" : "office"}
           slots={{
-            todays_leads: <TodaysLeadsTile />,
-            ready_to_invoice: isSalesRep ? null : <ReadyToInvoiceCard showEmpty defaultOpen />,
-            booked_jobs: <BookedJobsTile />,
-            pipeline_health: isSalesRep ? null : <PipelineMetrics />,
-            lead_to_paid: <LeadToPaidPanel audience={isSalesRep ? "sales" : "office"} />,
-          }}
-        />
-      )}
-      {techOnly && <TechTodayList />}
-
-      {/* Action cards (offer flags, invoice requests) */}
-      {!techOnly && !isSalesRep && <LeadOfferFlagsCard />}
-      {!techOnly && !isSalesRep && <InvoiceRequestsCard />}
-
-      <QuickTemplateDialog
-        open={showTemplatePicker}
-        onClose={() => setShowTemplatePicker(false)}
-      />
-
-      {/* Rep: own upcoming appointments (STEP 3) */}
-      {isSalesRep && <MyAppointmentsCard limit={5} />}
-
-
-      {/* Core 5 KPI Cards (v7: replaced by the KPI strip above; kept for techs) */}
-      <div className={techOnly ? "grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3" : "hidden"}>
-
-
-        {isLoading
-          ? Array.from({ length: 8 }).map((_, i) => (
-              <Card key={i} className="surface-card">
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-4 w-4 rounded" />
-                    <Skeleton className="h-3 w-20" />
-                  </div>
-                  <Skeleton className="h-8 w-16" />
-                  <Skeleton className="h-6 w-full rounded" />
-                </CardContent>
-              </Card>
-            ))
-
-          : kpiCards.map((kpi) => (
-              <KpiHoverPreview
-                key={kpi.key}
-                kpiKey={kpi.key}
-                label={kpi.label}
-                viewAllHref={kpiViewAllHref[kpi.key] || "/admin"}
-                disabled={NO_PREVIEW.has(kpi.key)}
-              >
-              <Card
-                className="surface-card surface-card-interactive cursor-pointer"
-                role="link"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === "Enter") navigate(kpiViewAllHref[kpi.key] || "/admin"); }}
-                onClick={() => navigate(kpi.key === "new_leads" ? INBOX_ROUTE : kpiViewAllHref[kpi.key] || "/admin")}
-              >
-                <CardContent className="p-3 md:p-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-                    <span className="text-xs text-muted-foreground">{kpi.label}</span>
-                  </div>
-                  <p className="text-2xl font-bold">{kpi.value}</p>
-                  {kpi.key === "active_jobs" && stats && (
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      {stats.todayTotal > 0 && <span>{stats.todayDone}/{stats.todayTotal} done</span>}
-                      {stats.overdueJobs > 0 && (
-                        <Link
-                          to="/admin/schedule"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-destructive font-medium hover:underline"
-                        >
-                          Overdue {stats.overdueJobs}
-                        </Link>
-                      )}
-                    </div>
-                  )}
-                  {trendData && trendData.length > 0 && (
-                    <div className="h-8 mt-1 -mx-1">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={trendData}>
-                          <defs>
-                            <linearGradient id={`grad-${kpi.key}`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={kpi.sparkColor} stopOpacity={0.4} />
-                              <stop offset="100%" stopColor={kpi.sparkColor} stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <Area
-                            type="monotone"
-                            dataKey={kpi.sparkKey}
-                            stroke={kpi.sparkColor}
-                            strokeWidth={1.5}
-                            fill={`url(#grad-${kpi.key})`}
-                            dot={false}
-                            isAnimationActive={false}
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-              </KpiHoverPreview>
-            ))}
-      </div>
-
-      {/* v7 role rule: techs never see leads, revenue or pipeline value below this line. */}
-      {!techOnly && (<>
-      {/* Pipeline health now lives in the v7 "Front-end performance" row. */}
-
-      {/* Primary widgets — Recent Open Leads + Today's Dispatch */}
+            top_lists: (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 min-w-0">
         <Card className="surface-card min-w-0 overflow-hidden">
 
@@ -570,6 +461,117 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         </Card>
 
       </div>
+            ),
+            todays_leads: <TodaysLeadsTile />,
+            ready_to_invoice: isSalesRep ? null : <ReadyToInvoiceCard showEmpty defaultOpen />,
+            booked_jobs: <BookedJobsTile />,
+            pipeline_health: isSalesRep ? null : <PipelineMetrics />,
+            lead_to_paid: <LeadToPaidPanel audience={isSalesRep ? "sales" : "office"} />,
+          }}
+        />
+      )}
+      {techOnly && <TechTodayList />}
+
+      {/* Action cards (offer flags, invoice requests) */}
+      {!techOnly && !isSalesRep && <LeadOfferFlagsCard />}
+      {!techOnly && !isSalesRep && <InvoiceRequestsCard />}
+
+      <QuickTemplateDialog
+        open={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+      />
+
+      {/* Rep: own upcoming appointments (STEP 3) */}
+      {isSalesRep && <MyAppointmentsCard limit={5} />}
+
+
+      {/* Core 5 KPI Cards (v7: replaced by the KPI strip above; kept for techs) */}
+      <div className={techOnly ? "grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3" : "hidden"}>
+
+
+        {isLoading
+          ? Array.from({ length: 8 }).map((_, i) => (
+              <Card key={i} className="surface-card">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4 rounded" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-6 w-full rounded" />
+                </CardContent>
+              </Card>
+            ))
+
+          : kpiCards.map((kpi) => (
+              <KpiHoverPreview
+                key={kpi.key}
+                kpiKey={kpi.key}
+                label={kpi.label}
+                viewAllHref={kpiViewAllHref[kpi.key] || "/admin"}
+                disabled={NO_PREVIEW.has(kpi.key)}
+              >
+              <Card
+                className="surface-card surface-card-interactive cursor-pointer"
+                role="link"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter") navigate(kpiViewAllHref[kpi.key] || "/admin"); }}
+                onClick={() => navigate(kpi.key === "new_leads" ? INBOX_ROUTE : kpiViewAllHref[kpi.key] || "/admin")}
+              >
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
+                    <span className="text-xs text-muted-foreground">{kpi.label}</span>
+                  </div>
+                  <p className="text-2xl font-bold">{kpi.value}</p>
+                  {kpi.key === "active_jobs" && stats && (
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      {stats.todayTotal > 0 && <span>{stats.todayDone}/{stats.todayTotal} done</span>}
+                      {stats.overdueJobs > 0 && (
+                        <Link
+                          to="/admin/schedule"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-destructive font-medium hover:underline"
+                        >
+                          Overdue {stats.overdueJobs}
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                  {trendData && trendData.length > 0 && (
+                    <div className="h-8 mt-1 -mx-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={trendData}>
+                          <defs>
+                            <linearGradient id={`grad-${kpi.key}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={kpi.sparkColor} stopOpacity={0.4} />
+                              <stop offset="100%" stopColor={kpi.sparkColor} stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <Area
+                            type="monotone"
+                            dataKey={kpi.sparkKey}
+                            stroke={kpi.sparkColor}
+                            strokeWidth={1.5}
+                            fill={`url(#grad-${kpi.key})`}
+                            dot={false}
+                            isAnimationActive={false}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              </KpiHoverPreview>
+            ))}
+      </div>
+
+      {/* v7 role rule: techs never see leads, revenue or pipeline value below this line. */}
+      {!techOnly && (<>
+      {/* Pipeline health now lives in the v7 "Front-end performance" row. */}
+
+      {/* Open Leads + Upcoming Jobs moved into the v7 top section (Johan 13 Oct 15:04). */}
 
       {/* Secondary insights — collapsible */}
       <Collapsible open={showMore} onOpenChange={setShowMore}>
