@@ -1,4 +1,5 @@
 import FullTermsSection from "@/components/client/FullTermsSection";
+import ClientAdjustQuote from "@/components/client/ClientAdjustQuote";
 import { useQuoteUnitCards, QuoteUnitCardsView } from "@/components/quoting/QuoteUnitCards";
 import type { CompanyProfile } from "@/lib/companyProfiles";
 import { useEffect, useRef, useState } from "react";
@@ -94,6 +95,7 @@ const ClientProposalView = () => {
   // Ask for changes (Johan 2026-10-13 12:07)
   const [changeState, setChangeState] = useState<{ open: boolean; requested_at: string } | null>(null);
   const [showChanges, setShowChanges] = useState(false);
+  const [adjusting, setAdjusting] = useState(false);
   const [changeMsg, setChangeMsg] = useState("");
   const [changePhone, setChangePhone] = useState("");
   const acceptRef = useRef<HTMLDivElement>(null);
@@ -386,6 +388,8 @@ const ClientProposalView = () => {
           </Card>
         )}
 
+        {isActionable && token && <ClientAdjustQuote token={token} defaultName={acceptedName} onEditingChange={setAdjusting} />}
+
         {/* Ask for changes */}
         {isActionable && showChanges && (
           <div ref={changesRef}>
@@ -504,7 +508,7 @@ const ClientProposalView = () => {
       </main>
 
       {/* Sticky action bar (Johan 2026-10-13): total, big green Accept, smaller Ask for changes */}
-      {isActionable && (
+      {isActionable && !adjusting && (
         <div className="fixed inset-x-0 bottom-0 z-40 bg-white shadow-[0_-4px_14px_rgba(0,0,0,0.12)] print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
           <div className="max-w-4xl mx-auto px-4 py-3">
             <div className="flex justify-between text-sm mb-2">

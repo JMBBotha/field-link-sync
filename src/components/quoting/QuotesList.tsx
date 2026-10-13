@@ -44,6 +44,7 @@ import { convertQuoteToInvoice } from "@/lib/convertQuoteToInvoice";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import StatusPill from "@/components/shared/StatusPill";
+import ClientRevisionActions from "@/components/quoting/ClientRevisionActions";
 
 import { useToast } from "@/hooks/use-toast";
 import WhatsAppShareButton from "@/components/WhatsAppShareButton";
@@ -137,6 +138,17 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
       const { data } = await (supabase as any).from("quote_change_requests").select("quote_id, message, created_at").eq("status", "open").order("created_at", { ascending: false });
       const m: Record<string, string> = {};
       for (const r of data || []) if (!m[r.quote_id]) m[r.quote_id] = r.message;
+      return m;
+    },
+  });
+
+  // Client self-adjusted quotes waiting for management (Johan 2026-10-13).
+  const { data: pendingRevs = {} } = useQuery({
+    queryKey: ["quote-client-revisions-pending"],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("quote_client_revisions").select("id, quote_id, total, original_total, lines").eq("status", "pending");
+      const m: Record<string, any> = {};
+      for (const r of data || []) m[r.quote_id] = r;
       return m;
     },
   });
@@ -506,6 +518,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                           {(changeMsgs as Record<string, string>)[doc.id] && (
                             <span title={(changeMsgs as Record<string, string>)[doc.id]} className="ml-1 inline-block rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white align-middle">Changes requested</span>
                           )}
+                          {(pendingRevs as Record<string, any>)[doc.id] && <ClientRevisionActions revision={(pendingRevs as Record<string, any>)[doc.id]} />}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                           {new Date(doc.created_at).toLocaleDateString("en-ZA")}
