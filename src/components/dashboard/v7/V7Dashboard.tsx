@@ -37,20 +37,32 @@ const PERIODS: { k: PeriodKind; label: string }[] = [
 const fmtDate = (t: number) => new Date(t).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Johannesburg" });
 const fmt = (m: (typeof METRICS)[number], v: number | null) => (v == null ? "—" : m.money ? rand(v) : m.pct ? `${v}%` : String(v));
 
+const DELTA_TEXT: Record<string, { short: string; long: string }> = {
+  prev: { short: "vs prev period", long: "the period of the same length straight before" },
+  LM: { short: "vs last month", long: "the same period last month" },
+  LY: { short: "vs last year", long: "the same period last year" },
+};
+
+/** Visual delta (Johan 13 Oct 13:00): green ▲ up, red ▼ down, grey dot flat / no data. */
 function Delta({ label, v }: { label: string; v: number | null }) {
-  const I = v == null || v === 0 ? Minus : v > 0 ? ArrowUp : ArrowDown;
+  const t = DELTA_TEXT[label] || { short: `vs ${label}`, long: label };
+  const up = v != null && v > 0, down = v != null && v < 0;
+  const title = v == null ? `No data to compare with ${t.long}` : v === 0 ? `Same as ${t.long}` : `${up ? "Up" : "Down"} ${Math.abs(v)}% compared with ${t.long}`;
   return (
-    <span className="inline-flex items-center gap-0.5 text-[10.5px] text-muted-foreground" title={v == null ? `${label}: no data to compare` : `${label}: ${v > 0 ? "up" : v < 0 ? "down" : "same"} ${Math.abs(v)}%`}>
-      {label}<I className={cn("h-3 w-3", v != null && v > 0 ? "text-[#1590D6]" : "text-[#6B7280]")} />{v == null ? "–" : `${Math.abs(v)}%`}
+    <span data-testid="v7-delta" className="inline-flex items-center gap-1 whitespace-nowrap text-[10.5px]" title={title}>
+      {up ? <span className="font-semibold text-[#16A34A]">▲ +{v}%</span>
+        : down ? <span className="font-semibold text-[#DC2626]">▼ {v}%</span>
+        : <span className="inline-flex items-center gap-1 text-[#9CA3AF]"><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#9CA3AF]" />{v === 0 ? "0%" : "–"}</span>}
+      <span className="text-muted-foreground">{t.short}</span>
     </span>
   );
 }
 
-function Spark({ data }: { data: number[] }) {
-  const d = data.map((v, i) => ({ i, v }));
+function Spark({ data, ghost }: { data: number[]; ghost?: number[] }) {
+  const d = data.map((v, i) => ({ i, v, g: ghost?.[i] }));
   return (
     <div className="h-7 w-20">
-      <ResponsiveContainer width="100%" height="100%"><LineChart data={d}><Line type="monotone" dataKey="v" stroke={C.blue} strokeWidth={1.6} dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer>
+      <ResponsiveContainer width="100%" height="100%"><LineChart data={d}>{ghost && <Line type="monotone" dataKey="g" stroke={C.greyDark} strokeOpacity={0.35} strokeWidth={1.2} dot={false} isAnimationActive={false} />}<Line type="monotone" dataKey="v" stroke={C.blue} strokeWidth={1.6} dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer>
     </div>
   );
 }
@@ -89,6 +101,7 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
   const { data, isLoading } = useDashboardV7Data({ office, owner });
   const { leads: inbox } = useLeadInbox();
   const [kind, setKind] = useState<PeriodKind>("month");
+  const [revCmp, setRevCmp] = useState<"prev" | "lm" | "ly">("ly");
   const [cmp, setCmp] = useState<"prev" | "ly">("prev");
   const [custom, setCustom] = useState<{ from: string; to: string }>({ from: "", to: "" });
   const nowMin = Math.floor(now / 60_000) * 60_000;
@@ -116,7 +129,9 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
   const months = lastMonths(nowMin);
   const revenue = series(data, "paid", nowMin);
   const revenueLy = months.map((m) => metric(data, "paid", shiftMonths(m, -12)) ?? 0);
-  const revData = months.map((m, i) => ({ month: m.label, thisYear: Math.round(revenue[i] / 1000), lastYear: Math.round(revenueLy[i] / 1000) }));
+  const ghostShift = revCmp === "ly" ? -12 : -1; // monthly bars: prev period = month before = last month
+  const ghostLabel = revCmp === "ly" ? "Last year" : revCmp === "lm" ? "Last month" : "Previous period";
+  const revData = months.map((m, i) => ({ month: m.label, current: Math.round(revenue[i] / 1000), ghost: Math.round((revCmp === "ly" ? revenueLy[i] : (metric(data, "paid", shiftMonths(m, ghostShift)) ?? 0)) / 1000) }));
   const ytd = periodRange("year", nowMin);
   const sent = val("quotes_sent", sel) ?? 0, accepted = val("quotes_accepted", sel) ?? 0;
   const invoicedSel = val("invoiced", sel) ?? 0, paidSel = val("paid", sel) ?? 0;
@@ -175,7 +190,7 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
       </div>
 
       {/* 2. Compare periods */}
-      <Panel title="Compare periods" sub="prev = period before · LM = same period last month · LY = same period last year" testId="v7-compare">
+      <Panel title="Compare periods" sub="▲ up · ▼ down · ● no change / no data · hover a figure for details · faint line = last year" testId="v7-compare">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead><tr className="text-left text-[11px] text-muted-foreground">
@@ -186,7 +201,7 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
               {metrics.map((m) => (
                 <tr key={m.key} className="border-t border-[#E5E7EB] dark:border-white/10">
                   <td className="py-1.5 pr-2 text-[12.5px] font-medium">{m.label}</td>
-                  <td className="py-1.5 pr-2"><Spark data={series(data, m.key, nowMin)} /></td>
+                  <td className="py-1.5 pr-2"><Spark data={series(data, m.key, nowMin)} ghost={lastMonths(nowMin).map((mm) => metric(data, m.key, shiftMonths(mm, -12)) ?? 0)} /></td>
                   {cols.map((c) => {
                     const v = val(m.key, c.r);
                     return (
@@ -209,7 +224,7 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
 
       {/* 3. KPI strip */}
       <div className="grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-3" data-testid="v7-kpis">
-        {office && <Panel className="col-span-2 md:col-span-1"><div className="text-[11px] text-muted-foreground">Revenue YTD (paid)</div><div className="text-xl font-bold">{rand(val("paid", ytd) ?? 0)}</div><Spark data={revenue} /></Panel>}
+        {office && <Panel className="col-span-2 md:col-span-1"><div className="text-[11px] text-muted-foreground">Revenue YTD (paid)</div><div className="text-xl font-bold">{rand(val("paid", ytd) ?? 0)}</div><Spark data={revenue} ghost={revenueLy} /></Panel>}
         {office && <Panel><div className="text-[11px] text-muted-foreground">Paid · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{rand(paidSel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(paidSel, val("paid", base))} /></Panel>}
         {office && <Panel><div className="text-[11px] text-muted-foreground">Outstanding</div><div className="text-xl font-bold">{rand(out)}</div></Panel>}
         <Panel><div className="text-[11px] text-muted-foreground">Open jobs</div><div className="text-xl font-bold">{openJobs}</div>{jb.overdue > 0 && <TonePill tone="red">{jb.overdue} overdue</TonePill>}</Panel>
@@ -228,16 +243,21 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
       {/* 5 + 6. Revenue + funnel */}
       <div className="grid grid-cols-1 gap-2 md:gap-3 lg:grid-cols-3">
         {office && (
-          <Panel title="Monthly revenue (R thousands)" sub="paid, last 12 months · dashed = last year" className="lg:col-span-2" testId="v7-revenue">
+          <Panel title="Monthly revenue (R thousands)" sub={`paid, last 12 months · faint bars = ${ghostLabel.toLowerCase()}`} className="lg:col-span-2" testId="v7-revenue">
+            <div className="mb-1 flex justify-end gap-1 text-[11px]" data-testid="v7-rev-toggle">
+              {([["prev", "Prev"], ["lm", "Last month"], ["ly", "Last year"]] as const).map(([k, l]) => (
+                <button key={k} onClick={() => setRevCmp(k)} className={cn("rounded-full border px-2 py-0.5", revCmp === k ? "border-[#1590D6] bg-[#1590D6] text-white" : "border-[#E5E7EB] bg-white dark:border-white/10 dark:bg-transparent")}>{l}</button>
+              ))}
+            </div>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={revData} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+                <ComposedChart data={revData} margin={{ top: 4, right: 8, left: -18, bottom: 0 }} barGap={-16}>
                   <CartesianGrid vertical={false} stroke="rgba(156,163,175,0.3)" />
                   <XAxis dataKey="month" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                  <Tooltip formatter={(v: any, n: any) => [`R ${v}k`, n === "thisYear" ? "This year" : "Last year"]} />
-                  <Bar dataKey="thisYear" fill={C.blue} radius={[3, 3, 0, 0]} isAnimationActive={false} />
-                  <Line dataKey="lastYear" stroke={C.greyDark} strokeDasharray="4 4" dot={false} strokeWidth={1.5} isAnimationActive={false} />
+                  <Tooltip formatter={(v: any, n: any) => [`R ${v}k`, n === "current" ? "This period" : ghostLabel]} />
+                  <Bar dataKey="ghost" barSize={16} fill={C.greyDark} fillOpacity={0.22} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="current" barSize={10} fill={C.blue} radius={[3, 3, 0, 0]} isAnimationActive={false} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
