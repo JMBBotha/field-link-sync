@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import SendQuotesTogetherDialog from "@/components/quoting/SendQuotesTogetherDialog";
+import { sendTogetherBlock } from "@/lib/quoteBundle";
 import {
   Table,
   TableBody,
@@ -22,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, FileText, Download, Link2, FileCheck2, ChevronDown, FileSignature, Trash2 } from "lucide-react";
+import { Plus, Search, FileText, Download, Link2, FileCheck2, ChevronDown, FileSignature, Trash2, Mail } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,6 +74,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const setTypeFilter = (v: string) => setParam("type", v);
   const [converting, setConverting] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const [bundleOpen, setBundleOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<any[] | null>(null);
   const { toast } = useToast();
@@ -222,6 +225,9 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   // Only draft documents may be deleted.
   const draftDocs = docs.filter((d) => d.status === "draft");
   const selectedDrafts = draftDocs.filter((d) => selected.includes(d.id));
+  // Send together (Johan 13 Oct 14:58): non-draft quotes of one client, one email.
+  const selectedDocs = docs.filter((d) => selected.includes(d.id));
+  const bundleBlock = sendTogetherBlock(selectedDocs.map((d) => ({ id: d.id, kind: d.kind, status: d.status, customer_id: d.raw?.customer_id })));
 
   const performDelete = async (targets: typeof docs) => {
     setDeleting(true);
@@ -376,6 +382,18 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
             </Card>
           ))}
         </div>
+
+        {selectedDocs.length >= 2 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
+            <p className="text-sm text-muted-foreground min-w-0 break-words">
+              {selectedDocs.length} quotes selected{bundleBlock ? ` · ${bundleBlock}` : ""}
+            </p>
+            <Button size="sm" disabled={!!bundleBlock} onClick={() => setBundleOpen(true)} className="bg-[#F7941D] hover:bg-[#e08310] text-white">
+              <Mail className="mr-2 h-4 w-4" /> Send together
+            </Button>
+          </div>
+        )}
+        <SendQuotesTogetherDialog open={bundleOpen} onOpenChange={setBundleOpen} quoteIds={selectedDocs.map((d) => d.id)} onSent={() => setSelected([])} />
 
         {selectedDrafts.length > 0 && (
           <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">

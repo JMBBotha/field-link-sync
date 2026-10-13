@@ -107,6 +107,18 @@ const ClientProposalView = () => {
     if (token) loadQuote();
   }, [token]);
 
+  // Arriving from the "View all quotes" page: ?action=accept|changes jumps straight to that flow (Johan 13 Oct 14:58).
+  const bundleToken = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("bundle") : null;
+  const jumpedRef = useRef(false);
+  useEffect(() => {
+    if (!quote || jumpedRef.current || !["sent", "viewed"].includes(quote.status)) return;
+    const action = new URLSearchParams(window.location.search).get("action");
+    if (!action) return;
+    jumpedRef.current = true;
+    if (action === "changes") setShowChanges(true);
+    setTimeout(() => (action === "changes" ? changesRef.current : acceptRef.current)?.scrollIntoView({ behavior: "smooth", block: "center" }), 400);
+  }, [quote]);
+
   const loadQuote = async () => {
     try {
       // Token-scoped fetch: the database only returns data when the exact
@@ -329,6 +341,9 @@ const ClientProposalView = () => {
       </header>
 
       <main className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
+        {bundleToken && (
+          <a href={`/quote/all/${encodeURIComponent(bundleToken)}`} className="inline-block text-sm text-[#0B4FA8] underline print:hidden">← Back to all quotes</a>
+        )}
         {/* The quote document — identical layout to the staff estimate/PDF */}
         <EstimateDocument
           estimateNumber={quote.quote_number}

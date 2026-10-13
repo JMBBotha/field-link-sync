@@ -90,6 +90,42 @@ function buildHtmlEmail(brand: Brand, clientName: string, quoteNumber: string, d
 </table></td></tr></table></body></html>`;
 }
 
+// Several quotes for one client in ONE email with ONE "View all quotes" button (Johan 13 Oct 14:58).
+type BundleRow = { quote_number: string | null; summary: string | null; total: number | null; valid_until: string | null };
+function buildBundleHtml(brand: Brand, clientName: string, rows: BundleRow[], url: string, unsubscribeUrl: string, signatureHtml: string): string {
+  const company = escH(brand.name || "Your installer");
+  const hi = firstName(clientName);
+  const fd = (d: string | null) => d ? new Date(d).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }) : "";
+  const list = rows.map((r, i) => `<tr><td style="padding:10px 14px;${i ? "border-top:1px solid #e3eaf2;" : ""}vertical-align:top;"><b>${escH(r.quote_number || "Quote")}</b>${r.summary ? `<div style="font-size:12px;color:#4b5b6e;margin-top:2px;">${escH(r.summary)}</div>` : ""}${r.valid_until ? `<div style="font-size:11px;color:#9aa7b5;margin-top:2px;">Valid until ${escH(fd(r.valid_until))}</div>` : ""}</td><td style="padding:10px 14px;${i ? "border-top:1px solid #e3eaf2;" : ""}text-align:right;vertical-align:top;white-space:nowrap;font-weight:800;color:#0B4FA8;">${formatZAR(Number(r.total) || 0)}</td></tr>`).join("");
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Your quotations from ${company}</title></head>
+<body style="margin:0;padding:0;background-color:#eef3f9;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef3f9;"><tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:10px;overflow:hidden;">
+  <tr><td style="background:#0B4FA8;background-image:linear-gradient(90deg,#0B4FA8,#1AA7EC);padding:22px 28px;color:#ffffff;">
+    ${brand.logoUrl && brand.logoOnColour ? `<img src="${escH(brand.logoUrl)}" alt="${company}" width="200" style="display:block;width:200px;max-width:200px;height:auto;border:0;margin-bottom:10px;">` : brand.logoUrl ? `<div style="background:#ffffff;border-radius:8px;display:inline-block;padding:6px 10px;margin-bottom:10px;"><img src="${escH(brand.logoUrl)}" alt="${company}" width="180" style="display:block;width:180px;max-width:180px;height:auto;border:0;"></div>` : ""}
+    <div style="font-size:20px;font-weight:800;">${company}</div>
+    <div style="font-size:12px;opacity:.9;">Your ${rows.length} quotations are ready</div>
+  </td></tr>
+  <tr><td style="padding:24px 28px;color:#1d2a3a;font-size:14px;line-height:1.5;">
+    ${hi ? `Hi ${escH(hi)},` : "Hello,"}<br><br>
+    Thank you for the opportunity. As requested, here are ${rows.length} options for you to compare. Each one can be accepted on its own.
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;border:1px solid #e3eaf2;border-radius:8px;border-collapse:separate;font-size:13px;">${list}
+      <tr><td colspan="2" style="padding:0;border-top:3px solid #F7941D;font-size:0;line-height:0;">&nbsp;</td></tr>
+    </table>
+    <div style="text-align:center;font-size:11px;color:#6b7a8c;margin-top:-10px;">Totals include VAT.</div>
+    <div style="text-align:center;margin:22px 0 8px;"><a href="${escH(url)}" style="display:inline-block;background:#F7941D;color:#ffffff;text-decoration:none;font-size:17px;font-weight:800;padding:16px 48px;border-radius:8px;">View all quotes</a></div>
+    <div style="text-align:center;font-size:12px;color:#6b7a8c;">Open each quote to see every line, then accept it or ask for changes there.</div>
+    <div style="text-align:center;font-size:11px;color:#9aa7b5;margin-top:8px;word-break:break-all;">If the button does not work, copy this link: ${escH(url)}</div>
+    <div style="margin-top:18px;border-top:1px solid #e3eaf2;padding-top:16px;">${signatureHtml || renderSignatureHtml(null)}</div>
+  </td></tr>
+  <tr><td style="background:#f2f9fe;padding:12px 28px;font-size:10px;color:#9aa7b5;line-height:1.5;">
+    This email is confidential and intended solely for the addressee. Prices are in South African Rand (ZAR) and include VAT at 15% where indicated. E&amp;OE. Terms and conditions apply, see each quotation. © ${new Date().getFullYear()} ${company}.<br>
+    You received this email because you asked ${company} for a quote. <a href="${unsubscribeUrl}" style="color:#64748b;">Unsubscribe from marketing emails</a>
+  </td></tr>
+</table></td></tr></table></body></html>`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -130,6 +166,61 @@ serve(async (req) => {
       });
       const rd = await r.json().catch(() => ({}));
       return new Response(JSON.stringify({ success: r.ok, sentTo: self, resend: rd }), { status: r.ok ? 200 : 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (reqBody?.bundleToken) {
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const J = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { data: me } = await sb.from("profiles").select("company_id").eq("id", auth.userId).maybeSingle();
+      const { data: b } = await sb.from("quote_bundles").select("*").eq("token", reqBody.bundleToken).maybeSingle();
+      if (!b || !me?.company_id || b.company_id !== me.company_id) return J({ error: "Bundle not found" }, 404);
+      const { data: pub } = await sb.rpc("public_quote_bundle", { p_token: b.token });
+      const rows: BundleRow[] = (pub?.quotes || []) as BundleRow[];
+      if (rows.length < 2) return J({ error: "Bundle needs at least two non-draft quotes" }, 400);
+      const { data: cust } = await sb.from("customers").select("name, company_name, email").eq("id", b.customer_id).maybeSingle();
+      const clientName = cust?.name || cust?.company_name || pub?.customer_name || "";
+      const origin = (typeof reqBody.appOrigin === "string" && /^https:\/\/[a-z0-9.-]+$/i.test(reqBody.appOrigin)) ? reqBody.appOrigin : "https://field-link-sync.lovable.app";
+      const url = `${origin}/quote/all/${b.token}`;
+      const brand = await loadBrand(sb, b.quote_ids[0]);
+      const sender = await loadSignaturePerson(sb, auth.userId);
+      const dest = String(to || cust?.email || "").trim();
+      const unsubToken = crypto.randomUUID();
+      const fnUrl = Deno.env.get("SUPABASE_URL")!.replace(".supabase.co", ".supabase.co/functions/v1");
+      const unsubscribeUrl = `${fnUrl}/unsubscribe?token=${unsubToken}&email=${encodeURIComponent(dest)}`;
+      const html = buildBundleHtml(brand, clientName, rows, url, unsubscribeUrl, renderSignatureHtml(sender, undefined, brand.sig));
+      if (reqBody.previewOnly === true) return J({ success: true, preview: true, html, url });
+      if (!dest) return J({ error: "Missing 'to' email address" }, 400);
+      const { data: pref } = await sb.from("email_preferences").select("unsubscribed").eq("email", dest.toLowerCase()).maybeSingle();
+      if (pref?.unsubscribed) return J({ success: false, skipped: true, reason: "Recipient has unsubscribed from marketing emails." });
+      await sb.from("email_preferences").upsert({ email: dest.toLowerCase(), unsubscribe_token: unsubToken, updated_at: new Date().toISOString() }, { onConflict: "email" });
+      const key = Deno.env.get("RESEND_API_KEY");
+      if (!key?.trim()) return J({ error: "Email not configured", code: "EMAIL_NOT_CONFIGURED" }, 503);
+      const mailbox = Deno.env.get("QUOTES_FROM_EMAIL") || "wcquotes@0800becool.co.za";
+      const refs = rows.map((r) => r.quote_number).filter(Boolean).join(", ");
+      const hiTxt = firstName(clientName) ? `Hi ${firstName(clientName)},` : "Hello,";
+      const text = `${hiTxt}\n\nHere are ${rows.length} quotes for you to compare:\n${rows.map((r) => `- ${r.quote_number}${r.summary ? `: ${r.summary}` : ""} (${formatZAR(Number(r.total) || 0)} incl. VAT)`).join("\n")}\n\nView all quotes: ${url}\nYou can accept each one or ask for changes there.\n\nKind regards,\n\n${renderSignatureText(sender, brand.sig)}`;
+      const r = await fetch("https://api.resend.com/emails", {
+        method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: `${(brand.name || "Quotes").replace(/[<>"]/g, "")} <${mailbox}>`, reply_to: replyToFor(sender) || mailbox, to: [dest],
+          subject: `Your ${rows.length} quotes from ${brand.name || "us"} [Ref: ${refs}]`, html, text,
+          headers: { "X-BeCool-Quote-Ref": refs || "bundle", "X-BeCool-Bundle-Id": String(b.id), ...(b.customer_id ? { "X-BeCool-Customer-Id": String(b.customer_id) } : {}) },
+          tags: [{ name: "type", value: "quote_bundle" }],
+        }),
+      });
+      const rd = await r.json().catch(() => ({}));
+      if (!r.ok) { console.error("Resend bundle error", rd); return J({ error: "Failed to send email", details: rd }, 500); }
+      // Log a send on every quote in the bundle.
+      const now = new Date().toISOString();
+      const { data: qs } = await sb.from("quotes").select("id, quote_number, total, lead_id").in("id", b.quote_ids).neq("status", "draft");
+      for (const q of qs || []) {
+        await sb.from("quotes").update({ sent_at: now, sent_by: auth.userId, sent_method: "email_bundle", sent_channel: "email" }).eq("id", q.id);
+        await sb.from("communication_log").insert({ agent_id: auth.userId, customer_id: b.customer_id, lead_id: q.lead_id || null, type: "email",
+          subject: `Quote ${q.quote_number} sent (together with ${(qs || []).length - 1} other${(qs || []).length > 2 ? "s" : ""})`,
+          body: `Quote ${q.quote_number} (${Number(q.total || 0).toFixed(2)} incl. VAT) was sent to ${dest} via email in one "View all quotes" email (${refs}).` });
+      }
+      await sb.from("quote_bundles").update({ sent_to: dest, sent_at: now }).eq("id", b.id);
+      return J({ success: true, id: rd.id, sentTo: dest, url });
     }
 
     if (!to) {

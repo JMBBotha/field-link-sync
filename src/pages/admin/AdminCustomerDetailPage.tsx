@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import SendQuotesTogetherDialog from "@/components/quoting/SendQuotesTogetherDialog";
+import { sendTogetherBlock } from "@/lib/quoteBundle";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import CallHistoryPanel from "@/components/calls/CallHistoryPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -178,7 +181,7 @@ const AdminCustomerDetailPage = () => {
       if (customer?.name) orParts.push(`customer_name.ilike.${customer.name}`);
       const { data, error } = await supabase
         .from("quotes")
-        .select("id, quote_number, notes, total, status, created_at, customer_id, customer_name")
+        .select("id, quote_number, notes, client_summary, total, status, created_at, customer_id, customer_name")
         .or(orParts.join(","))
         .neq("status", "superseded")
         .order("created_at", { ascending: false });
@@ -251,6 +254,10 @@ const AdminCustomerDetailPage = () => {
     return buckets;
   }, [invoices]);
 
+  const [pickedQuotes, setPickedQuotes] = useState<string[]>([]);
+  const [bundleOpen, setBundleOpen] = useState(false);
+  const pickedRows = (quotes as any[]).filter((q) => pickedQuotes.includes(q.id));
+  const bundleBlock = sendTogetherBlock(pickedRows.map((q) => ({ id: q.id, status: q.status, customer_id: q.customer_id || id })));
   const draftQuotesTotal = useMemo(
     () => quotes.filter(q => q.status === "draft").reduce((s, q) => s + Number(q.total || 0), 0),
     [quotes],
@@ -568,10 +575,18 @@ const AdminCustomerDetailPage = () => {
                       { label: "Declined", value: String(quoteSummary.declined), tone: quoteSummary.declined > 0 ? "rose" : "slate" },
                     ]}
                   />
+                  {pickedQuotes.length > 0 && (
+                    <div className="mx-2 md:mx-4 mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2">
+                      <p className="text-sm text-muted-foreground min-w-0 break-words">{pickedQuotes.length} selected{bundleBlock ? ` · ${bundleBlock}` : ""}</p>
+                      <Button size="sm" disabled={!!bundleBlock} onClick={() => setBundleOpen(true)} className="bg-[#F7941D] hover:bg-[#e08310] text-white">Send together</Button>
+                    </div>
+                  )}
+                  <SendQuotesTogetherDialog open={bundleOpen} onOpenChange={setBundleOpen} quoteIds={pickedQuotes} onSent={() => setPickedQuotes([])} />
                   <div className="max-h-[560px] overflow-auto px-2 md:px-4 pb-6">
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-8"></TableHead>
                           <TableHead>Quote #</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Date</TableHead>
@@ -582,14 +597,17 @@ const AdminCustomerDetailPage = () => {
                       <TableBody>
                         {quotes.map((q: any) => (
                           <TableRow key={q.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/quotes/${q.id}`)}>
+                            <TableCell className="w-8" onClick={(e) => e.stopPropagation()}>
+                              <Checkbox aria-label={`Select ${q.quote_number || "quote"}`} checked={pickedQuotes.includes(q.id)} onCheckedChange={() => setPickedQuotes((p) => (p.includes(q.id) ? p.filter((x) => x !== q.id) : [...p, q.id]))} />
+                            </TableCell>
                             <TableCell className="font-medium">{q.quote_number || "—"}</TableCell>
-                            <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{q.notes || "—"}</TableCell>
+                            <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{q.client_summary || q.notes || "—"}</TableCell>
                             <TableCell className="text-xs">{q.created_at ? format(new Date(q.created_at), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-right font-medium">{formatRand(Number(q.total || 0))}</TableCell>
                             <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(q.status))}>{q.status || "draft"}</Badge></TableCell>
                           </TableRow>
                         ))}
-                        {quotes.length === 0 && <EmptyRow cols={5} text="No quotes yet." />}
+                        {quotes.length === 0 && <EmptyRow cols={6} text="No quotes yet." />}
                       </TableBody>
                     </Table>
                   </div>

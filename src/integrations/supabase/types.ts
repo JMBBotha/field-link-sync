@@ -7837,6 +7837,7 @@ export type Database = {
       }
       quotes: {
         Row: {
+          client_summary: string | null
           accepted_at: string | null
           accepted_by: string | null
           accepted_signature: Json | null
@@ -7886,6 +7887,7 @@ export type Database = {
           visual_sections: Json | null
         }
         Insert: {
+          client_summary?: string | null
           accepted_at?: string | null
           accepted_by?: string | null
           accepted_signature?: Json | null
@@ -7935,6 +7937,7 @@ export type Database = {
           visual_sections?: Json | null
         }
         Update: {
+          client_summary?: string | null
           accepted_at?: string | null
           accepted_by?: string | null
           accepted_signature?: Json | null
