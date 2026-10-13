@@ -14,6 +14,10 @@ import LeadDetailSheet from "@/components/LeadDetailSheet";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { useRole } from "@/hooks/useRole";
+import { fetchJobPins } from "@/lib/jobPins";
+import JobPinsLayer from "@/components/map/JobPinsLayer";
 
 
 interface Lead {
@@ -57,6 +61,41 @@ const AdminMapPage = () => {
     filters: new Set<LeadStatusFilter>(["pending", "accepted", "in_progress"]),
     counts: { pending: 0, accepted: 0, in_progress: 0, completed: 0, cancelled: 0 },
   });
+
+  // Open jobs as pins (company-scoped; field techs see only their own jobs).
+  const { isAdmin, isDispatcher, isFieldAgent } = useRole();
+  const techOnly = isFieldAgent && !isAdmin && !isDispatcher;
+  const [showJobs, setShowJobs] = useState(true);
+  const { data: companyId } = useQuery({
+    queryKey: ["map-company-id", currentUserId],
+    enabled: !!currentUserId,
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("company_id").eq("id", currentUserId!).maybeSingle();
+      return (data?.company_id as string | null) ?? null;
+    },
+  });
+  const { data: jobPins = [] } = useQuery({
+    queryKey: ["map-job-pins", companyId, techOnly ? currentUserId : "all"],
+    enabled: !!companyId,
+    queryFn: () => fetchJobPins(companyId!, techOnly ? currentUserId : null),
+    refetchInterval: 60_000,
+  });
+  const getMapInstance = useCallback(() => mapRef.current?.getMap() ?? null, []);
+  const jobPath = useCallback((id: string) => (techOnly ? `/field/jobs/${id}` : `/admin/jobs/${id}`), [techOnly]);
+  const jobsChip = (
+    <button
+      type="button"
+      onClick={() => setShowJobs((v) => !v)}
+      aria-pressed={showJobs}
+      data-testid="map-jobs-chip"
+      className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-xs font-medium transition-colors ${
+        showJobs ? "bg-blue-600 text-white border-blue-600" : "bg-background text-blue-700 border-border hover:bg-accent"
+      }`}
+    >
+      <span className={`h-2 w-2 rounded-sm ${showJobs ? "bg-white" : "bg-blue-600"}`} />
+      Jobs <span className="tabular-nums opacity-80">{jobPins.length}</span>
+    </button>
+  );
 
   const handleStatusStateChange = useCallback((s: MapStatusState) => setStatusState(s), []);
   const handleStatusToggle = useCallback(
@@ -179,7 +218,7 @@ const AdminMapPage = () => {
       {/* Compact chips float over the map on mobile; desktop keeps its denser toolbar. */}
       <div className="absolute inset-x-0 top-0 flex flex-wrap items-center gap-2 px-2 py-1.5 z-20 pointer-events-none lg:relative lg:shrink-0 lg:px-3 lg:border-b lg:bg-card/80 lg:backdrop-blur-sm">
         {/* Desktop-only toolbar */}
-        <div className="hidden lg:flex items-center gap-1">
+        <div className="hidden lg:flex items-center gap-1 pointer-events-auto">
           <Button
             size="sm"
             variant="ghost"
@@ -217,7 +256,7 @@ const AdminMapPage = () => {
         </div>
         {/* Search stays reachable when the leads panel is collapsed — desktop only */}
         {leadsCollapsed && (
-          <div className="hidden lg:block min-w-[12rem] flex-1 max-w-sm">
+          <div className="hidden lg:block min-w-[12rem] flex-1 max-w-sm pointer-events-auto">
             <BusinessSearch
               className="relative w-full"
               getToken={() => mapRef.current?.getMapboxToken() ?? null}
@@ -232,7 +271,8 @@ const AdminMapPage = () => {
         )}
         {/* Status chips live only in the desktop toolbar; on mobile/tablet they
             sit inside the leads panel and collapse away with it. */}
-        <div className="hidden lg:block pointer-events-auto lg:order-none lg:w-auto lg:overflow-visible">
+        <div className="hidden lg:flex items-center gap-2 pointer-events-auto lg:order-none lg:w-auto lg:overflow-visible">
+          {jobsChip}
           <StatusFilterButtons
             variant="quiet"
             className="w-max justify-start"
@@ -270,6 +310,7 @@ const AdminMapPage = () => {
 
               onLeadClick={handleLeadClick}
             />
+            <JobPinsLayer getMap={getMapInstance} jobs={jobPins} visible={showJobs} jobPath={jobPath} />
           </div>
 
           {/* On-map glass controls — mobile & tablet only */}
@@ -362,7 +403,8 @@ const AdminMapPage = () => {
                 headerSlot={
                   <>
                     {/* Mobile/tablet: status chips lead the panel; search stays desktop-only */}
-                    <div className="lg:hidden">
+                    <div className="lg:hidden flex flex-wrap gap-1">
+                      {jobsChip}
                       <StatusFilterButtons
                         variant="quiet"
                         className="w-full flex-wrap justify-start gap-1"

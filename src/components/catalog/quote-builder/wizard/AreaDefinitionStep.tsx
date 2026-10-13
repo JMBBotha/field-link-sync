@@ -172,15 +172,13 @@ export default function AreaDefinitionStep({ areas, onAreasChange, controlsOnly 
       <div className="flex flex-wrap gap-2">
         {areas.length > 0 ? (
           areas.map((area) => (
-            <Button
+            <span
               key={area.id}
-              variant="secondary"
-              size="sm"
-              className="gap-1.5 min-h-[44px] sm:min-h-0 font-semibold"
+              className="inline-flex items-center gap-1.5 rounded-md bg-secondary text-secondary-foreground px-3 h-9 text-sm font-semibold"
             >
               <Home className="h-3.5 w-3.5" />
               {area.name}
-            </Button>
+            </span>
           ))
         ) : (
           <p className="text-xs text-muted-foreground italic">Choose a template or add areas below.</p>

@@ -50,6 +50,8 @@ export interface MapViewHandle {
   toggleStatusFilter: (status: LeadStatusFilter) => void;
   /** Show exactly these statuses (same state the filter chips drive). */
   setStatusFilters: (statuses: LeadStatusFilter[]) => void;
+  /** Underlying Mapbox map (null until loaded) — used by overlay layers such as job pins. */
+  getMap: () => mapboxgl.Map | null;
 }
 
 export interface MapStatusState {
@@ -368,6 +370,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     },
     setTrafficEnabled: (enabled: boolean) => setTrafficEnabled(enabled),
     getTrafficEnabled: () => trafficEnabled,
+    getMap: () => (mapLoaded ? mapInstanceRef.current : null),
     toggleStatusFilter: (status: LeadStatusFilter) => {
       setStatusFilters((prev) => {
         const next = new Set(prev);

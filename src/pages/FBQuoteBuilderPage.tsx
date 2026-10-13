@@ -9,7 +9,7 @@ import { r2, VAT_RATE } from "@/lib/pricing";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search, Wand2, ChevronUp, ChevronDown, ArrowLeft, FileDown, Save,
-  Loader2, CheckCircle, PanelRightClose, PanelRightOpen, QrCode, MapPin,
+  Loader2, CheckCircle, PanelRightClose, PanelRightOpen, MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -707,9 +707,6 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
           </div>
           <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl h-9 text-xs hidden sm:flex text-primary-foreground hover:bg-primary-foreground/10" onClick={() => setWizardOpen(true)}>
             <Wand2 className="h-3.5 w-3.5" /> Area Quote
-          </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-primary-foreground hover:bg-primary-foreground/10">
-            <QrCode className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hidden md:flex text-primary-foreground hover:bg-primary-foreground/10"
             onClick={() => setSummaryCollapsed((c) => !c)}

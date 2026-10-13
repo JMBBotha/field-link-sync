@@ -59,10 +59,10 @@ const AdminHomePage = () => {
       <div ref={pageRef} className="relative h-full min-h-0 flex flex-col bg-background">
         {/* Desktop map controls; mobile navigation already exposes these destinations. */}
         <div className="hidden lg:flex shrink-0 flex-wrap items-center gap-2 px-3 py-2 border-b bg-card/80 backdrop-blur-sm z-20">
-          <Button size="sm" variant="default" className="gap-1.5 text-xs h-8">
+          <span aria-current="page" className="inline-flex items-center gap-1.5 rounded-md bg-primary text-primary-foreground px-3 h-8 text-xs font-medium">
             <Map className="h-3.5 w-3.5" />
             Dashboard
-          </Button>
+          </span>
           {!isSalesRep && (
             <Button size="sm" variant="ghost" onClick={() => navigate("/admin/map")} className="gap-1.5 text-xs h-8">
               <Map className="h-3.5 w-3.5" />

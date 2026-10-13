@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router-dom";
+import { useRole } from "@/hooks/useRole";
 import { useState, useEffect } from "react";
 import CommunicationTimeline from "./communication/CommunicationTimeline";
 import { X, Loader2, User, Phone, Mail, MapPin, Calendar, FileText, Wrench, Star, Edit, ChevronRight, RefreshCw, Clock } from "lucide-react";
@@ -93,6 +95,8 @@ const STATUS_BADGES: Record<string, { bg: string; label: string }> = {
 };
 
 const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) => {
+  const navigate = useNavigate();
+  const { canAccessAdmin } = useRole();
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -233,9 +237,18 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
                       )}
                     </div>
                   </div>
-                  <Button variant="outline" size="icon" className="h-8 w-8">
-                    <Edit className="h-4 w-4" />
-                  </Button>
+                  {canAccessAdmin && customerId && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label="Edit client"
+                      title="Edit client"
+                      onClick={() => { onClose(); navigate(`/admin/customers/${customerId}`); }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
 

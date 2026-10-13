@@ -187,6 +187,9 @@ const FBLayout = () => {
                 variant="ghost"
                 size="icon"
                 className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10"
+                onClick={() => navigate("/admin/notifications")}
+                aria-label="Notifications"
+                title="Notifications"
               >
                 <Bell className="h-5 w-5" />
               </Button>

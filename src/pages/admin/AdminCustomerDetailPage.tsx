@@ -596,7 +596,7 @@ const AdminCustomerDetailPage = () => {
                       </TableHeader>
                       <TableBody>
                         {quotes.map((q: any) => (
-                          <TableRow key={q.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/quotes/${q.id}`)}>
+                          <TableRow key={q.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/quote-builder?quoteId=${q.id}`)}>
                             <TableCell className="w-8" onClick={(e) => e.stopPropagation()}>
                               <Checkbox aria-label={`Select ${q.quote_number || "quote"}`} checked={pickedQuotes.includes(q.id)} onCheckedChange={() => setPickedQuotes((p) => (p.includes(q.id) ? p.filter((x) => x !== q.id) : [...p, q.id]))} />
                             </TableCell>
