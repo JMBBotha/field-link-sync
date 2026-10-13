@@ -1,7 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { trustedCompanyId } from "../_shared/leadIntake.ts";
-import { websiteLeadCompanyId } from "../_shared/websiteIntake.ts";
 import { timingLine } from "../_shared/websiteTiming.ts";
 import { sendAppointmentConfirmation } from "../_shared/appointmentConfirmation.ts";
 
@@ -15,6 +13,8 @@ import { sendAppointmentConfirmation } from "../_shared/appointmentConfirmation.
  * so the existing trigger_auto_assign_lead DB trigger can broadcast the
  * lead to nearby agents immediately on insert.
  */
+
+const MASSAIR_COMPANY_ID = "361bf031-9cdb-4d7f-9bde-9eb95fa4725e";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -124,45 +124,26 @@ serve(async (req) => {
     const mapboxToken = Deno.env.get("MAPBOX_ACCESS_TOKEN");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    let resolvedCompanyId: string | null = trustedCompanyId(req, bodyCompanyId);
+    // 0800-BE-COOL website belongs to Massair CT (Johan 2026-10-13): website leads ALWAYS
+    // go to Massair, and customer matching only looks inside Massair. Never another company.
+    const resolvedCompanyId: string = MASSAIR_COMPANY_ID;
+    void bodyCompanyId;
 
     let customerId: string | null = null;
     let isExistingCustomer = false;
 
-    const { data: phoneMatch } = await supabase
-      .rpc("check_customer_duplicates", {
-        p_phone: normalizedPhone,
-        p_first_name: customerName.split(" ")[0] || null,
-        p_last_name: customerName.split(" ").slice(1).join(" ") || null,
-      });
-
-    if (phoneMatch && phoneMatch.length > 0 && phoneMatch[0].match_score >= 0.8) {
-      customerId = phoneMatch[0].id;
+    const { data: massairMatch } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("company_id", resolvedCompanyId)
+      .eq("phone", normalizedPhone)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (massairMatch?.id) {
+      customerId = massairMatch.id;
       isExistingCustomer = true;
-      console.log(`[receive-website-lead] Matched existing customer: ${customerId}`);
-      if (!resolvedCompanyId) {
-        const { data: custData } = await supabase
-          .from("customers")
-          .select("company_id")
-          .eq("id", customerId)
-          .single();
-        if (custData?.company_id) resolvedCompanyId = custData.company_id;
-      }
-    }
-
-    if (!resolvedCompanyId) {
-      // P9: new website leads go to the configured website company (0800-BE-COOL).
-      resolvedCompanyId = await websiteLeadCompanyId(supabase);
-    }
-
-    if (!resolvedCompanyId) {
-      const { data: firstCompany } = await supabase
-        .from("companies")
-        .select("id")
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .single();
-      if (firstCompany) resolvedCompanyId = firstCompany.id;
+      console.log(`[receive-website-lead] Matched existing Massair customer: ${customerId}`);
     }
 
     if (!customerId) {
