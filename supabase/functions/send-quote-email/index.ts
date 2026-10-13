@@ -15,7 +15,7 @@ function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(value);
 }
 
-type Brand = { sig: SignatureCompany | null; name: string; phone: string | null; email: string | null; website: string | null; logoUrl: string | null; depositPct: number | null; validUntil: string | null };
+type Brand = { sig: SignatureCompany | null; name: string; phone: string | null; email: string | null; website: string | null; logoUrl: string | null; logoOnColour?: boolean; depositPct: number | null; validUntil: string | null };
 const escH = (v: unknown) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
 const firstName = (n?: string | null) => { const t = String(n || "").trim(); if (!t) return ""; return /\b(pty|ltd|cc|inc|trust|construction|estates?)\b/i.test(t) ? t : t.split(/\s+/)[0]; };
 
@@ -35,7 +35,9 @@ async function loadBrand(sb: any, quoteId?: string | null): Promise<Brand> {
     if (b.sig) b.name = b.sig.legalName;
     b.phone = prof?.phone || null; b.email = prof?.email || null; b.website = prof?.website || null;
     // Sending company's own logo at the top; Massair CT = the designed logo block (Johan 13 Oct 12:09).
-    b.logoUrl = prof?.logo_url || (b.sig && isDesignedCompany(b.sig) ? `${SIGNATURE_IMAGE_BASE}/logo-block-shadow.png` : null);
+    // Massair CT: transparent logo straight on the blue header, no white box (Johan 13 Oct 12:52).
+    b.logoOnColour = !!(b.sig && isDesignedCompany(b.sig));
+    b.logoUrl = b.logoOnColour ? `${SIGNATURE_IMAGE_BASE}/logo-white.png` : (prof?.logo_url || null);
     const planPct = Number(q?.payment_plan?.stages?.[0]?.pct);
     const pct = Number.isFinite(planPct) && planPct > 0 ? planPct : Number(cs?.default_deposit_percentage);
     b.depositPct = Number.isFinite(pct) && pct > 0 && pct <= 100 ? Math.round(pct) : null;
@@ -60,7 +62,7 @@ function buildHtmlEmail(brand: Brand, clientName: string, quoteNumber: string, d
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef3f9;"><tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:10px;overflow:hidden;">
   <tr><td style="background:#0B4FA8;background-image:linear-gradient(90deg,#0B4FA8,#1AA7EC);padding:22px 28px;color:#ffffff;">
-    ${brand.logoUrl ? `<div style="background:#ffffff;border-radius:8px;display:inline-block;padding:6px 10px;margin-bottom:10px;"><img src="${escH(brand.logoUrl)}" alt="${company}" width="180" style="display:block;width:180px;max-width:180px;height:auto;border:0;"></div>` : ""}
+    ${brand.logoUrl && brand.logoOnColour ? `<img src="${escH(brand.logoUrl)}" alt="${company}" width="200" style="display:block;width:200px;max-width:200px;height:auto;border:0;margin-bottom:10px;">` : brand.logoUrl ? `<div style="background:#ffffff;border-radius:8px;display:inline-block;padding:6px 10px;margin-bottom:10px;"><img src="${escH(brand.logoUrl)}" alt="${company}" width="180" style="display:block;width:180px;max-width:180px;height:auto;border:0;"></div>` : ""}
     <div style="font-size:20px;font-weight:800;">${company}</div>
     <div style="font-size:12px;opacity:.9;">${depositRequest ? "Your deposit invoice is ready" : "Your quotation is ready"}</div>
   </td></tr>

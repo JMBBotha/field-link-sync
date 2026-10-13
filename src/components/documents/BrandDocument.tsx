@@ -117,7 +117,8 @@ export default function BrandDocument(p: BrandDocumentProps) {
   const id = profileIdentity(p.profile);
   const massair = isMassairProfile(p.profile);
   const recordLogo = (p.profile as any)?.logo_url as string | undefined;
-  const logo = recordLogo || (massair ? (style === "bold" ? logoWhite : logoLight) : null);
+  // Bold (blue header): Massair always uses the transparent logo, never a boxed upload (Johan 13 Oct 12:52).
+  const logo = massair && style === "bold" ? logoWhite : recordLogo || (massair ? (style === "bold" ? logoWhite : logoLight) : null);
   const addr = id.addressLines.join(", ");
   const hasCode = p.sections.some((s) => s.lines.some((l) => l.code));
   return (

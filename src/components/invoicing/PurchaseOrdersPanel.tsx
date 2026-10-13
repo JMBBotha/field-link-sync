@@ -64,7 +64,7 @@ export default function PurchaseOrdersPanel({ invoice }: { invoice: any }) {
   const download = async (po: PoRow) => {
     const prof = await fetchCompanyProfile(invoice.company_profile_id);
     const style = documentStyleOf(prof);
-    const src = (prof as any)?.logo_url || (isMassairProfile(prof) ? (style === "bold" ? logoWhite : logoLight) : null);
+    const src = isMassairProfile(prof) && style === "bold" ? logoWhite : (prof as any)?.logo_url || (isMassairProfile(prof) ? (style === "bold" ? logoWhite : logoLight) : null);
     const logo = src ? await loadLogoForPdf(src) : null;
     buildPurchaseOrderPdf(po, prof, { style, logoDataUrl: logo?.dataUrl, logoAspect: logo?.aspect }).save(`${po.po_number}.pdf`);
   };

@@ -54,7 +54,8 @@ export function UnitBrochureView({ data, pdf = false }: { data: BrochureData; pd
   const co = data.company;
   const style = co?.document_style === "bold" ? "bold" : "light";
   const massair = co?.company_id === MASSAIR_ID;
-  const logo = co?.logo_url || (massair ? (style === "bold" ? logoWhite : logoLight) : null);
+  // Bold (blue header): Massair always uses the transparent logo (Johan 13 Oct 12:52).
+  const logo = massair && style === "bold" ? logoWhite : co?.logo_url || (massair ? (style === "bold" ? logoWhite : logoLight) : null);
   const coName = co?.name || co?.legal_name || null;
   const m = data.media;
   const legal = co?.legal_name || coName;

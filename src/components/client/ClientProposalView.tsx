@@ -21,6 +21,7 @@ import SignaturePad from "@/components/jobs/SignaturePad";
 import { fetchQuoteInvoiceByToken, type DepositInvoiceRow } from "@/lib/depositInvoice";
 import { isDepositCleared } from "@/components/shared/DepositPaymentChip";
 import logo from "@/assets/logo.png";
+import logoWhite from "@/assets/brand/logo-white.png";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
 
 interface QuoteData {
@@ -282,7 +283,9 @@ const ClientProposalView = () => {
   const isActionable = ["sent", "viewed"].includes(quote.status) && !actionDone;
   const isDraft = quote.status === "draft" && !actionDone;
   const brandName = (companyProfile as any)?.legal_name || (companyProfile as any)?.trading_name || company?.company_name || "";
-  const headerLogo: string | null = (companyProfile as any)?.logo_url || (/^massair ct\b/i.test(brandName) ? "/email/logo-block-shadow.png" : null);
+  // Massair CT: transparent logo straight on the blue header, no white box (Johan 13 Oct 12:52).
+  const logoOnColour = /^massair ct\b/i.test(brandName);
+  const headerLogo: string | null = logoOnColour ? logoWhite : ((companyProfile as any)?.logo_url || null);
   const brandPhone: string | null = (companyProfile as any)?.phone || null;
   const fmtR = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n || 0);
   const goTo = (el: HTMLElement | null) => el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -306,7 +309,7 @@ const ClientProposalView = () => {
         <div className="max-w-4xl mx-auto text-center">
           {/* Sending company's own logo (Johan 13 Oct 12:09): profile logo, Massair CT = the designed logo block, else the name. */}
           {headerLogo ? (
-            <img src={headerLogo} alt={brandName || "Logo"} className="h-16 mx-auto mb-4 bg-white rounded-lg p-1.5" />
+            <img src={headerLogo} alt={brandName || "Logo"} className={logoOnColour ? "h-20 mx-auto mb-4" : "h-16 mx-auto mb-4 bg-white rounded-lg p-1.5"} />
           ) : brandName ? (
             <div className="text-xl font-extrabold mb-3">{brandName}</div>
           ) : null}
