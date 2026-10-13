@@ -7372,6 +7372,42 @@ export type Database = {
           },
         ]
       }
+      quote_bundles: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          id: string
+          quote_ids: string[]
+          sent_at: string | null
+          sent_to: string | null
+          token: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          id?: string
+          quote_ids: string[]
+          sent_at?: string | null
+          sent_to?: string | null
+          token?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          id?: string
+          quote_ids?: string[]
+          sent_at?: string | null
+          sent_to?: string | null
+          token?: string
+        }
+        Relationships: []
+      }
       quote_change_requests: {
         Row: {
           company_id: string | null
@@ -7837,11 +7873,11 @@ export type Database = {
       }
       quotes: {
         Row: {
-          client_summary: string | null
           accepted_at: string | null
           accepted_by: string | null
           accepted_signature: Json | null
           accepted_version_id: string | null
+          client_summary: string | null
           company_id: string | null
           created_at: string
           created_by: string | null
@@ -7887,11 +7923,11 @@ export type Database = {
           visual_sections: Json | null
         }
         Insert: {
-          client_summary?: string | null
           accepted_at?: string | null
           accepted_by?: string | null
           accepted_signature?: Json | null
           accepted_version_id?: string | null
+          client_summary?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -7937,11 +7973,11 @@ export type Database = {
           visual_sections?: Json | null
         }
         Update: {
-          client_summary?: string | null
           accepted_at?: string | null
           accepted_by?: string | null
           accepted_signature?: Json | null
           accepted_version_id?: string | null
+          client_summary?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -11256,6 +11292,10 @@ export type Database = {
         Args: { p_notes?: string; p_service_type: string; p_token: string }
         Returns: string
       }
+      create_quote_bundle: {
+        Args: { p_quote_ids: string[]; p_summaries?: Json }
+        Returns: Json
+      }
       create_quote_version: { Args: { p_quote_id: string }; Returns: string }
       create_stage_invoice_for_quote: {
         Args: { p_quote_id: string }
@@ -12130,6 +12170,7 @@ export type Database = {
       postgis_wagyu_version: { Args: never; Returns: string }
       process_install_offers: { Args: never; Returns: number }
       public_quote_adjust_data: { Args: { p_token: string }; Returns: Json }
+      public_quote_bundle: { Args: { p_token: string }; Returns: Json }
       public_quote_change_state: { Args: { p_token: string }; Returns: Json }
       public_quote_show_unit_cards: {
         Args: { p_token: string }
@@ -12170,6 +12211,8 @@ export type Database = {
         Returns: boolean
       }
       qcr_pricing: { Args: { p_quote_id: string }; Returns: Json }
+      quote_auto_summary: { Args: { p_quote_id: string }; Returns: string }
+      quote_bundle_preview: { Args: { p_quote_ids: string[] }; Returns: Json }
       quote_conversion_funnel: {
         Args: never
         Returns: {
