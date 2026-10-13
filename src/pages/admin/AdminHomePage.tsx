@@ -9,13 +9,13 @@ import OfferCards from "@/components/dispatch/OfferCards";
 import { Button } from "@/components/ui/button";
 import { useSalesRep } from "@/hooks/useSalesRep";
 
-import { Map, ExternalLink, Maximize2, Minimize2 } from "lucide-react";
+import { Map, ExternalLink, Maximize2, Minimize2, LayoutTemplate } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 const AdminHomePage = () => {
   const navigate = useNavigate();
   const { isSalesRep } = useSalesRep();
-  const { isClassic } = useLayoutVersion();
+  const { isClassic, toggle: toggleLayout } = useLayoutVersion();
   const HomeC = isClassic ? ClassicAdminHome : AdminHome;
   const [showCreateLead, setShowCreateLead] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -94,6 +94,13 @@ const AdminHomePage = () => {
 
           {/* Dashboard content floating over the map */}
           <div className={isClassic ? "relative h-full overflow-y-auto p-3 pb-20 md:p-4 md:pb-20 lg:pb-4 space-y-3" : "relative h-full overflow-y-auto p-3 pb-20 md:p-4 md:pb-20 lg:pb-4 space-y-3"}>
+            {/* Same-spot view switch on both layouts (Johan 13 Oct: no way back from Classic). */}
+            <div className="flex justify-end">
+              <Button size="sm" variant="outline" onClick={toggleLayout} data-testid="dashboard-layout-switch" className="gap-1.5 text-xs h-8 bg-card/90 backdrop-blur-sm shadow-sm">
+                <LayoutTemplate className="h-3.5 w-3.5" />
+                {isClassic ? "Switch to new view" : "Switch to classic view"}
+              </Button>
+            </div>
             <OfferCards />
             <div className={isClassic ? undefined : "v7-solid space-y-3"}>
             <HomeC
