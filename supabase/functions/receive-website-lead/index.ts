@@ -202,8 +202,8 @@ serve(async (req) => {
     const geo = await geocode(address, mapboxToken);
 
     const noteLines = [
-      timingLine(preferred_timing, preferred_date, preferred_time),
       `Source: ${source} | Phone: ${normalizedPhone}`,
+      timingLine(preferred_timing, preferred_date, preferred_time),
       notes || "",
       preferred_date ? `Preferred date: ${preferred_date}` : "",
       preferred_time ? `Preferred time: ${preferred_time}` : "",
