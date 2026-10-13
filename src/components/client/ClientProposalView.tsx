@@ -116,7 +116,13 @@ const ClientProposalView = () => {
     if (!action) return;
     jumpedRef.current = true;
     if (action === "changes") setShowChanges(true);
-    setTimeout(() => (action === "changes" ? changesRef.current : acceptRef.current)?.scrollIntoView({ behavior: "smooth", block: "center" }), 400);
+    let tries = 0;
+    const jump = () => {
+      const el = action === "changes" ? changesRef.current : acceptRef.current;
+      if (el) el.scrollIntoView({ behavior: "auto", block: "center" });
+      else if (tries++ < 20) setTimeout(jump, 150);
+    };
+    setTimeout(jump, 600);
   }, [quote]);
 
   const loadQuote = async () => {
