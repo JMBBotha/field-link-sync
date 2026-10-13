@@ -141,7 +141,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
             }
           }
         } catch { /* optional section */ }
-        if (!cancelled) setDoc({ unitCards, quote: qRes.data, customer, company: cRes.data ? { ...cRes.data, default_deposit_percentage: dRes.data?.default_deposit_percentage ?? cRes.data.default_deposit_percentage } : null, items, areas: buildClientRollup(lines, areaRows) });
+        if (!cancelled) setDoc({ unitCards, quote: qRes.data, customer, company: cRes.data ? { ...cRes.data, default_deposit_percentage: dRes.data?.default_deposit_percentage ?? cRes.data.default_deposit_percentage } : null, items, areas: buildClientRollup(lines, areaRows, { targetSubtotal: Number(qRes.data.subtotal) }) });
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Could not load the quote for the PDF.");
       }

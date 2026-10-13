@@ -6,7 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { fetchCompanyProfile } from "@/lib/companyProfiles";
-import { buildPurchaseOrderPdf, PO_DOCS_LINE, type PoRow } from "@/lib/purchaseOrderPdf";
+import { buildPurchaseOrderPdf, loadLogoForPdf, PO_DOCS_LINE, type PoRow } from "@/lib/purchaseOrderPdf";
+import { documentStyleOf, isMassairProfile } from "@/components/documents/BrandDocument";
+import logoLight from "@/assets/brand/logo-light.png";
+import logoWhite from "@/assets/brand/logo-white.png";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const db = supabase as any;
@@ -60,7 +63,10 @@ export default function PurchaseOrdersPanel({ invoice }: { invoice: any }) {
 
   const download = async (po: PoRow) => {
     const prof = await fetchCompanyProfile(invoice.company_profile_id);
-    buildPurchaseOrderPdf(po, prof).save(`${po.po_number}.pdf`);
+    const style = documentStyleOf(prof);
+    const src = (prof as any)?.logo_url || (isMassairProfile(prof) ? (style === "bold" ? logoWhite : logoLight) : null);
+    const logo = src ? await loadLogoForPdf(src) : null;
+    buildPurchaseOrderPdf(po, prof, { style, logoDataUrl: logo?.dataUrl, logoAspect: logo?.aspect }).save(`${po.po_number}.pdf`);
   };
 
   const upload = async (po: PoRow, docType: string, file: File) => {

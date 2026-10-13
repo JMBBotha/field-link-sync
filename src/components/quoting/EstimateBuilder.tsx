@@ -317,8 +317,9 @@ export default function EstimateBuilder({
     if (labourMode === "job") return true;
     const last = editAreas.filter((a) => a.id).at(-1);
     if (!last || !areaLabourStatus(topLevel.filter((i) => i.area_id === last.id), perUnitHours).missing) return true;
-    toast({ title: `${last.name} has no labour yet. Add labour first.`, action: <ToastAction altText="Add labour" onClick={() => document.getElementById(`area-labour-${last.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}>Add labour</ToastAction> });
-    return false;
+    // Warning only (Johan 2026-10-13): a new area is always allowed.
+    toast({ title: `${last.name} has no labour yet`, description: "Carrying on. Add labour later, or mark the quote Labour included.", action: <ToastAction altText="Add labour" onClick={() => document.getElementById(`area-labour-${last.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}>Add labour</ToastAction> });
+    return true;
   };
 
 

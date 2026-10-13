@@ -14,6 +14,9 @@ const FIELDS: { key: keyof CompanyProfile; label: string; wide?: boolean }[] = [
   { key: "vat_number", label: "VAT number (leave empty if not registered)" },
   { key: "phone", label: "Phone" },
   { key: "email", label: "Email" },
+  { key: "whatsapp", label: "WhatsApp" },
+  { key: "website", label: "Website" },
+  { key: "logo_url", label: "Logo image URL (optional; empty = no logo, Massair uses its own artwork)" },
   { key: "bank_name", label: "Bank" },
   { key: "account_name", label: "Account name" },
   { key: "account_number", label: "Account number" },
@@ -40,6 +43,8 @@ export default function InvoiceCompaniesCard() {
       bank_name: r.bank_name || null, account_name: r.account_name || null, account_number: r.account_number?.trim() || null,
       branch_code: r.branch_code?.trim() || null, account_type: r.account_type || null, invoice_prefix: r.invoice_prefix || "INV-",
       terms_text: r.terms_text?.trim() || null,
+      whatsapp: r.whatsapp?.trim() || null, website: r.website?.trim() || null, logo_url: r.logo_url?.trim() || null,
+      document_style: r.document_style === "bold" ? "bold" : "light",
       address_lines: (Array.isArray(r.address_lines) ? r.address_lines : String(r.address_lines || "").split("\n")).map((l) => l.trim()).filter(Boolean),
       updated_at: new Date().toISOString(),
     };
@@ -68,6 +73,15 @@ export default function InvoiceCompaniesCard() {
                   <Input value={(r[f.key] as string) || ""} onChange={(e) => update(r.id, f.key, e.target.value)} />
                 </div>
               ))}
+              <div>
+                <Label htmlFor={`docstyle-${r.id}`}>Document design (quotes, invoices, POs)</Label>
+                <select id={`docstyle-${r.id}`} data-testid="document-style" value={r.document_style === "bold" ? "bold" : "light"}
+                  onChange={(e) => update(r.id, "document_style", e.target.value)}
+                  className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="light">Light (default)</option>
+                  <option value="bold">Bold</option>
+                </select>
+              </div>
               <div className="md:col-span-2">
                 <Label>Address (one line each)</Label>
                 <Textarea value={Array.isArray(r.address_lines) ? r.address_lines.join("\n") : (r.address_lines as unknown as string) || ""}

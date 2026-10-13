@@ -5,7 +5,7 @@
  * so an old PDF never changes when a profile is edited later.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { COMPANY, COMPANY_BLOCK_LINES, COMPANY_CONTACT_LINE } from "@/lib/companyIdentity";
+import { COMPANY, COMPANY_CONTACT_LINE } from "@/lib/companyIdentity";
 import type { TermsCompanyInfo } from "@/lib/defaultTerms";
 
 export interface CompanyProfile {
@@ -30,6 +30,10 @@ export interface CompanyProfile {
   next_invoice_no?: number;
   is_default: boolean;
   archived_at: string | null;
+  /** 'light' (default) | 'bold' — client document design (Johan 2026-10-13). */
+  document_style?: string | null;
+  /** Company's own logo for documents; null = Massair artwork for Massair, none for others. */
+  logo_url?: string | null;
 }
 
 const s = (v: unknown) => String(v ?? "").replace(/[[\]{}()]/g, "").replace(/\s+/g, " ").trim();
@@ -48,15 +52,16 @@ function field(p: Partial<CompanyProfile>, v: string | null | undefined, ctFallb
 /** Resolved company identity for a document header/footer, record first. */
 export function profileIdentity(p?: Partial<CompanyProfile> | null) {
   if (!p || !p.legal_name) {
-    return { legalName: COMPANY.legalName, tel: COMPANY.tel, vatNo: COMPANY.vatNo, addressLines: [...COMPANY.addressLines],
+    // No record readable: name only. Address and phone are NEVER hardcoded (Johan 2026-10-13).
+    return { legalName: COMPANY.legalName, tel: "", vatNo: COMPANY.vatNo, addressLines: [] as string[],
       email: COMPANY.email, web: COMPANY.web, whatsapp: COMPANY.whatsapp, fromRecord: false };
   }
   const addr = ((p.address_lines || []).map((l) => String(l || "").trim()).filter(Boolean));
   return {
     legalName: p.legal_name.trim(),
-    tel: field(p, p.phone, COMPANY.tel),
+    tel: s(p.phone) ? String(p.phone).trim() : "",
     vatNo: field(p, p.vat_number, COMPANY.vatNo).replace(/[[\]{}()]/g, "").trim(),
-    addressLines: addr.length ? addr : (p.company_id === COMPANY.companyId ? [...COMPANY.addressLines] : []),
+    addressLines: addr,
     email: field(p, p.email, COMPANY.email),
     web: field(p, p.website, COMPANY.web),
     whatsapp: field(p, p.whatsapp, COMPANY.whatsapp),
@@ -66,7 +71,7 @@ export function profileIdentity(p?: Partial<CompanyProfile> | null) {
 
 /** Right-hand company block lines for a document, from the company record. No record = fixed fallback block. */
 export function profileBlockLines(p?: Partial<CompanyProfile> | null): string[] {
-  if (!p || !p.legal_name) return COMPANY_BLOCK_LINES;
+  if (!p || !p.legal_name) return [COMPANY.legalName, `VAT No ${COMPANY.vatNo}`];
   const i = profileIdentity(p);
   return [i.legalName, ...(i.tel ? [i.tel] : []), ...(i.vatNo ? [`VAT No ${i.vatNo}`] : []), ...i.addressLines];
 }
@@ -94,7 +99,8 @@ export interface ProfileBanking {
 export function profileBanking(p?: Partial<CompanyProfile> | null): ProfileBanking | null {
   if (!p || !p.legal_name) return null;
   return {
-    account_name: s(p.account_name) || p.legal_name,
+    // Name as written (keeps "(Pty)"); s() strips brackets for the number fields only.
+    account_name: String(p.account_name || "").replace(/\s+/g, " ").trim() || p.legal_name,
     bank_name: s(p.bank_name),
     account_number: s(p.account_number),
     branch_code: s(p.branch_code),

@@ -134,7 +134,7 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged, beforeWri
     await applyAutoLabourDelta({ items: S().items, areaId: target, job: target === null, unitDelta: delta, perUnit: Number(settings?.default_install_labour_hours) || 3.5, rate, addItem: g.addItem, updateItem: g.updateItem });
   };
   const labourReminder = (state = S()) => {
-    const missing = missingLabourFor(normalizeLabourMode((ctx.meta as any)?.labour_mode), state.areas, state.items, Number(settings?.default_install_labour_hours) || 3.5);
+    const missing = missingLabourFor(normalizeLabourMode((ctx.meta as any)?.labour_mode), state.areas, state.items, Number(settings?.default_install_labour_hours) || 3.5, !!(ctx.meta as any)?.labour_included);
     return missing.length ? ` Remember labour for ${missing[0].name}.` : "";
   };
 

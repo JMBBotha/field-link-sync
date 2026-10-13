@@ -132,7 +132,7 @@ const ClientProposalView = () => {
       });
       setLineItems(items);
       // Client-facing roll-up: one block per room, no itemised piping/labour.
-      setClientAreas(buildClientRollup(bundle.items || [], bundle.areas || []));
+      setClientAreas(buildClientRollup(bundle.items || [], bundle.areas || [], { targetSubtotal: Number(q.subtotal) }));
       setSections(bundle.sections || []);
       setUnitLines(bundle.items || []);
       supabase.rpc("public_quote_show_unit_cards" as never, { p_token: token } as never)

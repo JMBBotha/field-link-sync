@@ -66,6 +66,6 @@ describe("header from the company record", () => {
     expect(profileIdentity(OTHER).legalName).toBe("OTHER CO");
   });
   it("no record = fixed fallback block", () => {
-    expect(profileBlockLines(null)).toEqual(COMPANY_BLOCK_LINES);
+    expect(profileBlockLines(null)).toEqual(["Massair CT (Pty) Ltd", "VAT No 4630313080"]); // no hardcoded address / phone (Johan 2026-10-13)
   });
 });

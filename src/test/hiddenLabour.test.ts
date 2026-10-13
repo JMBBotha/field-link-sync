@@ -50,9 +50,9 @@ describe("hidden labour (Q-2026-0014)", () => {
     expect(updateItem).toHaveBeenCalledWith("a", expect.objectContaining({ area_id: null, quantity: 7 }));
   });
 
-  it("client PDF: job-scope labour goes to the Job labour block even with an area", () => {
+  it("client PDF: job-scope labour is folded into the area lines (no Job labour block, Johan 2026-10-13)", () => {
     const r = buildClientRollup([unit, b] as any, [{ id: A, name: "Main Lounge Area", sort_order: 0 }] as any);
-    expect(r.find((x) => x.isJobLabour)?.areaTotal).toBe(3740);
-    expect(r.find((x) => x.areaId === A)?.areaTotal).toBe(17434.21);
+    expect(r.find((x) => x.isJobLabour)).toBeUndefined();
+    expect(r.find((x) => x.areaId === A)?.areaTotal).toBe(17434.21 + 3740);
   });
 });

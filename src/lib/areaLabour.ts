@@ -58,12 +58,14 @@ export function labourTargetAreaId(mode: LabourMode, areaId: string | null): str
 }
 
 /**
- * Labour-required check used by Save/Send/PDF/Print/Accept.
+ * Labour check used by Save/Send/PDF/Print/Accept. Since 2026-10-13 a WARNING only (lib/labourWarning.tsx), never a block.
  * per_area: every populated area needs labour. job: one job labour row with hours > 0 when the quote has lines.
  */
 export function missingLabourFor<T extends { id: string; name: string }>(
-  mode: LabourMode, areas: T[], lines: AreaLabourLine[], perUnit = 3.5,
+  mode: LabourMode, areas: T[], lines: AreaLabourLine[], perUnit = 3.5, labourIncluded = false,
 ): { id: string; name: string }[] {
+  // "Labour included / no labour" chosen on the quote (quotes.labour_included): nothing is missing.
+  if (labourIncluded) return [];
   if (mode !== "job") return missingLabourAreas(areas, lines, perUnit);
   const hasLines = lines.some((l) => !l.parent_item_id && !isLabourItem(l as any));
   if (!hasLines) return [];

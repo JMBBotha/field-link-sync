@@ -19,6 +19,8 @@ import { cleanBanking } from "@/lib/companyIdentity";
 import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
 import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
 import { planTermsSentence, type PaymentPlan } from "@/lib/paymentPlans";
+import BrandDocument, { type BrandDocSection } from "@/components/documents/BrandDocument";
+import { foldFlatLines } from "@/lib/clientQuoteRollup";
 
 export interface EstimateDocLineItem {
   description: string;
@@ -385,6 +387,50 @@ const EstimateDocument = ({
   const vatPercent = toPercent(taxRate);
   const accountType = bank.account_type;
   const cleanTerms = stripLegacyBanking(termsText);
+
+  // Client-facing (read-only) output = the Light/Bold document (Johan 2026-10-13). Staff editing keeps its own surface.
+  if (!editing) {
+    const qty = (n: number) => String(Number.isInteger(n) ? n : Math.round(n * 100) / 100);
+    const sections: BrandDocSection[] = rollup
+      ? rollup.map((area, i) => ({
+          key: area.areaId ?? `general-${i}`,
+          title: rollup.length > 1 || area.areaName !== "General" ? area.areaName : null,
+          subtotal: area.areaTotal,
+          lines: area.items.map((it, j) => ({ key: it.id ?? `${i}-${j}`, quantity: it.qtyText || qty(it.quantity), code: it.code, name: it.name, description: it.description, rate: it.unitPrice, total: it.lineTotal })),
+        }))
+      : [{ key: "all", lines: foldFlatLines(items.map((it) => { const [name, ...rest] = it.description.split("\n"); return { name, description: rest.join("\n") || null, quantity: it.quantity, unit_price: it.unit_price, amount: it.amount, qtyText: it.qtyText || null }; })).map((l, j) => ({ key: String(j), quantity: l.qtyText || qty(l.quantity), name: l.name, description: l.description, rate: l.unit_price, total: l.amount })) }];
+    const terms = cleanTerms || `This estimate is valid for 30 days from the date of issue. All prices exclude VAT, which is shown separately at ${vatPercent}%. ${planTermsSentence(paymentPlan, settings.default_deposit_percentage, settings.default_payment_terms_days)}`;
+    const bankLine = [bank.account_name, bank.bank_name, bank.account_type && `${bank.account_type} account`, bank.account_number, bank.branch_code && `Branch ${bank.branch_code}`].filter(Boolean).join(" · ");
+    return (
+      <BrandDocument
+        docType="quote"
+        captureRoot="estimate"
+        title="QUOTATION"
+        number={estimateNumber}
+        profile={record}
+        partyLabel="Prepared for"
+        partyName={customerName}
+        partyLines={[customerCompany, customerAddress, customerEmail, customerPhone]}
+        partyVat={customerVat}
+        meta={[["Quote No", estimateNumber], ["Date", formatDate(issueDate)], ["Valid until", validUntil ? formatDate(validUntil) : "30 days"]]}
+        sections={sections.filter((sec) => sec.lines.length)}
+        totals={[
+          { label: "Subtotal excl VAT", value: subtotal },
+          ...(discountAmount > 0 ? [{ label: `Discount${discountLabel ? ` (${discountLabel})` : ""}`, value: discountAmount, negative: true }] : []),
+          { label: `VAT ${vatPercent}%`, value: taxAmount },
+        ]}
+        grandLabel="Quote total incl VAT"
+        grandTotal={grandTotal}
+        afterTotals={unitCards}
+        cards={[
+          ...(notes ? [{ title: "Overview", body: <p className="whitespace-pre-line">{notes}</p> }] : []),
+          { title: "Payment", body: <p>{planTermsSentence(paymentPlan, settings.default_deposit_percentage, settings.default_payment_terms_days)}</p> },
+          { title: "Banking", body: <p>{bankLine || "—"}. Reference: quote number.</p> },
+        ]}
+        terms={terms}
+      />
+    );
+  }
 
   return (
     <div

@@ -22,7 +22,7 @@ describe("invoice maths", () => {
 
 describe("company profiles", () => {
   it("no profile keeps today's fixed block", () => {
-    expect(profileBlockLines(null)).toEqual(COMPANY_BLOCK_LINES);
+    expect(profileBlockLines(null)).toEqual(["Massair CT (Pty) Ltd", "VAT No 4630313080"]); // no hardcoded address / phone (Johan 2026-10-13)
   });
   it("CT without a VAT number prints no VAT line", () => {
     expect(profileBlockLines(CT).join("|")).not.toMatch(/VAT/);

@@ -85,11 +85,14 @@ describe("client roll-up (PDF + /quote)", () => {
     expect(a.units.map((u) => u.unitName)).toEqual(["Midea 18K, MSAG-18", "3 × LG 12K S3-Q12"]);
   });
 
-  it("whole-job labour becomes a last 'Job labour' block", () => {
+  it("whole-job labour is folded into the lines by price, never its own block (Johan 2026-10-13)", () => {
     const job = line("j1", null, "Job labour", 14, 680, { item_type: "labour", metadata: { labour: true, labour_scope: "job" } });
-    const res = buildClientRollup([...lines.filter((l) => l.item_type !== "labour"), job], areas);
-    expect(res.map((a) => a.areaName)).toEqual(["Lounge", "Bedroom 2", "Study", "Job labour"]);
-    expect(res.at(-1)).toMatchObject({ isJobLabour: true, units: [], areaTotal: 14 * 680 });
+    const input = [...lines.filter((l) => l.item_type !== "labour"), job];
+    const res = buildClientRollup(input, areas);
+    expect(res.map((a) => a.areaName)).toEqual(["Lounge", "Bedroom 2", "Study"]);
+    expect(res.some((a) => a.isJobLabour)).toBe(false);
+    const sum = input.reduce((s, l) => s + Math.round((Number(l.total_price) || Number(l.quantity) * Number(l.unit_price)) * 100), 0);
+    expect(res.reduce((s, a) => s + a.items.reduce((t, it) => t + Math.round(it.lineTotal * 100), 0), 0)).toBe(sum);
   });
 
   it("staff PDF rows (DB select, nested supplier_products) roll up identically to the /quote RPC payload", () => {
@@ -115,7 +118,7 @@ describe("client roll-up (PDF + /quote)", () => {
     const staff = buildClientRollup(dbRows.map((r) => rollupLineFromRow(r, names)), areas);
     const pub = buildClientRollup(rpcItems as any, areas);
     expect(staff).toEqual(pub);
-    expect(pub.map((a) => a.areaName)).toEqual(["Lounge", "Bedroom 2", "Study", "Job labour"]);
+    expect(pub.map((a) => a.areaName)).toEqual(["Lounge", "Bedroom 2", "Study"]);
   });
 
   it("discount matches the /quote page rule", () => {

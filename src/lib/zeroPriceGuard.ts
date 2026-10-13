@@ -11,7 +11,12 @@ const kitNotFound = (ls: { metadata?: any }[]) => {
 };
 // A metre line at 0 m is treated like an R0 line (must enter metres).
 const zeroMetre = (l: { quantity?: unknown; metadata?: any }) => l?.metadata?.qty_unit === "metre" && !(Number(l.quantity) > 0);
-export const r0Quote = (ls: { item_name?: string | null; unit_price?: unknown; quantity?: unknown; parent_item_id?: string | null; metadata?: any }[]) =>
-  r0Line(ls.filter((l) => !l.parent_item_id).map((l) => ({ n: l.item_name, p: String(l.item_name ?? "").startsWith("Not found: ") || zeroMetre(l) ? 0 : l.unit_price })))
+// Not an R0 problem (Johan 2026-10-13): a qty-0 heading line (adds nothing) and labour at R0 (labour included / no labour).
+const LABOUR_NAME = /^\s*(labou?r\b|installation\s*fee\b|ac\s+installation\s*$|installation\s*$)|\binstall(ation)?\s+fee\b/i;
+const skipR0 = (l: { item_name?: string | null; item_type?: string | null; quantity?: unknown; metadata?: any }) =>
+  (l?.metadata?.qty_unit !== "metre" && !(Number(l.quantity) > 0)) ||
+  String(l.item_type || "").toLowerCase() === "labour" || !!l?.metadata?.labour || LABOUR_NAME.test(String(l.item_name || ""));
+export const r0Quote = (ls: { item_name?: string | null; item_type?: string | null; unit_price?: unknown; quantity?: unknown; parent_item_id?: string | null; metadata?: any }[]) =>
+  r0Line(ls.filter((l) => !l.parent_item_id && !skipR0(l)).map((l) => ({ n: l.item_name, p: String(l.item_name ?? "").startsWith("Not found: ") || zeroMetre(l) ? 0 : l.unit_price })))
   ?? kitNotFound(ls);
 export const blockR0Quote = (ls: Parameters<typeof r0Quote>[0], t: T) => blk(r0Quote(ls), t);

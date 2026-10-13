@@ -69,6 +69,7 @@ import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { useUnsavedQuoteGuard } from "@/hooks/useUnsavedQuoteGuard";
 import { missingLabourFor, normalizeLabourMode, reconcileAutoLabour } from "@/lib/areaLabour";
+import { warnMissingLabour } from "@/lib/labourWarning";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
 import { useIsPhone } from "@/hooks/useIsPhone";
@@ -958,8 +959,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   const [generating, setGenerating] = useState(false);
   const [labourDialog, setLabourDialog] = useState<{ id: string; name: string }[]>([]);
   const requireLabour = useCallback(() => {
-    const missing = missingLabourFor(normalizeLabourMode((meta as any)?.labour_mode), ctxAreas, ctxItems, companySettings.default_install_labour_hours);
-    if (missing.length) { setLabourDialog(missing); return false; }
+    const missing = missingLabourFor(normalizeLabourMode((meta as any)?.labour_mode), ctxAreas, ctxItems, companySettings.default_install_labour_hours, !!(meta as any)?.labour_included);
+    // Warning only (Johan 2026-10-13): never blocks.
+    warnMissingLabour(toast, missing, quoteId);
     return true;
   }, [ctxAreas, ctxItems, companySettings.default_install_labour_hours, meta]);
 

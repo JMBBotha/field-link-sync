@@ -269,7 +269,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       height: captureElement.scrollHeight,
     });
 
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 5;
@@ -279,7 +279,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     const imgData = capturedCanvas.toDataURL("image/png", 1);
 
     if (scaledHeight <= usableHeight) {
-      doc.addImage(imgData, "PNG", margin, margin, usableWidth, scaledHeight);
+      doc.addImage(imgData, "PNG", margin, margin, usableWidth, scaledHeight, undefined, "FAST");
     } else {
       // Split at quiet pixel rows (gaps between lines/blocks) so no text line is cut in half.
       const pageRows = Math.floor((usableHeight / scaledHeight) * capturedCanvas.height);
@@ -302,7 +302,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
           ctx.drawImage(capturedCanvas, 0, sourceY, capturedCanvas.width, sourceSliceH, 0, 0, capturedCanvas.width, sourceSliceH);
         }
         const sliceHeight = (sourceSliceH / capturedCanvas.height) * scaledHeight;
-        doc.addImage(sliceCanvas.toDataURL("image/png"), "PNG", margin, margin, usableWidth, sliceHeight);
+        doc.addImage(sliceCanvas.toDataURL("image/png"), "PNG", margin, margin, usableWidth, sliceHeight, undefined, "FAST");
         sourceY = cut;
       });
     }
