@@ -184,7 +184,7 @@ export default function BrandDocument(p: BrandDocumentProps) {
         )}
         <div className="terms" data-testid="doc-terms"><h4>Terms</h4>{withEoe(p.terms, id.legalName, p.docType)}</div>
       </div>
-      <div className="sig">
+      <div className="sig" data-pdf-bottom data-testid="doc-signature">
         {logo && <img className="slogo" src={massair && !recordLogo ? logoLight : logo} alt="" />}
         <div className="sbar" />
         <div className="stext">

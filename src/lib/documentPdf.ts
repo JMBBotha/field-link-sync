@@ -234,6 +234,16 @@ function appendTermsPages(doc: jsPDF, company: TermsCompanyInfo) {
   addTermsFooter(doc, company);
 }
 
+/**
+ * Where the closing signature block goes (Johan 13 Oct 2026): always at the BOTTOM of the
+ * last page, never straight under where the content stops. If it does not fit under the
+ * content on that page, it goes to the bottom of a fresh page; it is never split.
+ */
+export function placeBottomBlock(lastPageUsedMm: number, blockHeightMm: number, pageHeightMm: number, marginMm: number, gapMm = 4) {
+  const y = pageHeightMm - marginMm - blockHeightMm;
+  return { newPage: marginMm + lastPageUsedMm + gapMm > y, y };
+}
+
 function downloadPdfBlob(pdfBytes: Uint8Array, fileName: string) {
   const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
@@ -262,14 +272,28 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
 
     const html2canvas = (await import("html2canvas")).default;
 
-    const capturedCanvas = await html2canvas(captureElement, {
+    // Signature block(s) marked data-pdf-bottom are captured on their own and pinned to the
+    // bottom of the last page below, so hide them from the main capture.
+    const bottomEls = Array.from(captureElement.querySelectorAll<HTMLElement>("[data-pdf-bottom]"));
+    const bottomCanvases = [] as HTMLCanvasElement[];
+    for (const el of bottomEls) {
+      bottomCanvases.push(await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false, width: el.scrollWidth, height: el.scrollHeight }));
+    }
+    const prevDisplay = bottomEls.map((el) => el.style.display);
+    bottomEls.forEach((el) => { el.style.display = "none"; });
+    let capturedCanvas: HTMLCanvasElement;
+    try {
+      capturedCanvas = await html2canvas(captureElement, {
       scale: 2,
       useCORS: true,
       backgroundColor: "#ffffff",
       logging: false,
       width: captureElement.scrollWidth,
       height: captureElement.scrollHeight,
-    });
+      });
+    } finally {
+      bottomEls.forEach((el, i) => { el.style.display = prevDisplay[i]; });
+    }
 
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -295,6 +319,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       }
     };
 
+    let lastPageUsed = scaledHeight;
     if (scaledHeight <= usableHeight) {
       doc.addImage(imgData, "PNG", margin, margin, usableWidth, scaledHeight, undefined, "FAST");
       addLinks(0, capturedCanvas.height);
@@ -322,8 +347,20 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
         const sliceHeight = (sourceSliceH / capturedCanvas.height) * scaledHeight;
         doc.addImage(sliceCanvas.toDataURL("image/png"), "PNG", margin, margin, usableWidth, sliceHeight, undefined, "FAST");
         addLinks(sourceY, cut);
+        lastPageUsed = sliceHeight;
         sourceY = cut;
       });
+    }
+
+    // Signature block: bottom of the last page, or bottom of a new page if it would overlap.
+    for (const c of bottomCanvases) {
+      if (!c.width || !c.height) continue;
+      const h = (c.height * usableWidth) / capturedCanvas.width;
+      const w = (c.width * usableWidth) / capturedCanvas.width;
+      const { newPage, y } = placeBottomBlock(lastPageUsed, h, pageHeight, margin);
+      if (newPage) doc.addPage();
+      doc.addImage(c.toDataURL("image/png"), "PNG", margin, y, w, h, undefined, "FAST");
+      lastPageUsed = usableHeight;
     }
 
     // Appended pages (unit brochures): each element fitted onto its own A4 page.

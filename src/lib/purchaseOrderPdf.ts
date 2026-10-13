@@ -109,6 +109,8 @@ export function buildPurchaseOrderPdf(po: PoRow, profile: Partial<CompanyProfile
   });
 
   y += 6;
+  // Totals + documents block stay together; never run into the footer (Johan 13 Oct 2026).
+  if (y + 44 > 276) { doc.addPage(); y = 20; }
   ([["Subtotal excl VAT", po.subtotal], ["VAT 15%", po.vat_amount]] as const).forEach(([k, v]) => {
     doc.setTextColor(...INK).setFont("helvetica", "normal").text(k, 128, y); doc.text(R(v), RT - 2, y, { align: "right" }); y += 5.5;
   });
