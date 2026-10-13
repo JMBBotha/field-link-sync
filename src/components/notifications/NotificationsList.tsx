@@ -89,6 +89,7 @@ export const notificationHref = (type: string, relatedId?: string | null, isTech
     if (relatedId && t !== "job_status_change" && categoryOf(t) === "jobs") return `/field/jobs/${relatedId}`;
     return "/field";
   }
+  if (t === "unit_content_draft") return "/admin/unit-content";
   if (t === "deposit_paid") return relatedId ? `/admin/estimates/${relatedId}` : "/admin/quotes";
   if (LEAD_ID_TYPES.has(t) || t.startsWith("lead_") || t.includes("sla")) return relatedId ? `/admin/dispatch?lead=${relatedId}` : "/admin/dispatch";
   if ((type || "").startsWith("network_")) return "/admin/team?tab=applications";

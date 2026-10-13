@@ -24,6 +24,7 @@ import { useQuoteStaffActions } from "@/components/quoting/useQuoteStaffActions"
 
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import PaymentPlanPicker from "@/components/quoting/PaymentPlanPicker";
+import QuoteUnitCardsToggle from "@/components/quoting/QuoteUnitCardsToggle";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { fetchQuoteInvoice } from "@/lib/depositInvoice";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -194,6 +195,8 @@ const AdminEstimateDetailPage = () => {
       </div>
 
       <PaymentPlanPicker quoteId={quote.id} />
+
+      <QuoteUnitCardsToggle quoteId={quote.id} />
 
       <AcceptedWorkSection quoteId={quote.id} />
 

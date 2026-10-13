@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import EstimateDocument, { type EstimateDocLineItem } from "./EstimateDocument";
+import { QuoteUnitCardsView, ensureUnitContent } from "./QuoteUnitCards";
+import { buildUnitCards, missingModelKeys, unitLineModelKey, type ProductMedia, type UnitCard } from "@/lib/unitCards";
 import { buildClientRollup, clientDiscount, lineQtyText, rollupLineFromRow, type ClientRollupArea } from "@/lib/clientQuoteRollup";
 
 /**
@@ -46,6 +48,7 @@ type Loaded = {
   company: any;
   items: EstimateDocLineItem[];
   areas: ClientRollupArea[];
+  unitCards: UnitCard[];
 };
 
 const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
@@ -123,7 +126,22 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
             imageUrl: it.image_url || null,
           };
         });
-        if (!cancelled) setDoc({ quote: qRes.data, customer, company: cRes.data ? { ...cRes.data, default_deposit_percentage: dRes.data?.default_deposit_percentage ?? cRes.data.default_deposit_percentage } : null, items, areas: buildClientRollup(lines, areaRows) });
+        // Unit cards (after totals, before terms): per-quote toggle, approved content only; never blocks the PDF.
+        let unitCards: UnitCard[] = [];
+        try {
+          const { data: flag } = await (supabase.from("quotes") as any).select("show_unit_cards").eq("id", quoteId).maybeSingle();
+          if (flag?.show_unit_cards !== false) {
+            const keys = [...new Set(lines.map((l: any) => unitLineModelKey(l)).filter(Boolean))] as string[];
+            if (keys.length) {
+              const { data: media } = await (supabase.from("product_media" as never) as any).select("*").in("model_key", keys);
+              const map = new Map<string, ProductMedia>(((media || []) as ProductMedia[]).map((m) => [m.model_key, m]));
+              unitCards = buildUnitCards(lines as any, map);
+              const missing = missingModelKeys(lines as any, map.keys());
+              if (missing.length) void ensureUnitContent(missing);
+            }
+          }
+        } catch { /* optional section */ }
+        if (!cancelled) setDoc({ unitCards, quote: qRes.data, customer, company: cRes.data ? { ...cRes.data, default_deposit_percentage: dRes.data?.default_deposit_percentage ?? cRes.data.default_deposit_percentage } : null, items, areas: buildClientRollup(lines, areaRows) });
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Could not load the quote for the PDF.");
       }
@@ -171,6 +189,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
           companyOverride={doc.company}
           companyId={(q as any).company_id ?? null}
           paymentPlan={q.payment_plan ?? null}
+          unitCards={<QuoteUnitCardsView cards={doc.unitCards} variant={(doc.company as any)?.document_style === "bold" ? "bold" : "light"} />}
         />
       )}
     </div>

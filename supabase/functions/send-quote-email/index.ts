@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
 import { renderSignatureHtml, renderReminderSignatureHtml, renderSignatureText } from "../_shared/emailSignature.ts";
 import { loadSignaturePerson, replyToFor } from "../_shared/signaturePerson.ts";
+import { loadUnitCardsStripHtml } from "../_shared/unitCardsEmail.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,7 +15,7 @@ function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(value);
 }
 
-function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, totalAmount: number, unsubscribeUrl: string, quoteUrl?: string | null, depositRequest = false, signatureHtml = ""): string {
+function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, totalAmount: number, unsubscribeUrl: string, quoteUrl?: string | null, depositRequest = false, signatureHtml = "", unitCardsHtml = ""): string {
   const formattedTotal = formatZAR(totalAmount);
   const currentYear = new Date().getFullYear();
 
@@ -102,6 +103,7 @@ function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, t
         </tr>
       </table>`}
 
+      ${unitCardsHtml}
       <p style="margin:0 0 8px;font-size:13px;color:#6b7280;line-height:1.5;">
         ⏱ This quotation is valid for <strong>30 days</strong> from the date of issue. A 70% deposit is required upon acceptance.
       </p>
@@ -257,7 +259,7 @@ serve(async (req) => {
     const date = new Date().toLocaleDateString("en-ZA");
     // Signature + reply-to: the person who clicked Send (Johan 12 Oct: replies go to the sender's own address).
     const sender = await loadSignaturePerson(supabase, auth.userId);
-    const htmlBody = buildHtmlEmail(clientName, quoteNumber, date, totalAmount || 0, unsubscribeUrl, quoteUrl || null, Boolean(depositRequest), renderSignatureHtml(sender));
+    const htmlBody = buildHtmlEmail(clientName, quoteNumber, date, totalAmount || 0, unsubscribeUrl, quoteUrl || null, Boolean(depositRequest), renderSignatureHtml(sender), depositRequest ? "" : await loadUnitCardsStripHtml(supabase, quoteId));
     const textFallback = depositRequest
       ? `Dear ${clientName || "Valued Customer"},\n\nYour 70% deposit invoice for quote ${quoteRef} is ready.${quoteUrl ? `\n\nView and pay it here: ${quoteUrl}` : ""}\n\nKind regards,\n0800-BE-COOL! Team`
       : `Dear ${clientName || "Valued Customer"},\n\nYour quote ${quoteRef ? `(${quoteRef}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is ready.${quoteUrl ? `\n\nView and accept it here: ${quoteUrl}` : ""}\n\nThis quote is valid for 30 days. A 70% deposit is required upon acceptance. To accept, reply to this email (keep the reference ${quoteRef || ""} in the subject) or call (021) 802-2889.\n\nKind regards,\n\n${renderSignatureText(sender)}`;

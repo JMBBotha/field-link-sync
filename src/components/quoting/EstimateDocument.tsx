@@ -190,6 +190,8 @@ export interface EstimateDocumentProps {
   presentationMode?: "flat" | "clientRollup";
   /** Accounting step 1: the quote's payment plan (null = company deposit %). */
   paymentPlan?: PaymentPlan | null;
+  /** "The units in this quote" cards: printed after the totals, before the terms. */
+  unitCards?: ReactNode;
 }
 
 
@@ -343,6 +345,7 @@ const EstimateDocument = ({
   clientAreas,
   presentationMode,
   paymentPlan,
+  unitCards,
 }: EstimateDocumentProps) => {
   const editRootRef = useRef<HTMLDivElement | null>(null);
   const flashId = useNewLineScroll(
@@ -928,6 +931,8 @@ const EstimateDocument = ({
             </div>
           </div>
         </div>
+
+        {unitCards}
 
         {/* ── Footer ── */}
         <div className="mt-10 space-y-5 border-t border-slate-200 pt-6 text-[11px] leading-relaxed text-slate-600">

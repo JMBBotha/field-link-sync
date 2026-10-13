@@ -1,4 +1,5 @@
 import FullTermsSection from "@/components/client/FullTermsSection";
+import { useQuoteUnitCards, QuoteUnitCardsView } from "@/components/quoting/QuoteUnitCards";
 import type { CompanyProfile } from "@/lib/companyProfiles";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -86,6 +87,9 @@ const ClientProposalView = () => {
   const [submitting, setSubmitting] = useState(false);
   const [actionDone, setActionDone] = useState<"accepted" | "declined" | null>(null);
   const [depositInvoice, setDepositInvoice] = useState<DepositInvoiceRow | null>(null);
+  const [unitLines, setUnitLines] = useState<any[] | null>(null);
+  const [showUnitCards, setShowUnitCards] = useState(false);
+  const { cards: unitCards } = useQuoteUnitCards(unitLines, { enabled: showUnitCards });
 
 
   useEffect(() => {
@@ -130,6 +134,9 @@ const ClientProposalView = () => {
       // Client-facing roll-up: one block per room, no itemised piping/labour.
       setClientAreas(buildClientRollup(bundle.items || [], bundle.areas || []));
       setSections(bundle.sections || []);
+      setUnitLines(bundle.items || []);
+      supabase.rpc("public_quote_show_unit_cards" as never, { p_token: token } as never)
+        .then(({ data }: any) => setShowUnitCards(data === true), () => setShowUnitCards(false));
       setCustomer(bundle.customer || null);
       setCompany(bundle.company || null);
       setCompanyProfile(bundle.profile || null);
@@ -291,6 +298,7 @@ const ClientProposalView = () => {
           companyOverride={company}
           companyProfile={companyProfile}
           paymentPlan={(quote as any).payment_plan ?? null}
+          unitCards={<QuoteUnitCardsView cards={unitCards} variant={(companyProfile as any)?.document_style === "bold" ? "bold" : "light"} />}
         />
 
         <FullTermsSection banking={company?.banking_details} profile={companyProfile} />

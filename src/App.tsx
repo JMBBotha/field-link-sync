@@ -87,6 +87,7 @@ const AdminConsumablesPage = lazy(() => import("./pages/admin/AdminConsumablesPa
 const AdminCallsPage = lazy(() => import("./pages/admin/AdminCallsPage"));
 const AdminPDFDocumentsPage = lazy(() => import("./pages/admin/AdminPDFDocumentsPage"));
 const AdminBrochuresPage = lazy(() => import("./pages/admin/AdminBrochuresPage"));
+const AdminUnitContentPage = lazy(() => import("./pages/admin/AdminUnitContentPage"));
 const FBLayout = lazy(() => import("./components/freshbooks/FBLayout"));
 const FBDashboard = lazy(() => import("./components/freshbooks/FBDashboard"));
 const FBInvoiceList = lazy(() => import("./components/freshbooks/FBInvoiceList"));
@@ -239,6 +240,7 @@ const App = () => (
                     <Route path="calls" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminCallsPage /></RequireRole>} />
                     <Route path="pdf-documents" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminPDFDocumentsPage /></RequireRole>} />
                     <Route path="brochures" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminBrochuresPage /></RequireRole>} />
+                    <Route path="unit-content" element={<RequireRole allowedRoles={["admin"]} denySalesRep><RequirePlatformOwner><AdminUnitContentPage /></RequirePlatformOwner></RequireRole>} />
                     <Route path="companies" element={<RequireRole allowedRoles={["admin"]}><RequirePlatformOwner><CompanyManagement /></RequirePlatformOwner></RequireRole>} />
                     <Route path="network-agents" element={<Navigate to="/admin/team?tab=applications" replace />} />
                   </Route>

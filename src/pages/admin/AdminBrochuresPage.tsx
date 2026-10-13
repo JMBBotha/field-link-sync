@@ -189,6 +189,7 @@ const AdminBrochuresPage = () => {
           <p className="text-sm text-muted-foreground mt-1">
             Manage product brochures that auto-attach to quote PDFs based on model prefix matching
           </p>
+          <a href="/admin/unit-content" className="text-sm text-primary underline">Unit cards on quotes: Unit content →</a>
         </div>
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4 mr-2" />
