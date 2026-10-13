@@ -1,5 +1,6 @@
 import LeadToPaidPanel from "@/components/dashboard/LeadToPaidPanel";
 import V7Dashboard from "@/components/dashboard/v7/V7Dashboard";
+import { BookedJobsTile, TodaysLeadsTile } from "@/components/dashboard/v7/TopRow";
 import TechTodayList from "@/components/dashboard/TechTodayList";
 import { useRole } from "@/hooks/useRole";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -337,11 +338,24 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         )}
       </div>
 
-      {/* v7 dashboard (Johan 13 Oct 12:00): period bar, compare periods, KPIs, gauges, revenue, funnel, inbox, jobs, aging, team. Techs never see it. */}
-      {!techOnly && <V7Dashboard audience={isSalesRep ? "sales" : "office"} />}
+      {/* v7 dashboard (Johan 14:05): rows + order in dashboard/v7/dashboardLayout.ts — Company flow / Front-end performance / Money / Supporting. Techs never see it. */}
+      {!techOnly && (
+        <V7Dashboard
+          audience={isSalesRep ? "sales" : "office"}
+          slots={{
+            todays_leads: <TodaysLeadsTile />,
+            ready_to_invoice: isSalesRep ? null : <ReadyToInvoiceCard showEmpty defaultOpen />,
+            booked_jobs: <BookedJobsTile />,
+            pipeline_health: isSalesRep ? null : <PipelineMetrics />,
+            lead_to_paid: <LeadToPaidPanel audience={isSalesRep ? "sales" : "office"} />,
+          }}
+        />
+      )}
+      {techOnly && <TechTodayList />}
 
-      {/* Lead → Paid path + Next up (flow.md §10). Sales: BOOKED→ACCEPTED; techs: today's jobs only. */}
-      {techOnly ? <TechTodayList /> : <LeadToPaidPanel audience={isSalesRep ? "sales" : "office"} />}
+      {/* Action cards (offer flags, invoice requests) */}
+      {!techOnly && !isSalesRep && <LeadOfferFlagsCard />}
+      {!techOnly && !isSalesRep && <InvoiceRequestsCard />}
 
       <QuickTemplateDialog
         open={showTemplatePicker}
@@ -351,12 +365,6 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       {/* Rep: own upcoming appointments (STEP 3) */}
       {isSalesRep && <MyAppointmentsCard limit={5} />}
 
-      {/* Techs never see lead/invoice cards (v7 role rule). */}
-      {!techOnly && (<>
-      {!isSalesRep && <LeadOfferFlagsCard />}
-      {!isSalesRep && <InvoiceRequestsCard />}
-      {!isSalesRep && <ReadyToInvoiceCard />}
-      </>)}
 
       {/* Core 5 KPI Cards (v7: replaced by the KPI strip above; kept for techs) */}
       <div className={techOnly ? "grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3" : "hidden"}>
@@ -442,8 +450,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
 
       {/* v7 role rule: techs never see leads, revenue or pipeline value below this line. */}
       {!techOnly && (<>
-      {/* Pipeline health metrics — 90-day window */}
-      <PipelineMetrics />
+      {/* Pipeline health now lives in the v7 "Front-end performance" row. */}
 
       {/* Primary widgets — Recent Open Leads + Today's Dispatch */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 min-w-0">

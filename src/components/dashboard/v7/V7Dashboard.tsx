@@ -24,6 +24,7 @@ export function TonePill({ tone, children }: { tone: Tone; children: React.React
   return <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap", TONE_CLS[tone])}><I className="h-3 w-3" />{children}</span>;
 }
 
+import { DASHBOARD_LAYOUT } from "@/components/dashboard/v7/dashboardLayout";
 import CashflowDashboardPanel from "@/components/cashflow/CashflowDashboardPanel";
 
 const Panel = ({ title, sub, children, className, testId }: { title?: string; sub?: string; children: React.ReactNode; className?: string; testId?: string }) => (
@@ -93,7 +94,7 @@ const leadKind = (l: any) => {
   return /quote|sale|install|new/.test(s) ? "sales" : "tech";
 };
 
-export default function V7Dashboard({ audience }: { audience: "office" | "sales" }) {
+export default function V7Dashboard({ audience, slots }: { audience: "office" | "sales"; slots?: Record<string, React.ReactNode> }) {
   const navigate = useNavigate();
   const now = useNow();
   const { sla } = useLeadSla();
@@ -124,7 +125,8 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
   }, [kind, nowMin, sel.start, sel.end]);
 
   if (isLoading || !data) {
-    return <Panel testId="v7-loading"><div className="h-40 animate-pulse rounded-lg bg-white/60 dark:bg-white/5" /></Panel>;
+    // Row 1 (slots) never waits for the overview data.
+    return <V7Rows office={office} B={{ ...(slots || {}), period_bar: <Panel testId="v7-loading"><div className="h-40 animate-pulse rounded-lg bg-white/60 dark:bg-white/5" /></Panel> }} />;
   }
 
   const val = (k: MetricKey, r: Range) => metric(data, k, r);
@@ -168,10 +170,9 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
   const team = (data.team as any[]).map((p) => ({ ...p, open: load[p.id] || 0, earn: earn[p.id] || 0 })).filter((p) => p.open > 0 || p.earn > 0).sort((a, b) => b.open - a.open).slice(0, 8);
   const teamMax = Math.max(1, ...team.map((t) => t.open));
 
-  return (
-    <div className="space-y-3 md:space-y-4" data-testid="v7-dashboard">
-      {/* 1. Period bar */}
-      <div className="flex flex-wrap items-center gap-2" data-testid="v7-period-bar">
+  // Every dashboard block by id; DASHBOARD_LAYOUT (dashboardLayout.ts) decides the rows and order.
+  const B: Record<string, React.ReactNode> = {
+    period_bar: (<><div className="flex flex-wrap items-center gap-2" data-testid="v7-period-bar">
         <span className="hidden md:inline text-xs text-muted-foreground">Period</span>
         <div className="flex flex-wrap gap-1 overflow-x-auto">
           {PERIODS.map((p) => (
@@ -185,16 +186,15 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
           </span>
         )}
         <span className="text-xs text-muted-foreground">{fmtDate(sel.start)} – {fmtDate(sel.end - 1)}</span>
-        <span className="ml-auto flex items-center gap-1 text-xs">
+
+      </div></>),
+    compare_to: (<><span className="flex items-center gap-1 text-xs">
           <span className="hidden sm:inline text-muted-foreground">Compare to</span>
           {(["prev", "ly"] as const).map((c) => (
             <button key={c} onClick={() => setCmp(c)} className={cn("rounded-full border px-3 py-1 font-medium", cmp === c ? "border-[#1590D6] bg-[#1590D6] text-white" : "border-[#E5E7EB] bg-white dark:border-white/10 dark:bg-transparent")}>{c === "prev" ? "Previous period" : "Last year"}</button>
           ))}
-        </span>
-      </div>
-
-      {/* 2. Compare periods */}
-      <Panel title="Compare periods" sub="▲ up · ▼ down · ● no change / no data · hover a figure for details · faint line = last year" testId="v7-compare">
+        </span></>),
+    compare_table: (<><Panel title="Compare periods" sub="▲ up · ▼ down · ● no change / no data · hover a figure for details · faint line = last year" testId="v7-compare">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead><tr className="text-left text-[11px] text-muted-foreground">
@@ -224,30 +224,19 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
             </tbody>
           </table>
         </div>
-      </Panel>
-
-      {/* 3. KPI strip */}
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6 md:gap-3" data-testid="v7-kpis">
-        {office && <Panel className="col-span-2 md:col-span-1"><div className="text-[11px] text-muted-foreground">Revenue YTD (paid)</div><div className="text-xl font-bold">{rand(val("paid", ytd) ?? 0)}</div><Spark data={revenue} ghost={revenueLy} /></Panel>}
-        {office && <Panel><div className="text-[11px] text-muted-foreground">Paid · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{rand(paidSel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(paidSel, val("paid", base))} /></Panel>}
-        {office && <Panel><div className="text-[11px] text-muted-foreground">Outstanding (sent, unpaid)</div><div className="text-xl font-bold">{rand(out)}</div></Panel>}
-        {office && <Panel testId="v7-draft-invoices"><div className="text-[11px] text-muted-foreground">Draft invoices (not sent)</div><div className="text-xl font-bold">{rand(dr.amount)}</div><div className="text-[11px] text-muted-foreground">{dr.count} draft{dr.count === 1 ? "" : "s"} · not in outstanding</div></Panel>}
-        <Panel><div className="text-[11px] text-muted-foreground">Open jobs</div><div className="text-xl font-bold">{openJobs}</div>{jb.overdue > 0 && <TonePill tone="red">{jb.overdue} overdue</TonePill>}</Panel>
-        <Panel><div className="text-[11px] text-muted-foreground">New leads · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{val("new_leads", sel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(val("new_leads", sel), val("new_leads", base))} /></Panel>
-        {!office && <Panel><div className="text-[11px] text-muted-foreground">Quotes sent</div><div className="text-xl font-bold">{sent}</div></Panel>}
-        {!office && <Panel><div className="text-[11px] text-muted-foreground">Quotes accepted</div><div className="text-xl font-bold">{accepted}</div></Panel>}
-      </div>
-
-      {/* 4. Gauges */}
-      <div className={cn("grid gap-2 md:gap-3", office ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1")}>
-        <Gauge title="Quote conversion" pct={sent ? (accepted / sent) * 100 : 0} caption={`${accepted} of ${sent} accepted`} />
-        {office && <Gauge title="Invoices paid" pct={pos.sent ? (pos.paid / pos.sent) * 100 : 0} caption={pos.count ? `${rand(pos.paid)} of ${rand(pos.sent)} sent invoices (${pos.count}) · drafts excluded` : "No sent invoices this period · drafts excluded"} />}
-        {office && <Gauge title="Outstanding share" pct={invoicedSel + out ? (out / Math.max(1, (val("invoiced", ytd) ?? 0))) * 100 : 0} caption={`${rand(out)} unpaid of ${rand(val("invoiced", ytd) ?? 0)} sent this year · drafts excluded`} />}
-      </div>
-
-      {/* 5 + 6. Revenue + funnel */}
-      <div className="grid grid-cols-1 gap-2 md:gap-3 lg:grid-cols-3">
-        {office && (
+      </Panel></>),
+    revenue_ytd: (office && <Panel className="col-span-2 md:col-span-1"><div className="text-[11px] text-muted-foreground">Revenue YTD (paid)</div><div className="text-xl font-bold">{rand(val("paid", ytd) ?? 0)}</div><Spark data={revenue} ghost={revenueLy} /></Panel>),
+    paid_period: (office && <Panel><div className="text-[11px] text-muted-foreground">Paid · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{rand(paidSel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(paidSel, val("paid", base))} /></Panel>),
+    outstanding: (office && <Panel><div className="text-[11px] text-muted-foreground">Outstanding (sent, unpaid)</div><div className="text-xl font-bold">{rand(out)}</div></Panel>),
+    draft_invoices: (office && <Panel testId="v7-draft-invoices"><div className="text-[11px] text-muted-foreground">Draft invoices (not sent)</div><div className="text-xl font-bold">{rand(dr.amount)}</div><div className="text-[11px] text-muted-foreground">{dr.count} draft{dr.count === 1 ? "" : "s"} · not in outstanding</div></Panel>),
+    open_jobs: (<><Panel><div className="text-[11px] text-muted-foreground">Open jobs</div><div className="text-xl font-bold">{openJobs}</div>{jb.overdue > 0 && <TonePill tone="red">{jb.overdue} overdue</TonePill>}</Panel></>),
+    new_leads: (<><Panel><div className="text-[11px] text-muted-foreground">New leads · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{val("new_leads", sel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(val("new_leads", sel), val("new_leads", base))} /></Panel></>),
+    quotes_sent: (!office && <Panel><div className="text-[11px] text-muted-foreground">Quotes sent</div><div className="text-xl font-bold">{sent}</div></Panel>),
+    quotes_accepted: (!office && <Panel><div className="text-[11px] text-muted-foreground">Quotes accepted</div><div className="text-xl font-bold">{accepted}</div></Panel>),
+    quote_conversion: (<><Gauge title="Quote conversion" pct={sent ? (accepted / sent) * 100 : 0} caption={`${accepted} of ${sent} accepted`} /></>),
+    invoices_paid: (office && <Gauge title="Invoices paid" pct={pos.sent ? (pos.paid / pos.sent) * 100 : 0} caption={pos.count ? `${rand(pos.paid)} of ${rand(pos.sent)} sent invoices (${pos.count}) · drafts excluded` : "No sent invoices this period · drafts excluded"} />),
+    outstanding_share: (office && <Gauge title="Outstanding share" pct={invoicedSel + out ? (out / Math.max(1, (val("invoiced", ytd) ?? 0))) * 100 : 0} caption={`${rand(out)} unpaid of ${rand(val("invoiced", ytd) ?? 0)} sent this year · drafts excluded`} />),
+    monthly_revenue: (office && (
           <Panel title="Monthly revenue (R thousands)" sub={`paid, last 12 months · faint bars = ${ghostLabel.toLowerCase()}`} className="lg:col-span-2" testId="v7-revenue">
             <div className="mb-1 flex justify-end gap-1 text-[11px]" data-testid="v7-rev-toggle">
               {([["prev", "Prev"], ["lm", "Last month"], ["ly", "Last year"]] as const).map(([k, l]) => (
@@ -267,8 +256,8 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
               </ResponsiveContainer>
             </div>
           </Panel>
-        )}
-        <Panel title="Lead funnel" sub={PERIODS.find((p) => p.k === kind)!.label} className={office ? "" : "lg:col-span-3"} testId="v7-funnel">
+        )),
+    lead_funnel: (<><Panel title="Lead funnel" sub={PERIODS.find((p) => p.k === kind)!.label} testId="v7-funnel">
           <div className="space-y-1.5">
             {fun.map((s, i) => (
               <div key={s.label} className="flex items-center gap-2">
@@ -277,11 +266,8 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
               </div>
             ))}
           </div>
-        </Panel>
-      </div>
-
-      {/* 7. New Leads inbox */}
-      <Panel title="New Leads inbox" sub="oldest first · type · route" testId="v7-inbox">
+        </Panel></>),
+    leads_inbox: (<><Panel title="New Leads inbox" sub="oldest first · type · route" testId="v7-inbox">
         {sortedInbox.length === 0 ? <p className="text-sm text-muted-foreground">No uncommitted leads. <TonePill tone="grey">All done</TonePill></p> : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px] text-sm">
@@ -304,11 +290,8 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
             </table>
           </div>
         )}
-      </Panel>
-
-      {/* 8 + 9. Jobs by status + aging */}
-      <div className="grid grid-cols-1 gap-2 md:gap-3 md:grid-cols-2">
-        <Panel title="Jobs by status" testId="v7-jobs">
+      </Panel></>),
+    job_status: (<><Panel title="Jobs by status" testId="v7-jobs">
           <div className="flex items-center gap-3">
             <div className="relative h-32 w-32 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
@@ -320,8 +303,8 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
               {jbRows.map((r) => { const I = TONE_ICON[r.tone]; return <li key={r.k} className="flex items-center gap-1.5"><I className="h-3.5 w-3.5" style={{ color: r.color }} />{r.label}<span className="ml-auto font-bold">{jb[r.k]}</span></li>; })}
             </ul>
           </div>
-        </Panel>
-        {office && (
+        </Panel></>),
+    aging: (office && (
           <Panel title="Accounts aging" sub="unpaid, by days past due" testId="v7-aging">
             <div className="space-y-2">
               {ag.map((a, i) => { const tone: Tone = i === 0 ? "blue" : i === 1 ? "amber" : "red"; const I = TONE_ICON[tone];
@@ -333,14 +316,9 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
                 ); })}
             </div>
           </Panel>
-        )}
-      </div>
-
-      {/* Cash flow (owner/admin only; server-checked) */}
-      {office && <CashflowDashboardPanel Panel={Panel} />}
-
-      {/* 10. Team workload & earnings (office; earnings column for the company owner only) */}
-      {office && (
+        )),
+    cash_flow: (office && <CashflowDashboardPanel Panel={Panel} />),
+    team: (office && (
         <Panel title="Team workload & earnings" sub={owner ? "open jobs · earnings this month" : "open jobs"} testId="v7-team">
           {team.length === 0 ? <p className="text-sm text-muted-foreground">No open assignments.</p> : (
             <table className="w-full text-sm">
@@ -357,7 +335,27 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
             </table>
           )}
         </Panel>
-      )}
+      )),
+    ...(slots || {}),
+  };
+  return <V7Rows office={office} B={B} />;
+}
+
+function V7Rows({ office, B }: { office: boolean; B: Record<string, React.ReactNode> }) {
+  return (
+    <div className="space-y-4 md:space-y-5" data-testid="v7-dashboard">
+      {DASHBOARD_LAYOUT.filter((row) => !row.office || office).map((row) => {
+        const items = row.items.filter((id) => B[id] != null && B[id] !== false);
+        if (!items.length) return null;
+        return (
+          <section key={row.id} data-testid={`v7-row-${row.id}`} className="space-y-2">
+            {row.title && <div className="flex items-center gap-2"><h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">{row.title}</h2><div className="h-px flex-1 bg-border" /></div>}
+            <div className={row.grid}>
+              {items.map((id) => <div key={id} data-block={id} className={cn("min-w-0", row.span?.[id])}>{B[id]}</div>)}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

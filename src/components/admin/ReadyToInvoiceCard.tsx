@@ -28,10 +28,10 @@ interface ReadyRow {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const ReadyToInvoiceCard = () => {
+const ReadyToInvoiceCard = ({ showEmpty = false, defaultOpen = false }: { showEmpty?: boolean; defaultOpen?: boolean } = {}) => {
   const { user } = useAuth();
   const [dialogRow, setDialogRow] = useState<ReadyRow | null>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
 
   const { data: rows = [], refetch } = useQuery({
     queryKey: ["ready-to-invoice"],
@@ -47,7 +47,15 @@ const ReadyToInvoiceCard = () => {
     },
   });
 
-  if (rows.length === 0) return null;
+  if (rows.length === 0) {
+    if (!showEmpty) return null;
+    return (
+      <Card id="ready-to-invoice" className="surface-card h-full" data-testid="ready-to-invoice-empty">
+        <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><Receipt className="h-4 w-4 text-amber-600" />Jobs to be invoiced<Badge className="border-0 bg-muted text-muted-foreground">0</Badge></CardTitle></CardHeader>
+        <CardContent className="pt-0 text-sm text-muted-foreground">No completed jobs waiting for an invoice.</CardContent>
+      </Card>
+    );
+  }
 
   // Always open the editor (autofilled from the job) so nothing is saved without review.
   const handleClick = (row: ReadyRow) => setDialogRow(row);
