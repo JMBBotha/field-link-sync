@@ -18,14 +18,19 @@ const QUOTE_WRITE = [
   "set_labour_hours", "remove_labour", "remove_item", "add_note", "edit_note", "remove_note",
   "clear_quote", "undo_last_change", "run_plan",
 ];
-const MONEY = ["open_invoice", "show_deposit_due", "create_deposit_invoice"];
+const MONEY = ["open_invoice", "show_deposit_due", "create_deposit_invoice",
+  "list_overdue_invoices", "record_payment", "whatsapp_invoice", "create_purchase_orders", "list_purchase_orders",
+  "list_payment_followups", "open_payment_followups", "request_payment_followup", "send_approved_followup"];
+const JOBS = ["list_my_jobs", "open_job", "start_job"];
+const OFFICE_JOBS = ["open_scheduler"];
+const SEND_QUOTE = ["whatsapp_quote"];
 
 export const TIER_TOOLS: Record<MandyTier, ReadonlySet<string>> = {
-  admin: new Set([...NAV_READ, ...CLIENT_READ, ...QUOTE_WRITE, ...MONEY]),
-  office: new Set([...NAV_READ, ...CLIENT_READ, ...QUOTE_WRITE, ...MONEY]),
-  sales: new Set([...NAV_READ, ...CLIENT_READ, ...QUOTE_WRITE]),
-  tech: new Set([...NAV_READ]),
-  viewer: new Set([...NAV_READ, ...CLIENT_READ]),
+  admin: new Set([...NAV_READ, ...CLIENT_READ, ...QUOTE_WRITE, ...MONEY, ...JOBS, ...OFFICE_JOBS, ...SEND_QUOTE]),
+  office: new Set([...NAV_READ, ...CLIENT_READ, ...QUOTE_WRITE, ...MONEY, ...JOBS, ...OFFICE_JOBS, ...SEND_QUOTE]),
+  sales: new Set([...NAV_READ, ...CLIENT_READ, ...QUOTE_WRITE, ...SEND_QUOTE]),
+  tech: new Set([...NAV_READ, ...JOBS]),
+  viewer: new Set([...NAV_READ, ...CLIENT_READ, "list_my_jobs"]),
 };
 
 /** Hard deny, whatever tier or future tool list says. */

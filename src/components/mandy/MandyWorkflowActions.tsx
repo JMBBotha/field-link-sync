@@ -16,6 +16,11 @@ import { fetchTodaysJobs, todayInJohannesburg } from "@/lib/todaysJobs";
 import { getAssistantContext } from "@/stores/assistantContextStore";
 import { makeMapHandlers } from "@/lib/mandy/mapStatus";
 import type { MandyResult } from "@/lib/mandy/actions";
+import { fmtRand } from "@/lib/mandy/actions";
+import { makeWorkHandlers } from "@/lib/mandy/workActions";
+import { recordInvoicePayment } from "@/lib/payments";
+import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
+import { publicQuoteUrl } from "@/lib/publicAppUrl";
 
 const QUOTE_COLS = "id, quote_number, status, total, customer_name";
 
@@ -64,7 +69,15 @@ export function useWorkflowMandyActions() {
     onCreated: (quoteId) => { void qc.invalidateQueries({ queryKey: ["accepted-work-invoice", quoteId] }); },
   });
 
+  const work = makeWorkHandlers({
+    db: supabase, navigate, userId: user?.id, today: todayInJohannesburg,
+    openWindow: () => (typeof window !== "undefined" ? window.open("about:blank", "_blank") : null),
+    publicQuoteUrl, ensureQuoteReadyToSend, fmtRand,
+    recordPayment: (i) => recordInvoicePayment({ invoiceId: i.invoiceId, amount: i.amount, method: i.method as any, reference: i.reference }),
+  });
+
   useRegisterMandyActions({
+    ...(work as Record<string, (a: Record<string, unknown>) => Promise<MandyResult>>),
     open_invoice: async ({ ref, client, invoice_id }): Promise<MandyResult> => {
       const open = (inv: any): MandyResult => {
         navigate(`/admin/invoices/${inv.id}`);

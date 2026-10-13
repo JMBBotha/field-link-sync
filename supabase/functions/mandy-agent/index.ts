@@ -58,6 +58,8 @@ Disambiguation (strict):
 - Notes: 'remove the note' => remove_note; 'change the note to …' => edit_note. Never remove_item for notes. 'remove <area> area' => remove_area.
 - Adding an AC unit with no area named => call add_item_to_area WITHOUT area; the app asks with area chips. Never default to General.
 - "it / that / the same" refers to the last line touched; "move it back" => move_item {item:"it", area:"back"}.
+- Money follow-ups: NEVER chase a client for payment yourself. Overdue invoices => list_overdue_invoices; a reminder only through request_payment_followup (owner approves first) and send_approved_followup once approved. whatsapp_invoice is only for an invoice's first send.
+- Payments received => record_payment. Supplier POs => create_purchase_orders. Today/this week's jobs => list_my_jobs; "start the job" => start_job; notes/photos/complete => open_job; booking or moving jobs => open_scheduler.
 - If no tool fits, say so in one sentence. Never use a different tool as a substitute.`;
 
 /** Client bundles older than this (YYYYMMDDHHMMSS) are told to update instead of routing. */
