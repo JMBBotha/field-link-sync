@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { trustedCompanyId } from "../_shared/leadIntake.ts";
 import { websiteLeadCompanyId } from "../_shared/websiteIntake.ts";
+import { timingLine } from "../_shared/websiteTiming.ts";
 import { sendAppointmentConfirmation } from "../_shared/appointmentConfirmation.ts";
 
 /**
@@ -96,6 +97,7 @@ serve(async (req) => {
       urgency,
       preferred_date,
       preferred_time,
+      preferred_timing,
       source = "website",
       selection_summary,
       company_id: bodyCompanyId,
@@ -200,6 +202,7 @@ serve(async (req) => {
     const geo = await geocode(address, mapboxToken);
 
     const noteLines = [
+      timingLine(preferred_timing, preferred_date, preferred_time),
       `Source: ${source} | Phone: ${normalizedPhone}`,
       notes || "",
       preferred_date ? `Preferred date: ${preferred_date}` : "",

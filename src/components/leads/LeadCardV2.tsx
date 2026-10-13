@@ -12,6 +12,7 @@ import { isCallDump } from "@/lib/callSummary";
 import { logLeadContact, useLeadSla, useNow } from "@/hooks/useLeadSla";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import CallSummary from "@/components/leads/CallSummary";
+import LeadTimingChip from "@/components/leads/LeadTimingChip";
 import BookingBadge from "@/components/BookingBadge";
 import DuplicateClientBadge from "@/components/leads/DuplicateClientBadge";
 import LeadCallChip from "@/components/leads/LeadCallChip";
@@ -150,6 +151,7 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
             <MapPin className="mt-px h-3.5 w-3.5 shrink-0" /><span className="min-w-0 line-clamp-2 break-words">{text(compact ? lead.customer_address.split(",")[0] : lead.customer_address)}</span>
           </p>
         )}
+        <LeadTimingChip notes={lead.notes} className="mt-1" />
       </div>
       {phone && !hideContact && !compact && (
         <div className="flex flex-wrap items-center gap-1.5" onClick={stop}>

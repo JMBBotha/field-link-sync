@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import CallSummary from "@/components/leads/CallSummary";
+import LeadTimingChip from "@/components/leads/LeadTimingChip";
 import { isCallDump } from "@/lib/callSummary";
 import { useNavigate } from "react-router-dom";
 import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus, FileText, Timer, GitBranch, CloudOff, ChevronRight } from "lucide-react";
@@ -507,6 +508,7 @@ const LeadDetailSheet = ({
                 </SheetTitle>
                 <p className="text-sm text-muted-foreground truncate">{lead.service_type}</p>
                 <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={(lead as any).scheduled_time} status={lead.status} className="mt-1" />
+                <LeadTimingChip notes={lead.notes} className="mt-1" />
                 {getPriorityIndicator(lead.priority)}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
