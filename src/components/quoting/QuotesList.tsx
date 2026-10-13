@@ -45,6 +45,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { convertQuoteToInvoice } from "@/lib/convertQuoteToInvoice";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuoteProfitList, costedLabel } from "@/hooks/useQuoteProfitList";
 import { useNavigate } from "react-router-dom";
 import StatusPill from "@/components/shared/StatusPill";
 import ClientRevisionActions from "@/components/quoting/ClientRevisionActions";
@@ -136,6 +137,8 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   });
 
   // Open "Ask for changes" requests from the client page (Johan 2026-10-13). RLS = own company.
+  // Profit columns (server-side, company-scoped): admin/owner all; rep own commission; techs nothing.
+  const profit = useQuoteProfitList((quotes as any[]).map((q) => q.company_id));
   const { data: changeMsgs = {} } = useQuery({
     queryKey: ["quote-change-requests-open"],
     queryFn: async () => {
@@ -490,6 +493,10 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                     <TableHead>Status</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
+                    {profit.full && <TableHead className="text-right whitespace-nowrap">Sell ex VAT</TableHead>}
+                    {profit.full && <TableHead className="text-right">Cost</TableHead>}
+                    {profit.show && <TableHead className="text-right whitespace-nowrap">{profit.full ? "Rep commission" : "My commission"}</TableHead>}
+                    {profit.full && <TableHead className="text-right whitespace-nowrap">Company profit</TableHead>}
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -546,6 +553,21 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                         <TableCell className="whitespace-nowrap text-right font-bold text-foreground">
                           {formatZAR(doc.total)}
                         </TableCell>
+                        {profit.show && (() => {
+                          const r = doc.kind === "estimate" ? profit.map[doc.id] : undefined;
+                          const gap = r ? costedLabel(r) : null;
+                          const none = !r || r.lines_costed === 0;
+                          const cell = "whitespace-nowrap text-right text-sm tabular-nums";
+                          const warn = <span className="text-xs font-medium text-amber-600" data-testid="costed-label">{gap}</span>;
+                          return (
+                            <>
+                              {profit.full && <TableCell className={cell}>{r?.sell_ex_vat != null ? formatZAR(r.sell_ex_vat) : "—"}</TableCell>}
+                              {profit.full && <TableCell className={cell}>{!r ? "—" : none ? warn : <>{formatZAR(r.cost ?? 0)}{gap && <div>{warn}</div>}</>}</TableCell>}
+                              <TableCell className={cell}>{!r ? "—" : none ? warn : formatZAR(r.commission ?? 0)}</TableCell>
+                              {profit.full && <TableCell className={`${cell} font-semibold`}>{!r ? "—" : none ? warn : <>{formatZAR(r.company_profit ?? 0)}{gap && <div>{warn}</div>}</>}</TableCell>}
+                            </>
+                          );
+                        })()}
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex justify-end gap-1">
                             {doc.kind === "estimate" && (

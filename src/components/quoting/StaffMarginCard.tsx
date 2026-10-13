@@ -3,7 +3,9 @@
  * Rendered OUTSIDE the pdf capture root and hidden on print: cost and profit
  * must never appear on the client-facing estimate.
  */
+import { useRef } from "react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { computeOverrun, parseExtras } from "@/lib/overrun";
@@ -111,6 +113,9 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
     isService: String(i.item_type || "").toLowerCase() === "service" || !!(i.metadata as any)?.catalog_service_id,
   }));
   const m = computeMargin(inputs, discount, settings);
+  const perLineRef = useRef<HTMLDetailsElement>(null);
+  const openPerLine = () => { const d = perLineRef.current; if (!d) return; d.open = true; d.scrollIntoView({ behavior: "smooth", block: "center" }); };
+  const companyProfit = Math.round((m.salesCompanyShare + m.labourCompanyShare) * 100) / 100;
   const areaName = (id: string) => (id === MARGIN_AREA_NONE ? "Other items" : areas.find((a) => a.id === id)?.name ?? "Area");
   const selected = m.lines.find((l) => l.id === selectedId) || null;
   const quotedHours = items.filter((i) => !i.parent_item_id && isLabourItem(i)).reduce((a, i) => a + Number((i.metadata as any)?.hours ?? i.quantity ?? 0), 0);
@@ -144,7 +149,17 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
         <p className="rounded-md border border-border bg-muted px-3 py-2 text-xs">GP excludes labour — set labour cost rate in Settings</p>
       )}
       {m.unknownCostCount > 0 && (
-        <p className="text-xs text-destructive">{m.unknownCostCount} {m.unknownCostCount === 1 ? "line" : "lines"} without cost — left out of GP.</p>
+        <div role="status" data-testid="uncosted-warning" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-400/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+          <span>{m.unknownCostCount} of {m.lines.length} {m.lines.length === 1 ? "line has" : "lines have"} no cost — profit and commission leave {m.unknownCostCount === 1 ? "it" : "them"} out.</span>
+          <Button type="button" size="sm" variant="outline" className="h-7" onClick={openPerLine}>Add cost</Button>
+        </div>
+      )}
+      {isOwner && (
+        <div data-testid="company-profit" className="flex flex-wrap items-baseline justify-between gap-2 rounded-md bg-muted px-3 py-2 text-sm">
+          <span className="font-semibold">Company profit</span>
+          <span className="text-[11px] text-muted-foreground">GP − salesperson commission − tech share{m.unknownCostCount > 0 ? " · costed lines only" : ""}</span>
+          <span className="font-semibold tabular-nums">{money(companyProfit)}</span>
+        </div>
       )}
 
       <div className="grid gap-3 text-sm sm:grid-cols-2">
@@ -170,7 +185,7 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
             Company keeps from labour{splits?.toolsPercent ? ` (incl. ${splits.toolsPercent}% tools: ${money(Math.round(Math.max(0, m.labourSell) * splits.toolsPercent) / 100)})` : ""}: {money(m.labourCompanyShare)}
           </p>
         </div>)}
-        {m.excludedServiceCount > 0 && <p className="text-[11px] text-muted-foreground sm:col-span-2">Services not counted</p>}
+        {m.excludedServiceCount > 0 && <p className="text-[11px] text-muted-foreground sm:col-span-2">Services without a cost not counted</p>}
         <p className="text-[11px] text-muted-foreground sm:col-span-2">Earned when the invoice is paid in full; material overruns affect the salesperson share.</p>
       </div>
 
@@ -199,14 +214,14 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
         </div>
       )}
 
-      <details className="text-xs">
+      <details ref={perLineRef} className="text-xs">
         <summary className="cursor-pointer text-muted-foreground">Per line</summary>
         <div className="mt-2 space-y-1">
           {m.lines.map((l) => (
             <div key={l.id} className={`grid grid-cols-[1fr_auto] gap-2 ${l.id === selected?.id ? "font-semibold" : ""}`}>
               <span className="truncate">{l.name}</span>
               <span className="tabular-nums">
-                {statusText(l) ?? `${money(l.cost!)} → ${money(l.sell)} · ${money(l.gp!)} · GP ${pctText(l.gpPercent)} · markup ${pctText(l.cost! > 0 ? (l.gp! / l.cost!) * 100 : null)}`}
+                {statusText(l) ? `${statusText(l)} — set Cost on this line` : `${money(l.cost!)} → ${money(l.sell)} · ${money(l.gp!)} · GP ${pctText(l.gpPercent)} · markup ${pctText(l.cost! > 0 ? (l.gp! / l.cost!) * 100 : null)}`}
               </span>
             </div>
           ))}

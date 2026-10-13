@@ -105,7 +105,8 @@ export function computeMargin(inputs: MarginLineInput[], discount: number, s: Ma
   const belowTarget = gpPercent != null && gpPercent < target;
   const salesLines = lines.filter((l) => {
     const input = inputs.find((candidate) => candidate.id === l.id);
-    return l.cost != null && !input?.isLabour && !input?.isService;
+    // Johan 13 Oct 2026: costed service lines count; uncosted lines (cost null) and labour stay excluded.
+    return l.cost != null && !input?.isLabour;
   });
   const itemProfitLines = salesLines.map((l) => ({ sellExVat: l.sell - share(l.sell), cost: l.cost ?? 0 }));
   const salesSell = r2(itemProfitLines.reduce((sum, item) => sum + item.sellExVat, 0));
@@ -129,7 +130,7 @@ export function computeMargin(inputs: MarginLineInput[], discount: number, s: Ma
     salesShare,
     salesShareIfPricedCorrectly: markupBaseBelowTarget ? salesShareOn(sellForTarget(salesCost, target) - salesCost, s.salesSharePercent) : null,
     salesCompanyShare: r2(markupBase - salesShare),
-    excludedServiceCount: inputs.filter((l) => l.isService).length,
+    excludedServiceCount: lines.filter((l) => l.cost == null && inputs.find((c) => c.id === l.id)?.isService).length,
     labourSell,
     labourTechShare,
     labourCompanyShare: r2(labourSell - labourTechShare),

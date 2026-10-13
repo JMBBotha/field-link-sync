@@ -56,15 +56,16 @@ describe("margin maths", () => {
     expect(salesShareOn(-500, 40)).toBe(0);
     expect(computeMargin([L({ unitPrice: 800, unitCost: 1000 })], 0, S).salesShare).toBe(0);
   });
-  it("pays 50% of units and materials GP, excluding labour and services", () => {
+  it("pays 50% of costed units, materials and services GP, excluding labour and uncosted services", () => {
     const m = computeMargin([
       L({ id: "u", unitPrice: 1250, unitCost: 1000 }),
       L({ id: "l", qty: 3.5, unitPrice: 680, isLabour: true }),
       L({ id: "s", unitPrice: 500, unitCost: 100, isService: true }),
+      L({ id: "x", unitPrice: 900, unitCost: null, isService: true }),
     ], 0, { ...S, labourCostPerHour: null });
-    expect(m.markupBase).toBe(250);
-    expect(m.salesShare).toBe(125);
-    expect(m.salesCompanyShare).toBe(125);
+    expect(m.markupBase).toBe(650);
+    expect(m.salesShare).toBe(325);
+    expect(m.salesCompanyShare).toBe(325);
     expect(m.excludedServiceCount).toBe(1);
   });
   it("splits labour sell 60/40 after discount", () => {
@@ -93,7 +94,7 @@ describe("margin maths", () => {
     expect(src).toContain("Company keeps from labour");
     expect(src).toContain("Paid on completion ");
     expect(src).toContain("(released after ");
-    expect(src).toContain("Services not counted");
+    expect(src).toContain("Services without a cost not counted");
     expect(src).not.toMatch(/Total tech earnings|Tech share of GP|GP tech share/);
   });
 });
