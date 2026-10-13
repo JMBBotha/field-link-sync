@@ -46,6 +46,7 @@ const UnifiedOnboarding = lazy(() => import("./pages/UnifiedOnboarding"));
 const IndependentSignup = lazy(() => import("./pages/IndependentSignup"));
 const SetPassword = lazy(() => import("./pages/SetPassword"));
 const ClientProposalView = lazy(() => import("./components/client/ClientProposalView"));
+const UnitBrochurePage = lazy(() => import("./pages/public/UnitBrochurePage"));
 const PublicStatement = lazy(() => import("./pages/PublicStatement"));
 const AdminExpensesPage = lazy(() => import("./pages/admin/AdminExpensesPage"));
 const AdminBankPage = lazy(() => import("./pages/admin/AdminBankPage"));
@@ -151,6 +152,7 @@ const App = () => (
                 <Route path="/customer/:token/invoices" element={<CustomerInvoiceView />} />
                 <Route path="/customer/:token/invoice/:invoiceId" element={<CustomerInvoiceView />} />
                 <Route path="/quote/:token" element={<ClientProposalView />} />
+                <Route path="/u/:modelKey" element={<UnitBrochurePage />} />
                 <Route path="/statement/:token" element={<PublicStatement />} />
 
                 {/* Archived FreshBooks copy (accounting step 0): admins only; the live accounting is /admin/invoices. */}

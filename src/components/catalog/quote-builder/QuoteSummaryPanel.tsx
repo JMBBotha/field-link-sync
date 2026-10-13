@@ -8,6 +8,7 @@ import { formatRand } from "@/utils/formatRand";
 import type { Basket } from "../QuoteBuilderTab";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import QuoteBrochureSection from "@/components/brochures/QuoteBrochureSection";
+import { BROCHURE_ATTACHMENTS_ENABLED } from "@/lib/quoteBrochuresForPdf";
 import ProductSalesCards from "@/components/brochures/ProductSalesCards";
 import { blendedMarkupHealth, BLENDED_MARKUP_BAR_MAX, type QuoteTotals } from "@/utils/quoteTransformers";
 
@@ -203,9 +204,11 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId, showCost
       </div>
 
       {/* Brochures section */}
-      <div className="border-t border-border pt-3">
-        <QuoteBrochureSection quoteId={quoteId} lineItemModelCodes={lineItemModelCodes} />
-      </div>
+      {BROCHURE_ATTACHMENTS_ENABLED && (
+        <div className="border-t border-border pt-3">
+          <QuoteBrochureSection quoteId={quoteId} lineItemModelCodes={lineItemModelCodes} />
+        </div>
+      )}
 
       {/* Send button: saves the quote, then offers the client link (copy /
           WhatsApp) plus email PDF via the send dialog */}

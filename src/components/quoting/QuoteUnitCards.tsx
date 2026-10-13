@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import qrcode from "@/vendor/qrcodeGenerator";
+import { unitBrochureUrl } from "@/lib/unitBrochure";
 import {
   buildUnitCards, missingModelKeys, specChips, unitLineModelKey,
   type FeatureHighlight, type ProductMedia, type UnitCard, type UnitCardLine,
@@ -15,6 +17,18 @@ export type DocVariant = "light" | "bold";
 
 const BLUE = "#0B4FA8", SKY = "#1AA7EC", ORANGE = "#F7941D", INK = "#1d2a3a", MUTED = "#6b7a8c";
 
+
+function qrSvgDataUrl(url: string): string | null {
+  try {
+    const qr = qrcode(0, "M");
+    qr.addData(url);
+    qr.make();
+    const svg = qr.createSvgTag({ cellSize: 3, margin: 1, scalable: true });
+    return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+  } catch {
+    return null;
+  }
+}
 
 const ICONS: Record<string, string> = {
   windfree: "M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7",
@@ -69,16 +83,19 @@ function Highlight({ h, variant }: { h: FeatureHighlight; variant: DocVariant })
   );
 }
 
-function Card({ card, variant }: { card: UnitCard; variant: DocVariant }) {
+function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVariant; companyId?: string | null }) {
   const m = card.media;
   const bold = variant === "bold";
-  // No outside links on client documents (Johan 13 Oct 10:57): product_url/support_url stay in the DB, never rendered.
+  // No outside links (Johan 13 Oct 10:57): product_url/support_url stay in the DB, never rendered.
+  // QR + model link open OUR brochure page, branded for the quote's company (Johan 13 Oct 11:42).
+  const link = unitBrochureUrl(card.modelKey, companyId);
+  const qr = useMemo(() => qrSvgDataUrl(link), [link]);
   const chips = specChips(m?.specs, { btu: card.btu, refrigerant: card.refrigerant });
   const img = m && m.image_status === "ready" && m.image_url ? m.image_url : null;
   const where = card.rooms.length ? `${card.rooms.join(", ")} ×${card.quantity}` : `×${card.quantity}`;
   return (
     <div data-testid="unit-card" data-model={card.modelKey} style={{
-      display: "grid", gridTemplateColumns: "150px 1fr", gap: 16, padding: 14, marginBottom: 12,
+      display: "grid", gridTemplateColumns: qr ? "150px 1fr 84px" : "150px 1fr", gap: 16, padding: 14, marginBottom: 12,
       borderRadius: 8, breakInside: "avoid", pageBreakInside: "avoid",
       border: bold ? "none" : "1px solid #e3eaf2", borderTop: bold ? "none" : `3px solid ${SKY}`,
       borderLeft: bold ? `6px solid ${ORANGE}` : undefined,
@@ -100,7 +117,7 @@ function Card({ card, variant }: { card: UnitCard; variant: DocVariant }) {
               {m?.subtitle ? `${m.subtitle} · ` : ""}<span style={{ color: ORANGE, fontWeight: 600 }}>{where}</span>
             </div>
           </div>
-          <span data-testid="unit-card-model" style={{ fontSize: 10, fontWeight: 700, color: MUTED, border: "1px solid #c8d5e2", borderRadius: 5, padding: "2px 7px", whiteSpace: "nowrap" }}>{card.modelCode}</span>
+          <a data-testid="unit-card-model" href={link} target="_blank" rel="noopener" style={{ fontSize: 10, fontWeight: 700, color: bold ? "#fff" : SKY, background: bold ? SKY : "transparent", textDecoration: "none", border: `1px solid ${SKY}`, borderRadius: 5, padding: "2px 7px", whiteSpace: "nowrap" }}>{card.modelCode} ↗</a>
         </div>
         {m?.bullets && m.bullets.length > 0 && (
           <ul style={{ margin: "6px 0", paddingLeft: 16, fontSize: 11, lineHeight: 1.4, color: "#3a4859" }}>
@@ -116,11 +133,17 @@ function Card({ card, variant }: { card: UnitCard; variant: DocVariant }) {
           </div>
         )}
       </div>
+      {qr && (
+        <div style={{ textAlign: "center" }}>
+          <img data-testid="unit-card-qr" src={qr} alt="" style={{ width: 76, height: 76 }} />
+          <div style={{ fontSize: 8.5, color: MUTED, lineHeight: 1.3 }}>Scan for the brochure</div>
+        </div>
+      )}
     </div>
   );
 }
 
-export function QuoteUnitCardsView({ cards, variant = "light" }: { cards: UnitCard[]; variant?: DocVariant }) {
+export function QuoteUnitCardsView({ cards, variant = "light", companyId = null }: { cards: UnitCard[]; variant?: DocVariant; companyId?: string | null }) {
   if (!cards.length) return null;
   const sources = [...new Set(cards.map((c) => c.media?.brand).filter(Boolean))];
   return (
@@ -128,11 +151,11 @@ export function QuoteUnitCardsView({ cards, variant = "light" }: { cards: UnitCa
       <div style={{ borderLeft: `4px solid ${ORANGE}`, paddingLeft: 10, marginBottom: 4, fontSize: 17, fontWeight: 800, color: BLUE }}>
         The units in this quote
         <span style={{ fontSize: 11, fontWeight: 500, color: MUTED, marginLeft: 10 }}>
-          {cards.length} model{cards.length === 1 ? "" : "s"}
+          {cards.length} model{cards.length === 1 ? "" : "s"} · tap a model number or scan for its brochure
         </span>
       </div>
       <p style={{ color: MUTED, fontSize: 11, margin: "0 0 10px 14px" }}>Every unit is supplied and installed by 0800-BE-COOL with our workmanship guarantee.</p>
-      {cards.map((c) => <Card key={c.modelKey} card={c} variant={variant} />)}
+      {cards.map((c) => <Card key={c.modelKey} card={c} variant={variant} companyId={companyId} />)}
       <p style={{ fontSize: 9, color: "#9aa7b5", marginTop: 4 }}>
         Product images are illustrative{sources.length ? ` (© ${sources.join(", ")})` : ""}; specifications are as published by the manufacturer and may change. The model numbers quoted are binding.
       </p>

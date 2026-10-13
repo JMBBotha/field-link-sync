@@ -298,7 +298,7 @@ const ClientProposalView = () => {
           companyOverride={company}
           companyProfile={companyProfile}
           paymentPlan={(quote as any).payment_plan ?? null}
-          unitCards={<QuoteUnitCardsView cards={unitCards} variant={(companyProfile as any)?.document_style === "bold" ? "bold" : "light"} />}
+          unitCards={<QuoteUnitCardsView cards={unitCards} companyId={(companyProfile as any)?.company_id ?? null} variant={(companyProfile as any)?.document_style === "bold" ? "bold" : "light"} />}
         />
 
         <FullTermsSection banking={company?.banking_details} profile={companyProfile} />

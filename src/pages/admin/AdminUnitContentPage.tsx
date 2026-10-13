@@ -17,6 +17,8 @@ const SPEC_FIELDS: [string, string][] = [
   ["cool_kw", "Cool kW"], ["heat_kw", "Heat kW"], ["btu", "BTU/h"], ["eer", "EER"], ["cop", "COP"], ["seer", "SEER"],
   ["energy_class", "Energy class"], ["noise_in_db", "Indoor dBA (hi/lo)"], ["noise_out_db", "Outdoor dBA"],
   ["refrigerant", "Refrigerant"], ["room_m2", "Room m²"], ["warranty", "Warranty"],
+  // Net (unpacked) sizes and weights only, never box/gross (Johan 13 Oct 11:45).
+  ["indoor_dim_mm", "Indoor net W×H×D mm"], ["outdoor_dim_mm", "Outdoor net W×H×D mm"], ["indoor_net_kg", "Indoor net kg"], ["outdoor_net_kg", "Outdoor net kg"],
 ];
 const ICONS = ["windfree", "ai", "fast", "protect", "inverter", "filter", "wifi", "quiet"];
 

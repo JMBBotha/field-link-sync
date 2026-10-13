@@ -24,9 +24,12 @@ export interface QuotePdfExtras {
  *    (same prefix rule as useQuoteBrochures) and persist the links.
  * Placeholder/missing files are skipped later by assembleQuoteWithBrochures.
  */
+/** Retired (Johan 13 Oct 11:42): our own /u brochure pages (QR on unit cards) replace PDF attachments. Off by default; tables kept. */
+export const BROCHURE_ATTACHMENTS_ENABLED = false;
+
 export async function loadQuoteBrochuresForPdf(quoteId?: string | null): Promise<QuotePdfExtras> {
   const empty: QuotePdfExtras = { brochures: [], imagePages: [] };
-  if (!quoteId) return empty;
+  if (!quoteId || !BROCHURE_ATTACHMENTS_ENABLED) return empty;
   try {
     const { data: items } = await supabase
       .from("quote_items")

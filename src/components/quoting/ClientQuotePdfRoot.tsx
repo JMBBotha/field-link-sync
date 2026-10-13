@@ -189,7 +189,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
           companyOverride={doc.company}
           companyId={(q as any).company_id ?? null}
           paymentPlan={q.payment_plan ?? null}
-          unitCards={<QuoteUnitCardsView cards={doc.unitCards} variant={(doc.company as any)?.document_style === "bold" ? "bold" : "light"} />}
+          unitCards={<QuoteUnitCardsView cards={doc.unitCards} companyId={doc.quote?.company_id ?? (doc.company as any)?.company_id ?? null} variant={(doc.company as any)?.document_style === "bold" ? "bold" : "light"} />}
         />
       )}
     </div>

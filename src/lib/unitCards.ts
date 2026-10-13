@@ -146,3 +146,16 @@ export function specChips(specs?: Record<string, any> | null, fallback?: { btu?:
 export function cardLink(card: UnitCard): string | null {
   return card.media?.product_url || card.media?.support_url || null;
 }
+
+/** Net (unpacked) dimensions and weights (Johan 13 Oct 11:45). Only filled values; never box/gross sizes. */
+export function dimensionSpecRows(specs: Record<string, any> | null | undefined): [string, string][] {
+  const s = specs || {};
+  const has = (v: any) => v !== null && v !== undefined && String(v).trim() !== "";
+  const dim = (v: any) => `${String(v).replace(/\s*[x×*]\s*/gi, " × ").replace(/\s*mm$/i, "")} mm`;
+  const rows: [string, string][] = [];
+  if (has(s.indoor_dim_mm)) rows.push(["Indoor unit, net size (W × H × D)", dim(s.indoor_dim_mm)]);
+  if (has(s.indoor_net_kg)) rows.push(["Indoor unit, net weight", `${s.indoor_net_kg} kg`]);
+  if (has(s.outdoor_dim_mm)) rows.push(["Outdoor unit, net size (W × H × D)", dim(s.outdoor_dim_mm)]);
+  if (has(s.outdoor_net_kg)) rows.push(["Outdoor unit, net weight", `${s.outdoor_net_kg} kg`]);
+  return rows;
+}

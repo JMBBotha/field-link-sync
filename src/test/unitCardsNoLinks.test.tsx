@@ -2,14 +2,17 @@ import { it, expect, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: () => ({}) } }));
 import { QuoteUnitCardsView } from "@/components/quoting/QuoteUnitCards";
-export const sampleCard: any = { modelKey: "ar09", modelCode: "AR09BSHGAWK/FA", quantity: 2, rooms: ["Lounge"], brand: "Samsung", btu: 9000, refrigerant: "R32", name: "Samsung AR4500 9K",
+export const sampleCard: any = { modelKey: "AR09BSHGAWK/FA", modelCode: "AR09BSHGAWK/FA", quantity: 2, rooms: ["Lounge"], brand: "Samsung", btu: 9000, refrigerant: "R32", name: "Samsung AR4500 9K",
   media: { status: "approved", display_name: "Samsung AR4500 9,000 BTU", subtitle: "Inverter wall split", product_url: "https://www.samsung.com/x", support_url: "https://support.example/x", source_label: "samsung.com",
     bullets: ["Fast cooling", "Quiet operation", "Energy saving inverter"], feature_highlight: { title: "WindFree", text: "Cooling without direct draft" }, specs: {} } };
-it("unit cards never render outside links or QR (Light + Bold)", () => {
+const CO = "361bf031-9cdb-4d7f-9bde-9eb95fa4725e";
+it("unit cards link only to OUR brochure page, with QR (Light + Bold); never outside sites", () => {
   for (const v of ["light", "bold"] as const) {
-    const h = renderToStaticMarkup(<QuoteUnitCardsView cards={[sampleCard]} variant={v} />);
+    const h = renderToStaticMarkup(<QuoteUnitCardsView cards={[sampleCard]} variant={v} companyId={CO} />);
     expect(h).toContain("AR09BSHGAWK/FA");
-    expect(h).not.toMatch(/<a\s|href=|samsung\.com|support\.example|Scan for full specs|tap a model|svg\+xml/);
-    if (process.env.RENDER_NOLINKS && v === "light") require("fs").writeFileSync("/workspace/quote-unit-cards-2026-10-13/render/nolinks.html", `<html><body style="width:760px;margin:20px;font-family:Arial">${h}</body></html>`);
+    const hrefs = [...h.matchAll(/href="([^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, "&"));
+    expect(hrefs).toEqual([`https://field-link-sync.lovable.app/u/ar09bshgawk-fa?c=${CO}`]);
+    expect(h).toContain('data-testid="unit-card-qr"');
+    expect(h).not.toMatch(/samsung\.com|support\.example|aermart|fourways/i);
   }
 });
