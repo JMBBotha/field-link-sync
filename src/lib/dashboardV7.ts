@@ -47,7 +47,7 @@ export const METRICS: { key: MetricKey; label: string; money?: boolean; pct?: bo
   { key: "quotes_accepted", label: "Quotes accepted" },
   { key: "conversion", label: "Conversion", pct: true },
   { key: "jobs_completed", label: "Jobs completed" },
-  { key: "invoiced", label: "Invoiced", money: true, office: true },
+  { key: "invoiced", label: "Invoiced (sent, excl. drafts)", money: true, office: true },
   { key: "paid", label: "Paid", money: true, office: true },
   { key: "commission", label: "Commission (team)", money: true, owner: true },
 ];
@@ -93,6 +93,13 @@ export function aging(invoices: DashRow[], now: number) {
     b[days <= 30 ? 0 : days <= 60 ? 1 : days <= 90 ? 2 : 3].amount += num(i.grand_total);
   }
   return b;
+}
+/** Drafts are never "outstanding" (not sent to the client); shown as their own figure. */
+export const drafts = (invoices: DashRow[]) => { const d = invoices.filter((i) => i.status === "draft"); return { count: d.length, amount: d.reduce((a, i) => a + num(i.grand_total), 0) }; };
+/** Of the invoices SENT (issued, not draft/void) in r: how much of that is now paid. Never above 100%. */
+export function paidOfSent(invoices: DashRow[], r: Range) {
+  const s = invoices.filter((i) => !NOT_ISSUED.has(i.status) && inRange(i.issue_date, r));
+  return { sent: s.reduce((a, i) => a + num(i.grand_total), 0), paid: s.filter((i) => i.status === "paid").reduce((a, i) => a + num(i.grand_total), 0), count: s.length };
 }
 export const outstanding = (invoices: DashRow[]) => invoices.filter((i) => !NOT_ISSUED.has(i.status) && i.status !== "paid").reduce((a, i) => a + num(i.grand_total), 0);
 

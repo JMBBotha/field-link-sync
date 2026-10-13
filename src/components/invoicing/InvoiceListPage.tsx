@@ -1,3 +1,4 @@
+import { SentManuallyBadge } from "@/components/documents/MarkSentManually";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { invoiceMoney, matchesMoneyFilter, type MoneyFilter } from "@/lib/moneySummary";
@@ -195,7 +196,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   };
 
   return (
-    <div className="w-full space-y-4 p-4 sm:p-6">
+    <div className="w-full space-y-4 p-4 sm:p-6 pb-[calc(env(safe-area-inset-bottom)+5rem)] sm:pb-[calc(env(safe-area-inset-bottom)+5rem)] lg:pb-10" data-testid="invoice-list" /* last row scrolls clear of the bottom nav / sticky bars (Johan 13 Oct) */>
       {/* Page header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
@@ -323,7 +324,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
                       <span className="font-semibold text-sm text-primary">
                         {invoice.invoice_number}
                       </span>
-                      {getStatusBadge(invoice.status)}
+                      {getStatusBadge(invoice.status)}<SentManuallyBadge doc={invoice as any} />
                       <DepositPaymentChip invoice={invoice} className="text-[10px] px-2 py-0.5" />
                     </div>
                     <p className="text-sm font-medium truncate text-foreground/90">{invoice.customer_name}</p>

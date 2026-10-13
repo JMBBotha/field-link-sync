@@ -7,7 +7,7 @@ import { useNow, useLeadSla } from "@/hooks/useLeadSla";
 import { useLeadInbox, INBOX_ROUTE } from "@/hooks/useLeadInbox";
 import { useDashboardV7Data, useIsCompanyOwner } from "@/hooks/useDashboardV7Data";
 import {
-  METRICS, metric, delta, periodRange, prevRange, shiftMonths, series, lastMonths, aging, outstanding, funnel, jobBuckets, rand, ts,
+  METRICS, metric, delta, periodRange, prevRange, shiftMonths, series, lastMonths, aging, outstanding, drafts, paidOfSent, funnel, jobBuckets, rand, ts,
   type PeriodKind, type Range, type MetricKey,
 } from "@/lib/dashboardV7";
 
@@ -138,6 +138,8 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
   const sent = val("quotes_sent", sel) ?? 0, accepted = val("quotes_accepted", sel) ?? 0;
   const invoicedSel = val("invoiced", sel) ?? 0, paidSel = val("paid", sel) ?? 0;
   const out = outstanding(data.invoices);
+  const dr = drafts(data.invoices);
+  const pos = paidOfSent(data.invoices, sel);
   const ag = aging(data.invoices, nowMin);
   const agMax = Math.max(1, ...ag.map((a) => a.amount));
   const fun = funnel(data, sel);
@@ -225,10 +227,11 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
       </Panel>
 
       {/* 3. KPI strip */}
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-3" data-testid="v7-kpis">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6 md:gap-3" data-testid="v7-kpis">
         {office && <Panel className="col-span-2 md:col-span-1"><div className="text-[11px] text-muted-foreground">Revenue YTD (paid)</div><div className="text-xl font-bold">{rand(val("paid", ytd) ?? 0)}</div><Spark data={revenue} ghost={revenueLy} /></Panel>}
         {office && <Panel><div className="text-[11px] text-muted-foreground">Paid · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{rand(paidSel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(paidSel, val("paid", base))} /></Panel>}
-        {office && <Panel><div className="text-[11px] text-muted-foreground">Outstanding</div><div className="text-xl font-bold">{rand(out)}</div></Panel>}
+        {office && <Panel><div className="text-[11px] text-muted-foreground">Outstanding (sent, unpaid)</div><div className="text-xl font-bold">{rand(out)}</div></Panel>}
+        {office && <Panel testId="v7-draft-invoices"><div className="text-[11px] text-muted-foreground">Draft invoices (not sent)</div><div className="text-xl font-bold">{rand(dr.amount)}</div><div className="text-[11px] text-muted-foreground">{dr.count} draft{dr.count === 1 ? "" : "s"} · not in outstanding</div></Panel>}
         <Panel><div className="text-[11px] text-muted-foreground">Open jobs</div><div className="text-xl font-bold">{openJobs}</div>{jb.overdue > 0 && <TonePill tone="red">{jb.overdue} overdue</TonePill>}</Panel>
         <Panel><div className="text-[11px] text-muted-foreground">New leads · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{val("new_leads", sel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(val("new_leads", sel), val("new_leads", base))} /></Panel>
         {!office && <Panel><div className="text-[11px] text-muted-foreground">Quotes sent</div><div className="text-xl font-bold">{sent}</div></Panel>}
@@ -238,8 +241,8 @@ export default function V7Dashboard({ audience }: { audience: "office" | "sales"
       {/* 4. Gauges */}
       <div className={cn("grid gap-2 md:gap-3", office ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1")}>
         <Gauge title="Quote conversion" pct={sent ? (accepted / sent) * 100 : 0} caption={`${accepted} of ${sent} accepted`} />
-        {office && <Gauge title="Invoices paid" pct={invoicedSel ? (paidSel / invoicedSel) * 100 : 0} caption={`${rand(paidSel)} of ${rand(invoicedSel)}`} />}
-        {office && <Gauge title="Outstanding share" pct={invoicedSel + out ? (out / Math.max(1, (val("invoiced", ytd) ?? 0))) * 100 : 0} caption={`${rand(out)} of ${rand(val("invoiced", ytd) ?? 0)} invoiced this year`} />}
+        {office && <Gauge title="Invoices paid" pct={pos.sent ? (pos.paid / pos.sent) * 100 : 0} caption={pos.count ? `${rand(pos.paid)} of ${rand(pos.sent)} sent invoices (${pos.count}) · drafts excluded` : "No sent invoices this period · drafts excluded"} />}
+        {office && <Gauge title="Outstanding share" pct={invoicedSel + out ? (out / Math.max(1, (val("invoiced", ytd) ?? 0))) * 100 : 0} caption={`${rand(out)} unpaid of ${rand(val("invoiced", ytd) ?? 0)} sent this year · drafts excluded`} />}
       </div>
 
       {/* 5 + 6. Revenue + funnel */}

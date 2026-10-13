@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SentManuallyBadge } from "@/components/documents/MarkSentManually";
 import { useSearchParams } from "react-router-dom";
 import { parseQuoteParams, filterQuoteDocs, clearParams } from "@/lib/drilldown";
 import FilterChips from "@/components/shared/FilterChips";
@@ -515,6 +516,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                         </TableCell>
                         <TableCell>
                           <StatusPill status={doc.status} />
+                          {doc.kind === "estimate" && <SentManuallyBadge doc={doc.raw as any} className="ml-1 align-middle" />}
                           {(changeMsgs as Record<string, string>)[doc.id] && (
                             <span title={(changeMsgs as Record<string, string>)[doc.id]} className="ml-1 inline-block rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white align-middle">Changes requested</span>
                           )}

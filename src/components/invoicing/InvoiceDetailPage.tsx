@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { MarkSentManuallyButton, SentManuallyBadge } from "@/components/documents/MarkSentManually";
 import { ArrowLeft, Loader2, Send, CheckCircle, Printer, Download, Share2, Phone, Mail, MapPin, MessageCircle, Copy, Pencil, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -289,7 +290,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-bold">Invoice</h1>
-          {getStatusBadge(invoice.status)}
+          {getStatusBadge(invoice.status)}<SentManuallyBadge doc={invoice as any} className="ml-1" />
         </div>
         <div className="flex items-center gap-1">
           {docActions()}
@@ -368,17 +369,8 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
             </Button>
           </div>
           {/* Primary action based on status */}
-          {invoice.status === "draft" && (
-            <Button
-              variant="default"
-              className="w-full h-11 rounded-lg font-semibold"
-              onClick={() => updateStatus("sent")}
-              disabled={updating}
-            >
-              {updating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-              Mark as Sent
-            </Button>
-          )}
+          {/* Mark as sent without emailing: dialog asks how (WhatsApp / handed over / other), server logs + notifies the owner. */}
+          <MarkSentManuallyButton kind="invoice" id={invoice.id} status={invoice.status} size="default" className="w-full h-11 rounded-lg font-semibold" onDone={() => { fetchInvoice(); onUpdate?.(); }} />
           {/* Paid is DERIVED from recorded payments — never set directly. */}
           {(invoice.status === "sent" || invoice.status === "partially_paid" || invoice.status === "overdue") &&
             Number(invoice.grand_total) - amountPaid > 0.005 && (

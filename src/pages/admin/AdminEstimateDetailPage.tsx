@@ -14,6 +14,7 @@ import { generateDocumentPdf } from "@/lib/documentPdf";
 import { loadQuoteBrochuresForPdf } from "@/lib/quoteBrochuresForPdf";
 import ClientQuotePdfRoot, { waitForClientPdfRoot } from "@/components/quoting/ClientQuotePdfRoot";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
+import { MarkSentManuallyButton, SentManuallyBadge } from "@/components/documents/MarkSentManually";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import EstimateBuilder from "@/components/quoting/EstimateBuilder";
 import VoiceQuoteStrip from "@/components/quoting/VoiceQuoteStrip";
@@ -188,6 +189,8 @@ const AdminEstimateDetailPage = () => {
       <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3 print:hidden">
         <span className="text-sm text-muted-foreground">Status</span>
         <StatusPill status={quote.status} />
+        <SentManuallyBadge doc={quote as any} />
+        <MarkSentManuallyButton kind="quote" id={quote.id} status={quote.status} onDone={() => { refreshDocument(); qc.invalidateQueries({ queryKey: ["quotes"] }); }} />
         {canConvert && <DepositPaymentChip invoice={depositInvoice} accepted />}
         <span className="text-xs text-muted-foreground">
           Created {new Date(quote.created_at).toLocaleDateString("en-ZA")}
