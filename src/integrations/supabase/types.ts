@@ -5786,6 +5786,124 @@ export type Database = {
           },
         ]
       }
+      payment_followups: {
+        Row: {
+          amount_due: number
+          approved_message: string | null
+          channel: string
+          company_id: string
+          created_at: string
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          days_late: number | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          due_date: string | null
+          id: string
+          invoice_id: string
+          invoice_number: string | null
+          proposed_message: string
+          requested_by: string | null
+          sent_at: string | null
+          sent_by: string | null
+          stage: number
+          status: string
+        }
+        Insert: {
+          amount_due?: number
+          approved_message?: string | null
+          channel?: string
+          company_id: string
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          days_late?: number | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_id: string
+          invoice_number?: string | null
+          proposed_message: string
+          requested_by?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          stage?: number
+          status?: string
+        }
+        Update: {
+          amount_due?: number
+          approved_message?: string | null
+          channel?: string
+          company_id?: string
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          days_late?: number | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_id?: string
+          invoice_number?: string | null
+          proposed_message?: string
+          requested_by?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          stage?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_followups_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_followups_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "payment_followups_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_followups_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "payment_followups_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_accounts_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "payment_followups_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_by_product_detail"
+            referencedColumns: ["invoice_id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -10486,6 +10604,33 @@ export type Database = {
           start_time: string
         }[]
       }
+      _pf_amount_due: { Args: { p_invoice: string }; Returns: number }
+      _pf_default_message: {
+        Args: {
+          p_amount: number
+          p_company: string
+          p_due: string
+          p_name: string
+          p_no: string
+        }
+        Returns: string
+      }
+      _pf_invoice_sent: {
+        Args: { p_sent_at: string; p_sent_method: string; p_status: string }
+        Returns: boolean
+      }
+      _pf_notify_owners: {
+        Args: {
+          p_body: string
+          p_company: string
+          p_id: string
+          p_title: string
+        }
+        Returns: undefined
+      }
+      _pf_office: { Args: { p_company: string }; Returns: boolean }
+      _pf_owner: { Args: { p_company: string }; Returns: boolean }
+      _pf_tone_ok: { Args: { p_text: string }; Returns: boolean }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined
@@ -11721,6 +11866,21 @@ export type Database = {
         }[]
       }
       payment_plan_ok: { Args: { p: Json }; Returns: boolean }
+      pf_claim_send: { Args: { p_id: string }; Returns: Json }
+      pf_decide: {
+        Args: {
+          p_approve: boolean
+          p_id: string
+          p_message?: string
+          p_note?: string
+        }
+        Returns: string
+      }
+      pf_flag_overdue: { Args: never; Returns: number }
+      pf_request: {
+        Args: { p_invoice: string; p_message?: string }
+        Returns: string
+      }
       photo_folder_lead: { Args: { _name: string }; Returns: string }
       photo_lead_ok: { Args: { _lead: string }; Returns: boolean }
       photo_quote_ok: { Args: { _quote: string }; Returns: boolean }
