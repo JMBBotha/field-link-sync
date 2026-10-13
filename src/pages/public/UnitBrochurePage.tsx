@@ -40,6 +40,7 @@ const CSS = `
 .ub.bold .tile{background:linear-gradient(160deg,var(--b1),var(--b2));border-top:0}.ub.bold .hl{background:var(--b1);color:#fff}.ub.bold .hl b{color:#ffd29a}
 .ub.bold .f{background:#eef3f9;border:0;border-left:4px solid var(--or)}.ub.bold .ft{background:var(--b1)}
 @media (max-width:500px){.ub .w{padding:14px 16px 22px}.ub .hd img{height:48px}.ub .k{font-size:15px}.ub .hero{grid-template-columns:1fr}.ub .tile{min-height:170px}.ub h1{font-size:23px}.ub .feat{grid-template-columns:1fr}.ub .ft{flex-direction:column}.ub .ft .r{text-align:left}}
+.ub.pdf .w{padding:12px 24px 10px}.ub.pdf .hero{margin-top:12px}.ub.pdf .tile{min-height:170px}.ub.pdf .tile img{max-height:160px}.ub.pdf h2{margin:14px 0 8px}.ub.pdf td{padding:4px 10px}.ub.pdf .f{padding:7px 10px}.ub.pdf .ft{margin-top:14px}.ub.pdf .pb{display:none}.ub.pdf{min-height:0}
 @media print{@page{size:A4;margin:0}.ub .pb{display:none}.ub .w{padding:12px 24px 10px}.ub .hero{margin-top:12px}.ub .tile{min-height:170px}.ub .tile img{max-height:160px}.ub h2{margin:14px 0 8px}.ub td{padding:4px 10px}.ub .f{padding:7px 10px}.ub .ft{margin-top:14px}.ub{min-height:0}.ub *{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 `;
 
@@ -48,7 +49,8 @@ function splitBullet(b: string): [string | null, string] {
   return i > 2 && i < 40 ? [b.slice(0, i), b.slice(i + 1).trim()] : [null, b];
 }
 
-export function UnitBrochureView({ data }: { data: BrochureData }) {
+/** `pdf`: compact A4 layout without the print button, used for pages appended to the quote PDF. */
+export function UnitBrochureView({ data, pdf = false }: { data: BrochureData; pdf?: boolean }) {
   const co = data.company;
   const style = co?.document_style === "bold" ? "bold" : "light";
   const massair = co?.company_id === MASSAIR_ID;
@@ -77,7 +79,7 @@ export function UnitBrochureView({ data }: { data: BrochureData }) {
   const eoe = `Product image is illustrative${m?.brand ? ` (© ${m.brand})` : ""}. Specifications are as published by the manufacturer and may change. While every effort is made to ensure accuracy, this brochure is subject to errors and omissions (E&OE)${legal ? `; ${legal} reserves the right to correct any specification or typographical errors` : ""}. Prices are on your quotation only.`;
 
   return (
-    <div className={`ub ${style}`} data-testid="unit-brochure" data-state={data.state}>
+    <div className={`ub ${style}${pdf ? " pdf" : ""}`} data-testid="unit-brochure" data-state={data.state}>
       <style>{CSS}</style>
       {header}
       <div className="w" style={{ paddingTop: 0 }}>

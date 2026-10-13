@@ -5,10 +5,14 @@ export const normalizeModelCode = (c?: string | null) => {
   return s || null;
 };
 
+const BROCHURE_ORIGIN = "https://field-link-sync.lovable.app";
+export const brochureUrl = (modelKey: string, companyId?: string | null) =>
+  `${BROCHURE_ORIGIN}/u/${encodeURIComponent(String(modelKey).trim().replace(/\s+/g, "").replace(/\//g, "-").toLowerCase())}${companyId ? `?c=${encodeURIComponent(companyId)}` : ""}`;
+
 export async function loadUnitCardsStripHtml(supabase: any, quoteId?: string | null): Promise<string> {
   if (!quoteId) return "";
   try {
-    const { data: q } = await supabase.from("quotes").select("show_unit_cards").eq("id", quoteId).maybeSingle();
+    const { data: q } = await supabase.from("quotes").select("show_unit_cards, company_id").eq("id", quoteId).maybeSingle();
     if (q && q.show_unit_cards === false) return "";
     const { data: items } = await supabase.from("quote_items").select("item_type, item_number, supplier_products(product_code)").eq("quote_id", quoteId).is("parent_item_id", null);
     const keys = new Set<string>();
@@ -22,13 +26,14 @@ export async function loadUnitCardsStripHtml(supabase: any, quoteId?: string | n
     const rows = (media || []).filter((m: any) => m.image_status === "ready" && m.image_url);
     if (!rows.length) return "";
     const cells = rows.slice(0, 4).map((m: any) => {
-      // No outside links in client emails (Johan 13 Oct 10:57).
+      // No outside links in client emails (Johan 13 Oct 10:57); only our own brochure page (Johan 13 Oct 11:53, approved rows only).
       const img = `<img src="${esc(m.image_url)}" alt="${esc(m.model_code)}" width="120" style="display:block;margin:0 auto 6px;max-width:120px;height:auto;border:0;">`;
       return `<td align="center" valign="top" style="padding:8px;width:${Math.floor(100 / Math.min(rows.length, 4))}%;">
         <div style="background:#eaf6fd;border-radius:8px;padding:10px 6px;">${img}</div>
         <div style="font-size:12px;font-weight:700;color:#0B4FA8;margin-top:6px;">${esc(m.display_name || m.model_code)}</div>
         <div style="font-size:11px;color:#6b7a8c;">${esc(m.subtitle || "")}</div>
         <span style="font-size:11px;color:#6b7a8c;">${esc(m.model_code)}</span>
+        <div style="margin-top:8px;"><a href="${esc(brochureUrl(m.model_key, q?.company_id))}" target="_blank" style="display:inline-block;background:#1AA7EC;color:#ffffff;font-size:12px;font-weight:700;text-decoration:none;border-radius:6px;padding:7px 12px;">View brochure</a></div>
       </td>`;
     }).join("");
     return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">

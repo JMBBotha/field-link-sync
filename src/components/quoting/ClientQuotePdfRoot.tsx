@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import EstimateDocument, { type EstimateDocLineItem } from "./EstimateDocument";
 import { QuoteUnitCardsView, ensureUnitContent } from "./QuoteUnitCards";
+import { UnitBrochureView } from "@/pages/public/UnitBrochurePage";
+import type { BrochureCompany } from "@/lib/unitBrochure";
 import { buildUnitCards, missingModelKeys, unitLineModelKey, type ProductMedia, type UnitCard } from "@/lib/unitCards";
 import { buildClientRollup, clientDiscount, lineQtyText, rollupLineFromRow, type ClientRollupArea } from "@/lib/clientQuoteRollup";
 
@@ -13,6 +15,10 @@ import { buildClientRollup, clientDiscount, lineQtyText, rollupLineFromRow, type
  * Capture target: clientPdfSelector(quoteId) — unique per quote, and only
  * matches once data has loaded, so the staff editor can never be captured.
  */
+/** Appended A4 brochure pages for this quote (only rendered for approved models). */
+export const clientBrochureSelector = (quoteId: string) =>
+  `[data-client-pdf-root="${quoteId}"][data-ready="true"] [data-brochure-page="${quoteId}"]`;
+
 export const clientPdfSelector = (quoteId: string) =>
   `[data-client-pdf-root="${quoteId}"][data-ready="true"] [data-pdf-capture-root="estimate"]`;
 
@@ -49,6 +55,7 @@ type Loaded = {
   items: EstimateDocLineItem[];
   areas: ClientRollupArea[];
   unitCards: UnitCard[];
+  brochureCompany: BrochureCompany | null;
 };
 
 const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
@@ -141,7 +148,15 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
             }
           }
         } catch { /* optional section */ }
-        if (!cancelled) setDoc({ unitCards, quote: qRes.data, customer, company: cRes.data ? { ...cRes.data, default_deposit_percentage: dRes.data?.default_deposit_percentage ?? cRes.data.default_deposit_percentage } : null, items, areas: buildClientRollup(lines, areaRows, { targetSubtotal: Number(qRes.data.subtotal) }) });
+        // Sender-company branding for appended brochure pages (same public lookup as /u), only when needed.
+        let brochureCompany: BrochureCompany | null = null;
+        if (unitCards.some((c) => c.media?.status === "approved") && (qRes.data as any)?.company_id) {
+          try {
+            const { data: b } = await (supabase.rpc as any)("public_unit_brochure", { p_model: unitCards[0].modelKey, p_company: (qRes.data as any).company_id });
+            brochureCompany = (b as any)?.company ?? null;
+          } catch { /* brochure pages fall back to neutral branding */ }
+        }
+        if (!cancelled) setDoc({ unitCards, brochureCompany, quote: qRes.data, customer, company: cRes.data ? { ...cRes.data, default_deposit_percentage: dRes.data?.default_deposit_percentage ?? cRes.data.default_deposit_percentage } : null, items, areas: buildClientRollup(lines, areaRows, { targetSubtotal: Number(qRes.data.subtotal) }) });
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Could not load the quote for the PDF.");
       }
@@ -189,9 +204,16 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
           companyOverride={doc.company}
           companyId={(q as any).company_id ?? null}
           paymentPlan={q.payment_plan ?? null}
-          unitCards={<QuoteUnitCardsView cards={doc.unitCards} companyId={doc.quote?.company_id ?? (doc.company as any)?.company_id ?? null} variant={(doc.company as any)?.document_style === "bold" ? "bold" : "light"} />}
+          unitCards={<QuoteUnitCardsView cards={doc.unitCards} companyId={doc.quote?.company_id ?? (doc.company as any)?.company_id ?? null} variant={((doc.brochureCompany?.document_style ?? (doc.company as any)?.document_style) === "bold") ? "bold" : "light"} />}
         />
       )}
+      {/* One A4 brochure page per distinct APPROVED model, appended after the quote (Johan 13 Oct 11:53).
+          Behind the per-quote unit-cards switch: doc.unitCards is empty when show_unit_cards is off. */}
+      {doc && q && doc.unitCards.filter((c) => c.media?.status === "approved").map((c) => (
+        <div key={c.modelKey} data-brochure-page={quoteId} style={{ width: "794px", background: "#fff", marginTop: 40 }}>
+          <UnitBrochureView pdf data={{ state: "approved", model_code: c.modelCode, brand: c.media?.brand ?? null, media: c.media as any, company: doc.brochureCompany }} />
+        </div>
+      ))}
     </div>
   );
 };

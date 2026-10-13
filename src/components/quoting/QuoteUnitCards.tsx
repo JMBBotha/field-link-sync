@@ -88,8 +88,10 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
   const bold = variant === "bold";
   // No outside links (Johan 13 Oct 10:57): product_url/support_url stay in the DB, never rendered.
   // QR + model link open OUR brochure page, branded for the quote's company (Johan 13 Oct 11:42).
-  const link = unitBrochureUrl(card.modelKey, companyId);
-  const qr = useMemo(() => qrSvgDataUrl(link), [link]);
+  // Only models with approved content get a brochure (Johan 13 Oct 11:53): no QR / button / link otherwise.
+  const approved = m?.status === "approved";
+  const link = approved ? unitBrochureUrl(card.modelKey, companyId) : null;
+  const qr = useMemo(() => (link ? qrSvgDataUrl(link) : null), [link]);
   const chips = specChips(m?.specs, { btu: card.btu, refrigerant: card.refrigerant });
   const img = m && m.image_status === "ready" && m.image_url ? m.image_url : null;
   const where = card.rooms.length ? `${card.rooms.join(", ")} ×${card.quantity}` : `×${card.quantity}`;
@@ -117,7 +119,7 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
               {m?.subtitle ? `${m.subtitle} · ` : ""}<span style={{ color: ORANGE, fontWeight: 600 }}>{where}</span>
             </div>
           </div>
-          <a data-testid="unit-card-model" href={link} target="_blank" rel="noopener" style={{ fontSize: 10, fontWeight: 700, color: bold ? "#fff" : SKY, background: bold ? SKY : "transparent", textDecoration: "none", border: `1px solid ${SKY}`, borderRadius: 5, padding: "2px 7px", whiteSpace: "nowrap" }}>{card.modelCode} ↗</a>
+          {link ? <a data-pdf-link data-testid="unit-card-model" href={link} target="_blank" rel="noopener" style={{ fontSize: 10, fontWeight: 700, color: bold ? "#fff" : SKY, background: bold ? SKY : "transparent", textDecoration: "none", border: `1px solid ${SKY}`, borderRadius: 5, padding: "2px 7px", whiteSpace: "nowrap" }}>{card.modelCode} ↗</a> : <span data-testid="unit-card-model" style={{ fontSize: 10, fontWeight: 700, color: MUTED, border: "1px solid #c8d5e2", borderRadius: 5, padding: "2px 7px", whiteSpace: "nowrap" }}>{card.modelCode}</span>}
         </div>
         {m?.bullets && m.bullets.length > 0 && (
           <ul style={{ margin: "6px 0", paddingLeft: 16, fontSize: 11, lineHeight: 1.4, color: "#3a4859" }}>
@@ -137,6 +139,7 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
         <div style={{ textAlign: "center" }}>
           <img data-testid="unit-card-qr" src={qr} alt="" style={{ width: 76, height: 76 }} />
           <div style={{ fontSize: 8.5, color: MUTED, lineHeight: 1.3 }}>Scan for the brochure</div>
+          <a data-pdf-link data-testid="unit-card-brochure-btn" href={link!} target="_blank" rel="noopener" style={{ display: "inline-block", marginTop: 6, background: bold ? ORANGE : SKY, color: "#fff", fontSize: 10, fontWeight: 700, textDecoration: "none", borderRadius: 5, padding: "4px 8px", whiteSpace: "nowrap" }}>View brochure</a>
         </div>
       )}
     </div>

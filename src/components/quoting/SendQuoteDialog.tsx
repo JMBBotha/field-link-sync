@@ -12,7 +12,7 @@ import { buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
 import { generateDocumentPdfBlob } from "@/lib/documentPdf";
 import { savePdfFile } from "@/components/quoting/QuotePdfViewer";
 import { loadQuoteBrochuresForPdf } from "@/lib/quoteBrochuresForPdf";
-import ClientQuotePdfRoot, { waitForClientPdfRoot } from "./ClientQuotePdfRoot";
+import ClientQuotePdfRoot, { waitForClientPdfRoot, clientBrochureSelector } from "./ClientQuotePdfRoot";
 import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 import { formatRand } from "@/utils/formatRand";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
@@ -172,6 +172,7 @@ const SendQuoteDialog = ({
         total,
         notes: quote.notes || undefined,
         captureSelector,
+        extraPageSelector: clientBrochureSelector(quoteId),
       });
     } finally {
       setClientPdf(false);

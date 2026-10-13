@@ -12,7 +12,7 @@ import { generateDocumentPdf, generateDocumentPdfBlob } from "@/lib/documentPdf"
 import QuotePdfViewer, { isPhoneViewport } from "@/components/quoting/QuotePdfViewer";
 import { printPdfBlob } from "@/lib/printPdf";
 import { loadQuoteBrochuresForPdf } from "@/lib/quoteBrochuresForPdf";
-import ClientQuotePdfRoot, { waitForClientPdfRoot } from "@/components/quoting/ClientQuotePdfRoot";
+import ClientQuotePdfRoot, { waitForClientPdfRoot, clientBrochureSelector } from "@/components/quoting/ClientQuotePdfRoot";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { waitForQuoteWrites } from "@/contexts/QuoteContext";
@@ -151,6 +151,7 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
         total: Number(q.total) || 0,
         notes: q.notes || undefined,
         captureSelector,
+        extraPageSelector: clientBrochureSelector(id),
       };
       if (mode === "print") {
         // Print = the same full PDF (quote + T&C pages), printed from a hidden frame (Johan 2026-10-12).

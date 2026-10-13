@@ -30,6 +30,8 @@ interface DocumentPdfOptions {
   brochures?: BrochureAttachment[];
   imagePages?: string[];
   captureSelector?: string;
+  /** Extra elements captured as their own A4 page(s) after the document (unit brochures, Johan 13 Oct 11:53). */
+  extraPageSelector?: string;
   /** Terms page for a specific issuing company (invoices). Omit = the signed-in company's primary settings. */
   termsCompany?: TermsCompanyInfo | null;
 }
@@ -277,9 +279,25 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     const usableHeight = pageHeight - margin * 2;
     const scaledHeight = (capturedCanvas.height * usableWidth) / capturedCanvas.width;
     const imgData = capturedCanvas.toDataURL("image/png", 1);
+    // Clickable links in the PDF for anchors marked data-pdf-link (our own brochure links only).
+    const rootRect = captureElement.getBoundingClientRect();
+    const pxToMm = usableWidth / captureElement.scrollWidth;
+    const linkBoxes = Array.from(captureElement.querySelectorAll<HTMLAnchorElement>("a[data-pdf-link][href]")).map((a) => {
+      const r = a.getBoundingClientRect();
+      return { url: a.href, x: r.left - rootRect.left, y: r.top - rootRect.top, w: r.width, h: r.height };
+    });
+    const canvasScale = capturedCanvas.width / captureElement.scrollWidth;
+    const addLinks = (startPx: number, endPx: number) => {
+      for (const l of linkBoxes) {
+        const yPx = l.y * canvasScale;
+        if (yPx < startPx || yPx >= endPx) continue;
+        doc.link(margin + l.x * pxToMm, margin + (yPx - startPx) / canvasScale * pxToMm, l.w * pxToMm, l.h * pxToMm, { url: l.url });
+      }
+    };
 
     if (scaledHeight <= usableHeight) {
       doc.addImage(imgData, "PNG", margin, margin, usableWidth, scaledHeight, undefined, "FAST");
+      addLinks(0, capturedCanvas.height);
     } else {
       // Split at quiet pixel rows (gaps between lines/blocks) so no text line is cut in half.
       const pageRows = Math.floor((usableHeight / scaledHeight) * capturedCanvas.height);
@@ -303,8 +321,23 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
         }
         const sliceHeight = (sourceSliceH / capturedCanvas.height) * scaledHeight;
         doc.addImage(sliceCanvas.toDataURL("image/png"), "PNG", margin, margin, usableWidth, sliceHeight, undefined, "FAST");
+        addLinks(sourceY, cut);
         sourceY = cut;
       });
+    }
+
+    // Appended pages (unit brochures): each element fitted onto its own A4 page.
+    if (opts.extraPageSelector) {
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>(opts.extraPageSelector))) {
+        try {
+          const c = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false, width: el.scrollWidth, height: el.scrollHeight });
+          const s = Math.min(usableWidth / c.width, usableHeight / c.height);
+          doc.addPage();
+          doc.addImage(c.toDataURL("image/png"), "PNG", (pageWidth - c.width * s) / 2, margin, c.width * s, c.height * s, undefined, "FAST");
+        } catch (e) {
+          console.warn("[documentPdf] skipped appended page", e);
+        }
+      }
     }
 
     // Quotes end after their own terms + banking block (rendered from the company record in the

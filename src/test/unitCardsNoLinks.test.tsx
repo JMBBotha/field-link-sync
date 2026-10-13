@@ -11,8 +11,15 @@ it("unit cards link only to OUR brochure page, with QR (Light + Bold); never out
     const h = renderToStaticMarkup(<QuoteUnitCardsView cards={[sampleCard]} variant={v} companyId={CO} />);
     expect(h).toContain("AR09BSHGAWK/FA");
     const hrefs = [...h.matchAll(/href="([^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, "&"));
-    expect(hrefs).toEqual([`https://field-link-sync.lovable.app/u/ar09bshgawk-fa?c=${CO}`]);
+    expect(new Set(hrefs)).toEqual(new Set([`https://field-link-sync.lovable.app/u/ar09bshgawk-fa?c=${CO}`]));
+    expect(h).toContain("View brochure");
     expect(h).toContain('data-testid="unit-card-qr"');
     expect(h).not.toMatch(/samsung\.com|support\.example|aermart|fourways/i);
   }
+});
+
+it("models without approved content: no QR, no button, no link", () => {
+  const draft = { ...sampleCard, media: { ...sampleCard.media, status: "draft" } };
+  const h = renderToStaticMarkup(<QuoteUnitCardsView cards={[draft]} companyId={CO} />);
+  expect(h).not.toMatch(/href=|View brochure|unit-card-qr/);
 });
