@@ -506,7 +506,7 @@ const LeadDetailSheet = ({
                 <SheetTitle className="text-lg font-bold text-left truncate">
                   {lead.customer_name}
                 </SheetTitle>
-                <p className="text-sm text-muted-foreground truncate">{lead.service_type}</p>
+                <p className="text-sm text-muted-foreground line-clamp-2 break-words">{lead.service_type}</p>
                 <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={(lead as any).scheduled_time} status={lead.status} className="mt-1" />
                 <LeadTimingChip notes={lead.notes} className="mt-1" />
                 {getPriorityIndicator(lead.priority)}

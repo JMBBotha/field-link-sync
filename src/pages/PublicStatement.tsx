@@ -37,7 +37,7 @@ export default function PublicStatement() {
           <p className="text-xs text-muted-foreground">{COMPANY_CONTACT_LINE}</p>
         </div>
       </div>
-      <div className="rounded-lg border p-3"><span className="text-sm text-muted-foreground">Balance due</span><div className="text-2xl font-bold">{formatRand(Number(st.closing_balance))}</div></div>
+      <div className="rounded-lg border p-3"><span className="text-sm text-muted-foreground">Balance due</span><div className="kpi-fluid tabular-nums text-2xl font-bold">{formatRand(Number(st.closing_balance))}</div></div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[480px] text-sm">
           <thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="py-2 pr-2">Date</th><th className="pr-2">Details</th><th className="pr-2 text-right">Debit</th><th className="pr-2 text-right">Credit</th><th className="text-right">Balance</th></tr></thead>

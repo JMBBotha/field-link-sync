@@ -82,7 +82,7 @@ export function BookedJobsTile() {
             <li key={r.id}>
               <button onClick={() => nav(`/admin/jobs/${r.id}`)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-muted/60" data-testid="v7-booked-row">
                 <span className="w-14 shrink-0 text-[12px] font-semibold tabular-nums">{k === "today" ? time(r.at) : <>{day(r.at)}<br /><span className="font-normal text-muted-foreground">{time(r.at)}</span></>}</span>
-                <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-medium">{r.client}</span><span className={cn("block truncate text-[11px]", r.tech === "Unassigned" ? "text-[#DC2626]" : "text-muted-foreground")}>{r.tech}</span></span>
+                <span className="min-w-0 flex-1"><span className="block line-clamp-2 break-words leading-snug text-[13px] font-medium" title={r.client}>{r.client}</span><span className={cn("block line-clamp-2 break-words text-[11px]", r.tech === "Unassigned" ? "text-[#DC2626]" : "text-muted-foreground")}>{r.tech}</span></span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </button>
             </li>
@@ -119,7 +119,7 @@ export function TodaysLeadsTile() {
             <li key={l.id}>
               <button onClick={() => nav(`/admin/dispatch?lead=${l.id}`)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-muted/60">
                 <span className="w-12 shrink-0 text-[12px] font-semibold tabular-nums">{time(l.created_at)}</span>
-                <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-medium">{l.customer_name || "New lead"}</span><span className="block truncate text-[11px] text-muted-foreground">{l.service_type || l.primary_intent || "—"}</span></span>
+                <span className="min-w-0 flex-1"><span className="block line-clamp-2 break-words leading-snug text-[13px] font-medium" title={l.customer_name || undefined}>{l.customer_name || "New lead"}</span><span className="block line-clamp-2 break-words text-[11px] text-muted-foreground">{l.service_type || l.primary_intent || "—"}</span></span>
                 {!l.first_contact_at && <span className="rounded-full bg-[#DC2626] px-1.5 py-0.5 text-[10px] font-semibold text-white">Not contacted</span>}
               </button>
             </li>

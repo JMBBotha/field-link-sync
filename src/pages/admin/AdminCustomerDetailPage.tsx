@@ -551,7 +551,7 @@ const AdminCustomerDetailPage = () => {
                         {invoices.map((inv: any) => (
                           <TableRow key={inv.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/invoices/${inv.id}`)}>
                             <TableCell className="font-medium">{inv.invoice_number || "—"}</TableCell>
-                            <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{inv.notes || "—"}</TableCell>
+                            <TableCell className="min-w-[160px] max-w-[320px] text-muted-foreground text-xs"><div className="line-clamp-2 break-words" title={inv.notes || undefined}>{inv.notes || "—"}</div></TableCell>
                             <TableCell className="text-xs">{inv.issue_date ? format(new Date(inv.issue_date), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-xs">{inv.due_date ? format(new Date(inv.due_date), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-right font-medium">{formatRand(Number(inv.grand_total || 0))}</TableCell>
@@ -601,7 +601,7 @@ const AdminCustomerDetailPage = () => {
                               <Checkbox aria-label={`Select ${q.quote_number || "quote"}`} checked={pickedQuotes.includes(q.id)} onCheckedChange={() => setPickedQuotes((p) => (p.includes(q.id) ? p.filter((x) => x !== q.id) : [...p, q.id]))} />
                             </TableCell>
                             <TableCell className="font-medium">{q.quote_number || "—"}</TableCell>
-                            <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{q.client_summary || q.notes || "—"}</TableCell>
+                            <TableCell className="min-w-[160px] max-w-[320px] text-muted-foreground text-xs"><div className="line-clamp-2 break-words" title={q.client_summary || q.notes || undefined}>{q.client_summary || q.notes || "—"}</div></TableCell>
                             <TableCell className="text-xs">{q.created_at ? format(new Date(q.created_at), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-right font-medium">{formatRand(Number(q.total || 0))}</TableCell>
                             <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(q.status))}>{q.status || "draft"}</Badge></TableCell>
@@ -637,7 +637,7 @@ const AdminCustomerDetailPage = () => {
                         {jobs.map((j: any) => (
                           <TableRow key={j.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/jobs/${j.id}`)}>
                             <TableCell className="font-medium">{j.title || "Untitled"}</TableCell>
-                            <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{j.description || "—"}</TableCell>
+                            <TableCell className="min-w-[160px] max-w-[320px] text-muted-foreground text-xs"><div className="line-clamp-2 break-words" title={j.description || undefined}>{j.description || "—"}</div></TableCell>
                             <TableCell className="text-xs">{(j.scheduled_for || j.created_at) ? format(new Date((j.scheduled_for || j.created_at)!), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(j.status))}>{j.status || "pending"}</Badge></TableCell>
                           </TableRow>

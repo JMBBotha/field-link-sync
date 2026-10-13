@@ -1183,3 +1183,20 @@ All colors MUST be HSL.
   border-color: rgba(255, 255, 255, 0.1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.3);
 }
+
+/* Fluid KPI numbers (13 Oct): big values like "R 1 106 234,08" shrink to fit their tile instead of
+   being cut off. The tile (direct parent) becomes a size container; browsers without container
+   queries keep the original Tailwind size. Cap per use with [--kpi-max:2.5rem]. */
+@supports (font-size: 1cqi) {
+  :where(*):has(> .kpi-fluid) { container-type: inline-size; }
+  .kpi-fluid { font-size: clamp(0.95rem, 10cqi, var(--kpi-max, 1.875rem)) !important; line-height: 1.15 !important; overflow-wrap: normal; }
+}
+
+/* New layout (Johan 15:27): Pipeline health sits in one white glass card like the rest. Classic untouched. */
+.v7-solid .v7-glass {
+  border-radius: 0.75rem; padding: 0.75rem; border: 1px solid rgba(229, 231, 235, 0.9);
+  background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+.dark .v7-solid .v7-glass { background-color: rgba(17, 26, 43, 0.95); border-color: rgba(255, 255, 255, 0.1); }
+@media (min-width: 768px) { .v7-solid .v7-glass { padding: 1rem; } }

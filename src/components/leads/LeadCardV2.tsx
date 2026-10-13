@@ -162,7 +162,7 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
         )}
       </div>
       <div className="min-w-0">
-        <p className="truncate text-[15px] font-semibold leading-tight">{text(lead.customer_name) || "New lead"}</p>
+        <p className="line-clamp-2 break-words text-[15px] font-semibold leading-tight" title={text(lead.customer_name) || undefined}>{text(lead.customer_name) || "New lead"}</p>
         {lead.customer_address && (
           <p className="mt-0.5 flex items-start gap-1 text-xs text-muted-foreground">
             <MapPin className="mt-px h-3.5 w-3.5 shrink-0" /><span className="min-w-0 line-clamp-2 break-words">{text(compact ? lead.customer_address.split(",")[0] : lead.customer_address)}</span>

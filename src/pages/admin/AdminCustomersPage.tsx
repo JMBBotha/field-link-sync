@@ -220,7 +220,7 @@ const AdminCustomersPage = () => {
             {[0,1,2,3].map(i => <Skeleton key={i} className="h-40" />)}
           </div>
         ) : (
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+          <div className="grid gap-3 pb-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
             {recent.map(c => {
               const style = LEAD_SOURCE_STYLES[toLeadSourceValue(c.lead_source)] || LEAD_SOURCE_STYLES.manual;
               return (
@@ -228,7 +228,7 @@ const AdminCustomersPage = () => {
                   key={c.id}
                   onClick={() => navigate(`/admin/customers/${c.id}`)}
                   className={cn(
-                    "min-w-[260px] flex-shrink-0 cursor-pointer hover:shadow-md transition-all border-t-4 bg-card",
+                    "min-w-0 cursor-pointer hover:shadow-md transition-all border-t-4 bg-card",
                     style.border,
                   )}
                 >
@@ -240,16 +240,16 @@ const AdminCustomersPage = () => {
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-sm truncate">{displayName(c)}</p>
+                        <p className="font-semibold text-sm leading-snug line-clamp-2 break-words" title={displayName(c)}>{displayName(c)}</p>
                         {c.company_name && !c.is_company && (
-                          <p className="text-xs text-muted-foreground truncate">{c.company_name}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2 break-words" title={c.company_name}>{c.company_name}</p>
                         )}
                       </div>
                     </div>
                     <div className="space-y-1 text-xs text-muted-foreground">
                       {c.email && (
                         <div className="flex items-center gap-1.5 truncate">
-                          <Mail className="h-3 w-3 shrink-0" /><span className="truncate">{c.email}</span>
+                          <Mail className="h-3 w-3 shrink-0" /><span className="truncate" title={c.email}>{c.email}</span>
                         </div>
                       )}
                       {c.phone && (
@@ -334,8 +334,8 @@ const AdminCustomersPage = () => {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="max-w-[220px] text-xs text-muted-foreground truncate">
-                              {c.notes || "—"}
+                            <TableCell className="min-w-[160px] max-w-[320px] text-xs text-muted-foreground">
+                              <div className="line-clamp-2 break-words" title={c.notes || undefined}>{c.notes || "—"}</div>
                             </TableCell>
                             <TableCell className="text-right text-sm text-muted-foreground">R 0</TableCell>
                             <TableCell className={cn("text-right text-sm font-medium", out > 0 ? "text-rose-600" : "text-muted-foreground")}>
@@ -396,7 +396,7 @@ const SummaryCard = ({ label, amount, accent, onClick }: { label: string; amount
   )}>
     <CardContent className="p-5">
       <p className="text-xs uppercase tracking-wide text-white/80">{label}</p>
-      <p className="text-3xl font-bold mt-2">{formatRand(amount)}</p>
+      <p className="kpi-fluid [--kpi-max:2.5rem] tabular-nums text-3xl font-bold mt-2">{formatRand(amount)}</p>
     </CardContent>
   </Card>
 );

@@ -997,7 +997,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                   New Lead
                 </Button>
               </div>
-              <ScrollArea className="flex-1">
+              <ScrollArea className="flex-1 [&>[data-radix-scroll-area-viewport]>div]:!block [&>[data-radix-scroll-area-viewport]>div]:!min-w-0">
                 <div className="p-2 space-y-1.5">
                   {unassignedLeads.length === 0 && (
                     <div className="px-3 py-8 text-center space-y-1">

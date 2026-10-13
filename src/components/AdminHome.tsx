@@ -344,8 +344,8 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           audience={isSalesRep ? "sales" : "office"}
           slots={{
             top_lists: (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 min-w-0">
-        <Card className="surface-card min-w-0 overflow-hidden">
+      <div className="grid h-full grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 min-w-0">
+        <Card className="surface-card flex h-full min-w-0 flex-col overflow-hidden">
 
           <CardHeader className="min-w-0 space-y-2 pb-2 p-3 md:p-6">
             <div className="flex items-center justify-between gap-2 min-w-0">
@@ -370,7 +370,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               ))}
             </div>
           </CardHeader>
-          <CardContent className="min-w-0 space-y-2 max-h-80 overflow-y-auto overflow-x-hidden p-3 pt-0 md:p-6 md:pt-0">
+          <CardContent className="min-w-0 flex-1 space-y-2 max-h-80 overflow-y-auto overflow-x-hidden p-3 pt-0 md:p-6 md:pt-0">
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
             ) : !stats?.openLeads?.length ? (
@@ -418,7 +418,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           </CardContent>
         </Card>
 
-        <Card className="surface-card min-w-0 overflow-hidden">
+        <Card className="surface-card flex h-full min-w-0 flex-col overflow-hidden">
           <CardHeader className="min-w-0 space-y-2 pb-2 p-3 md:p-6">
             <div className="flex items-center justify-between gap-2 min-w-0">
               <CardTitle className="text-sm md:text-base flex items-center gap-2 min-w-0 truncate">
@@ -444,7 +444,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               ))}
             </div>
           </CardHeader>
-          <CardContent className="min-w-0 space-y-2 max-h-80 overflow-y-auto overflow-x-hidden p-3 pt-0 md:p-6 md:pt-0">
+          <CardContent className="min-w-0 flex-1 space-y-2 max-h-80 overflow-y-auto overflow-x-hidden p-3 pt-0 md:p-6 md:pt-0">
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
             ) : !stats?.todayJobs?.length ? (
@@ -523,7 +523,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                     <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
                     <span className="text-xs text-muted-foreground">{kpi.label}</span>
                   </div>
-                  <p className="text-2xl font-bold">{kpi.value}</p>
+                  <p className="kpi-fluid tabular-nums text-2xl font-bold">{kpi.value}</p>
                   {kpi.key === "active_jobs" && stats && (
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                       {stats.todayTotal > 0 && <span>{stats.todayDone}/{stats.todayTotal} done</span>}
@@ -594,7 +594,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                     <RandSign className="h-4 w-4 text-primary" />
                     <span className="text-xs text-muted-foreground">Revenue Today</span>
                   </div>
-                  <p className="text-2xl font-bold">R {(stats.revenueToday ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</p>
+                  <p className="kpi-fluid tabular-nums text-2xl font-bold">R {(stats.revenueToday ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</p>
                 </CardContent>
               </Card>}
               <Card className="surface-card surface-card-interactive cursor-pointer" role="link" tabIndex={0} onClick={() => navigate(TILE_LINKS.overdueMaintenance)} onKeyDown={(e) => { if (e.key === "Enter") navigate(TILE_LINKS.overdueMaintenance); }}>
@@ -631,7 +631,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                           <card.icon className="h-4 w-4 text-primary" />
                           <span className="text-xs text-muted-foreground truncate">{card.label}</span>
                         </div>
-                        <p className="text-xl font-bold">{card.value}</p>
+                        <p className="kpi-fluid tabular-nums text-xl font-bold">{card.value}</p>
                       </CardContent>
                     </Card>
                   </Link>

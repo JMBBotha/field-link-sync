@@ -28,7 +28,7 @@ import { DASHBOARD_LAYOUT } from "@/components/dashboard/v7/dashboardLayout";
 import CashflowDashboardPanel from "@/components/cashflow/CashflowDashboardPanel";
 
 const Panel = ({ title, sub, children, className, testId }: { title?: string; sub?: string; children: React.ReactNode; className?: string; testId?: string }) => (
-  <section data-testid={testId} className={cn("rounded-xl border border-white/70 bg-white/95 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_4px_14px_rgba(15,23,42,0.06)] backdrop-blur-md dark:border-white/10 dark:bg-[#111a2b]/95 p-3 md:p-4", className)}>
+  <section data-testid={testId} className={cn("h-full min-w-0 rounded-xl border border-white/70 bg-white/95 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_4px_14px_rgba(15,23,42,0.06)] backdrop-blur-md dark:border-white/10 dark:bg-[#111a2b]/95 p-3 md:p-4", className)}>
     {title && <div className="mb-2 flex items-baseline gap-2"><h2 className="text-sm font-semibold text-foreground">{title}</h2>{sub && <span className="text-[11px] text-muted-foreground">{sub}</span>}</div>}
     {children}
   </section>
@@ -236,10 +236,10 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
           </table>
         </div>
       </Panel></>),
-    revenue_ytd: (office && <Panel className="col-span-2 md:col-span-1"><div className="text-[11px] text-muted-foreground">Revenue YTD (paid)</div><div className="text-xl font-bold">{rand(val("paid", ytd) ?? 0)}</div><Spark data={revenue} ghost={revenueLy} /></Panel>),
-    paid_period: (office && <Panel><div className="text-[11px] text-muted-foreground">Paid · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{rand(paidSel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(paidSel, val("paid", base))} /></Panel>),
-    outstanding: (office && <Panel><div className="text-[11px] text-muted-foreground">Outstanding (sent, unpaid)</div><div className="text-xl font-bold">{rand(out)}</div></Panel>),
-    draft_invoices: (office && <Panel testId="v7-draft-invoices"><div className="text-[11px] text-muted-foreground">Draft invoices (not sent)</div><div className="text-xl font-bold">{rand(dr.amount)}</div><div className="text-[11px] text-muted-foreground">{dr.count} draft{dr.count === 1 ? "" : "s"} · not in outstanding</div></Panel>),
+    revenue_ytd: (office && <Panel className="col-span-2 md:col-span-1"><div className="text-[11px] text-muted-foreground">Revenue YTD (paid)</div><div className="text-xl font-bold kpi-fluid tabular-nums [--kpi-max:1.5rem]">{rand(val("paid", ytd) ?? 0)}</div><Spark data={revenue} ghost={revenueLy} /></Panel>),
+    paid_period: (office && <Panel><div className="text-[11px] text-muted-foreground">Paid · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold kpi-fluid tabular-nums [--kpi-max:1.5rem]">{rand(paidSel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(paidSel, val("paid", base))} /></Panel>),
+    outstanding: (office && <Panel><div className="text-[11px] text-muted-foreground">Outstanding (sent, unpaid)</div><div className="text-xl font-bold kpi-fluid tabular-nums [--kpi-max:1.5rem]">{rand(out)}</div></Panel>),
+    draft_invoices: (office && <Panel testId="v7-draft-invoices"><div className="text-[11px] text-muted-foreground">Draft invoices (not sent)</div><div className="text-xl font-bold kpi-fluid tabular-nums [--kpi-max:1.5rem]">{rand(dr.amount)}</div><div className="text-[11px] text-muted-foreground">{dr.count} draft{dr.count === 1 ? "" : "s"} · not in outstanding</div></Panel>),
     open_jobs: (<><Panel><div className="text-[11px] text-muted-foreground">Open jobs</div>{openJobs === 0 ? <div className="mt-1"><EmptyNote text="No open jobs" action="Book a job" to="/admin/schedule" /></div> : <div className="text-xl font-bold">{openJobs}</div>}{jb.overdue > 0 && <TonePill tone="red">{jb.overdue} overdue</TonePill>}</Panel></>),
     new_leads: (<><Panel><div className="text-[11px] text-muted-foreground">New leads · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{val("new_leads", sel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(val("new_leads", sel), val("new_leads", base))} /></Panel></>),
     quotes_sent: (!office && <Panel><div className="text-[11px] text-muted-foreground">Quotes sent</div><div className="text-xl font-bold">{sent}</div></Panel>),
@@ -362,7 +362,7 @@ function V7Rows({ office, B }: { office: boolean; B: Record<string, React.ReactN
           <section key={row.id} data-testid={`v7-row-${row.id}`} className="space-y-2">
             {row.title && <div className="flex items-center gap-2"><h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">{row.title}</h2><div className="h-px flex-1 bg-border" /></div>}
             <div className={row.grid}>
-              {items.map((id) => <div key={id} data-block={id} className={cn("min-w-0", row.span?.[id])}>{B[id]}</div>)}
+              {items.map((id) => <div key={id} data-block={id} className={cn("flex min-w-0 flex-col [&>*]:min-w-0 [&>*]:flex-1", row.span?.[id])}>{B[id]}</div>)}
             </div>
           </section>
         );

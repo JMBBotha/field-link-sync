@@ -93,7 +93,7 @@ function Hero({ rows }: { rows: MyEarningRow[] }) {
   return (
     <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 p-4 text-white shadow-lg" data-testid="earn-hero">
       <p className="text-sm text-emerald-100">This month</p>
-      <p className="text-4xl font-extrabold tabular-nums" data-testid="earn-month">{money(c.current)}</p>
+      <p className="kpi-fluid [--kpi-max:2.5rem] tabular-nums text-4xl font-extrabold tabular-nums" data-testid="earn-month">{money(c.current)}</p>
       <p className="mt-1 flex items-center gap-1 text-sm text-emerald-50" data-testid="earn-trend">
         <Trend className="h-4 w-4" />
         {c.last === 0 && c.current === 0 ? "Nothing yet this month"

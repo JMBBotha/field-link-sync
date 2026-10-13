@@ -50,7 +50,7 @@ const KPICard = ({ label, value, prefix = "", suffix = "", delta, icon: Icon, gr
       <div className="flex items-start justify-between">
         <div className="space-y-2">
           <p className="text-sm font-medium text-white/80">{label}</p>
-          <p className="text-3xl font-bold tracking-tight">
+          <p className="kpi-fluid [--kpi-max:2.5rem] tabular-nums text-3xl font-bold tracking-tight">
             {prefix}{formattedValue}{suffix}
           </p>
           {delta !== undefined && (

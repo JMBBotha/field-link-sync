@@ -61,7 +61,7 @@ const ReadyToInvoiceCard = ({ showEmpty = false, defaultOpen = false }: { showEm
   const handleClick = (row: ReadyRow) => setDialogRow(row);
 
   return (
-    <Card id="ready-to-invoice" className="surface-card border-amber-500/40">
+    <Card id="ready-to-invoice" className="surface-card h-full">
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger asChild>
           <CardHeader
@@ -91,7 +91,7 @@ const ReadyToInvoiceCard = ({ showEmpty = false, defaultOpen = false }: { showEm
           return (
             <div key={row.lead_id} className="flex items-center gap-2 rounded-md border p-2">
               <div className="flex-1 min-w-0 space-y-0.5">
-                <div className="font-semibold text-sm truncate">{row.customer_name}</div>
+                <div className="font-semibold text-sm leading-snug line-clamp-2 break-words" title={row.customer_name || undefined}>{row.customer_name}</div>
                 {row.service_type && <div className="text-xs text-muted-foreground truncate">{row.service_type}</div>}
                 <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                   <Badge className={red ? "border-0 bg-destructive/15 text-destructive" : "border-0 bg-amber-500/15 text-amber-600"}>

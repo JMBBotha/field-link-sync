@@ -141,7 +141,7 @@ const PipelineMetrics = () => {
   ];
 
   return (
-    <div className="space-y-2">
+    <div className="v7-glass h-full space-y-2">
       <div className="flex items-baseline justify-between px-1">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Pipeline health
@@ -149,14 +149,14 @@ const PipelineMetrics = () => {
         <span className="text-[11px] text-muted-foreground">Last 90 days</span>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
+      <div className="grid gap-2 md:gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,9.5rem),1fr))]">
         {cards.map((c) => (
           <Card key={c.key} className={`surface-card surface-card-interactive ${"to" in c ? "cursor-pointer" : ""}`}
             {...("to" in c ? { role: "link", tabIndex: 0, onClick: () => navigate((c as any).to), onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter") navigate((c as any).to); } } : {})}>
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <c.icon className={`h-4 w-4 ${c.accent}`} />
-                <span className="text-[11px] md:text-xs text-muted-foreground truncate">{c.label}</span>
+            <CardContent className="p-3 md:p-4 min-w-0">
+              <div className="flex items-start gap-2 mb-1 min-w-0">
+                <c.icon className={`h-4 w-4 shrink-0 mt-px ${c.accent}`} />
+                <span className="text-[11px] md:text-xs text-muted-foreground leading-snug break-words min-w-0">{c.label}</span>
               </div>
               {isLoading ? (
                 <>
@@ -165,15 +165,15 @@ const PipelineMetrics = () => {
                 </>
               ) : (
                 <>
-                  <p className="text-xl md:text-2xl font-bold tabular-nums leading-tight">{c.value}</p>
+                  <p className="text-xl md:text-2xl kpi-fluid font-bold tabular-nums leading-tight [--kpi-max:1.5rem]">{c.value}</p>
                   {c.key === "win" && data ? (
-                    <p className="text-[10px] md:text-[11px] text-muted-foreground mt-0.5 truncate">
+                    <p className="text-[10px] md:text-[11px] text-muted-foreground mt-0.5 leading-snug break-words">
                       <Link to={TILE_LINKS.quotesWon90} className="hover:underline hover:text-foreground">{data.acceptedCount} won</Link>
                       {" · "}
                       <Link to={TILE_LINKS.quotesLost90} className="hover:underline hover:text-foreground">{data.declinedCount} lost</Link>
                     </p>
                   ) : c.hint && (
-                    <p className="text-[10px] md:text-[11px] text-muted-foreground mt-0.5 truncate">
+                    <p className="text-[10px] md:text-[11px] text-muted-foreground mt-0.5 leading-snug break-words">
                       {c.hint}
                     </p>
                   )}

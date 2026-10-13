@@ -69,19 +69,19 @@ const RevenueReport = ({ startDate, endDate }: Props) => {
         <Card className="rounded-2xl shadow-md border-0">
           <CardContent className="pt-4">
             <p className="text-xs text-muted-foreground">Total Invoiced</p>
-            <p className="text-2xl font-bold">{formatZAR(totalInvoiced)}</p>
+            <p className="kpi-fluid tabular-nums text-2xl font-bold">{formatZAR(totalInvoiced)}</p>
           </CardContent>
         </Card>
         <Card className="rounded-2xl shadow-md border-0">
           <CardContent className="pt-4">
             <p className="text-xs text-muted-foreground">Revenue (Paid)</p>
-            <p className="text-2xl font-bold text-green-600">{formatZAR(totalRevenue)}</p>
+            <p className="kpi-fluid tabular-nums text-2xl font-bold text-green-600">{formatZAR(totalRevenue)}</p>
           </CardContent>
         </Card>
         <Card className="rounded-2xl shadow-md border-0">
           <CardContent className="pt-4">
             <p className="text-xs text-muted-foreground">Outstanding</p>
-            <p className="text-2xl font-bold text-orange-600">{formatZAR(totalOutstanding)}</p>
+            <p className="kpi-fluid tabular-nums text-2xl font-bold text-orange-600">{formatZAR(totalOutstanding)}</p>
           </CardContent>
         </Card>
       </div>

@@ -20,7 +20,7 @@ const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: s
     <div className="flex items-center justify-between">
       <div>
         <p className="text-sm font-medium text-muted-foreground">{title}</p>
-        <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
+        <p className="kpi-fluid tabular-nums text-2xl font-bold text-foreground mt-1">{value}</p>
       </div>
       <div className={`h-12 w-12 rounded-full ${color} flex items-center justify-center`}>
         <Icon className="h-6 w-6" />

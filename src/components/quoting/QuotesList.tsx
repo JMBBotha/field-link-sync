@@ -524,8 +524,8 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                         >
                           {doc.ref || <span className="text-xs text-warning">No number – draft</span>}
                         </TableCell>
-                        <TableCell className="max-w-[220px]">
-                          <p className="truncate text-sm text-foreground">
+                        <TableCell className="min-w-[160px] max-w-[300px]">
+                          <p className="line-clamp-2 break-words text-sm leading-snug text-foreground" title={doc.clientName || undefined}>
                             {doc.clientName || "No customer"}
                           </p>
                           <p className="truncate text-xs text-muted-foreground">

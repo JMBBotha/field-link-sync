@@ -85,7 +85,7 @@ const AdminProposalsPage = () => {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground truncate">
+                          <p className="text-sm text-muted-foreground line-clamp-2 break-words">
                             {quote.customers?.name || "No customer"}
                           </p>
                         </div>

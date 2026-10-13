@@ -55,9 +55,9 @@ export default function LeadToPaidPanel({ audience }: { audience: "office" | "sa
   const shown = audience === "sales" ? STAGES.filter((s) => SALES_STAGES.includes(s)) : STAGES;
 
   return (
-    <section data-testid="lead-to-paid" className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <section data-testid="lead-to-paid" className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="rounded-xl border border-[#d6d9de] bg-[#eef0f3] p-4 text-[#111827] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-        <div className="flex items-baseline justify-between gap-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
           <h2 className="text-base font-extrabold">Lead → Paid</h2>
           <span className="text-[11px] font-medium text-[#4b5563] dark:text-slate-300">circle colour = most urgent item in that stage</span>
         </div>
@@ -108,7 +108,7 @@ export default function LeadToPaidPanel({ audience }: { audience: "office" | "sa
                 <li key={i.key} className="flex items-center gap-2 py-2">
                   <span className={cn("h-9 w-1 shrink-0 rounded", c.bg)} aria-hidden />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13px] font-bold">{i.client}</div>
+                    <div className="line-clamp-2 break-words leading-snug text-[13px] font-bold" title={i.client}>{i.client}</div>
                     <div className="mt-0.5 flex items-center gap-1.5"><span className="text-[10px] font-extrabold text-[#4b5563] dark:text-slate-300">{i.stage}</span><Pill item={i} /></div>
                   </div>
                   <span className="relative shrink-0">{idx === 0 && <span aria-hidden className={cn("absolute inset-0 animate-ping rounded-lg opacity-40", c.bg)} />}<button onClick={() => navigate(i.href)}

@@ -242,7 +242,7 @@ const AdminMaintenancePage = () => {
               <RandSign className="h-4 w-4 text-emerald-500" />
               <span className="text-xs text-muted-foreground">Recurring Revenue</span>
             </div>
-            <p className="text-2xl font-bold">R {(metrics?.recurringRevenue ?? 0).toLocaleString()}</p>
+            <p className="kpi-fluid tabular-nums text-2xl font-bold">R {(metrics?.recurringRevenue ?? 0).toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>

@@ -704,7 +704,7 @@ function KPICard({ icon, label, value, loading }: { icon: React.ReactNode; label
           {icon}
           <span className="text-xs text-muted-foreground">{label}</span>
         </div>
-        {loading ? <Skeleton className="h-8 w-24" /> : <p className="text-2xl font-bold">{value}</p>}
+        {loading ? <Skeleton className="h-8 w-24" /> : <p className="kpi-fluid tabular-nums text-2xl font-bold">{value}</p>}
       </CardContent>
     </Card>
   );

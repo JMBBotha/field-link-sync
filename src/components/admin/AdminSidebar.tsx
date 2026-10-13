@@ -474,7 +474,7 @@ const AdminSidebar = ({
           <div className="mt-1.5 flex items-center gap-2 rounded-md bg-white/[0.06] px-2 py-1.5" data-testid="sidebar-user-row">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/15 text-[11px] font-bold text-white">{initials}</span>
             <div className="min-w-0">
-              <div className="truncate text-[12px] font-semibold text-white">{identity.name}</div>
+              <div className="line-clamp-2 break-words leading-tight text-[12px] font-semibold text-white" title={identity.name}>{identity.name}</div>
               <div className="truncate text-[10.5px] text-white/75 dark:text-nav-muted">{roleLabel}</div>
             </div>
           </div>

@@ -327,7 +327,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
                       {getStatusBadge(invoice.status)}<SentManuallyBadge doc={invoice as any} />
                       <DepositPaymentChip invoice={invoice} className="text-[10px] px-2 py-0.5" />
                     </div>
-                    <p className="text-sm font-medium truncate text-foreground/90">{invoice.customer_name}</p>
+                    <p className="text-sm font-medium line-clamp-2 break-words leading-snug text-foreground/90" title={invoice.customer_name || undefined}>{invoice.customer_name}</p>
                     <p className="text-[11px] text-muted-foreground">
                       {formatDate(invoice.created_at)}
                       {invoice.due_date && ` • Due ${formatDate(invoice.due_date)}`}
