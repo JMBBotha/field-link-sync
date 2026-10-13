@@ -1291,6 +1291,69 @@ export type Database = {
           },
         ]
       }
+      company_contracts: {
+        Row: {
+          accepted_at: string
+          accepted_by: string
+          base_price_zar: number
+          company_id: string
+          contract_version: string
+          ends_on: string
+          extra_user_price_zar: number
+          id: string
+          included_users: number
+          months: number
+          signer_name: string
+          starts_on: string
+          user_agent: string | null
+        }
+        Insert: {
+          accepted_at?: string
+          accepted_by: string
+          base_price_zar: number
+          company_id: string
+          contract_version: string
+          ends_on: string
+          extra_user_price_zar: number
+          id?: string
+          included_users: number
+          months: number
+          signer_name: string
+          starts_on: string
+          user_agent?: string | null
+        }
+        Update: {
+          accepted_at?: string
+          accepted_by?: string
+          base_price_zar?: number
+          company_id?: string
+          contract_version?: string
+          ends_on?: string
+          extra_user_price_zar?: number
+          id?: string
+          included_users?: number
+          months?: number
+          signer_name?: string
+          starts_on?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       company_invoices: {
         Row: {
           amount_paid: number
@@ -5139,6 +5202,51 @@ export type Database = {
           },
         ]
       }
+      mandy_usage: {
+        Row: {
+          commands: number
+          company_id: string
+          day: string
+          mandy: string
+          tts_calls: number
+          tts_chars: number
+          user_id: string
+        }
+        Insert: {
+          commands?: number
+          company_id: string
+          day?: string
+          mandy?: string
+          tts_calls?: number
+          tts_chars?: number
+          user_id: string
+        }
+        Update: {
+          commands?: number
+          company_id?: string
+          day?: string
+          mandy?: string
+          tts_calls?: number
+          tts_chars?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mandy_usage_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mandy_usage_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       mandy_voice_logs: {
         Row: {
           channel: string
@@ -5727,6 +5835,24 @@ export type Database = {
         }
         Relationships: []
       }
+      parent_mandy_users: {
+        Row: {
+          added_at: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       payment_events: {
         Row: {
           company_id: string | null
@@ -6119,6 +6245,48 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "suppliers"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      phone_company_routes: {
+        Row: {
+          business_phone: string | null
+          company_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          vapi_assistant_id: string | null
+        }
+        Insert: {
+          business_phone?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          vapi_assistant_id?: string | null
+        }
+        Update: {
+          business_phone?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          vapi_assistant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phone_company_routes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_company_routes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -10832,6 +11000,14 @@ export type Database = {
           source: string
         }[]
       }
+      accept_company_contract: {
+        Args: {
+          p_signer_name: string
+          p_user_agent?: string
+          p_version?: string
+        }
+        Returns: Json
+      }
       accept_quote: {
         Args: { p_quote_id: string; p_version_id: string }
         Returns: string
@@ -11704,6 +11880,7 @@ export type Database = {
       is_my_company_owner: { Args: never; Returns: boolean }
       is_office_staff: { Args: { _uid: string }; Returns: boolean }
       is_ops_user: { Args: { _user_id: string }; Returns: boolean }
+      is_parent_owner: { Args: { _uid: string }; Returns: boolean }
       is_platform_owner: { Args: never; Returns: boolean }
       is_sales_rep: { Args: { _uid: string }; Returns: boolean }
       is_staff_member: { Args: { _uid: string }; Returns: boolean }
@@ -11809,6 +11986,17 @@ export type Database = {
         Returns: undefined
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      mandy_usage_bump: {
+        Args: {
+          p_commands: number
+          p_company: string
+          p_mandy: string
+          p_tts_calls: number
+          p_tts_chars: number
+          p_user: string
+        }
+        Returns: undefined
+      }
       mark_document_sent: {
         Args: {
           p_channel: string
@@ -11856,6 +12044,8 @@ export type Database = {
         Returns: boolean
       }
       p6_area_ok: { Args: { _admin: boolean; _area: string }; Returns: boolean }
+      parent_overdue: { Args: { p_limit?: number }; Returns: Json }
+      parent_overview: { Args: never; Returns: Json }
       past_quote_analytics: {
         Args: { p_job_type?: string }
         Returns: {
@@ -11881,9 +12071,19 @@ export type Database = {
         Args: { p_invoice: string; p_message?: string }
         Returns: string
       }
+      phone_route_company: {
+        Args: { p_assistant_id: string; p_business_phone: string }
+        Returns: string
+      }
       photo_folder_lead: { Args: { _name: string }; Returns: string }
       photo_lead_ok: { Args: { _lead: string }; Returns: boolean }
       photo_quote_ok: { Args: { _quote: string }; Returns: boolean }
+      plan_admin_overview: { Args: never; Returns: Json }
+      plan_admin_set: {
+        Args: { p_company: string; p_mandy_enabled: boolean; p_status: string }
+        Returns: Json
+      }
+      plan_enforce_daily: { Args: never; Returns: number }
       po_office_ok: { Args: { _company: string }; Returns: boolean }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
