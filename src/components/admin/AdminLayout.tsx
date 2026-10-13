@@ -17,6 +17,9 @@ import Footer from "@/components/Footer";
 import { useQuery } from "@tanstack/react-query";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminBottomNav from "@/components/admin/AdminBottomNav";
+import ClassicAdminSidebar from "@/components/classic/ClassicAdminSidebar";
+import ClassicAdminBottomNav from "@/components/classic/ClassicAdminBottomNav";
+import { useLayoutVersion } from "@/hooks/useLayoutVersion";
 import GlobalSearchDialog from "@/components/GlobalSearchDialog";
 import NLCommandBar from "@/components/admin/NLCommandBar";
 import { useMandyDock, openMandyVoice } from "@/lib/mandy/registry";
@@ -46,6 +49,9 @@ const AdminLayout = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { resolvedTheme, toggleTheme } = useTheme();
+  const { isClassic } = useLayoutVersion();
+  const SidebarC = isClassic ? ClassicAdminSidebar : AdminSidebar;
+  const BottomNavC = isClassic ? ClassicAdminBottomNav : AdminBottomNav;
   // Keeps Mandy aware of the page / record the operator currently has open.
   useAssistantContextTracker();
 
@@ -205,7 +211,7 @@ const AdminLayout = () => {
 
   return (
     <div className="app-surface flex h-screen overflow-hidden">
-      <AdminSidebar
+      <SidebarC
         onCreateLead={() => setShowCreateLead(true)}
         onSignOut={handleSignOut}
         pendingRequestsCount={pendingRequestsCount}
@@ -310,7 +316,7 @@ const AdminLayout = () => {
         <div className="hidden lg:block">
           <Footer />
         </div>
-        <AdminBottomNav onOpenMenu={() => setMobileMenuOpen(true)} />
+        <BottomNavC onOpenMenu={() => setMobileMenuOpen(true)} />
       </div>
 
 

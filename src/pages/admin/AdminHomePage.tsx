@@ -1,6 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AdminHome from "@/components/AdminHome";
+import ClassicAdminHome from "@/components/classic/ClassicAdminHome";
+import { useLayoutVersion } from "@/hooks/useLayoutVersion";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
 import MapView from "@/components/MapView";
 import OfferCards from "@/components/dispatch/OfferCards";
@@ -13,6 +15,8 @@ import { useState, useRef, useEffect } from "react";
 const AdminHomePage = () => {
   const navigate = useNavigate();
   const { isSalesRep } = useSalesRep();
+  const { isClassic } = useLayoutVersion();
+  const HomeC = isClassic ? ClassicAdminHome : AdminHome;
   const [showCreateLead, setShowCreateLead] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -90,7 +94,7 @@ const AdminHomePage = () => {
           {/* Dashboard content floating over the map */}
           <div className="relative h-full overflow-y-auto p-3 pb-20 md:p-4 md:pb-20 lg:pb-4 space-y-3">
             <OfferCards />
-            <AdminHome
+            <HomeC
               onNavigate={(tab) => navigate(tabToRoute[tab] || "/admin")}
               onCreateLead={() => setShowCreateLead(true)}
             />

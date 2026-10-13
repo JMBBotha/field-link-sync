@@ -15,6 +15,7 @@ import CompanyLogo from "@/components/shared/CompanyLogo";
 import { sidebarRoleLabel } from "@/lib/sidebarRoleLabel";
 import { useLeadInbox, INBOX_ROUTE } from "@/hooks/useLeadInbox";
 import { usePendingApplicants } from "@/hooks/usePendingApplicants";
+import LayoutToggleButton from "@/components/classic/LayoutToggleButton";
 import { usePlatformOwner } from "@/components/RequirePlatformOwner";
 import { useSignedInIdentity } from "@/hooks/useSignedInIdentity";
 import { useLeadSla, useNow } from "@/hooks/useLeadSla";
@@ -576,6 +577,7 @@ const AdminSidebar = ({
             ))}
           </>
         )}
+        <LayoutToggleButton collapsed={collapsed} />
         <button
           onClick={() => { navigate("/admin/my-base"); onMobileClose?.(); }}
           className={cn(
