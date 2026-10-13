@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { formatRand } from "@/utils/formatRand";
-import { bankBalance, buildWeeks, overdue } from "@/lib/cashflow";
+import { bankBalance, buildWeeks, overdue, normalizeCf, isEmptyCf } from "@/lib/cashflow";
 import { useCashflowAccess, useCashflowData } from "@/hooks/useCashflow";
 import CashflowChart from "./CashflowChart";
 
@@ -12,9 +12,19 @@ type PanelT = React.ComponentType<any>;
 export default function CashflowDashboardPanel({ Panel }: { Panel: PanelT }) {
   const { companyId, allowed } = useCashflowAccess();
   const cf = useCashflowData(companyId, !!allowed);
-  const weeks = useMemo(() => (cf.data ? buildWeeks(cf.data.data, new Date(), 12, cf.data.depositPct) : []), [cf.data]);
-  if (!allowed || !cf.data) return null;
-  const d = cf.data.data;
+  const d = useMemo(() => normalizeCf(cf.data?.data), [cf.data]);
+  const weeks = useMemo(() => { try { return cf.data ? buildWeeks(d, new Date(), 12, cf.data.depositPct) : []; } catch { return []; } }, [cf.data, d]);
+  if (!allowed) return null;
+  if (cf.isLoading) return null;
+  if (cf.isError || !cf.data || isEmptyCf(d)) {
+    return (
+      <Panel title="Cash flow · next 12 weeks" testId="v7-cashflow">
+        <div className="text-[12px] text-muted-foreground" data-testid="v7-cashflow-empty">
+          {cf.isError ? "Cash flow couldn't load right now." : "No cash-flow data yet."} <Link to="/admin/cashflow" className="underline">Open Cash flow</Link>
+        </div>
+      </Panel>
+    );
+  }
   const bank = bankBalance(d);
   const inn = d.receivables.reduce((s, r) => s + Number(r.outstanding), 0);
   const out = d.payables.reduce((s, r) => s + Number(r.outstanding), 0) + d.open_pos.reduce((s, p) => s + Number(p.total), 0);

@@ -9,6 +9,14 @@ export type CfData = {
   as_of: string;
 };
 
+const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+/** Never trust the RPC shape: null / missing / non-array parts become empty lists (dashboard must not crash). */
+export function normalizeCf(raw: unknown): CfData {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Partial<CfData>;
+  return { bank: arr(r.bank), receivables: arr(r.receivables), draft_invoices: arr(r.draft_invoices), expected: arr(r.expected), payables: arr(r.payables), open_pos: arr(r.open_pos), as_of: typeof r.as_of === "string" ? r.as_of : "" };
+}
+export const isEmptyCf = (d: CfData) => !d.bank.length && !d.receivables.length && !d.payables.length && !d.open_pos.length && !d.expected.length;
+
 export const isoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const parse = (s: string) => { const [y, m, d] = s.slice(0, 10).split("-").map(Number); return new Date(y, m - 1, d); };
 export const mondayOf = (d: Date) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); const wd = (x.getDay() + 6) % 7; x.setDate(x.getDate() - wd); return x; };

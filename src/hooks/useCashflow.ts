@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { CfData, ProfitData } from "@/lib/cashflow";
+import { normalizeCf } from "@/lib/cashflow";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const db = supabase as any;
@@ -21,7 +22,7 @@ export function useCashflowData(companyId: string | null, enabled: boolean) {
         db.from("company_settings").select("default_deposit_percentage").eq("company_id", companyId).limit(1).maybeSingle(),
       ]);
       if (error) throw error;
-      return { data: data as CfData, depositPct: Number(s?.data?.default_deposit_percentage ?? 70) || 70 };
+      return { data: normalizeCf(data), depositPct: Number(s?.data?.default_deposit_percentage ?? 70) || 70 };
     },
   });
 }
