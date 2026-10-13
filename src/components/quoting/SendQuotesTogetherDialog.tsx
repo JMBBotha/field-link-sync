@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail } from "lucide-react";
 import { getPublicAppOrigin } from "@/lib/publicAppUrl";
@@ -83,7 +84,7 @@ export default function SendQuotesTogetherDialog({ open, onOpenChange, quoteIds,
                   <b className="text-[#0B4FA8] whitespace-nowrap">{fmtR(Number(r.total) || 0)}</b>
                 </div>
                 <Label className="text-xs text-muted-foreground" htmlFor={`d-${r.id}`}>One-line description (optional)</Label>
-                <Input id={`d-${r.id}`} value={desc[r.id] ?? ""} maxLength={200} placeholder="e.g. 2x Samsung 12k midwall (bedrooms)" onChange={(e) => setDesc((d) => ({ ...d, [r.id]: e.target.value }))} />
+                <Textarea id={`d-${r.id}`} rows={2} className="min-h-0 resize-none text-sm" value={desc[r.id] ?? ""} maxLength={200} placeholder="e.g. 2x Samsung 12k midwall (bedrooms)" onChange={(e) => setDesc((d) => ({ ...d, [r.id]: e.target.value }))} />
                 {r.auto_summary && (desc[r.id] || "") !== r.auto_summary && (
                   <button type="button" className="text-[11px] text-[#0B4FA8] underline" onClick={() => setDesc((d) => ({ ...d, [r.id]: r.auto_summary || "" }))}>Use auto text</button>
                 )}
