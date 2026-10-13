@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, EyeOff, Loader2, Search, Undo2, Upload } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, EyeOff, Loader2, Search, Undo2, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -12,16 +12,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatRand } from "@/utils/formatRand";
 import { parseFnbCsv, summarize, type ParseResult } from "@/lib/fnbCsv";
 import { EXPENSE_CATEGORIES } from "@/lib/expenses";
+import { parseFnbPdf, PdfPasswordError } from "@/lib/fnbPdf";
+
+type Parsed = Omit<ParseResult, "format"> & { format: ParseResult["format"] | "pdf"; name: string; balanceOk?: boolean; balanceProblems?: string[]; opening?: number | null; closing?: number | null };
 
 interface Line { id: string; txn_date: string; amount: number; description: string | null; reference: string | null; status: "new" | "matched" | "ignored"; matched_payment_id: string | null; matched_expense_id: string | null; created_record: boolean; account_label: string; note: string | null }
 interface Sugg { kind: "invoice" | "payment" | "expense"; target: string; label: string | null; who: string | null; amount: number; dt: string | null; score: number }
 const KIND_LABEL: Record<Sugg["kind"], string> = { invoice: "Record payment on", payment: "Already recorded payment on", expense: "Existing expense" };
 
-/** FNB CSV import + matching (office only). Suggestions need a click to confirm; a line can only be used once. */
+/** FNB CSV / PDF statement import + matching (office only). Suggestions need a click to confirm; a line can only be used once. */
 export default function AdminBankPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [parsed, setParsed] = useState<(ParseResult & { name: string }) | null>(null);
+  const [parsed, setParsed] = useState<Parsed | null>(null);
+  const [pwFile, setPwFile] = useState<{ file: File; wrong: boolean } | null>(null);
+  const [pw, setPw] = useState("");
+  const [reading, setReading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [filter, setFilter] = useState<"new" | "matched" | "ignored">("new");
   const [open, setOpen] = useState<string | null>(null);
@@ -44,12 +50,25 @@ export default function AdminBankPage() {
 
   const onFile = async (f: File | undefined) => {
     if (!f) return;
+    if (/\.pdf$/i.test(f.name) || f.type === "application/pdf") return readPdf(f);
     const r = parseFnbCsv(await f.text());
     setParsed({ ...r, name: f.name });
     if (!r.lines.length) toast({ title: "No transactions found", description: "Download the CSV from FNB online banking (transaction history or statement CSV).", variant: "destructive" });
   };
+  const readPdf = async (f: File, password?: string) => {
+    setReading(true);
+    try {
+      const r = await parseFnbPdf(await f.arrayBuffer(), password);
+      setPwFile(null); setPw("");
+      setParsed({ ...r, name: f.name });
+      if (!r.lines.length) toast({ title: "No transactions found", description: "This doesn't look like an FNB statement PDF (scanned PDFs can't be read).", variant: "destructive" });
+    } catch (e: any) {
+      if (e instanceof PdfPasswordError) { setParsed(null); setPwFile({ file: f, wrong: e.wrong }); }
+      else toast({ title: "Couldn't read PDF", description: e?.message || String(e), variant: "destructive" });
+    } finally { setReading(false); }
+  };
   const doImport = async () => {
-    if (!parsed?.lines.length) return;
+    if (!parsed?.lines.length || parsed.balanceOk === false) return;
     setImporting(true);
     const { data, error } = await (supabase as any).rpc("import_bank_lines", { p_lines: parsed.lines, p_account: parsed.account || "FNB" });
     setImporting(false);
@@ -86,22 +105,52 @@ export default function AdminBankPage() {
   };
 
   const sum = parsed ? summarize(parsed.lines) : null;
+  const overlap = useMemo(() => {
+    if (!parsed || !sum?.from || !sum.to) return 0;
+    const acct = parsed.account || "FNB";
+    return lines.filter((l) => l.account_label === acct && l.txn_date >= sum.from! && l.txn_date <= sum.to!).length;
+  }, [parsed, sum?.from, sum?.to, lines]);
   return (
     <div className="space-y-4 p-3 md:p-6" data-testid="bank-page">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">Bank (FNB CSV)</h1>
+        <h1 className="text-xl font-semibold">Bank (FNB CSV / PDF)</h1>
         <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border bg-card px-3 py-2 text-sm font-medium hover:bg-muted">
-          <Upload className="h-4 w-4" /> Upload CSV
-          <input type="file" accept=".csv,text/csv" className="hidden" data-testid="bank-file" onChange={(e) => { onFile(e.target.files?.[0]); e.currentTarget.value = ""; }} />
+          {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Upload CSV or PDF
+          <input type="file" accept=".csv,text/csv,.pdf,application/pdf" className="hidden" data-testid="bank-file" onChange={(e) => { onFile(e.target.files?.[0]); e.currentTarget.value = ""; }} />
         </label>
       </div>
+      {pwFile && (
+        <Card data-testid="bank-pdf-password"><CardContent className="space-y-2 p-3 text-sm">
+          <div className="font-medium">{pwFile.file.name} is password-protected</div>
+          {pwFile.wrong && <div className="text-xs text-destructive">That password didn't work. Try again.</div>}
+          <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); readPdf(pwFile.file, pw); }}>
+            <Input type="password" autoFocus value={pw} onChange={(e) => setPw(e.target.value)} placeholder="PDF password" className="h-9 max-w-xs" data-testid="bank-pdf-password-input" />
+            <Button size="sm" type="submit" disabled={!pw || reading}>Open</Button>
+            <Button size="sm" type="button" variant="outline" onClick={() => { setPwFile(null); setPw(""); }}>Cancel</Button>
+          </form>
+          <div className="text-xs text-muted-foreground">The password is only used in your browser to open the file. It isn't saved.</div>
+        </CardContent></Card>
+      )}
       {parsed && sum && (
         <Card data-testid="bank-preview"><CardContent className="space-y-2 p-3 text-sm">
           <div className="font-medium">{parsed.name}{parsed.account ? ` · ${parsed.account}` : ""}</div>
           <div className="text-muted-foreground">{sum.count} transactions {sum.from ? `· ${sum.from} to ${sum.to}` : ""} · in {formatRand(sum.moneyIn)} · out {formatRand(sum.moneyOut)}{parsed.skipped ? ` · ${parsed.skipped} non-transaction rows skipped` : ""}</div>
+          {parsed.format === "pdf" && (parsed.balanceOk ? (
+            <div className="flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400" data-testid="bank-balance-ok"><CheckCircle2 className="h-4 w-4" /> Balances check out: opening {formatRand(parsed.opening ?? 0)} → closing {formatRand(parsed.closing ?? 0)}, every line adds up</div>
+          ) : (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive" data-testid="bank-balance-fail">
+              <div className="flex items-center gap-1 font-medium"><AlertTriangle className="h-4 w-4" /> Balances don't add up, so this statement can't be imported. Please use the CSV instead.</div>
+              <ul className="ml-5 list-disc">{(parsed.balanceProblems || []).map((p) => <li key={p}>{p}</li>)}</ul>
+            </div>
+          ))}
+          {overlap > 0 && (
+            <div className="flex items-start gap-1 rounded-md border border-amber-400/50 bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300" data-testid="bank-overlap">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {overlap} line{overlap === 1 ? " is" : "s are"} already imported for {parsed.account || "FNB"} between {sum.from} and {sum.to}. Exact repeats are skipped, but a CSV and a PDF can word the same transaction differently, so check for doubles after importing.
+            </div>
+          )}
           <div className="text-xs text-muted-foreground">Lines already imported are skipped automatically (same date, amount and reference).</div>
           <div className="flex gap-2">
-            <Button size="sm" onClick={doImport} disabled={importing || !sum.count} data-testid="bank-import">{importing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Import {sum.count}</Button>
+            <Button size="sm" onClick={doImport} disabled={importing || !sum.count || parsed.balanceOk === false} data-testid="bank-import">{importing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Import {sum.count}</Button>
             <Button size="sm" variant="outline" onClick={() => setParsed(null)}>Cancel</Button>
           </div>
         </CardContent></Card>
@@ -165,7 +214,7 @@ export default function AdminBankPage() {
                 </li>
               );
             })}
-            {shown.length === 0 && <li className="p-6 text-center text-sm text-muted-foreground">{filter === "new" ? "Nothing to match. Upload an FNB CSV to start." : "None."}</li>}
+            {shown.length === 0 && <li className="p-6 text-center text-sm text-muted-foreground">{filter === "new" ? "Nothing to match. Upload an FNB CSV or PDF statement to start." : "None."}</li>}
           </ul>
         )}
       </CardContent></Card>
