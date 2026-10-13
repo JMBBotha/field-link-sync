@@ -24,6 +24,8 @@ const MONEY = ["open_invoice", "show_deposit_due", "create_deposit_invoice",
 const JOBS = ["list_my_jobs", "open_job", "start_job"];
 const OFFICE_JOBS = ["open_scheduler"];
 const SEND_QUOTE = ["whatsapp_quote"];
+/** Top-level (parent) Mandy: Massair owner only (server checks is_parent_owner). Read-only across companies. */
+export const PARENT_TOOLS: ReadonlySet<string> = new Set(["parent_overview", "parent_overdue", "parent_company_report"]);
 
 export const TIER_TOOLS: Record<MandyTier, ReadonlySet<string>> = {
   admin: new Set([...NAV_READ, ...CLIENT_READ, ...QUOTE_WRITE, ...MONEY, ...JOBS, ...OFFICE_JOBS, ...SEND_QUOTE]),
@@ -46,8 +48,9 @@ export function tierFor(roles: string[], flags: { salesRep?: boolean; techOnly?:
   return "viewer";
 }
 
-export function toolAllowed(tier: MandyTier, name: string): boolean {
+export function toolAllowed(tier: MandyTier, name: string, parent = false): boolean {
   if (!name || isSystemTool(name)) return false;
+  if (PARENT_TOOLS.has(name)) return parent && tier === "admin";
   return TIER_TOOLS[tier].has(name);
 }
 
@@ -57,19 +60,19 @@ const toolName = (t: unknown): string => {
 };
 
 /** Keep only allowed tools; report the dropped names for the audit log. */
-export function filterTools(tier: MandyTier, tools: unknown[]): { kept: unknown[]; dropped: string[] } {
+export function filterTools(tier: MandyTier, tools: unknown[], parent = false): { kept: unknown[]; dropped: string[] } {
   const kept: unknown[] = []; const dropped: string[] = [];
-  for (const t of tools) (toolAllowed(tier, toolName(t)) ? kept : dropped).push(t as never);
+  for (const t of tools) (toolAllowed(tier, toolName(t), parent) ? kept : dropped).push(t as never);
   return { kept, dropped: dropped.map(toolName) };
 }
 
 /** A routed call is allowed only if the action (and every run_plan step) is allowed. */
-export function routedCallAllowed(tier: MandyTier, action: string | null, args: Record<string, unknown>): boolean {
+export function routedCallAllowed(tier: MandyTier, action: string | null, args: Record<string, unknown>, parent = false): boolean {
   if (!action) return true;
-  if (!toolAllowed(tier, action)) return false;
+  if (!toolAllowed(tier, action, parent)) return false;
   if (action === "run_plan") {
     const steps = Array.isArray(args?.steps) ? args.steps as Array<Record<string, unknown>> : [];
-    return steps.every((s) => toolAllowed(tier, String(s?.action ?? s?.name ?? "")));
+    return steps.every((s) => toolAllowed(tier, String(s?.action ?? s?.name ?? ""), parent));
   }
   return true;
 }
@@ -93,4 +96,16 @@ export function toneBlock(botName: string, companyName: string): string {
 - Never threatening, never rude, never pressure clients. About money: soft, helpful and consistent. Never mention legal action, penalties or blacklisting.
 - You cannot change system settings, pricing rules, the catalogue, templates, users or roles. If asked, say so in one sentence.
 - Anything that goes to a client needs the user to tap "Send this?" on screen first.`;
+}
+
+/** Plan gate: Mandy is off when Massair switched it off or the company is suspended/cancelled. */
+export function mandyPlanOff(plan: { mandy_enabled?: boolean | null; plan_status?: string | null } | null | undefined): boolean {
+  if (!plan) return false;
+  return plan.mandy_enabled === false || plan.plan_status === "suspended" || plan.plan_status === "cancelled";
+}
+export const MANDY_OFF_TEXT = "The work assistant is switched off for this company right now. Please ask your office or Massair to switch it back on.";
+
+/** Monthly plan price: flat base up to the included users, then a fixed price per extra user. */
+export function planMonthlyZar(users: number, base = 4500, included = 3, extra = 149): number {
+  return base + Math.max(0, Math.floor(users) - included) * extra;
 }

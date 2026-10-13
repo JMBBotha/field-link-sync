@@ -17,7 +17,8 @@ import { getAssistantContext } from "@/stores/assistantContextStore";
 import { makeMapHandlers } from "@/lib/mandy/mapStatus";
 import type { MandyResult } from "@/lib/mandy/actions";
 import { fmtRand } from "@/lib/mandy/actions";
-import { makeWorkHandlers } from "@/lib/mandy/workActions";
+import { makeWorkHandlers, makeParentHandlers } from "@/lib/mandy/workActions";
+import { useIsParentOwner } from "@/hooks/useIsParentOwner";
 import { recordInvoicePayment } from "@/lib/payments";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
@@ -76,8 +77,12 @@ export function useWorkflowMandyActions() {
     recordPayment: (i) => recordInvoicePayment({ invoiceId: i.invoiceId, amount: i.amount, method: i.method as any, reference: i.reference }),
   });
 
+  const isParent = useIsParentOwner();
+  const parent = isParent ? makeParentHandlers({ db: supabase, fmtRand, navigate }) : {};
+
   useRegisterMandyActions({
     ...(work as Record<string, (a: Record<string, unknown>) => Promise<MandyResult>>),
+    ...(parent as Record<string, (a: Record<string, unknown>) => Promise<MandyResult>>),
     open_invoice: async ({ ref, client, invoice_id }): Promise<MandyResult> => {
       const open = (inv: any): MandyResult => {
         navigate(`/admin/invoices/${inv.id}`);

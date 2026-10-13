@@ -489,6 +489,10 @@ async function recordCall(input: {
 
     let customerId = input.customerId;
     let companyId: string | null = null;
+    // Phone Mandy fix (13 Oct 2026): the company comes from the line (phone_company_routes), never
+    // from a phone match in another company and never from "the first company".
+    const { data: routedCo } = await admin.rpc("phone_route_company", { p_business_phone: input.businessPhone || null, p_assistant_id: null });
+    const routedCompanyId: string | null = (routedCo as string | null) || null;
     let leadId = input.leadId;
     let outcome = input.outcome;
     let errorReason: string | null = null;
@@ -516,6 +520,7 @@ async function recordCall(input: {
       const { data: cust } = await admin
         .from("customers")
         .select("id, company_id")
+        .eq("company_id", companyId || routedCompanyId || "00000000-0000-0000-0000-000000000000")
         .ilike("phone", `%${tail}%`)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -534,8 +539,8 @@ async function recordCall(input: {
         .select("id, name, company_id, created_at")
         .eq("id", customerId)
         .maybeSingle();
-      if (!cust) {
-        // Stale reference — do not link it.
+      if (!cust || ((companyId || routedCompanyId) && cust.company_id !== (companyId || routedCompanyId))) {
+        // Stale reference, or a customer of another company — do not link it.
         customerId = null;
       } else {
         companyId = companyId || cust.company_id;
@@ -546,6 +551,7 @@ async function recordCall(input: {
       }
     }
 
+    companyId = companyId || routedCompanyId;
     const category = categoriseCall(input.summary, input.transcript);
 
     // Auto-create a draft estimate for quote / new-work calls.
@@ -1161,6 +1167,8 @@ serve(async (req) => {
       try {
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+        const { data: lineCo } = await supabaseAdmin.rpc("phone_route_company", { p_business_phone: call?.phoneNumber?.number || null, p_assistant_id: call?.assistantId || null });
+        const lineCompanyId: string = (lineCo as string | null) || "00000000-0000-0000-0000-000000000000";
 
         let existing: { id: string; customer_id: string | null; notes: string | null; service_type: string | null; priority: string | null; customer_address: string | null } | null = null;
 
@@ -1168,6 +1176,7 @@ serve(async (req) => {
           const { data } = await supabaseAdmin
             .from("leads")
             .select("id, customer_id, notes, service_type, priority, customer_address")
+            .eq("company_id", lineCompanyId)
             .eq("customer_phone", callerPhone)
             .ilike("notes", `%${callSid}%`)
             .order("created_at", { ascending: false })
@@ -1181,6 +1190,7 @@ serve(async (req) => {
           const { data } = await supabaseAdmin
             .from("leads")
             .select("id, customer_id, notes, service_type, priority, customer_address")
+            .eq("company_id", lineCompanyId)
             .eq("customer_phone", callerPhone)
             .gte("created_at", tenMinAgo)
             .order("created_at", { ascending: false })
@@ -1213,6 +1223,7 @@ serve(async (req) => {
           const { data: openRows, error: openErr } = await supabaseAdmin
             .from("leads")
             .select("id, customer_id, notes, service_type, priority, customer_address, status, assigned_agent_id, scheduled_date, last_activity_at, created_at")
+            .eq("company_id", lineCompanyId)
             .or(orFilter)
             .in("status", ["pending", "open", "released", "new", "accepted", "claimed", "scheduled", "in_progress"])
             .is("deleted_at", null)
@@ -1253,7 +1264,7 @@ serve(async (req) => {
             patch.customer_address = callerInfo.address;
           }
 
-          await supabaseAdmin.from("leads").update(patch).eq("id", existing.id);
+          await supabaseAdmin.from("leads").update(patch).eq("id", existing.id).eq("company_id", lineCompanyId);
 
           await recordCall({
             providerCallId: callSid,
@@ -1289,6 +1300,8 @@ serve(async (req) => {
       // ─── Create customer + lead via receive-vapi-lead ───
 
       const leadPayload = {
+        business_phone: call?.phoneNumber?.number || null,
+        assistant_id: call?.assistantId || null,
         caller_name: callerName,
         caller_phone: callerPhone,
         caller_id_phone: callerPhone,

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ContractGate } from "@/components/plans/ContractGate";
 import { MoreVertical } from "lucide-react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -312,7 +313,7 @@ const AdminLayout = () => {
               exit={{ opacity: 0, x: -16 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
             >
-              <Outlet />
+              <ContractGate><Outlet /></ContractGate>
             </motion.div>
           </AnimatePresence>
         </main>

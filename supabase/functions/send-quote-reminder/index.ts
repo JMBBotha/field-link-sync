@@ -16,8 +16,8 @@ function formatZAR(value: number): string {
 function buildReminderHtml(clientName: string, quoteNumber: string, dueDate: string, totalAmount: number, daysLeft: number, unsubscribeUrl: string, signatureHtml = ""): string {
   const formattedTotal = formatZAR(totalAmount);
   const currentYear = new Date().getFullYear();
-  const urgencyColor = daysLeft <= 3 ? "#dc2626" : "#f59e0b";
-  const urgencyText = daysLeft <= 1 ? "expires tomorrow" : `expires in ${daysLeft} days`;
+  const urgencyColor = "#374151"; // softer (Johan 13 Oct): no red/amber urgency
+  const urgencyText = daysLeft <= 1 ? "is valid until tomorrow" : `is valid for another ${daysLeft} days`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -49,27 +49,27 @@ function buildReminderHtml(clientName: string, quoteNumber: string, dueDate: str
         Dear <strong>${clientName || "Valued Customer"}</strong>,
       </p>
       <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-        This is a friendly reminder that your air conditioning quotation <strong>${urgencyText}</strong>. We'd love to help you get started — please review the details below and let us know if you'd like to proceed.
+        Just a friendly note that your air conditioning quotation <strong>${urgencyText}</strong>. There's no pressure at all. If you have any questions or would like anything changed, simply reply to this email and we'll gladly help.
       </p>
 
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fef3c7;border:1px solid #fbbf24;border-radius:8px;margin-bottom:28px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:28px;">
         <tr>
           <td style="padding:20px 24px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td style="padding-bottom:12px;">
                   <p style="margin:0;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Quote Number</p>
-                  <p style="margin:4px 0 0;font-size:16px;font-weight:700;color:#92400e;">${quoteNumber || "—"}</p>
+                  <p style="margin:4px 0 0;font-size:16px;font-weight:700;color:#1e3a5f;">${quoteNumber || "—"}</p>
                 </td>
                 <td style="padding-bottom:12px;text-align:right;">
-                  <p style="margin:0;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Expires</p>
+                  <p style="margin:0;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Valid until</p>
                   <p style="margin:4px 0 0;font-size:14px;font-weight:700;color:${urgencyColor};">${dueDate}</p>
                 </td>
               </tr>
               <tr>
-                <td colspan="2" style="border-top:1px solid #fbbf24;padding-top:14px;">
+                <td colspan="2" style="border-top:1px solid #cbd5e1;padding-top:14px;">
                   <p style="margin:0;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Total Amount (Incl. VAT)</p>
-                  <p style="margin:6px 0 0;font-size:28px;font-weight:800;color:#92400e;">${formattedTotal}</p>
+                  <p style="margin:6px 0 0;font-size:28px;font-weight:800;color:#1e3a5f;">${formattedTotal}</p>
                 </td>
               </tr>
             </table>
@@ -93,7 +93,7 @@ function buildReminderHtml(clientName: string, quoteNumber: string, dueDate: str
       </table>
 
       <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.5;">
-        ⚡ Don't miss out — once this quote expires, prices may change. A 70% deposit is required upon acceptance.
+        If you need a little more time, just let us know and we're happy to refresh the quote for you. A 70% deposit applies once you accept.
       </p>
     </td>
   </tr>
@@ -243,7 +243,7 @@ serve(async (req) => {
         renderReminderSignatureHtml(salesperson),
       );
 
-      const textFallback = `Dear ${clientName},\n\nFriendly reminder: your quote ${est.estimate_number} totalling ${formatZAR(totalAmount)} expires in ${daysLeft} days (${dueDate}).\n\nTo accept, reply to this email or call (021) 802-2889.\n\nKind regards,\n\n${salesperson ? renderSignatureText(salesperson) + "\n\n" : ""}${renderSignatureText(null)}`;
+      const textFallback = `Dear ${clientName},\n\nJust a friendly note: your quote ${est.estimate_number} totalling ${formatZAR(totalAmount)} is valid until ${dueDate}. There's no pressure. If you have questions or need more time, simply reply and we'll gladly help.\n\nTo accept, reply to this email or call (021) 802-2889.\n\nKind regards,\n\n${salesperson ? renderSignatureText(salesperson) + "\n\n" : ""}${renderSignatureText(null)}`;
 
       const resendRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -252,7 +252,7 @@ serve(async (req) => {
           from: "quotes@0800becool.co.za",
           ...(replyToFor(salesperson) ? { reply_to: replyToFor(salesperson) } : {}),
           to: [email],
-          subject: `⏰ Reminder: Your 0800BeCool Quote ${est.estimate_number} expires in ${daysLeft} days`,
+          subject: `Your 0800BeCool quote ${est.estimate_number}: here if you need it`,
           html: htmlBody,
           text: textFallback,
         }),

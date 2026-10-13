@@ -16,7 +16,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireUser, authCorsHeaders } from "../_shared/auth.ts";
 import { toSpeech } from "../_shared/toSpeech.ts";
-import { tierFor, filterTools, routedCallAllowed, safeVoice, safeBotName, toneBlock, MANDY_VOICES, type MandyTier } from "../_shared/mandyPolicy.ts";
+import { tierFor, filterTools, routedCallAllowed, safeVoice, safeBotName, toneBlock, MANDY_VOICES, mandyPlanOff, MANDY_OFF_TEXT, type MandyTier } from "../_shared/mandyPolicy.ts";
 
 const cors = authCorsHeaders;
 const json = (body: unknown, status = 200) =>
@@ -61,6 +61,11 @@ Disambiguation (strict):
 - Money follow-ups: NEVER chase a client for payment yourself. Overdue invoices => list_overdue_invoices; a reminder only through request_payment_followup (owner approves first) and send_approved_followup once approved. whatsapp_invoice is only for an invoice's first send.
 - Payments received => record_payment. Supplier POs => create_purchase_orders. Today/this week's jobs => list_my_jobs; "start the job" => start_job; notes/photos/complete => open_job; booking or moving jobs => open_scheduler.
 - If no tool fits, say so in one sentence. Never use a different tool as a substitute.`;
+
+const PARENT_SYSTEM = `Top-level (Massair parent) mode is ON for this user (verified by the server).
+- parent_overview gives every company's numbers (leads, quotes waiting, outstanding, overdue, jobs, pending follow-ups). parent_overdue lists overdue invoices across companies. parent_company_report gives one company's numbers.
+- Across child companies you are READ-ONLY. Never offer to change another company's data. Payment follow-ups are approved on the Payment follow-ups screen (open_payment_followups).
+- Give totals first, then the one or two companies that need attention.`;
 
 /** Client bundles older than this (YYYYMMDDHHMMSS) are told to update instead of routing. */
 const MIN_CLIENT_BUILD = Deno.env.get("MANDY_MIN_CLIENT_BUILD") || "20260925200552";
@@ -167,32 +172,43 @@ export { toSpeech };
 
 
 /** Who is asking: tier (server-side, never trusted from the browser), company, bot name + voice. */
-type MandyCtx = { tier: MandyTier; companyId: string | null; companyName: string; botName: string; voice: string };
+type MandyCtx = { tier: MandyTier; companyId: string | null; companyName: string; botName: string; voice: string; parent: boolean; off: boolean };
 async function loadCtx(userId: string | null, roles: string[]): Promise<MandyCtx> {
-  const fallback: MandyCtx = { tier: "viewer", companyId: null, companyName: "", botName: "Mandy", voice: "liora" };
+  const fallback: MandyCtx = { tier: "viewer", companyId: null, companyName: "", botName: "Mandy", voice: "liora", parent: false, off: false };
   if (!userId) return fallback;
   try {
     const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-    const [{ data: prof }, sales, tech] = await Promise.all([
+    const [{ data: prof }, sales, tech, par] = await Promise.all([
       db.from("profiles").select("company_id").eq("id", userId).maybeSingle(),
       db.rpc("is_sales_rep", { _uid: userId }),
       db.rpc("is_field_tech_only", { _uid: userId }),
+      db.rpc("is_parent_owner", { _uid: userId }),
     ]);
     const companyId = (prof as { company_id?: string } | null)?.company_id ?? null;
-    let companyName = ""; let botName = "Mandy"; let voice = "liora";
+    let companyName = ""; let botName = "Mandy"; let voice = "liora"; let off = false;
     if (companyId) {
       const [{ data: co }, { data: cfg }] = await Promise.all([
-        db.from("companies").select("name").eq("id", companyId).maybeSingle(),
+        db.from("companies").select("name, mandy_enabled, plan_status").eq("id", companyId).maybeSingle(),
         db.from("company_assistant_config").select("bot_name, voice_id").eq("company_id", companyId).maybeSingle(),
       ]);
       companyName = String((co as { name?: string } | null)?.name ?? "");
+      off = mandyPlanOff(co as { mandy_enabled?: boolean; plan_status?: string } | null);
       botName = safeBotName((cfg as { bot_name?: string } | null)?.bot_name);
       voice = safeVoice((cfg as { voice_id?: string } | null)?.voice_id);
     }
-    return { tier: tierFor(roles, { salesRep: sales.data === true, techOnly: tech.data === true }), companyId, companyName, botName, voice };
+    return { tier: tierFor(roles, { salesRep: sales.data === true, techOnly: tech.data === true }), companyId, companyName, botName, voice, parent: par.data === true, off };
   } catch {
     return fallback; // least privilege on any failure
   }
+}
+
+/** Usage meter (per company, user and Mandy). Never blocks the reply. */
+async function bumpUsage(m: MandyCtx, userId: string | null, commands: number, ttsCalls: number, ttsChars: number) {
+  if (!userId || !m.companyId) return;
+  try {
+    const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+    await db.rpc("mandy_usage_bump", { p_company: m.companyId, p_user: userId, p_mandy: m.parent ? "parent" : "company", p_commands: commands, p_tts_calls: ttsCalls, p_tts_chars: ttsChars });
+  } catch { /* metering must not block */ }
 }
 
 Deno.serve(async (req) => {
@@ -207,7 +223,7 @@ Deno.serve(async (req) => {
   const mctx = await loadCtx(auth.userId, auth.roles);
 
   if (action === "config") {
-    return json({ bot_name: mctx.botName, voice: mctx.voice, voices: MANDY_VOICES, tier: mctx.tier });
+    return json({ bot_name: mctx.botName, voice: mctx.voice, voices: MANDY_VOICES, tier: mctx.tier, parent: mctx.parent, off: mctx.off });
   }
 
   if (action === "audit") {
@@ -230,6 +246,12 @@ Deno.serve(async (req) => {
 
   if (!key) return json({ error: "Mandy is not configured — add the secret XAI_API_KEY." }, 500);
 
+  if ((action === "tts" || action === "route" || action === "chat") && mctx.off) {
+    return action === "tts"
+      ? json({ error: MANDY_OFF_TEXT, off: true }, 403)
+      : json({ off: true, text: MANDY_OFF_TEXT, action: null, args: {}, confidence: 1, tool_call: null });
+  }
+
   if (action === "tts") {
     const text = String(body.text ?? "").trim().slice(0, 1200);
     const voiceId = body.preview_voice ? safeVoice(body.preview_voice) : mctx.voice;
@@ -245,6 +267,7 @@ Deno.serve(async (req) => {
       return json({ error: `TTS ${res.status}: ${detail.slice(0, 200)}`, spoken }, res.status);
     }
     const buf = new Uint8Array(await res.arrayBuffer());
+    await bumpUsage(mctx, auth.userId, 0, 1, spoken.length);
     let bin = "";
     for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
     return json({ audio_base64: btoa(bin), mime: res.headers.get("content-type") || "audio/mpeg", spoken });
@@ -264,20 +287,21 @@ Deno.serve(async (req) => {
       return json({ stale_client: true, text: STALE_TEXT, action: null, args: {}, confidence: 1, tool_call: null });
     }
     const messages = Array.isArray(body.messages) ? (body.messages as Msg[]).slice(-40) : [];
-    const rawTools = Array.isArray(body.tools) ? (body.tools as unknown[]).slice(0, 40) : [];
-    const { kept: tools, dropped } = filterTools(mctx.tier, rawTools);
+    const rawTools = Array.isArray(body.tools) ? (body.tools as unknown[]).slice(0, 60) : [];
+    const { kept: tools, dropped } = filterTools(mctx.tier, rawTools, mctx.parent);
     if (!messages.length) return json({ error: "No messages." }, 400);
     const ctx = body.context && typeof body.context === "object" ? JSON.stringify(body.context).slice(0, 1500) : "{}";
     const full: Msg[] = [
-      { role: "system", content: `${toneBlock(mctx.botName, mctx.companyName)}\n\n${SYSTEM}\n\nCurrent screen context (hint only): ${ctx}` },
+      { role: "system", content: `${toneBlock(mctx.botName, mctx.companyName)}\n\n${SYSTEM}${mctx.parent ? `\n\n${PARENT_SYSTEM}` : ""}\n\nCurrent screen context (hint only): ${ctx}` },
       ...messages,
     ];
     const provider = (Deno.env.get("MANDY_ROUTER_PROVIDER") || "grok").toLowerCase();
     const adapter = ROUTERS[provider];
     if (!adapter) return json({ error: `Unknown MANDY_ROUTER_PROVIDER "${provider}".` }, 500);
     const out = await adapter(key, full, tools, body.force_text === true);
+    await bumpUsage(mctx, auth.userId, 1, 0, 0);
     if ("error" in out) return json({ error: out.error }, out.status === 429 ? 429 : 502);
-    if (!routedCallAllowed(mctx.tier, out.action, out.args ?? {})) {
+    if (!routedCallAllowed(mctx.tier, out.action, out.args ?? {}, mctx.parent)) {
       try {
         const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
         await db.from("nl_audit_log").insert({

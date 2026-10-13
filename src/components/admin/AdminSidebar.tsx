@@ -1,3 +1,4 @@
+import { useIsMainCompany } from "@/hooks/useIsMainCompany";
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -62,6 +63,7 @@ const AdminSidebar = ({
   const { isAdmin, isDispatcher, isFieldAgent, roles } = useRole();
   const { settings } = useCompanySettings();
   const { isSalesRep } = useSalesRep();
+  const { isMain: isMainCo } = useIsMainCompany();
   const { count: inboxCount, leads: inboxLeads } = useLeadInbox();
   const { isPlatformOwner } = usePlatformOwner();
   const identity = useSignedInIdentity();
@@ -133,7 +135,7 @@ const AdminSidebar = ({
           badgeTitle: "overdue",
         },
         // Accounting (steps 4-5): office only, hidden for salespeople.
-        ...(isSalesRep ? [] : [{ path: "/admin/expenses", label: "Expenses", icon: Wallet, roles: ["admin", "dispatcher"] } as NavItem, { path: "/admin/bank", label: "Bank (FNB)", icon: Upload, roles: ["admin", "dispatcher"] } as NavItem, { path: "/admin/payment-followups", label: "Payment follow-ups", icon: Receipt, roles: ["admin", "dispatcher"] } as NavItem, { path: "/admin/supplier-bills", label: "Supplier bills", icon: Wallet, roles: ["admin"] } as NavItem, { path: "/admin/cashflow", label: "Cash flow & profit", icon: Receipt, roles: ["admin"] } as NavItem]),
+        ...(isSalesRep ? [] : [{ path: "/admin/expenses", label: "Expenses", icon: Wallet, roles: ["admin", "dispatcher"] } as NavItem, { path: "/admin/bank", label: "Bank (FNB)", icon: Upload, roles: ["admin", "dispatcher"] } as NavItem, { path: "/admin/payment-followups", label: "Payment follow-ups", icon: Receipt, roles: ["admin", "dispatcher"] } as NavItem, { path: "/admin/supplier-bills", label: "Supplier bills", icon: Wallet, roles: ["admin"] } as NavItem, { path: "/admin/cashflow", label: "Cash flow & profit", icon: Receipt, roles: ["admin"] } as NavItem, ...(isMainCo ? [{ path: "/admin/company-plans", label: "Company plans", icon: Wallet, roles: ["admin"] } as NavItem] : [])]),
         {
           path: "/admin/jobs",
           label: "Jobs & Dispatch",
@@ -234,7 +236,7 @@ const AdminSidebar = ({
 
   // v7 section headings (look only; same items, routes and role filters as before).
   const SECTION_OF: Record<string, string> = {
-    "/admin": "Main", "/admin/customers": "Main", "/admin/quotes": "Main", "/admin/invoices": "Main", "/admin/expenses": "Main", "/admin/bank": "Main", "/admin/supplier-bills": "Main", "/admin/payment-followups": "Main", "/admin/cashflow": "Main",
+    "/admin": "Main", "/admin/customers": "Main", "/admin/quotes": "Main", "/admin/invoices": "Main", "/admin/expenses": "Main", "/admin/bank": "Main", "/admin/supplier-bills": "Main", "/admin/payment-followups": "Main", "/admin/cashflow": "Main", "/admin/company-plans": "Main",
     "/admin/jobs": "Operations", "/admin/visits": "Operations", "/admin/my-appointments": "Operations", "/admin/my-commission": "Operations", "/field/earnings": "Operations", "/admin/map": "Operations",
     "/admin/catalog": "Stock & pricing", "/admin/price-lists": "Stock & pricing",
     "/admin/team": "Insights & team", "/admin/reports": "Insights & team",

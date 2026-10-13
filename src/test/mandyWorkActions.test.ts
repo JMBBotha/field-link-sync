@@ -79,6 +79,7 @@ describe("work actions", () => {
     expect(toolAllowed("sales", "whatsapp_invoice")).toBe(false);
     expect(toolAllowed("sales", "send_approved_followup")).toBe(false);
     expect(toolAllowed("office", "request_payment_followup")).toBe(true);
-    for (const n of Object.keys(WORK_ACTION_SCHEMAS)) expect(toolAllowed("admin", n)).toBe(true);
+    for (const n of Object.keys(WORK_ACTION_SCHEMAS)) expect(toolAllowed("admin", n, n.startsWith("parent_"))).toBe(true);
+    expect(toolAllowed("admin", "parent_overview")).toBe(false);
   });
 });

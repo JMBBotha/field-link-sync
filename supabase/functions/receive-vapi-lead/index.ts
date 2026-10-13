@@ -108,67 +108,62 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // --- Resolve company_id ---
-    // Priority: body.company_id > matched customer's company > first company in DB
+    // --- Resolve company_id (phone Mandy fix, 13 Oct 2026) ---
+    // Priority: trusted body.company_id > phone_company_routes (assistant / dialled number / explicit default).
+    // The old "first company in DB" fallback is gone, and a caller is only matched to a customer
+    // INSIDE the resolved company, so a call can never attach to another company's records.
     let resolvedCompanyId: string | null = trustedCompanyId(req, bodyCompanyId);
+    if (!resolvedCompanyId) {
+      const { data: routed } = await supabase.rpc("phone_route_company", {
+        p_business_phone: (body as any).business_phone || (body as any).called_number || null,
+        p_assistant_id: (body as any).assistant_id || (body as any).vapi_assistant_id || null,
+      });
+      resolvedCompanyId = (routed as string | null) || null;
+    }
+    if (!resolvedCompanyId) {
+      console.error("[receive-vapi-lead] No company route for this call; refusing to guess.");
+      return new Response(JSON.stringify({ error: "No company is set up for this phone line." }), {
+        status: 422,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const inCompany = async (custId: string | null | undefined): Promise<boolean> => {
+      if (!custId) return false;
+      const { data } = await supabase.from("customers").select("company_id").eq("id", custId).maybeSingle();
+      return (data as { company_id?: string } | null)?.company_id === resolvedCompanyId;
+    };
 
-    // --- Step 1: Check for existing customer by phone ---
+    // --- Step 1: Check for existing customer by phone (same company only) ---
     let customerId: string | null = null;
     let customerName = caller_name || "Unknown Caller";
     let isExistingCustomer = false;
 
-    const { data: phoneMatch } = await supabase
+    const { data: phoneMatchAll } = await supabase
       .rpc("check_customer_duplicates", {
         p_phone: normalizedPhone,
         p_first_name: caller_name?.split(" ")[0] || null,
         p_last_name: caller_name?.split(" ").slice(1).join(" ") || null,
       });
+    const phoneMatch: any[] = [];
+    for (const m of (phoneMatchAll as any[]) || []) if (await inCompany(m?.id)) phoneMatch.push(m);
 
-    if (phoneMatch && phoneMatch.length > 0 && phoneMatch[0].match_score >= 0.8) {
+    if (phoneMatch.length > 0 && phoneMatch[0].match_score >= 0.8) {
       customerId = phoneMatch[0].id;
       customerName = `${phoneMatch[0].first_name || ""} ${phoneMatch[0].last_name || ""}`.trim() || customerName;
       isExistingCustomer = true;
       console.log(`[receive-vapi-lead] Matched existing customer: ${customerName} (${customerId})`);
-
-      // Inherit company from matched customer
-      if (!resolvedCompanyId) {
-        const { data: custData } = await supabase
-          .from("customers")
-          .select("company_id")
-          .eq("id", customerId)
-          .single();
-        if (custData?.company_id) resolvedCompanyId = custData.company_id;
-      }
     } else if (callerIdNormalized && callerIdNormalized !== normalizedPhone) {
-      const { data: callerIdMatch } = await supabase
+      const { data: callerIdAll } = await supabase
         .rpc("check_customer_duplicates", { p_phone: callerIdNormalized });
+      const callerIdMatch: any[] = [];
+      for (const m of (callerIdAll as any[]) || []) if (await inCompany(m?.id)) callerIdMatch.push(m);
 
-      if (callerIdMatch && callerIdMatch.length > 0 && callerIdMatch[0].match_score >= 0.8) {
+      if (callerIdMatch.length > 0 && callerIdMatch[0].match_score >= 0.8) {
         customerId = callerIdMatch[0].id;
         customerName = `${callerIdMatch[0].first_name || ""} ${callerIdMatch[0].last_name || ""}`.trim() || customerName;
         isExistingCustomer = true;
         console.log(`[receive-vapi-lead] Matched via caller ID: ${customerName} (${customerId})`);
-
-        if (!resolvedCompanyId) {
-          const { data: custData } = await supabase
-            .from("customers")
-            .select("company_id")
-            .eq("id", customerId)
-            .single();
-          if (custData?.company_id) resolvedCompanyId = custData.company_id;
-        }
       }
-    }
-
-    // Fallback: use first company in DB (single-tenant fallback)
-    if (!resolvedCompanyId) {
-      const { data: firstCompany } = await supabase
-        .from("companies")
-        .select("id")
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .single();
-      if (firstCompany) resolvedCompanyId = firstCompany.id;
     }
 
     async function notifyCompanyOfLead(leadId: string, leadName: string, leadService: string) {
@@ -265,8 +260,9 @@ serve(async (req) => {
         .from("leads")
         .select("id, customer_id, notes, service_type, priority, customer_address")
         .eq("id", existingLeadId)
+        .eq("company_id", resolvedCompanyId)
         .maybeSingle();
-      if (!existing) return null;
+      if (!existing) return null; // never enrich another company's lead
 
       const patch: Record<string, any> = {
         notes: [existing.notes || "", "", vapiNotesBlock].filter(Boolean).join("\n"),
@@ -290,7 +286,7 @@ serve(async (req) => {
         patch.customer_id = customerId;
       }
 
-      const { error: updErr } = await supabase.from("leads").update(patch).eq("id", existingLeadId);
+      const { error: updErr } = await supabase.from("leads").update(patch).eq("id", existingLeadId).eq("company_id", resolvedCompanyId);
       if (updErr) console.error("[receive-vapi-lead] Enrich update error:", updErr);
 
       return { id: existingLeadId, customer_id: existing.customer_id ?? customerId };
@@ -301,6 +297,7 @@ serve(async (req) => {
       const { data: sidHit } = await supabase
         .from("leads")
         .select("id")
+        .eq("company_id", resolvedCompanyId)
         .ilike("notes", `%${vapi_call_id}%`)
         .limit(1)
         .maybeSingle();
@@ -319,6 +316,7 @@ serve(async (req) => {
     const { data: recentHit } = await supabase
       .from("leads")
       .select("id, created_at")
+      .eq("company_id", resolvedCompanyId)
       .eq("customer_phone", normalizedPhone)
       .gte("created_at", tenMinAgo)
       .order("created_at", { ascending: false })

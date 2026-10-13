@@ -289,6 +289,61 @@ export function makeWorkHandlers(d: WorkDeps) {
   };
 }
 
+/* ───────── Top-level (parent) Mandy: Massair owner only, read-only across companies ─────────
+ * Both RPCs are SECURITY DEFINER and refuse anyone who is not is_parent_owner(auth.uid());
+ * they return aggregates only and write an audit row. Nothing here changes another company. */
+type ParentRow = {
+  company_id: string; company: string; is_master?: boolean; leads_today: number; leads_30d: number;
+  quotes_waiting: number; quotes_waiting_value: number; invoices_open: number; outstanding: number;
+  overdue_count: number; overdue_value: number; paid_this_month: number; jobs_today: number; jobs_open: number;
+  followups_pending: number; users: number; plan_status?: string; mandy_enabled?: boolean;
+};
+export function parentSummary(rows: ParentRow[], fmt: (n: number) => string): string {
+  if (!rows.length) return "No companies found.";
+  const sum = (k: keyof ParentRow) => rows.reduce((a, r) => a + Number(r[k] || 0), 0);
+  const worst = [...rows].filter((r) => Number(r.overdue_value) > 0).sort((a, b) => Number(b.overdue_value) - Number(a.overdue_value))[0];
+  const parts = [
+    `Across ${rows.length} companies: ${sum("leads_today")} leads today, ${sum("quotes_waiting")} quotes waiting (${fmt(sum("quotes_waiting_value"))})`,
+    `${fmt(sum("outstanding"))} outstanding, of which ${fmt(sum("overdue_value"))} is overdue`,
+    `${sum("jobs_today")} jobs today`,
+  ];
+  let msg = parts.join("; ") + ".";
+  if (worst) msg += ` Most overdue: ${worst.company} (${fmt(Number(worst.overdue_value))}).`;
+  const pend = sum("followups_pending");
+  if (pend) msg += ` ${pend} payment follow-up${pend === 1 ? "" : "s"} waiting for approval.`;
+  return msg;
+}
+export function makeParentHandlers(d: { db: Db; fmtRand: (n: number) => string; navigate: (to: string) => void }) {
+  const load = async (): Promise<ParentRow[] | MandyResult> => {
+    const { data, error } = await d.db.rpc("parent_overview");
+    if (error) return { ok: false, message: error.message };
+    return ((data as any)?.companies || []) as ParentRow[];
+  };
+  return {
+    parent_overview: async (): Promise<MandyResult> => {
+      const rows = await load();
+      if (isResult(rows)) return rows;
+      return { ok: true, message: parentSummary(rows, d.fmtRand), data: { companies: rows } };
+    },
+    parent_company_report: async ({ company }: Record<string, any>): Promise<MandyResult> => {
+      const rows = await load();
+      if (isResult(rows)) return rows;
+      const q = String(company || "").trim().toLowerCase();
+      const hits = q ? rows.filter((r) => r.company.toLowerCase().includes(q)) : [];
+      if (!hits.length) return { ok: true, message: "Which company? Waiting for the user to tap one.", choices: rows.map((r) => ({ label: r.company, action: "parent_company_report", args: { company: r.company } })) };
+      const r = hits[0];
+      return { ok: true, data: r, message: `${r.company}: ${r.leads_today} leads today (${r.leads_30d} in 30 days), ${r.quotes_waiting} quotes waiting (${d.fmtRand(r.quotes_waiting_value)}), ${d.fmtRand(r.outstanding)} outstanding with ${d.fmtRand(r.overdue_value)} overdue on ${r.overdue_count} invoice${r.overdue_count === 1 ? "" : "s"}, ${d.fmtRand(r.paid_this_month)} paid this month, ${r.jobs_today} jobs today, ${r.users} users. Read only.` };
+    },
+    parent_overdue: async (): Promise<MandyResult> => {
+      const { data, error } = await d.db.rpc("parent_overdue", { p_limit: 10 });
+      if (error) return { ok: false, message: error.message };
+      const rows = (data || []) as Array<{ company: string; invoice_number: string; customer_name: string; amount: number; days_late: number }>;
+      if (!rows.length) return { ok: true, message: "No overdue invoices in any company." };
+      return { ok: true, data: { rows }, message: `${rows.length} overdue: ${rows.slice(0, 4).map((r) => `${r.company}: ${r.customer_name} ${d.fmtRand(Number(r.amount))}, ${r.days_late} days`).join("; ")}. Reminders still need the owner's approval.` };
+    },
+  };
+}
+
 const s = (description: string) => ({ type: "string", description });
 export const WORK_ACTION_SCHEMAS: Record<string, { description: string; parameters: Record<string, unknown> }> = {
   list_overdue_invoices: { description: "List invoices past their due date (read only). Never sends reminders.", parameters: { type: "object", properties: {}, additionalProperties: false } },
@@ -305,4 +360,7 @@ export const WORK_ACTION_SCHEMAS: Record<string, { description: string; paramete
   request_payment_followup: { description: "Ask the company owner to approve a friendly payment reminder for a client's overdue invoice. Sends nothing to the client.", parameters: { type: "object", properties: { invoice_ref: s("Invoice number"), client: s("Client name") }, additionalProperties: false } },
   send_approved_followup: { description: "Send a reminder the OWNER ALREADY APPROVED for this client (Send this? card). Fails if not approved.", parameters: { type: "object", properties: { client: s("Client name") }, additionalProperties: false } },
   open_scheduler: { description: "Open the dispatch scheduler on a date to book or move jobs.", parameters: { type: "object", properties: { date: s("YYYY-MM-DD") }, additionalProperties: false } },
+  parent_overview: { description: "Top-level: numbers for ALL companies (leads, quotes waiting, outstanding, overdue, jobs). Read only.", parameters: { type: "object", properties: {}, additionalProperties: false } },
+  parent_company_report: { description: "Top-level: one company's numbers. Read only.", parameters: { type: "object", properties: { company: s("Company name as spoken") }, additionalProperties: false } },
+  parent_overdue: { description: "Top-level: overdue invoices across all companies. Read only; never sends reminders.", parameters: { type: "object", properties: {}, additionalProperties: false } },
 };

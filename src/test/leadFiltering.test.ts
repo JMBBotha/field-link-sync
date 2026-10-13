@@ -36,6 +36,6 @@ describe("Lead filtering: office lead entry needs date and time", () => {
   });
   it("admin home shows the flags card for office users only", () => {
     const home = readFileSync("src/components/AdminHome.tsx", "utf8");
-    expect(home).toContain("{!isSalesRep && <LeadOfferFlagsCard />}");
+    expect(home).toContain("{!techOnly && !isSalesRep && <LeadOfferFlagsCard />}");
   });
 });
