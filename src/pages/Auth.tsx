@@ -253,11 +253,7 @@ const Auth = () => {
           )}
           {isLogin && (
             <div data-testid="invite-password-note" className="rounded-md border border-[hsl(25,95%,53%)]/60 bg-[hsl(25,95%,53%)]/15 px-3 py-2 text-sm text-white">
-              <strong>Invited to the team?</strong> You don't have a password yet.{" "}
-              <button type="button" className="underline font-semibold text-white hover:text-white/90" onClick={sendPasswordLink}>
-                Tap Forgot password
-              </button>{" "}
-              to get a link and set one.
+              New team member, add email address and click add email, tap forgot password.
             </div>
           )}
           <Button
