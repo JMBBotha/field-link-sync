@@ -15,6 +15,45 @@ import { sendAppointmentConfirmation } from "../_shared/appointmentConfirmation.
  */
 
 const MASSAIR_COMPANY_ID = "361bf031-9cdb-4d7f-9bde-9eb95fa4725e";
+// Staff alert for every website lead (Johan 2026-10-14).
+const STAFF_LEAD_EMAIL = "johan@0800becool.co.za";
+
+// Lane for auto-assign (Johan 2026-10-14): quotes -> sales staff, call-outs -> technicians.
+// auto-assign-lead skips leads without primary_intent, which is why website leads were never offered.
+function laneFor(mappedServiceType: string): "sales" | "service" | null {
+  if (mappedServiceType === "New Quote" || mappedServiceType === "New Installation") return "sales";
+  if (mappedServiceType === "Technical Service Call") return "service";
+  return null;
+}
+
+function esc(v: unknown): string {
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+}
+
+function emailShell(inner: string): string {
+  return `<!doctype html><html><body style="margin:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937">` +
+    `<div style="max-width:600px;margin:0 auto;padding:24px 16px">` +
+    `<div style="background:#0e7bbf;color:#fff;padding:18px 22px;border-radius:10px 10px 0 0;font-size:20px;font-weight:bold">0800-BE-COOL! <span style="font-size:13px;font-weight:normal">AC Super Service</span></div>` +
+    `<div style="background:#fff;padding:22px;border-radius:0 0 10px 10px;font-size:15px;line-height:1.55">${inner}</div>` +
+    `</div></body></html>`;
+}
+
+// deno-lint-ignore no-explicit-any
+async function sendEmail(supabase: any, payload: Record<string, unknown>): Promise<{ ok: boolean; detail?: string }> {
+  try {
+    const { data: cfg } = await supabase.from("app_webhook_config").select("email_webhook_token").eq("id", 1).single();
+    if (!cfg?.email_webhook_token) return { ok: false, detail: "no email webhook token" };
+    const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-transactional-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-email-webhook-token": String(cfg.email_webhook_token) },
+      body: JSON.stringify(payload),
+    });
+    const body = await r.text();
+    return { ok: r.ok, detail: body.slice(0, 500) };
+  } catch (e) {
+    return { ok: false, detail: String(e) };
+  }
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -192,11 +231,16 @@ serve(async (req) => {
       isExistingCustomer ? "⭐ Returning customer" : "🆕 New customer (website)",
     ].filter(Boolean).join("\n");
 
+    const mappedService = mapServiceType(service_type);
+    const lane = laneFor(mappedService);
     const leadData: Record<string, any> = {
       customer_name: customerName,
+      email: email || null,
+      source: "website_form",
+      primary_intent: lane,
       customer_phone: normalizedPhone,
       customer_address: address,
-      service_type: mapServiceType(service_type),
+      service_type: mappedService,
       status: "pending",
       priority: mapPriority(urgency),
       notes: noteLines,
@@ -253,6 +297,43 @@ serve(async (req) => {
       }
     }
 
+    // New-lead emails (Johan 2026-10-14): client confirmation + staff alert, via send-transactional-email (Resend, 0800becool.co.za).
+    const timing = timingLine(preferred_timing, preferred_date, preferred_time) || "";
+    const detailsRows = [
+      ["Name", customerName], ["Phone", normalizedPhone], ["Email", email || "-"], ["Address", address],
+      ["Request", service_type || mappedService], ["Timing", timing.replace(/^Timing:\s*/, "") || "-"], ["Notes", notes || "-"],
+    ].map(([k, v]) => `<tr><td style="padding:4px 10px 4px 0;color:#6b7280;vertical-align:top">${esc(k)}</td><td style="padding:4px 0">${esc(v).replace(/\n/g, "<br>")}</td></tr>`).join("");
+    let clientEmail: { ok: boolean; detail?: string } | null = null;
+    if (email) {
+      clientEmail = await sendEmail(supabase, {
+        to: email,
+        subject: "We've received your request - 0800-BE-COOL",
+        company_id: resolvedCompanyId,
+        signature_mode: "company",
+        html: emailShell(
+          `<p>Hi ${esc(customerName.split(" ")[0])},</p>` +
+          `<p>Thank you for contacting 0800-BE-COOL. We've received your request and one of our team will be in touch shortly.</p>` +
+          `<table style="border-collapse:collapse;font-size:14px;margin:12px 0">${detailsRows}</table>` +
+          `<p>Need us sooner? Call (021) 802 2889 or WhatsApp 069 683 8624.</p>`,
+        ),
+      });
+    }
+    const staffEmail = await sendEmail(supabase, {
+      to: STAFF_LEAD_EMAIL,
+      subject: `New website lead: ${customerName} - ${mappedService}${lane ? ` (${lane})` : " (needs a lane)"}`,
+      company_id: resolvedCompanyId,
+      signature_mode: "company",
+      reply_to: email || undefined,
+      html: emailShell(
+        `<p><b>New website lead</b> for Massair CT (Pty) Ltd.</p>` +
+        `<table style="border-collapse:collapse;font-size:14px;margin:12px 0">${detailsRows}` +
+        `<tr><td style="padding:4px 10px 4px 0;color:#6b7280">Lane</td><td>${esc(lane ?? "none - assign manually")}</td></tr>` +
+        `<tr><td style="padding:4px 10px 4px 0;color:#6b7280">Lead ID</td><td>${esc(newLead.id)}</td></tr></table>`,
+      ),
+    });
+    if (clientEmail && !clientEmail.ok) console.error("[receive-website-lead] client email failed:", clientEmail.detail);
+    if (!staffEmail.ok) console.error("[receive-website-lead] staff email failed:", staffEmail.detail);
+
     let whatsappQueued = false;
     if (customerId && !whatsappConfirmed) {
       try {
@@ -293,6 +374,9 @@ serve(async (req) => {
       is_existing_customer: isExistingCustomer,
       geocoded: !!geo,
       whatsapp_queued: whatsappQueued,
+      lane,
+      client_email_sent: clientEmail?.ok ?? false,
+      staff_email_sent: staffEmail.ok,
       whatsapp_confirmation_sent: whatsappConfirmed,
       email_requested: emailRequested,
       company_id: resolvedCompanyId,
