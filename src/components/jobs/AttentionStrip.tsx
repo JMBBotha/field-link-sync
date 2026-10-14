@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import AttentionChips from "@/components/jobs/AttentionChips";
+import JobWatchdogPanel from "@/components/jobs/JobWatchdogPanel";
 import { leadClock } from "@/lib/leadClock";
 import { isTestLead } from "@/lib/callSummary";
 import { useLeadSla, useNow } from "@/hooks/useLeadSla";
@@ -52,5 +53,10 @@ export default function AttentionStrip({ className }: { className?: string }) {
     { key: "unassigned", n: leads.filter((l) => !l.assigned_agent_id).length, label: "unassigned leads", tone: "orange", to: "/admin/dispatch" },
     { key: "queued", n: clocks.filter((c) => c?.stage === 0).length, label: "after-hours leads queued", tone: "blue", to: "/admin/dispatch" },
   ] as Chip[]).filter((c) => c.n > 0);
-  return <AttentionChips chips={chips} className={className} data-testid="attention-strip" />;
+  return (
+    <>
+      <AttentionChips chips={chips} className={className} data-testid="attention-strip" />
+      <JobWatchdogPanel className={className} />
+    </>
+  );
 }
