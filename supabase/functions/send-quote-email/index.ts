@@ -46,13 +46,13 @@ async function loadBrand(sb: any, quoteId?: string | null): Promise<Brand> {
   return b;
 }
 
-// Top starting line on every client email (Johan 14 Oct): thin blue/orange rule + short company line
+// Top line on every client email (Johan 14 Oct): short company line
 // from the sending company's own record, matching the PDF page head.
 function topStrip(brand: Brand): string {
   const parts = [brand.name, brand.sig?.vatNo ? `VAT ${brand.sig.vatNo}` : "", brand.phone ? `Tel ${brand.phone}` : (brand.sig?.tel ? `Tel ${brand.sig.tel}` : ""), brand.email || brand.sig?.email || ""].filter(Boolean).map(escH);
-  return `<tr><td style="padding:14px 28px 0;background:#ffffff;"><div style="height:2px;line-height:2px;font-size:0;background:#1AA7EC;background-image:linear-gradient(90deg,#1AA7EC 75%,#F7941D 75%);">&nbsp;</div>`
-    + (parts.length ? `<div style="font-size:10px;color:#6b7a8c;padding:5px 0 10px;">${parts.join(" &middot; ")}</div>` : "")
-    + `</td></tr>`;
+  // An email is a first page: company line only, no rule (Johan 14 Oct 07:53).
+  if (!parts.length) return "";
+  return `<tr><td style="padding:12px 28px 10px;background:#ffffff;"><div style="font-size:10px;color:#6b7a8c;">${parts.join(" &middot; ")}</div></td></tr>`;
 }
 
 function buildHtmlEmail(brand: Brand, clientName: string, quoteNumber: string, date: string, totalAmount: number, unsubscribeUrl: string, quoteUrl?: string | null, depositRequest = false, signatureHtml = "", unitCardsHtml = ""): string {

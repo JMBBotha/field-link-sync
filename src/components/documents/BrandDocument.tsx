@@ -101,7 +101,7 @@ const CSS = `
 .bd .slogo{height:40px}.bd .sbar{width:2px;align-self:stretch;background:var(--b2)}.bd .stext{flex:1;color:var(--b1)}.bd .sn{font-weight:800}.bd .sunits{height:50px}
 /* Page head: thin blue/orange starting rule + short company line, every page (Johan 14 Oct) */
 .bd .phead{padding:14px 42px 0}.bd .prule{height:2px;background:linear-gradient(90deg,var(--b2) 75%,var(--or) 75%)}
-.bd .pline{font-size:9px;letter-spacing:.02em;color:var(--mut);padding:4px 0 2px}
+.bd .pline{font-size:9px;letter-spacing:.02em;color:var(--mut);padding:0 0 4px}.bd .pline+.prule{margin-top:5px}
 .bd.bold .phead{padding-bottom:8px}
 /* Closing page */
 .bd .closing{padding:6px 0 18px}
@@ -150,6 +150,7 @@ export default function BrandDocument(p: BrandDocumentProps) {
   const closing = p.closingPage ?? true;
   const id = profileIdentity(p.profile);
   const massair = isMassairProfile(p.profile);
+  const headLine = [id.legalName, id.vatNo && `VAT ${id.vatNo}`, id.tel && `Tel ${id.tel}`, id.email].filter(Boolean).join("  ·  ");
   const recordLogo = (p.profile as any)?.logo_url as string | undefined;
   // Bold (blue header): Massair always uses the transparent logo, never a boxed upload (Johan 13 Oct 12:52).
   const logo = massair && style === "bold" ? logoWhite : recordLogo || (massair ? (style === "bold" ? logoWhite : logoLight) : null);
@@ -159,10 +160,16 @@ export default function BrandDocument(p: BrandDocumentProps) {
     <div data-pdf-capture-root={p.captureRoot} data-doc-style={style} data-testid="brand-document" className={`bd ${style} pdf-page mx-auto w-full ${p.className || ""}`}>
       <style>{CSS}</style>
       {closing && (
-        <div className="phead" data-pdf-page-head data-testid="doc-page-head">
-          <div className="prule" />
-          <div className="pline">{[id.legalName, id.vatNo && `VAT ${id.vatNo}`, id.tel && `Tel ${id.tel}`, id.email].filter(Boolean).join("  ·  ")}</div>
-        </div>
+        <>
+          {/* Page 1: company line only. Pages 2+: company line above the thin blue/orange rule (Johan 14 Oct 07:53). */}
+          <div className="phead" data-pdf-page-head-first data-testid="doc-page-head-first">
+            <div className="pline">{headLine}</div>
+          </div>
+          <div className="phead" data-pdf-page-head data-testid="doc-page-head" style={{ display: "none" }}>
+            <div className="pline">{headLine}</div>
+            <div className="prule" />
+          </div>
+        </>
       )}
       <div className="pg">
         <div className="top">

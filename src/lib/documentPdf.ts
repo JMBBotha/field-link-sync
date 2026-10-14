@@ -293,9 +293,13 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     const headEl = captureElement.querySelector<HTMLElement>("[data-pdf-page-head]");
     const footEl = captureElement.querySelector<HTMLElement>("[data-pdf-every-page]");
     const snap = (el: HTMLElement | null) => el ? html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false, width: el.scrollWidth, height: el.scrollHeight }) : Promise.resolve(null);
-    const headCanvas = await snap(headEl);
+    // Page 2+ head is display:none on screen; show it just for its own capture.
+    const headFirstEl = captureElement.querySelector<HTMLElement>("[data-pdf-page-head-first]");
+    let headCanvas: HTMLCanvasElement | null = null;
+    if (headEl) { const d = headEl.style.display; headEl.style.display = "block"; headCanvas = await snap(headEl); headEl.style.display = d; }
+    const headFirstCanvas = await snap(headFirstEl);
     const footCanvas = await snap(footEl);
-    for (const el of [headEl, footEl]) if (el) bottomEls.push(el);
+    for (const el of [headEl, headFirstEl, footEl]) if (el) bottomEls.push(el);
     const prevDisplay = bottomEls.map((el) => el.style.display);
     bottomEls.forEach((el) => { el.style.display = "none"; });
     let capturedCanvas: HTMLCanvasElement;
@@ -318,7 +322,9 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     const margin = 5;
     const usableWidth = pageWidth - margin * 2;
     const toMm = (c: HTMLCanvasElement | null) => (c && c.width ? (c.height * usableWidth) / capturedCanvas.width : 0);
-    const headH = toMm(headCanvas);
+    const headH = Math.max(toMm(headCanvas), toMm(headFirstCanvas));
+    const headLaterH = toMm(headCanvas);
+    const headFirstH = toMm(headFirstCanvas);
     const footH = toMm(footCanvas);
     const topReserve = headH ? headH + 3 : 0;
     const botReserve = footH ? footH + 3 : 0;
@@ -423,10 +429,16 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
 
     // Stamp head + footer on every page (document, appended pages and terms pages).
     const headImg = headCanvas && headCanvas.width ? headCanvas.toDataURL("image/png") : null;
+    const headFirstImg = headFirstCanvas && headFirstCanvas.width ? headFirstCanvas.toDataURL("image/png") : null;
     const footImg = footCanvas && footCanvas.width ? footCanvas.toDataURL("image/png") : null;
     for (let i = 1; i <= doc.getNumberOfPages(); i++) {
       doc.setPage(i);
-      if (headImg) doc.addImage(headImg, "PNG", margin, margin, usableWidth, headH, undefined, "FAST");
+      // Page 1: company line only. Last page: only the blue banner line (no rule, no company line).
+      // Pages in between: company line above the thin blue/orange rule (Johan 14 Oct 07:53-07:54).
+      const last = i === doc.getNumberOfPages() && i > 1;
+      if (i === 1) { if (headFirstImg) doc.addImage(headFirstImg, "PNG", margin, margin, usableWidth, headFirstH, undefined, "FAST"); }
+      else if (last) { if (headImg || headFirstImg) { doc.setDrawColor(14, 165, 233); doc.setLineWidth(2.5); doc.line(20, 18, pageWidth - 20, 18); } }
+      else if (headImg) doc.addImage(headImg, "PNG", margin, margin, usableWidth, headLaterH, undefined, "FAST");
       if (footImg) doc.addImage(footImg, "PNG", margin, pageHeight - margin - footH, usableWidth, footH, undefined, "FAST");
     }
 
