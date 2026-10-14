@@ -9,12 +9,35 @@ import JobCard from "@/components/cards/JobCard";
 import { assignmentToCard } from "@/lib/cardModel";
 import { useRole } from "@/hooks/useRole";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, CheckCircle, XCircle, Play, RefreshCw, CloudOff, FileText } from "lucide-react";
+import { CalendarDays, CheckCircle, XCircle, Play, RefreshCw, CloudOff, FileText, Navigation } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { JobCardListSkeleton } from "@/components/ui/skeletons";
 import FieldShell from "@/components/field/FieldShell";
 import DepositPaymentChip, { type DepositChipState } from "@/components/shared/DepositPaymentChip";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+
+/** Accept → On my way → Started → Done, driven by assignment + job status (the job watchdog reads the same fields). */
+export function jobStepIndex(assignmentStatus: string, jobStatus?: string | null): number {
+  if (assignmentStatus === "completed" || jobStatus === "completed") return 4;
+  if (assignmentStatus === "in_progress" || jobStatus === "in_progress") return 3;
+  if (assignmentStatus === "accepted" && jobStatus === "dispatched") return 2;
+  if (assignmentStatus === "accepted") return 1;
+  return 0;
+}
+
+function JobSteps({ assignmentStatus, jobStatus }: { assignmentStatus: string; jobStatus?: string | null }) {
+  const done = jobStepIndex(assignmentStatus, jobStatus);
+  const steps = ["Accepted", "On my way", "Started", "Done"];
+  return (
+    <ol className="grid grid-cols-4 gap-1" aria-label="Job progress" data-testid="job-steps">
+      {steps.map((s, i) => (
+        <li key={s} className={cn("rounded-md px-1 py-1 text-center text-[11px] font-semibold",
+          i < done ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>{s}</li>
+      ))}
+    </ol>
+  );
+}
 
 type MyAssignedJobRow = {
   assignment_id: string;
@@ -291,14 +314,36 @@ const AdminMyJobsPage = () => {
                             </Button>
                           </div>
                         )}
-                        {assignment.status === "accepted" && (
+                        {!["rejected"].includes(assignment.status) && <JobSteps assignmentStatus={assignment.status} jobStatus={job.status} />}
+                        {assignment.status === "accepted" && job.status === "scheduled" && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              className="h-11 gap-1.5"
+                              disabled={anyPendingForThis}
+                              onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "accepted", jobStatus: "dispatched" })}
+                            >
+                              {isPendingFor("accepted") ? <Spinner /> : <Navigation className="h-4 w-4" />}
+                              {isPendingFor("accepted") ? "Saving…" : "On my way"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="h-11 gap-1.5"
+                              disabled={anyPendingForThis}
+                              onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "in_progress", jobStatus: "in_progress" })}
+                            >
+                              {isPendingFor("in_progress") ? <Spinner /> : <Play className="h-4 w-4" />}
+                              {isPendingFor("in_progress") ? "Starting…" : "Start job"}
+                            </Button>
+                          </div>
+                        )}
+                        {assignment.status === "accepted" && job.status !== "scheduled" && (
                           <Button
                             className="w-full h-11 gap-1.5"
                             disabled={anyPendingForThis}
                             onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "in_progress", jobStatus: "in_progress" })}
                           >
                             {isPendingFor("in_progress") ? <Spinner /> : <Play className="h-4 w-4" />}
-                            {isPendingFor("in_progress") ? "Starting…" : "Start Job"}
+                            {isPendingFor("in_progress") ? "Starting…" : "I've arrived – start job"}
                           </Button>
                         )}
                         {assignment.status === "in_progress" && (
@@ -308,7 +353,7 @@ const AdminMyJobsPage = () => {
                             onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "completed", jobStatus: "completed" })}
                           >
                             {isPendingFor("completed") ? <Spinner /> : <CheckCircle className="h-4 w-4" />}
-                            {isPendingFor("completed") ? "Completing…" : "Complete Job"}
+                            {isPendingFor("completed") ? "Finishing…" : "Finish job"}
                           </Button>
                         )}
                       </>
