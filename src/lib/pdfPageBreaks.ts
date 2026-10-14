@@ -36,16 +36,33 @@ export function computePageCuts(
   pageRows: number,
   maxLookback = Math.floor(pageRows * 0.35),
   forced: number[] = [],
+  /** Minimum run of quiet rows to cut in (faint text rows can look "quiet" one at a time). */
+  minRun = 1,
+  /** Row ranges [top, bottom] that must not be split (data-pdf-keep, e.g. the totals table). */
+  keep: [number, number][] = [],
 ): number[] {
   const cuts: number[] = [];
   let start = 0;
   // Forced breaks (elements marked data-pdf-break-before) always start a new page.
   const must = [...new Set(forced.map((f) => Math.round(f)))].filter((f) => f > 0 && f < height).sort((a, b) => a - b);
   while (height - start > pageRows || must.some((f) => f > start)) {
-    const next = must.find((f) => f > start);
+    if (height - start <= pageRows && !must.some((f) => f > start)) break;
+    let next = must.find((f) => f > start);
+    // A forced break just below a normal page cut would leave a near-empty page: skip it.
+    if (next !== undefined && cuts.length > 0 && next - start < pageRows * 0.15) {
+      must.splice(must.indexOf(next), 1);
+      next = must.find((f) => f > start);
+    }
     if (next !== undefined && next <= start + pageRows) {
-      cuts.push(next);
-      start = next;
+      // Snap up to the nearest quiet run so a slight capture drift never cuts a text line.
+      let cut = next;
+      for (let y = next, run = 0; y > Math.max(start + 1, next - 60); y--) {
+        run = isQuiet(y) ? run + 1 : 0;
+        if (run >= Math.max(minRun, 8)) { cut = y + Math.floor(run / 2); break; }
+      }
+      if (keep.some(([a, b]) => a < cut && cut < b)) cut = next;
+      cuts.push(cut);
+      start = cut;
       continue;
     }
     if (height - start <= pageRows) break;
@@ -57,11 +74,14 @@ export function computePageCuts(
         // Walk up through the quiet run and cut in its middle for a little breathing room.
         let top = y;
         while (top - 1 >= floor && isQuiet(top - 1)) top--;
+        if (y - top + 1 < minRun && top > floor) { y = top; continue; }
         cut = Math.floor((top + y + 1) / 2);
         if (cut <= start) cut = y;
         break;
       }
     }
+    const k = keep.find(([a, b]) => a < cut && cut < b && a - start > pageRows * 0.2);
+    if (k) cut = Math.max(start + 1, k[0] - 4);
     cuts.push(cut);
     start = cut;
   }

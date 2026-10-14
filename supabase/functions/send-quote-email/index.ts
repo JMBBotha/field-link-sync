@@ -46,6 +46,15 @@ async function loadBrand(sb: any, quoteId?: string | null): Promise<Brand> {
   return b;
 }
 
+// Top starting line on every client email (Johan 14 Oct): thin blue/orange rule + short company line
+// from the sending company's own record, matching the PDF page head.
+function topStrip(brand: Brand): string {
+  const parts = [brand.name, brand.sig?.vatNo ? `VAT ${brand.sig.vatNo}` : "", brand.phone ? `Tel ${brand.phone}` : (brand.sig?.tel ? `Tel ${brand.sig.tel}` : ""), brand.email || brand.sig?.email || ""].filter(Boolean).map(escH);
+  return `<tr><td style="padding:14px 28px 0;background:#ffffff;"><div style="height:2px;line-height:2px;font-size:0;background:#1AA7EC;background-image:linear-gradient(90deg,#1AA7EC 75%,#F7941D 75%);">&nbsp;</div>`
+    + (parts.length ? `<div style="font-size:10px;color:#6b7a8c;padding:5px 0 10px;">${parts.join(" &middot; ")}</div>` : "")
+    + `</td></tr>`;
+}
+
 function buildHtmlEmail(brand: Brand, clientName: string, quoteNumber: string, date: string, totalAmount: number, unsubscribeUrl: string, quoteUrl?: string | null, depositRequest = false, signatureHtml = "", unitCardsHtml = ""): string {
   const formattedTotal = formatZAR(totalAmount);
   const currentYear = new Date().getFullYear();
@@ -61,6 +70,7 @@ function buildHtmlEmail(brand: Brand, clientName: string, quoteNumber: string, d
 <body style="margin:0;padding:0;background-color:#eef3f9;font-family:Arial,Helvetica,sans-serif;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef3f9;"><tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:10px;overflow:hidden;">
+  ${topStrip(brand)}
   <tr><td style="background:#0B4FA8;background-image:linear-gradient(90deg,#0B4FA8,#1AA7EC);padding:22px 28px;color:#ffffff;">
     ${brand.logoUrl && brand.logoOnColour ? `<img src="${escH(brand.logoUrl)}" alt="${company}" width="200" style="display:block;width:200px;max-width:200px;height:auto;border:0;margin-bottom:10px;">` : brand.logoUrl ? `<div style="background:#ffffff;border-radius:8px;display:inline-block;padding:6px 10px;margin-bottom:10px;"><img src="${escH(brand.logoUrl)}" alt="${company}" width="180" style="display:block;width:180px;max-width:180px;height:auto;border:0;"></div>` : ""}
     <div style="font-size:20px;font-weight:800;">${company}</div>
@@ -102,6 +112,7 @@ function buildBundleHtml(brand: Brand, clientName: string, rows: BundleRow[], ur
 <body style="margin:0;padding:0;background-color:#eef3f9;font-family:Arial,Helvetica,sans-serif;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef3f9;"><tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:10px;overflow:hidden;">
+  ${topStrip(brand)}
   <tr><td style="background:#0B4FA8;background-image:linear-gradient(90deg,#0B4FA8,#1AA7EC);padding:22px 28px;color:#ffffff;">
     ${brand.logoUrl && brand.logoOnColour ? `<img src="${escH(brand.logoUrl)}" alt="${company}" width="200" style="display:block;width:200px;max-width:200px;height:auto;border:0;margin-bottom:10px;">` : brand.logoUrl ? `<div style="background:#ffffff;border-radius:8px;display:inline-block;padding:6px 10px;margin-bottom:10px;"><img src="${escH(brand.logoUrl)}" alt="${company}" width="180" style="display:block;width:180px;max-width:180px;height:auto;border:0;"></div>` : ""}
     <div style="font-size:20px;font-weight:800;">${company}</div>

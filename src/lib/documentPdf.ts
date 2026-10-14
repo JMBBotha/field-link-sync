@@ -142,14 +142,20 @@ export function shouldAppendFixedTerms(docType: string | undefined): boolean {
   return docType !== "Quote";
 }
 
-function appendTermsPages(doc: jsPDF, company: TermsCompanyInfo) {
+/** reserve: when the document stamps its own page head/footer, the terms text keeps clear of
+ * them (no own top line / text footer, which would overlap the stamped ones). */
+function appendTermsPages(doc: jsPDF, company: TermsCompanyInfo, reserve?: { top: number; bottom: number }) {
   const termsBlocks = buildTermsBlocks(company);
   if (!termsBlocks || termsBlocks.length === 0) return;
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
   const lineHeight = 3.6;
-  let y = 28;
+  const startY = reserve ? reserve.top + 6 : 28;
+  const limitY = reserve ? doc.internal.pageSize.getHeight() - reserve.bottom - 6 : doc.internal.pageSize.getHeight() - 30;
+  let y = startY;
+  const topLine = () => { if (reserve) return; doc.setDrawColor(...BLUE); doc.setLineWidth(2.5); doc.line(margin, 18, pageWidth - margin, 18); };
+  const pageFooter = () => { if (!reserve) addTermsFooter(doc, company); };
 
   const BLUE = [14, 165, 233] as const;
   const DARK_GRAY = [17, 24, 39] as const;
@@ -157,18 +163,14 @@ function appendTermsPages(doc: jsPDF, company: TermsCompanyInfo) {
   doc.addPage();
 
   // Blue accent line at top
-  doc.setDrawColor(...BLUE);
-  doc.setLineWidth(2.5);
-  doc.line(margin, 18, pageWidth - margin, 18);
+  topLine();
 
   termsBlocks.forEach((block) => {
-    if (y > doc.internal.pageSize.getHeight() - 30) {
-      addTermsFooter(doc, company);
+    if (y > limitY) {
+      pageFooter();
       doc.addPage();
-      doc.setDrawColor(...BLUE);
-      doc.setLineWidth(2.5);
-      doc.line(margin, 18, pageWidth - margin, 18);
-      y = 28;
+      topLine();
+      y = startY;
     }
 
     switch (block.type) {
@@ -232,7 +234,7 @@ function appendTermsPages(doc: jsPDF, company: TermsCompanyInfo) {
     }
   });
 
-  addTermsFooter(doc, company);
+  pageFooter();
 }
 
 /**
@@ -275,11 +277,25 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
 
     // Signature block(s) marked data-pdf-bottom are captured on their own and pinned to the
     // bottom of the last page below, so hide them from the main capture.
+    // A bottom block taller than ~40% of a page (e.g. a quote's full terms) flows with the content
+    // instead of being pinned, so it can never overrun the page head.
+    const flowed: HTMLElement[] = [];
+    captureElement.querySelectorAll<HTMLElement>("[data-pdf-bottom]").forEach((el) => {
+      if (el.scrollHeight / Math.max(1, captureElement.scrollWidth) * 200 > 287 * 0.4) { el.removeAttribute("data-pdf-bottom"); el.setAttribute("data-pdf-flowed", ""); flowed.push(el); }
+    });
     const bottomEls = Array.from(captureElement.querySelectorAll<HTMLElement>("[data-pdf-bottom]"));
     const bottomCanvases = [] as HTMLCanvasElement[];
     for (const el of bottomEls) {
       bottomCanvases.push(await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false, width: el.scrollWidth, height: el.scrollHeight }));
     }
+    // Per-page head (thin blue/orange rule + short company line) and per-page footer (logo + unit
+    // image) are captured once and stamped onto EVERY page after pagination (Johan 14 Oct).
+    const headEl = captureElement.querySelector<HTMLElement>("[data-pdf-page-head]");
+    const footEl = captureElement.querySelector<HTMLElement>("[data-pdf-every-page]");
+    const snap = (el: HTMLElement | null) => el ? html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false, width: el.scrollWidth, height: el.scrollHeight }) : Promise.resolve(null);
+    const headCanvas = await snap(headEl);
+    const footCanvas = await snap(footEl);
+    for (const el of [headEl, footEl]) if (el) bottomEls.push(el);
     const prevDisplay = bottomEls.map((el) => el.style.display);
     bottomEls.forEach((el) => { el.style.display = "none"; });
     let capturedCanvas: HTMLCanvasElement;
@@ -301,7 +317,14 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 5;
     const usableWidth = pageWidth - margin * 2;
-    const usableHeight = pageHeight - margin * 2;
+    const toMm = (c: HTMLCanvasElement | null) => (c && c.width ? (c.height * usableWidth) / capturedCanvas.width : 0);
+    const headH = toMm(headCanvas);
+    const footH = toMm(footCanvas);
+    const topReserve = headH ? headH + 3 : 0;
+    const botReserve = footH ? footH + 3 : 0;
+    // Pages 2+ get a little extra breathing room under the page head.
+    const contTop = topReserve ? 6 : 0;
+    const usableHeight = pageHeight - margin * 2 - topReserve - botReserve - contTop;
     const scaledHeight = (capturedCanvas.height * usableWidth) / capturedCanvas.width;
     const imgData = capturedCanvas.toDataURL("image/png", 1);
     // Clickable links in the PDF for anchors marked data-pdf-link (our own brochure links only).
@@ -326,11 +349,16 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     const forcedCuts = Array.from(captureElement.querySelectorAll<HTMLElement>("[data-pdf-break-before]"))
       .map((el) => (el.getBoundingClientRect().top - captureElement.getBoundingClientRect().top) * canvasScale)
       .filter((y) => y > 0);
+    const rootTop = captureElement.getBoundingClientRect().top;
+    const keepRanges = Array.from(captureElement.querySelectorAll<HTMLElement>("[data-pdf-keep]")).map((el) => {
+      const r = el.getBoundingClientRect();
+      return [(r.top - rootTop) * canvasScale, (r.bottom - rootTop) * canvasScale] as [number, number];
+    });
     bottomEls.forEach((el, i) => { el.style.display = prevDisplay[i]; });
 
-    let lastPageUsed = scaledHeight;
+    let lastPageUsed = scaledHeight + topReserve;
     if (scaledHeight <= usableHeight && forcedCuts.length === 0) {
-      doc.addImage(imgData, "PNG", margin, margin, usableWidth, scaledHeight, undefined, "FAST");
+      doc.addImage(imgData, "PNG", margin, margin + topReserve, usableWidth, scaledHeight, undefined, "FAST");
       addLinks(0, capturedCanvas.height);
     } else {
       // Split at quiet pixel rows (gaps between lines/blocks) so no text line is cut in half.
@@ -338,7 +366,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       const srcCtx = capturedCanvas.getContext("2d");
       const pixels = srcCtx?.getImageData(0, 0, capturedCanvas.width, capturedCanvas.height).data;
       const cuts = pixels
-        ? computePageCuts((y) => isUniformRow(pixels, capturedCanvas.width, y), capturedCanvas.height, pageRows, undefined, forcedCuts)
+        ? computePageCuts((y) => isUniformRow(pixels, capturedCanvas.width, y), capturedCanvas.height, pageRows, undefined, forcedCuts, 8, keepRanges)
         : computePageCuts(() => true, capturedCanvas.height, pageRows, 0, forcedCuts);
       let sourceY = 0;
       cuts.forEach((cut, page) => {
@@ -354,9 +382,9 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
           ctx.drawImage(capturedCanvas, 0, sourceY, capturedCanvas.width, sourceSliceH, 0, 0, capturedCanvas.width, sourceSliceH);
         }
         const sliceHeight = (sourceSliceH / capturedCanvas.height) * scaledHeight;
-        doc.addImage(sliceCanvas.toDataURL("image/png"), "PNG", margin, margin, usableWidth, sliceHeight, undefined, "FAST");
+        doc.addImage(sliceCanvas.toDataURL("image/png"), "PNG", margin, margin + topReserve + (page > 0 ? contTop : 0), usableWidth, sliceHeight, undefined, "FAST");
         addLinks(sourceY, cut);
-        lastPageUsed = sliceHeight;
+        lastPageUsed = sliceHeight + topReserve + (page > 0 ? contTop : 0);
         sourceY = cut;
       });
     }
@@ -366,10 +394,10 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       if (!c.width || !c.height) continue;
       const h = (c.height * usableWidth) / capturedCanvas.width;
       const w = (c.width * usableWidth) / capturedCanvas.width;
-      const { newPage, y } = placeBottomBlock(lastPageUsed, h, pageHeight, margin);
+      const { newPage, y } = placeBottomBlock(lastPageUsed, h, pageHeight - botReserve, margin);
       if (newPage) doc.addPage();
       doc.addImage(c.toDataURL("image/png"), "PNG", margin, y, w, h, undefined, "FAST");
-      lastPageUsed = usableHeight;
+      lastPageUsed = pageHeight;
     }
 
     // Appended pages (unit brochures): each element fitted onto its own A4 page.
@@ -379,7 +407,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
           const c = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false, width: el.scrollWidth, height: el.scrollHeight });
           const s = Math.min(usableWidth / c.width, usableHeight / c.height);
           doc.addPage();
-          doc.addImage(c.toDataURL("image/png"), "PNG", (pageWidth - c.width * s) / 2, margin, c.width * s, c.height * s, undefined, "FAST");
+          doc.addImage(c.toDataURL("image/png"), "PNG", (pageWidth - c.width * s) / 2, margin + topReserve + contTop, c.width * s, c.height * s, undefined, "FAST");
         } catch (e) {
           console.warn("[documentPdf] skipped appended page", e);
         }
@@ -390,7 +418,16 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     // captured page). The fixed appended terms pages are kept for invoices/other documents only.
     if (shouldAppendFixedTerms(opts.docType)) {
       const termsCompany = opts.termsCompany || (await fetchTermsCompanyInfo(opts.companyName));
-      appendTermsPages(doc, termsCompany);
+      appendTermsPages(doc, termsCompany, headH || footH ? { top: margin + topReserve + contTop, bottom: margin + botReserve } : undefined);
+    }
+
+    // Stamp head + footer on every page (document, appended pages and terms pages).
+    const headImg = headCanvas && headCanvas.width ? headCanvas.toDataURL("image/png") : null;
+    const footImg = footCanvas && footCanvas.width ? footCanvas.toDataURL("image/png") : null;
+    for (let i = 1; i <= doc.getNumberOfPages(); i++) {
+      doc.setPage(i);
+      if (headImg) doc.addImage(headImg, "PNG", margin, margin, usableWidth, headH, undefined, "FAST");
+      if (footImg) doc.addImage(footImg, "PNG", margin, pageHeight - margin - footH, usableWidth, footH, undefined, "FAST");
     }
 
     if ((opts.brochures && opts.brochures.length > 0) || (opts.imagePages && opts.imagePages.length > 0)) {
@@ -407,6 +444,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     return new Uint8Array(doc.output("arraybuffer"));
   } finally {
     disableCaptureMode?.();
+    document.querySelectorAll<HTMLElement>("[data-pdf-flowed]").forEach((el) => { el.removeAttribute("data-pdf-flowed"); el.setAttribute("data-pdf-bottom", ""); });
   }
 }
 

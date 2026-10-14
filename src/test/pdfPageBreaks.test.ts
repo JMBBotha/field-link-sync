@@ -30,12 +30,23 @@ describe("isUniformRow", () => {
 
 describe("computePageCuts forced breaks (invoice closing page, Johan 14 Oct)", () => {
   it("starts a new page at a forced break even when the content would fit", () => {
-    expect(computePageCuts(() => true, 500, 1000, undefined, [300])).toEqual([300, 500]);
+    expect(computePageCuts(() => false, 500, 1000, undefined, [300])).toEqual([300, 500]);
   });
   it("combines forced breaks with normal pagination", () => {
-    const cuts = computePageCuts(() => true, 2500, 1000, 0, [400]);
+    const cuts = computePageCuts(() => false, 2500, 1000, 0, [400]);
     expect(cuts[0]).toBe(400);
     expect(cuts[cuts.length - 1]).toBe(2500);
     cuts.reduce((prev, c) => { expect(c - prev).toBeLessThanOrEqual(1000); return c; }, 0);
+  });
+});
+
+describe("computePageCuts keep ranges + forced-break snapping (Johan 14 Oct)", () => {
+  it("never cuts inside a keep range (totals table)", () => {
+    const cuts = computePageCuts(() => true, 3000, 1000, undefined, [], 1, [[700, 1100]]);
+    expect(cuts.some((c) => c > 700 && c < 1100)).toBe(false);
+  });
+  it("skips a forced break that would leave a near-empty page", () => {
+    const cuts = computePageCuts(() => false, 1500, 1000, 0, [1050]);
+    expect(cuts).toEqual([1000, 1500]);
   });
 });

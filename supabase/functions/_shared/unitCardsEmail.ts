@@ -39,7 +39,7 @@ export async function loadUnitCardsStripHtml(supabase: any, quoteId?: string | n
     return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
       <tr><td style="border-left:4px solid #F7941D;padding-left:10px;font-size:15px;font-weight:800;color:#0B4FA8;">The units in this quote</td></tr>
       <tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${cells}</tr></table></td></tr>
-      <tr><td style="font-size:10px;color:#9aa7b5;">Images are illustrative. Full details per unit in the attached quote and on the quote link.</td></tr>
+      <tr><td style="font-size:10px;color:#4b5563;">Images are illustrative. Full details per unit in the attached quote and on the quote link.</td></tr>
     </table>`;
   } catch (e) {
     console.error("unit cards strip failed (email still sends):", e);

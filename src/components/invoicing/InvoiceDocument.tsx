@@ -1,4 +1,4 @@
-import BrandDocument from "@/components/documents/BrandDocument";
+import BrandDocument, { NotesBody } from "@/components/documents/BrandDocument";
 import { foldFlatLines } from "@/lib/clientQuoteRollup";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { cleanBanking } from "@/lib/companyIdentity";
@@ -60,20 +60,6 @@ const formatDate = (dateStr?: string | null) =>
     ? new Date(dateStr).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })
     : "—";
 
-/**
- * Notes printed line by line (Johan 14 Oct): the PDF capture (html2canvas) ignores
- * white-space:pre-line, which ran the warranty / terms-of-payment text together. Each line is
- * its own block and blank lines become paragraph gaps; the text itself is unchanged.
- */
-const NotesBody = ({ text }: { text: string }) => (
-  <div data-testid="invoice-notes">
-    {text.split(/\n\s*\n/).map((para, i) => (
-      <p key={i} style={{ margin: i ? "7px 0 0" : 0 }}>
-        {para.split("\n").map((line, j) => <span key={j} style={{ display: "block" }}>{line}</span>)}
-      </p>
-    ))}
-  </div>
-);
 
 /**
  * FreshBooks-style tax invoice document.

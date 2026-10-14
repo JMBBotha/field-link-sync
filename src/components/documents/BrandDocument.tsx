@@ -99,12 +99,16 @@ const CSS = `
 .bd .terms{margin-top:16px;border-top:1px solid var(--line);padding-top:10px;font-size:10px;line-height:1.45;color:#3a4859;white-space:pre-line}
 .bd .sig{margin-top:22px;display:flex;align-items:center;gap:14px;font-size:9.5px;line-height:1.4;border-top:1px solid var(--line);padding:10px 42px 14px}
 .bd .slogo{height:40px}.bd .sbar{width:2px;align-self:stretch;background:var(--b2)}.bd .stext{flex:1;color:var(--b1)}.bd .sn{font-weight:800}.bd .sunits{height:50px}
-/* Closing page (invoices) */
+/* Page head: thin blue/orange starting rule + short company line, every page (Johan 14 Oct) */
+.bd .phead{padding:14px 42px 0}.bd .prule{height:2px;background:linear-gradient(90deg,var(--b2) 75%,var(--or) 75%)}
+.bd .pline{font-size:9px;letter-spacing:.02em;color:var(--mut);padding:4px 0 2px}
+.bd.bold .phead{padding-bottom:8px}
+/* Closing page */
 .bd .closing{padding:6px 0 18px}
 .bd .notes.wide{grid-template-columns:1fr 1fr;gap:14px 28px;font-size:11.5px;margin-top:0}
 .bd .notes.wide .note.full{grid-column:1/-1}
 .bd .notes.wide .note p,.bd .notes.wide .note div{line-height:1.55}
-.bd .foot{margin-top:22px}.bd .foot .terms{margin:0 42px;padding-bottom:4px}.bd .foot .sig{margin-top:12px}
+.bd .foot{margin-top:22px}.bd .foot .terms{margin:0 42px;padding-bottom:4px}
 @media print{.bd .closing{break-before:page;page-break-before:always}.bd .foot{break-inside:avoid;page-break-inside:avoid}}
 /* Bold */
 .bd.bold .pg{padding-top:0}
@@ -122,11 +126,28 @@ const CSS = `
  .bd{overflow-wrap:anywhere}.bd .r{white-space:normal}.bd .pg{padding:18px 14px 0}.bd .top{flex-direction:column;align-items:flex-start}.bd.bold .top{margin:0 -14px;padding:16px 14px}
  .bd .hl{flex-direction:column;align-items:flex-start;gap:10px}.bd .logo{height:70px}.bd .ttl{text-align:left}
  .bd .parties{flex-direction:column}.bd .items .c-code{display:none}.bd .items th,.bd .items td{padding:6px 4px}
- .bd .notes,.bd .notes.wide{grid-template-columns:1fr}.bd .foot .terms{margin:0 14px}.bd .tot{min-width:0;width:100%}.bd .sig{flex-wrap:wrap;padding:10px 14px}.bd .sunits{display:none}
+ .bd .notes,.bd .notes.wide{grid-template-columns:1fr}.bd .foot .terms{margin:0 14px}.bd .phead{padding:10px 14px 0}.bd .tot{min-width:0;width:100%}.bd .sig{flex-wrap:wrap;padding:10px 14px}.bd .sunits{display:none}
 }`;
+
+/**
+ * Notes printed line by line (Johan 14 Oct): the PDF capture (html2canvas) ignores
+ * white-space:pre-line, which ran the warranty / terms-of-payment text together. Each line is
+ * its own block and blank lines become paragraph gaps; the text itself is unchanged.
+ */
+export const NotesBody = ({ text, testId = "invoice-notes" }: { text: string; testId?: string }) => (
+  <div data-testid={testId}>
+    {text.split(/\n\s*\n/).map((para, i) => (
+      <p key={i} style={{ margin: i ? "7px 0 0" : 0 }}>
+        {para.split("\n").map((line, j) => <span key={j} style={{ display: "block" }}>{line}</span>)}
+      </p>
+    ))}
+  </div>
+);
 
 export default function BrandDocument(p: BrandDocumentProps) {
   const style = p.style ?? documentStyleOf(p.profile);
+  // Client documents all use the closing-page layout (Johan 14 Oct); pass closingPage={false} to opt out.
+  const closing = p.closingPage ?? true;
   const id = profileIdentity(p.profile);
   const massair = isMassairProfile(p.profile);
   const recordLogo = (p.profile as any)?.logo_url as string | undefined;
@@ -137,6 +158,12 @@ export default function BrandDocument(p: BrandDocumentProps) {
   return (
     <div data-pdf-capture-root={p.captureRoot} data-doc-style={style} data-testid="brand-document" className={`bd ${style} pdf-page mx-auto w-full ${p.className || ""}`}>
       <style>{CSS}</style>
+      {closing && (
+        <div className="phead" data-pdf-page-head data-testid="doc-page-head">
+          <div className="prule" />
+          <div className="pline">{[id.legalName, id.vatNo && `VAT ${id.vatNo}`, id.tel && `Tel ${id.tel}`, id.email].filter(Boolean).join("  ·  ")}</div>
+        </div>
+      )}
       <div className="pg">
         <div className="top">
           <div className="hl">
@@ -186,26 +213,29 @@ export default function BrandDocument(p: BrandDocumentProps) {
           {p.sections.length === 0 && <tbody><tr><td colSpan={5} style={{ textAlign: "center", color: "#94a3b8" }}>No line items</td></tr></tbody>}
         </table>
 
-        <table className="tot" data-testid="estimate-totals"><tbody>
+        <table className="tot" data-pdf-keep data-testid="estimate-totals"><tbody>
           {p.totals.map((t) => <tr key={t.label}><td>{t.label}</td><td>{t.negative ? "-" : ""}{money(t.value)}</td></tr>)}
           <tr className="g"><td>{p.grandLabel}</td><td>{money(p.grandTotal)}</td></tr>
         </tbody></table>
         {p.afterTotals}
 
-        {!p.closingPage && p.cards.length > 0 && (
+        {!closing && p.cards.length > 0 && (
           <div className="notes">{p.cards.map((c) => <div className="note" key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
         )}
-        {!p.closingPage && <div className="terms" data-testid="doc-terms"><h4>Terms</h4>{withEoe(p.terms, id.legalName, p.docType)}</div>}
-        {p.closingPage && p.cards.length > 0 && (
+        {!closing && <div className="terms" data-testid="doc-terms"><h4>Terms</h4><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>}
+        {closing && p.cards.length > 0 && (
           <div className="closing" data-pdf-break-before data-testid="doc-closing">
             <div className="notes wide">{p.cards.map((c, i) => <div className={`note${p.cards.length % 2 === 1 && i === p.cards.length - 1 ? " full" : ""}`} key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
           </div>
         )}
       </div>
-      {p.closingPage ? (
+      {closing ? (
         <div className="foot" data-pdf-bottom data-testid="doc-foot">
-          <div className="terms" data-testid="doc-terms"><h4>Terms</h4>{withEoe(p.terms, id.legalName, p.docType)}</div>
-        <div className="sig" data-testid="doc-signature">
+          <div className="terms" data-testid="doc-terms"><h4>Terms</h4><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>
+        </div>
+      ) : null}
+      {closing ? (
+        <div className="sig" data-pdf-every-page data-testid="doc-signature">
           {logo && <img className="slogo" src={massair && !recordLogo ? logoLight : logo} alt="" />}
           <div className="sbar" />
           <div className="stext">
@@ -215,7 +245,6 @@ export default function BrandDocument(p: BrandDocumentProps) {
             <div>{[addr, id.vatNo && `VAT ${id.vatNo}`].filter(Boolean).join("  |  ")}</div>
           </div>
           {massair && <img className="sunits" src={units} alt="" />}
-        </div>
         </div>
       ) : (
         <div className="sig" data-pdf-bottom data-testid="doc-signature">

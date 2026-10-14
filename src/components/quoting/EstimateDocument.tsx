@@ -22,7 +22,7 @@ import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
 import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
 import { withEoe } from "@/lib/eoeClause";
 import { planTermsSentence, type PaymentPlan } from "@/lib/paymentPlans";
-import BrandDocument, { type BrandDocSection } from "@/components/documents/BrandDocument";
+import BrandDocument, { NotesBody, type BrandDocSection } from "@/components/documents/BrandDocument";
 import { foldFlatLines } from "@/lib/clientQuoteRollup";
 
 export interface EstimateDocLineItem {
@@ -434,7 +434,7 @@ const EstimateDocument = ({
         grandTotal={grandTotal}
         afterTotals={unitCards}
         cards={[
-          ...(notes ? [{ title: "Overview", body: <p className="whitespace-pre-line">{notes}</p> }] : []),
+          ...(notes ? [{ title: "Overview", body: <NotesBody testId="quote-overview" text={notes} /> }] : []),
           { title: "Payment", body: <p>{planTermsSentence(paymentPlan, settings.default_deposit_percentage, settings.default_payment_terms_days)}</p> },
           { title: "Banking", body: <p>{bankLine || "—"}. Reference: quote number.</p> },
         ]}

@@ -159,7 +159,7 @@ export function QuoteUnitCardsView({ cards, variant = "light", companyId = null 
       </div>
       <p style={{ color: MUTED, fontSize: 11, margin: "0 0 10px 14px" }}>Every unit is supplied and installed by 0800-BE-COOL with our workmanship guarantee.</p>
       {cards.map((c) => <Card key={c.modelKey} card={c} variant={variant} companyId={companyId} />)}
-      <p style={{ fontSize: 9, color: "#9aa7b5", marginTop: 4 }}>
+      <p style={{ fontSize: 9, color: "#4b5563", marginTop: 4 }}>
         Product images are illustrative{sources.length ? ` (© ${sources.join(", ")})` : ""}; specifications are as published by the manufacturer and may change. The model numbers quoted are binding.
       </p>
     </section>
