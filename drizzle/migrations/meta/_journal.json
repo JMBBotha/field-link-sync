@@ -50,6 +50,13 @@
       "when": 1791484004018,
       "tag": "0006_labour_mode_job_auto_rate",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791995208167,
+      "tag": "0007_job_watchdog_alerts",
+      "breakpoints": true
     }
   ]
 }

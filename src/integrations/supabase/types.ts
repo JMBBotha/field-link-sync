@@ -3810,6 +3810,56 @@ export type Database = {
           },
         ]
       }
+      job_alerts: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          job_id: string
+          message: string
+          profile_id: string | null
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          rule: string
+          severity: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          job_id: string
+          message: string
+          profile_id?: string | null
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule: string
+          severity?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+          message?: string
+          profile_id?: string | null
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule?: string
+          severity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_alerts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_completions: {
         Row: {
           company_id: string | null
@@ -10779,6 +10829,10 @@ export type Database = {
         }
         Returns: number
       }
+      _job_alert_office: {
+        Args: { _company: string; _uid: string }
+        Returns: boolean
+      }
       _mins_time: { Args: { p: number }; Returns: string }
       _norm_addr: { Args: { a: string }; Returns: string }
       _p3_handoff_role: {
@@ -11963,6 +12017,7 @@ export type Database = {
           revenue: number
         }[]
       }
+      job_watchdog_scan: { Args: never; Returns: number }
       lead_call_accept: { Args: { p_attempt: string }; Returns: Json }
       lead_call_candidates: {
         Args: { p_lead: string }
