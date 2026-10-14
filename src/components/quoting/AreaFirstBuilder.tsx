@@ -1,3 +1,5 @@
+import { useLivePreviewPref, useIsWideScreen } from "@/hooks/useLivePreviewPref";
+import { useAuth } from "@/contexts/AuthContext";
 import { CanonicalAreaCreateControl } from "@/components/quote/AreaNameChips";
 import { useQuoteContext } from "@/contexts/QuoteContext";
 import { useQuery } from "@tanstack/react-query";
@@ -31,8 +33,11 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
       </section>
   );
 
+  const { user: livePreviewUser } = useAuth();
+  const [livePreviewOpen] = useLivePreviewPref(livePreviewUser?.id ?? null);
+  const livePreviewWide = useIsWideScreen() && livePreviewOpen;
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-4 p-3 pb-24 sm:p-4">
+    <div className={`mx-auto w-full ${livePreviewWide ? "max-w-[1760px]" : "max-w-4xl"} space-y-4 p-3 pb-24 sm:p-4`}>
       <EstimateBuilder
         areaFirst
         areaCreationControl={createAreaSection}

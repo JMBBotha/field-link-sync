@@ -1,3 +1,4 @@
+import { useLivePreviewPref, useIsWideScreen } from "@/hooks/useLivePreviewPref";
 import { usePdfBasket } from "@/lib/pdfBasketStore";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -48,6 +49,8 @@ const AdminEstimateDetailPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const [livePreviewOpen] = useLivePreviewPref(user?.id ?? null);
+  const livePreviewWide = useIsWideScreen() && livePreviewOpen;
   const qc = useQueryClient();
   const { settings } = useCompanySettings();
   const [busy, setBusy] = useState<string | null>(null);
@@ -167,7 +170,7 @@ const AdminEstimateDetailPage = () => {
   }
 
   return (
-    <div className="estimate-page mx-auto min-h-full max-w-4xl space-y-3 px-2 pt-2 pb-[calc(8rem+env(safe-area-inset-bottom,0px))] sm:px-3">
+    <div className={`estimate-page mx-auto min-h-full ${livePreviewWide ? "max-w-[1760px]" : "max-w-4xl"} space-y-3 px-2 pt-2 pb-[calc(8rem+env(safe-area-inset-bottom,0px))] sm:px-3`}>
       {/* Header */}
       <div className="flex h-9 items-center justify-between print:hidden">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => void goBack()} disabled={leaving} aria-label="Back">

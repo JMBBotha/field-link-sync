@@ -36,6 +36,9 @@ import { formatRand } from "@/utils/formatRand";
 import { useActiveSpecials } from "@/hooks/useActiveSpecials";
 import LabourModeSwitch, { useLabourModeSwitch } from "@/components/quoting/LabourModeSwitch";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
+import LiveClientPreview from "@/components/quoting/LiveClientPreview";
+import { useLivePreviewPref, useIsWideScreen } from "@/hooks/useLivePreviewPref";
+import { useAuth } from "@/contexts/AuthContext";
 import QuoteQuickEditor from "@/components/quoting/QuoteQuickEditor";
 import StaffMarginCard, { lineUnitCostOrNull } from "@/components/quoting/StaffMarginCard";
 import SalespersonHistoryLine from "@/components/quoting/SalespersonHistoryLine";
@@ -136,6 +139,13 @@ export default function EstimateBuilder({
   const [focusAreaId, setFocusAreaId] = useState<string | null>(null);
   const [openAdd, setOpenAdd] = useState<{ key: string; mode: "unit" | "service" | "material" | "favourites" | "selected" } | null>(null);
   const isPhone = useIsPhone();
+  // Live client preview (Johan 14 Oct): side pane on >= 1280px, Editor | Client view toggle below that.
+  const { user } = useAuth();
+  const [previewOpen, setPreviewOpen] = useLivePreviewPref(user?.id ?? null);
+  const wide = useIsWideScreen();
+  const [narrowTab, setNarrowTab] = useState<"editor" | "client">("editor");
+  const previewActive = wide ? previewOpen : narrowTab === "client";
+  const [drafts, setDrafts] = useState<Record<string, { item_name?: string; description?: string | null; unit_price?: number }>>({});
   const [collapsedAreaKeys, setCollapsedAreaKeys] = useState<Set<string>>(new Set());
   const collapseReadyRef = useRef(false);
   const previousLineAreasRef = useRef<Map<string, string>>(new Map());
@@ -411,206 +421,268 @@ export default function EstimateBuilder({
           </Button>
         )}
       </div>
+      {(() => { const editorDoc = (
       <EstimateDocument
-        estimateNumber={quoteNumber}
-        issueDate={issueDate}
-        validUntil={validUntil}
-        customerName={customerName}
-        customerCompany={customerCompany}
-        customerAddress={customerAddress}
-        customerEmail={customerEmail}
-        customerPhone={customerPhone}
-        customerVat={customerVat}
-        items={[]}
-        subtotal={subtotal}
-        taxRate={vatRate}
-        taxAmount={taxAmount}
-        grandTotal={total}
-        discountAmount={discount}
-        discountLabel={
-          discountType === "fixed" ? null : discountType ? `${discountValue}%` : null
-        }
-        notes={notes}
-        termsText={termsText}
-        companyId={meta?.company_id ?? null}
-        editing={{
-          areaCreationControl,
-          areas: editAreas,
-          collapsedAreaKeys,
-          onToggleArea: (key) => setCollapsedAreaKeys((current) => {
-            const next = new Set(current);
-            if (next.has(key)) next.delete(key); else next.add(key);
-            return next;
-          }),
-          selectedLineId,
-          onSelectLine: setSelectedLineId,
-          onLineChange: (id, patch) => {
-            const cur = items.find((i) => i.id === id);
-            if (cur && isLabourItem(cur)) { void changeLabour(id, patch.quantity ?? Number(cur.quantity), patch.unit_price); return; }
-            const display = cur ? lineFor(cur) : null;
-            // Per-metre trunking: keep total_price = round(metres × length sell ÷ length, 2).
-            if (cur && isMetreLine(cur as any) && (patch.quantity != null || patch.unit_price != null)) {
-              const next = { ...cur, ...patch } as any;
-              (patch as any).total_price = metreLineTotal(next, Number(next.quantity) || 0);
-            }
-            if (cur && !isMetreLine(cur as any) && (patch.quantity != null || patch.unit_price != null)) {
-              const q = (cur.metadata as any)?.kit?.pricing_type === "p/meter" ? 1 : Number(patch.quantity ?? cur.quantity) || 0;
-              (patch as any).total_price = Number((q * (Number(patch.unit_price ?? cur.unit_price) || 0)).toFixed(2));
-            }
-            // Typed price = per-quote override on this line only (never the product); Units % changes keep it.
-            if (cur && patch.unit_price != null) {
-              const md: any = cur.metadata || {}, c = Number(md.unit_cost ?? md.cost_excl);
-              (patch as any).metadata = { ...md, manual_price: true, price_overridden: true, ...(c > 0 ? { markup_percent: Number(((Number(patch.unit_price) / c - 1) * 100).toFixed(2)) } : {}) };
-            }
-            void updateItem(id, patch as any);
-            onChanged?.();
-          },
-          bracketOptions: BRACKET_OPTIONS.filter((o) => liveProducts.some((p) => p.product_code === o.code)),
-          onSwapBracket: (id, code) => {
-            const cur = items.find((i) => i.id === id);
-            const p = liveProducts.find((x) => x.product_code === code);
-            if (!cur || !p) return;
-            const qty = Number(cur.quantity) || 1;
-            const { unitSell: _u, ...f } = catalogLineFields(p, qty);
-            void updateItem(id, { ...f, metadata: { ...(cur.metadata || {}), ...f.metadata, install: (cur.metadata as any)?.install }, total_price: Number((qty * f.unit_price).toFixed(2)) } as any);
-            onChanged?.();
-          },
-          kitOptions: kitPool.map((k) => ({ id: k.id, label: `${kitSizeLabel(k)} kit` })),
-          onSwapKit: (id, bundleId) => {
-            const cur = items.find((i) => i.id === id);
-            const b = kitPool.find((k) => k.id === bundleId);
-            if (!cur || !b) return;
-            const before = { item_name: cur.item_name, item_number: cur.item_number, description: cur.description, length: cur.length, unit_price: cur.unit_price, total_price: cur.total_price, metadata: cur.metadata };
-            const { perMetre: _p, ...patch } = kitSwapPatch(cur as any, b as any);
-            void updateItem(id, patch as any);
-            onChanged?.();
-            toast({
-              title: `Kit is now ${kitSizeLabel(b)}`,
-              description: `${patch.length} m · ${formatRand(patch.unit_price)} excl. VAT`,
-              action: <ToastAction altText="Undo kit swap" onClick={() => { void updateItem(id, before as any); onChanged?.(); }}>Undo</ToastAction>,
-            });
-          },
-          onKitLengthChange: (id, metres) => {
-            const cur = items.find((i) => i.id === id);
-            if (!cur || !(metres > 0)) return;
-            const before = { length: cur.length, unit_price: cur.unit_price, total_price: cur.total_price, metadata: cur.metadata };
-            const patch = kitLengthPatch(cur as any, metres);
-            void updateItem(id, patch as any);
-            onChanged?.();
-            toast({
-              title: `Kit length ${patch.length} m · ${formatRand(patch.unit_price)} excl. VAT`,
-              action: <ToastAction altText="Undo kit length" onClick={() => { void updateItem(id, before as any); onChanged?.(); }}>Undo</ToastAction>,
-            });
-          },
-          onDeleteLine: (id) => {
-            const cur = items.find((i) => i.id === id);
-            const linked = cur && lineFor(cur).isAcUnit ? linkedToUnit(items, id, (x) => installTag(x)?.unit_item_id).map((x) => x.id) : [];
-            if (linked.length) { setRemoveUnit({ id, linked }); return; }
-            void deleteItem(id);
-            if (selectedLineId === id) setSelectedLineId(null);
-            onChanged?.();
-          },
-          onRenameArea: (id, name) => {
-            void updateArea(id, { name });
-            onChanged?.();
-          },
-          focusAreaId,
-          onNameDefaultArea: async (name) => {
-            const created = await addArea(name);
-            if (created?.id) {
-              // Move any orphan lines into the newly named area.
-              for (const i of topLevel.filter((x) => !x.area_id && !isJobLabour(x as any))) {
-                void updateItem(i.id, { area_id: created.id } as any);
+          estimateNumber={quoteNumber}
+          issueDate={issueDate}
+          validUntil={validUntil}
+          customerName={customerName}
+          customerCompany={customerCompany}
+          customerAddress={customerAddress}
+          customerEmail={customerEmail}
+          customerPhone={customerPhone}
+          customerVat={customerVat}
+          items={[]}
+          subtotal={subtotal}
+          taxRate={vatRate}
+          taxAmount={taxAmount}
+          grandTotal={total}
+          discountAmount={discount}
+          discountLabel={
+            discountType === "fixed" ? null : discountType ? `${discountValue}%` : null
+          }
+          notes={notes}
+          termsText={termsText}
+          companyId={meta?.company_id ?? null}
+          editing={{
+            areaCreationControl,
+            areas: editAreas,
+            collapsedAreaKeys,
+            onToggleArea: (key) => setCollapsedAreaKeys((current) => {
+              const next = new Set(current);
+              if (next.has(key)) next.delete(key); else next.add(key);
+              return next;
+            }),
+            selectedLineId,
+            onSelectLine: setSelectedLineId,
+            onDraft: (id, patch) => { if (previewActive) setDrafts((d) => ({ ...d, [id]: { ...d[id], ...patch } })); },
+            onLineChange: (id, patch) => {
+              setDrafts((d) => { if (!d[id]) return d; const { [id]: _drop, ...rest } = d; return rest; });
+              const cur = items.find((i) => i.id === id);
+              if (cur && isLabourItem(cur)) { void changeLabour(id, patch.quantity ?? Number(cur.quantity), patch.unit_price); return; }
+              const display = cur ? lineFor(cur) : null;
+              // Per-metre trunking: keep total_price = round(metres × length sell ÷ length, 2).
+              if (cur && isMetreLine(cur as any) && (patch.quantity != null || patch.unit_price != null)) {
+                const next = { ...cur, ...patch } as any;
+                (patch as any).total_price = metreLineTotal(next, Number(next.quantity) || 0);
               }
-              setActiveAreaId(created.id);
-              setFocusAreaId(null);
-            }
-            onChanged?.();
-          },
-          activeAreaId,
-          onSelectArea: setActiveAreaId,
-          onAddArea: async (name) => {
-            if (!allowNewArea()) return;
-            const created = await addArea(name || `Area ${areas.length + 1}`);
-            if (created?.id) {
-              setActiveAreaId(created.id);
-              setFocusAreaId(created.id);
-            }
-          },
-
-          onDeleteArea: async (id) => {
-            const area = editAreas.find((a) => a.id === id);
-            const count = items.filter((i) => i.area_id === id).length;
-            const name = area?.name || "this area";
-            const msg = count > 0
-              ? `Delete ${name} and its ${count} line${count === 1 ? "" : "s"} (incl. labour)?`
-              : `Delete ${name}?`;
-            if (!window.confirm(msg)) return;
-            if (activeAreaId === id) setActiveAreaId(null);
-            const { error } = await trackQuoteWrite(supabase.from("quote_items").delete().eq("area_id", id).eq("quote_id", quoteId));
-            if (error) { toast({ title: "Could not delete area lines", description: error.message, variant: "destructive" }); return; }
-            await deleteArea(id);
-            onChanged?.();
-          },
-          renderAreaAdd: (areaId) => {
-            const key = areaId ?? "unassigned";
-            const open = openAdd?.key === key ? openAdd.mode : null;
-            const editorProps = {
-              targetAreaId: areaId ?? undefined,
-              createTargetArea: areaId ? undefined : async () => {
-                if (!allowNewArea()) return null;
-                const created = await addArea(`Area ${areas.length + 1}`);
-                if (!created?.id) return null;
-                return created.id;
-              },
-              onChanged,
-              onAddedToArea: (id: string) => setActiveAreaId(id),
-              pdfBasket: pdfBasket ?? savedPdfBasket,
-            };
-            return (
-              <div className="space-y-2" onClick={(event) => event.stopPropagation()} data-area-key={key}>
-                <div className="flex flex-wrap gap-2" data-testid="canonical-add-actions">
-                  {([['unit', '+ Add unit'], ['service', '+ Add service'], ['material', '+ Add material'], ['selected', '★ Selected']] as const).map(([mode, label]) => (
-                    <Button key={mode} type="button" size="sm" variant="outline" data-solid aria-pressed={open === mode}
-                      className={`h-9 rounded-md px-3 text-sm ${mode === "unit" ? "option1-add-unit" : "option1-add-secondary"}`}
-                      onClick={() => setOpenAdd(open === mode ? null : { key, mode })}>{label}</Button>
-                  ))}
+              if (cur && !isMetreLine(cur as any) && (patch.quantity != null || patch.unit_price != null)) {
+                const q = (cur.metadata as any)?.kit?.pricing_type === "p/meter" ? 1 : Number(patch.quantity ?? cur.quantity) || 0;
+                (patch as any).total_price = Number((q * (Number(patch.unit_price ?? cur.unit_price) || 0)).toFixed(2));
+              }
+              // Typed price = per-quote override on this line only (never the product); Units % changes keep it.
+              if (cur && patch.unit_price != null) {
+                const md: any = cur.metadata || {}, c = Number(md.unit_cost ?? md.cost_excl);
+                (patch as any).metadata = { ...md, manual_price: true, price_overridden: true, ...(c > 0 ? { markup_percent: Number(((Number(patch.unit_price) / c - 1) * 100).toFixed(2)) } : {}) };
+              }
+              void updateItem(id, patch as any);
+              onChanged?.();
+            },
+            bracketOptions: BRACKET_OPTIONS.filter((o) => liveProducts.some((p) => p.product_code === o.code)),
+            onSwapBracket: (id, code) => {
+              const cur = items.find((i) => i.id === id);
+              const p = liveProducts.find((x) => x.product_code === code);
+              if (!cur || !p) return;
+              const qty = Number(cur.quantity) || 1;
+              const { unitSell: _u, ...f } = catalogLineFields(p, qty);
+              void updateItem(id, { ...f, metadata: { ...(cur.metadata || {}), ...f.metadata, install: (cur.metadata as any)?.install }, total_price: Number((qty * f.unit_price).toFixed(2)) } as any);
+              onChanged?.();
+            },
+            kitOptions: kitPool.map((k) => ({ id: k.id, label: `${kitSizeLabel(k)} kit` })),
+            onSwapKit: (id, bundleId) => {
+              const cur = items.find((i) => i.id === id);
+              const b = kitPool.find((k) => k.id === bundleId);
+              if (!cur || !b) return;
+              const before = { item_name: cur.item_name, item_number: cur.item_number, description: cur.description, length: cur.length, unit_price: cur.unit_price, total_price: cur.total_price, metadata: cur.metadata };
+              const { perMetre: _p, ...patch } = kitSwapPatch(cur as any, b as any);
+              void updateItem(id, patch as any);
+              onChanged?.();
+              toast({
+                title: `Kit is now ${kitSizeLabel(b)}`,
+                description: `${patch.length} m · ${formatRand(patch.unit_price)} excl. VAT`,
+                action: <ToastAction altText="Undo kit swap" onClick={() => { void updateItem(id, before as any); onChanged?.(); }}>Undo</ToastAction>,
+              });
+            },
+            onKitLengthChange: (id, metres) => {
+              const cur = items.find((i) => i.id === id);
+              if (!cur || !(metres > 0)) return;
+              const before = { length: cur.length, unit_price: cur.unit_price, total_price: cur.total_price, metadata: cur.metadata };
+              const patch = kitLengthPatch(cur as any, metres);
+              void updateItem(id, patch as any);
+              onChanged?.();
+              toast({
+                title: `Kit length ${patch.length} m · ${formatRand(patch.unit_price)} excl. VAT`,
+                action: <ToastAction altText="Undo kit length" onClick={() => { void updateItem(id, before as any); onChanged?.(); }}>Undo</ToastAction>,
+              });
+            },
+            onDeleteLine: (id) => {
+              const cur = items.find((i) => i.id === id);
+              const linked = cur && lineFor(cur).isAcUnit ? linkedToUnit(items, id, (x) => installTag(x)?.unit_item_id).map((x) => x.id) : [];
+              if (linked.length) { setRemoveUnit({ id, linked }); return; }
+              void deleteItem(id);
+              if (selectedLineId === id) setSelectedLineId(null);
+              onChanged?.();
+            },
+            onRenameArea: (id, name) => {
+              void updateArea(id, { name });
+              onChanged?.();
+            },
+            focusAreaId,
+            onNameDefaultArea: async (name) => {
+              const created = await addArea(name);
+              if (created?.id) {
+                // Move any orphan lines into the newly named area.
+                for (const i of topLevel.filter((x) => !x.area_id && !isJobLabour(x as any))) {
+                  void updateItem(i.id, { area_id: created.id } as any);
+                }
+                setActiveAreaId(created.id);
+                setFocusAreaId(null);
+              }
+              onChanged?.();
+            },
+            activeAreaId,
+            onSelectArea: setActiveAreaId,
+            onAddArea: async (name) => {
+              if (!allowNewArea()) return;
+              const created = await addArea(name || `Area ${areas.length + 1}`);
+              if (created?.id) {
+                setActiveAreaId(created.id);
+                setFocusAreaId(created.id);
+              }
+            },
+  
+            onDeleteArea: async (id) => {
+              const area = editAreas.find((a) => a.id === id);
+              const count = items.filter((i) => i.area_id === id).length;
+              const name = area?.name || "this area";
+              const msg = count > 0
+                ? `Delete ${name} and its ${count} line${count === 1 ? "" : "s"} (incl. labour)?`
+                : `Delete ${name}?`;
+              if (!window.confirm(msg)) return;
+              if (activeAreaId === id) setActiveAreaId(null);
+              const { error } = await trackQuoteWrite(supabase.from("quote_items").delete().eq("area_id", id).eq("quote_id", quoteId));
+              if (error) { toast({ title: "Could not delete area lines", description: error.message, variant: "destructive" }); return; }
+              await deleteArea(id);
+              onChanged?.();
+            },
+            renderAreaAdd: (areaId) => {
+              const key = areaId ?? "unassigned";
+              const open = openAdd?.key === key ? openAdd.mode : null;
+              const editorProps = {
+                targetAreaId: areaId ?? undefined,
+                createTargetArea: areaId ? undefined : async () => {
+                  if (!allowNewArea()) return null;
+                  const created = await addArea(`Area ${areas.length + 1}`);
+                  if (!created?.id) return null;
+                  return created.id;
+                },
+                onChanged,
+                onAddedToArea: (id: string) => setActiveAreaId(id),
+                pdfBasket: pdfBasket ?? savedPdfBasket,
+              };
+              return (
+                <div className="space-y-2" onClick={(event) => event.stopPropagation()} data-area-key={key}>
+                  <div className="flex flex-wrap gap-2" data-testid="canonical-add-actions">
+                    {([['unit', '+ Add unit'], ['service', '+ Add service'], ['material', '+ Add material'], ['selected', '★ Selected']] as const).map(([mode, label]) => (
+                      <Button key={mode} type="button" size="sm" variant="outline" data-solid aria-pressed={open === mode}
+                        className={`h-9 rounded-md px-3 text-sm ${mode === "unit" ? "option1-add-unit" : "option1-add-secondary"}`}
+                        onClick={() => setOpenAdd(open === mode ? null : { key, mode })}>{label}</Button>
+                    ))}
+                  </div>
+                  {open && <QuoteQuickEditor key={`${key}-${open}`} mode={open} onClose={() => setOpenAdd(null)} {...editorProps} />}
                 </div>
-                {open && <QuoteQuickEditor key={`${key}-${open}`} mode={open} onClose={() => setOpenAdd(null)} {...editorProps} />}
+              );
+            },
+            discountControl,
+            onMoveLine: (id, areaId) => {
+              // A unit carries its install lines with it.
+              const source = items.find((i) => i.id === id);
+              const kids = items.filter((x) => installTag(x)?.unit_item_id === id);
+              for (const x of [source, ...kids]) if (x) void updateItem(x.id, { area_id: areaId } as any);
+              onChanged?.();
+            },
+            onDuplicateLine: async (id, areaId) => {
+              const src = items.find((i) => i.id === id);
+              if (!src) return;
+              const { id: _id, created_at: _c, updated_at: _u, quote_id: _q, ...rest } = src as any;
+              const md = { ...(rest.metadata || {}) };
+              delete md.install; // the copy is a stand-alone line, not linked to the original unit
+              const maxSort = Math.max(0, ...items.filter((i) => i.area_id === areaId).map((i) => Number(i.sort_order) || 0));
+              await addItem({ ...rest, metadata: md, area_id: areaId, sort_order: maxSort + 1 } as any);
+              onChanged?.();
+            },
+            onAddLabour: (areaId) => void addLabourForArea(areaId),
+            labourRate,
+            onLabourChange: (id, hours, rate) => void changeLabour(id, hours, rate),
+            onRemoveLabour: (id) => { void deleteItem(id); onChanged?.(); },
+            unassignedLabour: unassignedLabourLines(topLevel, areas, labourMode).map(lineFor),
+            jobLabour: labourMode === "job"
+              ? { lines: jobModeLabourLines(topLevel, areas).map((i) => ({ ...lineFor(i), acUnitCount: quoteUnitCount })), defaultHours: defaultLabourHours(quoteUnitCount, perUnitHours), onAdd: () => void addJobLabour() }
+              : undefined,
+            labourModeToggle: (
+              <LabourModeSwitch className="my-3" checked={labourMode === "job"} disabled={labourSwitch.busy} onChange={(job) => void switchLabourMode(job ? "job" : "per_area")} />
+            ),
+          }}
+        />
+        );
+      const preview = (
+        <LiveClientPreview
+          quoteId={quoteId}
+          companyId={meta?.company_id ?? null}
+          quoteNumber={quoteNumber}
+          issueDate={issueDate}
+          validUntil={validUntil}
+          customerName={customerName}
+          customerCompany={customerCompany}
+          customerAddress={customerAddress}
+          customerEmail={customerEmail}
+          customerPhone={customerPhone}
+          customerVat={customerVat}
+          vatRate={vatRate}
+          notes={notes}
+          termsText={termsText}
+          items={items}
+          areas={areas}
+          discountType={discountType}
+          discountValue={discountValue}
+          drafts={drafts}
+          className="rounded-md ring-1 ring-slate-200 shadow-sm"
+        />
+      );
+      if (wide) {
+        return (
+          <div data-testid="live-preview-layout" className={previewOpen ? "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-4" : ""}>
+            <div className="min-w-0">{editorDoc}</div>
+            {previewOpen ? (
+              <aside className="sticky top-2 min-w-0 print:hidden" data-html2canvas-ignore data-pdf-hide data-testid="live-preview-pane">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Client view · what the client receives</span>
+                  <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setPreviewOpen(false)} aria-label="Hide client view">Hide ›</Button>
+                </div>
+                <div className="max-h-[calc(100vh-5rem)] overflow-y-auto">{preview}</div>
+              </aside>
+            ) : (
+              <div className="fixed right-2 top-1/3 z-30 print:hidden" data-html2canvas-ignore data-pdf-hide>
+                <Button type="button" size="sm" variant="outline" className="h-8 bg-white text-xs shadow" onClick={() => setPreviewOpen(true)} data-testid="live-preview-show">‹ Client view</Button>
               </div>
-            );
-          },
-          discountControl,
-          onMoveLine: (id, areaId) => {
-            // A unit carries its install lines with it.
-            const source = items.find((i) => i.id === id);
-            const kids = items.filter((x) => installTag(x)?.unit_item_id === id);
-            for (const x of [source, ...kids]) if (x) void updateItem(x.id, { area_id: areaId } as any);
-            onChanged?.();
-          },
-          onDuplicateLine: async (id, areaId) => {
-            const src = items.find((i) => i.id === id);
-            if (!src) return;
-            const { id: _id, created_at: _c, updated_at: _u, quote_id: _q, ...rest } = src as any;
-            const md = { ...(rest.metadata || {}) };
-            delete md.install; // the copy is a stand-alone line, not linked to the original unit
-            const maxSort = Math.max(0, ...items.filter((i) => i.area_id === areaId).map((i) => Number(i.sort_order) || 0));
-            await addItem({ ...rest, metadata: md, area_id: areaId, sort_order: maxSort + 1 } as any);
-            onChanged?.();
-          },
-          onAddLabour: (areaId) => void addLabourForArea(areaId),
-          labourRate,
-          onLabourChange: (id, hours, rate) => void changeLabour(id, hours, rate),
-          onRemoveLabour: (id) => { void deleteItem(id); onChanged?.(); },
-          unassignedLabour: unassignedLabourLines(topLevel, areas, labourMode).map(lineFor),
-          jobLabour: labourMode === "job"
-            ? { lines: jobModeLabourLines(topLevel, areas).map((i) => ({ ...lineFor(i), acUnitCount: quoteUnitCount })), defaultHours: defaultLabourHours(quoteUnitCount, perUnitHours), onAdd: () => void addJobLabour() }
-            : undefined,
-          labourModeToggle: (
-            <LabourModeSwitch className="my-3" checked={labourMode === "job"} disabled={labourSwitch.busy} onChange={(job) => void switchLabourMode(job ? "job" : "per_area")} />
-          ),
-        }}
-      />
+            )}
+          </div>
+        );
+      }
+      return (
+        <div>
+          <div role="tablist" aria-label="Editor or client view" className="mb-2 inline-flex rounded-md border border-slate-200 bg-white p-0.5 text-xs print:hidden" data-html2canvas-ignore data-pdf-hide>
+            {(["editor", "client"] as const).map((t) => (
+              <button key={t} type="button" role="tab" aria-selected={narrowTab === t} data-testid={`live-preview-tab-${t}`}
+                className={`rounded px-3 py-1.5 font-medium ${narrowTab === t ? "bg-[#1B3A5C] text-white" : "text-slate-600"}`}
+                onClick={() => setNarrowTab(t)}>{t === "editor" ? "Editor" : "Client view"}</button>
+            ))}
+          </div>
+          <div className={narrowTab === "editor" ? "" : "hidden"}>{editorDoc}</div>
+          {narrowTab === "client" && preview}
+        </div>
+      );
+      })()}
 
       {margin.visible && (
         <div className="print:hidden" data-html2canvas-ignore>

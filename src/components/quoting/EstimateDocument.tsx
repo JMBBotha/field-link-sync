@@ -143,6 +143,8 @@ export interface EstimateEditing {
   jobLabour?: { lines: EstimateEditLine[]; defaultHours: number; onAdd: () => void };
   /** Staff-only "Labour: one total for whole job" switch, under the last labour row (never printed). */
   labourModeToggle?: ReactNode;
+  /** Keystroke-level, uncommitted edits (live client preview only; never written to the DB). */
+  onDraft?: (id: string, patch: { item_name?: string; description?: string | null; unit_price?: number }) => void;
 }
 
 
@@ -701,10 +703,12 @@ const EstimateDocument = ({
                                 )}
                                 <div className="option1-line-copy min-w-0 text-sm leading-relaxed">
                                   <span key={`${line.id}-name-${line.displayName ?? ""}`} contentEditable suppressContentEditableWarning role="textbox" aria-label="Line name" title={line.displayName ? line.name : undefined}
+                                    onInput={(event) => { const value = event.currentTarget.textContent?.trim(); if (value) editing.onDraft?.(line.id, { item_name: value }); }}
                                     onBlur={(event) => { const value = event.currentTarget.textContent?.trim(); if (value && value !== (line.displayName || line.name)) editing.onLineChange(line.id, { item_name: value }); }}
                                     className="font-bold outline-none">{line.displayName || line.name}</span>
                                   <span> — </span>
                                   <span key={`${line.id}-desc-${line.description ?? ""}`} contentEditable suppressContentEditableWarning role="textbox" aria-label="Line description"
+                                    onInput={(event) => editing.onDraft?.(line.id, { description: event.currentTarget.textContent || null })}
                                     onBlur={(event) => { const value = event.currentTarget.textContent || ""; if (value !== (line.description ?? "")) editing.onLineChange(line.id, { description: value || null }); }}
                                     className="outline-none">{line.description || ""}</span>
                                 </div>
@@ -726,6 +730,7 @@ const EstimateDocument = ({
                               type="number"
                               step="0.01"
                               defaultValue={line.unit_price}
+                              onInput={(e) => { const v = Number(e.currentTarget.value); if (Number.isFinite(v)) editing.onDraft?.(line.id, { unit_price: v }); }}
                               onBlur={(e) => {
                                 const v = Number(e.target.value);
                                 if (Number.isFinite(v) && v !== line.unit_price) {

@@ -46,7 +46,8 @@ function resolveCaptureElement(opts: DocumentPdfOptions): HTMLElement {
   ].filter((selector): selector is string => Boolean(selector));
 
   for (const selector of selectors) {
-    const found = document.querySelector<HTMLElement>(selector);
+    // Never capture the staff-only live client preview pane (it mirrors the same document).
+    const found = Array.from(document.querySelectorAll<HTMLElement>(selector)).find((el) => !el.closest("[data-live-client-preview]"));
     if (found) return found;
   }
 
