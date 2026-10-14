@@ -50,7 +50,7 @@ export default function QuoteUnitCardsToggle({ quoteId }: { quoteId: string }) {
     <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 px-4 py-2 text-sm print:hidden" data-testid="unit-cards-toggle">
       <LayoutGrid className="h-4 w-4 text-muted-foreground" />
       <span className="font-medium">Unit cards on client quote</span>
-      <Switch checked={on} onCheckedChange={toggle} aria-label="Show unit cards on the client quote" />
+      <Switch data-no-min="" checked={on} onCheckedChange={toggle} aria-label="Show unit cards on the client quote" />
       {stats.models > 0 && (
         <span className="text-xs text-muted-foreground">
           {stats.approved}/{stats.models} model{stats.models === 1 ? "" : "s"} with approved content
