@@ -8,6 +8,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { useNewLineScroll } from "@/hooks/useNewLineScroll";
 import { useIsPhone } from "@/hooks/useIsPhone";
 import logo from "@/assets/logo.png";
+import logoLight from "@/assets/brand/logo-light.png";
+import { isMassairProfile } from "@/components/documents/BrandDocument";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import type { ClientRollupArea } from "@/lib/clientQuoteRollup";
 import AreaLabourRow from "@/components/quoting/AreaLabourRow";
@@ -316,8 +318,12 @@ const formatDate = (dateStr?: string | null) =>
     : "—";
 
 /** Borderless inputs so the document still reads like a document while editing. */
+/** Light client design tokens for the editor (look only). Montserrat with the same fallbacks as BrandDocument. */
+const EDITOR_FONT = { fontFamily: "Montserrat, Arial, Helvetica, sans-serif" } as const;
+const META_LABEL = "text-[10px] font-bold uppercase tracking-[0.14em] text-[#1AA7EC]";
+
 const inputBase =
-  "w-full rounded-sm border border-transparent bg-transparent px-1 py-0.5 outline-none hover:border-slate-200 focus:border-[#1B3A5C] focus:bg-white";
+  "w-full rounded-sm border border-transparent bg-transparent px-1 py-0.5 outline-none hover:border-slate-200 focus:border-[#1AA7EC] focus:bg-white";
 
 /**
  * FreshBooks-style estimate document.
@@ -388,6 +394,8 @@ const EstimateDocument = ({
     : setBank;
 
   const vatPercent = toPercent(taxRate);
+  // Editor header logo = the Light client document's logo (record logo, else Massair artwork).
+  const editorLogo = ((record as any)?.logo_url as string | undefined) || (isMassairProfile(record) ? logoLight : null);
   const accountType = bank.account_type;
   const cleanTerms = stripLegacyBanking(termsText);
 
@@ -444,26 +452,35 @@ const EstimateDocument = ({
       }`}
     >
 
-      <div className="p-8 sm:p-10">
-        {/* ── Top: logo left, business info right ── */}
-        <div className="flex items-start justify-between gap-6">
-          <div className="rounded-2xl border border-slate-200 bg-[#1B3A5C] p-3 shadow-sm">
-            <img src={logo} alt="Company logo" className="h-16 w-auto object-contain" />
+      <div className="p-8 sm:p-10" style={EDITOR_FONT}>
+        {/* ── Header: Light client design (Johan 14 Oct, step 1 — look only) ── */}
+        <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center" data-testid="editor-brand-header">
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+            {editorLogo ? (
+              <img src={editorLogo} alt="Company logo" className="h-20 w-auto object-contain sm:h-24" />
+            ) : (
+              <div className="rounded-2xl border border-slate-200 bg-[#0B4FA8] p-3 shadow-sm">
+                <img src={logo} alt="Company logo" className="h-16 w-auto object-contain" />
+              </div>
+            )}
+            <div className="border-l-2 border-[#1AA7EC] pl-4 text-[#0B4FA8] [&_*]:!text-[#0B4FA8] [&_*]:!text-left [&_*]:!items-start [&_*]:!justify-start">
+              <CompanyBlock profile={record} fetchProfile={false} />
+            </div>
           </div>
-          <CompanyBlock profile={record} fetchProfile={false} />
+          <div className="sm:text-right">
+            <h1 className="text-[26px] font-extrabold uppercase leading-tight tracking-[0.06em] text-[#0B4FA8]">
+              {editing ? "Estimate" : customerName ? `${customerName} — Quote / Proposal` : "Quote / Proposal"}
+            </h1>
+            <p className="mt-1 text-[13px] font-semibold text-[#F7941D]">{estimateNumber}</p>
+          </div>
         </div>
-
-        {/* ── Title ── */}
-        <h1 className="mt-8 text-[22px] font-bold tracking-tight text-[#1B3A5C]">
-          {editing ? "Estimate" : customerName ? `${customerName} — Quote / Proposal` : "Quote / Proposal"}
-        </h1>
-
+        <div aria-hidden className="mt-4 h-[3px]" style={{ background: "linear-gradient(90deg,#1AA7EC 75%,#F7941D 75%)" }} />
 
         {/* ── Meta row ── */}
-        <div className="mt-4 grid grid-cols-2 gap-6 border-y border-slate-200 py-6 sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-6 pb-6 sm:grid-cols-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Prepared For</p>
-            <p className="mt-1 text-[13px] font-semibold text-slate-900">{customerName}</p>
+            <p className={META_LABEL}>Prepared For</p>
+            <p className="mt-1 text-[14px] font-bold text-[#0B4FA8]">{customerName}</p>
             {customerCompany && <p className="text-[12px] text-slate-600">{customerCompany}</p>}
             {customerAddress && <p className="text-[12px] leading-snug text-slate-600">{customerAddress}</p>}
             {customerEmail && <p className="text-[12px] text-slate-600">{customerEmail}</p>}
@@ -471,20 +488,20 @@ const EstimateDocument = ({
             {customerVat && customerVat.trim() && <p className="text-[12px] text-slate-600" data-testid="customer-vat">VAT No {customerVat.trim()}</p>}
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Date</p>
-            <p className="mt-1 text-[13px] font-medium text-slate-900">{formatDate(issueDate)}</p>
-            <p className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Valid Until</p>
-            <p className="mt-1 text-[13px] font-medium text-slate-900">
+            <p className={META_LABEL}>Date</p>
+            <p className="mt-1 text-[13px] font-semibold text-slate-800">{formatDate(issueDate)}</p>
+            <p className={`mt-2 ${META_LABEL}`}>Valid Until</p>
+            <p className="mt-1 text-[13px] font-semibold text-slate-800">
               {validUntil ? formatDate(validUntil) : "30 days"}
             </p>
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Estimate Number</p>
-            <p className="mt-1 text-[13px] font-medium text-slate-900">{estimateNumber}</p>
+            <p className={META_LABEL}>Estimate Number</p>
+            <p className="mt-1 text-[13px] font-semibold text-slate-800">{estimateNumber}</p>
           </div>
           <div className="sm:text-right">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total (ZAR)</p>
-            <p className="mt-1 text-2xl font-bold text-[#1B3A5C]">{formatCurrency(grandTotal)}</p>
+            <p className={META_LABEL}>Total (ZAR)</p>
+            <p className="mt-1 text-2xl font-extrabold text-[#0B4FA8]">{formatCurrency(grandTotal)}</p>
           </div>
         </div>
 
@@ -875,7 +892,7 @@ const EstimateDocument = ({
             {rollup.map((area, idx) => (
               <section key={area.areaId ?? `general-${idx}`} className="border-b border-slate-200 pb-4">
                 <div className="flex items-start justify-between gap-4">
-                  <h2 className="text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]">{area.areaName}</h2>
+                  <h2 className="text-[13px] font-semibold uppercase tracking-wide text-[#0B4FA8]">{area.areaName}</h2>
                   <div className="text-right">
                     <p className="text-[10px] uppercase tracking-wider text-slate-400">{area.isJobLabour ? "Total" : "Area total"}</p>
                     <p className="text-[15px] font-bold text-slate-900">{formatCurrency(area.areaTotal)}</p>
@@ -959,25 +976,25 @@ const EstimateDocument = ({
         )}
 
 
-        {/* ── Totals ── */}
+        {/* ── Totals: Light client design (look only) ── */}
         <div className="mt-6 flex justify-end" data-testid="estimate-totals">
-          <div className="w-full max-w-[320px] space-y-2 text-[12px]">
-            <div className="flex justify-between text-slate-600">
+          <div className="w-full max-w-[340px] text-[12.5px]">
+            <div className="flex justify-between px-2 py-1.5 text-slate-700">
               <span>Subtotal</span>
-              <span>{formatCurrency(subtotal)}</span>
+              <span className="font-semibold">{formatCurrency(subtotal)}</span>
             </div>
             {discountAmount > 0 && (
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between px-2 py-1.5 text-slate-700">
                 <span>Discount{discountLabel ? ` (${discountLabel})` : ""}</span>
-                <span>-{formatCurrency(discountAmount)}</span>
+                <span className="font-semibold">-{formatCurrency(discountAmount)}</span>
               </div>
             )}
-            {editing?.discountControl && <div className="print:hidden">{editing.discountControl}</div>}
-            <div className="flex justify-between text-slate-600">
+            {editing?.discountControl && <div className="px-2 print:hidden">{editing.discountControl}</div>}
+            <div className="flex justify-between px-2 py-1.5 text-slate-700">
               <span>VAT ({vatPercent}%)</span>
-              <span>{formatCurrency(taxAmount)}</span>
+              <span className="font-semibold">{formatCurrency(taxAmount)}</span>
             </div>
-            <div className="flex items-center justify-between border-t-2 border-[#1B3A5C] pt-2 text-[15px] font-bold text-[#1B3A5C]">
+            <div className="mt-1 flex items-center justify-between border-l-[5px] border-[#F7941D] bg-[#1AA7EC] px-3 py-2 text-[14.5px] font-extrabold text-white">
               <span>Total (ZAR)</span>
               <span className="text-lg">{formatCurrency(grandTotal)}</span>
             </div>

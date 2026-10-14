@@ -242,7 +242,7 @@ All colors MUST be HSL.
 /* Light mode editing canvas: light grey paper, dark readable text */
 .estimate-editing { color: #1e293b; }
 .estimate-editing input,
-.estimate-editing textarea { color: #0f172a; caret-color: #1B3A5C; }
+.estimate-editing textarea { color: #0f172a; caret-color: #0B4FA8; }
 .estimate-editing input::placeholder,
 .estimate-editing textarea::placeholder { color: #64748b; }
 
@@ -258,8 +258,8 @@ All colors MUST be HSL.
 .dark .estimate-editing .text-slate-600 { color: #c6d2e4 !important; }
 .dark .estimate-editing .text-slate-500 { color: #b7c5d9 !important; }
 .dark .estimate-editing .text-slate-400 { color: #a3b4ca !important; }
-.dark .estimate-editing .text-\[\#1B3A5C\] { color: #8fc3ec !important; }
-.dark .estimate-editing .border-\[\#1B3A5C\] { border-color: #5b9bd5 !important; }
+.dark .estimate-editing .text-\[\#0B4FA8\] { color: #8fc3ec !important; }
+.dark .estimate-editing .border-\[\#0B4FA8\] { border-color: #5b9bd5 !important; }
 /* Surfaces, rings and borders */
 .dark .estimate-editing .bg-white,
 .dark .app-surface .estimate-page .estimate-editing .bg-white {
@@ -278,7 +278,7 @@ All colors MUST be HSL.
 .dark .estimate-editing textarea::placeholder { color: #93a6bf; }
 .dark .estimate-editing .focus\:bg-white:focus { background-color: rgba(8, 15, 29, 0.6) !important; }
 .dark .estimate-editing .hover\:border-slate-200:hover { border-color: rgba(163, 180, 202, 0.5) !important; }
-.dark .estimate-editing .focus\:border-\[\#1B3A5C\]:focus { border-color: #8fc3ec !important; }
+.dark .estimate-editing .focus\:border-\[\#0B4FA8\]:focus { border-color: #8fc3ec !important; }
 /* Product thumbnails keep a light tile so transparent PNGs stay visible */
 .dark .estimate-editing img.bg-white { background-color: #ffffff !important; }
 /* Print / PDF capture stays clean white */
@@ -289,8 +289,8 @@ All colors MUST be HSL.
   .estimate-editing .text-slate-600 { color: #475569 !important; }
   .estimate-editing .text-slate-500 { color: #64748b !important; }
   .estimate-editing .text-slate-400 { color: #94a3b8 !important; }
-  .estimate-editing .text-\[\#1B3A5C\] { color: #1B3A5C !important; }
-  .estimate-editing .border-\[\#1B3A5C\] { border-color: #1B3A5C !important; }
+  .estimate-editing .text-\[\#0B4FA8\] { color: #0B4FA8 !important; }
+  .estimate-editing .border-\[\#0B4FA8\] { border-color: #0B4FA8 !important; }
   .estimate-editing .bg-white,
   .estimate-editing .bg-slate-100 { background-color: #ffffff !important; }
   .estimate-editing .bg-sky-50\/60 { background-color: transparent !important; }
@@ -1152,7 +1152,7 @@ All colors MUST be HSL.
 .dark .estimate-editing .option1-solid :is(.text-slate-900, .text-slate-800, .line-total) { color: #0f172a !important; }
 .dark .estimate-editing .option1-solid :is(.text-slate-700, .text-slate-600, .line-price) { color: #334155 !important; }
 .dark .estimate-editing .option1-solid :is(.text-slate-500, .text-slate-400) { color: #475569 !important; }
-.dark .estimate-editing .option1-solid :is(input, textarea) { color: #0f172a; caret-color: #1B3A5C; }
+.dark .estimate-editing .option1-solid :is(input, textarea) { color: #0f172a; caret-color: #0B4FA8; }
 .dark .estimate-editing .option1-solid :is(input, textarea)::placeholder { color: #64748b; }
 .dark .estimate-editing .option1-solid .bg-white:not(img),
 .dark .app-surface .estimate-page .estimate-editing .option1-solid .bg-white:not(img) { background-color: #ffffff !important; }
@@ -1160,10 +1160,12 @@ All colors MUST be HSL.
 .dark .estimate-editing .option1-solid .border-slate-100 { border-color: #e2e8f0 !important; }
 .dark .estimate-editing .option1-solid .bg-sky-50\/60 { background-color: #e0f2fe !important; }
 .dark .estimate-editing .option1-solid .text-sky-700 { color: #0369a1 !important; }
-.dark .estimate-editing .option1-solid .text-\[\#1B3A5C\] { color: #1B3A5C !important; }
+.dark .estimate-editing .option1-solid .text-\[\#0B4FA8\] { color: #0B4FA8 !important; }
 .option1-solid .qty-box,
 .dark .app-surface .estimate-page .estimate-editing .option1-solid .qty-box { background: #ffffff !important; color: #0f172a !important; border-color: #94a3b8 !important; }
 .option1-title-row svg { color: #475569; }
+/* Editor restyle step 1 (Johan 14 Oct): area headings in brand blue, like the client document. */
+.estimate-editing .option1-title, .estimate-editing .option1-title:hover, .estimate-editing .option1-title:focus, .estimate-editing .option1-name-input { color: #0B4FA8 !important; }
 /* + Add unit: white on brand orange was 2.8:1; darker orange keeps the look at 5.2:1. */
 .option1-add-unit, .option1-add-unit:hover { background: #c2410c !important; border-color: #c2410c !important; color: #ffffff !important; }
 /* Line options (hamburger) button keeps dark ink on the white quote paper in dark mode (Johan 21:29). */
