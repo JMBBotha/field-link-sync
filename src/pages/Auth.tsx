@@ -253,7 +253,7 @@ const Auth = () => {
           )}
           {isLogin && (
             <div data-testid="invite-password-note" className="rounded-md border border-[hsl(25,95%,53%)]/60 bg-[hsl(25,95%,53%)]/15 px-3 py-2 text-sm text-white">
-              New team member, add email address and click add email, tap forgot password.
+              New to the team, add email address, and click forgot password.
             </div>
           )}
           <Button
