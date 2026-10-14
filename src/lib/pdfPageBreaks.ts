@@ -35,10 +35,20 @@ export function computePageCuts(
   height: number,
   pageRows: number,
   maxLookback = Math.floor(pageRows * 0.35),
+  forced: number[] = [],
 ): number[] {
   const cuts: number[] = [];
   let start = 0;
-  while (height - start > pageRows) {
+  // Forced breaks (elements marked data-pdf-break-before) always start a new page.
+  const must = [...new Set(forced.map((f) => Math.round(f)))].filter((f) => f > 0 && f < height).sort((a, b) => a - b);
+  while (height - start > pageRows || must.some((f) => f > start)) {
+    const next = must.find((f) => f > start);
+    if (next !== undefined && next <= start + pageRows) {
+      cuts.push(next);
+      start = next;
+      continue;
+    }
+    if (height - start <= pageRows) break;
     const ideal = start + pageRows;
     let cut = ideal;
     const floor = Math.max(start + 1, ideal - maxLookback);

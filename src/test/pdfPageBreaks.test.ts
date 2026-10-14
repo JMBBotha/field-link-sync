@@ -27,3 +27,15 @@ describe("isUniformRow", () => {
     expect(isUniformRow(d, w, 1, 10, 1)).toBe(false);
   });
 });
+
+describe("computePageCuts forced breaks (invoice closing page, Johan 14 Oct)", () => {
+  it("starts a new page at a forced break even when the content would fit", () => {
+    expect(computePageCuts(() => true, 500, 1000, undefined, [300])).toEqual([300, 500]);
+  });
+  it("combines forced breaks with normal pagination", () => {
+    const cuts = computePageCuts(() => true, 2500, 1000, 0, [400]);
+    expect(cuts[0]).toBe(400);
+    expect(cuts[cuts.length - 1]).toBe(2500);
+    cuts.reduce((prev, c) => { expect(c - prev).toBeLessThanOrEqual(1000); return c; }, 0);
+  });
+});

@@ -320,8 +320,16 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       }
     };
 
+    // Forced page breaks (Johan 14 Oct): elements marked data-pdf-break-before start a new page.
+    // Measured with the bottom blocks still hidden, i.e. as captured.
+    bottomEls.forEach((el) => { el.style.display = "none"; });
+    const forcedCuts = Array.from(captureElement.querySelectorAll<HTMLElement>("[data-pdf-break-before]"))
+      .map((el) => (el.getBoundingClientRect().top - captureElement.getBoundingClientRect().top) * canvasScale)
+      .filter((y) => y > 0);
+    bottomEls.forEach((el, i) => { el.style.display = prevDisplay[i]; });
+
     let lastPageUsed = scaledHeight;
-    if (scaledHeight <= usableHeight) {
+    if (scaledHeight <= usableHeight && forcedCuts.length === 0) {
       doc.addImage(imgData, "PNG", margin, margin, usableWidth, scaledHeight, undefined, "FAST");
       addLinks(0, capturedCanvas.height);
     } else {
@@ -330,8 +338,8 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       const srcCtx = capturedCanvas.getContext("2d");
       const pixels = srcCtx?.getImageData(0, 0, capturedCanvas.width, capturedCanvas.height).data;
       const cuts = pixels
-        ? computePageCuts((y) => isUniformRow(pixels, capturedCanvas.width, y), capturedCanvas.height, pageRows)
-        : computePageCuts(() => true, capturedCanvas.height, pageRows, 0);
+        ? computePageCuts((y) => isUniformRow(pixels, capturedCanvas.width, y), capturedCanvas.height, pageRows, undefined, forcedCuts)
+        : computePageCuts(() => true, capturedCanvas.height, pageRows, 0, forcedCuts);
       let sourceY = 0;
       cuts.forEach((cut, page) => {
         if (page > 0) doc.addPage();

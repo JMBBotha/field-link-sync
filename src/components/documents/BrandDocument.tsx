@@ -53,6 +53,12 @@ export interface BrandDocumentProps {
   cards: BrandDocCard[];
   terms?: string | null;
   captureRoot: "estimate" | "invoice";
+  /**
+   * Invoice closing layout (Johan 14 Oct, AVEC La Terre invoices): the Payment / Banking /
+   * Warranty block starts its own page, laid out full width; the Terms + logo/unit footer
+   * travel together and are pinned to the bottom of the last page.
+   */
+  closingPage?: boolean;
   className?: string;
 }
 
@@ -93,6 +99,13 @@ const CSS = `
 .bd .terms{margin-top:16px;border-top:1px solid var(--line);padding-top:10px;font-size:10px;line-height:1.45;color:#3a4859;white-space:pre-line}
 .bd .sig{margin-top:22px;display:flex;align-items:center;gap:14px;font-size:9.5px;line-height:1.4;border-top:1px solid var(--line);padding:10px 42px 14px}
 .bd .slogo{height:40px}.bd .sbar{width:2px;align-self:stretch;background:var(--b2)}.bd .stext{flex:1;color:var(--b1)}.bd .sn{font-weight:800}.bd .sunits{height:50px}
+/* Closing page (invoices) */
+.bd .closing{padding:6px 0 18px}
+.bd .notes.wide{grid-template-columns:1fr 1fr;gap:14px 28px;font-size:11.5px;margin-top:0}
+.bd .notes.wide .note.full{grid-column:1/-1}
+.bd .notes.wide .note p,.bd .notes.wide .note div{line-height:1.55}
+.bd .foot{margin-top:22px}.bd .foot .terms{margin:0 42px;padding-bottom:4px}.bd .foot .sig{margin-top:12px}
+@media print{.bd .closing{break-before:page;page-break-before:always}.bd .foot{break-inside:avoid;page-break-inside:avoid}}
 /* Bold */
 .bd.bold .pg{padding-top:0}
 .bd.bold .top{background:linear-gradient(120deg,#1AA7EC 55%,#1590D6);margin:0 -42px;padding:22px 42px 20px;color:#fff;align-items:flex-start}
@@ -109,7 +122,7 @@ const CSS = `
  .bd{overflow-wrap:anywhere}.bd .r{white-space:normal}.bd .pg{padding:18px 14px 0}.bd .top{flex-direction:column;align-items:flex-start}.bd.bold .top{margin:0 -14px;padding:16px 14px}
  .bd .hl{flex-direction:column;align-items:flex-start;gap:10px}.bd .logo{height:70px}.bd .ttl{text-align:left}
  .bd .parties{flex-direction:column}.bd .items .c-code{display:none}.bd .items th,.bd .items td{padding:6px 4px}
- .bd .notes{grid-template-columns:1fr}.bd .tot{min-width:0;width:100%}.bd .sig{flex-wrap:wrap;padding:10px 14px}.bd .sunits{display:none}
+ .bd .notes,.bd .notes.wide{grid-template-columns:1fr}.bd .foot .terms{margin:0 14px}.bd .tot{min-width:0;width:100%}.bd .sig{flex-wrap:wrap;padding:10px 14px}.bd .sunits{display:none}
 }`;
 
 export default function BrandDocument(p: BrandDocumentProps) {
@@ -179,22 +192,44 @@ export default function BrandDocument(p: BrandDocumentProps) {
         </tbody></table>
         {p.afterTotals}
 
-        {p.cards.length > 0 && (
+        {!p.closingPage && p.cards.length > 0 && (
           <div className="notes">{p.cards.map((c) => <div className="note" key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
         )}
-        <div className="terms" data-testid="doc-terms"><h4>Terms</h4>{withEoe(p.terms, id.legalName, p.docType)}</div>
+        {!p.closingPage && <div className="terms" data-testid="doc-terms"><h4>Terms</h4>{withEoe(p.terms, id.legalName, p.docType)}</div>}
+        {p.closingPage && p.cards.length > 0 && (
+          <div className="closing" data-pdf-break-before data-testid="doc-closing">
+            <div className="notes wide">{p.cards.map((c, i) => <div className={`note${p.cards.length % 2 === 1 && i === p.cards.length - 1 ? " full" : ""}`} key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
+          </div>
+        )}
       </div>
-      <div className="sig" data-pdf-bottom data-testid="doc-signature">
-        {logo && <img className="slogo" src={massair && !recordLogo ? logoLight : logo} alt="" />}
-        <div className="sbar" />
-        <div className="stext">
-          <div className="sn">{id.legalName}</div>
-          <div>{[id.tel && `Tel ${id.tel}`, id.whatsapp && `WhatsApp ${id.whatsapp}`].filter(Boolean).join("  |  ")}</div>
-          <div>{[id.email, id.web].filter(Boolean).join("  |  ")}</div>
-          <div>{[addr, id.vatNo && `VAT ${id.vatNo}`].filter(Boolean).join("  |  ")}</div>
+      {p.closingPage ? (
+        <div className="foot" data-pdf-bottom data-testid="doc-foot">
+          <div className="terms" data-testid="doc-terms"><h4>Terms</h4>{withEoe(p.terms, id.legalName, p.docType)}</div>
+        <div className="sig" data-testid="doc-signature">
+          {logo && <img className="slogo" src={massair && !recordLogo ? logoLight : logo} alt="" />}
+          <div className="sbar" />
+          <div className="stext">
+            <div className="sn">{id.legalName}</div>
+            <div>{[id.tel && `Tel ${id.tel}`, id.whatsapp && `WhatsApp ${id.whatsapp}`].filter(Boolean).join("  |  ")}</div>
+            <div>{[id.email, id.web].filter(Boolean).join("  |  ")}</div>
+            <div>{[addr, id.vatNo && `VAT ${id.vatNo}`].filter(Boolean).join("  |  ")}</div>
+          </div>
+          {massair && <img className="sunits" src={units} alt="" />}
         </div>
-        {massair && <img className="sunits" src={units} alt="" />}
-      </div>
+        </div>
+      ) : (
+        <div className="sig" data-pdf-bottom data-testid="doc-signature">
+          {logo && <img className="slogo" src={massair && !recordLogo ? logoLight : logo} alt="" />}
+          <div className="sbar" />
+          <div className="stext">
+            <div className="sn">{id.legalName}</div>
+            <div>{[id.tel && `Tel ${id.tel}`, id.whatsapp && `WhatsApp ${id.whatsapp}`].filter(Boolean).join("  |  ")}</div>
+            <div>{[id.email, id.web].filter(Boolean).join("  |  ")}</div>
+            <div>{[addr, id.vatNo && `VAT ${id.vatNo}`].filter(Boolean).join("  |  ")}</div>
+          </div>
+          {massair && <img className="sunits" src={units} alt="" />}
+        </div>
+      )}
     </div>
   );
 }

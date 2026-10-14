@@ -61,6 +61,21 @@ const formatDate = (dateStr?: string | null) =>
     : "—";
 
 /**
+ * Notes printed line by line (Johan 14 Oct): the PDF capture (html2canvas) ignores
+ * white-space:pre-line, which ran the warranty / terms-of-payment text together. Each line is
+ * its own block and blank lines become paragraph gaps; the text itself is unchanged.
+ */
+const NotesBody = ({ text }: { text: string }) => (
+  <div data-testid="invoice-notes">
+    {text.split(/\n\s*\n/).map((para, i) => (
+      <p key={i} style={{ margin: i ? "7px 0 0" : 0 }}>
+        {para.split("\n").map((line, j) => <span key={j} style={{ display: "block" }}>{line}</span>)}
+      </p>
+    ))}
+  </div>
+);
+
+/**
  * FreshBooks-style tax invoice document.
  * Used both for on-screen viewing and print / PDF capture.
  */
@@ -121,6 +136,7 @@ const InvoiceDocument = ({
     <BrandDocument
       docType="invoice"
       captureRoot="invoice"
+      closingPage
       className="invoice-document max-w-[820px]"
       title="TAX INVOICE"
       number={invoiceNumber}
@@ -150,7 +166,7 @@ const InvoiceDocument = ({
       cards={[
         { title: "Payment", body: <p>Payment due within {settings.default_payment_terms_days || 30} days of invoice date. Please use the invoice number as your payment reference.</p> },
         { title: "Banking", body: <p>{bankLine || "—"}</p> },
-        { title: "Warranty & notes", body: <p className="whitespace-pre-line">{notes || "All workmanship carries a 12-month warranty. Equipment is covered by the manufacturer's warranty terms. Warranty excludes damage caused by misuse, power surges, or lack of scheduled maintenance."}</p> },
+        { title: "Warranty & notes", body: <NotesBody text={notes || "All workmanship carries a 12-month warranty. Equipment is covered by the manufacturer's warranty terms. Warranty excludes damage caused by misuse, power surges, or lack of scheduled maintenance."} /> },
       ]}
     />
   );
