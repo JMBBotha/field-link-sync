@@ -1202,3 +1202,27 @@ All colors MUST be HSL.
 }
 .dark .v7-solid .v7-glass { background-color: rgba(17, 26, 43, 0.95); border-color: rgba(255, 255, 255, 0.1); }
 @media (min-width: 768px) { .v7-solid .v7-glass { padding: 1rem; } }
+
+/* ── Quote editor restyle step 2 (Johan 14 Oct): line table in the Light client design. LOOK ONLY. ──
+   Scoped to .estimate-editing; the add controls (.option1-add-*, orange outline), menus, steppers and inputs keep their own rules. */
+.estimate-editing .option1-solid { background: #ffffff !important; border-color: #e3eaf2 !important; box-shadow: 0 1px 3px rgba(11, 79, 168, 0.06) !important; }
+.estimate-editing .option1-area + .option1-area { border-top-color: #e3eaf2; }
+.estimate-editing .option1-title-row { border-color: #e3eaf2; }
+.estimate-editing .option1-title { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800 !important; font-size: 15px !important; }
+.app-surface .estimate-editing .option1-solid table thead,
+.app-surface .estimate-editing .option1-solid table thead tr,
+.estimate-editing .option1-table-header { background: transparent !important; color: #0B4FA8 !important; }
+.estimate-editing .option1-table-header th { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: #0B4FA8; border-bottom: 2px solid #1AA7EC; }
+.estimate-editing .estimate-lines tr.estimate-line { border-color: #e3eaf2; }
+.estimate-editing .estimate-lines tr.estimate-line:nth-of-type(even) { background: #f2f9fe; }
+.estimate-editing .option1-line-copy .line-name { color: #1d2a3a; }
+.estimate-editing .option1-line-copy .line-desc { color: #6b7a8c; font-size: 12px; }
+.estimate-editing .estimate-lines .line-price,
+.estimate-editing .estimate-lines .line-total { font-variant-numeric: tabular-nums; }
+.estimate-editing .estimate-lines .line-total { color: #0B4FA8 !important; }
+.estimate-editing .option1-install-bar { background: #f2f9fe; color: #0B4FA8; border-left: 3px solid #1AA7EC; }
+.estimate-editing .option1-install-bar:hover { background: #e4f3fd; }
+.estimate-editing .estimate-lines td .border-sky-200 { border-color: #1AA7EC; }
+.estimate-editing [data-testid="kit-contents"] { border-left: 2px solid #1AA7EC; padding-left: 8px; color: #6b7a8c; }
+.estimate-editing .option1-labour > span.font-bold:first-child { color: #0B4FA8; }
+.estimate-editing [data-testid="unassigned-labour"] > p:first-child { color: #0B4FA8; }
