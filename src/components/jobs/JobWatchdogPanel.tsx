@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, Phone } from "lucide-react";
@@ -20,7 +19,6 @@ export const RULE_LABEL: Record<string, string> = {
 /** Open job-watchdog alerts (office only via RLS). Each stays until the job moves on or someone dismisses it. */
 export default function JobWatchdogPanel({ className }: { className?: string }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { data = [], refetch } = useQuery({
     queryKey: ["job-alerts"],
     refetchInterval: 60_000,
@@ -44,7 +42,7 @@ export default function JobWatchdogPanel({ className }: { className?: string }) 
     const reason = window.prompt("What was done? (e.g. called tech, reassigned)");
     if (reason === null) return;
     const { error } = await (supabase.from("job_alerts" as any) as any)
-      .update({ resolved_at: new Date().toISOString(), resolved_by: user?.id ?? null, resolution: reason || "dismissed" }).eq("id", id);
+      .update({ resolved_at: new Date().toISOString(), resolved_by: (await supabase.auth.getUser()).data.user?.id ?? null, resolution: reason || "dismissed" }).eq("id", id);
     if (error) return toast.error("Could not dismiss: " + error.message);
     refetch();
   };
