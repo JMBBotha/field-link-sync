@@ -1,5 +1,5 @@
 // Loads the signature details for a Field Lynk user (service-role client). Deno only.
-import { defaultTitleForRole, signatureCompanyFromProfile, type SignatureCompany, type SignaturePerson } from "./emailSignature.ts";
+import { signatureCompanyFromProfile, type SignatureCompany, type SignaturePerson } from "./emailSignature.ts";
 
 /** The sending company's signature block from its own company_profiles record (default, not archived). */
 // deno-lint-ignore no-explicit-any
@@ -29,13 +29,8 @@ export async function loadSignaturePerson(sb: any, userId: string | null | undef
       const { data: u } = await sb.auth.admin.getUserById(userId);
       email = u?.user?.email ?? null;
     }
-    let title: string | null = p.job_title || null;
-    if (!title) {
-      const { data: roles } = await sb.from("user_roles").select("role").eq("user_id", userId);
-      const order = ["admin", "sales_rep", "dispatcher", "field_agent"];
-      const r = (roles || []).map((x: { role: string }) => x.role).sort((a: string, b: string) => order.indexOf(a) - order.indexOf(b))[0];
-      title = defaultTitleForRole(r);
-    }
+    // Title only when the person filled one in (Johan 14 Oct): no role fallback.
+    const title: string | null = p.job_title?.trim() || null;
     return { name: p.full_name, title, phone: p.signature_phone || p.phone || null, email };
   } catch {
     return null;

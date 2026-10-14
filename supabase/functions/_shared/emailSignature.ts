@@ -71,7 +71,8 @@ export function renderSignatureHtml(person?: SignaturePerson | null, imageBase: 
   const rows: string[] = [];
   rows.push(`<div style="font-size:18px;font-weight:bold;${C}">${esc(p ? p.name.trim() : co.brand)}</div>`);
   if (p?.title && p.title.trim()) rows.push(line(esc(p.title.trim())));
-  rows.push(line(esc(co.legalName), "font-weight:bold"));
+  // "For <company>" under a person (Johan 14 Oct); company-only block keeps the plain name.
+  rows.push(line(esc(p ? `For ${co.legalName}` : co.legalName), "font-weight:bold"));
   const phone = p?.phone && p.phone.trim() ? p.phone.trim() : null;
   const tel = co.tel ? `Tel: ${link(`tel:${co.telHref || digits(co.tel)}`, co.tel)}` : "";
   const cell = phone
@@ -115,7 +116,7 @@ export function renderSignatureText(person?: SignaturePerson | null, company?: S
   return [
     p ? p.name.trim() : co.brand,
     p?.title?.trim() || null,
-    co.legalName,
+    p ? `For ${co.legalName}` : co.legalName,
     [co.tel ? `Tel: ${co.tel}` : "", cell].filter(Boolean).join(" | ") || null,
     [p?.email?.trim(), co.email].filter(Boolean).join(" | ") || null,
     [co.web, co.vatNo ? `VAT No ${co.vatNo}` : ""].filter(Boolean).join(" | ") || null,

@@ -43,7 +43,7 @@ export default function MySignatureCard({ showAdminTest = true }: { showAdminTes
 
   const fallbackTitle = defaultTitleForRole(roles?.[0]) ?? "";
   const person = useMemo(
-    () => (enabled ? { name: name || "Your name", title: title || fallbackTitle, phone, email } : null),
+    () => (enabled ? { name: name || "Your name", title: title || null, phone, email } : null),
     [enabled, name, title, fallbackTitle, phone, email],
   );
   const previewHtml = useMemo(() => renderSignatureHtml(person), [person]);
@@ -80,7 +80,7 @@ export default function MySignatureCard({ showAdminTest = true }: { showAdminTes
           <>
             <div className="grid gap-3 md:grid-cols-2">
               <div><Label>Name</Label><Input value={name} disabled /></div>
-              <div><Label>Title</Label><Input value={title} placeholder={fallbackTitle} onChange={(e) => setTitle(e.target.value)} /></div>
+              <div><Label>Title</Label><Input value={title} placeholder="Optional, e.g. Sales Consultant" onChange={(e) => setTitle(e.target.value)} /></div>
               <div><Label>Phone in signature</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
               <div><Label>Email (replies go here)</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
             </div>
