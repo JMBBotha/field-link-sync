@@ -11558,6 +11558,20 @@ export type Database = {
           units_markup_percent: number
         }[]
       }
+      get_company_quote_profit: {
+        Args: { p_company_id: string }
+        Returns: {
+          commission: number
+          company_profit: number
+          cost: number
+          full_view: boolean
+          lines_costed: number
+          lines_total: number
+          quote_id: string
+          rep_id: string
+          sell_ex_vat: number
+        }[]
+      }
       get_company_tech_pay_settings: {
         Args: { p_company_id: string }
         Returns: Json
