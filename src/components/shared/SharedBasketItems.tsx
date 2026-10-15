@@ -122,7 +122,7 @@ export function CollapsibleBundleCard({
               {kitMarkup}% M/Up · cost {formatZAR(kitCost)}
             </Badge>
           )}
-          {kitWarn && <WarnChip label={kitWarn.label} short={kitWarn.short} />}
+          {kitWarn && <WarnChip label={kitWarn.label} short={kitWarn.short} tone={kitWarn.tone} />}
         </div>
 
         {/* Multiplier control */}
@@ -270,7 +270,7 @@ export function RegularItemCard({
         <div className="min-w-0 flex-1 truncate font-medium flex items-center gap-0.5">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
           <Badge variant="outline" className="text-[7px] px-1 py-0 h-3 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
-          {warn && <WarnChip label={warn.label} short={warn.short} />}{spChip}
+          {warn && <WarnChip label={warn.label} short={warn.short} tone={warn.tone} />}{spChip}
           <ProductInfoDialog product={item.product} />
         </div>
         {isMeasured ? (
@@ -325,7 +325,7 @@ export function RegularItemCard({
         <p className="font-medium truncate flex items-center gap-1">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
           <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
-          {warn && <WarnChip label={warn.label} short={warn.short} />}{spChip}
+          {warn && <WarnChip label={warn.label} short={warn.short} tone={warn.tone} />}{spChip}
           <ProductInfoDialog product={item.product} />
         </p>
         <div className="flex items-center gap-1.5">

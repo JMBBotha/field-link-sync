@@ -67,6 +67,8 @@ export interface EstimateEditLine {
   priceWarn?: string | null;
   /** Compact chip text for the narrow price column, e.g. "63.6% vs 100%". Falls back to priceWarn. */
   priceWarnShort?: string | null;
+  /** Chip colour: green = at/above standard markup, orange = below, red = far below. */
+  priceWarnTone?: "green" | "orange" | "red" | null;
   /** Staff-only specials indicator (never on client PDF). */
   special?: { cost: number; endDate: string; pdfPath: string | null; applied: boolean } | null;
   /** Display-only short name (kit title / install companion); item_name is never rewritten unless edited. */

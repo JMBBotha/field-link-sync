@@ -211,6 +211,7 @@ export default function EstimateBuilder({
     })() : null,
     priceWarn: margin.visible ? quoteLineDrift(i as any, i.product_id ? liveProducts.find((p) => p.id === i.product_id) : null)?.label ?? null : null,
     priceWarnShort: margin.visible ? quoteLineDrift(i as any, i.product_id ? liveProducts.find((p) => p.id === i.product_id) : null)?.short ?? null : null,
+    priceWarnTone: margin.visible ? quoteLineDrift(i as any, i.product_id ? liveProducts.find((p) => p.id === i.product_id) : null)?.tone ?? null : null,
   });
 
   const editAreas: EstimateEditArea[] = useMemo(() => {
