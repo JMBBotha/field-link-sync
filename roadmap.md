@@ -1,7 +1,11 @@
 # Roadmap — catalog source of truth (equipment + materials)
 ## Quote payment wording (2026-10-15)
-- [ ] Keep selectable deposit splits; current quote and company defaults require the final balance on completion, not 30 days later.
-- [ ] Verify saved wording and generated payment sentences.
+- [x] Keep selectable deposit splits; current quote and company defaults require the final balance on completion, not 30 days later.
+- [x] Verified company term days = 0, current downloaded quote shows payment due on completion; 14 focused tests pass, preview build OK.
+## Publish and once-per-unit content (2026-10-15)
+- [ ] Publish the verified quote terms and payment changes.
+- [ ] Verify signed quote attachment and email receipt (requires approved recipient and mailbox evidence).
+- [ ] Verify lookup on new quoted units, reusable saved photos/specs/brochures, and no repeated lookup for known units.
 
 ## Quote PDF terms and blank pages (2026-10-15)
 - [x] Flow the builder's bold terms directly after the unit/QR cards without empty pages or duplicate terms.
