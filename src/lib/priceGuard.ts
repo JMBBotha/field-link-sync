@@ -62,8 +62,10 @@ export function markupDrift(sell: number, cost: number, standard: number | null,
   const markup = (sell / cost - 1) * 100;
   const diffPct = markup - standard;
   if (Math.abs(diffRand) <= 0.01 * Math.max(1, units) + 1e-9 || Math.abs(diffPct) < 0.05) return null;
+  // Colour tone: at/above standard = green; below = orange; far below (10+ points) = red.
+  const tone = diffPct >= 0 ? "green" : diffPct <= -10 ? "red" : "orange";
   return {
-    markup, standard, diffPct, diffRand,
+    markup, standard, diffPct, diffRand, tone,
     label: `markup ${pct(markup)} vs standard ${pct(standard)} (${diffPct > 0 ? "+" : ""}${pct(diffPct)}, ${rand(diffRand)})`,
     // Compact form for the narrow price column — the full label stays in the tooltip.
     short: `${pct(markup)} vs ${pct(standard)}`,
