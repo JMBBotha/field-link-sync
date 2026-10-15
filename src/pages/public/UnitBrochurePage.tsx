@@ -44,6 +44,7 @@ const CSS = `
 @media (max-width:500px){.ub .w{padding:14px 16px 22px}.ub .hd img{height:48px}.ub .k{font-size:15px}.ub .hero,.ub .details{grid-template-columns:1fr}.ub .tile{min-height:170px}.ub h1{font-size:23px}.ub .feat{grid-template-columns:1fr}.ub .ft{flex-direction:column}.ub .ft .r{text-align:left}}
 .ub.pdf .w{padding:12px 24px 10px}.ub.pdf .hero{margin-top:12px}.ub.pdf .tile{min-height:170px}.ub.pdf .tile img{max-height:160px}.ub.pdf h2{margin:14px 0 8px}.ub.pdf td{padding:4px 10px}.ub.pdf .f{padding:7px 10px}.ub.pdf .ft{margin-top:14px}.ub.pdf .pb{display:none}.ub.pdf{min-height:0}
 @media print{@page{size:A4;margin:0}.ub .pb{display:none}.ub .w{padding:12px 24px 10px}.ub .hero{margin-top:12px}.ub .tile{min-height:170px}.ub .tile img{max-height:160px}.ub h2{margin:14px 0 8px}.ub td{padding:4px 10px}.ub .f{padding:7px 10px}.ub .ft{margin-top:14px}.ub{min-height:0}.ub *{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media print{.ub .tile{min-height:125px}.ub .tile img{max-height:115px}.ub table{font-size:11px;line-height:1.25}.ub td{padding:3px 8px}.ub .f{padding:5px 10px}.ub .ft{font-size:11px}.ub .note{color:var(--mu)}}
 `;
 
 function splitBullet(b: string): [string | null, string] {
