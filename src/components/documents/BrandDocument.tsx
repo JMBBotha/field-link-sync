@@ -116,7 +116,7 @@ const CSS = `
 .bd.bold .pg{padding-top:0}
 .bd.bold .top{background:linear-gradient(120deg,#1AA7EC 55%,#1590D6);margin:0 -42px;padding:22px 42px 20px;color:#fff;align-items:flex-start}
 .bd.bold .logo{height:86px}.bd.bold .hco{color:#fff;border-left:1.5px solid rgba(255,255,255,.6)}
-.bd.bold h1{color:#fff}.bd.bold .no{color:#fff;background:var(--or);display:inline-block;padding:3px 12px;border-radius:6px}
+.bd.bold h1{color:#fff}.bd.bold .no{color:#fff;background:var(--or);display:inline-block;padding:3px 12px;border-radius:6px;margin-top:12px;line-height:1.3}
 .bd.bold .accent{height:0}.bd.bold h4{color:var(--b1)}
 .bd.bold .items th{background:var(--b1);color:#fff;border-bottom:0}
 .bd.bold .items tbody tr:nth-child(even) td{background:#f2f9fe}
@@ -163,10 +163,13 @@ export default function BrandDocument(p: BrandDocumentProps) {
       <style>{CSS}</style>
       {closing && (
         <>
-          {/* Page 1: company line only. Pages 2+: company line above the thin blue/orange rule (Johan 14 Oct 07:53). */}
-          <div className="phead" data-pdf-page-head-first data-testid="doc-page-head-first">
-            <div className="pline">{headLine}</div>
-          </div>
+          {/* Page 1: company line only. Pages 2+: company line above the thin blue/orange rule (Johan 14 Oct 07:53).
+              Bold skips the page-1 line: the blue banner is the head, so the line only adds white space (Johan 15 Oct). */}
+          {style !== "bold" && (
+            <div className="phead" data-pdf-page-head-first data-testid="doc-page-head-first">
+              <div className="pline">{headLine}</div>
+            </div>
+          )}
           <div className="phead" data-pdf-page-head data-testid="doc-page-head" style={{ display: "none" }}>
             <div className="pline">{headLine}</div>
             <div className="prule" />
