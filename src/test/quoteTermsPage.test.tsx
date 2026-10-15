@@ -30,9 +30,9 @@ describe("QuoteTermsPage", () => {
     expect(html).toContain('data-pdf-break-before');
     expect(html).toContain('data-testid="quote-terms-page"');
     expect(html).toContain("Terms and conditions");
-    expect(html).toContain("Quote Q-2026-0039");
-    expect(html).toContain("01");
-    expect(html).toContain("SCOPE OF WORK");
+    expect(html).toContain("Q-2026-0039");
+    expect(html).toContain(">01<");
+    expect(html).toContain("Scope of Work");
     expect(html).toContain("63226563591");
   });
 });

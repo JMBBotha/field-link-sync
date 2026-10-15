@@ -19,6 +19,11 @@ export function groupTermsSections(blocks: TermsBlock[]): TermsSection[] {
   for (const b of blocks) {
     if (b.type === "title" || b.type === "spacer") continue;
     if (b.type === "heading") {
+      // A heading with no clauses yet (e.g. "Importance of Servicing AC Units")
+      // becomes an intro line of the next section instead of an empty section.
+      if (current && current.items.length === 0 && current.heading) {
+        current.items.push({ type: "paragraph", text: current.heading });
+      }
       current = { heading: b.text.replace(/:\s*$/, ""), items: [] };
       sections.push(current);
     } else if (current) {
