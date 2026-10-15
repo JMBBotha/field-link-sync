@@ -1,4 +1,7 @@
 # Roadmap — catalog source of truth (equipment + materials)
+## Easy Bold/Light switch (2026-10-15)
+- [ ] Put a one-tap Light / Bold switch on the open quote screen (admin only, same company_profiles.document_style column the settings dropdown writes), so Johan can flip his current estimate without digging through settings.
+
 ## Quote payment wording (2026-10-15)
 - [x] Keep selectable deposit splits; current quote and company defaults require the final balance on completion, not 30 days later.
 - [x] Verified company term days = 0, current downloaded quote shows payment due on completion; 14 focused tests pass, preview build OK.
