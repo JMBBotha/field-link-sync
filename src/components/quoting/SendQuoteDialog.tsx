@@ -412,7 +412,7 @@ const SendQuoteDialog = ({
                 placeholder="client@example.com"
                 className="h-9 text-sm"
               />
-              <Button onClick={handleEmail} disabled={busy !== null || emailUnavailable} className="h-9 shrink-0 gap-1.5">
+              <Button onClick={handleEmail} disabled={busy !== null || emailUnavailable || !allApproved} className="h-9 shrink-0 gap-1.5">
                 {busy === "email" ? <Loader2 className="h-4 w-4 animate-spin" /> : sent.email ? <Check className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
                 Email
               </Button>
