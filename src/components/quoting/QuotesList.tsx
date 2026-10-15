@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { parseQuoteParams, filterQuoteDocs, clearParams } from "@/lib/drilldown";
 import FilterChips from "@/components/shared/FilterChips";
 import RowMenu from "@/components/shared/RowMenu";
+import QuoteClientDialog from "@/components/quoting/QuoteClientDialog";
 import { useQuoteStaffActions } from "@/components/quoting/useQuoteStaffActions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,6 +84,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const staffActions = useQuoteStaffActions();
+  const [dupQuote, setDupQuote] = useState<any | null>(null);
 
   const handleConvertToInvoice = async (quoteId: string) => {
     if (!user?.id) return;
@@ -631,6 +633,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                               <RowMenu items={[
                                 { label: "Open", onSelect: () => openDoc(doc) },
                                 { label: "Edit", onSelect: () => onEditQuote(quote.id) },
+                                { label: "Duplicate quote", onSelect: () => setDupQuote({ ...quote, clientName: doc.clientName }) },
                                 { label: "Copy client link", hidden: !quote.public_token, onSelect: () => { navigator.clipboard.writeText(publicQuoteUrl(quote.public_token)); toast({ title: "Link copied! 🔗" }); } },
                                 { label: "Share on WhatsApp", hidden: !quote.public_token, onSelect: () => {
                                   const msg = `Hi ${doc.clientName || "there"}, your ${doc.kind} ${doc.ref} for ${formatZAR(doc.total)} is ready. View it here: ${publicQuoteUrl(quote.public_token)}`;
@@ -667,6 +670,12 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
       </div>
 
       {staffActions.dialogs}
+      {dupQuote && (
+        <QuoteClientDialog open onOpenChange={(o) => !o && setDupQuote(null)} mode="duplicate"
+          quoteId={dupQuote.id} quoteNumber={dupQuote.quote_number} currentCustomerId={dupQuote.customer_id}
+          currentCustomerName={dupQuote.clientName}
+          onDone={(r) => { queryClient.invalidateQueries(); onEditQuote(r.quoteId); }} />
+      )}
       <AlertDialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
