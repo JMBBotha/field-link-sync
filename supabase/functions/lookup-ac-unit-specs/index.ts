@@ -73,12 +73,12 @@ async function callChatCompletionsLegacyFallback(apiKey: string, query: string) 
 
 const MEDIA_PROMPT = `You are an HVAC product data researcher for a South African aircon installer.
 Given an exact air conditioner model number, use web search to find its OFFICIAL data. Prefer, in order:
-samsung.com/za (product or support page), the SA distributor (e.g. Fourways Airconditioning spec sheets), then the manufacturer's
+the brand's South African site (e.g. samsung.com/za, midea.com/za, lg.com/za), the SA distributor (e.g. Fourways Airconditioning spec sheets), then the manufacturer's
 global site. Only use retailer pages to confirm, never as the only source for numbers.
 Return ONLY a JSON object, no prose, with keys:
 {"display_name": "Brand Range Name", "family": "e.g. AR70", "subtitle": "12,000 BTU/h wall split",
  "product_url": "official product page URL or null", "support_url": "official support page URL or null",
- "image_url": "direct URL of the official front product image (for samsung use images.samsung.com) or null",
+ "image_url": "direct URL (ending in .png/.jpg/.webp where possible) of the official front photo of the INDOOR unit on a plain background (for samsung use images.samsung.com) or null",
  "source_label": "short domain of the main source",
  "bullets": ["3 to 5 plain-language client benefits, max 16 words each"],
  "specs": {"cool_kw": number|null, "heat_kw": number|null, "btu": number|null, "eer": number|null, "cop": number|null,
@@ -124,9 +124,13 @@ async function storeImage(db: any, key: string, src: string | null): Promise<Rec
     const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 FieldLynk/1.0" } });
     if (!r.ok) throw new Error(`image ${r.status}`);
     const bytes = new Uint8Array(await r.arrayBuffer());
-    if (!isAlphaPng(bytes)) return { image_status: "needs_cutout", image_source_url: url };
-    const path = `cutouts/${key.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
-    const up = await db.storage.from("product-media").upload(path, bytes, { contentType: "image/png", upsert: true });
+    const ct = (r.headers.get("content-type") || "").split(";")[0].trim();
+    if (!/^image\/(png|jpe?g|webp)$/.test(ct) || bytes.length < 2000) return { image_status: "none", image_source_url: url };
+    // Plain-background JPG/WebP photos are fine on the card; only alpha PNGs go in cutouts/.
+    const alpha = isAlphaPng(bytes);
+    const ext = ct === "image/png" ? "png" : ct === "image/webp" ? "webp" : "jpg";
+    const path = `${alpha ? "cutouts" : "photos"}/${key.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.${ext}`;
+    const up = await db.storage.from("product-media").upload(path, bytes, { contentType: ct, upsert: true });
     if (up.error) throw up.error;
     const { data } = db.storage.from("product-media").getPublicUrl(path);
     return { image_status: "ready", image_source_url: url, image_path: path, image_url: data.publicUrl };
