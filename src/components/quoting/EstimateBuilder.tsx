@@ -663,30 +663,11 @@ export default function EstimateBuilder({
           className="rounded-md ring-1 ring-slate-200 shadow-sm"
         />
       );
-      if (wide) {
-        return (
-          <div data-testid="live-preview-layout" className={previewOpen ? "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-4" : ""}>
-            <div className="min-w-0">{editorDoc}</div>
-            {previewOpen ? (
-              <aside className="sticky top-2 min-w-0 print:hidden" data-html2canvas-ignore data-pdf-hide data-testid="live-preview-pane">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Client view · what the client receives</span>
-                  <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setPreviewOpen(false)} aria-label="Hide client view">Hide ›</Button>
-                </div>
-                <div className="max-h-[calc(100vh-5rem)] overflow-y-auto">{preview}</div>
-              </aside>
-            ) : (
-              <div className="fixed right-2 top-1/3 z-30 print:hidden" data-html2canvas-ignore data-pdf-hide>
-                <Button type="button" size="sm" variant="outline" className="h-8 bg-white text-xs shadow" onClick={() => setPreviewOpen(true)} data-testid="live-preview-show">‹ Client view</Button>
-              </div>
-            )}
-          </div>
-        );
-      }
+      // Johan 15 Oct: one view at a time on every width — builder OR client view, never side by side.
       return (
-        <div>
-          <div className="mb-2 print:hidden" data-html2canvas-ignore data-pdf-hide>
-            <Button type="button" size="sm" variant="outline" className="h-8 border-primary text-xs font-medium text-primary"
+        <div data-testid="live-preview-layout">
+          <div className="sticky top-2 z-20 mb-3 flex justify-end print:hidden" data-html2canvas-ignore data-pdf-hide>
+            <Button type="button" size="sm" variant="outline" className="h-9 rounded-full border-primary bg-white px-4 text-xs font-semibold text-primary shadow-sm"
               data-testid="live-preview-toggle" aria-pressed={narrowTab === "client"}
               onClick={() => setNarrowTab(narrowTab === "editor" ? "client" : "editor")}>
               {narrowTab === "editor" ? "Show client view" : "Back to builder"}
