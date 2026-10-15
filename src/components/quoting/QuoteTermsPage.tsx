@@ -84,13 +84,13 @@ export default function QuoteTermsPage(p: QuoteTermsPageProps) {
         <span className="border-l-4 border-[#F7941D] pl-2 text-[16px] font-bold text-[#1B3A5C]">Terms and conditions</span>
         {p.quoteNumber && <span className="text-[10px] text-slate-400">Quote {p.quoteNumber}</span>}
       </div>
-      <div className="mt-4 space-y-4">
-        {left.map((section, i) => (
-          <div key={i} data-pdf-keep className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-            <TermsSections sections={[section]} startIndex={i} />
-            {right[i] && <TermsSections sections={[right[i]]} startIndex={left.length + i} />}
-          </div>
-        ))}
+      <div className="mt-4 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+        <div data-pdf-keep className="space-y-4">
+          <TermsSections sections={left} startIndex={0} />
+        </div>
+        <div data-pdf-keep className="space-y-4">
+          <TermsSections sections={right} startIndex={left.length} />
+        </div>
       </div>
     </div>
   );
