@@ -566,17 +566,18 @@ const EstimateDocument = ({
                   )}
                   {area.id && editing.onDeleteArea && (
                     <Button
-                      variant="ghost" size="icon" data-solid data-html2canvas-ignore
+                      variant="ghost" data-solid data-html2canvas-ignore
                       type="button"
-                      aria-label={`Delete area ${area.name}`}
+                      aria-label="Delete item"
                       title="Delete this area and its lines"
                       onClick={(e) => {
                         e.stopPropagation();
                         editing.onDeleteArea?.(area.id as string);
                       }}
-                      className={`${canCollapse && area.lines.length > 0 ? "" : "ml-auto"} option1-delete h-7 w-7 shrink-0 print:hidden`}
+                      className={`${canCollapse && area.lines.length > 0 ? "" : "ml-auto"} option1-delete h-7 shrink-0 gap-1 rounded-lg px-2 text-xs font-normal print:hidden`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
+                      <span>Delete item</span>
                     </Button>
                   )}
                 </div>
