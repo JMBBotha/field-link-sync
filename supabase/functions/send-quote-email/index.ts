@@ -317,6 +317,13 @@ serve(async (req) => {
     const textFallback = depositRequest
       ? `${hiTxt}\n\nThank you for accepting quote ${quoteRef}. Your ${brand.depositPct ? brand.depositPct + "% " : ""}deposit invoice is ready.${quoteUrl ? `\n\nView and pay it here: ${quoteUrl}` : ""}\n\nKind regards,\n\n${renderSignatureText(sender, brand.sig)}`
       : `${hiTxt}\n\n${customMessage ? customMessage + "\n\n" : ""}Your quote ${quoteRef ? `(${quoteRef}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is ready.${quoteUrl ? `\n\nView quote: ${quoteUrl}\nYou can accept it or ask for changes there.` : ""}\n\n${brand.validUntil ? `Valid until ${brand.validUntil}.` : "Valid for 30 days."}${brand.depositPct ? ` A ${brand.depositPct}% deposit is due on acceptance.` : ""}\n\nKind regards,\n\n${renderSignatureText(sender, brand.sig)}`;
+    // Preview only: return the exact HTML that would be sent, without sending.
+    if (reqBody.previewOnly === true) {
+      return new Response(JSON.stringify({ success: true, preview: true, html: htmlBody, subject: emailSubject }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const attachments: Array<{ filename: string; content: string }> = [];
     if (pdfBase64) {
       attachments.push({ filename: `Quote-${quoteRef || "draft"}.pdf`, content: pdfBase64 });

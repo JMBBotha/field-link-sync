@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
-import { Mail, Loader2, Check, Download, Link2 } from "lucide-react";
+import { Mail, Loader2, Check, Download, Link2, Eye } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,7 +79,8 @@ const SendQuoteDialog = ({
   const [extraEmails, setExtraEmails] = useState("");
   const [copyToCompany, setCopyToCompany] = useState(true);
   const [leadId, setLeadId] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"email" | "pdf" | null>(null);
+  const [busy, setBusy] = useState<"email" | "pdf" | "preview" | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [sent, setSent] = useState<{ email: boolean }>({ email: false });
   // Set once the backend tells us email isn't configured — we then stop
   // offering the Email button and point the user at Copy link / Download PDF.
@@ -212,6 +213,39 @@ const SendQuoteDialog = ({
     } catch (err) {
       toast({
         title: "PDF failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Preview the exact email HTML (no PDF, nothing sent) so wording can be checked first.
+  const handlePreview = async () => {
+    setBusy("preview");
+    try {
+      const { data, error } = await supabase.functions.invoke("send-quote-email", {
+        body: {
+          previewOnly: true,
+          to: email.trim() || "client@example.com",
+          subject: `Your quote ${quoteNumber}`,
+          quoteNumber,
+          quoteId,
+          customerId,
+          quoteUrl: clientUrl,
+          clientName: resolvedCustomerName,
+          totalAmount: total,
+          message: message.trim() || undefined,
+        },
+      });
+      if (error) throw new Error(await readInvokeError(error));
+      const html = (data as { html?: string } | null)?.html;
+      if (!html) throw new Error("No preview came back — please try again.");
+      setPreviewHtml(html);
+    } catch (err) {
+      toast({
+        title: "Preview failed",
         description: err instanceof Error ? err.message : "Please try again.",
         variant: "destructive",
       });
@@ -373,6 +407,10 @@ const SendQuoteDialog = ({
               rows={4}
               className="text-sm"
             />
+            <Button variant="outline" onClick={handlePreview} disabled={busy !== null} className="h-8 gap-1.5 text-xs">
+              {busy === "preview" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
+              Preview email
+            </Button>
             <Label htmlFor="send-quote-cc" className="text-xs">Extra email addresses (optional)</Label>
             <Input
               id="send-quote-cc"
@@ -403,6 +441,29 @@ const SendQuoteDialog = ({
       </DialogContent>
 
       {clientPdf && <ClientQuotePdfRoot quoteId={quoteId} />}
+
+      {/* Email preview popup — shows the exact email that will be sent. */}
+      <Dialog open={previewHtml !== null} onOpenChange={(o) => { if (!o) setPreviewHtml(null); }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Email preview</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              This is exactly what the client receives. Change the wording in the message box, then preview again.
+            </DialogDescription>
+          </DialogHeader>
+          {previewHtml && (
+            <iframe
+              title="Email preview"
+              sandbox=""
+              srcDoc={previewHtml}
+              className="h-[60vh] w-full rounded-md border border-border bg-white"
+            />
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPreviewHtml(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
