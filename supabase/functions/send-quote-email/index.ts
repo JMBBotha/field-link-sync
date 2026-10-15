@@ -55,7 +55,7 @@ function topStrip(brand: Brand): string {
   return `<tr><td style="padding:12px 28px 10px;background:#ffffff;"><div style="font-size:10px;color:#6b7a8c;">${parts.join(" &middot; ")}</div></td></tr>`;
 }
 
-function buildHtmlEmail(brand: Brand, clientName: string, quoteNumber: string, date: string, totalAmount: number, unsubscribeUrl: string, quoteUrl?: string | null, depositRequest = false, signatureHtml = "", unitCardsHtml = ""): string {
+function buildHtmlEmail(brand: Brand, clientName: string, quoteNumber: string, date: string, totalAmount: number, unsubscribeUrl: string, quoteUrl?: string | null, depositRequest = false, signatureHtml = "", unitCardsHtml = "", customMessage = ""): string {
   const formattedTotal = formatZAR(totalAmount);
   const currentYear = new Date().getFullYear();
   const company = escH(brand.name || "Your installer");
@@ -78,7 +78,7 @@ function buildHtmlEmail(brand: Brand, clientName: string, quoteNumber: string, d
   </td></tr>
   <tr><td style="padding:24px 28px;color:#1d2a3a;font-size:14px;line-height:1.5;">
     ${hi ? `Hi ${escH(hi)},` : "Hello,"}<br><br>
-    ${depositRequest ? `Thank you for accepting your quotation.${brand.depositPct ? ` Your ${brand.depositPct}% deposit invoice is ready.` : " Your deposit invoice is ready."} Use the button below to view and pay it.` : "Thank you for the opportunity. Your quotation is ready to view online."}
+    ${depositRequest ? `Thank you for accepting your quotation.${brand.depositPct ? ` Your ${brand.depositPct}% deposit invoice is ready.` : " Your deposit invoice is ready."} Use the button below to view and pay it.` : customMessage ? escH(customMessage).replace(/\n/g, "<br>") : "Thank you for the opportunity. Your quotation is ready to view online."}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;border:1px solid #e3eaf2;border-radius:8px;border-collapse:separate;font-size:13px;">
       ${row("Quote", `<b>${escH(quoteNumber || "—")}</b>`, false)}
       ${row("Date", escH(date))}
@@ -148,7 +148,7 @@ serve(async (req) => {
 
   try {
     const reqBody = await req.json();
-    const { to, subject, quoteNumber, clientName, pdfBase64, totalAmount, unsubscribeToken, quoteId, customerId, region, quoteUrl, depositRequest } = reqBody;
+    const { to, subject, quoteNumber, message, copyToCompany, clientName, pdfBase64, totalAmount, unsubscribeToken, quoteId, customerId, region, quoteUrl, depositRequest } = reqBody;
 
     // Admin "send test signature to myself": goes ONLY to the logged-in admin's own login email. Never to a client.
     if (reqBody?.signatureTest === true) {
@@ -304,11 +304,12 @@ serve(async (req) => {
     const date = new Date().toLocaleDateString("en-ZA");
     // Signature + reply-to: the person who clicked Send (Johan 12 Oct: replies go to the sender's own address).
     const sender = await loadSignaturePerson(supabase, auth.userId);
-    const htmlBody = buildHtmlEmail(brand, clientName, quoteNumber, date, totalAmount || 0, unsubscribeUrl, quoteUrl || null, Boolean(depositRequest), renderSignatureHtml(sender, undefined, brand.sig), depositRequest ? "" : await loadUnitCardsStripHtml(supabase, quoteId));
+    const customMessage = typeof message === "string" ? message.trim().slice(0, 4000) : "";
+    const htmlBody = buildHtmlEmail(brand, clientName, quoteNumber, date, totalAmount || 0, unsubscribeUrl, quoteUrl || null, Boolean(depositRequest), renderSignatureHtml(sender, undefined, brand.sig), depositRequest ? "" : await loadUnitCardsStripHtml(supabase, quoteId), depositRequest ? "" : customMessage);
     const hiTxt = firstName(clientName) ? `Hi ${firstName(clientName)},` : "Hello,";
     const textFallback = depositRequest
       ? `${hiTxt}\n\nThank you for accepting quote ${quoteRef}. Your ${brand.depositPct ? brand.depositPct + "% " : ""}deposit invoice is ready.${quoteUrl ? `\n\nView and pay it here: ${quoteUrl}` : ""}\n\nKind regards,\n\n${renderSignatureText(sender, brand.sig)}`
-      : `${hiTxt}\n\nYour quote ${quoteRef ? `(${quoteRef}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is ready.${quoteUrl ? `\n\nView quote: ${quoteUrl}\nYou can accept it or ask for changes there.` : ""}\n\n${brand.validUntil ? `Valid until ${brand.validUntil}.` : "Valid for 30 days."}${brand.depositPct ? ` A ${brand.depositPct}% deposit is due on acceptance.` : ""}\n\nKind regards,\n\n${renderSignatureText(sender, brand.sig)}`;
+      : `${hiTxt}\n\n${customMessage ? customMessage + "\n\n" : ""}Your quote ${quoteRef ? `(${quoteRef}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is ready.${quoteUrl ? `\n\nView quote: ${quoteUrl}\nYou can accept it or ask for changes there.` : ""}\n\n${brand.validUntil ? `Valid until ${brand.validUntil}.` : "Valid for 30 days."}${brand.depositPct ? ` A ${brand.depositPct}% deposit is due on acceptance.` : ""}\n\nKind regards,\n\n${renderSignatureText(sender, brand.sig)}`;
     const attachments: Array<{ filename: string; content: string }> = [];
     if (pdfBase64) {
       attachments.push({ filename: `Quote-${quoteRef || "draft"}.pdf`, content: pdfBase64 });
@@ -338,6 +339,9 @@ serve(async (req) => {
       ],
     };
     if (attachments.length > 0) resendPayload.attachments = attachments;
+    // Optional copy to the sending company's own email (company profile), never a client-chosen address.
+    const companyCopy = copyToCompany === true && brand.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(brand.email) && brand.email.toLowerCase() !== String(to).toLowerCase() ? brand.email : null;
+    if (companyCopy) resendPayload.bcc = [companyCopy];
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
