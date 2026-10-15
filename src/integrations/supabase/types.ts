@@ -12128,6 +12128,18 @@ export type Database = {
       }
       mark_overdue_maintenance: { Args: never; Returns: number }
       me_needs_password: { Args: never; Returns: boolean }
+      my_company_contract_status: {
+        Args: { p_company_id: string }
+        Returns: {
+          contract_signed_at: string
+          name: string
+          plan_base_price_zar: number
+          plan_contract_months: number
+          plan_extra_user_price_zar: number
+          plan_included_users: number
+          plan_status: string
+        }[]
+      }
       my_install_offers: { Args: never; Returns: Json }
       next_invoice_number: { Args: { p_profile: string }; Returns: string }
       normalize_model_code: { Args: { p: string }; Returns: string }

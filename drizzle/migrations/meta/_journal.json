@@ -64,6 +64,13 @@
       "when": 1792070553553,
       "tag": "0008_client_name_sync_and_quote_client_tools",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792072746543,
+      "tag": "0009_my_company_contract_status",
+      "breakpoints": true
     }
   ]
 }
