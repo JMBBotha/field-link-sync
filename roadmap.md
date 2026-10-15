@@ -157,5 +157,5 @@ Follow-ups only: staff working hours and webhook-secret rotation were intentiona
 
 - [x] Rename area-card "Create area" button to "Add Area" (owner request 2026-10-08)
 - [x] Selected button: label "★ Selected", shows PDF basket picks only (no Favourites) — owner request 2026-10-08
-- [ ] Selected items: show empty-state message when ★ Selected has nothing to list (owner report 2026-10-15)
-- [ ] Markup pill colours: green above target, orange below, red far below (owner request 2026-10-15)
+- [x] Selected items: empty-state message when ★ Selected has nothing to list (owner report 2026-10-15)
+- [x] Markup pill colours: green above target, orange below, red far below (owner request 2026-10-15)
