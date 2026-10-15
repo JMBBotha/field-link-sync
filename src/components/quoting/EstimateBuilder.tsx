@@ -10,6 +10,7 @@ import { usePdfBasket } from "@/lib/pdfBasketStore";
  */
 import { useQuoteEditors } from "@/hooks/useQuoteEditors";
 import RemoveUnitDialog from "@/components/quoting/RemoveUnitDialog";
+import ClientNoteBox from "@/components/quoting/ClientNoteBox";
 import { linkedToUnit } from "@/lib/unitInstallLinks";
 import { useIsPhone } from "@/hooks/useIsPhone";
 import { isLabourItem } from "@/lib/labour";
@@ -421,6 +422,7 @@ export default function EstimateBuilder({
           </Button>
         )}
       </div>
+      <ClientNoteBox onChanged={onChanged} />
       {(() => { const editorDoc = (
       <EstimateDocument
           estimateNumber={quoteNumber}
