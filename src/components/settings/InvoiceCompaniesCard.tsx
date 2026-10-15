@@ -1,3 +1,4 @@
+import { clearDocumentCompanyProfileCache } from "@/hooks/useDocumentCompanyProfile";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,7 @@ export default function InvoiceCompaniesCard() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase.from as any)("company_profiles").update(patch).eq("id", r.id);
     setSaving(null);
+    if (!error) clearDocumentCompanyProfileCache();
     toast(error ? { title: "Couldn't save", description: error.message, variant: "destructive" } : { title: `${r.legal_name} saved`, description: "New and draft invoices use it. Sent invoices keep what they printed." });
   };
 

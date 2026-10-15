@@ -75,13 +75,20 @@ export function useDocumentCompanyProfile(
   enabled = true,
 ): Partial<CompanyProfile> | null {
   const [loaded, setLoaded] = useState<CompanyProfile | null>(null);
-  const skip = !!explicit?.legal_name || !enabled;
+  const [version, setVersion] = useState(0);
+  // Re-read whenever the Light/Bold switch or settings clear the cache, so the page repaints at once.
+  useEffect(() => subscribeDocumentCompanyProfile(() => setVersion((v) => v + 1)), []);
+  const hasExplicit = !!explicit?.legal_name;
   useEffect(() => {
-    if (skip) return;
+    if (!enabled) return;
     let cancelled = false;
-    loadDocumentCompanyProfile(companyId).then((p) => { if (!cancelled) setLoaded(p); });
+    loadDocumentCompanyProfile(companyId ?? (explicit as any)?.company_id ?? null).then((p) => { if (!cancelled) setLoaded(p); });
     return () => { cancelled = true; };
-  }, [companyId, skip]);
-  if (explicit?.legal_name) return explicit;
-  return skip ? null : loaded;
+  }, [companyId, enabled, version, (explicit as any)?.company_id]);
+  if (hasExplicit) {
+    // Snapshot keeps its details, but the look always follows the company's current Light/Bold choice.
+    const same = loaded && (!(explicit as any).company_id || (loaded as any).company_id === (explicit as any).company_id);
+    return same && loaded!.document_style ? { ...explicit, document_style: loaded!.document_style } : explicit!;
+  }
+  return enabled ? loaded : null;
 }

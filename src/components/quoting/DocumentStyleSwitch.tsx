@@ -18,7 +18,7 @@ const OPTIONS: { key: DocumentStyle; label: string }[] = [
   { key: "bold", label: "Bold" },
 ];
 
-export default function DocumentStyleSwitch({ companyId }: { companyId?: string | null }) {
+export default function DocumentStyleSwitch({ companyId, onPicked }: { companyId?: string | null; onPicked?: (style: DocumentStyle) => void }) {
   const { isAdmin } = useRole();
   const { toast } = useToast();
   const profile = useDocumentCompanyProfile(companyId ?? null, null, !!companyId);
@@ -31,6 +31,7 @@ export default function DocumentStyleSwitch({ companyId }: { companyId?: string 
   const pick = async (style: DocumentStyle) => {
     if (busy) return;
     const label = style === "bold" ? "Bold" : "Light";
+    onPicked?.(style);
     if (style === current) {
       // Johan 15 Oct 18:01: "nothing happened from bold" — a tap on the look already in use used to
       // do absolutely nothing. It now says so and re-reads the record, so a tab left open on the
