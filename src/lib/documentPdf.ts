@@ -137,9 +137,10 @@ const addTermsFooter = (doc: jsPDF, company: TermsCompanyInfo) => {
   doc.text(company.contactLine || COMPANY_CONTACT_LINE, pageWidth / 2, pageHeight - 13, { maxWidth: pageWidth - margin * 2, align: "center" });
 };
 
-/** Quotes carry their own terms + banking from the company record; no extra fixed pages. */
-export function shouldAppendFixedTerms(docType: string | undefined): boolean {
-  return docType !== "Quote";
+/** Every document (quotes included) gets the drawn terms pages — the on-screen quote terms page
+ * is excluded from capture (data-html2canvas-ignore), so it never prints twice or goes missing. */
+export function shouldAppendFixedTerms(_docType: string | undefined): boolean {
+  return true;
 }
 
 /** reserve: when the document stamps its own page head/footer, the terms text keeps clear of
