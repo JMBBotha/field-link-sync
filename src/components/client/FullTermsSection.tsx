@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { eoeClause } from "@/lib/eoeClause";
 import { buildTermsBlocks } from "@/lib/defaultTerms";
+import { groupTermsSections, type TermsSection } from "@/components/quoting/QuoteTermsPage";
 import { COMPANY, cleanBanking } from "@/lib/companyIdentity";
 import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
 
