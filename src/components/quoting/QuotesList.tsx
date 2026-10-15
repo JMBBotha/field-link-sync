@@ -674,7 +674,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
         <QuoteClientDialog open onOpenChange={(o) => !o && setDupQuote(null)} mode="duplicate"
           quoteId={dupQuote.id} quoteNumber={dupQuote.quote_number} currentCustomerId={dupQuote.customer_id}
           currentCustomerName={dupQuote.clientName}
-          onDone={(r) => { queryClient.invalidateQueries(); onEditQuote(r.quoteId); }} />
+          onDone={(r) => { qc.invalidateQueries(); onEditQuote(r.quoteId); }} />
       )}
       <AlertDialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
         <AlertDialogContent>
