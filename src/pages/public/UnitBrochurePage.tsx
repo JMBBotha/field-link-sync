@@ -3,7 +3,8 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import logoLight from "@/assets/brand/logo-light.png";
 import logoWhite from "@/assets/brand/logo-white.png";
-import { brochureSpecRows, type BrochureCompany } from "@/lib/unitBrochure";
+import { brochureSpecRows, brochureDimensionRows, type BrochureCompany } from "@/lib/unitBrochure";
+import { Button } from "@/components/ui/button";
 import type { ProductMedia } from "@/lib/unitCards";
 
 /**
@@ -31,7 +32,7 @@ const CSS = `
 .ub .hl{padding:10px 12px;border-radius:6px;background:#fff4e6;border-left:4px solid var(--or);font-size:12px;line-height:1.4}.ub .hl b{color:var(--or)}
 .ub .feat{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
 .ub .f{border:1px solid #e3eaf2;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.4}
-.ub table{width:100%;border-collapse:collapse;font-size:12px}.ub td{padding:6px 10px;border-bottom:1px solid #eef2f6}.ub td:first-child{color:var(--mu);width:45%}.ub td:last-child{font-weight:600}.ub tr:nth-child(odd) td{background:#f7fbff}
+.ub table{width:100%;border-collapse:collapse;font-size:12px}.ub td{padding:6px 10px;border-bottom:1px solid #eef2f6}.ub td:first-child{color:var(--ink);width:45%}.ub td:last-child{font-weight:600}.ub tr:nth-child(odd) td{background:#f7fbff}.ub tr{break-inside:avoid}.ub h2{break-after:avoid}.ub .hero,.ub .f,.ub .hl,.ub .ft{break-inside:avoid}
 .ub .ft{margin-top:24px;background:var(--b2);color:#fff;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;gap:12px;font-size:12px;border-left:6px solid var(--or)}
 .ub .ft .n{font-weight:800;font-size:14px}.ub .note{color:#9aa7b5;font-size:9.5px;margin-top:10px}
 .ub .pb{margin-top:14px;text-align:center}.ub .pb button{background:var(--b1);color:#fff;border:0;border-radius:6px;padding:9px 18px;font-weight:700;font-size:13px;cursor:pointer}
@@ -58,6 +59,7 @@ export function UnitBrochureView({ data, pdf = false }: { data: BrochureData; pd
   const logo = massair && style === "bold" ? logoWhite : co?.logo_url || (massair ? (style === "bold" ? logoWhite : logoLight) : null);
   const coName = co?.name || co?.legal_name || null;
   const m = data.media;
+  const dimensions = brochureDimensionRows(m?.specs);
   const legal = co?.legal_name || coName;
   const header = (
     <div className="hdw"><div className="w" style={{ paddingBottom: style === "bold" ? 16 : 0 }}>
@@ -80,7 +82,7 @@ export function UnitBrochureView({ data, pdf = false }: { data: BrochureData; pd
   const eoe = `Product image is illustrative${m?.brand ? ` (© ${m.brand})` : ""}. Specifications are as published by the manufacturer and may change. While every effort is made to ensure accuracy, this brochure is subject to errors and omissions (E&OE)${legal ? `; ${legal} reserves the right to correct any specification or typographical errors` : ""}. Prices are on your quotation only.`;
 
   return (
-    <div className={`ub ${style}${pdf ? " pdf" : ""}`} data-testid="unit-brochure" data-state={data.state}>
+    <div className={`ub ${style}${pdf ? " pdf" : ""}`} data-paper data-testid="unit-brochure" data-state={data.state}>
       <style>{CSS}</style>
       {header}
       <div className="w" style={{ paddingTop: 0 }}>
@@ -109,11 +111,15 @@ export function UnitBrochureView({ data, pdf = false }: { data: BrochureData; pd
             )}
             <h2>Specifications</h2>
             <table><tbody>{brochureSpecRows(m.specs, m.model_code).map(([k, v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table>
+            {dimensions.length > 0 && <section data-testid="brochure-dimensions">
+              <h2>Unit dimensions &amp; weight</h2>
+              <table><tbody>{dimensions.map(([k, v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table>
+            </section>}
             {footer}
           </>
         )}
         <div className="note">{eoe}</div>
-        <div className="pb"><button type="button" onClick={() => window.print()}>Print / save as PDF</button></div>
+        <div className="pb"><Button type="button" onClick={() => window.print()}>Print / save as PDF</Button></div>
       </div>
     </div>
   );

@@ -1,4 +1,7 @@
 # Roadmap — catalog source of truth (equipment + materials)
+## Detailed unit brochures (2026-10-15)
+- [ ] Show indoor/outdoor width, height, depth, net weight and verified technical details; verify printed output.
+- [ ] Extend new-model lookup while preserving saved-model reuse; enrich current Midea models from official sources.
 ## Easy Bold/Light switch (2026-10-15)
 - [x] Put a one-tap Light / Bold switch on the open quote screen (admin only, same company_profiles.document_style column the settings dropdown writes).
 - [x] Tapping the look already in use now says so and refreshes the record instead of doing nothing.

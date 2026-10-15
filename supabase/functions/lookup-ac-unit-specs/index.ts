@@ -83,10 +83,18 @@ Return ONLY a JSON object, no prose, with keys:
  "bullets": ["3 to 5 plain-language client benefits, max 16 words each"],
  "specs": {"cool_kw": number|null, "heat_kw": number|null, "btu": number|null, "eer": number|null, "cop": number|null,
            "seer": number|null, "energy_class": string|null, "noise_in_db": "high/low" string|null, "noise_out_db": number|null,
-           "refrigerant": string|null, "inverter": boolean|null, "wifi": boolean|null, "room_m2": string|null, "warranty": string|null},
+           "refrigerant": string|null, "inverter": boolean|null, "wifi": boolean|null, "room_m2": string|null, "warranty": string|null,
+           "indoor_dim_mm": "width x height x depth in mm" string|null, "outdoor_dim_mm": "width x height x depth in mm" string|null,
+           "indoor_net_kg": number|null, "outdoor_net_kg": number|null,
+           "voltage": string|null, "phase": string|null, "frequency_hz": number|null,
+           "cool_input_w": number|null, "heat_input_w": number|null, "cool_current_a": number|null, "heat_current_a": number|null,
+           "airflow_m3h": number|string|null, "pipe": string|null, "max_pipe_length_m": number|null, "max_height_difference_m": number|null},
  "feature_highlight": {"icon": one of "windfree","ai","fast","protect","inverter","filter","wifi","quiet",
                        "title": "the model's signature technology, e.g. WindFree™ cooling", "text": "one plain sentence on what it does for the client"} or null,
  "uncertain": ["list any field you could not confirm from an official source"]}
+Include indoor AND outdoor net (unpacked) dimensions and weights from the exact model's official specification sheet.
+Normalize dimensions to WIDTH x HEIGHT x DEPTH in millimetres regardless of source order (e.g. W x D x H); never use packaging/gross sizes.
+Electrical input/current must be rated cooling/heating values, not maximum values. Never substitute a similar model or different inverter variant.
 Never guess numbers: use null when not found.`;
 
 const json = (body: unknown, status = 200) =>
