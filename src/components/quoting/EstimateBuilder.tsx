@@ -146,7 +146,7 @@ export default function EstimateBuilder({
   const [previewOpen, setPreviewOpen] = useLivePreviewPref(user?.id ?? null);
   const wide = useIsWideScreen();
   const [narrowTab, setNarrowTab] = useState<"editor" | "client">("editor");
-  const previewActive = wide ? previewOpen : narrowTab === "client";
+  const previewActive = narrowTab === "client";
   const [drafts, setDrafts] = useState<Record<string, { item_name?: string; description?: string | null; unit_price?: number }>>({});
   const [collapsedAreaKeys, setCollapsedAreaKeys] = useState<Set<string>>(new Set());
   const collapseReadyRef = useRef(false);
