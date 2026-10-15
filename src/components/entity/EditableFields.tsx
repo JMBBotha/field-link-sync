@@ -115,7 +115,7 @@ export const EditableField = ({
               if (e.key === "Enter") commit();
             }}
             onBlur={commit}
-            className="h-8 min-w-0 text-sm"
+            className="h-9 min-w-0 flex-1 text-sm"
           />
           )}
           <Button type="button" size="sm" aria-label="Save" onClick={commit} className="h-8 shrink-0 gap-1 px-2.5">

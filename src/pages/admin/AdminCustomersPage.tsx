@@ -84,6 +84,7 @@ const AdminCustomersPage = () => {
       const { data, error } = await supabase
         .from("customers")
         .select("id, first_name, last_name, name, company_name, is_company, phone, email, primary_address_line1, city, status, notes, lead_source, updated_at, created_at")
+        .or("status.is.null,status.neq.archived")
         .order("updated_at", { ascending: false })
         .limit(500);
       if (error) throw error;
