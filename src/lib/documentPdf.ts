@@ -397,7 +397,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
           ctx.drawImage(capturedCanvas, 0, sourceY, capturedCanvas.width, sourceSliceH, 0, 0, capturedCanvas.width, sourceSliceH);
         }
         const sliceHeight = (sourceSliceH / capturedCanvas.height) * scaledHeight;
-        doc.addImage(sliceCanvas.toDataURL("image/png"), "PNG", margin, margin + topReserve + (page > 0 ? contTop : 0), usableWidth, sliceHeight, undefined, "FAST");
+        doc.addImage(sliceCanvas.toDataURL("image/jpeg", 0.85), "JPEG", margin, margin + topReserve + (page > 0 ? contTop : 0), usableWidth, sliceHeight, undefined, "FAST");
         addLinks(sourceY, cut);
         lastPageUsed = sliceHeight + topReserve + (page > 0 ? contTop : 0);
         sourceY = cut;
