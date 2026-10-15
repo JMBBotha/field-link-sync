@@ -477,19 +477,31 @@ const SendQuoteDialog = ({
           <DialogHeader>
             <DialogTitle>Email preview</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              This is exactly what the client receives. Change the wording in the message box, then preview again.
+              This is exactly what the client receives. Type your own wording below and tap Update preview.
             </DialogDescription>
           </DialogHeader>
+          <Textarea
+            aria-label="Message to client"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Thank you for the opportunity. Your quotation is ready to view online."
+            rows={3}
+            className="text-sm"
+          />
           {previewHtml && (
             <iframe
               title="Email preview"
               sandbox=""
               srcDoc={previewHtml}
-              className="h-[60vh] w-full rounded-md border border-border bg-white"
+              className="h-[50vh] w-full rounded-md border border-border bg-white"
             />
           )}
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setPreviewHtml(null)}>Close</Button>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={handlePreview} disabled={busy !== null} className="gap-1.5">
+              {busy === "preview" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+              Update preview
+            </Button>
+            <Button onClick={() => setPreviewHtml(null)}>Done — keep this wording</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
