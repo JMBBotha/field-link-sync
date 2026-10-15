@@ -1,6 +1,10 @@
 # Roadmap — catalog source of truth (equipment + materials)
 ## Easy Bold/Light switch (2026-10-15)
-- [ ] Put a one-tap Light / Bold switch on the open quote screen (admin only, same company_profiles.document_style column the settings dropdown writes), so Johan can flip his current estimate without digging through settings.
+- [x] Put a one-tap Light / Bold switch on the open quote screen (admin only, same company_profiles.document_style column the settings dropdown writes).
+- [ ] Tapping the look already in use must say so instead of doing nothing ("nothing happened from bold").
+- [ ] Bold document: the deposit reference must sit directly under the banking details block, not floating mid-page.
+- [ ] Bold document: lighten the dark blue used behind the QR / unit info card sections — currently too dark.
+
 
 ## Quote payment wording (2026-10-15)
 - [x] Keep selectable deposit splits; current quote and company defaults require the final balance on completion, not 30 days later.
