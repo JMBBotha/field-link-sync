@@ -407,6 +407,10 @@ const SendQuoteDialog = ({
               rows={4}
               className="text-sm"
             />
+            <Button variant="outline" onClick={handlePreview} disabled={busy !== null} className="h-8 gap-1.5 text-xs">
+              {busy === "preview" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
+              Preview email
+            </Button>
             <Label htmlFor="send-quote-cc" className="text-xs">Extra email addresses (optional)</Label>
             <Input
               id="send-quote-cc"
@@ -437,6 +441,29 @@ const SendQuoteDialog = ({
       </DialogContent>
 
       {clientPdf && <ClientQuotePdfRoot quoteId={quoteId} />}
+
+      {/* Email preview popup — shows the exact email that will be sent. */}
+      <Dialog open={previewHtml !== null} onOpenChange={(o) => { if (!o) setPreviewHtml(null); }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Email preview</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              This is exactly what the client receives. Change the wording in the message box, then preview again.
+            </DialogDescription>
+          </DialogHeader>
+          {previewHtml && (
+            <iframe
+              title="Email preview"
+              sandbox=""
+              srcDoc={previewHtml}
+              className="h-[60vh] w-full rounded-md border border-border bg-white"
+            />
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPreviewHtml(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
