@@ -210,6 +210,7 @@ export default function EstimateBuilder({
       return sp ? { cost: Number(sp.special_cost), endDate: sp.end_date, pdfPath: sp.specials_pdf_path, applied: false } : null;
     })() : null,
     priceWarn: margin.visible ? quoteLineDrift(i as any, i.product_id ? liveProducts.find((p) => p.id === i.product_id) : null)?.label ?? null : null,
+    priceWarnShort: margin.visible ? quoteLineDrift(i as any, i.product_id ? liveProducts.find((p) => p.id === i.product_id) : null)?.short ?? null : null,
   });
 
   const editAreas: EstimateEditArea[] = useMemo(() => {

@@ -69,6 +69,7 @@ describe("markup overrides are per quote and never persist to the product", () =
     const stub = stubProductFromQuoteItem({ id: "a1", ...overrideLine });
     expect(basketsToQuoteState([{ id: "b", name: "Z", items: [{ instanceId: "a1", product: stub, quantity: 1 }] }]).items[0].unit_price).toBe(overrideLine.unit_price);
     expect(quoteLineDrift(overrideLine, MIDEA)!.label).toMatch(/^markup 32% vs standard 25% \(\+7%, \+R976\.32\)$/);
+    expect(quoteLineDrift(overrideLine, MIDEA)!.short).toBe("32% vs 25%");
     expect(quoteLineDrift({ ...overrideLine, unit_price: STD }, MIDEA)).toBeNull();
   });
   it("(c) product row, favourites and company rates are never written from a quote line", () => {

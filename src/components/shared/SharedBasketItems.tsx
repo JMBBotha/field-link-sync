@@ -28,8 +28,8 @@ import {
 
 
 /** Warn-only chip: the line's markup differs from the standard. Never blocks save/send. */
-const WarnChip = ({ label }: { label: string }) => (
-  <Badge variant="outline" data-testid="markup-warn" title={label} className="text-[8px] px-1 py-0 h-3.5 border-amber-400 bg-amber-50 text-amber-800 shrink-0 truncate max-w-[220px]">⚠ {label}</Badge>
+const WarnChip = ({ label, short }: { label: string; short?: string | null }) => (
+  <Badge variant="outline" data-testid="markup-warn" title={label} className="text-[8px] px-1 py-0 h-3.5 border-amber-400 bg-amber-50 text-amber-800 shrink-0 truncate max-w-[220px]">⚠ {short ?? label}</Badge>
 );
 
 interface SharedBasketItemProps {
@@ -117,7 +117,7 @@ export function CollapsibleBundleCard({
               {kitMarkup}% M/Up · cost {formatZAR(kitCost)}
             </Badge>
           )}
-          {kitWarn && <WarnChip label={kitWarn.label} />}
+          {kitWarn && <WarnChip label={kitWarn.label} short={kitWarn.short} />}
         </div>
 
         {/* Multiplier control */}
@@ -265,7 +265,7 @@ export function RegularItemCard({
         <div className="min-w-0 flex-1 truncate font-medium flex items-center gap-0.5">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
           <Badge variant="outline" className="text-[7px] px-1 py-0 h-3 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
-          {warn && <WarnChip label={warn.label} />}{spChip}
+          {warn && <WarnChip label={warn.label} short={warn.short} />}{spChip}
           <ProductInfoDialog product={item.product} />
         </div>
         {isMeasured ? (
@@ -320,7 +320,7 @@ export function RegularItemCard({
         <p className="font-medium truncate flex items-center gap-1">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
           <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
-          {warn && <WarnChip label={warn.label} />}{spChip}
+          {warn && <WarnChip label={warn.label} short={warn.short} />}{spChip}
           <ProductInfoDialog product={item.product} />
         </p>
         <div className="flex items-center gap-1.5">

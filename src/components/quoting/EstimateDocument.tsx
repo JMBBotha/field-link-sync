@@ -63,8 +63,10 @@ export interface EstimateEditLine {
   isService?: boolean;
   /** Staff-only muted note next to the price (e.g. "cost R 1 234"); set by the staff builder only. */
   staffNote?: string | null;
-  /** Staff-only warn chip: markup differs from the standard (warn only, never on the client PDF). */
+  /** Staff-only warn chip: markup differs from the standard (warn only, never on the client PDF). Full wording (tooltip). */
   priceWarn?: string | null;
+  /** Compact chip text for the narrow price column, e.g. "63.6% vs 100%". Falls back to priceWarn. */
+  priceWarnShort?: string | null;
   /** Staff-only specials indicator (never on client PDF). */
   special?: { cost: number; endDate: string; pdfPath: string | null; applied: boolean } | null;
   /** Display-only short name (kit title / install companion); item_name is never rewritten unless edited. */
@@ -776,7 +778,7 @@ const EstimateDocument = ({
                               <div><SpecialChip cost={line.special.cost} endDate={line.special.endDate} pdfPath={line.special.pdfPath} applied={line.special.applied} /></div>
                             )}
                             {line.priceWarn && (
-                              <div data-html2canvas-ignore data-testid="markup-warn" className="mt-0.5 inline-block rounded-full border border-amber-400 bg-amber-50 px-1.5 text-[10px] text-amber-800 print:hidden">⚠ {line.priceWarn}</div>
+                              <div data-html2canvas-ignore data-testid="markup-warn" title={line.priceWarn} className="mt-0.5 inline-flex max-w-full items-center gap-0.5 whitespace-nowrap rounded-full border border-amber-400 bg-amber-50 px-1 py-0 text-[9px] leading-[14px] text-amber-800 print:hidden">⚠<span className="truncate">{line.priceWarnShort ?? line.priceWarn}</span></div>
                             )}
                             {line.isService && !line.unit_price && (
                               <div className="text-[10px] italic text-slate-400 print:hidden">price not set</div>

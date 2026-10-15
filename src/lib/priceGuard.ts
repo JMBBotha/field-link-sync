@@ -65,6 +65,8 @@ export function markupDrift(sell: number, cost: number, standard: number | null,
   return {
     markup, standard, diffPct, diffRand,
     label: `markup ${pct(markup)} vs standard ${pct(standard)} (${diffPct > 0 ? "+" : ""}${pct(diffPct)}, ${rand(diffRand)})`,
+    // Compact form for the narrow price column — the full label stays in the tooltip.
+    short: `${pct(markup)} vs ${pct(standard)}`,
   };
 }
 
