@@ -116,20 +116,20 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
     { type: "spacer", text: "" },
 
     ...bankingSection,
-
+    ...depositRefSection,
 
 
     { type: "heading", text: "Confidentiality:" },
-    { type: "paragraph", text: "8.1 We respect the privacy and confidentiality of our clients. Any information shared during the course of our engagement will be treated as confidential and will not be disclosed to third parties, except as required by law or the Protection of Personal Information Act 4 of 2013 (POPIA)." },
+    { type: "paragraph", text: "9.1 We respect the privacy and confidentiality of our clients. Any information shared during the course of our engagement will be treated as confidential and will not be disclosed to third parties, except as required by law or the Protection of Personal Information Act 4 of 2013 (POPIA)." },
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Termination:" },
-    { type: "paragraph", text: "9.1 Either party may terminate the agreement by providing written notice to the other party, specifying the reasons for termination." },
-    { type: "paragraph", text: "9.2 Termination may result in the settlement of outstanding payments for services already provided, as per the agreed terms." },
+    { type: "paragraph", text: "10.1 Either party may terminate the agreement by providing written notice to the other party, specifying the reasons for termination." },
+    { type: "paragraph", text: "10.2 Termination may result in the settlement of outstanding payments for services already provided, as per the agreed terms." },
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Dispute Resolution:" },
-    { type: "paragraph", text: "10.1 In the event of any disputes or disagreements arising from our services, both parties agree to engage in good-faith negotiations to resolve the matter amicably before referring the matter to the National Consumer Commission, an accredited consumer ombud, or a court of competent jurisdiction." },
+    { type: "paragraph", text: "11.1 In the event of any disputes or disagreements arising from our services, both parties agree to engage in good-faith negotiations to resolve the matter amicably before referring the matter to the National Consumer Commission, an accredited consumer ombud, or a court of competent jurisdiction." },
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Importance of Servicing AC Units" },
