@@ -1031,6 +1031,17 @@ const EstimateDocument = ({
             </div>
           </div>
         </div>
+
+        {/* ── Full terms & conditions: own page, Bold design (Johan 15 Oct 2026) ── */}
+        <QuoteTermsPage
+          companyName={settings.company_name || COMPANY.legalName}
+          bankName={bank.bank_name || undefined}
+          accountName={bank.account_name}
+          accountNumber={bank.account_number || undefined}
+          branchCode={bank.branch_code || undefined}
+          accountType={accountType || undefined}
+          quoteNumber={estimateNumber}
+        />
       </div>
     </div>
   );
