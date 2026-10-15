@@ -28,14 +28,15 @@ export function planSummary(p: PaymentPlan | null | undefined, defaultDepositPct
 
 /** Terms sentence for the client quote/PDF. */
 export function planTermsSentence(p: PaymentPlan | null | undefined, defaultDepositPct: number | null | undefined, termsDays: number | null | undefined): string {
-  const days = Number(termsDays) || 30;
+  const days = termsDays == null ? 30 : Number(termsDays);
+  const due = days === 0 ? "on completion" : `within ${days} days of completion`;
   if (!isValidPlan(p)) {
-    return `A ${Number(defaultDepositPct) || 70}% deposit is payable on acceptance; the balance is due within ${days} days of completion.`;
+    return `A ${Number(defaultDepositPct) || 70}% deposit is payable on acceptance; the balance is due ${due}.`;
   }
   const [first, ...rest] = p.stages;
   const last = rest[rest.length - 1];
   const middle = rest.slice(0, -1).map((s) => `${s.pct}% ${(s.label || "progress payment").toLowerCase()}`);
-  return `Payments: ${first.pct}% deposit on acceptance${middle.length ? `, ${middle.join(", ")} as the work progresses` : ""}, and the final ${last.pct}% within ${days} days of completion.`;
+  return `Payments: ${first.pct}% deposit on acceptance${middle.length ? `, ${middle.join(", ")} as the work progresses` : ""}, and the final ${last.pct}% ${days === 0 ? "due " : ""}${due}.`;
 }
 
 /** Stage number of a stage invoice from its notes ("STAGE 2/3 — …"), else null. */

@@ -74,7 +74,7 @@ export const useCompanySettings = () => {
         default_hourly_rate: Number(data.default_hourly_rate) || 0,
         default_install_labour_hours: Number(data.default_install_labour_hours) || 3.5,
         default_deposit_percentage: Number(data.default_deposit_percentage) || 70,
-        default_payment_terms_days: data.default_payment_terms_days || 30,
+        default_payment_terms_days: data.default_payment_terms_days ?? 30,
         payfast_merchant_id: data.payfast_merchant_id || "",
         payfast_merchant_key: data.payfast_merchant_key || "",
         banking_details: (data.banking_details as CompanySettings["banking_details"]) || {},

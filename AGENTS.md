@@ -1,5 +1,5 @@
 # AGENTS
-- Quote terms flow through the rendered QuoteTermsPage after unit cards; native terms are fallback only and model brochures are QR links, not appended pages, so builder and PDF match.
+- QuoteTermsPage follows unit cards; native terms are fallback only, brochures are QR-only. Quote hydration preserves zero term days (completion) for planTermsSentence, independent of deposit splits.
 - FieldShell owns field-page framing; CompanyLogo reads CompanyProvider with bundled fallback to avoid duplicate headers.
 - Price-list/PDF catalogue writes go only through ImportPreviewModal review (applyProductDiff needs reviewGatePassed); auto-catalog only proposes; browser checks: scripts/browser/readonly_guard.py — no silent inserts. Catalogue delete = archive (services/catalogArchive, never quote_items); quote product reads use lib/liveProducts — only live price lists quotable.
 - Estimate page and Build quote share one Option-1 area card; Create area stays inside before totals; old Build/Build Area Quote tabs are hidden.
