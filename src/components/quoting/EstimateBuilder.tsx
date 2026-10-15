@@ -38,6 +38,7 @@ import { useActiveSpecials } from "@/hooks/useActiveSpecials";
 import LabourModeSwitch, { useLabourModeSwitch } from "@/components/quoting/LabourModeSwitch";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import LiveClientPreview from "@/components/quoting/LiveClientPreview";
+import DocumentStyleSwitch from "@/components/quoting/DocumentStyleSwitch";
 import { useQuoteUnitCards } from "@/components/quoting/QuoteUnitCards";
 import { useLivePreviewPref, useIsWideScreen } from "@/hooks/useLivePreviewPref";
 import { useAuth } from "@/contexts/AuthContext";
@@ -666,7 +667,8 @@ export default function EstimateBuilder({
       // Johan 15 Oct: one view at a time on every width — builder OR client view, never side by side.
       return (
         <div data-testid="live-preview-layout">
-          <div className="sticky top-2 z-20 mb-3 flex justify-end print:hidden" data-html2canvas-ignore data-pdf-hide>
+          <div className="sticky top-2 z-20 mb-3 flex flex-wrap items-center justify-end gap-2 print:hidden" data-html2canvas-ignore data-pdf-hide>
+            <DocumentStyleSwitch companyId={meta?.company_id ?? null} />
             <Button type="button" size="sm" variant="outline" className="h-9 rounded-full border-primary bg-white px-4 text-xs font-semibold text-primary shadow-sm"
               data-testid="live-preview-toggle" aria-pressed={narrowTab === "client"}
               onClick={() => setNarrowTab(narrowTab === "editor" ? "client" : "editor")}>

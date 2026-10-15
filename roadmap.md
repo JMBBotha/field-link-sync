@@ -1,4 +1,13 @@
 # Roadmap — catalog source of truth (equipment + materials)
+## Easy Bold/Light switch (2026-10-15)
+- [x] Put a one-tap Light / Bold switch on the open quote screen (admin only, same company_profiles.document_style column the settings dropdown writes).
+- [x] Tapping the look already in use now says so and refreshes the record instead of doing nothing.
+- [x] Deposit reference prints as 7.6 directly under the banking lines; it is no longer its own section. Verified in the client view and pinned by a test.
+- [x] Bold QR / unit card fills lightened to a medium blue (#2673C8) with readable white text; checked in the browser.
+- [ ] Offered, not requested: the quote terms page prints the standard terms, not the company's own short terms text — say the word and I'll switch it over.
+
+
+
 ## Quote payment wording (2026-10-15)
 - [x] Keep selectable deposit splits; current quote and company defaults require the final balance on completion, not 30 days later.
 - [x] Verified company term days = 0, current downloaded quote shows payment due on completion; 14 focused tests pass, preview build OK.

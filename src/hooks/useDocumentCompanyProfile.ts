@@ -11,8 +11,20 @@ import type { CompanyProfile } from "@/lib/companyProfiles";
  */
 const cache = new Map<string, Promise<CompanyProfile | null>>();
 
+/**
+ * Johan 15 Oct: the quote screen can switch Light/Bold, so every mounted document must repaint
+ * immediately. Clearing the cache also tells the mounted hooks to re-read the company record.
+ */
+const listeners = new Set<() => void>();
+
+export function subscribeDocumentCompanyProfile(fn: () => void) {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+}
+
 export function clearDocumentCompanyProfileCache() {
   cache.clear();
+  listeners.forEach((l) => l());
 }
 
 async function resolveCompanyId(companyId?: string | null): Promise<string | null> {
