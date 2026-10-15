@@ -1,8 +1,8 @@
 # Roadmap — catalog source of truth (equipment + materials)
 ## Detailed unit brochures (2026-10-15)
-- [ ] Include mideaaircon.co.za, Fourways Online, AC Direct and Right Air among South African brochure sources.
-- [ ] Show indoor/outdoor width, height, depth, net weight and verified technical details; verify printed output.
-- [ ] Extend new-model lookup while preserving saved-model reuse; enrich current Midea models from official sources.
+- [x] Include mideaaircon.co.za, Fourways Online, AC Direct and Right Air in the lookup source instructions (not deployed).
+- [x] Show indoor/outdoor width, height, depth, net weight and verified technical details; inspected both one-page Midea PDF outputs after fixing page overflow, 10 tests pass and no browser errors.
+- [x] Extend new-model lookup without altering saved-model reuse; enriched both approved Midea records from exact-model Midea ZA specifications, including source URLs. Lookup changes await deployment only when requested.
 ## Easy Bold/Light switch (2026-10-15)
 - [x] Put a one-tap Light / Bold switch on the open quote screen (admin only, same company_profiles.document_style column the settings dropdown writes).
 - [x] Tapping the look already in use now says so and refreshes the record instead of doing nothing.
