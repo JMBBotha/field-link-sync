@@ -228,6 +228,25 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
         <span className="hidden lg:block text-[10px] text-white/50 font-mono">Draft – creating…</span> : null
         }
       </div>
+      {meta?.id && clientDialog &&
+      <QuoteClientDialog
+        open
+        onOpenChange={(o) => { if (!o) setClientDialog(null); }}
+        mode={clientDialog}
+        quoteId={meta.id}
+        quoteNumber={meta.quote_number}
+        currentCustomerId={meta.customer_id}
+        currentCustomerName={clientLabel}
+        onDone={async (r) => {
+          if (clientDialog === "change") {
+            // Server already switched it; this keeps the open builder in step (same values, no line changes).
+            await updateQuote({ customer_id: r.customerId, customer_name: r.customerName });
+          } else {
+            navigateTo(`/admin/quote-builder?quoteId=${r.quoteId}`);
+            window.location.reload();
+          }
+        }} />
+      }
     </header>);
 
 }
