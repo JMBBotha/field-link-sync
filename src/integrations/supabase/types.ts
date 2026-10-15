@@ -11374,6 +11374,10 @@ export type Database = {
       default_company_profile: { Args: { p_company: string }; Returns: string }
       delete_bill_payment: { Args: { p_payment: string }; Returns: undefined }
       delete_job_used_part: { Args: { p_id: string }; Returns: boolean }
+      delete_or_archive_client: {
+        Args: { p_customer_id: string; p_mode: string }
+        Returns: Json
+      }
       disablelongtransactions: { Args: never; Returns: string }
       dispatchable_technicians: {
         Args: { _company_id: string }
