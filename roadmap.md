@@ -1,5 +1,9 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
+## Quote line quantity box (2026-10-15)
+- [x] Compact box: 36px tall, 64px wide, 2px blue outline (QtyStepper + .qty-box CSS override), nudged right of the rate/cost column.
+- [ ] Offered but not requested: more room for the rate box in the two-column estimate view (paper ~500px wide there); user to say if they want the side preview narrowed.
+
 ## Calendar S3
 - [x] Needs someone tray, card day view, private sales calendar, attention grammar and stage rep visibility.
 - [x] 54 focused tests pass; guarded desktop/phone checks show Cards/Timeline switching, no overflow or runtime errors, two background writes blocked; automatic preview build OK. No publishing.
