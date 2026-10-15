@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
-import { generateDocumentPdf, generateDocumentPdfBlob } from "@/lib/documentPdf";
+import { generateDocumentPdfBlob } from "@/lib/documentPdf";
 import QuotePdfViewer, { isPhoneViewport } from "@/components/quoting/QuotePdfViewer";
 import { printPdfBlob } from "@/lib/printPdf";
 import { loadQuoteBrochuresForPdf } from "@/lib/quoteBrochuresForPdf";
