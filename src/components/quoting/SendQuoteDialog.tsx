@@ -221,6 +221,39 @@ const SendQuoteDialog = ({
     }
   };
 
+  // Preview the exact email HTML (no PDF, nothing sent) so wording can be checked first.
+  const handlePreview = async () => {
+    setBusy("preview");
+    try {
+      const { data, error } = await supabase.functions.invoke("send-quote-email", {
+        body: {
+          previewOnly: true,
+          to: email.trim() || "client@example.com",
+          subject: `Your quote ${quoteNumber}`,
+          quoteNumber,
+          quoteId,
+          customerId,
+          quoteUrl: clientUrl,
+          clientName: resolvedCustomerName,
+          totalAmount: total,
+          message: message.trim() || undefined,
+        },
+      });
+      if (error) throw new Error(await readInvokeError(error));
+      const html = (data as { html?: string } | null)?.html;
+      if (!html) throw new Error("No preview came back — please try again.");
+      setPreviewHtml(html);
+    } catch (err) {
+      toast({
+        title: "Preview failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const handleEmail = async () => {
     if (!email.trim()) {
       toast({ title: "Email required", description: "Add a client email address first.", variant: "destructive" });
