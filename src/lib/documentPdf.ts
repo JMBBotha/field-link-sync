@@ -338,6 +338,8 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     const scaledHeight = (capturedCanvas.height * usableWidth) / capturedCanvas.width;
     const imgData = capturedCanvas.toDataURL("image/png", 1);
     // Clickable links in the PDF for anchors marked data-pdf-link (our own brochure links only).
+    // Link boxes and page-break ranges must use the same header/footer-free layout as capture.
+    bottomEls.forEach((el) => { el.style.display = "none"; });
     const rootRect = captureElement.getBoundingClientRect();
     const pxToMm = usableWidth / captureElement.scrollWidth;
     const linkBoxes = Array.from(captureElement.querySelectorAll<HTMLAnchorElement>("a[data-pdf-link][href]")).map((a) => {
