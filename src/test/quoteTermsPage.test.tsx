@@ -19,14 +19,15 @@ describe("groupTermsSections", () => {
     expect(bank?.items.some((i) => i.text.includes("63226563591"))).toBe(true);
   });
 
-  it("prints the deposit reference under the banking details, not as its own section", () => {
-    // Johan 15 Oct 18:01: "the deposit reference needs to sit just under banking details."
+  it("prints the deposit reference as its own numbered section straight after banking details", () => {
+    // Johan 15 Oct 18:13: "deposit ref still needed to be a blue circle and separate from
+    // banking details, just the next item — banking is 0.7 so this must be 0.8."
     const bank = sections.find((s) => /banking/i.test(s.heading));
-    expect(bank?.items.some((i) => /deposit reference/i.test(i.text))).toBe(true);
-    expect(sections.some((s) => /deposit reference/i.test(s.heading))).toBe(false);
-    const deposit = bank!.items.findIndex((i) => /deposit reference/i.test(i.text));
-    const account = bank!.items.findIndex((i) => /account number/i.test(i.text));
-    expect(deposit).toBeGreaterThan(account);
+    expect(bank?.items.some((i) => /deposit reference/i.test(i.text))).toBe(false);
+    const deposit = sections.find((s) => /deposit reference/i.test(s.heading));
+    expect(deposit).toBeTruthy();
+    expect(deposit?.items.some((i) => /proposal number/i.test(i.text))).toBe(true);
+    expect(sections.indexOf(deposit!)).toBe(sections.indexOf(bank!) + 1);
   });
 
 
