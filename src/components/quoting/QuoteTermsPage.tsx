@@ -49,7 +49,7 @@ export interface QuoteTermsPageProps {
 const TermsSections = ({ sections, startIndex = 0 }: { sections: TermsSection[]; startIndex?: number }) => (
   <div className="space-y-4">
     {sections.map((s, i) => (
-      <div key={i} className="break-inside-avoid">
+      <div key={i} data-pdf-keep className="break-inside-avoid">
         <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-[10px] font-bold text-white">
             {String(startIndex + i + 1).padStart(2, "0")}
@@ -79,7 +79,7 @@ export default function QuoteTermsPage(p: QuoteTermsPageProps) {
   const left = sections.slice(0, half);
   const right = sections.slice(half);
   return (
-    <div data-html2canvas-ignore data-testid="quote-terms-page" className="mt-8 pt-6">
+    <div data-pdf-hide data-pdf-terms-page data-testid="quote-terms-page" className="mt-8 pt-6">
       <div className="flex items-baseline gap-3 border-b-2 border-[#1AA7EC] pb-2">
         <span className="border-l-4 border-[#F7941D] pl-2 text-[16px] font-bold text-[#1B3A5C]">Terms and conditions</span>
         {p.quoteNumber && <span className="text-[10px] text-slate-400">Quote {p.quoteNumber}</span>}

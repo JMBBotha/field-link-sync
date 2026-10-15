@@ -276,6 +276,29 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
 
     const html2canvas = (await import("html2canvas")).default;
 
+    // Capture the SAME terms layout as the builder separately. Removing it from the main
+    // layout (not merely ignoring its pixels) prevents several pages of empty space.
+    const termsEl = captureElement.querySelector<HTMLElement>("[data-pdf-terms-page]");
+    let termsCanvas: HTMLCanvasElement | null = null;
+    let termsKeep: [number, number][] = [];
+    if (termsEl) {
+      const hidden = termsEl.hasAttribute("data-pdf-hide");
+      termsEl.removeAttribute("data-pdf-hide");
+      try {
+        await waitForCaptureFrame();
+        termsCanvas = await html2canvas(termsEl, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false, width: termsEl.scrollWidth, height: termsEl.scrollHeight });
+        const top = termsEl.getBoundingClientRect().top;
+        const scale = termsCanvas.width / termsEl.scrollWidth;
+        termsKeep = Array.from(termsEl.querySelectorAll<HTMLElement>("[data-pdf-keep]")).map((el) => {
+          const r = el.getBoundingClientRect();
+          return [(r.top - top) * scale, (r.bottom - top) * scale];
+        });
+      } finally {
+        if (hidden) termsEl.setAttribute("data-pdf-hide", "");
+      }
+      await waitForCaptureFrame();
+    }
+
     // Signature block(s) marked data-pdf-bottom are captured on their own and pinned to the
     // bottom of the last page below, so hide them from the main capture.
     // A bottom block taller than ~40% of a page (e.g. a quote's full terms) flows with the content
@@ -421,9 +444,25 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       }
     }
 
-    // Quotes end after their own terms + banking block (rendered from the company record in the
-    // captured page). The fixed appended terms pages are kept for invoices/other documents only.
-    if (shouldAppendFixedTerms(opts.docType)) {
+    if (termsCanvas?.width && termsCanvas.height) {
+      const widthMm = usableWidth * termsCanvas.width / capturedCanvas.width;
+      const rows = Math.floor(usableHeight * termsCanvas.width / widthMm);
+      const ctx = termsCanvas.getContext("2d");
+      const pixels = ctx?.getImageData(0, 0, termsCanvas.width, termsCanvas.height).data;
+      const cuts = computePageCuts((y) => pixels ? isUniformRow(pixels, termsCanvas.width, y) : false, termsCanvas.height, rows, undefined, [], 8, termsKeep);
+      let start = 0;
+      for (const cut of cuts) {
+        const slice = document.createElement("canvas");
+        slice.width = termsCanvas.width;
+        slice.height = cut - start;
+        const sctx = slice.getContext("2d");
+        if (!sctx) throw new Error("Could not render terms page");
+        sctx.drawImage(termsCanvas, 0, start, slice.width, slice.height, 0, 0, slice.width, slice.height);
+        doc.addPage();
+        doc.addImage(slice.toDataURL("image/png"), "PNG", (pageWidth - widthMm) / 2, margin + topReserve + contTop, widthMm, slice.height * widthMm / slice.width, undefined, "FAST");
+        start = cut;
+      }
+    } else if (shouldAppendFixedTerms(opts.docType)) {
       const termsCompany = opts.termsCompany || (await fetchTermsCompanyInfo(opts.companyName));
       appendTermsPages(doc, termsCompany, headH || footH ? { top: margin + topReserve + contTop, bottom: margin + botReserve } : undefined);
     }
@@ -436,7 +475,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       doc.setPage(i);
       // Page 1: company line only. Last page: only the blue banner line (no rule, no company line).
       // Pages in between: company line above the thin blue/orange rule (Johan 14 Oct 07:53-07:54).
-      const last = i === doc.getNumberOfPages() && i > 1;
+      const last = !termsCanvas && i === doc.getNumberOfPages() && i > 1;
       if (i === 1) { if (headFirstImg) doc.addImage(headFirstImg, "PNG", margin, margin, usableWidth, headFirstH, undefined, "FAST"); }
       else if (last) { if (headImg || headFirstImg) { doc.setDrawColor(14, 165, 233); doc.setLineWidth(2.5); doc.line(20, 18, pageWidth - 20, 18); } }
       else if (headImg) doc.addImage(headImg, "PNG", margin, margin, usableWidth, headLaterH, undefined, "FAST");

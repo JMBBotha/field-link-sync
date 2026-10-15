@@ -1,5 +1,9 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
+## Quote PDF terms and blank pages (2026-10-15)
+- [ ] Capture the builder's terms design separately, remove its space from the main capture, and avoid a duplicate terms-only closing page.
+- [ ] Download and visually inspect every page without changing or sending the quote; run focused regression tests.
+
 ## Quote line quantity box (2026-10-15)
 - [x] Compact box: 36px tall, 64px wide, 2px blue outline (QtyStepper + .qty-box CSS override), nudged right of the rate/cost column.
 - [ ] Offered but not requested: more room for the rate box in the two-column estimate view (paper ~500px wide there); user to say if they want the side preview narrowed.

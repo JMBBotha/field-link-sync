@@ -236,11 +236,12 @@ export default function BrandDocument(p: BrandDocumentProps) {
         {closing && p.cards.length > 0 && (
           <div className="closing" data-pdf-break-before data-testid="doc-closing">
             <div className="notes wide">{p.cards.map((c, i) => <div className={`note${p.cards.length % 2 === 1 && i === p.cards.length - 1 ? " full" : ""}`} key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
+            {p.fullTermsPage && <div className="terms" data-testid="doc-terms"><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>}
           </div>
         )}
         {closing && p.fullTermsPage}
       </div>
-      {closing ? (
+      {closing && !p.fullTermsPage ? (
         <div className="foot" data-pdf-bottom data-testid="doc-foot">
           <div className="terms" data-testid="doc-terms"><h4>Terms</h4><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>
         </div>
