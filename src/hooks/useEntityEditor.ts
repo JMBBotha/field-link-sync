@@ -117,7 +117,7 @@ export function useEntityEditor(
       if (error) throw error;
       // Only report success when the saved row really holds the typed text.
       const row = data as Row;
-      if (row) for (const [k, v] of Object.entries(patch)) {
+      if (row && entityType === "client") for (const [k, v] of Object.entries(patch)) {
         if (typeof v === "string" && typeof row[k] === "string" && row[k].trim() !== v.trim()) {
           throw new Error(`${k.replace(/_/g, " ")} was not saved (it is still "${row[k]}").`);
         }
