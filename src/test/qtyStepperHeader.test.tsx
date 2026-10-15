@@ -15,7 +15,8 @@ describe("QtyStepper (Johan 19:51)", () => {
     const on = vi.fn();
     const { rerender } = render(<QtyStepper value={2} min={0} step={1} ariaLabel="Quantity" onCommit={on} />);
     const i = screen.getByLabelText("Quantity") as HTMLInputElement;
-    expect(i.className).toMatch(/text-right/); expect(i.className).toMatch(/h-11/);
+    expect(i.className).toMatch(/text-right/); expect(i.className).toMatch(/h-9/);
+    expect(i.className).toMatch(/border-2/); expect(i.className).toMatch(/border-sky-600/);
     expect(i.getAttribute("inputmode")).toBe("decimal");
     fireEvent.focus(i); expect(i.selectionStart).toBe(0); expect(i.selectionEnd).toBe(1);
     fireEvent.change(i, { target: { value: "7" } }); fireEvent.blur(i);
