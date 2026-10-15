@@ -15,7 +15,8 @@ import { canMergeRepick, freshProduct, standardSell } from "@/lib/priceGuard";
 import { useState, useEffect, useMemo, useRef, useCallback, useSyncExternalStore, type MutableRefObject } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2, Send } from "lucide-react";
+import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2, Send, Copy } from "lucide-react";
+import QuoteClientDialog, { type QuoteClientMode } from "@/components/quoting/QuoteClientDialog";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { formatRand } from "@/utils/formatRand";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
@@ -97,6 +98,8 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
   const [clientSearch, setClientSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [clientDialog, setClientDialog] = useState<QuoteClientMode | null>(null);
+  const navigateTo = useNavigate();
 
   const selectedClient = useMemo(() => {
     if (!meta?.customer_id) return null;
@@ -158,15 +161,10 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
           <div className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs text-white">
               <Users className="h-3.5 w-3.5 shrink-0" />
               <span className="font-medium truncate max-w-[150px]">{clientLabel}</span>
-              <button
-              onClick={() => {
-                updateQuote({ customer_id: null, customer_name: null });
-                setClientSearch("");
-              }}
-              className="hover:text-white/60">
-
-                <X className="h-3 w-3" />
-              </button>
+              {meta?.id && (meta.status === "draft" ?
+              <button type="button" onClick={() => setClientDialog("change")} className="underline hover:text-white/70" data-testid="change-client">Change</button> :
+              <span className="text-white/60" title="Sent or accepted quotes keep their client. Duplicate to quote someone else.">locked</span>)}
+              {meta?.id && <button type="button" onClick={() => setClientDialog("duplicate")} className="ml-1 hover:text-white/70" title="Duplicate quote" aria-label="Duplicate quote" data-testid="duplicate-quote"><Copy className="h-3.5 w-3.5" /></button>}
             </div> :
 
           <div className="relative">
@@ -230,6 +228,25 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
         <span className="hidden lg:block text-[10px] text-white/50 font-mono">Draft – creating…</span> : null
         }
       </div>
+      {meta?.id && clientDialog &&
+      <QuoteClientDialog
+        open
+        onOpenChange={(o) => { if (!o) setClientDialog(null); }}
+        mode={clientDialog}
+        quoteId={meta.id}
+        quoteNumber={meta.quote_number}
+        currentCustomerId={meta.customer_id}
+        currentCustomerName={clientLabel}
+        onDone={async (r) => {
+          if (clientDialog === "change") {
+            // Server already switched it; this keeps the open builder in step (same values, no line changes).
+            await updateQuote({ customer_id: r.customerId, customer_name: r.customerName });
+          } else {
+            navigateTo(`/admin/quote-builder?quoteId=${r.quoteId}`);
+            window.location.reload();
+          }
+        }} />
+      }
     </header>);
 
 }
@@ -259,7 +276,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   const navigate = useNavigate();
   const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta, addItem: ctxAddItem, addArea: ctxAddArea, refetch: ctxRefetch } = useQuoteContext();
   // Two-editor guard: presence pauses saving; the line stamp blocks writes over outside changes.
-  const { others: otherEditors } = useQuoteEditors(quoteId, "builder");
+  const { others: otherEditors, takeOver, takenOver } = useQuoteEditors(quoteId, "builder");
   const othersRef = useRef(otherEditors);
   othersRef.current = otherEditors;
   const [changedElsewhere, setChangedElsewhere] = useState(false);
@@ -1376,6 +1393,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
       ) : otherEditors.length > 0 && (
         <div role="status" className="border-b border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {otherEditors[0].name} also has this quote open on the {otherEditors[0].surface === "estimate" ? "estimate page" : "builder"}. Builder saving is paused so their changes aren't overwritten.
+          {takenOver ? " They took over editing — reload to see their changes." : (
+            <Button type="button" size="sm" variant="outline" className="ml-2 h-7" data-testid="take-over-editing"
+              onClick={() => { if (window.confirm("Take over editing? Use this only if the other page is closed or no longer in use. Their unsaved changes there will stop saving.")) takeOver(); }}>
+              Take over editing
+            </Button>
+          )}
         </div>
       )}
       <div className="relative flex-1 min-h-0 overflow-hidden">

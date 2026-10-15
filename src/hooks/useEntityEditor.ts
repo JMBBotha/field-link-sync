@@ -115,7 +115,14 @@ export function useEntityEditor(
         p_patch: patch,
       });
       if (error) throw error;
-      return data as Row;
+      // Only report success when the saved row really holds the typed text.
+      const row = data as Row;
+      if (row && entityType === "client") for (const [k, v] of Object.entries(patch)) {
+        if (typeof v === "string" && typeof row[k] === "string" && row[k].trim() !== v.trim()) {
+          throw new Error(`${k.replace(/_/g, " ")} was not saved (it is still "${row[k]}").`);
+        }
+      }
+      return row;
     },
     onMutate: async (patch: Row) => {
       await qc.cancelQueries({ queryKey });
