@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
-import { Mail, Loader2, Check, Download, Link2 } from "lucide-react";
+import { Mail, Loader2, Check, Download, Link2, Eye } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,7 +79,8 @@ const SendQuoteDialog = ({
   const [extraEmails, setExtraEmails] = useState("");
   const [copyToCompany, setCopyToCompany] = useState(true);
   const [leadId, setLeadId] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"email" | "pdf" | null>(null);
+  const [busy, setBusy] = useState<"email" | "pdf" | "preview" | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [sent, setSent] = useState<{ email: boolean }>({ email: false });
   // Set once the backend tells us email isn't configured — we then stop
   // offering the Email button and point the user at Copy link / Download PDF.
