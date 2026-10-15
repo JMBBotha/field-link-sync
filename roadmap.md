@@ -164,3 +164,4 @@ Follow-ups only: staff working hours and webhook-secret rotation were intentiona
 - [x] Selected items: empty-state message when ★ Selected has nothing to list (owner report 2026-10-15)
 - [x] Markup pill colours: green above target, orange below, red far below (owner request 2026-10-15)
 - [x] Single button to switch builder ↔ client view (tablet mode)
+- [ ] Swap stand-in Midea photos for real Midea indoor-unit images (waiting on user upload)

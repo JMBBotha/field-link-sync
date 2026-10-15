@@ -82,6 +82,7 @@ const SendQuoteDialog = ({
   const [busy, setBusy] = useState<"email" | "pdf" | "preview" | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [sent, setSent] = useState<{ email: boolean }>({ email: false });
+  const [approved, setApproved] = useState({ terms: false, brochure: false, pricing: false });
   // Set once the backend tells us email isn't configured — we then stop
   // offering the Email button and point the user at Copy link / Download PDF.
   const [emailUnavailable, setEmailUnavailable] = useState(false);
@@ -119,7 +120,10 @@ const SendQuoteDialog = ({
     };
     setEmail(q.customers?.email || "");
     setLeadId(q.lead_id ?? null);
+    // Sign-off resets every time the window opens or the quote changes.
+    setApproved({ terms: false, brochure: false, pricing: false });
   }, [open, quote]);
+  const allApproved = approved.terms && approved.brochure && approved.pricing;
 
 
   const { data: items = [] } = useQuery({
@@ -255,6 +259,7 @@ const SendQuoteDialog = ({
   };
 
   const handleEmail = async () => {
+    if (!allApproved) return;
     if (!email.trim()) {
       toast({ title: "Email required", description: "Add a client email address first.", variant: "destructive" });
       return;
@@ -383,6 +388,21 @@ const SendQuoteDialog = ({
 
         {/* Secondary: email the PDF */}
         <div className="space-y-3 border-t border-border pt-3">
+          <div className="space-y-1.5 rounded-md border border-primary/40 bg-primary/5 p-2.5" data-testid="send-approval">
+            <p className="text-xs font-semibold">Sign off before emailing</p>
+            {([
+              ["terms", "I've checked the terms and conditions"],
+              ["brochure", "I've checked the unit info / brochure details"],
+              ["pricing", "I've checked the pricing"],
+            ] as const).map(([k, label]) => (
+              <label key={k} className="flex items-center gap-2 text-xs">
+                <input type="checkbox" className="h-4 w-4 accent-primary" data-testid={`approve-${k}`}
+                  checked={approved[k]} onChange={(e) => setApproved((a) => ({ ...a, [k]: e.target.checked }))} />
+                {label}
+              </label>
+            ))}
+            {!allApproved && <p className="text-[11px] text-muted-foreground">Tick all three to unlock Email.</p>}
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="send-quote-email" className="text-xs">Email address</Label>
             <div className="flex gap-2">
@@ -393,7 +413,7 @@ const SendQuoteDialog = ({
                 placeholder="client@example.com"
                 className="h-9 text-sm"
               />
-              <Button onClick={handleEmail} disabled={busy !== null || emailUnavailable} className="h-9 shrink-0 gap-1.5">
+              <Button onClick={handleEmail} disabled={busy !== null || emailUnavailable || !allApproved} className="h-9 shrink-0 gap-1.5">
                 {busy === "email" ? <Loader2 className="h-4 w-4 animate-spin" /> : sent.email ? <Check className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
                 Email
               </Button>
