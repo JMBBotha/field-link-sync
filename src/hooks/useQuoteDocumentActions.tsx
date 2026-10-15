@@ -157,13 +157,12 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
         // Print = the same full PDF (quote + T&C pages), printed from a hidden frame (Johan 2026-10-12).
         const blob = await generateDocumentPdfBlob(pdfOpts as any);
         printPdfBlob(blob);
-      } else if (isPhoneViewport()) {
-        // Phones: show the PDF inside the app (with Back/Save/Share/Download/Home), not a bare browser tab.
+      } else {
+        // All screens: open the finished PDF in the in-app viewer; its Download/Share buttons fire on a
+        // fresh click, so browsers (esp. Safari / the preview frame) don't block the file after the long build.
         const blob = await generateDocumentPdfBlob(pdfOpts as any);
         const num = q.quote_number || "DRAFT";
         setPdfView({ url: URL.createObjectURL(blob), fileName: `Quote-${num}.pdf`, title: `Quote ${num}` });
-      } else {
-        await generateDocumentPdf(pdfOpts as any);
       }
     } catch (e: any) {
       toast({ title: "PDF failed", description: e?.message, variant: "destructive" });
