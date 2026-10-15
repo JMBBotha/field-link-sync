@@ -1,5 +1,6 @@
 # Roadmap — catalog source of truth (equipment + materials)
 ## Detailed unit brochures (2026-10-15)
+- [ ] Include mideaaircon.co.za, Fourways Online, AC Direct and Right Air among South African brochure sources.
 - [ ] Show indoor/outdoor width, height, depth, net weight and verified technical details; verify printed output.
 - [ ] Extend new-model lookup while preserving saved-model reuse; enrich current Midea models from official sources.
 ## Easy Bold/Light switch (2026-10-15)

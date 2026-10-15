@@ -74,7 +74,8 @@ async function callChatCompletionsLegacyFallback(apiKey: string, query: string) 
 const MEDIA_PROMPT = `You are an HVAC product data researcher for a South African aircon installer.
 Given an exact air conditioner model number, use web search to find its OFFICIAL data. Prefer, in order:
 the brand's South African site (e.g. samsung.com/za, midea.com/za, lg.com/za), the SA distributor (e.g. Fourways Airconditioning spec sheets), then the manufacturer's
-global site. Only use retailer pages to confirm, never as the only source for numbers.
+global site. Also search mideaaircon.co.za, Fourways Online, AC Direct and Right Air for exact-model brochures and specifications.
+Prefer their manufacturer-authored PDF brochures for measurements. Only use retailer descriptions to confirm, never as the only source for numbers.
 Return ONLY a JSON object, no prose, with keys:
 {"display_name": "Brand Range Name", "family": "e.g. AR70", "subtitle": "12,000 BTU/h wall split",
  "product_url": "official product page URL or null", "support_url": "official support page URL or null",
