@@ -32,6 +32,7 @@ const CSS = `
 .ub .hl{padding:10px 12px;border-radius:6px;background:#fff4e6;border-left:4px solid var(--or);font-size:12px;line-height:1.4}.ub .hl b{color:var(--or)}
 .ub .feat{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
 .ub .f{border:1px solid #e3eaf2;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.4}
+.ub .details{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
 .ub table{width:100%;border-collapse:collapse;font-size:12px}.ub td{padding:6px 10px;border-bottom:1px solid #eef2f6}.ub td:first-child{color:var(--ink);width:45%}.ub td:last-child{font-weight:600}.ub tr:nth-child(odd) td{background:#f7fbff}.ub tr{break-inside:avoid}.ub h2{break-after:avoid}.ub .hero,.ub .f,.ub .hl,.ub .ft{break-inside:avoid}
 .ub .ft{margin-top:24px;background:var(--b2);color:#fff;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;gap:12px;font-size:12px;border-left:6px solid var(--or)}
 .ub .ft .n{font-weight:800;font-size:14px}.ub .note{color:#9aa7b5;font-size:9.5px;margin-top:10px}
@@ -40,7 +41,7 @@ const CSS = `
 .ub.bold .hdw{background:var(--b1);color:#fff}.ub.bold .hdw .w{padding-bottom:16px}.ub.bold .hdw .k,.ub.bold .hdw .cn{color:#fff}.ub.bold .bar{display:none}
 .ub.bold .tile{background:linear-gradient(160deg,var(--b1),var(--b2));border-top:0}.ub.bold .hl{background:var(--b1);color:#fff}.ub.bold .hl b{color:#ffd29a}
 .ub.bold .f{background:#eef3f9;border:0;border-left:4px solid var(--or)}.ub.bold .ft{background:var(--b1)}
-@media (max-width:500px){.ub .w{padding:14px 16px 22px}.ub .hd img{height:48px}.ub .k{font-size:15px}.ub .hero{grid-template-columns:1fr}.ub .tile{min-height:170px}.ub h1{font-size:23px}.ub .feat{grid-template-columns:1fr}.ub .ft{flex-direction:column}.ub .ft .r{text-align:left}}
+@media (max-width:500px){.ub .w{padding:14px 16px 22px}.ub .hd img{height:48px}.ub .k{font-size:15px}.ub .hero,.ub .details{grid-template-columns:1fr}.ub .tile{min-height:170px}.ub h1{font-size:23px}.ub .feat{grid-template-columns:1fr}.ub .ft{flex-direction:column}.ub .ft .r{text-align:left}}
 .ub.pdf .w{padding:12px 24px 10px}.ub.pdf .hero{margin-top:12px}.ub.pdf .tile{min-height:170px}.ub.pdf .tile img{max-height:160px}.ub.pdf h2{margin:14px 0 8px}.ub.pdf td{padding:4px 10px}.ub.pdf .f{padding:7px 10px}.ub.pdf .ft{margin-top:14px}.ub.pdf .pb{display:none}.ub.pdf{min-height:0}
 @media print{@page{size:A4;margin:0}.ub .pb{display:none}.ub .w{padding:12px 24px 10px}.ub .hero{margin-top:12px}.ub .tile{min-height:170px}.ub .tile img{max-height:160px}.ub h2{margin:14px 0 8px}.ub td{padding:4px 10px}.ub .f{padding:7px 10px}.ub .ft{margin-top:14px}.ub{min-height:0}.ub *{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 `;
@@ -109,12 +110,14 @@ export function UnitBrochureView({ data, pdf = false }: { data: BrochureData; pd
             {(m.bullets || []).length > 0 && (
               <div className="feat">{(m.bullets || []).map((b, i) => { const [t, x] = splitBullet(b); return <div className="f" key={i}>{t && <b style={{ display: "block", color: "var(--b1)" }}>{t}</b>}{x}</div>; })}</div>
             )}
-            <h2>Specifications</h2>
-            <table><tbody>{brochureSpecRows(m.specs, m.model_code).map(([k, v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table>
+            <div className={dimensions.length > 0 ? "details" : undefined}>
+            <section><h2>Specifications</h2>
+            <table><tbody>{brochureSpecRows(m.specs, m.model_code).map(([k, v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table></section>
             {dimensions.length > 0 && <section data-testid="brochure-dimensions">
               <h2>Unit dimensions &amp; weight</h2>
               <table><tbody>{dimensions.map(([k, v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table>
             </section>}
+            </div>
             {footer}
           </>
         )}
