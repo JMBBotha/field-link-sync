@@ -19,6 +19,17 @@ describe("groupTermsSections", () => {
     expect(bank?.items.some((i) => i.text.includes("63226563591"))).toBe(true);
   });
 
+  it("prints the deposit reference under the banking details, not as its own section", () => {
+    // Johan 15 Oct 18:01: "the deposit reference needs to sit just under banking details."
+    const bank = sections.find((s) => /banking/i.test(s.heading));
+    expect(bank?.items.some((i) => /deposit reference/i.test(i.text))).toBe(true);
+    expect(sections.some((s) => /deposit reference/i.test(s.heading))).toBe(false);
+    const deposit = bank!.items.findIndex((i) => /deposit reference/i.test(i.text));
+    const account = bank!.items.findIndex((i) => /account number/i.test(i.text));
+    expect(deposit).toBeGreaterThan(account);
+  });
+
+
   it("handles custom terms text without crashing", () => {
     const custom = groupTermsSections(buildTermsBlocks({ customText: "My terms:\n\nPay on time." }));
     expect(custom.length).toBeGreaterThan(0);
