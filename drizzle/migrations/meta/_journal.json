@@ -57,6 +57,13 @@
       "when": 1791995208167,
       "tag": "0007_job_watchdog_alerts",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792070553553,
+      "tag": "0008_client_name_sync_and_quote_client_tools",
+      "breakpoints": true
     }
   ]
 }

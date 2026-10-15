@@ -11245,6 +11245,10 @@ export type Database = {
       can_write_master_catalog: { Args: { _uid: string }; Returns: boolean }
       can_write_specials: { Args: { _uid: string }; Returns: boolean }
       cashflow_data: { Args: { p_company: string }; Returns: Json }
+      change_quote_client: {
+        Args: { p_customer_id: string; p_quote_id: string }
+        Returns: undefined
+      }
       check_customer_duplicates: {
         Args: {
           p_address?: string
@@ -11411,6 +11415,10 @@ export type Database = {
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string }
       duplicate_invoice: { Args: { p_invoice: string }; Returns: string }
+      duplicate_quote: {
+        Args: { p_customer_id?: string; p_quote_id: string }
+        Returns: string
+      }
       earnings_sales_rule: { Args: { p_company_id: string }; Returns: Json }
       earnings_tech_rule: { Args: { p_company_id: string }; Returns: Json }
       enablelongtransactions: { Args: never; Returns: string }
