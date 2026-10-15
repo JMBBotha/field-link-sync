@@ -15,7 +15,8 @@ import { canMergeRepick, freshProduct, standardSell } from "@/lib/priceGuard";
 import { useState, useEffect, useMemo, useRef, useCallback, useSyncExternalStore, type MutableRefObject } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2, Send } from "lucide-react";
+import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2, Send, Copy } from "lucide-react";
+import QuoteClientDialog, { type QuoteClientMode } from "@/components/quoting/QuoteClientDialog";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { formatRand } from "@/utils/formatRand";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
@@ -97,6 +98,8 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
   const [clientSearch, setClientSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [clientDialog, setClientDialog] = useState<QuoteClientMode | null>(null);
+  const navigateTo = useNavigate();
 
   const selectedClient = useMemo(() => {
     if (!meta?.customer_id) return null;
@@ -158,15 +161,10 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
           <div className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs text-white">
               <Users className="h-3.5 w-3.5 shrink-0" />
               <span className="font-medium truncate max-w-[150px]">{clientLabel}</span>
-              <button
-              onClick={() => {
-                updateQuote({ customer_id: null, customer_name: null });
-                setClientSearch("");
-              }}
-              className="hover:text-white/60">
-
-                <X className="h-3 w-3" />
-              </button>
+              {meta?.id && (meta.status === "draft" ?
+              <button type="button" onClick={() => setClientDialog("change")} className="underline hover:text-white/70" data-testid="change-client">Change</button> :
+              <span className="text-white/60" title="Sent or accepted quotes keep their client. Duplicate to quote someone else.">locked</span>)}
+              {meta?.id && <button type="button" onClick={() => setClientDialog("duplicate")} className="ml-1 hover:text-white/70" title="Duplicate quote" aria-label="Duplicate quote" data-testid="duplicate-quote"><Copy className="h-3.5 w-3.5" /></button>}
             </div> :
 
           <div className="relative">
