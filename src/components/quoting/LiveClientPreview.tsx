@@ -133,7 +133,8 @@ export default function LiveClientPreview(props: LiveClientPreviewProps) {
     const box = boxRef.current;
     if (!box || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(() => {
-      setScale(Math.min(1, box.clientWidth / DOC_WIDTH) || 1);
+      // Johan 15 Oct: scale up as well as down so the quote fills the whole pane, not just A4 width.
+      setScale(box.clientWidth / DOC_WIDTH || 1);
       if (docRef.current) setDocH(docRef.current.offsetHeight);
     });
     ro.observe(box);
