@@ -421,10 +421,16 @@ export default function QuoteQuickEditor({
             className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
           />
           {loadingProducts && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-slate-400" />}
-          {(mode === "selected" || mode !== "item" || itemFocus) && (productResults.length > 0 || (!productTerm.trim() && emptySections)) && (
+          {(mode === "selected" || mode !== "item" || itemFocus) && (mode === "selected" || productResults.length > 0 || (!productTerm.trim() && emptySections)) && (
             <ScrollArea className={`${mode === "selected" ? "relative mt-2 h-64" : `absolute ${dropdownPos}`} z-30 max-h-64 w-full rounded-md border border-slate-200 bg-white shadow-lg`}>
               <div className="divide-y divide-slate-100" onMouseDown={(e) => { if (mode === "item") e.preventDefault(); }}>
-                {productResults.length > 0
+                {mode === "selected" && !emptySections ? (
+                  <p className="px-3 py-3 text-xs text-slate-500" data-testid="selected-empty">
+                    {pdfBasket?.length
+                      ? "None of the selected items are on the current price lists anymore — pick them again on the Visual PDF tab."
+                      : "No selected items yet — tick items on the Visual PDF tab first, then they show here."}
+                  </p>
+                ) : productResults.length > 0
                   ? productResults.map((p) => renderRow(p))
                   : emptySections && (<>
                        {emptySections.basket.length > 0 && <div className="bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Selected from PDF</div>}
