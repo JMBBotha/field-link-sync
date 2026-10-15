@@ -72,6 +72,13 @@ describe("markup overrides are per quote and never persist to the product", () =
     expect(quoteLineDrift(overrideLine, MIDEA)!.short).toBe("32% vs 25%");
     expect(quoteLineDrift({ ...overrideLine, unit_price: STD }, MIDEA)).toBeNull();
   });
+  it("markup pill tone: green at/above standard, orange below, red far below", () => {
+    quoteOpen();
+    expect(markupDrift(140, 100, 25)!.tone).toBe("green");   // 40% vs 25%
+    expect(markupDrift(120, 100, 25)!.tone).toBe("orange");  // 20% vs 25% (−5 pts)
+    expect(markupDrift(110, 100, 25)!.tone).toBe("red");     // 10% vs 25% (−15 pts)
+    expect(quoteLineDrift(overrideLine, MIDEA)!.tone).toBe("green"); // 32% vs 25%
+  });
   it("(c) product row, favourites and company rates are never written from a quote line", () => {
     quoteOpen();
     catalogLineFields(MIDEA, 1); stubProductFromQuoteItem({ id: "a1", ...overrideLine });

@@ -67,6 +67,8 @@ export interface EstimateEditLine {
   priceWarn?: string | null;
   /** Compact chip text for the narrow price column, e.g. "63.6% vs 100%". Falls back to priceWarn. */
   priceWarnShort?: string | null;
+  /** Chip colour: green = at/above standard markup, orange = below, red = far below. */
+  priceWarnTone?: "green" | "orange" | "red" | null;
   /** Staff-only specials indicator (never on client PDF). */
   special?: { cost: number; endDate: string; pdfPath: string | null; applied: boolean } | null;
   /** Display-only short name (kit title / install companion); item_name is never rewritten unless edited. */
@@ -778,7 +780,7 @@ const EstimateDocument = ({
                               <div><SpecialChip cost={line.special.cost} endDate={line.special.endDate} pdfPath={line.special.pdfPath} applied={line.special.applied} /></div>
                             )}
                             {line.priceWarn && (
-                              <div data-html2canvas-ignore data-testid="markup-warn" title={line.priceWarn} className="mt-0.5 inline-flex max-w-full items-center gap-0.5 whitespace-nowrap rounded-full border border-amber-400 bg-amber-50 px-1 py-0 text-[9px] leading-[14px] text-amber-800 print:hidden">⚠<span className="truncate">{line.priceWarnShort ?? line.priceWarn}</span></div>
+                              <div data-html2canvas-ignore data-testid="markup-warn" data-tone={line.priceWarnTone ?? "orange"} title={line.priceWarn} className={`mt-0.5 inline-flex max-w-full items-center gap-0.5 whitespace-nowrap rounded-full border px-1 py-0 text-[9px] leading-[14px] print:hidden ${line.priceWarnTone === "green" ? "border-green-500 bg-green-50 text-green-800" : line.priceWarnTone === "red" ? "border-red-500 bg-red-50 text-red-800" : "border-amber-400 bg-amber-50 text-amber-800"}`}>{line.priceWarnTone === "green" ? "✓" : "⚠"}<span className="truncate">{line.priceWarnShort ?? line.priceWarn}</span></div>
                             )}
                             {line.isService && !line.unit_price && (
                               <div className="text-[10px] italic text-slate-400 print:hidden">price not set</div>

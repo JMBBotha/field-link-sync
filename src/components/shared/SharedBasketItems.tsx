@@ -28,8 +28,13 @@ import {
 
 
 /** Warn-only chip: the line's markup differs from the standard. Never blocks save/send. */
-const WarnChip = ({ label, short }: { label: string; short?: string | null }) => (
-  <Badge variant="outline" data-testid="markup-warn" title={label} className="text-[8px] px-1 py-0 h-3.5 border-amber-400 bg-amber-50 text-amber-800 shrink-0 truncate max-w-[220px]">⚠ {short ?? label}</Badge>
+const WARN_TONE_CLASS: Record<string, string> = {
+  green: "border-green-500 bg-green-50 text-green-800",
+  orange: "border-amber-400 bg-amber-50 text-amber-800",
+  red: "border-red-500 bg-red-50 text-red-800",
+};
+const WarnChip = ({ label, short, tone }: { label: string; short?: string | null; tone?: string | null }) => (
+  <Badge variant="outline" data-testid="markup-warn" data-tone={tone ?? "orange"} title={label} className={`text-[8px] px-1 py-0 h-3.5 shrink-0 truncate max-w-[220px] ${WARN_TONE_CLASS[tone ?? "orange"] ?? WARN_TONE_CLASS.orange}`}>{tone === "green" ? "✓" : "⚠"} {short ?? label}</Badge>
 );
 
 interface SharedBasketItemProps {
@@ -117,7 +122,7 @@ export function CollapsibleBundleCard({
               {kitMarkup}% M/Up · cost {formatZAR(kitCost)}
             </Badge>
           )}
-          {kitWarn && <WarnChip label={kitWarn.label} short={kitWarn.short} />}
+          {kitWarn && <WarnChip label={kitWarn.label} short={kitWarn.short} tone={kitWarn.tone} />}
         </div>
 
         {/* Multiplier control */}
@@ -265,7 +270,7 @@ export function RegularItemCard({
         <div className="min-w-0 flex-1 truncate font-medium flex items-center gap-0.5">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
           <Badge variant="outline" className="text-[7px] px-1 py-0 h-3 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
-          {warn && <WarnChip label={warn.label} short={warn.short} />}{spChip}
+          {warn && <WarnChip label={warn.label} short={warn.short} tone={warn.tone} />}{spChip}
           <ProductInfoDialog product={item.product} />
         </div>
         {isMeasured ? (
@@ -320,7 +325,7 @@ export function RegularItemCard({
         <p className="font-medium truncate flex items-center gap-1">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
           <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
-          {warn && <WarnChip label={warn.label} short={warn.short} />}{spChip}
+          {warn && <WarnChip label={warn.label} short={warn.short} tone={warn.tone} />}{spChip}
           <ProductInfoDialog product={item.product} />
         </p>
         <div className="flex items-center gap-1.5">
