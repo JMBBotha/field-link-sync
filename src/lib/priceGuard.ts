@@ -63,7 +63,7 @@ export function markupDrift(sell: number, cost: number, standard: number | null,
   const diffPct = markup - standard;
   if (Math.abs(diffRand) <= 0.01 * Math.max(1, units) + 1e-9 || Math.abs(diffPct) < 0.05) return null;
   // Colour tone: at/above standard = green; below = orange; far below (10+ points) = red.
-  const tone = diffPct >= 0 ? "green" : diffPct <= -10 ? "red" : "orange";
+  const tone: "green" | "orange" | "red" = diffPct >= 0 ? "green" : diffPct <= -10 ? "red" : "orange";
   return {
     markup, standard, diffPct, diffRand, tone,
     label: `markup ${pct(markup)} vs standard ${pct(standard)} (${diffPct > 0 ? "+" : ""}${pct(diffPct)}, ${rand(diffRand)})`,
