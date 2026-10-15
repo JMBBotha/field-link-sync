@@ -50,7 +50,7 @@ export default function QtyStepper({ value, min, step: _step, ariaLabel, unit, o
         onMouseUp={(e) => e.preventDefault()}
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }}
         onBlur={(e) => commit(parseQty(e.target.value))}
-        className="qty-box h-9 w-16 sm:w-[4.5rem] rounded-md border-2 border-sky-600 bg-white px-2 text-right text-base tabular-nums text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-300"
+        className="qty-box h-9 w-16 rounded-md border-2 border-sky-600 bg-white px-2 text-right text-base tabular-nums text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-300"
         {...inputProps}
       />
       {unit && <span className="text-[11px] text-slate-500">{unit}</span>}
