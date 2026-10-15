@@ -71,6 +71,20 @@
       "when": 1792072746543,
       "tag": "0009_my_company_contract_status",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792085726125,
+      "tag": "0010_client_adjust_room_extras_brand_compare",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792085813062,
+      "tag": "0011_qcr_style_multi_split",
+      "breakpoints": true
     }
   ]
 }

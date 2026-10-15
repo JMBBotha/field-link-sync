@@ -12289,6 +12289,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      qcr_drive: { Args: { p: string }; Returns: string }
       qcr_is_unit: {
         Args: {
           p_btu: number
@@ -12299,7 +12300,29 @@ export type Database = {
         }
         Returns: boolean
       }
+      qcr_items: {
+        Args: { p_quote_id: string }
+        Returns: {
+          amount: number
+          area_id: string
+          area_name: string
+          brand: string
+          btu: number
+          cost: number
+          id: string
+          image_url: string
+          is_unit: boolean
+          link: string
+          name: string
+          product_id: string
+          qty: number
+          sort: number
+          unit_price: number
+        }[]
+      }
       qcr_pricing: { Args: { p_quote_id: string }; Returns: Json }
+      qcr_revision_totals: { Args: { p_lines: Json; pr: Json }; Returns: Json }
+      qcr_style: { Args: { p: string }; Returns: string }
       quote_auto_summary: { Args: { p_quote_id: string }; Returns: string }
       quote_bundle_preview: { Args: { p_quote_ids: string[] }; Returns: Json }
       quote_conversion_funnel: {
