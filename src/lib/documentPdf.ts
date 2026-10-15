@@ -276,6 +276,9 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
 
     const html2canvas = (await import("html2canvas")).default;
 
+    // Rendered terms flow directly after unit cards in the main capture.
+    const termsEl = captureElement.querySelector<HTMLElement>("[data-pdf-terms-page]");
+
     // Signature block(s) marked data-pdf-bottom are captured on their own and pinned to the
     // bottom of the last page below, so hide them from the main capture.
     // A bottom block taller than ~40% of a page (e.g. a quote's full terms) flows with the content
@@ -335,6 +338,8 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     const scaledHeight = (capturedCanvas.height * usableWidth) / capturedCanvas.width;
     const imgData = capturedCanvas.toDataURL("image/png", 1);
     // Clickable links in the PDF for anchors marked data-pdf-link (our own brochure links only).
+    // Link boxes and page-break ranges must use the same header/footer-free layout as capture.
+    bottomEls.forEach((el) => { el.style.display = "none"; });
     const rootRect = captureElement.getBoundingClientRect();
     const pxToMm = usableWidth / captureElement.scrollWidth;
     const linkBoxes = Array.from(captureElement.querySelectorAll<HTMLAnchorElement>("a[data-pdf-link][href]")).map((a) => {
@@ -346,7 +351,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       for (const l of linkBoxes) {
         const yPx = l.y * canvasScale;
         if (yPx < startPx || yPx >= endPx) continue;
-        doc.link(margin + l.x * pxToMm, margin + (yPx - startPx) / canvasScale * pxToMm, l.w * pxToMm, l.h * pxToMm, { url: l.url });
+        doc.link(margin + l.x * pxToMm, margin + topReserve + (startPx > 0 ? contTop : 0) + (yPx - startPx) / canvasScale * pxToMm, l.w * pxToMm, l.h * pxToMm, { url: l.url });
       }
     };
 
@@ -421,9 +426,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       }
     }
 
-    // Quotes end after their own terms + banking block (rendered from the company record in the
-    // captured page). The fixed appended terms pages are kept for invoices/other documents only.
-    if (shouldAppendFixedTerms(opts.docType)) {
+    if (!termsEl && shouldAppendFixedTerms(opts.docType)) {
       const termsCompany = opts.termsCompany || (await fetchTermsCompanyInfo(opts.companyName));
       appendTermsPages(doc, termsCompany, headH || footH ? { top: margin + topReserve + contTop, bottom: margin + botReserve } : undefined);
     }
@@ -436,7 +439,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       doc.setPage(i);
       // Page 1: company line only. Last page: only the blue banner line (no rule, no company line).
       // Pages in between: company line above the thin blue/orange rule (Johan 14 Oct 07:53-07:54).
-      const last = i === doc.getNumberOfPages() && i > 1;
+      const last = !termsEl && i === doc.getNumberOfPages() && i > 1;
       if (i === 1) { if (headFirstImg) doc.addImage(headFirstImg, "PNG", margin, margin, usableWidth, headFirstH, undefined, "FAST"); }
       else if (last) { if (headImg || headFirstImg) { doc.setDrawColor(14, 165, 233); doc.setLineWidth(2.5); doc.line(20, 18, pageWidth - 20, 18); } }
       else if (headImg) doc.addImage(headImg, "PNG", margin, margin, usableWidth, headLaterH, undefined, "FAST");

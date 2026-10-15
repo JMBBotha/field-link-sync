@@ -226,7 +226,7 @@ export default function BrandDocument(p: BrandDocumentProps) {
           {p.totals.map((t) => <tr key={t.label}><td>{t.label}</td><td>{t.negative ? "-" : ""}{money(t.value)}</td></tr>)}
           <tr className="g"><td>{p.grandLabel}</td><td>{money(p.grandTotal)}</td></tr>
         </tbody></table>
-        {p.afterTotals}
+        {!p.fullTermsPage && p.afterTotals}
 
         {!closing && p.cards.length > 0 && (
           <div className="notes">{p.cards.map((c) => <div className="note" key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
@@ -234,13 +234,15 @@ export default function BrandDocument(p: BrandDocumentProps) {
         {!closing && <div className="terms" data-testid="doc-terms"><h4>Terms</h4><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>}
         {!closing && p.fullTermsPage}
         {closing && p.cards.length > 0 && (
-          <div className="closing" data-pdf-break-before data-testid="doc-closing">
+          <div className="closing" data-pdf-break-before={p.fullTermsPage ? undefined : ""} data-testid="doc-closing">
             <div className="notes wide">{p.cards.map((c, i) => <div className={`note${p.cards.length % 2 === 1 && i === p.cards.length - 1 ? " full" : ""}`} key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
+            {p.fullTermsPage && <div className="terms" data-testid="doc-terms"><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>}
           </div>
         )}
+        {p.fullTermsPage && p.afterTotals}
         {closing && p.fullTermsPage}
       </div>
-      {closing ? (
+      {closing && !p.fullTermsPage ? (
         <div className="foot" data-pdf-bottom data-testid="doc-foot">
           <div className="terms" data-testid="doc-terms"><h4>Terms</h4><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>
         </div>

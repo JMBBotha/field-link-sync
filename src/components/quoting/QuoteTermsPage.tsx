@@ -49,7 +49,7 @@ export interface QuoteTermsPageProps {
 const TermsSections = ({ sections, startIndex = 0 }: { sections: TermsSection[]; startIndex?: number }) => (
   <div className="space-y-4">
     {sections.map((s, i) => (
-      <div key={i} className="break-inside-avoid">
+      <div key={i} data-pdf-keep className="break-inside-avoid">
         <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-[10px] font-bold text-white">
             {String(startIndex + i + 1).padStart(2, "0")}
@@ -58,7 +58,7 @@ const TermsSections = ({ sections, startIndex = 0 }: { sections: TermsSection[];
         </div>
         <div className="mt-1.5 space-y-1.5">
           {s.items.map((it, j) => (
-            <p key={j} className={`text-[10px] leading-relaxed text-slate-700 ${it.type === "banking" ? "font-semibold" : ""}`}>
+            <p key={j} className={`text-[10px] leading-relaxed text-slate-700 ${/^(building|electrical) work$/i.test(s.heading) ? "font-bold" : it.type === "banking" ? "font-semibold" : ""}`}>
               {it.type === "bullet" ? `• ${it.text}` : it.text}
             </p>
           ))}
@@ -79,14 +79,18 @@ export default function QuoteTermsPage(p: QuoteTermsPageProps) {
   const left = sections.slice(0, half);
   const right = sections.slice(half);
   return (
-    <div data-html2canvas-ignore data-testid="quote-terms-page" className="mt-8 pt-6">
+    <div data-pdf-terms-page data-testid="quote-terms-page" className="mt-4 pt-2">
       <div className="flex items-baseline gap-3 border-b-2 border-[#1AA7EC] pb-2">
         <span className="border-l-4 border-[#F7941D] pl-2 text-[16px] font-bold text-[#1B3A5C]">Terms and conditions</span>
         {p.quoteNumber && <span className="text-[10px] text-slate-400">Quote {p.quoteNumber}</span>}
       </div>
-      <div className="mt-4 grid grid-cols-1 gap-x-8 sm:grid-cols-2">
-        <TermsSections sections={left} />
-        <TermsSections sections={right} startIndex={left.length} />
+      <div className="mt-4 space-y-4">
+        {left.map((section, i) => (
+          <div key={i} data-pdf-keep className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+            <TermsSections sections={[section]} startIndex={i} />
+            {right[i] && <TermsSections sections={[right[i]]} startIndex={left.length + i} />}
+          </div>
+        ))}
       </div>
     </div>
   );

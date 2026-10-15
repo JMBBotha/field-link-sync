@@ -23,8 +23,20 @@ function qrSvgDataUrl(url: string): string | null {
     const qr = qrcode(0, "M");
     qr.addData(url);
     qr.make();
-    const svg = qr.createSvgTag({ cellSize: 3, margin: 1, scalable: true });
-    return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+    // Raster QR avoids incomplete SVG path capture; retain a four-module quiet zone.
+    if (typeof document === "undefined") return qr.createDataURL(3, 12);
+    const canvas = document.createElement("canvas");
+    const size = qr.getModuleCount();
+    canvas.width = canvas.height = (size + 8) * 3;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return qr.createDataURL(3, 12);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#000000";
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      if (qr.isDark(y, x)) ctx.fillRect((x + 4) * 3, (y + 4) * 3, 3, 3);
+    }
+    return canvas.toDataURL("image/png");
   } catch {
     return null;
   }
@@ -96,7 +108,7 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
   const img = m && m.image_status === "ready" && m.image_url ? m.image_url : null;
   const where = card.rooms.length ? `${card.rooms.join(", ")} ×${card.quantity}` : `×${card.quantity}`;
   return (
-    <div data-testid="unit-card" data-model={card.modelKey} style={{
+    <div data-pdf-keep data-testid="unit-card" data-model={card.modelKey} style={{
       display: "grid", gridTemplateColumns: qr ? "150px 1fr 84px" : "150px 1fr", gap: 16, padding: 14, marginBottom: 12,
       borderRadius: 8, breakInside: "avoid", pageBreakInside: "avoid",
       border: bold ? "none" : "1px solid #e3eaf2", borderTop: bold ? "none" : `3px solid ${SKY}`,
@@ -135,11 +147,11 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
           </div>
         )}
       </div>
-      {qr && (
+      {qr && link && (
         <div style={{ textAlign: "center" }}>
-          <img data-testid="unit-card-qr" src={qr} alt="" style={{ width: 76, height: 76 }} />
+          <a data-pdf-link href={link} target="_blank" rel="noopener" aria-label={`Brochure for ${card.modelCode}`} style={{ display: "inline-block" }}><img data-testid="unit-card-qr" src={qr} alt={`QR code for ${card.modelCode}`} style={{ width: 76, height: 76 }} /></a>
           <div style={{ fontSize: 8.5, color: MUTED, lineHeight: 1.3 }}>Scan for the brochure</div>
-          <a data-pdf-link data-testid="unit-card-brochure-btn" href={link!} target="_blank" rel="noopener" style={{ display: "inline-block", marginTop: 6, background: bold ? ORANGE : SKY, color: "#fff", fontSize: 10, fontWeight: 700, textDecoration: "none", borderRadius: 5, padding: "4px 8px", whiteSpace: "nowrap" }}>View brochure</a>
+          <a data-pdf-link data-testid="unit-card-brochure-btn" href={link} target="_blank" rel="noopener" style={{ display: "inline-block", marginTop: 6, background: bold ? ORANGE : SKY, color: "#fff", fontSize: 10, fontWeight: 700, textDecoration: "none", borderRadius: 5, padding: "4px 8px", whiteSpace: "nowrap" }}>View brochure</a>
         </div>
       )}
     </div>
