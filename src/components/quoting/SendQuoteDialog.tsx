@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
 import { Mail, Loader2, Check, Download, Link2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -74,6 +75,8 @@ const SendQuoteDialog = ({
 }: SendQuoteDialogProps) => {
   const { settings } = useCompanySettings();
   const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [copyToCompany, setCopyToCompany] = useState(true);
   const [leadId, setLeadId] = useState<string | null>(null);
   const [busy, setBusy] = useState<"email" | "pdf" | null>(null);
   const [sent, setSent] = useState<{ email: boolean }>({ email: false });
@@ -246,6 +249,8 @@ const SendQuoteDialog = ({
           totalAmount: total,
           unsubscribeToken: crypto.randomUUID(),
           pdfBase64,
+          message: message.trim() || undefined,
+          copyToCompany,
         },
       });
     };
@@ -357,6 +362,19 @@ const SendQuoteDialog = ({
                 Email
               </Button>
             </div>
+            <Label htmlFor="send-quote-message" className="text-xs">Message to client (optional)</Label>
+            <Textarea
+              id="send-quote-message"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Thank you for the opportunity. Your quotation is ready to view online."
+              rows={4}
+              className="text-sm"
+            />
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={copyToCompany} onChange={(e) => setCopyToCompany(e.target.checked)} />
+              Also send a copy to our company email
+            </label>
             {emailUnavailable && (
               <p className="text-xs text-destructive">Email not configured — use Copy link or Download PDF.</p>
             )}
