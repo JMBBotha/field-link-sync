@@ -786,7 +786,7 @@ const EstimateDocument = ({
                               <div className="text-[10px] italic text-slate-400 print:hidden">price not set</div>
                             )}
                           </td>
-                          <td className="py-2 text-right">
+                          <td className="py-2 pl-2.5 text-right">
                             {line.kitBundleId && line.kitPerMetre && editing.onKitLengthChange ? (
                               <div className="flex items-center justify-end">
                                 <QtyStepper value={line.kitLength ?? 3} min={0.1} step={1} ariaLabel="Kit length (m)" unit="m"
