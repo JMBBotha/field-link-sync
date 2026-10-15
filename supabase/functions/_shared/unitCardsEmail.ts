@@ -58,7 +58,7 @@ export async function loadUnitCardsStripHtml(supabase: any, quoteId?: string | n
       const img = `<img src="${esc(m.image_url)}" alt="${esc(m.model_code)}" width="120" style="display:block;margin:0 auto 6px;max-width:120px;height:auto;border:0;">`;
       return `<td align="center" valign="top" style="padding:8px;width:${Math.floor(100 / groups.length)}%;">
         <div style="background:#eaf6fd;border-radius:8px;padding:10px 6px;">${img}</div>
-        <div style="font-size:12px;font-weight:700;color:#0B4FA8;margin-top:6px;">${esc(m.display_name || m.model_code)}</div>
+        <div style="font-size:12px;font-weight:700;color:#0B4FA8;margin-top:6px;">${esc(sizes.length > 1 ? String(m.display_name || m.model_code).replace(/\s*\b\d{1,2}\s*K\b(\s*BTU(\/H)?)?|\s*\b\d{1,2}[ ,]?000\s*BTU(\/H)?/gi, "").trim() : (m.display_name || m.model_code))}</div>
         ${sizes.length > 1
           ? `<div style="font-size:11px;color:#1d2a3a;margin-top:2px;">Sizes in this quote: <b>${sizeLabel(sizes)}</b></div>`
           : `<div style="font-size:11px;color:#6b7a8c;">${esc(m.subtitle || "")}</div><span style="font-size:11px;color:#6b7a8c;">${esc(m.model_code)}</span>`}
