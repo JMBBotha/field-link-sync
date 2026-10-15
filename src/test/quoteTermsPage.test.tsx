@@ -27,7 +27,7 @@ describe("groupTermsSections", () => {
 describe("QuoteTermsPage", () => {
   it("renders numbered sections and the quote number on its own page", () => {
     const html = renderToString(<QuoteTermsPage companyName="Massair CT (Pty) Ltd" accountNumber="63226563591" quoteNumber="Q-2026-0039" />);
-    expect(html).toContain('data-pdf-break-before');
+    expect(html).toContain('data-html2canvas-ignore');
     expect(html).toContain('data-testid="quote-terms-page"');
     expect(html).toContain("Terms and conditions");
     expect(html).toContain("Q-2026-0039");
