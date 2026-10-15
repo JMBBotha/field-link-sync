@@ -440,6 +440,17 @@ const EstimateDocument = ({
           { title: "Banking", body: <p>{bankLine || "—"}. Reference: quote number.</p> },
         ]}
         terms={terms}
+        fullTermsPage={
+          <QuoteTermsPage
+            companyName={settings.company_name || COMPANY.legalName}
+            bankName={bank.bank_name || undefined}
+            accountName={bank.account_name}
+            accountNumber={bank.account_number || undefined}
+            branchCode={bank.branch_code || undefined}
+            accountType={accountType || undefined}
+            quoteNumber={estimateNumber}
+          />
+        }
       />
     );
   }

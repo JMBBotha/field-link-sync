@@ -52,6 +52,8 @@ export interface BrandDocumentProps {
   afterTotals?: ReactNode;
   cards: BrandDocCard[];
   terms?: string | null;
+  /** Full terms & conditions page (quotes), rendered last on its own page. */
+  fullTermsPage?: ReactNode;
   captureRoot: "estimate" | "invoice";
   /**
    * Invoice closing layout (Johan 14 Oct, AVEC La Terre invoices): the Payment / Banking /
@@ -230,6 +232,7 @@ export default function BrandDocument(p: BrandDocumentProps) {
           <div className="notes">{p.cards.map((c) => <div className="note" key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
         )}
         {!closing && <div className="terms" data-testid="doc-terms"><h4>Terms</h4><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>}
+        {!closing && p.fullTermsPage}
         {closing && p.cards.length > 0 && (
           <div className="closing" data-pdf-break-before data-testid="doc-closing">
             <div className="notes wide">{p.cards.map((c, i) => <div className={`note${p.cards.length % 2 === 1 && i === p.cards.length - 1 ? " full" : ""}`} key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
