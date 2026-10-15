@@ -57,7 +57,7 @@ export function useQuoteEditors(quoteId: string | null | undefined, surface: Edi
 
   // Whoever took over from us has left: nothing to wait for any more.
   useEffect(() => {
-    if (takenBy && all.length && !all.some((p) => p.session_id === takenBy.session_id)) setTakenBy(null);
+    if (takenBy && !all.some((p) => p.session_id === takenBy.session_id)) setTakenBy(null);
   }, [all, takenBy]);
 
   const takeOver = useCallback(() => {

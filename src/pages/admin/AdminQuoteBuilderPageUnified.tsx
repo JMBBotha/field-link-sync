@@ -276,7 +276,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   const navigate = useNavigate();
   const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta, addItem: ctxAddItem, addArea: ctxAddArea, refetch: ctxRefetch } = useQuoteContext();
   // Two-editor guard: presence pauses saving; the line stamp blocks writes over outside changes.
-  const { others: otherEditors } = useQuoteEditors(quoteId, "builder");
+  const { others: otherEditors, takeOver, takenOver } = useQuoteEditors(quoteId, "builder");
   const othersRef = useRef(otherEditors);
   othersRef.current = otherEditors;
   const [changedElsewhere, setChangedElsewhere] = useState(false);
@@ -1393,6 +1393,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
       ) : otherEditors.length > 0 && (
         <div role="status" className="border-b border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {otherEditors[0].name} also has this quote open on the {otherEditors[0].surface === "estimate" ? "estimate page" : "builder"}. Builder saving is paused so their changes aren't overwritten.
+          {takenOver ? " They took over editing — reload to see their changes." : (
+            <Button type="button" size="sm" variant="outline" className="ml-2 h-7" data-testid="take-over-editing"
+              onClick={() => { if (window.confirm("Take over editing? Use this only if the other page is closed or no longer in use. Their unsaved changes there will stop saving.")) takeOver(); }}>
+              Take over editing
+            </Button>
+          )}
         </div>
       )}
       <div className="relative flex-1 min-h-0 overflow-hidden">
