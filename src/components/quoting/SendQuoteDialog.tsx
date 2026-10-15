@@ -259,6 +259,7 @@ const SendQuoteDialog = ({
   };
 
   const handleEmail = async () => {
+    if (!allApproved) return;
     if (!email.trim()) {
       toast({ title: "Email required", description: "Add a client email address first.", variant: "destructive" });
       return;
