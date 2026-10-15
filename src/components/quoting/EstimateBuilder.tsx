@@ -675,12 +675,12 @@ export default function EstimateBuilder({
       }
       return (
         <div>
-          <div role="tablist" aria-label="Editor or client view" className="mb-2 inline-flex rounded-md border border-slate-200 bg-white p-0.5 text-xs print:hidden" data-html2canvas-ignore data-pdf-hide>
-            {(["editor", "client"] as const).map((t) => (
-              <button key={t} type="button" role="tab" aria-selected={narrowTab === t} data-testid={`live-preview-tab-${t}`}
-                className={`rounded px-3 py-1.5 font-medium ${narrowTab === t ? "bg-[#0B4FA8] text-white" : "text-slate-600"}`}
-                onClick={() => setNarrowTab(t)}>{t === "editor" ? "Editor" : "Client view"}</button>
-            ))}
+          <div className="mb-2 print:hidden" data-html2canvas-ignore data-pdf-hide>
+            <Button type="button" size="sm" variant="outline" className="h-8 border-primary text-xs font-medium text-primary"
+              data-testid="live-preview-toggle" aria-pressed={narrowTab === "client"}
+              onClick={() => setNarrowTab(narrowTab === "editor" ? "client" : "editor")}>
+              {narrowTab === "editor" ? "Show client view" : "Back to builder"}
+            </Button>
           </div>
           <div className={narrowTab === "editor" ? "" : "hidden"}>{editorDoc}</div>
           {narrowTab === "client" && preview}
