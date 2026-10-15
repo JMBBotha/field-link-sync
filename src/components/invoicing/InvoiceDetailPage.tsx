@@ -19,6 +19,7 @@ import { documentProfile, fetchCompanyProfiles, profileTermsInfo, type CompanyPr
 
 
 import HelpTip from "@/components/help/HelpTip";
+import DocumentStyleSwitch from "@/components/quoting/DocumentStyleSwitch";
 import { formatRand } from "@/utils/formatRand";
 
 interface LineItem {
@@ -293,6 +294,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           {getStatusBadge(invoice.status)}<SentManuallyBadge doc={invoice as any} className="ml-1" />
         </div>
         <div className="flex items-center gap-1">
+          <DocumentStyleSwitch companyId={(invoice as any).company_id ?? null} />
           {docActions()}
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleGenerateAndShare} disabled={generatingPDF}>
             {generatingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
