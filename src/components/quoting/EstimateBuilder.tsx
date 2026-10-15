@@ -38,6 +38,7 @@ import { useActiveSpecials } from "@/hooks/useActiveSpecials";
 import LabourModeSwitch, { useLabourModeSwitch } from "@/components/quoting/LabourModeSwitch";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import LiveClientPreview from "@/components/quoting/LiveClientPreview";
+import DocumentStyleSwitch from "@/components/quoting/DocumentStyleSwitch";
 import { useQuoteUnitCards } from "@/components/quoting/QuoteUnitCards";
 import { useLivePreviewPref, useIsWideScreen } from "@/hooks/useLivePreviewPref";
 import { useAuth } from "@/contexts/AuthContext";
