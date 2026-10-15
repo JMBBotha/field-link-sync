@@ -252,6 +252,7 @@ const SendQuoteDialog = ({
           pdfBase64,
           message: message.trim() || undefined,
           copyToCompany,
+          cc: extraEmails.trim() || undefined,
         },
       });
     };
@@ -372,6 +373,15 @@ const SendQuoteDialog = ({
               rows={4}
               className="text-sm"
             />
+            <Label htmlFor="send-quote-cc" className="text-xs">Extra email addresses (optional)</Label>
+            <Input
+              id="send-quote-cc"
+              value={extraEmails}
+              onChange={(e) => setExtraEmails(e.target.value)}
+              placeholder="me@company.com, other@company.com"
+              className="h-9 text-sm"
+            />
+            <p className="text-[11px] text-muted-foreground">Separate multiple addresses with a comma — they each get a copy.</p>
             <label className="flex items-center gap-2 text-xs">
               <input type="checkbox" checked={copyToCompany} onChange={(e) => setCopyToCompany(e.target.checked)} />
               Also send a copy to our company email
