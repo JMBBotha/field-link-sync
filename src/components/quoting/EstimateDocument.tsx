@@ -17,7 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { formatRand } from "@/utils/formatRand";
 import CompanyBlock from "@/components/shared/CompanyBlock";
-import { cleanBanking } from "@/lib/companyIdentity";
+import { cleanBanking, COMPANY } from "@/lib/companyIdentity";
+import QuoteTermsPage from "@/components/quoting/QuoteTermsPage";
 import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
 import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
 import { withEoe } from "@/lib/eoeClause";
@@ -1031,6 +1032,17 @@ const EstimateDocument = ({
             </div>
           </div>
         </div>
+
+        {/* ── Full terms & conditions: own page, Bold design (Johan 15 Oct 2026) ── */}
+        <QuoteTermsPage
+          companyName={settings.company_name || COMPANY.legalName}
+          bankName={bank.bank_name || undefined}
+          accountName={bank.account_name}
+          accountNumber={bank.account_number || undefined}
+          branchCode={bank.branch_code || undefined}
+          accountType={accountType || undefined}
+          quoteNumber={estimateNumber}
+        />
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { eoeClause } from "@/lib/eoeClause";
 import { buildTermsBlocks } from "@/lib/defaultTerms";
+import { groupTermsSections, type TermsSection } from "@/components/quoting/QuoteTermsPage";
 import { COMPANY, cleanBanking } from "@/lib/companyIdentity";
 import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
 
@@ -21,6 +22,29 @@ export default function FullTermsSection({ banking, profile }: { banking?: unkno
     bankName: b.bank_name || undefined, accountName: b.account_name,
     accountNumber: b.account_number || undefined, branchCode: b.branch_code || undefined, accountType: b.account_type || undefined,
   });
+  const sections = groupTermsSections(blocks);
+  const half = Math.ceil(sections.length / 2);
+  const col = (list: TermsSection[], start: number) => (
+    <div className="space-y-4">
+      {list.map((s, i) => (
+        <div key={i}>
+          <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-[10px] font-bold text-white">
+              {String(start + i + 1).padStart(2, "0")}
+            </span>
+            <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#1AA7EC]">{s.heading || "Terms"}</h4>
+          </div>
+          <div className="mt-1.5 space-y-1.5">
+            {s.items.map((it, j) => (
+              <p key={j} className={`text-[12px] leading-relaxed text-slate-700 ${it.type === "banking" ? "font-semibold" : ""}`}>
+                {it.type === "bullet" ? `• ${it.text}` : it.text}
+              </p>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
   return (
     <section data-testid="full-terms" className="mx-auto w-full rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-sm print:border-0 print:shadow-none">
       <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}
@@ -28,18 +52,12 @@ export default function FullTermsSection({ banking, profile }: { banking?: unkno
         {open ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
         Full terms and conditions
       </button>
-      <div className={`${open ? "block" : "hidden"} space-y-1.5 px-5 pb-5 text-[13px] leading-relaxed print:block`}>
-        {blocks.map((bl, i) => {
-          switch (bl.type) {
-            case "title": return <h3 key={i} className="pt-2 text-center text-[15px] font-bold text-sky-700">{bl.text}</h3>;
-            case "heading": return <h4 key={i} className="pt-3 font-bold text-sky-700">{bl.text}</h4>;
-            case "bullet": return <p key={i} className="pl-4">• {bl.text}</p>;
-            case "banking": return <p key={i} className="font-semibold">{bl.text}</p>;
-            case "spacer": return <div key={i} className="h-1" />;
-            default: return <p key={i}>{bl.text}</p>;
-          }
-        })}
-        <p data-testid="full-terms-eoe" className="pt-3">{eoeClause(profile?.legal_name || COMPANY.legalName, "quote")}</p>
+      <div className={`${open ? "block" : "hidden"} px-5 pb-5 print:block`}>
+        <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
+          {col(sections.slice(0, half), 0)}
+          {col(sections.slice(half), half)}
+        </div>
+        <p data-testid="full-terms-eoe" className="pt-3 text-[12px] text-slate-600">{eoeClause(profile?.legal_name || COMPANY.legalName, "quote")}</p>
       </div>
     </section>
   );
