@@ -28,8 +28,13 @@ import {
 
 
 /** Warn-only chip: the line's markup differs from the standard. Never blocks save/send. */
-const WarnChip = ({ label, short }: { label: string; short?: string | null }) => (
-  <Badge variant="outline" data-testid="markup-warn" title={label} className="text-[8px] px-1 py-0 h-3.5 border-amber-400 bg-amber-50 text-amber-800 shrink-0 truncate max-w-[220px]">⚠ {short ?? label}</Badge>
+const WARN_TONE_CLASS: Record<string, string> = {
+  green: "border-green-500 bg-green-50 text-green-800",
+  orange: "border-amber-400 bg-amber-50 text-amber-800",
+  red: "border-red-500 bg-red-50 text-red-800",
+};
+const WarnChip = ({ label, short, tone }: { label: string; short?: string | null; tone?: string | null }) => (
+  <Badge variant="outline" data-testid="markup-warn" data-tone={tone ?? "orange"} title={label} className={`text-[8px] px-1 py-0 h-3.5 shrink-0 truncate max-w-[220px] ${WARN_TONE_CLASS[tone ?? "orange"] ?? WARN_TONE_CLASS.orange}`}>{tone === "green" ? "✓" : "⚠"} {short ?? label}</Badge>
 );
 
 interface SharedBasketItemProps {
