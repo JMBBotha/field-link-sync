@@ -1,10 +1,10 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
 ## Quote PDF terms and blank pages (2026-10-15)
-- [ ] Flow the builder's bold terms directly after the unit/QR cards without empty pages or duplicate terms.
-- [ ] Remove appended model brochures; retain scannable and clickable QR links to the online brochures.
-- [ ] Bold the Building Work and Electrical Work clauses in the builder and PDF.
-- [ ] Download and visually inspect every page without changing or sending the quote; run focused regression tests.
+- [x] Flow the builder's bold terms directly after the unit/QR cards without empty pages or duplicate terms.
+- [x] Remove appended model brochures; retain scannable and clickable QR links to the online brochures.
+- [x] Bold the Building Work and Electrical Work clauses in the builder and PDF.
+- [x] Downloaded current quote read-only: 4 content pages instead of 8; inspected every page, fixed split sections, decoded both QR codes and checked clickable PDF annotations. Both online brochures load approved content; 33 focused tests pass, preview build OK. No quote writes, email sends, deployment or publishing.
 
 ## Quote line quantity box (2026-10-15)
 - [x] Compact box: 36px tall, 64px wide, 2px blue outline (QtyStepper + .qty-box CSS override), nudged right of the rate/cost column.
