@@ -491,8 +491,8 @@ const SendQuoteDialog = ({
           {previewHtml && (
             <iframe
               title="Email preview"
-              sandbox=""
-              srcDoc={previewHtml}
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
+              srcDoc={previewHtml.includes("<head>") ? previewHtml.replace("<head>", '<head><base target="_blank">') : `<base target="_blank">${previewHtml}`}
               className="h-[50vh] w-full rounded-md border border-border bg-white"
             />
           )}
