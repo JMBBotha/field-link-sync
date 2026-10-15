@@ -1161,8 +1161,9 @@ All colors MUST be HSL.
 .dark .estimate-editing .option1-solid .bg-sky-50\/60 { background-color: #e0f2fe !important; }
 .dark .estimate-editing .option1-solid .text-sky-700 { color: #0369a1 !important; }
 .dark .estimate-editing .option1-solid .text-\[\#0B4FA8\] { color: #0B4FA8 !important; }
+/* Quantity box (Johan 16:42): thicker blue outline instead of thin grey, on the white paper. */
 .option1-solid .qty-box,
-.dark .app-surface .estimate-page .estimate-editing .option1-solid .qty-box { background: #ffffff !important; color: #0f172a !important; border-color: #94a3b8 !important; }
+.dark .app-surface .estimate-page .estimate-editing .option1-solid .qty-box { background: #ffffff !important; color: #0f172a !important; border-color: #0284c7 !important; }
 .option1-title-row svg { color: #475569; }
 /* Editor restyle step 1 (Johan 14 Oct): area headings in brand blue, like the client document. */
 .estimate-editing .option1-title, .estimate-editing .option1-title:hover, .estimate-editing .option1-title:focus, .estimate-editing .option1-name-input { color: #0B4FA8 !important; }
