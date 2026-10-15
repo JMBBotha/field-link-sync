@@ -16,6 +16,11 @@ describe("payment plans", () => {
     expect(planTermsSentence(PLAN_PRESETS[1], 70, 14)).toBe("Payments: 65% deposit on acceptance, and the final 35% within 14 days of completion.");
     expect(planTermsSentence(null, 70, 30)).toBe("A 70% deposit is payable on acceptance; the balance is due within 30 days of completion.");
   });
+  it("preserves flexible splits with payment on completion", () => {
+    expect(planTermsSentence(null, 70, 0)).toBe("A 70% deposit is payable on acceptance; the balance is due on completion.");
+    expect(planTermsSentence(null, 50, 0)).toBe("A 50% deposit is payable on acceptance; the balance is due on completion.");
+    for (const plan of PLAN_PRESETS) expect(planTermsSentence(plan, 70, 0)).toContain("due on completion.");
+  });
   it("reads stage numbers", () => {
     expect(stageOf("STAGE 2/3 — 60% of quote Q-1")).toBe(2);
     expect(stageOf("DEPOSIT — 20%")).toBeNull();

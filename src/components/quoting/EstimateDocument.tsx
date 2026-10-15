@@ -380,7 +380,7 @@ const EstimateDocument = ({
         physical_address: companyOverride.physical_address || "",
         vat_number: companyOverride.vat_number || "",
         default_deposit_percentage: Number(companyOverride.default_deposit_percentage) || 70,
-        default_payment_terms_days: Number(companyOverride.default_payment_terms_days) || 30,
+        default_payment_terms_days: companyOverride.default_payment_terms_days ?? 30,
         banking_details: companyOverride.banking_details || {},
       }
     : authedSettings;
