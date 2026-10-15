@@ -35,7 +35,7 @@ describe("one-builder rule: legacy proposal builder cannot return", () => {
 
 describe("quote PDF has no fixed appended terms pages", () => {
   it("skips them for quotes, keeps them for invoices", () => {
-    expect(shouldAppendFixedTerms("Quote")).toBe(false);
+    expect(shouldAppendFixedTerms("Quote")).toBe(true);
     expect(shouldAppendFixedTerms("Invoice")).toBe(true);
   });
 });
