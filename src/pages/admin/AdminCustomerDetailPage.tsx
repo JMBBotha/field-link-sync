@@ -128,6 +128,26 @@ const AdminCustomerDetailPage = () => {
     toast({ title: assigned ? "Dedicated sales rep saved" : "Dedicated sales rep removed" });
   };
 
+  const [removing, setRemoving] = useState(false);
+  const clientAction = async (mode: "archive" | "restore" | "delete") => {
+    if (!id) return;
+    if (mode === "archive" && !window.confirm("Archive this client? They disappear from the client list but all quotes, invoices and jobs are kept. You can restore them later.")) return;
+    if (mode === "delete" && !window.confirm("Delete this client permanently? This cannot be undone.")) return;
+    setRemoving(true);
+    const { data, error } = await (supabase as any).rpc("delete_or_archive_client", { p_customer_id: id, p_mode: mode });
+    setRemoving(false);
+    if (error) { toast({ title: "Could not update client", description: error.message, variant: "destructive" }); return; }
+    const res = data as { status: string; links?: string[] };
+    if (res?.status === "blocked") {
+      toast({ title: "Can't delete this client", description: `They have ${(res.links || []).join(", ")} on file. Archive them instead to keep that history.`, variant: "destructive" });
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["all-customers-fb"] });
+    if (res?.status === "deleted") { toast({ title: "Client deleted" }); navigate("/admin/customers"); return; }
+    qc.invalidateQueries({ queryKey: ["customer-detail", id] });
+    toast({ title: res?.status === "archived" ? "Client archived" : "Client restored" });
+  };
+
   const [savingType, setSavingType] = useState(false);
   const saveClientType = async (value: string) => {
     if (!id) return;
@@ -347,6 +367,7 @@ const AdminCustomerDetailPage = () => {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-2xl font-bold">{headerName}</h1>
+          {customer.status === "archived" && <Badge variant="secondary">Archived</Badge>}
           <Badge variant="outline" className={cn("text-[10px]", LEAD_SOURCE_STYLES[toLeadSourceValue(customer.lead_source)])}>
             {leadSourceLabel(customer.lead_source)}
           </Badge>
@@ -361,6 +382,14 @@ const AdminCustomerDetailPage = () => {
                 Send Email
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate(`/admin/customers`)}>Back to list</DropdownMenuItem>
+              {isAdmin && (customer.status === "archived" ? (
+                <DropdownMenuItem disabled={removing} onClick={() => clientAction("restore")}>Restore client</DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem disabled={removing} onClick={() => clientAction("archive")}>Archive client</DropdownMenuItem>
+              ))}
+              {isAdmin && (
+                <DropdownMenuItem disabled={removing} className="text-destructive focus:text-destructive" onClick={() => clientAction("delete")}>Delete client permanently</DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
@@ -395,9 +424,9 @@ const AdminCustomerDetailPage = () => {
 
 
         <TabsContent value="overview" className="mt-4 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Contact card */}
-            <Card className="lg:col-span-1 bg-card">
+          <div className="grid grid-cols-1 gap-4">
+            {/* Contact card — full width so fields have room to edit */}
+            <Card className="bg-card">
               <CardContent className="p-6 space-y-4">
                 {canAssignRep && (
                   <div className="space-y-1.5">
@@ -465,20 +494,20 @@ const AdminCustomerDetailPage = () => {
                     "status",
                     "notes",
                   ]}
-                  className="grid-cols-1"
+                  className="grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4"
                 />
 
               </CardContent>
             </Card>
 
             {/* Revenue chart + stats */}
-            <Card className="lg:col-span-2 bg-card">
+            <Card className="bg-card">
               <CardContent className="p-6 space-y-4">
                 <div>
                   <p className="text-sm font-semibold">Outstanding Revenue</p>
                   <p className="text-xs text-muted-foreground">Last 6 months</p>
                 </div>
-                <div className="h-48">
+                <div className="h-40">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />

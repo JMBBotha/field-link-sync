@@ -109,6 +109,11 @@ export function useEntityEditor(
 
   const mutation = useMutation({
     mutationFn: async (patch: Row) => {
+      // Client page header shows first + last name: keep them in step with the full name.
+      if (entityType === "client" && typeof patch.name === "string" && !("first_name" in patch)) {
+        const parts = patch.name.trim().replace(/\s+/g, " ").split(" ");
+        patch = { ...patch, name: parts.join(" "), first_name: parts[0] || null, last_name: parts.slice(1).join(" ") || null };
+      }
       const { data, error } = await (supabase as any).rpc("update_entity", {
         p_entity_type: entityType,
         p_entity_id: id,
@@ -151,6 +156,7 @@ export function useEntityEditor(
       }
     },
     onSettled: () => {
+      if (entityType === "client") qc.invalidateQueries({ queryKey: ["customer-detail", id] });
       // Joined calendar/schedule lists can't be patched in place (the DB moves their rows), so refetch them.
       cfg.cacheKeys.forEach((root) =>
         qc.invalidateQueries({ queryKey: [root], refetchType: SCHEDULE_ROOTS.has(root) ? "active" : "none" }),
