@@ -62,11 +62,12 @@ describe("DocumentStyleSwitch", () => {
     expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Light is now your quote look" }));
   });
 
-  it("tapping the look already in use writes nothing", () => {
+  it("tapping the look already in use says so and refreshes instead of doing nothing", () => {
     render(<DocumentStyleSwitch companyId="co-1" />);
     fireEvent.click(screen.getByTestId("document-style-bold"));
     expect(mocks.update).not.toHaveBeenCalled();
-    expect(mocks.toast).not.toHaveBeenCalled();
+    expect(mocks.clear).toHaveBeenCalled();
+    expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Bold is already your quote look" }));
   });
 
   it("sales reps and technicians never see the switch", () => {

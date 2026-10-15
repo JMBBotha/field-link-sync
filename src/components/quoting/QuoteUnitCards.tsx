@@ -83,7 +83,7 @@ function Highlight({ h, variant }: { h: FeatureHighlight; variant: DocVariant })
   return (
     <div data-testid="unit-card-highlight" style={{
       display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "6px 10px", borderRadius: 6,
-      background: bold ? BLUE : "#fff4e6", borderLeft: `4px solid ${ORANGE}`,
+      background: bold ? BLUE_SOFT : "#fff4e6", borderLeft: `4px solid ${ORANGE}`,
     }}>
       {h.image_url
         ? <img src={h.image_url} alt="" crossOrigin="anonymous" style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }} />
@@ -119,7 +119,7 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
     }}>
       <div style={{
         borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 120,
-        background: bold ? `linear-gradient(160deg, ${BLUE}, ${SKY})` : "linear-gradient(160deg,#eaf6fd,#f7fbff)",
+        background: bold ? `linear-gradient(160deg, ${BLUE_SOFT}, ${SKY})` : "linear-gradient(160deg,#eaf6fd,#f7fbff)",
       }}>
         {img
           ? <img src={img} alt={card.modelCode} crossOrigin="anonymous" style={{ maxWidth: 138, maxHeight: 108, objectFit: "contain", filter: "drop-shadow(0 6px 8px rgba(11,79,168,.22))" }} />
@@ -144,7 +144,7 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
         {chips.length > 0 && (
           <div style={{ marginTop: 8 }}>
             {chips.map((c) => (
-              <span key={c} style={{ display: "inline-block", background: bold ? BLUE : "#eaf6fd", color: bold ? "#fff" : BLUE, fontSize: 10, fontWeight: 600, borderRadius: 10, padding: "2px 8px", margin: "0 5px 5px 0" }}>{c}</span>
+              <span key={c} style={{ display: "inline-block", background: bold ? BLUE_SOFT : "#eaf6fd", color: bold ? "#fff" : BLUE, fontSize: 10, fontWeight: 600, borderRadius: 10, padding: "2px 8px", margin: "0 5px 5px 0" }}>{c}</span>
             ))}
           </div>
         )}
