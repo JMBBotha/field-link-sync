@@ -23,4 +23,4 @@
 - Dispatch Cards, Board and Upcoming Jobs render JobCard through cardModel adapters; callers own mutations and drag props — one presentation without changing dispatch behaviour.
 <!-- LOVABLE:END -->
 - Booking lengths/hours: lib/schedulingDefaults.ts (mirrored in SQL default_booking_minutes); office bookings call useClashGuard().confirmBooking (booking_clashes) before saving, robots skip overlaps — one clash rule everywhere.
-- Client Compare & adjust (public quote): qcr_pricing gives each unit its own linked install lines + share of its room's and job-wide lines; brand alternatives = same BTU ±10% & style, priced at the quote's unit markup with that room's install; approval (decide_client_revision) keeps real install lines and swaps products — no free catalogue adds.
+- Client Compare & adjust: qcr_pricing gives each unit its linked install lines + share of room/job lines; alternatives same BTU/style at quote markup; approval keeps real lines, swaps products only.
