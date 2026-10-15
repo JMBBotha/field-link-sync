@@ -1,7 +1,8 @@
 # Roadmap — catalog source of truth (equipment + materials)
 
 ## Quote PDF terms and blank pages (2026-10-15)
-- [ ] Capture the builder's terms design separately, remove its space from the main capture, and avoid a duplicate terms-only closing page.
+- [ ] Flow the builder's bold terms directly after the unit/QR cards without empty pages or duplicate terms.
+- [ ] Remove appended model brochures; retain scannable and clickable QR links to the online brochures.
 - [ ] Download and visually inspect every page without changing or sending the quote; run focused regression tests.
 
 ## Quote line quantity box (2026-10-15)

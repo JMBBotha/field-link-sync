@@ -675,7 +675,7 @@ All colors MUST be HSL.
 .pdf-capture-mode [data-pdf-capture-root] button,
 .pdf-capture-mode [data-pdf-capture-root] select,
 .pdf-capture-mode [data-pdf-capture-root] textarea,
-.pdf-capture-mode [data-pdf-capture-root] a[href],
+.pdf-capture-mode [data-pdf-capture-root] a[href]:not([data-pdf-link]),
 .pdf-capture-mode [data-pdf-capture-root] [data-pdf-hide-markup],
 .pdf-capture-mode [data-pdf-capture-root] [data-pdf-hide-cost] {
   display: none !important;

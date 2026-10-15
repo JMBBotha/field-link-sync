@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import EstimateDocument, { type EstimateDocLineItem } from "./EstimateDocument";
 import { QuoteUnitCardsView, ensureUnitContent } from "./QuoteUnitCards";
-import { UnitBrochureView } from "@/pages/public/UnitBrochurePage";
 import type { BrochureCompany } from "@/lib/unitBrochure";
 import { buildUnitCards, missingModelKeys, unitLineModelKey, type ProductMedia, type UnitCard } from "@/lib/unitCards";
 import { buildClientRollup, clientDiscount, lineQtyText, rollupLineFromRow, type ClientRollupArea } from "@/lib/clientQuoteRollup";
@@ -207,13 +206,8 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
           unitCards={<QuoteUnitCardsView cards={doc.unitCards} companyId={doc.quote?.company_id ?? (doc.company as any)?.company_id ?? null} variant={((doc.brochureCompany?.document_style ?? (doc.company as any)?.document_style) === "bold") ? "bold" : "light"} />}
         />
       )}
-      {/* One A4 brochure page per distinct APPROVED model, appended after the quote (Johan 13 Oct 11:53).
-          Behind the per-quote unit-cards switch: doc.unitCards is empty when show_unit_cards is off. */}
-      {doc && q && doc.unitCards.filter((c) => c.media?.status === "approved").map((c) => (
-        <div key={c.modelKey} data-brochure-page={quoteId} style={{ width: "794px", background: "#fff", marginTop: 40 }}>
-          <UnitBrochureView pdf data={{ state: "approved", model_code: c.modelCode, brand: c.media?.brand ?? null, media: c.media as any, company: doc.brochureCompany }} />
-        </div>
-      ))}
+      {/* Model brochures are opened through the QR links, not appended. */}
+
     </div>
   );
 };

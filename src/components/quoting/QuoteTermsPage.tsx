@@ -79,7 +79,7 @@ export default function QuoteTermsPage(p: QuoteTermsPageProps) {
   const left = sections.slice(0, half);
   const right = sections.slice(half);
   return (
-    <div data-pdf-hide data-pdf-terms-page data-testid="quote-terms-page" className="mt-8 pt-6">
+    <div data-pdf-terms-page data-testid="quote-terms-page" className="mt-4 pt-2">
       <div className="flex items-baseline gap-3 border-b-2 border-[#1AA7EC] pb-2">
         <span className="border-l-4 border-[#F7941D] pl-2 text-[16px] font-bold text-[#1B3A5C]">Terms and conditions</span>
         {p.quoteNumber && <span className="text-[10px] text-slate-400">Quote {p.quoteNumber}</span>}
