@@ -238,6 +238,7 @@ export default function BrandDocument(p: BrandDocumentProps) {
             <div className="notes wide">{p.cards.map((c, i) => <div className={`note${p.cards.length % 2 === 1 && i === p.cards.length - 1 ? " full" : ""}`} key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
           </div>
         )}
+        {closing && p.fullTermsPage}
       </div>
       {closing ? (
         <div className="foot" data-pdf-bottom data-testid="doc-foot">
