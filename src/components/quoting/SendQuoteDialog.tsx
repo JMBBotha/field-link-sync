@@ -424,6 +424,15 @@ const SendQuoteDialog = ({
               <input type="checkbox" checked={copyToCompany} onChange={(e) => setCopyToCompany(e.target.checked)} />
               Also send a copy to our company email
             </label>
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={busy !== null}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
+            >
+              {busy === "pdf" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              Download the quote PDF file
+            </button>
             {emailUnavailable && (
               <p className="text-xs text-destructive">Email not configured — use Copy link or Download PDF.</p>
             )}
