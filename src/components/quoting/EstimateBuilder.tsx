@@ -668,7 +668,7 @@ export default function EstimateBuilder({
       return (
         <div data-testid="live-preview-layout">
           <div className="sticky top-2 z-20 mb-3 flex flex-wrap items-center justify-end gap-2 print:hidden" data-html2canvas-ignore data-pdf-hide>
-            <DocumentStyleSwitch companyId={meta?.company_id ?? null} />
+            <DocumentStyleSwitch companyId={meta?.company_id ?? null} onPicked={() => setNarrowTab("client")} />
             <Button type="button" size="sm" variant="outline" className="h-9 rounded-full border-primary bg-white px-4 text-xs font-semibold text-primary shadow-sm"
               data-testid="live-preview-toggle" aria-pressed={narrowTab === "client"}
               onClick={() => setNarrowTab(narrowTab === "editor" ? "client" : "editor")}>
