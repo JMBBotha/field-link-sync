@@ -1,6 +1,6 @@
 # AGENTS
 - QuoteTermsPage follows unit cards; native terms are fallback only, brochures are QR-only. Quote hydration preserves zero term days (completion) for planTermsSentence, independent of deposit splits.
-- FieldShell owns field-page framing; CompanyLogo reads CompanyProvider with bundled fallback to avoid duplicate headers.
+- FieldShell frames field pages; CompanyLogo uses CompanyProvider + fallback. Builder model lookup uses useQuoteUnitCards and unique product_media.model_key claims to avoid repeats.
 - Price-list/PDF catalogue writes go only through ImportPreviewModal review (applyProductDiff needs reviewGatePassed); auto-catalog only proposes; browser checks: scripts/browser/readonly_guard.py — no silent inserts. Catalogue delete = archive (services/catalogArchive, never quote_items); quote product reads use lib/liveProducts — only live price lists quotable.
 - Estimate page and Build quote share one Option-1 area card; Create area stays inside before totals; old Build/Build Area Quote tabs are hidden.
 - Dispatch uses active profiles.dispatch_role + lead-lane recipients, not user_roles.
@@ -12,7 +12,7 @@
 - Quote builder frame is QuoteBuilderLayout (middle = only flex-1 min-h-0 overflow-y-auto scroller + sticky spacer; summary side panel collapsed by default, remembered in localStorage 'qb.sidepanel.open', sheet on phone) — so panels never double-scroll or cover the last line.
 - Pricing-check chips (GP vs target, missing install materials, labour below norm) live only in lib/pricingChecks.ts + PricingChecksRow (staff-only via useMarginView, print:hidden + data-html2canvas-ignore); norms come from public.labour_norms (master, global) — so hints never reprice and never reach client views.
 - Tech overrun capture ('Actual on site' in JobCompletionSheet) writes public.job_overruns (no prices ever shown to techs); staff read it in StaffMarginCard via lib/overrun.ts (catalogue cost only, labour via labour_cost_per_hour or excluded) — so overruns adjust GP/commission without touching quote pricing.
-- Job started_at/completed_at are set only by DB trigger set_job_status_times (clears on move back); the client sends { status } only — so every path, including undo, keeps times consistent.
+- Only set_job_status_times sets/clears job started_at/completed_at, including undo; clients send { status } only for consistent times.
 - Staff estimate display never changes totals: lineDisplay shortens names/units; linked install rows collapse on screen but remain separate, editable and printable; item_name changes only on rename.
 - Staff areas share QuoteQuickEditor above each table; lib/addBarTarget.ts routes unit adds to the last unit-free area or a new area, and other lines to the sole area/new area/an area picker — existing lines never move and shared auto-install still runs.
 - Earnings: salesperson (quotes.sales_engineer_id) = companies.sales_commission_percent (50%) of profit (sell ex VAT minus cost) on parts & materials only (units, kits, materials) via itemsSoldProfit() in lib/margin.ts, zero from labour of any kind; technician (assignments on the quote's jobs) = companies.labour_tech_share_percent (60%) of labour sell ex VAT; company & owner keep the rest of labour; service lines are not counted; no combined total; labour cost stays unset.

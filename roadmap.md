@@ -3,9 +3,9 @@
 - [x] Keep selectable deposit splits; current quote and company defaults require the final balance on completion, not 30 days later.
 - [x] Verified company term days = 0, current downloaded quote shows payment due on completion; 14 focused tests pass, preview build OK.
 ## Publish and once-per-unit content (2026-10-15)
-- [ ] Publish the verified quote terms and payment changes.
-- [ ] Verify signed quote attachment and email receipt (requires approved recipient and mailbox evidence).
-- [ ] Verify lookup on new quoted units, reusable saved photos/specs/brochures, and no repeated lookup for known units.
+- [x] Published quote terms/payment changes; live site responds. Re-publish includes live-builder unit lookup.
+- [ ] Signed quote and mailbox receipt: current quote is unsigned. One complete 4-page PDF test copy sent only to Johan; provider accepted it, no delivery event available. Blocker: actual signature and recipient mailbox confirmation; no client send or draft status change.
+- [x] Live-builder unit additions use shared lookup independent of preview. Unique model claims and saved media prevent repeat searches; real cached Midea call returns empty results (no lookup). 15 focused tests pass; guarded current-quote download has no runtime errors. New-model manufacturer search remains unverified; content stays draft until approval.
 
 ## Quote PDF terms and blank pages (2026-10-15)
 - [x] Flow the builder's bold terms directly after the unit/QR cards without empty pages or duplicate terms.

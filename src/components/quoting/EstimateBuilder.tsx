@@ -38,6 +38,7 @@ import { useActiveSpecials } from "@/hooks/useActiveSpecials";
 import LabourModeSwitch, { useLabourModeSwitch } from "@/components/quoting/LabourModeSwitch";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import LiveClientPreview from "@/components/quoting/LiveClientPreview";
+import { useQuoteUnitCards } from "@/components/quoting/QuoteUnitCards";
 import { useLivePreviewPref, useIsWideScreen } from "@/hooks/useLivePreviewPref";
 import { useAuth } from "@/contexts/AuthContext";
 import QuoteQuickEditor from "@/components/quoting/QuoteQuickEditor";
@@ -173,6 +174,15 @@ export default function EstimateBuilder({
       return Object.fromEntries((data || []).map((p: any) => [p.id, p]));
     },
   });
+
+  const contentLines = useMemo(() => topLevel.map((i) => ({
+    ...i,
+    ...(i.product_id ? (productImages as Record<string, any>)[i.product_id] ?? {} : {}),
+    item_name: i.item_name,
+    item_type: i.item_type,
+  })), [topLevel, productImages]);
+  // One shared, database-deduplicated lookup when a new model enters the quote, independent of preview visibility.
+  useQuoteUnitCards(contentLines, { ensure: true });
 
   const lineFor = (i: (typeof topLevel)[number]) => ({
     id: i.id,
