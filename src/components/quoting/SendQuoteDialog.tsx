@@ -76,6 +76,7 @@ const SendQuoteDialog = ({
   const { settings } = useCompanySettings();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [extraEmails, setExtraEmails] = useState("");
   const [copyToCompany, setCopyToCompany] = useState(true);
   const [leadId, setLeadId] = useState<string | null>(null);
   const [busy, setBusy] = useState<"email" | "pdf" | null>(null);
