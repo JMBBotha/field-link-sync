@@ -149,6 +149,13 @@ serve(async (req) => {
   try {
     const reqBody = await req.json();
     const { to, subject, quoteNumber, message, copyToCompany, clientName, pdfBase64, totalAmount, unsubscribeToken, quoteId, customerId, region, quoteUrl, depositRequest } = reqBody;
+    // Extra recipients the sender typed in (comma-separated string or array). Validated, deduped, max 5.
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const extraRecipients: string[] = Array.from(new Set(
+      (Array.isArray(reqBody.cc) ? reqBody.cc : String(reqBody.cc || "").split(","))
+        .map((e: unknown) => String(e || "").trim().toLowerCase())
+        .filter((e: string) => EMAIL_RE.test(e) && e !== String(to || "").trim().toLowerCase()),
+    )).slice(0, 5);
 
     // Admin "send test signature to myself": goes ONLY to the logged-in admin's own login email. Never to a client.
     if (reqBody?.signatureTest === true) {
@@ -342,6 +349,8 @@ serve(async (req) => {
     // Optional copy to the sending company's own email (company profile), never a client-chosen address.
     const companyCopy = copyToCompany === true && brand.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(brand.email) && brand.email.toLowerCase() !== String(to).toLowerCase() ? brand.email : null;
     if (companyCopy) resendPayload.bcc = [companyCopy];
+    const ccList = extraRecipients.filter((e) => e !== companyCopy);
+    if (ccList.length > 0) resendPayload.cc = ccList;
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
