@@ -266,7 +266,7 @@ const SendQuoteDialog = ({
     }
     setBusy("email");
     // Hard cap: PDF capture or a stalled function must never leave a spinner up.
-    const EMAIL_TIMEOUT_MS = 28000;
+    const EMAIL_TIMEOUT_MS = 90000;
     let timedOut = false;
     const timeout = new Promise<never>((_, reject) =>
       setTimeout(() => {

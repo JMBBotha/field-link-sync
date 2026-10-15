@@ -336,7 +336,10 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     const contTop = topReserve ? 6 : 0;
     const usableHeight = pageHeight - margin * 2 - topReserve - botReserve - contTop;
     const scaledHeight = (capturedCanvas.height * usableWidth) / capturedCanvas.width;
-    const imgData = capturedCanvas.toDataURL("image/png", 1);
+    // JPEG (not PNG) for the big page capture: a full-page PNG at 2x scale is several MB of
+    // base64, which stalled the quote-email send (Johan 15 Oct). White bg is set above, so
+    // JPEG's lost transparency is not visible.
+    const imgData = capturedCanvas.toDataURL("image/jpeg", 0.85);
     // Clickable links in the PDF for anchors marked data-pdf-link (our own brochure links only).
     // Link boxes and page-break ranges must use the same header/footer-free layout as capture.
     bottomEls.forEach((el) => { el.style.display = "none"; });
@@ -370,7 +373,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
 
     let lastPageUsed = scaledHeight + topReserve;
     if (scaledHeight <= usableHeight && forcedCuts.length === 0) {
-      doc.addImage(imgData, "PNG", margin, margin + topReserve, usableWidth, scaledHeight, undefined, "FAST");
+      doc.addImage(imgData, "JPEG", margin, margin + topReserve, usableWidth, scaledHeight, undefined, "FAST");
       addLinks(0, capturedCanvas.height);
     } else {
       // Split at quiet pixel rows (gaps between lines/blocks) so no text line is cut in half.
@@ -394,7 +397,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
           ctx.drawImage(capturedCanvas, 0, sourceY, capturedCanvas.width, sourceSliceH, 0, 0, capturedCanvas.width, sourceSliceH);
         }
         const sliceHeight = (sourceSliceH / capturedCanvas.height) * scaledHeight;
-        doc.addImage(sliceCanvas.toDataURL("image/png"), "PNG", margin, margin + topReserve + (page > 0 ? contTop : 0), usableWidth, sliceHeight, undefined, "FAST");
+        doc.addImage(sliceCanvas.toDataURL("image/jpeg", 0.85), "JPEG", margin, margin + topReserve + (page > 0 ? contTop : 0), usableWidth, sliceHeight, undefined, "FAST");
         addLinks(sourceY, cut);
         lastPageUsed = sliceHeight + topReserve + (page > 0 ? contTop : 0);
         sourceY = cut;
