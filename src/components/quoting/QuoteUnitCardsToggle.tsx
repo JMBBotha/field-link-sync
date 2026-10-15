@@ -12,7 +12,15 @@ import { ensureUnitContent } from "./QuoteUnitCards";
  */
 export default function QuoteUnitCardsToggle({ quoteId }: { quoteId: string }) {
   const [on, setOn] = useState<boolean | null>(null);
+  const [revision, setRevision] = useState(0);
   const [stats, setStats] = useState<{ models: number; approved: number; pending: number; fetching: number }>({ models: 0, approved: 0, pending: 0, fetching: 0 });
+
+  useEffect(() => {
+    const channel = supabase.channel(`unit-content-quote-${quoteId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "quote_items", filter: `quote_id=eq.${quoteId}` }, () => setRevision((r) => r + 1))
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [quoteId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,7 +45,7 @@ export default function QuoteUnitCardsToggle({ quoteId }: { quoteId: string }) {
       } catch { /* optional */ }
     })();
     return () => { cancelled = true; };
-  }, [quoteId]);
+  }, [quoteId, revision]);
 
   const toggle = async (v: boolean) => {
     setOn(v);

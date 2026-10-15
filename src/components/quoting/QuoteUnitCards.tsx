@@ -197,7 +197,11 @@ export function useQuoteUnitCards(lines: UnitCardLine[] | null | undefined, opts
           // Staff-only RLS: drafts are visible to Massair admins; for others only approved rows come back,
           // so the server de-dupes again before fetching. Never awaited, never blocks quoting.
           const missing = missingModelKeys(lines || [], map.keys());
-          if (missing.length) void ensureUnitContent(missing);
+          if (missing.length) {
+            await ensureUnitContent(missing);
+            const { data: refreshed } = await (supabase.from("product_media" as never) as any).select("*").in("model_key", keys);
+            if (!cancelled) setMedia(new Map<string, ProductMedia>(((refreshed || []) as ProductMedia[]).map((r) => [r.model_key, r])));
+          }
         }
       } catch { /* cards are optional */ }
     })();
