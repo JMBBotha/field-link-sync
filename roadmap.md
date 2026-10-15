@@ -163,3 +163,4 @@ Follow-ups only: staff working hours and webhook-secret rotation were intentiona
 - [x] Selected button: label "★ Selected", shows PDF basket picks only (no Favourites) — owner request 2026-10-08
 - [x] Selected items: empty-state message when ★ Selected has nothing to list (owner report 2026-10-15)
 - [x] Markup pill colours: green above target, orange below, red far below (owner request 2026-10-15)
+- [ ] Single button to switch builder ↔ client view (tablet mode)
