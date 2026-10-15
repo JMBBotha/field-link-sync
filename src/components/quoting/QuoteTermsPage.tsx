@@ -58,7 +58,7 @@ const TermsSections = ({ sections, startIndex = 0 }: { sections: TermsSection[];
         </div>
         <div className="mt-1.5 space-y-1.5">
           {s.items.map((it, j) => (
-            <p key={j} className={`text-[10px] leading-relaxed text-slate-700 ${it.type === "banking" ? "font-semibold" : ""}`}>
+            <p key={j} className={`text-[10px] leading-relaxed text-slate-700 ${/^(building|electrical) work$/i.test(s.heading) ? "font-bold" : it.type === "banking" ? "font-semibold" : ""}`}>
               {it.type === "bullet" ? `• ${it.text}` : it.text}
             </p>
           ))}

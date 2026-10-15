@@ -3,6 +3,7 @@
 ## Quote PDF terms and blank pages (2026-10-15)
 - [ ] Flow the builder's bold terms directly after the unit/QR cards without empty pages or duplicate terms.
 - [ ] Remove appended model brochures; retain scannable and clickable QR links to the online brochures.
+- [ ] Bold the Building Work and Electrical Work clauses in the builder and PDF.
 - [ ] Download and visually inspect every page without changing or sending the quote; run focused regression tests.
 
 ## Quote line quantity box (2026-10-15)
