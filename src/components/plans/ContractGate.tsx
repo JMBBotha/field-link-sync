@@ -29,7 +29,7 @@ export function ContractGate({ children }: { children: React.ReactNode }) {
     queryKey: ["company-contract", companyId],
     enabled: !!companyId,
     staleTime: 5 * 60_000,
-    queryFn: async () => (await db.from("companies").select("name, plan_status, contract_signed_at, plan_base_price_zar, plan_included_users, plan_extra_user_price_zar, plan_contract_months").eq("id", companyId).maybeSingle()).data,
+    queryFn: async () => { const { data } = await db.rpc("my_company_contract_status", { p_company_id: companyId }); return Array.isArray(data) ? data[0] ?? null : data ?? null; },
   });
   if (!co || co.contract_signed_at || co.plan_status !== "pending_contract") return <>{children}</>;
   const terms = contractTerms({ base: Number(co.plan_base_price_zar), included: Number(co.plan_included_users), extra: Number(co.plan_extra_user_price_zar), months: Number(co.plan_contract_months) });
