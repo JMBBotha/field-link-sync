@@ -57,8 +57,8 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
     company.bankName || company.accountNumber || company.branchCode || company.accountType
   );
 
-  // Johan 15 Oct 18:01: the deposit reference must sit under the banking block, not float on its
-  // own further down the page — it now prints as the last line of Banking Details (7.6).
+  // Johan 15 Oct 18:13: Deposit Reference is its own numbered section (8) straight after
+  // Banking Details (7), with the same blue-circle heading styling as every other section.
   const DEPOSIT_REF = "Please use the Proposal number found at the top of the page as a reference when making the deposit.";
   const bankingSection: TermsBlock[] = hasBankingDetails
     ? [
@@ -68,14 +68,15 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
         ...(company.accountType ? [{ type: "banking", text: `7.3 Account Type: ${company.accountType}` } as TermsBlock] : []),
         ...(company.accountNumber ? [{ type: "banking", text: `7.4 Account Number: ${company.accountNumber}` } as TermsBlock] : []),
         ...(company.branchCode ? [{ type: "banking", text: `7.5 Branch Code: ${company.branchCode}` } as TermsBlock] : []),
-        { type: "banking", text: `7.6 Deposit Reference: ${DEPOSIT_REF}` },
         { type: "spacer", text: "" },
       ]
-    : [
-        { type: "heading", text: "Deposit Reference:" },
-        { type: "paragraph", text: DEPOSIT_REF },
-        { type: "spacer", text: "" },
-      ];
+    : [];
+
+  const depositRefSection: TermsBlock[] = [
+    { type: "heading", text: "Deposit Reference:" },
+    { type: "paragraph", text: `8.1 ${DEPOSIT_REF}` },
+    { type: "spacer", text: "" },
+  ];
 
   return [
     { type: "title", text: "Terms" },
@@ -115,20 +116,20 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
     { type: "spacer", text: "" },
 
     ...bankingSection,
-
+    ...depositRefSection,
 
 
     { type: "heading", text: "Confidentiality:" },
-    { type: "paragraph", text: "8.1 We respect the privacy and confidentiality of our clients. Any information shared during the course of our engagement will be treated as confidential and will not be disclosed to third parties, except as required by law or the Protection of Personal Information Act 4 of 2013 (POPIA)." },
+    { type: "paragraph", text: "9.1 We respect the privacy and confidentiality of our clients. Any information shared during the course of our engagement will be treated as confidential and will not be disclosed to third parties, except as required by law or the Protection of Personal Information Act 4 of 2013 (POPIA)." },
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Termination:" },
-    { type: "paragraph", text: "9.1 Either party may terminate the agreement by providing written notice to the other party, specifying the reasons for termination." },
-    { type: "paragraph", text: "9.2 Termination may result in the settlement of outstanding payments for services already provided, as per the agreed terms." },
+    { type: "paragraph", text: "10.1 Either party may terminate the agreement by providing written notice to the other party, specifying the reasons for termination." },
+    { type: "paragraph", text: "10.2 Termination may result in the settlement of outstanding payments for services already provided, as per the agreed terms." },
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Dispute Resolution:" },
-    { type: "paragraph", text: "10.1 In the event of any disputes or disagreements arising from our services, both parties agree to engage in good-faith negotiations to resolve the matter amicably before referring the matter to the National Consumer Commission, an accredited consumer ombud, or a court of competent jurisdiction." },
+    { type: "paragraph", text: "11.1 In the event of any disputes or disagreements arising from our services, both parties agree to engage in good-faith negotiations to resolve the matter amicably before referring the matter to the National Consumer Commission, an accredited consumer ombud, or a court of competent jurisdiction." },
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Importance of Servicing AC Units" },
