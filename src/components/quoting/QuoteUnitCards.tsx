@@ -16,6 +16,8 @@ import {
 export type DocVariant = "light" | "bold";
 
 const BLUE = "#0B4FA8", SKY = "#1AA7EC", ORANGE = "#F7941D", INK = "#1d2a3a", MUTED = "#6b7a8c";
+/** Johan 15 Oct 18:01: Bold's card fills were too heavy — this lighter blue carries the white text. */
+const BLUE_SOFT = "#2673C8";
 
 
 function qrSvgDataUrl(url: string): string | null {

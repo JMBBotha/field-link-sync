@@ -29,7 +29,16 @@ export default function DocumentStyleSwitch({ companyId }: { companyId?: string 
   if (!isAdmin || !profile || !id) return null;
 
   const pick = async (style: DocumentStyle) => {
-    if (style === current || busy) return;
+    if (busy) return;
+    const label = style === "bold" ? "Bold" : "Light";
+    if (style === current) {
+      // Johan 15 Oct 18:01: "nothing happened from bold" — a tap on the look already in use used to
+      // do absolutely nothing. It now says so and re-reads the record, so a tab left open on the
+      // other look (or changed on another device) catches up instead of looking stuck.
+      clearDocumentCompanyProfileCache();
+      toast({ title: `${label} is already your quote look`, description: "This quote is already using it. If the page still shows the other look, tap it again — it has just been refreshed." });
+      return;
+    }
     setBusy(true);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase.from as any)("company_profiles")
