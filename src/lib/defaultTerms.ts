@@ -57,8 +57,8 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
     company.bankName || company.accountNumber || company.branchCode || company.accountType
   );
 
-  // Johan 15 Oct 18:01: the deposit reference must sit under the banking block, not float on its
-  // own further down the page — it now prints as the last line of Banking Details (7.6).
+  // Johan 15 Oct 18:13: Deposit Reference is its own numbered section (8) straight after
+  // Banking Details (7), with the same blue-circle heading styling as every other section.
   const DEPOSIT_REF = "Please use the Proposal number found at the top of the page as a reference when making the deposit.";
   const bankingSection: TermsBlock[] = hasBankingDetails
     ? [
@@ -68,14 +68,15 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
         ...(company.accountType ? [{ type: "banking", text: `7.3 Account Type: ${company.accountType}` } as TermsBlock] : []),
         ...(company.accountNumber ? [{ type: "banking", text: `7.4 Account Number: ${company.accountNumber}` } as TermsBlock] : []),
         ...(company.branchCode ? [{ type: "banking", text: `7.5 Branch Code: ${company.branchCode}` } as TermsBlock] : []),
-        { type: "banking", text: `7.6 Deposit Reference: ${DEPOSIT_REF}` },
         { type: "spacer", text: "" },
       ]
-    : [
-        { type: "heading", text: "Deposit Reference:" },
-        { type: "paragraph", text: DEPOSIT_REF },
-        { type: "spacer", text: "" },
-      ];
+    : [];
+
+  const depositRefSection: TermsBlock[] = [
+    { type: "heading", text: "Deposit Reference:" },
+    { type: "paragraph", text: `8.1 ${DEPOSIT_REF}` },
+    { type: "spacer", text: "" },
+  ];
 
   return [
     { type: "title", text: "Terms" },
