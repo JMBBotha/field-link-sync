@@ -67,3 +67,9 @@
 .v8-dz.cancel{border-color:rgba(220,38,38,.55);color:#dc2626}
 .v8-dz.is-over{border-color:#1590d6;background:rgba(21,144,214,.08)}.v8-dz.cancel.is-over{background:rgba(220,38,38,.1)}
 .v8-seg{display:inline-flex;padding:3px;border-radius:12px;background:hsl(var(--muted));gap:2px}.v8-seg button{height:26px;padding:0 12px;border-radius:9px;font-size:12.5px;font-weight:600;color:hsl(var(--muted-foreground))}.v8-seg button.on{background:hsl(var(--card));color:hsl(var(--foreground));box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.v8-fill i.over{background:#dc2626}
+.v8-daycol.offday{background-image:repeating-linear-gradient(135deg,transparent 0 8px,rgba(100,116,139,.07) 8px 16px)}
+.v8-ccard.late{background-image:repeating-linear-gradient(135deg,transparent 0 6px,rgba(249,115,22,.08) 6px 12px)}
+.v8-late{font-size:9.5px;font-weight:800;color:#c2410c;background:rgba(249,115,22,.15);border-radius:6px;padding:0 5px}
+.dark .v8-late{color:#fdba74}
+.v8-dz.resched{border-color:rgba(249,115,22,.6);color:#c2410c}.v8-dz.resched.is-over{background:rgba(249,115,22,.1)}

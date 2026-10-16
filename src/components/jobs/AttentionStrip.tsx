@@ -12,6 +12,8 @@ import { useRole } from "@/hooks/useRole";
 type Chip = { key: string; n: number; label: string; tone: "red" | "orange" | "blue"; to: string };
 
 /** Needs-attention strip (counts only, test records hidden). Click a chip to go where it is fixed. */
+import { useNeedsReschedule } from "@/hooks/useNeedsReschedule";
+
 export default function AttentionStrip({ className }: { className?: string }) {
   const now = useNow();
   const { sla } = useLeadSla();
@@ -42,6 +44,7 @@ export default function AttentionStrip({ className }: { className?: string }) {
       };
     },
   });
+  const { data: resched = [] } = useNeedsReschedule();
   const leads = data?.leads || [];
   const clocks = leads.map((l) => leadClock(l, now, sla));
   const chips = ([
@@ -50,6 +53,7 @@ export default function AttentionStrip({ className }: { className?: string }) {
     { key: "double", n: doubleBookings, label: doubleBookings === 1 ? "double booking" : "double bookings", tone: "red", to: "/admin/dispatch" },
     { key: "late", n: data?.lateJobs || 0, label: "jobs late to start", tone: "red", to: "/admin/jobs?tab=dispatch&view=cards" },
     { key: "paid", n: data?.paidNoJob || 0, label: "deposits paid, no job booked", tone: "red", to: "/admin/jobs?tab=pipeline&view=stages" },
+    { key: "resched", n: resched.length, label: resched.length === 1 ? "booking needs rescheduling" : "bookings need rescheduling", tone: "red", to: "/admin/jobs?tab=dispatch&view=calendar" },
     { key: "unassigned", n: leads.filter((l) => !l.assigned_agent_id).length, label: "unassigned leads", tone: "orange", to: "/admin/dispatch" },
     { key: "queued", n: clocks.filter((c) => c?.stage === 0).length, label: "after-hours leads queued", tone: "blue", to: "/admin/dispatch" },
   ] as Chip[]).filter((c) => c.n > 0);

@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -45,6 +46,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import NeedsSomeoneTray from "@/components/calendar/NeedsSomeoneTray";
 import { useLayoutVersion } from "@/hooks/useLayoutVersion";
 import V8WeekBoard, { type V8Sched } from "@/components/v8/V8WeekBoard";
+import { useNeedsReschedule } from "@/hooks/useNeedsReschedule";
+import { v8WindowFor, type HoursRow, type CompanyHours } from "@/lib/v8Hours";
 import { isTestLead } from "@/lib/callSummary";
 import { getHideTest } from "@/components/jobs/PipelineBoard";
 import DayCards, { BusyBlock } from "@/components/calendar/DayCards";
@@ -755,14 +758,72 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     if (sch?.job_id && !sch.agent_id) { navigate(`/admin/jobs/${sch.job_id}`); return; }
     if (lead) { setQuickAssignLead(lead); setQuickAssignAgent(""); setQuickAssignDate(dateStr); setQuickAssignStart(hhmm(lead.scheduled_time || "08:00")); setQuickAssignEnd(fromMinutes(toMinutes(lead.scheduled_time || "08:00") + leadMinutes(lead))); }
   };
-  const v8DropZone = (e: React.DragEvent, zone: "unscheduled" | "sunday" | "cancel") => {
+  const [v8Ask, setV8Ask] = useState<{ kind: "unschedule" | "resched" | "cancel"; leadId: string; jobId: string | null; scheduleId: string | null; name: string } | null>(null);
+  const [v8Reason, setV8Reason] = useState("");
+  const [v8Busy, setV8Busy] = useState(false);
+  const [v8ShowCancelled, setV8ShowCancelled] = useState(false);
+  const [v8ShowResched, setV8ShowResched] = useState(false);
+  const { data: v8Resched = [] } = useNeedsReschedule(v8);
+  const v8Refresh = () => ["dispatch-schedules", "dispatch-leads", "v8-cancelled", "needs-reschedule", "dispatch-cards", "jobs-dispatch"].forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
+  const v8DropZone = (e: React.DragEvent, zone: "unscheduled" | "sunday" | "resched" | "cancel") => {
     if (zone === "sunday") { const sun = dateRange.find(d => d.getDay() === 0) || addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), 6); v8DropDay(e, format(sun, "yyyy-MM-dd")); return; }
     const { sch, lead } = v8Dragged(e);
     e.preventDefault(); handleDragEnd();
-    if (!sch && !lead) return;
-    toast({ title: zone === "cancel" ? "Cancel or reschedule from the job" : "Unschedule from the job", description: "Opening it: use its own actions so the usual checks and notices apply." });
-    if (sch?.job_id) navigate(`/admin/jobs/${sch.job_id}`);
-    else if (lead) { setJobInfoLead(lead); setJobInfoSchedule((sch as Schedule) || null); }
+    const leadId = sch?.lead_id || lead?.id;
+    if (!leadId) return;
+    if (zone === "unscheduled" && !sch && lead && !lead.assigned_agent_id && !lead.scheduled_date) { toast({ title: "Already unscheduled" }); return; }
+    setV8Reason("");
+    setV8Ask({ kind: zone === "cancel" ? "cancel" : zone === "resched" ? "resched" : "unschedule", leadId, jobId: sch?.job_id || null, scheduleId: sch && !sch.id.startsWith("lead-") ? sch.id : null, name: sch?.leads?.customer_name || lead?.customer_name || "this booking" });
+  };
+  const v8Run = async () => {
+    if (!v8Ask) return;
+    setV8Busy(true);
+    const a = v8Ask;
+    const { error } = a.kind === "cancel"
+      ? await (supabase.rpc as any)("fl_cancel_booking", { p_lead_id: a.leadId, p_reason: v8Reason.trim(), p_job_id: a.jobId, p_schedule_id: a.scheduleId })
+      : await (supabase.rpc as any)("fl_unschedule_booking", { p_lead_id: a.leadId, p_job_id: a.jobId, p_schedule_id: a.scheduleId, p_reason: a.kind === "resched" ? v8Reason.trim() : null });
+    setV8Busy(false);
+    if (error) { toast({ title: a.kind === "cancel" ? "Could not cancel" : "Could not unschedule", description: error.message, variant: "destructive" }); return; }
+    setV8Ask(null); v8Refresh();
+    toast({ title: a.kind === "cancel" ? `Cancelled · ${a.name}` : a.kind === "resched" ? `Needs rescheduling · ${a.name}` : `Unscheduled · ${a.name}`, description: a.kind === "cancel" ? "Kept under Cancelled; reopen it any time. The assigned person was notified in the app (no client message)." : "Back in Unscheduled. The assigned person was notified in the app." });
+  };
+  const { data: v8Hours = { rows: [] as HoursRow[], company: null as CompanyHours } } = useQuery({
+    queryKey: ["v8-staff-hours", dispatchAgents.map(a => a.id).join(",")],
+    enabled: v8 && dispatchAgents.length > 0,
+    staleTime: 300_000,
+    queryFn: async () => {
+      const ids = dispatchAgents.map(a => a.id);
+      const [h, p] = await Promise.all([
+        supabase.from("staff_work_hours").select("profile_id, day_of_week, start_time, end_time, is_working").in("profile_id", ids),
+        supabase.from("profiles").select("company_id").eq("id", userId || "").maybeSingle(),
+      ]);
+      const cid = (p.data as any)?.company_id;
+      const c = cid ? await (supabase.from("companies") as any).select("work_days, work_start, work_end").eq("id", cid).maybeSingle() : { data: null };
+      return { rows: (h.data || []) as HoursRow[], company: (c.data || null) as CompanyHours };
+    },
+  });
+  const { data: v8Cancelled = [] } = useQuery({
+    queryKey: ["v8-cancelled"],
+    enabled: v8,
+    queryFn: async () => {
+      const [l, j, r] = await Promise.all([
+        (supabase.from("leads") as any).select("id, customer_name, service_type, scheduled_date, scheduled_time, assigned_agent_id, created_at").eq("status", "cancelled").is("deleted_at", null).order("created_at", { ascending: false }).limit(40),
+        (supabase.from("jobs") as any).select("id, lead_id, title, scheduled_for").eq("status", "cancelled").not("lead_id", "is", null).order("updated_at", { ascending: false }).limit(40),
+        (supabase.from("status_change_log") as any).select("entity_id, new_status, created_at").eq("field_name", "cancel_reason").order("created_at", { ascending: false }).limit(200),
+      ]);
+      const why = new Map<string, string>();
+      ((r.data || []) as any[]).forEach(x => { if (!why.has(x.entity_id)) why.set(x.entity_id, x.new_status); });
+      const jobs = ((j.data || []) as any[]).map(x => ({ key: `j${x.id}`, leadId: x.lead_id as string, jobId: x.id as string, name: x.title as string, when: x.scheduled_for ? format(new Date(x.scheduled_for), "d MMM HH:mm") : "", reason: why.get(x.id) || "" }));
+      const jobLeads = new Set(jobs.map(x => x.leadId));
+      const leads = ((l.data || []) as any[]).filter(x => !jobLeads.has(x.id)).map(x => ({ key: `l${x.id}`, leadId: x.id as string, jobId: null as string | null, name: x.customer_name as string, when: x.scheduled_date ? `${x.scheduled_date} ${hhmm(x.scheduled_time || "")}` : "", reason: why.get(x.id) || "" }));
+      return [...jobs, ...leads];
+    },
+  });
+  const v8Reopen = async (c: { leadId: string; jobId: string | null; name: string }) => {
+    const { error } = await (supabase.rpc as any)("fl_reopen_booking", { p_lead_id: c.leadId, p_job_id: c.jobId });
+    if (error) { toast({ title: "Could not reopen", description: error.message, variant: "destructive" }); return; }
+    v8Refresh();
+    toast({ title: `Reopened · ${c.name}`, description: c.jobId ? "Back on its old slot: drag it to a new day or person." : "Back in Unscheduled: drag it onto a day or use Assign." });
   };
 
   // ─── Map ───
@@ -1132,7 +1193,8 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                 people={dispatchAgents} staff={v8Staff} setStaff={setV8Staff}
                 role={v8Role} setRole={setV8Role} salesIds={new Set(salesStaff.map(x => x.id))} techIds={new Set([...technicians.map(x => x.id), ...agents.map(x => x.id)])}
                 laneOf={sch => { const l = allLeads.find(x => x.id === sch.lead_id); return l ? laneOf(l) : null; }}
-                capacityMin={(v8Staff === "all" ? Math.max(1, dispatchAgents.length) : 1) * 9 * 60}
+                winFor={(id, d) => v8WindowFor(id, d, v8Hours.rows, v8Hours.company)}
+                cancelled={v8Cancelled.length} onCancelledTray={() => setV8ShowCancelled(true)} resched={v8Resched.length} onReschedTray={() => setV8ShowResched(true)}
                 dragOver={dragOverSlot} setDragOver={setDragOverSlot}
                 onCardDragStart={(e, sch) => handleScheduleDragStart(e, sch as Schedule)} onDragEnd={handleDragEnd}
                 onOpen={sch => { const l = allLeads.find(x => x.id === sch.lead_id); if (l) { setJobInfoLead(l); setJobInfoSchedule(sch as Schedule); } else if (sch.job_id) navigate(`/admin/jobs/${sch.job_id}`); }}
@@ -1206,6 +1268,50 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
       </div>
 
       {clashDialog}
+      <Dialog open={!!v8Ask} onOpenChange={o => { if (!o) setV8Ask(null); }}>
+        <DialogContent className="sm:max-w-sm" data-testid="v8-zone-dialog">
+          <DialogHeader><DialogTitle>{v8Ask?.kind === "cancel" ? `Cancel ${v8Ask?.name}? (client called it off)` : v8Ask?.kind === "resched" ? `${v8Ask?.name} needs rescheduling` : `Unschedule ${v8Ask?.name}?`}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">{v8Ask?.kind === "cancel"
+            ? "Only when the client called it off. It's marked cancelled and leaves every live list, calendar, alert and job list. It's never deleted: an admin can reopen it from Cancelled. The assigned person gets an in-app notice; no message goes to the client."
+            : v8Ask?.kind === "resched" ? "It stays active, comes off the calendar and the person, and waits in Needs rescheduling (and the attention alerts) until it's booked again. The assigned person gets an in-app notice."
+            : "Clears the date, time and person, and puts it back in Unscheduled. The assigned person gets an in-app notice."}</p>
+          {v8Ask?.kind !== "unschedule" && <Textarea rows={2} value={v8Reason} onChange={e => setV8Reason(e.target.value)} placeholder="Reason (required)" />}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setV8Ask(null)}>Back</Button>
+            <Button variant={v8Ask?.kind === "cancel" ? "destructive" : "default"} disabled={v8Busy || (v8Ask?.kind !== "unschedule" && v8Reason.trim().length < 3)} onClick={() => void v8Run()}>
+              {v8Ask?.kind === "cancel" ? "Yes, cancel it" : v8Ask?.kind === "resched" ? "Move to Needs rescheduling" : "Unschedule"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={v8ShowResched} onOpenChange={setV8ShowResched}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto" data-testid="v8-resched-tray">
+          <DialogHeader><DialogTitle>Needs rescheduling · {v8Resched.length}</DialogTitle></DialogHeader>
+          {v8Resched.length === 0 && <p className="text-sm text-muted-foreground">Nothing waiting.</p>}
+          {v8Resched.map(c => (
+            <div key={c.key} className="flex items-center gap-2 border-t py-2 text-sm first:border-t-0">
+              <div className="min-w-0 flex-1"><div className="truncate font-semibold">{c.name}</div><div className="truncate text-xs text-muted-foreground">Reason: {c.reason} · since {format(new Date(c.since), "d MMM HH:mm")}</div></div>
+              <Button size="sm" variant="outline" onClick={() => {
+                setV8ShowResched(false);
+                if (c.jobId) { navigate(`/admin/jobs/${c.jobId}`); return; }
+                const l = allLeads.find(x => x.id === c.leadId);
+                if (l) { setQuickAssignLead(l); setQuickAssignAgent(""); setQuickAssignDate(format(currentDate, "yyyy-MM-dd")); setQuickAssignStart("08:00"); setQuickAssignEnd(fromMinutes(toMinutes("08:00") + leadMinutes(l))); }
+              }}>Rebook</Button>
+            </div>))}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={v8ShowCancelled} onOpenChange={setV8ShowCancelled}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Cancelled · {v8Cancelled.length}</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">History only: these are out of every live list. Reopen puts one back to an active status (logged).</p>
+          {v8Cancelled.length === 0 && <p className="text-sm text-muted-foreground">Nothing cancelled.</p>}
+          {v8Cancelled.map(c => (
+            <div key={c.key} className="flex items-center gap-2 border-t py-2 text-sm first:border-t-0">
+              <div className="min-w-0 flex-1"><div className="truncate font-semibold">{c.name}</div><div className="truncate text-xs text-muted-foreground">{[c.when, c.reason && `Reason: ${c.reason}`].filter(Boolean).join(" · ")}</div></div>
+              {(isAdmin || isDispatcher) && <Button size="sm" variant="outline" onClick={() => void v8Reopen(c)}>Reopen</Button>}
+            </div>))}
+        </DialogContent>
+      </Dialog>
       {/* ─── Quick Assign Dialog ─── */}
       <Dialog open={!!quickAssignLead} onOpenChange={(open) => { if (!open) setQuickAssignLead(null); }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">

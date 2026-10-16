@@ -37,3 +37,21 @@ describe("v8 Park + Lost reason notes", () => {
     expect(v8CanPark("booked")).toBe(false); expect(v8CanPark("paid")).toBe(false);
   });
 });
+
+import { v8WindowFor, v8OutsideHours, v8FillTone } from "@/lib/v8Hours";
+describe("v8 working hours", () => {
+  it("person rows, then company, then Mon–Fri 08–17", () => {
+    const rows = [{ profile_id: "a", day_of_week: 6, start_time: "09:00", end_time: "13:00", is_working: true }];
+    expect(v8WindowFor("a", "2026-10-17", rows, null)).toEqual({ working: true, start: 540, end: 780 });
+    expect(v8WindowFor("b", "2026-10-17", rows, null).working).toBe(false);
+    expect(v8WindowFor("b", "2026-10-16", rows, null)).toEqual({ working: true, start: 480, end: 1020 });
+    expect(v8WindowFor("b", "2026-10-17", rows, { work_days: [1, 2, 3, 4, 5, 6], work_start: "07:00", work_end: "16:00" }).start).toBe(420);
+  });
+  it("flags after-hours and lets the fill exceed 100%", () => {
+    const w = { working: true, start: 480, end: 1020 };
+    expect(v8OutsideHours(w, "16:00", "18:00")).toBe(true);
+    expect(v8OutsideHours(w, "09:00", "11:00")).toBe(false);
+    expect(v8OutsideHours({ ...w, working: false }, "09:00", "11:00")).toBe(true);
+    expect(v8FillTone(120)).toBe("over"); expect(v8FillTone(90)).toBe("hot"); expect(v8FillTone(40)).toBe("");
+  });
+});

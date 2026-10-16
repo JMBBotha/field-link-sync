@@ -119,7 +119,8 @@ const AdminMyJobsPage = () => {
 
       if (error) throw error;
 
-      return ((data as MyAssignedJobRow[] | null) || []).map((row) => ({
+      // Cancelled jobs are dead for techs: never in their job list (kept in history for the office).
+      return ((data as MyAssignedJobRow[] | null) || []).filter((row) => !["cancelled", "canceled"].includes(String(row.job_status || "").toLowerCase())).map((row) => ({
         id: row.assignment_id,
         status: row.assignment_status ?? "proposed",
         notes: row.assignment_notes,

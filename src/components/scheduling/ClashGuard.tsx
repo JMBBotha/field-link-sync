@@ -22,7 +22,7 @@ export type ConfirmBookingArgs = {
   entity: { type: "job" | "lead"; id: string };
 };
 
-type Pending = { args: ConfirmBookingArgs; overlaps: ClashRow[]; tight: ClashRow[]; afterHours: boolean; resolve: (ok: boolean) => void };
+type Pending = { args: ConfirmBookingArgs; overlaps: ClashRow[]; tight: ClashRow[]; afterHours: boolean; hoursText: string; resolve: (ok: boolean) => void };
 
 /** Office clash warning before saving a booking. Never shows money. */
 export function useClashGuard() {
@@ -68,10 +68,20 @@ export function useClashGuard() {
     }
     const overlaps = rows.filter((r) => r.kind === "overlap");
     const tight = rows.filter((r) => r.kind === "tight");
-    const afterHours = isAfterHours(args.date, { start: args.start, end: args.end });
+    // Overtime / after hours is allowed: it only asks to confirm. Uses the person's own hours (staff_work_window), else the default.
+    let afterHours = isAfterHours(args.date, { start: args.start, end: args.end });
+    let hoursText = `Mon–Fri ${WORK_START}–${WORK_END}`;
+    try {
+      const { data, error } = await (supabase.rpc as any)("staff_work_window", { p_profile_id: args.profileId, p_date: args.date });
+      const w = !error && Array.isArray(data) ? data[0] : null;
+      if (w) {
+        afterHours = !w.is_working || toMinutes(hhmm(args.start)) < toMinutes(hhmm(w.start_time)) || toMinutes(hhmm(args.end)) > toMinutes(hhmm(w.end_time));
+        hoursText = w.is_working ? `${hhmm(w.start_time)}–${hhmm(w.end_time)} that day` : w.source === "leave" ? "on leave that day" : "not a working day";
+      }
+    } catch { /* keep the default check */ }
     if (!overlaps.length && !tight.length && !afterHours) return true;
     return new Promise<boolean>((resolve) => {
-      const p = { args, overlaps, tight, afterHours, resolve };
+      const p = { args, overlaps, tight, afterHours, hoursText, resolve };
       pendingRef.current = p;
       setReason("");
       setPending(p);
@@ -100,7 +110,7 @@ export function useClashGuard() {
     <AlertDialog open={!!pending} onOpenChange={(o) => { if (!o) close(false); }}>
       <AlertDialogContent data-testid="clash-dialog">
         <AlertDialogHeader>
-          <AlertDialogTitle>{needReason ? "Double booking" : "Check this booking"}</AlertDialogTitle>
+          <AlertDialogTitle>{needReason ? "Double booking" : pending?.afterHours && !pending?.tight.length ? "After hours / overtime, book anyway?" : "Check this booking"}</AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-1 text-sm">
               {pending?.overlaps.map((r, i) => (
@@ -114,7 +124,7 @@ export function useClashGuard() {
                 </p>
               ))}
               {pending?.afterHours && (
-                <p className="text-muted-foreground">Outside working hours (Mon–Fri {WORK_START}–{WORK_END})</p>
+                <p className="text-muted-foreground">After hours / overtime: outside this person's working hours ({pending.hoursText}). You can still book it.</p>
               )}
             </div>
           </AlertDialogDescription>
