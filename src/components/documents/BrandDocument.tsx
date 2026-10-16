@@ -145,6 +145,14 @@ const CSS = `
  .bd .items small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:10.5px}
  .bd .items tr.sub{display:flex;justify-content:space-between;padding:6px 0}.bd .items tr.sub td{padding:0}
 }
+ /* Public client page on phones (Johan 16 Oct 10:25): slim header strip = small logo + company name; details stay in the footer block. */
+@container (max-width: 620px){
+ .bd.bd-client .top{flex-direction:row!important;align-items:center!important;gap:10px;padding-top:10px!important;padding-bottom:10px!important}
+ .bd.bd-client .hl{flex-direction:row!important;align-items:center!important;gap:8px!important}
+ .bd.bd-client .logo{height:34px!important}
+ .bd.bd-client .hco>div{display:none}.bd.bd-client .hco b{font-size:12px}
+ .bd.bd-client .ttl{text-align:right!important;margin-left:auto}.bd.bd-client .ttl h1{font-size:15px!important;margin:0}.bd.bd-client .ttl .no{font-size:11px}
+}
 .bd details.tdet{margin-top:16px;border:1px solid var(--line);border-radius:10px;padding:10px 14px}
 .bd details.tdet>summary{cursor:pointer;font-weight:700;color:var(--b1);list-style:none}
 .bd details.tdet>summary::-webkit-details-marker{display:none}
@@ -178,7 +186,7 @@ export default function BrandDocument(p: BrandDocumentProps) {
   const addr = id.addressLines.join(", ");
   const hasCode = p.sections.some((s) => s.lines.some((l) => l.code));
   return (
-    <div data-pdf-capture-root={p.captureRoot} data-doc-style={style} data-testid="brand-document" className={`bd ${style} pdf-page mx-auto w-full ${p.className || ""}`}>
+    <div data-pdf-capture-root={p.captureRoot} data-doc-style={style} data-testid="brand-document" className={`bd ${style}${p.collapseTerms ? " bd-client" : ""} pdf-page mx-auto w-full ${p.className || ""}`}>
       <style>{CSS}</style>
       {closing && (
         <>
