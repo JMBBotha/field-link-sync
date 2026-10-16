@@ -118,7 +118,8 @@ const AdminSidebar = ({
         { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
         { path: "/admin/customers", label: "Clients", icon: Users },
         {
-          path: "/admin/quotes",
+          // When the badge shows quotes waiting on the client, land on that filter directly.
+          path: docCounts?.quotesOpen ? "/admin/quotes?status=sent" : "/admin/quotes",
           label: "Quotes",
           icon: FileText,
           roles: ["admin", "dispatcher", "viewer"],

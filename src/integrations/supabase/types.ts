@@ -1113,6 +1113,7 @@ export type Database = {
       }
       companies: {
         Row: {
+          accounts_email: string | null
           billing_live: boolean
           contract_ends_at: string | null
           contract_signed_at: string | null
@@ -1159,6 +1160,7 @@ export type Database = {
           work_start: string
         }
         Insert: {
+          accounts_email?: string | null
           billing_live?: boolean
           contract_ends_at?: string | null
           contract_signed_at?: string | null
@@ -1205,6 +1207,7 @@ export type Database = {
           work_start?: string
         }
         Update: {
+          accounts_email?: string | null
           billing_live?: boolean
           contract_ends_at?: string | null
           contract_signed_at?: string | null
@@ -11984,6 +11987,7 @@ export type Database = {
         Returns: number
       }
       invoice_amount_paid: { Args: { p_invoice_id: string }; Returns: number }
+      invoice_email_preview: { Args: { p_invoice_id: string }; Returns: Json }
       is_agent_available_now: { Args: { p_agent_id: string }; Returns: boolean }
       is_approved_network_member: { Args: { _uid: string }; Returns: boolean }
       is_company_admin: {
