@@ -16,6 +16,8 @@ export interface DepositInvoiceLike {
   status?: string | null;
   paid_date?: string | null;
   grand_total?: number | null;
+  /** oneinv: deposit requested on a full-total invoice (null = whole invoice is the deposit). */
+  deposit_amount?: number | null;
   amount_paid?: number | null;
   remaining?: number | null;
   chip_state?: DepositChipState | null;
@@ -39,6 +41,8 @@ export function getDepositRemaining(invoice: DepositInvoiceLike | null | undefin
  */
 export function isDepositCleared(invoice: DepositInvoiceLike | null | undefined): boolean {
   if (!invoice?.id) return false;
+  const dep = Number(invoice.deposit_amount) || 0;
+  if (dep > 0) { const paid = getDepositAmountPaid(invoice); return paid !== undefined && paid >= dep - 0.005; }
   const remaining = getDepositRemaining(invoice);
   if (remaining === undefined) return false;
   return remaining <= 0;
@@ -67,6 +71,8 @@ export function getDepositChipState(
   if (paid === undefined) return "due"; // totals unknown — never claim paid/partial
   const total = Number(invoice.grand_total) || 0;
   const remaining = getDepositRemaining(invoice) ?? Math.max(0, total - paid);
+  const dep = Number(invoice.deposit_amount) || 0;
+  if (dep > 0 && dep < total) return paid >= dep - 0.005 ? "paid" : paid > 0 ? "partial" : "due";
   if (total > 0 && remaining <= 0) return "paid";
   if (paid > 0 && remaining > 0) return "partial";
   return "due";
@@ -88,6 +94,11 @@ export function depositChipLabel(
   if (state === "paid") return "Deposit paid";
   if (state === "none") return "No deposit";
   const total = Math.max(0, Number(invoice?.grand_total) || 0);
+  const dep = Number(invoice?.deposit_amount) || 0;
+  if (dep > 0 && dep < total) {
+    const left = Math.max(0, Math.round((dep - (Number(invoice?.amount_paid) || 0)) * 100) / 100);
+    return state === "partial" ? `Partial · ${formatRand(left)} deposit due` : `Deposit · ${formatRand(left)} due`;
+  }
   const remaining = getDepositRemaining(invoice) ?? Math.max(0, total - (Number(invoice?.amount_paid) || 0));
   if (state === "partial") return `Partial · ${formatRand(remaining)} due`;
   return `Deposit · ${formatRand(remaining > 0 ? remaining : total)} due`;

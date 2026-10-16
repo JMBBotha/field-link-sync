@@ -13,6 +13,8 @@ interface PayfastPayButtonProps {
   customerName?: string;
   returnUrl?: string;
   cancelUrl?: string;
+  /** Only render when a real gateway is configured for the company. Default: hidden (PayFast is not connected). */
+  enabled?: boolean;
 }
 
 const PAYFAST_SANDBOX_URL = "https://sandbox.payfast.co.za/eng/process";
@@ -30,6 +32,7 @@ const PayfastPayButton = ({
   customerName,
   returnUrl,
   cancelUrl,
+  enabled = false,
 }: PayfastPayButtonProps) => {
   const formRef = useRef<HTMLFormElement>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -45,6 +48,8 @@ const PayfastPayButton = ({
       formRef.current?.submit();
     }, 300);
   };
+
+  if (!enabled) return null;
 
   return (
     <>

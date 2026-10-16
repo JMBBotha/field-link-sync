@@ -10,6 +10,6 @@ export function buildDepositWhatsAppUrl(
   amount: number,
   payUrl: string,
 ): string {
-  const text = `Hi, here is the deposit invoice ${invoiceNumber} for ${formatRand(amount)}. You can pay securely here: ${payUrl}`;
+  const text = `Hi, here is invoice ${invoiceNumber}: deposit of ${formatRand(amount)} due. Banking details and reference: ${payUrl}`;
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }

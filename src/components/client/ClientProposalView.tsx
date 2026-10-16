@@ -459,7 +459,7 @@ const ClientProposalView = () => {
 
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Signature (optional)</p>
-                <SignaturePad value={signature} onChange={setSignature} height={160} />
+                <SignaturePad value={signature} onChange={setSignature} height={240} />
               </div>
 
               <Button
@@ -486,11 +486,13 @@ const ClientProposalView = () => {
               </p>
               <div className="flex flex-col items-center gap-3 pt-1">
                 <DepositPaymentChip invoice={depositInvoice} accepted />
-                {depositInvoice?.id && !isDepositCleared(depositInvoice) && (
+                {/* Online gateway only when one is actually configured for this company (PayFast is not connected). */}
+                {depositInvoice?.id && depositInvoice.gateway_enabled && !isDepositCleared(depositInvoice) && (
                   <PayfastPayButton
+                    enabled
                     invoiceId={depositInvoice.id}
                     invoiceNumber={depositInvoice.invoice_number || "Deposit"}
-                    amount={Number(depositInvoice.grand_total) || 0}
+                    amount={Number(depositInvoice.deposit_amount ?? depositInvoice.grand_total) || 0}
                     customerEmail={null}
                     customerName={quote.accepted_by || "Customer"}
                     returnUrl={token ? publicQuoteUrl(token) : undefined}
@@ -498,7 +500,7 @@ const ClientProposalView = () => {
                   />
                 )}
                 {token && depositInvoice?.id && (
-                  <ClientDepositActions invoice={depositInvoice} payUrl={publicQuoteUrl(token)} />
+                  <ClientDepositActions invoice={depositInvoice} payUrl={publicQuoteUrl(token)} banking={company?.banking_details} profile={companyProfile} />
                 )}
               </div>
             </CardContent>

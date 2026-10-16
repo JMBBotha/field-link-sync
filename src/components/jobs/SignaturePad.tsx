@@ -25,10 +25,13 @@ const SignaturePad = ({ value, onChange, disabled, height = 180 }: SignaturePadP
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.scale(ratio, ratio);
-    ctx.lineWidth = 2.2;
+    ctx.lineWidth = 3.6;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.strokeStyle = "#111827";
+    ctx.strokeStyle = "#000000";
+    // White paper so the ink shows on dark themes and in the saved PNG / PDF.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, rect.width, height);
     if (value) {
       const img = new Image();
       img.onload = () => ctx.drawImage(img, 0, 0, rect.width, height);
@@ -80,14 +83,16 @@ const SignaturePad = ({ value, onChange, disabled, height = 180 }: SignaturePadP
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
     setHasInk(false);
     onChange(null);
   };
 
   return (
     <div className="space-y-2">
-      <div className="rounded-lg border border-border bg-background overflow-hidden">
+      <div className="rounded-lg border-2 border-dashed border-slate-400 bg-white overflow-hidden">
         <canvas
           ref={canvasRef}
           style={{ height, touchAction: "none" }}

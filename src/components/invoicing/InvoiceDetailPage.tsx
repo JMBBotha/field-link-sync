@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import SendInvoiceEmailButton from "@/components/invoicing/SendInvoiceEmailButton";
 import { generateAndUploadPDF, downloadInvoicePDF, printInvoicePDF, shareInvoice, sendViaWhatsApp } from "@/lib/invoicePDF";
 import { sumSettled } from "@/lib/payments";
 import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
@@ -372,6 +373,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           </div>
           {/* Primary action based on status */}
           {/* Mark as sent without emailing: dialog asks how (WhatsApp / handed over / other), server logs + notifies the owner. */}
+          <SendInvoiceEmailButton invoiceId={invoice.id} status={invoice.status} className="w-full h-11 rounded-lg font-semibold" onEdit={() => setEditingId(invoice.id)} onSent={() => { fetchInvoice(); onUpdate?.(); }} />
           <MarkSentManuallyButton kind="invoice" id={invoice.id} status={invoice.status} size="default" className="w-full h-11 rounded-lg font-semibold" onDone={() => { fetchInvoice(); onUpdate?.(); }} />
           {/* Paid is DERIVED from recorded payments — never set directly. */}
           {(invoice.status === "sent" || invoice.status === "partially_paid" || invoice.status === "overdue") &&

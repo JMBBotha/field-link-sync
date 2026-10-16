@@ -7,6 +7,9 @@ export interface DepositInvoiceRow {
   invoice_number: string | null;
   status: string | null;
   grand_total: number | null;
+  deposit_amount?: number | null;
+  /** Public token RPC only: true when a payment gateway is configured for the company. */
+  gateway_enabled?: boolean | null;
   paid_date: string | null;
   notes: string | null;
   amount_paid?: number | null;
@@ -17,8 +20,9 @@ export interface DepositInvoiceRow {
 export async function fetchQuoteInvoice(quoteId: string): Promise<DepositInvoiceRow | null> {
   const { data, error } = await supabase
     .from("invoices")
-    .select("id, invoice_number, status, grand_total, paid_date, notes")
+    .select("id, invoice_number, status, grand_total, deposit_amount, paid_date, notes")
     .eq("quote_id", quoteId)
+    .not("status", "in", "(void,cancelled)")
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
