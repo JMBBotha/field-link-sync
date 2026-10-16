@@ -22,6 +22,8 @@ import NewAdminHeader from "@/components/admin/NewAdminHeader";
 import ClassicAdminSidebar from "@/components/classic/ClassicAdminSidebar";
 import ClassicAdminBottomNav from "@/components/classic/ClassicAdminBottomNav";
 import { useLayoutVersion } from "@/hooks/useLayoutVersion";
+import V8Sidebar from "@/components/v8/V8Sidebar";
+import V8BottomNav from "@/components/v8/V8BottomNav";
 import GlobalSearchDialog from "@/components/GlobalSearchDialog";
 import NLCommandBar from "@/components/admin/NLCommandBar";
 import { useMandyDock, openMandyVoice } from "@/lib/mandy/registry";
@@ -52,8 +54,9 @@ const AdminLayout = () => {
   const { toast } = useToast();
   const { resolvedTheme, toggleTheme } = useTheme();
   const { isClassic } = useLayoutVersion();
-  const SidebarC = isClassic ? ClassicAdminSidebar : AdminSidebar;
-  const BottomNavC = isClassic ? ClassicAdminBottomNav : AdminBottomNav;
+  // v8 Simple (Johan 16 Oct 22:44) is the "New" layout; Classic stays as the rollback. The v7 sidebar is kept in code (AdminSidebar).
+  const SidebarC = isClassic ? ClassicAdminSidebar : V8Sidebar;
+  const BottomNavC = isClassic ? ClassicAdminBottomNav : V8BottomNav;
   // Keeps Mandy aware of the page / record the operator currently has open.
   useAssistantContextTracker();
 
