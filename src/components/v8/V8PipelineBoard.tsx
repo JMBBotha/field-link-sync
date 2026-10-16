@@ -7,6 +7,7 @@ import { useRole } from "@/hooks/useRole";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { isTestLead } from "@/lib/callSummary";
+import { laneOf, LANE_META, type LeadLane } from "@/lib/leadLane";
 import { useQuoteStaffActions } from "@/components/quoting/useQuoteStaffActions";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import QuoteCard from "@/components/cards/QuoteCard";
@@ -32,6 +33,9 @@ export default function V8PipelineBoard() {
   const { data, isLoading, refetch } = usePipelineData();
   const staff = useQuoteStaffActions(() => { void refetch(); });
   const [rep, setRep] = useState("all");
+  const [lane, setLane] = useState<"all" | LeadLane>("all");
+  const [hide, setHideState] = useState(getHideTest());
+  const setHide = (v: boolean) => { localStorage.setItem("fls.pipeline.hideTest", v ? "1" : "0"); setHideState(v); };
   const [drag, setDrag] = useState<string | null>(null);
   const [over, setOver] = useState<V8Col | null>(null);
   const [bookId, setBookId] = useState<string | null>(null);
@@ -41,21 +45,22 @@ export default function V8PipelineBoard() {
   const [ask, setAsk] = useState<{ kind: "park" | "lost"; d: Deal<Q> } | null>(null);
   const [why, setWhy] = useState(""); const [whyMore, setWhyMore] = useState("");
 
-  const { cols, leads, reps } = useMemo(() => {
-    const empty = { cols: {} as Record<V8Col, Deal<Q>[]>, leads: [] as L[], reps: [] as [string, string][] };
+  const { cols, leads, reps, hiddenN } = useMemo(() => {
+    const empty = { hiddenN: 0, cols: {} as Record<V8Col, Deal<Q>[]>, leads: [] as L[], reps: [] as [string, string][] };
     if (!data) return empty;
-    const hide = getHideTest();
+    const laneQ = (q: Q): LeadLane => ((q.lead_id && (data as any).laneByLead?.[q.lead_id]) || "sales") as LeadLane;
     const who = ownOnly ? user?.id : rep === "all" ? null : rep;
-    const deals = buildDeals(data.quotes.filter((q) => (!hide || !isTestLead(nameOf(q))) && (!who || q.sales_engineer_id === who)), data.invoices as any, data.jobs as any);
+    const deals = buildDeals(data.quotes.filter((q) => (!hide || !isTestLead(nameOf(q))) && (!who || q.sales_engineer_id === who) && (lane === "all" || laneQ(q) === lane)), data.invoices as any, data.jobs as any);
     const c = Object.fromEntries([...V8_COLS.map((x) => x.key), "lost"].map((k) => [k, [] as Deal<Q>[]])) as Record<V8Col, Deal<Q>[]>;
     const pk: Deal<Q>[] = [];
     deals.forEach((d) => { const col = v8ColOf(d, data.invoices as any); if (notes.parked[d.quote.id] && v8CanPark(col)) pk.push(d); else c[col].push(d); });
     (c as any).park = pk;
     Object.values(c).forEach((l) => l.sort((a, b) => b.value - a.value));
     const quoted = new Set(data.quotes.map((q) => q.lead_id).filter(Boolean));
-    const ls = who ? [] : data.leads.filter((l) => !quoted.has(l.id) && (!hide || !isTestLead(l.customer_name)));
-    return { cols: c, leads: ls, reps: Object.entries(data.repName).sort((a, b) => a[1].localeCompare(b[1])) };
-  }, [data, rep, ownOnly, user?.id, notes.parked]);
+    const ls = who ? [] : data.leads.filter((l) => !quoted.has(l.id) && (!hide || !isTestLead(l.customer_name)) && (lane === "all" || (laneOf(l as any) || "sales") === lane));
+    const hiddenN = hide ? data.quotes.filter((q) => isTestLead(nameOf(q))).length + data.leads.filter((l) => isTestLead(l.customer_name)).length : 0;
+    return { hiddenN, cols: c, leads: ls, reps: Object.entries(data.repName).sort((a, b) => a[1].localeCompare(b[1])) };
+  }, [data, rep, ownOnly, user?.id, notes.parked, lane, hide]);
 
   const mark = (d: Deal<Q>, label: string) => {
     const item = staff.itemsFor(d.quote as any).find((i) => i.label === label);
@@ -126,8 +131,14 @@ export default function V8PipelineBoard() {
     <div className="space-y-3" data-testid="v8-pipeline">
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <div className="v8-eyebrow">Lead → Quote sent → Accepted → Job booked → Invoiced → Paid</div>
+        <div className="ml-auto inline-flex rounded-md border p-0.5" role="group" aria-label="Lane" data-testid="v8-lane">
+          {(["all", "sales", "service"] as const).map((k) => (
+            <button key={k} onClick={() => setLane(k)} className={"rounded px-2.5 py-1 text-xs font-medium " + (lane === k ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>{k === "all" ? "All" : LANE_META[k].label}</button>
+          ))}
+        </div>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground"><input type="checkbox" checked={hide} onChange={(e) => setHide(e.target.checked)} /> Hide test records{hide && hiddenN ? ` (${hiddenN})` : ""}</label>
         {!ownOnly && reps.length > 1 && (
-          <select value={rep} onChange={(e) => setRep(e.target.value)} className="ml-auto h-8 rounded-md border bg-background px-2 text-sm" aria-label="Person">
+          <select value={rep} onChange={(e) => setRep(e.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm" aria-label="Person">
             <option value="all">Everyone</option>
             {reps.map(([id, n]) => <option key={id} value={id}>{n}</option>)}
           </select>

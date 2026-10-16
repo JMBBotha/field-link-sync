@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DetailPageSkeleton } from "@/components/ui/skeletons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { CustomerPaymentsTab, CustomerPhotosTab, CustomerDocumentsTab, CustomerHistoryTab } from "@/components/customers/CustomerRecordTabs";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -221,7 +222,7 @@ const AdminCustomerDetailPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("jobs")
-        .select("id, title, description, status, scheduled_for, created_at")
+        .select("id, title, description, status, scheduled_for, created_at, lead_id")
         .eq("customer_id", id!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -541,7 +542,7 @@ const AdminCustomerDetailPage = () => {
                       Invoices {invoices.length > 0 && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{invoices.length}</span>}
                     </TabsTrigger>
                     <TabsTrigger value="quotes">
-                      Quotes {quotes.length > 0 && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{quotes.length}</span>}
+                      Estimates / Quotes {quotes.length > 0 && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{quotes.length}</span>}
                     </TabsTrigger>
                     <TabsTrigger value="jobs">
                       Jobs {jobs.length > 0 && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{jobs.length}</span>}
@@ -551,7 +552,10 @@ const AdminCustomerDetailPage = () => {
                     <TabsTrigger value="contacts">Contacts</TabsTrigger>
                     <TabsTrigger value="sites">{sitesLabel((customer as any).client_type)}</TabsTrigger>
                     <TabsTrigger value="credits">Credits</TabsTrigger>
-                    <TabsTrigger value="estimates">Estimates</TabsTrigger>
+                    <TabsTrigger value="payments">Payments</TabsTrigger>
+                    <TabsTrigger value="photos">Photos</TabsTrigger>
+                    <TabsTrigger value="documents">Documents</TabsTrigger>
+                    <TabsTrigger value="history">History</TabsTrigger>
                   </TabsList>
                 </div>
 
@@ -595,7 +599,7 @@ const AdminCustomerDetailPage = () => {
                 </TabsContent>
 
                 <TabsContent value="quotes" className="p-0 mt-0">
-                  <SectionHeader title="Quotes" onNew={() => setShowTemplatePicker(true)} cta="+ Quote from Template" />
+                  <SectionHeader title="Estimates / Quotes" onNew={() => setShowTemplatePicker(true)} cta="+ Quote from Template" />
                   <SummaryChips
                     items={[
                       { label: "Open value", value: formatRand(quoteSummary.openValue), tone: quoteSummary.openValue > 0 ? "blue" : "slate" },
@@ -695,9 +699,10 @@ const AdminCustomerDetailPage = () => {
                 <TabsContent value="credits" className="p-6 text-sm text-muted-foreground">
                   No credits on file.
                 </TabsContent>
-                <TabsContent value="estimates" className="p-6 text-sm text-muted-foreground">
-                  Estimates will appear here.
-                </TabsContent>
+                <TabsContent value="payments" className="p-0 mt-0"><CustomerPaymentsTab invoices={invoices as any[]} /></TabsContent>
+                <TabsContent value="photos" className="p-0 mt-0"><CustomerPhotosTab customerId={customer.id} jobs={jobs as any[]} /></TabsContent>
+                <TabsContent value="documents" className="p-0 mt-0"><CustomerDocumentsTab customerId={customer.id} quotes={quotes as any[]} /></TabsContent>
+                <TabsContent value="history" className="p-0 mt-0"><CustomerHistoryTab customerId={customer.id} quotes={quotes as any[]} invoices={invoices as any[]} jobs={jobs as any[]} /></TabsContent>
               </Tabs>
             </CardContent>
           </Card>
