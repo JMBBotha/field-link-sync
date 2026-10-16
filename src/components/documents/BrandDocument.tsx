@@ -61,6 +61,10 @@ export interface BrandDocumentProps {
    * travel together and are pinned to the bottom of the last page.
    */
   closingPage?: boolean;
+  /** Public client web page only (never the PDF): terms + full T&Cs in ONE collapsed expander. */
+  collapseTerms?: boolean;
+  /** Public client web page only: rendered straight after the totals (e.g. an Accept button). */
+  afterTotalsAction?: ReactNode;
   className?: string;
 }
 
@@ -129,7 +133,22 @@ const CSS = `
  .bd .hl{flex-direction:column;align-items:flex-start;gap:10px}.bd .logo{height:70px}.bd .ttl{text-align:left}
  .bd .parties{flex-direction:column}.bd .items .c-code{display:none}.bd .items th,.bd .items td{padding:6px 4px}
  .bd .notes,.bd .notes.wide{grid-template-columns:1fr}.bd .foot .terms{margin:0 14px}.bd .phead{padding:10px 14px 0}.bd .tot{min-width:0;width:100%}.bd .sig{flex-wrap:wrap;padding:10px 14px}.bd .sunits{display:none}
-}`;
+ .bd .hco{font-size:11px;line-height:1.35}
+ /* Stacked quote lines on phones (Johan 16 Oct 09:34): name + line total, then qty x rate; no squeezed 4-col table. */
+ .bd .items,.bd .items tbody{display:block;width:100%}.bd .items thead{display:none}
+ .bd .items tr{display:block}.bd .items td{border:0}
+ .bd .items tr.dl{display:grid;grid-template-columns:1fr auto;grid-template-areas:"d t" "r r";column-gap:10px;row-gap:2px;padding:8px 0;border-bottom:1px solid var(--line)}
+ .bd .items tr.dl td{padding:0!important}
+ .bd .items .c-qty{display:none}.bd .items .c-desc{grid-area:d}.bd .items .c-tot{grid-area:t;font-weight:700;text-align:right}
+ .bd .items .c-rate{grid-area:r;text-align:left;font-size:11px;color:var(--mut)}
+ .bd .items .c-rate::before{content:attr(data-qty) " × "}
+ .bd .items small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:10.5px}
+ .bd .items tr.sub{display:flex;justify-content:space-between;padding:6px 0}.bd .items tr.sub td{padding:0}
+}
+.bd details.tdet{margin-top:16px;border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.bd details.tdet>summary{cursor:pointer;font-weight:700;color:var(--b1);list-style:none}
+.bd details.tdet>summary::-webkit-details-marker{display:none}
+.bd details.tdet>summary::before{content:"▸ "}.bd details.tdet[open]>summary::before{content:"▾ "}`;
 
 /**
  * Notes printed line by line (Johan 14 Oct): the PDF capture (html2canvas) ignores
@@ -209,12 +228,12 @@ export default function BrandDocument(p: BrandDocumentProps) {
             <tbody key={s.key}>
               {s.title && <tr><td colSpan={hasCode ? 5 : 4} className="room" style={{ borderBottom: 0, paddingTop: 14 }}>{s.title}</td></tr>}
               {s.lines.map((l) => (
-                <tr key={l.key} data-testid="doc-line">
-                  <td>{l.quantity}</td>
+                <tr key={l.key} data-testid="doc-line" className="dl">
+                  <td className="c-qty">{l.quantity}</td>
                   {hasCode && <td className="code c-code">{l.code || ""}</td>}
-                  <td><b>{l.name}</b>{l.description ? <><br /><small>{l.description}</small></> : null}</td>
-                  <td className="r">{money(l.rate)}{l.rateSuffix || ""}</td>
-                  <td className="r" data-testid="doc-line-total">{money(l.total)}</td>
+                  <td className="c-desc"><b>{l.name}</b>{l.description ? <><br /><small>{l.description}</small></> : null}</td>
+                  <td className="r c-rate" data-qty={l.quantity}>{money(l.rate)}{l.rateSuffix || ""}</td>
+                  <td className="r c-tot" data-testid="doc-line-total">{money(l.total)}</td>
                 </tr>
               ))}
               {s.subtotal != null && p.sections.length > 1 && (
@@ -229,21 +248,45 @@ export default function BrandDocument(p: BrandDocumentProps) {
           {p.totals.map((t) => <tr key={t.label}><td>{t.label}</td><td>{t.negative ? "-" : ""}{money(t.value)}</td></tr>)}
           <tr className="g"><td>{p.grandLabel}</td><td>{money(p.grandTotal)}</td></tr>
         </tbody></table>
+        {p.afterTotalsAction}
         {!p.fullTermsPage && p.afterTotals}
 
         {!closing && p.cards.length > 0 && (
           <div className="notes">{p.cards.map((c) => <div className="note" key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
         )}
-        {!closing && <div className="terms" data-testid="doc-terms"><h4>Terms</h4><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>}
-        {!closing && p.fullTermsPage}
+        {!closing && p.collapseTerms && p.fullTermsPage ? (
+          <>
+            {p.afterTotals}
+            <details className="tdet" data-testid="doc-terms-expander">
+              <summary>Full terms and conditions</summary>
+              <div className="terms" data-testid="doc-terms"><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>
+              {p.fullTermsPage}
+            </details>
+          </>
+        ) : (
+          <>
+            {!closing && <div className="terms" data-testid="doc-terms"><h4>Terms</h4><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>}
+            {!closing && p.fullTermsPage}
+          </>
+        )}
         {closing && p.cards.length > 0 && (
           <div className="closing" data-pdf-break-before={p.fullTermsPage ? undefined : ""} data-testid="doc-closing">
             <div className="notes wide">{p.cards.map((c, i) => <div className={`note${p.cards.length % 2 === 1 && i === p.cards.length - 1 ? " full" : ""}`} key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
-            {p.fullTermsPage && <div className="terms" data-testid="doc-terms"><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>}
+            {p.fullTermsPage && !p.collapseTerms && <div className="terms" data-testid="doc-terms"><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>}
           </div>
         )}
-        {p.fullTermsPage && p.afterTotals}
-        {closing && p.fullTermsPage}
+        {p.fullTermsPage && !p.collapseTerms && p.afterTotals}
+        {closing && p.fullTermsPage && !p.collapseTerms && p.fullTermsPage}
+        {closing && p.fullTermsPage && p.collapseTerms && (
+          <>
+            {p.afterTotals}
+            <details className="tdet" data-testid="doc-terms-expander">
+              <summary>Full terms and conditions</summary>
+              <div className="terms" data-testid="doc-terms"><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>
+              {p.fullTermsPage}
+            </details>
+          </>
+        )}
       </div>
       {closing && !p.fullTermsPage ? (
         <div className="foot" data-pdf-bottom data-testid="doc-foot">

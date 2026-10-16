@@ -110,14 +110,14 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
   const img = m && m.image_status === "ready" && m.image_url ? m.image_url : null;
   const where = card.rooms.length ? `${card.rooms.join(", ")} ×${card.quantity}` : `×${card.quantity}`;
   return (
-    <div data-pdf-keep data-testid="unit-card" data-model={card.modelKey} style={{
+    <div data-pdf-keep data-testid="unit-card" data-model={card.modelKey} className="uc" style={{
       display: "grid", gridTemplateColumns: qr ? "150px 1fr 84px" : "150px 1fr", gap: 16, padding: 14, marginBottom: 12,
       borderRadius: 8, breakInside: "avoid", pageBreakInside: "avoid",
       border: bold ? "none" : "1px solid #e3eaf2", borderTop: bold ? "none" : `3px solid ${SKY}`,
       borderLeft: bold ? `6px solid ${ORANGE}` : undefined,
       background: bold ? "#eef3f9" : "#fff",
     }}>
-      <div style={{
+      <div className="uc-img" style={{
         borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 120,
         background: bold ? `linear-gradient(160deg, ${BLUE_SOFT}, ${SKY})` : "linear-gradient(160deg,#eaf6fd,#f7fbff)",
       }}>
@@ -150,7 +150,7 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
         )}
       </div>
       {qr && link && (
-        <div style={{ textAlign: "center" }}>
+        <div className="uc-qr" style={{ textAlign: "center" }}>
           <a data-pdf-link href={link} target="_blank" rel="noopener" aria-label={`Brochure for ${card.modelCode}`} style={{ display: "inline-block" }}><img data-testid="unit-card-qr" src={qr} alt={`QR code for ${card.modelCode}`} style={{ width: 76, height: 76 }} /></a>
           <div style={{ fontSize: 8.5, color: MUTED, lineHeight: 1.3 }}>Scan for the brochure</div>
           <a data-pdf-link data-testid="unit-card-brochure-btn" href={link} target="_blank" rel="noopener" style={{ display: "inline-block", marginTop: 6, background: bold ? ORANGE : SKY, color: "#fff", fontSize: 10, fontWeight: 700, textDecoration: "none", borderRadius: 5, padding: "4px 8px", whiteSpace: "nowrap" }}>View brochure</a>
@@ -165,6 +165,12 @@ export function QuoteUnitCardsView({ cards, variant = "light", companyId = null 
   const sources = [...new Set(cards.map((c) => c.media?.brand).filter(Boolean))];
   return (
     <section data-testid="quote-unit-cards" style={{ marginTop: 28, breakBefore: "auto" }}>
+      {/* Phones (container <=620px; the PDF capture root is 820px so the PDF keeps QR + 150px image): fixed 96px thumbnail, no QR. */}
+      <style>{`@container (max-width: 620px){[data-testid=quote-unit-cards] .uc{grid-template-columns:96px 1fr!important;gap:10px!important;padding:10px!important;align-items:start}
+[data-testid=quote-unit-cards] .uc-img{width:96px;height:96px;min-height:0!important;overflow:hidden}
+[data-testid=quote-unit-cards] .uc-img img{max-width:88px!important;max-height:88px!important}
+[data-testid=quote-unit-cards] .uc-img svg{width:86px;height:auto}
+[data-testid=quote-unit-cards] .uc-qr{display:none!important}}`}</style>
       <div style={{ borderLeft: `4px solid ${ORANGE}`, paddingLeft: 10, marginBottom: 4, fontSize: 17, fontWeight: 800, color: BLUE }}>
         The units in this quote
         <span style={{ fontSize: 11, fontWeight: 500, color: MUTED, marginLeft: 10 }}>

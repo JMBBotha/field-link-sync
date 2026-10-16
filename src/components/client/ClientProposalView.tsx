@@ -1,4 +1,3 @@
-import FullTermsSection from "@/components/client/FullTermsSection";
 import ClientAdjustQuote from "@/components/client/ClientAdjustQuote";
 import { useQuoteUnitCards, QuoteUnitCardsView } from "@/components/quoting/QuoteUnitCards";
 import type { CompanyProfile } from "@/lib/companyProfiles";
@@ -97,6 +96,9 @@ const ClientProposalView = () => {
   const [changeState, setChangeState] = useState<{ open: boolean; requested_at: string } | null>(null);
   const [showChanges, setShowChanges] = useState(false);
   const [adjusting, setAdjusting] = useState(false);
+  const [hasAlternatives, setHasAlternatives] = useState(false);
+  const [compareSignal, setCompareSignal] = useState(0);
+  const compareRef = useRef<HTMLDivElement>(null);
   const [changeMsg, setChangeMsg] = useState("");
   const [changePhone, setChangePhone] = useState("");
   const acceptRef = useRef<HTMLDivElement>(null);
@@ -307,6 +309,7 @@ const ClientProposalView = () => {
   const brandPhone: string | null = (companyProfile as any)?.phone || null;
   const fmtR = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n || 0);
   const goTo = (el: HTMLElement | null) => el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  const openCompare = () => { setCompareSignal((n) => n + 1); setTimeout(() => compareRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60); };
 
   const discountValue = Number(quote.discount_value) || 0;
   const isPercentDiscount = quote.discount_type === "percent" || quote.discount_type === "percentage";
@@ -321,35 +324,45 @@ const ClientProposalView = () => {
   const customerName = tidyName(customer?.name || quote.customer_name || "") || "Valued Customer";
 
   return (
-    <div className={`min-h-screen bg-gradient-to-b from-blue-50 to-white ${isActionable ? "pb-40" : ""}`}>
-      {/* Cover Header */}
-      <header className="bg-primary text-white px-4 py-8 print:hidden">
-        <div className="max-w-4xl mx-auto text-center">
-          {/* Sending company's own logo (Johan 13 Oct 12:09): profile logo, Massair CT = the designed logo block, else the name. */}
-          {headerLogo ? (
-            <img src={headerLogo} alt={brandName || "Logo"} className={logoOnColour ? "h-20 mx-auto mb-4" : "h-16 mx-auto mb-4 bg-white rounded-lg p-1.5"} />
-          ) : brandName ? (
-            <div className="text-xl font-extrabold mb-3">{brandName}</div>
-          ) : null}
-          <h1 className="text-2xl md:text-3xl font-bold">
-            {customerName ? `${customerName} — Quote / Proposal` : "Quote / Proposal"}
-          </h1>
-
-          <p className="text-blue-100 mt-2">Quote #{quote.quote_number}</p>
+    <div className={`min-h-screen bg-gradient-to-b from-blue-50 to-white ${isActionable ? "pb-24" : ""}`}>
+      {/* One header (Johan 16 Oct 09:34): the document's own company header is the page header; only a slim status strip here. */}
+      {(quote.status === "accepted" || actionDone === "accepted" || quote.status === "declined" || actionDone === "declined" || changeState?.open) && (
+        <div className="print:hidden text-center pt-3">
           {quote.status === "accepted" || actionDone === "accepted" ? (
-            <Badge className="mt-3 bg-emerald-500 text-white text-sm px-4 py-1">✅ Accepted</Badge>
+            <Badge className="bg-emerald-500 text-white text-sm px-4 py-1">✅ Accepted</Badge>
           ) : quote.status === "declined" || actionDone === "declined" ? (
-            <Badge className="mt-3 bg-red-500 text-white text-sm px-4 py-1">Declined</Badge>
-          ) : changeState?.open ? (
-            <Badge className="mt-3 bg-amber-500 text-white text-sm px-4 py-1">Changes requested</Badge>
-          ) : null}
+            <Badge className="bg-red-500 text-white text-sm px-4 py-1">Declined</Badge>
+          ) : (
+            <Badge className="bg-amber-500 text-white text-sm px-4 py-1">Changes requested</Badge>
+          )}
         </div>
-      </header>
+      )}
 
-      <main className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
+      <main className="max-w-4xl mx-auto p-3 md:p-8 space-y-4 md:space-y-6">
         {bundleToken && (
           <a href={`/quote/all/${encodeURIComponent(bundleToken)}`} className="inline-block text-sm text-[#0B4FA8] underline print:hidden">← Back to all quotes</a>
         )}
+        {/* Accept spot 1: summary card at the top */}
+        {isActionable && (
+          <Card className="rounded-2xl border-0 shadow-md print:hidden" data-testid="quote-summary-accept">
+            <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground">{customerName} · Quote {quote.quote_number}</p>
+                <p className="text-xl font-extrabold text-[#0B4FA8]">{fmtR(Number(quote.total) || 0)} <span className="text-xs font-medium text-muted-foreground">incl. VAT</span></p>
+                {quote.valid_until && <p className="text-xs text-muted-foreground">Valid until {new Date(quote.valid_until).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })}</p>}
+              </div>
+              <div className="flex gap-2">
+                {hasAlternatives && (
+                  <Button variant="outline" className="h-11 rounded-xl text-[#0B4FA8]" onClick={openCompare}>Compare brands</Button>
+                )}
+                <Button className="h-11 flex-1 sm:flex-none rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold" onClick={() => goTo(acceptRef.current)}>
+                  <CheckCircle className="h-4 w-4 mr-2" /> Accept quote
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* The quote document — identical layout to the staff estimate/PDF */}
         <EstimateDocument
           estimateNumber={quote.quote_number}
@@ -375,10 +388,17 @@ const ClientProposalView = () => {
           companyOverride={company}
           companyProfile={companyProfile}
           paymentPlan={(quote as any).payment_plan ?? null}
+          collapseTerms
+          afterTotalsAction={isActionable ? (
+            <div className="print:hidden" style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }} data-testid="accept-after-lines">
+              <Button className="h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold w-full sm:w-auto" onClick={() => goTo(acceptRef.current)}>
+                <CheckCircle className="h-4 w-4 mr-2" /> Accept quote · {fmtR(Number(quote.total) || 0)}
+              </Button>
+            </div>
+          ) : null}
           unitCards={<QuoteUnitCardsView cards={unitCards} companyId={(companyProfile as any)?.company_id ?? null} variant={(companyProfile as any)?.document_style === "bold" ? "bold" : "light"} />}
         />
 
-        <FullTermsSection banking={company?.banking_details} profile={companyProfile} />
 
         {/* Optional extra proposal sections (below the document) */}
         {sections.map((section) => (
@@ -412,7 +432,7 @@ const ClientProposalView = () => {
           </Card>
         )}
 
-        {isActionable && token && <ClientAdjustQuote token={token} defaultName={acceptedName} onEditingChange={setAdjusting} />}
+        {isActionable && token && <div ref={compareRef}><ClientAdjustQuote token={token} defaultName={acceptedName} onEditingChange={setAdjusting} onAlternatives={setHasAlternatives} openSignal={compareSignal} /></div>}
 
         {/* Ask for changes */}
         {isActionable && showChanges && (
@@ -470,6 +490,12 @@ const ClientProposalView = () => {
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                 Accept quote · {fmtR(Number(quote.total) || 0)}
               </Button>
+              <div className="flex items-center justify-center gap-4">
+                <Button size="sm" variant="outline" className="h-8 text-xs text-[#0B4FA8]" onClick={() => { setShowChanges(true); setTimeout(() => goTo(changesRef.current), 50); }}>
+                  Ask for changes
+                </Button>
+                <button type="button" onClick={handleDecline} disabled={submitting} className="text-xs text-muted-foreground underline">Decline</button>
+              </div>
             </CardContent>
           </Card>
           </div>
@@ -533,29 +559,20 @@ const ClientProposalView = () => {
         </div>
       </main>
 
-      {/* Sticky action bar (Johan 2026-10-13): total, big green Accept, smaller Ask for changes */}
+      {/* Sticky bottom bar (Johan 16 Oct 09:34): total + Accept (+ Compare brands only when alternatives exist), one row. */}
       {isActionable && !adjusting && (
-        <div className="fixed inset-x-0 bottom-0 z-40 bg-white shadow-[0_-4px_14px_rgba(0,0,0,0.12)] print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-          <div className="max-w-4xl mx-auto px-4 py-3">
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-muted-foreground">Total incl. VAT</span>
-              <b className="text-[#0B4FA8]">{fmtR(Number(quote.total) || 0)}</b>
+        <div className="fixed inset-x-0 bottom-0 z-40 bg-white shadow-[0_-4px_14px_rgba(0,0,0,0.12)] print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }} data-testid="sticky-accept-bar">
+          <div className="max-w-4xl mx-auto px-3 py-2 flex items-center gap-2">
+            <div className="min-w-0 flex-1 leading-tight">
+              <div className="text-[10px] text-muted-foreground">Total incl. VAT</div>
+              <b className="text-[#0B4FA8] text-sm">{fmtR(Number(quote.total) || 0)}</b>
             </div>
-            <Button
-              onClick={() => goTo(acceptRef.current)}
-              disabled={submitting}
-              className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-extrabold"
-            >
-              <CheckCircle className="h-5 w-5 mr-2" /> Accept quote
+            {hasAlternatives && (
+              <Button variant="outline" className="h-11 px-3 rounded-xl text-[#0B4FA8] text-sm" onClick={openCompare}>Compare brands</Button>
+            )}
+            <Button onClick={() => goTo(acceptRef.current)} disabled={submitting} className="h-11 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold">
+              <CheckCircle className="h-4 w-4 mr-1.5" /> Accept
             </Button>
-            <div className="flex items-center justify-center gap-4 mt-2">
-              <Button size="sm" variant="outline" className="h-8 text-xs text-[#0B4FA8]" onClick={() => { setShowChanges(true); setTimeout(() => goTo(changesRef.current), 50); }}>
-                Ask for changes
-              </Button>
-              <button type="button" onClick={handleDecline} disabled={submitting} className="text-xs text-muted-foreground underline">
-                Decline
-              </button>
-            </div>
           </div>
         </div>
       )}

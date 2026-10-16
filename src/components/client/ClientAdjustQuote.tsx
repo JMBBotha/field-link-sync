@@ -51,7 +51,7 @@ export function computeRevisionTotals(d: Pick<AdjustData, "lines" | "shared_by_a
 
 const initialChoices = (d: AdjustData): Choices => Object.fromEntries(d.lines.map((l) => [l.item_id, l.product_id ?? null]));
 
-export default function ClientAdjustQuote({ token, defaultName, onEditingChange }: { token: string; defaultName?: string; onEditingChange?: (editing: boolean) => void }) {
+export default function ClientAdjustQuote({ token, defaultName, onEditingChange, onAlternatives, openSignal = 0 }: { token: string; defaultName?: string; onEditingChange?: (editing: boolean) => void; /** true when any line has another brand to compare */ onAlternatives?: (has: boolean) => void; /** bump to open the compare view from outside (sticky bar) */ openSignal?: number }) {
   const { toast } = useToast();
   const [data, setData] = useState<AdjustData | null>(null);
   const [open, setOpen] = useState(false);
@@ -67,6 +67,8 @@ export default function ClientAdjustQuote({ token, defaultName, onEditingChange 
   };
   useEffect(() => { load(); }, [token]);
   useEffect(() => { onEditingChange?.(open); }, [open]);
+  useEffect(() => { onAlternatives?.(!!data?.lines?.some((l) => l.alternatives?.length)); }, [data]);
+  useEffect(() => { if (openSignal > 0) setOpen(true); }, [openSignal]);
 
   const totals = useMemo(() => (data ? computeRevisionTotals(data, choices) : null), [choices, data]);
   const changed = useMemo(() => {

@@ -204,6 +204,10 @@ export interface EstimateDocumentProps {
   paymentPlan?: PaymentPlan | null;
   /** "The units in this quote" cards: printed after the totals, before the terms. */
   unitCards?: ReactNode;
+  /** Public client page only (not PDF): collapse terms into one expander. */
+  collapseTerms?: boolean;
+  /** Public client page only: node rendered right after the totals. */
+  afterTotalsAction?: ReactNode;
 }
 
 
@@ -362,6 +366,8 @@ const EstimateDocument = ({
   presentationMode,
   paymentPlan,
   unitCards,
+  collapseTerms,
+  afterTotalsAction,
 }: EstimateDocumentProps) => {
   const editRootRef = useRef<HTMLDivElement | null>(null);
   const flashId = useNewLineScroll(
@@ -438,6 +444,8 @@ const EstimateDocument = ({
         grandLabel="Quote total incl VAT"
         grandTotal={grandTotal}
         afterTotals={unitCards}
+        collapseTerms={collapseTerms}
+        afterTotalsAction={afterTotalsAction}
         cards={[
           ...(notes ? [{ title: "Overview", body: <NotesBody testId="quote-overview" text={notes} /> }] : []),
           { title: "Payment", body: <p>{planTermsSentence(paymentPlan, settings.default_deposit_percentage, settings.default_payment_terms_days)}</p> },

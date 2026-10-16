@@ -22,6 +22,6 @@ describe("One company block everywhere (Johan 2026-10-12)", () => {
   it("Print uses the full PDF; client page has Full terms and conditions", () => {
     expect(readFileSync("src/hooks/useQuoteDocumentActions.tsx", "utf8")).toContain('const handlePrint = async () => { await handlePdf("print"); };');
     expect(readFileSync("src/components/invoicing/InvoiceDetailPage.tsx", "utf8")).toContain("printInvoicePDF(getInvoiceDataForPDF())");
-    expect(readFileSync("src/components/client/ClientProposalView.tsx", "utf8")).toContain("<FullTermsSection");
+    expect(readFileSync("src/components/client/ClientProposalView.tsx", "utf8")).toContain("collapseTerms"); // one "Full terms and conditions" expander inside the document (Johan 16 Oct)
   });
 });
