@@ -13,7 +13,7 @@ import { PLAN_PRESETS, isValidPlan, parsePlan, planSummary, type PaymentPlan } f
  * Accounting step 1: choose how a quote is paid (e.g. 70/30, 65/35, 20/60/20).
  * Locked once any invoice exists for the quote. Office and the quote's own salesperson only (page-level).
  */
-export default function PaymentPlanPicker({ quoteId }: { quoteId: string }) {
+export default function PaymentPlanPicker({ quoteId, onSaved }: { quoteId: string; onSaved?: () => void }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { settings } = useCompanySettings();
@@ -49,6 +49,7 @@ export default function PaymentPlanPicker({ quoteId }: { quoteId: string }) {
     qc.invalidateQueries({ queryKey: ["quote-payment-plan", quoteId] });
     qc.invalidateQueries({ queryKey: ["accepted-work-quote", quoteId] });
     setCustomOpen(false);
+    onSaved?.();
     toast({ title: "Payment plan saved", description: planSummary(next, defPct) });
   };
 

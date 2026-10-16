@@ -3,6 +3,10 @@ import { usePdfBasket } from "@/lib/pdfBasketStore";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Mic } from "lucide-react";
+import { openMandyQuoteMode } from "@/lib/mandy/registry";
+import QuoteSettingsPanel from "@/components/quoting/QuoteSettingsPanel";
+import ClientNoteBox from "@/components/quoting/ClientNoteBox";
 import { ArrowLeft, Pencil, FileCheck2, Send, Download, Printer, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -176,40 +180,30 @@ const AdminEstimateDetailPage = () => {
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => void goBack()} disabled={leaving} aria-label="Back">
           {leaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowLeft className="h-5 w-5" />}
         </Button>
-        <h1 className="text-base font-bold">
-          Estimate {quote.quote_number}
+        <h1 className="flex min-w-0 items-center gap-2 text-base font-bold">
+          <span className="truncate">Estimate {quote.quote_number}</span>
+          <span className="print:hidden"><StatusPill status={quote.status} /></span>
           <span data-pdf-hide className="ml-2 text-xs font-normal text-muted-foreground print:hidden" aria-live="polite">
             {pendingWrites > 0 || leaving ? "Saving…" : "Saved"}
           </span>
         </h1>
+        <div className="flex items-center gap-1">
+        <Button variant="ghost" size="icon" className="h-8 w-8 print:hidden" aria-label="Ask Mandy (voice quote)" title="Ask Mandy — build with voice" onClick={() => { window.dispatchEvent(new Event("fl-voice-quote-open")); openMandyQuoteMode(); }}>
+          <Mic className="h-4 w-4" />
+        </Button>
         {staffActions.itemsFor(quote as any).some((i) => !i.hidden)
           ? <RowMenu items={staffActions.itemsFor(quote as any).map((i) => ({ ...i, separatorBefore: false }))} />
           : <div className="w-9" />}
+        </div>
         {staffActions.dialogs}
       </div>
-
-      {/* Status banner */}
-      <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3 print:hidden">
-        <span className="text-sm text-muted-foreground">Status</span>
-        <StatusPill status={quote.status} />
-        <SentManuallyBadge doc={quote as any} />
-        <MarkSentManuallyButton kind="quote" id={quote.id} status={quote.status} onDone={() => { refreshDocument(); qc.invalidateQueries({ queryKey: ["quotes"] }); }} />
-        {canConvert && <DepositPaymentChip invoice={depositInvoice} accepted />}
-        <span className="text-xs text-muted-foreground">
-          Created {new Date(quote.created_at).toLocaleDateString("en-ZA")}
-        </span>
-      </div>
-
-      <PaymentPlanPicker quoteId={quote.id} />
-
-      <QuoteUnitCardsToggle quoteId={quote.id} />
 
       <AcceptedWorkSection quoteId={quote.id} />
 
       {/* One surface: the estimate document IS the editor */}
       <QuoteProvider quoteId={quote.id}>
         {/* Quote-by-voice: mutates this same live quote via QuoteContext. */}
-        <VoiceQuoteStrip vatRate={Number(quote.vat_rate) || 0.15} onChanged={refreshDocument} />
+        <VoiceQuoteStrip compact vatRate={Number(quote.vat_rate) || 0.15} onChanged={refreshDocument} />
         {/* Mandy (Grok dock) quote actions — same QuoteContext + PDF handler as the buttons. */}
         <MandyQuoteActions vatRate={Number(quote.vat_rate) || 0.15} onPdf={handlePdf} onChanged={refreshDocument} />
         <EstimateBuilder
@@ -227,7 +221,25 @@ const AdminEstimateDetailPage = () => {
           notes={quote.notes}
           termsText={quote.terms_text}
           onChanged={refreshDocument}
+          hideClientNote
         />
+        {/* Quote settings & notes: moved from the top (Johan 00:08); collapsed by default, all controls unchanged. */}
+        <QuoteSettingsPanel quoteId={quote.id} status={quote.status} unitCards={quote.show_unit_cards !== false} note={quote.notes}>
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3">
+            <span className="text-sm text-muted-foreground">Status</span>
+            <StatusPill status={quote.status} />
+            <SentManuallyBadge doc={quote as any} />
+            <MarkSentManuallyButton kind="quote" id={quote.id} status={quote.status} onDone={() => { refreshDocument(); qc.invalidateQueries({ queryKey: ["quotes"] }); }} />
+            {canConvert && <DepositPaymentChip invoice={depositInvoice} accepted />}
+            <span className="text-xs text-muted-foreground">Created {new Date(quote.created_at).toLocaleDateString("en-ZA")}</span>
+          </div>
+          <PaymentPlanPicker quoteId={quote.id} onSaved={() => qc.invalidateQueries({ queryKey: ["quote-payment-plan-name", quote.id] })} />
+          <QuoteUnitCardsToggle quoteId={quote.id} onChanged={refreshDocument} />
+          <ClientNoteBox onChanged={refreshDocument} />
+          <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => window.dispatchEvent(new Event("fl-voice-quote-open"))}>
+            <Mic className="h-4 w-4" /> Ask Mandy (type or talk)
+          </Button>
+        </QuoteSettingsPanel>
       </QuoteProvider>
 
 

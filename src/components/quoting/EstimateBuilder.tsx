@@ -71,6 +71,8 @@ interface Props {
   notes?: string | null;
   termsText?: string | null;
   onChanged?: () => void;
+  /** Note for client is rendered elsewhere (estimate page settings panel). */
+  hideClientNote?: boolean;
   /** Area-first PDF builder: one always-on item search per area + one combined Add menu; no separate presence. */
   areaFirst?: boolean;
   areaCreationControl?: ReactNode;
@@ -102,6 +104,7 @@ export default function EstimateBuilder({
   notes,
   termsText,
   onChanged,
+  hideClientNote,
   pdfBasket,
   areaFirst = false,
   areaCreationControl,
@@ -449,7 +452,7 @@ export default function EstimateBuilder({
           </Button>
         )}
       </div>
-      <ClientNoteBox onChanged={onChanged} />
+      {!hideClientNote && <ClientNoteBox onChanged={onChanged} />}
       {(() => { const editorDoc = (
       <EstimateDocument
           estimateNumber={quoteNumber}

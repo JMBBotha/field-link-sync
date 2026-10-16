@@ -10,7 +10,7 @@ import { ensureUnitContent } from "./QuoteUnitCards";
  * Staff strip on the quote page: per-quote on/off for "The units in this quote" (default on), card status,
  * and the on-demand fetch for models with no content yet (runs in the background, never blocks quoting).
  */
-export default function QuoteUnitCardsToggle({ quoteId }: { quoteId: string }) {
+export default function QuoteUnitCardsToggle({ quoteId, onChanged }: { quoteId: string; onChanged?: () => void }) {
   const [on, setOn] = useState<boolean | null>(null);
   const [revision, setRevision] = useState(0);
   const [stats, setStats] = useState<{ models: number; approved: number; pending: number; fetching: number }>({ models: 0, approved: 0, pending: 0, fetching: 0 });
@@ -50,7 +50,7 @@ export default function QuoteUnitCardsToggle({ quoteId }: { quoteId: string }) {
   const toggle = async (v: boolean) => {
     setOn(v);
     const { error } = await (supabase.from("quotes") as any).update({ show_unit_cards: v }).eq("id", quoteId);
-    if (error) setOn(!v);
+    if (error) setOn(!v); else onChanged?.();
   };
 
   if (on === null) return null;

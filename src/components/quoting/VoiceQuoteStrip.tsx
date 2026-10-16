@@ -7,7 +7,7 @@
  * install for AC units). Replies are spoken by Mandy (Grok voice eve).
  * Each turn is logged to mandy_voice_logs.
  */
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Mic, Loader2, Undo2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,8 @@ import { planMatches, resolvePlan, sanitizePlan, writeBreakdown } from "@/lib/ma
 interface Props {
   vatRate: number;
   onChanged?: () => void;
+  /** Hidden until opened (header mic / settings panel button fire "fl-voice-quote-open"). */
+  compact?: boolean;
 }
 
 type ClientPrompt = { type: "customer_pick"; hits: CustomerSearchResult[]; query: string } | { type: "no_match"; query: string };
@@ -47,7 +49,7 @@ async function logTurn(id: string, patch: Record<string, unknown>, insert = fals
   } catch { /* logging never blocks the quote */ }
 }
 
-export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
+export default function VoiceQuoteStrip({ vatRate, onChanged, compact }: Props) {
   const { toast } = useToast();
   const { user } = useAuth();
   const { quoteId, meta, areas, items, addItem, addArea, updateQuote, deleteItem } = useQuoteContext();
@@ -69,6 +71,12 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
   const [saving, setSaving] = useState(false);
   const committedRef = useRef<string[][]>([]);
   const logIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const h = () => setOpen(true);
+    window.addEventListener("fl-voice-quote-open", h);
+    return () => window.removeEventListener("fl-voice-quote-open", h);
+  }, []);
 
   const speak = useCallback((text: string) => { setReply(text); say(text); }, [say]);
 
@@ -199,6 +207,7 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
 
   const pendingCount = breakdown ? breakdown.areas.flatMap((a) => a.lines).filter(isSaveable).length : 0;
 
+  if (compact && !open && !breakdown && !clientPrompt) return null;
   return (
     <section className="print:hidden rounded-lg border border-border bg-card">
       <div className="flex items-center gap-2 px-3 py-2">
