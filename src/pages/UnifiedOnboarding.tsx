@@ -472,34 +472,15 @@ const UnifiedOnboarding = () => {
             updated_at: new Date().toISOString(),
           }).eq("id", companyId);
         } else {
-          // Create new company
-          const { data: newCompany, error: companyErr } = await supabase
-            .from("companies")
-            .insert({
-              name: adminForm.company_name,
-              slug,
-              vat_rate: 0.15,
-              default_rate: adminForm.default_hourly_rate,
-              services: selectedServices,
-              onboarding_completed: true,
-            })
-            .select("id")
-            .single();
-
+          // Create new company: one server-side step (approved founders only — Release A hold).
+          const { data: newId, error: companyErr } = await (supabase.rpc as any)("fl_found_company", {
+            p_name: adminForm.company_name,
+            p_slug: slug,
+            p_rate: adminForm.default_hourly_rate,
+            p_services: selectedServices,
+          });
           if (companyErr) throw companyErr;
-          companyId = newCompany.id;
-
-          // Link user to company in profiles
-          await supabase.from("profiles").update({
-            company_id: companyId,
-          }).eq("id", userId);
-
-          // Add to company_members
-          await supabase.from("company_members").upsert({
-            user_id: userId,
-            company_id: companyId,
-            role: "admin",
-          }, { onConflict: "user_id,company_id" });
+          companyId = newId as string;
         }
 
         // 2. Save company_settings (upsert) — kept for backward compat

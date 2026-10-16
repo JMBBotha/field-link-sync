@@ -73,7 +73,7 @@ export default function CompanySignupsPanel() {
                 <div className="font-medium">{p.full_name}</div>
                 <div className="text-xs text-muted-foreground">
                   <Badge variant="outline" className="mr-1">{title(p.signup_role)}</Badge>
-                  {p.signup_company || ""}{p.phone ? ` · ${p.phone}` : ""}
+                  {p.signup_company ? `Company: ${p.signup_company}` : (p.signup_role === "company_new" ? "Company: not given" : "")}{p.phone ? ` · ${p.phone}` : ""}
                 </div>
               </div>
               {needsCo && (
