@@ -25,7 +25,7 @@ import {
   CalendarDays, Clock, MapPin, Search, Users, AlertTriangle, Wifi, WifiOff,
   GripVertical, ChevronRight, ChevronLeft, Loader2, Filter, Zap, Phone, User, FileText, Info
 } from "lucide-react";
-import { format, addDays, startOfWeek, endOfWeek, isToday, isSameDay, parseISO } from "date-fns";
+import { format, addDays, addMonths, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isSameDay, parseISO } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -43,6 +43,10 @@ import { useSalesRep } from "@/hooks/useSalesRep";
 import { useRole } from "@/hooks/useRole";
 import { useIsMobile } from "@/hooks/use-mobile";
 import NeedsSomeoneTray from "@/components/calendar/NeedsSomeoneTray";
+import { useLayoutVersion } from "@/hooks/useLayoutVersion";
+import V8WeekBoard, { type V8Sched } from "@/components/v8/V8WeekBoard";
+import { isTestLead } from "@/lib/callSummary";
+import { getHideTest } from "@/components/jobs/PipelineBoard";
 import DayCards, { BusyBlock } from "@/components/calendar/DayCards";
 import { hoursLabel, calendarText, salesCalendarPeople, mergedMinutes, type WorkWindow, type BlockedTime } from "@/components/calendar/calendarModel";
 import { TimeInput24 } from "@/components/ui/time-input-24";
@@ -152,7 +156,16 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
   const { userId, isAdmin, isDispatcher } = useRole();
   const mobile = useIsMobile();
   const doubleBookings = salesLoading ? 0 : isSalesRep ? doubleBookingRows.filter(r => r.profile_id === userId).length : allDoubleBookings;
-  const [dayStyle, setDayStyle] = useState<"cards" | "timeline">(() => localStorage.getItem("fls.calendar.dayStyle") === "timeline" ? "timeline" : "cards");
+  // v8 Simple (New layout): calendar first: Timeline (a column/row per person with job blocks) unless the user picked Cards.
+  const { isClassic } = useLayoutVersion();
+  const v8 = !isClassic;
+  // v8 Schedule board (pipeline-style day columns) is the New-layout default; "Timeline" keeps the old per-person views.
+  const [v8View, setV8View] = useState<"board" | "classic">(() => localStorage.getItem("fls.calendar.v8view") === "classic" ? "classic" : "board");
+  const [v8Staff, setV8StaffRaw] = useState(() => localStorage.getItem("fls.calendar.v8staff") || "all");
+  const [v8Role, setV8RoleRaw] = useState<"all" | "sales" | "tech">(() => { const r = localStorage.getItem("fls.calendar.v8role"); return r === "sales" || r === "tech" ? r : "all"; });
+  const setV8Staff = (v: string) => { setV8StaffRaw(v); localStorage.setItem("fls.calendar.v8staff", v); };
+  const setV8Role = (v: "all" | "sales" | "tech") => { setV8RoleRaw(v); localStorage.setItem("fls.calendar.v8role", v); };
+  const [dayStyle, setDayStyle] = useState<"cards" | "timeline">(() => { const v = localStorage.getItem("fls.calendar.dayStyle"); return v === "timeline" || (v === null && localStorage.getItem("fl_layout_version") !== "classic") ? "timeline" : "cards"; });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isOnline: isPresenceOnline } = usePresence("dispatch-presence");
@@ -168,7 +181,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
   const { salesStaff, technicians, laneById } = useLaneStaff();
   const [showCreateLead, setShowCreateLead] = useState(false);
 
-  const [viewMode, setViewMode] = useState<"day" | "week">("day");
+  const [viewMode, setViewMode] = useState<"day" | "week" | "month">(() => (localStorage.getItem("fl_layout_version") !== "classic" && localStorage.getItem("fls.calendar.v8view") !== "classic" ? "week" : "day"));
   const [currentDate, setCurrentDate] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState("");
   const [showUrgentOnly, setShowUrgentOnly] = useState(false);
@@ -275,13 +288,15 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
       byId.set(s.id, { id: s.id, full_name: s.full_name, availability_status: s.availability_status }),
     );
     agents.forEach(a => { if (!byId.has(a.id)) byId.set(a.id, a); });
+    // v8: test people (e.g. "E2E Test Agent") hidden under the same test-record rule/setting as the pipeline board.
+    if (v8 && getHideTest()) Array.from(byId.values()).forEach(a => { if (isTestLead(a.full_name)) byId.delete(a.id); });
     return salesLoading ? [] : salesCalendarPeople(Array.from(byId.values()), isSalesRep, userId).sort((a, b) => {
       const laneA = laneRank(laneById.get(a.id) ?? null);
       const laneB = laneRank(laneById.get(b.id) ?? null);
       if (laneA !== laneB) return laneA - laneB;
       return a.full_name.localeCompare(b.full_name);
     });
-  }, [salesStaff, technicians, agents, laneById, isSalesRep, userId, salesLoading]);
+  }, [salesStaff, technicians, agents, laneById, isSalesRep, userId, salesLoading, v8]);
 
   // S4: each person's real working window for the visible day (fallback 9 h if the call fails) + blocked time (RLS-limited).
   const dayKey = format(currentDate, "yyyy-MM-dd");
@@ -435,6 +450,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
 
   const dateRange = useMemo(() => {
     if (viewMode === "day") return [currentDate];
+    if (viewMode === "month") return eachDayOfInterval({ start: startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 }), end: endOfWeek(endOfMonth(currentDate), { weekStartsOn: 1 }) });
     const start = startOfWeek(currentDate, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   }, [viewMode, currentDate]);
@@ -722,6 +738,33 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     setDraggingLead(null);
   };
 
+  // ─── v8 board drops: only the existing handlers (handleDrop = reschedule/assign; job info dialog / job page for unschedule + cancel). ───
+  const v8Board = v8 && v8View === "board";
+  useEffect(() => { if (!v8Board && viewMode === "month") setViewMode("week"); }, [v8Board, viewMode]);
+  const v8Dragged = (e: React.DragEvent) => {
+    const sid = e.dataTransfer.getData("application/schedule-id") || null;
+    const sch = sid ? schedules.find(x => x.id === sid) : undefined;
+    const leadId = (e.dataTransfer.getData("text/plain") || "").split(",")[0];
+    return { sch, lead: allLeads.find(l => l.id === (sch?.lead_id || leadId)) || draggingLead };
+  };
+  const v8DropDay = (e: React.DragEvent, dateStr: string) => {
+    const { sch, lead } = v8Dragged(e);
+    const agent = sch?.agent_id || (v8Staff !== "all" ? v8Staff : null);
+    if (agent) { void handleDrop(e, agent, dateStr, 8, !!sch); return; }
+    e.preventDefault(); handleDragEnd();
+    if (sch?.job_id && !sch.agent_id) { navigate(`/admin/jobs/${sch.job_id}`); return; }
+    if (lead) { setQuickAssignLead(lead); setQuickAssignAgent(""); setQuickAssignDate(dateStr); setQuickAssignStart(hhmm(lead.scheduled_time || "08:00")); setQuickAssignEnd(fromMinutes(toMinutes(lead.scheduled_time || "08:00") + leadMinutes(lead))); }
+  };
+  const v8DropZone = (e: React.DragEvent, zone: "unscheduled" | "sunday" | "cancel") => {
+    if (zone === "sunday") { const sun = dateRange.find(d => d.getDay() === 0) || addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), 6); v8DropDay(e, format(sun, "yyyy-MM-dd")); return; }
+    const { sch, lead } = v8Dragged(e);
+    e.preventDefault(); handleDragEnd();
+    if (!sch && !lead) return;
+    toast({ title: zone === "cancel" ? "Cancel or reschedule from the job" : "Unschedule from the job", description: "Opening it: use its own actions so the usual checks and notices apply." });
+    if (sch?.job_id) navigate(`/admin/jobs/${sch.job_id}`);
+    else if (lead) { setJobInfoLead(lead); setJobInfoSchedule((sch as Schedule) || null); }
+  };
+
   // ─── Map ───
   useEffect(() => {
     if (!showMapPane || !mapContainerRef.current) return;
@@ -792,8 +835,8 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
 
   // ─── Navigation ───
   const goToday = () => setCurrentDate(new Date());
-  const goPrev = () => setCurrentDate(d => addDays(d, viewMode === "day" ? -1 : -7));
-  const goNext = () => setCurrentDate(d => addDays(d, viewMode === "day" ? 1 : 7));
+  const goPrev = () => setCurrentDate(d => viewMode === "month" ? addMonths(d, -1) : addDays(d, viewMode === "day" ? -1 : -7));
+  const goNext = () => setCurrentDate(d => viewMode === "month" ? addMonths(d, 1) : addDays(d, viewMode === "day" ? 1 : 7));
 
   // ─── Keyboard shortcuts ───
   useEffect(() => {
@@ -887,10 +930,14 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
               ⚠ {doubleBookings} double booking{doubleBookings === 1 ? "" : "s"}
             </span>
           )}
-          <div className="hidden md:flex items-center gap-3">
+          {v8 ? (
+            <span className="hidden md:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground" data-testid="v8-live-chip">
+              <Zap className="h-3 w-3 text-emerald-600" />{stats.inProgress} in progress · <Users className="h-3 w-3" />{stats.onlineAgents}/{stats.totalAgents} online
+            </span>
+          ) : <div className="hidden md:flex items-center gap-3">
             <StatBadge icon={<Zap className="h-3.5 w-3.5" />} label="In Progress" value={stats.inProgress} variant="success" />
             <StatBadge icon={<Users className="h-3.5 w-3.5" />} label="Online" value={`${stats.onlineAgents}/${stats.totalAgents}`} variant="primary" />
-          </div>
+          </div>}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -898,17 +945,19 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
           <Button variant="outline" size="sm" onClick={goToday}>Today</Button>
           <Button variant="outline" size="sm" onClick={goNext}><ChevronRight className="h-4 w-4" /></Button>
           <span className="text-sm font-medium min-w-[120px] text-center">
-            {viewMode === "day"
+            {viewMode === "month" ? format(currentDate, "MMMM yyyy") : viewMode === "day"
               ? format(currentDate, "EEE, d MMM yyyy")
               : `${format(dateRange[0], "d MMM")} – ${format(dateRange[dateRange.length - 1], "d MMM yyyy")}`}
           </span>
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "day" | "week")}>
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "day" | "week" | "month")}>
             <TabsList className="h-8">
               <TabsTrigger value="day" className="text-xs px-3 h-7">Day</TabsTrigger>
               <TabsTrigger value="week" className="text-xs px-3 h-7">Week</TabsTrigger>
+              {v8Board && <TabsTrigger value="month" className="text-xs px-3 h-7">Month</TabsTrigger>}
             </TabsList>
           </Tabs>
-          {!mobile && !isSalesRep && (isAdmin || isDispatcher) && viewMode === "day" && <Tabs value={dayStyle} onValueChange={v => { const next = v === "timeline" ? "timeline" : "cards"; setDayStyle(next); localStorage.setItem("fls.calendar.dayStyle", next); }}><TabsList className="h-8"><TabsTrigger value="cards" className="text-xs">Cards</TabsTrigger><TabsTrigger value="timeline" className="text-xs">Timeline</TabsTrigger></TabsList></Tabs>}
+          {v8 && <Tabs value={v8View} onValueChange={v => { const n = v === "classic" ? "classic" : "board"; setV8View(n); localStorage.setItem("fls.calendar.v8view", n); if (n === "classic" && viewMode === "month") setViewMode("week"); }}><TabsList className="h-8" data-testid="v8-cal-style"><TabsTrigger value="board" className="text-xs">Board</TabsTrigger><TabsTrigger value="classic" className="text-xs">Timeline</TabsTrigger></TabsList></Tabs>}
+          {!v8Board && !mobile && !isSalesRep && (isAdmin || isDispatcher) && viewMode === "day" && <Tabs value={dayStyle} onValueChange={v => { const next = v === "timeline" ? "timeline" : "cards"; setDayStyle(next); localStorage.setItem("fls.calendar.dayStyle", next); }}><TabsList className="h-8"><TabsTrigger value="cards" className="text-xs">Cards</TabsTrigger><TabsTrigger value="timeline" className="text-xs">Timeline</TabsTrigger></TabsList></Tabs>}
           <Button
             variant={showMapPane ? "default" : "outline"}
             size="sm"
@@ -923,7 +972,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
       {/* ─── Main content: sidebar + timeline (+ optional map) ─── */}
       <div className="flex flex-1 overflow-hidden">
         {/* Unassigned Jobs Sidebar */}
-        <div className={`shrink-0 border-r bg-card flex flex-col transition-all duration-200 ${sidebarCollapsed ? "w-10" : "w-full sm:w-80"}`}>
+        <div className={`shrink-0 border-r bg-card flex flex-col transition-all duration-200 ${sidebarCollapsed ? "w-10" : v8 ? "w-full sm:w-60" : "w-full sm:w-80"}`}>
           {sidebarCollapsed ? (
             <div className="flex h-full flex-col items-center pt-2">
               <button
@@ -1078,12 +1127,29 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
 
           {/* Resource Timeline */}
           <div className="flex-1 overflow-auto">
+            {v8Board ? (
+              <V8WeekBoard days={dateRange} month={viewMode === "month"} byDate={schedulesForDates as unknown as Map<string, V8Sched[]>}
+                people={dispatchAgents} staff={v8Staff} setStaff={setV8Staff}
+                role={v8Role} setRole={setV8Role} salesIds={new Set(salesStaff.map(x => x.id))} techIds={new Set([...technicians.map(x => x.id), ...agents.map(x => x.id)])}
+                laneOf={sch => { const l = allLeads.find(x => x.id === sch.lead_id); return l ? laneOf(l) : null; }}
+                capacityMin={(v8Staff === "all" ? Math.max(1, dispatchAgents.length) : 1) * 9 * 60}
+                dragOver={dragOverSlot} setDragOver={setDragOverSlot}
+                onCardDragStart={(e, sch) => handleScheduleDragStart(e, sch as Schedule)} onDragEnd={handleDragEnd}
+                onOpen={sch => { const l = allLeads.find(x => x.id === sch.lead_id); if (l) { setJobInfoLead(l); setJobInfoSchedule(sch as Schedule); } else if (sch.job_id) navigate(`/admin/jobs/${sch.job_id}`); }}
+                onDropDay={v8DropDay} onDropZone={v8DropZone}
+                unscheduled={unassignedLeads.length} onTray={() => setSidebarCollapsed(c => !c)}
+                sundayLabel={(() => { const sun = dateRange.find(d => d.getDay() === 0); return viewMode === "month" || !sun ? "Sunday · on-call only" : `Sun ${format(sun, "d")} · on-call only (drop to book)`; })()} />
+            ) : (<>
+            {(() => { const nsLeads = allLeads.filter(l => !l.assigned_agent_id && !!l.scheduled_time && dateRange.some(d => format(d, "yyyy-MM-dd") === l.scheduled_date) && !isCancelled(l.status) && (!isSalesRep || laneOf(l) === "sales"));
+              const nsPool = isSalesRep ? [] : Array.from(schedulesForDates.values()).flat().filter(isPoolSchedule);
+              // v8: the "Needs someone" tray only shows when something actually needs a person.
+              return v8 && nsLeads.length === 0 && nsPool.length === 0 ? null : (
             <NeedsSomeoneTray
               leads={allLeads.filter(l => !l.assigned_agent_id && !!l.scheduled_time && dateRange.some(d => format(d, "yyyy-MM-dd") === l.scheduled_date) && !isCancelled(l.status) && (!isSalesRep || laneOf(l) === "sales"))}
               pool={isSalesRep ? [] : Array.from(schedulesForDates.values()).flat().filter(isPoolSchedule)}
               onLeadDragStart={handleDragStart} onScheduleDragStart={handleScheduleDragStart} onDragEnd={handleDragEnd}
               onAssignLead={lead => { setQuickAssignLead(lead); setQuickAssignAgent(""); setQuickAssignDate(lead.scheduled_date || format(currentDate, "yyyy-MM-dd")); setQuickAssignStart(hhmm(lead.scheduled_time || "08:00")); setQuickAssignEnd(fromMinutes(toMinutes(lead.scheduled_time || "08:00") + leadMinutes(lead))); }}
-              onAssignPool={s => { if (s.job_id) navigate(`/admin/jobs/${s.job_id}`); }} />
+              onAssignPool={s => { if (s.job_id) navigate(`/admin/jobs/${s.job_id}`); }} />); })()}
             {viewMode === "day" && (mobile || dayStyle === "cards" || isSalesRep) ? (
               <DayCards date={format(currentDate, "yyyy-MM-dd")} groups={groupAgentsByLane(dispatchAgents, laneById)}
                 schedules={schedulesForDates.get(format(currentDate, "yyyy-MM-dd")) || []} leads={allLeads} sales={isSalesRep}
@@ -1134,6 +1200,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                 onSlotDragLeave={handleSlotDragLeave}
               />
             )}
+            </>)}
           </div>
         </div>
       </div>

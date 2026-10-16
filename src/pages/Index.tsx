@@ -2,10 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
 import { MapPin, Users, Navigation, Loader2 } from "lucide-react";
-import logo from "@/assets/logo.png";
-import BackgroundVideo from "@/components/BackgroundVideo";
+import FlAuthFrame from "@/components/auth/FlAuthFrame";
 import { withTimeout } from "@/lib/withTimeout";
 
 
@@ -45,74 +43,22 @@ const Index = () => {
 
   if (loading || authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)]">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
-      </div>
+      <div className="flex items-center justify-center min-h-screen bg-[#081321]"><Loader2 className="h-8 w-8 animate-spin text-[#1AA7EC]" /></div>
     );
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
-      {/* Background video */}
-      <BackgroundVideo />
-
-
-      {/* Logo */}
-      <img src={logo} alt="0800BeCool" className="relative z-10 h-24 w-auto mb-6 drop-shadow-lg" />
-
-      {/* Tagline */}
-      <div className="relative z-10 text-center mb-10 max-w-md">
-        <h1 className="text-3xl font-bold text-white mb-2">
-          Field Service Management
-        </h1>
-        <p className="text-white/70 text-sm">
-          Intelligent lead distribution and real-time tracking for your field operations
-        </p>
+    <FlAuthFrame wide>
+      <h2>Field Service Management</h2>
+      <p className="sub">Intelligent lead distribution and real-time tracking for your field operations.</p>
+      <div className="feats">
+        <div className="feat"><span className="ri"><MapPin size={16} /></span><div><b>Live Tracking</b><small>Monitor agents in real-time on an interactive map</small></div></div>
+        <div className="feat"><span className="ri"><Navigation size={16} /></span><div><b>Smart Dispatch</b><small>Proximity-based lead routing to nearest agents</small></div></div>
+        <div className="feat"><span className="ri"><Users size={16} /></span><div><b>Mobile Ready</b><small>Full-featured interface for field workers on the go</small></div></div>
       </div>
-
-      {/* Feature cards */}
-      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full mb-10">
-        <div className="p-4 rounded-xl border border-white/25 bg-[linear-gradient(135deg,hsl(204,100%,36%)_0%,hsl(204,45%,58%)_52%,hsl(210,28%,84%)_100%)] shadow-lg text-center">
-          <div className="mx-auto mb-3 p-2 rounded-lg bg-[hsl(25,95%,53%)]/20 text-[hsl(25,95%,53%)] w-fit">
-            <MapPin className="h-5 w-5" />
-          </div>
-          <h3 className="text-sm font-semibold text-white">Live Tracking</h3>
-          <p className="text-xs text-white/50 mt-1">Monitor agents in real-time on an interactive map</p>
-        </div>
-
-        <div className="p-4 rounded-xl border border-white/25 bg-[linear-gradient(135deg,hsl(204,100%,36%)_0%,hsl(204,45%,58%)_52%,hsl(210,28%,84%)_100%)] shadow-lg text-center">
-          <div className="mx-auto mb-3 p-2 rounded-lg bg-[hsl(25,95%,53%)]/20 text-[hsl(25,95%,53%)] w-fit">
-            <Navigation className="h-5 w-5" />
-          </div>
-          <h3 className="text-sm font-semibold text-white">Smart Dispatch</h3>
-          <p className="text-xs text-white/50 mt-1">Proximity-based lead routing to nearest agents</p>
-        </div>
-
-        <div className="p-4 rounded-xl border border-white/25 bg-[linear-gradient(135deg,hsl(204,100%,36%)_0%,hsl(204,45%,58%)_52%,hsl(210,28%,84%)_100%)] shadow-lg text-center">
-          <div className="mx-auto mb-3 p-2 rounded-lg bg-[hsl(25,95%,53%)]/20 text-[hsl(25,95%,53%)] w-fit">
-            <Users className="h-5 w-5" />
-          </div>
-          <h3 className="text-sm font-semibold text-white">Mobile Ready</h3>
-          <p className="text-xs text-white/50 mt-1">Full-featured interface for field workers on the go</p>
-        </div>
-      </div>
-
-      {/* CTA */}
-      <Button
-        onClick={() => navigate("/login")}
-        className="relative z-10 bg-[hsl(25,95%,53%)] hover:bg-[hsl(25,95%,45%)] text-white font-semibold text-base h-11 px-10"
-      >
-        Get Started
-      </Button>
-
-      <Button
-        variant="link"
-        className="relative z-10 mt-3 text-white/60 hover:text-white"
-        onClick={() => navigate("/login")}
-      >
-        Already have an account? Sign in
-      </Button>
-    </div>
+      <div className="trk"><button className="pill or" onClick={() => navigate("/login")}>Get Started</button></div>
+      <div className="ft">Already have an account? <button className="lnk" onClick={() => navigate("/login")}>Sign in</button></div>
+    </FlAuthFrame>
   );
 };
 

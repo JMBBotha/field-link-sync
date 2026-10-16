@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Lock } from "lucide-react";
+import FlAuthFrame from "@/components/auth/FlAuthFrame";
 import { useToast } from "@/hooks/use-toast";
 import { resolvePostLoginPath } from "@/lib/postLoginRedirect";
 
@@ -24,22 +24,23 @@ export default function SetPassword() {
     navigate((await resolvePostLoginPath(session!.user.id)).path, { replace: true });
   };
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[hsl(216,58%,12%)] p-4">
-      <form onSubmit={save} className="w-full max-w-sm space-y-4 rounded-xl bg-white/10 p-6 text-white">
-        <h1 className="text-xl font-bold">Set your password</h1>
-        {loading ? <p>Loading…</p> : !session ? (
+    <FlAuthFrame>
+      <form onSubmit={save}>
+        <h2>Set your password</h2>
+        {loading ? <p className="sub">Loading…</p> : !session ? (
           <>
-            <p className="text-sm text-white/70">This link expired or was already used. Ask for a new invite, or use "Forgot password?" on the sign-in page.</p>
-            <Button type="button" className="w-full" onClick={() => navigate("/login")}>Back to Sign In</Button>
+            <p className="sub">This link expired or was already used. Ask for a new invite, or use "Forgot password?" on the sign-in page.</p>
+            <div className="trk"><button type="button" className="pill" onClick={() => navigate("/login")}>Back to Sign In</button></div>
           </>
         ) : (
           <>
-            <p className="text-sm text-white/70">{session.user.email}</p>
-            <Input type="password" autoComplete="new-password" placeholder="New password (min 8)" minLength={8} required value={pw} onChange={(e) => setPw(e.target.value)} className="bg-white/10 text-white" />
-            <Button type="submit" disabled={busy} className="w-full">{busy ? "Saving…" : "Save password"}</Button>
+            <p className="sub">{session.user.email}</p>
+            <div className="lab">New password</div>
+            <label className="f"><Lock size={18} /><input type="password" autoComplete="new-password" placeholder="New password (min 8)" minLength={8} required value={pw} onChange={(e) => setPw(e.target.value)} /></label>
+            <div className="trk"><button type="submit" disabled={busy} className="pill">{busy ? "Saving…" : "Save password"}</button></div>
           </>
         )}
       </form>
-    </div>
+    </FlAuthFrame>
   );
 }

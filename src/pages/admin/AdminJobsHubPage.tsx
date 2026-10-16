@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LayoutGrid, Columns3, Plus, CalendarDays, RefreshCw } from "lucide-react";
 import AdminDispatchPage from "@/pages/admin/AdminDispatchPage";
+import V8AttentionChip from "@/components/v8/V8AttentionChip";
 import V8PipelineBoard from "@/components/v8/V8PipelineBoard";
 import { useLayoutVersion } from "@/hooks/useLayoutVersion";
 import PipelineBoard, { usePipelineData, pipelineOpenValue } from "@/components/jobs/PipelineBoard";
@@ -120,7 +121,7 @@ export default function AdminJobsHubPage() {
       </div>
       {tab === "pipeline" ? (isClassicLayout || view === "cards" ? <PipelineBoard view={view === "cards" ? "cards" : "stages"} /> : <V8PipelineBoard />) : (
         <>
-          <AttentionStrip />
+          {!isClassicLayout && view === "calendar" ? <V8AttentionChip /> : <AttentionStrip />}
           {view === "cards" ? <DispatchCards />
             : view === "calendar" ? (
               <div className="-mx-3 sm:-mx-4 md:-mx-6 h-[calc(100dvh-22rem)] min-h-[420px] border-y sm:h-[calc(100dvh-15rem)] lg:h-[calc(100dvh-10rem)]" data-dispatch-calendar>
