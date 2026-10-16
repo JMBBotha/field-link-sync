@@ -71,6 +71,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
       const { data } = await supabase
         .from("customers")
         .select("id, name, address, latitude, longitude")
+        .or("status.is.null,status.neq.archived")
         .order("name");
       return data || [];
     },

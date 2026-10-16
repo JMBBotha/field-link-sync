@@ -123,7 +123,8 @@ export async function convertQuoteToInvoice(quoteId: string, agentUserId: string
     return balanceId as string;
   }
 
-  const lineItems = await buildQuoteLineItems(quoteId, quote.visual_sections);
+  // Invoices never show R0 lines (headings / included items); totals come from the quote either way.
+  const lineItems = (await buildQuoteLineItems(quoteId, quote.visual_sections)).filter((l) => Number(l.amount) !== 0 || Number(l.rate) !== 0);
 
 
   // Look up customer contact bits for legacy denormalised columns.

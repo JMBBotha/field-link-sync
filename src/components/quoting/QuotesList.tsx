@@ -6,6 +6,8 @@ import FilterChips from "@/components/shared/FilterChips";
 import RowMenu from "@/components/shared/RowMenu";
 import QuoteClientDialog from "@/components/quoting/QuoteClientDialog";
 import { useQuoteStaffActions } from "@/components/quoting/useQuoteStaffActions";
+import { useRole } from "@/hooks/useRole";
+import { useSalesRep } from "@/hooks/useSalesRep";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRegisterMandyActions } from "@/lib/mandy/registry";
@@ -84,6 +86,10 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const staffActions = useQuoteStaffActions();
+  const { isAdmin: roleAdmin, isDispatcher: roleDispatcher } = useRole();
+  const { isSalesRep: roleSalesRep } = useSalesRep();
+  // Invoicing a quote the client has not accepted: office only (admins + non-sales dispatchers). DB trigger enforces it too.
+  const canInvoiceUnaccepted = (roleAdmin || roleDispatcher) && !roleSalesRep;
   const [dupQuote, setDupQuote] = useState<any | null>(null);
 
   const handleConvertToInvoice = async (quoteId: string) => {
@@ -641,7 +647,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                                   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
                                 } },
                                 ...staffActions.itemsFor(quote),
-                                { label: quote.status === "accepted" ? "Convert to invoice" : "Convert to invoice (without client acceptance)", hidden: quote.status === "declined" || quote.status === "expired", disabled: converting === quote.id, onSelect: () => { if (quote.status !== "accepted" && !window.confirm("The client has not accepted this quote. Create a full invoice for the company anyway?")) return; handleConvertToInvoice(quote.id); }, separatorBefore: true },
+                                { label: quote.status === "accepted" ? "Convert to invoice" : "Convert to invoice (without client acceptance)", hidden: quote.status === "declined" || quote.status === "expired" || (quote.status !== "accepted" && !canInvoiceUnaccepted), disabled: converting === quote.id, onSelect: () => { if (quote.status !== "accepted" && !window.confirm("The client has not accepted this quote. Create a full invoice for the company anyway?")) return; handleConvertToInvoice(quote.id); }, separatorBefore: true },
                                 { label: "Open client", hidden: !quote.customer_id, onSelect: () => navigate(`/admin/customers/${quote.customer_id}`) },
                               ]} />
                             )}

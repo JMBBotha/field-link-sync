@@ -245,6 +245,7 @@ const CreateInvoicePage = ({
     supabase
       .from("customers")
       .select("id, name, email, phone, address")
+      .or("status.is.null,status.neq.archived")
       .order("name")
       .then(({ data }) => {
         if (data) setCustomers(data);

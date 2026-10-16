@@ -82,9 +82,10 @@ const AdminCustomerDetailPage = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-  const { isAdmin } = useRole();
+  const { isAdmin, isDispatcher } = useRole();
   const { isSalesRep } = useSalesRep();
   const canAssignRep = isAdmin && !isSalesRep;
+  const canArchiveClient = (isAdmin || isDispatcher) && !isSalesRep; // office only; DB enforces the same
   // Statements are company finance: office staff only (RPC enforces the same).
   const canSeeStatement = isAdmin && !isSalesRep;
   const [savingRep, setSavingRep] = useState(false);
@@ -382,12 +383,12 @@ const AdminCustomerDetailPage = () => {
                 Send Email
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate(`/admin/customers`)}>Back to list</DropdownMenuItem>
-              {isAdmin && (customer.status === "archived" ? (
+              {canArchiveClient && (customer.status === "archived" ? (
                 <DropdownMenuItem disabled={removing} onClick={() => clientAction("restore")}>Restore client</DropdownMenuItem>
               ) : (
                 <DropdownMenuItem disabled={removing} onClick={() => clientAction("archive")}>Archive client</DropdownMenuItem>
               ))}
-              {isAdmin && (
+              {canArchiveClient && (
                 <DropdownMenuItem disabled={removing} className="text-destructive focus:text-destructive" onClick={() => clientAction("delete")}>Delete client permanently</DropdownMenuItem>
               )}
             </DropdownMenuContent>

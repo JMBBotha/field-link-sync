@@ -76,15 +76,17 @@ const AdminCustomersPage = () => {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   // ---- Customers ----
   const { data: customers = [], isLoading, refetch } = useQuery({
-    queryKey: ["all-customers-fb"],
+    queryKey: ["all-customers-fb", showArchived],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("customers")
-        .select("id, first_name, last_name, name, company_name, is_company, phone, email, primary_address_line1, city, status, notes, lead_source, updated_at, created_at")
-        .or("status.is.null,status.neq.archived")
+        .select("id, first_name, last_name, name, company_name, is_company, phone, email, primary_address_line1, city, status, notes, lead_source, updated_at, created_at");
+      q = showArchived ? q.eq("status", "archived") : q.or("status.is.null,status.neq.archived");
+      const { data, error } = await q
         .order("updated_at", { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -290,6 +292,9 @@ const AdminCustomersPage = () => {
                     className="pl-8"
                   />
                 </div>
+                <Button variant={showArchived ? "secondary" : "outline"} size="sm" className="shrink-0" onClick={() => setShowArchived((v) => !v)}>
+                  {showArchived ? "Show active" : "Show archived"}
+                </Button>
               </div>
             </div>
 

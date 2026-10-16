@@ -187,6 +187,7 @@ const ServiceAgreements = () => {
     const { data } = await supabase
       .from("customers")
       .select("id, name, phone, address")
+      .or("status.is.null,status.neq.archived")
       .order("name");
     setCustomers(data || []);
   }, []);
