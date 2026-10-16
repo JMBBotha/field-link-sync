@@ -51,7 +51,8 @@ describe("QuoteTermsPage", () => {
     expect(pdf).toContain("!termsEl && shouldAppendFixedTerms");
     const doc = readFileSync("src/components/documents/BrandDocument.tsx", "utf8");
     expect(doc).toContain('data-pdf-break-before={p.fullTermsPage ? undefined : ""}');
-    expect(doc.indexOf("{p.fullTermsPage && p.afterTotals}")).toBeLessThan(doc.indexOf("{closing && p.fullTermsPage}"));
+    expect(doc.indexOf("{p.fullTermsPage && !p.collapseTerms && p.afterTotals}")).toBeLessThan(doc.indexOf("{closing && p.fullTermsPage && !p.collapseTerms && p.fullTermsPage}"));
+    expect(doc.indexOf("{closing && p.fullTermsPage && !p.collapseTerms && p.fullTermsPage}")).toBeGreaterThan(-1);
   });
   it("renders numbered sections and the quote number on its own page", () => {
     const html = renderToString(<QuoteTermsPage companyName="Massair CT (Pty) Ltd" accountNumber="63226563591" quoteNumber="Q-2026-0039" />);

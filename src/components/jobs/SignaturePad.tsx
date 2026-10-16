@@ -7,10 +7,12 @@ interface SignaturePadProps {
   onChange: (dataUrl: string | null) => void;
   disabled?: boolean;
   height?: number;
+  /** Hint under the pad. Default is the staff wording (on-site sign-off). */
+  hint?: string;
 }
 
 /** Touch-friendly canvas signature capture for on-site customer sign-off. */
-const SignaturePad = ({ value, onChange, disabled, height = 180 }: SignaturePadProps) => {
+const SignaturePad = ({ value, onChange, disabled, height = 180, hint = "Ask the customer to sign above" }: SignaturePadProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const [hasInk, setHasInk] = useState(!!value);
@@ -105,7 +107,7 @@ const SignaturePad = ({ value, onChange, disabled, height = 180 }: SignaturePadP
       </div>
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          {hasInk ? "Signature captured" : "Ask the customer to sign above"}
+          {hasInk ? "Signature captured" : hint}
         </p>
         <Button type="button" variant="ghost" size="sm" onClick={clear} disabled={disabled || !hasInk}>
           <Eraser className="h-3.5 w-3.5 mr-1" /> Clear

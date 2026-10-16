@@ -1,3 +1,4 @@
+import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import qrcode from "@/vendor/qrcodeGenerator";
@@ -160,7 +161,10 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
   );
 }
 
-export function QuoteUnitCardsView({ cards, variant = "light", companyId = null }: { cards: UnitCard[]; variant?: DocVariant; companyId?: string | null }) {
+export function QuoteUnitCardsView({ cards, variant = "light", companyId = null, companyName = null }: { cards: UnitCard[]; variant?: DocVariant; companyId?: string | null; /** Quote company's display name (trading, else legal) from its own record. */ companyName?: string | null }) {
+  // Each company its own name (Johan 16 Oct 10:23): explicit prop, else the quote company's record. Never "t/a".
+  const rec = useDocumentCompanyProfile(companyId, null, !companyName && !!companyId);
+  const coName = String(companyName || (rec as any)?.trading_name || rec?.legal_name || "").split(/\s+t\/a\s+/i)[0].trim();
   if (!cards.length) return null;
   const sources = [...new Set(cards.map((c) => c.media?.brand).filter(Boolean))];
   return (
@@ -177,7 +181,7 @@ export function QuoteUnitCardsView({ cards, variant = "light", companyId = null 
           {cards.length} model{cards.length === 1 ? "" : "s"} · tap a model number or scan for its brochure
         </span>
       </div>
-      <p style={{ color: MUTED, fontSize: 11, margin: "0 0 10px 14px" }}>Every unit is supplied and installed by 0800-BE-COOL with our workmanship guarantee.</p>
+      <p style={{ color: MUTED, fontSize: 11, margin: "0 0 10px 14px" }}>Every unit is supplied and installed by {coName || "us"} with our workmanship guarantee.</p>
       {cards.map((c) => <Card key={c.modelKey} card={c} variant={variant} companyId={companyId} />)}
       <p style={{ fontSize: 9, color: "#4b5563", marginTop: 4 }}>
         Product images are illustrative{sources.length ? ` (© ${sources.join(", ")})` : ""}; specifications are as published by the manufacturer and may change. The model numbers quoted are binding.

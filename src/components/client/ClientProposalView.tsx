@@ -396,7 +396,7 @@ const ClientProposalView = () => {
               </Button>
             </div>
           ) : null}
-          unitCards={<QuoteUnitCardsView cards={unitCards} companyId={(companyProfile as any)?.company_id ?? null} variant={(companyProfile as any)?.document_style === "bold" ? "bold" : "light"} />}
+          unitCards={<QuoteUnitCardsView cards={unitCards} companyId={(companyProfile as any)?.company_id ?? null} companyName={(companyProfile as any)?.trading_name || (companyProfile as any)?.legal_name || null} variant={(companyProfile as any)?.document_style === "bold" ? "bold" : "light"} />}
         />
 
 
@@ -479,7 +479,7 @@ const ClientProposalView = () => {
 
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Signature (optional)</p>
-                <SignaturePad value={signature} onChange={setSignature} height={240} />
+                <SignaturePad value={signature} onChange={setSignature} height={240} hint="Sign above (optional)" />
               </div>
 
               <Button
