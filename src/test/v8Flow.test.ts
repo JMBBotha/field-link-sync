@@ -19,3 +19,21 @@ describe("v8 Lead → Paid board", () => {
     expect(v8Drop(deal("sent"), "booked").action).toBe(null);
   });
 });
+
+import { v8Notes, v8CanPark } from "@/lib/v8Flow";
+describe("v8 Park + Lost reason notes", () => {
+  it("latest row wins; empty park value un-parks", () => {
+    const r = v8Notes([
+      { entity_id: "a", field_name: "v8_park", new_status: "No answer", created_at: "2026-10-16T10:00:00Z" },
+      { entity_id: "a", field_name: "v8_park", new_status: null, created_at: "2026-10-16T11:00:00Z" },
+      { entity_id: "b", field_name: "v8_park", new_status: "Waiting for stock", created_at: "2026-10-16T10:00:00Z" },
+      { entity_id: "c", field_name: "lost_reason", new_status: "Price too high", created_at: "2026-10-16T10:00:00Z" },
+    ]);
+    expect(r.parked).toEqual({ b: "Waiting for stock" });
+    expect(r.lost).toEqual({ c: "Price too high" });
+  });
+  it("only open deals can be parked", () => {
+    expect(v8CanPark("quote")).toBe(true); expect(v8CanPark("accepted")).toBe(true);
+    expect(v8CanPark("booked")).toBe(false); expect(v8CanPark("paid")).toBe(false);
+  });
+});

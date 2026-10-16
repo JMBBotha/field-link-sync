@@ -8,6 +8,8 @@ import MapView from "@/components/MapView";
 import OfferCards from "@/components/dispatch/OfferCards";
 import { Button } from "@/components/ui/button";
 import { useSalesRep } from "@/hooks/useSalesRep";
+import V8RoleHome from "@/components/v8/V8RoleHome";
+import { useV8Role } from "@/components/v8/V8Sidebar";
 
 import { Map, ExternalLink, Maximize2, Minimize2, LayoutTemplate } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
@@ -16,6 +18,7 @@ const AdminHomePage = () => {
   const navigate = useNavigate();
   const { isSalesRep } = useSalesRep();
   const { isClassic, toggle: toggleLayout } = useLayoutVersion();
+  const v8Role = useV8Role();
   const HomeC = isClassic ? ClassicAdminHome : AdminHome;
   const [showCreateLead, setShowCreateLead] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -101,13 +104,19 @@ const AdminHomePage = () => {
                 {isClassic ? "Switch to new view" : "Switch to classic view"}
               </Button>
             </div>
+            {!isClassic && v8Role !== "tech" && <V8RoleHome role={v8Role} />}
             <OfferCards />
+            {!isClassic && v8Role !== "tech" ? (
+            <details className="v7-solid rounded-2xl border bg-card p-2" data-testid="v8-home-details"><summary className="cursor-pointer px-2 py-1 text-sm font-semibold">More details (gauges, funnel, comparisons)</summary>
+            <div className="space-y-3 pt-2"><HomeC onNavigate={(tab) => navigate(tabToRoute[tab] || "/admin")} onCreateLead={() => setShowCreateLead(true)} /></div></details>
+            ) : (
             <div className={isClassic ? undefined : "v7-solid space-y-3"}>
             <HomeC
               onNavigate={(tab) => navigate(tabToRoute[tab] || "/admin")}
               onCreateLead={() => setShowCreateLead(true)}
             />
             </div>
+            )}
           </div>
 
         </div>

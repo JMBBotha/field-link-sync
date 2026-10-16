@@ -56,6 +56,7 @@ const AdminSupplierBillsPage = lazy(() => import("./pages/admin/AdminSupplierBil
 const AdminPaymentFollowupsPage = lazy(() => import("./pages/admin/AdminPaymentFollowupsPage"));
 const AdminCompanyPlansPage = lazy(() => import("./pages/admin/AdminCompanyPlansPage"));
 const AdminCashflowPage = lazy(() => import("./pages/admin/AdminCashflowPage"));
+const V8FieldShell = lazy(() => import("./components/v8/V8FieldShell"));
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 const MyBasePage = lazy(() => import("./pages/MyBasePage"));
 const AdminQuoteBuilderPageUnified = lazy(() => import("./pages/admin/AdminQuoteBuilderPageUnified"));
@@ -269,20 +270,20 @@ const App = () => (
 
 
                   {/* Field agent My Jobs — accessible without AdminLayout */}
-                  <Route path="/field/my-jobs" element={<SalesRepFieldRedirect><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><AdminMyJobsPage /></RequireRole></SalesRepFieldRedirect>} />
+                  <Route path="/field/my-jobs" element={<SalesRepFieldRedirect><V8FieldShell><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><AdminMyJobsPage /></RequireRole></V8FieldShell></SalesRepFieldRedirect>} />
 
                   {/* Field agent Schedule (agenda view) */}
-                  <Route path="/field/my-base" element={<SalesRepFieldRedirect><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><MyBasePage field /></RequireRole></SalesRepFieldRedirect>} />
-                  <Route path="/field/schedule" element={<SalesRepFieldRedirect><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldSchedulePage /></RequireRole></SalesRepFieldRedirect>} />
+                  <Route path="/field/my-base" element={<SalesRepFieldRedirect><V8FieldShell><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><MyBasePage field /></RequireRole></V8FieldShell></SalesRepFieldRedirect>} />
+                  <Route path="/field/schedule" element={<SalesRepFieldRedirect><V8FieldShell><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldSchedulePage /></RequireRole></V8FieldShell></SalesRepFieldRedirect>} />
 
                   {/* Tech job sheet: no money, packing list from get_job_packing_list */}
-                  <Route path="/field/jobs/:id" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldJobSheetPage /></RequireRole>} />
+                  <Route path="/field/jobs/:id" element={<V8FieldShell><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldJobSheetPage /></RequireRole></V8FieldShell>} />
 
                   {/* Tech "My earnings" (Job 6) */}
-                  <Route path="/field/earnings" element={<RequireRole allowedRoles={["field_agent", "admin"]}><FieldEarningsPage /></RequireRole>} />
+                  <Route path="/field/earnings" element={<V8FieldShell><RequireRole allowedRoles={["field_agent", "admin"]}><FieldEarningsPage /></RequireRole></V8FieldShell>} />
 
                   {/* Field Agent — technicians (and admins/office). Sales reps go to My visits (SalesRepFieldRedirect). */}
-                  <Route path="/field" element={<SalesRepFieldRedirect><FieldAgent /></SalesRepFieldRedirect>} />
+                  <Route path="/field" element={<SalesRepFieldRedirect><V8FieldShell><FieldAgent /></V8FieldShell></SalesRepFieldRedirect>} />
 
                   {/* Redirects from old standalone routes */}
                   <Route path="/invoices" element={<Navigate to="/admin/invoices" replace />} />

@@ -35,3 +35,22 @@ export function v8Drop(d: Deal, to: V8Col): { action: "send" | "accept" | "book"
   const r = dropAction(d.stage, target);
   return { action: r.action as any, reason: r.reason };
 }
+
+/** Park + Lost reason live in the existing status_change_log (no new columns): field_name "v8_park" / "lost_reason". */
+export const V8_PARK_FIELD = "v8_park";
+export const V8_LOST_FIELD = "lost_reason";
+export const V8_PARK_REASONS = ["Waiting for stock", "No answer", "Client asked to wait", "Other"];
+export const V8_LOST_REASONS = ["Price too high", "Went with a competitor", "No answer", "Job cancelled", "Other"];
+export type V8NoteRow = { entity_id: string; field_name: string; new_status: string | null; created_at: string };
+/** Latest row per quote wins; an empty park value means un-parked. */
+export function v8Notes(rows: V8NoteRow[]): { parked: Record<string, string>; lost: Record<string, string> } {
+  const parked: Record<string, string> = {}; const lost: Record<string, string> = {};
+  [...rows].sort((a, b) => a.created_at.localeCompare(b.created_at)).forEach((r) => {
+    const v = (r.new_status || "").trim();
+    if (r.field_name === V8_PARK_FIELD) { if (v) parked[r.entity_id] = v; else delete parked[r.entity_id]; }
+    if (r.field_name === V8_LOST_FIELD && v) lost[r.entity_id] = v;
+  });
+  return { parked, lost };
+}
+/** Only open deals (quote sent / accepted) can be parked; parking changes no status. */
+export const v8CanPark = (col: V8Col) => col === "quote" || col === "accepted";

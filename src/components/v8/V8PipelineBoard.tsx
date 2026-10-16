@@ -13,9 +13,10 @@ import QuoteCard from "@/components/cards/QuoteCard";
 import LeadCardV2 from "@/components/leads/LeadCardV2";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { FileText, XCircle } from "lucide-react";
+import { FileText, XCircle, PauseCircle } from "lucide-react";
+import { useV8Notes } from "./useV8Notes";
 import { buildDeals, fmtRandShort, type Deal } from "@/lib/quotePipeline";
-import { V8_COLS, v8ColOf, v8Drop, type V8Col } from "@/lib/v8Flow";
+import { V8_COLS, v8ColOf, v8Drop, v8CanPark, V8_PARK_FIELD, V8_LOST_FIELD, V8_PARK_REASONS, V8_LOST_REASONS, type V8Col } from "@/lib/v8Flow";
 import { usePipelineData, getHideTest, nameOf, type Q, type L } from "@/components/jobs/PipelineBoard";
 import "./v8.css";
 
@@ -35,6 +36,10 @@ export default function V8PipelineBoard() {
   const [over, setOver] = useState<V8Col | null>(null);
   const [bookId, setBookId] = useState<string | null>(null);
   const [showLost, setShowLost] = useState(false);
+  const [showPark, setShowPark] = useState(false);
+  const notes = useV8Notes();
+  const [ask, setAsk] = useState<{ kind: "park" | "lost"; d: Deal<Q> } | null>(null);
+  const [why, setWhy] = useState(""); const [whyMore, setWhyMore] = useState("");
 
   const { cols, leads, reps } = useMemo(() => {
     const empty = { cols: {} as Record<V8Col, Deal<Q>[]>, leads: [] as L[], reps: [] as [string, string][] };
@@ -43,42 +48,72 @@ export default function V8PipelineBoard() {
     const who = ownOnly ? user?.id : rep === "all" ? null : rep;
     const deals = buildDeals(data.quotes.filter((q) => (!hide || !isTestLead(nameOf(q))) && (!who || q.sales_engineer_id === who)), data.invoices as any, data.jobs as any);
     const c = Object.fromEntries([...V8_COLS.map((x) => x.key), "lost"].map((k) => [k, [] as Deal<Q>[]])) as Record<V8Col, Deal<Q>[]>;
-    deals.forEach((d) => c[v8ColOf(d, data.invoices as any)].push(d));
+    const pk: Deal<Q>[] = [];
+    deals.forEach((d) => { const col = v8ColOf(d, data.invoices as any); if (notes.parked[d.quote.id] && v8CanPark(col)) pk.push(d); else c[col].push(d); });
+    (c as any).park = pk;
     Object.values(c).forEach((l) => l.sort((a, b) => b.value - a.value));
     const quoted = new Set(data.quotes.map((q) => q.lead_id).filter(Boolean));
     const ls = who ? [] : data.leads.filter((l) => !quoted.has(l.id) && (!hide || !isTestLead(l.customer_name)));
     return { cols: c, leads: ls, reps: Object.entries(data.repName).sort((a, b) => a[1].localeCompare(b[1])) };
-  }, [data, rep, ownOnly, user?.id]);
+  }, [data, rep, ownOnly, user?.id, notes.parked]);
 
-  const drop = (to: V8Col) => {
+  const mark = (d: Deal<Q>, label: string) => {
+    const item = staff.itemsFor(d.quote as any).find((i) => i.label === label);
+    if (!item || item.hidden) { toast({ title: "You can't change this quote", description: "Only the quote's salesperson or an admin can." }); return; }
+    item.onSelect();
+  };
+  const unpark = async (d: Deal<Q>) => {
+    try { await notes.write(d.quote as any, V8_PARK_FIELD, null); toast({ title: "Back on the board" }); }
+    catch (e: any) { toast({ title: "Could not un-park", description: e.message, variant: "destructive" }); }
+  };
+  const confirmAsk = async () => {
+    if (!ask) return;
+    const text = [why, whyMore.trim()].filter(Boolean).join(": ") || "No reason given";
+    const a = ask; setAsk(null); setWhy(""); setWhyMore("");
+    try {
+      await notes.write(a.d.quote as any, a.kind === "park" ? V8_PARK_FIELD : V8_LOST_FIELD, text);
+      if (a.kind === "lost") mark(a.d, "Mark declined"); else toast({ title: "Parked", description: text });
+    } catch (e: any) { toast({ title: "Could not save the reason", description: e.message, variant: "destructive" }); }
+  };
+  const drop = (to: V8Col | "park") => {
     const all = Object.values(cols).flat();
     const d = all.find((x) => x.quote.id === drag);
     setDrag(null); setOver(null);
     if (!d) return;
+    if (to === "park") {
+      const col = v8ColOf(d, (data?.invoices || []) as any);
+      if (notes.parked[d.quote.id]) return;
+      if (!v8CanPark(col)) { toast({ title: "Only open quotes (sent or accepted) can be parked." }); return; }
+      setAsk({ kind: "park", d }); return;
+    }
+    if (to === "lost" && v8Drop(d, to).action === "lose") { setAsk({ kind: "lost", d }); return; }
     const { action, reason } = v8Drop(d, to);
     if (!action) { if (reason) toast({ title: reason }); return; }
     if (action === "send") { toast({ title: "Send it from the quote", description: "Opening the quote builder: use Send there." }); navigate(`/admin/quote-builder?quoteId=${d.quote.id}`); return; }
     if (action === "book") { setBookId(d.quote.id); return; }
-    const item = staff.itemsFor(d.quote as any).find((i) => i.label === (action === "accept" ? "Mark accepted" : "Mark declined"));
-    if (!item || item.hidden) { toast({ title: "You can't change this quote", description: "Only the quote's salesperson or an admin can." }); return; }
-    item.onSelect();
+    mark(d, action === "accept" ? "Mark accepted" : "Mark declined");
   };
 
-  const zone = (key: V8Col) => ({
-    onDragOver: (e: React.DragEvent) => { if (drag) { e.preventDefault(); setOver(key); } },
-    onDragLeave: (e: React.DragEvent) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver((o) => (o === key ? null : o)); },
+  const zone = (key: V8Col | "park") => ({
+    onDragOver: (e: React.DragEvent) => { if (drag) { e.preventDefault(); setOver(key as any); } },
+    onDragLeave: (e: React.DragEvent) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver((o) => (o === (key as any) ? null : o)); },
     onDrop: (e: React.DragEvent) => { e.preventDefault(); drop(key); },
   });
   const card = (d: Deal<Q>) => (
     <div key={d.quote.id} className={cn("v8-card", drag === d.quote.id && "is-lifted")} draggable
       onDragStart={(e) => { e.dataTransfer.setData("text/plain", d.quote.id); setDrag(d.quote.id); }}
       onDragEnd={() => { setDrag(null); setOver(null); }}>
+      {(notes.parked[d.quote.id] || (d.stage === "lost" && notes.lost[d.quote.id])) && (
+        <div className={cn("v8-note", d.stage === "lost" ? "lost" : "park")}>{d.stage === "lost" ? "Lost: " : "Parked: "}{d.stage === "lost" ? notes.lost[d.quote.id] : notes.parked[d.quote.id]}</div>
+      )}
       <QuoteCard deal={d} density="full" repName={data?.repName[d.quote.sales_engineer_id || ""]} showRep={!ownOnly}
         onOpen={() => navigate(`/admin/estimates/${d.quote.id}`)} onBook={() => setBookId(d.quote.id)}
         menuItems={[
           { label: "Open quote", onSelect: () => navigate(`/admin/estimates/${d.quote.id}`) },
           { label: "Edit in builder", onSelect: () => navigate(`/admin/quote-builder?quoteId=${d.quote.id}`) },
           { label: "Book job…", hidden: d.stage !== "accepted", onSelect: () => setBookId(d.quote.id) },
+          { label: notes.parked[d.quote.id] ? "Un-park" : "Park…", hidden: !notes.parked[d.quote.id] && !v8CanPark(v8ColOf(d, (data?.invoices || []) as any)),
+            onSelect: () => (notes.parked[d.quote.id] ? void unpark(d) : setAsk({ kind: "park", d })) },
           ...staff.itemsFor(d.quote as any),
         ]} />
     </div>
@@ -127,9 +162,28 @@ export default function V8PipelineBoard() {
         <div {...zone("lost")} className={cn("v8-zone lost", drag && over === "lost" && "is-over")} onClick={() => setShowLost((v) => !v)}>
           <XCircle className="h-4 w-4" /> Lost · {(cols.lost || []).length} {drag ? "— drop to mark lost" : showLost ? "(hide)" : "(show)"}
         </div>
+        <div {...zone("park")} className={cn("v8-zone park", drag && over === ("park" as any) && "is-over")} onClick={() => setShowPark((v) => !v)} data-testid="v8-park">
+          <PauseCircle className="h-4 w-4" /> Park · {((cols as any).park || []).length} {drag ? "— drop to park (waiting for stock / no answer)" : showPark ? "(hide)" : "(show)"}
+        </div>
       </div>
+      {showPark && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">{((cols as any).park || []).map(card)}</div>}
       {showLost && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">{(cols.lost || []).map(card)}</div>}
       {staff.dialogs}
+      <Dialog open={!!ask} onOpenChange={(o) => { if (!o) { setAsk(null); setWhy(""); setWhyMore(""); } }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>{ask?.kind === "park" ? "Park this deal" : "Why was it lost?"}</DialogTitle></DialogHeader>
+          <div className="flex flex-wrap gap-2">
+            {(ask?.kind === "park" ? V8_PARK_REASONS : V8_LOST_REASONS).map((r) => (
+              <Button key={r} size="sm" variant={why === r ? "default" : "outline"} onClick={() => setWhy(r)}>{r}</Button>))}
+          </div>
+          <input value={whyMore} onChange={(e) => setWhyMore(e.target.value)} placeholder="Note (optional)" className="h-9 w-full rounded-md border bg-background px-2 text-sm" />
+          <div className="text-xs text-muted-foreground">{ask?.kind === "park" ? "Parking doesn't change the quote's status. Un-park it from the card menu." : "Next you confirm Mark declined, the same as before."}</div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setAsk(null)}>Cancel</Button>
+            <Button onClick={() => void confirmAsk()} disabled={!why}>{ask?.kind === "park" ? "Park" : "Continue"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!bookId} onOpenChange={(o) => { if (!o) { setBookId(null); void refetch(); qc.invalidateQueries({ queryKey: ["attention-strip"] }); } }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader><DialogTitle>Book job</DialogTitle></DialogHeader>

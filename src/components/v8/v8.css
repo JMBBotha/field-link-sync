@@ -37,3 +37,14 @@
 .v8-zone.lost.is-over{background:rgba(220,38,38,.12);border-color:#DC2626}
 @media (prefers-reduced-motion:reduce){.v8-card,.v8-card:hover{transition:none;transform:none}.v8-card.is-lifted{transform:none}}
 @media (max-width:640px){.v8-col{flex-basis:86vw}}
+.v8-zone.park { border-color: rgba(217,119,6,.45); }
+.v8-zone.park.is-over { background: rgba(217,119,6,.14); outline: 2px solid #d97706; }
+.v8-note { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 8px 8px 0 0; }
+.v8-note.park { background: rgba(217,119,6,.14); color: #b45309; }
+.v8-note.lost { background: rgba(220,38,38,.12); color: #b91c1c; }
+.dark .v8-note.park { color: #fbbf24; } .dark .v8-note.lost { color: #fca5a5; }
+.v8-flow { display:grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap:6px; }
+@media (max-width: 640px) { .v8-flow { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+.v8-flow button { text-align:left; border-radius: 12px; padding: 8px 10px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); }
+.v8-flow button:hover { border-color: #1590d6; }
+.v8-hero { border-radius: 16px; padding: 16px; color: #fff; background: linear-gradient(135deg,#0b5fa0,#1590d6); }
