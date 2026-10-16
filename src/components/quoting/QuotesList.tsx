@@ -641,7 +641,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                                   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
                                 } },
                                 ...staffActions.itemsFor(quote),
-                                { label: "Convert to invoice", hidden: quote.status !== "accepted", disabled: converting === quote.id, onSelect: () => handleConvertToInvoice(quote.id), separatorBefore: true },
+                                { label: quote.status === "accepted" ? "Convert to invoice" : "Convert to invoice (without client acceptance)", hidden: quote.status === "declined" || quote.status === "expired", disabled: converting === quote.id, onSelect: () => { if (quote.status !== "accepted" && !window.confirm("The client has not accepted this quote. Create a full invoice for the company anyway?")) return; handleConvertToInvoice(quote.id); }, separatorBefore: true },
                                 { label: "Open client", hidden: !quote.customer_id, onSelect: () => navigate(`/admin/customers/${quote.customer_id}`) },
                               ]} />
                             )}
