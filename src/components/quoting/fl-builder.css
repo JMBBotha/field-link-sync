@@ -1,0 +1,11 @@
+/* Field Lynk PDF builder v1 — chrome only (bar, toggle, preview pane). Document content untouched. */
+.fl-builder{--fl-b1:#1AA7EC;--fl-b2:#1590D6;--fl-pane:#FFFFFF;--fl-pane-bd:#DCE7F0;--fl-tx:#0F1B2A}
+.dark .fl-builder{--fl-pane:linear-gradient(180deg,#132236,#0D1828);--fl-pane-bd:#1F3550;--fl-tx:#EAF2FA}
+.fl-builder .fl-eyebrow{font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.22em;text-transform:uppercase;color:var(--fl-b1)}
+.fl-builder .fl-preview-toggle{border-color:var(--fl-b1);color:var(--fl-b2);background:transparent}
+.dark .fl-builder .fl-preview-toggle{color:var(--fl-b1)}
+.fl-builder .fl-preview-toggle[aria-pressed="true"]{box-shadow:0 0 0 3px rgba(26,167,236,.16)}
+.fl-builder .fl-preview-pane{background:var(--fl-pane);border:1px solid var(--fl-pane-bd);color:var(--fl-tx);box-shadow:0 18px 50px rgba(21,144,214,.12)}
+.dark .fl-builder .fl-preview-pane{box-shadow:0 24px 60px rgba(0,0,0,.4)}
+.fl-builder .option1-add-unit{background:linear-gradient(180deg,#5CC6F5,#1AA7EC 55%,#1590D6);color:#fff;border-color:transparent;border-radius:999px}
+.fl-builder .option1-add-secondary{border-radius:999px}

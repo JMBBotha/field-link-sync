@@ -1,4 +1,5 @@
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
+import "./fl-builder.css";
 import { usePdfBasket } from "@/lib/pdfBasketStore";
 /**
  * EstimateBuilder — the single quote surface on /admin/estimates/:id.
@@ -14,7 +15,7 @@ import ClientNoteBox from "@/components/quoting/ClientNoteBox";
 import { linkedToUnit } from "@/lib/unitInstallLinks";
 import { useIsPhone } from "@/hooks/useIsPhone";
 import { isLabourItem } from "@/lib/labour";
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -147,7 +148,20 @@ export default function EstimateBuilder({
   const [previewOpen, setPreviewOpen] = useLivePreviewPref(user?.id ?? null);
   const wide = useIsWideScreen();
   const [narrowTab, setNarrowTab] = useState<"editor" | "client">("editor");
-  const previewActive = narrowTab === "client";
+  // PDF builder v1 (Johan 16 Oct 22:05, overrides the 15 Oct one-view rule): on wide screens the
+  // live preview sits beside the builder and can be hidden; narrow screens still swap views.
+  const [isWide, setIsWide] = useState(() => typeof window !== "undefined" && window.matchMedia?.("(min-width: 1280px)").matches);
+  const [showPreview, setShowPreview] = useState(() => typeof window === "undefined" || localStorage.getItem("fl-quote-preview") !== "hidden");
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mql = window.matchMedia("(min-width: 1280px)");
+    const on = () => setIsWide(mql.matches);
+    mql.addEventListener?.("change", on);
+    return () => mql.removeEventListener?.("change", on);
+  }, []);
+  const toggleSidePreview = () => setShowPreview((v) => { localStorage.setItem("fl-quote-preview", v ? "hidden" : "shown"); return !v; });
+  const sideBySide = isWide && showPreview;
+  const previewActive = isWide ? showPreview : narrowTab === "client";
   const [drafts, setDrafts] = useState<Record<string, { item_name?: string; description?: string | null; unit_price?: number }>>({});
   const [collapsedAreaKeys, setCollapsedAreaKeys] = useState<Set<string>>(new Set());
   const collapseReadyRef = useRef(false);
@@ -664,19 +678,42 @@ export default function EstimateBuilder({
           className="rounded-md ring-1 ring-slate-200 shadow-sm"
         />
       );
-      // Johan 15 Oct: one view at a time on every width — builder OR client view, never side by side.
       return (
-        <div data-testid="live-preview-layout">
-          <div className="sticky top-2 z-20 mb-3 flex flex-wrap items-center justify-end gap-2 print:hidden" data-html2canvas-ignore data-pdf-hide>
-            <DocumentStyleSwitch companyId={meta?.company_id ?? null} onPicked={() => setNarrowTab("client")} />
-            <Button type="button" size="sm" variant="outline" className="h-9 rounded-full border-primary bg-white px-4 text-xs font-semibold text-primary shadow-sm"
-              data-testid="live-preview-toggle" aria-pressed={narrowTab === "client"}
-              onClick={() => setNarrowTab(narrowTab === "editor" ? "client" : "editor")}>
-              {narrowTab === "editor" ? "Show client view" : "Back to builder"}
-            </Button>
+        <div data-testid="live-preview-layout" className="fl-builder" data-side-by-side={sideBySide ? "true" : "false"}>
+          <div className="fl-builder-bar sticky top-2 z-20 mb-3 flex flex-wrap items-center justify-end gap-2 print:hidden" data-html2canvas-ignore data-pdf-hide>
+            <span className="fl-eyebrow mr-auto">Look</span>
+            <DocumentStyleSwitch companyId={meta?.company_id ?? null} onPicked={() => { if (isWide) setShowPreview(true); else setNarrowTab("client"); }} />
+            {isWide ? (
+              <Button type="button" size="sm" variant="outline" className="fl-preview-toggle h-9 rounded-full px-4 text-xs font-semibold"
+                data-testid="live-preview-toggle" aria-pressed={showPreview} onClick={toggleSidePreview}>
+                {showPreview ? "Hide preview" : "Show preview"}
+              </Button>
+            ) : (
+              <Button type="button" size="sm" variant="outline" className="fl-preview-toggle h-9 rounded-full px-4 text-xs font-semibold"
+                data-testid="live-preview-toggle" aria-pressed={narrowTab === "client"}
+                onClick={() => setNarrowTab(narrowTab === "editor" ? "client" : "editor")}>
+                {narrowTab === "editor" ? "Show client view" : "Back to builder"}
+              </Button>
+            )}
           </div>
-          <div className={narrowTab === "editor" ? "" : "hidden"}>{editorDoc}</div>
-          {narrowTab === "client" && preview}
+          {isWide ? (
+            <div className={sideBySide ? "grid grid-cols-[minmax(0,1fr)_minmax(380px,46%)] gap-4 items-start" : ""}>
+              <div className="min-w-0">{editorDoc}</div>
+              {sideBySide && (
+                <aside className="fl-preview-pane sticky top-14 max-h-[calc(100vh-4.5rem)] overflow-auto rounded-2xl p-3 print:hidden" data-html2canvas-ignore data-pdf-hide data-testid="live-preview-pane">
+                  <div className="fl-pane-head mb-2 flex items-center justify-between text-sm font-semibold">
+                    <span>Live client view</span><span className="text-xs font-normal opacity-70">Updates as you type</span>
+                  </div>
+                  {preview}
+                </aside>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className={narrowTab === "editor" ? "" : "hidden"}>{editorDoc}</div>
+              {narrowTab === "client" && preview}
+            </>
+          )}
         </div>
       );
       })()}
