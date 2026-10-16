@@ -45,6 +45,7 @@ const CustomerInvoiceView = lazy(() => import("./components/CustomerInvoiceView"
 const UnifiedOnboarding = lazy(() => import("./pages/UnifiedOnboarding"));
 const IndependentSignup = lazy(() => import("./pages/IndependentSignup"));
 const SetPassword = lazy(() => import("./pages/SetPassword"));
+const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const ClientProposalView = lazy(() => import("./components/client/ClientProposalView"));
 const ClientQuoteBundleView = lazy(() => import("./components/client/ClientQuoteBundleView"));
 const UnitBrochurePage = lazy(() => import("./pages/public/UnitBrochurePage"));
@@ -149,6 +150,7 @@ const App = () => (
                 <Route path="/onboarding" element={<UnifiedOnboarding />} />
                 <Route path="/signup/independent" element={<IndependentSignup />} />
                 <Route path="/set-password" element={<SetPassword />} />
+                <Route path="/pending-approval" element={<PendingApproval />} />
 
                 {/* Customer Portal Routes */}
                 <Route path="/customer/:token" element={<CustomerPortal />} />

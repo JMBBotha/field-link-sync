@@ -2,29 +2,35 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Building2, Wrench } from "lucide-react";
-import logo from "@/assets/logo.png";
-import BackgroundVideo from "@/components/BackgroundVideo";
+import { useTheme } from "@/hooks/useTheme";
+import {
+  Loader2, Mail, Lock, User, Eye, EyeOff, Check, Building2, Wrench, Tag, Repeat, Star, Phone, Sun, Moon,
+} from "lucide-react";
+import logoWhite from "@/assets/fieldlynk-logo-white.png";
+import logoCard from "@/assets/fieldlynk-logo-card.png";
 import { withTimeout } from "@/lib/withTimeout";
 import { resolvePostLoginPath } from "@/lib/postLoginRedirect";
+import { SIGNUP_ROLES, signupMetadata, type SignupRole } from "@/lib/signupRoles";
+import "./auth.css";
 
-
-
-
+const ROLE_ICONS: Record<SignupRole, typeof Building2> = {
+  company_new: Building2, company_tech: Wrench, company_sales: Tag, massair_dual: Repeat, independent: Star,
+};
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const redirectingRef = useRef(false);
   const [isLogin, setIsLogin] = useState(true);
-  const [showSignupChoice, setShowSignupChoice] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [role, setRole] = useState<SignupRole>("company_new");
+  const [indKind, setIndKind] = useState<"tech" | "sales">("tech");
+  const [companyName, setCompanyName] = useState("");
+  const [phone, setPhone] = useState("");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rawNext = searchParams.get("next") ?? "";
@@ -32,6 +38,8 @@ const Auth = () => {
   const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "";
   const { toast } = useToast();
   const { session } = useAuth();
+  const { resolvedTheme, toggleTheme } = useTheme();
+  const dark = resolvedTheme === "dark";
 
   useEffect(() => {
     if (!session) return;
@@ -81,6 +89,9 @@ const Auth = () => {
         if (error) throw error;
         toast({ title: "Welcome back!", description: "You've successfully logged in." });
       } else {
+        if ((role === "company_tech" || role === "company_sales") && !companyName.trim()) {
+          throw new Error("Enter the company you work for.");
+        }
         const emailRedirectTo = nextPath
           ? `${window.location.origin}/login?next=${encodeURIComponent(nextPath)}`
           : `${window.location.origin}/`;
@@ -88,14 +99,18 @@ const Auth = () => {
           email: emailValue,
           password: passwordValue,
           options: {
-            data: { full_name: fullNameValue },
+            data: signupMetadata(role, {
+              fullName: fullNameValue, companyName: companyName.trim(), phone: phone.trim(), independentKind: indKind,
+            }),
             emailRedirectTo,
           },
         });
         if (error) throw error;
         toast({
           title: "Account created!",
-          description: "Please check your email to verify your account before signing in.",
+          description: role === "independent"
+            ? "Check your email to verify your address. Your application is pending approval."
+            : "Check your email to verify your address. Massair CT will approve your account before you can start.",
         });
         setIsLogin(true);
       }
@@ -110,72 +125,6 @@ const Auth = () => {
     }
   };
 
-  // Signup choice screen
-  if (showSignupChoice) {
-    return (
-      <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
-        <BackgroundVideo />
-        <img src={logo} alt="0800BeCool" className="relative z-10 h-24 w-auto mb-8 drop-shadow-lg" />
-        <div className="relative z-10 w-full max-w-sm space-y-6">
-          <div className="text-center space-y-1">
-            <h1 className="text-2xl font-bold text-white">How do you want to join?</h1>
-            <p className="text-white/70 text-sm">Choose the option that fits you best</p>
-          </div>
-
-          <div className="space-y-3">
-            <button
-              onClick={() => { setShowSignupChoice(false); setIsLogin(false); }}
-              className="w-full p-4 rounded-xl border border-white/20 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all text-left group"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-[hsl(25,95%,53%)]/20 text-[hsl(25,95%,53%)] mt-0.5">
-                  <Building2 className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="font-semibold text-white group-hover:text-[hsl(25,95%,53%)] transition-colors">
-                    Sign Up as a Company
-                  </div>
-                  <div className="text-xs text-white/60 mt-1">
-                    Register your HVAC business, manage teams, dispatch jobs, send quotes & invoices
-                  </div>
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => navigate("/signup/independent")}
-              className="w-full p-4 rounded-xl border border-white/20 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all text-left group"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-[hsl(204,100%,50%)]/20 text-[hsl(204,100%,60%)] mt-0.5">
-                  <Wrench className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="font-semibold text-white group-hover:text-[hsl(204,100%,60%)] transition-colors">
-                    Join as Independent Agent
-                  </div>
-                  <div className="text-xs text-white/60 mt-1">
-                    Apply as a freelance sales agent or technician to take jobs from companies on the network
-                  </div>
-                </div>
-              </div>
-            </button>
-          </div>
-
-          <div className="text-center">
-            <Button
-              variant="link"
-              className="text-white/70 hover:text-white"
-              onClick={() => { setShowSignupChoice(false); setIsLogin(true); }}
-            >
-              Already have an account? Sign in
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Shared by "Forgot password?" and the invited-staff note: email a link to /set-password.
   const sendPasswordLink = async () => {
     const em = ((document.getElementById("email") as HTMLInputElement)?.value || email).trim();
@@ -184,105 +133,154 @@ const Auth = () => {
     toast(error ? { title: "Error", description: error.message, variant: "destructive" } : { title: "Check your email for a link to set a new password" });
   };
 
+  const needsCompany = role === "company_new" || role === "company_tech" || role === "company_sales";
+  const busy = loading || redirecting;
+
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
-      <BackgroundVideo />
-      <img src={logo} alt="0800BeCool" className="relative z-10 h-24 w-auto mb-8 drop-shadow-lg" />
+    <div className={`fl-auth ${dark ? "dark" : "light"}`} data-testid="fl-auth">
+      <button type="button" className="theme" onClick={toggleTheme} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}>
+        {dark ? <Sun size={18} /> : <Moon size={18} />}
+      </button>
+      <div className="eyebrow">0800-BE-COOL · AC SUPER SERVICE</div>
+      <h1 className="t">Field <span>Lynk</span></h1>
 
-      <div className="relative z-10 w-full max-w-sm space-y-6">
-        <div className="text-center space-y-1">
-          <h1 className="text-2xl font-bold text-white">
-            {isLogin ? "Welcome Back" : "Create Company Account"}
-          </h1>
-          <p className="text-white/70 text-sm">
-            {isLogin
-              ? "Sign in to access your dashboard"
-              : "Get started with your field service account"}
-          </p>
+      <div className={`card ${isLogin ? "" : "wide"}`}>
+        <div className="logo">
+          <img src={dark ? logoWhite : logoCard} alt="0800-BE-COOL! AC Super Service" />
+          <span className="tg">FIELD&nbsp;LYNK</span>
         </div>
+        <h2>{isLogin ? "Sign in" : "Create your account"}</h2>
+        <p className="sub">
+          {isLogin
+            ? "Welcome back. Your jobs, leads and team are right where you left them."
+            : "Pick how you'll use Field Lynk. It takes about a minute."}
+        </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit}>
           {!isLogin && (
-            <div className="space-y-1.5">
-              <Label htmlFor="fullName" className="text-white/90 text-sm">Full Name</Label>
-              <Input
-                id="fullName"
-                name="fullName"
-                type="text"
-                autoComplete="name"
-                placeholder="John Doe"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required={!isLogin}
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white/50 focus:ring-white/20"
-              />
-            </div>
+            <>
+              <div className="lab" id="role-label">I'm joining as</div>
+              <div className="roles" role="radiogroup" aria-labelledby="role-label">
+                {SIGNUP_ROLES.map((r) => {
+                  const Icon = ROLE_ICONS[r.id];
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={role === r.id}
+                      data-role={r.id}
+                      className={`r ${r.id === "independent" ? "w" : ""}`}
+                      onClick={() => setRole(r.id)}
+                    >
+                      <span className="ri"><Icon size={16} /></span>
+                      <div>
+                        {r.title}
+                        {r.badge && <span className="badge">{r.badge}</span>}
+                        <small>{r.blurb}</small>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {role === "independent" && (
+                <div className="seg">
+                  <button type="button" aria-pressed={indKind === "tech"} onClick={() => setIndKind("tech")}>Technician</button>
+                  <button type="button" aria-pressed={indKind === "sales"} onClick={() => setIndKind("sales")}>Sales agent</button>
+                </div>
+              )}
+
+              <label className="lab" htmlFor="fullName">Full name</label>
+              <div className="f">
+                <User size={18} />
+                <input id="fullName" name="fullName" type="text" autoComplete="name" placeholder="Your name"
+                  value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+              </div>
+
+              {needsCompany && (
+                <>
+                  <label className="lab" htmlFor="companyName">
+                    {role === "company_new" ? "Company name" : "Company you work for"}
+                  </label>
+                  <div className="f">
+                    <Building2 size={18} />
+                    <input id="companyName" name="companyName" type="text" autoComplete="organization"
+                      placeholder={role === "company_new" ? "Your AC business" : "Your employer"}
+                      value={companyName} onChange={(e) => setCompanyName(e.target.value)} required={role !== "company_new"} />
+                  </div>
+                </>
+              )}
+
+              <label className="lab" htmlFor="phone">Mobile number <span>optional</span></label>
+              <div className="f">
+                <Phone size={18} />
+                <input id="phone" name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder="082 000 0000"
+                  value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </div>
+            </>
           )}
-          <div className="space-y-1.5">
-            <Label htmlFor="email" className="text-white/90 text-sm">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="username"
-              inputMode="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white/50 focus:ring-white/20"
-            />
+
+          <label className="lab" htmlFor="email">Email</label>
+          <div className="f">
+            <Mail size={18} />
+            <input id="email" name="email" type="email" autoComplete="username" inputMode="email"
+              placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="password" className="text-white/90 text-sm">Password</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
+
+          <div className="lab">
+            <label htmlFor="password">Password</label>
+            {isLogin ? (
+              <button type="button" onClick={sendPasswordLink}>Forgot?</button>
+            ) : (
+              <span>8+ characters</span>
+            )}
+          </div>
+          <div className="f">
+            <Lock size={18} />
+            <input id="password" name="password" type={showPw ? "text" : "password"}
               autoComplete={isLogin ? "current-password" : "new-password"}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white/50 focus:ring-white/20"
-            />
+              placeholder={isLogin ? "••••••••" : "Choose a password"}
+              value={password} onChange={(e) => setPassword(e.target.value)} required minLength={isLogin ? 6 : 8} />
+            <button type="button" className="eye" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? "Hide password" : "Show password"}>
+              {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
-          {isLogin && (
-            <button type="button" className="block ml-auto -mt-2 text-xs text-white/70 hover:text-white underline" onClick={sendPasswordLink}>Forgot password?</button>
+
+          {!isLogin && role !== "independent" && (
+            <p className="note">Sign-ups through Massair CT are approved before you can start. Already-approved companies can add their own techs and salespeople from Team.</p>
+          )}
+
+          <div className="trk">
+            <button type="submit" className="pill" disabled={busy}>
+              {busy ? <Loader2 size={18} className="animate-spin" /> : null}
+              {redirecting ? "Signing you in..." : isLogin ? "Sign in" : "Create account"}
+              {!busy && <Check size={18} />}
+            </button>
+          </div>
+          {redirecting && <div className="st"><i />Signed in, taking you to your dashboard…</div>}
+          {isLogin ? (
+            <div className="hint kb"><b>Tab</b> moves between fields · <b>Enter</b> signs you in</div>
+          ) : (
+            <div className="hint">We'll email you a link to confirm your address.</div>
           )}
           {isLogin && (
-            <div data-testid="invite-password-note" className="rounded-md border border-[hsl(25,95%,53%)]/60 bg-[hsl(25,95%,53%)]/15 px-3 py-2 text-sm text-white">
-              New to the team, add email address, and click forgot password.
+            <div data-testid="invite-password-note" className="new">
+              <span>👋</span>
+              <span><em>Welcome!</em> New to the team, add email address, and click forgot password.</span>
             </div>
           )}
-          <Button
-            type="submit"
-            className="w-full bg-[hsl(25,95%,53%)] hover:bg-[hsl(25,95%,45%)] text-white font-semibold text-base h-11"
-            disabled={loading || redirecting}
-          >
-            {(loading || redirecting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {redirecting ? "Signing you in..." : isLogin ? "Sign In" : "Sign Up"}
-          </Button>
         </form>
 
-        <div className="text-center text-sm text-white/70">
-          {isLogin ? "Don't have an account?" : "Already have an account?"}
-          <Button
-            variant="link"
-            className="ml-1 text-[hsl(25,95%,53%)] hover:text-[hsl(25,95%,63%)]"
-            onClick={() => {
-              if (isLogin) {
-                setShowSignupChoice(true);
-              } else {
-                setIsLogin(true);
-              }
-            }}
-          >
-            {isLogin ? "Sign up" : "Sign in"}
-          </Button>
+        <div className="dv" />
+        <div className="ft">
+          {isLogin ? "No account yet? " : "Already have an account? "}
+          <button type="button" className="lnk" onClick={() => setIsLogin(!isLogin)}>
+            {isLogin ? "Create one" : "Sign in"}
+          </button>
         </div>
       </div>
+      <div className="foot">SECURE SIGN-IN · WORKS ON PHONE &amp; DESKTOP · WWW.0800BECOOL.CO.ZA</div>
     </div>
   );
 };

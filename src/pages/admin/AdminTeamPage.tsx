@@ -21,6 +21,7 @@ import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRole } from "@/hooks/useRole";
 import { staffOf } from "@/lib/teamGroups";
+import CompanySignupsPanel from "@/components/team/CompanySignupsPanel";
 import TeamApplicationsTab, { TeamFreelancersTab } from "@/components/team/TeamApplicationsTab";
 import { usePendingApplicants } from "@/hooks/usePendingApplicants";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
@@ -333,7 +334,7 @@ const AdminTeamPage = () => {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="freelancers" className="mt-4"><TeamFreelancersTab /></TabsContent>
-        <TabsContent value="applications" className="mt-4"><TeamApplicationsTab /></TabsContent>
+        <TabsContent value="applications" className="mt-4"><CompanySignupsPanel /><TeamApplicationsTab /></TabsContent>
         <TabsContent value="staff" className="mt-4 space-y-6">
       {isAdmin && pendingInvites.length > 0 && (
         <Card className="border-border/50" data-testid="pending-invites">

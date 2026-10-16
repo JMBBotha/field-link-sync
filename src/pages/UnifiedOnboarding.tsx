@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { isAwaitingSignupApproval } from "@/lib/signupRoles";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -339,9 +340,13 @@ const UnifiedOnboarding = () => {
       // Check if already completed
       const { data: profile } = await supabase
         .from("profiles")
-        .select("onboarding_completed")
+        .select("*")
         .eq("id", uid)
         .maybeSingle();
+
+      // Five-role sign-up: anyone who signed up through Massair CT waits for approval
+      // before onboarding (so they can't self-assign a company or role).
+      if (isAwaitingSignupApproval(profile)) { navigate("/pending-approval"); return; }
 
       if (profile?.onboarding_completed) {
         // Already onboarded — redirect by role
