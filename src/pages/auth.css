@@ -54,3 +54,30 @@
   .fl-auth .roles{grid-template-columns:1fr}.fl-auth .r.w{grid-column:auto}
   .fl-auth .foot,.fl-auth .hint.kb{display:none}
 }
+/* Short laptop viewports (e.g. 1024x555 with browser chrome): sign-in fits without scrolling. */
+@media (max-height:820px) and (min-width:521px){
+  .fl-auth{padding:14px 16px;justify-content:center}
+  .fl-auth .eyebrow{margin-bottom:6px;font-size:10px}
+  .fl-auth h1.t{font-size:34px;margin-bottom:10px}
+  .fl-auth .card{padding:18px 28px 14px;border-radius:20px}
+  .fl-auth .logo{margin-bottom:10px}.fl-auth .logo img{height:40px}.fl-auth.light .logo img{height:48px;border-radius:9px}
+  .fl-auth h2{font-size:22px}
+  .fl-auth .sub{font-size:13.5px;margin:2px 0 12px}
+  .fl-auth .lab{margin-bottom:5px;font-size:12.5px}
+  .fl-auth .f{height:44px;margin-bottom:11px;border-radius:12px}
+  .fl-auth .trk{height:62px;margin:2px 0 8px}
+  .fl-auth .pill{height:44px}
+  .fl-auth .new{margin-top:8px;padding:6px 10px;font-size:12px}
+  .fl-auth .dv{margin:10px 0 8px}
+  .fl-auth .ft{font-size:13.5px}
+  .fl-auth .hint.kb,.fl-auth .foot{display:none}
+  .fl-auth .roles{gap:8px;margin-bottom:12px}.fl-auth .r{padding:8px 10px}
+  .fl-auth .note{margin:-4px 0 8px}
+}
+@media (max-height:620px) and (min-width:521px){
+  .fl-auth .eyebrow{display:none}
+  .fl-auth h1.t{font-size:26px;margin-bottom:6px}
+  .fl-auth .logo img{height:32px}.fl-auth.light .logo img{height:38px}
+  .fl-auth .sub{display:none}
+  .fl-auth .card{padding:14px 26px 10px}
+}
