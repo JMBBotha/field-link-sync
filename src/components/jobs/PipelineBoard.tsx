@@ -23,17 +23,17 @@ import {
   fmtRand, fmtRandShort, type Deal, type PipelineStage, type PipelineChipKey, type PipeQuote,
 } from "@/lib/quotePipeline";
 
-type Q = PipeQuote & {
+export type Q = PipeQuote & {
   company_id: string; quote_number: string | null; customer_name: string | null; accepted_by?: string | null;
   created_by?: string | null; owner_id?: string | null; customers?: { name: string | null; area: string | null; city: string | null } | null;
 };
-type L = LeadV2 & { created_at: string };
+export type L = LeadV2 & { created_at: string };
 
 const BAR: Record<PipelineStage, string> = {
   lead: "bg-slate-500", draft: "bg-slate-400", sent: "bg-blue-600", viewed: "bg-violet-600",
   accepted: "bg-emerald-600", booked: "bg-slate-900 dark:bg-slate-200", lost: "bg-slate-300",
 };
-const nameOf = (q: Q) => q.customers?.name || q.customer_name || "No client";
+export const nameOf = (q: Q) => q.customers?.name || q.customer_name || "No client";
 const OPEN_STAGES: PipelineStage[] = ["draft", "sent", "viewed", "accepted"];
 
 /** Shared pipeline data (one fetch for the hub switch summary and the board). RLS scopes reps to their own quotes. */

@@ -1,0 +1,1530 @@
+[
+ {
+  "b": "Midea",
+  "c": "17310900A03581",
+  "id": "590b00ff-a991-49cc-beee-56441ab17999",
+  "p": 265,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "BZE-INV-09/A",
+  "id": "d858b020-a128-4f59-b15a-8a9b54a7445a",
+  "p": 8895.56,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "BZE-INV-12/A",
+  "id": "67bb14b8-8b4c-434d-964d-542c3ffcbd65",
+  "p": 9633.6,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "BZE-INV-18",
+  "id": "d34c3a16-18f8-49b8-b42a-203954ead454",
+  "p": 13254.85,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "BZE-INV-24",
+  "id": "549dffd3-cca6-4671-91d3-b7982e208723",
+  "p": 17703.06,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "CY-3509-2",
+  "id": "877a8cb2-7380-47b7-bff2-fced13665032",
+  "p": 1947.37,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "CY-3512-2",
+  "id": "4e4724ed-cf0b-48af-9e35-a7635e009473",
+  "p": 2100,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "CY-3515-2",
+  "id": "32995d53-a558-4982-90f8-4854bc9a74d5",
+  "p": 2360,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "INVEXT-09-R32",
+  "id": "bc9f1a81-ecef-477f-8589-9483e7fa4441",
+  "p": 6621.05,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "INVEXT-12-R32",
+  "id": "975fc847-cbb9-49a3-9d33-5068155b3fdc",
+  "p": 7347.37,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "INVEXT-18-R32",
+  "id": "ae23c624-5d7d-4bcf-b525-e4408bc43671",
+  "p": 10515.79,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "INVEXT-24-R32",
+  "id": "8472ee26-0a8c-467c-a62b-b3de74715173",
+  "p": 13947.37,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "INVEXT-36",
+  "id": "694c0185-aefd-4ba3-a46b-c614eac3ef79",
+  "p": 20342.11,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "KJR-120K",
+  "id": "4b6d0b22-738d-40cf-9c27-0b91f6c710a5",
+  "p": 650,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "KJR-120M",
+  "id": "e4de9a55-4e12-4734-a208-a21184b38aba",
+  "p": 1175,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MCI-12-FS",
+  "id": "2725e6f7-1dd2-445b-a8fa-826ce6ff64ea",
+  "p": 11884.21,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MCI-18-FS",
+  "id": "cdebefce-31e7-44b2-a22d-77fbd30ec8e5",
+  "p": 15252.63,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MCI-24-FS",
+  "id": "f3c4a0d8-30c2-461c-8cf8-447ed55007ad",
+  "p": 19778.95,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MCI-36-FS(3PH)",
+  "id": "3f965dbf-b2ba-48ad-98c4-830ca1f42fed",
+  "p": 22726.32,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MCI-48-FS",
+  "id": "081355d1-7f77-4dbb-9d0b-6841bc622453",
+  "p": 24410.53,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MCI-60-FS",
+  "id": "98dc8b9d-c64f-4dbd-bb3c-fffcac5110bb",
+  "p": 27778.95,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MDI-24-FS",
+  "id": "f9dc59b4-b6d8-44a5-ba7b-d3b6d2fc15b7",
+  "p": 17778.95,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MDI-36-FS(3PH)",
+  "id": "0a91cbc8-717e-4f3b-a14f-685729fc186c",
+  "p": 21042.11,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MDI-48-FS",
+  "id": "c2fede1d-fb99-4d56-b18d-1e1746d1eaea",
+  "p": 23884.21,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MDI-60-FS",
+  "id": "43c58d95-28bf-403e-86d5-999d9857e633",
+  "p": 25778.95,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MFS-60ARN1",
+  "id": "9ec926bc-45b6-4356-bd81-26e0323cd946",
+  "p": 29252.63,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MFSL-96HDN1",
+  "id": "8541a18f-9809-4a3e-bcfe-4b23b97d0a7f",
+  "p": 66640.86,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MHL-120HDN1",
+  "id": "7b06f240-349e-4cd7-89fa-37275ead8fcb",
+  "p": 72124,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MHL-150HDN1",
+  "id": "5feb9dc0-69de-4d62-a535-1387591d5d3a",
+  "p": 91854.33,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MHL-192HDN1",
+  "id": "d45580ed-af67-4a47-89bd-7fa8587c4528",
+  "p": 109354.83,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MHL-76HDN1",
+  "id": "36e8d6d1-da68-4b0a-b60c-069a8e12a241",
+  "p": 56632.57,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MHL-96HDN1",
+  "id": "7a0fc9ff-2906-4090-bd29-2cff09ef88c6",
+  "p": 60093.57,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MPPX-12HRN7-QB6",
+  "id": "26bec579-70e0-4a06-865d-96bbe2f75243",
+  "p": 5568.42,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MRC-075HWDN1-R(A)",
+  "id": "14ca7516-1191-4983-ab2f-31c5aa134615",
+  "p": 58900,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MRC-075HWN1-R (C)",
+  "id": "eb19f729-0b57-4156-a7ac-0a0b0ac7c02d",
+  "p": 54200,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MRC-100HWDN1-R(A)",
+  "id": "57b6050a-5237-420f-919d-09e8fbc5fcdf",
+  "p": 75500,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MRC-100HWN1-R (C)",
+  "id": "590c39bc-57af-430f-b763-933702b6086b",
+  "p": 69500,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MRC-150HWDN1-R(A)",
+  "id": "62391ec5-02cf-4eb0-a29e-6e8cb0f98772",
+  "p": 114500,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MRC-150HWN1-R (C)",
+  "id": "709c3529-06af-430d-975e-3a66565adeb8",
+  "p": 105500,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MRC-200HWDN1-R(A)",
+  "id": "76f10c9a-a4fc-4ce8-b9ee-9bff4aeb14b7",
+  "p": 152500,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MRC-200HWN1-R (C)",
+  "id": "04273ab2-5d7d-4389-866d-423d7fa0ce67",
+  "p": 147900,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MRC-250HWDN1-R(A)",
+  "id": "10a9b3f7-d08c-4b68-8ecb-b210f3727fb4",
+  "p": 206500,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MRC-250HWN1-R (C)",
+  "id": "0e05f5f8-a823-4319-aaa5-787727ae7525",
+  "p": 189900,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MRC-300HWDN1-R(A)",
+  "id": "f69636c4-fb3f-4f20-923d-b4991d6dbe88",
+  "p": 228500,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MRC-300HWN1-R (C)",
+  "id": "2587ffcc-f5e4-4410-b9b8-0c375a490c28",
+  "p": 210900,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MSABF-34HRN1-QC2W",
+  "id": "cf61fdd6-7064-47d0-9ce9-4d33e53cd77c",
+  "p": 17147.37,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MSAGA-09HRN1-QC2",
+  "id": "18636c5f-0861-45c9-ad5b-52d4263e0057",
+  "p": 5631.58,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MSAGB-12HRN1-QC0",
+  "id": "d17752dd-fb6e-4733-8612-cfe423a32205",
+  "p": 6147.37,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MSAGC-18HRN1-QC0",
+  "id": "09d123bd-4a8a-4f42-94b0-dd6319794407",
+  "p": 8936.84,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MSAGD-24HRN1-QC0W",
+  "id": "e754d193-3bad-43e0-9927-070456267859",
+  "p": 11989.47,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MSC-120D2N8",
+  "id": "224c5bfc-ef6c-4937-9069-08215bf04273",
+  "p": 15788.42,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MSC-160D2N8-A",
+  "id": "7463bbdd-762d-4313-bb1f-c36e8737a5ba",
+  "p": 18946.32,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MSC-200D2N8-A",
+  "id": "546baa7c-6248-4897-944c-fe596964b86f",
+  "p": 21893.89,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MSC-70D2N8-A",
+  "id": "226b90f3-a7dc-4d4b-8eae-3d96edc752e5",
+  "p": 12421.05,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MSC-90D2N8-A",
+  "id": "010b04a6-57cc-4287-99e5-fdf785bf7be6",
+  "p": 13683.16,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MSE-09HFN8-B1A",
+  "id": "ed47f1cc-f3ef-48b8-ba6e-69920c7cc995",
+  "p": 7828.16,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MSE-12HFN8-B1A",
+  "id": "e64c658a-8812-4f75-9940-74230ac29161",
+  "p": 8919.49,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MSE-18HFN8-B1A",
+  "id": "83cb8a16-6717-4fcc-aaa3-bcdca2b1fefe",
+  "p": 12308.58,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MSE-24HFN8-B1A",
+  "id": "2cec54b1-7675-4669-80da-eb761ea4cf2d",
+  "p": 16230.8,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MUC-36-FS(3PH)",
+  "id": "68e91731-4e70-48af-b8c2-1d30001e8d85",
+  "p": 20515.79,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MUC-48-FS",
+  "id": "9fb1ad8e-a2a5-4ce5-b60d-aaedcdc4a2c3",
+  "p": 23147.37,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MUC-60-FS",
+  "id": "77455164-4f61-4d43-8f4d-f7a99950fae2",
+  "p": 25147.37,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MWF1-18HRN8-QC3G",
+  "id": "d0e707fc-58be-4236-b52d-52b7a3f94a61",
+  "p": 10911.93,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MWF2-09HRN8-QC3G",
+  "id": "73b65f20-f5f8-4e99-990d-082a6a477ccf",
+  "p": 6669.1,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "MWF2-13HRN8-QC3G",
+  "id": "546e44c5-848e-4d50-9422-edd13c9e70ea",
+  "p": 7274.37,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-12 + CST-R32-MICOND-12 + BZE-T-MBQ4-03",
+  "id": "9d5c5044-96c6-4c24-ace3-322bbe057658",
+  "p": 14989.47,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-12 + R32-MICOND-12+ BZE-T-MBQ4-03",
+  "id": "7ee77bd9-b82e-4b8d-8b80-b4eb6f3d6dc9",
+  "p": 13989.47,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-18 + CST-R32-MICOND-18 + BZE-T-MBQ4-03",
+  "id": "8a407d81-12c9-4004-83f7-797e6f4f3ad4",
+  "p": 19515.79,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-18 + R32-MICOND-18 + BZE-T-MBQ4-03",
+  "id": "b782a35e-c4db-4c44-8d0e-fa5fbd2d90f8",
+  "p": 18515.79,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-24 + CST-R32-MICOND-24-Q + BZE-T-MBQ4-04",
+  "id": "ac650ac4-7ad8-46eb-90db-bd4e9d4c27ac",
+  "p": 23094.74,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-24 + R32-MICOND-24-Q + BZE-T-MBQ4-04",
+  "id": "f7e58079-9f07-43a8-b018-777399613ef4",
+  "p": 22094.74,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-36 (1PH) + CST-R32-MICOND-36-Q + BZE-T-MBQ4-04",
+  "id": "546ee830-5741-4f62-a7d2-eea47dd2ca81",
+  "p": 26226.32,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-36 (1PH) + R32-MICOND-36-Q + BZE-T-MBQ4-04",
+  "id": "449f5d8d-d844-426f-82a2-8c2dc2cdf7c0",
+  "p": 24726.32,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-36 (3PH) + CST-R32-MICOND-36-RD + BZE-T-MBQ4-04",
+  "id": "90a4058d-4661-472b-9b58-07f28caca8bb",
+  "p": 26226.32,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-36 (3PH) + R32-MICOND-36-RRD + BZE-T-MBQ4-04",
+  "id": "10b5b3f5-f68b-4db8-b958-617e9efc7bd7",
+  "p": 24726.32,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-48 (1PH) + CST-R32-MICOND-48-Q",
+  "id": "d1737dee-f36c-4d2e-86d5-2854af11d558",
+  "p": 30237.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-48 (1PH) + CST-R32-MICOND-48-Q + BZE-T-MBQ4-04",
+  "id": "3235ea03-c9db-4339-8d5a-cc44dca5f344",
+  "p": 29989.47,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-48 (1PH) + R32-MICOND-48-Q + BZE-T-MBQ4-04",
+  "id": "90e0ecb1-9a7c-445e-88b0-21284ae7d7e8",
+  "p": 27989.47,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-48 (3PH) + CST-R32-MICOND-48-RD + BZE-T-MBQ4-04",
+  "id": "6cfc78c0-6396-465c-8e8d-be79e24963f8",
+  "p": 29989.47,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-48 (3PH) + CST-R32-MICOND-48-RRD",
+  "id": "97a15c17-3360-47eb-8565-42d48f824e5d",
+  "p": 30237.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-48 (3PH) + R32-MICOND-48-RRD + BZE-T-MBQ4-04",
+  "id": "4a24bd5d-839d-4b36-824c-699c27153c2e",
+  "p": 27989.47,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-60 + CST-R32-MICOND-60-RD + BZE-T-MBQ4-04",
+  "id": "41b2ab28-c49c-43ea-8c95-61ba5ad2ffd8",
+  "p": 33568.42,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MICAS-60 + R32-MICOND-60-RRD + BZE-T-MBQ4-04",
+  "id": "cb28e1ba-903e-4226-83e8-f885edb6911d",
+  "p": 31568.42,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIDCT-24 + CST-R32-MICOND-24-Q",
+  "id": "7be4c870-8c34-4038-a928-c791c4ad059c",
+  "p": 21252.63,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIDCT-24 + R32-MICOND-24-Q",
+  "id": "e3d8c77d-4b03-4fef-b512-68d30238b939",
+  "p": 20252.63,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIDCT-36 (1PH) + CST-R32-MICOND-36-Q",
+  "id": "09bca69f-03fe-40a6-9991-c924e73f9941",
+  "p": 26131.58,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIDCT-36 (1PH) + R32-MICOND-36-Q",
+  "id": "6d83a12e-39ee-47c4-8c3f-4f755b3c620e",
+  "p": 24631.58,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIDCT-36 (3PH) + CST-R32-MICOND-36-RD",
+  "id": "987dca79-467e-49ad-b7d8-a7620e500434",
+  "p": 26131.58,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIDCT-36 (3PH) + R32-MICOND-36-RRD",
+  "id": "7ba47bcf-d1db-4e42-81fb-21d7468c8865",
+  "p": 24631.58,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIDCT-48 (3PH) + CST-R32-MICOND-48-RRD",
+  "id": "5bff6bfb-a5c9-40f7-b0a8-95c9f8093426",
+  "p": 30936.84,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIDCT-48(1PH) + CST-R32-MICOND-48-Q",
+  "id": "80b90ee8-b019-4a55-860f-284d133989ea",
+  "p": 30936.84,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIDCT-48(1PH) + R32-MICOND-48-Q",
+  "id": "ec6c86d8-c090-4991-b69d-7ed6debd8b5a",
+  "p": 28936.84,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIDCT-48(3PH) + R32-MICOND-48-RRD",
+  "id": "fbcf146b-7187-4d26-a598-cefffd897a76",
+  "p": 28936.84,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIDCT-60 (3PH) + CST-R32-MICOND-60-RRD",
+  "id": "8a04dd76-5f61-4ea4-a236-2fed4a256294",
+  "p": 33568.42,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIDCT-60 + R32-MICOND-60-RRD",
+  "id": "2de5d4e0-8448-49bf-baaf-9f4295b35196",
+  "p": 31568.42,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIUCL-36 (1PH) + R32-MICOND-36-RRD",
+  "id": "3e3801eb-b787-4085-a3cc-f82bb5783d1e",
+  "p": 26305.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIUCL-36-Q (1PH) + CST-R32-MICOND-36-Q",
+  "id": "287141a3-aaa2-4a3c-8dff-649eb95dfd31",
+  "p": 27805.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIUCL-36-R (3PH) + CST-R32-MICOND-36-RD",
+  "id": "02beb24d-ebac-4285-a4ad-1678a9782d3b",
+  "p": 27805.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIUCL-36(1PH) + R32-MICOND-36-Q",
+  "id": "2d5c8651-982f-4315-8603-1032ccf9ae2b",
+  "p": 26305.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIUCL-48 (1PH) + R32-MICOND-48-Q",
+  "id": "857d3f44-b530-46ca-94cb-d80d8d57c126",
+  "p": 28237.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIUCL-48 (3PH) + R32-MICOND-48-RRD",
+  "id": "d04ffb8d-e99e-4a74-955e-601267a92f54",
+  "p": 28237.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIUCL-60 (3PH) + R32-MICOND-60-RRD",
+  "id": "455ed24c-44a5-443e-b810-81b915fe5d1f",
+  "p": 31568.42,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Midea",
+  "c": "R32-MIUCL-60-R + CST-R32-MICOND-60-RD",
+  "id": "6625e7af-64cc-49eb-90e8-5a3fd9d5df8a",
+  "p": 33568.42,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC026RN1DKG/EU",
+  "id": "0b602153-e81d-45b4-a8a8-94841d19ee4d",
+  "p": 20694.78,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC026RNNDKG/EU",
+  "id": "152a4596-a517-4219-8770-4a3c450715eb",
+  "p": 21390.43,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC026TNXDKG/EU",
+  "id": "7aed1e36-94a4-4642-9120-df6f0fca952e",
+  "p": 17477.39,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC035RN1DKG/EU",
+  "id": "4e54657f-da9c-429f-a0e6-71ca9f4ee9b3",
+  "p": 21216.52,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC035RNMDKG/EU",
+  "id": "0aef7b98-760a-4fd7-9918-04be6d379d85",
+  "p": 21042.61,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC035RNNDKG/EU",
+  "id": "c2a69249-10d1-4616-b2e5-e9b89c5fd4eb",
+  "p": 21999.13,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC035TNXDKG/EU",
+  "id": "fd0dc099-4731-4ec8-a7a6-fbe676cb19eb",
+  "p": 17999.13,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC052RN4DKG/EU",
+  "id": "9bac9511-4e91-4a3c-bea7-b9731469cd8a",
+  "p": 25999.13,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC052RNMDKG/EU",
+  "id": "77c57bf2-e317-49dd-97ce-c5b6e5c13b30",
+  "p": 24607.83,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC052RNNDKG/EU",
+  "id": "7638ae95-d41b-4eb5-84a5-5f844d27afd9",
+  "p": 25999.13,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC052TNXDKG/EU",
+  "id": "652c79bb-6fe3-4f72-959e-6b4f386374f1",
+  "p": 21999.13,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC071RN4DKG/EU",
+  "id": "78f9dbca-86dd-43cf-b0ba-0204eca8f1d7",
+  "p": 27390.43,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC071RN4PKG/EU",
+  "id": "0a16d9db-3e7b-4cab-8d7e-b48370f7d784",
+  "p": 29477.39,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC071RNCDKG/EU",
+  "id": "fb51be20-6803-4ab0-902f-e48d7f7889e8",
+  "p": 25738.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC071RNMDKG/EU",
+  "id": "ca774adc-8db8-47a7-ba3b-0c9e342a3ace",
+  "p": 25216.52,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC071RNNDKG/EU",
+  "id": "ed01f0ce-ae47-414a-84d5-c6b237c6bdaf",
+  "p": 27390.43,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC071TNXDKG/EU",
+  "id": "fb1879cf-ac65-4eeb-8462-513f54b21b5f",
+  "p": 23129.57,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC100RN4DKG/EU",
+  "id": "5ed53765-430e-4616-b807-4da7b6c5214e",
+  "p": 34868.7,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC100RN4PKG/EU",
+  "id": "45a4eb71-8423-4c56-b6a5-fa6f5906768b",
+  "p": 37129.57,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC100RNCDKG/EU",
+  "id": "c36b22b0-ad4e-4bfd-84e1-7cc23dcf4bd6",
+  "p": 35912.17,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC100RNMDKG/EU",
+  "id": "6d7a7243-d40d-406f-82d2-aaa7afa3ba98",
+  "p": 32520.87,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC100RNTDKG/EU",
+  "id": "97add713-0348-4301-bc62-5fee192b2bc2",
+  "p": 30346.96,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC140RN4DKG/EU",
+  "id": "55a6292e-adb9-4830-a1cf-1bf9fc15d13f",
+  "p": 40086.09,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC140RN4PKG/EU",
+  "id": "d9c75288-6811-41ab-974c-6fd16a29e3ea",
+  "p": 42346.96,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC140RNCDKG/EU",
+  "id": "6f38a431-064d-438b-a591-23ac4566f2cc",
+  "p": 42260,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC140RNMDKG/EU",
+  "id": "72702dcc-95cb-4b07-ba3d-5a85c2f6a13b",
+  "p": 38260,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC160BE4EH/AF",
+  "id": "92500bef-a505-4bae-9120-bf9caa038131",
+  "p": 49825.22,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC160BECEH/AF",
+  "id": "316be6d0-638b-4c85-be54-bb798bab4000",
+  "p": 52433.91,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC160BEMEH/AF",
+  "id": "e7ad14d6-bafc-4a4e-a86a-713794a61ec4",
+  "p": 47999.13,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC180:EHWKH/EU",
+  "id": "ad545cd0-2c53-405d-9234-37e59ac41622",
+  "p": 61999.13,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC200KEHWKH/EU",
+  "id": "f1b919f1-eb0d-4dff-ad35-753e73fe61d5",
+  "p": 79042.61,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AC250KEHWKH/EU",
+  "id": "27307f0c-e249-4f9e-bbeb-e8c76b21e858",
+  "p": 83477.39,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ020TNAPKH/EA",
+  "id": "63bc0b63-dd7d-40d7-b2f9-e9e9aaa4b31a",
+  "p": 4173.04,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ020TNNDKH/EA",
+  "id": "cc7d3463-d8de-42c4-a8b9-3cb843382def",
+  "p": 9564.35,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ025TNAPKH/EA",
+  "id": "eca6627b-d558-421d-9cb8-b5758912ebba",
+  "p": 4520.87,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ025TNNDKH/EA",
+  "id": "cebaa1c2-b755-4285-8fa4-fcfe9bad12a6",
+  "p": 10173.04,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ026TN1DKH/EA",
+  "id": "a54e6763-e0c5-483a-852b-4ca0cee3e691",
+  "p": 10173.04,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ026TNLPKH/EA",
+  "id": "096c34a5-3af7-4dd7-824a-9b8dbc5f1722",
+  "p": 8781.74,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ035TN1DKH/EA",
+  "id": "bc91e61a-fb92-4227-b534-5d9728cdfb9a",
+  "p": 10694.78,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ035TNAPKH/EA",
+  "id": "913d73cc-1357-4b3e-83cd-ffc23bfcba31",
+  "p": 5042.61,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ035TNLPKH/EA",
+  "id": "908d7970-88f9-45e3-aae8-5096e1ae890c",
+  "p": 9042.61,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ035TNNDKH/EA",
+  "id": "23a60840-bb85-4609-858e-a6d46eeac70c",
+  "p": 10694.78,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ040TXJ2KH/EA",
+  "id": "95719d13-d2b5-4368-8ac2-b31a6db285b6",
+  "p": 13303.48,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ050TNAPKH/EA",
+  "id": "6997ab06-55fc-46a6-b6bc-5da9a51f3a2e",
+  "p": 5738.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ050TXJ2KH/EA",
+  "id": "cd2531b8-ef6a-4945-9868-839da99b9e9e",
+  "p": 15129.57,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ052TN1DKH/EA",
+  "id": "33742e1f-10ef-478c-b621-fa8d32efea4b",
+  "p": 11216.52,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ052TNLPKH/EA",
+  "id": "22060f67-f938-416c-a613-b38c73ab1f5a",
+  "p": 9738.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ052TNNDKH/EA",
+  "id": "c81a4442-8dcc-47af-9617-ff319e8b6d28",
+  "p": 11216.52,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ068TNAPKH/EA",
+  "id": "df7376a3-c673-48f2-b293-eaf380834877",
+  "p": 6086.09,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ068TXJ3KH/EA",
+  "id": "4cbde3df-c947-4ae9-a13f-bbc299e3f086",
+  "p": 20173.04,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ071TNLPKH/EA",
+  "id": "a6521441-3193-4831-9309-099af59417db",
+  "p": 10433.91,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ080TXJ4KH/EA",
+  "id": "e62af007-14d2-4711-a7c1-0fee103cecdf",
+  "p": 23216.52,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ100TXJ5KH/EA",
+  "id": "73077d51-7b5a-41e3-8f76-d37704ef87d6",
+  "p": 29216.52,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ125TXJ5KH/EA",
+  "id": "0869b143-b3c4-4d7a-8c8c-c56ede8193a2",
+  "p": 35825.22,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AJ140TXJ5KH/EA",
+  "id": "5b922ad7-8958-4627-9c72-de47884254dc",
+  "p": 37303.48,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR-EH03E",
+  "id": "757e2d2f-8e34-4c63-a9de-d99f762b06f6",
+  "p": 1738.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR-KH03E",
+  "id": "7c679ce0-fde8-4cd1-a18c-5b0b1e5e52d4",
+  "p": 1738.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR09BSHCMWK/FA",
+  "id": "e9f788f4-71e5-45ef-b704-e759c1b90e9f",
+  "p": 11303.48,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR09BSHGAWK/FA",
+  "id": "17703fff-cd41-4ec5-980b-4bc5eeec6529",
+  "p": 9564.35,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR09CQHGAWK/FA",
+  "id": "ac70f32f-d8b8-4468-a296-60ad0e911301",
+  "p": 6955.65,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR12BSHCMWK/FA",
+  "id": "7dbfc582-523f-4214-b8a7-dccc16a74b09",
+  "p": 12346.96,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR12CQHGAWK/FA",
+  "id": "df10f839-c30c-45c2-aa84-7e88c4d9a412",
+  "p": 7564.35,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR18BSAAAWK/FA",
+  "id": "737e350b-248b-4c16-a9f1-8a4ba40709b4",
+  "p": 22694.78,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR18BSEAMWK/FA",
+  "id": "04fd9a5d-8627-409b-bd3d-edcc18606e6a",
+  "p": 18694.78,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR18BSHCMWK/FA",
+  "id": "9989e744-a0a8-4386-9e37-a4b07a6b015a",
+  "p": 15825.22,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR18BSHGAWK/FA",
+  "id": "6bffb53c-0657-433a-bbec-1ab0a8dda08a",
+  "p": 14955.65,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR18CQHGAWK/FA",
+  "id": "26fc95ba-8176-4f0c-b9b8-f9fabdaffce7",
+  "p": 11216.52,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR24BSAAAWK/FA",
+  "id": "683f3d57-7bef-4a4f-8b98-3de550cc6cc8",
+  "p": 26694.78,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR24BSHCMWK/FA",
+  "id": "a6966b77-d65e-492b-86e8-e0b02f01956e",
+  "p": 19390.43,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR24BSHGAWK/FA",
+  "id": "72cc7e69-6020-450e-a245-fade263df83c",
+  "p": 19390.43,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR24CQHGAWK/FA",
+  "id": "46a63f1f-ce14-4430-8e3b-1b2b0c340514",
+  "p": 14781.74,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR40F09C0AG/FA",
+  "id": "5e71b68b-69e9-40f2-9cda-8023e5f4d10b",
+  "p": 8694.78,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR40F12C0AG/FA",
+  "id": "0a6072b3-caa0-4baa-9b48-dc18f12bd9d7",
+  "p": 9738.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR40F18C0AG/FA",
+  "id": "e0104d03-1bad-4622-9629-d735f3301707",
+  "p": 13912.17,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR40F24C0AG/FA",
+  "id": "a4823d77-beef-4d09-814f-b9c39b194e6c",
+  "p": 17825.22,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR70F09C1FW/FA",
+  "id": "91eb35c6-693e-47d5-a405-401bf4ff66d4",
+  "p": 13042.61,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR70F12C1FW/FA",
+  "id": "f83336fc-c415-4196-a47c-593f419c3546",
+  "p": 14346.96,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR70F18C1FW/FA",
+  "id": "49d80515-6453-4e21-9dd6-ba7556e4af21",
+  "p": 19129.57,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR70F24C1FW/FA",
+  "id": "3c5c9118-799f-4fc9-943c-2121318f4fe0",
+  "p": 22346.96,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR80F12CADW/FA",
+  "id": "31841087-4963-483b-beeb-06a08017963e",
+  "p": 16955.65,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR80F18CADW/FA",
+  "id": "5c8bac77-c603-443e-a898-4520f3eec2fd",
+  "p": 23129.57,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "AR80F24CADW/FA",
+  "id": "e0d7fa2e-d4d2-4d87-b3a3-d385ef7e8bf4",
+  "p": 27216.52,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "MCM-A300BN",
+  "id": "709abdce-c630-4b69-8d20-d7c47416842c",
+  "p": 2999.87,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "MIM-H04*N",
+  "id": "cf042b2e-536b-4e73-9c69-1fff8b9ddeba",
+  "p": 247.7,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "MRK-A10N",
+  "id": "cdb65954-2634-4b0e-a538-0db255116617",
+  "p": 115.88,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "MWR-SH00N",
+  "id": "89c5c14e-e6a8-45aa-afd7-4d308afd6016",
+  "p": 1738.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "MWR-SH11N",
+  "id": "58adbfdb-0331-4214-a1db-0eb706562ddf",
+  "p": 1738.26,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "b": "Samsung",
+  "c": "MWR-WE13N",
+  "id": "75b43f79-6300-426d-b9e3-9cfff3290b76",
+  "p": 1738.26,
+  "pg": null,
+  "rb": null
+ }
+]

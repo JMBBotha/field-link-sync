@@ -1,0 +1,748 @@
+[
+ {
+  "code": "FTXM25A9",
+  "cp": 5177,
+  "id": "02c33268-c5f2-44fa-bc02-77cc2ba9de34",
+  "lp": 5177,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.38
+  }
+ },
+ {
+  "code": "FTXF35F",
+  "cp": 10224,
+  "id": "0af8ec1f-1a00-426e-8ce6-de41bacebc56",
+  "lp": 10224,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.284
+  }
+ },
+ {
+  "code": "FTXM35A9",
+  "cp": 5800,
+  "id": "154b938d-4edf-4113-b0e8-549ad50c34bb",
+  "lp": 5800,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.4
+  }
+ },
+ {
+  "code": "FCAG35B (x3) + FCAG50B + 5MXM90A8",
+  "cp": 70179,
+  "id": "1c02dd4f-bbd4-420c-a475-84aa4d774ba1",
+  "lp": 70179,
+  "pb": null,
+  "pg": 1,
+  "rb": {
+   "height": 0.02,
+   "width": 0.824,
+   "x": 0.088,
+   "y": 1.036
+  }
+ },
+ {
+  "code": "BRC073 + BRCW901A03 + KRP067A41",
+  "cp": 2509,
+  "id": "052f80a5-b523-41db-9855-4f3e0d14b293",
+  "lp": 2509,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.016,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.422
+  }
+ },
+ {
+  "code": "FTXM71A-DUP2",
+  "cp": 8385,
+  "id": "488c9dbf-ee42-414f-82ee-423c459df113",
+  "lp": 8385,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.46
+  }
+ },
+ {
+  "code": "FBA50A9 (x3) + 5MXM90A8",
+  "cp": 66054,
+  "id": "4d17867d-ffc8-4283-807c-18a19f42f0c4",
+  "lp": 66054,
+  "pb": null,
+  "pg": 12,
+  "rb": {
+   "height": 0.02,
+   "width": 0.824,
+   "x": 0.088,
+   "y": 1.017
+  }
+ },
+ {
+  "code": "AJ025TNNDKH/EA",
+  "cp": 8138.43,
+  "id": "cebaa1c2-b755-4285-8fa4-fcfe9bad12a6",
+  "lp": 10173.04,
+  "pb": null,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "code": "FTXJ25AW9",
+  "cp": 19286,
+  "id": "4df33a4a-9168-417b-8cc0-939df9cb491b",
+  "lp": 19286,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.816
+  }
+ },
+ {
+  "code": "FTXF60F",
+  "cp": 18038,
+  "id": "4ea4656d-dd16-4e8b-a016-5f7f0940873c",
+  "lp": 18038,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.324
+  }
+ },
+ {
+  "code": "FTXJ25AS",
+  "cp": 11163,
+  "id": "50cfe14c-620d-4170-87e5-d3e3d20f8e04",
+  "lp": 11163,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.26
+  }
+ },
+ {
+  "code": "FTXJ35AS",
+  "cp": 12340,
+  "id": "552d73bb-23a9-4b32-abb6-4188f67afbaa",
+  "lp": 12340,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.28
+  }
+ },
+ {
+  "code": "FTXM50A8",
+  "cp": 7357,
+  "id": "552fca41-ad31-49b0-b259-0afb08bf33be",
+  "lp": 7357,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.42
+  }
+ },
+ {
+  "code": "FTXJ50AB",
+  "cp": 12690,
+  "id": "59939f97-c3ce-4f9d-b757-6b6c8d908308",
+  "lp": 12690,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.24
+  }
+ },
+ {
+  "code": "FTXJ35AB",
+  "cp": 12340,
+  "id": "5c9fef64-f746-4d1c-9d7c-0cfd385b1901",
+  "lp": 12340,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.22
+  }
+ },
+ {
+  "code": "MC55W",
+  "cp": 4945,
+  "id": "5ecfb32e-264f-42a5-a98c-576d29fae123",
+  "lp": 4945,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.057,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.103
+  }
+ },
+ {
+  "code": "FTXJ25AB",
+  "cp": 11163,
+  "id": "60afa78a-6f9e-44f5-ab5d-8a057d7ba17a",
+  "lp": 11163,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.2
+  }
+ },
+ {
+  "code": "BRC073 + BRCW901A03-DUP4",
+  "cp": 1950,
+  "id": "6316611a-840d-4dd9-8c24-6915c1e9aaf0",
+  "lp": 1950,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.016,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.542
+  }
+ },
+ {
+  "code": "FTXM71A",
+  "cp": 26170,
+  "id": "631f6d00-9565-4517-8427-cfa3efafcbce",
+  "lp": 26170,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.62
+  }
+ },
+ {
+  "code": "FBA35A9 (x3) + FBA50A9 + 5MXM90A8",
+  "cp": 74831,
+  "id": "66687551-a2f7-4718-857f-50e199a9213f",
+  "lp": 74831,
+  "pb": null,
+  "pg": 12,
+  "rb": {
+   "height": 0.02,
+   "width": 0.824,
+   "x": 0.088,
+   "y": 1.057
+  }
+ },
+ {
+  "code": "FTXM50A",
+  "cp": 23094,
+  "id": "68b7afe2-dbd1-413e-96c1-71e7b191e57a",
+  "lp": 23094,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.58
+  }
+ },
+ {
+  "code": "FTXM35A",
+  "cp": 17302,
+  "id": "7aaee46d-0b0d-42f3-a8af-b95c4bd4aaae",
+  "lp": 17302,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.56
+  }
+ },
+ {
+  "code": "4MXM80A8",
+  "cp": 25627,
+  "id": "7ca621ac-e8d0-4a04-a867-8dd1610fcbd1",
+  "lp": 25627,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.16
+  }
+ },
+ {
+  "code": "FTXM60A-DUP2",
+  "cp": 7622,
+  "id": "7e242522-2639-4bdf-b5c1-4c84dc58208b",
+  "lp": 7622,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.44
+  }
+ },
+ {
+  "code": "FTXJ50AB9",
+  "cp": 30858,
+  "id": "835cccc7-acac-4591-8f56-a2c777979060",
+  "lp": 30858,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.976
+  }
+ },
+ {
+  "code": "AJ026TNNDKH/EA",
+  "cp": 8138.432,
+  "id": "a9453b99-b61f-48f3-a488-9ae5876c99f6",
+  "lp": null,
+  "pb": null,
+  "pg": null,
+  "rb": null
+ },
+ {
+  "code": "FTXJ35AW9",
+  "cp": 21499,
+  "id": "8ea10d3f-50b3-47ab-94dc-c15f4b88c6d4",
+  "lp": 21499,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.836
+  }
+ },
+ {
+  "code": "FTXJ35AS9",
+  "cp": 23292,
+  "id": "96c2eb30-ee11-4b4c-a1be-bb466bdb9058",
+  "lp": 23292,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.896
+  }
+ },
+ {
+  "code": "FTXJ35AW",
+  "cp": 10547,
+  "id": "99dc64ef-02a2-4d1b-ad34-8dad57c9ef16",
+  "lp": 10547,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.34
+  }
+ },
+ {
+  "code": "FTXJ25AS9",
+  "cp": 20795,
+  "id": "99e94533-74a7-4d15-9e20-a152da3723ff",
+  "lp": 20795,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.876
+  }
+ },
+ {
+  "code": "FTXF50F",
+  "cp": 15591,
+  "id": "9a6edc1f-01dd-4dd3-b265-612fc147c0da",
+  "lp": 15591,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.304
+  }
+ },
+ {
+  "code": "FTXJ25AW",
+  "cp": 9655,
+  "id": "a06a9994-3013-445b-860e-d6b8bc3f74b7",
+  "lp": 9655,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.32
+  }
+ },
+ {
+  "code": "FTXJ50AW9",
+  "cp": 28716,
+  "id": "a08101d1-8d43-45b3-9fe1-8dbb2abfbfef",
+  "lp": 28716,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.856
+  }
+ },
+ {
+  "code": "BRC073 + BRCW901A03",
+  "cp": 1950,
+  "id": "a1752aab-5435-4e7f-bf48-d2265ab903be",
+  "lp": 1950,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.016,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.39
+  }
+ },
+ {
+  "code": "BRC073 + BRCW901A08-DUP2",
+  "cp": 2175,
+  "id": "a29abd0e-f4e5-4344-a699-9afa9f3d6085",
+  "lp": 2175,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.016,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.718
+  }
+ },
+ {
+  "code": "FTXM25A",
+  "cp": 15446,
+  "id": "adaf609d-5ecb-4659-83b5-80a0b8775c8e",
+  "lp": 15446,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.54
+  }
+ },
+ {
+  "code": "BRC073 + BRCW901A08 + KRP067A41",
+  "cp": 2735,
+  "id": "b21b15b7-f930-47f9-a010-2efa3790679e",
+  "lp": 2735,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.016,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.438
+  }
+ },
+ {
+  "code": "BRC073 + BRCW901A08-DUP3",
+  "cp": 2175,
+  "id": "b56eb6f0-0254-4de2-a9eb-60737accf251",
+  "lp": 2175,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.016,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.558
+  }
+ },
+ {
+  "code": "FBA35A9 (x4) + 5MXM90A8",
+  "cp": 74209,
+  "id": "b5d1829a-e4a4-4619-bece-3ad3a8017f48",
+  "lp": 74209,
+  "pb": null,
+  "pg": 12,
+  "rb": {
+   "height": 0.02,
+   "width": 0.824,
+   "x": 0.088,
+   "y": 1.037
+  }
+ },
+ {
+  "code": "BRC073 + BRCW901A03-DUP2",
+  "cp": 1950,
+  "id": "bb8d8c04-2748-45b5-acc6-2b178f2828aa",
+  "lp": 1950,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.016,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.702
+  }
+ },
+ {
+  "code": "BRC073 + BRCW901A08",
+  "cp": 2175,
+  "id": "c9f0c931-440a-4a41-b36a-8d225dbdcd28",
+  "lp": 2175,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.016,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.406
+  }
+ },
+ {
+  "code": "BRC073 + BRCW901A03-DUP3",
+  "cp": 1950,
+  "id": "ca40a14b-17d9-44ed-8d5e-053d3d1517c0",
+  "lp": 1950,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.016,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.992
+  }
+ },
+ {
+  "code": "FTXJ50AS",
+  "cp": 12690,
+  "id": "d46b24c2-7da3-4dd3-bc53-57814bb71dce",
+  "lp": 12690,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.3
+  }
+ },
+ {
+  "code": "FTXM60A",
+  "cp": 24634,
+  "id": "dab6cbc4-9d8a-4405-b476-5c875c891667",
+  "lp": 24634,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.6
+  }
+ },
+ {
+  "code": "FCAG35B (x4) + 5MXM90A8",
+  "cp": 69406,
+  "id": "dcfbbc48-03dc-473e-92ca-c0e0fed9d0ac",
+  "lp": 69406,
+  "pb": null,
+  "pg": 1,
+  "rb": {
+   "height": 0.02,
+   "width": 0.824,
+   "x": 0.088,
+   "y": 1.016
+  }
+ },
+ {
+  "code": "3MXM68A8",
+  "cp": 21171,
+  "id": "de500a14-d4d6-491c-80e6-aa70c753cf91",
+  "lp": 21171,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.14
+  }
+ },
+ {
+  "code": "FFA25A9 (x4) + FFA50A9",
+  "cp": 72634,
+  "id": "def9c038-6e5f-423d-8d8a-cd3a3792c717",
+  "lp": 72634,
+  "pb": null,
+  "pg": 9,
+  "rb": {
+   "height": 0.02,
+   "width": 0.83,
+   "x": 0.086,
+   "y": 1.014
+  }
+ },
+ {
+  "code": "FTXJ50AW",
+  "cp": 10547,
+  "id": "e2ccbea6-161f-4bb9-8441-7d82a17395c3",
+  "lp": 10547,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.36
+  }
+ },
+ {
+  "code": "FTXJ50AS9",
+  "cp": 30858,
+  "id": "e6fcab05-b252-4d3a-a6dc-3e3d21a9f598",
+  "lp": 30858,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.916
+  }
+ },
+ {
+  "code": "EKRS21",
+  "cp": 84,
+  "id": "ea70474d-fa7d-443c-914f-f7156dc6d0aa",
+  "lp": 84,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.016,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.734
+  }
+ },
+ {
+  "code": "FFTXJ35AB9",
+  "cp": 23292,
+  "id": "f5772fff-8847-4da8-ab5c-4eb7532c4301",
+  "lp": 23292,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.956
+  }
+ },
+ {
+  "code": "FTXJ25AB9",
+  "cp": 20795,
+  "id": "f65d88b4-2662-4874-bb23-760360c6ea8e",
+  "lp": 20795,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.936
+  }
+ },
+ {
+  "code": "FTXF25F",
+  "cp": 8991,
+  "id": "435290e6-bd88-408f-bcad-d44f32a40a23",
+  "lp": 8991,
+  "pb": null,
+  "pg": 3,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.264
+  }
+ },
+ {
+  "code": "5MXM90A8",
+  "cp": 30462,
+  "id": "c7a9ea44-4e00-46f1-96a9-0c947a34df3a",
+  "lp": 30462,
+  "pb": null,
+  "pg": 4,
+  "rb": {
+   "height": 0.02,
+   "width": 0.806,
+   "x": 0.096,
+   "y": 0.18
+  }
+ }
+]

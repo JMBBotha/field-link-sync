@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LayoutGrid, Columns3, Plus, CalendarDays, RefreshCw } from "lucide-react";
 import AdminDispatchPage from "@/pages/admin/AdminDispatchPage";
+import V8PipelineBoard from "@/components/v8/V8PipelineBoard";
+import { useLayoutVersion } from "@/hooks/useLayoutVersion";
 import PipelineBoard, { usePipelineData, pipelineOpenValue } from "@/components/jobs/PipelineBoard";
 import DispatchCards from "@/components/jobs/DispatchCards";
 import AttentionStrip from "@/components/jobs/AttentionStrip";
@@ -48,6 +50,8 @@ export function DispatchCalendarRedirect() {
  * Role defaults on first visit: admin → Pipeline·Stages, sales rep → Pipeline·Cards, dispatcher → Dispatch·Cards.
  */
 export default function AdminJobsHubPage() {
+  // v8 Simple: the Lead → Paid board in the New layout (stages view); Classic and the list view keep the old board.
+  const { isClassic: isClassicLayout } = useLayoutVersion();
   const [sp, setSp] = useSearchParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -114,7 +118,7 @@ export default function AdminJobsHubPage() {
           </div>
         )}
       </div>
-      {tab === "pipeline" ? <PipelineBoard view={view === "cards" ? "cards" : "stages"} /> : (
+      {tab === "pipeline" ? (isClassicLayout || view === "cards" ? <PipelineBoard view={view === "cards" ? "cards" : "stages"} /> : <V8PipelineBoard />) : (
         <>
           <AttentionStrip />
           {view === "cards" ? <DispatchCards />
