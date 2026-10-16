@@ -82,6 +82,8 @@ import { isAirConditioningProduct, planStandardInstall } from "@/lib/mandy/quote
 import { fetchVisualCatalogAllowlist, filterPaletteCatalog } from "@/lib/catalogSoT";
 import { useActiveSpecials } from "@/hooks/useActiveSpecials";
 import QuoteActionBar from "@/components/quoting/QuoteActionBar";
+import QuoteBuilderSidebar from "@/components/quoting/QuoteBuilderSidebar";
+import "@/components/quoting/fl-qb.css";
 import { useQuoteDocumentActions } from "@/hooks/useQuoteDocumentActions";
 import AreaFirstBuilder from "@/components/quoting/AreaFirstBuilder";
 import { useSpecialPrompt } from "@/components/specials/SpecialsUi";
@@ -137,34 +139,36 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 
 
   return (
-    <header className="shrink-0 h-11 flex items-center justify-between px-2 sm:px-3 shadow-sm" style={{ backgroundColor: "#0077B6" }}>
+    <header className="fl-qb-header shrink-0 flex flex-wrap items-center justify-between gap-2 px-2 sm:px-4 py-2" data-testid="qb-header">
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
           onClick={onBack}
-          className="h-9 w-9 rounded-xl text-white hover:bg-white/10">
+          className="fl-qb-round h-9 w-9 rounded-full">
 
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <img src={logo} alt="Logo" style={{ height: "50px" }} />
-        <div className="hidden sm:block h-6 w-px bg-white/20" />
-        <h1 className="hidden sm:block text-lg font-semibold tracking-tight text-white">
-          Quote Builder
-        </h1>
+        <img src={logo} alt="Logo" className="lg:hidden" style={{ height: "36px" }} />
+        <div className="min-w-0">
+          <div className="fl-qb-eyebrow">Money · Quote builder</div>
+          <h1 className="fl-qb-title truncate" data-testid="qb-quote-number">
+            {meta?.quote_number || (clientLabel ? "Draft – creating…" : "New quote")}
+          </h1>
+        </div>
       </div>
 
       {/* Client selector in header */}
       <div className="flex items-center gap-3">
         <div className="relative">
           {clientLabel ?
-          <div className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs text-white">
+          <div className="fl-qb-pill flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs">
               <Users className="h-3.5 w-3.5 shrink-0" />
               <span className="font-medium truncate max-w-[150px]">{clientLabel}</span>
               {meta?.id && (meta.status === "draft" ?
-              <button type="button" onClick={() => setClientDialog("change")} className="underline hover:text-white/70" data-testid="change-client">Change</button> :
-              <span className="text-white/60" title="Sent or accepted quotes keep their client. Duplicate to quote someone else.">locked</span>)}
-              {meta?.id && <button type="button" onClick={() => setClientDialog("duplicate")} className="ml-1 hover:text-white/70" title="Duplicate quote" aria-label="Duplicate quote" data-testid="duplicate-quote"><Copy className="h-3.5 w-3.5" /></button>}
+              <button type="button" onClick={() => setClientDialog("change")} className="fl-qb-link font-semibold" data-testid="change-client">Change</button> :
+              <span className="opacity-60" title="Sent or accepted quotes keep their client. Duplicate to quote someone else.">locked</span>)}
+              {meta?.id && <button type="button" onClick={() => setClientDialog("duplicate")} className="ml-1 opacity-80 hover:opacity-100" title="Duplicate quote" aria-label="Duplicate quote" data-testid="duplicate-quote"><Copy className="h-3.5 w-3.5" /></button>}
             </div> :
 
           <div className="relative">
@@ -178,7 +182,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
               }}
               onFocus={() => setShowDropdown(true)}
               onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-              className="h-8 w-36 sm:w-48 text-xs rounded-lg bg-white/10 border-white/20 text-white placeholder:text-white/50" />
+              className="fl-qb-pill h-8 w-36 sm:w-48 text-xs rounded-full" />
 
               {showDropdown && filteredClients.length > 0 &&
             <div className="absolute z-50 top-full right-0 mt-1 w-64 rounded-lg border bg-popover shadow-lg max-h-48 overflow-y-auto">
@@ -212,21 +216,15 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
           }
         </div>
 
-        <div className="flex items-center gap-1.5 rounded-xl bg-white/10 px-2.5 sm:px-3 py-1.5">
-          <span className="hidden sm:inline text-xs text-white/70">
-            {totalItems} items · {zoneCount} zones ·
-          </span>
-          <span className="text-xs sm:text-sm font-bold text-white sm:ml-1">
+        <div className="fl-qb-total flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-1.5" data-testid="qb-total-pill">
+          <span className="text-xs sm:text-sm font-bold">
             {formatRand(totalAmount)}
           </span>
-          <span className="text-[10px] text-white/60">incl. VAT</span>
+          <span className="text-[10px] opacity-90">incl. VAT</span>
+          <span className="hidden sm:inline text-[11px] opacity-90">
+            · {totalItems} items · {zoneCount} zones
+          </span>
         </div>
-
-        {meta?.quote_number ?
-        <span className="hidden lg:block text-[10px] text-white/50 font-mono">{meta.quote_number}</span> :
-        clientLabel ?
-        <span className="hidden lg:block text-[10px] text-white/50 font-mono">Draft – creating…</span> : null
-        }
       </div>
       {meta?.id && clientDialog &&
       <QuoteClientDialog
@@ -1197,7 +1195,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
     return () => { if (bridgeRef.current) bridgeRef.current = null; };
   }, [bridgeRef, flushSave]);
 
-  const leaveBuilder = useCallback(() => navigate(exitTo), [navigate, exitTo]);
+  // Sidebar links set a destination, then go through the same unsaved-changes guard as Back.
+  const navTargetRef = useRef<string | null>(null);
+  const leaveBuilder = useCallback(() => { const to = navTargetRef.current ?? exitTo; navTargetRef.current = null; navigate(to); }, [navigate, exitTo]);
 
   // Discard: undo any auto-saved writes by restoring the opening snapshot,
   // then leave without letting the unmount flush re-save.
@@ -1244,6 +1244,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
     onExit: leaveBuilder,
   });
 
+  const goTo = useCallback((path: string) => { navTargetRef.current = path; exitGuard.requestExit(); }, [exitGuard]);
+
   // Browser / hardware back: intercept while dirty and prompt instead.
   const requestExitRef = useRef(exitGuard.requestExit);
   requestExitRef.current = exitGuard.requestExit;
@@ -1274,7 +1276,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
 
   return (
     <div
-      className="fixed inset-0 z-50 flex h-[100dvh] flex-col overflow-hidden bg-background">
+      className="fl-qb fixed inset-0 z-50 flex h-[100dvh] flex-row overflow-hidden bg-background">
+      <QuoteBuilderSidebar onNavigate={goTo} />
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
       {specialPrompt.dialog}
 
       <QuoteSharedHeader onBack={() => exitGuard.requestExit()} />
@@ -1349,12 +1353,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
 
       {/* Builder mode tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className={`relative z-[10001] shrink-0 ${activeTab === "visual" ? "max-sm:hidden vpdf-desk" : ""}`}>
-        <div className="flex flex-wrap items-center justify-center gap-y-1 py-1 bg-muted/40">
-          <TabsList className="h-8 bg-muted">
-            <TabsTrigger value="quote" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4 font-semibold">Build quote</TabsTrigger>
-            <TabsTrigger value="normal" disabled aria-hidden="true" className="hidden text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Build</TabsTrigger>
-            <TabsTrigger value="visual" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Visual PDF</TabsTrigger>
-            <TabsTrigger value="area" disabled aria-hidden="true" className="hidden text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Build Area Quote</TabsTrigger>
+        <div className="fl-qb-modes flex flex-wrap items-center justify-center gap-y-1 py-1.5">
+          <TabsList className="fl-qb-seg h-9 rounded-full p-1">
+            <TabsTrigger value="quote" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4 font-semibold">Build quote</TabsTrigger>
+            <TabsTrigger value="normal" disabled aria-hidden="true" className="hidden text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4">Build</TabsTrigger>
+            <TabsTrigger value="visual" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4">Visual PDF</TabsTrigger>
+            <TabsTrigger value="area" disabled aria-hidden="true" className="hidden text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4">Build Area Quote</TabsTrigger>
             <Button
               size="icon"
               variant="outline"
@@ -1371,8 +1375,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
 
       {/* Accounting step 1: how this quote is paid (locked once invoiced) */}
       {quoteId && meta?.status !== "declined" && (
-        <div className="shrink-0 px-3 pb-2">
-          <PaymentPlanPicker quoteId={quoteId} />
+        <div className="fl-qb-strip shrink-0 mx-3 mb-2 flex flex-wrap items-center gap-3 rounded-2xl px-3 py-2" data-testid="qb-settings-strip">
+          <span className="fl-qb-eyebrow shrink-0">Payment plan</span>
+          <div className="min-w-0 flex-1"><PaymentPlanPicker quoteId={quoteId} /></div>
         </div>
       )}
 
@@ -1617,7 +1622,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
       {/* Shared Save draft · Download PDF · Send bar: Build quote tab at every width, and Visual PDF on phones/tablets
           (replaces the old total + Send bar there). Phones keep the live total and sit above the bottom nav. */}
       {quoteId && (activeTab === "quote" || isCompact) && (
-        <div className="shrink-0 border-t bg-card px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] mb-16 lg:mb-0">
+        <div className="fl-qb-actions shrink-0 mx-0 lg:mx-3 lg:mb-3 lg:rounded-2xl border-t lg:border px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] mb-16" data-testid="qb-action-bar">
           <QuoteActionBar
             busy={docActions.busy}
             onSave={docActions.handleSave}
@@ -1629,7 +1634,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total incl. VAT</p>
                 <p className="truncate text-base font-bold tabular-nums text-foreground">{formatRand(displayQuoteTotals.total)}</p>
               </div>
-            ) : undefined}
+            ) : (
+              <span className="text-xs text-muted-foreground" data-testid="qb-editing-status">
+                {otherEditors.length > 0 ? `${otherEditors[0].name} also has this quote open` : "Nobody else editing"}
+              </span>
+            )}
+            discard={() => { if (window.confirm("Discard the changes made since you opened this quote?")) void discardAndLeave(); }}
           />
         </div>
       )}
@@ -1678,6 +1688,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
         </div>
       )}
 
+      </div>
     </div>);
 
 }

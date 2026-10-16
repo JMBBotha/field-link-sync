@@ -1,0 +1,24 @@
+/* Field Lynk PDF builder v1 — page chrome only (sidebar, header, modes, strip, action bar).
+   The quote document (unit picture, description, QR code) is not styled here. */
+.fl-qb{--qb-b1:#1AA7EC;--qb-b2:#1590D6;--qb-side:#F4F8FB;--qb-card:#FFFFFF;--qb-bd:#DCE7F0;--qb-mu:#5D7086;--qb-in:#EEF4F9}
+.dark .fl-qb{--qb-side:#0B1626;--qb-card:#111E30;--qb-bd:#1F3550;--qb-mu:#8CA2BA;--qb-in:#0A1422}
+.fl-qb-side{background:var(--qb-side);border-right:1px solid var(--qb-bd);overflow-y:auto}
+.fl-qb .fl-logo-light{display:block}.fl-qb .fl-logo-dark{display:none}
+.dark .fl-qb .fl-logo-light{display:none}.dark .fl-qb .fl-logo-dark{display:block}
+.fl-qb-user{background:var(--qb-in);border:1px solid var(--qb-bd)}
+.fl-qb-av{background:var(--qb-b1);color:#fff}
+.fl-qb-nav{color:inherit;opacity:.85}.fl-qb-nav:hover{background:var(--qb-in);opacity:1}
+.fl-qb-nav.is-active{background:rgba(26,167,236,.14);color:var(--qb-b2);font-weight:700;opacity:1}
+.dark .fl-qb-nav.is-active{color:var(--qb-b1)}
+.fl-qb-header{background:var(--qb-card);border-bottom:1px solid var(--qb-bd)}
+.fl-qb-round{border:1px solid var(--qb-bd);background:var(--qb-in)}
+.fl-qb-eyebrow{font:600 10.5px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--qb-b1)}
+.fl-qb-title{font-size:20px;font-weight:800;letter-spacing:-.01em;line-height:1.15}
+.fl-qb-pill{background:var(--qb-in);border:1px solid var(--qb-bd)}
+.fl-qb-link{color:var(--qb-b2)}.dark .fl-qb-link{color:var(--qb-b1)}
+.fl-qb-total{background:linear-gradient(180deg,#5CC6F5,#1AA7EC 55%,#1590D6);color:#fff;box-shadow:0 6px 18px rgba(26,167,236,.35)}
+.fl-qb-seg{background:var(--qb-in);border:1px solid var(--qb-bd)}
+.fl-qb-strip{background:var(--qb-card);border:1px solid var(--qb-bd)}
+.fl-qb-actions{background:var(--qb-card);border-color:var(--qb-bd)}
+@media (min-width:1024px){.fl-qb-actions{margin-bottom:.75rem}}
+@media (max-width:640px){.fl-qb-title{font-size:16px}.fl-qb-eyebrow{font-size:9.5px}}
