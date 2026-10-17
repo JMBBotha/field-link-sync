@@ -83,7 +83,7 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Scope of Work:" },
-    { type: "paragraph", text: `1.1 Should you, the client, feel comfortable in appointing us for your HVAC project, We, ${name}, agree to provide air conditioning services as outlined in the quotation/estimate above.` },
+    { type: "paragraph", text: `1.1 Thank you for considering ${name}. By accepting this quotation, you appoint us to supply and install the air conditioning equipment and services described above, in accordance with the terms and conditions below.` },
     { type: "paragraph", text: "1.2 The services will be carried out by experienced technicians in a professional manner, adhering to industry standards and safety guidelines." },
     { type: "spacer", text: "" },
 
