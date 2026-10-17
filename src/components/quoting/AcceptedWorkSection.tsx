@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { readSendReply, sastTime, waitForSendResult } from "@/lib/quoteEmailSend";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -191,12 +192,18 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
   };
 
-  const sendDepositEmail = async () => {
+  // Duplicate-send guard (17 Oct 2026): ref lock + server send record (kind "deposit").
+  const depositSendingRef = useRef(false);
+  const sendDepositEmail = async (confirmResend = false) => {
     if (!customer?.email || !clientLink) {
       toast({ title: "Client email unavailable", variant: "destructive" });
       return;
     }
+    if (depositSendingRef.current) return;
+    depositSendingRef.current = true;
+    const sendId = crypto.randomUUID();
     setBusy("deposit-email");
+    let again = false;
     try {
       const { data, error } = await supabase.functions.invoke("send-quote-email", {
         body: {
@@ -209,13 +216,22 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
           totalAmount: Number(invoice?.grand_total) || Number(quote?.total) * 0.7 || 0,
           quoteUrl: clientLink,
           depositRequest: true,
+          sendId,
+          confirm_resend: confirmResend,
         },
       });
-      const payload = data as { success?: boolean; code?: string; message?: string } | null;
-      if (error || payload?.code === "EMAIL_NOT_CONFIGURED" || payload?.success !== true) {
-        const detail = payload?.code === "EMAIL_NOT_CONFIGURED" ? "EMAIL_NOT_CONFIGURED" : payload?.message || error?.message;
-        throw new Error(detail || "Deposit email failed");
+      let r = await readSendReply(data, error);
+      if (r.kind === "unknown") {
+        const row = await waitForSendResult(quoteId, sendId);
+        r = row?.status === "sent" ? { kind: "ok", data: {} } : { kind: "failed", reason: row?.error || r.reason };
       }
+      if (r.kind === "recent") {
+        again = window.confirm(`This deposit request was just sent to ${r.sentTo} at ${sastTime(r.sentAt)}, send again?`);
+        return;
+      }
+      if (r.kind === "in_progress") throw new Error(`Already sending to ${r.sentTo} (started ${sastTime(r.startedAt)}), please wait`);
+      if (r.kind === "not_configured") throw new Error("EMAIL_NOT_CONFIGURED");
+      if (r.kind === "skipped" || r.kind === "failed") throw new Error(r.reason);
       toast({ title: "Deposit request emailed" });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Deposit email failed";
@@ -225,7 +241,9 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
         variant: "destructive",
       });
     } finally {
+      depositSendingRef.current = false;
       setBusy(null);
+      if (again) void sendDepositEmail(true);
     }
   };
 
@@ -314,7 +332,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
         </div>
         {hasDeposit ? (
           <div className="flex flex-wrap items-center gap-1.5">
-            <Button variant="outline" size="icon" onClick={sendDepositEmail} disabled={!clientLink || !customer?.email || busy === "deposit-email"} title="Email deposit request">
+            <Button variant="outline" size="icon" onClick={() => void sendDepositEmail()} disabled={!clientLink || !customer?.email || busy === "deposit-email"} title="Email deposit request">
               {busy === "deposit-email" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
             </Button>
             <Button variant="outline" size="icon" onClick={sendDepositWhatsApp} disabled={!clientLink} title="WhatsApp deposit request">

@@ -11,6 +11,16 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Bumped on each release so a plain OPTIONS request shows which build is live.
+const FN_VERSION = "send-guard-2026-10-17";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const RECENT_RESEND_MS = 2 * 60 * 1000;
+const J = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+const shortReason = (d: unknown): string => {
+  const o = d as { message?: string; error?: string; name?: string } | null;
+  return String(o?.message || o?.error || o?.name || (typeof d === "string" ? d : JSON.stringify(d ?? "")) || "unknown error").slice(0, 500);
+};
+
 function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(value);
 }
@@ -137,21 +147,94 @@ function buildBundleHtml(brand: Brand, clientName: string, rows: BundleRow[], ur
 </table></td></tr></table></body></html>`;
 }
 
+// The quote must belong to the caller's company (profile company or company membership).
+async function loadQuoteForSend(sb: any, quoteId: string, userId: string): Promise<QuoteForSend | null> {
+  const { data: q } = await sb.from("quotes").select("id, company_id, quote_number, status, customer_id, lead_id, total").eq("id", quoteId).maybeSingle();
+  if (!q?.company_id) return null;
+  const [{ data: prof }, { data: mem }] = await Promise.all([
+    sb.from("profiles").select("company_id").eq("id", userId).maybeSingle(),
+    sb.from("company_members").select("id").eq("user_id", userId).eq("company_id", q.company_id).limit(1).maybeSingle(),
+  ]);
+  return prof?.company_id === q.company_id || mem?.id ? q : null;
+}
+type QuoteForSend = { id: string; company_id: string; quote_number: string | null; status: string | null; customer_id: string | null; lead_id: string | null; total: number | null };
+type ClaimArgs = { q: QuoteForSend; sendId: string; kind: string; recipient: string; cc: string[] | null; userId: string; retryOf: string | null; confirmResend: boolean; status: "queued" | "sending" };
+
+/**
+ * Takes (or continues) the per-quote send lock. Returns the send row, or a ready 409/502/200 reply:
+ *  - same sendId already finished → replay its result, never email again
+ *  - another send of this quote queued/sending → SEND_IN_PROGRESS (hard lock, unique index)
+ *  - this quote went to this address < 2 min ago and no confirm_resend → RECENTLY_SENT
+ */
+async function claimSend(sb: any, a: ClaimArgs): Promise<{ row: { id: string } } | { response: Response }> {
+  await sb.rpc("expire_stale_quote_email_sends", { p_quote_id: a.q.id });
+  const { data: same } = await sb.from("quote_email_sends").select("id, status, resend_id, error, recipient, started_at").eq("send_id", a.sendId).maybeSingle();
+  if (same) {
+    if (same.status === "queued" && a.status === "sending") {
+      const { data: moved } = await sb.from("quote_email_sends").update({ status: "sending", cc: a.cc?.length ? a.cc : null }).eq("id", same.id).eq("status", "queued").select("id").maybeSingle();
+      if (moved) return { row: moved };
+    }
+    if (same.status === "queued" && a.status === "queued") return { row: same };
+    if (same.status === "sent") return { response: J({ success: true, id: same.resend_id, replay: true, sendRowId: same.id }) };
+    if (same.status === "failed") return { response: J({ error: same.error, code: "SEND_FAILED", reason: same.error, sendRowId: same.id }, 502) };
+    return { response: J({ error: "This send is still in progress", code: "SEND_IN_PROGRESS", sentTo: same.recipient, startedAt: same.started_at }, 409) };
+  }
+  const inProgress = async () => {
+    const { data: active } = await sb.from("quote_email_sends").select("recipient, started_at").eq("quote_id", a.q.id).in("status", ["queued", "sending"]).limit(1).maybeSingle();
+    return active ? J({ error: `Already sending this quote to ${active.recipient}`, code: "SEND_IN_PROGRESS", sentTo: active.recipient, startedAt: active.started_at }, 409) : null;
+  };
+  const busy = await inProgress();
+  if (busy) return { response: busy };
+  if (!a.confirmResend) {
+    const since = new Date(Date.now() - RECENT_RESEND_MS).toISOString();
+    const { data: recent } = await sb.from("quote_email_sends").select("recipient, finished_at")
+      .eq("quote_id", a.q.id).eq("kind", a.kind).eq("status", "sent").eq("recipient", a.recipient).gte("finished_at", since)
+      .order("finished_at", { ascending: false }).limit(1).maybeSingle();
+    if (recent) return { response: J({ error: `This quote was just sent to ${recent.recipient}`, code: "RECENTLY_SENT", sentTo: recent.recipient, sentAt: recent.finished_at }, 409) };
+  }
+  const { data: ins, error: insErr } = await sb.from("quote_email_sends").insert({
+    send_id: a.sendId, quote_id: a.q.id, company_id: a.q.company_id, kind: a.kind, recipient: a.recipient, cc: a.cc?.length ? a.cc : null,
+    status: a.status, created_by: a.userId, retry_of: a.retryOf, attempts: await nextAttempt(sb, a.retryOf),
+  }).select("id").single();
+  if (insErr) return { response: (await inProgress()) || J({ error: insErr.message }, 500) };
+  return { row: ins };
+}
+
+// Any queued/sending row for this press that ends without a Resend result → failed + alert.
+async function failBySendId(sb: any, sendId: string | null, reason: string) {
+  if (!sendId) return;
+  const { data: rows } = await sb.from("quote_email_sends").update({ status: "failed", error: reason.slice(0, 500), finished_at: new Date().toISOString() })
+    .eq("send_id", sendId).in("status", ["queued", "sending"]).select("id");
+  for (const r of rows || []) await sb.rpc("notify_quote_email_failed", { p_send: r.id });
+}
+
+async function nextAttempt(sb: any, retryOf: string | null): Promise<number> {
+  if (!retryOf) return 1;
+  const { data } = await sb.from("quote_email_sends").select("attempts").eq("id", retryOf).maybeSingle();
+  return (Number(data?.attempts) || 1) + 1;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: { ...corsHeaders, "X-Fn-Version": FN_VERSION } });
   }
 
   // Prevent this branded sender from being used as an open relay.
   const auth = await requireUser(req);
   if (!auth.ok) return auth.response;
 
+  let currentSendId: string | null = null;
   try {
     const reqBody = await req.json();
     const { to, subject, quoteNumber, message, copyToCompany, clientName, pdfBase64, totalAmount, unsubscribeToken, quoteId, customerId, region, quoteUrl, depositRequest } = reqBody;
+    // Duplicate-send guard (17 Oct 2026): one sendId per Email press (Resend Idempotency-Key + send record).
+    const sendId: string | null = typeof reqBody.sendId === "string" && UUID_RE.test(reqBody.sendId) ? reqBody.sendId : null;
+    const confirmResend = reqBody.confirm_resend === true;
+    currentSendId = reqBody?.previewOnly === true ? null : sendId;
+    const retryOf: string | null = typeof reqBody.retryOf === "string" && UUID_RE.test(reqBody.retryOf) ? reqBody.retryOf : null;
     // Extra recipients the sender typed in (comma-separated string or array). Validated, deduped, max 5.
     const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const extraRecipients: string[] = Array.from(new Set(
+    const extraRecipients: string[] = Array.from(new Set<string>(
       (Array.isArray(reqBody.cc) ? reqBody.cc : String(reqBody.cc || "").split(","))
         .map((e: unknown) => String(e || "").trim().toLowerCase())
         .filter((e: string) => EMAIL_RE.test(e) && e !== String(to || "").trim().toLowerCase()),
@@ -188,7 +271,6 @@ serve(async (req) => {
 
     if (reqBody?.bundleToken) {
       const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-      const J = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const { data: me } = await sb.from("profiles").select("company_id").eq("id", auth.userId).maybeSingle();
       const { data: b } = await sb.from("quote_bundles").select("*").eq("token", reqBody.bundleToken).maybeSingle();
       if (!b || !me?.company_id || b.company_id !== me.company_id) return J({ error: "Bundle not found" }, 404);
@@ -218,7 +300,7 @@ serve(async (req) => {
       const hiTxt = firstName(clientName) ? `Hi ${firstName(clientName)},` : "Hello,";
       const text = `${hiTxt}\n\nHere are ${rows.length} quotes for you to compare:\n${rows.map((r) => `- ${r.quote_number}${r.summary ? `: ${r.summary}` : ""} (${formatZAR(Number(r.total) || 0)} incl. VAT)`).join("\n")}\n\nView all quotes: ${url}\nYou can accept each one or ask for changes there.\n\nKind regards,\n\n${renderSignatureText(sender, brand.sig)}`;
       const r = await fetch("https://api.resend.com/emails", {
-        method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...(sendId ? { "Idempotency-Key": `quote-bundle/${sendId}` } : {}) },
         body: JSON.stringify({
           from: `${(brand.name || "Quotes").replace(/[<>"]/g, "")} <${mailbox}>`, reply_to: replyToFor(sender) || mailbox, to: [dest],
           subject: `Your ${rows.length} quotes from ${brand.name || "us"} [Ref: ${refs}]`, html, text,
@@ -241,6 +323,42 @@ serve(async (req) => {
       return J({ success: true, id: rd.id, sentTo: dest, url });
     }
 
+    // Step 1 of an Email press: take the per-quote lock BEFORE the PDF is built, so a second
+    // press / device / user is refused while this one is still building or sending.
+    if (reqBody?.beginSend === true || reqBody?.reportFailure === true) {
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      if (!sendId || !quoteId || !to) return J({ error: "sendId, quoteId and to are required" }, 400);
+      const q = await loadQuoteForSend(sb, quoteId, auth.userId as string);
+      if (!q) return J({ error: "Quote not found" }, 404);
+      const recipient = String(to).trim().toLowerCase();
+      const kind = depositRequest ? "deposit" : "quote";
+      if (reqBody.beginSend === true) {
+        const { data: pref } = await sb.from("email_preferences").select("unsubscribed").eq("email", recipient).maybeSingle();
+        if (pref?.unsubscribed) return J({ success: false, skipped: true, reason: "Recipient has unsubscribed from marketing emails." });
+        const claim = await claimSend(sb, { q, sendId, kind, recipient, cc: null, userId: auth.userId as string, retryOf, confirmResend, status: "queued" });
+        if ("response" in claim) return claim.response;
+        return J({ success: true, queued: true, sendRowId: claim.row.id });
+      }
+      // The app could not finish (e.g. the PDF failed to build): record why and alert. Nothing was emailed.
+      const reason = String(reqBody.reason || "The quote PDF could not be built").slice(0, 500);
+      const now = new Date().toISOString();
+      const { data: existing } = await sb.from("quote_email_sends").select("id, status").eq("send_id", sendId).maybeSingle();
+      let rowId = existing?.id as string | undefined;
+      if (existing && existing.status !== "queued") return J({ success: true, recorded: false, status: existing.status, sendRowId: existing.id });
+      if (existing) {
+        await sb.from("quote_email_sends").update({ status: "failed", error: reason, finished_at: now }).eq("id", existing.id).eq("status", "queued");
+      } else {
+        const { data: row, error: insErr } = await sb.from("quote_email_sends").insert({
+          send_id: sendId, quote_id: q.id, company_id: q.company_id, kind, recipient, status: "failed", error: reason,
+          created_by: auth.userId, retry_of: retryOf, attempts: await nextAttempt(sb, retryOf), finished_at: now,
+        }).select("id").single();
+        if (insErr) return J({ error: insErr.message }, 500);
+        rowId = row.id;
+      }
+      await sb.rpc("notify_quote_email_failed", { p_send: rowId });
+      return J({ success: true, recorded: true, sendRowId: rowId });
+    }
+
     if (!to) {
       return new Response(JSON.stringify({ error: "Missing 'to' email address" }), {
         status: 400,
@@ -261,6 +379,7 @@ serve(async (req) => {
       .maybeSingle();
 
     if (pref?.unsubscribed) {
+      await failBySendId(supabase, sendId, "Recipient has unsubscribed from marketing emails.");
       return new Response(
         JSON.stringify({ success: false, skipped: true, reason: "Recipient has unsubscribed from marketing emails." }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -284,6 +403,7 @@ serve(async (req) => {
 
     if (!RESEND_API_KEY || !RESEND_API_KEY.trim()) {
       console.error("RESEND_API_KEY not configured – refusing to fake a send");
+      await failBySendId(supabase, sendId, "Email is not configured on the server (no email service key).");
       return new Response(
         JSON.stringify({
           error: "Email not configured",
@@ -359,26 +479,75 @@ serve(async (req) => {
     const ccList = extraRecipients.filter((e) => e !== companyCopy);
     if (ccList.length > 0) resendPayload.cc = ccList;
 
-    const resendRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify(resendPayload),
-    });
+    // ── Send record + hard lock (only when the caller gives a quote and a sendId). ──
+    const kind = depositRequest ? "deposit" : "quote";
+    const recipient = String(to).trim().toLowerCase();
+    let sendRow: { id: string } | null = null;
+    let q: QuoteForSend | null = null;
+    if (quoteId && sendId) {
+      q = await loadQuoteForSend(supabase, quoteId, auth.userId as string);
+      if (!q) return J({ error: "Quote not found" }, 404);
+      const claim = await claimSend(supabase, { q, sendId, kind, recipient, cc: ccList, userId: auth.userId as string, retryOf, confirmResend, status: "sending" });
+      if ("response" in claim) return claim.response;
+      sendRow = claim.row;
+    }
+    const markFailed = async (reason: string) => {
+      if (!sendRow) return;
+      await supabase.from("quote_email_sends").update({ status: "failed", error: reason, finished_at: new Date().toISOString() }).eq("id", sendRow.id).eq("status", "sending");
+      await supabase.rpc("notify_quote_email_failed", { p_send: sendRow.id });
+    };
 
-    const resendData = await resendRes.json();
+    let resendRes: Response;
+    let resendData: any;
+    try {
+      resendRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json",
+          ...(sendId ? { "Idempotency-Key": `quote-email/${sendId}` } : {}),
+        },
+        body: JSON.stringify(resendPayload),
+      });
+      resendData = await resendRes.json().catch(() => ({}));
+    } catch (e) {
+      const reason = `Could not reach the email service: ${shortReason((e as Error)?.message || e)}`;
+      await markFailed(reason);
+      return J({ error: reason, code: "SEND_FAILED", reason, sendRowId: sendRow?.id }, 502);
+    }
 
     if (!resendRes.ok) {
       console.error("Resend API error:", resendData);
-      return new Response(JSON.stringify({ error: "Failed to send email", details: resendData }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const reason = `Email service refused it (${resendRes.status}): ${shortReason(resendData)}`;
+      await markFailed(reason);
+      return J({ error: "Failed to send email", code: "SEND_FAILED", reason, details: resendData, sendRowId: sendRow?.id }, 500);
     }
 
-    return new Response(JSON.stringify({ success: true, id: resendData.id }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // Accepted by Resend: record it server-side (the app no longer logs this itself).
+    if (sendRow && q) {
+      const now = new Date().toISOString();
+      await supabase.from("quote_email_sends").update({ status: "sent", resend_id: resendData?.id || null, finished_at: now, error: null }).eq("id", sendRow.id);
+      if (kind === "quote") {
+        const num = q.quote_number || quoteNumber;
+        const amount = Number(totalAmount ?? q.total ?? 0);
+        await supabase.from("communication_log").insert({
+          agent_id: auth.userId, customer_id: q.customer_id || customerId || null, lead_id: q.lead_id || null, type: "email",
+          subject: `Quote ${num} sent`,
+          body: `Quote ${num} (${amount.toFixed(2)} incl. VAT) was sent to ${String(to).trim()} via email.`,
+        });
+        // Same columns the app used to set; never pull an accepted quote back to "sent".
+        const patch: Record<string, unknown> = { sent_at: now, sent_by: auth.userId, sent_channel: "email", sent_method: "email" };
+        if (q.status !== "accepted") patch.status = "sent";
+        await supabase.from("quotes").update(patch).eq("id", q.id);
+      }
+    }
+
+    return J({ success: true, id: resendData?.id, sendRowId: sendRow?.id, logged: !!sendRow });
   } catch (err) {
     console.error("send-quote-email error:", err);
+    try {
+      const sid = currentSendId;
+      if (sid) await failBySendId(createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!), sid, `Server error: ${shortReason((err as Error)?.message || err)}`);
+    } catch (_) { /* best effort */ }
     return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
