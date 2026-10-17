@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
-import { Mail, Loader2, Check, Download, Link2, Eye } from "lucide-react";
+import { Mail, Loader2, Download, Link2, Eye } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +17,9 @@ import ClientQuotePdfRoot, { waitForClientPdfRoot, clientBrochureSelector } from
 import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 import { formatRand } from "@/utils/formatRand";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import SendStateButton, { type SendButtonState } from "./SendStateButton";
+import { FlConfirmDialog } from "./FlConfirmDialog";
+import "./fl-send.css";
 import {
   useQuoteEmailSendState, quoteEmailSendKey, readSendReply, waitForSendResult, sastTime,
   setLocalSendLock, clearLocalSendLock, getLocalSendLock, LOCAL_SEND_LOCK_EVENT, type SendReply,
@@ -111,6 +112,18 @@ const SendQuoteDialog = ({
   const lastSend = sendState?.last || null;
   const lastFailed = !activeSend && lastSend?.status === "failed" ? lastSend : null;
   const sendLocked = busy === "email" || !!activeSend || !!localLock;
+  // Display-only state for the coloured buttons (17 Oct restyle; send logic unchanged).
+  const [sentInfo, setSentInfo] = useState<{ to: string; at: string } | null>(null);
+  const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
+  const [pdfState, setPdfState] = useState<"idle" | "done" | "failed">("idle");
+  useEffect(() => { if (!open) { setSentInfo(null); setCopyState("idle"); setPdfState("idle"); } }, [open]);
+  const sentToThis = !!sentInfo && sentInfo.to === email.trim().toLowerCase();
+  const emailState: SendButtonState =
+    busy === "email" ? (slow ? "slow" : "busy")
+    : activeSend || localLock ? "busy"
+    : sentToThis ? "done"
+    : lastFailed ? "failed"
+    : "idle";
 
   // Resolve email + recipient phone from THIS quote's own records — never from
   // the customer's latest lead. Phone: quote's customer row first, then the
@@ -176,8 +189,11 @@ const SendQuoteDialog = ({
     if (!clientUrl) return;
     try {
       await navigator.clipboard.writeText(clientUrl);
+      setCopyState("done");
+      window.setTimeout(() => setCopyState("idle"), 2500);
       toast({ title: "Link copied", description: "Send it to your client anywhere." });
     } catch {
+      setCopyState("failed");
       toast({ title: "Copy failed", description: clientUrl, variant: "destructive" });
     }
   };
@@ -221,7 +237,9 @@ const SendQuoteDialog = ({
       // Phones: share sheet with the file (stays in the app), else a blob download (Johan 20:51).
       await savePdfFile(url, `${quoteNumber || "quote"}.pdf`);
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      setPdfState("done");
     } catch (err) {
+      setPdfState("failed");
       toast({
         title: "PDF failed",
         description: err instanceof Error ? err.message : "Please try again.",
@@ -351,6 +369,7 @@ const SendQuoteDialog = ({
       });
       if (await handleReply(await readSendReply(res.data, res.error))) {
         setSent((s) => ({ ...s, email: true }));
+        setSentInfo({ to: to.toLowerCase(), at: new Date().toISOString() });
         toast({ title: "Quote emailed", description: `Sent to ${to}` });
         qc.invalidateQueries({ queryKey: ["quotes"] });
         qc.invalidateQueries({ queryKey: ["quote-document", quoteId] });
@@ -360,6 +379,7 @@ const SendQuoteDialog = ({
       const row = await waitForSendResult(quoteId, sendId);
       if (row?.status === "sent") {
         setSent((s) => ({ ...s, email: true }));
+        setSentInfo({ to: to.toLowerCase(), at: row.finished_at || new Date().toISOString() });
         toast({ title: "Quote emailed", description: `Sent to ${to}` });
       } else {
         toast({ title: "Not sent", description: row?.error || (err instanceof Error ? err.message : "Please try again."), variant: "destructive" });
@@ -376,175 +396,181 @@ const SendQuoteDialog = ({
 
   // No client-facing WhatsApp send here: copy link or email the PDF instead.
 
+  const checks = [
+    ["terms", "I've checked the terms and conditions"],
+    ["brochure", "I've checked the unit info / brochure details"],
+    ["pricing", "I've checked the pricing"],
+  ] as const;
+  const approvedCount = checks.filter(([k]) => approved[k]).length;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Send quote {quoteNumber} to client</DialogTitle>
-          <DialogDescription className="text-muted-foreground">
+      <DialogContent className="fl-send sm:max-w-lg max-h-[92dvh] gap-0 overflow-y-auto p-0" data-testid="send-quote-dialog">
+        <DialogHeader className="space-y-1.5 px-5 pb-3 pt-5 text-left sm:text-left">
+          <div className="fl-send-eyebrow">Send quote</div>
+          <DialogTitle className="fl-send-title pr-6">Send quote {quoteNumber} to client</DialogTitle>
+          <DialogDescription className="fl-send-sub">
             Share the live quote link with {resolvedCustomerName || "the client"} — they can view and accept it online.
           </DialogDescription>
+          {total > 0 && <div><span className="fl-send-total">{formatRand(total)} incl. VAT</span></div>}
         </DialogHeader>
 
-        {/* Primary send: live client link via copy / WhatsApp */}
-        <div className="space-y-1.5">
-          <Label className="text-xs">Client link</Label>
-          {clientUrl ? (
-            <div className="flex gap-2">
-              <Input readOnly value={clientUrl} className="h-9 text-sm font-mono" onFocus={(e) => e.target.select()} />
-              <Button onClick={handleCopyLink} className="h-9 shrink-0 gap-1.5" title="Copy client link">
-                <Link2 className="h-4 w-4" />
-                Copy link
-              </Button>
-              {/* Test-only WhatsApp: always goes to Johan, never the client. */}
-              <WhatsAppShareButton
-                phone={JOHAN_TEST_WHATSAPP}
-                message={shareMessage}
-                variant="outline"
-                className="h-9 shrink-0"
-              >
-                <span className="flex items-center gap-1.5">WhatsApp (test)</span>
-              </WhatsAppShareButton>
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">Generating client link…</p>
-          )}
-        </div>
+        <div className="space-y-3 px-5 pb-4">
+          {/* Primary send: live client link via copy / WhatsApp */}
+          <section className="fl-send-card space-y-2">
+            <div className="fl-send-label">Client link</div>
+            {clientUrl ? (
+              <>
+                <Input readOnly value={clientUrl} className="fl-send-field font-mono text-[13px]" onFocus={(e) => e.target.select()} />
+                <div className="flex flex-wrap gap-2">
+                  <SendStateButton
+                    state={copyState} small onClick={handleCopyLink} title="Copy client link" testId="send-copy-link"
+                    icon={<Link2 className="h-4 w-4" />} labels={{ idle: "Copy link", done: "Link copied ✓", failed: "Copy failed" }}
+                  />
+                  {/* Test-only WhatsApp: always goes to Johan, never the client. */}
+                  <WhatsAppShareButton phone={JOHAN_TEST_WHATSAPP} message={shareMessage} variant="outline" className="fl-sbtn is-outline is-sm h-9 shrink-0">
+                    <span className="flex items-center gap-1.5">WhatsApp (test)</span>
+                  </WhatsAppShareButton>
+                </div>
+              </>
+            ) : (
+              <p className="fl-send-note flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating client link…</p>
+            )}
+          </section>
 
-        {/* Secondary: email the PDF */}
-        <div className="space-y-3 border-t border-border pt-3">
-          <div className="space-y-1.5 rounded-md border border-primary/40 bg-primary/5 p-2.5" data-testid="send-approval">
-            <p className="text-xs font-semibold">Sign off before emailing</p>
-            {([
-              ["terms", "I've checked the terms and conditions"],
-              ["brochure", "I've checked the unit info / brochure details"],
-              ["pricing", "I've checked the pricing"],
-            ] as const).map(([k, label]) => (
-              <label key={k} className="flex items-center gap-2 text-xs">
-                <input type="checkbox" className="h-4 w-4 accent-primary" data-testid={`approve-${k}`}
+          {/* Sign-off before emailing */}
+          <section className="fl-send-card space-y-2" data-testid="send-approval">
+            <div className="fl-send-label">Sign off before emailing <b>{approvedCount} of 3</b></div>
+            {checks.map(([k, label]) => (
+              <label key={k} className={`fl-send-check${approved[k] ? " is-on" : ""}`}>
+                <input type="checkbox" data-testid={`approve-${k}`}
                   checked={approved[k]} onChange={(e) => setApproved((a) => ({ ...a, [k]: e.target.checked }))} />
                 {label}
               </label>
             ))}
-            {!allApproved && <p className="text-[11px] text-muted-foreground">Tick all three to unlock Email.</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="send-quote-email" className="text-xs">Email address</Label>
-            <div className="flex gap-2">
+            {!allApproved && <p className="fl-send-note">Tick all three to unlock Email.</p>}
+          </section>
+
+          {/* Email the quote */}
+          <section className="fl-send-card space-y-2.5">
+            <Label htmlFor="send-quote-email" className="fl-send-label">Email address</Label>
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 id="send-quote-email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="client@example.com"
-                className="h-9 text-sm"
+                className="fl-send-field min-w-0 flex-1"
               />
-              <Button onClick={() => void handleEmail()} disabled={busy !== null || sendLocked || emailUnavailable || !allApproved} className="h-9 shrink-0 gap-1.5" data-testid="send-quote-email-button">
-                {sendLocked ? <Loader2 className="h-4 w-4 animate-spin" /> : sent.email ? <Check className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
-                {sendLocked ? "Sending…" : sent.email ? "Sent ✓" : "Email"}
-              </Button>
+              <SendStateButton
+                state={emailState}
+                testId="send-quote-email-button"
+                className="w-full sm:w-auto sm:min-w-[9.5rem]"
+                icon={<Mail className="h-4 w-4" />}
+                disabled={busy !== null || sendLocked || emailUnavailable || !allApproved || emailState === "done" || emailState === "failed"}
+                onClick={() => void handleEmail()}
+                labels={{ idle: "Email", busy: "Email sending…", slow: "Still sending, please wait", done: "Email sent ✓", failed: "Not sent" }}
+              />
             </div>
             {activeSend && busy !== "email" && (
-              <p className="text-xs font-medium text-amber-700 dark:text-amber-400" data-testid="send-in-progress">
-                Sending… started {sastTime(activeSend.started_at)} to {activeSend.recipient}. Please wait, don't resend.
-              </p>
-            )}
-            {busy === "email" && slow && (
-              <p className="text-xs font-medium text-amber-700 dark:text-amber-400" data-testid="send-slow">Still sending, please wait, don't resend.</p>
-            )}
-            {lastFailed && busy !== "email" && (
-              <div className="flex items-start justify-between gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive" data-testid="send-failed">
-                <span><b>Not sent</b> to {lastFailed.recipient} ({sastTime(lastFailed.finished_at || lastFailed.started_at)}): {lastFailed.error || "unknown error"}</span>
-                <Button size="sm" variant="destructive" className="h-7 shrink-0" disabled={busy !== null || sendLocked || !allApproved} onClick={() => setRetryAsk(true)}>Retry</Button>
+              <div className="fl-send-status tone-amber" data-testid="send-in-progress">
+                <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
+                <span>Sending… started {sastTime(activeSend.started_at)} to {activeSend.recipient}. Please wait, don't resend.</span>
               </div>
             )}
-            <Label htmlFor="send-quote-message" className="text-xs">Message to client (optional)</Label>
+            {busy === "email" && slow && (
+              <div className="fl-send-status tone-amber" data-testid="send-slow">
+                <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
+                <span>Still sending, please wait, don't resend.</span>
+              </div>
+            )}
+            {emailState === "done" && sentInfo && (
+              <div className="fl-send-status tone-green items-center justify-between" data-testid="send-done">
+                <span>Sent to {sentInfo.to} at {sastTime(sentInfo.at)}.</span>
+                <button type="button" className="fl-send-link shrink-0" onClick={() => setRecentAsk({ to: sentInfo.to, at: sentInfo.at })}>Send again</button>
+              </div>
+            )}
+            {lastFailed && emailState === "failed" && (
+              <div className="fl-send-status tone-red flex-col sm:flex-row sm:items-center sm:justify-between" data-testid="send-failed">
+                <span><b>Not sent</b> to {lastFailed.recipient} ({sastTime(lastFailed.finished_at || lastFailed.started_at)}): {lastFailed.error || "unknown error"}</span>
+                <SendStateButton state="failed" small className="shrink-0" disabled={busy !== null || sendLocked || !allApproved}
+                  onClick={() => setRetryAsk(true)} labels={{ idle: "Retry", failed: "Retry" }} testId="send-retry" />
+              </div>
+            )}
+            {emailUnavailable && (
+              <div className="fl-send-status tone-red">Email not configured — use Copy link or Download PDF.</div>
+            )}
+
+            <Label htmlFor="send-quote-message" className="fl-send-label pt-1">Message to client (optional)</Label>
             <Textarea
               id="send-quote-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Thank you for the opportunity. Your quotation is ready to view online."
               rows={4}
-              className="text-sm"
+              className="fl-send-field"
             />
-            <Button variant="outline" onClick={handlePreview} disabled={busy !== null} className="h-8 gap-1.5 text-xs">
-              {busy === "preview" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
-              Preview email
-            </Button>
-            <Label htmlFor="send-quote-cc" className="text-xs">Extra email addresses (optional)</Label>
+            <SendStateButton state={busy === "preview" ? "busy" : "idle"} outline small onClick={handlePreview} disabled={busy !== null}
+              icon={<Eye className="h-4 w-4" />} labels={{ idle: "Preview email", busy: "Loading preview…" }} />
+            <Label htmlFor="send-quote-cc" className="fl-send-label pt-1">Extra email addresses (optional)</Label>
             <Input
               id="send-quote-cc"
               value={extraEmails}
               onChange={(e) => setExtraEmails(e.target.value)}
               placeholder="me@company.com, other@company.com"
-              className="h-9 text-sm"
+              className="fl-send-field"
             />
-            <p className="text-[11px] text-muted-foreground">Separate multiple addresses with a comma — they each get a copy.</p>
-            <label className="flex items-center gap-2 text-xs">
+            <p className="fl-send-note">Separate multiple addresses with a comma — they each get a copy.</p>
+            <label className={`fl-send-check${copyToCompany ? " is-on" : ""}`}>
               <input type="checkbox" checked={copyToCompany} onChange={(e) => setCopyToCompany(e.target.checked)} />
               Also send a copy to our company email
             </label>
-            <button
-              type="button"
-              onClick={handleDownload}
-              disabled={busy !== null}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
-            >
+            <button type="button" onClick={handleDownload} disabled={busy !== null} className="fl-send-link">
               {busy === "pdf" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
               Download the quote PDF file
             </button>
-            {emailUnavailable && (
-              <p className="text-xs text-destructive">Email not configured — use Copy link or Download PDF.</p>
-            )}
-          </div>
-
+          </section>
         </div>
 
-        <DialogFooter className="gap-2 sm:justify-between">
-          <Button variant="outline" onClick={handleDownload} disabled={busy !== null} className="gap-1.5">
-            {busy === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            Download PDF
-          </Button>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
+        <DialogFooter className="fl-send-foot sticky bottom-0 flex-row items-center justify-between gap-2 px-5 py-3 sm:justify-between">
+          <SendStateButton
+            state={busy === "pdf" ? "busy" : pdfState} outline small onClick={handleDownload} disabled={busy !== null && busy !== "pdf"}
+            icon={<Download className="h-4 w-4" />} labels={{ idle: "Download PDF", busy: "Preparing PDF…", done: "PDF ready ✓", failed: "PDF failed, retry" }}
+          />
+          <button type="button" className="fl-sbtn is-outline is-sm" onClick={() => onOpenChange(false)}>Close</button>
         </DialogFooter>
       </DialogContent>
 
-      <AlertDialog open={recentAsk !== null} onOpenChange={(o) => { if (!o) setRecentAsk(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Send again?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This quote was just sent to {recentAsk?.to} at {sastTime(recentAsk?.at)}, send again?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setRecentAsk(null); void handleEmail({ confirmResend: true }); }}>Send again</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <FlConfirmDialog
+        open={recentAsk !== null}
+        onOpenChange={(o) => { if (!o) setRecentAsk(null); }}
+        onConfirm={() => { setRecentAsk(null); void handleEmail({ confirmResend: true }); }}
+        title="Send again?"
+        body={<>This quote was just sent to {recentAsk?.to} at {sastTime(recentAsk?.at)}, send again?</>}
+        confirmLabel="Send again"
+        tone="amber"
+        testId="confirm-send-again"
+      />
 
-      <AlertDialog open={retryAsk} onOpenChange={setRetryAsk}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Retry sending {quoteNumber}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              The last attempt to {lastFailed?.recipient} was NOT sent: {lastFailed?.error || "unknown error"}. Retry now to {email.trim() || lastFailed?.recipient}?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setRetryAsk(false); void handleEmail({ retryOf: lastFailed?.id }); }}>Retry send</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <FlConfirmDialog
+        open={retryAsk}
+        onOpenChange={setRetryAsk}
+        onConfirm={() => { setRetryAsk(false); void handleEmail({ retryOf: lastFailed?.id }); }}
+        title={`Retry sending ${quoteNumber}?`}
+        body={<>The last attempt to {lastFailed?.recipient} was NOT sent: {lastFailed?.error || "unknown error"}. Retry now to {email.trim() || lastFailed?.recipient}?</>}
+        confirmLabel="Retry send"
+        tone="red"
+        testId="confirm-retry"
+      />
 
       {clientPdf && <ClientQuotePdfRoot quoteId={quoteId} />}
 
       {/* Email preview popup — shows the exact email that will be sent. */}
       <Dialog open={previewHtml !== null} onOpenChange={(o) => { if (!o) setPreviewHtml(null); }}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Email preview</DialogTitle>
+        <DialogContent className="fl-send sm:max-w-2xl max-h-[92dvh] overflow-y-auto">
+          <DialogHeader className="text-left sm:text-left">
+            <div className="fl-send-eyebrow">Preview</div>
+            <DialogTitle className="fl-send-title">Email preview</DialogTitle>
             <DialogDescription className="text-muted-foreground">
               This is exactly what the client receives. Type your own wording below and tap Update preview.
             </DialogDescription>
@@ -555,7 +581,7 @@ const SendQuoteDialog = ({
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Thank you for the opportunity. Your quotation is ready to view online."
             rows={3}
-            className="text-sm"
+            className="fl-send-field"
           />
           {previewHtml && (
             <iframe
@@ -565,12 +591,10 @@ const SendQuoteDialog = ({
               className="h-[50vh] w-full rounded-md border border-border bg-white"
             />
           )}
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={handlePreview} disabled={busy !== null} className="gap-1.5">
-              {busy === "preview" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-              Update preview
-            </Button>
-            <Button onClick={() => setPreviewHtml(null)}>Done — keep this wording</Button>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+            <SendStateButton state={busy === "preview" ? "busy" : "idle"} outline onClick={handlePreview} disabled={busy !== null}
+              icon={<Eye className="h-4 w-4" />} labels={{ idle: "Update preview", busy: "Updating…" }} />
+            <SendStateButton state="idle" onClick={() => setPreviewHtml(null)} labels={{ idle: "Done — keep this wording" }} />
           </DialogFooter>
         </DialogContent>
       </Dialog>

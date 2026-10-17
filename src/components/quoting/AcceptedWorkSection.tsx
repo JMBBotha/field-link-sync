@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useFlConfirm } from "./FlConfirmDialog";
 import { readSendReply, sastTime, waitForSendResult } from "@/lib/quoteEmailSend";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -194,6 +195,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
 
   // Duplicate-send guard (17 Oct 2026): ref lock + server send record (kind "deposit").
   const depositSendingRef = useRef(false);
+  const { confirm: confirmSend, dialog: confirmDialog } = useFlConfirm();
   const sendDepositEmail = async (confirmResend = false) => {
     if (!customer?.email || !clientLink) {
       toast({ title: "Client email unavailable", variant: "destructive" });
@@ -203,7 +205,6 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
     depositSendingRef.current = true;
     const sendId = crypto.randomUUID();
     setBusy("deposit-email");
-    let again = false;
     try {
       const { data, error } = await supabase.functions.invoke("send-quote-email", {
         body: {
@@ -226,7 +227,8 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
         r = row?.status === "sent" ? { kind: "ok", data: {} } : { kind: "failed", reason: row?.error || r.reason };
       }
       if (r.kind === "recent") {
-        again = window.confirm(`This deposit request was just sent to ${r.sentTo} at ${sastTime(r.sentAt)}, send again?`);
+        void confirmSend({ title: "Send again?", body: `This deposit request was just sent to ${r.sentTo} at ${sastTime(r.sentAt)}, send again?`, confirmLabel: "Send again", tone: "amber" })
+          .then((ok) => { if (ok) void sendDepositEmail(true); });
         return;
       }
       if (r.kind === "in_progress") throw new Error(`Already sending to ${r.sentTo} (started ${sastTime(r.startedAt)}), please wait`);
@@ -243,7 +245,6 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
     } finally {
       depositSendingRef.current = false;
       setBusy(null);
-      if (again) void sendDepositEmail(true);
     }
   };
 
@@ -533,6 +534,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
         </DialogContent>
       </Dialog>
       {clashDialog}
+      {confirmDialog}
     </section>
   );
 };

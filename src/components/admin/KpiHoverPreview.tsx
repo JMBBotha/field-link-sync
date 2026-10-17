@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { assertQuotePriced } from "@/lib/quoteSend";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
+import { useFlConfirm } from "@/components/quoting/FlConfirmDialog";
 import { readSendReply, sastTime, getLocalSendLock, setLocalSendLock, clearLocalSendLock, waitForSendResult } from "@/lib/quoteEmailSend";
 
 
@@ -216,6 +217,7 @@ const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) =
 
   // Duplicate-send guard (17 Oct 2026): ref lock + server send record; the server logs the send and marks the quote sent.
   const sendingRef = useRef<Set<string>>(new Set());
+  const { confirm: confirmSend, dialog: confirmDialog } = useFlConfirm();
   const sendQuote = async (q: QuoteQuickAction, confirmResend = false) => {
     if (!q.email) {
       toast.error("This customer has no email address on file");
@@ -252,9 +254,9 @@ const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) =
         r = row?.status === "sent" ? { kind: "ok", data: {} } : { kind: "failed", reason: row?.error || r.reason };
       }
       if (r.kind === "recent") {
-        if (window.confirm(`This quote was just sent to ${r.sentTo} at ${sastTime(r.sentAt)}, send again?`)) {
-          window.setTimeout(() => void sendQuote(q, true), 0); // after this call's finally releases the lock
-        }
+        // Styled in-app confirm; resolves after this call's finally has released the lock.
+        void confirmSend({ title: "Send again?", body: `This quote was just sent to ${r.sentTo} at ${sastTime(r.sentAt)}, send again?`, confirmLabel: "Send again", tone: "amber" })
+          .then((ok) => { if (ok) void sendQuote(q, true); });
         return;
       }
       if (r.kind === "in_progress") { toast.message(`Already sending to ${r.sentTo} (started ${sastTime(r.startedAt)}), please wait`); return; }
@@ -386,6 +388,7 @@ const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) =
 
   if (isMobile) {
     return (
+      <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <div
@@ -407,16 +410,21 @@ const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) =
           {panel}
         </PopoverContent>
       </Popover>
+      {confirmDialog}
+      </>
     );
   }
 
   return (
+    <>
     <HoverCard open={open} onOpenChange={setOpen} openDelay={150} closeDelay={120}>
       <HoverCardTrigger asChild>{children}</HoverCardTrigger>
       <HoverCardContent align="start" className="w-80 p-0 overflow-hidden">
         {panel}
       </HoverCardContent>
     </HoverCard>
+    {confirmDialog}
+    </>
   );
 
 };

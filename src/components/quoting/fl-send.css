@@ -1,0 +1,60 @@
+/* Field Lynk send window (v8 Simple look, Johan 17 Oct 2026). Appearance only; scoped to .fl-send.
+   Same tokens as the v8 shell (v8.css), PDF builder (fl-qb.css) and sign-in (auth.css). */
+.fl-send,.fl-confirm{--fs-b1:#1AA7EC;--fs-b2:#1590D6;--fs-card:#FFFFFF;--fs-side:#F4F8FB;--fs-bd:#DCE7F0;--fs-in:#F4F8FB;--fs-ib:#CFE4F3;--fs-tx:#0F1B2A;--fs-mu:#5D7086;--fs-ac:#1590D6}
+.dark .fl-send,.dark .fl-confirm{--fs-card:#111E30;--fs-side:#0B1626;--fs-bd:#1F3550;--fs-in:#0A1422;--fs-ib:#1C3A57;--fs-tx:#EAF2FA;--fs-mu:#8CA2BA;--fs-ac:#1AA7EC}
+.fl-send{font-family:Inter,'Segoe UI',Roboto,Arial,sans-serif;color:var(--fs-tx);background:linear-gradient(180deg,var(--fs-card),var(--fs-side));border:1px solid var(--fs-bd);border-radius:24px!important;box-shadow:0 24px 60px rgba(21,144,214,.16),0 2px 6px rgba(15,27,42,.06)}
+.dark .fl-send{box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.04)}
+.fl-send-eyebrow{font:600 10.5px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--fs-b1)}
+.fl-send-title{font-size:20px;font-weight:800;letter-spacing:-.01em;line-height:1.2}
+.fl-send-sub{color:var(--fs-mu);font-size:13.5px;line-height:1.45}
+.fl-send-total{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;font-weight:800;font-size:12.5px;color:#fff;background:linear-gradient(180deg,#5CC6F5,#1AA7EC 55%,#1590D6);box-shadow:0 4px 12px rgba(26,167,236,.30)}
+.fl-send-card{background:var(--fs-card);border:1px solid var(--fs-bd);border-radius:16px;padding:12px}
+.fl-send-label{font:600 10px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--fs-mu);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.fl-send-label b{font-family:Inter,'Segoe UI',Roboto,Arial,sans-serif;letter-spacing:0;text-transform:none;font-size:11px;color:var(--fs-ac)}
+.fl-send-field{height:44px!important;border-radius:12px!important;border:1px solid var(--fs-ib)!important;background:var(--fs-in)!important;color:var(--fs-tx)!important;font-size:15px!important}
+.fl-send-field:focus-visible{border-color:var(--fs-b1)!important;box-shadow:0 0 0 4px rgba(26,167,236,.16)!important;outline:none!important;--tw-ring-shadow:0 0 #0000!important}
+textarea.fl-send-field{height:auto!important;min-height:88px;padding-top:10px}
+.fl-send-check{display:flex;align-items:center;gap:10px;min-height:42px;padding:8px 12px;border-radius:12px;border:1px solid var(--fs-ib);background:var(--fs-in);font-size:13.5px;font-weight:600;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.fl-send-check input{width:18px;height:18px;accent-color:var(--fs-b2);flex:none}
+.fl-send-check.is-on{border-color:var(--fs-b1);box-shadow:0 0 0 3px rgba(26,167,236,.14)}
+.fl-send-note{font-size:12px;color:var(--fs-mu);line-height:1.4}
+.fl-send-link{color:var(--fs-ac);font-weight:700;font-size:12.5px;background:none;border:0;padding:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.fl-send-link:disabled{opacity:.5;cursor:default}
+/* State buttons: colour = state. */
+.fl-sbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;font-weight:800;font-size:14.5px;white-space:nowrap;border:1px solid transparent;transition:background .2s,box-shadow .2s,transform .1s;cursor:pointer;color:#fff}
+.fl-sbtn:active:not(:disabled){transform:scale(.98)}
+.fl-sbtn:disabled{cursor:default}
+.fl-sbtn.is-idle{background:linear-gradient(180deg,#5CC6F5,#1AA7EC 55%,#1590D6);box-shadow:0 6px 18px rgba(26,167,236,.35)}
+.fl-sbtn.is-idle:disabled{opacity:.45;box-shadow:none}
+.fl-sbtn.is-busy,.fl-sbtn.is-slow{background:linear-gradient(180deg,#FB923C,#F97316 55%,#EA580C);box-shadow:0 6px 18px rgba(249,115,22,.35);opacity:1}
+.fl-sbtn.is-slow{animation:flsPulse 1.6s infinite}
+.fl-sbtn.is-done{background:linear-gradient(180deg,#22C55E,#16A34A);box-shadow:0 6px 18px rgba(22,163,74,.30);opacity:1}
+.fl-sbtn.is-failed{background:linear-gradient(180deg,#EF4444,#DC2626);box-shadow:0 6px 18px rgba(220,38,38,.30);opacity:1}
+.fl-sbtn.is-outline{color:var(--fs-tx);background:var(--fs-in);border-color:var(--fs-ib);box-shadow:none;font-weight:700}
+.fl-sbtn.is-outline:hover:not(:disabled){border-color:var(--fs-b1)}
+.fl-sbtn.is-outline:disabled{opacity:.55}
+.fl-sbtn.is-outline.is-busy,.fl-sbtn.is-outline.is-slow{color:#C2410C;background:rgba(249,115,22,.10);border-color:rgba(249,115,22,.55)}
+.fl-sbtn.is-outline.is-done{color:#15803D;background:rgba(22,163,74,.10);border-color:rgba(22,163,74,.5)}
+.fl-sbtn.is-outline.is-failed{color:#B91C1C;background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.5)}
+.dark .fl-sbtn.is-outline.is-busy,.dark .fl-sbtn.is-outline.is-slow{color:#FDBA74}.dark .fl-sbtn.is-outline.is-done{color:#86EFAC}.dark .fl-sbtn.is-outline.is-failed{color:#FCA5A5}
+.fl-sbtn.is-sm{height:36px;padding:0 12px;font-size:13px;border-radius:10px}
+@keyframes flsPulse{0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,.45)}50%{box-shadow:0 0 0 6px rgba(249,115,22,0)}}
+@media (prefers-reduced-motion:reduce){.fl-sbtn.is-slow{animation:none}.fl-sbtn{transition:none}}
+/* Status boxes under the Email button */
+.fl-send-status{display:flex;gap:8px;align-items:flex-start;border-radius:12px;padding:9px 11px;font-size:12.5px;line-height:1.4;font-weight:600}
+.fl-send-status.tone-amber{background:rgba(249,115,22,.10);border:1px solid rgba(249,115,22,.45);color:#9A3412}
+.fl-send-status.tone-green{background:rgba(22,163,74,.09);border:1px solid rgba(22,163,74,.40);color:#166534}
+.fl-send-status.tone-red{background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.45);color:#991B1B}
+.dark .fl-send-status.tone-amber{color:#FDBA74}.dark .fl-send-status.tone-green{color:#86EFAC}.dark .fl-send-status.tone-red{color:#FCA5A5}
+.fl-send-foot{border-top:1px solid var(--fs-bd);background:var(--fs-card)}
+/* Styled confirm (replaces browser OK/Cancel) */
+.fl-confirm{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif;border-radius:22px!important;border:1px solid var(--fs-bd);background:linear-gradient(180deg,var(--fs-card),var(--fs-side));color:var(--fs-tx)}
+.fl-confirm-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none}
+.fl-confirm-icon.tone-brand{background:rgba(26,167,236,.14);color:var(--fs-b2)}
+.fl-confirm-icon.tone-amber{background:rgba(249,115,22,.14);color:#EA580C}
+.fl-confirm-icon.tone-red{background:rgba(220,38,38,.12);color:#DC2626}
+@media (max-width:640px){
+  .fl-send,.fl-confirm{width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important;border-radius:20px!important}
+  .fl-send-title{font-size:17px}
+}
+.fl-sbtn.is-busy,.fl-sbtn.is-slow,.fl-sbtn.is-done,.fl-sbtn.is-failed{opacity:1!important}
