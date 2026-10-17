@@ -436,7 +436,7 @@ export default function EstimateBuilder({
         onCancel={() => setRemoveUnit(null)}
       />
       <div className="flex items-center justify-end gap-2 print:hidden" data-pdf-hide data-html2canvas-ignore>
-        {editAreas.some((area) => area.lines.length > 0) && (
+        {editAreas.some((area) => area.lines.length > 0) && (isWide || narrowTab === "editor") && (
           <Button
             type="button"
             size="sm"
@@ -684,7 +684,7 @@ export default function EstimateBuilder({
       return (
         <div data-testid="live-preview-layout" className="fl-builder" data-side-by-side={sideBySide ? "true" : "false"}>
           <div className="fl-builder-bar sticky top-2 z-20 mb-3 flex flex-wrap items-center justify-end gap-2 print:hidden" data-html2canvas-ignore data-pdf-hide>
-            <span className="fl-eyebrow mr-auto">Look</span>
+            <span className="mr-auto" aria-hidden />
             <DocumentStyleSwitch companyId={meta?.company_id ?? null} onPicked={() => { if (isWide) setShowPreview(true); else setNarrowTab("client"); }} />
             {isWide ? (
               <Button type="button" size="sm" variant="outline" className="fl-preview-toggle h-9 rounded-full px-4 text-xs font-semibold"

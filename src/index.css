@@ -1040,6 +1040,8 @@ All colors MUST be HSL.
   .estimate-lines tr.estimate-install-summary { display: block; }
   .estimate-lines tr.estimate-install-summary > td { display: block; }
 }
+/* Collapsed room sections must beat the portrait block rule above (Collapse all / Hide items on phones); still print. */
+@media screen { .option1-area[data-area-collapsed="true"] .estimate-lines { display: none !important; } }
 /* Collapsed install rows must beat the portrait grid rule above; they still print. */
 .estimate-lines tr.estimate-line[data-install-collapsed="true"] { display: none !important; }
 @media print {
