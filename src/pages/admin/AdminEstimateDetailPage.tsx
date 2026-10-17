@@ -21,6 +21,7 @@ import ClientQuotePdfRoot, { waitForClientPdfRoot } from "@/components/quoting/C
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import { MarkSentManuallyButton, SentManuallyBadge } from "@/components/documents/MarkSentManually";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
+import QuoteEmailSendBadge from "@/components/quoting/QuoteEmailSendBadge";
 import EstimateBuilder from "@/components/quoting/EstimateBuilder";
 import VoiceQuoteStrip from "@/components/quoting/VoiceQuoteStrip";
 import MandyQuoteActions from "@/components/mandy/MandyQuoteActions";
@@ -183,6 +184,7 @@ const AdminEstimateDetailPage = () => {
         <h1 className="flex min-w-0 items-center gap-2 text-base font-bold">
           <span className="truncate">Estimate {quote.quote_number}</span>
           <span className="print:hidden"><StatusPill status={quote.status} /></span>
+          <span data-pdf-hide className="print:hidden"><QuoteEmailSendBadge quoteId={quote.id} onRetry={() => void docActions.handleSend()} /></span>
           <span data-pdf-hide className="ml-2 text-xs font-normal text-muted-foreground print:hidden" aria-live="polite">
             {pendingWrites > 0 || leaving ? "Saving…" : "Saved"}
           </span>

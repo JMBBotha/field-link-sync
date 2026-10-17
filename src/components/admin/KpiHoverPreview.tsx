@@ -1,5 +1,5 @@
 import { todayInJohannesburg } from "@/lib/todaysJobs";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { assertQuotePriced } from "@/lib/quoteSend";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
+import { readSendReply, sastTime, getLocalSendLock, setLocalSendLock, clearLocalSendLock, waitForSendResult } from "@/lib/quoteEmailSend";
 
 
 export interface QuoteQuickAction {
@@ -213,15 +214,24 @@ const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) =
     }
   };
 
-  const sendQuote = async (q: QuoteQuickAction) => {
+  // Duplicate-send guard (17 Oct 2026): ref lock + server send record; the server logs the send and marks the quote sent.
+  const sendingRef = useRef<Set<string>>(new Set());
+  const sendQuote = async (q: QuoteQuickAction, confirmResend = false) => {
     if (!q.email) {
       toast.error("This customer has no email address on file");
       return;
     }
+    if (sendingRef.current.has(q.id) || getLocalSendLock(q.id)) {
+      toast.message("Already sending this quote, please wait");
+      return;
+    }
+    sendingRef.current.add(q.id);
+    const sendId = crypto.randomUUID();
+    setLocalSendLock(q.id, sendId);
     setBusy(`send-${q.id}`);
     try {
       await assertQuotePriced(q.id);
-      const { error } = await supabase.functions.invoke("send-quote-email", {
+      const { data, error } = await supabase.functions.invoke("send-quote-email", {
         body: {
           to: q.email,
           subject: `Your 0800BeCool Quote ${q.quoteNumber || ""}`.trim(),
@@ -232,20 +242,32 @@ const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) =
           quoteId: q.id,
           customerId: q.customerId,
           quoteUrl: q.publicToken ? publicQuoteUrl(q.publicToken) : null,
+          sendId,
+          confirm_resend: confirmResend,
         },
       });
-      if (error) throw error;
-
-      await supabase
-        .from("quotes")
-        .update({ status: "sent", sent_at: new Date().toISOString() })
-        .eq("id", q.id);
-
+      let r = await readSendReply(data, error);
+      if (r.kind === "unknown") {
+        const row = await waitForSendResult(q.id, sendId);
+        r = row?.status === "sent" ? { kind: "ok", data: {} } : { kind: "failed", reason: row?.error || r.reason };
+      }
+      if (r.kind === "recent") {
+        if (window.confirm(`This quote was just sent to ${r.sentTo} at ${sastTime(r.sentAt)}, send again?`)) {
+          window.setTimeout(() => void sendQuote(q, true), 0); // after this call's finally releases the lock
+        }
+        return;
+      }
+      if (r.kind === "in_progress") { toast.message(`Already sending to ${r.sentTo} (started ${sastTime(r.startedAt)}), please wait`); return; }
+      if (r.kind === "skipped") { toast.error(r.reason); return; }
+      if (r.kind === "not_configured") { toast.error("Quote email isn't set up yet"); return; }
+      if (r.kind === "failed") { toast.error(`Not sent: ${r.reason}`); return; }
       toast.success(`Quote sent to ${q.email}`);
       queryClient.invalidateQueries({ queryKey: ["kpi-preview"] });
     } catch (err: any) {
       toast.error(err?.message || "Failed to send quote");
     } finally {
+      sendingRef.current.delete(q.id);
+      clearLocalSendLock(q.id, sendId);
       setBusy(null);
     }
   };
@@ -339,7 +361,7 @@ const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) =
                       ) : (
                         <Send className="h-3 w-3 mr-1" />
                       )}
-                      Send
+                      {busy === `send-${row.quote.id}` ? "Sending…" : "Send"}
                     </Button>
                   </div>
                 )}
