@@ -58,3 +58,8 @@ textarea.fl-send-field{height:auto!important;min-height:88px;padding-top:10px}
   .fl-send-title{font-size:17px}
 }
 .fl-sbtn.is-busy,.fl-sbtn.is-slow,.fl-sbtn.is-done,.fl-sbtn.is-failed{opacity:1!important}
+
+.fl-send-failbar{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:12px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.45);color:#991B1B}
+.fl-send-failbar-title{font-weight:800;font-size:13px;line-height:1.2}
+.fl-send-failbar-reason{font-size:12px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.dark .fl-send-failbar{color:#FCA5A5;background:rgba(220,38,38,.14)}

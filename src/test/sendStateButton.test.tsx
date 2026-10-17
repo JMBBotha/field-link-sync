@@ -29,3 +29,16 @@ describe("send window button states (17 Oct restyle)", () => {
     }
   });
 });
+
+describe("failed state keeps Retry reachable (17 Oct follow-up)", () => {
+  const src = readFileSync("src/components/quoting/SendQuoteDialog.tsx", "utf8");
+  it("Retry + reason live in the sticky footer", () => {
+    const foot = src.slice(src.indexOf('className="fl-send-foot sticky bottom-0'));
+    expect(foot.indexOf('data-testid="send-failed-bar"')).toBeGreaterThan(-1);
+    expect(foot.indexOf('testId="send-retry"')).toBeGreaterThan(-1);
+    expect(src.split('testId="send-retry"').length).toBe(2); // only one Retry
+  });
+  it("email card scrolls into view when the state becomes failed", () => {
+    expect(src).toMatch(/emailState === "failed"\) \{\s*const t = window\.setTimeout\(\(\) => emailCardRef\.current\?\.scrollIntoView/);
+  });
+});

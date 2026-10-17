@@ -96,6 +96,7 @@ const SendQuoteDialog = ({
   // Duplicate-send guard (17 Oct 2026): one in-flight send per quote, server-confirmed.
   const qc = useQueryClient();
   const inFlightRef = useRef(false);
+  const emailCardRef = useRef<HTMLElement | null>(null);
   const [slow, setSlow] = useState(false);
   const [recentAsk, setRecentAsk] = useState<{ to: string; at: string } | null>(null);
   const [retryAsk, setRetryAsk] = useState(false);
@@ -124,6 +125,14 @@ const SendQuoteDialog = ({
     : sentToThis ? "done"
     : lastFailed ? "failed"
     : "idle";
+  // Display only: when the email state turns failed, bring the email card into view
+  // (the Retry action itself lives in the sticky footer so it's always visible).
+  useEffect(() => {
+    if (open && emailState === "failed") {
+      const t = window.setTimeout(() => emailCardRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" }), 60);
+      return () => window.clearTimeout(t);
+    }
+  }, [open, emailState]);
 
   // Resolve email + recipient phone from THIS quote's own records — never from
   // the customer's latest lead. Phone: quote's customer row first, then the
@@ -452,7 +461,7 @@ const SendQuoteDialog = ({
           </section>
 
           {/* Email the quote */}
-          <section className="fl-send-card space-y-2.5">
+          <section ref={emailCardRef} className="fl-send-card space-y-2.5">
             <Label htmlFor="send-quote-email" className="fl-send-label">Email address</Label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input
@@ -491,10 +500,8 @@ const SendQuoteDialog = ({
               </div>
             )}
             {lastFailed && emailState === "failed" && (
-              <div className="fl-send-status tone-red flex-col sm:flex-row sm:items-center sm:justify-between" data-testid="send-failed">
+              <div className="fl-send-status tone-red" data-testid="send-failed">
                 <span><b>Not sent</b> to {lastFailed.recipient} ({sastTime(lastFailed.finished_at || lastFailed.started_at)}): {lastFailed.error || "unknown error"}</span>
-                <SendStateButton state="failed" small className="shrink-0" disabled={busy !== null || sendLocked || !allApproved}
-                  onClick={() => setRetryAsk(true)} labels={{ idle: "Retry", failed: "Retry" }} testId="send-retry" />
               </div>
             )}
             {emailUnavailable && (
@@ -532,12 +539,24 @@ const SendQuoteDialog = ({
           </section>
         </div>
 
-        <DialogFooter className="fl-send-foot sticky bottom-0 flex-row items-center justify-between gap-2 px-5 py-3 sm:justify-between">
+        <DialogFooter className="fl-send-foot sticky bottom-0 flex-col gap-2 px-5 py-3 sm:flex-col sm:space-x-0">
+          {lastFailed && emailState === "failed" && (
+            <div className="fl-send-failbar" role="alert" data-testid="send-failed-bar">
+              <div className="min-w-0 flex-1">
+                <div className="fl-send-failbar-title">Not sent</div>
+                <div className="fl-send-failbar-reason">{lastFailed.error || "unknown error"}</div>
+              </div>
+              <SendStateButton state="failed" small className="shrink-0" disabled={busy !== null || sendLocked || !allApproved}
+                onClick={() => setRetryAsk(true)} labels={{ idle: "Retry", failed: "Retry" }} testId="send-retry" />
+            </div>
+          )}
+          <div className="flex w-full flex-row items-center justify-between gap-2">
           <SendStateButton
             state={busy === "pdf" ? "busy" : pdfState} outline small onClick={handleDownload} disabled={busy !== null && busy !== "pdf"}
             icon={<Download className="h-4 w-4" />} labels={{ idle: "Download PDF", busy: "Preparing PDF…", done: "PDF ready ✓", failed: "PDF failed, retry" }}
           />
           <button type="button" className="fl-sbtn is-outline is-sm" onClick={() => onOpenChange(false)}>Close</button>
+          </div>
         </DialogFooter>
       </DialogContent>
 
