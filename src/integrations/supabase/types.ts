@@ -6610,6 +6610,8 @@ export type Database = {
           signature_email: string | null
           signature_enabled: boolean
           signature_phone: string | null
+          signup_company: string | null
+          signup_role: string | null
           skills: string[] | null
           start_from: string | null
           stripe_customer_id: string | null
@@ -6657,6 +6659,8 @@ export type Database = {
           signature_email?: string | null
           signature_enabled?: boolean
           signature_phone?: string | null
+          signup_company?: string | null
+          signup_role?: string | null
           skills?: string[] | null
           start_from?: string | null
           stripe_customer_id?: string | null
@@ -6704,6 +6708,8 @@ export type Database = {
           signature_email?: string | null
           signature_enabled?: boolean
           signature_phone?: string | null
+          signup_company?: string | null
+          signup_role?: string | null
           skills?: string[] | null
           start_from?: string | null
           stripe_customer_id?: string | null
@@ -7589,6 +7595,85 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_email_sends: {
+        Row: {
+          attempts: number
+          cc: string[] | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          kind: string
+          quote_id: string
+          recipient: string
+          resend_id: string | null
+          retry_of: string | null
+          send_id: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          cc?: string[] | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          quote_id: string
+          recipient: string
+          resend_id?: string | null
+          retry_of?: string | null
+          send_id: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          cc?: string[] | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          quote_id?: string
+          recipient?: string
+          resend_id?: string | null
+          retry_of?: string | null
+          send_id?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_email_sends_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "quote_email_sends_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_email_sends_retry_of_fkey"
+            columns: ["retry_of"]
+            isOneToOne: false
+            referencedRelation: "quote_email_sends"
             referencedColumns: ["id"]
           },
         ]
@@ -11182,6 +11267,10 @@ export type Database = {
         Args: { p_email: string; p_user: string }
         Returns: string
       }
+      approve_company_signup: {
+        Args: { p_approve: boolean; p_company?: string; p_user: string }
+        Returns: string
+      }
       approve_invoice_request: { Args: { p_id: string }; Returns: string }
       archive_customer_note: { Args: { p_id: string }; Returns: undefined }
       area_slot_suggestions: {
@@ -11430,6 +11519,10 @@ export type Database = {
       earnings_tech_rule: { Args: { p_company_id: string }; Returns: Json }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      expire_stale_quote_email_sends: {
+        Args: { p_quote_id?: string }
+        Returns: number
+      }
       finalise_new_invoice: {
         Args: { p_invoice: string; p_status: string }
         Returns: undefined
@@ -11460,12 +11553,48 @@ export type Database = {
           staff_id: string
         }[]
       }
+      fl_cancel_booking: {
+        Args: {
+          p_job_id?: string
+          p_lead_id: string
+          p_reason: string
+          p_schedule_id?: string
+        }
+        Returns: Json
+      }
+      fl_company_unclaimed: { Args: { _co: string }; Returns: boolean }
+      fl_found_company: {
+        Args: {
+          p_name: string
+          p_rate: number
+          p_services: string[]
+          p_slug: string
+        }
+        Returns: string
+      }
+      fl_in_company: { Args: { _co: string; _u: string }; Returns: boolean }
       fl_inherit_sync_on: { Args: never; Returns: boolean }
       fl_inherited_terms: {
         Args: { _p: Database["public"]["Tables"]["company_profiles"]["Row"] }
         Returns: string
       }
+      fl_is_founder_approved: { Args: { _u: string }; Returns: boolean }
       fl_master_company_id: { Args: never; Returns: string }
+      fl_reopen_booking: {
+        Args: { p_job_id?: string; p_lead_id: string }
+        Returns: Json
+      }
+      fl_shares_company: { Args: { _a: string; _b: string }; Returns: boolean }
+      fl_staff_manager: { Args: { _u: string }; Returns: boolean }
+      fl_unschedule_booking: {
+        Args: {
+          p_job_id?: string
+          p_lead_id: string
+          p_reason?: string
+          p_schedule_id?: string
+        }
+        Returns: Json
+      }
       fmt_rand_sql: { Args: { v: number }; Returns: string }
       fuzzy_digits: { Args: { p_text: string }; Returns: string }
       fuzzy_normalize: { Args: { p_text: string }; Returns: string }
@@ -12152,6 +12281,10 @@ export type Database = {
       next_invoice_number: { Args: { p_profile: string }; Returns: string }
       normalize_model_code: { Args: { p: string }; Returns: string }
       normalize_phone: { Args: { phone: string }; Returns: string }
+      notify_quote_email_failed: {
+        Args: { p_send: string }
+        Returns: undefined
+      }
       open_double_bookings: {
         Args: { p_from: string; p_to: string }
         Returns: {
@@ -12340,6 +12473,7 @@ export type Database = {
           status: string
         }[]
       }
+      quote_email_send_state: { Args: { p_quote_id: string }; Returns: Json }
       quote_photo_ok: {
         Args: { _name: string; _read: boolean }
         Returns: boolean
