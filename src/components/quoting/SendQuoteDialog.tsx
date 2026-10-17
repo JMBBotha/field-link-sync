@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
 import { Mail, Loader2, Check, Download, Link2, Eye } from "lucide-react";
@@ -18,11 +17,6 @@ import ClientQuotePdfRoot, { waitForClientPdfRoot, clientBrochureSelector } from
 import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 import { formatRand } from "@/utils/formatRand";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import {
-  useQuoteEmailSendState, quoteEmailSendKey, readSendReply, waitForSendResult, sastTime,
-  setLocalSendLock, clearLocalSendLock, getLocalSendLock, LOCAL_SEND_LOCK_EVENT, type SendReply,
-} from "@/lib/quoteEmailSend";
 
 interface SendQuoteDialogProps {
   open: boolean;
@@ -92,25 +86,6 @@ const SendQuoteDialog = ({
   // Set once the backend tells us email isn't configured — we then stop
   // offering the Email button and point the user at Copy link / Download PDF.
   const [emailUnavailable, setEmailUnavailable] = useState(false);
-  // Duplicate-send guard (17 Oct 2026): one in-flight send per quote, server-confirmed.
-  const qc = useQueryClient();
-  const inFlightRef = useRef(false);
-  const [slow, setSlow] = useState(false);
-  const [recentAsk, setRecentAsk] = useState<{ to: string; at: string } | null>(null);
-  const [retryAsk, setRetryAsk] = useState(false);
-  const { data: sendState } = useQuoteEmailSendState(quoteId, open);
-  const [localLock, setLocalLock] = useState(() => (quoteId ? getLocalSendLock(quoteId) : null));
-  useEffect(() => {
-    const read = () => setLocalLock(quoteId ? getLocalSendLock(quoteId) : null);
-    read();
-    window.addEventListener(LOCAL_SEND_LOCK_EVENT, read);
-    const t = window.setInterval(read, 5000);
-    return () => { window.removeEventListener(LOCAL_SEND_LOCK_EVENT, read); window.clearInterval(t); };
-  }, [quoteId, open]);
-  const activeSend = sendState?.active || null;
-  const lastSend = sendState?.last || null;
-  const lastFailed = !activeSend && lastSend?.status === "failed" ? lastSend : null;
-  const sendLocked = busy === "email" || !!activeSend || !!localLock;
 
   // Resolve email + recipient phone from THIS quote's own records — never from
   // the customer's latest lead. Phone: quote's customer row first, then the
@@ -213,6 +188,24 @@ const SendQuoteDialog = ({
     }
   };
 
+  const logDelivery = async (channel: "email" | "whatsapp", recipient: string) => {
+    const { data: userData } = await supabase.auth.getUser();
+    const agentId = userData?.user?.id;
+    if (!agentId) return;
+    await supabase.from("communication_log").insert({
+      agent_id: agentId,
+      customer_id: customerId,
+      lead_id: leadId,
+      type: channel,
+      subject: `Quote ${quoteNumber} sent`,
+      body: `Quote ${quoteNumber} (${total.toFixed(2)} incl. VAT) was sent to ${recipient} via ${channel}.`,
+    });
+    await supabase
+      .from("quotes")
+      .update({ status: "sent", sent_at: new Date().toISOString() })
+      .eq("id", quoteId);
+  };
+
   const handleDownload = async () => {
     setBusy("pdf");
     try {
@@ -265,80 +258,32 @@ const SendQuoteDialog = ({
     }
   };
 
-  const handleEmail = async (opts: { confirmResend?: boolean; retryOf?: string } = {}) => {
+  const handleEmail = async () => {
     if (!allApproved) return;
-    // Two rapid taps fire once: the ref flips synchronously, before React re-renders.
-    if (inFlightRef.current) return;
     if (!email.trim()) {
       toast({ title: "Email required", description: "Add a client email address first.", variant: "destructive" });
       return;
     }
-    if (activeSend || (quoteId && getLocalSendLock(quoteId))) {
-      toast({ title: "Already sending", description: activeSend ? `Sending to ${activeSend.recipient} started ${sastTime(activeSend.started_at)}. Please wait.` : "Please wait for the current send to finish." });
-      return;
-    }
-    inFlightRef.current = true;
-    const to = email.trim();
-    const sendId = crypto.randomUUID();
     setBusy("email");
-    setSlow(false);
-    setLocalSendLock(quoteId, sendId);
-    // After 90 s we only change the message: the request stays alive and the button stays locked.
-    const slowTimer = window.setTimeout(() => setSlow(true), 90000);
-    const refresh = () => qc.invalidateQueries({ queryKey: quoteEmailSendKey(quoteId) });
-    const common = { to, quoteId, quoteNumber, customerId, sendId, retryOf: opts.retryOf, confirm_resend: opts.confirmResend === true };
+    // Hard cap: PDF capture or a stalled function must never leave a spinner up.
+    const EMAIL_TIMEOUT_MS = 90000;
+    let timedOut = false;
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => {
+        timedOut = true;
+        reject(new Error("timeout"));
+      }, EMAIL_TIMEOUT_MS),
+    );
 
-    const handleReply = async (r: SendReply): Promise<boolean> => {
-      switch (r.kind) {
-        case "ok": return true;
-        case "recent": setRecentAsk({ to: r.sentTo || to, at: r.sentAt }); return false;
-        case "in_progress":
-          toast({ title: "Already sending", description: `Sending to ${r.sentTo} started ${sastTime(r.startedAt)}. Please wait, don't resend.` });
-          return false;
-        case "skipped": toast({ title: "Not sent", description: r.reason, variant: "destructive" }); return false;
-        case "not_configured":
-          setEmailUnavailable(true);
-          toast({ title: "Email not configured", description: "Quote email isn't set up yet. Use Copy link or Download PDF for now.", variant: "destructive" });
-          return false;
-        case "failed": toast({ title: "Not sent", description: r.reason, variant: "destructive" }); return false;
-        case "unknown": {
-          // The server may still be sending: wait for its record instead of guessing.
-          setSlow(true);
-          const row = await waitForSendResult(quoteId, sendId);
-          if (row?.status === "sent") return true;
-          toast({ title: "Not sent", description: row?.error || r.reason, variant: "destructive" });
-          return false;
-        }
-      }
-    };
-
-    try {
-      // 1) Take the server lock before the (slow) PDF build.
-      const begin = await supabase.functions.invoke("send-quote-email", { body: { ...common, beginSend: true } });
-      const beginReply = await readSendReply(begin.data, begin.error);
-      if (beginReply.kind === "unknown") {
-        toast({ title: "Could not start the send", description: `${beginReply.reason}. Nothing was emailed; try again in a moment.`, variant: "destructive" });
-        return;
-      }
-      if (beginReply.kind !== "ok") { await handleReply(beginReply); return; }
-      refresh();
-
-      // 2) Build the PDF. A failure here is recorded server-side with the reason (nothing emailed).
-      let pdfBase64: string;
-      try {
-        pdfBase64 = await blobToBase64(await buildPdf());
-      } catch (pdfErr) {
-        const reason = `The quote PDF could not be built: ${pdfErr instanceof Error ? pdfErr.message : String(pdfErr)}`;
-        await supabase.functions.invoke("send-quote-email", { body: { ...common, reportFailure: true, reason } });
-        toast({ title: "Not sent", description: reason, variant: "destructive" });
-        return;
-      }
-
-      // 3) Send. The server records the send log and marks the quote sent once Resend accepts it.
-      const res = await supabase.functions.invoke("send-quote-email", {
+    const send = async () => {
+      const pdfBase64 = await blobToBase64(await buildPdf());
+      return supabase.functions.invoke("send-quote-email", {
         body: {
-          ...common,
+          to: email.trim(),
           subject: `Your quote ${quoteNumber}`,
+          quoteNumber,
+          quoteId,
+          customerId,
           quoteUrl: clientUrl,
           clientName: resolvedCustomerName,
           totalAmount: total,
@@ -349,28 +294,58 @@ const SendQuoteDialog = ({
           cc: extraEmails.trim() || undefined,
         },
       });
-      if (await handleReply(await readSendReply(res.data, res.error))) {
-        setSent((s) => ({ ...s, email: true }));
-        toast({ title: "Quote emailed", description: `Sent to ${to}` });
-        qc.invalidateQueries({ queryKey: ["quotes"] });
-        qc.invalidateQueries({ queryKey: ["quote-document", quoteId] });
+    };
+
+    try {
+      const { data, error } = await Promise.race([send(), timeout]);
+
+      // Read the body too — a "not configured" or mock reply must never be
+      // reported to the user as a successful send.
+      const payload = data as { success?: boolean; mock?: boolean; code?: string; skipped?: boolean; reason?: string } | null;
+      const detail = error
+        ? await readInvokeError(error)
+        : payload?.code === "EMAIL_NOT_CONFIGURED" || payload?.mock
+          ? "EMAIL_NOT_CONFIGURED"
+          : null;
+
+      if (detail) {
+        if (detail.includes("EMAIL_NOT_CONFIGURED")) {
+          setEmailUnavailable(true);
+          toast({
+            title: "Email not configured",
+            description: "Quote email isn't set up yet. Use Copy link or Download PDF for now.",
+            variant: "destructive",
+          });
+        } else {
+          toast({ title: "Email failed", description: detail, variant: "destructive" });
+        }
+        return;
       }
+
+      if (payload?.skipped) {
+        toast({ title: "Not sent", description: payload.reason || "Recipient has unsubscribed.", variant: "destructive" });
+        return;
+      }
+
+      await logDelivery("email", email.trim());
+      setSent((s) => ({ ...s, email: true }));
+      toast({ title: "Quote emailed", description: `Sent to ${email.trim()}` });
     } catch (err) {
-      // Unexpected: still check the record before unlocking, so a send that went through is reported.
-      const row = await waitForSendResult(quoteId, sendId);
-      if (row?.status === "sent") {
-        setSent((s) => ({ ...s, email: true }));
-        toast({ title: "Quote emailed", description: `Sent to ${to}` });
+      if (timedOut || (err instanceof Error && err.message === "timeout")) {
+        toast({
+          title: "Email timed out",
+          description: "Try Download PDF or Copy link instead.",
+          variant: "destructive",
+        });
       } else {
-        toast({ title: "Not sent", description: row?.error || (err instanceof Error ? err.message : "Please try again."), variant: "destructive" });
+        toast({
+          title: "Email failed",
+          description: err instanceof Error ? err.message : "Please try again.",
+          variant: "destructive",
+        });
       }
     } finally {
-      window.clearTimeout(slowTimer);
-      clearLocalSendLock(quoteId, sendId);
-      inFlightRef.current = false;
-      setSlow(false);
       setBusy(null);
-      refresh();
     }
   };
 
@@ -438,25 +413,11 @@ const SendQuoteDialog = ({
                 placeholder="client@example.com"
                 className="h-9 text-sm"
               />
-              <Button onClick={() => void handleEmail()} disabled={busy !== null || sendLocked || emailUnavailable || !allApproved} className="h-9 shrink-0 gap-1.5" data-testid="send-quote-email-button">
-                {sendLocked ? <Loader2 className="h-4 w-4 animate-spin" /> : sent.email ? <Check className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
-                {sendLocked ? "Sending…" : sent.email ? "Sent ✓" : "Email"}
+              <Button onClick={handleEmail} disabled={busy !== null || emailUnavailable || !allApproved} className="h-9 shrink-0 gap-1.5">
+                {busy === "email" ? <Loader2 className="h-4 w-4 animate-spin" /> : sent.email ? <Check className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
+                Email
               </Button>
             </div>
-            {activeSend && busy !== "email" && (
-              <p className="text-xs font-medium text-amber-700 dark:text-amber-400" data-testid="send-in-progress">
-                Sending… started {sastTime(activeSend.started_at)} to {activeSend.recipient}. Please wait, don't resend.
-              </p>
-            )}
-            {busy === "email" && slow && (
-              <p className="text-xs font-medium text-amber-700 dark:text-amber-400" data-testid="send-slow">Still sending, please wait, don't resend.</p>
-            )}
-            {lastFailed && busy !== "email" && (
-              <div className="flex items-start justify-between gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive" data-testid="send-failed">
-                <span><b>Not sent</b> to {lastFailed.recipient} ({sastTime(lastFailed.finished_at || lastFailed.started_at)}): {lastFailed.error || "unknown error"}</span>
-                <Button size="sm" variant="destructive" className="h-7 shrink-0" disabled={busy !== null || sendLocked || !allApproved} onClick={() => setRetryAsk(true)}>Retry</Button>
-              </div>
-            )}
             <Label htmlFor="send-quote-message" className="text-xs">Message to client (optional)</Label>
             <Textarea
               id="send-quote-message"
@@ -507,36 +468,6 @@ const SendQuoteDialog = ({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
-
-      <AlertDialog open={recentAsk !== null} onOpenChange={(o) => { if (!o) setRecentAsk(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Send again?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This quote was just sent to {recentAsk?.to} at {sastTime(recentAsk?.at)}, send again?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setRecentAsk(null); void handleEmail({ confirmResend: true }); }}>Send again</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={retryAsk} onOpenChange={setRetryAsk}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Retry sending {quoteNumber}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              The last attempt to {lastFailed?.recipient} was NOT sent: {lastFailed?.error || "unknown error"}. Retry now to {email.trim() || lastFailed?.recipient}?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setRetryAsk(false); void handleEmail({ retryOf: lastFailed?.id }); }}>Retry send</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {clientPdf && <ClientQuotePdfRoot quoteId={quoteId} />}
 

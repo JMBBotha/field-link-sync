@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -45,12 +45,8 @@ export default function SendQuotesTogetherDialog({ open, onOpenChange, quoteIds,
 
   const block = rows.length ? sendTogetherBlock(rows) : null;
 
-  // Duplicate-send guard (17 Oct 2026): two rapid taps fire once; one Resend Idempotency-Key per press.
-  const sendingRef = useRef(false);
   const send = async () => {
-    if (sendingRef.current) return;
     if (!email.trim()) { toast({ title: "Email required", description: "Add the client's email address.", variant: "destructive" }); return; }
-    sendingRef.current = true;
     setBusy(true);
     try {
       // Only store a description when staff changed it from the auto text.
@@ -61,7 +57,7 @@ export default function SendQuotesTogetherDialog({ open, onOpenChange, quoteIds,
       const { data: b, error: e1 } = await supabase.rpc("create_quote_bundle" as never, { p_quote_ids: rows.map((r) => r.id), p_summaries: summaries } as never);
       if (e1) throw new Error(e1.message);
       const token = (b as unknown as { token: string }).token;
-      const { data, error } = await supabase.functions.invoke("send-quote-email", { body: { bundleToken: token, to: email.trim(), appOrigin: getPublicAppOrigin(), sendId: crypto.randomUUID() } });
+      const { data, error } = await supabase.functions.invoke("send-quote-email", { body: { bundleToken: token, to: email.trim(), appOrigin: getPublicAppOrigin() } });
       const p = data as { success?: boolean; skipped?: boolean; reason?: string; error?: string; details?: { message?: string } } | null;
       if (error || !p?.success) throw new Error(p?.reason || p?.details?.message || p?.error || error?.message || "Send failed");
       toast({ title: `${rows.length} quotes sent together`, description: `One email with "View all quotes" went to ${email.trim()}.` });
@@ -69,7 +65,7 @@ export default function SendQuotesTogetherDialog({ open, onOpenChange, quoteIds,
       onOpenChange(false);
     } catch (err) {
       toast({ title: "Not sent", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
-    } finally { sendingRef.current = false; setBusy(false); }
+    } finally { setBusy(false); }
   };
 
   return (
