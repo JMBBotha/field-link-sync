@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { EntityRealtimeSync } from "@/hooks/useEntityRealtimeSync";
+import ZoomableViewport from "@/components/shared/ZoomableViewport";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -140,6 +141,7 @@ const App = () => (
             <BrowserRouter>
               <MandyActionsProvider>
               <MandyDock />
+              <ZoomableViewport />
               <IdleLogoutGate />
               <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>}>
               <Routes>

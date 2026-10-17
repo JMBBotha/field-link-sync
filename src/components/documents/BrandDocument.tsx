@@ -267,20 +267,19 @@ export default function BrandDocument(p: BrandDocumentProps) {
             {p.afterTotals}
             <details className="tdet" data-testid="doc-terms-expander">
               <summary>Full terms and conditions</summary>
-              <div className="terms" data-testid="doc-terms"><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>
               {p.fullTermsPage}
             </details>
           </>
         ) : (
           <>
-            {!closing && <div className="terms" data-testid="doc-terms"><h4>Terms</h4><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>}
+            {/* Plain terms only when there is no styled numbered terms page (Johan 07:50: never both). */}
+            {!closing && !p.fullTermsPage && <div className="terms" data-testid="doc-terms"><h4>Terms</h4><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>}
             {!closing && p.fullTermsPage}
           </>
         )}
         {closing && p.cards.length > 0 && (
           <div className="closing" data-pdf-break-before={p.fullTermsPage ? undefined : ""} data-testid="doc-closing">
             <div className="notes wide">{p.cards.map((c, i) => <div className={`note${p.cards.length % 2 === 1 && i === p.cards.length - 1 ? " full" : ""}`} key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
-            {p.fullTermsPage && !p.collapseTerms && <div className="terms" data-testid="doc-terms"><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>}
           </div>
         )}
         {p.fullTermsPage && !p.collapseTerms && p.afterTotals}
@@ -290,7 +289,6 @@ export default function BrandDocument(p: BrandDocumentProps) {
             {p.afterTotals}
             <details className="tdet" data-testid="doc-terms-expander">
               <summary>Full terms and conditions</summary>
-              <div className="terms" data-testid="doc-terms"><NotesBody testId="doc-terms-text" text={withEoe(p.terms, id.legalName, p.docType)} /></div>
               {p.fullTermsPage}
             </details>
           </>

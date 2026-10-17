@@ -50,6 +50,15 @@ export async function savePdfFile(url: string, fileName: string): Promise<"share
 function PdfPages({ url }: { url: string }) {
   const host = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  // Re-render sharp pages when the width changes (rotation portrait <-> landscape).
+  const [hostW, setHostW] = useState(0);
+  useEffect(() => {
+    const el = host.current; if (!el || typeof ResizeObserver === "undefined") return;
+    let t: any;
+    const ro = new ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => setHostW((w) => (Math.abs(w - el.clientWidth) > 40 ? el.clientWidth : w)), 200); });
+    ro.observe(el);
+    return () => { ro.disconnect(); clearTimeout(t); };
+  }, []);
   useEffect(() => {
     let cancelled = false; let doc: any = null;
     (async () => {
@@ -66,7 +75,8 @@ function PdfPages({ url }: { url: string }) {
           const vp = page.getViewport({ scale: (width / base.width) * dpr });
           const c = document.createElement("canvas");
           c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
-          c.style.width = `${width}px`; c.style.height = `${Math.floor(vp.height / dpr)}px`;
+          // Fluid: reflows instantly on rotation (then re-rendered sharp at the new width).
+          c.style.width = "100%"; c.style.maxWidth = `${width}px`; c.style.height = "auto";
           c.className = "mx-auto mb-3 block bg-white shadow";
           c.setAttribute("aria-label", `Page ${n}`);
           el.appendChild(c);
@@ -79,7 +89,7 @@ function PdfPages({ url }: { url: string }) {
       }
     })();
     return () => { cancelled = true; try { doc?.destroy(); } catch { /* ignore */ } };
-  }, [url]);
+  }, [url, hostW]);
   return (
     <>
       {state === "loading" && <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-600"><Loader2 className="h-4 w-4 animate-spin" />Loading PDF…</div>}

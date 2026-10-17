@@ -1030,14 +1030,7 @@ const EstimateDocument = ({
 
         {/* ── Footer ── */}
         <div className="mt-10 space-y-5 border-t border-slate-200 pt-6 text-[11px] leading-relaxed text-slate-600">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Terms</p>
-            <p className="mt-1 whitespace-pre-line">
-              {withEoe(cleanTerms ||
-                `This estimate is valid for 30 days from the date of issue. All prices exclude VAT, which is shown separately at ${vatPercent}%. ${planTermsSentence(paymentPlan, settings.default_deposit_percentage, settings.default_payment_terms_days)}`, settings.company_name, "quote")}
-            </p>
-          </div>
-
+          {/* Plain Terms removed: the styled numbered "Terms and conditions" page below is the only terms block (Johan 07:50). */}
           {notes && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Notes</p>
