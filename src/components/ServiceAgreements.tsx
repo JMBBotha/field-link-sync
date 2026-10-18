@@ -43,6 +43,9 @@ import { cn } from "@/lib/utils";
 import CustomerSearchSelector from "@/components/customers/CustomerSearchSelector";
 import CreateCustomerDialog from "@/components/customers/CreateCustomerDialog";
 import { type CustomerSearchResult } from "@/hooks/useCustomerSearch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AgreementTemplatesTab from "@/components/agreements/AgreementTemplatesTab";
+import { useAgreementTemplates, downloadTemplatePdf } from "@/components/agreements/templateActions";
 
 interface Customer {
   id: string;
@@ -75,6 +78,8 @@ interface Agreement {
   last_service_date: string | null;
   notes: string | null;
   created_at: string;
+  template_id?: string | null;
+  template_version?: number | null;
   customers?: { name: string; phone: string };
   equipment?: { type: string; brand: string | null; model: string | null };
 }
@@ -119,6 +124,9 @@ const ServiceAgreements = () => {
   const [showCreateCustomer, setShowCreateCustomer] = useState(false);
   const [selectedCustomerName, setSelectedCustomerName] = useState("");
   const { toast } = useToast();
+  const [view, setView] = useState<"agreements" | "templates">(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "templates" ? "templates" : "agreements");
+  const { data: templates = [] } = useAgreementTemplates();
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -153,6 +161,7 @@ const ServiceAgreements = () => {
     price: 0,
     auto_generate_jobs: true,
     notes: "",
+    template_id: "",
   });
   const [customerEquipment, setCustomerEquipment] = useState<Equipment[]>([]);
   const [saving, setSaving] = useState(false);
@@ -233,6 +242,7 @@ const ServiceAgreements = () => {
       price: 0,
       auto_generate_jobs: true,
       notes: "",
+      template_id: "",
     });
     setEditingAgreement(null);
     setCustomerEquipment([]);
@@ -251,6 +261,7 @@ const ServiceAgreements = () => {
       price: agreement.price,
       auto_generate_jobs: agreement.auto_generate_jobs,
       notes: agreement.notes || "",
+      template_id: agreement.template_id || "",
     });
     fetchEquipmentForCustomer(agreement.customer_id);
     setShowForm(true);
@@ -284,6 +295,9 @@ const ServiceAgreements = () => {
         auto_generate_jobs: formData.auto_generate_jobs,
         next_service_due: format(nextServiceDue, "yyyy-MM-dd"),
         notes: formData.notes || null,
+        // Optional contract / SLA template link: display only, no effect on jobs or reminders.
+        template_id: formData.template_id || null,
+        template_version: formData.template_id ? (templates.find((t) => t.id === formData.template_id)?.version ?? null) : null,
         created_by: user?.id,
         updated_at: new Date().toISOString(),
       };
@@ -338,6 +352,7 @@ const ServiceAgreements = () => {
       price: agreement.price,
       auto_generate_jobs: agreement.auto_generate_jobs,
       notes: agreement.notes || "",
+      template_id: agreement.template_id || "",
     });
     fetchEquipmentForCustomer(agreement.customer_id);
     setShowForm(true);
@@ -419,6 +434,14 @@ const ServiceAgreements = () => {
         </div>
       </div>
 
+      <Tabs value={view} onValueChange={(v) => setView(v as "agreements" | "templates")}>
+        <TabsList>
+          <TabsTrigger value="agreements" data-testid="agreements-tab">Agreements</TabsTrigger>
+          <TabsTrigger value="templates" data-testid="templates-tab">Templates</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {view === "templates" ? <AgreementTemplatesTab /> : (<>
       {/* Filters & Actions */}
       <div className="flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
@@ -510,6 +533,18 @@ const ServiceAgreements = () => {
                       <span className="font-medium">{format(new Date(agreement.next_service_due), "dd MMM yyyy")}</span>
                     </div>
                   )}
+                  {agreement.template_id && (() => {
+                    const tpl = templates.find((t) => t.id === agreement.template_id);
+                    return (
+                      <div className="flex items-center gap-2 text-xs" data-testid="agreement-contract-link">
+                        <FileText className="h-3.5 w-3.5 text-primary" />
+                        <span className="min-w-0 flex-1 truncate text-muted-foreground">Contract: {tpl?.name || "template"}{agreement.template_version ? ` (v${agreement.template_version})` : ""}</span>
+                        {tpl && (
+                          <button type="button" className="text-primary hover:underline" onClick={() => downloadTemplatePdf(tpl).catch((e) => toast({ title: "PDF failed", description: e.message, variant: "destructive" }))}>PDF</button>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {agreement.equipment && (
                     <div className="text-xs text-muted-foreground">
                       Equipment: {agreement.equipment.brand} {agreement.equipment.model} ({agreement.equipment.type})
@@ -536,6 +571,7 @@ const ServiceAgreements = () => {
           })}
         </div>
       )}
+      </>)}
 
       {/* Create/Edit Dialog */}
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); setShowForm(open); }}>
@@ -702,6 +738,27 @@ const ServiceAgreements = () => {
                 checked={formData.auto_generate_jobs}
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, auto_generate_jobs: checked }))}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Contract / SLA (Optional)</Label>
+              <Select
+                value={formData.template_id || "none"}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, template_id: value === "none" ? "" : value }))}
+              >
+                <SelectTrigger data-testid="agreement-template-picker">
+                  <SelectValue placeholder="Attach contract / SLA" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No contract attached</SelectItem>
+                  {templates.filter((t) => t.status !== "archived" || t.id === formData.template_id).map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}{t.status === "draft" ? " (draft)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Links the contract wording to this agreement. It does not change scheduling or reminders.</p>
             </div>
 
             <div className="space-y-2">
