@@ -398,7 +398,7 @@ export default function EstimateBuilder({
         value={discountType ?? "none"}
         onValueChange={(v) => applyDiscount(v === "none" ? null : v, v === "none" ? 0 : discountValue)}
       >
-        <SelectTrigger className="h-8 w-[130px] border-slate-200 bg-white text-[11px] text-slate-700">
+        <SelectTrigger className="h-8 w-[130px] border-slate-200 bg-white text-xs text-ink">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -418,7 +418,7 @@ export default function EstimateBuilder({
             const v = Number(e.target.value);
             if (Number.isFinite(v) && v !== discountValue) void applyDiscount(discountType, v);
           }}
-          className="h-8 w-24 border-slate-200 bg-white text-right text-[11px] text-slate-700"
+          className="h-8 w-24 border-slate-200 bg-white text-right text-xs text-ink"
         />
       )}
     </div>

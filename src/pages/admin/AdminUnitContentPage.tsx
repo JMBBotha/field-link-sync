@@ -140,7 +140,7 @@ export default function AdminUnitContentPage() {
             {isLoading && <p className="p-3 text-sm text-muted-foreground">Loading…</p>}
             {shown.map((r) => (
               <button key={r.model_key} onClick={() => setSel(r)} className={`flex w-full items-center gap-3 rounded-md p-2 text-left hover:bg-muted ${sel?.model_key === r.model_key ? "bg-muted" : ""}`}>
-                <div className="flex h-10 w-14 items-center justify-center rounded bg-sky-50">{r.image_status === "ready" && r.image_url ? <img src={r.image_url} alt="" className="max-h-9 max-w-12" /> : <span className="text-[10px] text-muted-foreground">no image</span>}</div>
+                <div className="flex h-10 w-14 items-center justify-center rounded bg-sky-50">{r.image_status === "ready" && r.image_url ? <img src={r.image_url} alt="" className="max-h-9 max-w-12" /> : <span className="text-xs text-muted-foreground">no image</span>}</div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium">{r.display_name || r.model_code}</div>
                   <div className="truncate text-xs text-muted-foreground">{r.model_code}</div>

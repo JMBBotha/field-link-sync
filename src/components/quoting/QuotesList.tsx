@@ -521,7 +521,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                           />
                         </TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold capitalize text-muted-foreground">
+                          <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold capitalize text-muted-foreground">
                             {doc.kind === "proposal" ? (
                               <FileSignature className="h-3 w-3" />
                             ) : (
@@ -551,7 +551,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                           <StatusPill status={doc.status} />
                           {doc.kind === "estimate" && <SentManuallyBadge doc={doc.raw as any} className="ml-1 align-middle" />}
                           {(changeMsgs as Record<string, string>)[doc.id] && (
-                            <span title={(changeMsgs as Record<string, string>)[doc.id]} className="ml-1 inline-block rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white align-middle">Changes requested</span>
+                            <span title={(changeMsgs as Record<string, string>)[doc.id]} className="ml-1 inline-block rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white align-middle">Changes requested</span>
                           )}
                           {(pendingRevs as Record<string, any>)[doc.id] && <ClientRevisionActions revision={(pendingRevs as Record<string, any>)[doc.id]} />}
                         </TableCell>

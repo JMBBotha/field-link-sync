@@ -34,13 +34,13 @@ const CompactZonesSidebar = memo(({ baskets, onAddBasket, onRemoveBasket }: Comp
       <div className="px-3 py-2 border-b bg-card text-foreground shrink-0">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-semibold text-foreground">Quote Zones</h3>
-          <Button variant="outline" size="sm" className="h-6 text-[10px] gap-0.5 px-1.5" onClick={onAddBasket}>
+          <Button variant="outline" size="sm" className="h-6 text-xs gap-0.5 px-1.5" onClick={onAddBasket}>
             <Plus className="h-2.5 w-2.5" />Zone
           </Button>
         </div>
         <div className="flex items-center justify-between mt-1">
-          <span className="text-[10px] text-muted-foreground">{baskets.length} zones · {totalItems} items</span>
-          <span className="text-[10px] font-bold text-foreground">
+          <span className="text-xs text-muted-foreground">{baskets.length} zones · {totalItems} items</span>
+          <span className="text-xs font-bold text-foreground">
             R{totalCost.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
           </span>
         </div>
@@ -52,7 +52,7 @@ const CompactZonesSidebar = memo(({ baskets, onAddBasket, onRemoveBasket }: Comp
           {baskets.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <Package className="h-6 w-6 mb-2 opacity-30" />
-              <p className="text-[10px]">No zones yet</p>
+              <p className="text-xs">No zones yet</p>
             </div>
           ) : (
             baskets.map((basket) => {
@@ -71,7 +71,7 @@ const CompactZonesSidebar = memo(({ baskets, onAddBasket, onRemoveBasket }: Comp
                 >
                   <div className="flex items-center gap-1.5">
                     <ShoppingBag className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <span className="text-[11px] font-semibold truncate flex-1">{basket.name}</span>
+                    <span className="text-xs font-semibold truncate flex-1">{basket.name}</span>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -82,10 +82,10 @@ const CompactZonesSidebar = memo(({ baskets, onAddBasket, onRemoveBasket }: Comp
                     </Button>
                   </div>
                   <div className="flex items-center justify-between mt-1">
-                    <span className="text-[9px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {basket.items.length} items · {totalQty} qty
                     </span>
-                    <span className="text-[10px] font-bold">
+                    <span className="text-xs font-bold">
                       R{subtotal.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
                     </span>
                   </div>
@@ -93,7 +93,7 @@ const CompactZonesSidebar = memo(({ baskets, onAddBasket, onRemoveBasket }: Comp
                   {basket.items.length > 0 && (
                     <div className="mt-1.5 space-y-0.5 border-t pt-1">
                       {basket.items.slice(0, 5).map((item) => (
-                        <div key={item.instanceId} className="flex items-center justify-between text-[9px]">
+                        <div key={item.instanceId} className="flex items-center justify-between text-xs">
                           <span className="truncate text-muted-foreground flex-1 mr-1">
                             {item.product.short_name || item.product.product_code}
                           </span>
@@ -101,7 +101,7 @@ const CompactZonesSidebar = memo(({ baskets, onAddBasket, onRemoveBasket }: Comp
                         </div>
                       ))}
                       {basket.items.length > 5 && (
-                        <p className="text-[8px] text-muted-foreground">+{basket.items.length - 5} more...</p>
+                        <p className="text-xs text-muted-foreground">+{basket.items.length - 5} more...</p>
                       )}
                     </div>
                   )}

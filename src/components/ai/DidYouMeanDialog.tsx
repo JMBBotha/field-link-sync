@@ -82,12 +82,12 @@ export function DidYouMeanDialog({
                       )}
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
-                      <Badge variant="outline" className="text-[10px]">
+                      <Badge variant="outline" className="text-xs">
                         {TYPE_LABEL[c.entity_type] ?? c.entity_type}
                       </Badge>
                       <span
                         className={cn(
-                          "rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                          "rounded px-1.5 py-0.5 text-xs font-semibold",
                           confidenceTone(c.score),
                         )}
                       >

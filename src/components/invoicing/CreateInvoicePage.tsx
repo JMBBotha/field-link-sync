@@ -682,7 +682,7 @@ const CreateInvoicePage = ({
       </div>
 
       {/* ── A4 Card ── */}
-      <div data-pdf-capture-root="invoice" className="max-w-3xl mx-auto my-3 sm:my-8 bg-white shadow-lg rounded-lg border p-4 sm:p-8 md:p-12 space-y-8 text-slate-900 [&_.text-foreground]:!text-slate-900 [&_.text-muted-foreground]:!text-slate-500 [&_input]:!text-slate-900 [&_textarea]:!text-slate-900 [&_select]:!text-slate-900 [&_input::placeholder]:!text-slate-400 [&_textarea::placeholder]:!text-slate-400">
+      <div data-pdf-capture-root="invoice" className="max-w-3xl mx-auto my-3 sm:my-8 bg-white shadow-lg rounded-lg border p-4 sm:p-8 md:p-12 space-y-8 text-ink [&_.text-foreground]:!text-ink [&_.text-muted-foreground]:!text-ink-secondary [&_input]:!text-ink [&_textarea]:!text-ink [&_select]:!text-ink [&_input::placeholder]:!text-ink-muted [&_textarea::placeholder]:!text-ink-muted">
         {/* ── HEADER ROW ── */}
         <DocumentHeader
           logoUrl={logoUrl}
@@ -695,7 +695,7 @@ const CreateInvoicePage = ({
         {/* ── ISSUING COMPANY ── */}
         {profiles.length > 1 && (
           <div className="flex flex-wrap items-center gap-2 text-sm print:hidden" data-html2canvas-ignore>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Invoice from</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Invoice from</span>
             <select
               value={profileId || ""}
               onChange={(e) => setProfileId(e.target.value)}
@@ -707,7 +707,7 @@ const CreateInvoicePage = ({
                 <option key={p.id} value={p.id}>{p.legal_name}{p.vat_number ? "" : " (no VAT no.)"}</option>
               ))}
             </select>
-            {editInvoiceId && <span className="text-[11px] text-muted-foreground">To change company, duplicate the invoice.</span>}
+            {editInvoiceId && <span className="text-xs text-muted-foreground">To change company, duplicate the invoice.</span>}
           </div>
         )}
 
@@ -715,14 +715,14 @@ const CreateInvoicePage = ({
         <div className="space-y-1">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
             <div className="col-span-1 space-y-1 relative">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Billed To</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Billed To</p>
               {customerName && !showCustomerPicker ? (
                 <div>
                   <p className="text-sm font-semibold text-foreground">{customerName}</p>
                   {customerAddress && <p className="text-xs text-muted-foreground">{customerAddress}</p>}
                   {customerEmail && <p className="text-xs text-muted-foreground">{customerEmail}</p>}
                   <GhostInput placeholder="Client VAT No (optional)" value={clientVat} onChange={(e) => setClientVat(e.target.value)} className="!px-0 text-xs" data-testid="client-vat-input" />
-                  <button onClick={() => setShowCustomerPicker(true)} className="text-[11px] text-primary hover:underline mt-1">Change</button>
+                  <button onClick={() => setShowCustomerPicker(true)} className="text-xs text-primary hover:underline mt-1">Change</button>
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -741,7 +741,7 @@ const CreateInvoicePage = ({
                       <p className="text-xs text-muted-foreground p-3">No clients found</p>
                     )}
                   </div>
-                  <button className="text-[11px] text-primary hover:underline flex items-center gap-1" onClick={() => { setCustomerName(customerSearch || "New Client"); setShowCustomerPicker(false); setCustomerSearch(""); }}>
+                  <button className="text-xs text-primary hover:underline flex items-center gap-1" onClick={() => { setCustomerName(customerSearch || "New Client"); setShowCustomerPicker(false); setCustomerSearch(""); }}>
                     <Plus className="h-3 w-3" /> Create a Client
                   </button>
                 </div>
@@ -749,29 +749,29 @@ const CreateInvoicePage = ({
             </div>
 
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date of Issue</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date of Issue</p>
               <GhostInput type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
             </div>
 
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tax Invoice Number</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tax Invoice Number</p>
               <p className="text-sm font-medium text-foreground px-2 py-1.5">{invoiceNumber || (profile ? `${profile.invoice_prefix}… (given on save)` : "Given on save")}</p>
             </div>
 
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Amount Due (ZAR)</p>
-              <p className="text-xl sm:text-[28px] font-bold px-2 py-0.5 whitespace-nowrap" style={{ color: "#0077B6" }}>{formatCurrency(amountDue)}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount Due (ZAR)</p>
+              <p className="text-xl sm:text-3xl font-bold px-2 py-0.5 whitespace-nowrap" style={{ color: "#0077B6" }}>{formatCurrency(amountDue)}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 md:-mt-3">
             <div />
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due Date</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Due Date</p>
               <GhostInput type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Reference / PO#</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reference / PO#</p>
               <GhostInput placeholder="e.g. PO-1234" value={reference} onChange={(e) => setReference(e.target.value)} />
             </div>
             <div />
@@ -799,7 +799,7 @@ const CreateInvoicePage = ({
               Lines marked "From tech – check" came from the technician. Check they aren't already in the quote lines and that the price is right.
             </p>
           )}
-          <div className="grid grid-cols-[repeat(4,minmax(0,1fr))_24px] sm:grid-cols-[1fr_80px_50px_60px_80px_30px] gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1">
+          <div className="grid grid-cols-[repeat(4,minmax(0,1fr))_24px] sm:grid-cols-[1fr_80px_50px_60px_80px_30px] gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1">
             <div className="hidden sm:block">Description</div>
             <div className="text-right">Cost</div>
             <div className="text-right">Qty</div>
@@ -818,14 +818,14 @@ const CreateInvoicePage = ({
                   onSelect={(opt) => pickOption(opt, idx)}
                 />
                 {item.flag && (
-                  <span className="mt-0.5 inline-block rounded bg-amber-100 px-1.5 text-[10px] font-medium text-amber-800">
+                  <span className="mt-0.5 inline-block rounded bg-amber-100 px-1.5 text-xs font-medium text-amber-800">
                     {item.flag === "tech" ? "From tech – check" : "Deposit credit"}
                   </span>
                 )}
                 <div className="mt-1 flex gap-1">
                   <GhostInput placeholder="Line name" value={item.line_name || ""} onChange={(e) => updateLineItem(idx, "line_name", e.target.value)} className="!py-0.5 text-xs" />
                   <GhostInput placeholder="Room / area" value={item.room_label || ""} onChange={(e) => updateLineItem(idx, "room_label", e.target.value)} className="!py-0.5 text-xs w-28" />
-                  <select value={item.line_type || "item"} onChange={(e) => updateLineItem(idx, "line_type", e.target.value)} className="text-[11px] border rounded px-1 bg-background">
+                  <select value={item.line_type || "item"} onChange={(e) => updateLineItem(idx, "line_type", e.target.value)} className="text-xs border rounded px-1 bg-background">
                     <option value="item">Item</option>
                     <option value="unit">Unit</option>
                     <option value="installation">Installation</option>
@@ -858,7 +858,7 @@ const CreateInvoicePage = ({
           <button onClick={() => addInstallLine([...lineItems].reverse().find((i) => i.room_label)?.room_label)} className="w-full text-left px-2 py-1.5 text-sm text-primary hover:bg-primary/5 rounded flex items-center gap-1.5 transition-colors">
             <Plus className="h-4 w-4" /> Add an Installation line (per room)
           </button>
-          <p className="px-2 text-[11px] text-muted-foreground">Every line carries {VAT_PERCENT}% VAT.</p>
+          <p className="px-2 text-xs text-muted-foreground">Every line carries {VAT_PERCENT}% VAT.</p>
         </div>
 
         <div className="h-px bg-border" />
@@ -931,7 +931,7 @@ const CreateInvoicePage = ({
           {showLinks && (
             <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Lead / Job</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Lead / Job</p>
                 <select value={leadId} onChange={(e) => setLeadId(e.target.value)} className="w-full border rounded px-2 py-1.5 text-sm bg-background">
                   <option value="">— None —</option>
                   {leads.map((l) => (
@@ -947,19 +947,19 @@ const CreateInvoicePage = ({
 
         {/* ── NOTES ── */}
         <div className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notes</p>
           <Textarea placeholder="Notes — any relevant information not already covered" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[60px] text-sm border-transparent hover:border-border focus:border-primary" />
         </div>
 
         {/* ── TERMS ── */}
         <div className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Terms</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Terms</p>
           <Textarea value={terms} onChange={(e) => setTerms(e.target.value)} className="min-h-[80px] text-sm border-transparent hover:border-border focus:border-primary" />
         </div>
 
         {/* ── ATTACHMENTS ── */}
         <div className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Attachments</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Attachments</p>
           <div className="flex flex-wrap gap-2">
             {attachments.map((a, idx) => (
               <a key={idx} href={a.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 border rounded-md px-3 py-1.5 text-sm hover:bg-muted transition-colors">

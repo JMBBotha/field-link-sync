@@ -84,15 +84,15 @@ function DroppableBasket({
     >
       {/* Basket header */}
       <div className={`flex items-center justify-between border-b border-border/50 ${isCompact ? "px-1.5 py-1" : "p-2.5"}`}>
-        <div className={`flex items-center gap-1 flex-1 min-w-0 font-semibold text-foreground ${isCompact ? "text-[10px]" : "text-xs"}`}>
+        <div className={`flex items-center gap-1 flex-1 min-w-0 font-semibold text-foreground ${isCompact ? "text-xs" : "text-xs"}`}>
           <ShoppingBag className={isCompact ? "h-3 w-3 shrink-0 text-muted-foreground" : "h-3.5 w-3.5 shrink-0 text-muted-foreground"} />
           <AreaNameLabel name={basket.name} onRename={onRename} />
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
-          <span className={`text-muted-foreground whitespace-nowrap ${isCompact ? "text-[8px]" : "text-[10px]"}`}>
+          <span className={`text-muted-foreground whitespace-nowrap ${isCompact ? "text-xs" : "text-xs"}`}>
             {basket.items.length}·{totalQty}
           </span>
-          <span className={`font-bold text-foreground whitespace-nowrap ${isCompact ? "text-[10px]" : "text-xs"}`}>
+          <span className={`font-bold text-foreground whitespace-nowrap ${isCompact ? "text-xs" : "text-xs"}`}>
             R{subtotal.toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </span>
           <Button variant="ghost" size="icon" className="h-4 w-4 text-muted-foreground hover:text-foreground" onClick={onDuplicate} title="Duplicate zone">
@@ -111,7 +111,7 @@ function DroppableBasket({
             isOver ? "bg-primary/10 text-primary" : isDragActive ? "bg-muted/50 text-muted-foreground" : "text-muted-foreground"
           }`}>
             <Package className={`${isCompact ? "h-4 w-4" : "h-6 w-6"} mb-1 ${isOver ? "opacity-80" : "opacity-40"}`} />
-            <p className={`font-medium ${isCompact ? "text-[10px]" : "text-xs"}`}>{isOver ? "Release to drop" : "Drop products here"}</p>
+            <p className={`font-medium ${isCompact ? "text-xs" : "text-xs"}`}>{isOver ? "Release to drop" : "Drop products here"}</p>
           </div>
         ) : (
           <>
@@ -177,7 +177,7 @@ const BasketCanvas = ({
         </h3>
         <div className="flex items-center gap-1">
           {showClearAll && (
-            <Button variant="ghost" size="sm" className={`gap-0.5 text-destructive hover:text-destructive ${isCompact ? "h-6 text-[10px] px-1.5" : "h-7 text-xs"}`} onClick={effectiveClearAll}>
+            <Button variant="ghost" size="sm" className={`gap-0.5 text-destructive hover:text-destructive ${isCompact ? "h-6 text-xs px-1.5" : "h-7 text-xs"}`} onClick={effectiveClearAll}>
               <Trash2 className={isCompact ? "h-2.5 w-2.5" : "h-3 w-3"} />
               {!isCompact && "Clear All"}
             </Button>
@@ -191,8 +191,8 @@ const BasketCanvas = ({
           {baskets.length === 0 ? (
             <div className={`flex flex-col items-center justify-center text-muted-foreground ${isCompact ? "py-6" : "py-12"}`}>
               <Package className={`mb-2 opacity-30 ${isCompact ? "h-5 w-5" : "h-8 w-8"}`} />
-              <p className={isCompact ? "text-[10px]" : "text-sm"}>No zones yet</p>
-              <p className={isCompact ? "text-[9px]" : "text-xs"}>Click "Add Zone" or use a template</p>
+              <p className={isCompact ? "text-xs" : "text-sm"}>No zones yet</p>
+              <p className={isCompact ? "text-xs" : "text-xs"}>Click "Add Zone" or use a template</p>
             </div>
           ) : (
             baskets.map((basket) => (

@@ -68,7 +68,7 @@ function TodayCard({ e, job, open, index }: { e: CalendarEntry; job?: JobRow; op
           <div className="grid grid-cols-2 gap-2">
             {pipes.slice(0, 4).map((p) => (
               <div key={p.name} className="rounded-lg bg-muted/50 px-3 py-2">
-                <div className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">{p.name}</div>
+                <div className="truncate text-xs uppercase tracking-wide text-muted-foreground">{p.name}</div>
                 <div className="font-semibold">{p.m != null ? `${p.m} m pipe` : "–"}</div>
               </div>
             ))}

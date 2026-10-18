@@ -63,7 +63,7 @@ const AdminBottomNav = ({ onOpenMenu }: AdminBottomNavProps) => {
             >
               {active && <span className={cn("absolute top-1 h-1 w-8 rounded-full", colours?.navBar ?? "bg-primary")} />}
               <tab.icon className="h-5 w-5" />
-              <span className="text-[10px] font-medium">{tab.label}</span>
+              <span className="text-xs font-medium">{tab.label}</span>
             </NavLink>
           );
         })}
@@ -77,7 +77,7 @@ const AdminBottomNav = ({ onOpenMenu }: AdminBottomNavProps) => {
             <Menu className="h-5 w-5" />
             {dot && <span data-testid="menu-lead-dot" className={cn("absolute -right-1.5 -top-1 h-2.5 w-2.5 rounded-full ring-2 ring-slate-900", dot)} />}
           </span>
-          <span className="text-[10px] font-medium">Menu</span>
+          <span className="text-xs font-medium">Menu</span>
         </button>
       </div>
     </nav>

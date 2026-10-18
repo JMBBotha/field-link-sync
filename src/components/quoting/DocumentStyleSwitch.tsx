@@ -66,7 +66,7 @@ export default function DocumentStyleSwitch({ companyId, onPicked }: { companyId
       role="group"
       aria-label="Quote look"
     >
-      <span className="pl-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Look</span>
+      <span className="pl-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Look</span>
       {OPTIONS.map((o) => {
         const on = current === o.key;
         return (
@@ -81,7 +81,7 @@ export default function DocumentStyleSwitch({ companyId, onPicked }: { companyId
               "h-7 rounded-full px-3 text-xs font-semibold transition " +
               (on
                 ? "bg-primary text-primary-foreground"
-                : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")
+                : "text-ink-secondary hover:bg-slate-100 hover:text-slate-800")
             }
           >
             {o.label}

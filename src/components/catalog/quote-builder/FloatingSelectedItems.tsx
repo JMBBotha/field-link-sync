@@ -76,13 +76,13 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
         <span className="text-xs font-semibold text-primary-foreground flex-1">
           Selected Items
         </span>
-        <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-primary-foreground/20 text-primary-foreground border-0">
+        <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4 bg-primary-foreground/20 text-primary-foreground border-0">
           {items.length}
         </Badge>
         {items.length > 0 && (
           <button
             onClick={() => pdfSelection.setSelectedFromPdf([])}
-            className="text-[10px] font-medium text-primary-foreground/70 hover:text-primary-foreground"
+            className="text-xs font-medium text-primary-foreground/70 hover:text-primary-foreground"
             title="Clear all selected items"
           >
             Clear
@@ -99,7 +99,7 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
       {!minimized && (
         <div className="p-2 max-h-72 overflow-y-auto space-y-1.5">
           {items.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground italic text-center py-4">
+            <p className="text-xs text-muted-foreground italic text-center py-4">
               Select products from PDF view
             </p>
           ) : (
@@ -119,7 +119,7 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
                     >
                       <CheckCircle2 className="h-4 w-4" style={{ color: "hsl(var(--success))" }} />
                     </button>
-                    <p className="text-[11px] font-medium text-foreground truncate flex-1">{item.productCode || item.code}</p>
+                    <p className="text-xs font-medium text-foreground truncate flex-1">{item.productCode || item.code}</p>
                   </div>
                   <button
                     onClick={() =>
@@ -138,11 +138,11 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
                   value={item.pdfDescription ?? item.description ?? ""}
                   onChange={(e) => pdfSelection.updateSelectedItem(item.code, { pdfDescription: e.target.value })}
                   placeholder="Line description (from PDF, editable)"
-                  className="h-6 text-[10px] px-1"
+                  className="h-6 text-xs px-1"
                 />
 
                 {(item.indoorModel || item.outdoorModel || item.btu || item.kw) && (
-                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-muted-foreground">
+                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                     {item.indoorModel && (
                       <span>Indoor: <span className="font-mono text-foreground">{item.indoorModel}</span></span>
                     )}
@@ -159,7 +159,7 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
                 )}
                 {/* Cost & Markup row with adjustment controls */}
                 {(item.costPrice != null || item.markupPercent != null) && (
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     {item.costPrice != null && (
                       <span>Cost: <span className="font-mono font-medium text-foreground">R{Number(item.costPrice).toFixed(2)}</span></span>
                     )}
@@ -181,7 +181,7 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
                         </Button>
                         <span className="font-mono font-semibold text-primary min-w-[32px] text-center">{normalizedMarkup.toFixed(1)}%</span>
                         {markupAmount != null && (
-                          <span className="font-mono text-[9px] text-foreground ml-0.5">
+                          <span className="font-mono text-xs text-foreground ml-0.5">
                             (R{markupAmount.toFixed(2)})
                           </span>
                         )}
@@ -212,7 +212,7 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
                   <select
                     value={item.unitType}
                     onChange={(e) => pdfSelection.updateSelectedItem(item.code, { unitType: e.target.value })}
-                    className="h-6 text-[10px] rounded border border-input bg-background px-1"
+                    className="h-6 text-xs rounded border border-input bg-background px-1"
                   >
                     <option value="units">Units</option>
                     <option value="meters">Meters</option>
@@ -223,13 +223,13 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
                     step={0.1}
                     value={item.quantity}
                     onChange={(e) => pdfSelection.updateSelectedItem(item.code, { quantity: Math.max(0.1, Number(e.target.value)) })}
-                    className="h-6 w-16 text-[10px] px-1"
+                    className="h-6 w-16 text-xs px-1"
                   />
                   <div className="flex flex-col items-end ml-auto">
-                    <span className="text-[10px] font-medium text-foreground">
-                      R{((parseFloat(item.price) || 0) * item.quantity).toFixed(2)} <span className="text-[8px] text-muted-foreground">excl</span>
+                    <span className="text-xs font-medium text-foreground">
+                      R{((parseFloat(item.price) || 0) * item.quantity).toFixed(2)} <span className="text-xs text-muted-foreground">excl</span>
                     </span>
-                    <span className="text-[9px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       R{((parseFloat(item.price) || 0) * item.quantity * 1.15).toFixed(2)} incl
                     </span>
                   </div>
@@ -244,11 +244,11 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
       {!minimized && items.length > 0 && (
         <div className="border-t px-3 py-2 space-y-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-muted-foreground">Total (excl VAT)</span>
+            <span className="text-xs font-medium text-muted-foreground">Total (excl VAT)</span>
             <span className="text-sm font-bold text-foreground">R{total.toFixed(2)}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground">Total (incl VAT)</span>
+            <span className="text-xs text-muted-foreground">Total (incl VAT)</span>
             <span className="text-xs font-semibold text-muted-foreground">R{(total * 1.15).toFixed(2)}</span>
           </div>
           {onAddSelectedToQuote && (

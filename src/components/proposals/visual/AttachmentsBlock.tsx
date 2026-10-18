@@ -52,7 +52,7 @@ const AttachmentsBlock = ({ section, onChange, themeColor }: Props) => {
             ) : (
               <FileText className="h-10 w-10 text-muted-foreground" />
             )}
-            <span className="w-full truncate text-center text-[11px]">{f.name}</span>
+            <span className="w-full truncate text-center text-xs">{f.name}</span>
             <button
               type="button"
               aria-label={`Remove ${f.name}`}

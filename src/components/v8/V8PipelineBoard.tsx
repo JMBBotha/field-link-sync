@@ -154,7 +154,7 @@ export default function V8PipelineBoard() {
               <header className="px-3 pt-3 pb-2">
                 <div className="flex items-center justify-between text-sm font-bold"><span>{c.label}</span><span className="opacity-60">{c.key === "lead" ? leads.length : list.length}</span></div>
                 <div className="text-lg font-bold tabular-nums">{c.key === "lead" ? "—" : fmtRandShort(total(c.key))}</div>
-                <div className="text-[11px] opacity-60">{c.hint}</div>
+                <div className="text-xs opacity-60">{c.hint}</div>
               </header>
               <div className="flex flex-col gap-2 px-2 pb-2">
                 {target && <div className="v8-ghost">{c.key === "accepted" ? "Marks accepted" : c.key === "booked" ? "Opens Book job" : c.key === "quote" ? "Opens Send" : "Not a drop step"}</div>}

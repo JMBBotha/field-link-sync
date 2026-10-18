@@ -307,7 +307,7 @@ const CompletedLeadsList = () => {
                           <>
                             <Badge
                               className={cn(
-                                "text-[10px] px-1.5 py-0 border-0",
+                                "text-xs px-1.5 py-0 border-0",
                                 lead.invoice_status === "paid"
                                   ? "bg-emerald-500/15 text-emerald-600"
                                   : "bg-orange-500/15 text-orange-600"
@@ -323,7 +323,7 @@ const CompletedLeadsList = () => {
                           <Button
                             variant="default"
                             size="sm"
-                            className="h-6 px-2 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            className="h-6 px-2 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                             onClick={(e) => {
                               e.stopPropagation();
                               setInvoiceDialogLead(lead);

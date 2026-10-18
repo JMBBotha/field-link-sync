@@ -362,7 +362,7 @@ function MaterialPicker({
         {MATERIAL_CATEGORIES.map((c) => (
           <button
             key={c.key}
-            className={`px-2 py-0.5 rounded text-[10px] transition-colors ${category === c.key ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-accent"}`}
+            className={`px-2 py-0.5 rounded text-xs transition-colors ${category === c.key ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-accent"}`}
             onClick={() => setCategory(c.key)}
           >
             {c.label}
@@ -386,7 +386,7 @@ function MaterialPicker({
       </div>
       {/* Fix 5f: Truncation hint */}
       {totalBeforeLimit > RESULT_LIMIT && (
-        <p className="text-[10px] text-muted-foreground text-center">
+        <p className="text-xs text-muted-foreground text-center">
           Showing {RESULT_LIMIT} of {totalBeforeLimit} results — refine your search to see more.
         </p>
       )}
@@ -467,7 +467,7 @@ function BundlePicker({
                 <div className="font-medium truncate">{b.name}</div>
                 {b.description && <div className="text-muted-foreground truncate">{b.description}</div>}
               </div>
-              <Badge variant="outline" className="text-[10px] shrink-0">{b.items.length} items</Badge>
+              <Badge variant="outline" className="text-xs shrink-0">{b.items.length} items</Badge>
             </button>
           </div>
         ))}
@@ -481,7 +481,7 @@ function AddBracketPicker({ onAdd }: { onAdd: (size: string) => void }) {
   return (
     <div className="flex gap-1 flex-wrap">
       {BRACKET_SIZES.map((size) => (
-        <Button key={size} variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={() => onAdd(size)}>
+        <Button key={size} variant="outline" size="sm" className="h-6 text-xs px-2" onClick={() => onAdd(size)}>
           <Plus className="h-3 w-3 mr-0.5" /> {size} (R{BRACKET_PRICES[size]})
         </Button>
       ))}
@@ -793,7 +793,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                 <div className="flex items-center gap-2">
                   {area.name}
                   {appliedBundleName && (
-                    <Badge variant="outline" className="text-[10px]">{appliedBundleName}</Badge>
+                    <Badge variant="outline" className="text-xs">{appliedBundleName}</Badge>
                   )}
                   <Badge variant="secondary" className="text-xs">
                     R {sectionTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
@@ -812,7 +812,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-6 text-[10px] px-2"
+                          className="h-6 text-xs px-2"
                           onClick={() => setOpenPicker((prev) => ({ ...prev, [area.id]: prev[area.id] === "bundle" ? null : "bundle" }))}
                         >
                           <Package className="h-3 w-3 mr-1" /> Change Bundle
@@ -848,7 +848,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                                 {!isLength && <span className="text-muted-foreground">R {unitPrice.toFixed(2)}{perM ? " / m" : " ea"}</span>}
                                 {canToggle && (
                                   <button
-                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-muted hover:bg-accent transition-colors"
+                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-muted hover:bg-accent transition-colors"
                                     onClick={() => toggleMaterialPricingMode(area.id, mat.id)}
                                     aria-label={`Switch to ${isLength ? "per unit" : "per metre"} pricing`}
                                     title={isLength ? "Switch to per unit" : "Switch to per metre"}
@@ -942,7 +942,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 text-[10px] px-1.5 text-muted-foreground"
+                              className="h-6 text-xs px-1.5 text-muted-foreground"
                               onClick={() => regenerateBrackets(area.id)}
                               title="Re-sync brackets from AC units"
                             >
@@ -952,7 +952,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                           {area.brackets.map((bracket) => (
                             <div key={bracket.id} className="space-y-1 rounded border bg-muted/30 px-2 py-1.5 text-xs">
                               <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-[10px]">{bracket.size}</Badge>
+                                <Badge variant="outline" className="text-xs">{bracket.size}</Badge>
                                 <span className="text-muted-foreground">@ R {bracket.price.toFixed(2)} each</span>
                                 <span className="flex-1" />
                                 <span className="font-medium w-20 text-right shrink-0">
@@ -1049,7 +1049,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                                 <div className="flex-1 min-w-0 flex items-center gap-1.5">
                                   <span className="font-medium truncate block">{cons.product.short_name || cons.product.product_code}</span>
                                   {cons.isSuggested && (
-                                    <Badge variant="outline" className="text-[9px] border-primary/30 text-primary shrink-0">Suggested</Badge>
+                                    <Badge variant="outline" className="text-xs border-primary/30 text-primary shrink-0">Suggested</Badge>
                                   )}
                                 </div>
                                 <span className="font-medium w-20 text-right shrink-0">

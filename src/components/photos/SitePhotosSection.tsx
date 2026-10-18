@@ -131,7 +131,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
           {list.map((p) => (
             <button key={p.id} type="button" onClick={() => setOpen(p)} className="relative aspect-square overflow-hidden rounded-md bg-muted" data-testid="site-photo-thumb">
               {p.url && <img src={p.url} alt="Site photo" className="h-full w-full object-cover" loading="lazy" />}
-              {p.annotated_path && <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[10px] text-white">Marked</span>}
+              {p.annotated_path && <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-xs text-white">Marked</span>}
             </button>
           ))}
         </div>

@@ -52,7 +52,7 @@ import { useRegisterAssistantContext } from "@/hooks/useAssistantContextTracker"
 import { LEAD_SOURCE_OPTIONS, DEFAULT_LEAD_SOURCE, toLeadSourceValue, leadSourceLabel } from "@/lib/leadSources";
 
 const LEAD_SOURCE_STYLES: Record<string, string> = {
-  manual:        "bg-slate-100 text-slate-700 border-slate-200",
+  manual:        "bg-slate-100 text-ink border-slate-200",
   facebook_lead: "bg-blue-100 text-blue-700 border-blue-200",
   website_form:  "bg-green-100 text-green-700 border-green-200",
   website:       "bg-green-100 text-green-700 border-green-200",
@@ -61,14 +61,14 @@ const LEAD_SOURCE_STYLES: Record<string, string> = {
   vapi:          "bg-orange-100 text-orange-700 border-orange-200",
   walk_in:       "bg-purple-100 text-purple-700 border-purple-200",
   referral:      "bg-pink-100 text-pink-700 border-pink-200",
-  other:         "bg-slate-100 text-slate-700 border-slate-200",
+  other:         "bg-slate-100 text-ink border-slate-200",
 };
 
 const statusBadge = (status?: string | null) => {
   const s = (status || "").toLowerCase();
   if (s === "paid" || s === "accepted" || s === "completed" || s === "active") return "bg-emerald-100 text-emerald-700 border-emerald-200";
   if (s === "overdue" || s === "declined") return "bg-rose-100 text-rose-700 border-rose-200";
-  if (s === "draft") return "bg-slate-100 text-slate-700 border-slate-200";
+  if (s === "draft") return "bg-slate-100 text-ink border-slate-200";
   if (s === "sent" || s === "viewed" || s === "scheduled" || s === "in_progress") return "bg-blue-100 text-blue-700 border-blue-200";
   return "bg-amber-100 text-amber-700 border-amber-200";
 };
@@ -373,7 +373,7 @@ const AdminCustomerDetailPage = () => {
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-2xl font-bold">{headerName}</h1>
           {customer.status === "archived" && <Badge variant="secondary">Archived</Badge>}
-          <Badge variant="outline" className={cn("text-[10px]", LEAD_SOURCE_STYLES[toLeadSourceValue(customer.lead_source)])}>
+          <Badge variant="outline" className={cn("text-xs", LEAD_SOURCE_STYLES[toLeadSourceValue(customer.lead_source)])}>
             {leadSourceLabel(customer.lead_source)}
           </Badge>
         </div>
@@ -543,13 +543,13 @@ const AdminCustomerDetailPage = () => {
                 <div className="border-b overflow-x-auto">
                   <TabsList className="m-3 md:m-4 flex-nowrap w-max">
                     <TabsTrigger value="invoices">
-                      Invoices {invoices.length > 0 && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{invoices.length}</span>}
+                      Invoices {invoices.length > 0 && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-muted">{invoices.length}</span>}
                     </TabsTrigger>
                     <TabsTrigger value="quotes">
-                      Estimates / Quotes {quotes.length > 0 && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{quotes.length}</span>}
+                      Estimates / Quotes {quotes.length > 0 && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-muted">{quotes.length}</span>}
                     </TabsTrigger>
                     <TabsTrigger value="jobs">
-                      Jobs {jobs.length > 0 && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{jobs.length}</span>}
+                      Jobs {jobs.length > 0 && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-muted">{jobs.length}</span>}
                     </TabsTrigger>
                     {canSeeStatement && <TabsTrigger value="statement" data-testid="tab-statement">Statement</TabsTrigger>}
                     <TabsTrigger value="notes" data-testid="tab-notes">Notes</TabsTrigger>
@@ -594,7 +594,7 @@ const AdminCustomerDetailPage = () => {
                             <TableCell className="text-xs">{inv.issue_date ? format(new Date(inv.issue_date), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-xs">{inv.due_date ? format(new Date(inv.due_date), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-right font-medium">{formatRand(Number(inv.grand_total || 0))}</TableCell>
-                            <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(inv.status))}>{inv.status || "draft"}</Badge></TableCell>
+                            <TableCell><Badge variant="outline" className={cn("text-xs", statusBadge(inv.status))}>{inv.status || "draft"}</Badge></TableCell>
                           </TableRow>
                         ))}
                         {invoices.length === 0 && <EmptyRow cols={6} text="No invoices yet." />}
@@ -643,7 +643,7 @@ const AdminCustomerDetailPage = () => {
                             <TableCell className="min-w-[160px] max-w-[320px] text-muted-foreground text-xs"><div className="line-clamp-2 break-words" title={q.client_summary || q.notes || undefined}>{q.client_summary || q.notes || "—"}</div></TableCell>
                             <TableCell className="text-xs">{q.created_at ? format(new Date(q.created_at), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-right font-medium">{formatRand(Number(q.total || 0))}</TableCell>
-                            <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(q.status))}>{q.status || "draft"}</Badge></TableCell>
+                            <TableCell><Badge variant="outline" className={cn("text-xs", statusBadge(q.status))}>{q.status || "draft"}</Badge></TableCell>
                           </TableRow>
                         ))}
                         {quotes.length === 0 && <EmptyRow cols={6} text="No quotes yet." />}
@@ -678,7 +678,7 @@ const AdminCustomerDetailPage = () => {
                             <TableCell className="font-medium">{j.title || "Untitled"}</TableCell>
                             <TableCell className="min-w-[160px] max-w-[320px] text-muted-foreground text-xs"><div className="line-clamp-2 break-words" title={j.description || undefined}>{j.description || "—"}</div></TableCell>
                             <TableCell className="text-xs">{(j.scheduled_for || j.created_at) ? format(new Date((j.scheduled_for || j.created_at)!), "dd MMM yyyy") : "—"}</TableCell>
-                            <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(j.status))}>{j.status || "pending"}</Badge></TableCell>
+                            <TableCell><Badge variant="outline" className={cn("text-xs", statusBadge(j.status))}>{j.status || "pending"}</Badge></TableCell>
                           </TableRow>
                         ))}
                         {jobs.length === 0 && <EmptyRow cols={4} text="No jobs yet." />}
@@ -756,7 +756,7 @@ const AdminCustomerDetailPage = () => {
 
 type ChipTone = "slate" | "blue" | "emerald" | "amber" | "rose";
 const CHIP_TONES: Record<ChipTone, string> = {
-  slate:   "bg-slate-50 text-slate-700 border-slate-200",
+  slate:   "bg-slate-50 text-ink border-slate-200",
   blue:    "bg-blue-50 text-blue-700 border-blue-200",
   emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
   amber:   "bg-amber-50 text-amber-800 border-amber-200",
@@ -770,7 +770,7 @@ const SummaryChips = ({ items }: { items: { label: string; value: string; tone: 
         key={it.label}
         className={cn("shrink-0 rounded-lg border px-3 py-2 min-w-[110px]", CHIP_TONES[it.tone])}
       >
-        <p className="text-[10px] uppercase tracking-wide opacity-80">{it.label}</p>
+        <p className="text-xs uppercase tracking-wide opacity-80">{it.label}</p>
         <p className="text-sm font-bold leading-tight mt-0.5">{it.value}</p>
       </div>
     ))}
@@ -793,7 +793,7 @@ const ContactRow = ({
 
 const Stat = ({ label, value }: { label: string; value: string }) => (
   <div>
-    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+    <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
     <p className="text-sm font-bold mt-1">{value}</p>
   </div>
 );

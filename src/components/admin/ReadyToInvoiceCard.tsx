@@ -93,7 +93,7 @@ const ReadyToInvoiceCard = ({ showEmpty = false, defaultOpen = false }: { showEm
               <div className="flex-1 min-w-0 space-y-0.5">
                 <div className="font-semibold text-sm leading-snug line-clamp-2 break-words" title={row.customer_name || undefined}>{row.customer_name}</div>
                 {row.service_type && <div className="text-xs text-muted-foreground truncate">{row.service_type}</div>}
-                <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
                   <Badge className={red ? "border-0 bg-destructive/15 text-destructive" : "border-0 bg-amber-500/15 text-amber-600"}>
                     {row.completed_at ? `Completed ${formatDistanceToNowStrict(new Date(row.completed_at))} ago` : "Completed – date unknown"}
                   </Badge>

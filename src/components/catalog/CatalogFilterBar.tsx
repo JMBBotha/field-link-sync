@@ -103,10 +103,10 @@ function ChipGroup({
 }) {
   return (
     <div className="flex items-center gap-1 flex-wrap">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-14 shrink-0">{label}</span>
+      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground w-14 shrink-0">{label}</span>
       <button
         onClick={() => onChange("__all__")}
-        className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors border ${
+        className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors border ${
           value === "__all__"
             ? "bg-primary text-primary-foreground border-primary"
             : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
@@ -118,7 +118,7 @@ function ChipGroup({
         <button
           key={opt.value}
           onClick={() => onChange(value === opt.value ? "__all__" : opt.value)}
-          className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors border ${
+          className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors border ${
             value === opt.value
               ? "bg-primary text-primary-foreground border-primary"
               : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
@@ -126,7 +126,7 @@ function ChipGroup({
         >
           {opt.label}
           {opt.count !== undefined && opt.count > 0 && (
-            <span className="ml-0.5 opacity-70 text-[10px]">({opt.count})</span>
+            <span className="ml-0.5 opacity-70 text-xs">({opt.count})</span>
           )}
         </button>
       ))}
@@ -147,9 +147,9 @@ function DropdownFilter({
 }) {
   return (
     <div className="flex items-center gap-1 flex-wrap">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-14 shrink-0">{label}</span>
+      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground w-14 shrink-0">{label}</span>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-7 text-[11px] w-44">
+        <SelectTrigger className="h-7 text-xs w-44">
           <SelectValue placeholder={`All ${label}`} />
         </SelectTrigger>
         <SelectContent className="bg-popover z-50">
@@ -266,7 +266,7 @@ const CatalogFilterBar = ({
             {searchSuggestions}
           </div>
           <Select value={sortBy} onValueChange={(v) => onSortChange(v as SortOption)}>
-            <SelectTrigger className="h-8 text-[11px] w-36 shrink-0">
+            <SelectTrigger className="h-8 text-xs w-36 shrink-0">
               <ArrowUpDown className="h-3 w-3 mr-1" />
               <SelectValue />
             </SelectTrigger>
@@ -321,17 +321,17 @@ const CatalogFilterBar = ({
           {(secondaryDims.length > 0 || showPriceFilter) ? (
             <button
               onClick={() => setShowMore(!showMore)}
-              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <SlidersHorizontal className="h-3 w-3" />
               {showMore ? "Hide filters" : "More filters"}
               {moreFilterCount > 0 && !showMore && (
-                <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">{moreFilterCount}</Badge>
+                <Badge variant="secondary" className="text-xs px-1 py-0 h-4">{moreFilterCount}</Badge>
               )}
               {showMore ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </button>
           ) : <div />}
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             {filteredCount} of {totalCount}
           </span>
         </div>
@@ -351,13 +351,13 @@ const CatalogFilterBar = ({
 
           {/* Price range – always available */}
           <div className="flex items-center gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-14 shrink-0">Price</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground w-14 shrink-0">Price</span>
             <Input
               type="number"
               placeholder="Min"
               value={filters.priceMin}
               onChange={(e) => set("priceMin", e.target.value)}
-              className="h-7 text-[11px] w-24"
+              className="h-7 text-xs w-24"
             />
             <span className="text-xs text-muted-foreground">–</span>
             <Input
@@ -365,7 +365,7 @@ const CatalogFilterBar = ({
               placeholder="Max"
               value={filters.priceMax}
               onChange={(e) => set("priceMax", e.target.value)}
-              className="h-7 text-[11px] w-24"
+              className="h-7 text-xs w-24"
             />
           </div>
         </div>
@@ -375,14 +375,14 @@ const CatalogFilterBar = ({
       {hasActiveFilters && (
         <div className="flex items-center gap-1.5 flex-wrap">
           {activeFilters.map((f) => (
-            <Badge key={f.key} variant="secondary" className="text-[10px] gap-1 pr-1">
+            <Badge key={f.key} variant="secondary" className="text-xs gap-1 pr-1">
               {f.label}
               <button onClick={() => removeFilter(f.key)} className="ml-0.5 hover:text-destructive">
                 <X className="h-2.5 w-2.5" />
               </button>
             </Badge>
           ))}
-          <button onClick={clearAll} className="text-[10px] text-muted-foreground hover:text-foreground underline ml-1">
+          <button onClick={clearAll} className="text-xs text-muted-foreground hover:text-foreground underline ml-1">
             Clear all
           </button>
         </div>

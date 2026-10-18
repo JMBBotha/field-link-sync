@@ -194,7 +194,7 @@ const AdminBillingPage = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold">R {inv.grand_total.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</p>
-                    <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                    <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
                       Paid
                     </Badge>
                   </div>

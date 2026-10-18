@@ -319,17 +319,17 @@ export default function QuoteQuickEditor({
         {fav ? (
           <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
         ) : (
-          <Plus className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+          <Plus className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
         )}
-        <span className="min-w-0 flex-1 truncate text-sm text-slate-800">
+        <span className="min-w-0 flex-1 truncate text-sm text-ink">
           {p.short_name || p.product_code}
-          <span className="ml-1 text-xs text-slate-500">{p.brand}</span>
+          <span className="ml-1 text-xs text-ink-secondary">{p.brand}</span>
         </span>
         {onQuoteProductIds.has(p.id) && (
-          <Badge variant="secondary" className="shrink-0 text-[10px]">on quote</Badge>
+          <Badge variant="secondary" className="shrink-0 text-xs">on quote</Badge>
         )}
         {(() => { const sp = findSpecial(p.id, p.product_code); return sp ? <SpecialChip cost={Number(sp.special_cost)} endDate={sp.end_date} /> : null; })()}
-        <span className="shrink-0 text-xs font-medium text-slate-700">{perM != null ? `${money(perM)} / m` : money(unitSell)}</span>
+        <span className="shrink-0 text-xs font-medium text-ink">{perM != null ? `${money(perM)} / m` : money(unitSell)}</span>
       </button>
     );
   };
@@ -408,7 +408,7 @@ export default function QuoteQuickEditor({
       ) : (
       <div className={mode ? "grid gap-2" : "grid gap-2 sm:grid-cols-2"}>
         {mode !== "service" && <div className="relative">
-          <Package className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+          <Package className="absolute left-2.5 top-2.5 h-4 w-4 text-ink-muted" />
           <Input
             value={productTerm}
             onChange={(e) => setProductTerm(e.target.value)}
@@ -418,14 +418,14 @@ export default function QuoteQuickEditor({
             autoFocus={mode === "unit" || mode === "material"}
             readOnly={mode === "selected"}
             placeholder={mode === "selected" ? "Selected from PDF" : mode === "unit" ? "Search units…" : mode === "material" ? "Search materials…" : mode === "item" ? "Search model, size (12k) or name…" : "Add item from catalog…"}
-            className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
+            className="h-9 border-slate-200 bg-white pl-9 text-ink placeholder:text-slate-400"
           />
-          {loadingProducts && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-slate-400" />}
+          {loadingProducts && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-ink-muted" />}
           {(mode === "selected" || mode !== "item" || itemFocus) && (mode === "selected" || productResults.length > 0 || (!productTerm.trim() && emptySections)) && (
             <ScrollArea className={`${mode === "selected" ? "relative mt-2 h-64" : `absolute ${dropdownPos}`} z-30 max-h-64 w-full rounded-md border border-slate-200 bg-white shadow-lg`}>
               <div className="divide-y divide-slate-100" onMouseDown={(e) => { if (mode === "item") e.preventDefault(); }}>
                 {mode === "selected" && !emptySections ? (
-                  <p className="px-3 py-3 text-xs text-slate-500" data-testid="selected-empty">
+                  <p className="px-3 py-3 text-xs text-ink-secondary" data-testid="selected-empty">
                     {pdfBasket?.length
                       ? "None of the selected items are on the current price lists anymore — pick them again on the Visual PDF tab."
                       : "No selected items yet — tick items on the Visual PDF tab first, then they show here."}
@@ -433,9 +433,9 @@ export default function QuoteQuickEditor({
                 ) : productResults.length > 0
                   ? productResults.map((p) => renderRow(p))
                   : emptySections && (<>
-                       {emptySections.basket.length > 0 && <div className="bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Selected from PDF</div>}
+                       {emptySections.basket.length > 0 && <div className="bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ink-secondary">Selected from PDF</div>}
                       {emptySections.basket.map((p) => renderRow(p))}
-                       {emptySections.favs.length > 0 && <div className="bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Favourites</div>}
+                       {emptySections.favs.length > 0 && <div className="bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ink-secondary">Favourites</div>}
                       {emptySections.favs.map((p) => renderRow(p))}
                     </>)}
               </div>
@@ -444,7 +444,7 @@ export default function QuoteQuickEditor({
         </div>}
 
         {(!mode || mode === "service") && <div className="relative">
-          <Wrench className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+          <Wrench className="absolute left-2.5 top-2.5 h-4 w-4 text-ink-muted" />
           <Input
             value={serviceTerm}
             onChange={(e) => setServiceTerm(e.target.value)}
@@ -452,12 +452,12 @@ export default function QuoteQuickEditor({
             onBlur={() => { if (!customOpen) setServiceFocus(false); }}
             autoFocus={mode === "service"}
             placeholder="Add service…"
-            className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
+            className="h-9 border-slate-200 bg-white pl-9 text-ink placeholder:text-slate-400"
           />
           {showServiceList && (
             <ScrollArea className={`absolute z-30 ${dropdownPos} h-72 max-h-[min(18rem,50vh)] w-full rounded-md border border-slate-200 bg-white shadow-lg`}>
               <div className="divide-y divide-slate-100" onMouseDown={(e) => e.preventDefault()}>
-                <p className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Services</p>
+                <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ink-secondary">Services</p>
                 {catalogResults.map((s) => (
                   <button
                     key={s.id}
@@ -466,9 +466,9 @@ export default function QuoteQuickEditor({
                     disabled={adding === s.id}
                     className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50"
                   >
-                    <Plus className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                    <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{s.name}</span>
-                    {s.origin === "custom" && <Badge variant="outline" className="shrink-0 text-[10px]">Custom</Badge>}
+                    <Plus className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
+                    <span className="min-w-0 flex-1 truncate text-sm text-ink">{s.name}</span>
+                    {s.origin === "custom" && <Badge variant="outline" className="shrink-0 text-xs">Custom</Badge>}
                   </button>
                 ))}
                 {customOpen ? (
@@ -481,7 +481,7 @@ export default function QuoteQuickEditor({
                     </div>
                   </div>
                 ) : (
-                  <button type="button" onClick={() => setCustomOpen(true)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-50">
+                  <button type="button" onClick={() => setCustomOpen(true)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink-secondary hover:bg-slate-50">
                     <Plus className="h-3.5 w-3.5 shrink-0" /> Add custom service
                   </button>
                 )}

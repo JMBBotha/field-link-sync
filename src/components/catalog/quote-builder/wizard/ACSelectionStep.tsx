@@ -150,16 +150,16 @@ function SuggestedBundlePanel({
       <div className="flex items-center gap-2">
         <Package className="h-3.5 w-3.5 text-primary shrink-0" />
         <span className="font-medium text-foreground flex-1">{bundle.name}</span>
-        <Badge variant="secondary" className="text-[10px]">{activeItems.length} items</Badge>
+        <Badge variant="secondary" className="text-xs">{activeItems.length} items</Badge>
         {isApplied ? (
-          <Badge variant="default" className="text-[10px] gap-1">
+          <Badge variant="default" className="text-xs gap-1">
             <Check className="h-2.5 w-2.5" /> Applied
           </Badge>
         ) : null}
       </div>
 
       {isApplied && !editorOpen && (
-        <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
           <span>Kit items are listed under Materials &amp; Consumables.</span>
           <span className="font-medium text-foreground">{formatZAR2(kitTotal)}</span>
         </div>
@@ -178,7 +178,7 @@ function SuggestedBundlePanel({
             <div key={item.id} className="flex items-center gap-2 rounded border border-border/50 bg-background/50 px-2 py-1.5">
               <div className="flex-1 min-w-0">
                 <div className="truncate font-medium text-foreground">{name}</div>
-                <div className="text-muted-foreground text-[10px]">
+                <div className="text-muted-foreground text-xs">
                   {formatUnitPrice(unitPriceOf(product), unit)} · {formatZAR2(lineTotalOf(product, override.qty))}
                 </div>
               </div>
@@ -186,7 +186,7 @@ function SuggestedBundlePanel({
               {/* Mode toggle */}
               <button
                 type="button"
-                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] border border-border hover:bg-accent transition-colors"
+                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs border border-border hover:bg-accent transition-colors"
                 onClick={() => updateItem(item.id, { mode: override.mode === "length" ? "unit" : "length" })}
               >
                 {override.mode === "length" ? <><Ruler className="h-2.5 w-2.5" /> p/m</> : <><Hash className="h-2.5 w-2.5" /> qty</>}
@@ -282,10 +282,10 @@ function KitLineRow({
         <Package className="h-3 w-3 text-primary shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="font-medium truncate">{perMetre && /kit/i.test(kit.name) ? `Piping kit · ${value}m` : kit.name}</div>
-          <div className="text-[10px] text-muted-foreground">
+          <div className="text-xs text-muted-foreground">
             {perMetre ? `${value}m @ ${formatZAR(kit.unitSell)}/m` : `×${value} @ ${formatZAR(kit.unitSell)}`}
             {kit.unitCost > 0 && (
-              <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 h-3.5 border-green-500/40 text-green-600">
+              <Badge variant="outline" className="ml-1 text-xs px-1 py-0 h-3.5 border-green-500/40 text-green-600">
                 {Math.round(((kit.unitSell - kit.unitCost) / kit.unitCost) * 100)}% M/Up · cost {formatZAR(kit.unitCost * value)}
               </Badge>
             )}
@@ -302,7 +302,7 @@ function KitLineRow({
           size="sm"
           className="shrink-0"
         />
-        <span className="text-[10px] font-medium shrink-0 tabular-nums">{formatZAR(total)}</span>
+        <span className="text-xs font-medium shrink-0 tabular-nums">{formatZAR(total)}</span>
         <button
           className="h-5 w-5 rounded-full flex items-center justify-center hover:bg-destructive/20 shrink-0"
           onClick={onRemove}
@@ -322,14 +322,14 @@ function KitLineRow({
             className="flex-1"
             aria-label="Piping kit metres"
           />
-          <span className="text-[10px] text-muted-foreground whitespace-nowrap tabular-nums">{formatZAR(kit.unitSell)}/m</span>
+          <span className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">{formatZAR(kit.unitSell)}/m</span>
         </div>
       )}
       {open && (
         <div className="border-t border-primary/20 px-3 py-1.5 space-y-0.5">
-          {kit.items.length === 0 && <div className="text-[10px] text-muted-foreground">No contents recorded</div>}
+          {kit.items.length === 0 && <div className="text-xs text-muted-foreground">No contents recorded</div>}
           {kit.items.map((it, idx) => (
-            <div key={idx} className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <div key={idx} className="flex items-center gap-2 text-xs text-muted-foreground">
               {it.isLengthItem ? <Ruler className="h-2.5 w-2.5 shrink-0" /> : <Hash className="h-2.5 w-2.5 shrink-0" />}
               <span className="flex-1 truncate">{it.name}</span>
               <span className="shrink-0">{it.isLengthItem ? `${value}m` : `×${it.quantity}`}</span>
@@ -414,17 +414,17 @@ function AreaUnitSelector({
         <span className="text-sm font-medium">{area.name}</span>
         <div className="flex items-center gap-1.5">
           {isOver && (
-            <Badge variant="default" className="text-[10px] gap-1 animate-pulse">
+            <Badge variant="default" className="text-xs gap-1 animate-pulse">
               <MousePointerClick className="h-3 w-3" /> Drop here
             </Badge>
           )}
           {!selectedUnit && !isOver && (
-            <Badge variant="outline" className="text-[10px] gap-1 text-muted-foreground">
+            <Badge variant="outline" className="text-xs gap-1 text-muted-foreground">
               <MousePointerClick className="h-3 w-3" /> Drag AC unit here
             </Badge>
           )}
           {selectedUnit && (
-            <Badge variant="outline" className="text-[10px] gap-1 border-green-300 text-green-700 dark:text-green-400">
+            <Badge variant="outline" className="text-xs gap-1 border-green-300 text-green-700 dark:text-green-400">
               <Check className="h-3 w-3" />
               Unit selected
             </Badge>
@@ -432,7 +432,7 @@ function AreaUnitSelector({
           {totalExtras > 0 && (
             <button
               type="button"
-              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent transition-colors"
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
               onClick={() => setExpanded((e) => !e)}
             >
               <Wrench className="h-3 w-3" />
@@ -461,7 +461,7 @@ function AreaUnitSelector({
               <span>·</span>
               <span>{selectedUnit.btu.toLocaleString()} BTU</span>
               {p.pipe_size && (<><span>·</span><span>{p.pipe_size}</span></>)}
-              <Badge variant="outline" className="text-[10px] px-1 py-0">
+              <Badge variant="outline" className="text-xs px-1 py-0">
                 Bracket: {getBracketSize(selectedUnit.btu)}
               </Badge>
             </div>
@@ -470,10 +470,10 @@ function AreaUnitSelector({
             <span className="text-xs font-bold">
               R{pricing.sellingPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
-            <span className="text-[9px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               R{pricing.sellingPriceInclVat.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} incl
             </span>
-            <Badge variant="secondary" className="text-[9px] px-1 py-0 gap-0.5">
+            <Badge variant="secondary" className="text-xs px-1 py-0 gap-0.5">
               <TrendingUp className="h-2.5 w-2.5" />
               {mkup}% M/Up
             </Badge>
@@ -492,7 +492,7 @@ function AreaUnitSelector({
       {/* Consumables & Materials (expanded section) */}
       {expanded && totalExtras > 0 && (
         <div className="space-y-1 rounded-lg border border-border/50 bg-white p-2">
-          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
             Materials & Consumables
           </div>
           {(area.materials || []).map((m) => m.kit ? (
@@ -507,11 +507,11 @@ function AreaUnitSelector({
               <Ruler className="h-3 w-3 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{getProductDisplayName(m.product) || m.product.product_code}</div>
-                <div className="text-[10px] text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   {m.pricingMode === "length" ? `${m.adjustedLength}m @ R${m.costPerMeter.toFixed(2)}/m` : `×${m.unitQuantity} @ ${formatUnitPrice(unitPriceOf(m.product), resolvePricingUnit(m.product))}`}
                 </div>
               </div>
-              <span className="text-[10px] font-medium shrink-0">
+              <span className="text-xs font-medium shrink-0">
                 {formatZAR(m.pricingMode === "length" ? m.totalCost : lineTotalOf(m.product, m.unitQuantity))}
 
               </span>
@@ -528,11 +528,11 @@ function AreaUnitSelector({
               <Package className="h-3 w-3 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{getProductDisplayName(c.product) || c.product.product_code}</div>
-                <div className="text-[10px] text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   ×{c.quantity} @ {formatUnitPrice(unitPriceOf(c.product), resolvePricingUnit(c.product))} {c.isSuggested && <span className="text-primary">(auto)</span>}
                 </div>
               </div>
-              <span className="text-[10px] font-medium shrink-0">
+              <span className="text-xs font-medium shrink-0">
                 {formatZAR(lineTotalOf(c.product, c.quantity))}
 
               </span>
@@ -616,7 +616,7 @@ function AreaUnitSelector({
                       return (
                         <div className="flex flex-col items-end shrink-0">
                           <span className="font-medium">R{pr.sellingPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          <span className="text-[9px] text-muted-foreground">{mk}% M/Up</span>
+                          <span className="text-xs text-muted-foreground">{mk}% M/Up</span>
                         </div>
                       );
                     })()}

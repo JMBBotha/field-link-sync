@@ -247,7 +247,7 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
                           <span>{s.label}</span><span className="flex items-center gap-2 text-muted-foreground">{sum.count}{(isBack ? peekOpen : isExpanded) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
                         </div>
                         <div className="text-lg font-bold tabular-nums">{s.key === "lead" ? "—" : fmtRandShort(sum.total)}</div>
-                        <div className={cn("text-[11px] font-normal text-muted-foreground", isBack && !peekOpen && "hidden")}>{s.hint} · avg {sum.avgDays} d in stage</div>
+                        <div className={cn("text-xs font-normal text-muted-foreground", isBack && !peekOpen && "hidden")}>{s.hint} · avg {sum.avgDays} d in stage</div>
                       </Button>
                       <PeekBody open={peekOpen} id={isBack ? s.key : undefined}>
                       <div className={cn("grid grid-cols-1 gap-2 px-2 pb-2", peekOpen && "min-h-24", isFront && "pb-3", isExpanded && "md:grid-cols-2 lg:grid-cols-3")}>
@@ -292,7 +292,7 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
                   : <><span className="xl:hidden"><ChevronDown className="h-4 w-4" /></span><span className="hidden xl:inline xl:order-first"><ChevronLeft className="h-4 w-4" /></span></>}
               </Button>
               <div className={cn("min-w-0 xl:min-w-72", !lostOpen && "hidden")} aria-hidden={!lostOpen || undefined} data-lost-body>
-                <div className="px-3 pb-1 text-[11px] text-muted-foreground">{fmtRandShort(lostSum.total)} · avg {lostSum.avgDays} d in stage</div>
+                <div className="px-3 pb-1 text-xs text-muted-foreground">{fmtRandShort(lostSum.total)} · avg {lostSum.avgDays} d in stage</div>
                 <div className="grid grid-cols-1 gap-2 px-2 pb-2 sm:grid-cols-2 xl:grid-cols-1">
                   {(lostExpanded ? lostList : lostList.slice(0, 2)).map((d) => dealCard(d, undefined, true))}
                   {!lostExpanded && lostList.length > 2 && <Button variant="ghost" className="h-8 text-xs text-primary" onClick={() => toggleStage("lost")}>+{lostList.length - 2} more</Button>}

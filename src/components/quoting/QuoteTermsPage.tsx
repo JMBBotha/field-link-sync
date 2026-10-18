@@ -55,14 +55,14 @@ const TermsSections = ({ sections, startIndex = 0 }: { sections: TermsSection[];
     {sections.map((s, i) => (
       <div key={i} data-pdf-keep className="break-inside-avoid">
         <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-[10px] font-bold text-white">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-xs font-bold text-white">
             {String(startIndex + i + 1).padStart(2, "0")}
           </span>
-          <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#1AA7EC]">{s.heading || "Terms"}</h4>
+          <h4 className="text-xs font-bold uppercase tracking-wide text-[#1AA7EC]">{s.heading || "Terms"}</h4>
         </div>
         <div className="mt-1.5 space-y-1.5">
           {s.items.map((it, j) => (
-            <p key={j} className={`text-[10px] leading-relaxed text-slate-700 ${/^(building|electrical) work$/i.test(s.heading) ? "font-bold" : it.type === "banking" ? "font-semibold" : ""}`}>
+            <p key={j} className={`text-xs leading-relaxed text-ink ${/^(building|electrical) work$/i.test(s.heading) ? "font-bold" : it.type === "banking" ? "font-semibold" : ""}`}>
               {it.type === "bullet" ? `• ${it.text}` : it.text}
             </p>
           ))}
@@ -86,8 +86,8 @@ export default function QuoteTermsPage(p: QuoteTermsPageProps) {
   return (
     <div data-pdf-terms-page data-paper data-testid="quote-terms-page" className="mt-4 pt-2">
       <div className="flex items-baseline gap-3 border-b-2 border-[#1AA7EC] pb-2">
-        <span className="border-l-4 border-[#F7941D] pl-2 text-[16px] font-bold text-[#1B3A5C]">Terms and conditions</span>
-        {p.quoteNumber && <span className="text-[10px] text-slate-400">Quote {p.quoteNumber}</span>}
+        <span className="border-l-4 border-[#F7941D] pl-2 text-base font-bold text-[#1B3A5C]">Terms and conditions</span>
+        {p.quoteNumber && <span className="text-xs text-ink-muted">Quote {p.quoteNumber}</span>}
       </div>
       <div className="mt-4 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
         <div data-pdf-keep className="space-y-4">

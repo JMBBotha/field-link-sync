@@ -33,7 +33,7 @@ const AdminMoneyPage = () => {
           ["Outstanding", sum?.outstanding],
         ].map(([label, b]: any) => (
           <Card key={label} className="surface-card-solid"><CardContent className="p-3">
-            <p className="text-[11px] text-muted-foreground">{label} · {b?.count ?? 0}</p>
+            <p className="text-xs text-muted-foreground">{label} · {b?.count ?? 0}</p>
             <p className="text-sm font-bold text-foreground">{formatRand(b?.balance ?? 0)}</p>
           </CardContent></Card>
         ))}

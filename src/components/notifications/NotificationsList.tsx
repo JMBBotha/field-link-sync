@@ -201,7 +201,7 @@ const NotificationsList = ({
               key={f.key}
               type="button"
               onClick={() => setFilter(f.key)}
-              className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
                 filter === f.key
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-accent"
@@ -290,7 +290,7 @@ const NotificationsList = ({
                               {notification.body}
                             </p>
                           )}
-                          <p className="text-[10px] text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             {formatDistanceToNow(new Date(notification.created_at), {
                               addSuffix: true,
                             })}
@@ -302,7 +302,7 @@ const NotificationsList = ({
                             <div className="mt-2 space-y-1" onClick={(e) => e.stopPropagation()}>
                               <CallRecordingPlayer callId={notification.related_id} />
                               <button type="button" data-testid="view-transcript"
-                                className="text-[11px] font-medium text-primary hover:underline"
+                                className="text-xs font-medium text-primary hover:underline"
                                 onClick={() => { const leadId = (notification as any).metadata?.lead_id; onClose?.(); navigate(leadId ? `/admin/dispatch?lead=${leadId}` : "/admin/calls"); }}>
                                 View transcript
                               </button>

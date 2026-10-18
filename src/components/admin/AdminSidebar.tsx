@@ -318,9 +318,9 @@ const AdminSidebar = ({
       <button
         onClick={() => handleNav(item.path)}
         className={cn(
-          "w-full flex items-center gap-2.5 rounded-md text-[12.5px] font-medium leading-tight transition-colors relative",
+          "w-full flex items-center gap-2.5 rounded-md text-xs font-medium leading-tight transition-colors relative",
           collapsed ? "justify-center px-0 py-2" : "px-3 py-[5px]",
-          depth > 0 && !collapsed && "pl-9 py-1 text-[12px]",
+          depth > 0 && !collapsed && "pl-9 py-1 text-xs",
           active
             ? "bg-white/20 dark:bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-[#F97316]"
             : "text-white/90 dark:text-nav-foreground/85 hover:text-white hover:bg-white/[0.12]",
@@ -329,12 +329,12 @@ const AdminSidebar = ({
         <item.icon className={cn("h-4 w-4 shrink-0", active ? "opacity-100" : "opacity-80")} strokeWidth={1.75} />
         {!collapsed && <span className="truncate">{item.label}</span>}
         {!collapsed && item.badge && item.badge > 0 ? (
-          <Badge variant="destructive" title={item.badgeTitle ? `${item.badge} ${item.badgeTitle}` : undefined} className={cn("ml-auto h-5 min-w-5 flex items-center justify-center p-0 px-1 text-[10px]", item.badgeTone === "blue" && "bg-white/25 text-white hover:bg-white/25")}>
+          <Badge variant="destructive" title={item.badgeTitle ? `${item.badge} ${item.badgeTitle}` : undefined} className={cn("ml-auto h-5 min-w-5 flex items-center justify-center p-0 px-1 text-xs", item.badgeTone === "blue" && "bg-white/25 text-white hover:bg-white/25")}>
             {item.badge > 99 ? "99+" : item.badge}
           </Badge>
         ) : null}
         {collapsed && item.badge && item.badge > 0 ? (
-          <span className={cn("absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full text-[9px] text-white font-bold px-1", item.badgeTone === "blue" ? "bg-[#0b5e8a]" : "bg-destructive")}>
+          <span className={cn("absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full text-xs text-white font-bold px-1", item.badgeTone === "blue" ? "bg-[#0b5e8a]" : "bg-destructive")}>
             {item.badge > 99 ? "99+" : item.badge}
           </span>
         ) : null}
@@ -363,10 +363,10 @@ const AdminSidebar = ({
       if (badged && item.path === "/admin/catalog") {
         const btn = (
           <button
-            className="w-full flex items-center justify-center gap-3 rounded-md px-0 py-2 text-[12.5px] font-medium transition-colors relative text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]"
+            className="w-full flex items-center justify-center gap-3 rounded-md px-0 py-2 text-xs font-medium transition-colors relative text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]"
           >
             <item.icon className="h-4 w-4 shrink-0 opacity-80" strokeWidth={1.75} />
-            <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-[9px] text-white font-bold px-1">
+            <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-xs text-white font-bold px-1">
               {item.badge! > 99 ? "99+" : item.badge}
             </span>
           </button>
@@ -398,7 +398,7 @@ const AdminSidebar = ({
           }
         }}
         className={cn(
-          "w-full flex items-center gap-2.5 px-3 py-[5px] rounded-md text-[12.5px] font-medium leading-tight transition-colors relative",
+          "w-full flex items-center gap-2.5 px-3 py-[5px] rounded-md text-xs font-medium leading-tight transition-colors relative",
           active
             ? "bg-white/20 dark:bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-[#F97316]"
             : "text-white/90 dark:text-nav-foreground/85 hover:text-white hover:bg-white/[0.12]",
@@ -407,7 +407,7 @@ const AdminSidebar = ({
         <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
         <span className="truncate">{item.label}</span>
         {badged ? (
-          <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-[10px]">
+          <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-xs">
             {item.badge! > 99 ? "99+" : item.badge}
           </Badge>
         ) : null}
@@ -462,21 +462,21 @@ const AdminSidebar = ({
           {!collapsed && (
             <div className="flex w-full min-w-0 flex-col items-center">
               <div className="flex w-full max-w-full items-start justify-center gap-1">
-                <span className="text-center text-[12px] font-bold uppercase leading-tight tracking-wide text-white break-words">
+                <span className="text-center text-xs font-bold uppercase leading-tight tracking-wide text-white break-words">
                   {companyName}
                 </span>
                 <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/75 dark:text-nav-muted" />
               </div>
-              <span className="text-[11px] font-medium text-white/75 dark:text-nav-muted">{roleLabel}</span>
+              <span className="text-xs font-medium text-white/75 dark:text-nav-muted">{roleLabel}</span>
             </div>
           )}
         </button>
         {!collapsed && identity && (
           <div className="mt-1.5 flex items-center gap-2 rounded-md bg-white/[0.06] px-2 py-1.5" data-testid="sidebar-user-row">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/15 text-[11px] font-bold text-white">{initials}</span>
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/15 text-xs font-bold text-white">{initials}</span>
             <div className="min-w-0">
-              <div className="line-clamp-2 break-words leading-tight text-[12px] font-semibold text-white" title={identity.name}>{identity.name}</div>
-              <div className="truncate text-[10.5px] text-white/75 dark:text-nav-muted">{roleLabel}</div>
+              <div className="line-clamp-2 break-words leading-tight text-xs font-semibold text-white" title={identity.name}>{identity.name}</div>
+              <div className="truncate text-xs text-white/75 dark:text-nav-muted">{roleLabel}</div>
             </div>
           </div>
         )}
@@ -508,16 +508,16 @@ const AdminSidebar = ({
             {!collapsed && (
               <span className="flex min-w-0 flex-col items-start leading-tight">
                 <span className="truncate">New Leads</span>
-                {tone && tone.oldestMs > 0 && <span className="text-[10px] font-semibold opacity-90">{tone.tone === "red" ? "! " : ""}oldest {hm(tone.oldestMs)}</span>}
+                {tone && tone.oldestMs > 0 && <span className="text-xs font-semibold opacity-90">{tone.tone === "red" ? "! " : ""}oldest {hm(tone.oldestMs)}</span>}
               </span>
             )}
             {inboxCount > 0 && (
               collapsed ? (
-                <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-white">
+                <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive px-1 text-xs font-bold text-white">
                   {inboxCount > 99 ? "99+" : inboxCount}
                 </span>
               ) : (
-                <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 px-1 text-[10px]">
+                <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 px-1 text-xs">
                   {inboxCount > 99 ? "99+" : inboxCount}
                 </Badge>
               )
@@ -544,7 +544,7 @@ const AdminSidebar = ({
         {sections.map((sec) => (
           <div key={sec.title} className="space-y-px pt-1.5 first:pt-0.5" data-testid="sidebar-section">
             {!collapsed ? (
-              <div className="px-3 pb-0.5 pt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-white/70 dark:text-white/75 dark:text-nav-muted">{sec.title}</div>
+              <div className="px-3 pb-0.5 pt-1 text-xs font-bold uppercase tracking-[0.08em] text-white/70 dark:text-white/75 dark:text-nav-muted">{sec.title}</div>
             ) : (
               <div className="mx-3 my-1 border-t border-white/15" aria-hidden="true" />
             )}
@@ -560,7 +560,7 @@ const AdminSidebar = ({
           aria-expanded={accountOpen}
           title="Settings & account"
           className={cn(
-            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] font-medium text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
+            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-xs font-medium text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
             collapsed && "justify-center px-0"
           )}
         >
@@ -583,7 +583,7 @@ const AdminSidebar = ({
             key={item.path}
             onClick={() => handleNav(item.path)}
             className={cn(
-              "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
+              "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-xs text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
               collapsed && "justify-center px-0"
             )}
           >
@@ -596,7 +596,7 @@ const AdminSidebar = ({
             <button
               onClick={() => setAdvancedOpen((v) => !v)}
               className={cn(
-                "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
+                "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-xs text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
                 collapsed && "justify-center px-0"
               )}
             >
@@ -613,7 +613,7 @@ const AdminSidebar = ({
                 key={item.path}
                 onClick={() => handleNav(item.path)}
                 className={cn(
-                  "w-full flex items-center gap-3 rounded-md pl-7 pr-3 py-1 text-[12px] text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
+                  "w-full flex items-center gap-3 rounded-md pl-7 pr-3 py-1 text-xs text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
                   collapsed && "justify-center px-0"
                 )}
               >
@@ -627,7 +627,7 @@ const AdminSidebar = ({
         <button
           onClick={() => { navigate("/admin/my-base"); onMobileClose?.(); }}
           className={cn(
-            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
+            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-xs text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
             collapsed && "justify-center px-0"
           )}
         >
@@ -640,7 +640,7 @@ const AdminSidebar = ({
             onMobileClose?.();
           }}
           className={cn(
-            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
+            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-xs text-white/75 dark:text-nav-muted transition-colors hover:text-white hover:bg-white/[0.06]",
             collapsed && "justify-center px-0"
           )}
         >
@@ -652,7 +652,7 @@ const AdminSidebar = ({
 
       {/* v7 footer row: Sign out · Collapse */}
       <div className={cn("flex items-center border-t border-white/15 p-1.5", collapsed ? "flex-col gap-1" : "justify-between")} data-testid="sidebar-footer-row">
-        <button onClick={() => { onSignOut(); onMobileClose?.(); }} title="Sign out" className={cn("flex items-center gap-2 rounded-md px-2 py-1 text-[12px] text-white/80 hover:bg-white/10 hover:text-white", collapsed && "justify-center px-0")}>
+        <button onClick={() => { onSignOut(); onMobileClose?.(); }} title="Sign out" className={cn("flex items-center gap-2 rounded-md px-2 py-1 text-xs text-white/80 hover:bg-white/10 hover:text-white", collapsed && "justify-center px-0")}>
           <LogOut className="h-4 w-4" strokeWidth={1.75} />{!collapsed && <span>Sign out</span>}
         </button>
       <div className="hidden lg:block">
@@ -664,7 +664,7 @@ const AdminSidebar = ({
             ? "mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg ring-2 ring-primary/30 transition hover:scale-110 hover:bg-primary/85 hover:shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring"
             : "flex items-center px-2 py-1 text-white/80 hover:text-white transition-colors"}
         >
-          {collapsed ? <ChevronRight className="h-5 w-5" strokeWidth={3} /> : <><ChevronLeft className="h-4 w-4" /><span className="ml-1 text-[12px]">Collapse</span></>}
+          {collapsed ? <ChevronRight className="h-5 w-5" strokeWidth={3} /> : <><ChevronLeft className="h-4 w-4" /><span className="ml-1 text-xs">Collapse</span></>}
         </button>
       </div>
       </div>

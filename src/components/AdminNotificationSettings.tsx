@@ -322,7 +322,7 @@ const AdminNotificationSettings = () => {
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="queue">
             Queue {queueItems.filter(q => q.status === 'pending').length > 0 && (
-              <Badge variant="destructive" className="ml-1 h-4 min-w-4 text-[10px] p-0 flex items-center justify-center">
+              <Badge variant="destructive" className="ml-1 h-4 min-w-4 text-xs p-0 flex items-center justify-center">
                 {queueItems.filter(q => q.status === 'pending').length}
               </Badge>
             )}

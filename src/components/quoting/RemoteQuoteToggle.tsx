@@ -28,8 +28,8 @@ export default function RemoteQuoteToggle({ quoteId, value, source, onChanged }:
     <label data-testid="remote-quote-toggle" className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm print:hidden" data-html2canvas-ignore data-pdf-hide>
       <Switch checked={value} disabled={busy} onCheckedChange={(v) => void set(!!v)} aria-label="Phone or online quote (no site visit)" className="mt-0.5" />
       <span className="min-w-0">
-        <span className="font-semibold text-slate-800">Phone / online quote (no site visit)</span>
-        <span className="block text-xs text-slate-500">
+        <span className="font-semibold text-ink">Phone / online quote (no site visit)</span>
+        <span className="block text-xs text-ink-secondary">
           {value
             ? `Adds the "Quotes made by phone or online" terms. The technician checks the site before starting.${auto ? " Set automatically from the lead." : ""}`
             : "Switch on if this quote was made without seeing the site."}

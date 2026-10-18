@@ -22,7 +22,7 @@ const FlowStep = ({
       <Icon className="h-5 w-5 text-primary" />
     </div>
     <p className="text-xs font-semibold text-foreground">{label}</p>
-    <p className="text-[10px] text-muted-foreground leading-tight">{sub}</p>
+    <p className="text-xs text-muted-foreground leading-tight">{sub}</p>
   </div>
 );
 
@@ -52,7 +52,7 @@ const FlowDiagram = () => (
         <FlowArrow />
         <FlowStep icon={CreditCard} label="Payment" sub="Auto-updates status" />
       </div>
-      <p className="text-[11px] text-muted-foreground mt-3">
+      <p className="text-xs text-muted-foreground mt-3">
         Each step carries the same customer and location context forward — no re-typing, no duplicates.
       </p>
     </CardContent>
@@ -173,7 +173,7 @@ const AdminHelpPage = () => {
       <header className="space-y-1">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold tracking-tight">How the system works</h1>
-          <Badge variant="secondary" className="text-[10px]">
+          <Badge variant="secondary" className="text-xs">
             {audience === "field" ? "Field guide" : "Admin guide"}
           </Badge>
         </div>

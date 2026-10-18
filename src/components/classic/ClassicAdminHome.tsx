@@ -380,7 +380,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                   </div>
                   <p className="text-2xl font-bold">{kpi.value}</p>
                   {kpi.key === "active_jobs" && stats && (
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       {stats.todayTotal > 0 && <span>{stats.todayDone}/{stats.todayTotal} done</span>}
                       {stats.overdueJobs > 0 && (
                         <Link
@@ -445,7 +445,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                   type="button"
                   onClick={() => setLeadsRange(r)}
                   data-active={leadsRange === r}
-                  className="surface-segment-item min-w-0 text-[11px] px-1.5 py-0.5"
+                  className="surface-segment-item min-w-0 text-xs px-1.5 py-0.5"
                 >
                   {r === "day" ? "Today" : r === "week" ? "Week" : "Month"}
                 </button>
@@ -519,7 +519,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                   type="button"
                   onClick={() => setJobsRange(r)}
                   data-active={jobsRange === r}
-                  className="surface-segment-item min-w-0 text-[11px] px-1.5 py-0.5"
+                  className="surface-segment-item min-w-0 text-xs px-1.5 py-0.5"
                 >
                   {r === "day" ? "Today" : r === "week" ? "Week" : "Month"}
                 </button>

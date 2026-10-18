@@ -136,7 +136,7 @@ const CategoryNavBar = ({
             <button
               key={cat.name}
               className={cn(
-                "shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors whitespace-nowrap",
+                "shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap",
                 activeCategory === cat.name
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "bg-muted/60 text-foreground hover:bg-muted"
@@ -147,7 +147,7 @@ const CategoryNavBar = ({
                 <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-500 shrink-0" />
               )}
               <span>{cat.name}</span>
-              <Badge variant="secondary" className="h-4 text-[8px] px-1 py-0 bg-background/50 shrink-0">
+              <Badge variant="secondary" className="h-4 text-xs px-1 py-0 bg-background/50 shrink-0">
                 {cat.count}
               </Badge>
             </button>

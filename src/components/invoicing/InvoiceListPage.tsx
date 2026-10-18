@@ -63,7 +63,7 @@ const getStatusBadge = (status: string) => {
     overdue: { bg: "bg-red-500", text: "text-white", label: "Overdue" },
   };
   const c = config[status] || { bg: "bg-muted", text: "text-muted-foreground", label: status };
-  return <Badge className={`${c.bg} ${c.text} text-[10px] px-2 py-0.5`}>{c.label}</Badge>;
+  return <Badge className={`${c.bg} ${c.text} text-xs px-2 py-0.5`}>{c.label}</Badge>;
 };
 
 const formatCurrency = (amount: number) =>
@@ -224,14 +224,14 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
         <Card role="button" tabIndex={0} onClick={() => setFilter("unpaid")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFilter("unpaid"); } }}
           className={`border-0 shadow-sm cursor-pointer hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === "unpaid" ? "ring-2 ring-primary" : ""}`}>
           <CardContent className="p-3">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Outstanding</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Outstanding</p>
             <p className="text-lg font-bold text-orange-600">{formatCurrency(totalOutstanding)}</p>
           </CardContent>
         </Card>
         <Card role="button" tabIndex={0} onClick={() => setFilter("paid")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFilter("paid"); } }}
           className={`border-0 shadow-sm cursor-pointer hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === "paid" ? "ring-2 ring-primary" : ""}`}>
           <CardContent className="p-3">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Collected</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Collected</p>
             <p className="text-lg font-bold text-green-600">{formatCurrency(totalPaid)}</p>
           </CardContent>
         </Card>
@@ -358,10 +358,10 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
                         {invoice.invoice_number}
                       </span>
                       {getStatusBadge(invoice.status)}<SentManuallyBadge doc={invoice as any} />
-                      <DepositPaymentChip invoice={invoice} className="text-[10px] px-2 py-0.5" />
+                      <DepositPaymentChip invoice={invoice} className="text-xs px-2 py-0.5" />
                     </div>
                     <p className="text-sm font-medium line-clamp-2 break-words leading-snug text-foreground/90" title={invoice.customer_name || undefined}>{invoice.customer_name}</p>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {formatDate(invoice.created_at)}
                       {invoice.due_date && ` • Due ${formatDate(invoice.due_date)}`}
                     </p>

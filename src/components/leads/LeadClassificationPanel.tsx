@@ -88,7 +88,7 @@ const LeadClassificationPanel = ({ leadId }: Props) => {
           <Sparkles className="h-3.5 w-3.5 text-primary" /> Classification
         </h3>
         {data.classified_by && (
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             by {data.classified_by}
             {data.confidence != null ? ` · ${Math.round(Number(data.confidence) * 100)}%` : ""}
           </span>

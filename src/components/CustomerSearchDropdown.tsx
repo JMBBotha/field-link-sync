@@ -131,12 +131,12 @@ const CustomerSearchDropdown = ({
                 </div>
                 <div className="shrink-0">
                 {client.source === "lead" ? (
-                    <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 group-hover:bg-primary-foreground/20 group-hover:text-primary-foreground group-hover:border-primary-foreground/30">
+                    <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 group-hover:bg-primary-foreground/20 group-hover:text-primary-foreground group-hover:border-primary-foreground/30">
                       <Briefcase className="h-2.5 w-2.5 mr-0.5" />
                       Lead
                     </Badge>
                   ) : client.lead_status ? (
-                    <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200 group-hover:bg-primary-foreground/20 group-hover:text-primary-foreground group-hover:border-primary-foreground/30">
+                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 group-hover:bg-primary-foreground/20 group-hover:text-primary-foreground group-hover:border-primary-foreground/30">
                       {client.lead_status.replace("_", " ")}
                     </Badge>
                   ) : null}

@@ -110,7 +110,7 @@ const SupplierComparison = ({ category }: SupplierComparisonProps) => {
             <CardHeader className="py-2 px-4">
               <CardTitle className="text-xs flex items-center gap-2">
                 {group.category}
-                {group.btu && <Badge variant="secondary" className="text-[10px]">{(group.btu / 1000).toFixed(0)}K BTU</Badge>}
+                {group.btu && <Badge variant="secondary" className="text-xs">{(group.btu / 1000).toFixed(0)}K BTU</Badge>}
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-3">
@@ -148,9 +148,9 @@ const SupplierComparison = ({ category }: SupplierComparisonProps) => {
                             {product.is_price_on_request ? (
                               <Minus className="h-3 w-3 mx-auto text-muted-foreground" />
                             ) : isBest ? (
-                              <Badge className="text-[10px] bg-success/20 text-success border-success/30">Best</Badge>
+                              <Badge className="text-xs bg-success/20 text-success border-success/30">Best</Badge>
                             ) : (
-                              <span className="text-[10px] text-destructive">+{diff.toFixed(1)}%</span>
+                              <span className="text-xs text-destructive">+{diff.toFixed(1)}%</span>
                             )}
                           </TableCell>
                         </TableRow>

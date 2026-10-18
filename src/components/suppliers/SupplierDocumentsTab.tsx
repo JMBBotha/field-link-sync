@@ -701,7 +701,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
                 <Trash2 className="h-4 w-4 text-destructive shrink-0" />
                 Clear All & Re-upload
               </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Purges all {activeProductCount} products, {catalogPageCount} PDF pages, and cached data. Clean slate.
               </p>
             </div>
@@ -728,16 +728,16 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
                 <ImagePlus className="h-4 w-4 text-primary shrink-0" />
                 Visual Catalog PDF
               </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Upload a price list PDF to browse in the Visual Catalog viewer.
               </p>
               {catalogPageCount > 0 && (
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                  <Badge variant="secondary" className="text-[10px]">
+                  <Badge variant="secondary" className="text-xs">
                     {catalogPageCount} pages uploaded
                   </Badge>
                   {catalogInfo.uploadedAt && (
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {new Date(catalogInfo.uploadedAt).toLocaleDateString()}
                     </span>
                   )}
@@ -792,7 +792,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
                 <Sparkles className="h-4 w-4 text-accent-foreground shrink-0" />
                 AI Product Import
               </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Upload a PDF or CSV — AI detects VAT, discounts & pricing. Safely merges with your existing catalog.
               </p>
             </div>
@@ -836,7 +836,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
                   <PackageX className="h-4 w-4 shrink-0" />
                   {activeProductCount} orphaned products
                 </p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Products exist without a PDF catalog.
                 </p>
               </div>
@@ -873,13 +873,13 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
             <p className="text-sm font-semibold mb-2">📋 Import History</p>
             <div className="space-y-1 max-h-40 overflow-y-auto">
               {importHistory.map((entry: any) => (
-                <div key={entry.id} className="flex items-center justify-between text-[11px] py-1 border-b last:border-b-0">
+                <div key={entry.id} className="flex items-center justify-between text-xs py-1 border-b last:border-b-0">
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">
                       {new Date(entry.created_at).toLocaleDateString()}{" "}
                       {new Date(entry.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
                     </span>
-                    <Badge variant={entry.action === "clean_purge" ? "destructive" : "default"} className="text-[9px] px-1.5 py-0">
+                    <Badge variant={entry.action === "clean_purge" ? "destructive" : "default"} className="text-xs px-1.5 py-0">
                       {entry.action === "clean_purge" ? "Purge" : entry.action === "pdf_import" ? "PDF Import" : "CSV Import"}
                     </Badge>
                   </div>

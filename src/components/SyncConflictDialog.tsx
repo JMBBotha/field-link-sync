@@ -92,16 +92,16 @@ const SyncConflictDialog = ({ conflict, onResolve }: SyncConflictDialogProps) =>
               </div>
               {diffKeys.length > 0 && (
                 <div className="flex flex-wrap gap-1 pt-1">
-                  <span className="text-muted-foreground text-[10px]">Changed:</span>
+                  <span className="text-muted-foreground text-xs">Changed:</span>
                   {diffKeys.slice(0, 5).map((k) => (
-                    <Badge key={k} variant="secondary" className="text-[10px] h-4">
+                    <Badge key={k} variant="secondary" className="text-xs h-4">
                       {k}
                     </Badge>
                   ))}
                 </div>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Auto-resolving in {countdown}s (your changes will be kept)
             </p>
           </AlertDialogDescription>

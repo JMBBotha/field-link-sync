@@ -19,8 +19,8 @@ const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", c
 const statusColors: Record<string, string> = {
   active: "bg-blue-100 text-blue-700",
   completed: "bg-green-100 text-green-700",
-  on_hold: "bg-gray-100 text-gray-500",
-  archived: "bg-gray-100 text-gray-500",
+  on_hold: "bg-gray-100 text-ink-secondary",
+  archived: "bg-gray-100 text-ink-secondary",
 };
 
 const FBProjectsList = () => {
@@ -150,7 +150,7 @@ const FBProjectsList = () => {
                         <h3 className="font-semibold text-foreground">{p.name}</h3>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className={statusColors[p.status] || "bg-gray-100 text-gray-500"}>{p.status}</Badge>
+                        <Badge variant="secondary" className={statusColors[p.status] || "bg-gray-100 text-ink-secondary"}>{p.status}</Badge>
                         {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </div>
                     </div>

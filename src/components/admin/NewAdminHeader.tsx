@@ -29,7 +29,7 @@ export default function NewAdminHeader({ pageTitle, onMenu, onSearch, onCreateLe
       <button onClick={onSearch} title="Search (⌘K)" data-testid="v7-search"
         className="ml-2 hidden md:flex h-9 flex-1 max-w-md items-center gap-2 rounded-lg border border-white/25 bg-white/15 px-3 text-left text-sm text-white/85 hover:bg-white/20">
         <Search className="h-4 w-4" /><span className="flex-1 truncate">Search clients, jobs, quotes…</span>
-        <kbd className="rounded border border-white/30 bg-white/10 px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+        <kbd className="rounded border border-white/30 bg-white/10 px-1.5 py-0.5 text-xs">⌘K</kbd>
       </button>
 
       <div className="ml-auto flex items-center gap-0.5 sm:gap-1.5 shrink-0">

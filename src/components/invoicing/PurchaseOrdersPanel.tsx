@@ -136,7 +136,7 @@ export default function PurchaseOrdersPanel({ invoice }: { invoice: any }) {
                   <span>R {Number(it.line_total_excl_vat).toLocaleString("en-ZA", { minimumFractionDigits: 2 })} excl</span></li>
               ))}
             </ul>
-            <p className="text-[11px] text-muted-foreground">{PO_DOCS_LINE}</p>
+            <p className="text-xs text-muted-foreground">{PO_DOCS_LINE}</p>
             <div className="flex flex-wrap gap-2">
               {picker(po, "supplier_invoice", "Supplier invoice")}
               {picker(po, "delivery_note", "Delivery note")}

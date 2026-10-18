@@ -53,7 +53,7 @@ export default function AreaLabourRow({ areaId, areaName, lines, defaultHours, o
                 ? <Input autoFocus data-solid aria-label={`Labour total for ${areaName}`} type="number" min="0" step="0.01" defaultValue={Math.round(line.quantity * line.unit_price * 100) / 100} onBlur={(event) => save("total", event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} className="ml-auto h-7 w-28 text-right" />
                 : <Button data-solid type="button" variant="ghost" aria-label={`Edit labour total for ${areaName}`} className="ml-auto h-7 px-1 font-bold" onClick={() => setEditing(`${line.id}-total`)}>= {formatRand(line.quantity * line.unit_price)}</Button>)
               : <span className="ml-auto text-right font-bold">= {formatRand(line.quantity * line.unit_price)}</span>}
-            {onRemove && editing?.startsWith(`${line.id}-`) && line.id !== "missing" && <Button data-solid type="button" size="sm" variant="ghost" className="h-7 px-2 text-[11px]" aria-label={`Remove labour for ${areaName}`} onMouseDown={(event) => event.preventDefault()} onClick={() => { onRemove(line.id); setEditing(null); }}>Remove</Button>}
+            {onRemove && editing?.startsWith(`${line.id}-`) && line.id !== "missing" && <Button data-solid type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" aria-label={`Remove labour for ${areaName}`} onMouseDown={(event) => event.preventDefault()} onClick={() => { onRemove(line.id); setEditing(null); }}>Remove</Button>}
           </div>
         );
       })}

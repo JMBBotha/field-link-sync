@@ -211,7 +211,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
                         ? <Wrench className="h-3 w-3" />
                         : <Snowflake className="h-3 w-3" />}
                       {s.name}
-                      <span className="ml-1 bg-background/20 text-[10px] px-1 rounded-full">{count}</span>
+                      <span className="ml-1 bg-background/20 text-xs px-1 rounded-full">{count}</span>
                     </Badge>
                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => openForm(s)}>
                       <Pencil className="h-3 w-3" />
@@ -272,7 +272,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
               </div>
               <Switch checked={isConsumables} onCheckedChange={setIsConsumables} />
             </div>
-            <p className="text-[10px] text-muted-foreground -mt-1">
+            <p className="text-xs text-muted-foreground -mt-1">
               Enable for suppliers that sell piping, cable, insulation, brackets, fittings, gas, tools etc.
             </p>
             <div className="flex gap-2 pt-2">

@@ -129,16 +129,16 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
     <Card className="space-y-3 p-4 print:hidden" data-testid="staff-margin-card">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">Profit — staff only</h2>
-        <span className="text-[11px] text-muted-foreground">Never printed on the estimate</span>
+        <span className="text-xs text-muted-foreground">Never printed on the estimate</span>
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-        <div><p className="text-[11px] text-muted-foreground">Sell ex VAT</p><p className="font-semibold tabular-nums">{money(m.job.sell)}</p></div>
-        <div><p className="text-[11px] text-muted-foreground">Cost</p><p className="font-semibold tabular-nums">{money(m.job.cost)}</p></div>
-        <div><p className="text-[11px] text-muted-foreground">GP</p><p className="font-semibold tabular-nums">{money(m.job.gp)}</p></div>
-        <div><p className="text-[11px] text-muted-foreground">GP % · Target {m.target}% GP</p><p className="font-semibold tabular-nums">{pctText(m.job.gpPercent)}</p></div>
+        <div><p className="text-xs text-muted-foreground">Sell ex VAT</p><p className="font-semibold tabular-nums">{money(m.job.sell)}</p></div>
+        <div><p className="text-xs text-muted-foreground">Cost</p><p className="font-semibold tabular-nums">{money(m.job.cost)}</p></div>
+        <div><p className="text-xs text-muted-foreground">GP</p><p className="font-semibold tabular-nums">{money(m.job.gp)}</p></div>
+        <div><p className="text-xs text-muted-foreground">GP % · Target {m.target}% GP</p><p className="font-semibold tabular-nums">{pctText(m.job.gpPercent)}</p></div>
       </div>
-      {m.job.discount > 0 && <p className="text-[11px] text-muted-foreground">Includes quote discount of {money(m.job.discount)}.</p>}
+      {m.job.discount > 0 && <p className="text-xs text-muted-foreground">Includes quote discount of {money(m.job.discount)}.</p>}
 
       {m.belowTarget && (
         <p role="status" className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
@@ -157,7 +157,7 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
       {isOwner && (
         <div data-testid="company-profit" className="flex flex-wrap items-baseline justify-between gap-2 rounded-md bg-muted px-3 py-2 text-sm">
           <span className="font-semibold">Company profit</span>
-          <span className="text-[11px] text-muted-foreground">GP − salesperson commission − tech share{m.unknownCostCount > 0 ? " · costed lines only" : ""}</span>
+          <span className="text-xs text-muted-foreground">GP − salesperson commission − tech share{m.unknownCostCount > 0 ? " · costed lines only" : ""}</span>
           <span className="font-semibold tabular-nums">{money(companyProfit)}</span>
         </div>
       )}
@@ -166,7 +166,7 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
         {showSales && (<div className="rounded-md border border-border p-3">
           <p className="font-semibold">{salespersonLabel}</p>
           <p>{settings.salesSharePercent}% of profit on parts &amp; materials: <span className="font-semibold tabular-nums">{money(m.salesShare)}</span></p>
-          {isOwner && (<p className="text-[11px] text-muted-foreground">Company keeps {money(m.salesCompanyShare)}</p>)}
+          {isOwner && (<p className="text-xs text-muted-foreground">Company keeps {money(m.salesCompanyShare)}</p>)}
           {m.salesShareIfPricedCorrectly != null && (
             <p>If priced correctly: <span className="font-semibold tabular-nums">{money(m.salesShareIfPricedCorrectly)}</span></p>
           )}
@@ -181,12 +181,12 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
           )) : (
             <p>{settings.labourTechSharePercent}% of labour: <span className="font-semibold tabular-nums">{money(m.labourTechShare)}</span></p>
           )}
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Company keeps from labour{splits?.toolsPercent ? ` (incl. ${splits.toolsPercent}% tools: ${money(Math.round(Math.max(0, m.labourSell) * splits.toolsPercent) / 100)})` : ""}: {money(m.labourCompanyShare)}
           </p>
         </div>)}
-        {m.excludedServiceCount > 0 && <p className="text-[11px] text-muted-foreground sm:col-span-2">Services without a cost not counted</p>}
-        <p className="text-[11px] text-muted-foreground sm:col-span-2">Earned when the invoice is paid in full; material overruns affect the salesperson share.</p>
+        {m.excludedServiceCount > 0 && <p className="text-xs text-muted-foreground sm:col-span-2">Services without a cost not counted</p>}
+        <p className="text-xs text-muted-foreground sm:col-span-2">Earned when the invoice is paid in full; material overruns affect the salesperson share.</p>
       </div>
 
       {ov && (
@@ -198,8 +198,8 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
             : <p className="text-xs">Labour overrun cost: <span className="tabular-nums">{money(ov.labourCost ?? 0)}</span></p>)}
           <p className="text-xs">Extra materials cost: <span className="tabular-nums">{money(ov.extrasCost)}</span>{ov.unknownExtras > 0 ? ` · ${ov.unknownExtras} without catalogue cost` : ""}</p>
           <p className="mt-1">Adjusted GP: <span className="font-semibold tabular-nums">{money(ov.adjustedGp)}</span> · {pctText(ov.adjustedGpPercent)}</p>
-          {showSales && <p>Adjusted salesperson share: <span className="font-semibold tabular-nums">{money(ov.adjustedSalesShare)}</span> <span className="text-[11px] text-muted-foreground">material overruns deducted</span></p>}
-          {overrun?.notes && <p className="mt-1 text-[11px] text-muted-foreground">Tech note: {overrun.notes}</p>}
+          {showSales && <p>Adjusted salesperson share: <span className="font-semibold tabular-nums">{money(ov.adjustedSalesShare)}</span> <span className="text-xs text-muted-foreground">material overruns deducted</span></p>}
+          {overrun?.notes && <p className="mt-1 text-xs text-muted-foreground">Tech note: {overrun.notes}</p>}
         </div>
       )}
 

@@ -334,7 +334,7 @@ const formatDate = (dateStr?: string | null) =>
 /** Borderless inputs so the document still reads like a document while editing. */
 /** Light client design tokens for the editor (look only). Montserrat with the same fallbacks as BrandDocument. */
 const EDITOR_FONT = { fontFamily: "Montserrat, Arial, Helvetica, sans-serif" } as const;
-const META_LABEL = "text-[10px] font-bold uppercase tracking-[0.14em] text-[#1AA7EC]";
+const META_LABEL = "text-xs font-bold uppercase tracking-[0.14em] text-[#1AA7EC]";
 
 const inputBase =
   "w-full rounded-sm border border-transparent bg-transparent px-1 py-0.5 outline-none hover:border-slate-200 focus:border-[#1AA7EC] focus:bg-white";
@@ -481,7 +481,7 @@ const EstimateDocument = ({
     <div
       ref={editRootRef}
       data-pdf-capture-root="estimate"
-      className={`estimate-document pdf-page mx-auto w-full text-slate-800 shadow-sm ring-1 ring-slate-200 print:bg-white print:shadow-none print:ring-0 ${
+      className={`estimate-document pdf-page mx-auto w-full text-ink shadow-sm ring-1 ring-slate-200 print:bg-white print:shadow-none print:ring-0 ${
         editing ? "estimate-editing bg-slate-100" : "bg-white"
       }`}
     >
@@ -505,7 +505,7 @@ const EstimateDocument = ({
             <h1 className="text-[26px] font-extrabold uppercase leading-tight tracking-[0.06em] text-[#0B4FA8]">
               {editing ? "Estimate" : customerName ? `${customerName} — Quote / Proposal` : "Quote / Proposal"}
             </h1>
-            <p className="mt-1 text-[13px] font-semibold text-[#F7941D]">{estimateNumber}</p>
+            <p className="mt-1 text-xs font-semibold text-[#F7941D]">{estimateNumber}</p>
           </div>
         </div>
         <div aria-hidden className="mt-4 h-[3px]" style={{ background: "linear-gradient(90deg,#1AA7EC 75%,#F7941D 75%)" }} />
@@ -514,24 +514,24 @@ const EstimateDocument = ({
         <div className="mt-4 grid grid-cols-2 gap-6 pb-6 sm:grid-cols-4">
           <div>
             <p className={META_LABEL}>Prepared For</p>
-            <p className="mt-1 text-[14px] font-bold text-[#0B4FA8]">{customerName}</p>
-            {customerCompany && <p className="text-[12px] text-slate-600">{customerCompany}</p>}
-            {customerAddress && <p className="text-[12px] leading-snug text-slate-600">{customerAddress}</p>}
-            {customerEmail && <p className="text-[12px] text-slate-600">{customerEmail}</p>}
-            {customerPhone && <p className="text-[12px] text-slate-600">{customerPhone}</p>}
-            {customerVat && customerVat.trim() && <p className="text-[12px] text-slate-600" data-testid="customer-vat">VAT No {customerVat.trim()}</p>}
+            <p className="mt-1 text-xs font-bold text-[#0B4FA8]">{customerName}</p>
+            {customerCompany && <p className="text-xs text-ink-secondary">{customerCompany}</p>}
+            {customerAddress && <p className="text-xs leading-snug text-ink-secondary">{customerAddress}</p>}
+            {customerEmail && <p className="text-xs text-ink-secondary">{customerEmail}</p>}
+            {customerPhone && <p className="text-xs text-ink-secondary">{customerPhone}</p>}
+            {customerVat && customerVat.trim() && <p className="text-xs text-ink-secondary" data-testid="customer-vat">VAT No {customerVat.trim()}</p>}
           </div>
           <div>
             <p className={META_LABEL}>Date</p>
-            <p className="mt-1 text-[13px] font-semibold text-slate-800">{formatDate(issueDate)}</p>
+            <p className="mt-1 text-xs font-semibold text-ink">{formatDate(issueDate)}</p>
             <p className={`mt-2 ${META_LABEL}`}>Valid Until</p>
-            <p className="mt-1 text-[13px] font-semibold text-slate-800">
+            <p className="mt-1 text-xs font-semibold text-ink">
               {validUntil ? formatDate(validUntil) : "30 days"}
             </p>
           </div>
           <div>
             <p className={META_LABEL}>Estimate Number</p>
-            <p className="mt-1 text-[13px] font-semibold text-slate-800">{estimateNumber}</p>
+            <p className="mt-1 text-xs font-semibold text-ink">{estimateNumber}</p>
           </div>
           <div className="sm:text-right">
             <p className={META_LABEL}>Total (ZAR)</p>
@@ -628,10 +628,10 @@ const EstimateDocument = ({
                   <div className="mt-4 print:hidden" data-pdf-hide data-html2canvas-ignore data-area-add-root>{editing.renderAreaAdd(area.id)}</div>
                 )}
 
-                <table className={`estimate-lines mt-4 w-full border-collapse text-[12px] ${collapsed ? "hidden print:table" : ""}`}>
+                <table className={`estimate-lines mt-4 w-full border-collapse text-xs ${collapsed ? "hidden print:table" : ""}`}>
 
                   <thead>
-                    <tr className="option1-table-header text-[11px] uppercase tracking-wider max-sm:portrait:hidden">
+                    <tr className="option1-table-header text-xs uppercase tracking-wider max-sm:portrait:hidden">
                       <th className="rounded-l py-2 pl-2 text-left font-semibold">Description</th>
                       <th className="w-24 py-2 text-right font-semibold">Rate</th>
                        <th className="w-16 py-2 text-right font-semibold">QTY</th>
@@ -694,14 +694,14 @@ const EstimateDocument = ({
                               )}
                               <div className={`min-w-0 flex-1 ${line.installRole ? "border-l-2 border-sky-200 pl-2" : ""}`}>
                                 {line.kitBundleId && !line.installRole && editing.onSwapKit && editing.kitOptions && (
-                                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-sky-700 print:hidden">
+                                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sky-700 print:hidden">
                                     <span>Kit</span>
                                     <select
                                       aria-label="Swap kit"
                                       value={line.kitBundleId}
                                       onClick={(e) => e.stopPropagation()}
                                       onChange={(e) => editing.onSwapKit?.(line.id, e.target.value)}
-                                      className="rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] normal-case tracking-normal text-slate-700"
+                                      className="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs normal-case tracking-normal text-ink"
                                     >
                                       {!editing.kitOptions.some((o) => o.id === line.kitBundleId) && <option value={line.kitBundleId}>{line.name}</option>}
                                       {editing.kitOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
@@ -709,16 +709,16 @@ const EstimateDocument = ({
                                   </div>
                                 )}
                                 {line.installRole && (
-                                  <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-sky-700 print:hidden">
+                                  <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sky-700 print:hidden">
                                     <span>Install</span>
-                                    {line.lengthLabel && <span className="normal-case tracking-normal text-slate-500">{line.lengthLabel}</span>}
+                                    {line.lengthLabel && <span className="normal-case tracking-normal text-ink-secondary">{line.lengthLabel}</span>}
                                     {line.installRole === "bracket" && editing.onSwapBracket && editing.bracketOptions && (
                                       <select
                                         aria-label="Swap bracket"
                                         value={line.itemNumber || ""}
                                         onClick={(e) => e.stopPropagation()}
                                         onChange={(e) => editing.onSwapBracket?.(line.id, e.target.value)}
-                                        className="rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] normal-case tracking-normal text-slate-700"
+                                        className="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs normal-case tracking-normal text-ink"
                                       >
                                         {!editing.bracketOptions.some((o) => o.code === line.itemNumber) && <option value={line.itemNumber || ""}>{line.itemNumber}</option>}
                                         {editing.bracketOptions.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
@@ -730,7 +730,7 @@ const EstimateDocument = ({
                                         value={line.kitBundleId}
                                         onClick={(e) => e.stopPropagation()}
                                         onChange={(e) => editing.onSwapKit?.(line.id, e.target.value)}
-                                        className="rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] normal-case tracking-normal text-slate-700"
+                                        className="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs normal-case tracking-normal text-ink"
                                       >
                                         {!editing.kitOptions.some((o) => o.id === line.kitBundleId) && <option value={line.kitBundleId}>{line.name}</option>}
                                         {editing.kitOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
@@ -739,7 +739,7 @@ const EstimateDocument = ({
                                   </div>
                                 )}
                                 {!line.installRole && line.perMetre && line.lengthLabel && (
-                                  <div className="text-[10px] text-slate-500 print:hidden">{line.lengthLabel}</div>
+                                  <div className="text-xs text-ink-secondary print:hidden">{line.lengthLabel}</div>
                                 )}
                                 <div className="flex items-center gap-1">
                                 {line.kitItems && line.kitItems.length > 0 && (
@@ -748,7 +748,7 @@ const EstimateDocument = ({
                                     aria-label={openKits[line.id] ? "Hide kit contents" : "Show kit contents"}
                                     aria-expanded={!!openKits[line.id]}
                                     onClick={(e) => { e.stopPropagation(); setOpenKits((o) => ({ ...o, [line.id]: !o[line.id] })); }}
-                                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-100 print:hidden"
+                                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-ink-secondary hover:bg-slate-100 print:hidden"
                                   >
                                     {openKits[line.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                   </button>
@@ -766,7 +766,7 @@ const EstimateDocument = ({
                                 </div>
                                 </div>
                                 {line.kitItems && openKits[line.id] && (
-                                  <ul data-testid="kit-contents" className="mb-1 ml-7 space-y-0.5 text-[11px] text-slate-500">
+                                  <ul data-testid="kit-contents" className="mb-1 ml-7 space-y-0.5 text-xs text-ink-secondary">
                                     {line.kitItems.map((k, idx) => (
                                       <li key={idx} className="flex justify-between gap-2"><span>{k.name}</span>{k.qty && <span className="shrink-0">× {k.qty}</span>}</li>
                                     ))}
@@ -789,19 +789,19 @@ const EstimateDocument = ({
                                   editing.onLineChange(line.id, { unit_price: v });
                                 }
                               }}
-                              className={`${inputBase} line-price text-right text-slate-700`}
+                              className={`${inputBase} line-price text-right text-ink`}
                             />
                             {line.staffNote && (
-                              <div data-html2canvas-ignore className="text-[10px] text-slate-400 print:hidden">{line.staffNote}</div>
+                              <div data-html2canvas-ignore className="text-xs text-ink-muted print:hidden">{line.staffNote}</div>
                             )}
                             {line.special && (
                               <div><SpecialChip cost={line.special.cost} endDate={line.special.endDate} pdfPath={line.special.pdfPath} applied={line.special.applied} /></div>
                             )}
                             {line.priceWarn && (
-                              <div data-html2canvas-ignore data-testid="markup-warn" data-tone={line.priceWarnTone ?? "orange"} title={line.priceWarn} className={`mt-0.5 inline-flex max-w-full items-center gap-0.5 whitespace-nowrap rounded-full border px-1 py-0 text-[9px] leading-[14px] print:hidden ${line.priceWarnTone === "green" ? "border-green-500 bg-green-50 text-green-800" : line.priceWarnTone === "red" ? "border-red-500 bg-red-50 text-red-800" : "border-amber-400 bg-amber-50 text-amber-800"}`}>{line.priceWarnTone === "green" ? "✓" : "⚠"}<span className="truncate">{line.priceWarnShort ?? line.priceWarn}</span></div>
+                              <div data-html2canvas-ignore data-testid="markup-warn" data-tone={line.priceWarnTone ?? "orange"} title={line.priceWarn} className={`mt-0.5 inline-flex max-w-full items-center gap-0.5 whitespace-nowrap rounded-full border px-1 py-0 text-xs leading-[14px] print:hidden ${line.priceWarnTone === "green" ? "border-green-500 bg-green-50 text-green-800" : line.priceWarnTone === "red" ? "border-red-500 bg-red-50 text-red-800" : "border-amber-400 bg-amber-50 text-amber-800"}`}>{line.priceWarnTone === "green" ? "✓" : "⚠"}<span className="truncate">{line.priceWarnShort ?? line.priceWarn}</span></div>
                             )}
                             {line.isService && !line.unit_price && (
-                              <div className="text-[10px] italic text-slate-400 print:hidden">price not set</div>
+                              <div className="text-xs italic text-ink-muted print:hidden">price not set</div>
                             )}
                           </td>
                           <td className="py-2 pl-2.5 text-right">
@@ -820,10 +820,10 @@ const EstimateDocument = ({
                             </>
                             )}
                             {line.unitText && !(line.kitBundleId && line.kitPerMetre && editing.onKitLengthChange) && (
-                              <div data-testid="qty-unit" className="whitespace-nowrap text-[10px] text-slate-500 print:hidden">{line.unitText}</div>
+                              <div data-testid="qty-unit" className="whitespace-nowrap text-xs text-ink-secondary print:hidden">{line.unitText}</div>
                             )}
                           </td>
-                          <td className="line-total py-2 text-right font-bold text-slate-900">
+                          <td className="line-total py-2 text-right font-bold text-ink">
                             {formatRand(lineAmount(line))}
                           </td>
                           <td className="py-2 text-right print:hidden">
@@ -832,7 +832,7 @@ const EstimateDocument = ({
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <button type="button" aria-label="Line options" title="Line options" data-testid="line-options" onClick={(e) => e.stopPropagation()}
-                                    className="line-options inline-flex h-11 w-11 items-center justify-center rounded-md border border-slate-400 bg-white text-slate-800 hover:bg-slate-100">
+                                    className="line-options inline-flex h-11 w-11 items-center justify-center rounded-md border border-slate-400 bg-white text-ink hover:bg-slate-100">
                                     <Menu className="h-5 w-5" />
                                   </button>
                                 </DropdownMenuTrigger>
@@ -908,7 +908,7 @@ const EstimateDocument = ({
                     <span>{line.name}</span>
                     <Input aria-label="Unassigned labour hours" type="number" min="0" step="0.5" defaultValue={line.quantity} onBlur={(e) => editing.onLabourChange?.(line.id, Number(e.target.value))} className="h-8 text-right" />
                     <Input aria-label="Unassigned labour rate" type="number" min="0" step="0.01" defaultValue={line.unit_price} onBlur={(e) => editing.onLabourChange?.(line.id, line.quantity, Number(e.target.value))} className="h-8 text-right" />
-                    {editing.onRemoveLabour && <button type="button" aria-label="Remove unassigned labour" onClick={() => editing.onRemoveLabour?.(line.id)} className="px-2 text-[11px] underline">Remove</button>}
+                    {editing.onRemoveLabour && <button type="button" aria-label="Remove unassigned labour" onClick={() => editing.onRemoveLabour?.(line.id)} className="px-2 text-xs underline">Remove</button>}
                   </div>
                 ))}
               </div>
@@ -927,10 +927,10 @@ const EstimateDocument = ({
             {rollup.map((area, idx) => (
               <section key={area.areaId ?? `general-${idx}`} className="border-b border-slate-200 pb-4">
                 <div className="flex items-start justify-between gap-4">
-                  <h2 className="text-[13px] font-semibold uppercase tracking-wide text-[#0B4FA8]">{area.areaName}</h2>
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-[#0B4FA8]">{area.areaName}</h2>
                   <div className="text-right">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-400">{area.isJobLabour ? "Total" : "Area total"}</p>
-                    <p className="text-[15px] font-bold text-slate-900">{formatCurrency(area.areaTotal)}</p>
+                    <p className="text-xs uppercase tracking-wider text-ink-muted">{area.isJobLabour ? "Total" : "Area total"}</p>
+                    <p className="text-base font-bold text-ink">{formatCurrency(area.areaTotal)}</p>
                   </div>
                 </div>
                 <div className="mt-3 space-y-3">
@@ -945,9 +945,9 @@ const EstimateDocument = ({
                         />
                       )}
                       <div className="min-w-0">
-                        <p className="text-[13px] font-medium text-slate-800">{unit.unitName}</p>
+                        <p className="text-xs font-medium text-ink">{unit.unitName}</p>
                         {unit.unitDescription && (
-                          <p className="mt-0.5 whitespace-pre-line text-[11px] leading-relaxed text-slate-500">
+                          <p className="mt-0.5 whitespace-pre-line text-xs leading-relaxed text-ink-secondary">
                             {unit.unitDescription}
                           </p>
                         )}
@@ -955,17 +955,17 @@ const EstimateDocument = ({
                     </div>
                   ))}
                   {area.hasInstallExtras && (
-                    <p className="text-[11px] italic text-slate-500">{area.hasLabour === false ? "Installed incl. piping & materials" : "Installed incl. piping, materials & labour"}</p>
+                    <p className="text-xs italic text-ink-secondary">{area.hasLabour === false ? "Installed incl. piping & materials" : "Installed incl. piping, materials & labour"}</p>
                   )}
                 </div>
               </section>
             ))}
-            {rollup.length === 0 && <p className="py-6 text-center text-slate-400">No line items</p>}
+            {rollup.length === 0 && <p className="py-6 text-center text-ink-muted">No line items</p>}
           </div>
         ) : (
-          <table className="mt-8 w-full border-collapse text-[12px]">
+          <table className="mt-8 w-full border-collapse text-xs">
             <thead>
-              <tr className="border-b border-slate-300 text-[10px] uppercase tracking-wider text-slate-500">
+              <tr className="border-b border-slate-300 text-xs uppercase tracking-wider text-ink-secondary">
                 <th className="py-2 text-left font-semibold">Description</th>
                 <th className="py-2 text-right font-semibold">Rate</th>
                 <th className="py-2 text-right font-semibold">Qty</th>
@@ -977,7 +977,7 @@ const EstimateDocument = ({
                 const [name, ...detailLines] = item.description.split("\n");
                 return (
                   <tr key={idx} className="border-b border-slate-100 align-top">
-                    <td className="py-3 pr-4 text-slate-800">
+                    <td className="py-3 pr-4 text-ink">
                       <div className="flex items-start gap-3">
                         {item.imageUrl && (
                           <img
@@ -990,20 +990,20 @@ const EstimateDocument = ({
                         <div className="min-w-0">
                           <p className="font-medium">{name}</p>
                           {detailLines.map((line, li) => (
-                            <p key={li} className="mt-0.5 text-[11px] text-slate-500">{line}</p>
+                            <p key={li} className="mt-0.5 text-xs text-ink-secondary">{line}</p>
                           ))}
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 text-right text-slate-600">{formatCurrency(item.unit_price)}{item.qtyText ? " / m" : ""}</td>
-                    <td className="py-3 text-right text-slate-600">{item.qtyText || item.quantity}</td>
-                    <td className="py-3 text-right font-medium text-slate-900">{formatCurrency(item.amount)}</td>
+                    <td className="py-3 text-right text-ink-secondary">{formatCurrency(item.unit_price)}{item.qtyText ? " / m" : ""}</td>
+                    <td className="py-3 text-right text-ink-secondary">{item.qtyText || item.quantity}</td>
+                    <td className="py-3 text-right font-medium text-ink">{formatCurrency(item.amount)}</td>
                   </tr>
                 );
               })}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-6 text-center text-slate-400">No line items</td>
+                  <td colSpan={4} className="py-6 text-center text-ink-muted">No line items</td>
                 </tr>
               )}
             </tbody>
@@ -1013,19 +1013,19 @@ const EstimateDocument = ({
 
         {/* ── Totals: Light client design (look only) ── */}
         <div className="mt-6 flex justify-end" data-testid="estimate-totals">
-          <div className="w-full max-w-[340px] text-[12.5px]">
-            <div className="flex justify-between px-2 py-1.5 text-slate-700">
+          <div className="w-full max-w-[340px] text-xs">
+            <div className="flex justify-between px-2 py-1.5 text-ink">
               <span>Subtotal</span>
               <span className="font-semibold">{formatCurrency(subtotal)}</span>
             </div>
             {discountAmount > 0 && (
-              <div className="flex justify-between px-2 py-1.5 text-slate-700">
+              <div className="flex justify-between px-2 py-1.5 text-ink">
                 <span>Discount{discountLabel ? ` (${discountLabel})` : ""}</span>
                 <span className="font-semibold">-{formatCurrency(discountAmount)}</span>
               </div>
             )}
             {editing?.discountControl && <div className="px-2 print:hidden">{editing.discountControl}</div>}
-            <div className="flex justify-between px-2 py-1.5 text-slate-700">
+            <div className="flex justify-between px-2 py-1.5 text-ink">
               <span>VAT ({vatPercent}%)</span>
               <span className="font-semibold">{formatCurrency(taxAmount)}</span>
             </div>
@@ -1039,23 +1039,23 @@ const EstimateDocument = ({
         {unitCards}
 
         {/* ── Footer ── */}
-        <div className="mt-10 space-y-5 border-t border-slate-200 pt-6 text-[11px] leading-relaxed text-slate-600">
+        <div className="mt-10 space-y-5 border-t border-slate-200 pt-6 text-xs leading-relaxed text-ink-secondary">
           {/* Plain Terms removed: the styled numbered "Terms and conditions" page below is the only terms block (Johan 07:50). */}
           {notes && (
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Notes</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Notes</p>
               <p className="mt-1 whitespace-pre-line">{notes}</p>
             </div>
           )}
 
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Banking Details</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Banking Details</p>
             <div className="mt-1 grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-4">
-              <p><span className="text-slate-400">Account Name: </span>{bank.account_name}</p>
-              <p><span className="text-slate-400">Bank: </span>{bank.bank_name || "—"}</p>
-              <p><span className="text-slate-400">Account: </span>{bank.account_number || "—"}</p>
-              <p><span className="text-slate-400">Branch Code: </span>{bank.branch_code || "—"}</p>
-              <p><span className="text-slate-400">Type: </span>{accountType || "—"}</p>
+              <p><span className="text-ink-muted">Account Name: </span>{bank.account_name}</p>
+              <p><span className="text-ink-muted">Bank: </span>{bank.bank_name || "—"}</p>
+              <p><span className="text-ink-muted">Account: </span>{bank.account_number || "—"}</p>
+              <p><span className="text-ink-muted">Branch Code: </span>{bank.branch_code || "—"}</p>
+              <p><span className="text-ink-muted">Type: </span>{accountType || "—"}</p>
             </div>
           </div>
         </div>

@@ -24,7 +24,7 @@ export default function SalespersonHistoryLine({ quoteId }: { quoteId: string | 
   });
   if (!text) return null;
   return (
-    <p className="px-1 text-[11px] text-muted-foreground print:hidden" data-html2canvas-ignore data-testid="salesperson-history">
+    <p className="px-1 text-xs text-muted-foreground print:hidden" data-html2canvas-ignore data-testid="salesperson-history">
       Salesperson history: {text}
     </p>
   );

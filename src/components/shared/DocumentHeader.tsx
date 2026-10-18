@@ -54,9 +54,9 @@ const DocumentHeader = ({
         {/* RIGHT: company block from the company record (company_profiles), fixed block only as fallback (Johan 2026-10-12) */}
         <div data-testid="company-block" data-company-source={p?.legal_name ? "record" : "fallback"} className="flex flex-col items-end text-right gap-0">
           {blockLines.map((l, i) => (
-            <p key={l} className={`text-[13px] leading-snug ${i === 0 ? "font-semibold text-foreground" : "text-foreground/80"}`}>{l}</p>
+            <p key={l} className={`text-xs leading-snug ${i === 0 ? "font-semibold text-foreground" : "text-foreground/80"}`}>{l}</p>
           ))}
-          <p className="text-[12px] text-foreground/70 leading-snug">{contactLine}</p>
+          <p className="text-xs text-foreground/70 leading-snug">{contactLine}</p>
         </div>
       </div>
 

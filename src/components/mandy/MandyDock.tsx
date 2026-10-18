@@ -660,7 +660,7 @@ export default function MandyDock() {
         <div className="flex items-center gap-2 text-xs">
           <span className={`inline-flex h-2 w-2 rounded-full ${phase === "listening" ? "bg-destructive animate-pulse" : phase === "idle" ? "bg-primary" : "bg-primary animate-pulse"}`} />
           <span className="font-medium text-foreground">{assistantCfg.bot_name || "Mandy"}</span>
-          {mode === "quote" && <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">Quote mode</span>}
+          {mode === "quote" && <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">Quote mode</span>}
           <span className="text-muted-foreground">{statusText}</span>
           {(phase === "working" || phase === "hearing") && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
         </div>
@@ -693,7 +693,7 @@ export default function MandyDock() {
           <div className={confirm.danger ? "rounded-md border-2 border-destructive bg-destructive/15 p-2" : "rounded-md border border-destructive/40 bg-destructive/10 p-2"} data-testid={confirm.danger ? "mandy-danger-card" : undefined}>
             <p className={confirm.danger ? "text-xs font-semibold text-destructive" : "text-xs text-foreground"}>{confirm.summary}</p>
             {confirm.lines?.length ? (
-              <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground" data-testid="mandy-plan-lines">
+              <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground" data-testid="mandy-plan-lines">
                 {confirm.lines.map((l, i) => <li key={i}>{l}</li>)}
               </ul>
             ) : null}

@@ -207,13 +207,13 @@ const BundlesList = () => {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-sm">{bundle.name}</span>
                       {bundle.ac_type && (
-                        <Badge variant="secondary" className="text-[10px]">{bundle.ac_type}</Badge>
+                        <Badge variant="secondary" className="text-xs">{bundle.ac_type}</Badge>
                       )}
                       {bundle.btu_rating && (
-                        <Badge variant="outline" className="text-[10px]">{(bundle.btu_rating / 1000).toFixed(0)}K BTU</Badge>
+                        <Badge variant="outline" className="text-xs">{(bundle.btu_rating / 1000).toFixed(0)}K BTU</Badge>
                       )}
                       {bundle.pipe_size && (
-                        <Badge variant="outline" className="text-[10px]">{bundle.pipe_size}</Badge>
+                        <Badge variant="outline" className="text-xs">{bundle.pipe_size}</Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">

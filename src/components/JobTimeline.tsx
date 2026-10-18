@@ -185,7 +185,7 @@ const JobTimeline = ({ leadId, lead }: JobTimelineProps) => {
               {event.detail && (
                 <p className="text-xs text-muted-foreground mt-0.5">{event.detail}</p>
               )}
-              <p className="text-[10px] text-muted-foreground mt-1">{displayDate}</p>
+              <p className="text-xs text-muted-foreground mt-1">{displayDate}</p>
             </div>
           </div>
         );

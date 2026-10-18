@@ -21,7 +21,7 @@ const TONE_CLS: Record<Tone, string> = {
 };
 export function TonePill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
   const I = TONE_ICON[tone];
-  return <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap", TONE_CLS[tone])}><I className="h-3 w-3" />{children}</span>;
+  return <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap", TONE_CLS[tone])}><I className="h-3 w-3" />{children}</span>;
 }
 
 import { DASHBOARD_LAYOUT } from "@/components/dashboard/v7/dashboardLayout";
@@ -29,7 +29,7 @@ import CashflowDashboardPanel from "@/components/cashflow/CashflowDashboardPanel
 
 const Panel = ({ title, sub, children, className, testId }: { title?: string; sub?: string; children: React.ReactNode; className?: string; testId?: string }) => (
   <section data-testid={testId} className={cn("h-full min-w-0 rounded-xl border border-white/70 bg-white/95 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_4px_14px_rgba(15,23,42,0.06)] backdrop-blur-md dark:border-white/10 dark:bg-[#111a2b]/95 p-3 md:p-4", className)}>
-    {title && <div className="mb-2 flex items-baseline gap-2"><h2 className="text-sm font-semibold text-foreground">{title}</h2>{sub && <span className="text-[11px] text-muted-foreground">{sub}</span>}</div>}
+    {title && <div className="mb-2 flex items-baseline gap-2"><h2 className="text-sm font-semibold text-foreground">{title}</h2>{sub && <span className="text-xs text-muted-foreground">{sub}</span>}</div>}
     {children}
   </section>
 );
@@ -38,9 +38,9 @@ const Panel = ({ title, sub, children, className, testId }: { title?: string; su
 export function EmptyNote({ text, action, to }: { text: string; action?: string; to?: string }) {
   const nav = useNavigate();
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-[#D1D5DB] bg-white/60 px-3 py-2 text-[12.5px] text-muted-foreground dark:border-white/15 dark:bg-white/5" data-testid="v7-empty">
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-[#D1D5DB] bg-white/60 px-3 py-2 text-xs text-muted-foreground dark:border-white/15 dark:bg-white/5" data-testid="v7-empty">
       <span className="min-w-0">{text}</span>
-      {action && to && <button onClick={() => nav(to)} className="ml-auto shrink-0 rounded-full bg-[#1AA7EC] px-2.5 py-0.5 text-[11px] font-semibold text-white hover:bg-[#1590D6]">{action}</button>}
+      {action && to && <button onClick={() => nav(to)} className="ml-auto shrink-0 rounded-full bg-[#1AA7EC] px-2.5 py-0.5 text-xs font-semibold text-white hover:bg-[#1590D6]">{action}</button>}
     </div>
   );
 }
@@ -63,7 +63,7 @@ function Delta({ label, v }: { label: string; v: number | null }) {
   const up = v != null && v > 0, down = v != null && v < 0;
   const title = v == null ? `No data to compare with ${t.long}` : v === 0 ? `Same as ${t.long}` : `${up ? "Up" : "Down"} ${Math.abs(v)}% compared with ${t.long}`;
   return (
-    <span data-testid="v7-delta" className="inline-flex items-center gap-1 whitespace-nowrap text-[10.5px]" title={title}>
+    <span data-testid="v7-delta" className="inline-flex items-center gap-1 whitespace-nowrap text-xs" title={title}>
       {up ? <span className="font-semibold text-[#16A34A]">▲ +{v}%</span>
         : down ? <span className="font-semibold text-[#DC2626]">▼ {v}%</span>
         : <span className="inline-flex items-center gap-1 text-[#9CA3AF]"><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#9CA3AF]" />{v === 0 ? "0%" : "–"}</span>}
@@ -95,7 +95,7 @@ function Gauge({ title, pct, caption }: { title: string; pct: number; caption: s
         </ResponsiveContainer>
         <div className="absolute inset-x-0 bottom-1 text-center text-3xl font-bold">{v}%</div>
       </div>
-      <p className="text-[11px] text-muted-foreground">{caption}</p>
+      <p className="text-xs text-muted-foreground">{caption}</p>
     </Panel>
   );
 }
@@ -208,14 +208,14 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
     compare_table: (<><Panel title="Compare periods" sub="▲ up · ▼ down · ● no change / no data · hover a figure for details · faint line = last year" testId="v7-compare">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
-            <thead><tr className="text-left text-[11px] text-muted-foreground">
+            <thead><tr className="text-left text-xs text-muted-foreground">
               <th className="py-1 pr-2 font-medium">Metric</th><th className="py-1 pr-2 font-medium">12 mo</th>
               {cols.map((c) => <th key={c.key} className={cn("py-1 pr-2 font-medium", c.selected && "text-[#1590D6]")}>{c.label}{c.selected && " · selected"}</th>)}
             </tr></thead>
             <tbody>
               {metrics.map((m) => (
                 <tr key={m.key} className="border-t border-[#E5E7EB] dark:border-white/10">
-                  <td className="py-1.5 pr-2 text-[12.5px] font-medium">{m.label}</td>
+                  <td className="py-1.5 pr-2 text-xs font-medium">{m.label}</td>
                   <td className="py-1.5 pr-2"><Spark data={series(data, m.key, nowMin)} ghost={lastMonths(nowMin).map((mm) => metric(data, m.key, shiftMonths(mm, -12)) ?? 0)} /></td>
                   {cols.map((c) => {
                     const v = val(m.key, c.r);
@@ -236,20 +236,20 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
           </table>
         </div>
       </Panel></>),
-    revenue_ytd: (office && <Panel className="col-span-2 md:col-span-1"><div className="text-[11px] text-muted-foreground">Revenue YTD (paid)</div><div className="text-xl font-bold kpi-fluid tabular-nums [--kpi-max:1.5rem]">{rand(val("paid", ytd) ?? 0)}</div><Spark data={revenue} ghost={revenueLy} /></Panel>),
-    paid_period: (office && <Panel><div className="text-[11px] text-muted-foreground">Paid · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold kpi-fluid tabular-nums [--kpi-max:1.5rem]">{rand(paidSel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(paidSel, val("paid", base))} /></Panel>),
-    outstanding: (office && <Panel><div className="text-[11px] text-muted-foreground">Outstanding (sent, unpaid)</div><div className="text-xl font-bold kpi-fluid tabular-nums [--kpi-max:1.5rem]">{rand(out)}</div></Panel>),
-    draft_invoices: (office && <Panel testId="v7-draft-invoices"><div className="text-[11px] text-muted-foreground">Draft invoices (not sent)</div><div className="text-xl font-bold kpi-fluid tabular-nums [--kpi-max:1.5rem]">{rand(dr.amount)}</div><div className="text-[11px] text-muted-foreground">{dr.count} draft{dr.count === 1 ? "" : "s"} · not in outstanding</div></Panel>),
-    open_jobs: (<><Panel><div className="text-[11px] text-muted-foreground">Open jobs</div>{openJobs === 0 ? <div className="mt-1"><EmptyNote text="No open jobs" action="Book a job" to="/admin/schedule" /></div> : <div className="text-xl font-bold">{openJobs}</div>}{jb.overdue > 0 && <TonePill tone="red">{jb.overdue} overdue</TonePill>}</Panel></>),
-    new_leads: (<><Panel><div className="text-[11px] text-muted-foreground">New leads · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{val("new_leads", sel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(val("new_leads", sel), val("new_leads", base))} /></Panel></>),
-    quotes_sent: (!office && <Panel><div className="text-[11px] text-muted-foreground">Quotes sent</div><div className="text-xl font-bold">{sent}</div></Panel>),
-    quotes_accepted: (!office && <Panel><div className="text-[11px] text-muted-foreground">Quotes accepted</div><div className="text-xl font-bold">{accepted}</div></Panel>),
+    revenue_ytd: (office && <Panel className="col-span-2 md:col-span-1"><div className="text-xs text-muted-foreground">Revenue YTD (paid)</div><div className="text-xl font-bold kpi-fluid tabular-nums [--kpi-max:1.5rem]">{rand(val("paid", ytd) ?? 0)}</div><Spark data={revenue} ghost={revenueLy} /></Panel>),
+    paid_period: (office && <Panel><div className="text-xs text-muted-foreground">Paid · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold kpi-fluid tabular-nums [--kpi-max:1.5rem]">{rand(paidSel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(paidSel, val("paid", base))} /></Panel>),
+    outstanding: (office && <Panel><div className="text-xs text-muted-foreground">Outstanding (sent, unpaid)</div><div className="text-xl font-bold kpi-fluid tabular-nums [--kpi-max:1.5rem]">{rand(out)}</div></Panel>),
+    draft_invoices: (office && <Panel testId="v7-draft-invoices"><div className="text-xs text-muted-foreground">Draft invoices (not sent)</div><div className="text-xl font-bold kpi-fluid tabular-nums [--kpi-max:1.5rem]">{rand(dr.amount)}</div><div className="text-xs text-muted-foreground">{dr.count} draft{dr.count === 1 ? "" : "s"} · not in outstanding</div></Panel>),
+    open_jobs: (<><Panel><div className="text-xs text-muted-foreground">Open jobs</div>{openJobs === 0 ? <div className="mt-1"><EmptyNote text="No open jobs" action="Book a job" to="/admin/schedule" /></div> : <div className="text-xl font-bold">{openJobs}</div>}{jb.overdue > 0 && <TonePill tone="red">{jb.overdue} overdue</TonePill>}</Panel></>),
+    new_leads: (<><Panel><div className="text-xs text-muted-foreground">New leads · {PERIODS.find((p) => p.k === kind)!.label}</div><div className="text-xl font-bold">{val("new_leads", sel)}</div><Delta label={cmp === "prev" ? "prev" : "LY"} v={delta(val("new_leads", sel), val("new_leads", base))} /></Panel></>),
+    quotes_sent: (!office && <Panel><div className="text-xs text-muted-foreground">Quotes sent</div><div className="text-xl font-bold">{sent}</div></Panel>),
+    quotes_accepted: (!office && <Panel><div className="text-xs text-muted-foreground">Quotes accepted</div><div className="text-xl font-bold">{accepted}</div></Panel>),
     quote_conversion: (<><Gauge title="Quote conversion" pct={sent ? (accepted / sent) * 100 : 0} caption={`${accepted} of ${sent} accepted`} /></>),
     invoices_paid: (office && <Gauge title="Invoices paid" pct={pos.sent ? (pos.paid / pos.sent) * 100 : 0} caption={pos.count ? `${rand(pos.paid)} of ${rand(pos.sent)} sent invoices (${pos.count}) · drafts excluded` : "No sent invoices this period · drafts excluded"} />),
     outstanding_share: (office && <Gauge title="Outstanding share" pct={invoicedSel + out ? (out / Math.max(1, (val("invoiced", ytd) ?? 0))) * 100 : 0} caption={`${rand(out)} unpaid of ${rand(val("invoiced", ytd) ?? 0)} sent this year · drafts excluded`} />),
     monthly_revenue: (office && (
           <Panel title="Monthly revenue (R thousands)" sub={`paid, last 12 months · faint bars = ${ghostLabel.toLowerCase()}`} className="lg:col-span-2" testId="v7-revenue">
-            <div className="mb-1 flex justify-end gap-1 text-[11px]" data-testid="v7-rev-toggle">
+            <div className="mb-1 flex justify-end gap-1 text-xs" data-testid="v7-rev-toggle">
               {([["prev", "Prev"], ["lm", "Last month"], ["ly", "Last year"]] as const).map(([k, l]) => (
                 <button key={k} onClick={() => setRevCmp(k)} className={cn("rounded-full border px-2 py-0.5", revCmp === k ? "border-[#1590D6] bg-[#1590D6] text-white" : "border-[#E5E7EB] bg-white dark:border-white/10 dark:bg-transparent")}>{l}</button>
               ))}
@@ -272,7 +272,7 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
           {fun.every((x) => !x.value) ? <EmptyNote text="No leads in this period yet" action="New lead" to="/admin/dispatch?inbox=1" /> : <div className="space-y-1.5">
             {fun.map((s, i) => (
               <div key={s.label} className="flex items-center gap-2">
-                <div className="h-7 rounded-md px-2 text-[12px] font-medium leading-7 text-white" style={{ width: `${Math.max(18, (s.value / funMax) * 100)}%`, background: i === fun.length - 1 ? C.blueDeep : C.blue, opacity: 1 - i * 0.12 }}>{s.label}</div>
+                <div className="h-7 rounded-md px-2 text-xs font-medium leading-7 text-white" style={{ width: `${Math.max(18, (s.value / funMax) * 100)}%`, background: i === fun.length - 1 ? C.blueDeep : C.blue, opacity: 1 - i * 0.12 }}>{s.label}</div>
                 <span className="text-sm font-bold">{s.value}</span>
               </div>
             ))}
@@ -282,7 +282,7 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
         {sortedInbox.length === 0 ? <EmptyNote text="No leads waiting. All done" action="New lead" to="/admin/dispatch?inbox=1" /> : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px] text-sm">
-              <thead><tr className="text-left text-[11px] text-muted-foreground"><th className="py-1 font-medium">Lead</th><th className="font-medium">Type</th><th className="font-medium">Waiting</th><th className="font-medium">Route to</th></tr></thead>
+              <thead><tr className="text-left text-xs text-muted-foreground"><th className="py-1 font-medium">Lead</th><th className="font-medium">Type</th><th className="font-medium">Waiting</th><th className="font-medium">Route to</th></tr></thead>
               <tbody>
                 {sortedInbox.map((l: any) => {
                   const w = nowMin - ts(l.created_at); const tone: Tone = w >= slaMs ? "red" : w >= slaMs * 0.4 ? "amber" : "blue";
@@ -290,10 +290,10 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
                   const k = leadKind(l);
                   return (
                     <tr key={l.id} className="cursor-pointer border-t border-[#E5E7EB] hover:bg-white/60 dark:border-white/10 dark:hover:bg-white/5" onClick={() => navigate(INBOX_ROUTE)}>
-                      <td className="py-1.5 pr-2 text-[12.5px]">{l.customer_name || "Unnamed"}{l.call_area ? ` · ${l.call_area}` : ""}</td>
-                      <td className="pr-2 text-[12px] text-muted-foreground">{k === "sales" ? "Sales quote" : "Service call-out"}</td>
+                      <td className="py-1.5 pr-2 text-xs">{l.customer_name || "Unnamed"}{l.call_area ? ` · ${l.call_area}` : ""}</td>
+                      <td className="pr-2 text-xs text-muted-foreground">{k === "sales" ? "Sales quote" : "Service call-out"}</td>
                       <td className="pr-2"><TonePill tone={tone}>{tone === "red" ? "Overdue" : tone === "amber" ? "Due soon" : "On time"} · {wait}</TonePill></td>
-                      <td className="text-[12px] font-semibold">{k === "sales" ? "Sales" : "Tech"}</td>
+                      <td className="text-xs font-semibold">{k === "sales" ? "Sales" : "Tech"}</td>
                     </tr>
                   );
                 })}
@@ -308,9 +308,9 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart><Pie data={jbRows.map((r) => ({ name: r.label, value: jb[r.k] }))} dataKey="value" innerRadius="62%" outerRadius="95%" stroke="none" isAnimationActive={false}>{jbRows.map((r) => <Cell key={r.k} fill={r.color} />)}</Pie></PieChart>
               </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-bold">{openJobs + jb.completed}</span><span className="text-[10px] text-muted-foreground">jobs</span></div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-bold">{openJobs + jb.completed}</span><span className="text-xs text-muted-foreground">jobs</span></div>
             </div>
-            <ul className="flex-1 space-y-1 text-[12.5px]">
+            <ul className="flex-1 space-y-1 text-xs">
               {jbRows.map((r) => { const I = TONE_ICON[r.tone]; return <li key={r.k} className="flex items-center gap-1.5"><I className="h-3.5 w-3.5" style={{ color: r.color }} />{r.label}<span className="ml-auto font-bold">{jb[r.k]}</span></li>; })}
             </ul>
           </div>}
@@ -321,7 +321,7 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
               {ag.map((a, i) => { const tone: Tone = i === 0 ? "blue" : i === 1 ? "amber" : "red"; const I = TONE_ICON[tone];
                 return (
                   <div key={a.label}>
-                    <div className="flex items-center justify-between text-[12px]"><span className="flex items-center gap-1"><I className="h-3 w-3" style={{ color: C[tone] }} />{a.label} · {i === 0 ? "current" : i === 1 ? "due soon" : "overdue"}</span><span className="font-semibold">{rand(a.amount)}</span></div>
+                    <div className="flex items-center justify-between text-xs"><span className="flex items-center gap-1"><I className="h-3 w-3" style={{ color: C[tone] }} />{a.label} · {i === 0 ? "current" : i === 1 ? "due soon" : "overdue"}</span><span className="font-semibold">{rand(a.amount)}</span></div>
                     <div className="h-2 rounded bg-[#E5E7EB] dark:bg-white/10"><div className="h-2 rounded" style={{ width: `${(a.amount / agMax) * 100}%`, background: C[tone] }} /></div>
                   </div>
                 ); })}
@@ -333,12 +333,12 @@ export default function V7Dashboard({ audience, slots }: { audience: "office" | 
         <Panel title="Team workload & earnings" sub={owner ? "open jobs · earnings this month" : "open jobs"} testId="v7-team">
           {team.length === 0 ? <EmptyNote text="No open assignments" action="Dispatch" to="/admin/dispatch" /> : (
             <table className="w-full text-sm">
-              <thead><tr className="text-left text-[11px] text-muted-foreground"><th className="py-1 font-medium">Person</th><th className="font-medium">Workload (open jobs)</th>{owner && <th className="text-right font-medium">Earnings (MTD)</th>}</tr></thead>
+              <thead><tr className="text-left text-xs text-muted-foreground"><th className="py-1 font-medium">Person</th><th className="font-medium">Workload (open jobs)</th>{owner && <th className="text-right font-medium">Earnings (MTD)</th>}</tr></thead>
               <tbody>
                 {team.map((p) => (
                   <tr key={p.id} className="border-t border-[#E5E7EB] dark:border-white/10">
-                    <td className="py-1.5 pr-2"><div className="text-[12.5px] font-medium">{p.full_name || "—"}</div><div className="text-[10.5px] text-muted-foreground">{p.dispatch_role === "sales" ? "Sales" : p.job_title || "Technician"}</div></td>
-                    <td className="pr-2"><div className="h-2 w-full max-w-[220px] rounded bg-[#E5E7EB] dark:bg-white/10"><div className="h-2 rounded bg-[#1AA7EC]" style={{ width: `${(p.open / teamMax) * 100}%` }} /></div><span className="text-[10.5px] text-muted-foreground">{p.open} jobs</span></td>
+                    <td className="py-1.5 pr-2"><div className="text-xs font-medium">{p.full_name || "—"}</div><div className="text-xs text-muted-foreground">{p.dispatch_role === "sales" ? "Sales" : p.job_title || "Technician"}</div></td>
+                    <td className="pr-2"><div className="h-2 w-full max-w-[220px] rounded bg-[#E5E7EB] dark:bg-white/10"><div className="h-2 rounded bg-[#1AA7EC]" style={{ width: `${(p.open / teamMax) * 100}%` }} /></div><span className="text-xs text-muted-foreground">{p.open} jobs</span></td>
                     {owner && <td className="text-right font-semibold">{rand(p.earn)}</td>}
                   </tr>
                 ))}
@@ -360,7 +360,7 @@ function V7Rows({ office, B }: { office: boolean; B: Record<string, React.ReactN
         if (!items.length) return null;
         return (
           <section key={row.id} data-testid={`v7-row-${row.id}`} className="space-y-2">
-            {row.title && <div className="flex items-center gap-2"><h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">{row.title}</h2><div className="h-px flex-1 bg-border" /></div>}
+            {row.title && <div className="flex items-center gap-2"><h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{row.title}</h2><div className="h-px flex-1 bg-border" /></div>}
             <div className={row.grid}>
               {items.map((id) => <div key={id} data-block={id} className={cn("flex min-w-0 flex-col [&>*]:min-w-0 [&>*]:flex-1", row.span?.[id])}>{B[id]}</div>)}
             </div>

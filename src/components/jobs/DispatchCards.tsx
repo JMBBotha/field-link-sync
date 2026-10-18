@@ -185,14 +185,14 @@ export default function DispatchCards() {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)_220px]">
         <section className="min-w-0 space-y-2">
-          <h3 className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground">NEW LEADS · FIRST CONTACT <span className="rounded-full bg-slate-800 px-1.5 text-[10px] text-white">{rail.length}</span></h3>
+          <h3 className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground">NEW LEADS · FIRST CONTACT <span className="rounded-full bg-slate-800 px-1.5 text-xs text-white">{rail.length}</span></h3>
           {rail.length === 0 ? <div className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">No new leads</div>
             : rail.map((l) => <LeadCardV2 key={l.id} lead={l} onOpen={() => navigate(`/admin/dispatch?lead=${l.id}`)} />)}
         </section>
 
         <section className="min-w-0 space-y-2">
           <h3 className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground">
-            {dayKey === "today" ? "TODAY'S" : "TOMORROW'S"} JOBS · MOST URGENT FIRST <span className="rounded-full bg-slate-800 px-1.5 text-[10px] text-white">{cards.length}</span>
+            {dayKey === "today" ? "TODAY'S" : "TOMORROW'S"} JOBS · MOST URGENT FIRST <span className="rounded-full bg-slate-800 px-1.5 text-xs text-white">{cards.length}</span>
           </h3>
           {isLoading || visitsLoading ? <div className="p-6 text-sm text-muted-foreground">Loading jobs…</div>
             : cards.length === 0 ? <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No jobs {dayKey === "today" ? "today" : "tomorrow"}</div>
@@ -208,12 +208,12 @@ export default function DispatchCards() {
           <h3 className="text-xs font-bold tracking-wide text-muted-foreground">TECHS {dayKey === "today" ? "TODAY" : "TOMORROW"}</h3>
           {techs.length === 0 ? <div className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">No techs booked</div> : techs.map((t) => (
             <div key={t.id} className="flex items-center gap-2 rounded-xl border bg-card p-2.5" data-tech-row>
-              <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-800 text-[11px] font-bold text-white">
+              <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-800 text-xs font-bold text-white">
                 {initials(t.name)}<span className={cn("absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card", STATE[t.state].dot)} />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">{t.name}</div>
-                <div className={cn("truncate text-[11px]", t.late ? "text-red-600" : "text-muted-foreground")}>
+                <div className={cn("truncate text-xs", t.late ? "text-red-600" : "text-muted-foreground")}>
                   {STATE[t.state].label}{t.state === "next" && t.next ? ` ${format(new Date(t.next), "HH:mm")}` : ""} · {t.jobs} job{t.jobs === 1 ? "" : "s"}{t.late ? ` · ${t.late} late` : ""}
                 </div>
                 <div className="mt-1 h-1 rounded bg-muted"><div className="h-1 rounded bg-blue-600" style={{ width: `${Math.min(100, t.jobs * 25)}%` }} /></div>

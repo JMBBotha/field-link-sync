@@ -308,7 +308,7 @@ const CompletedJobsFilterDrawer = ({
                       max={100}
                       step={5}
                     />
-                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <div className="flex justify-between text-xs text-muted-foreground">
                       <span>5 km</span>
                       <span>100 km</span>
                     </div>

@@ -27,7 +27,7 @@ export default function LeadOfferFlagsCard() {
       <CardContent className="pt-0 space-y-2">
         {data.map((f, i) => (
           <div key={`${f.lead_id ?? "rep"}-${i}`} className="flex flex-wrap items-center gap-2 text-sm min-h-[36px]" data-testid="lead-offer-flag">
-            <Badge variant="outline" className="text-[10px] border-amber-500/60">{FLAG_LABEL[f.issue] ?? f.issue}</Badge>
+            <Badge variant="outline" className="text-xs border-amber-500/60">{FLAG_LABEL[f.issue] ?? f.issue}</Badge>
             {f.lead_id ? (
               <Link to={`/admin/dispatch?lead=${f.lead_id}`} className="font-medium text-primary hover:underline">{f.customer_name || "Lead"}</Link>
             ) : (

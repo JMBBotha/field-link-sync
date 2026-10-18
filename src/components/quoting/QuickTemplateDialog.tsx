@@ -132,7 +132,7 @@ const QuickTemplateDialog = ({
                       {t.name}
                     </span>
                     {t.category && (
-                      <span className="text-[10px] uppercase tracking-wide rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
+                      <span className="text-xs uppercase tracking-wide rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
                         {t.category}
                       </span>
                     )}
@@ -142,7 +142,7 @@ const QuickTemplateDialog = ({
                       {t.description}
                     </p>
                   )}
-                  <p className="text-[11px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {itemCount(t)} line item{itemCount(t) === 1 ? "" : "s"}
                   </p>
                 </div>

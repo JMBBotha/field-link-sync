@@ -269,7 +269,7 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
               disabled={i > currentStep}
             >
               <span className={cn(
-                "flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold border shrink-0",
+                "flex items-center justify-center h-5 w-5 rounded-full text-xs font-bold border shrink-0",
                 i === currentStep && "bg-primary-foreground text-primary border-transparent",
                 i < currentStep && "bg-primary text-primary-foreground border-transparent",
                 i > currentStep && "border-muted-foreground/30"

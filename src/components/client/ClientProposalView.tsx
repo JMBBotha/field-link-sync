@@ -580,7 +580,7 @@ const ClientProposalView = () => {
         <div className="fixed inset-x-0 bottom-0 z-40 bg-white shadow-[0_-4px_14px_rgba(0,0,0,0.12)] print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }} data-testid="sticky-accept-bar">
           <div className="max-w-4xl mx-auto px-3 py-2 flex items-center gap-2">
             <div className="min-w-0 flex-1 leading-tight">
-              <div className="text-[10px] text-muted-foreground">Total incl. VAT</div>
+              <div className="text-xs text-muted-foreground">Total incl. VAT</div>
               <b className="text-[#0B4FA8] text-sm">{fmtR(Number(quote.total) || 0)}</b>
             </div>
             {hasAlternatives && (

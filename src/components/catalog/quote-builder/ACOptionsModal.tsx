@@ -79,7 +79,7 @@ function ModelList({ products, selectedProductId, onSelect }: {
           >
             <div className="min-w-0 flex-1">
               <p className="font-medium truncate">{getProductDisplayName(p)}</p>
-              <p className="text-[10px] font-mono font-medium text-primary/80 truncate">{p.product_code}</p>
+              <p className="text-xs font-mono font-medium text-primary/80 truncate">{p.product_code}</p>
             </div>
             <span className="font-bold shrink-0">
               {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
@@ -192,7 +192,7 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm, in
           {showInferenceBanner && (
             <div className="flex items-center gap-2 rounded-md bg-primary/10 border border-primary/20 px-3 py-2">
               <Info className="h-3.5 w-3.5 text-primary shrink-0" />
-              <p className="text-[11px] text-foreground">
+              <p className="text-xs text-foreground">
                 Based on your quote, suggesting <span className="font-semibold">{inferredBrand}</span> products. Change brand below if needed.
               </p>
             </div>
@@ -268,8 +268,8 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm, in
               <p className="font-semibold text-foreground">{getProductDisplayName(selectedProduct)}</p>
               <p className="text-muted-foreground line-clamp-2">{selectedProduct.description}</p>
               <div className="flex gap-2 mt-1">
-                <Badge variant="outline" className="text-[10px]">{selectedProduct.supplier_name}</Badge>
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className="text-xs">{selectedProduct.supplier_name}</Badge>
+                <Badge variant="outline" className="text-xs">
                   R{computeProductPricing(selectedProduct).sellExVat.toLocaleString("en-ZA")}
                 </Badge>
               </div>

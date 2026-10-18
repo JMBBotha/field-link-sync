@@ -126,7 +126,7 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId, showCost
                 onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
             </label>
           </div>
-          <p className="text-[10px] text-muted-foreground">Labour is charged at its flat rate with no markup. Changing a % reprices every line of that type on this quote.</p>
+          <p className="text-xs text-muted-foreground">Labour is charged at its flat rate with no markup. Changing a % reprices every line of that type on this quote.</p>
         </div>
       )}
 
@@ -156,7 +156,7 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId, showCost
       )}
 
       {showCost && summary.noCostCount > 0 && (
-        <p className="text-[10px] text-amber-700 dark:text-amber-400">
+        <p className="text-xs text-amber-700 dark:text-amber-400">
           Markup incomplete - {summary.noCostCount} {summary.noCostCount === 1 ? "line has" : "lines have"} no cost
         </p>
       )}
@@ -167,7 +167,7 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId, showCost
           <span className="text-muted-foreground">
             Overall markup: <span className="font-semibold text-foreground">{summary.avgMarkup.toFixed(0)}%</span>
           </span>
-          <Badge variant="outline" className={`text-[10px] font-medium px-1.5 py-0.5 ${markupBadgeClass}`}>
+          <Badge variant="outline" className={`text-xs font-medium px-1.5 py-0.5 ${markupBadgeClass}`}>
             {markupLabel}
           </Badge>
         </div>
@@ -190,7 +190,7 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId, showCost
             <div className="absolute left-[35%] w-px h-full bg-border/50" />
           </div>
         </div>
-        <div className="relative h-3 text-[9px] text-muted-foreground">
+        <div className="relative h-3 text-xs text-muted-foreground">
           <span className="absolute left-0">0%</span>
           <span className="absolute left-[25%] -translate-x-1/2">25%</span>
           <span className="absolute left-[35%] -translate-x-1/2">35%</span>
@@ -214,7 +214,7 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId, showCost
           WhatsApp) plus email PDF via the send dialog */}
       {!hideSend && (
         <Button
-          className="w-full h-11 text-sm font-semibold gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-gray-900"
+          className="w-full h-11 text-sm font-semibold gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-ink"
           onClick={onGenerateQuote}
         >
           <Send className="h-4 w-4" />

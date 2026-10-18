@@ -77,12 +77,12 @@ const JobPipelinePanel = ({ leadId, initial, onSaved }: Props) => {
     >
       <div className="flex items-center gap-1.5">
         <Package className="h-3.5 w-3.5 text-muted-foreground" />
-        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Job pipeline</p>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">Job pipeline</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <Label className="text-[10px] text-muted-foreground">Order status</Label>
+          <Label className="text-xs text-muted-foreground">Order status</Label>
           <Select value={orderStatus} onValueChange={setOrderStatus}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="Not set" />
@@ -97,7 +97,7 @@ const JobPipelinePanel = ({ leadId, initial, onSaved }: Props) => {
         </div>
 
         <div className="space-y-1">
-          <Label className="text-[10px] text-muted-foreground">Parts status</Label>
+          <Label className="text-xs text-muted-foreground">Parts status</Label>
           <Select value={partsStatus} onValueChange={setPartsStatus}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="Not set" />
@@ -113,7 +113,7 @@ const JobPipelinePanel = ({ leadId, initial, onSaved }: Props) => {
       </div>
 
       <div className="space-y-1">
-        <Label className="text-[10px] text-muted-foreground">Technician name</Label>
+        <Label className="text-xs text-muted-foreground">Technician name</Label>
         <Input
           value={technicianName}
           onChange={(e) => setTechnicianName(e.target.value)}
@@ -123,7 +123,7 @@ const JobPipelinePanel = ({ leadId, initial, onSaved }: Props) => {
       </div>
 
       <div className="space-y-1">
-        <Label className="text-[10px] text-muted-foreground">Technician ETA</Label>
+        <Label className="text-xs text-muted-foreground">Technician ETA</Label>
         <Input
           type="datetime-local"
           value={eta}

@@ -69,7 +69,7 @@ export default function QuoteBuilderLayout({ left, middle, side, sideTitle = "Qu
           <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="Show products" onClick={() => setLeftOpen(true)}>
             <PanelLeftOpen className="h-4 w-4" />
           </Button>
-          <span className="mt-2 text-[10px] font-medium text-muted-foreground [writing-mode:vertical-rl]">Products</span>
+          <span className="mt-2 text-xs font-medium text-muted-foreground [writing-mode:vertical-rl]">Products</span>
         </aside>
       )}
 
@@ -113,7 +113,7 @@ export default function QuoteBuilderLayout({ left, middle, side, sideTitle = "Qu
           <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label={`Show ${sideTitle.toLowerCase()}`} onClick={() => setOpen(true)}>
             <PanelRightOpen className="h-4 w-4" />
           </Button>
-          <span className="mt-2 text-[10px] font-medium text-muted-foreground [writing-mode:vertical-rl]">{sideTitle}</span>
+          <span className="mt-2 text-xs font-medium text-muted-foreground [writing-mode:vertical-rl]">{sideTitle}</span>
         </aside>
       )}
     </div>

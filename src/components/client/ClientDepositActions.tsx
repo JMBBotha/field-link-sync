@@ -42,7 +42,7 @@ const ClientDepositActions = ({ invoice, payUrl, banking, profile }: ClientDepos
   };
   const row = (label: string, value?: string) =>
     value ? (
-      <div className="flex justify-between gap-3"><span className="text-slate-500">{label}</span><span className="font-medium text-slate-900 text-right">{value}</span></div>
+      <div className="flex justify-between gap-3"><span className="text-ink-secondary">{label}</span><span className="font-medium text-ink text-right">{value}</span></div>
     ) : null;
 
   return (
@@ -54,7 +54,7 @@ const ClientDepositActions = ({ invoice, payUrl, banking, profile }: ClientDepos
         {depositDue < total && row("Balance on completion", formatRand(Math.max(0, total - depositDue)))}
         {(b.account_number || b.bank_name) && (
           <div className="mt-3 border-t border-slate-200 pt-3 space-y-1.5">
-            <p className="font-semibold text-slate-900">Pay by EFT</p>
+            <p className="font-semibold text-ink">Pay by EFT</p>
             {row("Account name", b.account_name)}
             {row("Bank", b.bank_name)}
             {row("Account type", b.account_type)}

@@ -55,7 +55,7 @@ const ConsumablesSuggestionPanel = ({ basketItems, allProducts, onAddProduct }: 
 
   return (
     <div className="rounded-md border border-dashed border-orange-400/40 bg-orange-500/5 p-2 mt-1.5">
-      <p className="text-[10px] font-semibold text-orange-600 dark:text-orange-400 flex items-center gap-1 mb-1.5">
+      <p className="text-xs font-semibold text-orange-600 dark:text-orange-400 flex items-center gap-1 mb-1.5">
         <Wrench className="h-3 w-3" />
         Suggested Consumables
       </p>
@@ -67,7 +67,7 @@ const ConsumablesSuggestionPanel = ({ basketItems, allProducts, onAddProduct }: 
               key={product.id}
               variant="outline"
               size="sm"
-              className="h-auto py-1 px-2 text-[10px] gap-1 border-orange-400/30 hover:bg-orange-500/10"
+              className="h-auto py-1 px-2 text-xs gap-1 border-orange-400/30 hover:bg-orange-500/10"
               onClick={() => onAddProduct(product)}
             >
               <Plus className="h-2.5 w-2.5" />

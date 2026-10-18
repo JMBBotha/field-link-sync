@@ -217,7 +217,7 @@ export const DaikinOverlayDiagnostic = ({ currentSupplierName, currentPageNumber
                       : <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />}
                     <div className="flex-1 min-w-0">
                       <div className="font-medium">{s.label}</div>
-                      <div className="text-muted-foreground break-words font-mono text-[11px]">{s.detail}</div>
+                      <div className="text-muted-foreground break-words font-mono text-xs">{s.detail}</div>
                     </div>
                   </div>
                 ))}
@@ -227,7 +227,7 @@ export const DaikinOverlayDiagnostic = ({ currentSupplierName, currentPageNumber
             {rawRow && (
               <details className="text-xs">
                 <summary className="cursor-pointer text-muted-foreground">Raw supplier_products row</summary>
-                <pre className="mt-2 p-2 bg-muted rounded overflow-auto text-[10px] max-h-48">{JSON.stringify(rawRow, null, 2)}</pre>
+                <pre className="mt-2 p-2 bg-muted rounded overflow-auto text-xs max-h-48">{JSON.stringify(rawRow, null, 2)}</pre>
               </details>
             )}
 
@@ -237,7 +237,7 @@ export const DaikinOverlayDiagnostic = ({ currentSupplierName, currentPageNumber
                   <Flag className="h-3.5 w-3.5 text-warning" />
                   Report mismatch for review
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-[11px]">
+                <div className="grid grid-cols-3 gap-2 text-xs">
                   <div className="rounded border bg-muted/30 p-1.5">
                     <div className="text-muted-foreground">Product</div>
                     <div className="font-mono truncate">{code.trim() || "—"}</div>

@@ -198,7 +198,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
                       R{z.total.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {z.items} items · {z.qty} qty
                   </p>
                 </div>
@@ -231,13 +231,13 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
         <div className="space-y-2">
           {/* Client selector */}
           <div className="relative">
-            <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Client</label>
+            <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">Client</label>
             {selectedClient ? (
               <div className="flex items-center gap-1.5 rounded-lg border bg-white px-2.5 py-2 text-xs">
                 <Users className="h-3.5 w-3.5 text-primary shrink-0" />
                 <div className="flex-1 min-w-0">
                   <span className="font-medium truncate block">{selectedClient.name}</span>
-                  {selectedClient.phone && <span className="text-[10px] text-muted-foreground">{selectedClient.phone}</span>}
+                  {selectedClient.phone && <span className="text-xs text-muted-foreground">{selectedClient.phone}</span>}
                 </div>
                 <button
                   type="button"
@@ -275,7 +275,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
                         }}
                       >
                         <p className="text-xs font-medium truncate">{c.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{c.phone}{c.email ? ` · ${c.email}` : ""}</p>
+                        <p className="text-xs text-muted-foreground">{c.phone}{c.email ? ` · ${c.email}` : ""}</p>
                       </button>
                     ))}
                   </div>

@@ -117,7 +117,7 @@ function OwnerEarnings() {
     <FieldShell title={owner ? "Tech earnings" : "My earnings"}>
       <div className="space-y-3" data-testid="tech-earnings">
         <div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Your share of labour (ex VAT): paid when the job is completed, plus a holdback released after the holdback period unless there is a callback.
           </p>
         </div>
@@ -140,7 +140,7 @@ function OwnerEarnings() {
               <div className="mt-2 grid grid-cols-3 gap-2">
                 {s.byStatus.map((b) => (
                   <div key={b.status} className="rounded-md border p-2">
-                    <p className="text-[11px] text-muted-foreground">{b.label} · {b.count}</p>
+                    <p className="text-xs text-muted-foreground">{b.label} · {b.count}</p>
                     <p className="text-sm font-semibold tabular-nums">{money(b.amount)}</p>
                   </div>
                 ))}
@@ -151,7 +151,7 @@ function OwnerEarnings() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-medium">{r.quote_number || "Job"}{owner && <span className="text-muted-foreground"> · {r.tech_name || "Unknown"}</span>}</p>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {STATUS_INFO[r.status]?.label ?? r.status} · {Number(r.percent) || 0}%
                           {r.completed_at && ` · completed ${formatSastDate(r.completed_at)}`}
                           {r.bucket === "holdback" && r.release_after && ` · release from ${formatSastDate(r.release_after)}`}

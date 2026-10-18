@@ -66,7 +66,7 @@ export function AvailabilityPicker({ lane, date, startTime, minutes, lat, lng, e
     <div className={cn("space-y-2 min-w-0", className)} data-testid="availability-picker">
       {slots.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5" data-testid="suggested-slots">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Suggested slots</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Suggested slots</span>
           {slots.map((s) => (
             <button key={`${s.profile_id}-${s.slot_date}-${s.slot_start}`} type="button" title={s.reason}
               onClick={() => onSelect(s.profile_id, s.slot_date, hhmm(s.slot_start))}
@@ -87,13 +87,13 @@ export function AvailabilityPicker({ lane, date, startTime, minutes, lat, lng, e
               selected ? "border-primary bg-primary/5" : "border-border bg-background hover:bg-muted")}>
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-sm font-medium truncate max-w-full">{p.full_name}</span>
-              <span className={cn("rounded border px-1 text-[10px] font-semibold", LANE_META[lane].className)}>{lane.toUpperCase()}</span>
+              <span className={cn("rounded border px-1 text-xs font-semibold", LANE_META[lane].className)}>{lane.toUpperCase()}</span>
               {i === 0 && p.tier < 3 && (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground">
                   <Sparkles className="h-3 w-3" /> Best match
                 </span>
               )}
-              <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+              <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-semibold",
                 chip === "Free" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
                   : chip.startsWith("Busy") ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground")}>{chip}</span>
               <span className="ml-auto inline-flex items-center gap-0.5 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{p.km != null ? `${p.km} km` : "no location"}</span>
@@ -107,7 +107,7 @@ export function AvailabilityPicker({ lane, date, startTime, minutes, lat, lng, e
                   style={{ left: pct(s), width: `calc(${pct(e)} - ${pct(s)})` }} title={`${b.label} ${b.start}–${b.end}`} />;
               })}
             </div>
-            <div className="mt-1 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
+            <div className="mt-1 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
               <span>{blocks.length ? blocks.map((b) => `${b.start}–${b.end}`).join(" · ") : "Nothing booked"}</span>
               {p.next_free && <span className="font-medium text-foreground">next free {hhmm(p.next_free)}</span>}
             </div>

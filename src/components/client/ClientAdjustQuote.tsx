@@ -114,7 +114,7 @@ export default function ClientAdjustQuote({ token, defaultName, onEditingChange,
           </div>
         )}
         {!data.pending && data.last_decision?.status === "rejected" && (
-          <div className="rounded-lg bg-slate-50 text-slate-700 text-sm p-3">Your last changes could not be approved. Your consultant will be in touch.</div>
+          <div className="rounded-lg bg-slate-50 text-ink text-sm p-3">Your last changes could not be approved. Your consultant will be in touch.</div>
         )}
         {open && (
           <div className="space-y-3">
@@ -147,12 +147,12 @@ export default function ClientAdjustQuote({ token, defaultName, onEditingChange,
                             <span className="min-w-0 flex-1 break-words">{o.name}{o.quoted && <span className="ml-1 text-xs text-muted-foreground">(quoted)</span>}</span>
                             <span className="text-right whitespace-nowrap">
                               <span className="block font-semibold text-[#0B4FA8]">{fmtZAR(o.unit_price)}</span>
-                              {!o.quoted && <span className={`block text-[11px] ${diff > 0 ? "text-amber-700" : "text-emerald-700"}`}>{diff > 0 ? "+" : "−"}{fmtZAR(Math.abs(diff))}</span>}
+                              {!o.quoted && <span className={`block text-xs ${diff > 0 ? "text-amber-700" : "text-emerald-700"}`}>{diff > 0 ? "+" : "−"}{fmtZAR(Math.abs(diff))}</span>}
                             </span>
                           </button>
                         );
                       })}
-                      <p className="text-[11px] text-muted-foreground">Prices are per unit, supplied & installed, excl. VAT.</p>
+                      <p className="text-xs text-muted-foreground">Prices are per unit, supplied & installed, excl. VAT.</p>
                     </div>
                   )}
                 </div>

@@ -46,8 +46,8 @@ export default function DuplicateClientBadge({ leadId }: { leadId: string }) {
     <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       <button type="button" data-testid="dup-client-badge" onClick={() => setOpen(true)}
         className={flag.match === "strong"
-          ? "rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-amber-600"
-          : "rounded border border-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300"}>
+          ? "rounded bg-amber-500 px-1.5 py-0.5 text-xs font-bold text-white hover:bg-amber-600"
+          : "rounded border border-amber-500 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300"}>
         <Copy className="mr-0.5 inline h-3 w-3" />{flag.match === "strong" ? `Same client ×${n}` : "Same client?"}
       </button>
       <Dialog open={open} onOpenChange={setOpen}>

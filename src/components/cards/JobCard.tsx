@@ -65,8 +65,8 @@ export default function JobCard({ item, density, audience, actions, menuItems = 
         (key === "late" || unassigned) && "border-dashed border-destructive/60 bg-destructive/5", className)} {...rest}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xl font-bold tabular-nums">{time}</span>
-        <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold", unassigned ? "border border-destructive text-destructive" : pill.className)}>{pill.label}</span>
-        {["urgent", "high"].includes(String(item.priority || "").toLowerCase()) && <span className="rounded border border-destructive/60 px-1.5 text-[10px] font-bold uppercase text-destructive">{item.priority}</span>}
+        <span className={cn("rounded px-1.5 py-0.5 text-xs font-bold", unassigned ? "border border-destructive text-destructive" : pill.className)}>{pill.label}</span>
+        {["urgent", "high"].includes(String(item.priority || "").toLowerCase()) && <span className="rounded border border-destructive/60 px-1.5 text-xs font-bold uppercase text-destructive">{item.priority}</span>}
         <span className="ml-auto text-xs font-semibold">
           {key === "late" && mins !== null ? (mins < -(24 * 60)
             ? <span className="text-destructive">{overdueLabel(item.scheduledFor)}</span>
@@ -80,7 +80,7 @@ export default function JobCard({ item, density, audience, actions, menuItems = 
       {item.assigneeName && <div className="flex min-w-0 items-center gap-1 text-xs"><HardHat className="h-3.5 w-3.5 shrink-0 text-warning" /><span className="truncate">{text(item.assigneeName)}</span></div>}
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         {onLaneClick ? <BoardChip label={`Filter ${LANE_META[item.lane].label}`} className={LANE_META[item.lane].className} onSelect={onLaneClick}>{item.lane.toUpperCase()}</BoardChip>
-          : <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium", LANE_META[item.lane].className)}>{item.lane.toUpperCase()}</span>}
+          : <span className={cn("rounded-full border px-2 py-0.5 text-xs font-medium", LANE_META[item.lane].className)}>{item.lane.toUpperCase()}</span>}
         {onAssigneeClick && <BoardChip label={item.assigneeName ? `Filter assignee ${item.assigneeName}` : "Filter unassigned"}
           className={item.assigneeName ? "border-primary/30 bg-primary/10 text-primary" : "border-destructive text-destructive"} onSelect={onAssigneeClick}>{text(item.assigneeName) || "UNASSIGNED"}</BoardChip>}
       </div>

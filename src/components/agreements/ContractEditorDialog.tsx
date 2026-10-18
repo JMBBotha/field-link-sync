@@ -146,13 +146,13 @@ export default function ContractEditorDialog({ contractId, onClose, onSaved }: {
                 ) : (
                   <Card key={i} className="space-y-2 p-3">
                     <div className="flex items-center gap-2">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-[10px] font-bold text-white">{sectionChip(s, i)}</span>
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-xs font-bold text-white">{sectionChip(s, i)}</span>
                       <Input value={s.heading} onChange={(e) => patchSection(i, { heading: e.target.value })} className="h-8 font-semibold" aria-label="Section heading" />
                       <Button size="icon" variant="ghost" className="h-8 w-8" disabled={i === 0} onClick={() => set({ sections: moveSection(c.sections, doc, i, -1) })} aria-label="Move up"><ArrowUp className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8" disabled={i === list.length - 1} onClick={() => set({ sections: moveSection(c.sections, doc, i, 1) })} aria-label="Move down"><ArrowDown className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { if (window.confirm(`Remove "${s.heading}" from this contract?`)) set({ sections: removeSection(c.sections, doc, i) }); }} aria-label="Remove section"><Trash2 className="h-4 w-4" /></Button>
                     </div>
-                    <Textarea value={s.body} onChange={(e) => patchSection(i, { body: e.target.value })} rows={Math.min(16, Math.max(3, s.body.split("\n").length + 1))} className="font-mono text-[12px]" aria-label="Section text" />
+                    <Textarea value={s.body} onChange={(e) => patchSection(i, { body: e.target.value })} rows={Math.min(16, Math.max(3, s.body.split("\n").length + 1))} className="font-mono text-xs" aria-label="Section text" />
                   </Card>
                 ))}
                 {!preview && <Button variant="outline" className="w-full border-dashed" onClick={() => set({ sections: addSection(c.sections, doc) })}><Plus className="mr-1 h-4 w-4" /> Add section</Button>}

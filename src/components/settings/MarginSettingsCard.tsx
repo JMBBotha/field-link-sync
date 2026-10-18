@@ -117,7 +117,7 @@ export default function MarginSettingsCard() {
           <Input type="number" min="0" max="100" value={toolsPct} onChange={(e) => setToolsPct(e.target.value)} /></div>
         <div><Label>Materials waste % (length items)</Label>
           <Input type="number" min="0" max="50" step="0.5" value={waste} onChange={(e) => setWaste(e.target.value)} /></div>
-        <p className="md:col-span-4 text-[11px] text-muted-foreground">
+        <p className="md:col-span-4 text-xs text-muted-foreground">
           Company keeps {Math.max(0, 100 - (Number(paidPct) || 0) - (Number(heldPct) || 0))}% of labour (incl. the {Number(toolsPct) || 0}% tools share).
         </p>
         <div className="md:col-span-4 flex justify-end"><Button onClick={save} disabled={saving || !isMain}>Save profit settings</Button></div>

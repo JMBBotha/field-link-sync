@@ -272,7 +272,7 @@ const LeadHeatmap = () => {
               size="sm"
               variant={timePreset === preset.value ? "default" : "outline"}
               onClick={() => setTimePreset(preset.value)}
-              className="text-[11px] h-7 px-2"
+              className="text-xs h-7 px-2"
             >
               {preset.label}
             </Button>

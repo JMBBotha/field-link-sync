@@ -207,7 +207,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
             ))}
           </SelectContent>
         </Select>
-        <Badge variant="outline" className="text-[10px]">
+        <Badge variant="outline" className="text-xs">
           {pages.length} pages
         </Badge>
       </div>
@@ -220,7 +220,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
             return (
               <div key={fileKey} className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex-1">
                     {supplier} — {filename}
                   </p>
                   <AlertDialog>
@@ -259,7 +259,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
                       >
                         {/* Page header */}
                         <div className="flex items-center justify-between px-2 py-1.5 border-b bg-card text-foreground">
-                          <Badge variant="secondary" className="text-[10px]">
+                          <Badge variant="secondary" className="text-xs">
                             Page {page.page_number}
                           </Badge>
                           <div className="flex items-center gap-1">
@@ -271,7 +271,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
                             >
                               <ZoomOut className="h-3 w-3" />
                             </Button>
-                            <span className="text-[10px] text-muted-foreground w-8 text-center">
+                            <span className="text-xs text-muted-foreground w-8 text-center">
                               {Math.round(zoom * 100)}%
                             </span>
                             <Button
@@ -302,7 +302,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
                         {/* Products from this page */}
                         {pageRegions.length > 0 && (
                           <div className="border-t px-2 py-1.5 space-y-1 max-h-[200px] overflow-y-auto">
-                            <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                               Products on this page ({pageRegions.length})
                             </p>
                             {pageRegions.map((region) => {
@@ -316,19 +316,19 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
                                   key={region.id}
                                   className="flex items-center gap-2 py-1 border-b last:border-0"
                                 >
-                                  <span className="text-[10px] font-mono font-medium text-primary/80 truncate min-w-[80px]">
+                                  <span className="text-xs font-mono font-medium text-primary/80 truncate min-w-[80px]">
                                     {product.product_code}
                                   </span>
-                                  <span className="text-[10px] truncate flex-1 text-foreground">
+                                  <span className="text-xs truncate flex-1 text-foreground">
                                     {product.short_name || product.description}
                                   </span>
-                                  <span className="text-[10px] font-bold text-foreground whitespace-nowrap">
+                                  <span className="text-xs font-bold text-foreground whitespace-nowrap">
                                     R{price.toLocaleString("en-ZA")}
                                   </span>
                                   {inQuoteQty > 0 && (
                                     <Badge
                                       variant="secondary"
-                                      className="text-[8px] px-1 py-0 h-4 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                      className="text-xs px-1 py-0 h-4 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                                     >
                                       <Check className="h-2 w-2 mr-0.5" />
                                       {inQuoteQty}
@@ -389,7 +389,7 @@ function AddToZoneButton({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-40 p-1" align="end">
-        <p className="text-[9px] font-semibold text-muted-foreground uppercase px-2 py-1">
+        <p className="text-xs font-semibold text-muted-foreground uppercase px-2 py-1">
           Add to zone
         </p>
         {baskets.map((basket) => (

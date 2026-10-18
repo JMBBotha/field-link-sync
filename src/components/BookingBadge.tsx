@@ -20,7 +20,7 @@ const BookingBadge = ({ scheduledDate, scheduledTime, status, className }: Booki
 
   if (isInProgress) {
     return (
-      <Badge className={`bg-green-600 text-white border-0 text-[10px] font-bold px-2 py-0.5 animate-pulse ${className || ""}`}>
+      <Badge className={`bg-green-600 text-white border-0 text-xs font-bold px-2 py-0.5 animate-pulse ${className || ""}`}>
         <Clock className="h-3 w-3 mr-1" />
         IN PROGRESS
       </Badge>
@@ -31,7 +31,7 @@ const BookingBadge = ({ scheduledDate, scheduledTime, status, className }: Booki
 
   if (today) {
     return (
-      <Badge className={`bg-emerald-500 text-white border-0 text-[10px] font-bold px-2 py-0.5 ${badgeAnimClass} ${className || ""}`}>
+      <Badge className={`bg-emerald-500 text-white border-0 text-xs font-bold px-2 py-0.5 ${badgeAnimClass} ${className || ""}`}>
         <CalendarDays className="h-3 w-3 mr-1" />
         BOOKED TODAY{scheduledTime ? ` ${scheduledTime.slice(0, 5)}` : ""}
       </Badge>
@@ -40,7 +40,7 @@ const BookingBadge = ({ scheduledDate, scheduledTime, status, className }: Booki
 
   if (tomorrow) {
     return (
-      <Badge className={`bg-blue-500 text-white border-0 text-[10px] font-bold px-2 py-0.5 ${badgeAnimClass} ${className || ""}`}>
+      <Badge className={`bg-blue-500 text-white border-0 text-xs font-bold px-2 py-0.5 ${badgeAnimClass} ${className || ""}`}>
         <CalendarDays className="h-3 w-3 mr-1" />
         BOOKED TOMORROW{scheduledTime ? ` ${scheduledTime.slice(0, 5)}` : ""}
       </Badge>
@@ -49,7 +49,7 @@ const BookingBadge = ({ scheduledDate, scheduledTime, status, className }: Booki
 
   if (upcoming) {
     return (
-      <Badge className={`bg-sky-500 text-white border-0 text-[10px] font-bold px-2 py-0.5 ${badgeAnimClass} ${className || ""}`}>
+      <Badge className={`bg-sky-500 text-white border-0 text-xs font-bold px-2 py-0.5 ${badgeAnimClass} ${className || ""}`}>
         <CalendarDays className="h-3 w-3 mr-1" />
         BOOKED {format(date, "d MMM")}
       </Badge>

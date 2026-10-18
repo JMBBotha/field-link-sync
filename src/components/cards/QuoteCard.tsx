@@ -36,12 +36,12 @@ export default function QuoteCard({ deal: d, repName, onOpen, onBook, menuItems 
         {[d.quote.customers?.area || d.quote.customers?.city, d.quote.quote_number || "no number"].filter(Boolean).join(" · ")}
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-1">
-        {showRep && <span title={repName || "Rep"} data-rep-initials className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-[9px] font-bold text-background">{initials(repName)}</span>}
-        {d.paid > 0 && <span className="rounded border border-emerald-300 bg-emerald-50 px-1.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">{fmtRand(d.paid)} PAID</span>}
-        {d.partPaid && <span className="rounded border border-emerald-300 bg-emerald-50 px-1.5 text-[10px] font-bold text-emerald-700">PART PAID</span>}
-        {d.depositDue && <span className="rounded border border-amber-300 bg-amber-50 px-1.5 text-[10px] font-bold text-amber-800">DEPOSIT DUE</span>}
-        {d.flags.map((f) => <span key={f} className={cn("rounded border px-1.5 text-[10px] font-bold", TONE[FLAG_META[f].tone])}>{FLAG_META[f].label}</span>)}
-        <span className={cn("ml-auto text-[11px] font-semibold tabular-nums", d.days > 7 ? "text-orange-600" : "text-muted-foreground")}>{d.days}d</span>
+        {showRep && <span title={repName || "Rep"} data-rep-initials className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background">{initials(repName)}</span>}
+        {d.paid > 0 && <span className="rounded border border-emerald-300 bg-emerald-50 px-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">{fmtRand(d.paid)} PAID</span>}
+        {d.partPaid && <span className="rounded border border-emerald-300 bg-emerald-50 px-1.5 text-xs font-bold text-emerald-700">PART PAID</span>}
+        {d.depositDue && <span className="rounded border border-amber-300 bg-amber-50 px-1.5 text-xs font-bold text-amber-800">DEPOSIT DUE</span>}
+        {d.flags.map((f) => <span key={f} className={cn("rounded border px-1.5 text-xs font-bold", TONE[FLAG_META[f].tone])}>{FLAG_META[f].label}</span>)}
+        <span className={cn("ml-auto text-xs font-semibold tabular-nums", d.days > 7 ? "text-orange-600" : "text-muted-foreground")}>{d.days}d</span>
       </div>
       <div className="mt-1.5 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
         {action !== undefined ? action : d.stage === "accepted" && (

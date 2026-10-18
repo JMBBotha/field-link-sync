@@ -32,7 +32,7 @@ export function SpecialsPdfDialog({ path, onClose }: { path: string | null; onCl
 export function SpecialChip({ cost, endDate, pdfPath, applied }: { cost: number; endDate: string; pdfPath?: string | null; applied?: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
-    <span data-html2canvas-ignore data-testid="special-chip" className="mt-0.5 inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-1.5 text-[10px] text-emerald-800 print:hidden">
+    <span data-html2canvas-ignore data-testid="special-chip" className="mt-0.5 inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-1.5 text-xs text-emerald-800 print:hidden">
       <Tag className="h-2.5 w-2.5" />
       {applied ? "Special applied: " : "Special: "}{formatRand(cost)} until {fmtDate(endDate)}
       {pdfPath && (

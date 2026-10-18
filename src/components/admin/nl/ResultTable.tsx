@@ -37,7 +37,7 @@ const ResultTable = ({ block }: { block: Structured }) => {
   const columns = Object.keys(block.rows[0]);
   return (
     <div className="rounded-md border border-border overflow-hidden">
-      <div className="bg-muted/60 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground">
+      <div className="bg-muted/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground">
         {TOOL_LABELS[block.tool_name] ?? block.tool_name} · {block.rows.length}
       </div>
       <div className="overflow-x-auto">

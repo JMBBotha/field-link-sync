@@ -39,7 +39,7 @@ const when = (r: VisitRow) => {
 function QuoteChip({ r }: { r: VisitRow }) {
   if (!r.quote_id) return null;
   return (
-    <Badge variant="outline" className="text-[11px] gap-1" data-testid="visit-quote-chip">
+    <Badge variant="outline" className="text-xs gap-1" data-testid="visit-quote-chip">
       <FileText className="h-3 w-3" />
       {r.quote_number ?? "Quote"} · {r.quote_status}
       {r.quote_total != null && <span className="font-semibold">· {money(r.quote_total)}</span>}
@@ -68,7 +68,7 @@ export const AdminVisitsPage = () => {
           {TABS.map((t) => (
             <TabsTrigger key={t.key} value={t.key} className="min-h-[44px] text-xs px-1 flex-col leading-tight" data-testid={`visits-tab-${t.key}`}>
               <span>{t.label}</span>
-              <span className="text-[10px] opacity-70">{counts[t.key]}</span>
+              <span className="text-xs opacity-70">{counts[t.key]}</span>
             </TabsTrigger>
           ))}
         </TabsList>

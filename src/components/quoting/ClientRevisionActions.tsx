@@ -27,9 +27,9 @@ export default function ClientRevisionActions({ revision }: { revision: { id: st
   const summary = (revision.lines || []).map((l: any) => `${l.quantity}× ${l.name}`).join("\n");
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1" title={summary}>
-      <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white">Revised by client · {fmt(revision.total)}</span>
-      <Button size="sm" className="h-6 px-2 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white" disabled={busy} onClick={() => decide(true)}>Approve</Button>
-      <Button size="sm" variant="outline" className="h-6 px-2 text-[11px]" disabled={busy} onClick={() => decide(false)}>Reject</Button>
+      <span className="rounded-full bg-violet-600 px-2 py-0.5 text-xs font-bold text-white">Revised by client · {fmt(revision.total)}</span>
+      <Button size="sm" className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" disabled={busy} onClick={() => decide(true)}>Approve</Button>
+      <Button size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={busy} onClick={() => decide(false)}>Reject</Button>
     </div>
   );
 }

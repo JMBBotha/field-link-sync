@@ -415,7 +415,7 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
                               {bookings.get(job.id) ? (
                                 <div className="text-right" data-testid="customer-lead-booked">
                                   <Badge className="bg-blue-600 text-white text-xs">Booked</Badge>
-                                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                  <p className="mt-0.5 text-xs text-muted-foreground">
                                     {[bookings.get(job.id)!.techName, formatBookingWhen(bookings.get(job.id)!.when)].filter(Boolean).join(" · ")}
                                   </p>
                                 </div>
@@ -461,7 +461,7 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
                                   className={`h-4 w-4 ${
                                     star <= fb.rating
                                       ? "fill-yellow-400 text-yellow-400"
-                                      : "text-gray-300"
+                                      : "text-ink-muted"
                                   }`}
                                 />
                               ))}

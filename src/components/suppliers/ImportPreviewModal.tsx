@@ -49,9 +49,9 @@ export interface ImportReviewRecord {
 }
 
 function ConfidenceBadge({ level }: { level: "high" | "medium" | "low" }) {
-  if (level === "high") return <Badge variant="default" className="bg-green-600 text-[10px] gap-1"><CheckCircle2 className="h-3 w-3" />HIGH</Badge>;
-  if (level === "medium") return <Badge variant="secondary" className="text-[10px] gap-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300"><CircleHelp className="h-3 w-3" />MEDIUM</Badge>;
-  return <Badge variant="destructive" className="text-[10px] gap-1"><AlertTriangle className="h-3 w-3" />LOW</Badge>;
+  if (level === "high") return <Badge variant="default" className="bg-green-600 text-xs gap-1"><CheckCircle2 className="h-3 w-3" />HIGH</Badge>;
+  if (level === "medium") return <Badge variant="secondary" className="text-xs gap-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300"><CircleHelp className="h-3 w-3" />MEDIUM</Badge>;
+  return <Badge variant="destructive" className="text-xs gap-1"><AlertTriangle className="h-3 w-3" />LOW</Badge>;
 }
 
 const ImportPreviewModal = ({
@@ -266,7 +266,7 @@ const ImportPreviewModal = ({
                   <div className="rounded border p-2 space-y-2">
                     <p className="font-semibold">Sample price check — compare these with the PDF</p>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-[11px]">
+                      <table className="w-full text-xs">
                         <thead><tr className="text-left text-muted-foreground"><th className="pr-2">Model</th><th className="pr-2">List ex VAT</th><th className="pr-2">Discount</th><th className="pr-2">Cost</th><th>Page</th></tr></thead>
                         <tbody>
                           {sampleIdx.map((i) => {
@@ -304,7 +304,7 @@ const ImportPreviewModal = ({
                     <div className="flex-1 space-y-2">
                       <div>
                         <p className="text-sm font-semibold">Detected Price Columns</p>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           AI found multiple price columns. Using <span className="font-bold">"{preview.selectedPriceColumn || detectedCols[0]}"</span> (the excl VAT / lowest column).
                         </p>
                       </div>
@@ -313,7 +313,7 @@ const ImportPreviewModal = ({
                           <Badge
                             key={col}
                             variant={col === (preview.selectedPriceColumn || detectedCols[0]) ? "default" : "outline"}
-                            className="text-[10px]"
+                            className="text-xs"
                           >
                             {col}
                             {col === (preview.selectedPriceColumn || detectedCols[0]) && " ✓"}
@@ -340,7 +340,7 @@ const ImportPreviewModal = ({
                       <p className="text-sm font-semibold">
                         {isCostPrice ? "Cost Price" : "List Price with Trade Discount"}
                       </p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {isCostPrice
                           ? "This supplier's PDF shows our buy price directly — no discount needed."
                           : "PDF shows RRP/list price — trade discount applied to get cost price."}
@@ -385,7 +385,7 @@ const ImportPreviewModal = ({
                   </div>
                   <div className="text-right space-y-0.5">
                     <ConfidenceBadge level={preview.vatConfidence} />
-                    <p className="text-[10px] text-muted-foreground max-w-[200px]">{preview.vatEvidence}</p>
+                    <p className="text-xs text-muted-foreground max-w-[200px]">{preview.vatEvidence}</p>
                   </div>
                 </div>
 
@@ -405,7 +405,7 @@ const ImportPreviewModal = ({
                     </div>
                     <div className="text-right space-y-0.5">
                       <ConfidenceBadge level={preview.discountConfidence} />
-                      <p className="text-[10px] text-muted-foreground max-w-[200px]">{preview.discountEvidence}</p>
+                      <p className="text-xs text-muted-foreground max-w-[200px]">{preview.discountEvidence}</p>
                     </div>
                   </div>
                 ) : (

@@ -211,19 +211,19 @@ const AdminJobDetailPage = () => {
                 <h1 className="text-xl md:text-2xl font-bold leading-tight">{j.title}</h1>
                 <div className="flex items-center gap-2 flex-wrap mt-1.5">
                   <span
-                    className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       STATUS_COLORS[j.status] || "bg-muted text-muted-foreground"
                     }`}
                   >
                     {(j.status || "unknown").replace(/_/g, " ")}
                   </span>
                   {j.priority && (
-                    <Badge variant={PRIORITY_VARIANT[j.priority] || "secondary"} className="text-[10px]">
+                    <Badge variant={PRIORITY_VARIANT[j.priority] || "secondary"} className="text-xs">
                       {j.priority}
                     </Badge>
                   )}
                   {j.job_type && (
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-xs">
                       {jobTypeLabel(j.job_type)}
                     </Badge>
                   )}
@@ -298,12 +298,12 @@ const AdminJobDetailPage = () => {
           <Card>
             <CardContent className="p-4 md:p-5 flex items-center justify-between gap-3 flex-wrap">
               <div className="min-w-0">
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
                   Linked Invoice
                 </div>
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                   <span className="font-semibold">{invoice.invoice_number || "Invoice"}</span>
-                  <DepositPaymentChip invoice={invoice} className="text-[10px]" />
+                  <DepositPaymentChip invoice={invoice} className="text-xs" />
                   {typeof invoice.grand_total === "number" && (
                     <span className="text-sm text-muted-foreground">
                       R {invoice.grand_total.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
@@ -328,12 +328,12 @@ const AdminJobDetailPage = () => {
           <Card>
             <CardContent className="p-4 md:p-5 flex items-center justify-between gap-3 flex-wrap">
               <div className="min-w-0">
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
                   Quote / Build Path
                 </div>
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                   <span className="font-semibold">{quoteSummary.quote_number || "Quote"}</span>
-                  <Badge variant="secondary" className="text-[10px]">
+                  <Badge variant="secondary" className="text-xs">
                     {(quoteSummary.status || "draft").replace(/_/g, " ")}
                   </Badge>
                   {typeof quoteSummary.total === "number" && (

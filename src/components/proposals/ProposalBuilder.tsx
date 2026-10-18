@@ -611,7 +611,7 @@ const ProposalBuilder = ({
       </div>
 
       {/* ── A4 Card ── */}
-      <div data-pdf-capture-root="proposal" className="max-w-3xl mx-auto my-8 bg-white shadow-lg rounded-lg border p-8 md:p-12 space-y-8 text-slate-900 [&_.text-foreground]:!text-slate-900 [&_.text-muted-foreground]:!text-slate-500 [&_input]:!text-slate-900 [&_textarea]:!text-slate-900 [&_select]:!text-slate-900 [&_input::placeholder]:!text-slate-400 [&_textarea::placeholder]:!text-slate-400">
+      <div data-pdf-capture-root="proposal" className="max-w-3xl mx-auto my-8 bg-white shadow-lg rounded-lg border p-8 md:p-12 space-y-8 text-ink [&_.text-foreground]:!text-ink [&_.text-muted-foreground]:!text-ink-secondary [&_input]:!text-ink [&_textarea]:!text-ink [&_select]:!text-ink [&_input::placeholder]:!text-ink-muted [&_textarea::placeholder]:!text-ink-muted">
         {/* ── HEADER ROW ── */}
         <DocumentHeader
           logoUrl={logoUrl}
@@ -624,13 +624,13 @@ const ProposalBuilder = ({
         <div className="space-y-1">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="col-span-1 space-y-1 relative">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Billed To</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Billed To</p>
               {customerName && !showCustomerPicker ? (
                 <div>
                   <p className="text-sm font-semibold text-foreground">{customerName}</p>
                   {customerAddress && <p className="text-xs text-muted-foreground">{customerAddress}</p>}
                   {customerEmail && <p className="text-xs text-muted-foreground">{customerEmail}</p>}
-                  <button onClick={() => setShowCustomerPicker(true)} className="text-[11px] text-primary hover:underline mt-1">Change</button>
+                  <button onClick={() => setShowCustomerPicker(true)} className="text-xs text-primary hover:underline mt-1">Change</button>
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -649,7 +649,7 @@ const ProposalBuilder = ({
                       <p className="text-xs text-muted-foreground p-3">No clients found</p>
                     )}
                   </div>
-                  <button className="text-[11px] text-primary hover:underline flex items-center gap-1" onClick={() => { setCustomerName(customerSearch || "New Client"); setShowCustomerPicker(false); setCustomerSearch(""); }}>
+                  <button className="text-xs text-primary hover:underline flex items-center gap-1" onClick={() => { setCustomerName(customerSearch || "New Client"); setShowCustomerPicker(false); setCustomerSearch(""); }}>
                     <Plus className="h-3 w-3" /> Create a Client
                   </button>
                 </div>
@@ -657,29 +657,29 @@ const ProposalBuilder = ({
             </div>
 
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date of Issue</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date of Issue</p>
               <GhostInput type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
             </div>
 
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Proposal Number</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Proposal Number</p>
               <p className="text-sm font-medium text-foreground px-2 py-1.5">{proposalNumber || "Generating…"}</p>
             </div>
 
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Estimated Amount (ZAR)</p>
-              <p className="text-[28px] font-bold px-2 py-0.5" style={{ color: "#0077B6" }}>{formatCurrency(grandTotal)}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Estimated Amount (ZAR)</p>
+              <p className="text-3xl font-bold px-2 py-0.5" style={{ color: "#0077B6" }}>{formatCurrency(grandTotal)}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6" style={{ marginTop: "-12px" }}>
             <div />
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due Date</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Due Date</p>
               <GhostInput type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Reference / PO#</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reference / PO#</p>
               <GhostInput placeholder="e.g. PO-1234" value={reference} onChange={(e) => setReference(e.target.value)} />
             </div>
             <div />
@@ -690,7 +690,7 @@ const ProposalBuilder = ({
 
         {/* ── LINE ITEMS TABLE ── */}
         <div>
-          <div className="grid grid-cols-[1fr_80px_50px_60px_80px_30px] gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1">
+          <div className="grid grid-cols-[1fr_80px_50px_60px_80px_30px] gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1">
             <div>Description</div>
             <div className="text-right">Cost</div>
             <div className="text-right">Qty</div>
@@ -764,7 +764,7 @@ const ProposalBuilder = ({
           {showLinks && (
             <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Lead / Job</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Lead / Job</p>
                 <select value={leadId} onChange={(e) => setLeadId(e.target.value)} className="w-full border rounded px-2 py-1.5 text-sm bg-background">
                   <option value="">— None —</option>
                   {leads.map((l) => (
@@ -780,19 +780,19 @@ const ProposalBuilder = ({
 
         {/* ── NOTES ── */}
         <div className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notes</p>
           <Textarea placeholder="Notes — any relevant information not already covered" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[60px] text-sm border-transparent hover:border-border focus:border-primary" />
         </div>
 
         {/* ── TERMS ── */}
         <div className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Terms</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Terms</p>
           <Textarea value={terms} onChange={(e) => setTerms(e.target.value)} className="min-h-[80px] text-sm border-transparent hover:border-border focus:border-primary" />
         </div>
 
         {/* ── ATTACHMENTS ── */}
         <div className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Attachments</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Attachments</p>
           <div className="flex flex-wrap gap-2">
             {attachments.map((a, idx) => (
               <a key={idx} href={a.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 border rounded-md px-3 py-1.5 text-sm hover:bg-muted transition-colors">

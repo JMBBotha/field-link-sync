@@ -144,7 +144,7 @@ export function LeadSyncBadge({ hasPendingChanges }: { hasPendingChanges: boolea
       <TooltipTrigger asChild>
         <div className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-500/20 rounded text-orange-500">
           <CloudOff className="h-3 w-3" />
-          <span className="text-[10px] font-medium">Pending</span>
+          <span className="text-xs font-medium">Pending</span>
         </div>
       </TooltipTrigger>
       <TooltipContent>Changes pending sync</TooltipContent>

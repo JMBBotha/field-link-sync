@@ -29,7 +29,7 @@ const IdentityBadge = () => {
         <span className="hidden xl:inline">{info.name}</span>
       </span>
       <span className="hidden xl:inline">·</span>
-      <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none", c.chip)}>
+      <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-xs font-semibold leading-none", c.chip)}>
         {info.role}
       </span>
     </div>

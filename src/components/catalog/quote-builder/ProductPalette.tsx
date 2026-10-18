@@ -202,10 +202,10 @@ function BundlePaletteButton({
               <span className="text-xs font-medium truncate flex-1">
                 <HighlightText text={bundle.name} searchTerm={searchTerm} />
               </span>
-              <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5 shrink-0">
+              <Badge variant="secondary" className="text-xs px-1 py-0 h-3.5 shrink-0">
                 {subItems.length}
               </Badge>
-              <span className="text-[10px] font-bold shrink-0">
+              <span className="text-xs font-bold shrink-0">
                 R{unitPrice.toFixed(0)}/{pricingType === "p/meter" ? "m" : "ea"}
               </span>
             </div>
@@ -213,7 +213,7 @@ function BundlePaletteButton({
         </div>
       </PopoverAnchor>
       <PopoverContent side="right" align="start" className="w-48 p-2" data-no-dnd="true">
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
           <MapPin className="h-3 w-3 inline mr-1" />Add bundle to Zone
         </p>
         <div className="space-y-1">
@@ -230,7 +230,7 @@ function BundlePaletteButton({
             >
               <Package className="h-3 w-3 text-primary shrink-0" />
               <span className="truncate">{basket.name}</span>
-              <Badge variant="secondary" className="text-[8px] px-1 py-0 ml-auto shrink-0">
+              <Badge variant="secondary" className="text-xs px-1 py-0 ml-auto shrink-0">
                 {basket.items.length}
               </Badge>
             </Button>
@@ -365,13 +365,13 @@ function DraggableProductCard({
                     <p className="text-xs font-semibold truncate leading-tight text-foreground">
                       <HighlightText text={getProductDisplayName(product)} searchTerm={searchTerm} />
                     </p>
-                    <p className="text-[10px] font-mono font-medium truncate mt-0.5 text-primary/80">
+                    <p className="text-xs font-mono font-medium truncate mt-0.5 text-primary/80">
                       <HighlightText text={product.product_code} searchTerm={searchTerm} />
                     </p>
                     {(() => {
                       const brief = getProductBriefDescription(product);
                       return brief ? (
-                        <p className="text-[9px] text-muted-foreground truncate mt-0.5 leading-tight">
+                        <p className="text-xs text-muted-foreground truncate mt-0.5 leading-tight">
                           {brief}
                         </p>
                       ) : null;
@@ -382,7 +382,7 @@ function DraggableProductCard({
                           {price > 0 ? `R${price.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "POR"}
                         </span>
                         {price > 0 && (
-                          <span className="text-[9px] text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             R{computed.sellInclVat.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} incl
                           </span>
                         )}
@@ -390,24 +390,24 @@ function DraggableProductCard({
                       {product.sold_in_length && product.price_per_metre && (
                         <Badge
                           variant="outline"
-                          className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600"
+                          className="text-xs px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600"
                         >
                           <Ruler className="h-2 w-2" />R{product.price_per_metre.toFixed(2)}/m
                         </Badge>
                       )}
                       {product.supplier_name &&
                         product.supplier_name.toLowerCase() !== (product.brand || "").toLowerCase() && (
-                          <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
+                          <Badge variant="outline" className="text-xs px-1 py-0 h-3.5">
                             {product.supplier_name}
                           </Badge>
                         )}
                       {usageCount > 5 && (
-                        <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5">
+                        <Badge variant="secondary" className="text-xs px-1 py-0 h-3.5">
                           Used {usageCount}x
                         </Badge>
                       )}
                       {markupPct > 0 && (
-                        <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-primary">
+                        <Badge variant="outline" className="text-xs px-1 py-0 h-3.5 text-primary">
                           {markupPct.toFixed(0)}% M/Up
                         </Badge>
                       )}
@@ -494,8 +494,8 @@ function DraggableProductCard({
                     </>
                   );
                 })()}
-                <p className="text-[10px] text-muted-foreground line-clamp-3">{product.description}</p>
-                <Badge variant="outline" className="text-[10px]">
+                <p className="text-xs text-muted-foreground line-clamp-3">{product.description}</p>
+                <Badge variant="outline" className="text-xs">
                   {product.supplier_name}
                 </Badge>
               </HoverCardContent>
@@ -503,7 +503,7 @@ function DraggableProductCard({
           </div>
         </PopoverTrigger>
         <PopoverContent side="right" align="start" className="w-48 p-2" data-no-dnd="true">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
             <MapPin className="h-3 w-3 inline mr-1" />Add to Zone
           </p>
           <div className="space-y-1">
@@ -520,7 +520,7 @@ function DraggableProductCard({
               >
                 <Package className="h-3 w-3 text-primary shrink-0" />
                 <span className="truncate">{basket.name}</span>
-                <Badge variant="secondary" className="text-[8px] px-1 py-0 ml-auto shrink-0">
+                <Badge variant="secondary" className="text-xs px-1 py-0 ml-auto shrink-0">
                   {basket.items.length}
                 </Badge>
               </Button>
@@ -627,11 +627,11 @@ function DraggableSelectedItem({
         >
           <CheckCircle2 className="h-4 w-4" style={{ color: "hsl(var(--success))" }} />
         </button>
-        <p className="text-[11px] font-medium text-foreground truncate flex-1">{item.code}</p>
+        <p className="text-xs font-medium text-foreground truncate flex-1">{item.code}</p>
       </div>
-      <p className="text-[10px] text-muted-foreground truncate">{item.description}</p>
+      <p className="text-xs text-muted-foreground truncate">{item.description}</p>
       {(item.costPrice != null || item.markupPercent != null) && (
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {item.costPrice != null && (
             <span>Cost: <span className="font-mono font-medium text-foreground">R{Number(item.costPrice).toFixed(2)}</span></span>
           )}
@@ -677,7 +677,7 @@ function DraggableSelectedItem({
           onChange={(e) => pdfSelection.updateSelectedItem(item.code, { unitType: e.target.value })}
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className="h-6 text-[10px] rounded border border-input bg-background px-1"
+          className="h-6 text-xs rounded border border-input bg-background px-1"
         >
           <option value="units">Units</option>
           <option value="meters">Meters</option>
@@ -690,9 +690,9 @@ function DraggableSelectedItem({
           onChange={(e) => pdfSelection.updateSelectedItem(item.code, { quantity: Math.max(0.1, Number(e.target.value)) })}
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className="h-6 w-16 text-[10px] px-1"
+          className="h-6 w-16 text-xs px-1"
         />
-        <span className="text-[10px] font-medium text-foreground ml-auto">
+        <span className="text-xs font-medium text-foreground ml-auto">
           R{((parseFloat(item.price) || 0) * item.quantity).toFixed(2)}
         </span>
       </div>
@@ -823,7 +823,7 @@ const ProductPalette = ({
           <h3 className="text-sm font-semibold text-foreground">Product Palette</h3>
           {onOpenVisualPanel && (
             <button
-              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors border bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted"
+              className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors border bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted"
               onClick={onOpenVisualPanel}
             >
               <Image className="h-3 w-3" />
@@ -862,7 +862,7 @@ const ProductPalette = ({
                   <Badge
                     key={cat.value}
                     variant={isActive ? "default" : "outline"}
-                    className={`cursor-pointer text-[10px] gap-0.5 px-1.5 py-0.5 ${
+                    className={`cursor-pointer text-xs gap-0.5 px-1.5 py-0.5 ${
                       isFavorites && favoriteCount > 0 ? "border-amber-400/50" : ""
                     }`}
                     onClick={() => onCategoryChange(cat.value)}
@@ -888,7 +888,7 @@ const ProductPalette = ({
               <button
                 type="button"
                 data-testid="palette-bundles-pill"
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
                   bundlesVisible ? "border-primary bg-primary text-primary-foreground" : "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
                 }`}
                 onClick={() => setPipingKitsCollapsed((collapsed) => !collapsed)}
@@ -929,7 +929,7 @@ const ProductPalette = ({
           ) : (
             Object.entries(grouped).map(([category, items]) => (
               <div key={category}>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
                   {category} ({items.length})
                 </p>
                 <div className="space-y-1.5">
@@ -969,13 +969,13 @@ const ProductPalette = ({
               )}
               Selected Items
             </button>
-            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">
+            <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4">
               {pdfSelection.selectedFromPdf.length}
             </Badge>
             {pdfSelection.selectedFromPdf.length > 0 && (
               <button
                 onClick={() => pdfSelection.setSelectedFromPdf([])}
-                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+                className="text-xs text-muted-foreground hover:text-destructive transition-colors"
                 title="Clear all selected items"
               >
                 Clear all
@@ -992,7 +992,7 @@ const ProductPalette = ({
           {!selectedCollapsed && (
             <>
               {pdfSelection.selectedFromPdf.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground italic text-center py-3">
+                <p className="text-xs text-muted-foreground italic text-center py-3">
                   Select products from the Visual PDF view
                 </p>
               ) : (

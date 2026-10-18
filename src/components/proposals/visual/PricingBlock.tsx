@@ -68,7 +68,7 @@ const PricingBlock = ({ section, onChange, themeColor }: Props) => {
         style={{ color: themeColor }}
       />
 
-      <div className="hidden gap-2 px-7 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[1fr_120px_80px_110px_36px]">
+      <div className="hidden gap-2 px-7 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[1fr_120px_80px_110px_36px]">
         <span>Description</span>
         <span className="text-right">Rate</span>
         <span className="text-right">Qty</span>

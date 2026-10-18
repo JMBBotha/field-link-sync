@@ -211,14 +211,14 @@ const ReceiveStockModal = ({ open, onClose, products, suppliers, stockMap }: Pro
         <div className="flex items-center gap-1 mb-4">
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center gap-1">
-              <div className={`flex items-center justify-center h-6 w-6 rounded-full text-[10px] font-bold ${
+              <div className={`flex items-center justify-center h-6 w-6 rounded-full text-xs font-bold ${
                 i < step ? "bg-primary text-primary-foreground" :
                 i === step ? "bg-primary text-primary-foreground" :
                 "bg-muted text-muted-foreground"
               }`}>
                 {i < step ? <Check className="h-3 w-3" /> : i + 1}
               </div>
-              <span className={`text-[10px] ${i === step ? "font-semibold" : "text-muted-foreground"}`}>{s}</span>
+              <span className={`text-xs ${i === step ? "font-semibold" : "text-muted-foreground"}`}>{s}</span>
               {i < STEPS.length - 1 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
             </div>
           ))}
@@ -282,15 +282,15 @@ const ReceiveStockModal = ({ open, onClose, products, suppliers, stockMap }: Pro
                 {items.map((item, i) => (
                   <div key={i} className="flex gap-1 items-end">
                     <div className="flex-1">
-                      {i === 0 && <Label className="text-[10px]">SKU</Label>}
+                      {i === 0 && <Label className="text-xs">SKU</Label>}
                       <Input value={item.product_code} onChange={e => updateItem(i, "product_code", e.target.value)} placeholder="Product code" className="text-xs h-7" />
                     </div>
                     <div className="w-14">
-                      {i === 0 && <Label className="text-[10px]">Qty</Label>}
+                      {i === 0 && <Label className="text-xs">Qty</Label>}
                       <Input type="number" min={1} value={item.quantity} onChange={e => updateItem(i, "quantity", parseInt(e.target.value) || 1)} className="text-xs h-7" />
                     </div>
                     <div className="flex-1">
-                      {i === 0 && <Label className="text-[10px]">Notes</Label>}
+                      {i === 0 && <Label className="text-xs">Notes</Label>}
                       <Input value={item.notes} onChange={e => updateItem(i, "notes", e.target.value)} placeholder="Optional" className="text-xs h-7" />
                     </div>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeItem(i)} disabled={items.length === 1}>
@@ -299,14 +299,14 @@ const ReceiveStockModal = ({ open, onClose, products, suppliers, stockMap }: Pro
                   </div>
                 ))}
                 {invalidItems.length > 0 && (
-                  <p className="text-[10px] text-destructive">{invalidItems.length} SKU(s) not found</p>
+                  <p className="text-xs text-destructive">{invalidItems.length} SKU(s) not found</p>
                 )}
                 <Button variant="outline" size="sm" onClick={addItem} className="text-xs">
                   <Plus className="h-3 w-3 mr-1" /> Add Item
                 </Button>
               </TabsContent>
               <TabsContent value="csv" className="space-y-2 mt-2">
-                <p className="text-[10px] text-muted-foreground">CSV: product_code, quantity, notes (optional)</p>
+                <p className="text-xs text-muted-foreground">CSV: product_code, quantity, notes (optional)</p>
                 <input type="file" accept=".csv" onChange={e => e.target.files?.[0] && handleCSVItems(e.target.files[0])} className="text-xs" />
                 {items.length > 1 && <p className="text-xs text-muted-foreground">{validItems.length} valid items loaded</p>}
               </TabsContent>
@@ -325,10 +325,10 @@ const ReceiveStockModal = ({ open, onClose, products, suppliers, stockMap }: Pro
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-[10px]">SKU</TableHead>
-                  <TableHead className="text-[10px] text-center">Qty</TableHead>
-                  <TableHead className="text-[10px]">Mode</TableHead>
-                  <TableHead className="text-[10px]">Notes</TableHead>
+                  <TableHead className="text-xs">SKU</TableHead>
+                  <TableHead className="text-xs text-center">Qty</TableHead>
+                  <TableHead className="text-xs">Mode</TableHead>
+                  <TableHead className="text-xs">Notes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -340,7 +340,7 @@ const ReceiveStockModal = ({ open, onClose, products, suppliers, stockMap }: Pro
                       <TableCell className="text-xs font-mono">{item.product_code}</TableCell>
                       <TableCell className="text-xs text-center font-semibold">{item.quantity}</TableCell>
                       <TableCell>
-                        <Badge variant={mode === "stock_sensitive" ? "default" : "outline"} className="text-[9px]">
+                        <Badge variant={mode === "stock_sensitive" ? "default" : "outline"} className="text-xs">
                           {mode === "stock_sensitive" ? "Tracked" : "Order"}
                         </Badge>
                       </TableCell>
@@ -351,7 +351,7 @@ const ReceiveStockModal = ({ open, onClose, products, suppliers, stockMap }: Pro
               </TableBody>
             </Table>
             {validItems.some(it => stockMap.get(it.product_id)?.stock_mode !== "stock_sensitive") && (
-              <p className="text-[10px] text-amber-600">⚠ Items marked "Order" won't have their quantity updated. Switch to "Stock Sensitive" first.</p>
+              <p className="text-xs text-amber-600">⚠ Items marked "Order" won't have their quantity updated. Switch to "Stock Sensitive" first.</p>
             )}
           </div>
         )}

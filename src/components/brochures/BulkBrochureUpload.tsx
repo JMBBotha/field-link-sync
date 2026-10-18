@@ -651,12 +651,12 @@ function BulkUploadRow({
           <div className="flex items-center gap-1">
             <Search className="h-3 w-3 text-muted-foreground shrink-0" />
             <Input
-              className="h-6 text-[10px] font-mono flex-1"
+              className="h-6 text-xs font-mono flex-1"
               placeholder="Search products..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <Badge variant="secondary" className="text-[9px] shrink-0">
+            <Badge variant="secondary" className="text-xs shrink-0">
               {row.linkedProductIds.length}
             </Badge>
           </div>
@@ -667,7 +667,7 @@ function BulkUploadRow({
               return (
                 <label
                   key={p.id}
-                  className={`flex items-center gap-1.5 px-1 py-0.5 rounded text-[10px] cursor-pointer hover:bg-muted/50 ${
+                  className={`flex items-center gap-1.5 px-1 py-0.5 rounded text-xs cursor-pointer hover:bg-muted/50 ${
                     isLinked ? "bg-primary/5" : ""
                   }`}
                 >
@@ -679,13 +679,13 @@ function BulkUploadRow({
                   <span className="font-mono font-medium truncate">{p.product_code}</span>
                   <span className="text-muted-foreground truncate flex-1">{p.short_name || ""}</span>
                   {isAiSuggested && !isLinked && (
-                    <Badge variant="outline" className="text-[7px] px-1 py-0 border-amber-300 text-amber-600">AI</Badge>
+                    <Badge variant="outline" className="text-xs px-1 py-0 border-amber-300 text-amber-600">AI</Badge>
                   )}
                 </label>
               );
             })}
             {sortedProducts.length === 0 && (
-              <p className="text-[10px] text-muted-foreground text-center py-3">
+              <p className="text-xs text-muted-foreground text-center py-3">
                 No products match this brand
               </p>
             )}
@@ -698,12 +698,12 @@ function BulkUploadRow({
         <div className="flex flex-wrap gap-0.5">
           {derivedPrefixes.length > 0 ? (
             derivedPrefixes.map((p) => (
-              <Badge key={p} variant="outline" className="text-[8px] font-mono">
+              <Badge key={p} variant="outline" className="text-xs font-mono">
                 {p}
               </Badge>
             ))
           ) : (
-            <span className="text-[9px] text-muted-foreground">Link products →</span>
+            <span className="text-xs text-muted-foreground">Link products →</span>
           )}
         </div>
       </TableCell>
@@ -714,7 +714,7 @@ function BulkUploadRow({
           {row.provider && (
             <Badge
               variant="outline"
-              className={`text-[7px] px-1 py-0 font-mono ${
+              className={`text-xs px-1 py-0 font-mono ${
                 row.provider === "gemini" ? "border-blue-400 text-blue-600" : "border-orange-400 text-orange-600"
               }`}
               title={row.provider === "gemini" ? "Parsed by Gemini" : "Parsed by Grok"}

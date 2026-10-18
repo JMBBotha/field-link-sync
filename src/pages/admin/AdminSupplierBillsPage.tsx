@@ -118,9 +118,9 @@ export default function AdminSupplierBillsPage() {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-        <Card><CardContent className="p-3"><div className="text-[11px] text-muted-foreground">We owe (open bills)</div><div className="text-lg font-bold">{formatRand(owed)}</div></CardContent></Card>
-        <Card><CardContent className="p-3"><div className="text-[11px] text-muted-foreground">Overdue</div><div className={`text-lg font-bold ${overdueAmt > 0 ? "text-red-600" : ""}`}>{formatRand(overdueAmt)}</div></CardContent></Card>
-        <Card className="col-span-2 md:col-span-1"><CardContent className="p-3"><div className="text-[11px] text-muted-foreground">Drafts to check</div><div className="text-lg font-bold">{bills.filter((b) => b.status === "draft").length}</div></CardContent></Card>
+        <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">We owe (open bills)</div><div className="text-lg font-bold">{formatRand(owed)}</div></CardContent></Card>
+        <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">Overdue</div><div className={`text-lg font-bold ${overdueAmt > 0 ? "text-red-600" : ""}`}>{formatRand(overdueAmt)}</div></CardContent></Card>
+        <Card className="col-span-2 md:col-span-1"><CardContent className="p-3"><div className="text-xs text-muted-foreground">Drafts to check</div><div className="text-lg font-bold">{bills.filter((b) => b.status === "draft").length}</div></CardContent></Card>
       </div>
       <div className="flex flex-wrap gap-1">
         {(["open", "overdue", "paid", "all"] as const).map((f) => <Button key={f} size="sm" variant={filter === f ? "default" : "outline"} className="h-7 capitalize" onClick={() => setFilter(f)}>{f}</Button>)}
@@ -134,13 +134,13 @@ export default function AdminSupplierBillsPage() {
               <Card key={b.id}><CardContent className="flex flex-wrap items-center justify-between gap-2 p-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{(b.supplier_name || "Supplier").trim()}</span>
-                    <span className={`rounded px-1.5 py-0.5 text-[10.5px] font-medium ${STATUS[b.status]?.cls}`}>{STATUS[b.status]?.label}</span>
-                    {late && <Badge variant="destructive" className="h-5 text-[10.5px]">Overdue</Badge>}</div>
+                    <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${STATUS[b.status]?.cls}`}>{STATUS[b.status]?.label}</span>
+                    {late && <Badge variant="destructive" className="h-5 text-xs">Overdue</Badge>}</div>
                   <div className="text-xs text-muted-foreground">{b.bill_number ? `Bill ${b.bill_number}` : "No bill number yet"}{b.po?.po_number ? ` · ${b.po.po_number}` : ""} · billed {b.bill_date} · due {b.due_date || "—"}</div>
-                  {b.notes && <div className="text-[11px] text-muted-foreground">{b.notes}</div>}
+                  {b.notes && <div className="text-xs text-muted-foreground">{b.notes}</div>}
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="text-right"><div className="font-semibold">{formatRand(Number(b.amount_incl))}</div>{Number(b.amount_paid) > 0 && <div className="text-[11px] text-muted-foreground">owing {formatRand(out)}</div>}</div>
+                  <div className="text-right"><div className="font-semibold">{formatRand(Number(b.amount_incl))}</div>{Number(b.amount_paid) > 0 && <div className="text-xs text-muted-foreground">owing {formatRand(out)}</div>}</div>
                   {b.status !== "void" && <Button size="sm" variant="outline" className="h-8" onClick={() => edit(b)}>{b.status === "draft" ? <><CheckCircle2 className="mr-1 h-3.5 w-3.5" />Check</> : "Edit"}</Button>}
                   {["draft", "unpaid", "part_paid"].includes(b.status) && <Button size="sm" className="h-8" onClick={() => setPay({ bill: b, amount: out.toFixed(2), date: today, reference: "", line: NONE })}><Wallet className="mr-1 h-3.5 w-3.5" />Pay</Button>}
                   {b.status !== "void" && b.status !== "paid" && Number(b.amount_paid) === 0 && <Button size="icon" variant="ghost" className="h-8 w-8" title="Void" onClick={() => voidBill(b)}><Ban className="h-4 w-4" /></Button>}

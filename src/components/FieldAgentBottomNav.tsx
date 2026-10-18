@@ -33,7 +33,7 @@ const FieldAgentBottomNav = () => {
       {(!isOnline || pending > 0) && (
         <div
           className={cn(
-            "fixed left-0 right-0 z-50 md:hidden flex items-center justify-center gap-2 text-[11px] font-medium px-3 py-1.5",
+            "fixed left-0 right-0 z-50 md:hidden flex items-center justify-center gap-2 text-xs font-medium px-3 py-1.5",
             !isOnline
               ? "bg-amber-500/95 text-amber-950"
               : "bg-blue-500/95 text-white"
@@ -75,7 +75,7 @@ const FieldAgentBottomNav = () => {
                   <span className={cn("absolute top-1 h-1 w-8 rounded-full", colours?.navBar ?? "bg-primary")} />
                 )}
                 <tab.icon className="h-6 w-6" strokeWidth={active ? 2.4 : 2} />
-                <span className="text-[11px] font-medium leading-none">{tab.label}</span>
+                <span className="text-xs font-medium leading-none">{tab.label}</span>
               </NavLink>
             );
           })}

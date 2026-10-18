@@ -99,7 +99,7 @@ const PhotoUploader = ({ quoteId, attachments, onAttachmentsChange }: PhotoUploa
               >
                 <X className="h-3 w-3" />
               </button>
-              <p className="text-[10px] truncate px-1 py-0.5 bg-background/80">{att.filename}</p>
+              <p className="text-xs truncate px-1 py-0.5 bg-background/80">{att.filename}</p>
             </div>
           ))}
         </div>

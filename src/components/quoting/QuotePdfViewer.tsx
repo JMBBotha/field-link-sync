@@ -92,8 +92,8 @@ function PdfPages({ url }: { url: string }) {
   }, [url, hostW]);
   return (
     <>
-      {state === "loading" && <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-600"><Loader2 className="h-4 w-4 animate-spin" />Loading PDF…</div>}
-      {state === "error" && <p className="px-6 py-10 text-center text-sm text-slate-600">Couldn't show the PDF here. Use Download below.</p>}
+      {state === "loading" && <div className="flex items-center justify-center gap-2 py-10 text-sm text-ink-secondary"><Loader2 className="h-4 w-4 animate-spin" />Loading PDF…</div>}
+      {state === "error" && <p className="px-6 py-10 text-center text-sm text-ink-secondary">Couldn't show the PDF here. Use Download below.</p>}
       <div ref={host} data-testid="pdf-viewer-pages" className="px-2 pt-2" />
     </>
   );
@@ -111,7 +111,7 @@ type Props = {
 
 export default function QuotePdfViewer({ url, fileName, title, busySave, onBack, onSave, onShare }: Props) {
   const navigate = useNavigate();
-  const bar = "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] font-semibold min-h-[52px] active:bg-slate-100";
+  const bar = "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-xs font-semibold min-h-[52px] active:bg-slate-100";
   return (
     <div data-testid="quote-pdf-viewer" role="dialog" aria-label={`${title} PDF`} className="fixed inset-0 z-[70] bg-slate-200">
       <header className="fixed inset-x-0 top-0 z-[71] flex items-center gap-2 bg-primary px-2 pb-1 pt-[max(0.25rem,env(safe-area-inset-top))] text-primary-foreground" style={{ minHeight: "3.5rem" }}>
@@ -124,7 +124,7 @@ export default function QuotePdfViewer({ url, fileName, title, busySave, onBack,
         style={{ top: "calc(3.5rem + env(safe-area-inset-top))", bottom: "calc(3.75rem + env(safe-area-inset-bottom))", WebkitOverflowScrolling: "touch" }}>
         <PdfPages url={url} />
       </main>
-      <nav data-testid="pdf-viewer-actions" className="fixed inset-x-0 bottom-0 z-[71] flex gap-1 border-t border-slate-200 bg-white px-1 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] text-slate-700 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
+      <nav data-testid="pdf-viewer-actions" className="fixed inset-x-0 bottom-0 z-[71] flex gap-1 border-t border-slate-200 bg-white px-1 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] text-ink shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
         <button type="button" data-no-min className={bar} onClick={onBack}><ArrowLeft className="h-5 w-5" />Back to quote</button>
         <button type="button" data-no-min className={bar} onClick={onSave} disabled={busySave}><Save className="h-5 w-5" />{busySave ? "Saving…" : "Save"}</button>
         <button type="button" data-no-min className={`${bar} text-emerald-700`} onClick={onShare}><MessageCircle className="h-5 w-5" />WhatsApp</button>

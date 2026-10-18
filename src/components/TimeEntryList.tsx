@@ -112,7 +112,7 @@ const TimeEntryList = ({ leadId, refreshKey }: TimeEntryListProps) => {
                   </div>
                   <Badge
                     variant={entry.is_billable ? "default" : "secondary"}
-                    className="text-[10px] px-1.5 py-0"
+                    className="text-xs px-1.5 py-0"
                   >
                     {entry.is_billable ? "Billable" : "Non-billable"}
                   </Badge>

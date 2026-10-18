@@ -104,14 +104,14 @@ const ClientInfoPopover = ({ customerId, children, side = "bottom" }: ClientInfo
             {/* Recent Activity */}
             {data.quotes.length > 0 && (
               <div className="px-4 py-2.5">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-1.5">Recent Quotes</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-1.5">Recent Quotes</p>
                 <div className="space-y-1">
                   {data.quotes.slice(0, 3).map((q) => (
                     <div key={q.id} className="flex items-center justify-between text-xs">
                       <span className="font-medium">{q.quote_number}</span>
                       <div className="flex items-center gap-1.5">
                         <span>{formatZAR(Number(q.total))}</span>
-                        <Badge variant="outline" className="text-[9px] px-1 py-0">{q.status}</Badge>
+                        <Badge variant="outline" className="text-xs px-1 py-0">{q.status}</Badge>
                       </div>
                     </div>
                   ))}
@@ -122,7 +122,7 @@ const ClientInfoPopover = ({ customerId, children, side = "bottom" }: ClientInfo
             {/* Notes */}
             {data.customer.notes && (
               <div className="px-4 py-2.5 border-t">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-1">Notes</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-1">Notes</p>
                 <p className="text-xs text-muted-foreground line-clamp-2">{data.customer.notes}</p>
               </div>
             )}

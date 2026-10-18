@@ -45,12 +45,12 @@ export default function OwnerMoneyFlow() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-sm font-semibold text-foreground">Where the money goes · owner only</h2>
-            <p className="text-[11px] text-muted-foreground">{t.quotes} jobs · ex VAT · labour cost is the tech share (counted once)</p>
+            <p className="text-xs text-muted-foreground">{t.quotes} jobs · ex VAT · labour cost is the tech share (counted once)</p>
           </div>
           <div className="flex gap-1">
             {VIEWS.map((v) => (
               <button key={v.key} onClick={() => setView(v.key)}
-                className={`rounded-md px-2 py-1 text-[11px] font-medium ${view === v.key ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+                className={`rounded-md px-2 py-1 text-xs font-medium ${view === v.key ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
                 {v.label}
               </button>
             ))}
@@ -60,7 +60,7 @@ export default function OwnerMoneyFlow() {
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           {tiles.map(([label, amount, color]) => (
             <div key={label} className="rounded-lg bg-muted/50 p-2">
-              <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><span className="inline-block h-2 w-2 rounded-full" style={{ background: color }} />{label}</p>
+              <p className="flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-2 w-2 rounded-full" style={{ background: color }} />{label}</p>
               <p className="text-sm font-bold tabular-nums text-foreground">{formatRand(amount)}</p>
             </div>
           ))}
@@ -105,7 +105,7 @@ export default function OwnerMoneyFlow() {
         </div>
 
         <table className="w-full text-sm">
-          <thead><tr className="border-b text-[11px] text-muted-foreground">
+          <thead><tr className="border-b text-xs text-muted-foreground">
             <th className="py-1 text-left font-medium">Person</th>
             <th className="py-1 text-right font-medium">Earned</th>
             <th className="py-1 text-right font-medium">Pending</th>
@@ -113,7 +113,7 @@ export default function OwnerMoneyFlow() {
           <tbody>
             {flow.people.map((p) => (
               <tr key={`${p.role}-${p.profile_id ?? "none"}`} className="border-b border-border/50">
-                <td className="py-1"><span className="font-medium">{p.name}</span> <span className="text-[11px] text-muted-foreground">{p.role === "sales" ? "Sales" : "Tech"} · {p.quotes} {p.quotes === 1 ? "job" : "jobs"}</span></td>
+                <td className="py-1"><span className="font-medium">{p.name}</span> <span className="text-xs text-muted-foreground">{p.role === "sales" ? "Sales" : "Tech"} · {p.quotes} {p.quotes === 1 ? "job" : "jobs"}</span></td>
                 <td className="py-1 text-right tabular-nums">{formatRand(Number(p.earned) || 0)}</td>
                 <td className="py-1 text-right tabular-nums text-muted-foreground">{formatRand(Number(p.pending) || 0)}</td>
               </tr>

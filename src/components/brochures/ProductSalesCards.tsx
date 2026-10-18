@@ -41,7 +41,7 @@ const ProductSalesCards = ({ lineItemModelCodes }: ProductSalesCardsProps) => {
               loading="lazy"
               className="w-full h-auto object-contain transition-transform group-hover:scale-[1.02]"
             />
-            <span className="block px-2 py-1 text-[10px] truncate text-muted-foreground">
+            <span className="block px-2 py-1 text-xs truncate text-muted-foreground">
               {card.label}
             </span>
           </button>

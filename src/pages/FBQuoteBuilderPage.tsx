@@ -213,7 +213,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
                       R{z.total.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{z.items} items · {z.qty} qty</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{z.items} items · {z.qty} qty</p>
                 </div>
               ))}
             </div>
@@ -240,7 +240,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
         <div className="space-y-2">
           {prefillCustomerId && locations.length > 0 && (
             <div className="space-y-1">
-              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
                 <MapPin className="h-3 w-3" /> Location
               </label>
               <Select value={locationId || ""} onValueChange={(v) => setLocationId(v)}>

@@ -160,10 +160,10 @@ const CommunicationTimeline = ({
                 </div>
                 <div className="flex-1 min-w-0 pt-0.5">
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px] h-5">
+                    <Badge variant="outline" className="text-xs h-5">
                       {config.label}
                     </Badge>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(entry.created_at), {
                         addSuffix: true,
                       })}

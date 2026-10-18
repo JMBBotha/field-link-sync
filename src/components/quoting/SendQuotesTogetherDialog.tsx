@@ -90,7 +90,7 @@ export default function SendQuotesTogetherDialog({ open, onOpenChange, quoteIds,
                 <Label className="text-xs text-muted-foreground" htmlFor={`d-${r.id}`}>One-line description (optional)</Label>
                 <Textarea id={`d-${r.id}`} rows={2} className="min-h-0 resize-none text-sm" value={desc[r.id] ?? ""} maxLength={200} placeholder="e.g. 2x Samsung 12k midwall (bedrooms)" onChange={(e) => setDesc((d) => ({ ...d, [r.id]: e.target.value }))} />
                 {r.auto_summary && (desc[r.id] || "") !== r.auto_summary && (
-                  <button type="button" className="text-[11px] text-[#0B4FA8] underline" onClick={() => setDesc((d) => ({ ...d, [r.id]: r.auto_summary || "" }))}>Use auto text</button>
+                  <button type="button" className="text-xs text-[#0B4FA8] underline" onClick={() => setDesc((d) => ({ ...d, [r.id]: r.auto_summary || "" }))}>Use auto text</button>
                 )}
               </div>
             ))}

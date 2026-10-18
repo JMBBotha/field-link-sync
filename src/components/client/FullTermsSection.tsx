@@ -29,14 +29,14 @@ export default function FullTermsSection({ banking, profile }: { banking?: unkno
       {list.map((s, i) => (
         <div key={i}>
           <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-[10px] font-bold text-white">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-xs font-bold text-white">
               {String(start + i + 1).padStart(2, "0")}
             </span>
-            <h4 className="text-[11px] font-bold uppercase tracking-wide text-[#1AA7EC]">{s.heading || "Terms"}</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wide text-[#1AA7EC]">{s.heading || "Terms"}</h4>
           </div>
           <div className="mt-1.5 space-y-1.5">
             {s.items.map((it, j) => (
-              <p key={j} className={`text-[12px] leading-relaxed text-slate-700 ${it.type === "banking" ? "font-semibold" : ""}`}>
+              <p key={j} className={`text-xs leading-relaxed text-ink ${it.type === "banking" ? "font-semibold" : ""}`}>
                 {it.type === "bullet" ? `• ${it.text}` : it.text}
               </p>
             ))}
@@ -46,7 +46,7 @@ export default function FullTermsSection({ banking, profile }: { banking?: unkno
     </div>
   );
   return (
-    <section data-testid="full-terms" className="mx-auto w-full rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-sm print:border-0 print:shadow-none">
+    <section data-testid="full-terms" className="mx-auto w-full rounded-2xl border border-slate-200 bg-white text-ink shadow-sm print:border-0 print:shadow-none">
       <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}
         className="flex min-h-12 w-full items-center gap-2 px-5 py-3 text-left text-base font-semibold text-[#1B3A5C] print:hidden">
         {open ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
@@ -57,7 +57,7 @@ export default function FullTermsSection({ banking, profile }: { banking?: unkno
           {col(sections.slice(0, half), 0)}
           {col(sections.slice(half), half)}
         </div>
-        <p data-testid="full-terms-eoe" className="pt-3 text-[12px] text-slate-600">{eoeClause(profile?.legal_name || COMPANY.legalName, "quote")}</p>
+        <p data-testid="full-terms-eoe" className="pt-3 text-xs text-ink-secondary">{eoeClause(profile?.legal_name || COMPANY.legalName, "quote")}</p>
       </div>
     </section>
   );

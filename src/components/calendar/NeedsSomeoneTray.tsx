@@ -31,7 +31,7 @@ export default function NeedsSomeoneTray<L extends CalendarLead, S extends Calen
             <p className="text-xs font-medium">{l.scheduled_date && format(new Date(`${l.scheduled_date}T12:00:00`), "EEE d MMM")} · {hhmm(l.scheduled_time)}–{fromMinutes(toMinutes(l.scheduled_time || "08:00") + minutes)}</p>
             <p className="truncate text-sm font-semibold">{calendarText(l.customer_name, calendarText(l.service_type))}</p>
             <p className="truncate text-xs text-muted-foreground">{calendarText(l.customer_address.split(",").slice(0, 2).join(", "), "Address pending")} · {hoursLabel(minutes)}</p>
-            <div className="mt-1 flex items-center justify-between gap-2"><span className={`rounded border px-1 text-[10px] font-semibold ${lane ? LANE_META[lane].className : UNKNOWN_LANE_META.className}`}>{lane?.toUpperCase() || "LANE?"}</span><Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onAssignLead(l)}>Assign…</Button></div>
+            <div className="mt-1 flex items-center justify-between gap-2"><span className={`rounded border px-1 text-xs font-semibold ${lane ? LANE_META[lane].className : UNKNOWN_LANE_META.className}`}>{lane?.toUpperCase() || "LANE?"}</span><Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onAssignLead(l)}>Assign…</Button></div>
           </div>;
         })}</div>
       </div>}
@@ -42,7 +42,7 @@ export default function NeedsSomeoneTray<L extends CalendarLead, S extends Calen
           <p className="text-xs font-medium">{format(new Date(`${s.scheduled_date}T12:00:00`), "EEE d MMM")} · {bookingRange(s)}</p>
           <p className="truncate text-sm font-semibold">{calendarText(s.leads?.customer_name, calendarText(s.leads?.service_type))}</p>
           <p className="truncate text-xs text-muted-foreground">{calendarText(s.leads?.customer_address?.split(",").slice(0, 2).join(", "), "Address pending")} · {hoursLabel(bookingMinutes(s))}</p>
-          <div className="mt-1 flex items-center justify-between gap-2"><span className={`rounded border px-1 text-[10px] font-semibold ${LANE_META.service.className}`}>SERVICE</span><Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onAssignPool(s)}>Assign…</Button></div>
+          <div className="mt-1 flex items-center justify-between gap-2"><span className={`rounded border px-1 text-xs font-semibold ${LANE_META.service.className}`}>SERVICE</span><Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onAssignPool(s)}>Assign…</Button></div>
         </div>)}</div>
       </div>}
     </>}

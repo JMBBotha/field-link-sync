@@ -80,7 +80,7 @@ const SyncConflictsSection = () => {
                   <p className="text-sm font-medium truncate">
                     Lead {(c.lead_id as string).slice(0, 8)}…
                   </p>
-                  <Badge className={`${resolutionColor[c.resolution] || "bg-muted"} text-white text-[10px] h-4`}>
+                  <Badge className={`${resolutionColor[c.resolution] || "bg-muted"} text-white text-xs h-4`}>
                     {resolutionLabel[c.resolution] || c.resolution}
                   </Badge>
                 </div>
@@ -92,7 +92,7 @@ const SyncConflictsSection = () => {
                     Local: <span className="font-medium">{localStatus}</span> → Server: <span className="font-medium">{serverStatus}</span>
                   </p>
                 )}
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {format(new Date(c.created_at), "dd MMM HH:mm")}
                   {c.resolved_at && ` · Resolved ${format(new Date(c.resolved_at), "HH:mm")}`}
                 </p>

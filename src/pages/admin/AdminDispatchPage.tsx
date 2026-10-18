@@ -1114,7 +1114,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                       <p className="text-xs font-medium">
                         {inboxMode ? "Inbox clear" : "No unassigned jobs"}
                       </p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {inboxMode
                           ? "Every lead has a salesperson or technician and a date."
                           : "Nothing waiting to be dispatched."}
@@ -1151,18 +1151,18 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                         extra={
                           <div className="flex w-full flex-wrap items-center gap-1" onClick={e => e.stopPropagation()}>
                             {(["sales", "service"] as LeadLane[]).map(l => (
-                              <Button key={l} type="button" size="sm" variant={laneOf(lead) === l ? "default" : "outline"} className="h-6 px-2 text-[10px]"
+                              <Button key={l} type="button" size="sm" variant={laneOf(lead) === l ? "default" : "outline"} className="h-6 px-2 text-xs"
                                 disabled={setLaneMutation.isPending} onClick={() => setLaneMutation.mutate({ leadId: lead.id, lane: l })}>
                                 {LANE_META[l].label}
                               </Button>
                             ))}
                             {lead.scheduled_time && (
-                              <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                              <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
                                 <Clock className="h-2.5 w-2.5" />{lead.scheduled_time.slice(0, 5)}
                               </span>
                             )}
                             {lead.priority && (
-                              <Badge variant={PRIORITY_COLORS[lead.priority] as any || "secondary"} className="ml-auto h-5 shrink-0 text-[10px]">
+                              <Badge variant={PRIORITY_COLORS[lead.priority] as any || "secondary"} className="ml-auto h-5 shrink-0 text-xs">
                                 {lead.priority}
                               </Badge>
                             )}
@@ -1372,7 +1372,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {lane === "sales"
                   ? "Named assignment — sales leads are never a first-accept race."
                   : "Technician lane only. First-accept broadcast still applies to nearby techs."}
@@ -1557,7 +1557,7 @@ function groupAgentsByLane(agents: Agent[], laneById: Map<string, LeadLane | nul
 function LaneBadge({ lane }: { lane: LeadLane | null }) {
   return (
     <span
-      className={`shrink-0 rounded border px-1 py-px text-[9px] font-semibold leading-tight whitespace-nowrap ${
+      className={`shrink-0 rounded border px-1 py-px text-xs font-semibold leading-tight whitespace-nowrap ${
         lane ? LANE_META[lane].className : UNKNOWN_LANE_META.className
       }`}
     >
@@ -1590,7 +1590,7 @@ const InstallDepositChip = ({ leadId, compact, showOpen }: { leadId: string; com
   if (!invoice?.id) return null;
   return (
     <span className="inline-flex items-center gap-1">
-      <DepositPaymentChip invoice={invoice} hideAmount accepted className={compact ? "text-[9px] px-1 py-0" : undefined} />
+      <DepositPaymentChip invoice={invoice} hideAmount accepted className={compact ? "text-xs px-1 py-0" : undefined} />
       {showOpen && (
         <Button
           variant="outline"
@@ -1650,7 +1650,7 @@ const DayTimeline = ({
       <div className="shrink-0 w-14 border-r bg-muted/30">
         <div className="h-10 border-b" /> {/* header spacer */}
         {HOURS.map(h => (
-          <div key={h} className="border-b flex items-start justify-end pr-2 pt-1 text-[10px] text-muted-foreground" style={{ height: pxPerHour }}>
+          <div key={h} className="border-b flex items-start justify-end pr-2 pt-1 text-xs text-muted-foreground" style={{ height: pxPerHour }}>
             {`${String(h).padStart(2, "0")}:00`}
           </div>
         ))}
@@ -1670,7 +1670,7 @@ const DayTimeline = ({
             {/* Lane group header strip */}
             <div className="shrink-0 w-5 border-r bg-muted/20">
               <div className="h-10 border-b flex items-center justify-center overflow-hidden">
-                <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground [writing-mode:vertical-rl] rotate-180 whitespace-nowrap">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground [writing-mode:vertical-rl] rotate-180 whitespace-nowrap">
                   {group.label}
                 </span>
               </div>
@@ -1690,7 +1690,7 @@ const DayTimeline = ({
                 <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${online ? "bg-success animate-pulse" : "bg-muted-foreground/40"}`} />
                 <span className="text-xs font-medium truncate">{agent.full_name}</span>
                 <LaneBadge lane={lane} />
-                {online && <span className="text-[9px] text-success font-semibold ml-auto shrink-0">Online</span>}
+                {online && <span className="text-xs text-success font-semibold ml-auto shrink-0">Online</span>}
               </div>
 
               {/* Time slots */}
@@ -1740,7 +1740,7 @@ const DayTimeline = ({
                       transition={{ duration: 0.2 }}
                       draggable
                       onDragStartCapture={(e) => onScheduleDragStart(e as any, schedule)}
-                      className="absolute left-1 right-1 rounded-md px-1.5 py-1 text-[10px] cursor-pointer overflow-y-auto border shadow-sm"
+                      className="absolute left-1 right-1 rounded-md px-1.5 py-1 text-xs cursor-pointer overflow-y-auto border shadow-sm"
                       style={{
                         top,
                         height,
@@ -1767,7 +1767,7 @@ const DayTimeline = ({
                           </button>
                         ) : null;
                       })()}
-                      {schedule.clash && <span className="inline-block rounded bg-destructive px-1 text-[9px] font-bold text-destructive-foreground" data-testid="clash-badge">⚠ Clash</span>}
+                      {schedule.clash && <span className="inline-block rounded bg-destructive px-1 text-xs font-bold text-destructive-foreground" data-testid="clash-badge">⚠ Clash</span>}
                       <p className="font-semibold leading-tight break-words">{calendarText(schedule.leads?.customer_name, calendarText(schedule.leads?.service_type))}</p>
                       {height > 30 && <p className="break-words opacity-80">{calendarText(schedule.leads?.service_type)}</p>}
                       {height > 45 && <p className="opacity-60">{hhmm(schedule.start_time)}–{hhmm(schedule.end_time)}</p>}
@@ -1848,7 +1848,7 @@ const WeekTimeline = ({
               {/* Lane group header row */}
               <tr>
                 <td colSpan={dates.length + 1} className="border-b border-r bg-muted/20 px-2 py-1">
-                  <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {group.label}
                   </span>
                 </td>
@@ -1861,9 +1861,9 @@ const WeekTimeline = ({
                   <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${isAgentOnline(agent.id) ? "bg-success animate-pulse" : "bg-muted-foreground/40"}`} />
                   <span className="text-xs font-medium truncate">{agent.full_name}</span>
                   <LaneBadge lane={laneById.get(agent.id) ?? null} />
-                  {isAgentOnline(agent.id) && <span className="text-[9px] text-success font-semibold ml-auto shrink-0">Online</span>}
+                  {isAgentOnline(agent.id) && <span className="text-xs text-success font-semibold ml-auto shrink-0">Online</span>}
                 </div>
-                 <p className="text-[10px] text-muted-foreground">{hoursLabel(dates.reduce((n, d) => n + mergedMinutes((schedulesMap.get(format(d, "yyyy-MM-dd")) || []).filter(s => s.agent_id === agent.id)), 0))} booked</p>
+                 <p className="text-xs text-muted-foreground">{hoursLabel(dates.reduce((n, d) => n + mergedMinutes((schedulesMap.get(format(d, "yyyy-MM-dd")) || []).filter(s => s.agent_id === agent.id)), 0))} booked</p>
               </td>
               {dates.map(d => {
                 const dateStr = format(d, "yyyy-MM-dd");
@@ -1892,7 +1892,7 @@ const WeekTimeline = ({
                             key={schedule.id}
                             draggable
                             onDragStart={(e) => onScheduleDragStart(e, schedule)}
-                            className="rounded px-1.5 py-0.5 text-[10px] text-white cursor-pointer break-words"
+                            className="rounded px-1.5 py-0.5 text-xs text-white cursor-pointer break-words"
                             style={{ backgroundColor: STATUS_COLORS[status] || "#6b7280" }}
                             title={schedule.clash ? `Overlaps ${schedule.clash.start}–${schedule.clash.end} with ${schedule.clash.label}` : `${calendarText(schedule.leads?.customer_name, calendarText(schedule.leads?.service_type))} ${hhmm(schedule.start_time)}–${hhmm(schedule.end_time)}`}
                             onClick={() => {
@@ -1921,7 +1921,7 @@ const WeekTimeline = ({
                         );
                       })}
                       {daySchedules.length === 0 && (
-                        <div className="text-[10px] text-muted-foreground/40 text-center py-2">—</div>
+                        <div className="text-xs text-muted-foreground/40 text-center py-2">—</div>
                       )}
                     </div>
                   </td>

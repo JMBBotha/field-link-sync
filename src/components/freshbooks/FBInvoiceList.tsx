@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
 const statusColors: Record<string, string> = {
-  Draft: "bg-gray-100 text-gray-700",
+  Draft: "bg-gray-100 text-ink",
   Sent: "bg-blue-100 text-blue-700",
   Viewed: "bg-blue-100 text-blue-700",
   Partial: "bg-blue-50 text-blue-600",

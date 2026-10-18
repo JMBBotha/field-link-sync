@@ -171,7 +171,7 @@ const LeadListFilterPills = ({
               <Badge
                 variant="secondary"
                 className={cn(
-                  "h-4 px-1 text-[10px] font-normal",
+                  "h-4 px-1 text-xs font-normal",
                   isActive
                     ? "bg-white/20 text-inherit"
                     : "bg-muted-foreground/20 text-muted-foreground"
@@ -198,7 +198,7 @@ export function LeadListSegmented({ activeFilter, onFilterChange, availableStatu
         const on = activeFilter === f.value;
         return (
           <button key={f.value} type="button" role="radio" aria-checked={on} data-no-min onClick={() => onFilterChange(f.value)}
-            className={cn("flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded px-1.5 py-1 text-[11px] font-medium transition-colors",
+            className={cn("flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded px-1.5 py-1 text-xs font-medium transition-colors",
               on ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
             <span className="truncate">{f.label}</span>
             {counts && <span className="tabular-nums opacity-70">{counts[f.value] ?? 0}</span>}

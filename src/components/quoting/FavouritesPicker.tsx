@@ -42,7 +42,7 @@ export default function FavouritesPicker({
   );
 
   const header = (t: string) => (
-    <p className="bg-muted/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t}</p>
+    <p className="bg-muted/50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t}</p>
   );
 
   return (

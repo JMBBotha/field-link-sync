@@ -96,7 +96,7 @@ export default function VoiceBreakdownCard({ breakdown, products, vatRate, savin
               aria-label="Area name"
             />
             <span className="text-xs text-muted-foreground">{area.lines.filter(isSaveable).length} line{area.lines.filter(isSaveable).length === 1 ? "" : "s"}</span>
-            {area.notes.length > 0 && <Badge variant="outline" className="text-[10px]">{area.notes.join(" · ")}</Badge>}
+            {area.notes.length > 0 && <Badge variant="outline" className="text-xs">{area.notes.join(" · ")}</Badge>}
             <Button type="button" size="icon" variant="ghost" className="ml-auto h-7 w-7 text-destructive" aria-label={`Remove area ${area.name}`} onClick={() => patchArea(area.key, () => null)}>
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -142,7 +142,7 @@ export default function VoiceBreakdownCard({ breakdown, products, vatRate, savin
                           {sz}″ {COPPER_KIT[sz].spoken}
                         </Button>
                       ))}
-                      <span className="self-center text-[11px] text-muted-foreground">set metres in the qty box</span>
+                      <span className="self-center text-xs text-muted-foreground">set metres in the qty box</span>
                     </div>
                   )}
 

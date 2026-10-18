@@ -194,7 +194,7 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
         <div className="flex flex-wrap gap-1">
           <Badge
             variant={categoryFilter === "__all__" ? "default" : "outline"}
-            className="cursor-pointer text-[10px]"
+            className="cursor-pointer text-xs"
             onClick={() => setCategoryFilter("__all__")}
           >
             All ({products.length})
@@ -205,7 +205,7 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
               <Badge
                 key={cat}
                 variant={categoryFilter === cat ? "default" : "outline"}
-                className="cursor-pointer text-[10px]"
+                className="cursor-pointer text-xs"
                 onClick={() => setCategoryFilter(cat)}
               >
                 {cat} ({count})
@@ -263,11 +263,11 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
                     <span className="line-clamp-2">{product.description}</span>
                   </td>
                   <td className="p-2">
-                    <Badge variant="outline" className="text-[10px]">{product.category}</Badge>
+                    <Badge variant="outline" className="text-xs">{product.category}</Badge>
                   </td>
                   <td className="p-2 text-right whitespace-nowrap font-medium">
                     {product.is_price_on_request
-                      ? <Badge variant="outline" className="text-[9px] border-amber-500/50 text-amber-600 bg-amber-500/10">POR</Badge>
+                      ? <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 bg-amber-500/10">POR</Badge>
                       : formatZAR(product.cost_price)}
                   </td>
                   <td className="p-2 text-right whitespace-nowrap">
@@ -293,12 +293,12 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
                   </td>
                   <td className="p-2 text-right whitespace-nowrap">
                     {product.pack_qty && product.pack_qty > 1 ? (
-                      <Badge variant="outline" className="text-[9px]">pk/{product.pack_qty}</Badge>
+                      <Badge variant="outline" className="text-xs">pk/{product.pack_qty}</Badge>
                     ) : "—"}
                   </td>
                   <td className="p-2 text-right whitespace-nowrap">
                     {product.pack_qty && product.pack_qty > 1 ? (
-                      <span className="text-primary font-semibold text-[10px]">
+                      <span className="text-primary font-semibold text-xs">
                         {formatZAR(product.selling_price / product.pack_qty)}/ea
                       </span>
                     ) : "—"}
@@ -369,7 +369,7 @@ const LengthCalculator = ({ product }: { product: ConsumableProduct }) => {
               min={product.min_cut_length || 0.5}
               className="h-8 text-sm mt-1"
             />
-            <p className="text-[10px] text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Min cut: {product.min_cut_length || 0.5}m
             </p>
           </div>

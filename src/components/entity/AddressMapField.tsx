@@ -138,7 +138,7 @@ const AddressMapField = ({
             <X className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
-        {fromPin && <p className="text-[11px] text-muted-foreground">Address filled from the pin — add the house number if it's missing.</p>}
+        {fromPin && <p className="text-xs text-muted-foreground">Address filled from the pin — add the house number if it's missing.</p>}
       </div>,
     );
   }

@@ -322,7 +322,7 @@ function TemplateEditorDialog({ template, canManage, onClose, onSaved }: {
               {list.map((s, i) => (canManage && mode === "edit") ? (
                 <Card key={`${s.doc_kind}-${i}`} className="space-y-2 p-3" data-testid="template-section-editor">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-[10px] font-bold text-white">{sectionChip(s, i)}</span>
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-xs font-bold text-white">{sectionChip(s, i)}</span>
                     <Input value={s.heading} onChange={(e) => patch(i, { heading: e.target.value })} className="h-8 font-semibold" aria-label="Section heading" />
                     <div className="flex shrink-0">
                       <Button size="icon" variant="ghost" className="h-8 w-8" disabled={i === 0} onClick={() => change(moveSection(sections, doc, i, -1))} aria-label="Move up"><ArrowUp className="h-4 w-4" /></Button>
@@ -330,7 +330,7 @@ function TemplateEditorDialog({ template, canManage, onClose, onSaved }: {
                       <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { if (window.confirm(`Remove "${s.heading}"?`)) change(removeSection(sections, doc, i)); }} aria-label="Remove section"><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </div>
-                  <Textarea value={s.body} onChange={(e) => patch(i, { body: e.target.value })} rows={Math.min(18, Math.max(3, s.body.split("\n").length + 1))} className="font-mono text-[12px] leading-relaxed" aria-label="Section text" />
+                  <Textarea value={s.body} onChange={(e) => patch(i, { body: e.target.value })} rows={Math.min(18, Math.max(3, s.body.split("\n").length + 1))} className="font-mono text-xs leading-relaxed" aria-label="Section text" />
                   <div className="flex flex-wrap items-center gap-2">
                     <Select value={s.kind} onValueChange={(v) => patch(i, { kind: v as SectionKind })}>
                       <SelectTrigger className="h-7 w-auto text-xs"><SelectValue /></SelectTrigger>

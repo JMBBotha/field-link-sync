@@ -55,7 +55,7 @@ export default function JobWatchdogPanel({ className }: { className?: string }) 
       <ul className="mt-1 divide-y divide-border">
         {data.map((a) => (
           <li key={a.id} className="flex flex-wrap items-center gap-2 py-1.5">
-            <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold",
+            <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold",
               a.severity === "critical" ? "bg-destructive text-destructive-foreground" : "bg-warning/20 text-warning-foreground")}>
               {RULE_LABEL[a.rule] ?? a.rule}
             </span>

@@ -298,10 +298,10 @@ const SupplierInfoReviewModal = ({ open, onOpenChange, supplierId, supplierName,
                 <p className="text-xs font-medium mb-1">All detected contact info</p>
                 <div className="flex flex-wrap gap-1">
                   {extracted.allEmails.map((e, i) => (
-                    <Badge key={`e-${i}`} variant="outline" className="text-[10px]">{e}</Badge>
+                    <Badge key={`e-${i}`} variant="outline" className="text-xs">{e}</Badge>
                   ))}
                   {extracted.allPhones.map((p, i) => (
-                    <Badge key={`p-${i}`} variant="secondary" className="text-[10px]">{p}</Badge>
+                    <Badge key={`p-${i}`} variant="secondary" className="text-xs">{p}</Badge>
                   ))}
                 </div>
               </div>

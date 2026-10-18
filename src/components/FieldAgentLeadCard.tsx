@@ -76,7 +76,7 @@ const getStatusBadge = (status: string, compact = false) => {
   const config = statusConfig[status] || { bg: "bg-gray-500", text: "text-white", label: status };
 
   return (
-    <Badge className={cn(config.bg, config.text, compact ? "px-1.5 py-0 text-[10px]" : "text-xs")}>
+    <Badge className={cn(config.bg, config.text, compact ? "px-1.5 py-0 text-xs" : "text-xs")}>
       {config.label}
     </Badge>
   );
@@ -172,13 +172,13 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
               </Button>
             ) : <span />} badgeExtra={offer && (offer.minutes || offer.slot_start) ? <>
               {!lead.scheduled_date && offer.slot_date ? (
-                <Badge data-testid="offer-slot" className="border-0 bg-sky-500 px-2 py-0.5 text-[10px] font-bold text-white">{slotText(offer.slot_date, offer.slot_start)}</Badge>
+                <Badge data-testid="offer-slot" className="border-0 bg-sky-500 px-2 py-0.5 text-xs font-bold text-white">{slotText(offer.slot_date, offer.slot_start)}</Badge>
               ) : offer.slot_start ? (
-                <Badge data-testid="offer-time" variant="outline" className="px-2 py-0.5 text-[11px] font-bold tabular-nums">{offer.slot_start.slice(0, 5)}</Badge>
+                <Badge data-testid="offer-time" variant="outline" className="px-2 py-0.5 text-xs font-bold tabular-nums">{offer.slot_start.slice(0, 5)}</Badge>
               ) : null}
               {offer.minutes ? (
                 <Badge data-testid="offer-duration" variant="outline" title={offer.minutes_source === "quote" ? "From the quote's labour hours" : offer.minutes_source === "booking" ? "Booked job length" : "Typical job length"}
-                  className="border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-foreground">{durationText(offer.minutes)}</Badge>
+                  className="border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-bold text-foreground">{durationText(offer.minutes)}</Badge>
               ) : null}
             </> : undefined} extra={offer && (offer.km != null || offer.label) ? (
               <span data-testid="offer-near" className="flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"><MapPin className="h-3 w-3" />{offerText(offer.km, offer.label)}</span>
@@ -186,8 +186,8 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
           ) : (
           <LeadCardV2 audience="tech" lead={lead} density={compact ? "compact" : "full"} className={compact ? "space-y-1.5 p-2.5" : undefined} extra={<>
             {getStatusBadge(lead.status, compact)}
-            {invoice?.id && <DepositPaymentChip invoice={invoice} hideAmount accepted={["accepted", "in_progress", "completed"].includes(lead.status)} className="text-[10px]" />}
-            {estimateUrl && <Link to={estimateUrl} onClick={(e) => e.stopPropagation()} className="text-[10px] font-medium text-primary hover:underline">Open job sheet</Link>}
+            {invoice?.id && <DepositPaymentChip invoice={invoice} hideAmount accepted={["accepted", "in_progress", "completed"].includes(lead.status)} className="text-xs" />}
+            {estimateUrl && <Link to={estimateUrl} onClick={(e) => e.stopPropagation()} className="text-xs font-medium text-primary hover:underline">Open job sheet</Link>}
             {photoCount > 0 && <span className="flex items-center gap-0.5 text-xs text-muted-foreground"><ImageIcon className="h-3 w-3" />{photoCount}</span>}
             {distance && <span className="text-xs text-muted-foreground">{distance}km</span>}
             {lead.status === "in_progress" && lead.started_at && <LeadCardProgress startedAt={lead.started_at} estimatedDurationMinutes={lead.estimated_duration_minutes} estimatedEndTime={lead.estimated_end_time} compact />}

@@ -253,7 +253,7 @@ const AdminLayout = () => {
             >
               <Search className="h-4 w-4" />
               <span className="text-xs hidden sm:inline">Search</span>
-              <kbd className="ml-1 rounded border border-white/30 bg-white/10 px-1.5 py-0.5 text-[10px] hidden sm:inline">⌘K</kbd>
+              <kbd className="ml-1 rounded border border-white/30 bg-white/10 px-1.5 py-0.5 text-xs hidden sm:inline">⌘K</kbd>
             </Button>
 
             <Button

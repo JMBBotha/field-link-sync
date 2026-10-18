@@ -13,7 +13,31 @@ export default {
       },
     },
     extend: {
+      // R1 type system: one font, 5 sizes (13/16/20/25/32), 2 weights (400/600)
+      fontFamily: {
+        sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "Arial", "sans-serif"],
+      },
+      fontSize: {
+        xs: ["13px", { lineHeight: "18px" }],
+        sm: ["13px", { lineHeight: "18px" }],
+        base: ["16px", { lineHeight: "24px" }],
+        lg: ["20px", { lineHeight: "28px" }],
+        xl: ["20px", { lineHeight: "28px" }],
+        "2xl": ["25px", { lineHeight: "32px" }],
+        "3xl": ["32px", { lineHeight: "40px" }],
+        "4xl": ["32px", { lineHeight: "40px" }],
+        "5xl": ["32px", { lineHeight: "40px" }],
+      },
+      fontWeight: {
+        thin: "400", extralight: "400", light: "400", normal: "400", medium: "400",
+        semibold: "600", bold: "600", extrabold: "600", black: "600",
+      },
       colors: {
+        ink: {
+          DEFAULT: "hsl(var(--text-primary))",
+          secondary: "hsl(var(--text-secondary))",
+          muted: "hsl(var(--text-muted))",
+        },
         orange: { 500: "hsl(var(--labour-outline))" },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

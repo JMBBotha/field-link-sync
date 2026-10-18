@@ -47,13 +47,13 @@ const QuoteBrochureSection = ({ quoteId, lineItemModelCodes }: QuoteBrochureSect
           </span>
         </div>
         {quoteId && (
-          <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => setShowPicker(true)}>
+          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setShowPicker(true)}>
             <Plus className="h-3 w-3 mr-0.5" /> Add
           </Button>
         )}
       </div>
 
-      <p className="text-[10px] text-muted-foreground italic">Auto-attached to quote PDF based on model codes.</p>
+      <p className="text-xs text-muted-foreground italic">Auto-attached to quote PDF based on model codes.</p>
 
       {loading ? (
         <p className="text-xs text-muted-foreground py-2">Loading...</p>
@@ -70,11 +70,11 @@ const QuoteBrochureSection = ({ quoteId, lineItemModelCodes }: QuoteBrochureSect
               <div key={item.linkId || b.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/50 text-xs">
                 <Paperclip className="h-3 w-3 shrink-0 text-muted-foreground" />
                 <span className="truncate flex-1 font-medium">{b.name}</span>
-                <Badge variant="outline" className={`text-[9px] ${brandColor[b.brand] || ""}`}>
+                <Badge variant="outline" className={`text-xs ${brandColor[b.brand] || ""}`}>
                   {b.brand}
                 </Badge>
                 {!item.isAutoMatched && (
-                  <Badge variant="secondary" className="text-[8px]">manual</Badge>
+                  <Badge variant="secondary" className="text-xs">manual</Badge>
                 )}
                 <a href={getPublicUrl(b.file_url)} target="_blank" rel="noopener noreferrer">
                   <Eye className="h-3 w-3 text-muted-foreground hover:text-foreground" />
@@ -110,7 +110,7 @@ const QuoteBrochureSection = ({ quoteId, lineItemModelCodes }: QuoteBrochureSect
                 >
                   <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   <span className="truncate flex-1">{b.name}</span>
-                  <Badge variant="outline" className={`text-[9px] ${brandColor[b.brand] || ""}`}>
+                  <Badge variant="outline" className={`text-xs ${brandColor[b.brand] || ""}`}>
                     {b.brand}
                   </Badge>
                 </button>

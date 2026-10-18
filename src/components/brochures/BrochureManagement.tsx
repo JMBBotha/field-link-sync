@@ -270,15 +270,15 @@ const BrochureManagement = () => {
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-sm truncate">{b.name}</p>
                     <div className="flex items-center gap-1.5 mt-1">
-                      <Badge variant="outline" className={`text-[10px] ${brandColor[b.brand] || ""}`}>
+                      <Badge variant="outline" className={`text-xs ${brandColor[b.brand] || ""}`}>
                         {b.brand}
                       </Badge>
                       {b.category && (
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-xs">
                           {b.category}
                         </Badge>
                       )}
-                      <span className="text-[10px] text-muted-foreground">{b.page_count}p</span>
+                      <span className="text-xs text-muted-foreground">{b.page_count}p</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 ml-2">
@@ -300,7 +300,7 @@ const BrochureManagement = () => {
                 {b.model_match_prefixes.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {b.model_match_prefixes.map((prefix, i) => (
-                      <Badge key={i} variant="outline" className="text-[9px] font-mono">
+                      <Badge key={i} variant="outline" className="text-xs font-mono">
                         {prefix}
                       </Badge>
                     ))}
@@ -365,7 +365,7 @@ const BrochureManagement = () => {
                 onChange={(e) => setFormPrefixes(e.target.value)}
                 placeholder="AR12BSAA, AR18BSAA, AR24BSAA"
               />
-              <p className="text-[10px] text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Enter model code starts, comma-separated. E.g. "AR80F" matches AR80F12CADW/FA
               </p>
             </div>

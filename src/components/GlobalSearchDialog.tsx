@@ -254,7 +254,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
             onChange={(e) => setQuery(e.target.value)}
             className="border-0 shadow-none focus-visible:ring-0 px-0 text-base"
           />
-          <kbd className="hidden sm:inline-flex items-center gap-1 rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground ml-2 shrink-0">
+          <kbd className="hidden sm:inline-flex items-center gap-1 rounded border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground ml-2 shrink-0">
             ESC
           </kbd>
         </div>
@@ -279,7 +279,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
                   <p className="text-sm font-medium truncate text-foreground">{item.title}</p>
                   <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
                 </div>
-                <Badge variant="outline" className={`text-[10px] shrink-0 ${cfg.color}`}>
+                <Badge variant="outline" className={`text-xs shrink-0 ${cfg.color}`}>
                   {cfg.label}
                 </Badge>
               </button>

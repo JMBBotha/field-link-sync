@@ -516,7 +516,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
               />
             </div>
             {formData.customer_name === "" && (
-              <p className="text-[11px] text-muted-foreground">Required – enter the customer's full name</p>
+              <p className="text-xs text-muted-foreground">Required – enter the customer's full name</p>
             )}
           </div>
 
@@ -695,7 +695,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
                 );
               })}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {lane === "sales"
                 ? "Sales lead — assigned to a named salesperson, no first-accept race."
                 : lane === "service"
@@ -718,7 +718,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Tag people as Sales on the Team page to grow this list.
               </p>
             </div>
@@ -818,7 +818,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
 
           {/* Broadcast Radius Preview — service lane only */}
           {lane !== "service" && formData.service_type && (
-            <div className="rounded-lg border border-dashed p-3 text-[11px] text-muted-foreground">
+            <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
               {lane === "sales"
                 ? "No broadcast for sales leads — a named salesperson owns this one."
                 : "No broadcast until a human picks sales or service."}

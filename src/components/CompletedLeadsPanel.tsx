@@ -228,7 +228,7 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
         <Button
           variant="default"
           size="sm"
-          className="h-6 px-2 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+          className="h-6 px-2 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
           onClick={(e) => handleCreateInvoice(lead, e)}
         >
           <FilePlus className="h-3 w-3" />
@@ -238,14 +238,14 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
     }
     if (inv.status === "paid") {
       return (
-        <Badge className="text-[10px] px-1.5 py-0 border-0 bg-emerald-500/15 text-emerald-600">
+        <Badge className="text-xs px-1.5 py-0 border-0 bg-emerald-500/15 text-emerald-600">
           <CheckCircle2 className="h-3 w-3 mr-1" />
           Paid – R {inv.grand_total.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
         </Badge>
       );
     }
     return (
-      <Badge className="text-[10px] px-1.5 py-0 border-0 bg-orange-500/15 text-orange-600">
+      <Badge className="text-xs px-1.5 py-0 border-0 bg-orange-500/15 text-orange-600">
         Invoiced – {inv.invoice_number} R {inv.grand_total.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
       </Badge>
     );

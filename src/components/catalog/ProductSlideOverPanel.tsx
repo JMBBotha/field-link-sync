@@ -285,7 +285,7 @@ const ProductSlideOverPanel = ({
             <div className="grid grid-cols-2 gap-3">
               {specs.map((s) => (
                 <div key={s.label} className="bg-muted/30 rounded-lg p-2.5">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">{s.label}</p>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-0.5">{s.label}</p>
                   <p className="text-sm font-medium">{s.value}</p>
                 </div>
               ))}
@@ -302,22 +302,22 @@ const ProductSlideOverPanel = ({
             ) : (
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-muted/30 rounded-lg p-2.5">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Cost</p>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-0.5">Cost</p>
                   <p className="text-sm font-medium">{formatZAR(effectiveCost)}</p>
                 </div>
                 <div className="bg-muted/30 rounded-lg p-2.5">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Selling</p>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-0.5">Selling</p>
                   <p className="text-sm font-bold text-primary">{formatZAR(product.selling_price)}</p>
                 </div>
                 <div className="bg-muted/30 rounded-lg p-2.5">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Margin</p>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-0.5">Margin</p>
                   <p className={`text-sm font-bold ${margin > 0 ? "text-green-500" : "text-destructive"}`}>
                     {formatZAR(margin)}
                   </p>
                 </div>
               </div>
             )}
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               Sold at {formatUnitPrice(product.selling_price, unit)}
             </p>
           </div>

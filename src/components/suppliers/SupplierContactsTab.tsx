@@ -235,12 +235,12 @@ const SupplierContactsTab = ({ supplierId }: SupplierContactsTabProps) => {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-sm">{c.contact_name}</span>
           {c.is_primary && (
-            <Badge variant="default" className="text-[10px] h-4 gap-0.5">
+            <Badge variant="default" className="text-xs h-4 gap-0.5">
               <Star className="h-2.5 w-2.5" /> Primary
             </Badge>
           )}
-          {c.department && <Badge variant="secondary" className="text-[10px] h-4">{c.department}</Badge>}
-          {c.extension && <Badge variant="outline" className="text-[10px] h-4">ext. {c.extension}</Badge>}
+          {c.department && <Badge variant="secondary" className="text-xs h-4">{c.department}</Badge>}
+          {c.extension && <Badge variant="outline" className="text-xs h-4">ext. {c.extension}</Badge>}
         </div>
         {c.role_title && <p className="text-xs text-muted-foreground mt-0.5">{c.role_title}</p>}
         <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
@@ -319,7 +319,7 @@ const SupplierContactsTab = ({ supplierId }: SupplierContactsTabProps) => {
                         <MapPin className="h-4 w-4 text-primary" />
                         <span className="font-semibold text-sm">{loc.location_name}</span>
                         {loc.is_head_office && (
-                          <Badge variant="default" className="text-[10px] h-4">Head Office</Badge>
+                          <Badge variant="default" className="text-xs h-4">Head Office</Badge>
                         )}
                       </div>
                       {loc.address && <p className="text-xs text-muted-foreground mt-0.5 ml-6">{loc.address}</p>}

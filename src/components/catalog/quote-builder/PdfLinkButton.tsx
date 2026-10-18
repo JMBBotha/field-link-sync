@@ -75,7 +75,7 @@ const PdfLinkButton = ({ pages }: PdfLinkButtonProps) => {
       <Button
         variant="outline"
         size="sm"
-        className="h-6 text-[10px] gap-1 shrink-0"
+        className="h-6 text-xs gap-1 shrink-0"
         disabled={uploading}
         onClick={() => inputRef.current?.click()}
       >

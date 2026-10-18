@@ -85,7 +85,7 @@ export function VoiceNoteList({ notes, onRemove, onApply, online }: {
         return (
           <div key={m.id} className="rounded-lg border-l-4 border-primary bg-muted/50 px-3 py-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-semibold text-primary flex items-center gap-1"><Mic className="h-3 w-3" />Voice note</span>
+              <span className="text-xs font-semibold text-primary flex items-center gap-1"><Mic className="h-3 w-3" />Voice note</span>
               <div className="flex items-center">
                 <NotePlayer m={m} />
                 {onRemove && <Button type="button" size="sm" variant="ghost" className="h-8 px-2" aria-label="Delete voice note" onClick={() => onRemove(m)}><Trash2 className="h-3.5 w-3.5" /></Button>}

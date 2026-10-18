@@ -53,7 +53,7 @@ const ClassicAdminBottomNav = ({ onOpenMenu }: AdminBottomNavProps) => {
             >
               {active && <span className={cn("absolute top-1 h-1 w-8 rounded-full", colours?.navBar ?? "bg-primary")} />}
               <tab.icon className="h-5 w-5" />
-              <span className="text-[10px] font-medium">{tab.label}</span>
+              <span className="text-xs font-medium">{tab.label}</span>
             </NavLink>
           );
         })}
@@ -63,7 +63,7 @@ const ClassicAdminBottomNav = ({ onOpenMenu }: AdminBottomNavProps) => {
           className="flex flex-col items-center justify-center gap-0.5 min-h-[48px] text-muted-foreground hover:text-foreground transition-colors"
         >
           <Menu className="h-5 w-5" />
-          <span className="text-[10px] font-medium">Menu</span>
+          <span className="text-xs font-medium">Menu</span>
         </button>
       </div>
     </nav>

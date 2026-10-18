@@ -34,7 +34,7 @@ const WARN_TONE_CLASS: Record<string, string> = {
   red: "border-red-500 bg-red-50 text-red-800",
 };
 const WarnChip = ({ label, short, tone }: { label: string; short?: string | null; tone?: string | null }) => (
-  <Badge variant="outline" data-testid="markup-warn" data-tone={tone ?? "orange"} title={label} className={`text-[8px] px-1 py-0 h-3.5 shrink-0 truncate max-w-[220px] ${WARN_TONE_CLASS[tone ?? "orange"] ?? WARN_TONE_CLASS.orange}`}>{tone === "green" ? "✓" : "⚠"} {short ?? label}</Badge>
+  <Badge variant="outline" data-testid="markup-warn" data-tone={tone ?? "orange"} title={label} className={`text-xs px-1 py-0 h-3.5 shrink-0 truncate max-w-[220px] ${WARN_TONE_CLASS[tone ?? "orange"] ?? WARN_TONE_CLASS.orange}`}>{tone === "green" ? "✓" : "⚠"} {short ?? label}</Badge>
 );
 
 interface SharedBasketItemProps {
@@ -114,11 +114,11 @@ export function CollapsibleBundleCard({
           ) : (
             <span className="font-medium truncate max-w-[100px]">{item.bundleName}</span>
           )}
-          <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">
+          <Badge variant="secondary" className="text-xs px-1 py-0 shrink-0">
             {item.bundleItems?.length || item.kitContents?.length || 0} items
           </Badge>
           {kitCost > 0 && (
-            <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-green-500/40 text-green-600 shrink-0">
+            <Badge variant="outline" className="text-xs px-1 py-0 h-3.5 border-green-500/40 text-green-600 shrink-0">
               {kitMarkup}% M/Up · cost {formatZAR(kitCost)}
             </Badge>
           )}
@@ -132,12 +132,12 @@ export function CollapsibleBundleCard({
         <Input
           type="number" min={sliderMin} max={sliderMax} step={sliderStep} value={multiplier}
           onChange={handleInputChange}
-          className="h-5 w-12 text-[10px] text-center px-0.5 shrink-0"
+          className="h-5 w-12 text-xs text-center px-0.5 shrink-0"
         />
         <Button variant="outline" size="icon" className="h-5 w-5 shrink-0" onClick={increment} disabled={multiplier >= sliderMax}>
           <Plus className="h-3 w-3" />
         </Button>
-        <span className="text-[9px] text-muted-foreground shrink-0">{isBundleLength ? "m" : "×"}</span>
+        <span className="text-xs text-muted-foreground shrink-0">{isBundleLength ? "m" : "×"}</span>
 
         <span className="font-semibold text-xs whitespace-nowrap shrink-0 ml-auto">
           R{bundleDisplayPrice.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
@@ -161,7 +161,7 @@ export function CollapsibleBundleCard({
             className="flex-1"
             aria-label="Piping kit metres"
           />
-          <span className="text-[10px] text-muted-foreground whitespace-nowrap tabular-nums">
+          <span className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
             R{bundleUnitPx.toLocaleString("en-ZA", { maximumFractionDigits: 2 })}/m
           </span>
         </div>
@@ -171,10 +171,10 @@ export function CollapsibleBundleCard({
       {bundleExpanded && !(item.bundleItems && item.bundleItems.length > 0) && (
         <div className="border-t border-border/50 bg-muted/30 px-3 py-1.5 space-y-0.5">
           {(item.kitContents || []).length === 0 && (
-            <div className="text-[10px] text-muted-foreground pl-4">No contents recorded</div>
+            <div className="text-xs text-muted-foreground pl-4">No contents recorded</div>
           )}
           {(item.kitContents || []).map((k, idx) => (
-            <div key={idx} className="flex items-center justify-between text-[10px] text-muted-foreground">
+            <div key={idx} className="flex items-center justify-between text-xs text-muted-foreground">
               <span className="truncate flex-1 min-w-0 pl-4">{k.name}</span>
               <span className="shrink-0 tabular-nums">
                 {k.isLengthItem ? `${formatQty1(multiplier)}m` : `×${k.quantity * (isBundleLength ? 1 : multiplier)}`}
@@ -197,7 +197,7 @@ export function CollapsibleBundleCard({
             const subPrice = computeLineTotal(subQty, subUnitPrice, subUnit);
 
             return (
-              <div key={idx} className="flex items-center justify-between text-[10px] text-muted-foreground">
+              <div key={idx} className="flex items-center justify-between text-xs text-muted-foreground">
                 <span className="truncate flex-1 min-w-0 pl-4">
                   {getProductDisplayName(sub.product)}
                 </span>
@@ -266,10 +266,10 @@ export function RegularItemCard({
 
   if (isCompact) {
     return (
-      <div className="flex items-center gap-1 rounded border bg-background px-1 py-0.5 text-[10px]">
+      <div className="flex items-center gap-1 rounded border bg-background px-1 py-0.5 text-xs">
         <div className="min-w-0 flex-1 truncate font-medium flex items-center gap-0.5">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
-          <Badge variant="outline" className="text-[7px] px-1 py-0 h-3 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
+          <Badge variant="outline" className="text-xs px-1 py-0 h-3 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
           {warn && <WarnChip label={warn.label} short={warn.short} tone={warn.tone} />}{spChip}
           <ProductInfoDialog product={item.product} />
         </div>
@@ -277,8 +277,8 @@ export function RegularItemCard({
           <div className="flex items-center gap-0.5 shrink-0">
             <Input {...qtyInputProps(unit)} value={formatQty(item.length || 1, unit)}
               onChange={(e) => onUpdateLength(sanitizeQty(parseFloat(e.target.value), unit))}
-              className="h-4 w-10 text-[10px] text-center px-0.5" />
-            <span className="text-[8px] text-muted-foreground">{unit.unit_type === "roll" ? "m" : unit.unit_type}</span>
+              className="h-4 w-10 text-xs text-center px-0.5" />
+            <span className="text-xs text-muted-foreground">{unit.unit_type === "roll" ? "m" : unit.unit_type}</span>
           </div>
         ) : (
 
@@ -295,13 +295,13 @@ export function RegularItemCard({
         {/* Markup quick-adjust */}
         <div className="flex items-center gap-0.5 shrink-0" data-no-dnd="true">
           <button
-            className="h-3.5 px-1 rounded-full bg-muted text-[8px] font-medium text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors"
+            className="h-3.5 px-1 rounded-full bg-muted text-xs font-medium text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors"
             onClick={() => setMarkupAdj(prev => prev - 5)}
             onPointerDown={(e) => e.stopPropagation()}
           >-5</button>
-          <span className="text-[8px] font-semibold text-foreground w-6 text-center">{effectiveMarkup}%</span>
+          <span className="text-xs font-semibold text-foreground w-6 text-center">{effectiveMarkup}%</span>
           <button
-            className="h-3.5 px-1 rounded-full bg-muted text-[8px] font-medium text-muted-foreground hover:bg-green-500/20 hover:text-green-600 transition-colors"
+            className="h-3.5 px-1 rounded-full bg-muted text-xs font-medium text-muted-foreground hover:bg-green-500/20 hover:text-green-600 transition-colors"
             onClick={() => setMarkupAdj(prev => prev + 5)}
             onPointerDown={(e) => e.stopPropagation()}
           >+5</button>
@@ -324,22 +324,22 @@ export function RegularItemCard({
       <div className="min-w-0 flex-1">
         <p className="font-medium truncate flex items-center gap-1">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
-          <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
+          <Badge variant="outline" className="text-xs px-1 py-0 h-3.5 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up{lineCost > 0 ? ` · cost ${formatZAR(lineCost)}` : ""}</Badge>
           {warn && <WarnChip label={warn.label} short={warn.short} tone={warn.tone} />}{spChip}
           <ProductInfoDialog product={item.product} />
         </p>
         <div className="flex items-center gap-1.5">
-          <p className="text-[10px] font-mono font-medium text-primary/80 truncate">
+          <p className="text-xs font-mono font-medium text-primary/80 truncate">
             {item.product.product_code}
           </p>
           {isMeasured && (
-            <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600">
+            <Badge variant="outline" className="text-xs px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600">
               <Ruler className="h-2 w-2" />
               {formatUnitPrice(unitPrice, unit)}
             </Badge>
           )}
           {!isMeasured && isPackItem && (
-            <Badge variant="outline" className="text-[7px] px-0.5 py-0 h-3 border-muted-foreground/40 text-muted-foreground">
+            <Badge variant="outline" className="text-xs px-0.5 py-0 h-3 border-muted-foreground/40 text-muted-foreground">
               pk/{packQty} · R{unitSell.toFixed(2)}/ea
             </Badge>
           )}
@@ -350,7 +350,7 @@ export function RegularItemCard({
           <Input {...qtyInputProps(unit)} value={formatQty(item.length || 1, unit)}
             onChange={(e) => onUpdateLength(sanitizeQty(parseFloat(e.target.value), unit))}
             className="h-6 w-14 text-xs text-center px-1" />
-          <span className="text-[10px] text-muted-foreground">{unit.unit_type === "roll" ? "m" : unit.unit_type}</span>
+          <span className="text-xs text-muted-foreground">{unit.unit_type === "roll" ? "m" : unit.unit_type}</span>
         </div>
       ) : (
 
@@ -367,14 +367,14 @@ export function RegularItemCard({
       {/* Markup quick-adjust pills */}
       <div className="flex items-center gap-0.5 shrink-0" data-no-dnd="true">
         <button
-          className="h-5 px-1.5 rounded-full bg-muted text-[9px] font-semibold text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors"
+          className="h-5 px-1.5 rounded-full bg-muted text-xs font-semibold text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors"
           onClick={() => setMarkupAdj(prev => prev - 5)}
           onPointerDown={(e) => e.stopPropagation()}
           title="Decrease markup 5%"
         >-5%</button>
-        <span className="text-[10px] font-bold text-foreground w-8 text-center tabular-nums">{effectiveMarkup}%</span>
+        <span className="text-xs font-bold text-foreground w-8 text-center tabular-nums">{effectiveMarkup}%</span>
         <button
-          className="h-5 px-1.5 rounded-full bg-muted text-[9px] font-semibold text-muted-foreground hover:bg-green-500/20 hover:text-green-600 transition-colors"
+          className="h-5 px-1.5 rounded-full bg-muted text-xs font-semibold text-muted-foreground hover:bg-green-500/20 hover:text-green-600 transition-colors"
           onClick={() => setMarkupAdj(prev => prev + 5)}
           onPointerDown={(e) => e.stopPropagation()}
           title="Increase markup 5%"

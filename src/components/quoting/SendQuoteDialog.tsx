@@ -433,7 +433,7 @@ const SendQuoteDialog = ({
             <div className="fl-send-label">Client link</div>
             {clientUrl ? (
               <>
-                <Input readOnly value={clientUrl} className="fl-send-field font-mono text-[13px]" onFocus={(e) => e.target.select()} />
+                <Input readOnly value={clientUrl} className="fl-send-field font-mono text-xs" onFocus={(e) => e.target.select()} />
                 <div className="flex flex-wrap gap-2">
                   <SendStateButton
                     state={copyState} small onClick={handleCopyLink} title="Copy client link" testId="send-copy-link"

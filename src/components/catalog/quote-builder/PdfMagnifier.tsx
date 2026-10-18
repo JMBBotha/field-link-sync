@@ -152,7 +152,7 @@ const PdfMagnifier = ({ active, imageUrl, containerRef, baseZoom }: PdfMagnifier
       {/* Zoom level indicator */}
       {showLevel && (
         <div
-          className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-black/70 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+          className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs font-semibold px-1.5 py-0.5 rounded-full"
         >
           {mag.toFixed(1)}×
         </div>

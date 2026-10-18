@@ -140,7 +140,7 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
       {/* Header with running count */}
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-foreground">Area Quote Summary</h4>
-        <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
+        <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
           {breakdown.totalAreas} area{breakdown.totalAreas !== 1 ? "s" : ""} · {breakdown.totalItems} item{breakdown.totalItems !== 1 ? "s" : ""}
         </Badge>
       </div>
@@ -159,7 +159,7 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
                 <span className="flex items-center gap-1 text-muted-foreground">
                   {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                   <span className="font-medium text-foreground">{z.name}</span>
-                  <Badge variant="outline" className="text-[9px] px-1 py-0">
+                  <Badge variant="outline" className="text-xs px-1 py-0">
                     {z.totalItems}
                   </Badge>
                 </span>
@@ -169,25 +169,25 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
               {isExpanded && (
                 <div className="ml-5 space-y-0.5 pb-1">
                   {z.acUnits && (
-                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <div className="flex justify-between text-xs text-muted-foreground">
                       <span>AC Units ({z.acUnits.qty})</span>
                       <span>R{fmt(z.acUnits.cost)}</span>
                     </div>
                   )}
                   {z.materials && (
-                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Materials ({z.materials.count})</span>
                       <span>R{fmt(z.materials.cost)}</span>
                     </div>
                   )}
                   {z.brackets && (
-                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Brackets ({z.brackets.qty})</span>
                       <span>R{fmt(z.brackets.cost)}</span>
                     </div>
                   )}
                   {z.consumables && (
-                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Consumables/Bundles ({z.consumables.qty})</span>
                       <span>R{fmt(z.consumables.cost)}</span>
                     </div>
@@ -210,7 +210,7 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
       {/* Markup slider */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+          <label className="text-xs text-muted-foreground uppercase tracking-wider">
             Markup
           </label>
           <div className="flex items-center gap-1">

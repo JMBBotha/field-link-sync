@@ -118,7 +118,7 @@ const CatalogSearchSuggestions = ({
     >
       {historySuggestions.length > 0 && (
         <>
-          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">
+          <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">
             Recent Searches
           </div>
           {historySuggestions.map((s) => {
@@ -147,7 +147,7 @@ const CatalogSearchSuggestions = ({
       )}
       {filterSuggestions.length > 0 && (
         <>
-          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">
+          <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">
             Quick Filters
           </div>
           {filterSuggestions.map((s) => {
@@ -171,7 +171,7 @@ const CatalogSearchSuggestions = ({
       )}
       {productSuggestions.length > 0 && (
         <>
-          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">
+          <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">
             Products
           </div>
           {productSuggestions.map((s) => {

@@ -51,7 +51,7 @@ export default function VoiceClientOverrideFields({ draft, onChange, onSaveNew, 
           </Button>
         )}
       </div>
-      {!ready && <p className="text-[11px] text-muted-foreground">Name and phone are needed to save a new client.</p>}
+      {!ready && <p className="text-xs text-muted-foreground">Name and phone are needed to save a new client.</p>}
     </div>
   );
 }

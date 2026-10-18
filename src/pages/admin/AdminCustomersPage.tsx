@@ -38,7 +38,7 @@ import { formatRand } from "@/utils/formatRand";
 import { LEAD_SOURCE_OPTIONS, DEFAULT_LEAD_SOURCE, toLeadSourceValue, leadSourceLabel } from "@/lib/leadSources";
 
 const LEAD_SOURCE_STYLES: Record<string, { badge: string; border: string }> = {
-  manual:        { badge: "bg-slate-100 text-slate-700 border-slate-200",       border: "border-t-slate-400" },
+  manual:        { badge: "bg-slate-100 text-ink border-slate-200",       border: "border-t-slate-400" },
   facebook_lead: { badge: "bg-blue-100 text-blue-700 border-blue-200",          border: "border-t-blue-500" },
   website_form:  { badge: "bg-green-100 text-green-700 border-green-200",       border: "border-t-green-500" },
   website:       { badge: "bg-green-100 text-green-700 border-green-200",       border: "border-t-green-500" },
@@ -47,7 +47,7 @@ const LEAD_SOURCE_STYLES: Record<string, { badge: string; border: string }> = {
   vapi:          { badge: "bg-orange-100 text-orange-700 border-orange-200",    border: "border-t-orange-500" },
   walk_in:       { badge: "bg-purple-100 text-purple-700 border-purple-200",    border: "border-t-purple-500" },
   referral:      { badge: "bg-pink-100 text-pink-700 border-pink-200",          border: "border-t-pink-500" },
-  other:         { badge: "bg-slate-100 text-slate-700 border-slate-200",       border: "border-t-slate-400" },
+  other:         { badge: "bg-slate-100 text-ink border-slate-200",       border: "border-t-slate-400" },
 };
 
 const getInitials = (first?: string | null, last?: string | null, company?: string | null) => {
@@ -64,7 +64,7 @@ const LeadSourceBadge = ({ source }: { source?: string | null }) => {
   const key = toLeadSourceValue(source);
   const style = LEAD_SOURCE_STYLES[key] || LEAD_SOURCE_STYLES.manual;
   return (
-    <Badge variant="outline" className={cn("text-[10px] font-medium", style.badge)}>{leadSourceLabel(source)}</Badge>
+    <Badge variant="outline" className={cn("text-xs font-medium", style.badge)}>{leadSourceLabel(source)}</Badge>
   );
 };
 

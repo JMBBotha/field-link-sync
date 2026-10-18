@@ -267,9 +267,9 @@ const ClassicAdminSidebar = ({
       <button
         onClick={() => handleNav(item.path)}
         className={cn(
-          "w-full flex items-center gap-2.5 rounded-md text-[12.5px] font-medium leading-tight transition-colors relative",
+          "w-full flex items-center gap-2.5 rounded-md text-xs font-medium leading-tight transition-colors relative",
           collapsed ? "justify-center px-0 py-2" : "px-3 py-[5px]",
-          depth > 0 && !collapsed && "pl-9 py-1 text-[12px]",
+          depth > 0 && !collapsed && "pl-9 py-1 text-xs",
           active
             ? "bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-white/80"
             : "text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]",
@@ -278,12 +278,12 @@ const ClassicAdminSidebar = ({
         <item.icon className={cn("h-4 w-4 shrink-0", active ? "opacity-100" : "opacity-80")} strokeWidth={1.75} />
         {!collapsed && <span className="truncate">{item.label}</span>}
         {!collapsed && item.badge && item.badge > 0 ? (
-          <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-[10px]">
+          <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-xs">
             {item.badge > 99 ? "99+" : item.badge}
           </Badge>
         ) : null}
         {collapsed && item.badge && item.badge > 0 ? (
-          <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-[9px] text-white font-bold px-1">
+          <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-xs text-white font-bold px-1">
             {item.badge > 99 ? "99+" : item.badge}
           </span>
         ) : null}
@@ -312,10 +312,10 @@ const ClassicAdminSidebar = ({
       if (badged && item.path === "/admin/catalog") {
         const btn = (
           <button
-            className="w-full flex items-center justify-center gap-3 rounded-md px-0 py-2 text-[12.5px] font-medium transition-colors relative text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]"
+            className="w-full flex items-center justify-center gap-3 rounded-md px-0 py-2 text-xs font-medium transition-colors relative text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]"
           >
             <item.icon className="h-4 w-4 shrink-0 opacity-80" strokeWidth={1.75} />
-            <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-[9px] text-white font-bold px-1">
+            <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-xs text-white font-bold px-1">
               {item.badge! > 99 ? "99+" : item.badge}
             </span>
           </button>
@@ -347,7 +347,7 @@ const ClassicAdminSidebar = ({
           }
         }}
         className={cn(
-          "w-full flex items-center gap-2.5 px-3 py-[5px] rounded-md text-[12.5px] font-medium leading-tight transition-colors relative",
+          "w-full flex items-center gap-2.5 px-3 py-[5px] rounded-md text-xs font-medium leading-tight transition-colors relative",
           active
             ? "bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-white/80"
             : "text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]",
@@ -356,7 +356,7 @@ const ClassicAdminSidebar = ({
         <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
         <span className="truncate">{item.label}</span>
         {badged ? (
-          <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-[10px]">
+          <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-xs">
             {item.badge! > 99 ? "99+" : item.badge}
           </Badge>
         ) : null}
@@ -410,12 +410,12 @@ const ClassicAdminSidebar = ({
           {!collapsed && (
             <div className="flex w-full min-w-0 flex-col items-center">
               <div className="flex w-full max-w-full items-start justify-center gap-1">
-                <span className="text-center text-[12px] font-bold uppercase leading-tight tracking-wide text-white break-words">
+                <span className="text-center text-xs font-bold uppercase leading-tight tracking-wide text-white break-words">
                   {companyName}
                 </span>
                 <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-nav-muted" />
               </div>
-              <span className="text-[11px] font-medium text-nav-muted">{roleLabel}</span>
+              <span className="text-xs font-medium text-nav-muted">{roleLabel}</span>
             </div>
           )}
         </button>
@@ -446,11 +446,11 @@ const ClassicAdminSidebar = ({
             {!collapsed && <span className="truncate">New Leads</span>}
             {inboxCount > 0 && (
               collapsed ? (
-                <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-white">
+                <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive px-1 text-xs font-bold text-white">
                   {inboxCount > 99 ? "99+" : inboxCount}
                 </span>
               ) : (
-                <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 px-1 text-[10px]">
+                <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 px-1 text-xs">
                   {inboxCount > 99 ? "99+" : inboxCount}
                 </Badge>
               )
@@ -488,7 +488,7 @@ const ClassicAdminSidebar = ({
           aria-expanded={accountOpen}
           title="Settings & account"
           className={cn(
-            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] font-medium text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-xs font-medium text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
             collapsed && "justify-center px-0"
           )}
         >
@@ -511,7 +511,7 @@ const ClassicAdminSidebar = ({
             key={item.path}
             onClick={() => handleNav(item.path)}
             className={cn(
-              "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+              "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-xs text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
               collapsed && "justify-center px-0"
             )}
           >
@@ -524,7 +524,7 @@ const ClassicAdminSidebar = ({
             <button
               onClick={() => setAdvancedOpen((v) => !v)}
               className={cn(
-                "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+                "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-xs text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
                 collapsed && "justify-center px-0"
               )}
             >
@@ -541,7 +541,7 @@ const ClassicAdminSidebar = ({
                 key={item.path}
                 onClick={() => handleNav(item.path)}
                 className={cn(
-                  "w-full flex items-center gap-3 rounded-md pl-7 pr-3 py-1 text-[12px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+                  "w-full flex items-center gap-3 rounded-md pl-7 pr-3 py-1 text-xs text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
                   collapsed && "justify-center px-0"
                 )}
               >
@@ -555,7 +555,7 @@ const ClassicAdminSidebar = ({
         <button
           onClick={() => { navigate("/admin/my-base"); onMobileClose?.(); }}
           className={cn(
-            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-xs text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
             collapsed && "justify-center px-0"
           )}
         >
@@ -568,7 +568,7 @@ const ClassicAdminSidebar = ({
             onMobileClose?.();
           }}
           className={cn(
-            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-xs text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
             collapsed && "justify-center px-0"
           )}
         >

@@ -57,14 +57,14 @@ const DraggableProductRow = ({
         <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-medium truncate text-foreground">
+        <p className="text-xs font-medium truncate text-foreground">
           {product.short_name || product.product_code}
         </p>
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-mono text-muted-foreground">{product.product_code}</span>
-          <span className="text-[10px] font-semibold text-foreground">R{price.toLocaleString("en-ZA")}</span>
+          <span className="text-xs font-mono text-muted-foreground">{product.product_code}</span>
+          <span className="text-xs font-semibold text-foreground">R{price.toLocaleString("en-ZA")}</span>
           {inQuoteQty > 0 && (
-            <Badge variant="secondary" className="h-4 text-[9px] px-1">
+            <Badge variant="secondary" className="h-4 text-xs px-1">
               <Check className="h-2.5 w-2.5 mr-0.5" />×{inQuoteQty}
             </Badge>
           )}
@@ -84,11 +84,11 @@ const DraggableProductRow = ({
             </Button>
           </PopoverTrigger>
           <PopoverContent side="left" align="start" className="w-40 p-1">
-            <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
               Add to zone
             </p>
             {baskets.length === 0 ? (
-              <p className="text-[10px] text-muted-foreground px-2 py-2">No zones yet</p>
+              <p className="text-xs text-muted-foreground px-2 py-2">No zones yet</p>
             ) : (
               baskets.map((b) => (
                 <Button
@@ -150,11 +150,11 @@ const FallbackProductPanel = ({
     <div className="flex flex-col h-full border-l bg-background w-[240px] shrink-0">
       <div className="px-2 py-1.5 border-b bg-card text-foreground">
         {supplierName && (
-          <Badge variant="outline" className="text-[9px] mb-1 w-full justify-center truncate">
+          <Badge variant="outline" className="text-xs mb-1 w-full justify-center truncate">
             {supplierProducts.length} products for {supplierName}
           </Badge>
         )}
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
           Supplier Products
         </p>
         <div className="relative">
@@ -163,7 +163,7 @@ const FallbackProductPanel = ({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search products…"
-            className="h-7 text-[11px] pl-7"
+            className="h-7 text-xs pl-7"
           />
         </div>
       </div>
@@ -171,13 +171,13 @@ const FallbackProductPanel = ({
         <div className="p-1 space-y-0.5">
           {supplierProducts.length === 0 ? (
             <div className="text-center py-6 px-2">
-              <p className="text-[11px] font-medium text-muted-foreground">No products imported</p>
-              <p className="text-[10px] text-muted-foreground mt-1">
+              <p className="text-xs font-medium text-muted-foreground">No products imported</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 {supplierName ? `Import products for ${supplierName} first.` : "Import products first."}
               </p>
             </div>
           ) : filtered.length === 0 ? (
-            <p className="text-[10px] text-muted-foreground text-center py-4">No products found</p>
+            <p className="text-xs text-muted-foreground text-center py-4">No products found</p>
           ) : (
             filtered.map((p) => (
               <DraggableProductRow
@@ -192,7 +192,7 @@ const FallbackProductPanel = ({
         </div>
       </ScrollArea>
       <div className="px-2 py-1 border-t bg-card text-foreground">
-        <p className="text-[9px] text-muted-foreground text-center">
+        <p className="text-xs text-muted-foreground text-center">
           {filtered.length} products · Drag to zone or click +
         </p>
       </div>

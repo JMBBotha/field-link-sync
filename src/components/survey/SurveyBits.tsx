@@ -7,10 +7,10 @@ import { useSurveyFileUrl, type SyncState } from "@/hooks/useSiteSurvey";
 import type { SurveyMedia } from "@/lib/siteSurvey/model";
 
 export function SyncBadge({ state, online }: { state: SyncState; online: boolean }) {
-  if (state === "syncing") return <Badge variant="outline" className="gap-1 text-[11px]" data-testid="survey-sync"><Loader2 className="h-3 w-3 animate-spin" />Uploading…</Badge>;
-  if (state === "error") return <Badge variant="outline" className="gap-1 text-[11px] border-orange-300 text-orange-700" data-testid="survey-sync"><RefreshCw className="h-3 w-3" />Saved on phone · retrying</Badge>;
-  if (state === "saved-phone" || !online) return <Badge variant="outline" className="gap-1 text-[11px]" data-testid="survey-sync">{online ? <UploadCloud className="h-3 w-3" /> : <CloudOff className="h-3 w-3" />}Saved on phone</Badge>;
-  return <Badge variant="outline" className="gap-1 text-[11px] border-green-300 text-green-700" data-testid="survey-sync"><CheckCircle2 className="h-3 w-3" />Synced</Badge>;
+  if (state === "syncing") return <Badge variant="outline" className="gap-1 text-xs" data-testid="survey-sync"><Loader2 className="h-3 w-3 animate-spin" />Uploading…</Badge>;
+  if (state === "error") return <Badge variant="outline" className="gap-1 text-xs border-orange-300 text-orange-700" data-testid="survey-sync"><RefreshCw className="h-3 w-3" />Saved on phone · retrying</Badge>;
+  if (state === "saved-phone" || !online) return <Badge variant="outline" className="gap-1 text-xs" data-testid="survey-sync">{online ? <UploadCloud className="h-3 w-3" /> : <CloudOff className="h-3 w-3" />}Saved on phone</Badge>;
+  return <Badge variant="outline" className="gap-1 text-xs border-green-300 text-green-700" data-testid="survey-sync"><CheckCircle2 className="h-3 w-3" />Synced</Badge>;
 }
 
 export function Chips<T extends string | number>({ options, value, onChange, label }:
@@ -65,8 +65,8 @@ export function PhotoSlot({ title, media, required, onFile, onMarkup, onRemove, 
         <>
           <div className="relative overflow-hidden rounded-xl bg-muted aspect-[4/3]">
             {url ? <img src={url} alt={title} className="h-full w-full object-cover" /> : <Loader2 className="absolute inset-0 m-auto h-5 w-5 animate-spin text-muted-foreground" />}
-            {!media.synced && <span className="absolute bottom-2 left-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">On phone</span>}
-            {media.annotated_path && <span className="absolute bottom-2 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">Marked</span>}
+            {!media.synced && <span className="absolute bottom-2 left-2 rounded bg-black/60 px-1.5 py-0.5 text-xs font-semibold text-white">On phone</span>}
+            {media.annotated_path && <span className="absolute bottom-2 right-2 rounded bg-black/60 px-1.5 py-0.5 text-xs font-semibold text-white">Marked</span>}
           </div>
           <div className="grid grid-cols-3 gap-2">
             <Button type="button" variant="outline" className="min-h-[44px]" onClick={() => { setReplace(media.id); cam.current?.click(); }}><Camera className="h-4 w-4 mr-1" />Retake</Button>

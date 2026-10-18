@@ -29,7 +29,7 @@ export default function CallReportCard({ report, showCaller }: { report: CallRep
   return (
     <div className="rounded-md border border-border bg-muted/30 p-2 text-sm space-y-1.5">
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Call report</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Call report</span>
         {report.is_test && <Badge variant="outline">Test</Badge>}
         {report.status === "failed" && <Badge variant="destructive">Failed</Badge>}
         {report.status === "pending" && <Badge variant="outline">Pending</Badge>}
@@ -55,7 +55,7 @@ export default function CallReportCard({ report, showCaller }: { report: CallRep
         </p>
       )}
       {report.error && <p className="text-xs text-destructive">{report.error}</p>}
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         Email: {report.email_status || "not sent"}{report.email_to ? ` → ${report.email_to}` : ""}
       </p>
     </div>

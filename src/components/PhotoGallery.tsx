@@ -196,7 +196,7 @@ export function PhotoGallery({
               {onAddPhotos && (
                 <button
                   onClick={onAddPhotos}
-                  className="text-[10px] text-white hover:text-white/80 hover:underline flex items-center gap-0.5"
+                  className="text-xs text-white hover:text-white/80 hover:underline flex items-center gap-0.5"
                 >
                   <Plus className="h-2.5 w-2.5" />
                   Add
@@ -246,15 +246,15 @@ export function PhotoGallery({
     return (
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{sectionTitle}</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{sectionTitle}</p>
           {uploadedCount > 0 && (
-            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 bg-green-500/10 text-green-700 border-green-200">
+            <Badge variant="outline" className="text-xs px-1 py-0 h-3.5 bg-green-500/10 text-green-700 border-green-200">
               <Cloud className="h-2 w-2 mr-0.5" />
               {uploadedCount}
             </Badge>
           )}
           {queuedCount > 0 && (
-            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 bg-yellow-500/10 text-yellow-700 border-yellow-200">
+            <Badge variant="outline" className="text-xs px-1 py-0 h-3.5 bg-yellow-500/10 text-yellow-700 border-yellow-200">
               <Clock className="h-2 w-2 mr-0.5" />
               {queuedCount}
             </Badge>
@@ -281,7 +281,7 @@ export function PhotoGallery({
               {/* Queued badge */}
               {photo.isQueued && (
                 <div className="absolute top-0.5 right-0.5">
-                  <Badge className="bg-yellow-500/90 text-[8px] px-1 py-0 h-3.5">
+                  <Badge className="bg-yellow-500/90 text-xs px-1 py-0 h-3.5">
                     <Clock className="h-2 w-2" />
                   </Badge>
                 </div>

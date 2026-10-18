@@ -347,12 +347,12 @@ const AdminMaintenancePage = () => {
                     </div>
                     <div className="space-y-0.5 overflow-hidden max-h-[52px]">
                       {daySchedules.slice(0, 3).map(s => (
-                        <div key={s.id} className={cn("px-1 py-0.5 rounded text-[10px] truncate text-white", getStatusColor(s))}>
+                        <div key={s.id} className={cn("px-1 py-0.5 rounded text-xs truncate text-white", getStatusColor(s))}>
                           {s.customers?.name || "Unknown"}
                         </div>
                       ))}
                       {daySchedules.length > 3 && (
-                        <div className="text-[10px] text-muted-foreground text-center">+{daySchedules.length - 3} more</div>
+                        <div className="text-xs text-muted-foreground text-center">+{daySchedules.length - 3} more</div>
                       )}
                     </div>
                   </div>
@@ -399,7 +399,7 @@ const AdminMaintenancePage = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-semibold truncate">{schedule.customers?.name || "Unknown"}</p>
-                          <Badge className={cn(config.color, "text-white text-[10px]")}>{config.label}</Badge>
+                          <Badge className={cn(config.color, "text-white text-xs")}>{config.label}</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground">{contractLabel}</p>
                         {schedule.equipment && (
@@ -415,8 +415,8 @@ const AdminMaintenancePage = () => {
                       <div className="text-right shrink-0">
                         <p className="text-sm font-medium">{format(new Date(schedule.due_date), "dd MMM yyyy")}</p>
                         <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                          {schedule.reminder_7d_sent && <Badge variant="outline" className="text-[10px] px-1">7d ✓</Badge>}
-                          {schedule.reminder_2d_sent && <Badge variant="outline" className="text-[10px] px-1">2d ✓</Badge>}
+                          {schedule.reminder_7d_sent && <Badge variant="outline" className="text-xs px-1">7d ✓</Badge>}
+                          {schedule.reminder_2d_sent && <Badge variant="outline" className="text-xs px-1">2d ✓</Badge>}
                         </div>
                       </div>
                     </div>

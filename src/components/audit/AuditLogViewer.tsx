@@ -146,7 +146,7 @@ const AuditLogViewer = () => {
                           <Badge variant="outline" className="text-xs">{log.table_name}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge className={`text-[10px] ${ACTION_COLORS[log.action] || ""}`}>
+                          <Badge className={`text-xs ${ACTION_COLORS[log.action] || ""}`}>
                             {log.action}
                           </Badge>
                         </TableCell>

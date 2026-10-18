@@ -590,7 +590,7 @@ const LeadDetailSheet = ({
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-medium truncate">{lead.customer_phone}</p>
-                  <p className="text-[10px] text-muted-foreground">Call</p>
+                  <p className="text-xs text-muted-foreground">Call</p>
                 </div>
               </a>
 
@@ -606,7 +606,7 @@ const LeadDetailSheet = ({
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-medium truncate">Navigate</p>
-                  <p className="text-[10px] text-muted-foreground">Directions</p>
+                  <p className="text-xs text-muted-foreground">Directions</p>
                 </div>
               </a>
             </div>
@@ -623,7 +623,7 @@ const LeadDetailSheet = ({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium line-clamp-2">{lead.customer_address}</p>
-                <p className="text-[10px] text-muted-foreground">View on map</p>
+                <p className="text-xs text-muted-foreground">View on map</p>
               </div>
             </a>
 
@@ -640,7 +640,7 @@ const LeadDetailSheet = ({
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Lead Information</h3>
                 {lead.created_at && (
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     Created {formatTimeAgo(lead.created_at)}
                   </span>
                 )}
@@ -712,7 +712,7 @@ const LeadDetailSheet = ({
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Quotes on this lead</h3>
                 {leadQuotes && leadQuotes.length > 0 && (
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {leadQuotes.length} linked
                   </span>
                 )}
@@ -735,7 +735,7 @@ const LeadDetailSheet = ({
                           <p className="text-xs font-medium truncate">
                             #{quote.quote_number}
                           </p>
-                          <p className="text-[10px] text-muted-foreground">
+                          <p className="text-xs text-muted-foreground">
                             {quote.created_at
                               ? new Date(quote.created_at).toLocaleDateString('en-ZA')
                               : '—'}
@@ -743,7 +743,7 @@ const LeadDetailSheet = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-xs">
                           {quote.status}
                         </Badge>
                         <span className="text-xs font-semibold">
@@ -842,7 +842,7 @@ const LeadDetailSheet = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-5 text-[10px] px-1.5 text-white hover:text-white/80 hover:bg-white/10"
+                  className="h-5 text-xs px-1.5 text-white hover:text-white/80 hover:bg-white/10"
                   onClick={() => setShowExpandedGallery(true)}
                 >
                   View All
@@ -899,7 +899,7 @@ const LeadDetailSheet = ({
                       <Camera className="h-3.5 w-3.5 mr-1" />
                       Photo
                       {photoPendingCount > 0 && (
-                        <span className="ml-1 text-[10px] bg-yellow-500/20 text-yellow-600 px-1 rounded">
+                        <span className="ml-1 text-xs bg-yellow-500/20 text-yellow-600 px-1 rounded">
                           {photoPendingCount}
                         </span>
                       )}
@@ -1050,7 +1050,7 @@ const LeadDetailSheet = ({
 
             {/* Created timestamp at bottom */}
               {lead.created_at && (
-                <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground pt-2">
+                <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground pt-2">
                   <Clock className="h-3 w-3" />
                   <span>Created {formatTimeAgo(lead.created_at)}</span>
                 </div>

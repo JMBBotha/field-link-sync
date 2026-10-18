@@ -68,16 +68,16 @@ const InvoiceDashboardWidget = ({ onViewAll }: InvoiceDashboardWidgetProps) => {
           <FileText className="h-5 w-5 text-primary" />
           <h3 className="font-semibold">Invoicing</h3>
         </div>
-        <Badge variant="secondary" className="text-[10px]">{stats.total} total</Badge>
+        <Badge variant="secondary" className="text-xs">{stats.total} total</Badge>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="text-[10px] text-muted-foreground uppercase font-semibold">Revenue</p>
+          <p className="text-xs text-muted-foreground uppercase font-semibold">Revenue</p>
           <p className="text-lg font-bold text-green-600">{formatCurrency(stats.totalRevenue)}</p>
         </div>
         <div>
-          <p className="text-[10px] text-muted-foreground uppercase font-semibold">Outstanding</p>
+          <p className="text-xs text-muted-foreground uppercase font-semibold">Outstanding</p>
           <p className="text-lg font-bold text-orange-600">{formatCurrency(stats.outstanding)}</p>
         </div>
       </div>

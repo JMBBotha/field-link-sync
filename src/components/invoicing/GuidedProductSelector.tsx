@@ -234,7 +234,7 @@ const GuidedProductSelector = ({ open, onOpenChange, onAddItem }: GuidedProductS
         {/* Fuzzy search results overlay */}
         {searchQuery.trim() && fuzzyResults.length > 0 && (
           <div className="space-y-1.5 mb-3 max-h-48 overflow-y-auto border rounded-lg p-2 bg-accent/20">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-1">Search Results</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider px-1">Search Results</p>
             {fuzzyResults.slice(0, 6).map(p => (
               <button
                 key={p.id}
@@ -383,10 +383,10 @@ const GuidedProductSelector = ({ open, onOpenChange, onAddItem }: GuidedProductS
 
                 {/* Selection summary */}
                 <div className="flex flex-wrap gap-1.5">
-                  {selectedUnitType && <Badge variant="secondary" className="text-[10px]">{unitTypes.find(u => u.value === selectedUnitType)?.label}</Badge>}
-                  {selectedCapacity && <Badge variant="secondary" className="text-[10px]">{(selectedCapacity / 1000).toFixed(0)}K BTU</Badge>}
-                  {selectedInverter !== null && <Badge variant="secondary" className="text-[10px]">{selectedInverter ? "Inverter" : "Non-Inverter"}</Badge>}
-                  {selectedRange && <Badge variant="secondary" className="text-[10px]">{selectedRange}</Badge>}
+                  {selectedUnitType && <Badge variant="secondary" className="text-xs">{unitTypes.find(u => u.value === selectedUnitType)?.label}</Badge>}
+                  {selectedCapacity && <Badge variant="secondary" className="text-xs">{(selectedCapacity / 1000).toFixed(0)}K BTU</Badge>}
+                  {selectedInverter !== null && <Badge variant="secondary" className="text-xs">{selectedInverter ? "Inverter" : "Non-Inverter"}</Badge>}
+                  {selectedRange && <Badge variant="secondary" className="text-xs">{selectedRange}</Badge>}
                 </div>
 
                 {selectedProduct ? (

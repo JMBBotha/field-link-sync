@@ -86,7 +86,7 @@ const ProductSearchDropdown = ({
         {/* Left: product info */}
         <div className="flex-1 min-w-0 space-y-0.5">
           {o.productCode && (
-            <div className="font-mono text-[11px] font-semibold text-foreground/80">
+            <div className="font-mono text-xs font-semibold text-foreground/80">
               <HighlightText text={o.productCode} query={query} />
             </div>
           )}
@@ -97,7 +97,7 @@ const ProductSearchDropdown = ({
         </div>
         {/* Right: category + price */}
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 font-normal text-muted-foreground border-border/60">
+          <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 font-normal text-muted-foreground border-border/60">
             {o.category}
           </Badge>
           <span className="text-xs font-semibold text-foreground tabular-nums">
@@ -112,7 +112,7 @@ const ProductSearchDropdown = ({
     if (items.length === 0) return null;
     return (
       <>
-        <div className="sticky top-0 z-10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/50 backdrop-blur-sm border-b border-border/30">
+        <div className="sticky top-0 z-10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/50 backdrop-blur-sm border-b border-border/30">
           {label}
         </div>
         {items.map(renderRow)}

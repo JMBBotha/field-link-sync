@@ -86,7 +86,7 @@ const StatusFilterButtons = ({
               aria-pressed={isActive}
               data-no-min
               className={cn(
-                "flex shrink-0 self-center items-center gap-0.5 rounded-full border px-1 py-0.5 sm:px-1.5 text-[9px] sm:text-[10px] font-semibold whitespace-nowrap leading-none transition-colors",
+                "flex shrink-0 self-center items-center gap-0.5 rounded-full border px-1 py-0.5 sm:px-1.5 text-xs sm:text-xs font-semibold whitespace-nowrap leading-none transition-colors",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                 isActive
                   ? "border-border bg-muted text-foreground"
@@ -105,7 +105,7 @@ const StatusFilterButtons = ({
                 <span className="hidden sm:inline">{config.label}</span>
               </span>
               {typeof counts?.[status] === "number" && (
-                <span className="rounded-full bg-foreground/10 px-1 text-[8px] sm:text-[9px] font-semibold tabular-nums">
+                <span className="rounded-full bg-foreground/10 px-1 text-xs sm:text-xs font-semibold tabular-nums">
                   {counts[status]}
                 </span>
               )}
@@ -132,7 +132,7 @@ const StatusFilterButtons = ({
             key={status}
             onClick={() => onToggle(status)}
             className={cn(
-              "relative flex shrink-0 items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap",
+              "relative flex shrink-0 items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-xs font-semibold whitespace-nowrap",
               "transition-all duration-300 ease-out transform",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
               isActive
@@ -165,7 +165,7 @@ const StatusFilterButtons = ({
             {typeof counts?.[status] === "number" && (
               <span
                 className={cn(
-                  "ml-0.5 min-w-[1.25rem] px-1 rounded-full text-[9px] sm:text-[10px] font-bold tabular-nums text-center",
+                  "ml-0.5 min-w-[1.25rem] px-1 rounded-full text-xs sm:text-xs font-bold tabular-nums text-center",
                   isActive
                     ? "bg-black/15 dark:bg-white/20"
                     : "bg-current/10 opacity-80"

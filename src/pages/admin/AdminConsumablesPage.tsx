@@ -81,7 +81,7 @@ function ConsumablePicker({
           />
         </div>
         <div className="flex items-center gap-1">
-          <Label className="text-[10px] text-muted-foreground">Qty:</Label>
+          <Label className="text-xs text-muted-foreground">Qty:</Label>
           <Input
             type="number"
             value={qty}
@@ -92,7 +92,7 @@ function ConsumablePicker({
         </div>
         <div className="flex items-center gap-1">
           <Switch checked={isDefault} onCheckedChange={setIsDefault} className="scale-75" />
-          <Label className="text-[10px] text-muted-foreground">Default</Label>
+          <Label className="text-xs text-muted-foreground">Default</Label>
         </div>
       </div>
       {filtered.length > 0 && (
@@ -196,7 +196,7 @@ function ACProductRow({
         <TableCell className="text-sm">{product.brand}</TableCell>
         <TableCell className="text-sm">{formatZAR(product.selling_price || 0)}</TableCell>
         <TableCell>
-          <Badge variant={consumables.length > 0 ? "default" : "outline"} className="text-[10px]">
+          <Badge variant={consumables.length > 0 ? "default" : "outline"} className="text-xs">
             {consumables.length} consumable{consumables.length !== 1 ? "s" : ""}
           </Badge>
         </TableCell>
@@ -222,18 +222,18 @@ function ACProductRow({
                             {cp?.short_name || cp?.product_code || c.product_id}
                           </span>
                           {cp && (
-                            <span className="text-muted-foreground text-[10px]">
+                            <span className="text-muted-foreground text-xs">
                               {cp.product_code} · {formatZAR(cp.selling_price || 0)}
                             </span>
                           )}
                         </div>
                         <div className="flex items-center gap-1">
-                          <Label className="text-[10px] text-muted-foreground">Qty:</Label>
+                          <Label className="text-xs text-muted-foreground">Qty:</Label>
                           <Input
                             type="number"
                             value={c.qty}
                             onChange={(e) => handleQtyChange(c.product_id, parseInt(e.target.value) || 1)}
-                            className="h-6 w-12 text-[10px]"
+                            className="h-6 w-12 text-xs"
                             min={1}
                             onClick={(e) => e.stopPropagation()}
                           />
@@ -244,12 +244,12 @@ function ACProductRow({
                             onCheckedChange={() => handleToggleDefault(c.product_id)}
                             className="scale-75"
                           />
-                          <Label className="text-[10px] text-muted-foreground">
+                          <Label className="text-xs text-muted-foreground">
                             {c.is_default ? "Auto-add" : "Optional"}
                           </Label>
                         </div>
                         {c.is_default && (
-                          <Badge className="text-[9px] bg-green-100 text-green-700 border-green-300">
+                          <Badge className="text-xs bg-green-100 text-green-700 border-green-300">
                             Suggested
                           </Badge>
                         )}

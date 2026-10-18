@@ -95,7 +95,7 @@ const CustomerContactsManager = ({ customerId }: { customerId: string }) => {
                     <User className="h-4 w-4 text-primary shrink-0" />
                     <span className="font-semibold text-sm truncate">{c.name}</span>
                     {c.is_primary && (
-                      <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">
+                      <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
                         <Star className="h-3 w-3 mr-0.5" /> Primary
                       </Badge>
                     )}

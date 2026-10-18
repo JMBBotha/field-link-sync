@@ -44,12 +44,12 @@ export default function TechTodayList() {
               <li key={j.id} className="flex items-center gap-2 py-2">
                 <span className={cn("h-9 w-1 shrink-0 rounded", c.bg)} aria-hidden />
                 <div className="min-w-0 flex-1">
-                  <div className="line-clamp-2 break-words leading-snug text-[13px] font-bold" title={j.title || undefined}>{j.title || "Job"}</div>
-                  <div className="truncate text-[11px] text-muted-foreground">{j.address}</div>
+                  <div className="line-clamp-2 break-words leading-snug text-xs font-bold" title={j.title || undefined}>{j.title || "Job"}</div>
+                  <div className="truncate text-xs text-muted-foreground">{j.address}</div>
                 </div>
-                <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-extrabold", c.bg, c.text)}><Icon className="h-3.5 w-3.5" />{label}</span>
+                <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-extrabold", c.bg, c.text)}><Icon className="h-3.5 w-3.5" />{label}</span>
                 <span className="relative shrink-0">{idx === firstOpen && <span aria-hidden className={cn("absolute inset-0 animate-ping rounded-lg opacity-40", c.bg)} />}<button onClick={() => navigate(`/field/jobs/${j.id}`)}
-                  className={cn("relative rounded-lg px-2.5 py-1.5 text-[11px] font-extrabold", c.bg, c.text)}>
+                  className={cn("relative rounded-lg px-2.5 py-1.5 text-xs font-extrabold", c.bg, c.text)}>
                   Open
                 </button></span>
               </li>

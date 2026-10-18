@@ -128,7 +128,7 @@ export function SwipeablePhoto({
             }} 
           />
           {showDeleteHint && (
-            <span className="text-[10px] mt-0.5 font-medium">Release</span>
+            <span className="text-xs mt-0.5 font-medium">Release</span>
           )}
         </div>
       </div>
@@ -163,7 +163,7 @@ export function SwipeablePhoto({
         {/* Status badge */}
         {isQueued && (
           <div className="absolute top-1 left-1 pointer-events-none">
-            <Badge className="bg-yellow-500/90 text-[10px] px-1.5 py-0 h-4">
+            <Badge className="bg-yellow-500/90 text-xs px-1.5 py-0 h-4">
               <Clock className="h-2.5 w-2.5 mr-0.5" />
               Queued
             </Badge>
@@ -173,7 +173,7 @@ export function SwipeablePhoto({
         {/* Swipe hint indicator */}
         {offsetX === 0 && (
           <div className="absolute bottom-1 right-1 pointer-events-none opacity-50">
-            <span className="text-[8px] text-white bg-black/40 px-1 rounded">
+            <span className="text-xs text-white bg-black/40 px-1 rounded">
               ← swipe
             </span>
           </div>

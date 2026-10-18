@@ -395,7 +395,7 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
         <Navigation className="h-3 w-3 text-primary flex-shrink-0 mt-0.5" />
       </button>
       {!hasValidCoords(lead.latitude, lead.longitude) && (
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <MapPin className="h-3 w-3" />
           Location not confirmed
         </div>
@@ -407,13 +407,13 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
       </div>
       {/* Service type + Priority */}
       <div className="flex items-center flex-wrap gap-1.5 min-w-0">
-        <Badge variant="secondary" className="text-[10px] font-medium">
+        <Badge variant="secondary" className="text-xs font-medium">
           {lead.service_type}
         </Badge>
         {lead.priority && lead.priority !== 'normal' && (
           <Badge
             variant="outline"
-            className={`text-[10px] font-medium ${
+            className={`text-xs font-medium ${
               lead.priority === 'urgent' || lead.priority === 'high'
                 ? 'border-destructive text-destructive'
                 : lead.priority === 'low'
@@ -428,7 +428,7 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
       {/* Issue description / notes preview */}
       {lead.notes && (
         <div className="p-2 rounded-md bg-muted/40 border border-border/40">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Issue description</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">Issue description</p>
           <CallSummary lead={lead as any} compact />
         </div>
       )}
@@ -520,7 +520,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
             {getStatusBadge(lead.status)}
             <Button
               size="sm"
-              className="h-6 px-2 text-[10px] gap-1"
+              className="h-6 px-2 text-xs gap-1"
               onClick={(e) => {
                 e.stopPropagation();
                 navigate(`/admin/quotes?fromLead=${lead.id}`);

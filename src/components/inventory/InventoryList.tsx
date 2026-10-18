@@ -515,7 +515,7 @@ const InventoryList = () => {
                 <AlertTriangle className="h-3 w-3 mr-1" />
                 Low Stock
                 {lowStockCount > 0 && (
-                  <Badge variant="destructive" className="ml-1 h-4 min-w-4 px-1 text-[9px]">
+                  <Badge variant="destructive" className="ml-1 h-4 min-w-4 px-1 text-xs">
                     {lowStockCount}
                   </Badge>
                 )}
@@ -624,7 +624,7 @@ const InventoryList = () => {
                             {item.is_price_on_request ? "POR" : formatZAR(item.selling_price)}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="secondary" className="text-[10px]">
+                            <Badge variant="secondary" className="text-xs">
                               {supplierName(item.supplier_id)}
                             </Badge>
                           </TableCell>
@@ -633,7 +633,7 @@ const InventoryList = () => {
                               <div className="flex items-center justify-center gap-1">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Badge variant="outline" className="text-[9px] cursor-default text-muted-foreground">
+                                    <Badge variant="outline" className="text-xs cursor-default text-muted-foreground">
                                       Order
                                     </Badge>
                                   </TooltipTrigger>

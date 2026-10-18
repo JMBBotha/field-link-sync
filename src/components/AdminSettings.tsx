@@ -152,7 +152,7 @@ const AdminSettings = () => {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Radio className="h-4 w-4 text-gray-500" />
+              <Radio className="h-4 w-4 text-ink-secondary" />
               Default / Other
             </CardTitle>
             <CardDescription>

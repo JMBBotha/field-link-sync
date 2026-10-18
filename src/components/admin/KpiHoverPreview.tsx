@@ -279,7 +279,7 @@ const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) =
         <div className="px-3 py-2 border-b bg-muted/40 flex items-center gap-2">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold truncate">{label}</p>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {isMobile ? "Tap an item to open its record" : "Click an item to open its record"}
             </p>
           </div>
@@ -318,11 +318,11 @@ const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) =
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium truncate">{row.primary}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{row.secondary}</p>
+                    <p className="text-xs text-muted-foreground truncate">{row.secondary}</p>
                   </div>
-                  {row.value && <span className="text-[11px] font-mono tabular-nums shrink-0">{row.value}</span>}
+                  {row.value && <span className="text-xs font-mono tabular-nums shrink-0">{row.value}</span>}
                   {row.badge && (
-                    <Badge variant="secondary" className="shrink-0 text-[10px] capitalize">
+                    <Badge variant="secondary" className="shrink-0 text-xs capitalize">
                       {row.badge}
                     </Badge>
                   )}
@@ -334,7 +334,7 @@ const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) =
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-6 px-2 text-[11px] flex-1"
+                      className="h-6 px-2 text-xs flex-1"
                       disabled={busy === `job-${row.quote.id}`}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -351,7 +351,7 @@ const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) =
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-6 px-2 text-[11px] flex-1"
+                      className="h-6 px-2 text-xs flex-1"
                       disabled={busy === `send-${row.quote.id}`}
                       onClick={(e) => {
                         e.stopPropagation();

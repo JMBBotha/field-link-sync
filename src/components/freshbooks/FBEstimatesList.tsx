@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
 const statusColors: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700",
+  draft: "bg-gray-100 text-ink",
   sent: "bg-blue-100 text-blue-700",
   viewed: "bg-purple-100 text-purple-700",
   accepted: "bg-green-100 text-green-700",
@@ -208,14 +208,14 @@ const FBEstimatesList = () => {
                       const daysLeft = Math.ceil((new Date(e.due_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                       if (daysLeft <= 7 && daysLeft >= 0) {
                         return (
-                          <Badge variant="outline" className={`text-[10px] gap-0.5 ${daysLeft <= 3 ? "border-destructive text-destructive" : "border-amber-500 text-amber-600"}`}>
+                          <Badge variant="outline" className={`text-xs gap-0.5 ${daysLeft <= 3 ? "border-destructive text-destructive" : "border-amber-500 text-amber-600"}`}>
                             <Clock className="h-3 w-3" />
                             {daysLeft <= 0 ? "Expires today" : `${daysLeft}d left`}
                           </Badge>
                         );
                       }
                       if (daysLeft < 0) {
-                        return <Badge variant="destructive" className="text-[10px]">Expired</Badge>;
+                        return <Badge variant="destructive" className="text-xs">Expired</Badge>;
                       }
                       return null;
                     })()}

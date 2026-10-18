@@ -25,7 +25,7 @@ const MoneySummaryCard = () => {
       <CardContent className="p-3">
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Money</p>
-          <button onClick={() => navigate("/admin/money")} className="text-[11px] font-medium text-primary hover:underline">By lead →</button>
+          <button onClick={() => navigate("/admin/money")} className="text-xs font-medium text-primary hover:underline">By lead →</button>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {tiles.map((t) => (
@@ -34,7 +34,7 @@ const MoneySummaryCard = () => {
               onClick={() => navigate(`/admin/invoices?money=${t.key}`)}
               className="rounded-lg bg-muted/50 p-2 text-left hover:bg-muted transition-colors"
             >
-              <p className="text-[11px] text-muted-foreground">{t.label} · {t.b?.count ?? 0}</p>
+              <p className="text-xs text-muted-foreground">{t.label} · {t.b?.count ?? 0}</p>
               <p className="text-sm font-bold text-foreground">{formatRand(t.b?.balance ?? 0)}</p>
             </button>
           ))}

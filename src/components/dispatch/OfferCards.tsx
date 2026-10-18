@@ -135,13 +135,13 @@ const OfferCards = () => {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="default" className="text-[10px]">
+                <Badge variant="default" className="text-xs">
                   {offer.offer_type === "sales_estimate" ? "Quote opportunity" : "Service call"}
                 </Badge>
                 {offer.lead?.priority === "emergency" && (
-                  <Badge variant="destructive" className="text-[10px]">Emergency</Badge>
+                  <Badge variant="destructive" className="text-xs">Emergency</Badge>
                 )}
-                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" /> {countdown(offer.expires_at)}
                 </span>
               </div>

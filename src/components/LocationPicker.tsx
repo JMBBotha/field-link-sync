@@ -320,7 +320,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
                   <MapPin className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" />
                   <div className="min-w-0">
                     <div className="text-xs font-medium truncate">{s.text}</div>
-                    <div className="text-[11px] text-muted-foreground truncate">{s.place_name}</div>
+                    <div className="text-xs text-muted-foreground truncate">{s.place_name}</div>
                   </div>
                 </button>
               ))}
@@ -351,7 +351,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
 
       {/* Drag preview */}
       {dragPreview && (
-        <div className="absolute bottom-2 left-2 z-10 rounded-md bg-background/95 backdrop-blur px-2 py-1 text-[11px] font-mono shadow">
+        <div className="absolute bottom-2 left-2 z-10 rounded-md bg-background/95 backdrop-blur px-2 py-1 text-xs font-mono shadow">
           {dragPreview.lat.toFixed(5)}, {dragPreview.lng.toFixed(5)}
         </div>
       )}
@@ -361,14 +361,14 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
 
       {/* Pin guidance */}
       {latitude == null || longitude == null ? (
-        <div className="absolute bottom-2 left-2 right-2 z-10 rounded-md bg-background/95 backdrop-blur px-3 py-2 text-[11px] shadow pointer-events-none">
+        <div className="absolute bottom-2 left-2 right-2 z-10 rounded-md bg-background/95 backdrop-blur px-3 py-2 text-xs shadow pointer-events-none">
           <div className="font-medium">No pin yet — search or tap the map to drop a pin.</div>
           {addressHint ? (
             <div className="text-muted-foreground truncate">{addressHint}</div>
           ) : null}
         </div>
       ) : !dragPreview ? (
-        <div className="absolute bottom-2 left-2 z-10 rounded-md bg-background/90 backdrop-blur px-2 py-1 text-[11px] shadow pointer-events-none">
+        <div className="absolute bottom-2 left-2 z-10 rounded-md bg-background/90 backdrop-blur px-2 py-1 text-xs shadow pointer-events-none">
           Pin looks wrong? Drag it, tap the map, or search.
         </div>
       ) : null}

@@ -42,7 +42,7 @@ export default function MyAppointmentsList({ rows, loading, error, limit }: Prop
             <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
               <CalendarDays className="h-4 w-4 text-primary shrink-0" />
               <span>{formatAppointmentWhen(a.scheduled_date, a.scheduled_time)}</span>
-              {!a.is_mine && <Badge variant="outline" className="text-[10px]">Available</Badge>}
+              {!a.is_mine && <Badge variant="outline" className="text-xs">Available</Badge>}
               {!a.is_mine && offerText(a.offer_km, a.offer_label) && (
                 <span className="text-xs text-muted-foreground" data-testid="offer-distance">{offerText(a.offer_km, a.offer_label)}</span>
               )}

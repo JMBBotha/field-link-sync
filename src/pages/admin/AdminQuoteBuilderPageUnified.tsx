@@ -204,7 +204,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
                 }}>
 
                       <p className="text-xs font-medium truncate">{c.name}</p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {c.phone}
                         {c.email ? ` · ${c.email}` : ""}
                       </p>
@@ -220,8 +220,8 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
           <span className="text-xs sm:text-sm font-bold">
             {formatRand(totalAmount)}
           </span>
-          <span className="text-[10px] opacity-90">incl. VAT</span>
-          <span className="hidden sm:inline text-[11px] opacity-90">
+          <span className="text-xs opacity-90">incl. VAT</span>
+          <span className="hidden sm:inline text-xs opacity-90">
             · {totalItems} items · {zoneCount} zones
           </span>
         </div>
@@ -1631,7 +1631,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
             onPrint={docActions.handlePrint}
             leading={isCompact ? (
               <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total incl. VAT</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Total incl. VAT</p>
                 <p className="truncate text-base font-bold tabular-nums text-foreground">{formatRand(displayQuoteTotals.total)}</p>
               </div>
             ) : (
@@ -1870,7 +1870,7 @@ function NewQuoteClientPicker({
                       className="w-full text-left px-4 py-2.5 hover:bg-muted/50 border-b last:border-b-0 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <p className="text-sm font-medium truncate">{c.name}</p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {c.phone}
                         {c.email ? ` · ${c.email}` : ""}
                         {!resolvedId ? " · (lead-only — create customer first)" : ""}
@@ -1905,14 +1905,14 @@ function NewQuoteClientPicker({
             </div>
             {dupes.length > 0 && (
               <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2 space-y-1">
-                <p className="text-[11px] font-medium text-amber-800 dark:text-amber-300">
+                <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
                   Similar existing clients:
                 </p>
                 {dupes.map((d) => (
                   <div key={d.id} className="flex items-center justify-between gap-2 text-xs">
                     <div className="min-w-0">
                       <p className="font-medium truncate">{d.name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">
+                      <p className="text-xs text-muted-foreground truncate">
                         {d.phone}{d.email ? ` · ${d.email}` : ""}
                       </p>
                     </div>
@@ -1920,7 +1920,7 @@ function NewQuoteClientPicker({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-7 text-[11px]"
+                      className="h-7 text-xs"
                       onClick={() => onPicked(d.id, d.name)}
                     >
                       Use existing

@@ -64,7 +64,7 @@ const CustomerJobHistory = ({ customerId, customerPhone, currentLeadId }: Custom
       <CollapsibleTrigger className="flex items-center gap-2 w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1.5 px-1">
         <History className="h-3.5 w-3.5" />
         <span className="font-medium">Job History</span>
-        <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full">
+        <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">
           {open ? filteredJobs.length : "..."}
         </span>
         <ChevronDown className={`h-3.5 w-3.5 ml-auto transition-transform ${open ? "rotate-180" : ""}`} />
@@ -83,7 +83,7 @@ const CustomerJobHistory = ({ customerId, customerPhone, currentLeadId }: Custom
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium text-foreground truncate">{job.service_type}</span>
-                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4">{job.status}</Badge>
+                      <Badge variant="outline" className="text-xs px-1.5 py-0 h-4">{job.status}</Badge>
                     </div>
                     <span className="text-muted-foreground">
                       {job.created_at ? format(new Date(job.created_at), "d MMM yyyy") : "—"}

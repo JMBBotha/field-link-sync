@@ -55,7 +55,7 @@ export default function V8RoleHome({ role }: { role: V8Role }) {
   return (
     <div className="space-y-3" data-testid={`v8-home-${role}`}>
       <div>
-        <div className="text-[11px] font-bold uppercase tracking-wide text-[#1590d6]">{today} · month to date{role === "owner" && settings?.company_name ? ` · ${settings.company_name}` : ""}</div>
+        <div className="text-xs font-bold uppercase tracking-wide text-[#1590d6]">{today} · month to date{role === "owner" && settings?.company_name ? ` · ${settings.company_name}` : ""}</div>
         <h1 className="text-2xl font-extrabold">{greet}{first ? `, ${first}` : ""}</h1>
         <div className="text-sm text-muted-foreground">One flow: lead → quote → job → invoice → paid. Here's where it stands.</div>
       </div>
@@ -84,9 +84,9 @@ export default function V8RoleHome({ role }: { role: V8Role }) {
         <div className="v8-flow">
           {V8_COLS.filter((c) => !(own && c.key === "lead")).map((c) => (
             <button key={c.key} onClick={() => navigate(c.key === "lead" ? "/admin/dispatch" : "/admin/jobs?tab=pipeline")}>
-              <div className="text-[11px] opacity-70">{c.label}</div>
+              <div className="text-xs opacity-70">{c.label}</div>
               <div className="text-lg font-bold tabular-nums">{s.count[c.key] || 0}</div>
-              <div className="text-[11px] opacity-60 tabular-nums">{c.key === "lead" ? "R —" : fmtRandShort(s.value[c.key] || 0)}</div>
+              <div className="text-xs opacity-60 tabular-nums">{c.key === "lead" ? "R —" : fmtRandShort(s.value[c.key] || 0)}</div>
             </button>
           ))}
         </div>

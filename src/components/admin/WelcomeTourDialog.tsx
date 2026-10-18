@@ -115,7 +115,7 @@ export function WelcomeTourDialog({ userId }: { userId: string }) {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold">{title}</p>
-                <p className="text-[13px] text-muted-foreground leading-relaxed">{body}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{body}</p>
               </div>
             </li>
           ))}

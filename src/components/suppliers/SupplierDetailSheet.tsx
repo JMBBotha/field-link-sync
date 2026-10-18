@@ -252,7 +252,7 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
                         <Percent className="h-3 w-3 mr-1" /> List + Markup
                       </Button>
                     </div>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {priceListType === "cost_price"
                         ? "This supplier's PDF shows our buy price directly — no adjustment needed."
                         : priceListType === "list_price_with_discount"
@@ -286,7 +286,7 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
                         onChange={(e) => setLocalBuiltInMarkup(parseFloat(e.target.value) || 0)}
                         className="w-28 h-8 text-sm"
                       />
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         e.g. 20 if the PDF price already includes a 20% distributor markup over true cost.
                       </p>
                     </div>
@@ -309,7 +309,7 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
                       onChange={(e) => setLocalMarkup(parseFloat(e.target.value) || 0)}
                       className="w-28 h-8 text-sm"
                     />
-                    <p className="text-[11px] text-muted-foreground">Applied to cost price for selling price calculation.</p>
+                    <p className="text-xs text-muted-foreground">Applied to cost price for selling price calculation.</p>
                   </div>
 
                   {hasChanges && (
@@ -319,7 +319,7 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
                     </Button>
                   )}
 
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     These are defaults. Each PDF import can override these settings individually.
                   </p>
                 </CardContent>

@@ -930,7 +930,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           <TabsContent value="paste" className="space-y-3 mt-3">
             <div>
               <Label className="text-xs font-medium">Paste CSV here</Label>
-              <p className="text-[10px] text-muted-foreground mb-1">
+              <p className="text-xs text-muted-foreground mb-1">
                 Columns: SKU, Name, Description, Unit Cost — blank SKU rows become category headers
               </p>
               <Textarea
@@ -939,7 +939,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
                 placeholder={`SKU,Name,Description,Unit Cost\n,,BREEZELESS E R32 INVERTER,\nBZE-INV-09,INVERTER 9000 BTU HEATPUMP MIDWALL - R32,,R 7700.00`}
                 rows={10} className="text-xs font-mono"
               />
-              {lineCount > 1 && <p className="text-[10px] text-muted-foreground mt-1">{lineCount} lines detected</p>}
+              {lineCount > 1 && <p className="text-xs text-muted-foreground mt-1">{lineCount} lines detected</p>}
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
@@ -1149,7 +1149,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
                           row.action === "archive" ? "bg-red-500/5" : ""
                         }`}>
                           <td className="p-2">
-                            <Badge variant="outline" className={`text-[10px] ${
+                            <Badge variant="outline" className={`text-xs ${
                               row.action === "new" ? "border-emerald-500/50 text-emerald-400" :
                               row.action === "update" ? "border-amber-500/50 text-amber-400" :
                               row.action === "restore" ? "border-blue-500/50 text-blue-400" :
@@ -1190,7 +1190,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
                           {isConsumablesSupplier && (
                             <td className="p-2 text-right whitespace-nowrap">
                               {row.sold_in_length && row.price_per_metre ? (
-                                <span className="text-primary font-semibold text-[10px]">
+                                <span className="text-primary font-semibold text-xs">
                                   {formatZAR(row.price_per_metre)}/m
                                   <span className="text-muted-foreground font-normal ml-1">({row.unit_length}m)</span>
                                 </span>

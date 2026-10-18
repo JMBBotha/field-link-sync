@@ -193,7 +193,7 @@ const FieldSchedulePage = () => {
                                   }}
 
                                   accepted hideAmount
-                                  className="text-[10px]"
+                                  className="text-xs"
                                 />
                               )}
                         {(r.customer_phone || r.job_address) && (
@@ -257,7 +257,7 @@ const FieldSchedulePage = () => {
                                 chip_state: (r.deposit_chip_state as DepositChipState | null) ?? null,
                               }}
                               accepted hideAmount
-                              className="text-[10px] shrink-0"
+                              className="text-xs shrink-0"
                             />
                           )}
                     </>} />

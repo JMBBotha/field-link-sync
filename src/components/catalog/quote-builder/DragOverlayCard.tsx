@@ -20,7 +20,7 @@ const DragOverlayCard = ({ product }: { product: PaletteProduct }) => {
         <p className="text-xs font-semibold truncate">
           {getProductDisplayName(product)}
         </p>
-        <p className="text-[10px] font-mono font-medium truncate text-primary/80">{product.product_code}</p>
+        <p className="text-xs font-mono font-medium truncate text-primary/80">{product.product_code}</p>
       </div>
       <Badge variant="secondary" className="text-xs font-bold shrink-0">
         {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}

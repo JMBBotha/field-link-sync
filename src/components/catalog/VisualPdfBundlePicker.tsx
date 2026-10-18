@@ -210,7 +210,7 @@ const VisualPdfBundlePicker = ({ open, onOpenChange, onAddProduct, existingProdu
                 />
                 {supplierForPage && (
                   <div className="absolute top-2 left-2">
-                    <Badge variant="secondary" className="text-[10px] bg-background/80 backdrop-blur-sm">
+                    <Badge variant="secondary" className="text-xs bg-background/80 backdrop-blur-sm">
                       {supplierForPage.name} — p.{currentPage.page_number}
                     </Badge>
                   </div>
@@ -222,7 +222,7 @@ const VisualPdfBundlePicker = ({ open, onOpenChange, onAddProduct, existingProdu
           {/* Side search panel */}
           <div className="w-64 border-l flex flex-col bg-background shrink-0">
             <div className="px-2.5 py-2 border-b">
-              <p className="text-[10px] font-medium mb-1.5 text-muted-foreground">
+              <p className="text-xs font-medium mb-1.5 text-muted-foreground">
                 Browse the PDF, then search & add items below
               </p>
               <div className="relative">
@@ -231,7 +231,7 @@ const VisualPdfBundlePicker = ({ open, onOpenChange, onAddProduct, existingProdu
                   value={search}
                   onChange={e => { setSearch(e.target.value); setShowResults(true); }}
                   placeholder="Search product code or name..."
-                  className="pl-7 h-7 text-[11px]"
+                  className="pl-7 h-7 text-xs"
                 />
                 {search && (
                   <Button variant="ghost" size="icon" className="absolute right-0.5 top-0.5 h-7 w-7" onClick={() => { setSearch(""); setShowResults(false); }}>
@@ -245,19 +245,19 @@ const VisualPdfBundlePicker = ({ open, onOpenChange, onAddProduct, existingProdu
               {search.length < 2 ? (
                 <div className="flex flex-col items-center gap-1.5 pt-6 text-muted-foreground">
                   <Package className="h-6 w-6" />
-                  <p className="text-[10px] text-center px-3 leading-tight">
+                  <p className="text-xs text-center px-3 leading-tight">
                     View the PDF price list on the left, then type a product code or name here to find and add it to your bundle.
                   </p>
                 </div>
               ) : searchResults.length === 0 ? (
-                <p className="text-[10px] text-muted-foreground text-center pt-4">No products found</p>
+                <p className="text-xs text-muted-foreground text-center pt-4">No products found</p>
               ) : (
                 searchResults.map(p => {
                   const alreadyAdded = existingProductIds.has(p.id);
                   return (
                     <div
                       key={p.id}
-                      className={`flex items-start gap-1.5 p-1.5 rounded text-[11px] border transition-colors ${
+                      className={`flex items-start gap-1.5 p-1.5 rounded text-xs border transition-colors ${
                         alreadyAdded
                           ? "bg-primary/5 border-primary/20 opacity-60"
                           : "hover:bg-muted cursor-pointer border-transparent hover:border-border"
@@ -266,18 +266,18 @@ const VisualPdfBundlePicker = ({ open, onOpenChange, onAddProduct, existingProdu
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[9px] text-muted-foreground shrink-0">{p.product_code}</span>
+                          <span className="font-mono text-xs text-muted-foreground shrink-0">{p.product_code}</span>
                           {alreadyAdded && (
-                            <Badge variant="secondary" className="text-[8px] px-1 h-3.5">Added</Badge>
+                            <Badge variant="secondary" className="text-xs px-1 h-3.5">Added</Badge>
                           )}
                         </div>
-                        <div className="font-medium truncate text-[10px] mt-0.5">{p.short_name || p.description?.slice(0, 50)}</div>
-                        <div className="text-[9px] text-muted-foreground flex gap-1 mt-0.5 flex-wrap">
+                        <div className="font-medium truncate text-xs mt-0.5">{p.short_name || p.description?.slice(0, 50)}</div>
+                        <div className="text-xs text-muted-foreground flex gap-1 mt-0.5 flex-wrap">
                           {p.pipe_size && <span>⌀ {p.pipe_size}</span>}
                           {p.suppliers?.name && <span>• {p.suppliers.name}</span>}
                           <span className="font-medium">R{(p.cost_price || 0).toFixed(2)}</span>
                           {p.sold_in_length && p.price_per_metre && (
-                            <Badge variant="outline" className="text-[8px] h-3.5 px-1 border-green-500/50 text-green-700">
+                            <Badge variant="outline" className="text-xs h-3.5 px-1 border-green-500/50 text-green-700">
                               📏 R{p.price_per_metre.toFixed(2)}/m
                             </Badge>
                           )}

@@ -560,7 +560,7 @@ const UnifiedOnboarding = () => {
           <Progress value={progress} className="h-1.5 [&>div]:bg-[hsl(25,95%,53%)]" />
           <div className="flex justify-between">
             {stepLabels.map((label, i) => (
-              <span key={i} className={`text-[10px] ${i <= step ? "text-white font-medium" : "text-white/50"}`}>
+              <span key={i} className={`text-xs ${i <= step ? "text-white font-medium" : "text-white/50"}`}>
                 {label}
               </span>
             ))}

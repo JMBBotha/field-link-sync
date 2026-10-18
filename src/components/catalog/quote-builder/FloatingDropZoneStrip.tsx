@@ -25,12 +25,12 @@ function DropZoneTarget({ basket }: { basket: Basket }) {
         <p className={`text-xs font-semibold truncate ${isOver ? "text-primary" : "text-foreground"}`}>
           {basket.name}
         </p>
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {itemCount} item{itemCount !== 1 ? "s" : ""}
         </p>
       </div>
       {isOver && (
-        <span className="text-[10px] font-medium text-primary animate-pulse">
+        <span className="text-xs font-medium text-primary animate-pulse">
           Drop here
         </span>
       )}
@@ -43,7 +43,7 @@ const FloatingDropZoneStrip = ({ baskets, visible }: FloatingDropZoneStripProps)
 
   return (
     <div className="fixed right-4 top-1/2 -translate-y-1/2 z-[60] w-48 space-y-2 animate-in slide-in-from-right-4 duration-200">
-      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1 text-center">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1 text-center">
         Drop into zone
       </p>
       {baskets.map((basket) => (

@@ -819,7 +819,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
             <Button
               variant="outline"
               size="sm"
-              className="h-7 shrink-0 gap-1 text-[11px]"
+              className="h-7 shrink-0 gap-1 text-xs"
               onClick={onClose}
               title={readOnly ? "Close price lists" : "Close the PDF viewer and return to the quote builder"}
             >
@@ -833,7 +833,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
             <Button
               variant={pageView ? "secondary" : "outline"}
               size="sm"
-              className={`h-7 shrink-0 gap-1 px-2 text-[11px] ${pageView ? "ring-1 ring-primary" : ""}`}
+              className={`h-7 shrink-0 gap-1 px-2 text-xs ${pageView ? "ring-1 ring-primary" : ""}`}
               onClick={togglePageView}
               title={pageView ? "Fit page width" : "Whole page view"}
               aria-label={pageView ? "Switch to page width view" : "Switch to whole page view"}
@@ -847,7 +847,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
               <FileImage className="vpdf-desk hidden sm:block h-4 w-4 text-primary shrink-0" />
               <div className="vpdf-desk hidden sm:block min-w-0 flex-1">
                 <p className="text-xs font-semibold truncate text-foreground">{currentSupplierName || "Visual Catalog"}</p>
-                {currentFilename && <p className="text-[10px] text-muted-foreground truncate">{currentFilename}</p>}
+                {currentFilename && <p className="text-xs text-muted-foreground truncate">{currentFilename}</p>}
               </div>
               {currentPage && (
                 <span className="vpdf-desk hidden sm:inline-flex" data-testid="vpdf-diagnostic">
@@ -898,7 +898,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
                   <Button variant="ghost" size="icon" className="vpdf-desk hidden sm:inline-flex h-7 w-7" onClick={() => goToPage(-1)} disabled={visiblePageIndex === 0}>
                     <span className="text-xs">◀</span>
                   </Button>
-                  <span data-testid="vpdf-page-indicator" className="text-[11px] font-medium text-muted-foreground text-center tabular-nums sm:min-w-[60px] sm:text-[10px]">
+                  <span data-testid="vpdf-page-indicator" className="text-xs font-medium text-muted-foreground text-center tabular-nums sm:min-w-[60px] sm:text-xs">
                     <span className="vpdf-phone sm:hidden">{visiblePageIndex + 1}/{pages.length}</span>
                     <span className="vpdf-desk hidden sm:inline">Page {visiblePageIndex + 1} of {pages.length}</span>
                   </span>
@@ -913,7 +913,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.max(minZoomRef.current, Math.round((z - 0.25) * 100) / 100)); }}>
                   <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
-                <span className="text-[10px] text-muted-foreground w-9 text-center">{Math.round(zoom * 100)}%</span>
+                <span className="text-xs text-muted-foreground w-9 text-center">{Math.round(zoom * 100)}%</span>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.min(MAX_ZOOM, Math.round((z + 0.25) * 100) / 100)); }}>
                   <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
@@ -928,14 +928,14 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
                       <Search className="h-3.5 w-3.5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-[10px]">Magnifying glass</TooltipContent>
+                  <TooltipContent side="bottom" className="text-xs">Magnifying glass</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant={hdMode ? "secondary" : "ghost"}
                       size="icon"
-                      className={`h-7 w-7 text-[9px] font-bold ${hdMode ? "ring-1 ring-primary" : ""}`}
+                      className={`h-7 w-7 text-xs font-bold ${hdMode ? "ring-1 ring-primary" : ""}`}
                       onClick={() => {
                         const next = !hdMode;
                         setHdMode(next);
@@ -948,7 +948,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
                       HD
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-[10px]">High quality PDF render (slower)</TooltipContent>
+                  <TooltipContent side="bottom" className="text-xs">High quality PDF render (slower)</TooltipContent>
                 </Tooltip>
               </div>
 
@@ -957,7 +957,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-[10px] shrink-0"
+                  className="h-7 px-2 text-xs shrink-0"
                   onClick={() => pdfSelection.setSelectedFromPdf([])}
                   title="Clear all selected items"
                 >
@@ -968,7 +968,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
               {onAddSelectedToQuote && pdfSelection && pdfSelection.selectedFromPdf.length > 0 && (
                 <Button
                   size="sm"
-                  className="h-7 shrink-0 gap-1 text-[11px]"
+                  className="h-7 shrink-0 gap-1 text-xs"
                   onClick={onAddSelectedToQuote}
                   title="Add the selected PDF products to this quote"
                 >
@@ -1116,13 +1116,13 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
             <div className="border-t bg-card text-foreground px-3 py-1 shrink-0 flex items-center gap-2">
               <ScanSearch className="h-3 w-3 text-muted-foreground" />
               {!anyPageHasPdfSource ? (
-                <span className="text-[10px] text-muted-foreground flex items-center gap-2">
+                <span className="text-xs text-muted-foreground flex items-center gap-2">
                   <Lightbulb className="h-3 w-3" />
                   Tip: Link the original PDF for interactive overlays
                   <PdfLinkButton pages={currentFilePages} />
                 </span>
               ) : (
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   Scroll through all {pages.length} pages · Click any highlight to add to quote
                   {favoriteIds.size > 0 && ` · ${favoriteIds.size} ★ favorited`}
                 </span>
@@ -1725,7 +1725,7 @@ const LazyPdfPage = ({
       style={{ minHeight: "400px", boxSizing: "border-box", overflow: "visible" }}
     >
       {/* Page number label */}
-      <div className="absolute top-2 left-2 z-30 bg-black/60 text-white text-[9px] font-mono px-1.5 py-0.5 rounded flex items-center gap-1.5">
+      <div className="absolute top-2 left-2 z-30 bg-black/60 text-white text-xs font-mono px-1.5 py-0.5 rounded flex items-center gap-1.5">
         <span>Page {page.page_number}</span>
         {isVisible && totalRegions > 0 && (
           <span className="text-green-300">
@@ -1788,7 +1788,7 @@ const LazyPdfPage = ({
             </div>
           )}
           {extracting && (
-            <div className="absolute top-2 right-2 z-30 bg-black/50 text-white text-[9px] px-2 py-1 rounded flex items-center gap-1">
+            <div className="absolute top-2 right-2 z-30 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
               <Loader2 className="h-3 w-3 animate-spin" /> Scanning…
             </div>
           )}

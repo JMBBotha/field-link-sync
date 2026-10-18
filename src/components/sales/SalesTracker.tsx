@@ -54,7 +54,7 @@ export default function SalesTracker() {
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold text-foreground">{owner ? "Sales commission" : "My commission"}</h1>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Items profit ex VAT × your %. Earned is frozen when the job is fully paid{owner ? " · owner view: all reps" : ""}.
           </p>
         </div>
@@ -71,7 +71,7 @@ export default function SalesTracker() {
         {groups.map((g) => (
           <Card key={g.key} className="surface-card-solid">
             <CardContent className="p-3">
-              <p className="text-[11px] text-muted-foreground">{g.label} · {g.totals.count}</p>
+              <p className="text-xs text-muted-foreground">{g.label} · {g.totals.count}</p>
               <p className="text-lg font-semibold text-foreground">{money(g.totals.commission)}</p>
             </CardContent>
           </Card>
@@ -118,7 +118,7 @@ export default function SalesTracker() {
                     {owner && g.key !== "pipeline" && (
                       <td className="text-right">
                         {r.snapshot_id && (
-                          <Button size="sm" variant="outline" className="h-6 px-2 text-[11px]" disabled={busy === r.snapshot_id}
+                          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={busy === r.snapshot_id}
                             onClick={() => setPaid(r, g.key === "earned")}>
                             {g.key === "earned" ? "Mark paid out" : "Undo"}
                           </Button>

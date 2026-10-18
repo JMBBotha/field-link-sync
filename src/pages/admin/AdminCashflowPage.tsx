@@ -10,8 +10,8 @@ import { useCashflowAccess, useCashflowData, useJobProfit } from "@/hooks/useCas
 import CashflowChart from "@/components/cashflow/CashflowChart";
 
 const Stat = ({ label, value, tone, sub }: { label: string; value: string; tone?: "red" | "green"; sub?: string }) => (
-  <Card><CardContent className="p-3"><div className="text-[11px] text-muted-foreground">{label}</div>
-    <div className={`text-lg font-bold ${tone === "red" ? "text-red-600" : tone === "green" ? "text-emerald-600" : ""}`}>{value}</div>{sub && <div className="text-[10.5px] text-muted-foreground">{sub}</div>}</CardContent></Card>
+  <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">{label}</div>
+    <div className={`text-lg font-bold ${tone === "red" ? "text-red-600" : tone === "green" ? "text-emerald-600" : ""}`}>{value}</div>{sub && <div className="text-xs text-muted-foreground">{sub}</div>}</CardContent></Card>
 );
 
 /** Owner + admin only: cash flow (bank, in/out, 12 weeks) and profit per job / month. */
@@ -95,8 +95,8 @@ export default function AdminCashflowPage() {
 
       {tab === "profit" && <>
         <div className="flex flex-wrap items-end gap-2">
-          <div><div className="text-[11px] text-muted-foreground">From</div><Input type="date" className="h-8" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
-          <div><div className="text-[11px] text-muted-foreground">To</div><Input type="date" className="h-8" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+          <div><div className="text-xs text-muted-foreground">From</div><Input type="date" className="h-8" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+          <div><div className="text-xs text-muted-foreground">To</div><Input type="date" className="h-8" value={to} onChange={(e) => setTo(e.target.value)} /></div>
         </div>
         {jp.isLoading || !jp.data ? <Loader2 className="h-5 w-5 animate-spin" /> : <>
           <Card><CardContent className="p-3"><div className="mb-1 font-semibold">Profit per month</div>
@@ -104,13 +104,13 @@ export default function AdminCashflowPage() {
               <thead><tr className="text-left text-muted-foreground"><th className="py-1">Month</th><th className="text-right">Income</th><th className="text-right">Units & materials</th><th className="text-right">Tech pay</th><th className="text-right">Overheads</th><th className="text-right">Profit</th></tr></thead>
               <tbody>{monthly(jp.data).map((m) => <tr key={m.month} className="border-t"><td className="py-1">{m.month}</td><td className="text-right">{formatRand(m.income)}</td><td className="text-right">{formatRand(m.materials)}</td><td className="text-right">{formatRand(m.tech_pay)}</td><td className="text-right">{formatRand(m.overheads)}</td><td className={`text-right font-semibold ${m.profit < 0 ? "text-red-600" : ""}`}>{formatRand(m.profit)}</td></tr>)}</tbody>
             </table></div>
-            <p className="mt-1 text-[10.5px] text-muted-foreground">Income = sent/paid invoices excl. VAT. Overheads = expenses not linked to a job.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Income = sent/paid invoices excl. VAT. Overheads = expenses not linked to a job.</p>
           </CardContent></Card>
           <Card><CardContent className="p-3"><div className="mb-1 font-semibold">Profit per job <span className="text-xs font-normal text-muted-foreground">· GP target {jp.data.target}%</span></div>
             {jp.data.jobs.length === 0 ? <p className="text-xs text-muted-foreground">No jobs in this period.</p> : <div className="overflow-x-auto"><table className="w-full text-xs" data-testid="job-profit">
               <thead><tr className="text-left text-muted-foreground"><th className="py-1">Job</th><th className="text-right">Income</th><th className="text-right">Units & materials</th><th className="text-right">Tech pay</th><th className="text-right">Profit</th><th className="text-right">GP %</th></tr></thead>
               <tbody>{jp.data.jobs.map((j) => { const below = j.gp_pct !== null && j.gp_pct < jp.data!.target; return (
-                <tr key={j.id} className="border-t"><td className="py-1"><div className="max-w-[260px] truncate font-medium">{j.title || "Job"}</div><div className="text-[10.5px] text-muted-foreground">{j.date} · {j.status}{j.income === 0 ? " · not invoiced yet" : ""}</div></td>
+                <tr key={j.id} className="border-t"><td className="py-1"><div className="max-w-[260px] truncate font-medium">{j.title || "Job"}</div><div className="text-xs text-muted-foreground">{j.date} · {j.status}{j.income === 0 ? " · not invoiced yet" : ""}</div></td>
                   <td className="text-right">{formatRand(j.income)}</td><td className="text-right">{formatRand(j.materials)}</td><td className="text-right">{formatRand(j.tech_pay)}</td>
                   <td className={`text-right font-semibold ${j.profit < 0 ? "text-red-600" : ""}`}>{formatRand(j.profit)}</td>
                   <td className="text-right">{j.gp_pct === null ? "–" : <span className={`rounded px-1.5 py-0.5 ${below ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>{j.gp_pct}%{below ? " ▼ below target" : ""}</span>}</td></tr>); })}</tbody>

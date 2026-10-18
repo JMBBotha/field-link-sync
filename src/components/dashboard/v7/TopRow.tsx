@@ -14,7 +14,7 @@ const Tile = ({ title, icon: I, count, right, children, testId }: { title: strin
     <div className="mb-2 flex flex-wrap items-center gap-2">
       <I className="h-4 w-4 text-[#1AA7EC]" />
       <h2 className="text-sm font-semibold">{title}</h2>
-      {count != null && <span className="rounded-full bg-[#1AA7EC]/15 px-2 text-[11px] font-bold text-[#0b5e8a] dark:text-[#7cc8f0]">{count}</span>}
+      {count != null && <span className="rounded-full bg-[#1AA7EC]/15 px-2 text-xs font-bold text-[#0b5e8a] dark:text-[#7cc8f0]">{count}</span>}
       <div className="ml-auto">{right}</div>
     </div>
     <div className="min-h-0 flex-1">{children}</div>
@@ -72,7 +72,7 @@ export function BookedJobsTile() {
   return (
     <Tile title="Booked jobs" icon={CalendarClock} count={rows.length} testId="v7-booked-jobs"
       right={<div className="flex gap-0.5" data-testid="v7-booked-toggle">{RANGES.map((x) => (
-        <button key={x.k} onClick={() => setK(x.k)} className={cn("rounded-full px-2 py-0.5 text-[11px]", k === x.k ? "bg-[#1AA7EC] text-white" : "text-muted-foreground hover:bg-muted")}>{x.label}</button>
+        <button key={x.k} onClick={() => setK(x.k)} className={cn("rounded-full px-2 py-0.5 text-xs", k === x.k ? "bg-[#1AA7EC] text-white" : "text-muted-foreground hover:bg-muted")}>{x.label}</button>
       ))}</div>}>
       {isLoading ? <div className="h-16 animate-pulse rounded bg-muted/60" /> : rows.length === 0 ? (
         <EmptyNote text={`No booked jobs ${k === "today" ? "today" : k === "week" ? "this week" : "this month"}`} action="Book a job" to="/admin/schedule" />
@@ -81,8 +81,8 @@ export function BookedJobsTile() {
           {rows.map((r) => (
             <li key={r.id}>
               <button onClick={() => nav(`/admin/jobs/${r.id}`)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-muted/60" data-testid="v7-booked-row">
-                <span className="w-14 shrink-0 text-[12px] font-semibold tabular-nums">{k === "today" ? time(r.at) : <>{day(r.at)}<br /><span className="font-normal text-muted-foreground">{time(r.at)}</span></>}</span>
-                <span className="min-w-0 flex-1"><span className="block line-clamp-2 break-words leading-snug text-[13px] font-medium" title={r.client}>{r.client}</span><span className={cn("block line-clamp-2 break-words text-[11px]", r.tech === "Unassigned" ? "text-[#DC2626]" : "text-muted-foreground")}>{r.tech}</span></span>
+                <span className="w-14 shrink-0 text-xs font-semibold tabular-nums">{k === "today" ? time(r.at) : <>{day(r.at)}<br /><span className="font-normal text-muted-foreground">{time(r.at)}</span></>}</span>
+                <span className="min-w-0 flex-1"><span className="block line-clamp-2 break-words leading-snug text-xs font-medium" title={r.client}>{r.client}</span><span className={cn("block line-clamp-2 break-words text-xs", r.tech === "Unassigned" ? "text-[#DC2626]" : "text-muted-foreground")}>{r.tech}</span></span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </button>
             </li>
@@ -110,7 +110,7 @@ export function TodaysLeadsTile() {
   const rows = data || [];
   return (
     <Tile title="Today's leads" icon={Inbox} count={rows.length} testId="v7-todays-leads"
-      right={<button onClick={() => nav("/admin/dispatch?inbox=1")} className="text-[11px] text-[#0b5e8a] hover:underline dark:text-[#7cc8f0]">Inbox</button>}>
+      right={<button onClick={() => nav("/admin/dispatch?inbox=1")} className="text-xs text-[#0b5e8a] hover:underline dark:text-[#7cc8f0]">Inbox</button>}>
       {isLoading ? <div className="h-16 animate-pulse rounded bg-muted/60" /> : rows.length === 0 ? (
         <EmptyNote text="No new leads yet today" action="Add a lead" to="/admin/dispatch?inbox=1" />
       ) : (
@@ -118,9 +118,9 @@ export function TodaysLeadsTile() {
           {rows.map((l) => (
             <li key={l.id}>
               <button onClick={() => nav(`/admin/dispatch?lead=${l.id}`)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-muted/60">
-                <span className="w-12 shrink-0 text-[12px] font-semibold tabular-nums">{time(l.created_at)}</span>
-                <span className="min-w-0 flex-1"><span className="block line-clamp-2 break-words leading-snug text-[13px] font-medium" title={l.customer_name || undefined}>{l.customer_name || "New lead"}</span><span className="block line-clamp-2 break-words text-[11px] text-muted-foreground">{l.service_type || l.primary_intent || "—"}</span></span>
-                {!l.first_contact_at && <span className="rounded-full bg-[#DC2626] px-1.5 py-0.5 text-[10px] font-semibold text-white">Not contacted</span>}
+                <span className="w-12 shrink-0 text-xs font-semibold tabular-nums">{time(l.created_at)}</span>
+                <span className="min-w-0 flex-1"><span className="block line-clamp-2 break-words leading-snug text-xs font-medium" title={l.customer_name || undefined}>{l.customer_name || "New lead"}</span><span className="block line-clamp-2 break-words text-xs text-muted-foreground">{l.service_type || l.primary_intent || "—"}</span></span>
+                {!l.first_contact_at && <span className="rounded-full bg-[#DC2626] px-1.5 py-0.5 text-xs font-semibold text-white">Not contacted</span>}
               </button>
             </li>
           ))}

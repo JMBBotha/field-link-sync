@@ -157,7 +157,7 @@ const BrandDiscountsSection = () => {
             <Percent className="h-3.5 w-3.5" />
             Brand Discounts
             {activeDiscounts.length > 0 && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+              <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4">
                 {activeDiscounts.length} active
               </Badge>
             )}
@@ -174,7 +174,7 @@ const BrandDiscountsSection = () => {
                 <Badge
                   key={d.id}
                   variant="secondary"
-                  className="gap-1 text-[10px] pr-1"
+                  className="gap-1 text-xs pr-1"
                 >
                   {d.brand}: {d.discount_percentage}% off
                   <Button
@@ -194,7 +194,7 @@ const BrandDiscountsSection = () => {
           {/* Apply new discount */}
           <div className="flex items-end gap-2 flex-wrap">
             <div className="flex-1 min-w-[140px]">
-              <label className="text-[10px] font-medium text-muted-foreground mb-1 block">Brand</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Brand</label>
               <Select value={selectedBrand} onValueChange={setSelectedBrand}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Select brand" />
@@ -212,7 +212,7 @@ const BrandDiscountsSection = () => {
               </Select>
             </div>
             <div className="w-20">
-              <label className="text-[10px] font-medium text-muted-foreground mb-1 block">Discount %</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Discount %</label>
               <Input
                 type="number"
                 min={0}
@@ -240,7 +240,7 @@ const BrandDiscountsSection = () => {
 
           {/* Preview */}
           {selectedBrand && parsedDiscount > 0 && (
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {selectedBrand}: {selectedCount} products, {parsedDiscount}% off cost
             </p>
           )}

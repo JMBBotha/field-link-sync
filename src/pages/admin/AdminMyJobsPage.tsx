@@ -32,7 +32,7 @@ function JobSteps({ assignmentStatus, jobStatus }: { assignmentStatus: string; j
   return (
     <ol className="grid grid-cols-4 gap-1" aria-label="Job progress" data-testid="job-steps">
       {steps.map((s, i) => (
-        <li key={s} className={cn("rounded-md px-1 py-1 text-center text-[11px] font-semibold",
+        <li key={s} className={cn("rounded-md px-1 py-1 text-center text-xs font-semibold",
           i < done ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>{s}</li>
       ))}
     </ol>
@@ -267,9 +267,9 @@ const AdminMyJobsPage = () => {
               <JobCard key={assignment.id} item={assignmentToCard(assignment)} audience="tech" density="full"
                 onOpen={() => navigate(`/field/jobs/${job.id}`)} actions={<div className="w-full space-y-3">
                   {job.scheduled_for && <div className="text-xs text-muted-foreground">{format(new Date(job.scheduled_for), "dd MMM yyyy")}</div>}
-                  {!hideAmount && assignment.job_type === "installation" && assignment.depositInvoice?.id && <DepositPaymentChip invoice={assignment.depositInvoice} accepted hideAmount={hideAmount} className="text-[10px]" />}
+                  {!hideAmount && assignment.job_type === "installation" && assignment.depositInvoice?.id && <DepositPaymentChip invoice={assignment.depositInvoice} accepted hideAmount={hideAmount} className="text-xs" />}
                   {!isOnline && ["proposed", "accepted", "in_progress"].includes(assignment.status) && (
-                    <div className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-md px-2 py-1">
+                    <div className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-md px-2 py-1">
                       <CloudOff className="h-3 w-3" /> Offline — actions will queue and sync when you reconnect
                     </div>
                   )}

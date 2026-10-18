@@ -54,7 +54,7 @@ const ZoneTemplateSelector = ({ onApplyTemplate }: ZoneTemplateSelectorProps) =>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuLabel className="text-[10px] text-muted-foreground">
+        <DropdownMenuLabel className="text-xs text-muted-foreground">
           Zone Templates
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -67,7 +67,7 @@ const ZoneTemplateSelector = ({ onApplyTemplate }: ZoneTemplateSelectorProps) =>
             {t.icon}
             <div className="flex-1">
               <p className="font-medium">{t.label}</p>
-              <p className="text-[10px] text-muted-foreground">{t.zones.length} zones</p>
+              <p className="text-xs text-muted-foreground">{t.zones.length} zones</p>
             </div>
           </DropdownMenuItem>
         ))}

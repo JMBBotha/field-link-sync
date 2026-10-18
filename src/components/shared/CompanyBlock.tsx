@@ -17,10 +17,10 @@ export default function CompanyBlock({ className = "", profile, companyId, fetch
   const [name, ...rest] = profileBlockLines(p);
   const contact = profileContactLine(p);
   return (
-    <div data-testid="company-block" data-company-source={p?.legal_name ? "record" : "fallback"} className={`text-right text-[12px] leading-relaxed text-slate-600 ${className}`}>
-      <p className="text-[15px] font-bold text-[#1B3A5C]">{name}</p>
+    <div data-testid="company-block" data-company-source={p?.legal_name ? "record" : "fallback"} className={`text-right text-xs leading-relaxed text-ink-secondary ${className}`}>
+      <p className="text-base font-bold text-[#1B3A5C]">{name}</p>
       {rest.map((l) => <p key={l}>{l}</p>)}
-      {contact && <p className="text-[11px]">{contact}</p>}
+      {contact && <p className="text-xs">{contact}</p>}
     </div>
   );
 }

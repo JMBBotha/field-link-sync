@@ -18,7 +18,7 @@ function Photo({ m, label, className = "aspect-[4/3]" }: { m: SurveyMedia; label
   return (
     <div className={`relative overflow-hidden rounded-lg bg-muted ${className}`}>
       {url && <img src={url} alt={label} className="h-full w-full object-cover" loading="lazy" />}
-      <span className="absolute bottom-1.5 left-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">{label}</span>
+      <span className="absolute bottom-1.5 left-1.5 rounded bg-black/60 px-1.5 py-0.5 text-xs font-semibold text-white">{label}</span>
     </div>
   );
 }
@@ -26,7 +26,7 @@ function Photo({ m, label, className = "aspect-[4/3]" }: { m: SurveyMedia; label
 function Note({ text }: { text: string }) {
   return (
     <p className="rounded-lg border-l-4 border-primary bg-muted/50 px-3 py-2 text-sm">
-      <span className="mb-0.5 flex items-center gap-1 text-[11px] font-semibold text-primary"><Mic className="h-3 w-3" />Rep note</span>
+      <span className="mb-0.5 flex items-center gap-1 text-xs font-semibold text-primary"><Mic className="h-3 w-3" />Rep note</span>
       {text}
     </p>
   );
@@ -63,7 +63,7 @@ export function RoomCard({ d, r, i }: { d: SurveyDraft; r: SurveyRoom; i: number
             ["Floor", r.floor_level], ["Extra holes", r.core_holes ? String(r.core_holes) : null]] as const)
             .filter(([, v]) => v).map(([k, v]) => (
               <div key={k} className="rounded-lg bg-muted/50 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{k}</div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">{k}</div>
                 <div className="font-semibold">{v}</div>
               </div>
             ))}

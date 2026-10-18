@@ -208,7 +208,7 @@ const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignment
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
           <Clock className="h-3 w-3" /> Start time
           {slotEnd && value.startTime && (
-            <span className="normal-case text-[10px] text-muted-foreground/80">
+            <span className="normal-case text-xs text-muted-foreground/80">
               · ends {slotEnd}
             </span>
           )}
@@ -240,7 +240,7 @@ const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignment
             );
           })}
         </div>
-        <p className="text-[11px] text-muted-foreground flex items-center gap-3 pt-0.5">
+        <p className="text-xs text-muted-foreground flex items-center gap-3 pt-0.5">
           <span className="flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-red-500" /> Booked
           </span>
@@ -291,7 +291,7 @@ const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignment
                   </div>
                   <span className="text-sm font-medium">Unassigned</span>
                 </div>
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   Assign later
                 </span>
               </button>
@@ -325,17 +325,17 @@ const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignment
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{a.full_name || "Unnamed"}</p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {st?.jobsToday || 0} job{(st?.jobsToday || 0) === 1 ? "" : "s"} today
                         </p>
                       </div>
                     </div>
                     {st?.busy ? (
-                      <Badge variant="destructive" className="text-[10px] gap-1 shrink-0">
+                      <Badge variant="destructive" className="text-xs gap-1 shrink-0">
                         <AlertTriangle className="h-3 w-3" /> {st.conflictLabel}
                       </Badge>
                     ) : value.startTime ? (
-                      <Badge className="text-[10px] gap-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 shrink-0">
+                      <Badge className="text-xs gap-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 shrink-0">
                         <CheckCircle2 className="h-3 w-3" /> Free
                       </Badge>
                     ) : null}

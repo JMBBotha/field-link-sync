@@ -122,10 +122,10 @@ const QuotePerformanceWidget = () => {
                     <TableCell className="text-xs text-center">{row.opened}</TableCell>
                     <TableCell className="text-xs text-center">{row.clicked}</TableCell>
                     <TableCell className="text-xs text-center">
-                      <Badge variant="secondary" className="text-[10px]">{row.openRate.toFixed(0)}%</Badge>
+                      <Badge variant="secondary" className="text-xs">{row.openRate.toFixed(0)}%</Badge>
                     </TableCell>
                     <TableCell className="text-xs text-center">
-                      <Badge variant="secondary" className={`text-[10px] ${ctrColor(row.ctr)}`}>{row.ctr.toFixed(1)}%</Badge>
+                      <Badge variant="secondary" className={`text-xs ${ctrColor(row.ctr)}`}>{row.ctr.toFixed(1)}%</Badge>
                     </TableCell>
                   </TableRow>
                 ))}

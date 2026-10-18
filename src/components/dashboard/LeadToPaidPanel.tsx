@@ -40,7 +40,7 @@ export function useLeadFlowData() {
 
 function Pill({ item }: { item: FlowItem }) {
   const c = URGENCY_CLASS[item.urgency], Icon = URGENCY_ICON[item.urgency];
-  return <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold whitespace-nowrap", c.bg, c.text)}><Icon className="h-3.5 w-3.5" />{item.label}</span>;
+  return <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-extrabold whitespace-nowrap", c.bg, c.text)}><Icon className="h-3.5 w-3.5" />{item.label}</span>;
 }
 
 export default function LeadToPaidPanel({ audience }: { audience: "office" | "sales" }) {
@@ -59,7 +59,7 @@ export default function LeadToPaidPanel({ audience }: { audience: "office" | "sa
       <div className="rounded-xl border border-[#d6d9de] bg-[#eef0f3] p-4 text-[#111827] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
         <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
           <h2 className="text-base font-extrabold">Lead → Paid</h2>
-          <span className="text-[11px] font-medium text-[#4b5563] dark:text-slate-300">circle colour = most urgent item in that stage</span>
+          <span className="text-xs font-medium text-[#4b5563] dark:text-slate-300">circle colour = most urgent item in that stage</span>
         </div>
         <div className="relative mt-3 flex gap-1 overflow-x-auto pb-1 snap-x" role="list">
           <div className="pointer-events-none absolute left-6 right-6 top-[22px] hidden h-1 rounded bg-border sm:block" aria-hidden />
@@ -73,9 +73,9 @@ export default function LeadToPaidPanel({ audience }: { audience: "office" | "sa
                 ) : (
                   <div className="mx-auto my-[13px] h-[18px] w-[18px] rounded-full bg-border" />
                 )}
-                <div className="mt-1.5 text-[11px] font-extrabold tracking-wide">{name}</div>
+                <div className="mt-1.5 text-xs font-extrabold tracking-wide">{name}</div>
                 {(s.red > 0 || s.yellow > 0) && (
-                  <div className="text-[10px] font-semibold text-[#4b5563] dark:text-slate-300">{s.red > 0 ? `${s.red} overdue` : `${s.yellow} due soon`}</div>
+                  <div className="text-xs font-semibold text-[#4b5563] dark:text-slate-300">{s.red > 0 ? `${s.red} overdue` : `${s.yellow} due soon`}</div>
                 )}
               </div>
             );
@@ -83,12 +83,12 @@ export default function LeadToPaidPanel({ audience }: { audience: "office" | "sa
         </div>
         {audience === "office" && (
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#d6d9de] px-2.5 py-1 text-[11px] font-semibold text-[#1f2937] dark:bg-slate-700 dark:text-slate-100">No answer (3 tries) · {parked.no_answer}</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#d6d9de] px-2.5 py-1 text-[11px] font-semibold text-[#1f2937] dark:bg-slate-700 dark:text-slate-100">Waiting for stock · {parked.waiting_stock}</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#d6d9de] px-2.5 py-1 text-[11px] font-semibold text-[#1f2937] dark:bg-slate-700 dark:text-slate-100">Lost · {parked.lost}</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#d6d9de] px-2.5 py-1 text-xs font-semibold text-[#1f2937] dark:bg-slate-700 dark:text-slate-100">No answer (3 tries) · {parked.no_answer}</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#d6d9de] px-2.5 py-1 text-xs font-semibold text-[#1f2937] dark:bg-slate-700 dark:text-slate-100">Waiting for stock · {parked.waiting_stock}</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#d6d9de] px-2.5 py-1 text-xs font-semibold text-[#1f2937] dark:bg-slate-700 dark:text-slate-100">Lost · {parked.lost}</span>
           </div>
         )}
-        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-semibold text-[#4b5563] dark:text-slate-300">
+        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold text-[#4b5563] dark:text-slate-300">
           <span><b className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-[#DC2626] align-middle" />! Overdue</span>
           <span><b className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-[#EAB308] align-middle" />◷ Due soon</span>
           <span><b className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-[#2563EB] align-middle" />✓ On time · your next step</span>
@@ -108,11 +108,11 @@ export default function LeadToPaidPanel({ audience }: { audience: "office" | "sa
                 <li key={i.key} className="flex items-center gap-2 py-2">
                   <span className={cn("h-9 w-1 shrink-0 rounded", c.bg)} aria-hidden />
                   <div className="min-w-0 flex-1">
-                    <div className="line-clamp-2 break-words leading-snug text-[13px] font-bold" title={i.client}>{i.client}</div>
-                    <div className="mt-0.5 flex items-center gap-1.5"><span className="text-[10px] font-extrabold text-[#4b5563] dark:text-slate-300">{i.stage}</span><Pill item={i} /></div>
+                    <div className="line-clamp-2 break-words leading-snug text-xs font-bold" title={i.client}>{i.client}</div>
+                    <div className="mt-0.5 flex items-center gap-1.5"><span className="text-xs font-extrabold text-[#4b5563] dark:text-slate-300">{i.stage}</span><Pill item={i} /></div>
                   </div>
                   <span className="relative shrink-0">{idx === 0 && <span aria-hidden className={cn("absolute inset-0 animate-ping rounded-lg opacity-40", c.bg)} />}<button onClick={() => navigate(i.href)}
-                    className={cn("relative rounded-lg px-2.5 py-1.5 text-[11px] font-extrabold", c.bg, c.text)}>
+                    className={cn("relative rounded-lg px-2.5 py-1.5 text-xs font-extrabold", c.bg, c.text)}>
                     {i.action}
                   </button></span>
                 </li>

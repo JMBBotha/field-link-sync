@@ -213,13 +213,13 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
                 )}
               </div>
               {showCost && costPrice > 0 && (
-                <p data-testid="staff-cost-row" data-html2canvas-ignore className="text-[11px] text-muted-foreground print:hidden">
+                <p data-testid="staff-cost-row" data-html2canvas-ignore className="text-xs text-muted-foreground print:hidden">
                   Cost {formatZAR(costPrice)} (ex VAT) · Sell {formatZAR(pricing.sellingPrice)} · GP {pricing.sellingPrice > 0 ? (((pricing.sellingPrice - costPrice) / pricing.sellingPrice) * 100).toFixed(1) : "0.0"}%
                 </p>
               )}
 
               {isAdmin && inQuote && (
-                <p className="text-[11px] text-muted-foreground">Catalogue markup is changed on the Catalogue page. A quote line's markup stays on that quote.</p>
+                <p className="text-xs text-muted-foreground">Catalogue markup is changed on the Catalogue page. A quote line's markup stays on that quote.</p>
               )}
               {isAdmin && !inQuote && (
                 <>

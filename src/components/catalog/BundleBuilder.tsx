@@ -415,17 +415,17 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
                   return (
                     <tr key={idx} className="border-b border-dashed">
                       <td className="py-1.5">
-                        <span className="font-mono text-[10px] text-muted-foreground">{item.product_code}</span>
+                        <span className="font-mono text-xs text-muted-foreground">{item.product_code}</span>
                       </td>
                       <td className="py-1.5">
                         <div className="font-medium truncate max-w-[220px] text-xs">{item.description?.slice(0, 50)}</div>
                         <div className="flex items-center gap-1.5">
                           {item.pipe_size && (
-                            <span className="text-[10px] text-muted-foreground">⌀ {item.pipe_size}</span>
+                            <span className="text-xs text-muted-foreground">⌀ {item.pipe_size}</span>
                           )}
                           <button
                             type="button"
-                            className="text-[10px] text-primary hover:underline"
+                            className="text-xs text-primary hover:underline"
                             onClick={() => setUnitEditorIdx(idx)}
                           >
                             {(item.pack_units ?? 1) > 1
@@ -461,7 +461,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
                               className="h-6 w-16 text-xs text-right px-1"
                             />
                           )}
-                          <span className="text-muted-foreground text-[10px]">
+                          <span className="text-muted-foreground text-xs">
                             {perMetreKit
                               ? (item.is_length_item ? "m / kit m" : "ea / kit m")
                               : (item.unit.unit_type === "each" ? "ea" : item.unit.unit_type)}
@@ -478,7 +478,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
                             onChange={e => updateItem(idx, "unit_price", parseFloat(e.target.value) || 0)}
                             className="h-6 w-20 text-xs text-right px-1"
                           />
-                          <span className="text-muted-foreground text-[10px]">/{(item.pack_units ?? 1) > 1 ? "ea" : item.unit.price_per_unit_label}</span>
+                          <span className="text-muted-foreground text-xs">/{(item.pack_units ?? 1) > 1 ? "ea" : item.unit.price_per_unit_label}</span>
                         </div>
                       </td>
 
@@ -584,11 +584,11 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
                       <span className="font-mono text-xs text-muted-foreground shrink-0">{p.product_code}</span>
                       <span className="font-medium truncate text-xs">{p.short_name || p.description?.slice(0, 40)}</span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground flex gap-2 flex-wrap mt-0.5">
+                    <div className="text-xs text-muted-foreground flex gap-2 flex-wrap mt-0.5">
                       {p.pipe_size && <span>⌀ {p.pipe_size}</span>}
                       {p.suppliers?.name && <span>• {p.suppliers.name}</span>}
                       {p.sold_in_length && p.price_per_metre && (
-                        <Badge variant="outline" className="text-[9px] h-4 border-green-500/50 text-green-700 bg-green-500/10 px-1">
+                        <Badge variant="outline" className="text-xs h-4 border-green-500/50 text-green-700 bg-green-500/10 px-1">
                           📏 R{p.price_per_metre.toFixed(2)}/m
                         </Badge>
                       )}

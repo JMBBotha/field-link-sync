@@ -146,7 +146,7 @@ export default function SiteCheckCard({ jobId, leadId, info, onDone, survey }: {
       <CardContent className="space-y-3 p-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 font-semibold"><ClipboardCheck className="h-4 w-4" /> Site check</h2>
-          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${info.needs_check ? "bg-orange-100 text-orange-800" : "bg-slate-100 text-slate-600"}`}>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${info.needs_check ? "bg-orange-100 text-orange-800" : "bg-slate-100 text-ink-secondary"}`}>
             {info.needs_check ? "Required – phone/online quote" : "Optional"}
           </span>
         </div>
@@ -172,7 +172,7 @@ export default function SiteCheckCard({ jobId, leadId, info, onDone, survey }: {
                     ))}
                   </div>
                   {st.floorM2 > 0 && (
-                    <p className={`text-sm font-semibold ${verdict === "ok" ? "text-emerald-700" : verdict === "unknown" ? "text-slate-600" : "text-red-700"}`} data-testid="size-verdict">
+                    <p className={`text-sm font-semibold ${verdict === "ok" ? "text-emerald-700" : verdict === "unknown" ? "text-ink-secondary" : "text-red-700"}`} data-testid="size-verdict">
                       {rec.siteVisit ? `Needs a proper heat-load check (${rec.reason || "large room"})` : `Recommended ${btuLabel(rec.btu)} for ${rec.effectiveM2} m²`}
                       {verdict === "ok" ? " · Size OK" : verdict === "too_small" ? " · Quoted unit looks too small" : verdict === "too_big" ? " · Quoted unit looks too big" : ""}
                     </p>

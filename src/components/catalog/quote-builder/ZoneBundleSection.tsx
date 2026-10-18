@@ -42,7 +42,7 @@ const ZoneBundleSection = ({ basketItems, onRemoveBundle }: BundleSectionProps) 
 
   return (
     <div className="rounded-md border border-dashed border-primary/30 bg-primary/5 p-2 mt-1.5">
-      <p className="text-[10px] font-semibold text-primary flex items-center gap-1 mb-1.5">
+      <p className="text-xs font-semibold text-primary flex items-center gap-1 mb-1.5">
         <Layers className="h-3 w-3" />
         Installation Bundles
       </p>
@@ -57,23 +57,23 @@ const ZoneBundleSection = ({ basketItems, onRemoveBundle }: BundleSectionProps) 
           <div key={item.instanceId} className="flex items-center justify-between gap-1 py-0.5">
             <div className="flex items-center gap-1 min-w-0 flex-1">
               {tierNum && (
-                <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 shrink-0">
+                <Badge variant="secondary" className="text-xs px-1 py-0 h-4 shrink-0">
                   T{tierNum}
                 </Badge>
               )}
               {!tierNum && (
-                <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 shrink-0">
+                <Badge variant="secondary" className="text-xs px-1 py-0 h-4 shrink-0">
                   <Package className="h-2 w-2" />
                 </Badge>
               )}
-              <span className="text-[10px] font-medium truncate">{item.bundleName || "Bundle"}</span>
-              <Badge variant="outline" className="text-[8px] px-0.5 py-0 h-3 shrink-0">
+              <span className="text-xs font-medium truncate">{item.bundleName || "Bundle"}</span>
+              <Badge variant="outline" className="text-xs px-0.5 py-0 h-3 shrink-0">
                 {item.bundleItems?.length || 0}
               </Badge>
             </div>
             <div className="flex items-center gap-0.5 shrink-0">
               {price > 0 && (
-                <span className="text-[9px] text-muted-foreground tabular-nums">
+                <span className="text-xs text-muted-foreground tabular-nums">
                   R{price.toLocaleString("en-ZA", { minimumFractionDigits: 0 })}
                 </span>
               )}
@@ -93,10 +93,10 @@ const ZoneBundleSection = ({ basketItems, onRemoveBundle }: BundleSectionProps) 
       {/* Missing bundle warnings */}
       {missingTiers.map((label) => (
         <div key={`missing-${label}`} className="flex items-center gap-1 py-0.5 opacity-70">
-          <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-amber-400/40 text-amber-600">
+          <Badge variant="outline" className="text-xs px-1 py-0 h-3.5 border-amber-400/40 text-amber-600">
             Missing
           </Badge>
-          <span className="text-[9px] truncate flex-1">{label} not added</span>
+          <span className="text-xs truncate flex-1">{label} not added</span>
         </div>
       ))}
     </div>

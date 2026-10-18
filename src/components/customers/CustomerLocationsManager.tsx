@@ -112,7 +112,7 @@ const CustomerLocationsManager = ({ customerId, companyId }: Props) => {
                     <MapPin className="h-4 w-4 text-primary" />
                     <span className="font-semibold text-sm">{loc.label}</span>
                     {loc.is_primary && (
-                      <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">
+                      <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
                         <Star className="h-3 w-3 mr-0.5" /> Primary
                       </Badge>
                     )}
@@ -135,7 +135,7 @@ const CustomerLocationsManager = ({ customerId, companyId }: Props) => {
                 </div>
                 <p className="text-sm">{loc.address}</p>
                 {loc.notes && <p className="text-xs text-muted-foreground italic">{loc.notes}</p>}
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {loc.latitude != null && loc.longitude != null
                     ? `📍 ${Number(loc.latitude).toFixed(5)}, ${Number(loc.longitude).toFixed(5)}`
                     : "⚠️ No coordinates — won't appear on Map"}
@@ -263,7 +263,7 @@ const LocationDialog = ({
                 {geocoding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Locate"}
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {lat != null && lng != null
                 ? `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`
                 : "Coordinates will be resolved automatically on save."}

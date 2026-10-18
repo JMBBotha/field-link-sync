@@ -120,7 +120,7 @@ const CustomerSearchSelector = ({
 
           {results.length > 0 && (
             <div className="py-1">
-              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Customers
               </div>
               {results.map((c) => (
@@ -162,7 +162,7 @@ const CustomerSearchSelector = ({
                     </div>
                   </div>
                   {c.status && (
-                    <Badge variant="outline" className={cn("text-[10px] shrink-0", statusColor[c.status] || "")}>
+                    <Badge variant="outline" className={cn("text-xs shrink-0", statusColor[c.status] || "")}>
                       {c.status}
                     </Badge>
                   )}

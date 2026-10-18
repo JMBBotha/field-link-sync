@@ -148,7 +148,7 @@ const JobActivityTimeline = ({ jobId }: Props) => {
                         <span className="text-xs font-medium text-foreground">
                           {entry.profiles?.full_name || "System"}
                         </span>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}
                         </span>
                       </div>

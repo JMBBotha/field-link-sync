@@ -154,15 +154,15 @@ const EnhancedProductPopup = ({
           </div>
           {noSoT ? (
             <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 space-y-1">
-              <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
                 Not on an active price book — no cost yet
               </p>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 This row isn't linked to live catalogue pricing, so it can't be added to a quote yet.
               </p>
               {priceOverride != null && priceOverride > 0 && (
-                <p className="text-[10px] text-muted-foreground">
-                  PDF list: <span className="font-mono font-medium text-foreground">R{safeNum(priceOverride).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> <span className="text-[9px]">(list only — not cost)</span>
+                <p className="text-xs text-muted-foreground">
+                  PDF list: <span className="font-mono font-medium text-foreground">R{safeNum(priceOverride).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> <span className="text-xs">(list only — not cost)</span>
                 </p>
               )}
             </div>
@@ -170,14 +170,14 @@ const EnhancedProductPopup = ({
           <div className="flex items-center gap-2">
             <div className="flex flex-col">
               <span className="text-base font-bold text-foreground">
-                R{safeNum(pricing.sellingPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9px] font-normal text-muted-foreground">excl</span>
+                R{safeNum(pricing.sellingPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs font-normal text-muted-foreground">excl</span>
               </span>
-              <span className="text-[10px] text-muted-foreground">
-                R{safeNum(pricing.sellingPriceInclVat).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9px]">incl VAT</span>
+              <span className="text-xs text-muted-foreground">
+                R{safeNum(pricing.sellingPriceInclVat).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs">incl VAT</span>
               </span>
             </div>
             {product.sold_in_length && product.price_per_metre && (
-              <span className="text-[10px] text-orange-600 font-medium border border-orange-400/40 rounded px-1">
+              <span className="text-xs text-orange-600 font-medium border border-orange-400/40 rounded px-1">
                 R{product.price_per_metre.toFixed(2)}/m
               </span>
             )}
@@ -185,7 +185,7 @@ const EnhancedProductPopup = ({
           )}
           {/* Always show cost, markup %, markup amount in hover mode */}
           {!noSoT && (
-          <div className="flex items-center gap-2 text-[10px] flex-wrap">
+          <div className="flex items-center gap-2 text-xs flex-wrap">
             {pricing.costPrice > 0 && (
               <span className="text-muted-foreground">Cost Price (excl VAT): <span className="font-mono font-medium text-foreground">R{safeNum(pricing.costPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
             )}
@@ -207,7 +207,7 @@ const EnhancedProductPopup = ({
               In quote: ×{inQuoteQty}
             </p>
           )}
-          <p className="text-[9px] text-muted-foreground/50 mt-1">
+          <p className="text-xs text-muted-foreground/50 mt-1">
             {noSoT ? "Activate a price book containing this item to quote it" : "Click row to add to quote"}
           </p>
         </div>
@@ -245,12 +245,12 @@ const EnhancedProductPopup = ({
                 <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
                   Not on an active price book — no cost yet
                 </p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   This item isn't linked to live catalogue pricing, so it can't be added to a quote yet. Upload and activate the supplier price book that contains it first.
                 </p>
                 {priceOverride != null && priceOverride > 0 && (
-                  <p className="text-[11px] text-muted-foreground">
-                    PDF list: <span className="font-mono font-medium text-foreground">R{safeNum(priceOverride).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> <span className="text-[9px]">(list only — not cost)</span>
+                  <p className="text-xs text-muted-foreground">
+                    PDF list: <span className="font-mono font-medium text-foreground">R{safeNum(priceOverride).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> <span className="text-xs">(list only — not cost)</span>
                   </p>
                 )}
               </div>
@@ -261,12 +261,12 @@ const EnhancedProductPopup = ({
                     <span className="text-sm font-bold text-foreground">
                       Sell Price (excl VAT): R{safeNum(pricing.sellingPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      R{safeNum(pricing.sellingPriceInclVat).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9px]">incl VAT</span>
+                    <span className="text-xs text-muted-foreground">
+                      R{safeNum(pricing.sellingPriceInclVat).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs">incl VAT</span>
                     </span>
                   </div>
                   {product.sold_in_length && product.price_per_metre && (
-                    <Badge variant="outline" className="text-[9px] px-1 py-0 border-orange-400/40 text-orange-600">
+                    <Badge variant="outline" className="text-xs px-1 py-0 border-orange-400/40 text-orange-600">
                       R{product.price_per_metre.toFixed(2)}/m
                     </Badge>
                   )}
@@ -274,18 +274,18 @@ const EnhancedProductPopup = ({
                     <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-500" />
                   )}
                   {inQuoteQty > 0 && (
-                    <Badge variant="secondary" className="text-[9px]">
+                    <Badge variant="secondary" className="text-xs">
                       Already in quote: ×{inQuoteQty}
                     </Badge>
                   )}
                 </div>
                 {/* Read-only pricing info */}
-                <div className="flex items-center gap-3 mt-1.5 flex-wrap text-[10px]">
+                <div className="flex items-center gap-3 mt-1.5 flex-wrap text-xs">
                   <span className="text-muted-foreground">Cost Price (excl VAT): <span className="font-mono font-medium text-foreground">R{safeNum(pricing.costPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
                   <span className="text-muted-foreground">M/Up: <span className="font-mono font-semibold text-primary">{pricing.markupPercent.toFixed(1)}%</span></span>
                 </div>
                 {pricing.profit > 0 && (
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                  <div className="text-xs text-muted-foreground mt-0.5">
                     Markup Amount (R value): <span className="font-mono font-medium text-accent-foreground">R{safeNum(pricing.profit).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 )}
@@ -301,7 +301,7 @@ const EnhancedProductPopup = ({
         {!noSoT && (
         <ScrollArea className="flex-1" style={{ maxHeight: "calc(80vh - 180px)" }}>
           <div className="p-3 space-y-2">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Add to zones
             </p>
             {baskets.length === 0 ? (
@@ -318,7 +318,7 @@ const EnhancedProductPopup = ({
                     <ShoppingBag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{basket.name}</p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {basket.items.length} items · R{safeNum(zoneTotal).toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
                       </p>
                     </div>
@@ -344,7 +344,7 @@ const EnhancedProductPopup = ({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 text-[10px] px-2 ml-1"
+                        className="h-6 text-xs px-2 ml-1"
                         onClick={() => handleQuickAdd(basket.id)}
                       >
                         +1

@@ -28,7 +28,7 @@ interface Props {
   onApplyDiscount?: (type: string | null, value: number) => Promise<void> | void;
 }
 
-const chip = "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]";
+const chip = "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs";
 
 export default function PricingChecksRow({ settings, discount, onApplyDiscount }: Props) {
   const ctx = useQuoteContext();

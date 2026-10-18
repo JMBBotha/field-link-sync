@@ -33,13 +33,13 @@ function Totals({ rows, compact }: { rows: MyEarningRow[]; compact?: boolean }) 
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-md border p-2"><p className="text-[11px] text-muted-foreground">This week</p><p className={cn("font-bold tabular-nums", compact ? "text-base" : "text-lg")} data-testid="earn-week">{money(s.week)}</p></div>
-        <div className="rounded-md border p-2"><p className="text-[11px] text-muted-foreground">This month</p><p className={cn("font-bold tabular-nums", compact ? "text-base" : "text-lg")} data-testid="earn-month">{money(s.month)}</p></div>
+        <div className="rounded-md border p-2"><p className="text-xs text-muted-foreground">This week</p><p className={cn("font-bold tabular-nums", compact ? "text-base" : "text-lg")} data-testid="earn-week">{money(s.week)}</p></div>
+        <div className="rounded-md border p-2"><p className="text-xs text-muted-foreground">This month</p><p className={cn("font-bold tabular-nums", compact ? "text-base" : "text-lg")} data-testid="earn-month">{money(s.month)}</p></div>
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-md bg-amber-500/10 p-1.5"><p className="text-[10px] text-muted-foreground">Pending</p><p className="text-sm font-semibold tabular-nums" data-testid="earn-pending">{money(s.pending)}</p></div>
-        <div className="rounded-md bg-green-500/10 p-1.5"><p className="text-[10px] text-muted-foreground">Paid</p><p className="text-sm font-semibold tabular-nums" data-testid="earn-paid">{money(s.paid)}</p></div>
-        <div className="rounded-md bg-sky-500/10 p-1.5"><p className="text-[10px] text-muted-foreground">Retention held</p><p className="text-sm font-semibold tabular-nums" data-testid="earn-held">{money(s.held)}</p></div>
+        <div className="rounded-md bg-amber-500/10 p-1.5"><p className="text-xs text-muted-foreground">Pending</p><p className="text-sm font-semibold tabular-nums" data-testid="earn-pending">{money(s.pending)}</p></div>
+        <div className="rounded-md bg-green-500/10 p-1.5"><p className="text-xs text-muted-foreground">Paid</p><p className="text-sm font-semibold tabular-nums" data-testid="earn-paid">{money(s.paid)}</p></div>
+        <div className="rounded-md bg-sky-500/10 p-1.5"><p className="text-xs text-muted-foreground">Retention held</p><p className="text-sm font-semibold tabular-nums" data-testid="earn-held">{money(s.held)}</p></div>
       </div>
     </div>
   );
@@ -116,7 +116,7 @@ function WeekBars({ rows }: { rows: MyEarningRow[] }) {
           <div key={w.start} className="flex h-full flex-1 flex-col items-center justify-end gap-1" title={`${weekLabel(w.start)}: ${money(w.total)}`}>
             <div className={cn("w-full rounded-t-md", i === weeks.length - 1 ? "bg-emerald-600" : "bg-emerald-300 dark:bg-emerald-700")}
               style={{ height: `${Math.max(4, (w.total / max) * 100)}%` }} />
-            <span className="text-[9px] text-muted-foreground">{dayBadge(w.start).day} {dayBadge(w.start).mon}</span>
+            <span className="text-xs text-muted-foreground">{dayBadge(w.start).day} {dayBadge(w.start).mon}</span>
           </div>
         ))}
       </div>
@@ -131,7 +131,7 @@ function StatusChips({ rows }: { rows: MyEarningRow[] }) {
     <div className="grid grid-cols-3 gap-2">
       {items.map(([k, label, v]) => { const { cls, Icon } = CHIP[k]; return (
         <div key={k} className={cn("rounded-xl p-2 ring-1", cls)} data-testid={`earn-${k}`}>
-          <p className="flex items-center gap-1 text-[11px] font-medium"><Icon className="h-3.5 w-3.5 shrink-0" />{label}</p>
+          <p className="flex items-center gap-1 text-xs font-medium"><Icon className="h-3.5 w-3.5 shrink-0" />{label}</p>
           <p className="text-sm font-bold tabular-nums sm:text-base">{money(v)}</p>
         </div>
       ); })}
@@ -160,7 +160,7 @@ export function MyEarningsView() {
           <Hero rows={rows} />
           <StatusChips rows={rows} />
           <WeekBars rows={rows} />
-          <p className="text-[11px] text-muted-foreground">Your share of the labour only: part is paid when the job is completed, and a retention is held and released later unless there's a callback.</p>
+          <p className="text-xs text-muted-foreground">Your share of the labour only: part is paid when the job is completed, and a retention is held and released later unless there's a callback.</p>
           <div className="space-y-4" data-testid="earn-jobs">
             {jobsByWeek(rows).map((g) => (
               <section key={g.start} className="space-y-2" data-testid="earn-week-group">
@@ -169,17 +169,17 @@ export function MyEarningsView() {
                   <Card key={j.key} className="surface-card-solid overflow-hidden">
                     <CardContent className="flex gap-3 p-3">
                       <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg bg-emerald-600 text-white">
-                        <span className="text-lg font-bold leading-none">{d.day}</span><span className="text-[10px] uppercase">{d.mon}</span>
+                        <span className="text-lg font-bold leading-none">{d.day}</span><span className="text-xs uppercase">{d.mon}</span>
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <p className="truncate text-sm font-medium">{j.job_name}</p>
                           <span className="shrink-0 whitespace-nowrap font-bold tabular-nums">{money(j.total)}</span>
                         </div>
-                        <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock className="h-3 w-3" />{j.hours != null ? `${j.hours} h` : "hours —"}</p>
+                        <p className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" />{j.hours != null ? `${j.hours} h` : "hours —"}</p>
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
                           {j.parts.map((p) => { const b = bucketOf(p); const { cls, Icon } = CHIP[b]; return (
-                            <span key={p.row_key} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1", cls)}>
+                            <span key={p.row_key} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1", cls)}>
                               <Icon className="h-3 w-3" />{p.kind === "retention" ? "Retention" : "On completion"} {money(p.amount)} · {BUCKET_LABEL[b]}
                               {b === "held" && p.release_after ? ` until ${formatSastDate(p.release_after)}` : ""}
                             </span>
@@ -209,7 +209,7 @@ export function MyEarningsPeek({ className, overlapBelow }: { className?: string
       onPointerEnter={peek.enter("earnings")} onPointerLeave={peek.leave("earnings")}
       overlap={overlapBelow ? "below" : "none"} className={cn("shrink-0", className)}
       title={<><Wallet className="h-3.5 w-3.5 shrink-0 text-green-600" />My earnings</>}
-      summary={<span className="text-[11px] font-normal text-muted-foreground" data-testid="earn-strip-month">
+      summary={<span className="text-xs font-normal text-muted-foreground" data-testid="earn-strip-month">
         {isLoading ? "…" : rows.length ? <>This month <b className="text-foreground">{money(month)}</b></> : "None yet"}</span>}>
       <div className="space-y-2 px-2 pb-4 pt-1" data-testid="my-earnings-card">
         {isLoading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" />

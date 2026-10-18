@@ -77,7 +77,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, mobileOpen, onMobil
           <span className="v8-av flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold">{initials}</span>
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">{identity?.name || ""}</div>
-            <div className="truncate text-[11px] opacity-70">{{ admin: "Owner · admin", owner: "Company owner", sales: "Sales", tech: "Technician" }[role]}</div>
+            <div className="truncate text-xs opacity-70">{{ admin: "Owner · admin", owner: "Company owner", sales: "Sales", tech: "Technician" }[role]}</div>
           </div>
         </div>
       </div>
@@ -127,8 +127,8 @@ export default function V8Sidebar({ onCreateLead, onSignOut, mobileOpen, onMobil
               <Bell className="h-4 w-4 shrink-0" />
               <span className="flex min-w-0 flex-col items-start leading-tight">
                 <span>{inboxCount > 0 ? `${inboxCount} new lead${inboxCount === 1 ? "" : "s"}` : "New leads"}</span>
-                {tone && tone.oldestMs > 0 && <span className="text-[10px] opacity-90">{tone.tone === "red" ? "! " : ""}oldest {hm(tone.oldestMs)}</span>}
-                {tone?.tone === "grey" && <span className="text-[10px] opacity-90">Starts {sla.open}</span>}
+                {tone && tone.oldestMs > 0 && <span className="text-xs opacity-90">{tone.tone === "red" ? "! " : ""}oldest {hm(tone.oldestMs)}</span>}
+                {tone?.tone === "grey" && <span className="text-xs opacity-90">Starts {sla.open}</span>}
               </span>
             </button>
             <button type="button" className="v8-leads tone-blue w-10 justify-center px-0" onClick={() => { onCreateLead(); onMobileClose?.(); }} title="Create lead" aria-label="Create lead"><Plus className="h-4 w-4" /></button>

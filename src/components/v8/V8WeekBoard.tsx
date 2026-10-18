@@ -77,8 +77,8 @@ export default function V8WeekBoard(p: Props) {
               className={cn("v8-daycol snap-start", isToday(d) && "today", !cap && "offday", p.dragOver === key && "is-over", p.month && "month")}>
               <header className="px-2.5 pt-2">
                 <div className="flex items-baseline justify-between gap-1">
-                  <span><span className="block text-[11px] opacity-60">{format(d, "EEE")}</span><span className="text-lg font-extrabold leading-none">{format(d, "d")}</span></span>
-                  <span className="text-[11px] opacity-70 tabular-nums">{list.length} · {Math.round(booked / 6) / 10}h{cap ? ` / ${Math.round(cap / 60)}h` : " · off"}{pct > 100 ? ` · ${pct}%` : ""}</span>
+                  <span><span className="block text-xs opacity-60">{format(d, "EEE")}</span><span className="text-lg font-extrabold leading-none">{format(d, "d")}</span></span>
+                  <span className="text-xs opacity-70 tabular-nums">{list.length} · {Math.round(booked / 6) / 10}h{cap ? ` / ${Math.round(cap / 60)}h` : " · off"}{pct > 100 ? ` · ${pct}%` : ""}</span>
                 </div>
                 <div className="v8-fill"><i style={{ width: `${Math.min(100, pct)}%` }} className={tone || undefined} /></div>
               </header>
@@ -90,9 +90,9 @@ export default function V8WeekBoard(p: Props) {
                   return (
                     <div key={s.id} draggable onDragStart={(e) => p.onCardDragStart(e, s)} onDragEnd={p.onDragEnd} onClick={() => p.onOpen(s)}
                       className={cn("v8-ccard", V8_KIND[k].cls, late && "late")} title={`${s.leads?.customer_name || ""} · ${name(s.agent_id)}`}>
-                      <div className="flex items-center justify-between text-[11px] font-bold tabular-nums">{s.start_time.slice(0, 5)}{lateTag && <span className="v8-late">{lateTag}</span>}</div>
-                      <div className="truncate text-[13px] font-bold">{s.leads?.customer_name || "Booking"}</div>
-                      {!p.month && <div className="truncate text-[11px] opacity-70">{s.leads?.customer_address || s.leads?.service_type} · {Math.round(v8Dur(s) / 60 * 10) / 10} h</div>}
+                      <div className="flex items-center justify-between text-xs font-bold tabular-nums">{s.start_time.slice(0, 5)}{lateTag && <span className="v8-late">{lateTag}</span>}</div>
+                      <div className="truncate text-xs font-bold">{s.leads?.customer_name || "Booking"}</div>
+                      {!p.month && <div className="truncate text-xs opacity-70">{s.leads?.customer_address || s.leads?.service_type} · {Math.round(v8Dur(s) / 60 * 10) / 10} h</div>}
                       {!p.month && <div className="mt-1 flex items-center justify-between"><span className="v8-tag">{V8_KIND[k].label}</span><span className="v8-av2">{s.agent_id ? initials(name(s.agent_id)) : "—"}</span></div>}
                     </div>);
                 })}

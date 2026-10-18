@@ -369,7 +369,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Or type a new address below to save it as a new location for this customer.
               </p>
             </div>
@@ -405,7 +405,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
               <Label className="text-sm font-semibold">
                 Schedule <span className="text-destructive">*</span>
               </Label>
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
                 Date · Time · Technician
               </span>
             </div>

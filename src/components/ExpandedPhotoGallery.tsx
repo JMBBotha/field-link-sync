@@ -292,7 +292,7 @@ export function ExpandedPhotoGallery({
 
           {/* Multi-select hint */}
           {!isMultiSelectMode && photos.length > 0 && (
-            <p className="text-[10px] text-muted-foreground text-center py-1 bg-muted/30">
+            <p className="text-xs text-muted-foreground text-center py-1 bg-muted/30">
               Long-press or tap checkbox to select multiple
             </p>
           )}
@@ -354,7 +354,7 @@ export function ExpandedPhotoGallery({
                     {/* Type badge */}
                     <div className="absolute bottom-1.5 left-1.5">
                       <Badge 
-                        className={`text-[9px] px-1 py-0 h-4 ${
+                        className={`text-xs px-1 py-0 h-4 ${
                           photo.photoType === 'before' ? 'bg-blue-600' : 'bg-green-600'
                         }`}
                       >
@@ -365,11 +365,11 @@ export function ExpandedPhotoGallery({
                     {/* Sync status */}
                     <div className="absolute bottom-1.5 right-1.5">
                       {photo.isQueued ? (
-                        <Badge className="bg-yellow-500 text-black text-[9px] px-1 py-0 h-4">
+                        <Badge className="bg-yellow-500 text-black text-xs px-1 py-0 h-4">
                           <Clock className="h-2.5 w-2.5" />
                         </Badge>
                       ) : (
-                        <Badge className="bg-green-600/80 text-white text-[9px] px-1 py-0 h-4">
+                        <Badge className="bg-green-600/80 text-white text-xs px-1 py-0 h-4">
                           <Cloud className="h-2.5 w-2.5" />
                         </Badge>
                       )}

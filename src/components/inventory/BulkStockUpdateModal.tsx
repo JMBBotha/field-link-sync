@@ -143,7 +143,7 @@ const BulkStockUpdateModal = ({ open, onClose, products, onBulkUpdate }: Props) 
             {entries.map((entry, i) => (
               <div key={i} className="flex gap-1.5 items-end">
                 <div className="flex-1">
-                  {i === 0 && <Label className="text-[10px]">SKU</Label>}
+                  {i === 0 && <Label className="text-xs">SKU</Label>}
                   <Input
                     value={entry.product_code}
                     onChange={(e) => updateEntry(i, "product_code", e.target.value)}
@@ -152,7 +152,7 @@ const BulkStockUpdateModal = ({ open, onClose, products, onBulkUpdate }: Props) 
                   />
                 </div>
                 <div className="w-16">
-                  {i === 0 && <Label className="text-[10px]">Qty</Label>}
+                  {i === 0 && <Label className="text-xs">Qty</Label>}
                   <Input
                     type="number"
                     min={0}
@@ -162,7 +162,7 @@ const BulkStockUpdateModal = ({ open, onClose, products, onBulkUpdate }: Props) 
                   />
                 </div>
                 <div className="flex-1">
-                  {i === 0 && <Label className="text-[10px]">Reason</Label>}
+                  {i === 0 && <Label className="text-xs">Reason</Label>}
                   <Input
                     value={entry.reason}
                     onChange={(e) => updateEntry(i, "reason", e.target.value)}

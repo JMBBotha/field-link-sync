@@ -38,7 +38,7 @@ const PricingUnitEditor = ({ value, onChange, unitPrice = 0, compact }: Props) =
         <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Pricing Unit
         </Label>
-        <Badge variant="outline" className="text-[10px]">
+        <Badge variant="outline" className="text-xs">
           {formatUnitPrice(unitPrice, value)}
         </Badge>
       </div>
@@ -54,7 +54,7 @@ const PricingUnitEditor = ({ value, onChange, unitPrice = 0, compact }: Props) =
               <Badge
                 key={p.id}
                 variant={active ? "default" : "outline"}
-                className="cursor-pointer text-[10px]"
+                className="cursor-pointer text-xs"
                 onClick={() => applyPreset(p.id)}
               >
                 {p.label}

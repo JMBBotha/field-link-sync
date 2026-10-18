@@ -94,7 +94,7 @@ export default function SiteSurveyPage() {
         {STEPS.map((x, i) => (
           <button key={x.k} type="button" onClick={() => setStep({ k: x.k } as Step)} className="text-left">
             <div className={cn("v8-fill my-0", i <= activeIdx && "")}><i style={{ width: i <= activeIdx ? "100%" : "0%" }} /></div>
-            <span className={cn("text-[11px] font-semibold", i === activeIdx ? "text-primary" : "text-muted-foreground")}>{x.label}</span>
+            <span className={cn("text-xs font-semibold", i === activeIdx ? "text-primary" : "text-muted-foreground")}>{x.label}</span>
           </button>
         ))}
       </div>
@@ -240,7 +240,7 @@ export default function SiteSurveyPage() {
             <h2 className="text-sm font-semibold">Summary</h2>
             {d.rooms.length === 0 ? <p className="text-sm text-muted-foreground">No rooms yet.</p> : (
               <table className="w-full text-sm">
-                <thead><tr className="text-[11px] uppercase text-muted-foreground"><th className="text-left py-1 font-semibold">Room</th><th className="text-left font-semibold">Unit</th><th className="text-left font-semibold">Pipe</th><th className="text-left font-semibold">Wall</th><th className="text-left font-semibold">Power</th></tr></thead>
+                <thead><tr className="text-xs uppercase text-muted-foreground"><th className="text-left py-1 font-semibold">Room</th><th className="text-left font-semibold">Unit</th><th className="text-left font-semibold">Pipe</th><th className="text-left font-semibold">Wall</th><th className="text-left font-semibold">Power</th></tr></thead>
                 <tbody>{d.rooms.map((r) => (
                   <tr key={r.id} className="border-t border-border/60"><td className="py-2 font-semibold">{r.name}</td><td>{btuLabel(r.unit_size_btu) || "–"}</td><td>{r.pipe_run_m ?? "–"} m</td><td>{r.wall_type ?? "–"}</td><td>{r.electrical ?? "–"}</td></tr>
                 ))}</tbody>

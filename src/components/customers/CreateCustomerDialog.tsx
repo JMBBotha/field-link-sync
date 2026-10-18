@@ -140,7 +140,7 @@ const CreateCustomerDialog = ({ open, onOpenChange, onCreated, initialName }: Cr
                     {d.primary_address_line1 && <span className="truncate"><MapPin className="h-3 w-3 inline" /> {d.primary_address_line1}</span>}
                   </div>
                 </div>
-                <Badge variant="outline" className="text-[10px] shrink-0">
+                <Badge variant="outline" className="text-xs shrink-0">
                   {d.match_type === "exact_phone" ? "Phone match" : d.match_type === "exact_email" ? "Email match" : "Similar name"}
                 </Badge>
                 <Button size="sm" variant="outline" onClick={() => useExisting(d)}>

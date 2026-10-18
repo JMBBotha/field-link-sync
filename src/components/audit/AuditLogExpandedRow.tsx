@@ -98,7 +98,7 @@ const AuditLogExpandedRow = ({ log }: AuditLogExpandedRowProps) => {
         <h4 className="text-sm font-semibold text-foreground">Change Details</h4>
         <span className="text-sm text-muted-foreground">—</span>
         <span className="text-sm font-medium text-foreground">{header}</span>
-        <Badge className={`text-[10px] ${ACTION_BADGE[log.action] || ""}`}>
+        <Badge className={`text-xs ${ACTION_BADGE[log.action] || ""}`}>
           {log.action}
         </Badge>
       </div>

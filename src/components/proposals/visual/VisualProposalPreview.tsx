@@ -59,7 +59,7 @@ const VisualProposalPreview = ({
 
   return (
     <div
-      className="mx-auto w-full max-w-3xl bg-white text-slate-800 shadow-sm"
+      className="mx-auto w-full max-w-3xl bg-white text-ink shadow-sm"
       style={{ fontFamily: style.font || DEFAULT_STYLE.font }}
     >
       {/* Header */}
@@ -122,7 +122,7 @@ const VisualProposalPreview = ({
       )}
 
       {sections.length === 0 && (
-        <div className="p-12 text-center text-sm text-slate-400">
+        <div className="p-12 text-center text-sm text-ink-muted">
           Add a section to start building your proposal.
         </div>
       )}
@@ -171,7 +171,7 @@ const VisualProposalPreview = ({
                       <td className="px-3 py-2">
                         <p>{i.description || "—"}</p>
                         {i.detail && (
-                          <p className="whitespace-pre-line text-xs text-slate-500">{i.detail}</p>
+                          <p className="whitespace-pre-line text-xs text-ink-secondary">{i.detail}</p>
                         )}
                       </td>
                       <td className="px-3 py-2 text-right">{formatZAR(Number(i.rate) || 0)}</td>
@@ -183,7 +183,7 @@ const VisualProposalPreview = ({
                   ))}
                   {(s.items || []).length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-4 text-center text-xs text-slate-400">
+                      <td colSpan={4} className="py-4 text-center text-xs text-ink-muted">
                         No items yet
                       </td>
                     </tr>
@@ -222,18 +222,18 @@ const VisualProposalPreview = ({
                   href={a.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex w-32 flex-col items-center gap-1 rounded-lg border p-2 text-center text-[11px] hover:bg-slate-50"
+                  className="flex w-32 flex-col items-center gap-1 rounded-lg border p-2 text-center text-xs hover:bg-slate-50"
                 >
                   {a.mime?.startsWith("image/") ? (
                     <img src={a.url} alt={a.name} className="h-20 w-full rounded object-cover" loading="lazy" />
                   ) : (
-                    <FileText className="h-10 w-10 text-slate-400" />
+                    <FileText className="h-10 w-10 text-ink-muted" />
                   )}
                   <span className="w-full truncate">{a.name}</span>
                 </a>
               ))}
               {(s.attachments || []).length === 0 && (
-                <p className="text-xs text-slate-400">No attachments</p>
+                <p className="text-xs text-ink-muted">No attachments</p>
               )}
             </div>
           </div>
@@ -260,7 +260,7 @@ const VisualProposalPreview = ({
           </h2>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Client name</p>
+              <p className="text-xs uppercase tracking-wide text-ink-secondary">Client name</p>
               {interactive ? (
                 <input
                   className="mt-1 w-full max-w-xs rounded border px-2 py-1 text-sm"
@@ -300,7 +300,7 @@ const VisualProposalPreview = ({
 
 const SummaryRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex justify-between">
-    <span className="text-slate-500">{label}</span>
+    <span className="text-ink-secondary">{label}</span>
     <span className="font-medium">{value}</span>
   </div>
 );
@@ -318,11 +318,11 @@ const HeaderMeta = ({
   dateLabel: string;
   centered?: boolean;
 }) => (
-  <div className={`mt-3 space-y-0.5 text-sm text-slate-500 ${centered ? "text-center" : ""}`}>
+  <div className={`mt-3 space-y-0.5 text-sm text-ink-secondary ${centered ? "text-center" : ""}`}>
     {companyName && <p>From {companyName}</p>}
     {clientName && (
       <p>
-        Prepared for <strong className="text-slate-700">{clientName}</strong>
+        Prepared for <strong className="text-ink">{clientName}</strong>
       </p>
     )}
     <p className="text-xs">

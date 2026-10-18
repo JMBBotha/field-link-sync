@@ -171,13 +171,13 @@ function PopoverBody({
       <div className="flex items-center gap-2">
         <Package className="h-3.5 w-3.5 text-primary shrink-0" />
         <p className="font-semibold text-xs">{bundleName}</p>
-        <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 ml-auto shrink-0">
+        <Badge variant="outline" className="text-xs px-1 py-0 h-3.5 ml-auto shrink-0">
           {pricingType}
         </Badge>
       </div>
 
       <ScrollArea className="max-h-[300px]">
-        <table className="w-full text-[9px] border-collapse">
+        <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="border-b text-muted-foreground">
               <th className="text-left py-1 pr-1 font-medium">Item</th>
@@ -196,11 +196,11 @@ function PopoverBody({
                     {getProductDisplayName(r.item.product)}
                   </span>
                   <div className="flex items-center gap-1">
-                    <span className="font-mono text-[8px] text-muted-foreground">
+                    <span className="font-mono text-xs text-muted-foreground">
                       {r.item.product.product_code}
                     </span>
                     {r.isPackItem && (
-                      <Badge variant="outline" className="text-[6px] px-0.5 py-0 h-3 border-muted-foreground/40 text-muted-foreground">
+                      <Badge variant="outline" className="text-xs px-0.5 py-0 h-3 border-muted-foreground/40 text-muted-foreground">
                         pk/{r.packQty}
                       </Badge>
                     )}
@@ -208,7 +208,7 @@ function PopoverBody({
                 </td>
                 <td className="text-right py-1 px-0.5 text-muted-foreground whitespace-nowrap">
                   R{fmtU(r.costPerUnit)}
-                  <span className="text-[7px]">{r.isLen ? " /m" : " /ea"}</span>
+                  <span className="text-xs">{r.isLen ? " /m" : " /ea"}</span>
                 </td>
                 <td className="text-right py-1 px-0.5 text-foreground font-medium whitespace-nowrap">
                   R{fmtU(r.sellPerUnit)}
@@ -217,10 +217,10 @@ function PopoverBody({
                   {r.hasMarkup ? (
                     <span className="text-green-600 dark:text-green-400">
                       R{fmtU(r.markupAmt)}
-                      <span className="text-[7px] ml-0.5">({r.markupPct.toFixed(0)}%)</span>
+                      <span className="text-xs ml-0.5">({r.markupPct.toFixed(0)}%)</span>
                     </span>
                   ) : (
-                    <span className="text-orange-500 text-[8px]">No m/up</span>
+                    <span className="text-orange-500 text-xs">No m/up</span>
                   )}
                 </td>
                 <td className="text-right py-1 px-0.5 text-muted-foreground">
@@ -239,7 +239,7 @@ function PopoverBody({
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-border font-bold text-[10px]">
+            <tr className="border-t-2 border-border font-bold text-xs">
               <td className="py-1.5 text-foreground">Totals</td>
               <td className="text-right py-1.5 px-0.5 text-muted-foreground">
                 R{fmt(totalCost)}
@@ -249,7 +249,7 @@ function PopoverBody({
               </td>
               <td className="text-right py-1.5 px-0.5 text-green-600 dark:text-green-400">
                 R{fmt(totalMarkup)}
-                <span className="text-[7px] ml-0.5">({overallMarkupPct.toFixed(0)}%)</span>
+                <span className="text-xs ml-0.5">({overallMarkupPct.toFixed(0)}%)</span>
               </td>
               <td></td>
               <td className="text-right py-1.5 pl-0.5 text-foreground">

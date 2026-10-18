@@ -271,12 +271,12 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
         <div className="flex items-end gap-2 p-2 rounded-lg bg-accent/30">
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium truncate">{selectedProduct.description}</p>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {selectedProduct.product_code}
             </p>
           </div>
           <div className="w-16 shrink-0">
-            <Label className="text-[10px] text-muted-foreground">Qty</Label>
+            <Label className="text-xs text-muted-foreground">Qty</Label>
             <Input
               type="number"
               min={1}
@@ -314,7 +314,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
             >
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{part.product_name}</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {part.product_code} · {showCost ? <>{part.quantity} × {formatCurrency(part.unit_cost ?? 0)}</> : <>Qty {part.quantity}</>}
                 </p>
               </div>
@@ -342,7 +342,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
           </div>}
         </div>
       ) : (
-        <p className="text-[10px] text-muted-foreground text-center py-1">No parts added yet</p>
+        <p className="text-xs text-muted-foreground text-center py-1">No parts added yet</p>
       )}
     </div>
   );

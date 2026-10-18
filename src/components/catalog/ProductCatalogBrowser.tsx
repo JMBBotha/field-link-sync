@@ -739,7 +739,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
               />
               <div className="flex flex-wrap gap-1">
                 {availableBrands.map(b => (
-                  <Badge key={b} variant="outline" className="cursor-pointer text-[10px]" onClick={() => setBulkBrand(b)}>
+                  <Badge key={b} variant="outline" className="cursor-pointer text-xs" onClick={() => setBulkBrand(b)}>
                     {b}
                   </Badge>
                 ))}
@@ -835,12 +835,12 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
         <div className="text-xs text-muted-foreground flex items-center gap-2">
           {isLoading ? "Loading products..." : `${sorted.length} products found`}
           {pinnedCount > 0 && (
-            <Badge variant="secondary" className="text-[10px] gap-0.5">
+            <Badge variant="secondary" className="text-xs gap-0.5">
               <Star className="h-2.5 w-2.5 fill-current" /> {pinnedCount} pinned
             </Badge>
           )}
           {compareIds.length > 0 && (
-            <Badge variant="secondary" className="text-[10px] gap-0.5">
+            <Badge variant="secondary" className="text-xs gap-0.5">
               <GitCompareArrows className="h-2.5 w-2.5" /> {compareIds.length} selected
             </Badge>
           )}
@@ -875,7 +875,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
       ) : viewMode === "list" ? (
         <div className="space-y-1">
           {/* List header */}
-          <div className="grid grid-cols-[24px_1fr_2fr_80px_60px_80px_100px_40px] gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b">
+          <div className="grid grid-cols-[24px_1fr_2fr_80px_60px_80px_100px_40px] gap-2 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b">
             <Checkbox
               checked={bulkSelected.size === sorted.length && sorted.length > 0}
               onCheckedChange={(checked) => checked ? selectAllVisible() : setBulkSelected(new Set())}
@@ -897,7 +897,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-mono font-medium truncate">{highlightText(product.product_code, searchQuery)}</p>
-                  <p className="text-[10px] text-primary font-semibold truncate">{highlightText(product.short_name || generateShortName(product), searchQuery)}</p>
+                  <p className="text-xs text-primary font-semibold truncate">{highlightText(product.short_name || generateShortName(product), searchQuery)}</p>
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{highlightText(product.description, searchQuery)}</p>
                 <span className="text-xs text-muted-foreground">{product.btu_rating ? `${(product.btu_rating / 1000).toFixed(0)}K` : "—"}</span>
@@ -906,11 +906,11 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                 <div className="text-right">
                   <span className="text-xs font-bold">
                     {product.is_price_on_request || (!product.selling_price && !product.cost_price)
-                      ? <Badge variant="outline" className="text-[9px] border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold px-1">POR</Badge>
+                      ? <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold px-1">POR</Badge>
                       : <span className="text-primary">{formatZAR(product.selling_price)}</span>}
                   </span>
                   {product.sold_in_length && product.price_per_metre && (
-                    <p className="text-[9px] text-green-700">📏 R{product.price_per_metre.toFixed(2)}/m</p>
+                    <p className="text-xs text-green-700">📏 R{product.price_per_metre.toFixed(2)}/m</p>
                   )}
                 </div>
                 <div className="flex items-center justify-end">
@@ -933,7 +933,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
               <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors group">
                 <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=closed]:-rotate-90" />
                 <span className="text-base font-bold">{brand}</span>
-                <Badge variant="secondary" className="text-[10px] ml-auto">
+                <Badge variant="secondary" className="text-xs ml-auto">
                   {categories.reduce((sum, c) => sum + c.products.length, 0)}
                 </Badge>
               </CollapsibleTrigger>
@@ -943,11 +943,11 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                     <CollapsibleTrigger className="flex items-center gap-1.5 w-full text-left py-1 px-2 rounded hover:bg-accent/30 transition-colors group">
                       <ChevronDown className="h-3 w-3 shrink-0 transition-transform group-data-[state=closed]:-rotate-90 text-muted-foreground" />
                       <span className="text-sm font-semibold text-muted-foreground">{category}</span>
-                      <span className="text-[10px] text-muted-foreground">({products.length})</span>
+                      <span className="text-xs text-muted-foreground">({products.length})</span>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="pt-1">
                       <div className="border rounded-md overflow-hidden">
-                        <div className="grid grid-cols-[1fr_2fr_60px_55px_70px_90px] gap-2 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b bg-muted/30">
+                        <div className="grid grid-cols-[1fr_2fr_60px_55px_70px_90px] gap-2 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b bg-muted/30">
                           <span>Model</span><span>Description</span><span>BTU</span><span>Refrig.</span><span>Pipe</span><span className="text-right">Price</span>
                         </div>
                         {products.map((product) => (
@@ -957,15 +957,15 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                             onClick={() => openPanel(product)}
                           >
                             <div className="min-w-0">
-                              <p className="font-mono font-medium truncate text-[11px]">{highlightText(product.product_code, searchQuery)}</p>
+                              <p className="font-mono font-medium truncate text-xs">{highlightText(product.product_code, searchQuery)}</p>
                             </div>
-                            <p className="text-muted-foreground truncate text-[11px]">{highlightText(product.description, searchQuery)}</p>
+                            <p className="text-muted-foreground truncate text-xs">{highlightText(product.description, searchQuery)}</p>
                             <span className="text-muted-foreground">{product.btu_rating ? `${(product.btu_rating / 1000).toFixed(0)}K` : "—"}</span>
                             <span className="text-muted-foreground">{product.refrigerant_type || "—"}</span>
                             <span className="text-muted-foreground">{product.pipe_size || "—"}</span>
                             <span className="font-bold text-right">
                               {product.is_price_on_request || (!product.selling_price && !product.cost_price)
-                                ? <Badge variant="outline" className="text-[9px] border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold px-1">POR</Badge>
+                                ? <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold px-1">POR</Badge>
                                 : <span className="text-primary">{formatZAR(product.selling_price)}</span>}
                             </span>
                           </div>
@@ -1010,17 +1010,17 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                           {highlightText(product.short_name || generateShortName(product), searchQuery)}
                         </p>
                         <p className={`text-xs font-mono text-muted-foreground ${(product as any).archived ? "line-through" : ""}`}>{highlightText(product.product_code, searchQuery)}</p>
-                        <p className={`mt-0.5 line-clamp-2 text-muted-foreground ${isMobile ? "text-[11px]" : "text-xs"} ${(product as any).archived ? "line-through" : ""}`}>{highlightText(product.description, searchQuery)}</p>
+                        <p className={`mt-0.5 line-clamp-2 text-muted-foreground ${isMobile ? "text-xs" : "text-xs"} ${(product as any).archived ? "line-through" : ""}`}>{highlightText(product.description, searchQuery)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       {isPinned && (
-                        <Badge variant="secondary" className="text-[10px] px-1">
+                        <Badge variant="secondary" className="text-xs px-1">
                           <Star className="h-2.5 w-2.5 fill-current text-amber-500" />
                         </Badge>
                       )}
                       {product.quote_usage_count > 0 && (
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-xs">
                           <TrendingUp className="h-3 w-3 mr-0.5" />{product.quote_usage_count}
                         </Badge>
                       )}
@@ -1028,11 +1028,11 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                   </div>
 
                   <div className="flex flex-wrap gap-1 mb-2">
-                    {(product as any).archived && <Badge variant="destructive" className="text-[10px]">Archived</Badge>}
+                    {(product as any).archived && <Badge variant="destructive" className="text-xs">Archived</Badge>}
                     <Popover>
                       <PopoverTrigger asChild>
                         <div onClick={(e) => e.stopPropagation()}>
-                          <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-accent">{product.category || product.product_category || "Uncategorized"}</Badge>
+                          <Badge variant="outline" className="text-xs cursor-pointer hover:bg-accent">{product.category || product.product_category || "Uncategorized"}</Badge>
                         </div>
                       </PopoverTrigger>
                       <PopoverContent className="w-44 p-2" onClick={(e) => e.stopPropagation()}>
@@ -1060,11 +1060,11 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                         </div>
                       </PopoverContent>
                     </Popover>
-                    {product.btu_rating && <Badge variant="outline" className="text-[10px]">{(product.btu_rating / 1000).toFixed(0)}K BTU</Badge>}
-                    {product.refrigerant_type && <Badge variant="outline" className="text-[10px]">{product.refrigerant_type}</Badge>}
-                    {product.pipe_size && <Badge variant="outline" className="text-[10px]">⌀ {product.pipe_size}</Badge>}
+                    {product.btu_rating && <Badge variant="outline" className="text-xs">{(product.btu_rating / 1000).toFixed(0)}K BTU</Badge>}
+                    {product.refrigerant_type && <Badge variant="outline" className="text-xs">{product.refrigerant_type}</Badge>}
+                    {product.pipe_size && <Badge variant="outline" className="text-xs">⌀ {product.pipe_size}</Badge>}
                     {product.sold_in_length && product.price_per_metre && (
-                      <Badge variant="outline" className="text-[10px] gap-0.5 border-green-500/50 text-green-700 bg-green-500/10">
+                      <Badge variant="outline" className="text-xs gap-0.5 border-green-500/50 text-green-700 bg-green-500/10">
                         📏 R{product.price_per_metre.toFixed(2)}/m
                       </Badge>
                     )}
@@ -1075,12 +1075,12 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                   <div className="flex items-end justify-between">
                     <div>
                       {product.is_price_on_request || (!product.selling_price && !product.cost_price) ? (
-                        <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold">POR</Badge>
+                        <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold">POR</Badge>
                       ) : (
                         <>
-                          <p className="text-[10px] text-muted-foreground">Cost: {formatZAR(product.discounted_cost || product.cost_price)}</p>
+                          <p className="text-xs text-muted-foreground">Cost: {formatZAR(product.discounted_cost || product.cost_price)}</p>
                           {product.rrp && product.rrp > product.selling_price && (
-                            <p className="text-[10px] text-muted-foreground line-through">{formatZAR(product.rrp)}</p>
+                            <p className="text-xs text-muted-foreground line-through">{formatZAR(product.rrp)}</p>
                           )}
                           <p className="text-sm font-bold text-primary">{formatZAR(product.selling_price)}</p>
                         </>

@@ -330,7 +330,7 @@ const AdminTeamPage = () => {
           <TabsTrigger value="freelancers">Freelancers</TabsTrigger>
           <TabsTrigger value="applications" className="gap-1.5">
             Applications
-            {pendingCount > 0 && <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">{pendingCount}</Badge>}
+            {pendingCount > 0 && <Badge variant="destructive" className="h-5 px-1.5 text-xs">{pendingCount}</Badge>}
           </TabsTrigger>
         </TabsList>
         <TabsContent value="freelancers" className="mt-4"><TeamFreelancersTab /></TabsContent>
@@ -464,7 +464,7 @@ const AdminTeamPage = () => {
                                 });
                                 return (
                                   <span
-                                    className={`shrink-0 whitespace-nowrap rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
+                                    className={`shrink-0 whitespace-nowrap rounded border px-1.5 py-0.5 text-xs font-semibold ${
                                       lane ? LANE_META[lane].className : UNKNOWN_LANE_META.className
                                     }`}
                                   >
@@ -528,7 +528,7 @@ const AdminTeamPage = () => {
                                         <span className="text-muted-foreground w-32 shrink-0">
                                           {format(new Date(log.created_at), "dd MMM HH:mm")}
                                         </span>
-                                        <Badge variant="outline" className="text-[10px] shrink-0">{log.action}</Badge>
+                                        <Badge variant="outline" className="text-xs shrink-0">{log.action}</Badge>
                                         <span className="text-foreground truncate">
                                           {log.table_name}
                                         </span>

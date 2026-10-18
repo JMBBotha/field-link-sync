@@ -58,7 +58,7 @@ const AvailabilityIndicator = ({
     
     return {
       color: "bg-gray-500",
-      textColor: "text-gray-600",
+      textColor: "text-ink-secondary",
       bgColor: "bg-gray-500/10",
       borderColor: "border-gray-500/30",
       label: "Offline",

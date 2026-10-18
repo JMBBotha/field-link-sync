@@ -79,12 +79,12 @@ function AreaSubItems({ area }: { area: QuoteArea }) {
     items.push({ name: `Bracket ${br.size}`, qty: br.quantity, unitPrice: br.price, lineTotal: br.price * br.quantity, mode: "ea" });
   }
 
-  if (items.length === 0) return <p className="text-[10px] text-muted-foreground pl-6 py-1">No sub-items</p>;
+  if (items.length === 0) return <p className="text-xs text-muted-foreground pl-6 py-1">No sub-items</p>;
 
   return (
     <div className="pl-6 pr-4 py-1 space-y-0.5">
       {items.map((item, i) => (
-        <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 text-[10px] text-muted-foreground items-center">
+        <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 text-xs text-muted-foreground items-center">
           <span className="truncate">{item.name}</span>
           <span className="text-center tabular-nums">{item.qty} {item.mode}</span>
           <span className="text-right tabular-nums">{formatCurrency(item.unitPrice)} / {item.mode}</span>
@@ -403,7 +403,7 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
       <div className="rounded-lg border shadow-sm overflow-x-auto -webkit-overflow-scrolling-touch">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-background shadow-sm border-b">
-          <div className="grid grid-cols-[minmax(140px,1.5fr)_100px_90px_80px_120px] gap-2 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[560px]">
+          <div className="grid grid-cols-[minmax(140px,1.5fr)_100px_90px_80px_120px] gap-2 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground min-w-[560px]">
             <span className="sticky left-0 bg-background z-[1]">Area</span>
             <span className="text-center">Qty</span>
             <span className="text-right">Cost</span>
@@ -447,17 +447,17 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-medium truncate">{area.name}</span>
                         {isBundle && (
-                          <Badge variant="outline" className="text-[9px] bg-blue-100/50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 shrink-0">
+                          <Badge variant="outline" className="text-xs bg-blue-100/50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 shrink-0">
                             <Package className="h-2.5 w-2.5 mr-0.5" /> Bundle
                           </Badge>
                         )}
                       </div>
                       {unit ? (
-                        <Badge variant="outline" className="text-[9px] mt-0.5">
+                        <Badge variant="outline" className="text-xs mt-0.5">
                           {unit.product.product_code} · {unit.btu.toLocaleString()} BTU
                         </Badge>
                       ) : (
-                        <Badge variant="destructive" className="text-[9px] mt-0.5">No unit</Badge>
+                        <Badge variant="destructive" className="text-xs mt-0.5">No unit</Badge>
                       )}
                     </div>
                   </div>
@@ -507,8 +507,8 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
                     <div className="flex items-center justify-end gap-1">
                       <div>
                         <span className="text-xs font-semibold">{summary ? formatCurrency(rowFor(area) ? rowFor(area)!.subtotal - rowFor(area)!.labourTotal : 0) : unit ? formatCurrency(lineTotal) : "—"}</span>
-                        {summary ? <span className="block text-[9px] text-muted-foreground">items, excl. labour</span> : unit && (
-                          <span className="block text-[9px] text-muted-foreground">
+                        {summary ? <span className="block text-xs text-muted-foreground">items, excl. labour</span> : unit && (
+                          <span className="block text-xs text-muted-foreground">
                             {formatCurrency(sellingPrice)} × {quantity}
                           </span>
                         )}
@@ -567,7 +567,7 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
 
           {/* Markup impact bar */}
           {showCost && <div className="space-y-1">
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <TrendingUp className="h-3 w-3" />
                 Overall markup (on cost): {avgMarkup.toFixed(0)}%
@@ -580,7 +580,7 @@ export default function PricingStep({ areas, onAreasChange, onGenerateQuote, gen
                 style={{ width: `${Math.max(0, Math.min(100, (avgMarkup / BLENDED_MARKUP_BAR_MAX) * 100))}%` }}
               />
             </div>
-            <div className="relative h-3 text-[9px] text-muted-foreground">
+            <div className="relative h-3 text-xs text-muted-foreground">
               <span className="absolute left-0">0%</span>
               <span className="absolute left-[25%] -translate-x-1/2">25%</span>
               <span className="absolute left-[35%] -translate-x-1/2">35%</span>

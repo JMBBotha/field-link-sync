@@ -1615,11 +1615,11 @@ const FieldAgent = () => {
               open={fieldPeek.isOpen("completed")} onToggle={() => fieldPeek.toggle("completed")}
               onPointerEnter={fieldPeek.enter("completed")} onPointerLeave={fieldPeek.leave("completed")}
               title={<><CheckCircle2 className="h-3.5 w-3.5 shrink-0" />Completed</>}
-              summary={<Badge variant="secondary" className="text-[10px]" data-testid="completed-count">{completedLeads.length}</Badge>}
+              summary={<Badge variant="secondary" className="text-xs" data-testid="completed-count">{completedLeads.length}</Badge>}
               bodyClassName="">
               <div className="max-h-[45vh] overflow-y-auto space-y-2 px-2 pb-2" data-completed-list>
                 <div className="flex justify-end">
-                  <Button variant={completedJobsFilter.isFiltered ? "default" : "ghost"} size="sm" data-no-min className="h-6 gap-1 px-2 text-[11px]" onClick={() => setFilterDrawerOpen(true)}>
+                  <Button variant={completedJobsFilter.isFiltered ? "default" : "ghost"} size="sm" data-no-min className="h-6 gap-1 px-2 text-xs" onClick={() => setFilterDrawerOpen(true)}>
                     <Filter className="h-3 w-3" />Filter
                   </Button>
                 </div>
@@ -1642,13 +1642,13 @@ const FieldAgent = () => {
                                 <DepositPaymentChip
                                   invoice={installInvoicesByLead[lead.id]}
                                   accepted
-                                  className="text-[10px]"
+                                  className="text-xs"
                                 />
                               )}
                               {installQuoteByLead[lead.id] && (
                                 <button
                                   type="button"
-                                  className="text-[10px] font-medium text-primary hover:underline"
+                                  className="text-xs font-medium text-primary hover:underline"
                                   onClick={(e) => { e.stopPropagation(); navigate(`/field/jobs/${installQuoteByLead[lead.id]}`); }}
                                 >
                                   Open job sheet
@@ -1907,13 +1907,13 @@ const FieldAgent = () => {
                                         <DepositPaymentChip
                                           invoice={installInvoicesByLead[lead.id]}
                                           accepted
-                                          className="text-[10px]"
+                                          className="text-xs"
                                         />
                                       )}
                                       {installQuoteByLead[lead.id] && (
                                         <button
                                           type="button"
-                                          className="text-[10px] font-medium text-primary hover:underline"
+                                          className="text-xs font-medium text-primary hover:underline"
                                           onClick={(e) => { e.stopPropagation(); navigate(`/field/jobs/${installQuoteByLead[lead.id]}`); }}
                                         >
                                           Open job sheet

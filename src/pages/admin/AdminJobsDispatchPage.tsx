@@ -334,7 +334,7 @@ const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => 
             >
               <div className="p-3 flex items-center justify-between">
                 <span className={`border-l-4 pl-2 font-semibold text-sm text-foreground ${col.color}`}>{col.label}</span>
-                <Badge variant="outline" className="text-[10px]">{grouped[col.key]?.length || 0}</Badge>
+                <Badge variant="outline" className="text-xs">{grouped[col.key]?.length || 0}</Badge>
               </div>
               <ScrollArea className="flex-1 min-w-0 px-2 pb-2 [&_[data-radix-scroll-area-viewport]>div]:!block">
                 {(grouped[col.key] || []).map(renderCard)}
@@ -389,7 +389,7 @@ const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => 
                           <span className="font-medium">{a.profiles?.full_name}</span>
                           <span className="text-xs text-muted-foreground ml-2">({a.assignment_type})</span>
                         </div>
-                        <Badge variant="outline" className="text-[10px]">{a.status}</Badge>
+                        <Badge variant="outline" className="text-xs">{a.status}</Badge>
                       </div>
                     ))}
                   </div>

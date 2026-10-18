@@ -133,12 +133,12 @@ const ReceiptsView = () => {
                 >
                   <TableCell className="text-xs">{format(new Date(r.receipt_date), "dd MMM yy")}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="text-[10px]">{r.supplier_name}</Badge>
+                    <Badge variant="secondary" className="text-xs">{r.supplier_name}</Badge>
                   </TableCell>
                   <TableCell className="text-xs text-center font-medium">{r.items_received.length}</TableCell>
                   <TableCell className="text-xs text-center">
                     {r.doc_count > 0 ? (
-                      <Badge variant="outline" className="text-[9px]">
+                      <Badge variant="outline" className="text-xs">
                         <FileText className="h-2.5 w-2.5 mr-0.5" />{r.doc_count}
                       </Badge>
                     ) : "—"}
@@ -173,9 +173,9 @@ const ReceiptsView = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-[10px]">Product</TableHead>
-                      <TableHead className="text-[10px] text-center">Qty</TableHead>
-                      <TableHead className="text-[10px]">Notes</TableHead>
+                      <TableHead className="text-xs">Product</TableHead>
+                      <TableHead className="text-xs text-center">Qty</TableHead>
+                      <TableHead className="text-xs">Notes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

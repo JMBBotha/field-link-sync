@@ -38,7 +38,7 @@ const TONE: Record<Tone, { text: string; bar: string; dot: string }> = {
   red: { text: "text-red-600", bar: "border-l-red-600", dot: "bg-red-600" },
   blue: { text: "text-sky-600", bar: "border-l-sky-500", dot: "bg-sky-500" },
   amber: { text: "text-amber-600", bar: "border-l-amber-500", dot: "bg-amber-500" },
-  grey: { text: "text-slate-500", bar: "border-l-slate-400", dot: "bg-slate-400" },
+  grey: { text: "text-ink-secondary", bar: "border-l-slate-400", dot: "bg-slate-400" },
   done: { text: "text-emerald-600", bar: "border-l-emerald-500", dot: "bg-emerald-500" },
 };
 
@@ -51,10 +51,10 @@ const initials = (n?: string | null) => (n || "?").split(/\s+/).filter(Boolean).
 
 function Steps({ clock, lead }: { clock: LeadClock; lead: LeadV2 }) {
   const dot = (n: number, done: boolean, active: boolean) => (
-    <span className={cn("grid h-4 w-4 place-items-center rounded-full text-[9px] font-bold text-white", done ? "bg-emerald-500" : active ? TONE[clock.tone].dot : "bg-slate-300")}>{done ? "✓" : n}</span>
+    <span className={cn("grid h-4 w-4 place-items-center rounded-full text-xs font-bold text-white", done ? "bg-emerald-500" : active ? TONE[clock.tone].dot : "bg-slate-300")}>{done ? "✓" : n}</span>
   );
   return (
-    <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+    <div className="flex items-center gap-1 text-xs text-muted-foreground">
       {dot(1, !!lead.first_contact_at, clock.stage <= 1)}
       <span>{lead.first_contact_at ? `Called ${hhmm(lead.first_contact_at)}` : "Contact"}</span>
       <span className="h-px w-4 bg-border" />
@@ -146,11 +146,11 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide",
+          <span className={cn("rounded px-1.5 py-0.5 text-xs font-bold tracking-wide",
             lane ? LANE_META[lane].className : UNKNOWN_LANE_META.className)}>
             {lane ? LANE_META[lane].short.toUpperCase() : "LANE?"}
           </span>
-          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{sourceLabel(lead)}</span>
+          <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">{sourceLabel(lead)}</span>
           {!tech && <DuplicateClientBadge leadId={lead.id} />}
           {!tech && <LeadCallChip leadId={lead.id} />}
         </div>
@@ -162,12 +162,12 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
         ) : <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={bookingTime(lead.scheduled_time)} status={lead.status || undefined} />) : clock && (
           <div className="shrink-0 text-right leading-tight" data-testid="lead-clock">
             <div className={cn("font-bold tabular-nums", clock.stage === 0 || clock.stage === 3 ? "text-sm" : "text-xl", TONE[clock.tone].text)}>{clock.big}</div>
-            <div className="text-[10px] text-muted-foreground">{clock.sub}</div>
+            <div className="text-xs text-muted-foreground">{clock.sub}</div>
           </div>
         )}
       </div>
       <div className="min-w-0">
-        <p className="line-clamp-2 break-words text-[15px] font-semibold leading-tight" title={text(lead.customer_name) || undefined}>{text(lead.customer_name) || "New lead"}</p>
+        <p className="line-clamp-2 break-words text-base font-semibold leading-tight" title={text(lead.customer_name) || undefined}>{text(lead.customer_name) || "New lead"}</p>
         {lead.customer_address && (
           <p className="mt-0.5 flex items-start gap-1 text-xs text-muted-foreground">
             <MapPin className="mt-px h-3.5 w-3.5 shrink-0" /><span className="min-w-0 line-clamp-2 break-words">{text(compact ? lead.customer_address.split(",")[0] : lead.customer_address)}</span>
@@ -175,7 +175,7 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
         )}
         <LeadTimingChip notes={lead.notes} className="mt-1" />
         {booking && (!tech || jobBooking) && (
-          <span data-testid="lead-card-booked" className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-800">
+          <span data-testid="lead-card-booked" className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-800">
             <span className="truncate">Booked{booking.techName ? ` · ${tech && booking.techId === user?.id ? "You" : booking.techName}` : ""}{bookingWhen ? ` · ${bookingWhen}` : ""}</span>
           </span>
         )}
@@ -193,25 +193,25 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
       {asking && !compact && (
         <div className="flex flex-wrap items-center gap-1.5 rounded-md bg-muted/60 p-1.5 text-xs" onClick={stop}>
           <span>Did they answer?</span>
-          <Button size="sm" className="h-6 px-2 text-[11px]" disabled={busy} onClick={() => log("call", "reached")}>Reached</Button>
-          <Button size="sm" variant="outline" className="h-6 px-2 text-[11px]" disabled={busy} onClick={() => log("call", "no_answer")}>No answer</Button>
+          <Button size="sm" className="h-6 px-2 text-xs" disabled={busy} onClick={() => log("call", "reached")}>Reached</Button>
+          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={busy} onClick={() => log("call", "no_answer")}>No answer</Button>
         </div>
       )}
       {!compact && <div className="flex flex-wrap gap-1" onClick={stop}>
         <CallSummary lead={tech ? { ...lead, call_summary: text(lead.call_summary), notes: text(lead.notes) } : lead} compact />
-        {/call ?back/i.test(lead.call_next_action || "") && <span className="rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-[10px] text-red-700">Call back requested</span>}
-        {attempts > 0 && !lead.first_contact_at && <span className="rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-[10px] text-sky-800">{attempts} attempt{attempts === 1 ? "" : "s"} · no answer</span>}
+        {/call ?back/i.test(lead.call_next_action || "") && <span className="rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-xs text-red-700">Call back requested</span>}
+        {attempts > 0 && !lead.first_contact_at && <span className="rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-xs text-sky-800">{attempts} attempt{attempts === 1 ? "" : "s"} · no answer</span>}
       </div>}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5" onClick={stop}>
         {(!compact && !tech ? action : null) ?? (unassigned ? (
           <div className="flex items-center gap-1.5">
-            <span className="rounded border border-red-500 px-1.5 py-0.5 text-[10px] font-bold text-red-600">UNASSIGNED</span>
+            <span className="rounded border border-red-500 px-1.5 py-0.5 text-xs font-bold text-red-600">UNASSIGNED</span>
             {!compact && !tech && (onAssign ? (
-              <Button size="sm" variant="destructive" className="h-6 px-2 text-[11px]" onClick={onAssign}>Assign <ChevronDown className="ml-0.5 h-3 w-3" /></Button>
+              <Button size="sm" variant="destructive" className="h-6 px-2 text-xs" onClick={onAssign}>Assign <ChevronDown className="ml-0.5 h-3 w-3" /></Button>
             ) : (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="destructive" className="h-6 px-2 text-[11px]">Assign <ChevronDown className="ml-0.5 h-3 w-3" /></Button>
+                  <Button size="sm" variant="destructive" className="h-6 px-2 text-xs">Assign <ChevronDown className="ml-0.5 h-3 w-3" /></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                   <DropdownMenuLabel className="text-xs">{lane === "service" ? "Technicians" : lane === "sales" ? "Sales" : "Staff"}</DropdownMenuLabel>
@@ -223,11 +223,11 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
           </div>
         ) : compact && tech && who === "You" ? null : (
           <div className="flex min-w-0 items-center gap-1.5">
-            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{initials(who)}</span>
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{initials(who)}</span>
             <span className="truncate text-xs font-medium">{text(who) || "Assigned"}</span>
           </div>
         ))}
-        {tech ? techCardContent(action) : compact ? action : clock?.alerted ? <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">🔔 {clock.alerted}</span>
+        {tech ? techCardContent(action) : compact ? action : clock?.alerted ? <span className="rounded bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white">🔔 {clock.alerted}</span>
           : clock ? <Steps clock={clock} lead={lead} /> : null}
         {tech ? techCardContent(extra) : extra}
       </div>
