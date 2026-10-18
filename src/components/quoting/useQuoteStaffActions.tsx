@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { doneMessage } from "@/lib/doneToast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,7 +7,7 @@ import { useRole } from "@/hooks/useRole";
 import { useToast } from "@/hooks/use-toast";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import { ToastAction } from "@/components/ui/toast";
-import { useUndoAction, QUOTE_UNDO_NOTE } from "@/components/shared/StatusUndo";
+import { useUndoAction } from "@/components/shared/StatusUndo";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -77,8 +78,8 @@ export function useQuoteStaffActions(onChanged?: () => void, beforeAccept?: () =
         label: q.quote_number || "Quote", company_id: q.company_id,
       });
       toast({
-        title: kind === "accept" ? "Marked accepted" : "Marked declined",
-        description: kind === "accept" ? `Deposit invoice is created automatically. ${QUOTE_UNDO_NOTE}` : undefined,
+        title: doneMessage(`Quote ${q.quote_number || ""} ${kind === "accept" ? "accepted" : "declined"}`.replace("  ", " ")),
+        description: kind === "accept" ? "Deposit invoice is created automatically." : undefined,
         action: undo.action(entry),
       });
     } catch (e: any) {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { doneToast, doneMessage } from "@/lib/doneToast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
@@ -272,16 +273,18 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             .eq("id", customerId);
         }
       }
-      return { job: data, geocoded: finalLat != null };
+      let techName: string | null = null;
+      if (appt.agentId) {
+        const { data: prof } = await supabase.from("profiles").select("full_name").eq("id", appt.agentId).maybeSingle();
+        techName = (prof as { full_name?: string | null } | null)?.full_name || null;
+      }
+      return { job: data, geocoded: finalLat != null, techName };
     },
-    onSuccess: ({ geocoded }) => {
-      toast({
-        title: "Job created",
-        description: geocoded
-          ? "Now visible in Dispatch, Schedule, My Jobs and Map."
-          : "Created without map coordinates — pin it from the Map view when possible.",
-        variant: geocoded ? "default" : "destructive",
-      });
+    onSuccess: ({ job, geocoded, techName }) => {
+      const when = job?.scheduled_for ? new Date(job.scheduled_for).toLocaleString("en-ZA", { weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Africa/Johannesburg" }) : null;
+      const what = when ? `Job booked for ${when}${techName ? ` with ${techName}` : ""}` : `Job created${techName ? ` for ${techName}` : ""}`;
+      if (geocoded) doneToast(what, job?.id ? { label: "Open job", onClick: () => { window.location.assign(`/admin/jobs/${job.id}`); } } : undefined);
+      else toast({ title: doneMessage(what), description: "No map pin yet. Pin it from the Map view when possible.", variant: "destructive" });
       ["jobs-list","jobs-dispatch","my-jobs","job-schedules","dispatch-leads","dispatch-schedules","dispatch-agents","admin-home-stats","jobs-kpi-stats","leads","leads-map"]
         .forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
       onOpenChange(false);

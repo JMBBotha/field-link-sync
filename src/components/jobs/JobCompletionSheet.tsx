@@ -8,6 +8,7 @@
  * (submit_invoice_request: "As quoted" or "Changes"). Techs never see prices or invoices.
  */
 import { useEffect, useMemo, useState } from "react";
+import { doneToast } from "@/lib/doneToast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -171,7 +172,7 @@ const JobCompletionSheet = ({
         if (error) {
           toast({ title: "Job completed, but the office request failed", description: `${error.message}. Please tell the office.`, variant: "destructive" });
         } else {
-          toast({ title: "Job finished ✅", description: asQuoted ? "Sent to the office: as quoted." : "Sent to the office with your extras." });
+          doneToast(`Job for ${customerName || "client"} completed, sent to the office ${asQuoted ? "as quoted" : "with your extras"}`, { label: "Back to Today", onClick: () => { window.location.assign("/field"); } });
         }
       }
       queryClient.invalidateQueries({ queryKey: ["leads"] });

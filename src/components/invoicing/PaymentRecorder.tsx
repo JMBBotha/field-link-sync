@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { doneToast } from "@/lib/doneToast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/hooks/useRole";
@@ -55,6 +56,15 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, credited = 0, onChange }: Pa
   const [editReference, setEditReference] = useState("");
   const [editDate, setEditDate] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+
+  const { data: invNo } = useQuery({
+    queryKey: ["invoice-number", invoiceId],
+    queryFn: async () => {
+      const { data } = await supabase.from("invoices").select("invoice_number").eq("id", invoiceId).maybeSingle();
+      return (data as { invoice_number?: string | null } | null)?.invoice_number || null;
+    },
+  });
+  const formatPayR = (n: number) => `R${n.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const { data: payments = [] } = useQuery({
     queryKey: ["payments", invoiceId],
@@ -143,7 +153,7 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, credited = 0, onChange }: Pa
       });
 
       refresh();
-      toast({ title: "Payment recorded" });
+      doneToast(`Payment ${formatPayR(amt)} allocated to ${invNo || "invoice"}`, window.location.pathname.includes(invoiceId) ? undefined : { label: "View invoice", onClick: () => { window.location.assign(`/admin/invoices/${invoiceId}`); } });
     } catch (err: any) {
       // Rollback
       queryClient.setQueryData(paymentsKey, prevPayments);

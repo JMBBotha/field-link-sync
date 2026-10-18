@@ -1,4 +1,5 @@
 import ClientAdjustQuote from "@/components/client/ClientAdjustQuote";
+import { doneMessage } from "@/lib/doneToast";
 import { useQuoteUnitCards, QuoteUnitCardsView } from "@/components/quoting/QuoteUnitCards";
 import type { CompanyProfile } from "@/lib/companyProfiles";
 import { useEffect, useRef, useState } from "react";
@@ -223,7 +224,7 @@ const ClientProposalView = () => {
 
       if (success) {
         setActionDone("accepted");
-        toast({ title: "Quote accepted! ✅" });
+        toast({ title: doneMessage("Quote accepted. We'll be in touch to book your installation") });
         // The accept RPC creates the deposit invoice — refresh via token so the chip shows.
         try {
           setDepositInvoice(await fetchQuoteInvoiceByToken(token!));

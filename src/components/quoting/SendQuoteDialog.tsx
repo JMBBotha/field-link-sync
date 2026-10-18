@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { doneToast } from "@/lib/doneToast";
 import { REMOTE_QUOTE_NOTICE } from "@/lib/remoteQuoteClause";
 import { useQueryClient } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
@@ -382,7 +383,7 @@ const SendQuoteDialog = ({
       if (await handleReply(await readSendReply(res.data, res.error))) {
         setSent((s) => ({ ...s, email: true }));
         setSentInfo({ to: to.toLowerCase(), at: new Date().toISOString() });
-        toast({ title: "Quote emailed", description: `Sent to ${to}` });
+        doneToast(`Quote ${quoteNumber} sent to ${resolvedCustomerName}`, { label: "Copy link", onClick: () => { void navigator.clipboard?.writeText(clientUrl); } });
         qc.invalidateQueries({ queryKey: ["quotes"] });
         qc.invalidateQueries({ queryKey: ["quote-document", quoteId] });
       }
@@ -392,7 +393,7 @@ const SendQuoteDialog = ({
       if (row?.status === "sent") {
         setSent((s) => ({ ...s, email: true }));
         setSentInfo({ to: to.toLowerCase(), at: row.finished_at || new Date().toISOString() });
-        toast({ title: "Quote emailed", description: `Sent to ${to}` });
+        doneToast(`Quote ${quoteNumber} sent to ${resolvedCustomerName}`, { label: "Copy link", onClick: () => { void navigator.clipboard?.writeText(clientUrl); } });
       } else {
         toast({ title: "Not sent", description: row?.error || (err instanceof Error ? err.message : "Please try again."), variant: "destructive" });
       }
