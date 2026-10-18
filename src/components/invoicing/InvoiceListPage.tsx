@@ -2,6 +2,7 @@ import { SentManuallyBadge } from "@/components/documents/MarkSentManually";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { invoiceMoney, matchesMoneyFilter, type MoneyFilter } from "@/lib/moneySummary";
+import ListCard from "@/components/cards/ListCard";
 import { FileText, Filter, ChevronRight, Loader2, Search, Plus, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -340,48 +341,21 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
           </div>
         ) : (
           filteredInvoices.map((invoice) => (
-            <Card
-              key={invoice.id}
-              className="cursor-pointer hover:bg-accent/50 transition-colors border-0 shadow-sm"
-              onClick={() => (selectMode ? setSelected((s) => (s.includes(invoice.id) ? s.filter((x) => x !== invoice.id) : [...s, invoice.id])) : onSelectInvoice(invoice))}
-            >
-              <CardContent className="p-3.5">
-                <div className="flex items-center justify-between gap-2">
-                  {selectMode && (
-                    <Checkbox checked={selected.includes(invoice.id)} aria-label={`Select ${invoice.invoice_number}`} className="shrink-0"
-                      onClick={(e) => e.stopPropagation()}
-                      onCheckedChange={() => setSelected((s) => (s.includes(invoice.id) ? s.filter((x) => x !== invoice.id) : [...s, invoice.id]))} />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                      <span className="font-semibold text-sm text-primary">
-                        {invoice.invoice_number}
-                      </span>
-                      {getStatusBadge(invoice.status)}<SentManuallyBadge doc={invoice as any} />
-                      <DepositPaymentChip invoice={invoice} className="text-xs px-2 py-0.5" />
-                    </div>
-                    <p className="text-sm font-medium line-clamp-2 break-words leading-snug text-foreground/90" title={invoice.customer_name || undefined}>{invoice.customer_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(invoice.created_at)}
-                      {invoice.due_date && ` • Due ${formatDate(invoice.due_date)}`}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-bold text-base text-primary">
-                      {formatCurrency(invoice.grand_total)}
-                    </span>
-                    <RowMenu items={[
-                      { label: "Open", onSelect: () => onSelectInvoice(invoice) },
-                      { label: "Record payment", onSelect: () => onSelectInvoice(invoice), hidden: invoice.status === "paid" },
-                      { label: "Send pay link (WhatsApp)", onSelect: () => sendPayLink(invoice), hidden: invoice.status === "paid" || !(invoice as any).quote_id },
-                      { label: "Open quote", onSelect: () => navigate(`/admin/quote-builder?quoteId=${(invoice as any).quote_id}`), hidden: !(invoice as any).quote_id, separatorBefore: true },
-                      { label: "Open client", onSelect: () => navigate(`/admin/customers/${(invoice as any).customer_id}`), hidden: !(invoice as any).customer_id },
-                    ]} />
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <ListCard key={invoice.id}
+              onOpen={() => (selectMode ? setSelected((s) => (s.includes(invoice.id) ? s.filter((x) => x !== invoice.id) : [...s, invoice.id])) : onSelectInvoice(invoice))}
+              leading={selectMode ? <Checkbox checked={selected.includes(invoice.id)} aria-label={`Select ${invoice.invoice_number}`}
+                onCheckedChange={() => setSelected((s) => (s.includes(invoice.id) ? s.filter((x) => x !== invoice.id) : [...s, invoice.id]))} /> : undefined}
+              title={invoice.customer_name || invoice.invoice_number}
+              chip={<>{getStatusBadge(invoice.status)}<DepositPaymentChip invoice={invoice} className="text-xs px-2 py-0.5" /></>}
+              amount={formatCurrency(invoice.grand_total)}
+              date={[invoice.invoice_number, formatDate(invoice.created_at)].join(" · ")}
+              trailing={<RowMenu items={[
+                { label: "Open", onSelect: () => onSelectInvoice(invoice) },
+                { label: "Record payment", onSelect: () => onSelectInvoice(invoice), hidden: invoice.status === "paid" },
+                { label: "Send pay link (WhatsApp)", onSelect: () => sendPayLink(invoice), hidden: invoice.status === "paid" || !(invoice as any).quote_id },
+                { label: "Open quote", onSelect: () => navigate(`/admin/quote-builder?quoteId=${(invoice as any).quote_id}`), hidden: !(invoice as any).quote_id, separatorBefore: true },
+                { label: "Open client", onSelect: () => navigate(`/admin/customers/${(invoice as any).customer_id}`), hidden: !(invoice as any).customer_id },
+              ]} />} />
           ))
         )}
       </div>

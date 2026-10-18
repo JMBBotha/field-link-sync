@@ -51,6 +51,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuoteProfitList, costedLabel } from "@/hooks/useQuoteProfitList";
 import { useNavigate } from "react-router-dom";
 import StatusPill from "@/components/shared/StatusPill";
+import ListCard from "@/components/cards/ListCard";
 import ClientRevisionActions from "@/components/quoting/ClientRevisionActions";
 
 import { useToast } from "@/hooks/use-toast";
@@ -483,7 +484,17 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
             </CardContent>
           </Card>
         ) : (
-          <Card className="overflow-hidden shadow-sm">
+          <>
+          <div className="space-y-2 md:hidden" data-testid="quotes-list-cards">
+            {docs.map((doc) => (
+              <ListCard key={`${doc.kind}-${doc.id}`} onOpen={() => openDoc(doc)}
+                title={doc.clientName || "No customer"}
+                chip={<StatusPill status={doc.status} />}
+                amount={formatZAR(doc.total)}
+                date={[doc.ref || "Draft", new Date(doc.created_at).toLocaleDateString("en-ZA")].join(" · ")} />
+            ))}
+          </div>
+          <Card className="hidden overflow-hidden shadow-sm md:block">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -672,6 +683,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
               </Table>
             </div>
           </Card>
+          </>
         )}
       </div>
 

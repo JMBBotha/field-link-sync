@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import ListCard from "@/components/cards/ListCard";
 import PullToRefresh from "@/components/PullToRefresh";
 import AcceptLeadDialog from "@/components/leads/AcceptLeadDialog";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
@@ -49,6 +50,7 @@ function QuoteChip({ r }: { r: VisitRow }) {
 
 /** /admin/visits: mobile-first list of a salesperson's visits (P1). */
 export const AdminVisitsPage = () => {
+  const navigate = useNavigate();
   const { data, isLoading, error, refetch } = useMyVisits(60);
   const [tab, setTab] = useState<VisitTab>("upcoming");
   const counts = useMemo(() => {
@@ -81,24 +83,10 @@ export const AdminVisitsPage = () => {
             <p className="text-sm text-muted-foreground p-4">Nothing here right now.</p>
           )}
           {rows.map((r) => (
-            <Link key={r.lead_id} to={`/admin/visits/${r.lead_id}`} data-testid="visit-card"
-              className="block rounded-xl border border-border/60 bg-card p-3 min-h-[44px] active:bg-muted/50">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="font-semibold truncate">{r.customer_name || "Client"}</div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                    <MapPin className="h-3 w-3 shrink-0" />{suburbOf(r.address) || "No address"}
-                  </div>
-                </div>
-                <div className="text-xs text-right shrink-0">{when(r)}</div>
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-1">
-                <QuoteChip r={r} />
-                {!r.is_mine && offerText(r.offer_km, r.offer_label) && (
-                  <span className="text-xs text-muted-foreground" data-testid="visit-offer">{offerText(r.offer_km, r.offer_label)}</span>
-                )}
-              </div>
-            </Link>
+            <ListCard key={r.lead_id} data-testid="visit-card" onOpen={() => navigate(`/admin/visits/${r.lead_id}`)}
+              title={r.customer_name || "Client"}
+              chip={<QuoteChip r={r} />}
+              date={[suburbOf(r.address) || "No address", when(r), !r.is_mine ? offerText(r.offer_km, r.offer_label) : null].filter(Boolean).join(" · ")} />
           ))}
         </div>
       </PullToRefresh>
