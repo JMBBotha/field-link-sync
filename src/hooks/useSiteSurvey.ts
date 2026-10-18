@@ -9,6 +9,9 @@ import {
 import { draftForLead, getBlob, putBlob, saveDraft } from "@/lib/siteSurvey/store";
 import { fetchServerSurvey, signedSurveyUrl, syncDraft } from "@/lib/siteSurvey/sync";
 import { compressPhoto } from "@/lib/siteSurvey/media";
+import { base64ToBlob, blobToBase64, wavSeconds } from "@/lib/siteSurvey/voice";
+
+export type VoicePurpose = "photo" | "room" | "access";
 
 export type SyncState = "saved-phone" | "syncing" | "synced" | "error";
 
@@ -133,7 +136,48 @@ export function useSiteSurvey(leadId: string | undefined) {
     });
   }, [update]);
 
-  return { draft, loading, error, sync, syncError, isOnline, update, addPhoto, saveAnnotation, removeMedia, syncNow: runSync };
+  /** Transcribe voice notes still waiting (recorded offline, or just now). Text lands under the photo / in the note. */
+  const transcribing = useRef(new Set<string>());
+  const transcribePending = useCallback(async () => {
+    const d = ref.current;
+    if (!d || !navigator.onLine) return;
+    for (const m of d.media.filter((x) => x.kind === "audio" && x.transcript_status === "pending")) {
+      if (transcribing.current.has(m.id)) continue;
+      transcribing.current.add(m.id);
+      try {
+        const b = await getBlob(m.storage_path);
+        if (!b) continue;
+        const audio = await blobToBase64(b.blob);
+        const { data, error } = await supabase.functions.invoke("voice-quote-parse", { body: { action: "transcribe", audio } });
+        const text = String((data as { transcript?: string })?.transcript ?? "").trim();
+        if (error && !navigator.onLine) continue;
+        const ok = !error && !!text;
+        update((x) => {
+          let next = { ...x, media: x.media.map((y) => (y.id === m.id ? { ...y, transcript: ok ? text : null, transcript_status: ok ? "done" as const : "failed" as const } : y)) };
+          if (ok && m.caption === "access") next = { ...next, access_note: [x.access_note, text].filter(Boolean).join("\n") };
+          if (ok && m.caption === "room" && m.room_id) next = { ...next, rooms: next.rooms.map((r) => (r.id === m.room_id ? { ...r, note: [r.note, text].filter(Boolean).join("\n") } : r)) };
+          return next;
+        });
+      } finally { transcribing.current.delete(m.id); }
+    }
+  }, [update]);
+  useEffect(() => { if (isOnline && draft) void transcribePending(); }, [isOnline, !!draft, transcribePending]);
+
+  /** Save a recorded note (base64 WAV from WavRecorder) on the phone, then transcribe when there is signal. */
+  const addVoiceNote = useCallback(async (base64: string, bytes: number, target: { purpose: VoicePurpose; roomId: string | null; parentId: string | null }) => {
+    const d = ref.current; if (!d) return;
+    const id = uuid();
+    const path = mediaPath(d, id, "wav");
+    await putBlob(d.id, path, base64ToBlob(base64), "audio/wav");
+    const m: SurveyMedia = { id, room_id: target.roomId, parent_media_id: target.parentId, kind: "audio", storage_path: path,
+      annotated_path: null, annotation: null, caption: target.purpose === "photo" ? null : target.purpose, transcript: null,
+      transcript_status: "pending", duration_s: wavSeconds(bytes), bytes, sort: Date.now() % 2147483647,
+      taken_at: new Date().toISOString(), synced: false };
+    update((x) => ({ ...x, media: [...x.media, m] }));
+    setTimeout(() => { void transcribePending(); }, 50);
+  }, [update, transcribePending]);
+
+  return { draft, loading, error, sync, syncError, isOnline, update, addPhoto, saveAnnotation, removeMedia, addVoiceNote, transcribePending, syncNow: runSync };
 }
 
 /** Display URL for a survey file: the phone copy if it's still here, else a short-lived signed URL. */

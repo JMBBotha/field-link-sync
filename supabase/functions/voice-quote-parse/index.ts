@@ -90,6 +90,7 @@ Deno.serve(async (req) => {
       }
       // Multipart: option fields MUST precede `file` (file last).
       const form = new FormData();
+      form.append("model", "grok-voice-transcribe-2.0");
       form.append("format", "true");
       form.append("language", "en");
       // HVAC + client-name vocabulary bias (repeatable `keyterm` field per xAI docs,

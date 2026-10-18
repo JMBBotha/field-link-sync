@@ -15,6 +15,8 @@ export interface SurveyMedia {
   duration_s: number | null; bytes: number | null; sort: number; taken_at: string | null;
   /** local only: true once the row + files are on the server */
   synced: boolean;
+  /** audio deleted after 12 months (text kept) */
+  audio_purged?: boolean;
 }
 export interface SurveyDraft {
   id: string; leadId: string; companyId: string; createdBy: string;
@@ -75,6 +77,8 @@ export function mediaPath(d: Pick<SurveyDraft, "companyId" | "id">, mediaId: str
 export const photosOf = (d: SurveyDraft, roomId: string | null, kind?: MediaKind) =>
   d.media.filter((m) => m.kind !== "audio" && m.room_id === roomId && (!kind || m.kind === kind)).sort((a, b) => a.sort - b.sort);
 export const audioOf = (d: SurveyDraft, parentId: string) => d.media.filter((m) => m.kind === "audio" && m.parent_media_id === parentId);
+export const voiceFor = (d: SurveyDraft, purpose: "room" | "access", roomId: string | null) =>
+  d.media.filter((m) => m.kind === "audio" && m.caption === purpose && m.room_id === roomId).sort((a, b) => a.sort - b.sort);
 export const frontPhoto = (d: SurveyDraft) => d.media.find((m) => m.kind === "front") ?? null;
 
 export interface Gap { roomId: string | null; text: string; blocking: boolean }
@@ -113,7 +117,7 @@ export function draftFromServer(s: any, rooms: any[], media: any[]): SurveyDraft
       kind: m.kind, storage_path: m.storage_path, annotated_path: m.annotated_path ?? null, annotation: m.annotation ?? null,
       caption: m.caption ?? null, transcript: m.transcript ?? null, transcript_status: m.transcript_status ?? "none",
       duration_s: m.duration_s == null ? null : Number(m.duration_s), bytes: m.bytes ?? null, sort: m.sort ?? 0,
-      taken_at: m.taken_at ?? null, synced: true })),
+      taken_at: m.taken_at ?? null, synced: true, audio_purged: !!m.audio_purged_at })),
     deletedRoomIds: [], deletedMediaIds: [], rev: 1, syncedRev: 1, updatedAt: Date.now(),
   };
 }

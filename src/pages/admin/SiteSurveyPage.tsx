@@ -12,9 +12,11 @@ import { mapsLink } from "@/lib/visits";
 import { parseAnnotation, serializeAnnotation } from "@/lib/annotation";
 import PhotoAnnotator from "@/components/photos/PhotoAnnotator";
 import { Chips, PhotoSlot, Stepper, SyncBadge, Thumb } from "@/components/survey/SurveyBits";
+import { VoiceNoteList, VoiceRecordButton } from "@/components/survey/VoiceNotes";
+import type { Suggestion } from "@/lib/siteSurvey/voice";
 import {
   ACCESS_FLAGS, ELECTRICAL, FLOORS, MARKER_PRESETS, ROOM_FLAGS, ROOM_NAMES, UNIT_SIZES, WALL_TYPES,
-  btuLabel, canFinish, frontPhoto, newRoom, overStandard, photosOf, stepPipe, surveyGaps,
+  audioOf, btuLabel, canFinish, frontPhoto, voiceFor, newRoom, overStandard, photosOf, stepPipe, surveyGaps,
   type SurveyMedia, type SurveyRoom,
 } from "@/lib/siteSurvey/model";
 
@@ -73,6 +75,7 @@ export default function SiteSurveyPage() {
     s.update((x) => ({ ...x, status: "complete", quote_id: x.quote_id ?? visit?.quote_id ?? null }));
     toast({ title: "Survey finished", description: s.isOnline ? "Uploading now." : "Saved on your phone. It uploads when you have signal." });
   };
+  const applyTo = (roomId: string) => (x: Suggestion) => { setRoom(roomId, { [x.field]: x.value } as Partial<SurveyRoom>); toast({ title: `Set ${x.label}` }); };
   const activeIdx = step.k === "room" ? 1 : STEPS.findIndex((x) => x.k === step.k);
 
   return (
@@ -131,6 +134,9 @@ export default function SiteSurveyPage() {
             </div>
             <Textarea placeholder="Access note: gate, dogs, parking, roof…" value={d.access_note ?? ""} data-testid="survey-access-note"
               onChange={(e) => s.update((x) => ({ ...x, access_note: e.target.value || null }))} />
+            <VoiceRecordButton label="Access note by voice" testId="survey-access-voice"
+              onDone={(b64, n) => s.addVoiceNote(b64, n, { purpose: "access", roomId: null, parentId: null })} />
+            <VoiceNoteList notes={voiceFor(d, "access", null)} online={s.isOnline} onRemove={(m) => s.removeMedia(m.id)} />
           </div>
         </>
       )}
@@ -174,14 +180,21 @@ export default function SiteSurveyPage() {
               </button>
             ))}
           </div>
-          {tab !== "details" && (
-            <div className="rounded-xl border border-border/60 bg-card p-4 space-y-3">
-              <PhotoSlot title={tab === "indoor" ? "Indoor unit position" : "Outdoor unit position"} testId={`survey-${tab}`}
-                media={photosOf(d, room.id, tab)[0] ?? null}
-                onFile={(f, rep) => photo(f, tab, room.id, rep)} onRemove={(m) => s.removeMedia(m.id)}
-                onMarkup={(m, url) => setMarking({ m, url })} />
-            </div>
-          )}
+          {tab !== "details" && (() => {
+            const p = photosOf(d, room.id, tab)[0] ?? null;
+            return (
+              <div className="rounded-xl border border-border/60 bg-card p-4 space-y-3">
+                <PhotoSlot title={tab === "indoor" ? "Indoor unit position" : "Outdoor unit position"} testId={`survey-${tab}`}
+                  media={p} onFile={(f, rep) => photo(f, tab, room.id, rep)} onRemove={(m) => s.removeMedia(m.id)}
+                  onMarkup={(m, url) => setMarking({ m, url })} />
+                {p && <>
+                  <VoiceNoteList notes={audioOf(d, p.id)} online={s.isOnline} onRemove={(m) => s.removeMedia(m.id)} onApply={applyTo(room.id)} />
+                  <VoiceRecordButton label="Voice note on this photo" testId="survey-photo-voice"
+                    onDone={(b64, n) => s.addVoiceNote(b64, n, { purpose: "photo", roomId: room.id, parentId: p.id })} />
+                </>}
+              </div>
+            );
+          })()}
           {tab === "details" && (
             <div className="rounded-xl border border-border/60 bg-card p-4 space-y-4">
               <Stepper label="Pipe run" unit="m" value={room.pipe_run_m}
@@ -202,6 +215,9 @@ export default function SiteSurveyPage() {
                 </div>
               </div>
               <Textarea placeholder="Notes for the installer" value={room.note ?? ""} onChange={(e) => setRoom(room.id, { note: e.target.value || null })} />
+              <VoiceRecordButton label="Notes by voice" testId="survey-room-voice"
+                onDone={(b64, n) => s.addVoiceNote(b64, n, { purpose: "room", roomId: room.id, parentId: null })} />
+              <VoiceNoteList notes={voiceFor(d, "room", room.id)} online={s.isOnline} onRemove={(m) => s.removeMedia(m.id)} onApply={applyTo(room.id)} />
             </div>
           )}
           <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2">

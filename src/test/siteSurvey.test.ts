@@ -60,3 +60,26 @@ describe("site survey model", () => {
     expect(readFileSync("src/App.tsx", "utf8")).toContain('path="visits/:leadId/survey"');
   });
 });
+
+import { suggestFromTranscript, wavSeconds } from "@/lib/siteSurvey/voice";
+describe("voice note suggestions", () => {
+  it("reads metres, wall and electrical from plain speech", () => {
+    const s = suggestFromTranscript("Pipe goes along the cornice, about six and a half metres to the back corner. Face brick outside, plug top.");
+    expect(s.find((x) => x.field === "pipe_run_m")?.value).toBe(6.5);
+    expect(s.find((x) => x.field === "wall_type")?.value).toBe("Face brick");
+    expect(s.find((x) => x.field === "electrical")?.value).toBe("Plug top");
+  });
+  it("handles digits from formatted transcripts and unit sizes", () => {
+    const s = suggestFromTranscript("12K in the main bedroom, 4 m run, isolator from the DB");
+    expect(s.find((x) => x.field === "pipe_run_m")?.value).toBe(4);
+    expect(s.find((x) => x.field === "unit_size_btu")?.value).toBe(12000);
+    expect(s.find((x) => x.field === "electrical")?.value).toBe("Isolator from DB");
+  });
+  it("suggests nothing from unrelated speech", () => {
+    expect(suggestFromTranscript("Client wants it quiet at night")).toEqual([]);
+  });
+  it("wav duration from bytes", () => { expect(wavSeconds(44 + 32000 * 3)).toBe(3); });
+  it("STT model pinned in voice-quote-parse", () => {
+    expect(readFileSync("supabase/functions/voice-quote-parse/index.ts", "utf8")).toContain('form.append("model", "grok-voice-transcribe-2.0")');
+  });
+});
