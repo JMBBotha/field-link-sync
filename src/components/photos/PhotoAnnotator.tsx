@@ -11,10 +11,12 @@ interface Props {
   onCancel: () => void;
   /** Called with the strokes and a flattened JPEG of photo + strokes. */
   onSave: (shapes: AnnShape[], jpeg: Blob) => void;
+  /** Optional one-tap labels (site survey markers): tap a chip, then tap the photo. */
+  presets?: string[];
 }
 
 /** Full-screen plain-canvas annotator: pen, arrow, text label, red/yellow/white, undo, clear, cancel, save. */
-export default function PhotoAnnotator({ imageUrl, initial, saving, onCancel, onSave }: Props) {
+export default function PhotoAnnotator({ imageUrl, initial, saving, onCancel, onSave, presets }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const [shapes, setShapes] = useState<AnnShape[]>(initial);
@@ -23,6 +25,7 @@ export default function PhotoAnnotator({ imageUrl, initial, saving, onCancel, on
   const [color, setColor] = useState<AnnColor>("#ef4444");
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [preset, setPreset] = useState<string | null>(null);
 
   useEffect(() => {
     const img = new Image();
@@ -48,6 +51,11 @@ export default function PhotoAnnotator({ imageUrl, initial, saving, onCancel, on
   const down = (e: React.PointerEvent) => {
     if (!ready) return;
     const p = rel(e);
+    if (preset) {
+      setShapes((s) => [...s, { t: "text", c: color, at: p, text: preset.slice(0, 80) }]);
+      setPreset(null);
+      return;
+    }
     if (tool === "text") {
       const text = window.prompt("Label text")?.trim();
       if (text) setShapes((s) => [...s, { t: "text", c: color, at: p, text: text.slice(0, 80) }]);
@@ -90,6 +98,15 @@ export default function PhotoAnnotator({ imageUrl, initial, saving, onCancel, on
           </Button>
         </div>
       </div>
+      {presets?.length ? (
+        <div className="flex gap-1.5 overflow-x-auto px-2 pb-2 bg-black/80" data-testid="annotator-presets">
+          {presets.map((p) => (
+            <button key={p} type="button" onClick={() => setPreset(preset === p ? null : p)}
+              className={cn("v8-chip shrink-0 border-white/30 bg-transparent text-white", preset === p && "on")}>{p}</button>
+          ))}
+        </div>
+      ) : null}
+      {preset && <p className="bg-black/80 px-3 pb-2 text-xs text-white/80">Tap the photo to place "{preset}"</p>}
       <div className="flex-1 min-h-0 flex items-center justify-center p-2">
         {failed ? <p className="text-white text-sm">Couldn't load the photo.</p> : (
           <canvas ref={canvasRef} className="max-w-full max-h-full touch-none" style={{ touchAction: "none" }}

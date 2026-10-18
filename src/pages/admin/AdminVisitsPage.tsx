@@ -12,6 +12,7 @@ import PullToRefresh from "@/components/PullToRefresh";
 import AcceptLeadDialog from "@/components/leads/AcceptLeadDialog";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import SitePhotosSection from "@/components/photos/SitePhotosSection";
+import SurveyEntryCard from "@/components/survey/SurveyEntryCard";
 import { useMyVisits } from "@/hooks/useMyVisits";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -198,6 +199,8 @@ export const AdminVisitDetailPage = () => {
           )}
         </div>
       )}
+
+      {tab !== "available" && <SurveyEntryCard leadId={r.lead_id} />}
 
       {tab !== "available" && <SitePhotosSection leadId={r.lead_id} />}
 

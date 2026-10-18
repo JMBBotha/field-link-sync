@@ -37,6 +37,7 @@ import { AdminVisitsPage, AdminVisitDetailPage } from "./pages/admin/AdminVisits
 // FreshBooks multi-tenant
 import { CompanyProvider } from "./providers/CompanyProvider";
 const CustomerPortal = lazy(() => import("./pages/CustomerPortal"));
+const SiteSurveyPage = lazy(() => import("./pages/admin/SiteSurveyPage"));
 const AdminMoneyPage = lazy(() => import("./pages/admin/AdminMoneyPage"));
 const AdminMyCommissionPage = lazy(() => import("./pages/admin/AdminMyCommissionPage"));
 const MySignaturePage = lazy(() => import("./pages/admin/MySignaturePage"));
@@ -206,6 +207,7 @@ const App = () => (
                     <Route path="my-appointments" element={<AdminMyAppointmentsPage />} />
                     <Route path="visits" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminVisitsPage /></RequireRole>} />
                     <Route path="visits/:leadId" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminVisitDetailPage /></RequireRole>} />
+                    <Route path="visits/:leadId/survey" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><SiteSurveyPage /></RequireRole>} />
                     <Route path="schedule" element={<DispatchCalendarRedirect />} />
                     <Route path="quotes" element={<AdminQuotesPage />} />
                     <Route path="estimates/:id" element={<AdminEstimateDetailPage />} />
