@@ -41,13 +41,15 @@ interface Props {
   compact: boolean;
   /** Height of any sticky bar below the middle panel, so the last line is never covered. */
   stickyPad?: string;
+  /** R5: phone-only slim bar pinned to the bottom of the middle scroller (totals). */
+  bottomBar?: ReactNode;
 }
 
 /**
  * Quote builder frame: every panel is its own scroll container (flex-col min-h-0,
  * overflow-y-auto body); the page itself never scrolls.
  */
-export default function QuoteBuilderLayout({ left, middle, side, sideTitle = "Quote summary", compact, stickyPad = "1rem" }: Props) {
+export default function QuoteBuilderLayout({ left, middle, side, sideTitle = "Quote summary", compact, stickyPad = "1rem", bottomBar }: Props) {
   const [open, setOpen] = useSidePanelOpen();
   const [leftOpen, setLeftOpen] = useLeftPanelOpen();
 
@@ -76,6 +78,7 @@ export default function QuoteBuilderLayout({ left, middle, side, sideTitle = "Qu
       <div data-testid="qb-middle" className="flex min-w-0 flex-1 flex-col min-h-0 overflow-y-auto overscroll-contain">
         {middle}
         <div data-testid="qb-sticky-spacer" data-pad={stickyPad} aria-hidden className="shrink-0" style={{ height: `calc(${stickyPad} + env(safe-area-inset-bottom, 0px))` }} />
+        {compact && bottomBar && <div data-testid="qb-bottom-bar" className="sticky bottom-0 z-10 mt-auto shrink-0">{bottomBar}</div>}
       </div>
 
       {compact ? (

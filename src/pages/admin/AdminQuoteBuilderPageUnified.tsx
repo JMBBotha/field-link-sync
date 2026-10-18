@@ -1,4 +1,5 @@
 import { readPdfBasket, writePdfBasket, migrateDraftPdfBasket, pdfBasketKey } from "@/lib/pdfBasketStore";
+import QuoteTotalsBar from "@/components/quoting/QuoteTotalsBar";
 import { liveProducts } from "@/lib/liveProducts";
 import { resolveBundlesLive } from "@/lib/bundleResolve";
 import { basketInstallFrom } from "@/lib/installTemplates";
@@ -1264,6 +1265,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   }, [leaveBuilder]);
 
 
+  const barItems = (activeTab === "quote" ? ctxItems : displayState.items) as any[];
+  const hasInstall = Number(displayQuoteTotals.labourTotal || 0) > 0 || barItems.some((i) => !!(i?.metadata as any)?.install);
+  const totalsBar = !isPhone ? undefined : <QuoteTotalsBar total={Number(displayQuoteTotals.total || 0)} hasInstall={hasInstall} />;
   const summaryNode = (
     <>
       {marginView.visible && (
@@ -1421,7 +1425,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
           </div>
         )}
         {!ctxLoading && activeTab === "normal" &&
-        <QuoteBuilderLayout compact={isCompact} side={summaryNode} middle={
+        <QuoteBuilderLayout compact={isCompact} side={summaryNode} bottomBar={totalsBar} middle={
               <QuoteBuilderTab
                 initialBaskets={initialBaskets}
                 onBasketsChange={setBaskets}
