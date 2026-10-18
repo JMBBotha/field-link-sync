@@ -46,3 +46,14 @@ export async function cachePackFiles(d: SurveyDraft): Promise<number> {
 export function pipeSummary(d: SurveyDraft | null | undefined): { name: string; m: number | null }[] {
   return (d?.rooms ?? []).map((r) => ({ name: r.name, m: r.pipe_run_m }));
 }
+
+const WALL_TO_CHECK: Record<string, string> = { "Face brick": "Face brick", Concrete: "Concrete", Drywall: "Dry-wall", "Wood / cladding": "Other" };
+
+/** Site check hints from the survey: one wall type when all rooms agree; pipe metres by room name (lower-case). */
+export function siteCheckHints(d: SurveyDraft | null | undefined): { wall: string | null; pipeByRoom: Record<string, number> } | null {
+  if (!d || !d.rooms.length) return null;
+  const walls = [...new Set(d.rooms.map((r) => r.wall_type).filter(Boolean) as string[])];
+  const pipeByRoom: Record<string, number> = {};
+  for (const r of d.rooms) if (r.pipe_run_m != null) pipeByRoom[r.name.trim().toLowerCase()] = r.pipe_run_m;
+  return { wall: walls.length === 1 ? WALL_TO_CHECK[walls[0]] ?? null : null, pipeByRoom };
+}

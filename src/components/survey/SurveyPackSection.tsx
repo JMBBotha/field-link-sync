@@ -39,7 +39,7 @@ export function FrontPhoto({ survey, className }: { survey: SurveyDraft | null |
   return <Photo m={f} label="Front of house" className={className} />;
 }
 
-function RoomCard({ d, r, i }: { d: SurveyDraft; r: SurveyRoom; i: number }) {
+export function RoomCard({ d, r, i }: { d: SurveyDraft; r: SurveyRoom; i: number }) {
   const indoor = photosOf(d, r.id, "indoor")[0], outdoor = photosOf(d, r.id, "outdoor")[0];
   const others = photosOf(d, r.id, "other");
   const notes = [...(indoor ? audioOf(d, indoor.id) : []), ...(outdoor ? audioOf(d, outdoor.id) : []), ...voiceFor(d, "room", r.id)]
@@ -95,7 +95,7 @@ export default function SurveyPackSection({ leadId }: { leadId: string }) {
       {d.rooms.length > 0 && <h2 className="flex items-center gap-2 font-semibold"><ClipboardCheck className="h-4 w-4" />Rooms from the site survey</h2>}
       {d.rooms.map((r, i) => <RoomCard key={r.id} d={d} r={r} i={i} />)}
       {d.status === "complete" && (
-        <Link to={`/field/survey/${d.id}`} className="flex min-h-11 items-center justify-between rounded-xl border bg-card px-4 py-3 text-sm font-semibold" data-testid="pack-report-link">
+        <Link to={`/field/survey/${d.leadId}`} className="flex min-h-11 items-center justify-between rounded-xl border bg-card px-4 py-3 text-sm font-semibold" data-testid="pack-report-link">
           <span>Full survey report{d.report_no ? ` · ${d.report_no}` : ""}</span><ChevronRight className="h-4 w-4" />
         </Link>
       )}

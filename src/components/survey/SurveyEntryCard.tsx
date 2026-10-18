@@ -27,12 +27,12 @@ export default function SurveyEntryCard({ leadId }: { leadId: string }) {
     <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2" data-testid="visit-survey">
       <h2 className="text-sm font-semibold">Site survey</h2>
       <Button asChild variant={v?.status === "complete" ? "outline" : "default"} className="w-full min-h-[48px] justify-between">
-        <Link to={`/admin/visits/${leadId}/survey`} data-testid="visit-survey-open">
+        <Link to={v?.status === "complete" ? `/admin/visits/${leadId}/survey/report` : `/admin/visits/${leadId}/survey`} data-testid="visit-survey-open">
           <span className="flex items-center gap-2"><ClipboardCheck className="h-4 w-4" />{label}</span>
           <ChevronRight className="h-4 w-4" />
         </Link>
       </Button>
-      <p className="text-xs text-muted-foreground">{sub}</p>
+      <p className="text-xs text-muted-foreground">{sub}{v?.status === "complete" && <> · <Link className="underline" to={`/admin/visits/${leadId}/survey`}>Edit</Link></>}</p>
     </div>
   );
 }

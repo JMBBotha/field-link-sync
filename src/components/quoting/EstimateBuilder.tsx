@@ -39,6 +39,7 @@ import { useActiveSpecials } from "@/hooks/useActiveSpecials";
 import LabourModeSwitch, { useLabourModeSwitch } from "@/components/quoting/LabourModeSwitch";
 import QuoteLockBanner from "./QuoteLockBanner";
 import RemoteQuoteToggle from "@/components/quoting/RemoteQuoteToggle";
+import SurveyReportChip from "@/components/survey/SurveyReportChip";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import LiveClientPreview from "@/components/quoting/LiveClientPreview";
 import DocumentStyleSwitch from "@/components/quoting/DocumentStyleSwitch";
@@ -457,6 +458,7 @@ export default function EstimateBuilder({
       {!hideClientNote && <ClientNoteBox onChanged={onChanged} />}
       {quoteId && meta && <QuoteLockBanner quoteId={quoteId} lockedAt={meta.locked_at} lockedReason={meta.locked_reason} isVariation={meta.is_variation} status={meta.status} summaryLine={meta.variation_summary?.summary_line ?? null} onChanged={() => { void refetch(); onChanged?.(); }} />}
       {quoteId && meta && <RemoteQuoteToggle quoteId={quoteId} value={!!meta.remote_quote} source={meta.remote_quote_source ?? null} onChanged={() => { void refetch(); onChanged?.(); }} />}
+      {quoteId && meta && <div className="flex"><SurveyReportChip quoteId={quoteId} leadId={(meta as any).lead_id ?? null} /></div>}
       {(() => { const editorDoc = (
       <EstimateDocument
           estimateNumber={quoteNumber}

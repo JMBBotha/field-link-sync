@@ -4,7 +4,7 @@
  * quantities only – never prices. "Variation needed" makes an updated quote: extra pipe is priced from the
  * catalogue and goes straight to the client link; anything else goes to the rep/Johan to price first.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ClipboardCheck, Copy, Hourglass, Lock, Share2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,13 +50,22 @@ type RoomState = SizingInput & { pipeM?: number | null; swap?: boolean; extras: 
 const PIPE_INCLUDED_M = 3.5;
 const num = (v: string) => (v.trim() === "" ? null : Math.max(0, Number(v.replace(",", ".")) || 0));
 
-export default function SiteCheckCard({ jobId, leadId, info, onDone }: { jobId: string; leadId?: string | null; info: SiteCheckInfo; onDone: () => void }) {
+/** Optional hints from the rep's site survey (shown as hints / starting answers only; never priced). */
+export interface SiteCheckSurveyHints { wall?: string | null; pipeByRoom?: Record<string, number> }
+
+export default function SiteCheckCard({ jobId, leadId, info, onDone, survey }: { jobId: string; leadId?: string | null; info: SiteCheckInfo; onDone: () => void; survey?: SiteCheckSurveyHints | null }) {
   const { toast } = useToast();
   const rooms = info.rooms.length ? info.rooms : [{ area_id: null, name: "Whole job", unit_name: null, btu: null }];
   const extras = info.quick_adds.filter((a) => a.code !== "extra_pipe");
   const [state, setState] = useState<Record<string, RoomState>>({});
   const [checks, setChecks] = useState({ positions: "", electrical: "", wall: "", access: "", obstacles: "" });
   const [notes, setNotes] = useState("");
+  // Survey pre-fill: wall type only when it matches one of the options; pipe stays a hint (the tech measures).
+  useEffect(() => {
+    const w = survey?.wall;
+    if (w && ["Brick", "Face brick", "Concrete", "Dry-wall", "Other"].includes(w)) setChecks((c) => (c.wall ? c : { ...c, wall: w }));
+  }, [survey?.wall]);
+  const surveyPipe = (name: string) => survey?.pipeByRoom?.[name.trim().toLowerCase()];
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(info.needs_check);
   const key = (r: { area_id: string | null }) => r.area_id || "job";
@@ -155,7 +164,7 @@ export default function SiteCheckCard({ jobId, leadId, info, onDone }: { jobId: 
                     <label>Room floor m²<Input inputMode="decimal" className="h-11" value={st.floorM2 || ""} onChange={(e) => setRoom(r, { floorM2: num(e.target.value) || 0 })} /></label>
                     <label>Ceiling height m<Input inputMode="decimal" className="h-11" placeholder="2.6" value={st.ceilingM ?? ""} onChange={(e) => setRoom(r, { ceilingM: num(e.target.value) })} /></label>
                     <label>Open-plan extra m²<Input inputMode="decimal" className="h-11" value={st.openPlanM2 ?? ""} onChange={(e) => setRoom(r, { openPlanM2: num(e.target.value) })} /></label>
-                    <label>Actual pipe length m<Input inputMode="decimal" className="h-11" placeholder="3.5 included" value={st.pipeM ?? ""} onChange={(e) => setRoom(r, { pipeM: num(e.target.value) })} data-testid="pipe-actual" /></label>
+                    <label>Actual pipe length m<Input inputMode="decimal" className="h-11" placeholder={surveyPipe(r.name) != null ? `Survey ${surveyPipe(r.name)} m` : "3.5 included"} value={st.pipeM ?? ""} onChange={(e) => setRoom(r, { pipeM: num(e.target.value) })} data-testid="pipe-actual" /></label>
                   </div>
                   <div className="flex flex-wrap gap-3 text-sm">
                     {([["sun", "Strong afternoon sun / big west-north glass"], ["topFloor", "Top floor / under roof"], ["kitchen", "Kitchen"], ["busy", "More than 2 people / equipment"]] as const).map(([k, l]) => (

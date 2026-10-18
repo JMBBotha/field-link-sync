@@ -13,6 +13,7 @@ import { mapDispatchCandidates } from "@/lib/teamGroups";
 import { useClashGuard } from "@/components/scheduling/ClashGuard";
 import { fromMinutes, jobMinutes, sastParts, toMinutes } from "@/lib/schedulingDefaults";
 import AvailabilityPicker from "@/components/scheduling/AvailabilityPicker";
+import { surveyDispatchBlock } from "@/lib/siteSurvey/dispatchGuard";
 
 /**
  * The Jobs board's Assign Technician dialog (moved here unchanged so the
@@ -46,6 +47,11 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
       excludeJobId: jobId, entity: { type: "job", id: jobId },
     });
   };
+  const { data: surveyBlock } = useQuery({
+    queryKey: ["assign-survey-block", jobId],
+    enabled: !!jobId,
+    queryFn: () => surveyDispatchBlock(jobId!),
+  });
   // S5: the job's slot + location for the ranked picker (read-only).
   const { data: jobSlot } = useQuery({
     queryKey: ["assign-tech-job-slot", jobId],
@@ -100,6 +106,8 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
   // Assign tech mutation
   const assignMutation = useMutation({
     mutationFn: async ({ jobId, techId }: { jobId: string; techId: string }) => {
+      const surveyBlock = await surveyDispatchBlock(jobId);
+      if (surveyBlock) throw new Error(surveyBlock.reason);
       const tech = techs.find((t: any) => t.id === techId);
       const { data: existing, error: exErr } = await supabase
         .from("assignments")
@@ -160,6 +168,11 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
             <DialogTitle>Assign Technician</DialogTitle>
             <DialogDescription>Select a technician to assign to this job</DialogDescription>
           </DialogHeader>
+          {surveyBlock && (
+            <p className="rounded-lg bg-amber-50 p-3 text-sm font-semibold text-amber-800" data-testid="assign-survey-block">
+              {surveyBlock.reason}{surveyBlock.leadId && <> <a className="underline" href={`/admin/visits/${surveyBlock.leadId}/survey`}>Open the survey</a></>}
+            </p>
+          )}
           <div className="space-y-4">
             {assignJobId && jobSlot === null && (
               <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground">
@@ -206,7 +219,7 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
           <DialogFooter>
             <Button variant="outline" onClick={() => setAssignJobId(null)}>Cancel</Button>
             <Button
-              disabled={!selectedTechId || assignMutation.isPending}
+              disabled={!selectedTechId || assignMutation.isPending || !!surveyBlock}
               onClick={async () => {
                 if (!assignJobId) return;
                 if (!(await checkClash(assignJobId, selectedTechId))) return;

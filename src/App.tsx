@@ -39,6 +39,7 @@ import { CompanyProvider } from "./providers/CompanyProvider";
 const CustomerPortal = lazy(() => import("./pages/CustomerPortal"));
 const SiteSurveyPage = lazy(() => import("./pages/admin/SiteSurveyPage"));
 const FieldHome = lazy(() => import("./pages/FieldHome"));
+const SiteSurveyReportPage = lazy(() => import("./pages/SiteSurveyReportPage"));
 const AdminMoneyPage = lazy(() => import("./pages/admin/AdminMoneyPage"));
 const AdminMyCommissionPage = lazy(() => import("./pages/admin/AdminMyCommissionPage"));
 const MySignaturePage = lazy(() => import("./pages/admin/MySignaturePage"));
@@ -209,6 +210,7 @@ const App = () => (
                     <Route path="visits" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminVisitsPage /></RequireRole>} />
                     <Route path="visits/:leadId" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminVisitDetailPage /></RequireRole>} />
                     <Route path="visits/:leadId/survey" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><SiteSurveyPage /></RequireRole>} />
+                    <Route path="visits/:leadId/survey/report" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><SiteSurveyReportPage /></RequireRole>} />
                     <Route path="schedule" element={<DispatchCalendarRedirect />} />
                     <Route path="quotes" element={<AdminQuotesPage />} />
                     <Route path="estimates/:id" element={<AdminEstimateDetailPage />} />
@@ -283,6 +285,9 @@ const App = () => (
 
                   {/* Tech job sheet: no money, packing list from get_job_packing_list */}
                   <Route path="/field/jobs/:id" element={<V8FieldShell><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldJobSheetPage /></RequireRole></V8FieldShell>} />
+
+                  {/* Site survey report for the tech (read-only, no money; RLS: own lead only) */}
+                  <Route path="/field/survey/:leadId" element={<V8FieldShell><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><SiteSurveyReportPage field /></RequireRole></V8FieldShell>} />
 
                   {/* Tech "My earnings" (Job 6) */}
                   <Route path="/field/earnings" element={<V8FieldShell><RequireRole allowedRoles={["field_agent", "admin"]}><FieldEarningsPage /></RequireRole></V8FieldShell>} />

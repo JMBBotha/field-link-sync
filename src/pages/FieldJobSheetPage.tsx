@@ -14,6 +14,7 @@ import { SitePhotosReadOnly } from "@/components/photos/SitePhotosSection";
 import { useToast } from "@/hooks/use-toast";
 import SiteCheckCard, { siteCheckBlock, useSiteCheck } from "@/components/field/SiteCheckCard";
 import { loadJobSheet, loadPackingList } from "@/lib/jobPack";
+import { siteCheckHints } from "@/lib/siteSurvey/pack";
 import SurveyPackSection, { FrontPhoto, useSurveyPack } from "@/components/survey/SurveyPackSection";
 import { packQtyText, groupPackingList, loadTicks, saveTicks, type PackingRow } from "@/lib/packingList";
 
@@ -122,7 +123,7 @@ export default function FieldJobSheetPage() {
       )}
 
       {j && site.data && !["completed", "cancelled"].includes(j.status) && (
-        <SiteCheckCard jobId={id} leadId={j.lead_id} info={site.data} onDone={() => { void site.refetch(); void job.refetch(); }} />
+        <SiteCheckCard jobId={id} leadId={j.lead_id} info={site.data} onDone={() => { void site.refetch(); void job.refetch(); }} survey={siteCheckHints(pack.data)} />
       )}
 
       {/* Job pack: the rep's site survey (rooms, photos, pipe runs, notes). Read-only, no money. */}
