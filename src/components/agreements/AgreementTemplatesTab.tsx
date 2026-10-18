@@ -205,7 +205,7 @@ function TemplateEditorDialog({ template, canManage, onClose, onSaved }: {
   const openVersions = async () => {
     setShowVersions(true);
     if (!versions) {
-      try { setVersions(await listTemplateVersions(t.id)); } catch (e: unknown) { toast({ title: "Could not load history", description: e.message, variant: "destructive" }); }
+      try { setVersions(await listTemplateVersions(t.id)); } catch (e: unknown) { toast({ title: "Could not load history", description: errText(e), variant: "destructive" }); }
     }
   };
 
@@ -261,7 +261,7 @@ function TemplateEditorDialog({ template, canManage, onClose, onSaved }: {
           )}
           <div className="ml-auto flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={openVersions} data-testid="template-history"><History className="mr-1 h-3.5 w-3.5" /> History</Button>
-            <Button size="sm" variant="outline" disabled={!sections} onClick={() => downloadTemplatePdf({ ...t, status: meta.status }, sections || undefined).catch((e) => toast({ title: "PDF failed", description: e.message, variant: "destructive" }))}>
+            <Button size="sm" variant="outline" disabled={!sections} onClick={() => downloadTemplatePdf({ ...t, status: meta.status }, sections || undefined).catch((e: unknown) => toast({ title: "PDF failed", description: errText(e), variant: "destructive" }))}>
               <Download className="mr-1 h-3.5 w-3.5" /> PDF
             </Button>
           </div>

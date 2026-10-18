@@ -21,6 +21,10 @@ import { buildDepositWhatsAppUrl } from "@/lib/depositShare";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
 import { useToast } from "@/hooks/use-toast";
 import FilterChips from "@/components/shared/FilterChips";
+import { Checkbox } from "@/components/ui/checkbox";
+import CreateContractDialog from "@/components/agreements/CreateContractDialog";
+import ContractEditorDialog from "@/components/agreements/ContractEditorDialog";
+import { sameClientCheck } from "@/lib/agreementTemplates/contracts";
 
 interface Invoice {
   id: string;
@@ -72,6 +76,11 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  // Multi-select -> "Create service contract" (same client only, Johan 18 Oct 2026)
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [contractOpen, setContractOpen] = useState(false);
+  const [openContractId, setOpenContractId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const inf = parseInvoiceParams(searchParams);
   const filter = inf.state ?? "all";
@@ -301,10 +310,29 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
 
       {/* Invoice List */}
       <div className="space-y-2">
-        <p className="text-xs text-muted-foreground">
-          {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? "s" : ""}
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? "s" : ""}
+          </p>
+          {!selectMode && (
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelectMode(true)} data-testid="invoice-select-mode">Select for service contract</Button>
+          )}
+        </div>
 
+        {selectMode && (() => {
+          const picked = invoices.filter((i) => selected.includes(i.id));
+          const check = sameClientCheck(picked.map((i) => ({ id: i.id, customer_id: (i as any).customer_id ?? null, label: i.invoice_number })));
+          return (
+            <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-xl border bg-background/95 p-2 shadow-sm backdrop-blur" data-testid="invoice-contract-bar">
+              <span className="text-sm font-medium">{selected.length} selected</span>
+              {selected.length > 0 && "reason" in check && <span className="text-xs text-destructive" data-testid="same-client-warning">{check.reason}</span>}
+              <div className="ml-auto flex gap-2">
+                <Button size="sm" variant="ghost" onClick={() => { setSelectMode(false); setSelected([]); }}>Cancel</Button>
+                <Button size="sm" variant="brand" disabled={!check.ok} onClick={() => setContractOpen(true)} data-testid="invoice-create-contract">Create service contract</Button>
+              </div>
+            </div>
+          );
+        })()}
         {filteredInvoices.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
@@ -315,10 +343,15 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
             <Card
               key={invoice.id}
               className="cursor-pointer hover:bg-accent/50 transition-colors border-0 shadow-sm"
-              onClick={() => onSelectInvoice(invoice)}
+              onClick={() => (selectMode ? setSelected((s) => (s.includes(invoice.id) ? s.filter((x) => x !== invoice.id) : [...s, invoice.id])) : onSelectInvoice(invoice))}
             >
               <CardContent className="p-3.5">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
+                  {selectMode && (
+                    <Checkbox checked={selected.includes(invoice.id)} aria-label={`Select ${invoice.invoice_number}`} className="shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                      onCheckedChange={() => setSelected((s) => (s.includes(invoice.id) ? s.filter((x) => x !== invoice.id) : [...s, invoice.id]))} />
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <span className="font-semibold text-sm text-primary">
@@ -352,6 +385,16 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
           ))
         )}
       </div>
+      {contractOpen && (() => {
+        const picked = invoices.filter((i) => selected.includes(i.id));
+        const check = sameClientCheck(picked.map((i) => ({ id: i.id, customer_id: (i as any).customer_id ?? null, label: i.invoice_number })));
+        if (!("customerId" in check)) return null;
+        return (
+          <CreateContractDialog open onOpenChange={setContractOpen} customerId={check.customerId} customerName={picked[0]?.customer_name}
+            invoiceIds={picked.map((i) => i.id)} onCreated={(id) => { setSelectMode(false); setSelected([]); setOpenContractId(id); }} />
+        );
+      })()}
+      {openContractId && <ContractEditorDialog contractId={openContractId} onClose={() => setOpenContractId(null)} />}
     </div>
   );
 };

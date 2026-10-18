@@ -3,6 +3,7 @@ import SendQuotesTogetherDialog from "@/components/quoting/SendQuotesTogetherDia
 import { sendTogetherBlock } from "@/lib/quoteBundle";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import ContractsList from "@/components/agreements/ContractsList";
 import CallHistoryPanel from "@/components/calls/CallHistoryPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,6 +80,8 @@ const getInitials = (first?: string | null, last?: string | null, company?: stri
 
 const AdminCustomerDetailPage = () => {
   const { id } = useParams<{ id: string }>();
+  const [innerTab, setInnerTab] = useState("quotes");
+  const [contractSignal, setContractSignal] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -407,6 +410,7 @@ const AdminCustomerDetailPage = () => {
               <DropdownMenuItem onClick={() => navigate(`/admin/quotes?customerId=${id}`)}>New Blank Quote</DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/admin/invoices")}>New Invoice</DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/admin/jobs")}>New Job</DropdownMenuItem>
+              <DropdownMenuItem data-testid="menu-create-service-contract" onClick={() => { setInnerTab("contracts"); setContractSignal((n) => n + 1); }}>Service contract</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -535,7 +539,7 @@ const AdminCustomerDetailPage = () => {
           {/* Bottom tabs */}
           <Card className="bg-card">
             <CardContent className="p-0">
-              <Tabs defaultValue="quotes">
+              <Tabs value={innerTab} onValueChange={setInnerTab}>
                 <div className="border-b overflow-x-auto">
                   <TabsList className="m-3 md:m-4 flex-nowrap w-max">
                     <TabsTrigger value="invoices">
@@ -549,6 +553,7 @@ const AdminCustomerDetailPage = () => {
                     </TabsTrigger>
                     {canSeeStatement && <TabsTrigger value="statement" data-testid="tab-statement">Statement</TabsTrigger>}
                     <TabsTrigger value="notes" data-testid="tab-notes">Notes</TabsTrigger>
+                    <TabsTrigger value="contracts" data-testid="tab-contracts">Contracts</TabsTrigger>
                     <TabsTrigger value="contacts">Contacts</TabsTrigger>
                     <TabsTrigger value="sites">{sitesLabel((customer as any).client_type)}</TabsTrigger>
                     <TabsTrigger value="credits">Credits</TabsTrigger>
@@ -682,6 +687,15 @@ const AdminCustomerDetailPage = () => {
                   </div>
                 </TabsContent>
 
+                <TabsContent value="contracts" className="p-0 mt-0">
+                  <ContractsList
+                    customerId={customer.id}
+                    customerName={(customer as any).company_name || customer.name || undefined}
+                    createSignal={contractSignal}
+                    invoiceOptions={(invoices as any[]).filter((inv) => inv.customer_id === customer.id).map((inv) => ({ id: inv.id, label: inv.invoice_number || "Invoice", sub: inv.issue_date ? format(new Date(inv.issue_date), "dd MMM yyyy") : undefined }))}
+                    jobOptions={(jobs as any[]).filter((j) => !j.customer_id || j.customer_id === customer.id).map((j) => ({ id: j.id, label: j.title || "Job", sub: j.status || undefined }))}
+                  />
+                </TabsContent>
                 <TabsContent value="contacts" className="p-0 mt-0">
                   <CustomerContactsManager customerId={customer.id} />
                 </TabsContent>

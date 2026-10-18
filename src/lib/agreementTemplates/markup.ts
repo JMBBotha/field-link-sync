@@ -64,7 +64,6 @@ export function parseBody(body: string): Block[] {
     if (c) blocks.push({ type: "clause", ...c });
     else blocks.push({ type: "paragraph", text: line });
   }
-  // keep the table objects in sync (rows pushed after creation)
   return blocks;
 }
 
@@ -113,6 +112,11 @@ export const FIELD_HELP: { key: string; label: string }[] = [
   { key: "company.web", label: "Company website" },
   { key: "company.banking", label: "Company banking line" },
   { key: "company.signatory", label: "Authorised signatory" },
+  { key: "client.name", label: "Client name (contracts)" },
+  { key: "client.vat", label: "Client VAT number (contracts)" },
+  { key: "contract.number", label: "Contract number (contracts)" },
+  { key: "contract.start_date", label: "Start date (contracts)" },
+  { key: "contract.frequency", label: "Service frequency (contracts)" },
 ];
 
 /** Sorted, renumbered sections for one document. */

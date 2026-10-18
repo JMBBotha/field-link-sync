@@ -46,6 +46,9 @@ import { type CustomerSearchResult } from "@/hooks/useCustomerSearch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AgreementTemplatesTab from "@/components/agreements/AgreementTemplatesTab";
 import { useAgreementTemplates, downloadTemplatePdf } from "@/components/agreements/templateActions";
+import ContractsList from "@/components/agreements/ContractsList";
+import CreateContractDialog from "@/components/agreements/CreateContractDialog";
+import ContractEditorDialog from "@/components/agreements/ContractEditorDialog";
 
 interface Customer {
   id: string;
@@ -124,8 +127,12 @@ const ServiceAgreements = () => {
   const [showCreateCustomer, setShowCreateCustomer] = useState(false);
   const [selectedCustomerName, setSelectedCustomerName] = useState("");
   const { toast } = useToast();
-  const [view, setView] = useState<"agreements" | "templates">(() =>
-    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "templates" ? "templates" : "agreements");
+  const [view, setView] = useState<"agreements" | "templates" | "contracts">(() => {
+    const t = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null;
+    return t === "templates" || t === "contracts" ? t : "agreements";
+  });
+  const [contractFromForm, setContractFromForm] = useState(false);
+  const [openContractId, setOpenContractId] = useState<string | null>(null);
   const { data: templates = [] } = useAgreementTemplates();
 
   // Close dropdown on outside click
@@ -434,14 +441,15 @@ const ServiceAgreements = () => {
         </div>
       </div>
 
-      <Tabs value={view} onValueChange={(v) => setView(v as "agreements" | "templates")}>
+      <Tabs value={view} onValueChange={(v) => setView(v as "agreements" | "templates" | "contracts")}>
         <TabsList>
           <TabsTrigger value="agreements" data-testid="agreements-tab">Agreements</TabsTrigger>
+          <TabsTrigger value="contracts" data-testid="contracts-tab">Contracts</TabsTrigger>
           <TabsTrigger value="templates" data-testid="templates-tab">Templates</TabsTrigger>
         </TabsList>
       </Tabs>
 
-      {view === "templates" ? <AgreementTemplatesTab /> : (<>
+      {view === "templates" ? <AgreementTemplatesTab /> : view === "contracts" ? <Card className="p-0"><ContractsList /></Card> : (<>
       {/* Filters & Actions */}
       <div className="flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
@@ -759,6 +767,11 @@ const ServiceAgreements = () => {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">Links the contract wording to this agreement. It does not change scheduling or reminders.</p>
+              {formData.customer_id && (
+                <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => setContractFromForm(true)} data-testid="agreement-create-contract">
+                  <FileText className="mr-1 h-4 w-4" /> Create service contract for this client
+                </Button>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -783,6 +796,14 @@ const ServiceAgreements = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {contractFromForm && formData.customer_id && (
+        <CreateContractDialog open onOpenChange={setContractFromForm} customerId={formData.customer_id}
+          customerName={selectedCustomerName || customers.find(c => c.id === formData.customer_id)?.name}
+          serviceAgreementId={editingAgreement?.id || null} defaultFrequency={formData.frequency}
+          onCreated={(id) => setOpenContractId(id)} />
+      )}
+      {openContractId && <ContractEditorDialog contractId={openContractId} onClose={() => setOpenContractId(null)} />}
 
       {/* Cancel Confirmation */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
