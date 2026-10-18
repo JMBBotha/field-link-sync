@@ -3,6 +3,8 @@ import { Home, ClipboardList, CalendarDays, Map, CloudOff, RefreshCw, Wallet } f
 import { cn } from "@/lib/utils";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useRoleColours } from "@/hooks/useSignedInIdentity";
+import { useContext } from "react";
+import { V8BarContext } from "@/components/v8/v8BarContext";
 
 /**
  * Mobile bottom navigation for field technicians.
@@ -22,6 +24,8 @@ const FieldAgentBottomNav = () => {
   const { isOnline, syncStatus } = useOfflineContext();
   const pending = syncStatus?.pendingCount ?? 0;
   const { colours } = useRoleColours();
+  // New layout: pure techs get the V8 bar (Today / Schedule / Earnings / More) from V8FieldShell, so this old bar hides.
+  const v8Bar = useContext(V8BarContext);
 
   return (
     <>
@@ -34,7 +38,7 @@ const FieldAgentBottomNav = () => {
               ? "bg-amber-500/95 text-amber-950"
               : "bg-blue-500/95 text-white"
           )}
-          style={{ bottom: "calc(68px + env(safe-area-inset-bottom))" }}
+          style={{ bottom: v8Bar ? "calc(64px + env(safe-area-inset-bottom))" : "calc(68px + env(safe-area-inset-bottom))" }}
         >
           {!isOnline ? (
             <>
@@ -51,7 +55,7 @@ const FieldAgentBottomNav = () => {
         </div>
       )}
 
-      <nav
+      {!v8Bar && <nav
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-blue-400/20 bg-gradient-to-r from-[#0a1628]/95 via-[#0f2240]/95 to-[#0a1628]/95 backdrop-blur-md md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
@@ -76,7 +80,7 @@ const FieldAgentBottomNav = () => {
             );
           })}
         </div>
-      </nav>
+      </nav>}
     </>
   );
 };
