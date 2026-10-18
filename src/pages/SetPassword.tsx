@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Lock } from "lucide-react";
-import FlAuthFrame from "@/components/auth/FlAuthFrame";
+import FlAuthFrame, { PwBars } from "@/components/auth/FlAuthFrame";
 import { useToast } from "@/hooks/use-toast";
 import { resolvePostLoginPath } from "@/lib/postLoginRedirect";
 
@@ -35,8 +35,9 @@ export default function SetPassword() {
         ) : (
           <>
             <p className="sub">{session.user.email}</p>
-            <div className="lab">New password</div>
-            <label className="f"><Lock size={18} /><input type="password" autoComplete="new-password" placeholder="New password (min 8)" minLength={8} required value={pw} onChange={(e) => setPw(e.target.value)} /></label>
+            <label className="lab" htmlFor="new-password">New password <span>8+ characters</span></label>
+            <div className="f"><Lock size={18} /><input id="new-password" type="password" autoComplete="new-password" placeholder="Create a password" minLength={8} required value={pw} onChange={(e) => setPw(e.target.value)} /></div>
+            <PwBars value={pw} />
             <div className="trk"><button type="submit" disabled={busy} className="pill">{busy ? "Saving…" : "Save password"}</button></div>
           </>
         )}

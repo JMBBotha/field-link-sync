@@ -5,10 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
 import {
-  Loader2, Mail, Lock, User, Eye, EyeOff, Check, Building2, Wrench, Tag, Repeat, Star, Phone, Sun, Moon,
+  Loader2, Mail, Lock, User, Eye, EyeOff, Building2, Wrench, Tag, Repeat, Star, Phone, Sun, Moon,
 } from "lucide-react";
-import logoWhite from "@/assets/fieldlynk-logo-white.png";
-import logoCard from "@/assets/fieldlynk-logo-card.png";
+import { AuthOrb, PwBars, AUTH_TITLE, AUTH_FOOT } from "@/components/auth/FlAuthFrame";
 import { withTimeout } from "@/lib/withTimeout";
 import { resolvePostLoginPath } from "@/lib/postLoginRedirect";
 import { SIGNUP_ROLES, signupMetadata, type SignupRole } from "@/lib/signupRoles";
@@ -141,19 +140,14 @@ const Auth = () => {
       <button type="button" className="theme" onClick={toggleTheme} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}>
         {dark ? <Sun size={18} /> : <Moon size={18} />}
       </button>
-      <div className="eyebrow">0800-BE-COOL · AC SUPER SERVICE</div>
-      <h1 className="t">Field <span>Lynk</span></h1>
+      <AuthOrb />
 
       <div className={`card ${isLogin ? "" : "wide"}`}>
-        <div className="logo">
-          <img src={dark ? logoWhite : logoCard} alt="0800-BE-COOL! AC Super Service" />
-          <span className="tg">FIELD&nbsp;LYNK</span>
-        </div>
-        <h2>{isLogin ? "Sign in" : "Create your account"}</h2>
+        <h1 className="t">{AUTH_TITLE}</h1>
         <p className="sub">
           {isLogin
-            ? "Welcome back. Your jobs, leads and team are right where you left them."
-            : "Pick how you'll use Field Lynk. It takes about a minute."}
+            ? "Welcome back. Sign in to your jobs, leads and team."
+            : "Create your account. Pick how you'll use Field Lynk, it takes about a minute."}
         </p>
 
         <form onSubmit={handleSubmit}>
@@ -221,7 +215,7 @@ const Auth = () => {
             </>
           )}
 
-          <label className="lab" htmlFor="email">Email</label>
+          <label className="lab" htmlFor="email">Email address</label>
           <div className="f">
             <Mail size={18} />
             <input id="email" name="email" type="email" autoComplete="username" inputMode="email"
@@ -240,12 +234,13 @@ const Auth = () => {
             <Lock size={18} />
             <input id="password" name="password" type={showPw ? "text" : "password"}
               autoComplete={isLogin ? "current-password" : "new-password"}
-              placeholder={isLogin ? "••••••••" : "Choose a password"}
+              placeholder={isLogin ? "Your password" : "Create a password"}
               value={password} onChange={(e) => setPassword(e.target.value)} required minLength={isLogin ? 6 : 8} />
             <button type="button" className="eye" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? "Hide password" : "Show password"}>
               {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+          {!isLogin && <PwBars value={password} />}
 
           {!isLogin && role !== "independent" && (
             <p className="note">Sign-ups through Massair CT are approved before you can start. Already-approved companies can add their own techs and salespeople from Team.</p>
@@ -255,15 +250,10 @@ const Auth = () => {
             <button type="submit" className="pill" disabled={busy}>
               {busy ? <Loader2 size={18} className="animate-spin" /> : null}
               {redirecting ? "Signing you in..." : isLogin ? "Sign in" : "Create account"}
-              {!busy && <Check size={18} />}
             </button>
           </div>
           {redirecting && <div className="st"><i />Signed in, taking you to your dashboard…</div>}
-          {isLogin ? (
-            <div className="hint kb"><b>Tab</b> moves between fields · <b>Enter</b> signs you in</div>
-          ) : (
-            <div className="hint">We'll email you a link to confirm your address.</div>
-          )}
+          {!isLogin && <div className="hint">We'll email you a link to confirm your address.</div>}
           {isLogin && (
             <div data-testid="invite-password-note" className="new">
               <span>👋</span>
@@ -280,7 +270,7 @@ const Auth = () => {
           </button>
         </div>
       </div>
-      <div className="foot">SECURE SIGN-IN · WORKS ON PHONE &amp; DESKTOP · WWW.0800BECOOL.CO.ZA</div>
+      <div className="foot">{AUTH_FOOT}</div>
     </div>
   );
 };
