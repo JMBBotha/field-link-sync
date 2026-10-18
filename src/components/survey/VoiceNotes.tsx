@@ -109,3 +109,112 @@ export function VoiceNoteList({ notes, onRemove, onApply, online }: {
     </div>
   );
 }
+
+/** R6 slide distance (px) past which a held recording is discarded. */
+export const CANCEL_PX = 90;
+const TAP_MS = 350;
+const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+type HoldState = "idle" | "recording" | "cancel" | "tap" | "deleted" | "saved";
+
+/**
+ * R6 hold-to-record (photo voice notes): press and hold to record with a live timer, slide left past the
+ * cancel line to discard, release to save. A quick tap starts tap mode instead (tap again to stop and save).
+ * Same WavRecorder + onDone as VoiceRecordButton, so storage and transcription are unchanged.
+ */
+export function HoldToRecordButton({ onDone, label = "Hold to record voice note", savedLabel = "Voice note saved to photo", testId }: {
+  onDone: (b64: string, bytes: number) => void; label?: string; savedLabel?: string; testId?: string;
+}) {
+  const { toast } = useToast();
+  const rec = useRef<WavRecorder | null>(null);
+  const starting = useRef<Promise<boolean> | null>(null);
+  const tick = useRef<ReturnType<typeof setInterval> | null>(null);
+  const t0 = useRef(0);
+  const x0 = useRef(0);
+  const down = useRef(0);
+  const [state, setState] = useState<HoldState>("idle");
+  const [secs, setSecs] = useState(0);
+  const [savedSecs, setSavedSecs] = useState(0);
+  const flash = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const show = (s: HoldState) => { setState(s); if (flash.current) clearTimeout(flash.current); flash.current = setTimeout(() => setState("idle"), 2500); };
+
+  const begin = () => {
+    if (flash.current) { clearTimeout(flash.current); flash.current = null; }
+    starting.current = (async () => {
+      try {
+        const r = new WavRecorder();
+        await r.start();
+        rec.current = r; t0.current = Date.now(); setSecs(0);
+        tick.current = setInterval(() => {
+          const s = Math.floor((Date.now() - t0.current) / 1000);
+          setSecs(s);
+          if (s >= MAX_NOTE_SECONDS) void finish(false);
+        }, 250);
+        return true;
+      } catch {
+        toast({ title: "Microphone not available", description: "Allow the microphone for this site in your browser settings, or type the note.", variant: "destructive" });
+        setState("idle");
+        return false;
+      }
+    })();
+  };
+  const finish = async (discard: boolean) => {
+    if (starting.current && !(await starting.current)) return;
+    const r = rec.current; if (!r) return;
+    rec.current = null;
+    if (tick.current) clearInterval(tick.current);
+    const took = Math.floor((Date.now() - t0.current) / 1000);
+    if (discard) { r.cancel(); show("deleted"); return; }
+    try {
+      const { base64, bytes } = await r.stop();
+      if (bytes < 8000) { toast({ title: "That was very short, nothing saved" }); setState("idle"); return; }
+      onDone(base64, bytes);
+      setSavedSecs(took); show("saved");
+    } catch (e: any) { toast({ title: "Couldn't save the recording", description: e?.message, variant: "destructive" }); setState("idle"); }
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (state === "tap") { void finish(false); return; }
+    if (state === "recording" || state === "cancel") return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    x0.current = e.clientX; down.current = Date.now();
+    setState("recording"); begin();
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (state !== "recording" && state !== "cancel") return;
+    setState(x0.current - e.clientX > CANCEL_PX ? "cancel" : "recording");
+  };
+  const onPointerUp = () => {
+    if (state === "cancel") { void finish(true); return; }
+    if (state !== "recording") return;
+    if (Date.now() - down.current < TAP_MS) { setState("tap"); return; }
+    void finish(false);
+  };
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    if (state === "tap") void finish(false); else if (state === "idle" || state === "saved" || state === "deleted") { setState("tap"); begin(); }
+  };
+  useEffect(() => () => { if (tick.current) clearInterval(tick.current); if (flash.current) clearTimeout(flash.current); rec.current?.cancel(); }, []);
+
+  const live = state === "recording" || state === "cancel" || state === "tap";
+  const text = state === "recording" ? `Recording ${mmss(secs)} · slide left to cancel`
+    : state === "cancel" ? "Release to cancel"
+    : state === "tap" ? `Recording ${mmss(secs)} · tap to stop and save`
+    : state === "deleted" ? "Deleted"
+    : state === "saved" ? `${savedLabel} · ${mmss(savedSecs)}`
+    : label;
+  return (
+    <button type="button" data-testid={testId} data-state={state} aria-live="polite" aria-label={live ? text : `${label}. Or tap to start, tap again to stop.`}
+      onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={() => { if (live && state !== "tap") void finish(true); }}
+      onKeyDown={onKey} onContextMenu={(e) => e.preventDefault()}
+      className={`relative flex min-h-[48px] w-full touch-none select-none items-center justify-center gap-2 overflow-hidden rounded-md border px-3 text-sm font-semibold transition-colors ${
+        state === "cancel" ? "border-destructive bg-destructive/10 text-destructive"
+        : live ? "border-destructive bg-destructive text-destructive-foreground"
+        : state === "saved" ? "border-success/40 bg-success/10 text-ink"
+        : "border-input bg-background text-ink"}`}>
+      {(state === "recording" || state === "cancel") && <span aria-hidden className="absolute inset-y-0 left-[30%] border-l border-dashed border-current opacity-60" />}
+      {state === "deleted" ? <Trash2 className="h-4 w-4" /> : live ? (state === "tap" ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4 animate-pulse" />) : <Mic className="h-4 w-4" />}
+      <span className="tabular-nums">{text}</span>
+    </button>
+  );
+}

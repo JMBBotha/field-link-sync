@@ -12,7 +12,7 @@ import { mapsLink } from "@/lib/visits";
 import { parseAnnotation, serializeAnnotation } from "@/lib/annotation";
 import PhotoAnnotator from "@/components/photos/PhotoAnnotator";
 import { Chips, PhotoSlot, Stepper, SyncBadge, Thumb } from "@/components/survey/SurveyBits";
-import { VoiceNoteList, VoiceRecordButton } from "@/components/survey/VoiceNotes";
+import { HoldToRecordButton, VoiceNoteList, VoiceRecordButton } from "@/components/survey/VoiceNotes";
 import type { Suggestion } from "@/lib/siteSurvey/voice";
 import {
   ACCESS_FLAGS, ELECTRICAL, FLOORS, MARKER_PRESETS, ROOM_FLAGS, ROOM_NAMES, UNIT_SIZES, WALL_TYPES,
@@ -189,7 +189,7 @@ export default function SiteSurveyPage() {
                   onMarkup={(m, url) => setMarking({ m, url })} />
                 {p && <>
                   <VoiceNoteList notes={audioOf(d, p.id)} online={s.isOnline} onRemove={(m) => s.removeMedia(m.id)} onApply={applyTo(room.id)} />
-                  <VoiceRecordButton label="Voice note on this photo" testId="survey-photo-voice"
+                  <HoldToRecordButton label="Hold to record voice note" testId="survey-photo-voice"
                     onDone={(b64, n) => s.addVoiceNote(b64, n, { purpose: "photo", roomId: room.id, parentId: p.id })} />
                 </>}
               </div>
