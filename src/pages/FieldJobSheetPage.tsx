@@ -12,6 +12,7 @@ import { CalendarDays, CheckCircle2, MapPin, Package, Phone, Play } from "lucide
 import FieldShell from "@/components/field/FieldShell";
 import { SitePhotosReadOnly } from "@/components/photos/SitePhotosSection";
 import { useToast } from "@/hooks/use-toast";
+import SiteCheckCard, { siteCheckBlock, useSiteCheck } from "@/components/field/SiteCheckCard";
 import { packQtyText, groupPackingList, loadTicks, saveTicks, type PackingRow } from "@/lib/packingList";
 
 export default function FieldJobSheetPage() {
@@ -22,7 +23,7 @@ export default function FieldJobSheetPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("jobs")
-        .select("id, lead_id, title, description, address, scheduled_for, status, job_type, customers(name, phone, address), leads(customer_address)")
+        .select("id, lead_id, title, description, address, scheduled_for, status, job_type, site_check_status, customers(name, phone, address), leads(customer_address)")
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
@@ -58,6 +59,9 @@ export default function FieldJobSheetPage() {
   const total = groups.reduce((n, g) => n + g.rows.length, 0);
   const done = groups.reduce((n, g) => n + g.rows.filter((r) => ticks[r.key]).length, 0);
   const j = job.data;
+  // Site check (phone/online install quotes): Start/Complete stay locked until costs are confirmed
+  const site = useSiteCheck(id, (job.data as any)?.site_check_status ?? null);
+  const blocked = siteCheckBlock(site.data);
   const siteAddress: string | null = (j as any)?.address || (j as any)?.leads?.customer_address || (j as any)?.customers?.address || null;
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
@@ -100,20 +104,27 @@ export default function FieldJobSheetPage() {
                 {j.customers.phone && <a className="underline" href={`tel:${j.customers.phone}`}>{j.customers.phone}</a>}</p>
             )}
             {j.description && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{j.description}</p>}
+            {blocked && ["scheduled", "dispatched", "in_progress"].includes(j.status) && (
+              <p className="rounded-lg bg-amber-50 p-2 text-sm font-semibold text-amber-800" data-testid="job-locked-reason">{blocked}</p>
+            )}
             {["scheduled", "dispatched", "in_progress"].includes(j.status) && (
               <div className="flex gap-2 pt-2">
                 {j.status !== "in_progress" && (
-                  <Button className="h-11 flex-1 gap-1.5" disabled={busy} onClick={() => setStatus("in_progress")}>
+                  <Button className="h-11 flex-1 gap-1.5" disabled={busy || !!blocked} onClick={() => setStatus("in_progress")}>
                     <Play className="h-4 w-4" /> Start job
                   </Button>
                 )}
-                <Button className="h-11 flex-1 gap-1.5" variant={j.status === "in_progress" ? "default" : "outline"} disabled={busy} onClick={() => setStatus("completed")}>
+                <Button className="h-11 flex-1 gap-1.5" variant={j.status === "in_progress" ? "default" : "outline"} disabled={busy || !!blocked} onClick={() => setStatus("completed")}>
                   <CheckCircle2 className="h-4 w-4" /> Complete job
                 </Button>
               </div>
             )}
           </CardContent>
         </Card>
+      )}
+
+      {j && site.data && !["completed", "cancelled"].includes(j.status) && (
+        <SiteCheckCard jobId={id} leadId={j.lead_id} info={site.data} onDone={() => { void site.refetch(); void job.refetch(); }} />
       )}
 
       {/* P2: salesperson's site photos for this job's lead (read-only, no money) */}

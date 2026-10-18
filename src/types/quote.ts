@@ -68,6 +68,15 @@ export interface QuoteMeta {
   /** Quote-level override of the company Units % / Materials % (null = use company default). */
   units_markup_percent?: number | null;
   materials_markup_percent?: number | null;
+  /** Phone/online quote (no site visit): terms section 12 + on-site check. */
+  remote_quote?: boolean | null;
+  remote_quote_source?: string | null;
+  is_variation?: boolean | null;
+  parent_quote_id?: string | null;
+  locked_at?: string | null;
+  locked_reason?: string | null;
+  variation_summary?: { summary_line?: string | null } | null;
+  created_at?: string | null;
 }
 
 /** Full quote with joined areas and items */

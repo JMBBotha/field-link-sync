@@ -23,6 +23,8 @@ import logo from "@/assets/logo.png";
 import logoWhite from "@/assets/brand/logo-white.png";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
 
+import VariationResponseCard, { type VariationSummary } from "@/components/client/VariationResponseCard";
+
 interface QuoteData {
   id: string;
   quote_number: string;
@@ -40,6 +42,10 @@ interface QuoteData {
   discount_type: string | null;
   discount_value: number | null;
   remote_quote?: boolean | null;
+  is_variation?: boolean | null;
+  variation_summary?: VariationSummary | null;
+  parent_total?: number | null;
+  parent_quote_number?: string | null;
 }
 
 interface PublicCustomer {
@@ -301,8 +307,10 @@ const ClientProposalView = () => {
   if (!quote) return null;
 
   // Drafts are not accepted online (Johan 2026-10-13); the database refuses them too.
-  const isActionable = ["sent", "viewed"].includes(quote.status) && !actionDone;
-  const isDraft = quote.status === "draft" && !actionDone;
+  // Updated quote after the site check: Approve/Decline card instead of the normal Accept flow.
+  const isVariation = !!quote.is_variation;
+  const isActionable = !isVariation && ["sent", "viewed"].includes(quote.status) && !actionDone;
+  const isDraft = !isVariation && quote.status === "draft" && !actionDone;
   const brandName = (companyProfile as any)?.legal_name || (companyProfile as any)?.trading_name || company?.company_name || "";
   // Massair CT: transparent logo straight on the blue header, no white box (Johan 13 Oct 12:52).
   const logoOnColour = /^massair ct\b/i.test(brandName);
@@ -327,7 +335,7 @@ const ClientProposalView = () => {
   return (
     <div className={`min-h-screen bg-gradient-to-b from-blue-50 to-white ${isActionable ? "pb-24" : ""}`}>
       {/* One header (Johan 16 Oct 09:34): the document's own company header is the page header; only a slim status strip here. */}
-      {(quote.status === "accepted" || actionDone === "accepted" || quote.status === "declined" || actionDone === "declined" || changeState?.open) && (
+      {!isVariation && (quote.status === "accepted" || actionDone === "accepted" || quote.status === "declined" || actionDone === "declined" || changeState?.open) && (
         <div className="print:hidden text-center pt-3">
           {quote.status === "accepted" || actionDone === "accepted" ? (
             <Badge className="bg-emerald-500 text-white text-sm px-4 py-1">✅ Accepted</Badge>
@@ -342,6 +350,11 @@ const ClientProposalView = () => {
       <main className="max-w-4xl mx-auto p-3 md:p-8 space-y-4 md:space-y-6">
         {bundleToken && (
           <a href={`/quote/all/${encodeURIComponent(bundleToken)}`} className="inline-block text-sm text-[#0B4FA8] underline print:hidden">← Back to all quotes</a>
+        )}
+        {isVariation && token && (
+          <VariationResponseCard token={token} status={quote.status} summary={quote.variation_summary ?? null}
+            total={Number(quote.total) || 0} parentTotal={quote.parent_total ?? null} parentNumber={quote.parent_quote_number ?? null}
+            defaultName={acceptedName} acceptedBy={quote.accepted_by} />
         )}
         {/* Accept spot 1: summary card at the top */}
         {isActionable && (
@@ -505,7 +518,7 @@ const ClientProposalView = () => {
         )}
 
         {/* Outcome Messages */}
-        {(actionDone === "accepted" || quote.status === "accepted") && (
+        {!isVariation && (actionDone === "accepted" || quote.status === "accepted") && (
           <Card className="rounded-2xl shadow-lg border-0 bg-emerald-50 border-t-4 border-t-emerald-500">
             <CardContent className="p-6 text-center space-y-3">
               <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto" />

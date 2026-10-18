@@ -4301,6 +4301,8 @@ export type Database = {
       }
       jobs: {
         Row: {
+          site_check_status: string | null
+          variation_quote_id: string | null
           address: string | null
           awaiting_stock: boolean
           company_id: string
@@ -4326,6 +4328,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          site_check_status?: string | null
+          variation_quote_id?: string | null
           address?: string | null
           awaiting_stock?: boolean
           company_id: string
@@ -4351,6 +4355,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          site_check_status?: string | null
+          variation_quote_id?: string | null
           address?: string | null
           awaiting_stock?: boolean
           company_id?: string
@@ -8011,6 +8017,13 @@ export type Database = {
       }
       quotes: {
         Row: {
+          is_variation: boolean
+          parent_quote_id: string | null
+          variation_job_id: string | null
+          locked_at: string | null
+          locked_by: string | null
+          locked_reason: string | null
+          variation_summary: Json | null
           remote_quote: boolean
           remote_quote_source: string | null
           accepted_at: string | null
@@ -8063,6 +8076,13 @@ export type Database = {
           visual_sections: Json | null
         }
         Insert: {
+          is_variation?: boolean
+          parent_quote_id?: string | null
+          variation_job_id?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          locked_reason?: string | null
+          variation_summary?: Json | null
           remote_quote?: boolean
           remote_quote_source?: string | null
           accepted_at?: string | null
@@ -8115,6 +8135,13 @@ export type Database = {
           visual_sections?: Json | null
         }
         Update: {
+          is_variation?: boolean
+          parent_quote_id?: string | null
+          variation_job_id?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          locked_reason?: string | null
+          variation_summary?: Json | null
           remote_quote?: boolean
           remote_quote_source?: string | null
           accepted_at?: string | null

@@ -37,6 +37,7 @@ import { ToastAction } from "@/components/ui/toast";
 import { formatRand } from "@/utils/formatRand";
 import { useActiveSpecials } from "@/hooks/useActiveSpecials";
 import LabourModeSwitch, { useLabourModeSwitch } from "@/components/quoting/LabourModeSwitch";
+import QuoteLockBanner from "./QuoteLockBanner";
 import RemoteQuoteToggle from "@/components/quoting/RemoteQuoteToggle";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import LiveClientPreview from "@/components/quoting/LiveClientPreview";
@@ -454,6 +455,7 @@ export default function EstimateBuilder({
         )}
       </div>
       {!hideClientNote && <ClientNoteBox onChanged={onChanged} />}
+      {quoteId && meta && <QuoteLockBanner quoteId={quoteId} lockedAt={meta.locked_at} lockedReason={meta.locked_reason} isVariation={meta.is_variation} status={meta.status} summaryLine={meta.variation_summary?.summary_line ?? null} onChanged={() => { void refetch(); onChanged?.(); }} />}
       {quoteId && meta && <RemoteQuoteToggle quoteId={quoteId} value={!!meta.remote_quote} source={meta.remote_quote_source ?? null} onChanged={() => { void refetch(); onChanged?.(); }} />}
       {(() => { const editorDoc = (
       <EstimateDocument
