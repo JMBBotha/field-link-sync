@@ -22,6 +22,7 @@ import QuoteTermsPage from "@/components/quoting/QuoteTermsPage";
 import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
 import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
 import { withEoe } from "@/lib/eoeClause";
+import { usesLegacyPaymentTerms, withRemoteNotice } from "@/lib/remoteQuoteClause";
 import { planTermsSentence, type PaymentPlan } from "@/lib/paymentPlans";
 import BrandDocument, { NotesBody, type BrandDocSection } from "@/components/documents/BrandDocument";
 import { foldFlatLines } from "@/lib/clientQuoteRollup";
@@ -208,6 +209,10 @@ export interface EstimateDocumentProps {
   collapseTerms?: boolean;
   /** Public client page only: node rendered right after the totals. */
   afterTotalsAction?: ReactNode;
+  /** Phone/online quote (quotes.remote_quote): section 12 + one-line notice. */
+  remoteQuote?: boolean | null;
+  /** quotes.created_at: quotes issued before the 2.1 payment change keep the old wording. */
+  quoteCreatedAt?: string | null;
 }
 
 
@@ -368,7 +373,10 @@ const EstimateDocument = ({
   unitCards,
   collapseTerms,
   afterTotalsAction,
+  remoteQuote,
+  quoteCreatedAt,
 }: EstimateDocumentProps) => {
+  const legacyPayment = usesLegacyPaymentTerms(quoteCreatedAt);
   const editRootRef = useRef<HTMLDivElement | null>(null);
   const flashId = useNewLineScroll(
     editing ? editing.areas.flatMap((a) => a.lines.map((l) => l.id)) : [],
@@ -421,7 +429,7 @@ const EstimateDocument = ({
           lines: area.items.map((it, j) => ({ key: it.id ?? `${i}-${j}`, quantity: it.qtyText || qty(it.quantity), code: it.code, name: it.name, description: it.description, rate: it.unitPrice, total: it.lineTotal })),
         }))
       : [{ key: "all", lines: foldFlatLines(items.map((it) => { const [name, ...rest] = it.description.split("\n"); return { name, description: rest.join("\n") || null, quantity: it.quantity, unit_price: it.unit_price, amount: it.amount, qtyText: it.qtyText || null }; })).map((l, j) => ({ key: String(j), quantity: l.qtyText || qty(l.quantity), name: l.name, description: l.description, rate: l.unit_price, total: l.amount })) }];
-    const terms = cleanTerms || `This estimate is valid for 30 days from the date of issue. All prices exclude VAT, which is shown separately at ${vatPercent}%. ${planTermsSentence(paymentPlan, settings.default_deposit_percentage, settings.default_payment_terms_days)}`;
+    const terms = withRemoteNotice(cleanTerms || `This estimate is valid for 30 days from the date of issue. All prices exclude VAT, which is shown separately at ${vatPercent}%. ${planTermsSentence(paymentPlan, settings.default_deposit_percentage, settings.default_payment_terms_days)}`, remoteQuote);
     const bankLine = [bank.account_name, bank.bank_name, bank.account_type && `${bank.account_type} account`, bank.account_number, bank.branch_code && `Branch ${bank.branch_code}`].filter(Boolean).join(" · ");
     return (
       <BrandDocument
@@ -461,6 +469,8 @@ const EstimateDocument = ({
             branchCode={bank.branch_code || undefined}
             accountType={accountType || undefined}
             quoteNumber={estimateNumber}
+            remoteQuote={!!remoteQuote}
+            legacyPayment={legacyPayment}
           />
         }
       />
@@ -1059,6 +1069,8 @@ const EstimateDocument = ({
           branchCode={bank.branch_code || undefined}
           accountType={accountType || undefined}
           quoteNumber={estimateNumber}
+          remoteQuote={!!remoteQuote}
+          legacyPayment={legacyPayment}
         />
       </div>
     </div>

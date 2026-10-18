@@ -44,6 +44,10 @@ export interface QuoteTermsPageProps {
   branchCode?: string;
   accountType?: string;
   quoteNumber?: string;
+  /** Phone/online quote: adds section 12. */
+  remoteQuote?: boolean;
+  /** Issued before the 2.1 payment change: keep the old wording. */
+  legacyPayment?: boolean;
 }
 
 const TermsSections = ({ sections, startIndex = 0 }: { sections: TermsSection[]; startIndex?: number }) => (
@@ -73,6 +77,7 @@ export default function QuoteTermsPage(p: QuoteTermsPageProps) {
     companyName: p.companyName,
     bankName: p.bankName, accountName: p.accountName, accountNumber: p.accountNumber,
     branchCode: p.branchCode, accountType: p.accountType,
+    remoteQuote: p.remoteQuote, legacyPayment: p.legacyPayment,
   });
   const sections = groupTermsSections(blocks);
   const half = Math.ceil(sections.length / 2);

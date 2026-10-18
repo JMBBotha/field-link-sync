@@ -1,3 +1,4 @@
+import { REMOTE_QUOTE_HEADING, remoteQuoteParagraphs } from "./remoteQuoteClause";
 /**
  * Structured terms data for formatted PDF rendering.
  * Each block has a type that controls how it renders in the PDF:
@@ -30,9 +31,16 @@ export interface TermsCompanyInfo {
   /** Footer line on the terms pages (company name · tel · VAT · address). Defaults to the fixed block. */
   footerLine?: string;
   contactLine?: string;
+  /** Remote (phone/online) quote: adds section 12 "Quotes made by phone or online". */
+  remoteQuote?: boolean;
+  /** Quote issued before 2026-10-18 22:00 SAST: keep the old 2.1 payment wording. */
+  legacyPayment?: boolean;
 }
 
 const FALLBACK_COMPANY_NAME = "Our Company";
+const LEGACY_PAYMENT_21 = "2.1 To provide the best possible price, the cost of the unit/s is to be paid in full as acceptance of our quotation. The remainder of the installation amount is payable upon completion of the project.";
+/** Johan 2026-10-18 22:08. */
+export const PAYMENT_21 = "2.1 For supply-and-install jobs, a 70% deposit is payable on acceptance of this quotation and the balance is payable after installation. For units-only orders (supply without installation), full payment is payable on acceptance.";
 
 /**
  * Builds the terms & conditions blocks for a specific company/tenant.
@@ -49,6 +57,7 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
       { type: "spacer", text: "" },
       ...company.customText.split(/\n\s*\n/).map((para) => para.trim()).filter(Boolean)
         .map((para): TermsBlock => (/^[^\n]{1,60}:$/.test(para) ? { type: "heading", text: para } : { type: "paragraph", text: para })),
+      ...(company.remoteQuote ? [{ type: "heading", text: REMOTE_QUOTE_HEADING } as TermsBlock, ...remoteQuoteParagraphs().map((text): TermsBlock => ({ type: "paragraph", text }))] : []),
     ];
   }
   const name = (company.companyName || FALLBACK_COMPANY_NAME).trim();
@@ -88,7 +97,7 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Pricing and Payment:" },
-    { type: "paragraph", text: "2.1 To provide the best possible price, the cost of the unit/s is to be paid in full as acceptance of our quotation. The remainder of the installation amount is payable upon completion of the project." },
+    { type: "paragraph", text: company.legacyPayment ? LEGACY_PAYMENT_21 : PAYMENT_21 },
     { type: "paragraph", text: "2.2 All products supplied carry our full warranty as set out in section 5 below." },
     { type: "paragraph", text: "2.3 Unless previously arranged with management, it will be assumed that you, the client, will be responsible for payment." },
     { type: "paragraph", text: `2.4 All goods remain the property of ${name} until paid in full.` },
@@ -131,6 +140,10 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
     { type: "heading", text: "Dispute Resolution:" },
     { type: "paragraph", text: "11.1 In the event of any disputes or disagreements arising from our services, both parties agree to engage in good-faith negotiations to resolve the matter amicably before referring the matter to the National Consumer Commission, an accredited consumer ombud, or a court of competent jurisdiction." },
     { type: "spacer", text: "" },
+
+    ...(company.remoteQuote
+      ? [{ type: "heading", text: REMOTE_QUOTE_HEADING } as TermsBlock, ...remoteQuoteParagraphs().map((text): TermsBlock => ({ type: "paragraph", text })), { type: "spacer", text: "" } as TermsBlock]
+      : []),
 
     { type: "heading", text: "Importance of Servicing AC Units" },
     { type: "spacer", text: "" },

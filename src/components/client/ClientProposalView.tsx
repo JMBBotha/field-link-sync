@@ -39,6 +39,7 @@ interface QuoteData {
   terms_text: string | null;
   discount_type: string | null;
   discount_value: number | null;
+  remote_quote?: boolean | null;
 }
 
 interface PublicCustomer {
@@ -388,6 +389,8 @@ const ClientProposalView = () => {
           companyOverride={company}
           companyProfile={companyProfile}
           paymentPlan={(quote as any).payment_plan ?? null}
+          remoteQuote={!!quote.remote_quote}
+          quoteCreatedAt={quote.created_at}
           collapseTerms
           afterTotalsAction={isActionable ? (
             <div className="print:hidden" style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }} data-testid="accept-after-lines">

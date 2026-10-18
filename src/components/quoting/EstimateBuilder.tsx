@@ -37,6 +37,7 @@ import { ToastAction } from "@/components/ui/toast";
 import { formatRand } from "@/utils/formatRand";
 import { useActiveSpecials } from "@/hooks/useActiveSpecials";
 import LabourModeSwitch, { useLabourModeSwitch } from "@/components/quoting/LabourModeSwitch";
+import RemoteQuoteToggle from "@/components/quoting/RemoteQuoteToggle";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import LiveClientPreview from "@/components/quoting/LiveClientPreview";
 import DocumentStyleSwitch from "@/components/quoting/DocumentStyleSwitch";
@@ -453,6 +454,7 @@ export default function EstimateBuilder({
         )}
       </div>
       {!hideClientNote && <ClientNoteBox onChanged={onChanged} />}
+      {quoteId && meta && <RemoteQuoteToggle quoteId={quoteId} value={!!meta.remote_quote} source={meta.remote_quote_source ?? null} onChanged={() => { void refetch(); onChanged?.(); }} />}
       {(() => { const editorDoc = (
       <EstimateDocument
           estimateNumber={quoteNumber}
@@ -475,6 +477,8 @@ export default function EstimateBuilder({
           }
           notes={notes}
           termsText={termsText}
+          remoteQuote={!!meta?.remote_quote}
+          quoteCreatedAt={meta?.created_at ?? null}
           companyId={meta?.company_id ?? null}
           editing={{
             areaCreationControl,
@@ -673,6 +677,8 @@ export default function EstimateBuilder({
           vatRate={vatRate}
           notes={notes}
           termsText={termsText}
+          remoteQuote={!!meta?.remote_quote}
+          quoteCreatedAt={meta?.created_at ?? null}
           items={items}
           areas={areas}
           discountType={discountType}

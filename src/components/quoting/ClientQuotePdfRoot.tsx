@@ -68,7 +68,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
         const [qRes, iRes, aRes, cRes, dRes] = await Promise.all([
           (supabase.from("quotes") as any)
             .select(
-              "id, company_id, quote_number, subtotal, vat_rate, vat_amount, total, notes, valid_until, created_at, customer_name, terms_text, discount_type, discount_value, payment_plan, customers(name, first_name, last_name, company_name, primary_address_line1, email, phone, vat_number)",
+              "id, company_id, quote_number, subtotal, vat_rate, vat_amount, total, notes, valid_until, created_at, customer_name, terms_text, discount_type, discount_value, payment_plan, remote_quote, customers(name, first_name, last_name, company_name, primary_address_line1, email, phone, vat_number)",
             )
             .eq("id", quoteId)
             .maybeSingle(),
@@ -203,6 +203,8 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
           companyOverride={doc.company}
           companyId={(q as any).company_id ?? null}
           paymentPlan={q.payment_plan ?? null}
+          remoteQuote={!!(q as any).remote_quote}
+          quoteCreatedAt={q.created_at}
           unitCards={<QuoteUnitCardsView cards={doc.unitCards} companyId={doc.quote?.company_id ?? (doc.company as any)?.company_id ?? null} variant={((doc.brochureCompany?.document_style ?? (doc.company as any)?.document_style) === "bold") ? "bold" : "light"} />}
         />
       )}

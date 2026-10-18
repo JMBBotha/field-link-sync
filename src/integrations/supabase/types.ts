@@ -8011,6 +8011,8 @@ export type Database = {
       }
       quotes: {
         Row: {
+          remote_quote: boolean
+          remote_quote_source: string | null
           accepted_at: string | null
           accepted_by: string | null
           accepted_signature: Json | null
@@ -8061,6 +8063,8 @@ export type Database = {
           visual_sections: Json | null
         }
         Insert: {
+          remote_quote?: boolean
+          remote_quote_source?: string | null
           accepted_at?: string | null
           accepted_by?: string | null
           accepted_signature?: Json | null
@@ -8111,6 +8115,8 @@ export type Database = {
           visual_sections?: Json | null
         }
         Update: {
+          remote_quote?: boolean
+          remote_quote_source?: string | null
           accepted_at?: string | null
           accepted_by?: string | null
           accepted_signature?: Json | null

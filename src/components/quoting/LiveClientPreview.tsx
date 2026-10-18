@@ -36,6 +36,8 @@ export interface LiveClientPreviewProps {
   /** Uncommitted keystrokes from the editor, keyed by line id. */
   drafts?: Record<string, { item_name?: string; description?: string | null; unit_price?: number }>;
   className?: string;
+  remoteQuote?: boolean | null;
+  quoteCreatedAt?: string | null;
 }
 
 const DOC_WIDTH = 820;
@@ -171,6 +173,8 @@ export default function LiveClientPreview(props: LiveClientPreviewProps) {
             companyOverride={company}
             companyId={props.companyId ?? null}
             paymentPlan={quoteExtra?.payment_plan ?? null}
+            remoteQuote={!!props.remoteQuote}
+            quoteCreatedAt={props.quoteCreatedAt ?? null}
             unitCards={<QuoteUnitCardsView cards={unitCards} companyId={props.companyId ?? null} variant={variant} />}
           />
         </div>

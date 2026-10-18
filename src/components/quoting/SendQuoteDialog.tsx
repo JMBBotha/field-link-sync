@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { REMOTE_QUOTE_NOTICE } from "@/lib/remoteQuoteClause";
 import { useQueryClient } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
@@ -169,6 +170,8 @@ const SendQuoteDialog = ({
     setLeadId(q.lead_id ?? null);
     // Sign-off resets every time the window opens or the quote changes.
     setApproved({ terms: false, brochure: false, pricing: false });
+    // Phone/online quote: start the client message with the site-check line (the rep can edit or clear it).
+    if ((quote as any).remote_quote) setMessage((m) => (m.trim() ? m : REMOTE_QUOTE_NOTICE));
   }, [open, quote]);
   const allApproved = approved.terms && approved.brochure && approved.pricing;
 
