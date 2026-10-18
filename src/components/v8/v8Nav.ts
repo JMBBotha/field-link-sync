@@ -11,9 +11,8 @@ export function v8RoleOf(r: { isAdmin: boolean; isDispatcher: boolean; isFieldAg
 
 export function v8Primary(role: V8Role): V8Link[] {
   if (role === "tech") return [
-    { path: "/field", label: "Home", icon: "home" },
-    { path: "/admin/my-jobs", label: "Job offers", icon: "briefcase", match: ["/field/my-jobs", "/field/jobs"] },
-    { path: "/field/schedule", label: "My schedule", icon: "calendar" },
+    { path: "/field", label: "Today", icon: "home", match: ["/field/jobs"] },
+    { path: "/field/schedule", label: "Schedule", icon: "calendar" },
     { path: "/field/earnings", label: "Earnings", icon: "wallet" },
   ];
   if (role === "sales") return [
@@ -40,7 +39,13 @@ export function v8More(role: V8Role): V8Group[] {
     { path: "/admin/help", label: "Help", icon: "help" },
     ...(role === "admin" || role === "owner" ? [{ path: "/admin/settings", label: "Settings", icon: "settings" }] : []),
   ] };
-  if (role === "tech") return [me];
+  if (role === "tech") return [
+    { title: "Work", links: [
+      { path: "/admin/my-jobs", label: "Job offers", icon: "briefcase", match: ["/field/my-jobs"] },
+      { path: "/field/all", label: "Full field view", icon: "home" },
+    ] },
+    me,
+  ];
   if (role === "sales") return [
     { title: "Selling", links: [
       { path: "/admin/my-appointments", label: "My appointments", icon: "calendar" },

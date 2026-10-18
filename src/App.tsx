@@ -38,6 +38,7 @@ import { AdminVisitsPage, AdminVisitDetailPage } from "./pages/admin/AdminVisits
 import { CompanyProvider } from "./providers/CompanyProvider";
 const CustomerPortal = lazy(() => import("./pages/CustomerPortal"));
 const SiteSurveyPage = lazy(() => import("./pages/admin/SiteSurveyPage"));
+const FieldHome = lazy(() => import("./pages/FieldHome"));
 const AdminMoneyPage = lazy(() => import("./pages/admin/AdminMoneyPage"));
 const AdminMyCommissionPage = lazy(() => import("./pages/admin/AdminMyCommissionPage"));
 const MySignaturePage = lazy(() => import("./pages/admin/MySignaturePage"));
@@ -287,7 +288,9 @@ const App = () => (
                   <Route path="/field/earnings" element={<V8FieldShell><RequireRole allowedRoles={["field_agent", "admin"]}><FieldEarningsPage /></RequireRole></V8FieldShell>} />
 
                   {/* Field Agent — technicians (and admins/office). Sales reps go to My visits (SalesRepFieldRedirect). */}
-                  <Route path="/field" element={<SalesRepFieldRedirect><V8FieldShell><FieldAgent /></V8FieldShell></SalesRepFieldRedirect>} />
+                  <Route path="/field" element={<SalesRepFieldRedirect><V8FieldShell><FieldHome /></V8FieldShell></SalesRepFieldRedirect>} />
+                  {/* Old field home, one tap from More (techs get Today at /field). */}
+                  <Route path="/field/all" element={<SalesRepFieldRedirect><V8FieldShell><FieldAgent /></V8FieldShell></SalesRepFieldRedirect>} />
 
                   {/* Redirects from old standalone routes */}
                   <Route path="/invoices" element={<Navigate to="/admin/invoices" replace />} />

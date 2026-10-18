@@ -8,11 +8,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, CheckCircle2, MapPin, Package, Phone, Play } from "lucide-react";
+import { CalendarDays, CheckCircle2, MapPin, Navigation, Package, Phone, Play } from "lucide-react";
 import FieldShell from "@/components/field/FieldShell";
 import { SitePhotosReadOnly } from "@/components/photos/SitePhotosSection";
 import { useToast } from "@/hooks/use-toast";
 import SiteCheckCard, { siteCheckBlock, useSiteCheck } from "@/components/field/SiteCheckCard";
+import { loadJobSheet, loadPackingList } from "@/lib/jobPack";
+import SurveyPackSection, { FrontPhoto, useSurveyPack } from "@/components/survey/SurveyPackSection";
 import { packQtyText, groupPackingList, loadTicks, saveTicks, type PackingRow } from "@/lib/packingList";
 
 export default function FieldJobSheetPage() {
@@ -20,24 +22,12 @@ export default function FieldJobSheetPage() {
   const job = useQuery({
     queryKey: ["field-job-sheet", id],
     enabled: !!id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("jobs")
-        .select("id, lead_id, title, description, address, scheduled_for, status, job_type, site_check_status, customers(name, phone, address), leads(customer_address)")
-        .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
-      return data as any;
-    },
+    queryFn: () => loadJobSheet(id),
   });
   const list = useQuery({
     queryKey: ["job-packing-list", id],
     enabled: !!id,
-    queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("get_job_packing_list", { p_job_id: id });
-      if (error) throw error;
-      return (data || []) as PackingRow[];
-    },
+    queryFn: () => loadPackingList(id),
   });
   const [ticks, setTicks] = useState<Record<string, boolean>>({});
   useEffect(() => setTicks(loadTicks(id)), [id]);
@@ -63,6 +53,7 @@ export default function FieldJobSheetPage() {
   const site = useSiteCheck(id, (job.data as any)?.site_check_status ?? null);
   const blocked = siteCheckBlock(site.data);
   const siteAddress: string | null = (j as any)?.address || (j as any)?.leads?.customer_address || (j as any)?.customers?.address || null;
+  const pack = useSurveyPack(j?.lead_id ?? null);
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
   const setStatus = async (status: "in_progress" | "completed") => {
@@ -87,7 +78,8 @@ export default function FieldJobSheetPage() {
       ) : !j ? (
         <Card><CardContent className="p-4 text-sm">This job is not available to you.</CardContent></Card>
       ) : (
-        <Card>
+        <Card className="overflow-hidden">
+          <FrontPhoto survey={pack.data} className="aspect-[16/9] rounded-none" />
           <CardContent className="space-y-2 p-4">
             <h2 className="text-lg font-semibold">{j.title || "Job"}</h2>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{[j.job_type, j.status].filter(Boolean).join(" · ")}</p>
@@ -102,6 +94,12 @@ export default function FieldJobSheetPage() {
             {j.customers?.name && (
               <p className="flex flex-wrap items-center gap-2 text-sm"><Phone className="h-4 w-4" />{j.customers.name}
                 {j.customers.phone && <a className="underline" href={`tel:${j.customers.phone}`}>{j.customers.phone}</a>}</p>
+            )}
+            {(siteAddress || j.customers?.phone) && (
+              <div className="grid grid-cols-2 gap-2" data-testid="job-pack-actions">
+                {siteAddress ? <Button asChild variant="outline" className="min-h-[44px]"><a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(siteAddress)}`} target="_blank" rel="noreferrer"><Navigation className="mr-1 h-4 w-4" />Navigate</a></Button> : <span />}
+                {j.customers?.phone ? <Button asChild variant="outline" className="min-h-[44px]"><a href={`tel:${j.customers.phone}`}><Phone className="mr-1 h-4 w-4" />Call client</a></Button> : <span />}
+              </div>
             )}
             {j.description && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{j.description}</p>}
             {blocked && ["scheduled", "dispatched", "in_progress"].includes(j.status) && (
@@ -126,6 +124,9 @@ export default function FieldJobSheetPage() {
       {j && site.data && !["completed", "cancelled"].includes(j.status) && (
         <SiteCheckCard jobId={id} leadId={j.lead_id} info={site.data} onDone={() => { void site.refetch(); void job.refetch(); }} />
       )}
+
+      {/* Job pack: the rep's site survey (rooms, photos, pipe runs, notes). Read-only, no money. */}
+      {j?.lead_id && <SurveyPackSection leadId={j.lead_id} />}
 
       {/* P2: salesperson's site photos for this job's lead (read-only, no money) */}
       {job.data?.lead_id && <SitePhotosReadOnly leadId={job.data.lead_id} />}
