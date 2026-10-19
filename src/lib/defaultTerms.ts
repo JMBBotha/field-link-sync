@@ -35,7 +35,7 @@ export interface TermsCompanyInfo {
   remoteQuote?: boolean;
   /** Quote issued before 2026-10-18 22:00 SAST: keep the old 2.1 payment wording. */
   legacyPayment?: boolean;
-  /** Online shop order (paid in full): 12.5 says "refund your payment in full". */
+  /** Online shop order (paid in full): 2.1 is full payment on order and 12.5 says "refund your payment in full". */
   remotePaidInFull?: boolean;
 }
 
@@ -43,6 +43,8 @@ const FALLBACK_COMPANY_NAME = "Our Company";
 const LEGACY_PAYMENT_21 = "2.1 To provide the best possible price, the cost of the unit/s is to be paid in full as acceptance of our quotation. The remainder of the installation amount is payable upon completion of the project.";
 /** Johan 2026-10-18 22:08. */
 export const PAYMENT_21 = "2.1 For supply-and-install jobs, a 70% deposit is payable on acceptance of this quotation and the balance is payable after installation. For units-only orders (supply without installation), full payment is payable on acceptance.";
+/** Online shop orders (Johan 2026-10-19 07:09): paid in full when the order is placed. Phone/Sam quotes keep PAYMENT_21. */
+export const SHOP_PAYMENT_21 = "2.1 Online orders are paid in full when the order is placed. No further payment is due unless you approve extra work before it is done (see section 12).";
 
 /**
  * Builds the terms & conditions blocks for a specific company/tenant.
@@ -99,7 +101,7 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Pricing and Payment:" },
-    { type: "paragraph", text: company.legacyPayment ? LEGACY_PAYMENT_21 : PAYMENT_21 },
+    { type: "paragraph", text: company.remotePaidInFull ? SHOP_PAYMENT_21 : company.legacyPayment ? LEGACY_PAYMENT_21 : PAYMENT_21 },
     { type: "paragraph", text: "2.2 All products supplied carry our full warranty as set out in section 5 below." },
     { type: "paragraph", text: "2.3 Unless previously arranged with management, it will be assumed that you, the client, will be responsible for payment." },
     { type: "paragraph", text: `2.4 All goods remain the property of ${name} until paid in full.` },
