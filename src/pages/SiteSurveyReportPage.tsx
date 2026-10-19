@@ -59,7 +59,8 @@ export function SurveyReportBody({ leadId, field }: { leadId: string; field: boo
         logo: (await bytesOf(logoUrl)) ?? (await bytesOf(brandCard)),
         image: async (path) => { const b = await getBlob(path); if (b) return new Uint8Array(await b.blob.arrayBuffer()); const u = await signedSurveyUrl(path); return u ? bytesOf(u) : null; },
       });
-      const blob = new Blob([bytes], { type: "application/pdf" });
+      // Copy into a plain ArrayBuffer-backed view: Blob needs one (TS 5.8 typed-array generics).
+      const blob = new Blob([new Uint8Array(bytes)], { type: "application/pdf" });
       if (!field) {
         // Private copy next to the photos ({company}/{survey}/report.pdf); techs only download.
         await supabase.storage.from(SURVEY_BUCKET).upload(`${d.companyId}/${d.id}/report.pdf`, blob, { upsert: true, contentType: "application/pdf" });
