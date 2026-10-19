@@ -482,6 +482,7 @@ export default function EstimateBuilder({
           notes={notes}
           termsText={termsText}
           remoteQuote={!!meta?.remote_quote}
+          remoteQuoteSource={(meta as any)?.remote_quote_source ?? null}
           quoteCreatedAt={meta?.created_at ?? null}
           companyId={meta?.company_id ?? null}
           editing={{
@@ -682,6 +683,7 @@ export default function EstimateBuilder({
           notes={notes}
           termsText={termsText}
           remoteQuote={!!meta?.remote_quote}
+          remoteQuoteSource={(meta as any)?.remote_quote_source ?? null}
           quoteCreatedAt={meta?.created_at ?? null}
           items={items}
           areas={areas}

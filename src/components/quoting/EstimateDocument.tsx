@@ -22,7 +22,7 @@ import QuoteTermsPage from "@/components/quoting/QuoteTermsPage";
 import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
 import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
 import { withEoe } from "@/lib/eoeClause";
-import { usesLegacyPaymentTerms, withRemoteNotice } from "@/lib/remoteQuoteClause";
+import { isPaidInFullRemote, usesLegacyPaymentTerms, withRemoteNotice } from "@/lib/remoteQuoteClause";
 import { planTermsSentence, type PaymentPlan } from "@/lib/paymentPlans";
 import BrandDocument, { NotesBody, type BrandDocSection } from "@/components/documents/BrandDocument";
 import { foldFlatLines } from "@/lib/clientQuoteRollup";
@@ -211,6 +211,8 @@ export interface EstimateDocumentProps {
   afterTotalsAction?: ReactNode;
   /** Phone/online quote (quotes.remote_quote): section 12 + one-line notice. */
   remoteQuote?: boolean | null;
+  /** quotes.remote_quote_source: 'website_shop' = online shop order paid in full (12.5 says "payment"). */
+  remoteQuoteSource?: string | null;
   /** quotes.created_at: quotes issued before the 2.1 payment change keep the old wording. */
   quoteCreatedAt?: string | null;
 }
@@ -374,6 +376,7 @@ const EstimateDocument = ({
   collapseTerms,
   afterTotalsAction,
   remoteQuote,
+  remoteQuoteSource,
   quoteCreatedAt,
 }: EstimateDocumentProps) => {
   const legacyPayment = usesLegacyPaymentTerms(quoteCreatedAt);
@@ -471,6 +474,7 @@ const EstimateDocument = ({
             quoteNumber={estimateNumber}
             remoteQuote={!!remoteQuote}
             legacyPayment={legacyPayment}
+            remotePaidInFull={isPaidInFullRemote(remoteQuoteSource)}
           />
         }
       />
@@ -1071,6 +1075,7 @@ const EstimateDocument = ({
           quoteNumber={estimateNumber}
           remoteQuote={!!remoteQuote}
           legacyPayment={legacyPayment}
+          remotePaidInFull={isPaidInFullRemote(remoteQuoteSource)}
         />
       </div>
     </div>

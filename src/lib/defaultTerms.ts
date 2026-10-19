@@ -35,6 +35,8 @@ export interface TermsCompanyInfo {
   remoteQuote?: boolean;
   /** Quote issued before 2026-10-18 22:00 SAST: keep the old 2.1 payment wording. */
   legacyPayment?: boolean;
+  /** Online shop order (paid in full): 12.5 says "refund your payment in full". */
+  remotePaidInFull?: boolean;
 }
 
 const FALLBACK_COMPANY_NAME = "Our Company";
@@ -57,7 +59,7 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
       { type: "spacer", text: "" },
       ...company.customText.split(/\n\s*\n/).map((para) => para.trim()).filter(Boolean)
         .map((para): TermsBlock => (/^[^\n]{1,60}:$/.test(para) ? { type: "heading", text: para } : { type: "paragraph", text: para })),
-      ...(company.remoteQuote ? [{ type: "heading", text: REMOTE_QUOTE_HEADING } as TermsBlock, ...remoteQuoteParagraphs().map((text): TermsBlock => ({ type: "paragraph", text }))] : []),
+      ...(company.remoteQuote ? [{ type: "heading", text: REMOTE_QUOTE_HEADING } as TermsBlock, ...remoteQuoteParagraphs({ paidInFull: company.remotePaidInFull }).map((text): TermsBlock => ({ type: "paragraph", text }))] : []),
     ];
   }
   const name = (company.companyName || FALLBACK_COMPANY_NAME).trim();
@@ -142,7 +144,7 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
     { type: "spacer", text: "" },
 
     ...(company.remoteQuote
-      ? [{ type: "heading", text: REMOTE_QUOTE_HEADING } as TermsBlock, ...remoteQuoteParagraphs().map((text): TermsBlock => ({ type: "paragraph", text })), { type: "spacer", text: "" } as TermsBlock]
+      ? [{ type: "heading", text: REMOTE_QUOTE_HEADING } as TermsBlock, ...remoteQuoteParagraphs({ paidInFull: company.remotePaidInFull }).map((text): TermsBlock => ({ type: "paragraph", text })), { type: "spacer", text: "" } as TermsBlock]
       : []),
 
     { type: "heading", text: "Importance of Servicing AC Units" },

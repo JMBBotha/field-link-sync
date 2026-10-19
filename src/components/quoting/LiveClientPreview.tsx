@@ -37,6 +37,8 @@ export interface LiveClientPreviewProps {
   drafts?: Record<string, { item_name?: string; description?: string | null; unit_price?: number }>;
   className?: string;
   remoteQuote?: boolean | null;
+  /** quotes.remote_quote_source: "website_shop" switches terms 12.5 to the paid-in-full wording. */
+  remoteQuoteSource?: string | null;
   quoteCreatedAt?: string | null;
 }
 
@@ -174,6 +176,7 @@ export default function LiveClientPreview(props: LiveClientPreviewProps) {
             companyId={props.companyId ?? null}
             paymentPlan={quoteExtra?.payment_plan ?? null}
             remoteQuote={!!props.remoteQuote}
+            remoteQuoteSource={props.remoteQuoteSource ?? null}
             quoteCreatedAt={props.quoteCreatedAt ?? null}
             unitCards={<QuoteUnitCardsView cards={unitCards} companyId={props.companyId ?? null} variant={variant} />}
           />

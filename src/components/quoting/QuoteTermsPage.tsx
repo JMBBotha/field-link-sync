@@ -48,6 +48,8 @@ export interface QuoteTermsPageProps {
   remoteQuote?: boolean;
   /** Issued before the 2.1 payment change: keep the old wording. */
   legacyPayment?: boolean;
+  /** Online shop order paid in full: 12.5 refund wording says "payment". */
+  remotePaidInFull?: boolean;
 }
 
 const TermsSections = ({ sections, startIndex = 0 }: { sections: TermsSection[]; startIndex?: number }) => (
@@ -77,7 +79,7 @@ export default function QuoteTermsPage(p: QuoteTermsPageProps) {
     companyName: p.companyName,
     bankName: p.bankName, accountName: p.accountName, accountNumber: p.accountNumber,
     branchCode: p.branchCode, accountType: p.accountType,
-    remoteQuote: p.remoteQuote, legacyPayment: p.legacyPayment,
+    remoteQuote: p.remoteQuote, legacyPayment: p.legacyPayment, remotePaidInFull: p.remotePaidInFull,
   });
   const sections = groupTermsSections(blocks);
   const half = Math.ceil(sections.length / 2);

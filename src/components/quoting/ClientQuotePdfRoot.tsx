@@ -204,6 +204,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
           companyId={(q as any).company_id ?? null}
           paymentPlan={q.payment_plan ?? null}
           remoteQuote={!!(q as any).remote_quote}
+          remoteQuoteSource={(q as any).remote_quote_source ?? null}
           quoteCreatedAt={q.created_at}
           unitCards={<QuoteUnitCardsView cards={doc.unitCards} companyId={doc.quote?.company_id ?? (doc.company as any)?.company_id ?? null} variant={((doc.brochureCompany?.document_style ?? (doc.company as any)?.document_style) === "bold") ? "bold" : "light"} />}
         />

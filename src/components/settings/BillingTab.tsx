@@ -10,6 +10,7 @@ import MarginSettingsCard from "@/components/settings/MarginSettingsCard";
 import LabourNormsCard from "@/components/settings/LabourNormsCard";
 import NetworkMembersCard from "@/components/settings/NetworkMembersCard";
 import NetworkPerformanceCard from "@/components/settings/NetworkPerformanceCard";
+import ShopModelsCard from "@/components/settings/ShopModelsCard";
 
 const BillingTab = () => {
   const { settings, isLoading, saveSettings, isSaving } = useCompanySettings();
@@ -51,6 +52,7 @@ const BillingTab = () => {
       </Card>
 
       <MarginSettingsCard />
+      <ShopModelsCard />
       <LabourNormsCard />
       <NetworkPerformanceCard />
       <NetworkMembersCard />
