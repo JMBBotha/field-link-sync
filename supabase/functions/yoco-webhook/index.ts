@@ -7,6 +7,27 @@ import {
   yocoEnvironment,
 } from "../_shared/yoco.ts";
 import { applyPaymentStatus, reconcileInvoice } from "../_shared/paymentState.ts";
+import { dbEnvironment } from "../_shared/shopPayments.ts";
+import { shopPaidEmail } from "../_shared/shopEmail.ts";
+
+const MASSAIR_COMPANY_ID = "361bf031-9cdb-4d7f-9bde-9eb95fa4725e";
+
+// deno-lint-ignore no-explicit-any
+async function sendClientEmail(db: any, payload: Record<string, unknown>): Promise<boolean> {
+  try {
+    const { data: cfg } = await db.from("app_webhook_config").select("email_webhook_token").eq("id", 1).single();
+    if (!cfg?.email_webhook_token) return false;
+    const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-transactional-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-email-webhook-token": String(cfg.email_webhook_token) },
+      body: JSON.stringify(payload),
+    });
+    await r.text();
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -90,6 +111,46 @@ Deno.serve(async (req) => {
       console.error("payment_events insert failed", dupError.message);
     }
 
+    // --- Online shop orders (2026-10-19) ----------------------------------
+    // A shop order has no invoice until Yoco confirms payment. fl_shop_finalize books everything in one
+    // transaction (customer, lead, accepted quote, paid invoice, payment, job) and is idempotent.
+    const shopOrderId: string | undefined = p.metadata?.shop_order_id;
+    if (shopOrderId) {
+      const status = mapYocoStatus(gatewayStatus, eventType);
+      if (status !== "paid") {
+        await db.rpc("fl_shop_order_note_event", { p_order: shopOrderId, p_event: { type: eventType, status: gatewayStatus ?? null, id: p.id ?? null } });
+        await db.from("payment_events").update({ processed: true }).eq("gateway", "yoco").eq("event_id", eventId);
+        return json({ ok: true, shop: true, booked: false });
+      }
+      const { data: fin, error: finErr } = await db.rpc("fl_shop_finalize", {
+        p_order: shopOrderId,
+        p_checkout_id: checkoutId ?? null,
+        p_gateway_payment_id: p.id ?? eventId,
+        p_amount_cents: typeof p.amount === "number" ? Math.round(p.amount) : null,
+        p_environment: dbEnvironment(environment),
+        p_payload: p,
+      });
+      if (finErr || !fin?.ok) {
+        console.error("shop finalize failed", finErr?.message ?? fin?.error);
+        await db.from("payment_events").update({ processed: false, error_message: `shop: ${finErr?.message ?? fin?.error}` })
+          .eq("gateway", "yoco").eq("event_id", eventId);
+        // 500 lets Yoco retry a transient DB error; a mismatch is final (flagged to the owner in-app).
+        return json({ ok: false, shop: true }, finErr ? 500 : 200);
+      }
+      let emailed = false;
+      if (!fin.already) {
+        if (fin.invoice_id) await reconcileInvoice(db, fin.invoice_id);
+        if (fin.email) {
+          const mail = shopPaidEmail(fin);
+          emailed = await sendClientEmail(db, { to: fin.email, subject: mail.subject, html: mail.html, signature_mode: "company", company_id: MASSAIR_COMPANY_ID });
+          if (emailed) await db.rpc("fl_shop_mark_emailed", { p_order: shopOrderId });
+        }
+      }
+      await db.from("payment_events").update({ processed: true, payment_id: fin.payment_id ?? null, invoice_id: fin.invoice_id ?? null, company_id: MASSAIR_COMPANY_ID })
+        .eq("gateway", "yoco").eq("event_id", eventId);
+      return json({ ok: true, shop: true, booked: true, already: Boolean(fin.already), emailed });
+    }
+
     // --- Locate the payment row ------------------------------------------
     let query = db.from("payments").select("id, invoice_id, company_id, environment, status, amount");
     if (checkoutId) query = query.eq("checkout_id", checkoutId);
@@ -98,7 +159,7 @@ Deno.serve(async (req) => {
 
     const { data: payment } = await query
       .eq("gateway", "yoco")
-      .eq("environment", environment) // test events can never touch live rows
+      .eq("environment", dbEnvironment(environment)) // test events can never touch live rows (payments use sandbox/live)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();

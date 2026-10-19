@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { authCorsHeaders, requireUser } from "../_shared/auth.ts";
 import { getYocoConfig, toCents } from "../_shared/yoco.ts";
+import { dbEnvironment } from "../_shared/shopPayments.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -90,11 +91,11 @@ Deno.serve(async (req) => {
         company_id: invoice.company_id,
         amount,
         currency: "ZAR",
-        method: "yoco",
+        method: "card", // payments.method check: cash/eft/card/other (gateway column says yoco)
         gateway: "yoco",
         checkout_id: result.id,
         status: "pending",
-        environment: cfg.environment,
+        environment: dbEnvironment(cfg.environment), // payments.environment check: sandbox/live
         reference: invoice.invoice_number,
         created_by: auth.userId,
         payment_date: new Date().toISOString().slice(0, 10),

@@ -103,3 +103,6 @@ verify_jwt = false
 
 [functions.shop-prices]
 verify_jwt = false
+
+[functions.shop-checkout]
+verify_jwt = false
