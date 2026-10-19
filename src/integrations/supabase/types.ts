@@ -195,6 +195,268 @@ export type Database = {
         }
         Relationships: []
       }
+      agreement_contracts: {
+        Row: {
+          client_snapshot: Json
+          company_id: string
+          contract_number: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          frequency: string | null
+          id: string
+          notes: string | null
+          plan: string | null
+          sections: Json
+          service_agreement_id: string | null
+          source_invoice_ids: string[]
+          source_job_ids: string[]
+          start_date: string | null
+          status: string
+          template_id: string | null
+          template_name: string | null
+          template_version: number | null
+          title: string
+          units: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          client_snapshot?: Json
+          company_id: string
+          contract_number: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          frequency?: string | null
+          id?: string
+          notes?: string | null
+          plan?: string | null
+          sections?: Json
+          service_agreement_id?: string | null
+          source_invoice_ids?: string[]
+          source_job_ids?: string[]
+          start_date?: string | null
+          status?: string
+          template_id?: string | null
+          template_name?: string | null
+          template_version?: number | null
+          title?: string
+          units?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          client_snapshot?: Json
+          company_id?: string
+          contract_number?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          frequency?: string | null
+          id?: string
+          notes?: string | null
+          plan?: string | null
+          sections?: Json
+          service_agreement_id?: string | null
+          source_invoice_ids?: string[]
+          source_job_ids?: string[]
+          start_date?: string | null
+          status?: string
+          template_id?: string | null
+          template_name?: string | null
+          template_version?: number | null
+          title?: string
+          units?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreement_contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agreement_contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "agreement_contracts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agreement_contracts_service_agreement_id_fkey"
+            columns: ["service_agreement_id"]
+            isOneToOne: false
+            referencedRelation: "service_agreements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agreement_contracts_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "agreement_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agreement_template_sections: {
+        Row: {
+          body: string
+          created_at: string
+          doc_kind: string
+          heading: string
+          id: string
+          kind: string
+          position: number
+          template_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          doc_kind: string
+          heading?: string
+          id?: string
+          kind?: string
+          position: number
+          template_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          doc_kind?: string
+          heading?: string
+          id?: string
+          kind?: string
+          position?: number
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreement_template_sections_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "agreement_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agreement_template_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          snapshot: Json
+          template_id: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          snapshot: Json
+          template_id: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          snapshot?: Json
+          template_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreement_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "agreement_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agreement_templates: {
+        Row: {
+          company_id: string
+          contract_docx_path: string | null
+          contract_pdf_path: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          sla_docx_path: string | null
+          sla_pdf_path: string | null
+          status: string
+          tier: string | null
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          company_id: string
+          contract_docx_path?: string | null
+          contract_pdf_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          sla_docx_path?: string | null
+          sla_pdf_path?: string | null
+          status?: string
+          tier?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          company_id?: string
+          contract_docx_path?: string | null
+          contract_pdf_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          sla_docx_path?: string | null
+          sla_pdf_path?: string | null
+          status?: string
+          tier?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreement_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agreement_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       app_usage_events: {
         Row: {
           created_at: string
@@ -1721,6 +1983,7 @@ export type Database = {
           company_id: string | null
           company_name: string
           created_at: string
+          dashboard_goals: Json | null
           default_deposit_percentage: number | null
           default_hourly_rate: number | null
           default_install_labour_hours: number
@@ -1740,6 +2003,7 @@ export type Database = {
           company_id?: string | null
           company_name?: string
           created_at?: string
+          dashboard_goals?: Json | null
           default_deposit_percentage?: number | null
           default_hourly_rate?: number | null
           default_install_labour_hours?: number
@@ -1759,6 +2023,7 @@ export type Database = {
           company_id?: string | null
           company_name?: string
           created_at?: string
+          dashboard_goals?: Json | null
           default_deposit_percentage?: number | null
           default_hourly_rate?: number | null
           default_install_labour_hours?: number
@@ -4174,6 +4439,84 @@ export type Database = {
           },
         ]
       }
+      job_site_checks: {
+        Row: {
+          checklist: Json
+          company_id: string | null
+          created_at: string
+          id: string
+          job_id: string
+          notes: string | null
+          quote_id: string | null
+          result: string
+          source: string
+          tech_id: string | null
+          variation_quote_id: string | null
+        }
+        Insert: {
+          checklist?: Json
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          job_id: string
+          notes?: string | null
+          quote_id?: string | null
+          result: string
+          source?: string
+          tech_id?: string | null
+          variation_quote_id?: string | null
+        }
+        Update: {
+          checklist?: Json
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          notes?: string | null
+          quote_id?: string | null
+          result?: string
+          source?: string
+          tech_id?: string | null
+          variation_quote_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_site_checks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_site_checks_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "job_site_checks_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_site_checks_variation_quote_id_fkey"
+            columns: ["variation_quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "job_site_checks_variation_quote_id_fkey"
+            columns: ["variation_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_time_entries: {
         Row: {
           agent_id: string
@@ -4299,10 +4642,105 @@ export type Database = {
           },
         ]
       }
+      job_variations: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          items: Json
+          job_id: string
+          needs_pricing: boolean
+          original_quote_id: string | null
+          site_check_id: string | null
+          source: string
+          status: string
+          unit_swaps: Json
+          variation_quote_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          items?: Json
+          job_id: string
+          needs_pricing?: boolean
+          original_quote_id?: string | null
+          site_check_id?: string | null
+          source?: string
+          status?: string
+          unit_swaps?: Json
+          variation_quote_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          items?: Json
+          job_id?: string
+          needs_pricing?: boolean
+          original_quote_id?: string | null
+          site_check_id?: string | null
+          source?: string
+          status?: string
+          unit_swaps?: Json
+          variation_quote_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_variations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_variations_original_quote_id_fkey"
+            columns: ["original_quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "job_variations_original_quote_id_fkey"
+            columns: ["original_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_variations_site_check_id_fkey"
+            columns: ["site_check_id"]
+            isOneToOne: false
+            referencedRelation: "job_site_checks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_variations_variation_quote_id_fkey"
+            columns: ["variation_quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "job_variations_variation_quote_id_fkey"
+            columns: ["variation_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
-          site_check_status: string | null
-          variation_quote_id: string | null
           address: string | null
           awaiting_stock: boolean
           company_id: string
@@ -4322,14 +4760,14 @@ export type Database = {
           priority: string | null
           quote_id: string | null
           scheduled_for: string | null
+          site_check_status: string | null
           started_at: string | null
           status: string | null
           title: string
           updated_at: string | null
+          variation_quote_id: string | null
         }
         Insert: {
-          site_check_status?: string | null
-          variation_quote_id?: string | null
           address?: string | null
           awaiting_stock?: boolean
           company_id: string
@@ -4349,14 +4787,14 @@ export type Database = {
           priority?: string | null
           quote_id?: string | null
           scheduled_for?: string | null
+          site_check_status?: string | null
           started_at?: string | null
           status?: string | null
           title: string
           updated_at?: string | null
+          variation_quote_id?: string | null
         }
         Update: {
-          site_check_status?: string | null
-          variation_quote_id?: string | null
           address?: string | null
           awaiting_stock?: boolean
           company_id?: string
@@ -4376,10 +4814,12 @@ export type Database = {
           priority?: string | null
           quote_id?: string | null
           scheduled_for?: string | null
+          site_check_status?: string | null
           started_at?: string | null
           status?: string | null
           title?: string
           updated_at?: string | null
+          variation_quote_id?: string | null
         }
         Relationships: [
           {
@@ -4469,6 +4909,20 @@ export type Database = {
           {
             foreignKeyName: "jobs_quote_id_fkey"
             columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_variation_quote_id_fkey"
+            columns: ["variation_quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "jobs_variation_quote_id_fkey"
+            columns: ["variation_quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
             referencedColumns: ["id"]
@@ -7881,6 +8335,51 @@ export type Database = {
           },
         ]
       }
+      quote_lock_events: {
+        Row: {
+          action: string
+          actor: string | null
+          company_id: string | null
+          created_at: string
+          id: string
+          quote_id: string
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          quote_id: string
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          quote_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_lock_events_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "quote_lock_events_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_template_items: {
         Row: {
           created_at: string
@@ -8017,15 +8516,6 @@ export type Database = {
       }
       quotes: {
         Row: {
-          is_variation: boolean
-          parent_quote_id: string | null
-          variation_job_id: string | null
-          locked_at: string | null
-          locked_by: string | null
-          locked_reason: string | null
-          variation_summary: Json | null
-          remote_quote: boolean
-          remote_quote_source: string | null
           accepted_at: string | null
           accepted_by: string | null
           accepted_signature: Json | null
@@ -8041,19 +8531,26 @@ export type Database = {
           discount_type: string | null
           discount_value: number | null
           id: string
+          is_variation: boolean
           labour_included: boolean
           labour_mode: string
           lead_id: string | null
           legacy_original_total: number | null
           location_id: string | null
+          locked_at: string | null
+          locked_by: string | null
+          locked_reason: string | null
           materials_markup_percent: number | null
           materials_waste_percent: number | null
           notes: string | null
           owner_id: string | null
+          parent_quote_id: string | null
           payment_plan: Json | null
           public_token: string | null
           quote_number: string | null
           reference_text: string | null
+          remote_quote: boolean
+          remote_quote_source: string | null
           sales_engineer_id: string
           sent_at: string | null
           sent_by: string | null
@@ -8070,21 +8567,14 @@ export type Database = {
           units_markup_percent: number | null
           updated_at: string
           valid_until: string | null
+          variation_job_id: string | null
+          variation_summary: Json | null
           vat_amount: number
           vat_rate: number
           viewed_at: string | null
           visual_sections: Json | null
         }
         Insert: {
-          is_variation?: boolean
-          parent_quote_id?: string | null
-          variation_job_id?: string | null
-          locked_at?: string | null
-          locked_by?: string | null
-          locked_reason?: string | null
-          variation_summary?: Json | null
-          remote_quote?: boolean
-          remote_quote_source?: string | null
           accepted_at?: string | null
           accepted_by?: string | null
           accepted_signature?: Json | null
@@ -8100,19 +8590,26 @@ export type Database = {
           discount_type?: string | null
           discount_value?: number | null
           id?: string
+          is_variation?: boolean
           labour_included?: boolean
           labour_mode?: string
           lead_id?: string | null
           legacy_original_total?: number | null
           location_id?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          locked_reason?: string | null
           materials_markup_percent?: number | null
           materials_waste_percent?: number | null
           notes?: string | null
           owner_id?: string | null
+          parent_quote_id?: string | null
           payment_plan?: Json | null
           public_token?: string | null
           quote_number?: string | null
           reference_text?: string | null
+          remote_quote?: boolean
+          remote_quote_source?: string | null
           sales_engineer_id: string
           sent_at?: string | null
           sent_by?: string | null
@@ -8129,21 +8626,14 @@ export type Database = {
           units_markup_percent?: number | null
           updated_at?: string
           valid_until?: string | null
+          variation_job_id?: string | null
+          variation_summary?: Json | null
           vat_amount?: number
           vat_rate?: number
           viewed_at?: string | null
           visual_sections?: Json | null
         }
         Update: {
-          is_variation?: boolean
-          parent_quote_id?: string | null
-          variation_job_id?: string | null
-          locked_at?: string | null
-          locked_by?: string | null
-          locked_reason?: string | null
-          variation_summary?: Json | null
-          remote_quote?: boolean
-          remote_quote_source?: string | null
           accepted_at?: string | null
           accepted_by?: string | null
           accepted_signature?: Json | null
@@ -8159,19 +8649,26 @@ export type Database = {
           discount_type?: string | null
           discount_value?: number | null
           id?: string
+          is_variation?: boolean
           labour_included?: boolean
           labour_mode?: string
           lead_id?: string | null
           legacy_original_total?: number | null
           location_id?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          locked_reason?: string | null
           materials_markup_percent?: number | null
           materials_waste_percent?: number | null
           notes?: string | null
           owner_id?: string | null
+          parent_quote_id?: string | null
           payment_plan?: Json | null
           public_token?: string | null
           quote_number?: string | null
           reference_text?: string | null
+          remote_quote?: boolean
+          remote_quote_source?: string | null
           sales_engineer_id?: string
           sent_at?: string | null
           sent_by?: string | null
@@ -8188,6 +8685,8 @@ export type Database = {
           units_markup_percent?: number | null
           updated_at?: string
           valid_until?: string | null
+          variation_job_id?: string | null
+          variation_summary?: Json | null
           vat_amount?: number
           vat_rate?: number
           viewed_at?: string | null
@@ -8251,6 +8750,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "quotes_parent_quote_id_fkey"
+            columns: ["parent_quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "quotes_parent_quote_id_fkey"
+            columns: ["parent_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "quotes_superseded_by_fkey"
             columns: ["superseded_by"]
             isOneToOne: false
@@ -8262,6 +8775,13 @@ export type Database = {
             columns: ["superseded_by"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_variation_job_id_fkey"
+            columns: ["variation_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -8334,6 +8854,7 @@ export type Database = {
       }
       service_agreements: {
         Row: {
+          attached_file_path: string | null
           auto_generate_jobs: boolean
           company_id: string | null
           contract_type: string
@@ -8351,10 +8872,13 @@ export type Database = {
           price: number
           start_date: string
           status: string
+          template_id: string | null
+          template_version: number | null
           unit_id: string | null
           updated_at: string
         }
         Insert: {
+          attached_file_path?: string | null
           auto_generate_jobs?: boolean
           company_id?: string | null
           contract_type?: string
@@ -8372,10 +8896,13 @@ export type Database = {
           price?: number
           start_date: string
           status?: string
+          template_id?: string | null
+          template_version?: number | null
           unit_id?: string | null
           updated_at?: string
         }
         Update: {
+          attached_file_path?: string | null
           auto_generate_jobs?: boolean
           company_id?: string | null
           contract_type?: string
@@ -8393,6 +8920,8 @@ export type Database = {
           price?: number
           start_date?: string
           status?: string
+          template_id?: string | null
+          template_version?: number | null
           unit_id?: string | null
           updated_at?: string
         }
@@ -8423,6 +8952,13 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_agreements_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "agreement_templates"
             referencedColumns: ["id"]
           },
           {
@@ -8518,6 +9054,469 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "company_stats"
             referencedColumns: ["company_id"]
+          },
+        ]
+      }
+      shop_orders: {
+        Row: {
+          company_id: string
+          contact: Json
+          created_at: string
+          customer_id: string | null
+          email_sent_at: string | null
+          environment: string
+          error: string | null
+          expires_at: string
+          finalized_at: string | null
+          id: string
+          invoice_id: string | null
+          ip_hash: string | null
+          job_id: string | null
+          last_event: Json | null
+          lead_id: string | null
+          lines: Json
+          notes: string | null
+          order_ref: string
+          paid_at: string | null
+          payment_id: string | null
+          preferred: Json | null
+          quote_id: string | null
+          rooms: Json
+          status: string
+          subtotal_ex: number
+          terms_accepted_at: string
+          terms_version: string
+          total_incl: number
+          vat_amount: number
+          yoco_checkout_id: string | null
+          yoco_payment_id: string | null
+        }
+        Insert: {
+          company_id: string
+          contact: Json
+          created_at?: string
+          customer_id?: string | null
+          email_sent_at?: string | null
+          environment: string
+          error?: string | null
+          expires_at?: string
+          finalized_at?: string | null
+          id?: string
+          invoice_id?: string | null
+          ip_hash?: string | null
+          job_id?: string | null
+          last_event?: Json | null
+          lead_id?: string | null
+          lines: Json
+          notes?: string | null
+          order_ref: string
+          paid_at?: string | null
+          payment_id?: string | null
+          preferred?: Json | null
+          quote_id?: string | null
+          rooms: Json
+          status?: string
+          subtotal_ex: number
+          terms_accepted_at: string
+          terms_version: string
+          total_incl: number
+          vat_amount: number
+          yoco_checkout_id?: string | null
+          yoco_payment_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          contact?: Json
+          created_at?: string
+          customer_id?: string | null
+          email_sent_at?: string | null
+          environment?: string
+          error?: string | null
+          expires_at?: string
+          finalized_at?: string | null
+          id?: string
+          invoice_id?: string | null
+          ip_hash?: string | null
+          job_id?: string | null
+          last_event?: Json | null
+          lead_id?: string | null
+          lines?: Json
+          notes?: string | null
+          order_ref?: string
+          paid_at?: string | null
+          payment_id?: string | null
+          preferred?: Json | null
+          quote_id?: string | null
+          rooms?: Json
+          status?: string
+          subtotal_ex?: number
+          terms_accepted_at?: string
+          terms_version?: string
+          total_incl?: number
+          vat_amount?: number
+          yoco_checkout_id?: string | null
+          yoco_payment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
+      shop_tier_map: {
+        Row: {
+          active: boolean
+          btu: number
+          company_id: string
+          id: string
+          product_id: string
+          tier: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          btu: number
+          company_id: string
+          id?: string
+          product_id: string
+          tier: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          btu?: number
+          company_id?: string
+          id?: string
+          product_id?: string
+          tier?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_tier_map_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_tier_map_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "shop_tier_map_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "live_supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_tier_map_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_survey_media: {
+        Row: {
+          annotated_path: string | null
+          annotation: Json | null
+          archived_at: string | null
+          audio_purged_at: string | null
+          bytes: number | null
+          caption: string | null
+          company_id: string
+          created_at: string
+          created_by: string
+          duration_s: number | null
+          id: string
+          kind: string
+          parent_media_id: string | null
+          room_id: string | null
+          sort: number
+          storage_path: string | null
+          survey_id: string
+          taken_at: string | null
+          transcript: string | null
+          transcript_status: string
+        }
+        Insert: {
+          annotated_path?: string | null
+          annotation?: Json | null
+          archived_at?: string | null
+          audio_purged_at?: string | null
+          bytes?: number | null
+          caption?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string
+          duration_s?: number | null
+          id?: string
+          kind: string
+          parent_media_id?: string | null
+          room_id?: string | null
+          sort?: number
+          storage_path?: string | null
+          survey_id: string
+          taken_at?: string | null
+          transcript?: string | null
+          transcript_status?: string
+        }
+        Update: {
+          annotated_path?: string | null
+          annotation?: Json | null
+          archived_at?: string | null
+          audio_purged_at?: string | null
+          bytes?: number | null
+          caption?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          duration_s?: number | null
+          id?: string
+          kind?: string
+          parent_media_id?: string | null
+          room_id?: string | null
+          sort?: number
+          storage_path?: string | null
+          survey_id?: string
+          taken_at?: string | null
+          transcript?: string | null
+          transcript_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_survey_media_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_survey_media_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "site_survey_media_parent_media_id_fkey"
+            columns: ["parent_media_id"]
+            isOneToOne: false
+            referencedRelation: "site_survey_media"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_survey_media_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "site_survey_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_survey_media_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "site_surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_survey_rooms: {
+        Row: {
+          company_id: string
+          core_holes: number | null
+          created_at: string
+          electrical: string | null
+          flags: Json
+          floor_level: string | null
+          id: string
+          name: string
+          note: string | null
+          pipe_run_m: number | null
+          sort: number
+          survey_id: string
+          unit_size_btu: number | null
+          updated_at: string
+          wall_type: string | null
+        }
+        Insert: {
+          company_id: string
+          core_holes?: number | null
+          created_at?: string
+          electrical?: string | null
+          flags?: Json
+          floor_level?: string | null
+          id?: string
+          name?: string
+          note?: string | null
+          pipe_run_m?: number | null
+          sort?: number
+          survey_id: string
+          unit_size_btu?: number | null
+          updated_at?: string
+          wall_type?: string | null
+        }
+        Update: {
+          company_id?: string
+          core_holes?: number | null
+          created_at?: string
+          electrical?: string | null
+          flags?: Json
+          floor_level?: string | null
+          id?: string
+          name?: string
+          note?: string | null
+          pipe_run_m?: number | null
+          sort?: number
+          survey_id?: string
+          unit_size_btu?: number | null
+          updated_at?: string
+          wall_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_survey_rooms_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_survey_rooms_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "site_survey_rooms_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "site_surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_surveys: {
+        Row: {
+          access_flags: Json
+          access_note: string | null
+          address_confirmed_at: string | null
+          archived_at: string | null
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          id: string
+          lat: number | null
+          lead_id: string
+          lng: number | null
+          quote_id: string | null
+          report_no: string | null
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          access_flags?: Json
+          access_note?: string | null
+          address_confirmed_at?: string | null
+          archived_at?: string | null
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          lat?: number | null
+          lead_id: string
+          lng?: number | null
+          quote_id?: string | null
+          report_no?: string | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          access_flags?: Json
+          access_note?: string | null
+          address_confirmed_at?: string | null
+          archived_at?: string | null
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          lat?: number | null
+          lead_id?: string
+          lng?: number | null
+          quote_id?: string | null
+          report_no?: string | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_surveys_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_surveys_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "site_surveys_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "site_surveys_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_surveys_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "site_surveys_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -10138,6 +11137,111 @@ export type Database = {
           },
         ]
       }
+      variation_rates: {
+        Row: {
+          active: boolean
+          code: string
+          company_id: string
+          cost_excl: number | null
+          created_at: string
+          id: string
+          label: string
+          labour_hours: number | null
+          labour_rate: number | null
+          material_price_excl: number | null
+          material_product_id: string | null
+          notes: string | null
+          price_excl: number | null
+          sort_order: number
+          unit: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          company_id: string
+          cost_excl?: number | null
+          created_at?: string
+          id?: string
+          label: string
+          labour_hours?: number | null
+          labour_rate?: number | null
+          material_price_excl?: number | null
+          material_product_id?: string | null
+          notes?: string | null
+          price_excl?: number | null
+          sort_order?: number
+          unit?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          company_id?: string
+          cost_excl?: number | null
+          created_at?: string
+          id?: string
+          label?: string
+          labour_hours?: number | null
+          labour_rate?: number | null
+          material_price_excl?: number | null
+          material_product_id?: string | null
+          notes?: string | null
+          price_excl?: number | null
+          sort_order?: number
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variation_rates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variation_rates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
+      variation_settings: {
+        Row: {
+          company_id: string
+          discount_pct: number
+          threshold_excl: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          discount_pct?: number
+          threshold_excl?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          discount_pct?: number
+          threshold_excl?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variation_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variation_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       visual_proposal_templates: {
         Row: {
           company_id: string
@@ -10320,6 +11424,27 @@ export type Database = {
           source?: string
           stage?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      website_rate_limits: {
+        Row: {
+          created_at: string
+          endpoint: string
+          id: number
+          ip_hash: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          id?: number
+          ip_hash: string
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          id?: number
+          ip_hash?: string
         }
         Relationships: []
       }
@@ -11296,6 +12421,7 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      agreement_frequency_label: { Args: { _f: string }; Returns: string }
       apply_team_invite: {
         Args: { p_email: string; p_user: string }
         Returns: string
@@ -11353,12 +12479,32 @@ export type Database = {
         Args: { _job_id: string; _lead_id: string; _uid: string }
         Returns: boolean
       }
+      can_manage_agreement_templates: {
+        Args: { _uid: string }
+        Returns: boolean
+      }
       can_manage_profile_access: {
         Args: { _target_company: string; _target_participant: string }
         Returns: boolean
       }
+      can_read_agreement_doc: {
+        Args: { _name: string; _uid: string }
+        Returns: boolean
+      }
+      can_read_agreement_template: {
+        Args: { _company: string; _status: string; _uid: string }
+        Returns: boolean
+      }
+      can_read_agreement_template_id: {
+        Args: { _template_id: string; _uid: string }
+        Returns: boolean
+      }
       can_read_master_catalog: { Args: { _uid: string }; Returns: boolean }
       can_read_specials: { Args: { _uid: string }; Returns: boolean }
+      can_see_agreement_contract: {
+        Args: { _company: string; _customer: string; _uid: string }
+        Returns: boolean
+      }
       can_view_company_overruns: {
         Args: { _job_id: string; _uid: string }
         Returns: boolean
@@ -11457,6 +12603,18 @@ export type Database = {
           p_lead_id: string
         }
         Returns: number
+      }
+      create_agreement_contract: {
+        Args: {
+          _customer_id: string
+          _frequency?: string
+          _invoice_ids?: string[]
+          _job_ids?: string[]
+          _service_agreement_id?: string
+          _start_date?: string
+          _template_id: string
+        }
+        Returns: string
       }
       create_balance_invoice_for_quote: {
         Args: { p_quote_id: string }
@@ -11560,6 +12718,7 @@ export type Database = {
         Args: { p_invoice: string; p_status: string }
         Returns: undefined
       }
+      finalise_variation_quote: { Args: { p_quote_id: string }; Returns: Json }
       find_dispatch_candidates: {
         Args: {
           p_lead_id: string
@@ -11586,6 +12745,11 @@ export type Database = {
           staff_id: string
         }[]
       }
+      fl_area_unit: {
+        Args: { _area: string; _quote: string }
+        Returns: Record<string, unknown>
+      }
+      fl_can_see_job: { Args: { _job: string; _uid: string }; Returns: boolean }
       fl_cancel_booking: {
         Args: {
           p_job_id?: string
@@ -11596,6 +12760,17 @@ export type Database = {
         Returns: Json
       }
       fl_company_unclaimed: { Args: { _co: string }; Returns: boolean }
+      fl_create_job_variation: {
+        Args: {
+          p_actor: string
+          p_items: Json
+          p_job_id: string
+          p_site_check_id?: string
+          p_source: string
+          p_unit_swaps: Json
+        }
+        Returns: Json
+      }
       fl_found_company: {
         Args: {
           p_name: string
@@ -11611,13 +12786,85 @@ export type Database = {
         Args: { _p: Database["public"]["Tables"]["company_profiles"]["Row"] }
         Returns: string
       }
+      fl_is_company_office: {
+        Args: { _company: string; _uid: string }
+        Returns: boolean
+      }
       fl_is_founder_approved: { Args: { _u: string }; Returns: boolean }
+      fl_job_needs_site_check: { Args: { _job: string }; Returns: boolean }
+      fl_lock_quote: {
+        Args: { _actor: string; _quote: string; _reason: string }
+        Returns: undefined
+      }
       fl_master_company_id: { Args: never; Returns: string }
+      fl_notify_job_techs: {
+        Args: { _body: string; _job: string; _title: string; _type: string }
+        Returns: undefined
+      }
+      fl_pipe_rate_code: {
+        Args: { _area: string; _quote: string }
+        Returns: string
+      }
+      fl_quote_has_install: { Args: { _quote: string }; Returns: boolean }
       fl_reopen_booking: {
         Args: { p_job_id?: string; p_lead_id: string }
         Returns: Json
       }
       fl_shares_company: { Args: { _a: string; _b: string }; Returns: boolean }
+      fl_shop_finalize: {
+        Args: {
+          p_amount_cents: number
+          p_checkout_id: string
+          p_environment: string
+          p_gateway_payment_id: string
+          p_order: string
+          p_payload: Json
+        }
+        Returns: Json
+      }
+      fl_shop_item_public: { Args: { p_product: string }; Returns: Json }
+      fl_shop_mark_emailed: { Args: { p_order: string }; Returns: undefined }
+      fl_shop_order_create: {
+        Args: {
+          p_company: string
+          p_contact: Json
+          p_environment: string
+          p_ip_hash: string
+          p_notes: string
+          p_preferred: Json
+          p_rooms: Json
+          p_terms_version: string
+        }
+        Returns: Json
+      }
+      fl_shop_order_note_event: {
+        Args: { p_event: Json; p_order: string }
+        Returns: undefined
+      }
+      fl_shop_order_set_checkout: {
+        Args: { p_checkout_id: string; p_order: string }
+        Returns: undefined
+      }
+      fl_shop_price_list: { Args: { p_company: string }; Returns: Json }
+      fl_shop_quote: {
+        Args: { p_company: string; p_internal?: boolean; p_rooms: Json }
+        Returns: Json
+      }
+      fl_shop_sell_ex: {
+        Args: { p_company: string; p_product: string }
+        Returns: number
+      }
+      fl_shop_size_btu: { Args: { p_size: string }; Returns: number }
+      fl_shop_tier_map_admin: { Args: { p_company: string }; Returns: Json }
+      fl_shop_tier_map_set: {
+        Args: {
+          p_btu: number
+          p_company: string
+          p_product: string
+          p_tier: string
+        }
+        Returns: undefined
+      }
       fl_staff_manager: { Args: { _u: string }; Returns: boolean }
       fl_unschedule_booking: {
         Args: {
@@ -11627,6 +12874,16 @@ export type Database = {
           p_schedule_id?: string
         }
         Returns: Json
+      }
+      fl_variation_reprice: { Args: { _vq: string }; Returns: Json }
+      fl_website_rate_hit: {
+        Args: {
+          p_endpoint: string
+          p_ip_hash: string
+          p_max: number
+          p_window_seconds: number
+        }
+        Returns: boolean
       }
       fmt_rand_sql: { Args: { v: number }; Returns: string }
       fuzzy_digits: { Args: { p_text: string }; Returns: string }
@@ -11937,6 +13194,7 @@ export type Database = {
           supplier_length_m: number
         }[]
       }
+      get_job_site_check: { Args: { p_job_id: string }; Returns: Json }
       get_job_used_parts: {
         Args: { p_lead_id: string }
         Returns: {
@@ -12618,6 +13876,10 @@ export type Database = {
         Args: { p_action: string; p_lead: string; p_target: string }
         Returns: Json
       }
+      respond_job_variation: {
+        Args: { p_approve: boolean; p_name?: string; p_token: string }
+        Returns: Json
+      }
       revenue_by_agent: {
         Args: never
         Returns: {
@@ -12646,6 +13908,15 @@ export type Database = {
       route_lead_to_company: {
         Args: { p_apply?: boolean; p_lead: string }
         Returns: Json
+      }
+      save_agreement_template: {
+        Args: {
+          _meta: Json
+          _note?: string
+          _sections: Json
+          _template_id: string
+        }
+        Returns: number
       }
       schedule_in_user_company: {
         Args: { _job: string; _lead: string; _uid: string }
@@ -12817,6 +14088,9 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      ss_can_write: { Args: { _survey: string }; Returns: boolean }
+      ss_folder_ok: { Args: { _name: string }; Returns: boolean }
+      ss_folder_survey: { Args: { _name: string }; Returns: string }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown
@@ -13439,6 +14713,17 @@ export type Database = {
         }
         Returns: string
       }
+      submit_site_check: {
+        Args: {
+          p_checklist: Json
+          p_items?: Json
+          p_job_id: string
+          p_notes?: string
+          p_result: string
+          p_unit_swaps?: Json
+        }
+        Returns: Json
+      }
       suggest_booking_slots: {
         Args: {
           p_date: string
@@ -13494,6 +14779,10 @@ export type Database = {
         Returns: string
       }
       unconvert_lead: { Args: { p_lead_id: string }; Returns: undefined }
+      unlock_quote: {
+        Args: { p_quote_id: string; p_reason: string }
+        Returns: boolean
+      }
       unlockrows: { Args: { "": string }; Returns: number }
       unmatch_bank_line: { Args: { p_line: string }; Returns: undefined }
       update_entity: {
@@ -13569,6 +14858,7 @@ export type Database = {
         | "google_lsa"
         | "manual"
         | "other"
+        | "website_shop"
       pricing_unit_type:
         | "each"
         | "m"
@@ -13745,6 +15035,7 @@ export const Constants = {
         "google_lsa",
         "manual",
         "other",
+        "website_shop",
       ],
       pricing_unit_type: [
         "each",
