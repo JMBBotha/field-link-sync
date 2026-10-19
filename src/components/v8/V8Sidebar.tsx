@@ -20,6 +20,7 @@ import LayoutToggleButton from "@/components/classic/LayoutToggleButton";
 import logoWhite from "@/assets/fieldlynk-logo-white.png";
 import logoCard from "@/assets/fieldlynk-logo-card.png";
 import { v8RoleOf, v8Primary, v8More, v8IsActive, type V8Role } from "./v8Nav";
+import { useCashHealthEnabled } from "@/hooks/useCashHealth";
 import "./v8.css";
 
 export const V8_ICONS: Record<string, React.ElementType> = {
@@ -61,7 +62,8 @@ export default function V8Sidebar({ onCreateLead, onSignOut, mobileOpen, onMobil
   const tech = role === "tech";
   const tone = tech ? null : inboxTone(leads as any[], Math.floor(now / 30_000) * 30_000, sla);
   const primary = v8Primary(role);
-  const more = v8More(role);
+  const cashHealth = useCashHealthEnabled();
+  const more = v8More(role, { cashHealth: cashHealth.enabled && (role === "admin" || role === "owner") });
   const moreActive = more.some((g) => g.links.some((l) => v8IsActive(l, pathname, search))) && !primary.some((l) => v8IsActive(l, pathname, search));
   const go = (p: string) => { navigate(p); onMobileClose?.(); };
   const initials = (identity?.name || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?";

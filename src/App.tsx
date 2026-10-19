@@ -60,6 +60,7 @@ const AdminSupplierBillsPage = lazy(() => import("./pages/admin/AdminSupplierBil
 const AdminPaymentFollowupsPage = lazy(() => import("./pages/admin/AdminPaymentFollowupsPage"));
 const AdminCompanyPlansPage = lazy(() => import("./pages/admin/AdminCompanyPlansPage"));
 const AdminCashflowPage = lazy(() => import("./pages/admin/AdminCashflowPage"));
+const AdminCashHealthPage = lazy(() => import("./pages/admin/AdminCashHealthPage"));
 const V8FieldShell = lazy(() => import("./components/v8/V8FieldShell"));
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 const MyBasePage = lazy(() => import("./pages/MyBasePage"));
@@ -224,6 +225,7 @@ const App = () => (
                     <Route path="company-plans" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminCompanyPlansPage /></RequireRole>} />
                     <Route path="supplier-bills" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminSupplierBillsPage /></RequireRole>} />
                     <Route path="cashflow" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminCashflowPage /></RequireRole>} />
+                    <Route path="cash-health" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminCashHealthPage /></RequireRole>} />
                     <Route path="money" element={<RequireRole allowedRoles={["admin"]}><RequireOwner><AdminMoneyPage /></RequireOwner></RequireRole>} />
                     <Route path="my-commission" element={<AdminMyCommissionPage />} />
                     <Route path="my-signature" element={<MySignaturePage />} />

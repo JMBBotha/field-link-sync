@@ -26,12 +26,12 @@ export function v8Primary(role: V8Role): V8Link[] {
     { path: "/admin/jobs?tab=pipeline", label: "Pipeline", icon: "pipeline", match: ["/admin/jobs", "/admin/quotes", "/admin/estimates", "/admin/quote-builder", "/admin/templates", "/admin/agreements", "/admin/change-requests"] },
     { path: "/admin/schedule", label: "Schedule", icon: "calendar", match: ["/admin/maintenance", "/admin/map", "/admin/jobs-map"] },
     { path: "/admin/customers", label: "Clients", icon: "users", match: ["/admin/calls"] },
-    { path: "/admin/invoices", label: "Money", icon: "wallet", match: ["/admin/expenses", "/admin/bank", "/admin/money", "/admin/billing", "/admin/payments", "/admin/payment-followups", "/admin/supplier-bills", "/admin/cashflow"] },
+    { path: "/admin/invoices", label: "Money", icon: "wallet", match: ["/admin/expenses", "/admin/bank", "/admin/money", "/admin/billing", "/admin/payments", "/admin/payment-followups", "/admin/supplier-bills", "/admin/cashflow", "/admin/cash-health"] },
   ];
 }
 
 /** Everything else, so every page stays one click from More. */
-export function v8More(role: V8Role): V8Group[] {
+export function v8More(role: V8Role, opts: { cashHealth?: boolean } = {}): V8Group[] {
   const me: V8Group = { title: "Settings & me", links: [
     ...(role === "tech" ? [{ path: "/field/my-base", label: "My base", icon: "pin" }] : [{ path: "/admin/my-base", label: "My base", icon: "pin" }]),
     ...(role === "tech" ? [] : [{ path: "/admin/my-commission", label: "My commission", icon: "wallet" }, { path: "/admin/my-signature", label: "My signature", icon: "pen" }]),
@@ -75,6 +75,7 @@ export function v8More(role: V8Role): V8Group[] {
       { path: "/admin/supplier-bills", label: "Supplier bills", icon: "wallet" },
       { path: "/admin/bank", label: "Bank (FNB)", icon: "wallet" },
       { path: "/admin/cashflow", label: "Cash flow & profit", icon: "chart" },
+      ...(opts.cashHealth ? [{ path: "/admin/cash-health", label: "Cash-flow health", icon: "chart" }] : []),
       { path: "/admin/money", label: "Owner", icon: "wallet" },
     ] },
     { title: "Catalogue", links: [
