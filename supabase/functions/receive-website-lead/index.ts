@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { timingLine } from "../_shared/websiteTiming.ts";
-import { sendAppointmentConfirmation } from "../_shared/appointmentConfirmation.ts";
+import { corsFor, honeypotTripped, isForeignBrowserOrigin, rateLimitOk, withoutHoneypot } from "../_shared/websitePublic.ts";
+import { laneFor, mapServiceType, normaliseForm, requestedTimeLine } from "../_shared/websiteLeadMap.ts";
 
 /**
  * receive-website-lead
@@ -12,19 +13,16 @@ import { sendAppointmentConfirmation } from "../_shared/appointmentConfirmation.
  * but geocodes the address up front (website leads always have an address)
  * so the existing trigger_auto_assign_lead DB trigger can broadcast the
  * lead to nearby agents immediately on insert.
+ *
+ * 2026-10-19 (Johan 06:26, website step 1): CORS allow-list, honeypot, per-IP rate limit (5 / 10 min),
+ * raw_payload + form tag (booking | find-ac | packs | selection | shop), lane-map fix (quote accepted ->
+ * installation), a preferred date is stored as a REQUEST only (no leads.scheduled_*, no appointment
+ * confirmation), and client confirmations are EMAIL ONLY (no WhatsApp confirmation or WhatsApp queue).
  */
 
 const MASSAIR_COMPANY_ID = "361bf031-9cdb-4d7f-9bde-9eb95fa4725e";
 // Staff alert for every website lead (Johan 2026-10-14).
 const STAFF_LEAD_EMAIL = "johan@0800becool.co.za";
-
-// Lane for auto-assign (Johan 2026-10-14): quotes -> sales staff, call-outs -> technicians.
-// auto-assign-lead skips leads without primary_intent, which is why website leads were never offered.
-function laneFor(mappedServiceType: string): "sales" | "service" | null {
-  if (mappedServiceType === "New Quote" || mappedServiceType === "New Installation") return "sales";
-  if (mappedServiceType === "Technical Service Call") return "service";
-  return null;
-}
 
 function esc(v: unknown): string {
   return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
@@ -55,10 +53,7 @@ async function sendEmail(supabase: any, payload: Record<string, unknown>): Promi
   }
 }
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key",
-};
+const clip = (v: unknown, n: number): string => String(v ?? "").trim().slice(0, n);
 
 function normalizePhone(phone: string): string {
   let digits = (phone || "").replace(/\D/g, "");
@@ -80,16 +75,6 @@ function mapPriority(urgency?: string): string {
   }
 }
 
-function mapServiceType(raw?: string): string {
-  if (!raw) return "General Inquiry";
-  const lower = raw.toLowerCase();
-  if (lower.includes("quote") || lower.includes("price") || lower.includes("estimate") || lower.includes("selection") || lower.includes("how much")) return "New Quote";
-  if (lower.includes("quote accepted") || lower.includes("book the installation")) return "New Installation";
-  if (lower.includes("repair") || lower.includes("fix") || lower.includes("broken") || lower.includes("super service") || lower.includes("maintain") || lower.includes("service plan") || lower.includes("service")) return "Technical Service Call";
-  if (lower.includes("install") || lower.includes("new")) return "New Quote";
-  return raw;
-}
-
 async function geocode(address: string, mapboxToken: string | undefined): Promise<{ lat: number; lng: number } | null> {
   if (!mapboxToken || !address || address.trim().length < 3) return null;
   try {
@@ -109,8 +94,15 @@ async function geocode(address: string, mapboxToken: string | undefined): Promis
 }
 
 serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+  if (isForeignBrowserOrigin(req)) {
+    return new Response(JSON.stringify({ error: "Origin not allowed" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   if (req.method !== "POST") {
@@ -121,8 +113,35 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
-    console.log("[receive-website-lead] Incoming:", JSON.stringify(body));
+    const rawBody = await req.json().catch(() => null);
+    if (!rawBody || typeof rawBody !== "object") {
+      return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // Honeypot: a bot filled the hidden field. Pretend success, store nothing, send nothing.
+    if (honeypotTripped(rawBody)) {
+      console.log("[receive-website-lead] honeypot tripped, dropped");
+      return new Response(JSON.stringify({ success: true, message: "Lead received — a specialist will be in touch shortly." }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const mapboxToken = Deno.env.get("MAPBOX_ACCESS_TOKEN");
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Basic spam protection: 5 leads per IP per 10 minutes.
+    if (!(await rateLimitOk(supabase, req, "website-lead", 5, 600))) {
+      return new Response(JSON.stringify({ success: false, error: "Too many requests. Please call (021) 802 2889 or WhatsApp 069 683 8624." }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const body = withoutHoneypot(rawBody) as Record<string, any>;
+    console.log("[receive-website-lead] Incoming fields:", Object.keys(body).join(","));
 
     const {
       full_name,
@@ -137,10 +156,13 @@ serve(async (req) => {
       preferred_date,
       preferred_time,
       preferred_timing,
-      source = "website",
+      source: rawSource,
       selection_summary,
+      form: rawForm,
       company_id: bodyCompanyId,
     } = body;
+    const source = clip(rawSource || "website", 40);
+    const form = normaliseForm(rawForm ?? (rawSource === "website" ? "booking" : rawSource));
 
     if (!phone) {
       return new Response(JSON.stringify({ error: "phone is required" }), {
@@ -155,13 +177,17 @@ serve(async (req) => {
       });
     }
 
-    const normalizedPhone = normalizePhone(phone);
-    const customerName = full_name || customerNameAlias || nameAlias || "Website Visitor";
+    if (String(phone).replace(/\D/g, "").length < 9) {
+      return new Response(JSON.stringify({ error: "phone looks too short" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const mapboxToken = Deno.env.get("MAPBOX_ACCESS_TOKEN");
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const normalizedPhone = normalizePhone(String(phone));
+    const customerName = clip(full_name || customerNameAlias || nameAlias, 120) || "Website Visitor";
+
+
 
     // 0800-BE-COOL website belongs to Massair CT (Johan 2026-10-13): website leads ALWAYS
     // go to Massair, and customer matching only looks inside Massair. Never another company.
@@ -222,16 +248,15 @@ serve(async (req) => {
     const geo = await geocode(address, mapboxToken);
 
     const noteLines = [
-      `Source: ${source} | Phone: ${normalizedPhone}`,
+      `Source: ${source} (${form}) | Phone: ${normalizedPhone}`,
       timingLine(preferred_timing, preferred_date, preferred_time),
-      notes || "",
-      preferred_date ? `Preferred date: ${preferred_date}` : "",
-      preferred_time ? `Preferred time: ${preferred_time}` : "",
-      selection_summary ? `Find Your AC selection: ${JSON.stringify(selection_summary)}` : "",
+      clip(notes, 2000),
+      requestedTimeLine(preferred_date, preferred_time),
+      selection_summary ? `Website selection: ${JSON.stringify(selection_summary).slice(0, 1500)}` : "",
       isExistingCustomer ? "⭐ Returning customer" : "🆕 New customer (website)",
     ].filter(Boolean).join("\n");
 
-    const mappedService = mapServiceType(service_type);
+    const mappedService = mapServiceType(service_type, form);
     const lane = laneFor(mappedService);
     const leadData: Record<string, any> = {
       customer_name: customerName,
@@ -247,8 +272,15 @@ serve(async (req) => {
       latitude: geo?.lat ?? 0,
       longitude: geo?.lng ?? 0,
       company_id: resolvedCompanyId,
-      scheduled_date: preferred_date || null,
-      scheduled_time: preferred_time || null,
+      // A preferred date is a request, not a booking: never written to scheduled_date/scheduled_time.
+      raw_payload: {
+        source: "website",
+        form,
+        service_type: clip(service_type, 200) || null,
+        selection_summary: selection_summary ?? null,
+        requested: { timing: preferred_timing ?? null, date: preferred_date ?? null, time: preferred_time ?? null },
+        received_at: new Date().toISOString(),
+      },
     };
     if (customerId) leadData.customer_id = customerId;
 
@@ -272,36 +304,16 @@ serve(async (req) => {
 
     console.log(`[receive-website-lead] Lead created: ${newLead.id} (geocoded: ${!!geo})`);
 
-    // When the website form captured a preferred date, treat it as a booked
-    // appointment and send the WhatsApp confirmation straight away.
-    let whatsappConfirmed = false;
-    let emailRequested = false;
-    if (preferred_date) {
-      try {
-        const conf = await sendAppointmentConfirmation({
-          supabase,
-          phone: normalizedPhone,
-          customerName,
-          serviceType: mapServiceType(service_type),
-          date: preferred_date,
-          time: preferred_time,
-          address,
-          customerId,
-          leadId: newLead.id,
-          email: email || null,
-        });
-        whatsappConfirmed = conf.sent;
-        emailRequested = conf.askedForEmail;
-      } catch (e) {
-        console.error("[receive-website-lead] confirmation send failed:", e);
-      }
-    }
+    // Email confirmations only (Johan 2026-10-19): no WhatsApp appointment confirmation, no WhatsApp queue.
+    const whatsappConfirmed = false;
+    const emailRequested = false;
+    const requestedTime = !!(preferred_date || preferred_time);
 
     // New-lead emails (Johan 2026-10-14): client confirmation + staff alert, via send-transactional-email (Resend, 0800becool.co.za).
     const timing = timingLine(preferred_timing, preferred_date, preferred_time) || "";
     const detailsRows = [
       ["Name", customerName], ["Phone", normalizedPhone], ["Email", email || "-"], ["Address", address],
-      ["Request", service_type || mappedService], ["Timing", timing.replace(/^Timing:\s*/, "") || "-"], ["Notes", notes || "-"],
+      ["Request", clip(service_type, 200) || mappedService], ["Timing", (timing.replace(/^Timing:\s*/, "") || "-") + (requestedTime ? " (requested, not booked yet)" : "")], ["Notes", clip(notes, 2000) || "-"],
     ].map(([k, v]) => `<tr><td style="padding:4px 10px 4px 0;color:#6b7280;vertical-align:top">${esc(k)}</td><td style="padding:4px 0">${esc(v).replace(/\n/g, "<br>")}</td></tr>`).join("");
     let clientEmail: { ok: boolean; detail?: string } | null = null;
     if (email) {
@@ -313,6 +325,7 @@ serve(async (req) => {
         html: emailShell(
           `<p>Hi ${esc(customerName.split(" ")[0])},</p>` +
           `<p>Thank you for contacting 0800-BE-COOL. We've received your request and one of our team will be in touch shortly.</p>` +
+          (requestedTime ? `<p><b>Your time isn't booked yet.</b> We'll contact you to confirm a time that works.</p>` : "") +
           `<table style="border-collapse:collapse;font-size:14px;margin:12px 0">${detailsRows}</table>` +
           `<p>Need us sooner? Call (021) 802 2889 or WhatsApp 069 683 8624.</p>`,
         ),
@@ -334,37 +347,7 @@ serve(async (req) => {
     if (clientEmail && !clientEmail.ok) console.error("[receive-website-lead] client email failed:", clientEmail.detail);
     if (!staffEmail.ok) console.error("[receive-website-lead] staff email failed:", staffEmail.detail);
 
-    let whatsappQueued = false;
-    if (customerId && !whatsappConfirmed) {
-      try {
-        const { error: notifError } = await supabase
-          .from("notification_queue")
-          .insert({
-            customer_id: customerId,
-            lead_id: newLead.id,
-            notification_type: "lead_confirmation",
-            channel: "whatsapp",
-            recipient_phone: normalizedPhone,
-            body: `Hi ${customerName.split(" ")[0]}! 👋 Thanks for your request on 0800BeCool.co.za. ` +
-              `We've received your ${mapServiceType(service_type).toLowerCase()} request and a specialist will be in touch shortly. 🏠`,
-            variables: {
-              customer_name: customerName,
-              service_type: mapServiceType(service_type),
-              lead_id: newLead.id,
-            },
-            status: "pending",
-            scheduled_at: new Date().toISOString(),
-            max_attempts: 5,
-          });
-        if (notifError) {
-          console.error("[receive-website-lead] WhatsApp queue error:", notifError);
-        } else {
-          whatsappQueued = true;
-        }
-      } catch (e) {
-        console.error("[receive-website-lead] WhatsApp queue exception:", e);
-      }
-    }
+    const whatsappQueued = false;
 
     const response = {
       success: true,
@@ -380,10 +363,13 @@ serve(async (req) => {
       whatsapp_confirmation_sent: whatsappConfirmed,
       email_requested: emailRequested,
       company_id: resolvedCompanyId,
-      message: "Lead received — a specialist will be in touch shortly.",
+      form,
+      message: requestedTime
+        ? "Request received — we'll contact you to confirm your time."
+        : "Lead received — a specialist will be in touch shortly.",
     };
 
-    console.log("[receive-website-lead] Success:", JSON.stringify(response));
+    console.log("[receive-website-lead] Success:", JSON.stringify({ lead_id: newLead.id, lane, form, staff_email_sent: staffEmail.ok }));
 
     return new Response(JSON.stringify(response), {
       status: 200,
