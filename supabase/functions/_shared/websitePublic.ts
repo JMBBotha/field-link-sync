@@ -9,6 +9,10 @@
 const EXACT_ORIGINS = new Set([
   "https://www.0800becool.co.za",
   "https://0800becool.co.za",
+  // TODO(remove once xneelo SSL is live): plain-http origins, approved by Johan 2026-10-19 10:59 SAST
+  // so the live shop + lead form work before Let's Encrypt is enabled on xneelo. Delete these two lines then.
+  "http://www.0800becool.co.za",
+  "http://0800becool.co.za",
 ]);
 // Lovable hosts for the website project only (a0033055… / ac-connection-hub), incl. id-preview-- / preview-- prefixes.
 const LOVABLE_ORIGIN = /^https:\/\/([a-z0-9-]+--)?(a0033055-dead-4c27-b52b-8118cb332010|ac-connection-hub)\.(lovable\.app|lovableproject\.com)$/;

@@ -37,6 +37,11 @@ Deno.test("requested time is a request, not a booking", () => {
 Deno.test("origins", () => {
   assertEquals(isAllowedOrigin("https://www.0800becool.co.za"), true);
   assertEquals(isAllowedOrigin("https://0800becool.co.za/"), true);
+  // TODO(remove once xneelo SSL is live): temporary plain-http origins
+  assertEquals(isAllowedOrigin("http://www.0800becool.co.za"), true);
+  assertEquals(isAllowedOrigin("http://0800becool.co.za"), true);
+  assertEquals(isAllowedOrigin("http://0800becool.co.za.evil.com"), false);
+  assertEquals(isAllowedOrigin("http://evil.example.com"), false);
   assertEquals(isAllowedOrigin("https://id-preview--a0033055-dead-4c27-b52b-8118cb332010.lovable.app"), true);
   assertEquals(isAllowedOrigin("https://ac-connection-hub.lovable.app"), true);
   assertEquals(isAllowedOrigin("https://field-link-sync.lovable.app"), false);
