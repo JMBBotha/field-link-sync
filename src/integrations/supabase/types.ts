@@ -1065,6 +1065,628 @@ export type Database = {
         }
         Relationships: []
       }
+      cf_bank_accounts: {
+        Row: {
+          account_ref: string | null
+          company_id: string
+          created_at: string
+          id: string
+          include: boolean
+          label: string
+          sort: number
+        }
+        Insert: {
+          account_ref?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          include?: boolean
+          label: string
+          sort?: number
+        }
+        Update: {
+          account_ref?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          include?: boolean
+          label?: string
+          sort?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cf_bank_accounts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cf_bank_accounts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
+      cf_bank_balances: {
+        Row: {
+          account_id: string
+          as_of: string
+          balance: number
+          company_id: string
+          created_at: string
+          entered_by: string | null
+          id: string
+        }
+        Insert: {
+          account_id: string
+          as_of?: string
+          balance: number
+          company_id: string
+          created_at?: string
+          entered_by?: string | null
+          id?: string
+        }
+        Update: {
+          account_id?: string
+          as_of?: string
+          balance?: number
+          company_id?: string
+          created_at?: string
+          entered_by?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cf_bank_balances_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "cf_bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cf_bank_balances_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cf_bank_balances_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
+      cf_commitments: {
+        Row: {
+          company_id: string
+          created_at: string
+          edited: boolean
+          id: string
+          invoice_id: string | null
+          item: string
+          job_id: string | null
+          kind: string
+          note: string | null
+          pay_date: string | null
+          project: string
+          qty: number
+          quote_id: string | null
+          source_key: string | null
+          status: string
+          supplier: string | null
+          unit_cost_excl: number
+          updated_at: string
+          vat_rate: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          edited?: boolean
+          id?: string
+          invoice_id?: string | null
+          item: string
+          job_id?: string | null
+          kind?: string
+          note?: string | null
+          pay_date?: string | null
+          project?: string
+          qty?: number
+          quote_id?: string | null
+          source_key?: string | null
+          status?: string
+          supplier?: string | null
+          unit_cost_excl?: number
+          updated_at?: string
+          vat_rate?: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          edited?: boolean
+          id?: string
+          invoice_id?: string | null
+          item?: string
+          job_id?: string | null
+          kind?: string
+          note?: string | null
+          pay_date?: string | null
+          project?: string
+          qty?: number
+          quote_id?: string | null
+          source_key?: string | null
+          status?: string
+          supplier?: string | null
+          unit_cost_excl?: number
+          updated_at?: string
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cf_commitments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cf_commitments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "cf_commitments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cf_commitments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "cf_commitments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_accounts_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "cf_commitments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_by_product_detail"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "cf_commitments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cf_commitments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "cf_commitments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cf_overheads: {
+        Row: {
+          active: boolean
+          amount: number
+          category: string
+          company_id: string
+          created_at: string
+          end_date: string | null
+          frequency: string
+          id: string
+          name: string
+          note: string | null
+          pay_date: string | null
+          pay_day: number | null
+          sort: number
+          start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount?: number
+          category?: string
+          company_id: string
+          created_at?: string
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          name: string
+          note?: string | null
+          pay_date?: string | null
+          pay_day?: number | null
+          sort?: number
+          start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          category?: string
+          company_id?: string
+          created_at?: string
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          name?: string
+          note?: string | null
+          pay_date?: string | null
+          pay_day?: number | null
+          sort?: number
+          start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cf_overheads_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cf_overheads_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
+      cf_receipts: {
+        Row: {
+          amount_incl: number
+          client: string | null
+          company_id: string
+          conf_edited: boolean
+          confidence: number
+          created_at: string
+          dates_edited: boolean
+          expected_date: string | null
+          id: string
+          invoice_id: string | null
+          leeway_days: number
+          note: string | null
+          part: string
+          quote_id: string | null
+          received_amount: number | null
+          received_date: string | null
+          ref: string
+          source: string
+          source_key: string | null
+          status: string
+          updated_at: string
+          vat_incl: number
+        }
+        Insert: {
+          amount_incl?: number
+          client?: string | null
+          company_id: string
+          conf_edited?: boolean
+          confidence?: number
+          created_at?: string
+          dates_edited?: boolean
+          expected_date?: string | null
+          id?: string
+          invoice_id?: string | null
+          leeway_days?: number
+          note?: string | null
+          part?: string
+          quote_id?: string | null
+          received_amount?: number | null
+          received_date?: string | null
+          ref?: string
+          source?: string
+          source_key?: string | null
+          status?: string
+          updated_at?: string
+          vat_incl?: number
+        }
+        Update: {
+          amount_incl?: number
+          client?: string | null
+          company_id?: string
+          conf_edited?: boolean
+          confidence?: number
+          created_at?: string
+          dates_edited?: boolean
+          expected_date?: string | null
+          id?: string
+          invoice_id?: string | null
+          leeway_days?: number
+          note?: string | null
+          part?: string
+          quote_id?: string | null
+          received_amount?: number | null
+          received_date?: string | null
+          ref?: string
+          source?: string
+          source_key?: string | null
+          status?: string
+          updated_at?: string
+          vat_incl?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cf_receipts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cf_receipts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "cf_receipts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cf_receipts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "cf_receipts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_accounts_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "cf_receipts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_by_product_detail"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "cf_receipts_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "cf_receipts_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cf_settings: {
+        Row: {
+          buffer_amount: number
+          buffer_mode: string
+          company_id: string
+          conf_draft: number
+          conf_final_before_install: number
+          conf_overdue: number
+          conf_sent: number
+          default_leeway_days: number
+          enabled: boolean
+          unit_cost_factor: number
+          updated_at: string
+          vat_basis: string
+          vat_due_day: number
+          vat_number: string | null
+          vat_period_end: string | null
+          vat_period_months: number
+          vat_rate: number
+        }
+        Insert: {
+          buffer_amount?: number
+          buffer_mode?: string
+          company_id: string
+          conf_draft?: number
+          conf_final_before_install?: number
+          conf_overdue?: number
+          conf_sent?: number
+          default_leeway_days?: number
+          enabled?: boolean
+          unit_cost_factor?: number
+          updated_at?: string
+          vat_basis?: string
+          vat_due_day?: number
+          vat_number?: string | null
+          vat_period_end?: string | null
+          vat_period_months?: number
+          vat_rate?: number
+        }
+        Update: {
+          buffer_amount?: number
+          buffer_mode?: string
+          company_id?: string
+          conf_draft?: number
+          conf_final_before_install?: number
+          conf_overdue?: number
+          conf_sent?: number
+          default_leeway_days?: number
+          enabled?: boolean
+          unit_cost_factor?: number
+          updated_at?: string
+          vat_basis?: string
+          vat_due_day?: number
+          vat_number?: string | null
+          vat_period_end?: string | null
+          vat_period_months?: number
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cf_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cf_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
+      cf_stock_allocations: {
+        Row: {
+          commitment_id: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          drawn_at: string | null
+          id: string
+          qty: number
+          stock_item_id: string
+        }
+        Insert: {
+          commitment_id: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          drawn_at?: string | null
+          id?: string
+          qty: number
+          stock_item_id: string
+        }
+        Update: {
+          commitment_id?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          drawn_at?: string | null
+          id?: string
+          qty?: number
+          stock_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cf_stock_allocations_commitment_id_fkey"
+            columns: ["commitment_id"]
+            isOneToOne: false
+            referencedRelation: "cf_commitments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cf_stock_allocations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cf_stock_allocations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "cf_stock_allocations_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "cf_stock_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cf_stock_items: {
+        Row: {
+          active: boolean
+          company_id: string
+          created_at: string
+          id: string
+          item: string
+          last_counted_at: string | null
+          location: string | null
+          model_code: string | null
+          qty_on_hand: number
+          unit_cost_excl: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          company_id: string
+          created_at?: string
+          id?: string
+          item: string
+          last_counted_at?: string | null
+          location?: string | null
+          model_code?: string | null
+          qty_on_hand?: number
+          unit_cost_excl?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          company_id?: string
+          created_at?: string
+          id?: string
+          item?: string
+          last_counted_at?: string | null
+          location?: string | null
+          model_code?: string | null
+          qty_on_hand?: number
+          unit_cost_excl?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cf_stock_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cf_stock_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       change_order_line_items: {
         Row: {
           change_order_id: string
@@ -12027,7 +12649,22 @@ export type Database = {
       _apply_commission_snapshot: { Args: { e: Json }; Returns: Json }
       _bank_norm: { Args: { t: string }; Returns: string }
       _cf_check: { Args: { p_company: string }; Returns: undefined }
+      _cf_is_unit_line: {
+        Args: {
+          p_category: string
+          p_is_bundle: boolean
+          p_item_type: string
+          p_name: string
+          p_product_category: string
+          p_product_code: string
+          p_quote_category: string
+          p_supplier_type: string
+        }
+        Returns: boolean
+      }
+      _cf_name_is_accessory: { Args: { p_name: string }; Returns: boolean }
       _cf_ok: { Args: { p_company: string }; Returns: boolean }
+      _cf_sync_core: { Args: { p_company: string }; Returns: Json }
       _client_open_bookings: {
         Args: {
           p_address: string
@@ -12516,6 +13153,23 @@ export type Database = {
       can_write_master_catalog: { Args: { _uid: string }; Returns: boolean }
       can_write_specials: { Args: { _uid: string }; Returns: boolean }
       cashflow_data: { Args: { p_company: string }; Returns: Json }
+      cf_allocate_stock: {
+        Args: { p_commitment: string; p_qty: number; p_stock_item: string }
+        Returns: string
+      }
+      cf_stock_take: {
+        Args: { p_clean?: boolean; p_company: string; p_rows: Json }
+        Returns: number
+      }
+      cf_sync: { Args: { p_company: string }; Returns: Json }
+      cf_unallocate_stock: {
+        Args: { p_allocation: string }
+        Returns: undefined
+      }
+      cf_vat_actuals: {
+        Args: { p_company: string; p_from: string; p_to: string }
+        Returns: Json
+      }
       change_quote_client: {
         Args: { p_customer_id: string; p_quote_id: string }
         Returns: undefined
