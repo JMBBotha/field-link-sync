@@ -1,4 +1,4 @@
-/** Field Lynk v8 Simple: 6 areas + More, filtered by role. Look only — RLS and route guards stay the security. */
+/** Field Lynk v8 Simple: pinned areas + grouped links, filtered by role. Look only — RLS and route guards stay the security. */
 export type V8Role = "admin" | "owner" | "sales" | "tech";
 export interface V8Link { path: string; label: string; icon: string; match?: string[] }
 export interface V8Group { title: string; links: V8Link[] }
@@ -15,29 +15,50 @@ export function v8Primary(role: V8Role): V8Link[] {
     { path: "/field/schedule", label: "Schedule", icon: "calendar" },
     { path: "/field/earnings", label: "Earnings", icon: "wallet" },
   ];
+  // Quotes + Invoices pinned for management AND sales (Johan 19 Oct 08:49). Sales see only their own rows (RLS rh_rep_scope / quote scope).
   if (role === "sales") return [
     { path: "/admin", label: "Home", icon: "home" },
-    { path: "/admin/jobs?tab=pipeline", label: "My pipeline", icon: "pipeline", match: ["/admin/jobs", "/admin/quotes", "/admin/estimates", "/admin/quote-builder"] },
+    { path: "/admin/jobs?tab=pipeline", label: "My pipeline", icon: "pipeline", match: ["/admin/jobs", "/admin/estimates", "/admin/quote-builder"] },
     { path: "/admin/visits", label: "My visits", icon: "calendar", match: ["/admin/my-appointments"] },
     { path: "/admin/customers", label: "Clients", icon: "users" },
+    { path: "/admin/quotes", label: "Quotes", icon: "file" },
+    { path: "/admin/invoices", label: "Invoices", icon: "wallet" },
   ];
   return [
     { path: "/admin", label: "Home", icon: "home" },
-    { path: "/admin/jobs?tab=pipeline", label: "Pipeline", icon: "pipeline", match: ["/admin/jobs", "/admin/quotes", "/admin/estimates", "/admin/quote-builder", "/admin/templates", "/admin/agreements", "/admin/change-requests"] },
-    { path: "/admin/schedule", label: "Schedule", icon: "calendar", match: ["/admin/maintenance", "/admin/map", "/admin/jobs-map"] },
+    { path: "/admin/jobs?tab=pipeline", label: "Pipeline", icon: "pipeline", match: ["/admin/jobs", "/admin/estimates", "/admin/quote-builder"] },
+    { path: "/admin/schedule", label: "Schedule", icon: "calendar", match: ["/admin/dispatch"] },
     { path: "/admin/customers", label: "Clients", icon: "users", match: ["/admin/calls"] },
-    { path: "/admin/invoices", label: "Money", icon: "wallet", match: ["/admin/expenses", "/admin/bank", "/admin/money", "/admin/billing", "/admin/payments", "/admin/payment-followups", "/admin/supplier-bills", "/admin/cashflow", "/admin/cash-health"] },
+    { path: "/admin/quotes", label: "Quotes", icon: "file" },
+    { path: "/admin/invoices", label: "Invoices", icon: "wallet" },
   ];
 }
 
-/** Everything else, so every page stays one click from More. */
-export function v8More(role: V8Role, opts: { cashHealth?: boolean } = {}): V8Group[] {
+/** Phone bottom tabs: max 4 + More. Quotes/Invoices sit at the top of the More drawer (pinned list) on phones. */
+export function v8Tabs(role: V8Role): V8Link[] {
+  return v8Primary(role).filter((l) => l.label !== "Quotes" && l.label !== "Invoices").slice(0, 4);
+}
+
+/** Personal links: name-card menu for admin/owner (Johan 19 Oct). */
+export function v8Me(role: V8Role): V8Link[] {
+  if (role === "tech") return [{ path: "/field/my-base", label: "My base", icon: "pin" }];
+  return [
+    { path: "/admin/my-base", label: "My base", icon: "pin" },
+    { path: "/admin/my-commission", label: "My commission", icon: "wallet" },
+    { path: "/admin/my-signature", label: "My signature", icon: "pen" },
+  ];
+}
+
+export interface V8NavOpts { cashHealth?: boolean; manager?: boolean }
+/** Admin-only routes (RequireRole ["admin"] / owner): hidden from managers (dispatchers). Route guards stay the security. */
+const ADMIN_ONLY = ["/admin/supplier-bills", "/admin/cashflow", "/admin/cash-health", "/admin/money", "/admin/team", "/admin/areas", "/field/earnings", "/admin/notifications", "/admin/settings", "/admin/oss-extras"];
+
+/** Everything else, so every page stays one click away. Admin/owner: 4-5 collapsible groups. */
+export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
   const me: V8Group = { title: "Settings & me", links: [
-    ...(role === "tech" ? [{ path: "/field/my-base", label: "My base", icon: "pin" }] : [{ path: "/admin/my-base", label: "My base", icon: "pin" }]),
-    ...(role === "tech" ? [] : [{ path: "/admin/my-commission", label: "My commission", icon: "wallet" }, { path: "/admin/my-signature", label: "My signature", icon: "pen" }]),
+    ...v8Me(role),
     { path: "/admin/notifications", label: "Notifications", icon: "bell" },
     { path: "/admin/help", label: "Help", icon: "help" },
-    ...(role === "admin" || role === "owner" ? [{ path: "/admin/settings", label: "Settings", icon: "settings" }] : []),
   ] };
   if (role === "tech") return [
     { title: "Work", links: [
@@ -50,68 +71,50 @@ export function v8More(role: V8Role, opts: { cashHealth?: boolean } = {}): V8Gro
     { title: "Selling", links: [
       { path: "/admin/my-appointments", label: "My appointments", icon: "calendar" },
       { path: "/admin/price-lists", label: "Price lists", icon: "book" },
-      { path: "/admin/quotes", label: "Quotes list", icon: "file" },
     ] },
     me,
   ];
+  const cash = !!opts.cashHealth;
   const groups: V8Group[] = [
-    { title: "Leads & work", links: [
-      { path: "/admin/dispatch", label: "New leads inbox", icon: "inbox" },
+    { title: "Work", links: [
       { path: "/admin/unassigned-queue", label: "Unassigned queue", icon: "inbox" },
-      { path: "/admin/jobs?tab=dispatch", label: "Dispatch", icon: "briefcase" },
-      { path: "/admin/quotes", label: "Quotes list", icon: "file" },
       { path: "/admin/templates", label: "Templates", icon: "file" },
       { path: "/admin/agreements", label: "Agreements", icon: "file" },
       { path: "/admin/change-requests", label: "Change requests", icon: "file" },
       { path: "/admin/maintenance", label: "Maintenance", icon: "calendar" },
-      { path: "/admin/map", label: "Live tracking", icon: "pin" },
+      { path: "/admin/map", label: "Live tracking", icon: "pin", match: ["/admin/jobs-map"] },
       { path: "/admin/calls", label: "Calls", icon: "phone" },
     ] },
     { title: "Money", links: [
-      { path: "/admin/invoices", label: "Invoices", icon: "file" },
-      { path: "/admin/payments", label: "Payments", icon: "wallet" },
+      cash ? { path: "/admin/cash-health", label: "Cash-flow health", icon: "chart", match: ["/admin/cashflow"] }
+           : { path: "/admin/cashflow", label: "Cash flow & profit", icon: "chart" },
       { path: "/admin/payment-followups", label: "Payment follow-ups", icon: "wallet" },
       { path: "/admin/expenses", label: "Expenses", icon: "wallet" },
       { path: "/admin/supplier-bills", label: "Supplier bills", icon: "wallet" },
-      { path: "/admin/bank", label: "Bank (FNB)", icon: "wallet" },
-      { path: "/admin/cashflow", label: "Cash flow & profit", icon: "chart" },
-      ...(opts.cashHealth ? [{ path: "/admin/cash-health", label: "Cash-flow health", icon: "chart" }] : []),
-      { path: "/admin/money", label: "Owner", icon: "wallet" },
+      { path: "/admin/bank", label: "Bank (FNB)", icon: "wallet", match: ["/admin/billing"] },
+      { path: "/admin/money", label: "Money by lead", icon: "wallet" },
+      { path: "/admin/reports", label: "Reports", icon: "chart", match: ["/admin/analytics"] },
     ] },
-    { title: "Catalogue", links: [
-      { path: "/admin/catalog", label: "Catalogue", icon: "bag" },
-      { path: "/admin/price-lists", label: "Price lists", icon: "book" },
-      { path: "/admin/inventory", label: "Stock", icon: "box" },
+    { title: "Catalogue & stock", links: [
+      { path: "/admin/catalog", label: "Catalogue", icon: "bag", match: ["/admin/price-lists"] },
+      { path: cash ? "/admin/cash-health?tab=stock" : "/admin/inventory", label: "Stock", icon: "box", match: ["/admin/inventory"] },
       { path: "/admin/suppliers", label: "Suppliers", icon: "building" },
       { path: "/admin/specials", label: "Specials", icon: "tag" },
-      { path: "/admin/consumables", label: "Consumables", icon: "box" },
-      { path: "/admin/oss-extras", label: "OSS extras", icon: "box" },
-      { path: "/admin/pdf-documents", label: "PDF documents", icon: "file" },
-      { path: "/admin/brochures", label: "Brochures", icon: "file" },
-      { path: "/admin/unit-content", label: "Unit content", icon: "file" },
+      { path: "/admin/oss-extras", label: "Extras & consumables", icon: "box", match: ["/admin/consumables"] },
+      { path: "/admin/pdf-documents", label: "Documents", icon: "file", match: ["/admin/brochures", "/admin/unit-content"] },
     ] },
-    { title: "Team", links: [
-      { path: "/admin/team", label: "Team", icon: "users" },
-      { path: "/admin/network-agents", label: "Network agents", icon: "users" },
+    { title: "Team & settings", links: [
+      { path: "/admin/team", label: "Team", icon: "users", match: ["/admin/network-agents"] },
       { path: "/admin/areas", label: "Areas", icon: "pin" },
       { path: "/field/earnings", label: "Tech earnings", icon: "wallet" },
       { path: "/admin/time-tracking", label: "Time tracking", icon: "calendar" },
+      { path: "/admin/notifications", label: "Notifications", icon: "bell" },
+      { path: "/admin/settings", label: "Settings", icon: "settings" },
+      { path: "/admin/help", label: "Help", icon: "help" },
     ] },
-    { title: "Reports", links: [
-      { path: "/admin/reports", label: "Reports", icon: "chart" },
-      { path: "/admin/reports/aging", label: "Accounts ageing", icon: "chart" },
-      { path: "/admin/reports/sales-by-client", label: "Sales by client", icon: "chart" },
-      { path: "/admin/reports/sales-by-product", label: "Sales by product", icon: "chart" },
-      { path: "/admin/reports/vat", label: "VAT report", icon: "chart" },
-      { path: "/admin/analytics", label: "Analytics", icon: "chart" },
-    ] },
-    { title: "Projects & more", links: [
-      { path: "/admin/projects", label: "Projects", icon: "briefcase" },
-      { path: "/admin/whatsapp", label: "WhatsApp", icon: "phone" },
-      { path: "/admin/portal", label: "Customer portal", icon: "users" },
-    ] },
-    me,
   ];
+  if (opts.manager) for (const g of groups) g.links = g.links.filter((l) => !ADMIN_ONLY.includes(l.path.split("?")[0]));
+  if (opts.manager) return groups.filter((g) => g.links.length);
   if (role === "admin") groups.push({ title: "Platform (Massair)", links: [
     { path: "/admin/companies", label: "Companies", icon: "building" },
     { path: "/admin/company-plans", label: "Company plans", icon: "wallet" },
@@ -125,6 +128,9 @@ export function v8More(role: V8Role, opts: { cashHealth?: boolean } = {}): V8Gro
 
 export function v8IsActive(link: V8Link, pathname: string, search = ""): boolean {
   const [p, q] = link.path.split("?");
+  if (p === "/admin/schedule" && pathname === "/admin/jobs") return search.includes("tab=dispatch");
+  if (q && p === "/admin/cash-health") return (pathname === p && search.includes(q)) || !!link.match?.some((m) => pathname === m);
+  if (!q && p === "/admin/cash-health" && pathname === p) return !search.includes("tab=stock");
   const exact = p === "/admin" || p === "/field";
   if (exact ? pathname === p : (pathname === p || pathname.startsWith(p + "/"))) {
     if (q && p === "/admin/jobs") return !search.includes("tab=dispatch");

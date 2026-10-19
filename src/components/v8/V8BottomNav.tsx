@@ -1,15 +1,15 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { v8Primary, v8IsActive } from "./v8Nav";
+import { v8Tabs, v8IsActive } from "./v8Nav";
 import { useV8Role, V8_ICONS } from "./V8Sidebar";
 
-/** v8 phone tabs: the role's primary areas (Money lives under More on phones) + More. */
+/** v8 phone tabs: max 4 role areas + More (Quotes/Invoices top of the More drawer). */
 export default function V8BottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
   const { pathname, search } = useLocation();
   const navigate = useNavigate();
   const role = useV8Role();
-  const tabs = v8Primary(role).filter((l) => l.label !== "Money").slice(0, 4);
+  const tabs = v8Tabs(role);
   return (
     <nav className="v8-tabs lg:hidden fixed bottom-0 inset-x-0 z-40 h-16 border-t" style={{ paddingBottom: "env(safe-area-inset-bottom)" }} data-testid="v8-bottom-nav">
       <div className="grid h-full" style={{ gridTemplateColumns: `repeat(${tabs.length + 1}, minmax(0,1fr))` }}>

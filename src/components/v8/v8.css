@@ -73,3 +73,6 @@
 .v8-late{font-size:9.5px;font-weight:800;color:#c2410c;background:rgba(249,115,22,.15);border-radius:6px;padding:0 5px}
 .dark .v8-late{color:#fdba74}
 .v8-dz.resched{border-color:rgba(249,115,22,.6);color:#c2410c}.v8-dz.resched.is-over{background:rgba(249,115,22,.1)}
+
+.v8-group{display:flex;width:100%;align-items:center;gap:.5rem;border-radius:10px;padding:.45rem .75rem;font-size:13px;font-weight:700;color:var(--v8-tx);opacity:.85}
+.v8-group:hover{background:var(--v8-in);opacity:1}.v8-group.is-open{opacity:1}.v8-group.has-active{color:var(--v8-b2)}.dark .v8-group.has-active{color:var(--v8-b1)}

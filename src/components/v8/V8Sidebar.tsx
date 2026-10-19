@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home, KanbanSquare, CalendarDays, Users, Wallet, Briefcase, MoreHorizontal, Bell, Plus, LogOut, X, ChevronDown,
@@ -19,7 +19,7 @@ import { span as hm } from "@/lib/leadFlow";
 import LayoutToggleButton from "@/components/classic/LayoutToggleButton";
 import logoWhite from "@/assets/fieldlynk-logo-white.png";
 import logoCard from "@/assets/fieldlynk-logo-card.png";
-import { v8RoleOf, v8Primary, v8More, v8IsActive, type V8Role } from "./v8Nav";
+import { v8RoleOf, v8Primary, v8More, v8Me, v8IsActive, type V8Role } from "./v8Nav";
 import { useCashHealthEnabled } from "@/hooks/useCashHealth";
 import "./v8.css";
 
@@ -38,6 +38,10 @@ export function useV8Role(): V8Role {
   // Platform pages only for the platform owner on the main company.
   return role === "admin" && !isPlatformOwner ? "owner" : role;
 }
+
+const OPEN_KEY = "v8.nav.open";
+function readOpen(): Record<string, boolean> { try { return JSON.parse(localStorage.getItem(OPEN_KEY) || "{}"); } catch { return {}; } }
+function writeOpen(v: Record<string, boolean>) { try { localStorage.setItem(OPEN_KEY, JSON.stringify(v)); } catch { /* private mode */ } }
 
 interface Props {
   onCreateLead: () => void;
@@ -63,7 +67,15 @@ export default function V8Sidebar({ onCreateLead, onSignOut, mobileOpen, onMobil
   const tone = tech ? null : inboxTone(leads as any[], Math.floor(now / 30_000) * 30_000, sla);
   const primary = v8Primary(role);
   const cashHealth = useCashHealthEnabled();
-  const more = v8More(role, { cashHealth: cashHealth.enabled && (role === "admin" || role === "owner") });
+  const { isAdmin } = useRole();
+  const mgmt = role === "admin" || role === "owner";
+  const more = v8More(role, { cashHealth: cashHealth.enabled && mgmt && isAdmin, manager: mgmt && !isAdmin });
+  const me = mgmt ? v8Me(role) : [];
+  const [meOpen, setMeOpen] = useState(false);
+  const [open, setOpen] = useState<Record<string, boolean>>(() => readOpen());
+  const activeGroup = more.find((g) => g.links.some((l) => v8IsActive(l, pathname, search)))?.title;
+  useEffect(() => { if (activeGroup && !open[activeGroup]) setOpen((o) => ({ ...o, [activeGroup]: true })); }, [activeGroup]); // eslint-disable-line react-hooks/exhaustive-deps
+  const toggle = (t: string) => setOpen((o) => { const n = { ...o, [t]: !o[t] }; writeOpen(n); return n; });
   const moreActive = more.some((g) => g.links.some((l) => v8IsActive(l, pathname, search))) && !primary.some((l) => v8IsActive(l, pathname, search));
   const go = (p: string) => { navigate(p); onMobileClose?.(); };
   const initials = (identity?.name || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?";
@@ -75,13 +87,16 @@ export default function V8Sidebar({ onCreateLead, onSignOut, mobileOpen, onMobil
         <img src={logoWhite} alt="0800-BE-COOL! AC Super Service" className="v8-logo-dark w-full max-w-[170px] h-auto" />
         <img src={logoCard} alt="0800-BE-COOL! AC Super Service" className="v8-logo-light w-full max-w-[170px] h-auto rounded-xl" />
         <div className="mt-2 truncate text-sm font-bold" data-testid="v8-company">{company}</div>
-        <div className="v8-user mt-2 flex items-center gap-2 rounded-xl p-2">
+        <button type="button" disabled={!mgmt} onClick={() => setMeOpen((v) => !v)} aria-expanded={mgmt ? meOpen : undefined} data-testid="v8-namecard" className="v8-user mt-2 flex w-full items-center gap-2 rounded-xl p-2 text-left">
           <span className="v8-av flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold">{initials}</span>
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">{identity?.name || ""}</div>
             <div className="truncate text-xs opacity-70">{{ admin: "Owner · admin", owner: "Company owner", sales: "Sales", tech: "Technician" }[role]}</div>
           </div>
-        </div>
+        {mgmt && <ChevronDown className={cn("ml-auto h-3.5 w-3.5 shrink-0 transition-transform", meOpen && "rotate-180")} />}</button>
+        {mgmt && (meOpen || me.some((l) => v8IsActive(l, pathname, search))) && (
+          <div className="mt-1" data-testid="v8-me">{me.map((l) => { const Icon = V8_ICONS[l.icon] ?? FileText; const active = v8IsActive(l, pathname, search); return <button key={l.path} type="button" onClick={() => go(l.path)} className={cn("v8-sub", active && "is-active")}><Icon className="h-3.5 w-3.5" />{l.label}</button>; })}</div>
+        )}
       </div>
 
       <nav className="mt-3 flex-1 overflow-y-auto px-2" aria-label="Main">
@@ -94,6 +109,34 @@ export default function V8Sidebar({ onCreateLead, onSignOut, mobileOpen, onMobil
             </button>
           );
         })}
+        {mgmt ? (
+          <div className="mt-2 space-y-0.5 pb-2" data-testid="v8-groups">
+            {more.map((g) => {
+              const isOpen = !!open[g.title];
+              const hasActive = g.title === activeGroup;
+              return (
+                <div key={g.title}>
+                  <button type="button" onClick={() => toggle(g.title)} aria-expanded={isOpen} data-testid={`v8-group-${g.title}`}
+                    className={cn("v8-group", hasActive && "has-active", isOpen && "is-open")}>
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !isOpen && "-rotate-90")} />
+                    <span className="flex-1 text-left">{g.title}</span>
+                    {g.title === "Team & settings" && pending > 0 && <span className="v8-dot">{pending}</span>}
+                    <span className="text-[11px] font-medium opacity-60">{g.links.length}</span>
+                  </button>
+                  {isOpen && g.links.map((l) => {
+                    const Icon = V8_ICONS[l.icon] ?? FileText;
+                    const active = v8IsActive(l, pathname, search);
+                    return (
+                      <button key={g.title + l.path} type="button" onClick={() => go(l.path)} className={cn("v8-sub pl-6", active && "is-active")}>
+                        <Icon className="h-3.5 w-3.5" />{l.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        ) : (<>
         <button type="button" onClick={() => setMoreOpen((v) => !v)} className={cn("v8-nav", moreActive && "is-active")} aria-expanded={moreOpen} data-testid="v8-more">
           <MoreHorizontal className="h-4 w-4" />More
           {pending > 0 && role !== "sales" && <span className="v8-dot ml-auto">{pending}</span>}
@@ -117,6 +160,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, mobileOpen, onMobil
             ))}
           </div>
         )}
+        </>)}
       </nav>
 
       <div className="space-y-2 px-3 pb-3 pt-2">
