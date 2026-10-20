@@ -33,6 +33,7 @@ import { WelcomeTourDialog } from "@/components/admin/WelcomeTourDialog";
 import CompanyLogo from "@/components/shared/CompanyLogo";
 import IdentityBadge from "@/components/IdentityBadge";
 import RoleAccentStrip from "@/components/RoleAccentStrip";
+import HotLeadBanner from "@/components/heartbeat/HotLeadBanner";
 import { withTimeout } from "@/lib/withTimeout";
 
 const AdminLayout = () => {
@@ -299,6 +300,7 @@ const AdminLayout = () => {
         </header>
         )}
         <RoleAccentStrip />
+        <HotLeadBanner />
 
 
         {/* Mobile search lives in the header icon (GlobalSearchDialog) — no fat sticky strip */}

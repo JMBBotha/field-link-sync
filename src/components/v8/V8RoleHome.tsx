@@ -10,6 +10,7 @@ import { V8_COLS, v8ColOf, type V8Col } from "@/lib/v8Flow";
 import { usePipelineData, nameOf } from "@/components/jobs/PipelineBoard";
 import type { V8Role } from "./v8Nav";
 import V8NumberRow from "./V8NumberRow";
+import SalesHeartbeat from "@/components/heartbeat/SalesHeartbeat";
 import "./v8.css";
 
 type Item = { id: string; title: string; sub: string; btn: string; to: string; tag: string };
@@ -60,6 +61,7 @@ export default function V8RoleHome({ role }: { role: V8Role }) {
         <h1 className="text-2xl font-extrabold">{greet}{first ? `, ${first}` : ""}</h1>
         <div className="text-sm text-muted-foreground">One flow: lead → quote → job → invoice → paid. Here's where it stands.</div>
       </div>
+      {role !== "tech" && <SalesHeartbeat />}
       {(role === "owner" || role === "admin") && <V8NumberRow />}
       <div className="grid gap-3 lg:grid-cols-[1.5fr_1fr]">
         <div className="v8-hero">
