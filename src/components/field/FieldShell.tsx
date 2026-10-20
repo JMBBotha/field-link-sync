@@ -42,7 +42,7 @@ export default function FieldShell({ title, back = false, children }: FieldShell
         </div>
       </header>
       <RoleAccentStrip />
-      <main className="mx-auto max-w-3xl p-4 pb-32">{children}</main>
+      <main className="mx-auto max-w-3xl p-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">{children}</main>
       <FieldAgentBottomNav />
     </div>
   );

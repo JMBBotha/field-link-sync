@@ -305,7 +305,7 @@ const AdminLayout = () => {
 
 
 
-        <main className={`app-surface flex-1 min-h-0 overflow-auto ${isMapHeroPage ? "" : "pb-28 lg:pb-0"}`}>
+        <main data-scroll-root className={`app-surface flex-1 min-h-0 overflow-auto ${isMapHeroPage ? "" : "pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-12"}`}>
 
           <AnimatePresence mode="wait">
             <motion.div

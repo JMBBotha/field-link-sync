@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { EntityRealtimeSync } from "@/hooks/useEntityRealtimeSync";
 import ZoomableViewport from "@/components/shared/ZoomableViewport";
+import ScrollManager from "@/components/ScrollManager";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -144,6 +145,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <ScrollManager />
               <MandyActionsProvider>
               <MandyDock />
               <ZoomableViewport />

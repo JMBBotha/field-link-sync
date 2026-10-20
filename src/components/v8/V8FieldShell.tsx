@@ -17,7 +17,7 @@ export default function V8FieldShell({ children }: { children: React.ReactNode }
     <div className="flex h-[100dvh] w-full overflow-hidden bg-background" data-testid="v8-field-shell">
       <V8Sidebar onCreateLead={() => {}} onSignOut={async () => { await supabase.auth.signOut(); navigate("/login"); }} mobileOpen={open} onMobileClose={() => setOpen(false)} />
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-        <main className="min-h-0 flex-1 overflow-auto pb-20 lg:pb-0"><V8BarContext.Provider value={true}>{children}</V8BarContext.Provider></main>
+        <main data-scroll-root className="min-h-0 flex-1 overflow-auto pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-12"><V8BarContext.Provider value={true}>{children}</V8BarContext.Provider></main>
         <V8BottomNav onOpenMenu={() => setOpen(true)} />
       </div>
     </div>
