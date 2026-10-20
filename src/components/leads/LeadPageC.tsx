@@ -62,13 +62,45 @@ export function useCallOutFeeIncl(): number | null {
 }
 
 /** 0 Lead · 1 Visit/Call-out · 2 Quote · 3 Accepted · 4 Job · 5 Paid (from lead fields only; callers may override). */
-export function leadStageC(lead: any, opts: { quoteStatus?: string | null; invoiceStatus?: string | null } = {}): number {
+export function leadStageC(lead: any, opts: { quoteStatus?: string | null; invoiceStatus?: string | null; jobStatus?: string | null } = {}): number {
   if (opts.invoiceStatus === "paid") return 5;
-  if (lead?.status === "in_progress" || lead?.status === "completed" || lead?.converted_job_id) return 4;
+  if (lead?.status === "in_progress" || lead?.status === "completed" || lead?.converted_job_id || (opts.jobStatus && opts.jobStatus !== "cancelled")) return 4;
   if (opts.quoteStatus === "accepted") return 3;
   if (opts.quoteStatus && ["sent", "viewed"].includes(opts.quoteStatus)) return 2;
   if (lead?.assigned_agent_id || lead?.scheduled_date || ["claimed", "accepted"].includes(lead?.status)) return 1;
   return 0;
+}
+
+const QUOTE_RANK: Record<string, number> = { accepted: 3, sent: 2, viewed: 2 };
+/** Linked quote / invoice / job status for the progress bar (read-only; techs get no money queries). */
+export function useLeadProgress(leadId: string | undefined, money: boolean) {
+  const { data: quotes } = useQuery({
+    queryKey: ["lead-quotes", leadId],
+    enabled: !!leadId && money,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_quotes_for_lead", { p_lead_id: leadId! });
+      if (error) throw error;
+      return (data as { status: string }[]) || [];
+    },
+  });
+  const { data: invoiceStatus } = useQuery({
+    queryKey: ["lead-c-invoice-status", leadId],
+    enabled: !!leadId && money,
+    queryFn: async () => {
+      const { data } = await supabase.from("invoices").select("status").eq("lead_id", leadId!).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      return (data as any)?.status ?? null;
+    },
+  });
+  const { data: jobStatus } = useQuery({
+    queryKey: ["lead-c-job-status", leadId],
+    enabled: !!leadId,
+    queryFn: async () => {
+      const { data } = await supabase.from("jobs").select("status").eq("lead_id", leadId!).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      return (data as any)?.status ?? null;
+    },
+  });
+  const best = (quotes || []).reduce<string | null>((b, q) => ((QUOTE_RANK[q.status] ?? 0) > (QUOTE_RANK[b ?? ""] ?? 0) ? q.status : b), null);
+  return { quoteStatus: best, invoiceStatus: (invoiceStatus as string | null) ?? null, jobStatus: (jobStatus as string | null) ?? null };
 }
 
 const fmtRand = (n: number) => `R${n.toLocaleString("en-ZA").replace(/,/g, " ")}`;
@@ -86,7 +118,8 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
   const lane = laneOf(lead);
   const clock = techView ? null : leadClock(lead, now, sla);
   const ageMs = lead?.created_at ? now - Date.parse(lead.created_at) : null;
-  const st = stage ?? leadStageC(lead);
+  const progress = useLeadProgress(lead?.id, !techView);
+  const st = stage ?? leadStageC(lead, progress);
   const steps = ["Lead", lane === "service" ? "Call-out" : "Visit", "Quote", "Accepted", "Job", "Paid"];
   const laneLabel = techView ? "Job" : lane === "sales" ? "Sales · Install quote" : lane === "service" ? "Tech · Call-out" : "Lead";
   const hasSummary = !!oneLineSummary(lead);

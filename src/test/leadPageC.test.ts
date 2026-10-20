@@ -21,3 +21,11 @@ describe("lead page C helpers", () => {
     expect(callOutTitle(null)).toBe("Book call-out");
   });
 });
+
+describe("progress from linked records", () => {
+  it("a live job moves to Job, a paid invoice to Paid", () => {
+    expect(leadStageC({ status: "pending" }, { jobStatus: "scheduled" })).toBe(4);
+    expect(leadStageC({ status: "pending" }, { jobStatus: "cancelled", quoteStatus: "accepted" })).toBe(3);
+    expect(leadStageC({ status: "claimed" }, { invoiceStatus: "paid", jobStatus: "completed" })).toBe(5);
+  });
+});

@@ -1,9 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import CallSummary from "@/components/leads/CallSummary";
 import LeadTimingChip from "@/components/leads/LeadTimingChip";
 import { isCallDump } from "@/lib/callSummary";
 import { useNavigate } from "react-router-dom";
-import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus, FileText, Timer, GitBranch, CloudOff, ChevronRight } from "lucide-react";
+import { MapPin, Navigation, Loader2, AlertCircle, Camera, ClockIcon, Images, FileText, CloudOff, ChevronRight } from "lucide-react";
 import RandSign from "@/components/icons/RandSign";
 import BookingBadge from "@/components/BookingBadge";
 import { useLeadBooking } from "@/hooks/useLeadBooking";
@@ -22,7 +21,6 @@ import InvoiceForm from "./InvoiceForm";
 import JobCompletionFlow from "./JobCompletionFlow";
 import TechOfficeStatus from "./jobs/TechOfficeStatus";
 import CustomerProfile from "./CustomerProfile";
-import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import JobDurationPicker from "./JobDurationPicker";
 import JobProgressSection from "./JobProgressSection";
 import { PhotoGallery } from "./PhotoGallery";
@@ -33,7 +31,6 @@ import { JobScheduleDisplay } from "./JobScheduleDisplay";
 import TimeTracker from "./TimeTracker";
 import TimeEntryList from "./TimeEntryList";
 import JobTimeline from "./JobTimeline";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
@@ -99,43 +96,6 @@ interface LeadDetailSheetProps {
     data: any
   ) => Promise<string | void>;
 }
-
-// Format relative time
-const formatTimeAgo = (createdAt: string): string => {
-  const now = new Date();
-  const created = new Date(createdAt);
-  const diffMs = now.getTime() - created.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d ago`;
-};
-
-const getStatusBadge = (status: string) => {
-  const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-    pending: { bg: "bg-red-500", text: "text-white", label: "Available" },
-    open: { bg: "bg-red-500", text: "text-white", label: "Open" },
-    released: { bg: "bg-orange-500", text: "text-white", label: "Released" },
-    claimed: { bg: "bg-yellow-500", text: "text-black", label: "Claimed" },
-    accepted: { bg: "bg-yellow-500", text: "text-black", label: "Accepted" },
-    in_progress: { bg: "bg-green-500", text: "text-white", label: "In Progress" },
-    completed: { bg: "bg-black", text: "text-white", label: "Completed" },
-  };
-
-  const config = statusConfig[status] || { bg: "bg-gray-500", text: "text-white", label: status };
-  
-  return (
-    <Badge className={`${config.bg} ${config.text} text-xs`}>
-      {config.label}
-    </Badge>
-  );
-};
 
 const getPriorityIndicator = (priority: string | undefined) => {
   if (!priority || priority === "normal" || priority === "low") return null;
