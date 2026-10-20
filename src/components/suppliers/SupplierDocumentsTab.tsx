@@ -109,6 +109,18 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
   });
   const catalogPageCount = catalogInfo.count;
 
+  // Live price books for this supplier (one per brand) — one AI Import button each.
+  const { data: liveBooks = [] } = useQuery({
+    queryKey: ["supplier-live-books", supplierId],
+    queryFn: async () => {
+      const { data } = await (supabase.from("pdf_uploads") as any)
+        .select("id, brand, created_at").eq("supplier_id", supplierId).eq("is_active", true)
+        .or("price_list_type.is.null,price_list_type.neq.in_house")
+        .order("created_at", { ascending: false });
+      return (data || []) as { id: string; brand: string | null }[];
+    },
+  });
+
   // Count active products for this supplier
   const { data: activeProductCount = 0 } = useQuery({
     queryKey: ["supplier-active-product-count", supplierId],
@@ -143,6 +155,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
     queryClient.invalidateQueries({ queryKey: ["admin-suppliers-list"] });
     queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
     queryClient.invalidateQueries({ queryKey: ["supplier-pdf-brands", supplierId] });
+    queryClient.invalidateQueries({ queryKey: ["supplier-live-books", supplierId] });
     queryClient.invalidateQueries({ queryKey: ["pdf-uploads-manager"] });
     queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
     queryClient.invalidateQueries({ queryKey: ["supplier-catalog-pages", supplierId] });
@@ -581,12 +594,14 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
   }, [supplierId]);
 
   /** AI Import from the stored pages of this supplier's active upload. */
-  const runStoredPagesImport = useCallback(async () => {
+  const runStoredPagesImport = useCallback(async (uploadId?: string) => {
     setImportAnalysing(true);
     try {
-      const { data: up } = await (supabase.from("pdf_uploads") as any)
-        .select("id, file_name").eq("supplier_id", supplierId).eq("is_active", true)
-        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      // One live book per supplier+brand: import the chosen brand's book (or the newest live one).
+      let upQ = (supabase.from("pdf_uploads") as any)
+        .select("id, file_name").eq("supplier_id", supplierId).eq("is_active", true);
+      if (uploadId) upQ = upQ.eq("id", uploadId);
+      const { data: up } = await upQ.order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (!up?.id) throw new Error("No active uploaded price list. Upload one first.");
       const { data: pages, error } = await (supabase.from("supplier_pdf_pages") as any)
         .select("page_number, page_image_url, pdf_storage_path, pdf_filename")
@@ -858,8 +873,12 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
                   <><FileSpreadsheet className="h-3 w-3" />Import Products</>
                 )}
               </Button>
-              {catalogPageCount > 0 && (
-                <Button size="sm" variant="outline" onClick={runStoredPagesImport} disabled={importAnalysing} className="text-xs gap-1.5 mt-1.5 w-full">
+              {liveBooks.length > 1 ? liveBooks.map((b) => (
+                <Button key={b.id} size="sm" variant="outline" onClick={() => runStoredPagesImport(b.id)} disabled={importAnalysing} className="text-xs gap-1.5 mt-1.5 w-full" data-testid="ai-import-brand">
+                  <Sparkles className="h-3 w-3" />AI Import · {b.brand || "No brand"}
+                </Button>
+              )) : (catalogPageCount > 0 || liveBooks.length === 1) && (
+                <Button size="sm" variant="outline" onClick={() => runStoredPagesImport(liveBooks[0]?.id)} disabled={importAnalysing} className="text-xs gap-1.5 mt-1.5 w-full">
                   <Sparkles className="h-3 w-3" />AI Import (uploaded pages)
                 </Button>
               )}

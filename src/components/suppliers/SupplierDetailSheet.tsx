@@ -12,7 +12,6 @@ import { Building2, Globe, MapPin, Pencil, Users, Package, FileText, Wallet, Tag
 import { toast } from "sonner";
 import SupplierContactsTab from "./SupplierContactsTab";
 import SupplierDocumentsTab from "./SupplierDocumentsTab";
-import SupplierProductImporter from "@/components/catalog/SupplierProductImporter";
 
 interface SupplierDetailSheetProps {
   supplierId: string;
@@ -205,16 +204,13 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit, initialTa
               {/* Uses the safe diff-based importer (archives missing products instead of
                   hard-deleting the whole catalog on every import) — see
                   docs/pricing-and-import-architecture-findings.md */}
-              <SupplierProductImporter
-                supplierId={supplierId}
-                supplierName={supplier.company_name || supplier.name}
-                isConsumablesSupplier={supplier.supplier_type === "consumables"}
-                onComplete={() => {
-                  queryClient.invalidateQueries({ queryKey: ["supplier-product-count", supplierId] });
-                  queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
-                  queryClient.invalidateQueries({ queryKey: ["admin-suppliers-list"] });
-                }}
-              />
+              {/* Price lists are uploaded on Documents (brand + category) and imported with
+                  AI Import (reviewed). The old inline importer saved books with the supplier name
+                  as brand, left them inactive and its import buttons are disabled. */}
+              <div className="rounded-md border p-3 text-sm space-y-2" data-testid="import-moved-notice">
+                <p>Upload price lists on the <b>Documents</b> tab. Pick the brand and category, then press <b>AI Import</b> for that brand to review and save the products.</p>
+                <Button size="sm" onClick={() => setTab("documents")}>Go to Documents</Button>
+              </div>
             </div>
           </TabsContent>
 
