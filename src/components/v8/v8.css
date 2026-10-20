@@ -47,7 +47,7 @@
 @media (max-width: 640px) { .v8-flow { grid-template-columns: repeat(3, minmax(0,1fr)); } }
 .v8-flow button { text-align:left; border-radius: 12px; padding: 8px 10px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); }
 .v8-flow button:hover { border-color: #1590d6; }
-.v8-hero { border-radius: 16px; padding: 16px; color: #fff; background: linear-gradient(135deg,#0b5fa0,#1590d6); }
+.v8-hero { border-radius: 16px; padding: 16px; color: #fff; background: linear-gradient(135deg,var(--v8-hero-from,#0F2A44),var(--v8-hero-to,#1590D6)); }
 /* v8 Schedule board */
 .v8-chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:999px;border:1px solid hsl(var(--border));background:hsl(var(--card));font-size:12.5px;font-weight:600}
 .v8-chip.on{background:#1590d6;border-color:#1590d6;color:#fff}
