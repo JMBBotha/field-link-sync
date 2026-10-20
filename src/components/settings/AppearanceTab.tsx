@@ -1,3 +1,4 @@
+import SoundControls from "@/components/notifications/SoundControls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sun, Moon, Monitor } from "lucide-react";
@@ -13,6 +14,7 @@ const OPTIONS: { value: Theme; label: string; icon: typeof Sun; hint: string }[]
 const AppearanceTab = () => {
   const { theme, setTheme, resolvedTheme } = useTheme();
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Appearance</CardTitle>
@@ -50,6 +52,8 @@ const AppearanceTab = () => {
         </p>
       </CardContent>
     </Card>
+    <Card className="mt-4"><CardContent className="pt-6"><p className="mb-1 text-sm font-semibold">Dashboard sounds</p><p className="mb-3 text-xs text-muted-foreground">New lead, quote accepted, deposit paid and paid in full. Saved on this device for you only.</p><SoundControls /></CardContent></Card>
+    </>
   );
 };
 

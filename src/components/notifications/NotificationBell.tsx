@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import NotificationsList, { notificationHref } from "./NotificationsList";
 import { markFollowUpDone } from "./notificationFollowUp";
 import { useRole } from "@/hooks/useRole";
+import SoundControls from "./SoundControls";
+import { useHeartbeatAudience } from "@/hooks/useSalesHeartbeat";
 
 interface Notification {
   id: string;
@@ -33,6 +35,7 @@ const NotificationBell = () => {
   const { isAdmin, isDispatcher, isFieldAgent } = useRole();
   const techOnly = isFieldAgent && !isAdmin && !isDispatcher;
   navRef.current = navigate;
+  const { canSee: hearsSounds } = useHeartbeatAudience();
 
   useEffect(() => {
     const getUser = async () => {
@@ -168,6 +171,7 @@ const NotificationBell = () => {
           onMarkAllRead={markAllRead}
           onClose={() => setOpen(false)}
         />
+        {hearsSounds && <div className="border-t p-3"><SoundControls compact /></div>}
       </PopoverContent>
     </Popover>
   );

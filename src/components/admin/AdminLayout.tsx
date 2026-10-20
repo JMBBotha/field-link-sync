@@ -34,9 +34,11 @@ import CompanyLogo from "@/components/shared/CompanyLogo";
 import IdentityBadge from "@/components/IdentityBadge";
 import RoleAccentStrip from "@/components/RoleAccentStrip";
 import HotLeadBanner from "@/components/heartbeat/HotLeadBanner";
+import { useEventSounds } from "@/hooks/useEventSounds";
 import { withTimeout } from "@/lib/withTimeout";
 
 const AdminLayout = () => {
+  useEventSounds();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
