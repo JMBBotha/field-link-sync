@@ -3001,6 +3001,8 @@ export type Database = {
       }
       customers: {
         Row: {
+          payment_terms_basis: string | null
+          payment_terms_days: number | null
           address: string | null
           area: string | null
           assigned_rep_id: string | null
@@ -3039,6 +3041,8 @@ export type Database = {
           vat_number: string | null
         }
         Insert: {
+          payment_terms_basis?: string | null
+          payment_terms_days?: number | null
           address?: string | null
           area?: string | null
           assigned_rep_id?: string | null
@@ -3077,6 +3081,8 @@ export type Database = {
           vat_number?: string | null
         }
         Update: {
+          payment_terms_basis?: string | null
+          payment_terms_days?: number | null
           address?: string | null
           area?: string | null
           assigned_rep_id?: string | null
@@ -4413,6 +4419,8 @@ export type Database = {
       }
       invoices: {
         Row: {
+          payment_terms_basis: string | null
+          payment_terms_days: number | null
           agent_id: string
           billed_to_vat_number: string | null
           company_id: string | null
@@ -4460,6 +4468,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          payment_terms_basis?: string | null
+          payment_terms_days?: number | null
           agent_id: string
           billed_to_vat_number?: string | null
           company_id?: string | null
@@ -4507,6 +4517,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          payment_terms_basis?: string | null
+          payment_terms_days?: number | null
           agent_id?: string
           billed_to_vat_number?: string | null
           company_id?: string | null

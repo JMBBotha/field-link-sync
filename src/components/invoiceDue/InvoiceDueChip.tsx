@@ -16,7 +16,7 @@ export function InvoiceDueChip({ row, onClick, className }: { row: DueRow; onCli
   return (
     <button type="button" data-testid="invoice-due-chip" onClick={(e) => { e.stopPropagation(); onClick?.(); }}
       className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold", TONE[c.tone], className)}>
-      {c.label}{row.followup_status === "pending" ? " · review" : row.followup_status === "approved" ? " · ready to send" : ""}
+      {c.label}{row.waiting ? "" : row.followup_status === "pending" ? " · review" : row.followup_status === "approved" ? " · ready to send" : ""}
     </button>
   );
 }
@@ -30,6 +30,8 @@ export function FollowupReview({ row, onDone }: { row: DueRow; onDone?: () => vo
   const [busy, setBusy] = useState(false);
   const refresh = () => { qc.invalidateQueries({ queryKey: ["invoice-due"] }); qc.invalidateQueries({ queryKey: ["payment-followups"] }); onDone?.(); };
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+  if (row.waiting) return (
+    <div onClick={stop} className="mt-2 rounded-xl border bg-[#F3FAFE] p-3 text-sm text-muted-foreground">Due {row.terms_days ?? 30} days after the job is completed. No reminders until then.</div>);
   if (row.step === "plus14" && !row.followup_id) return (
     <div onClick={stop} className="mt-2 rounded-xl border border-[#F5C2C3] bg-[#FDECEC] p-3 text-sm text-[#8A1F23]">
       {row.days} days late · {randShort(row.amount_due)}. Owner to phone {row.customer_name || "the client"} personally. No more reminder emails are drafted.
