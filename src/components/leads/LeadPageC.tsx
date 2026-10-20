@@ -1,4 +1,5 @@
 import LeadCloseActions from "@/components/leads/LeadCloseActions";
+import QuoteFollowUpPanel from "@/components/leads/QuoteFollowUpPanel";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Pencil, X, Phone } from "lucide-react";
@@ -190,6 +191,8 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
           {next.note && <p className="mt-2.5 text-sm text-ink-muted">{next.note}</p>}
         </section>
       )}
+
+      {!techView && <QuoteFollowUpPanel lead={lead} />}
 
       {!techView && (
         <section className={card} data-testid="lead-c-close">

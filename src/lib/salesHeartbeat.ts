@@ -7,10 +7,12 @@ export type HbStageKey = "new" | "contacted" | "visit" | "sent" | "accepted" | "
 export type HbLimits = {
   leadRepMin: number; leadTeamMin: number; leadOwnerMin: number; contactedDays: number; contactedAdminDays: number;
   sentDays: number; viewedDays: number; viewedAdminDays: number; acceptedDays: number; acceptedAdminDays: number; depositDays: number; doneDays: number;
+  remoteFollowupDays: number; visitFollowup1Days: number; visitFollowup2Days: number;
 };
 export const DEFAULT_LIMITS: HbLimits = {
   leadRepMin: 5, leadTeamMin: 15, leadOwnerMin: 30, contactedDays: 1, contactedAdminDays: 2, sentDays: 2, viewedDays: 3,
   viewedAdminDays: 7, acceptedDays: 2, acceptedAdminDays: 4, depositDays: 1, doneDays: 7,
+  remoteFollowupDays: 2, visitFollowup1Days: 3, visitFollowup2Days: 7,
 };
 export const LIMIT_LABELS: { key: keyof HbLimits; label: string; unit: "min" | "days" }[] = [
   { key: "leadRepMin", label: "New lead → nudge rep", unit: "min" },
@@ -25,6 +27,9 @@ export const LIMIT_LABELS: { key: keyof HbLimits; label: string; unit: "min" | "
   { key: "acceptedAdminDays", label: "Accepted, no deposit → admin", unit: "days" },
   { key: "depositDays", label: "Deposit in, no install → dispatch + admin", unit: "days" },
   { key: "doneDays", label: "Job done, not paid → admin", unit: "days" },
+  { key: "remoteFollowupDays", label: "Online quote sent → follow-up call", unit: "days" },
+  { key: "visitFollowup1Days", label: "Site-visit quote → 1st friendly follow-up", unit: "days" },
+  { key: "visitFollowup2Days", label: "1st → 2nd friendly follow-up", unit: "days" },
 ];
 export const toLimits = (raw: unknown): HbLimits => {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
