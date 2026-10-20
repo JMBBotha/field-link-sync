@@ -34,6 +34,7 @@ import CompanyLogo from "@/components/shared/CompanyLogo";
 import IdentityBadge from "@/components/IdentityBadge";
 import RoleAccentStrip from "@/components/RoleAccentStrip";
 import HotLeadBanner from "@/components/heartbeat/HotLeadBanner";
+import InvoiceDueBanner from "@/components/invoiceDue/InvoiceDueBanner";
 import { useEventSounds } from "@/hooks/useEventSounds";
 import { withTimeout } from "@/lib/withTimeout";
 
@@ -303,6 +304,7 @@ const AdminLayout = () => {
         )}
         <RoleAccentStrip />
         <HotLeadBanner />
+        <InvoiceDueBanner />
 
 
         {/* Mobile search lives in the header icon (GlobalSearchDialog) — no fat sticky strip */}

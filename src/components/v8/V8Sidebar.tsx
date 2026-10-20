@@ -18,6 +18,8 @@ import { inboxTone } from "@/lib/leadClock";
 import { span as hm } from "@/lib/leadFlow";
 import LayoutToggleButton from "@/components/classic/LayoutToggleButton";
 import logoWhite from "@/assets/fieldlynk-logo-white.png";
+import { useInvoiceDue } from "@/hooks/useInvoiceDue";
+import { randShort } from "@/lib/invoiceDue";
 import logoCard from "@/assets/fieldlynk-logo-card.png";
 import { v8RoleOf, v8Primary, v8More, v8Me, v8IsActive, type V8Role } from "./v8Nav";
 import { useCashHealthEnabled } from "@/hooks/useCashHealth";
@@ -68,6 +70,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, mobileOpen, onMobil
   const primary = v8Primary(role);
   const cashHealth = useCashHealthEnabled();
   const { isAdmin } = useRole();
+  const { summary: due } = useInvoiceDue();
   const mgmt = role === "admin" || role === "owner";
   const more = v8More(role, { cashHealth: cashHealth.enabled && mgmt && isAdmin, manager: mgmt && !isAdmin });
   const me = mgmt ? v8Me(role) : [];
@@ -106,6 +109,11 @@ export default function V8Sidebar({ onCreateLead, onSignOut, mobileOpen, onMobil
           return (
             <button key={l.label} type="button" onClick={() => go(l.path)} className={cn("v8-nav", active && "is-active")} aria-current={active ? "page" : undefined}>
               <Icon className="h-4 w-4" />{l.label}
+              {l.path === "/admin/invoices" && !tech && due.overdue.count > 0 && (
+                <span className="ml-auto flex flex-col items-end leading-tight" data-testid="v8-invoices-overdue">
+                  <span className="rounded-full bg-[#E5484D] px-2 text-xs font-bold text-white">{due.overdue.count}</span>
+                  <span className="text-[11px] font-medium text-[#E5484D]">{randShort(due.overdue.amount)} overdue</span>
+                </span>)}
             </button>
           );
         })}

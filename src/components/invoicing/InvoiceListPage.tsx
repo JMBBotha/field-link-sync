@@ -26,6 +26,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import CreateContractDialog from "@/components/agreements/CreateContractDialog";
 import ContractEditorDialog from "@/components/agreements/ContractEditorDialog";
 import { sameClientCheck } from "@/lib/agreementTemplates/contracts";
+import { useInvoiceDue } from "@/hooks/useInvoiceDue";
+import { InvoiceDueChip, FollowupReview } from "@/components/invoiceDue/InvoiceDueChip";
 
 interface Invoice {
   id: string;
@@ -83,6 +85,9 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   const [contractOpen, setContractOpen] = useState(false);
   const [openContractId, setOpenContractId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const { byInvoice: dueBy } = useInvoiceDue();
+  const dueFilter = searchParams.get("due");
+  const [reviewId, setReviewId] = useState<string | null>(null);
   const inf = parseInvoiceParams(searchParams);
   const filter = inf.state ?? "all";
   const setParam = (k: string, v: string | null) =>
@@ -133,6 +138,11 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   };
 
   const filteredInvoices = filterInvoices(invoices, inf)
+    .filter(inv => {
+      if (!dueFilter) return true;
+      const d = dueBy.get(inv.id); if (!d) return false;
+      return dueFilter === "overdue" ? d.days > 0 : dueFilter === "today" ? d.days === 0 : dueFilter === "soon" ? d.days < 0 && d.days >= -7 : true;
+    })
     .filter(inv => {
       if (!moneyFilter) return true;
       const { paid, balance } = invoiceMoney(inv as any, payRows, creditRows);
@@ -340,13 +350,14 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
             <p className="text-sm">No invoices found</p>
           </div>
         ) : (
-          filteredInvoices.map((invoice) => (
-            <ListCard key={invoice.id}
+          filteredInvoices.map((invoice) => { const due = dueBy.get(invoice.id); return (
+            <div key={invoice.id}>
+            <ListCard
               onOpen={() => (selectMode ? setSelected((s) => (s.includes(invoice.id) ? s.filter((x) => x !== invoice.id) : [...s, invoice.id])) : onSelectInvoice(invoice))}
               leading={selectMode ? <Checkbox checked={selected.includes(invoice.id)} aria-label={`Select ${invoice.invoice_number}`}
                 onCheckedChange={() => setSelected((s) => (s.includes(invoice.id) ? s.filter((x) => x !== invoice.id) : [...s, invoice.id]))} /> : undefined}
               title={invoice.customer_name || invoice.invoice_number}
-              chip={<>{getStatusBadge(invoice.status)}<DepositPaymentChip invoice={invoice} className="text-xs px-2 py-0.5" /></>}
+              chip={<>{getStatusBadge(invoice.status)}<DepositPaymentChip invoice={invoice} className="text-xs px-2 py-0.5" />{due && <InvoiceDueChip row={due} onClick={() => setReviewId(reviewId === invoice.id ? null : invoice.id)} />}</>}
               amount={formatCurrency(invoice.grand_total)}
               date={[invoice.invoice_number, formatDate(invoice.created_at)].join(" · ")}
               trailing={<RowMenu items={[
@@ -356,7 +367,8 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
                 { label: "Open quote", onSelect: () => navigate(`/admin/quote-builder?quoteId=${(invoice as any).quote_id}`), hidden: !(invoice as any).quote_id, separatorBefore: true },
                 { label: "Open client", onSelect: () => navigate(`/admin/customers/${(invoice as any).customer_id}`), hidden: !(invoice as any).customer_id },
               ]} />} />
-          ))
+            {due && reviewId === invoice.id && <FollowupReview row={due} onDone={() => setReviewId(null)} />}
+            </div>); })
         )}
       </div>
       {contractOpen && (() => {

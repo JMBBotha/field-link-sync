@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { useSalesHeartbeat } from "@/hooks/useSalesHeartbeat";
 import { ecgPoints, fmtAge, type HbItem, type HbStage } from "@/lib/salesHeartbeat";
 import { fmtRandShort } from "@/lib/quotePipeline";
+import MoneyDueTile from "@/components/invoiceDue/MoneyDueTile";
 
 /** Home heartbeat (Johan 20 Oct, mockup B): real ECG + pulse, 8 stage tiles (R4), Next step now, Then, Stalled · escalated. */
 export default function SalesHeartbeat() {
@@ -53,6 +54,7 @@ export default function SalesHeartbeat() {
           })}
         </section>
       </div>
+      <MoneyDueTile />
     </div>
   );
 }

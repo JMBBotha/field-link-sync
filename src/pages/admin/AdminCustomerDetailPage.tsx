@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useInvoiceDue } from "@/hooks/useInvoiceDue";
+import { InvoiceDueChip, FollowupReview } from "@/components/invoiceDue/InvoiceDueChip";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import SendQuotesTogetherDialog from "@/components/quoting/SendQuotesTogetherDialog";
 import { sendTogetherBlock } from "@/lib/quoteBundle";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -175,6 +177,8 @@ const AdminCustomerDetailPage = () => {
     selected_customer_name: customer?.name ?? undefined,
   });
 
+  const { byInvoice: dueBy } = useInvoiceDue();
+  const [reviewInv, setReviewInv] = useState<string | null>(null);
   const { data: invoices = [] } = useQuery({
     queryKey: ["customer-invoices", id, customer?.name],
     enabled: !!id,
@@ -588,14 +592,17 @@ const AdminCustomerDetailPage = () => {
                       </TableHeader>
                       <TableBody>
                         {invoices.map((inv: any) => (
-                          <TableRow key={inv.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/invoices/${inv.id}`)}>
+                          <Fragment key={inv.id}>
+                          <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/invoices/${inv.id}`)}>
                             <TableCell className="font-medium">{inv.invoice_number || "—"}</TableCell>
                             <TableCell className="min-w-[160px] max-w-[320px] text-muted-foreground text-xs"><div className="line-clamp-2 break-words" title={inv.notes || undefined}>{inv.notes || "—"}</div></TableCell>
                             <TableCell className="text-xs">{inv.issue_date ? format(new Date(inv.issue_date), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-xs">{inv.due_date ? format(new Date(inv.due_date), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-right font-medium">{formatRand(Number(inv.grand_total || 0))}</TableCell>
-                            <TableCell><Badge variant="outline" className={cn("text-xs", statusBadge(inv.status))}>{inv.status || "draft"}</Badge></TableCell>
+                            <TableCell><div className="flex flex-wrap items-center gap-1"><Badge variant="outline" className={cn("text-xs", statusBadge(inv.status))}>{inv.status || "draft"}</Badge>{dueBy.get(inv.id) && <InvoiceDueChip row={dueBy.get(inv.id)!} onClick={() => setReviewInv(reviewInv === inv.id ? null : inv.id)} />}</div></TableCell>
                           </TableRow>
+                          {reviewInv === inv.id && dueBy.get(inv.id) && <TableRow key={inv.id + "-review"}><TableCell colSpan={6}><FollowupReview row={dueBy.get(inv.id)!} onDone={() => setReviewInv(null)} /></TableCell></TableRow>}
+                          </Fragment>
                         ))}
                         {invoices.length === 0 && <EmptyRow cols={6} text="No invoices yet." />}
                       </TableBody>

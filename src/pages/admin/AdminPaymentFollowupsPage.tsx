@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, HandCoins, MessageCircle, XCircle } from "lucide-react";
+import { CheckCircle2, HandCoins, Mail, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatRand } from "@/utils/formatRand";
-import { waDigits, waLink } from "@/lib/mandy/workActions";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const db = supabase as any;
 type Row = { id: string; customer_name: string | null; customer_phone: string | null; invoice_number: string | null; amount_due: number; due_date: string | null;
-  days_late: number | null; stage: number; status: string; proposed_message: string; approved_message: string | null; created_at: string; decided_at: string | null; sent_at: string | null };
+  days_late: number | null; stage: number; status: string; proposed_message: string; approved_message: string | null; subject?: string | null; created_at: string; decided_at: string | null; sent_at: string | null };
 
 const STATUS: Record<string, string> = { pending: "Waiting for owner", approved: "Approved", declined: "Declined", sent: "Sent", cancelled: "Cancelled" };
 
@@ -42,16 +41,9 @@ export default function AdminPaymentFollowupsPage() {
   };
 
   const doSend = async (r: Row) => {
-    const digits = waDigits(r.customer_phone);
-    const w = window.open("about:blank", "_blank");
-    const { data, error } = await db.rpc("pf_claim_send", { p_id: r.id });
-    if (error || !data || !digits) {
-      w?.close();
-      toast({ title: "Not sent", description: error?.message || "No usable mobile number.", variant: "destructive" });
-    } else if (w) {
-      w.location.href = waLink(digits, String(data.message));
-      toast({ title: "WhatsApp opened", description: `Tap send in WhatsApp to message ${r.customer_name}.` });
-    }
+    const { data, error } = await supabase.functions.invoke("send-reminder-email", { body: { followup_id: r.id } });
+    if (error || !data?.success) toast({ title: "Not sent", description: (data as any)?.error || error?.message || "Email failed", variant: "destructive" });
+    else toast({ title: "Email sent", description: `Reminder emailed to ${data.sentTo}.` });
     setSend(null); refresh();
   };
 
@@ -79,10 +71,10 @@ export default function AdminPaymentFollowupsPage() {
             ) : <p className="text-xs text-muted-foreground">Only the company owner can approve or decline this.</p>}
           </>
         ) : (
-          <p className="whitespace-pre-wrap rounded-md bg-muted/50 p-2 text-sm">{r.approved_message || r.proposed_message}</p>
+          <p className="whitespace-pre-wrap rounded-md bg-muted/50 p-2 text-sm">{r.subject ? <b className="block">{r.subject}</b> : null}{r.approved_message || r.proposed_message}</p>
         )}
         {r.status === "approved" && (
-          <Button size="sm" variant="secondary" onClick={() => setSend(r)}><MessageCircle className="mr-1 h-4 w-4" />Send via WhatsApp</Button>
+          <Button size="sm" variant="secondary" onClick={() => setSend(r)}><Mail className="mr-1 h-4 w-4" />Send email</Button>
         )}
       </CardContent>
     </Card>
@@ -92,13 +84,13 @@ export default function AdminPaymentFollowupsPage() {
     <div className="mx-auto max-w-3xl space-y-4 p-4" data-testid="payment-followups">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold"><HandCoins className="h-5 w-5" />Payment follow-ups</h1>
-        <p className="text-sm text-muted-foreground">Clients are flagged 3 and 7 days after the invoice due date. Nothing is sent until the owner approves a reminder for that client, and each approval sends once. Keep it friendly: legal or penalty wording is blocked.</p>
+        <p className="text-sm text-muted-foreground">Final invoices get a friendly draft 3 days before the due date, on the due day, and 3 and 7 days after; at 14 days the owner phones the client. Nothing is sent until the owner approves a reminder for that client, and each approval sends once. Keep it friendly: legal or penalty wording is blocked.</p>
       </div>
       {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : open.length ? open.map(card) : <Card><CardContent className="p-4 text-sm text-muted-foreground">Nothing waiting. No client will be chased without your approval.</CardContent></Card>}
       {!!done.length && <><h2 className="pt-2 text-sm font-medium text-muted-foreground">History</h2>{done.slice(0, 20).map(card)}</>}
       <Dialog open={!!send} onOpenChange={(o) => !o && setSend(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Send this?</DialogTitle><DialogDescription>WhatsApp to {send?.customer_name}{send?.customer_phone ? ` (${send.customer_phone})` : ""}. This approval can be used once.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Send this?</DialogTitle><DialogDescription>Email to {send?.customer_name}. This approval can be used once.</DialogDescription></DialogHeader>
           <p className="whitespace-pre-wrap rounded-md bg-muted/50 p-2 text-sm">{send?.approved_message}</p>
           <DialogFooter><Button variant="outline" onClick={() => setSend(null)}>Cancel</Button><Button onClick={() => send && doSend(send)}>Send</Button></DialogFooter>
         </DialogContent>
