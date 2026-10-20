@@ -2617,6 +2617,7 @@ export type Database = {
           payfast_merchant_key: string | null
           physical_address: string | null
           postal_address: string | null
+          sales_stage_limits: Json | null
           updated_at: string
           vat_number: string | null
         }
@@ -2637,6 +2638,7 @@ export type Database = {
           payfast_merchant_key?: string | null
           physical_address?: string | null
           postal_address?: string | null
+          sales_stage_limits?: Json | null
           updated_at?: string
           vat_number?: string | null
         }
@@ -2657,6 +2659,7 @@ export type Database = {
           payfast_merchant_key?: string | null
           physical_address?: string | null
           postal_address?: string | null
+          sales_stage_limits?: Json | null
           updated_at?: string
           vat_number?: string | null
         }
@@ -5903,6 +5906,8 @@ export type Database = {
       leads: {
         Row: {
           accepted_at: string | null
+          acknowledged_at: string | null
+          acknowledged_by: string | null
           actual_start_time: string | null
           agreement_id: string | null
           assigned_agent_id: string | null
@@ -5917,6 +5922,11 @@ export type Database = {
           call_urgency: string | null
           cancellation_reason: string | null
           classified_by: Database["public"]["Enums"]["lead_classifier"] | null
+          close_note: string | null
+          close_outcome: string | null
+          close_reason: string | null
+          closed_at: string | null
+          closed_by: string | null
           company_id: string | null
           company_name: string | null
           completed_at: string | null
@@ -5930,6 +5940,9 @@ export type Database = {
           customer_name: string
           customer_phone: string
           deleted_at: string | null
+          dismiss_reason: string | null
+          dismissed_at: string | null
+          dismissed_by: string | null
           dup_ok: boolean
           email: string | null
           equipment_id: string | null
@@ -5951,6 +5964,7 @@ export type Database = {
           lead_status: Database["public"]["Enums"]["lead_lifecycle_status"]
           location: unknown
           longitude: number
+          marketing_followup: boolean
           merge_history: Json
           merged_into_id: string | null
           needs_manual_assignment: boolean
@@ -5960,6 +5974,10 @@ export type Database = {
           order_status: string | null
           parts_status: string | null
           phone: string | null
+          pre_close_lead_status:
+            | Database["public"]["Enums"]["lead_lifecycle_status"]
+            | null
+          pre_close_status: string | null
           primary_intent: Database["public"]["Enums"]["lead_intent"] | null
           priority: string
           quote_sla_breached_at: string | null
@@ -5976,9 +5994,12 @@ export type Database = {
           technician_eta: string | null
           technician_name: string | null
           unit_id: string | null
+          visit_booked_at: string | null
         }
         Insert: {
           accepted_at?: string | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
           actual_start_time?: string | null
           agreement_id?: string | null
           assigned_agent_id?: string | null
@@ -5993,6 +6014,11 @@ export type Database = {
           call_urgency?: string | null
           cancellation_reason?: string | null
           classified_by?: Database["public"]["Enums"]["lead_classifier"] | null
+          close_note?: string | null
+          close_outcome?: string | null
+          close_reason?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           company_id?: string | null
           company_name?: string | null
           completed_at?: string | null
@@ -6006,6 +6032,9 @@ export type Database = {
           customer_name: string
           customer_phone: string
           deleted_at?: string | null
+          dismiss_reason?: string | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
           dup_ok?: boolean
           email?: string | null
           equipment_id?: string | null
@@ -6027,6 +6056,7 @@ export type Database = {
           lead_status?: Database["public"]["Enums"]["lead_lifecycle_status"]
           location?: unknown
           longitude: number
+          marketing_followup?: boolean
           merge_history?: Json
           merged_into_id?: string | null
           needs_manual_assignment?: boolean
@@ -6036,6 +6066,10 @@ export type Database = {
           order_status?: string | null
           parts_status?: string | null
           phone?: string | null
+          pre_close_lead_status?:
+            | Database["public"]["Enums"]["lead_lifecycle_status"]
+            | null
+          pre_close_status?: string | null
           primary_intent?: Database["public"]["Enums"]["lead_intent"] | null
           priority?: string
           quote_sla_breached_at?: string | null
@@ -6052,9 +6086,12 @@ export type Database = {
           technician_eta?: string | null
           technician_name?: string | null
           unit_id?: string | null
+          visit_booked_at?: string | null
         }
         Update: {
           accepted_at?: string | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
           actual_start_time?: string | null
           agreement_id?: string | null
           assigned_agent_id?: string | null
@@ -6069,6 +6106,11 @@ export type Database = {
           call_urgency?: string | null
           cancellation_reason?: string | null
           classified_by?: Database["public"]["Enums"]["lead_classifier"] | null
+          close_note?: string | null
+          close_outcome?: string | null
+          close_reason?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           company_id?: string | null
           company_name?: string | null
           completed_at?: string | null
@@ -6082,6 +6124,9 @@ export type Database = {
           customer_name?: string
           customer_phone?: string
           deleted_at?: string | null
+          dismiss_reason?: string | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
           dup_ok?: boolean
           email?: string | null
           equipment_id?: string | null
@@ -6103,6 +6148,7 @@ export type Database = {
           lead_status?: Database["public"]["Enums"]["lead_lifecycle_status"]
           location?: unknown
           longitude?: number
+          marketing_followup?: boolean
           merge_history?: Json
           merged_into_id?: string | null
           needs_manual_assignment?: boolean
@@ -6112,6 +6158,10 @@ export type Database = {
           order_status?: string | null
           parts_status?: string | null
           phone?: string | null
+          pre_close_lead_status?:
+            | Database["public"]["Enums"]["lead_lifecycle_status"]
+            | null
+          pre_close_status?: string | null
           primary_intent?: Database["public"]["Enums"]["lead_intent"] | null
           priority?: string
           quote_sla_breached_at?: string | null
@@ -6128,6 +6178,7 @@ export type Database = {
           technician_eta?: string | null
           technician_name?: string | null
           unit_id?: string | null
+          visit_booked_at?: string | null
         }
         Relationships: [
           {
@@ -7071,6 +7122,8 @@ export type Database = {
           sent_by: string | null
           stage: number
           status: string
+          step: string | null
+          subject: string | null
         }
         Insert: {
           amount_due?: number
@@ -7095,6 +7148,8 @@ export type Database = {
           sent_by?: string | null
           stage?: number
           status?: string
+          step?: string | null
+          subject?: string | null
         }
         Update: {
           amount_due?: number
@@ -7119,6 +7174,8 @@ export type Database = {
           sent_by?: string | null
           stage?: number
           status?: string
+          step?: string | null
+          subject?: string | null
         }
         Relationships: [
           {
@@ -8763,6 +8820,57 @@ export type Database = {
           },
         ]
       }
+      quote_followups: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          next_at: string | null
+          note: string | null
+          quote_id: string
+          result: string
+          seq: number
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          next_at?: string | null
+          note?: string | null
+          quote_id: string
+          result: string
+          seq: number
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          next_at?: string | null
+          note?: string | null
+          quote_id?: string
+          result?: string
+          seq?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_followups_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "quote_followups_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_items: {
         Row: {
           allows_decimal_qty: boolean
@@ -9155,6 +9263,10 @@ export type Database = {
           declined_at: string | null
           discount_type: string | null
           discount_value: number | null
+          followup_count: number
+          followup_kind: string | null
+          followup_next_at: string | null
+          followup_state: string | null
           id: string
           is_variation: boolean
           labour_included: boolean
@@ -9214,6 +9326,10 @@ export type Database = {
           declined_at?: string | null
           discount_type?: string | null
           discount_value?: number | null
+          followup_count?: number
+          followup_kind?: string | null
+          followup_next_at?: string | null
+          followup_state?: string | null
           id?: string
           is_variation?: boolean
           labour_included?: boolean
@@ -9273,6 +9389,10 @@ export type Database = {
           declined_at?: string | null
           discount_type?: string | null
           discount_value?: number | null
+          followup_count?: number
+          followup_kind?: string | null
+          followup_next_at?: string | null
+          followup_state?: string | null
           id?: string
           is_variation?: boolean
           labour_included?: boolean
@@ -9474,6 +9594,42 @@ export type Database = {
           rule?: Json | null
           status?: string
           unknown_cost_count?: number
+        }
+        Relationships: []
+      }
+      sales_escalations: {
+        Row: {
+          company_id: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          level: number
+          message: string | null
+          notified_user_ids: string[]
+          stage: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          level?: number
+          message?: string | null
+          notified_user_ids?: string[]
+          stage: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          level?: number
+          message?: string | null
+          notified_user_ids?: string[]
+          stage?: string
         }
         Relationships: []
       }
@@ -12715,10 +12871,52 @@ export type Database = {
         }
         Returns: number
       }
+      _hb_admins: { Args: { p_company: string }; Returns: string[] }
+      _hb_dispatch: { Args: { p_company: string }; Returns: string[] }
+      _hb_limit: {
+        Args: { p_company: string; p_default: number; p_key: string }
+        Returns: number
+      }
+      _hb_nudge: {
+        Args: {
+          p_body: string
+          p_company: string
+          p_id: string
+          p_level: number
+          p_stage: string
+          p_title: string
+          p_type: string
+          p_users: string[]
+        }
+        Returns: undefined
+      }
+      _hb_sales: { Args: { p_company: string }; Returns: string[] }
+      _inv_due: {
+        Args: { p_created: string; p_due: string; p_issue: string }
+        Returns: string
+      }
+      _inv_message: {
+        Args: {
+          p_amount: number
+          p_company: string
+          p_due: string
+          p_name: string
+          p_no: string
+          p_step: string
+        }
+        Returns: string
+      }
+      _inv_rep: { Args: { p_invoice: string }; Returns: string }
+      _inv_step: {
+        Args: { p_company: string; p_days: number }
+        Returns: string
+      }
+      _inv_subject: { Args: { p_no: string; p_step: string }; Returns: string }
       _job_alert_office: {
         Args: { _company: string; _uid: string }
         Returns: boolean
       }
+      _lead_staff_ok: { Args: never; Returns: boolean }
       _mins_time: { Args: { p: number }; Returns: string }
       _norm_addr: { Args: { a: string }; Returns: string }
       _p3_handoff_role: {
@@ -12796,6 +12994,7 @@ export type Database = {
         Args: { ""?: string; att_name: string; tbl: unknown }
         Returns: string
       }
+      _quote_is_visit: { Args: { p_quote: string }; Returns: boolean }
       _rank_core: {
         Args: {
           p_date: string
@@ -12995,6 +13194,7 @@ export type Database = {
         Args: { p_accepted_by: string; p_signature?: Json; p_token: string }
         Returns: boolean
       }
+      acknowledge_lead: { Args: { p_lead: string }; Returns: string }
       activate_pdf_book_gate: {
         Args: { p_pdf_upload_id: string; p_sample_n?: number }
         Returns: {
@@ -13111,6 +13311,7 @@ export type Database = {
       caller_company_id: { Args: never; Returns: string }
       caller_sees_lead: { Args: { _lead: string }; Returns: boolean }
       can_access_receipt_folder: { Args: { _folder: string }; Returns: boolean }
+      can_close_lead: { Args: { p_lead: string }; Returns: boolean }
       can_log_job_overrun: {
         Args: { _job_id: string; _uid: string }
         Returns: boolean
@@ -13225,6 +13426,15 @@ export type Database = {
           tech_name: string
         }[]
       }
+      close_lead: {
+        Args: {
+          p_lead: string
+          p_note?: string
+          p_outcome: string
+          p_reason: string
+        }
+        Returns: string
+      }
       company_profile_safe: {
         Args: never
         Returns: {
@@ -13319,6 +13529,10 @@ export type Database = {
         Returns: Json
       }
       disablelongtransactions: { Args: never; Returns: string }
+      dismiss_lead: {
+        Args: { p_lead: string; p_reason: string }
+        Returns: string
+      }
       dispatchable_technicians: {
         Args: { _company_id: string }
         Returns: {
@@ -13467,6 +13681,7 @@ export type Database = {
         Args: { p_job_id?: string; p_lead_id: string }
         Returns: Json
       }
+      fl_sam_price_extras: { Args: { p_key: string }; Returns: Json }
       fl_shares_company: { Args: { _a: string; _b: string }; Returns: boolean }
       fl_shop_finalize: {
         Args: {
@@ -13733,6 +13948,8 @@ export type Database = {
         }
         Returns: {
           accepted_at: string | null
+          acknowledged_at: string | null
+          acknowledged_by: string | null
           actual_start_time: string | null
           agreement_id: string | null
           assigned_agent_id: string | null
@@ -13747,6 +13964,11 @@ export type Database = {
           call_urgency: string | null
           cancellation_reason: string | null
           classified_by: Database["public"]["Enums"]["lead_classifier"] | null
+          close_note: string | null
+          close_outcome: string | null
+          close_reason: string | null
+          closed_at: string | null
+          closed_by: string | null
           company_id: string | null
           company_name: string | null
           completed_at: string | null
@@ -13760,6 +13982,9 @@ export type Database = {
           customer_name: string
           customer_phone: string
           deleted_at: string | null
+          dismiss_reason: string | null
+          dismissed_at: string | null
+          dismissed_by: string | null
           dup_ok: boolean
           email: string | null
           equipment_id: string | null
@@ -13781,6 +14006,7 @@ export type Database = {
           lead_status: Database["public"]["Enums"]["lead_lifecycle_status"]
           location: unknown
           longitude: number
+          marketing_followup: boolean
           merge_history: Json
           merged_into_id: string | null
           needs_manual_assignment: boolean
@@ -13790,6 +14016,10 @@ export type Database = {
           order_status: string | null
           parts_status: string | null
           phone: string | null
+          pre_close_lead_status:
+            | Database["public"]["Enums"]["lead_lifecycle_status"]
+            | null
+          pre_close_status: string | null
           primary_intent: Database["public"]["Enums"]["lead_intent"] | null
           priority: string
           quote_sla_breached_at: string | null
@@ -13806,6 +14036,7 @@ export type Database = {
           technician_eta: string | null
           technician_name: string | null
           unit_id: string | null
+          visit_booked_at: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -14064,6 +14295,26 @@ export type Database = {
         Returns: number
       }
       invoice_amount_paid: { Args: { p_invoice_id: string }; Returns: number }
+      invoice_due_summary: {
+        Args: never
+        Returns: {
+          amount_due: number
+          customer_email: string
+          customer_id: string
+          customer_name: string
+          days: number
+          due: string
+          followup_id: string
+          followup_message: string
+          followup_status: string
+          followup_step: string
+          followup_subject: string
+          invoice_id: string
+          invoice_number: string
+          rep_id: string
+          step: string
+        }[]
+      }
       invoice_email_preview: { Args: { p_invoice_id: string }; Returns: Json }
       is_agent_available_now: { Args: { p_agent_id: string }; Returns: boolean }
       is_approved_network_member: { Args: { _uid: string }; Returns: boolean }
@@ -14159,6 +14410,7 @@ export type Database = {
         Returns: boolean
       }
       lead_is_test: { Args: { p_name: string }; Returns: boolean }
+      lead_lost_allowed: { Args: { p_lead: string }; Returns: boolean }
       lead_sla_next_open: {
         Args: {
           p_ts: string
@@ -14189,6 +14441,15 @@ export type Database = {
       log_lead_contact: {
         Args: { p_channel: string; p_lead_id: string; p_outcome: string }
         Returns: undefined
+      }
+      log_quote_followup: {
+        Args: {
+          p_next?: string
+          p_note?: string
+          p_quote: string
+          p_result: string
+        }
+        Returns: string
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
       mandy_usage_bump: {
@@ -14284,6 +14545,7 @@ export type Database = {
           p_id: string
           p_message?: string
           p_note?: string
+          p_subject?: string
         }
         Returns: string
       }
@@ -14347,6 +14609,9 @@ export type Database = {
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
       process_install_offers: { Args: never; Returns: number }
+      process_invoice_followups: { Args: never; Returns: number }
+      process_quote_followups: { Args: never; Returns: undefined }
+      process_sales_escalations: { Args: never; Returns: undefined }
       public_quote_adjust_data: { Args: { p_token: string }; Returns: Json }
       public_quote_bundle: { Args: { p_token: string }; Returns: Json }
       public_quote_change_state: { Args: { p_token: string }; Returns: Json }
@@ -14537,6 +14802,7 @@ export type Database = {
         Args: { p_approve: boolean; p_name?: string; p_token: string }
         Returns: Json
       }
+      restore_lead: { Args: { p_lead: string }; Returns: undefined }
       revenue_by_agent: {
         Args: never
         Returns: {
