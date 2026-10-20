@@ -51,7 +51,7 @@ export function MyEarningsCard({ className }: { className?: string }) {
     <Card className={cn("surface-card-solid", className)} data-testid="my-earnings-card">
       <CardContent className="space-y-2 p-3">
         <Link to="/field/earnings" className="flex items-center gap-2 font-semibold text-sm text-foreground hover:underline">
-          <Wallet className="h-4 w-4 text-green-600" /> My earnings
+          <Wallet className="h-4 w-4 text-green-600 dark:text-green-300" /> My earnings
           <span className="ml-auto flex items-center text-xs font-normal text-primary">Open <ChevronRight className="h-3 w-3" /></span>
         </Link>
         {isLoading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" />
@@ -148,7 +148,7 @@ export function MyEarningsView() {
       {!isLoading && rows.length === 0 && (
         <Card className="surface-card-solid"><CardContent className="flex flex-col items-center gap-3 p-8 text-center" data-testid="earn-empty">
           <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/15">
-            <PiggyBank className="h-10 w-10 text-emerald-600" />
+            <PiggyBank className="h-10 w-10 text-emerald-600 dark:text-emerald-300" />
             <Sparkles className="absolute -right-1 -top-1 h-6 w-6 text-amber-400" />
           </div>
           <p className="text-base font-semibold">No earnings yet</p>
@@ -208,7 +208,7 @@ export function MyEarningsPeek({ className, overlapBelow }: { className?: string
     <PeekCard id="earnings" open={open} onToggle={() => peek.toggle("earnings")}
       onPointerEnter={peek.enter("earnings")} onPointerLeave={peek.leave("earnings")}
       overlap={overlapBelow ? "below" : "none"} className={cn("shrink-0", className)}
-      title={<><Wallet className="h-3.5 w-3.5 shrink-0 text-green-600" />My earnings</>}
+      title={<><Wallet className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-300" />My earnings</>}
       summary={<span className="text-xs font-normal text-muted-foreground" data-testid="earn-strip-month">
         {isLoading ? "…" : rows.length ? <>This month <b className="text-foreground">{money(month)}</b></> : "None yet"}</span>}>
       <div className="space-y-2 px-2 pb-4 pt-1" data-testid="my-earnings-card">

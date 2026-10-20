@@ -59,7 +59,7 @@ const InstallOfferCards = () => {
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <Button variant="outline" className="h-11" disabled={busy === o.offer_id} onClick={() => respond(o, false)}>Decline</Button>
-            <Button variant="brand" className="h-11" disabled={busy === o.offer_id} onClick={() => respond(o, true)} data-testid="install-offer-accept">
+            <Button variant="cta" className="h-11" disabled={busy === o.offer_id} onClick={() => respond(o, true)} data-testid="install-offer-accept">
               {busy === o.offer_id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Accept
             </Button>
           </div>

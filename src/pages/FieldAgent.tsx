@@ -1251,7 +1251,7 @@ const FieldAgent = () => {
         // Keep the URL in sync so the view=* effect does not undo the toggle.
         navigate(next ? "/field?view=map" : "/field?view=list", { replace: true });
       }}
-      className={mobileSheetOpen ? "bg-white text-blue-600 hover:bg-blue-50 gap-2" : "text-white hover:bg-blue-500 gap-2"}
+      className={mobileSheetOpen ? "bg-white text-blue-600 dark:text-blue-300 hover:bg-blue-50 gap-2" : "text-white hover:bg-blue-500 gap-2"}
     >
       {showMapOnMobile ? (
         <>
@@ -1590,7 +1590,7 @@ const FieldAgent = () => {
                 {inProgressLeads.length > 0 && (
                   <>
                     <div className="flex items-center gap-2 pt-3 pb-1 border-t border-white/10">
-                      <Timer className="h-3.5 w-3.5 text-green-600" />
+                      <Timer className="h-3.5 w-3.5 text-green-600 dark:text-green-300" />
                       <span className="font-semibold text-xs text-foreground">In Progress</span>
                       <Badge variant="secondary" className="text-xs ml-auto">{inProgressLeads.length}</Badge>
                     </div>
@@ -1854,7 +1854,7 @@ const FieldAgent = () => {
                         {inProgressLeads.length > 0 && (
                           <>
                             <div className="flex items-center gap-2 pb-1">
-                              <Timer className="h-3.5 w-3.5 text-green-600" />
+                              <Timer className="h-3.5 w-3.5 text-green-600 dark:text-green-300" />
                               <span className="font-semibold text-xs text-foreground">In Progress</span>
                               <Badge variant="secondary" className="text-xs ml-auto">{inProgressLeads.length}</Badge>
                             </div>
@@ -2003,7 +2003,7 @@ const FieldAgent = () => {
             {/* First-accept offers */}
             <section className="space-y-2">
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-green-600" />
+                <MapPin className="h-4 w-4 text-green-600 dark:text-green-300" />
                 <h2 className="font-semibold text-sm">Available offers</h2>
                 <Badge variant="secondary" className="text-xs">{displayedAvailableLeads.length}</Badge>
               </div>

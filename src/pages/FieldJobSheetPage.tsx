@@ -104,7 +104,7 @@ export default function FieldJobSheetPage() {
             )}
             {j.description && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{j.description}</p>}
             {blocked && ["scheduled", "dispatched", "in_progress"].includes(j.status) && (
-              <p className="rounded-lg bg-amber-50 p-2 text-sm font-semibold text-amber-800" data-testid="job-locked-reason">{blocked}</p>
+              <p className="rounded-lg bg-amber-50 dark:bg-amber-500/15 p-2 text-sm font-semibold text-amber-800 dark:text-amber-300" data-testid="job-locked-reason">{blocked}</p>
             )}
             {["scheduled", "dispatched", "in_progress"].includes(j.status) && (
               <div className="flex gap-2 pt-2">

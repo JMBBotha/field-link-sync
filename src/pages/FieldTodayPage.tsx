@@ -28,9 +28,9 @@ type JobRow = { id: string; title: string | null; description: string | null; jo
 function statusPill(job: JobRow | undefined, survey: boolean) {
   const st = job?.status ?? "";
   if (st === "in_progress") return <Badge className="bg-primary">In progress</Badge>;
-  if (job?.site_check_status === "awaiting_pricing" || job?.site_check_status === "awaiting_client") return <Badge variant="outline" className="border-orange-300 text-orange-700">Variation waiting</Badge>;
-  if (job?.site_check_status === "confirmed") return <Badge variant="outline" className="border-green-300 text-green-700">Site checked</Badge>;
-  if (survey) return <Badge variant="outline" className="border-green-300 text-green-700">Survey done</Badge>;
+  if (job?.site_check_status === "awaiting_pricing" || job?.site_check_status === "awaiting_client") return <Badge variant="outline" className="border-orange-300 dark:border-orange-400/30 text-orange-700 dark:text-orange-300">Variation waiting</Badge>;
+  if (job?.site_check_status === "confirmed") return <Badge variant="outline" className="border-green-300 dark:border-green-400/30 text-green-700 dark:text-green-300">Site checked</Badge>;
+  if (survey) return <Badge variant="outline" className="border-green-300 dark:border-green-400/30 text-green-700 dark:text-green-300">Survey done</Badge>;
   return null;
 }
 

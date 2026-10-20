@@ -84,6 +84,7 @@
 .v8-navy :is(.text-muted-foreground,.text-ink-secondary,.text-ink-muted,p){color:rgba(255,255,255,.8)}
 .v8-navy svg:not([class*="text-"]){color:currentColor}
 .v8-navy .text-primary{color:#fff}
+.v8-navy [class*="border"][role="status"]{border-color:rgba(255,255,255,.35)}
 .v8-navy :is(button,a)[class*="border-input"]{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3);color:#fff}
 .v8-navy :is(button,a)[class*="border-input"]:hover{background:rgba(255,255,255,.22)}
 .v8-navy :is(button,a)[class*="bg-primary"],.v8-navy :is(button,a)[class*="bg-brand-green"]{background:#F7941D;color:#fff}

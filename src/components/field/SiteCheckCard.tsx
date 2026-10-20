@@ -118,10 +118,10 @@ export default function SiteCheckCard({ jobId, leadId, info, onDone, survey }: {
   };
 
   const banner = (() => {
-    if (info.status === "confirmed") return <p className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm font-semibold text-emerald-800" data-testid="site-check-locked"><Lock className="h-4 w-4" /> Costs confirmed &amp; locked{info.last_checked_at ? ` · ${new Date(info.last_checked_at).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}` : ""}</p>;
-    if (info.status === "awaiting_pricing") return <p className="flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-sm font-semibold text-amber-800"><Hourglass className="h-4 w-4" /> The office is pricing the changes. Do not start until the client approves.</p>;
+    if (info.status === "confirmed") return <p className="flex items-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/15 p-3 text-sm font-semibold text-emerald-800 dark:text-emerald-300" data-testid="site-check-locked"><Lock className="h-4 w-4" /> Costs confirmed &amp; locked{info.last_checked_at ? ` · ${new Date(info.last_checked_at).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}` : ""}</p>;
+    if (info.status === "awaiting_pricing") return <p className="flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-500/15 p-3 text-sm font-semibold text-amber-800 dark:text-amber-300"><Hourglass className="h-4 w-4" /> The office is pricing the changes. Do not start until the client approves.</p>;
     if (info.status === "awaiting_client") return (
-      <div className="space-y-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900" data-testid="site-check-awaiting-client">
+      <div className="space-y-2 rounded-lg bg-amber-50 dark:bg-amber-500/15 p-3 text-sm text-amber-900 dark:text-amber-300" data-testid="site-check-awaiting-client">
         <p className="flex items-center gap-2 font-semibold"><Hourglass className="h-4 w-4" /> Updated quote is with the client. Do not start until they approve.</p>
         <p>Give the client the link so they can approve it on their own phone.</p>
         {link && <div className="flex flex-wrap gap-2">
@@ -130,7 +130,7 @@ export default function SiteCheckCard({ jobId, leadId, info, onDone, survey }: {
         </div>}
       </div>
     );
-    if (info.status === "declined") return <p className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-800"><XCircle className="h-4 w-4" /> Client declined – do not proceed.</p>;
+    if (info.status === "declined") return <p className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-500/15 p-3 text-sm font-semibold text-red-800 dark:text-red-300"><XCircle className="h-4 w-4" /> Client declined – do not proceed.</p>;
     return null;
   })();
 
@@ -146,7 +146,7 @@ export default function SiteCheckCard({ jobId, leadId, info, onDone, survey }: {
       <CardContent className="space-y-3 p-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 font-semibold"><ClipboardCheck className="h-4 w-4" /> Site check</h2>
-          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${info.needs_check ? "bg-orange-100 text-orange-800" : "bg-slate-100 text-ink-secondary"}`}>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${info.needs_check ? "bg-orange-100 dark:bg-orange-500/15 text-orange-800 dark:text-orange-300" : "bg-slate-100 text-ink-secondary"}`}>
             {info.needs_check ? "Required – phone/online quote" : "Optional"}
           </span>
         </div>
@@ -172,7 +172,7 @@ export default function SiteCheckCard({ jobId, leadId, info, onDone, survey }: {
                     ))}
                   </div>
                   {st.floorM2 > 0 && (
-                    <p className={`text-sm font-semibold ${verdict === "ok" ? "text-emerald-700" : verdict === "unknown" ? "text-ink-secondary" : "text-red-700"}`} data-testid="size-verdict">
+                    <p className={`text-sm font-semibold ${verdict === "ok" ? "text-emerald-700 dark:text-emerald-300" : verdict === "unknown" ? "text-ink-secondary" : "text-red-700"}`} data-testid="size-verdict">
                       {rec.siteVisit ? `Needs a proper heat-load check (${rec.reason || "large room"})` : `Recommended ${btuLabel(rec.btu)} for ${rec.effectiveM2} m²`}
                       {verdict === "ok" ? " · Size OK" : verdict === "too_small" ? " · Quoted unit looks too small" : verdict === "too_big" ? " · Quoted unit looks too big" : ""}
                     </p>
@@ -205,7 +205,7 @@ export default function SiteCheckCard({ jobId, leadId, info, onDone, survey }: {
               <Button type="button" className="h-11 flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700" disabled={busy} onClick={() => submit("as_quoted")} data-testid="site-check-as-quoted">
                 <CheckCircle2 className="h-4 w-4" /> As quoted
               </Button>
-              <Button type="button" variant="outline" className="h-11 flex-1 gap-1.5 border-orange-400 text-orange-700" disabled={busy} onClick={() => submit("variation_needed")} data-testid="site-check-variation">
+              <Button type="button" variant="outline" className="h-11 flex-1 gap-1.5 border-orange-400 text-orange-700 dark:text-orange-300" disabled={busy} onClick={() => submit("variation_needed")} data-testid="site-check-variation">
                 Variation needed{hasChanges ? ` (${items.length + swaps.length})` : ""}
               </Button>
             </div>
