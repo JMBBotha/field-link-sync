@@ -337,6 +337,20 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
     open_top_quote: async () => topOfListResult(docs, openDoc),
   });
 
+  const menuFor = (doc: any) => { const quote = doc.raw; return [
+                                { label: "Open", onSelect: () => openDoc(doc) },
+                                { label: "Edit", onSelect: () => onEditQuote(quote.id) },
+                                { label: "Duplicate quote", onSelect: () => setDupQuote({ ...quote, clientName: doc.clientName }) },
+                                { label: "Copy client link", hidden: !quote.public_token, onSelect: () => { navigator.clipboard.writeText(publicQuoteUrl(quote.public_token)); toast({ title: "Link copied! 🔗" }); } },
+                                { label: "Share on WhatsApp", hidden: !quote.public_token, onSelect: () => {
+                                  const msg = `Hi ${doc.clientName || "there"}, your ${doc.kind} ${doc.ref} for ${formatZAR(doc.total)} is ready. View it here: ${publicQuoteUrl(quote.public_token)}`;
+                                  const digits = String(doc.clientPhone || "").replace(/\D/g, "").replace(/^0/, "27");
+                                  window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
+                                } },
+                                ...staffActions.itemsFor(quote),
+                                { label: quote.status === "accepted" ? "Convert to invoice" : "Convert to invoice (without client acceptance)", hidden: quote.status === "declined" || quote.status === "expired" || (quote.status !== "accepted" && !canInvoiceUnaccepted), disabled: converting === quote.id, onSelect: () => { if (quote.status !== "accepted" && !window.confirm("The client has not accepted this quote. Create a full invoice for the company anyway?")) return; handleConvertToInvoice(quote.id); }, separatorBefore: true },
+                                { label: "Open client", hidden: !quote.customer_id, onSelect: () => navigate(`/admin/customers/${quote.customer_id}`) },
+                              ]; };
   return (
     <div className="min-h-full bg-background">
       {/* Page header */}
@@ -487,11 +501,19 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
           <>
           <div className="space-y-2 md:hidden" data-testid="quotes-list-cards">
             {docs.map((doc) => (
-              <ListCard key={`${doc.kind}-${doc.id}`} onOpen={() => openDoc(doc)}
+              <div key={`${doc.kind}-${doc.id}`}>
+              <ListCard onOpen={() => openDoc(doc)}
                 title={doc.clientName || "No customer"}
                 chip={<StatusPill status={doc.status} />}
                 amount={formatZAR(doc.total)}
-                date={[doc.ref || "Draft", new Date(doc.created_at).toLocaleDateString("en-ZA")].join(" · ")} />
+                date={[doc.ref || "Draft", new Date(doc.created_at).toLocaleDateString("en-ZA")].join(" · ")}
+                trailing={<div className="flex items-center">
+                  {doc.kind === "estimate" && <RowMenu items={[...menuFor(doc), { label: "Delete draft", hidden: doc.status !== "draft", destructive: true, separatorBefore: true, onSelect: () => setPendingDelete([doc]) }]} />}
+                  {doc.kind !== "estimate" && doc.status === "draft" && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setPendingDelete([doc])} title="Delete draft"><Trash2 className="h-4 w-4" /></Button>}
+                </div>} />
+              {(changeMsgs as Record<string, string>)[doc.id] && <span title={(changeMsgs as Record<string, string>)[doc.id]} className="ml-3 mt-1 inline-block rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">Changes requested</span>}
+              {(pendingRevs as Record<string, any>)[doc.id] && <div className="px-3"><ClientRevisionActions revision={(pendingRevs as Record<string, any>)[doc.id]} /></div>}
+              </div>
             ))}
           </div>
           <Card className="hidden overflow-hidden shadow-sm md:block">
@@ -647,20 +669,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                               </>
                             )}
                             {doc.kind === "estimate" && (
-                              <RowMenu items={[
-                                { label: "Open", onSelect: () => openDoc(doc) },
-                                { label: "Edit", onSelect: () => onEditQuote(quote.id) },
-                                { label: "Duplicate quote", onSelect: () => setDupQuote({ ...quote, clientName: doc.clientName }) },
-                                { label: "Copy client link", hidden: !quote.public_token, onSelect: () => { navigator.clipboard.writeText(publicQuoteUrl(quote.public_token)); toast({ title: "Link copied! 🔗" }); } },
-                                { label: "Share on WhatsApp", hidden: !quote.public_token, onSelect: () => {
-                                  const msg = `Hi ${doc.clientName || "there"}, your ${doc.kind} ${doc.ref} for ${formatZAR(doc.total)} is ready. View it here: ${publicQuoteUrl(quote.public_token)}`;
-                                  const digits = String(doc.clientPhone || "").replace(/\D/g, "").replace(/^0/, "27");
-                                  window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
-                                } },
-                                ...staffActions.itemsFor(quote),
-                                { label: quote.status === "accepted" ? "Convert to invoice" : "Convert to invoice (without client acceptance)", hidden: quote.status === "declined" || quote.status === "expired" || (quote.status !== "accepted" && !canInvoiceUnaccepted), disabled: converting === quote.id, onSelect: () => { if (quote.status !== "accepted" && !window.confirm("The client has not accepted this quote. Create a full invoice for the company anyway?")) return; handleConvertToInvoice(quote.id); }, separatorBefore: true },
-                                { label: "Open client", hidden: !quote.customer_id, onSelect: () => navigate(`/admin/customers/${quote.customer_id}`) },
-                              ]} />
+                              <RowMenu items={menuFor(doc)} />
                             )}
                             {doc.status === "draft" && (
                               <Button
