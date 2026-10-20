@@ -25,8 +25,8 @@ interface SupplierDetailSheetProps {
 }
 
 const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit, initialTab = "contacts", focusUpload = false }: SupplierDetailSheetProps) => {
-  const [tab, setTab] = useState(initialTab);
-  useEffect(() => { setTab(initialTab); }, [supplierId, initialTab, open]);
+  const [tab, setTab] = useState(initialTab === "import" ? "documents" : initialTab);
+  useEffect(() => { setTab(initialTab === "import" ? "documents" : initialTab); }, [supplierId, initialTab, open]);
   const queryClient = useQueryClient();
   const [savingPricing, setSavingPricing] = useState(false);
 
@@ -184,11 +184,8 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit, initialTa
             <TabsTrigger value="contacts" className="flex-1 gap-1">
               <Users className="h-3 w-3" /> Contacts
             </TabsTrigger>
-            <TabsTrigger value="import" className="flex-1 gap-1">
-              <Upload className="h-3 w-3" /> Import
-            </TabsTrigger>
             <TabsTrigger value="documents" className="flex-1 gap-1">
-              <FileText className="h-3 w-3" /> Docs
+              <FileText className="h-3 w-3" /> Price lists
             </TabsTrigger>
             <TabsTrigger value="pricing" className="flex-1 gap-1">
               <Settings2 className="h-3 w-3" /> Pricing
@@ -197,21 +194,6 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit, initialTa
 
           <TabsContent value="contacts">
             <SupplierContactsTab supplierId={supplierId} />
-          </TabsContent>
-
-          <TabsContent value="import">
-            <div className="mt-2">
-              {/* Uses the safe diff-based importer (archives missing products instead of
-                  hard-deleting the whole catalog on every import) — see
-                  docs/pricing-and-import-architecture-findings.md */}
-              {/* Price lists are uploaded on Documents (brand + category) and imported with
-                  AI Import (reviewed). The old inline importer saved books with the supplier name
-                  as brand, left them inactive and its import buttons are disabled. */}
-              <div className="rounded-md border p-3 text-sm space-y-2" data-testid="import-moved-notice">
-                <p>Upload price lists on the <b>Documents</b> tab. Pick the brand and category, then press <b>AI Import</b> for that brand to review and save the products.</p>
-                <Button size="sm" onClick={() => setTab("documents")}>Go to Documents</Button>
-              </div>
-            </div>
           </TabsContent>
 
           <TabsContent value="documents">

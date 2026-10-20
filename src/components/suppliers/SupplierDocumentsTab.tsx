@@ -30,6 +30,24 @@ interface SupplierDocument {
   created_at: string;
 }
 
+interface LiveBook {
+  id: string;
+  brand: string | null;
+  category: string | null;
+  page_count: number | null;
+  file_name: string;
+  file_url: string | null;
+  created_at: string;
+}
+
+const CATEGORY_OPTIONS = [
+  { value: "aircon", label: "Aircon" },
+  { value: "heat_pump", label: "Heat pump" },
+  { value: "solar", label: "Solar" },
+  { value: "other", label: "Other" },
+];
+const categoryLabel = (c?: string | null) => CATEGORY_OPTIONS.find((o) => o.value === c)?.label || "Aircon";
+
 interface SupplierDocumentsTabProps {
   supplierId: string;
   supplierName?: string;
@@ -66,6 +84,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
   const [pendingReplaceFile, setPendingReplaceFile] = useState<File | null>(null);
   const [uploadBrand, setUploadBrand] = useState("");
   const [uploadCategory, setUploadCategory] = useState("aircon");
+  const [showNewBrand, setShowNewBrand] = useState(false);
   const [showDeleteProducts, setShowDeleteProducts] = useState(false);
   const [deletingProducts, setDeletingProducts] = useState(false);
   const [productDeleteMode, setProductDeleteMode] = useState<"archive" | "delete">("archive");
@@ -114,10 +133,25 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
     queryKey: ["supplier-live-books", supplierId],
     queryFn: async () => {
       const { data } = await (supabase.from("pdf_uploads") as any)
-        .select("id, brand, created_at").eq("supplier_id", supplierId).eq("is_active", true)
+        .select("id, brand, category, page_count, file_name, file_url, created_at").eq("supplier_id", supplierId).eq("is_active", true)
         .or("price_list_type.is.null,price_list_type.neq.in_house")
         .order("created_at", { ascending: false });
-      return (data || []) as { id: string; brand: string | null }[];
+      return (data || []) as LiveBook[];
+    },
+  });
+
+  // Active products imported from each live book (status: Imported N / Not imported yet).
+  const { data: bookProductCounts = {} } = useQuery({
+    queryKey: ["supplier-book-product-counts", supplierId, liveBooks.map((b) => b.id).join(",")],
+    enabled: liveBooks.length > 0,
+    queryFn: async () => {
+      const out: Record<string, number> = {};
+      await Promise.all(liveBooks.map(async (b) => {
+        const { count } = await (supabase.from("supplier_products") as any)
+          .select("id", { count: "exact", head: true }).eq("pdf_upload_id", b.id).eq("is_active", true);
+        out[b.id] = count || 0;
+      }));
+      return out;
     },
   });
 
@@ -156,6 +190,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
     queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
     queryClient.invalidateQueries({ queryKey: ["supplier-pdf-brands", supplierId] });
     queryClient.invalidateQueries({ queryKey: ["supplier-live-books", supplierId] });
+    queryClient.invalidateQueries({ queryKey: ["supplier-book-product-counts", supplierId] });
     queryClient.invalidateQueries({ queryKey: ["pdf-uploads-manager"] });
     queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
     queryClient.invalidateQueries({ queryKey: ["supplier-catalog-pages", supplierId] });
@@ -292,9 +327,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
       if (priceListInputRef.current) priceListInputRef.current.value = "";
       return;
     }
-    // Always ask which brand (and category) this list is for, pre-filled from the file name.
-    setUploadBrand(guessBrandFromFileName(file.name, supplierBrands) || (supplierBrands.length === 1 ? supplierBrands[0] : ""));
-    setUploadCategory("aircon");
+    // File picked inside the Add/Replace dialog: keep the chosen brand, else guess from the file name.
+    setUploadBrand((cur) => cur || guessBrandFromFileName(file.name, supplierBrands) || "");
     setPendingReplaceFile(file);
     setShowReplaceConfirm(true);
   }, [toast, supplierBrands]);
@@ -734,156 +768,89 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
     }
   };
 
+  // One row per brand: live books first, then brands uploaded before but not live now.
+  const priceRows: { brand: string; category: string; book: LiveBook | null; products: number }[] = [];
+  for (const b of liveBooks) {
+    const brand = b.brand || "No brand";
+    if (priceRows.some((r) => r.brand.toLowerCase() === brand.toLowerCase())) continue;
+    priceRows.push({ brand, category: b.category || "aircon", book: b, products: bookProductCounts[b.id] || 0 });
+  }
+  for (const brand of supplierBrands) {
+    if (priceRows.some((r) => r.brand.toLowerCase() === brand.toLowerCase())) continue;
+    priceRows.push({ brand, category: "aircon", book: null, products: 0 });
+  }
+
+  const openAddPriceList = (brand: string, category?: string | null) => {
+    setUploadBrand(brand);
+    setUploadCategory(category || "aircon");
+    setPendingReplaceFile(null);
+    setShowNewBrand(false);
+    setShowReplaceConfirm(true);
+  };
+
+  const viewBook = async (b: LiveBook) => {
+    let url = b.file_url;
+    if (!url) {
+      const { data } = await (supabase.from("supplier_pdf_pages") as any)
+        .select("pdf_storage_path, page_image_url").eq("pdf_upload_id", b.id).order("page_number").limit(1).maybeSingle();
+      url = data?.pdf_storage_path || data?.page_image_url || null;
+    }
+    if (url) window.open(url, "_blank", "noopener");
+    else navigate(`/admin/pdf-documents?supplier=${supplierId}`);
+  };
+
   return (
     <div className="space-y-3 mt-2">
-      {/* Manage PDFs link */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="w-full"
-        onClick={() => navigate(`/admin/pdf-documents?supplier=${supplierId}`)}
-      >
-        <FileText className="h-4 w-4 mr-2" />
-        Manage PDFs →
-      </Button>
-
-      {/* Clear All & Re-upload */}
-      {/* Clear All & Re-upload disabled: destructive purge bypassed the review gate. */}
-      {false && (activeProductCount > 0 || catalogPageCount > 0) && (
-        <Card className="border-dashed border-destructive/30 bg-destructive/5">
-          <CardContent className="p-3 flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="text-sm font-medium flex items-center gap-1.5">
-                <Trash2 className="h-4 w-4 text-destructive shrink-0" />
-                Clear All & Re-upload
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Purges all {activeProductCount} products, {catalogPageCount} PDF pages, and cached data. Clean slate.
-              </p>
-            </div>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={handleClearAndReupload}
-              disabled={deletingProducts}
-              className="text-xs shrink-0"
-            >
-              {deletingProducts ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Trash2 className="h-3 w-3 mr-1" />}
-              Clear & Re-upload
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Price List Upload for Visual Catalog */}
-      <Card ref={uploadAreaRef} className="scroll-mt-4 border-dashed border-primary/30 bg-primary/5">
+      {/* Price lists: one row per brand (Johan 20 Oct 12:07). */}
+      <input ref={priceListInputRef} type="file" accept=".pdf" className="hidden" onChange={handlePriceListInputChange} />
+      <Card ref={uploadAreaRef} className="scroll-mt-4" data-testid="price-lists-card">
         <CardContent className="p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-sm font-medium flex items-center gap-1.5">
-                <ImagePlus className="h-4 w-4 text-primary shrink-0" />
-                Visual Catalog PDF
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Upload a price list PDF to browse in the Visual Catalog viewer.
-              </p>
-              {catalogPageCount > 0 && (
-                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                  <Badge variant="secondary" className="text-xs">
-                    {catalogPageCount} pages uploaded
-                  </Badge>
-                  {catalogInfo.uploadedAt && (
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(catalogInfo.uploadedAt).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="shrink-0 flex items-center gap-1.5">
-              {catalogPageCount > 0 && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setShowDeleteCatalog(true)}
-                  disabled={deletingCatalog || processingPriceList}
-                  className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-2"
-                >
-                  {deletingCatalog ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                </Button>
-              )}
-              <input
-                ref={priceListInputRef}
-                type="file"
-                accept=".pdf"
-                className="hidden"
-                onChange={handlePriceListInputChange}
-              />
-              <Button
-                size="sm"
-                variant={catalogPageCount > 0 ? "outline" : "default"}
-                onClick={() => priceListInputRef.current?.click()}
-                disabled={processingPriceList || deletingCatalog}
-                className="text-xs"
-              >
-                {processingPriceList ? (
-                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" />{priceListProgress || "Processing..."}</>
-                ) : catalogPageCount > 0 ? (
-                  <><ImagePlus className="h-3 w-3 mr-1" />Replace PDF</>
-                ) : (
-                  <><ImagePlus className="h-3 w-3 mr-1" />Upload Price List</>
-                )}
-              </Button>
-            </div>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-base font-semibold">Price lists</p>
+            <span className="text-xs text-muted-foreground">{priceRows.length} brand{priceRows.length === 1 ? "" : "s"}</span>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* AI Product Import (PDF/CSV) — NO stored PDF extraction */}
-      <Card className="border-dashed border-accent/30 bg-accent/5">
-        <CardContent className="p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-sm font-medium flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4 text-accent-foreground shrink-0" />
-                AI Product Import
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Upload a PDF or CSV — AI detects VAT, discounts & pricing. Safely merges with your existing catalog.
-              </p>
-            </div>
-            <div className="shrink-0">
-              <input
-                ref={importInputRef}
-                type="file"
-                accept=".pdf,.csv"
-                className="hidden"
-                onChange={handleImportFileSelect}
-              />
-              <Button
-                size="sm"
-                variant="default"
-                onClick={() => importInputRef.current?.click()}
-                disabled={importAnalysing}
-                className="text-xs gap-1.5"
-              >
-                {importAnalysing ? (
-                  <><Loader2 className="h-3 w-3 animate-spin" />Analysing...</>
+          {processingPriceList && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5 py-1"><Loader2 className="h-3 w-3 animate-spin" />{priceListProgress || "Processing..."}</p>
+          )}
+          {priceRows.length === 0 && !processingPriceList && (
+            <p className="text-sm text-muted-foreground py-2">No price lists yet. Add one below.</p>
+          )}
+          {priceRows.map((r) => (
+            <div key={r.brand} className="border-t first:border-t-0 py-2.5 space-y-1.5" data-testid="price-list-row">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold truncate">{r.brand}</span>
+                {!r.book ? (
+                  <Badge variant="secondary" className="text-xs shrink-0">Not uploaded</Badge>
+                ) : r.products > 0 ? (
+                  <Badge className="text-xs shrink-0 bg-green-100 text-green-800 hover:bg-green-100">Imported · {r.products} products</Badge>
                 ) : (
-                  <><FileSpreadsheet className="h-3 w-3" />Import Products</>
+                  <Badge className="text-xs shrink-0 bg-amber-100 text-amber-800 hover:bg-amber-100">Not imported yet</Badge>
                 )}
-              </Button>
-              {liveBooks.length > 1 ? liveBooks.map((b) => (
-                <Button key={b.id} size="sm" variant="outline" onClick={() => runStoredPagesImport(b.id)} disabled={importAnalysing} className="text-xs gap-1.5 mt-1.5 w-full" data-testid="ai-import-brand">
-                  <Sparkles className="h-3 w-3" />AI Import · {b.brand || "No brand"}
-                </Button>
-              )) : (catalogPageCount > 0 || liveBooks.length === 1) && (
-                <Button size="sm" variant="outline" onClick={() => runStoredPagesImport(liveBooks[0]?.id)} disabled={importAnalysing} className="text-xs gap-1.5 mt-1.5 w-full">
-                  <Sparkles className="h-3 w-3" />AI Import (uploaded pages)
-                </Button>
-              )}
+              </div>
+              <p className="text-xs text-muted-foreground break-words">
+                {r.book
+                  ? `${categoryLabel(r.book.category)} · ${r.book.page_count || 0} page${r.book.page_count === 1 ? "" : "s"} · uploaded ${new Date(r.book.created_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })} · ${r.book.file_name}`
+                  : `${categoryLabel(r.category)} · no price list yet`}
+              </p>
+              <div className="flex gap-1.5 flex-wrap">
+                {r.book ? (
+                  <>
+                    <Button size="sm" variant="outline" className="text-xs h-8" onClick={() => viewBook(r.book!)}>View</Button>
+                    <Button size="sm" variant="outline" className="text-xs h-8" disabled={processingPriceList} onClick={() => openAddPriceList(r.brand, r.book!.category)}>Replace</Button>
+                    <Button size="sm" variant={r.products > 0 ? "outline" : "default"} className="text-xs h-8" disabled={importAnalysing} onClick={() => runStoredPagesImport(r.book!.id)} data-testid="import-brand">
+                      {importAnalysing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}{r.products > 0 ? "Re-import" : "Import products"}
+                    </Button>
+                  </>
+                ) : (
+                  <Button size="sm" className="text-xs h-8" disabled={processingPriceList} onClick={() => openAddPriceList(r.brand, r.category)}>Upload PDF</Button>
+                )}
+              </div>
             </div>
-          </div>
+          ))}
+          <button type="button" onClick={() => openAddPriceList("", "aircon")} disabled={processingPriceList}
+            className="mt-2 w-full rounded-md border border-dashed border-primary text-primary text-sm font-semibold py-2 hover:bg-primary/5 disabled:opacity-50">
+            + Add price list
+          </button>
         </CardContent>
       </Card>
 
@@ -955,9 +922,10 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
         </Card>
       )}
 
-      {/* Regular documents */}
+      {/* Other documents (spec sheets, certificates) */}
+      <div className="rounded-lg border p-3 space-y-2">
       <div className="flex justify-between items-center">
-        <p className="text-sm text-muted-foreground">{documents.length} document{documents.length !== 1 ? "s" : ""}</p>
+        <p className="text-sm font-semibold">Other documents <span className="font-normal text-muted-foreground">· {documents.length}</span></p>
         <div>
           <input
             ref={fileInputRef}
@@ -968,15 +936,14 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
           />
           <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
             {uploading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
-            Upload Document
+            Upload document
           </Button>
         </div>
       </div>
-
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : documents.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-4">No documents uploaded yet.</p>
+        <p className="text-xs text-muted-foreground">Spec sheets, certificates and other files.</p>
       ) : (
         <div className="space-y-2">
           {documents.map((doc) => (
@@ -1004,6 +971,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
           ))}
         </div>
       )}
+      </div>
 
       {extractedData && (
         <PDFExtractReviewModal
@@ -1074,47 +1042,49 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
       <AlertDialog open={showReplaceConfirm} onOpenChange={(o) => { if (!o) { setShowReplaceConfirm(false); setPendingReplaceFile(null); if (priceListInputRef.current) priceListInputRef.current.value = ""; } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Upload price list</AlertDialogTitle>
+            <AlertDialogTitle>{priceRows.some((r) => r.book && r.brand.toLowerCase() === uploadBrand.trim().toLowerCase()) ? `Replace ${uploadBrand} price list` : "Add price list"}</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingReplaceFile?.name}. Pick the brand this list is for. Only older pages of the same brand for this supplier are replaced; other brands stay as they are. Your product prices are not affected.
+              {uploadBrand.trim() ? `Replaces only the old ${uploadBrand.trim()} list. Other brands are not touched.` : "Pick the brand, category and PDF."} Product prices only change after you import and confirm.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-sm font-medium" htmlFor="pl-brand">Brand</label>
-              <input
-                id="pl-brand"
-                list="pl-brand-options"
-                value={uploadBrand}
-                onChange={(e) => setUploadBrand(e.target.value)}
-                placeholder="Choose or type a new brand"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-              <datalist id="pl-brand-options">
-                {Array.from(new Set([...supplierBrands, ...KNOWN_BRANDS])).map((b) => <option key={b} value={b} />)}
-              </datalist>
-              <p className="text-xs text-muted-foreground">Pick from the list or type a new brand name.</p>
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">Brand</p>
+              <div className="flex flex-wrap gap-1.5">
+                {Array.from(new Set([...priceRows.map((r) => r.brand), ...KNOWN_BRANDS.filter((k) => ["Samsung", "Comfee", "Alliance", "Midea"].includes(k)), ...(uploadBrand && !showNewBrand ? [uploadBrand] : [])])).map((b) => (
+                  <button key={b} type="button" onClick={() => { setUploadBrand(b); setShowNewBrand(false); }}
+                    className={`rounded-full border px-3 py-1 text-xs ${uploadBrand.toLowerCase() === b.toLowerCase() && !showNewBrand ? "border-primary text-primary font-semibold" : "border-input"}`}>{b}</button>
+                ))}
+                <button type="button" onClick={() => { setShowNewBrand(true); setUploadBrand(""); }}
+                  className={`rounded-full border px-3 py-1 text-xs ${showNewBrand ? "border-primary text-primary font-semibold" : "border-input"}`}>+ New brand</button>
+              </div>
+              {showNewBrand && (
+                <input autoFocus value={uploadBrand} onChange={(e) => setUploadBrand(e.target.value)} placeholder="New brand name"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm" />
+              )}
             </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium" htmlFor="pl-category">Category</label>
-              <select
-                id="pl-category"
-                value={uploadCategory}
-                onChange={(e) => setUploadCategory(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="aircon">Aircon</option>
-                <option value="heat_pump">Heat pump</option>
-                <option value="solar">Solar</option>
-                <option value="other">Other</option>
-              </select>
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">Category</p>
+              <div className="flex flex-wrap gap-1.5">
+                {CATEGORY_OPTIONS.map((c) => (
+                  <button key={c.value} type="button" onClick={() => setUploadCategory(c.value)}
+                    className={`rounded-full border px-3 py-1 text-xs ${uploadCategory === c.value ? "border-primary text-primary font-semibold" : "border-input"}`}>{c.label}</button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">File</p>
+              <button type="button" onClick={() => priceListInputRef.current?.click()}
+                className="flex h-9 w-full items-center rounded-md border border-input bg-background px-3 text-sm text-left truncate">
+                {pendingReplaceFile?.name || <span className="text-muted-foreground">Choose PDF…</span>}
+              </button>
             </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={!uploadBrand.trim()}
-              onClick={() => { setShowReplaceConfirm(false); if (pendingReplaceFile) { processUpload(pendingReplaceFile, uploadBrand, uploadCategory); setPendingReplaceFile(null); } }}
+              disabled={!uploadBrand.trim() || !pendingReplaceFile}
+              onClick={() => { setShowReplaceConfirm(false); if (pendingReplaceFile) { processUpload(pendingReplaceFile, normalizeBrand(uploadBrand.trim()) || uploadBrand.trim(), uploadCategory); setPendingReplaceFile(null); } }}
             >
               Upload
             </AlertDialogAction>
