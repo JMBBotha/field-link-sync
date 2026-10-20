@@ -22,6 +22,7 @@ import { useSignedInIdentity } from "@/hooks/useSignedInIdentity";
 import { useLeadSla, useNow } from "@/hooks/useLeadSla";
 import { inboxTone } from "@/lib/leadClock";
 import { span as hm } from "@/lib/leadFlow";
+import { useSalesHeartbeat } from "@/hooks/useSalesHeartbeat";
 
 interface NavItem {
   path: string;
@@ -72,7 +73,11 @@ const AdminSidebar = ({
   // Lead rule (Johan 13 Oct): techs never see the New Leads inbox or Create lead (also enforced by RLS).
   const techOnly = isFieldAgent && !isAdmin && !isDispatcher;
   const tone = techOnly ? null : inboxTone(inboxLeads as any[], Math.floor(now / 30_000) * 30_000, sla);
-  const toneClass = tone ? { red: "bg-[#DC2626] hover:bg-[#DC2626]/90 text-white", amber: "bg-[#EAB308] hover:bg-[#EAB308]/90 text-[#111827]", green: "bg-[#16a34a] hover:bg-[#16a34a]/90 text-white", grey: "bg-[#6b7280] hover:bg-[#6b7280]/90 text-white" }[tone.tone] : "";
+  // New Leads button (Johan 20 Oct): red + count when hot leads wait for "I'm on it" (heartbeat hb.hot), green otherwise.
+  const { hb, canSee: hbCanSee } = useSalesHeartbeat(!techOnly);
+  const hotCount = !techOnly && hbCanSee ? (hb?.hot.length ?? 0) : 0;
+  const toneClass = hotCount > 0 ? "bg-[#DC2626] hover:bg-[#DC2626]/90 text-white ring-2 ring-red-300/50" : "";
+  const hotLabel = hotCount > 99 ? "99+" : String(hotCount);
   const initials = (identity?.name || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?";
   const { count: pendingApplicants } = usePendingApplicants();
 
@@ -501,8 +506,9 @@ const AdminSidebar = ({
             onClick={() => handleNav(INBOX_ROUTE)}
             className={cn("relative flex-1 min-w-0", collapsed && "w-full px-0", toneClass, tone && !collapsed && "h-auto py-1.5")}
             size={collapsed ? "icon" : "default"}
-            title={tone ? `New Leads inbox · ${tone.tone === "red" ? "OVERDUE" : tone.tone === "amber" ? "DUE SOON" : tone.tone === "grey" ? "starts " + sla.open : "on time"}` : "New Leads inbox"}
-            data-tone={tone?.tone ?? "none"}
+            title={hotCount > 0 ? `New Leads · ${hotCount} waiting for I'm on it` : "New Leads inbox"}
+            data-tone={hotCount > 0 ? "hot" : "none"}
+            data-hot-count={hotCount}
           >
             <Bell className="h-4 w-4" />
             {!collapsed && (
@@ -511,15 +517,15 @@ const AdminSidebar = ({
                 {tone && tone.oldestMs > 0 && <span className="text-xs font-semibold opacity-90">{tone.tone === "red" ? "! " : ""}oldest {hm(tone.oldestMs)}</span>}
               </span>
             )}
-            {inboxCount > 0 && (
+            {hotCount > 0 && (
               collapsed ? (
-                <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive px-1 text-xs font-bold text-white">
-                  {inboxCount > 99 ? "99+" : inboxCount}
+                <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-white px-1 text-xs font-bold text-[#DC2626] shadow">
+                  {hotLabel}
                 </span>
               ) : (
-                <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 px-1 text-xs">
-                  {inboxCount > 99 ? "99+" : inboxCount}
-                </Badge>
+                <span data-testid="new-leads-hot-count" className="ml-auto flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-white px-1.5 text-xs font-extrabold text-[#DC2626]">
+                  {hotLabel}
+                </span>
               )
             )}
           </Button>
@@ -530,11 +536,13 @@ const AdminSidebar = ({
               onCreateLead();
               onMobileClose?.();
             }}
-            className={cn("shrink-0", collapsed && "w-full")}
+            className={cn("shrink-0 bg-transparent shadow-none hover:bg-white/10", collapsed && "w-full")}
             title="Create lead"
             aria-label="Create lead"
           >
-            <Plus className="h-4 w-4" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white">
+              <Plus className="h-4 w-4 text-white" strokeWidth={3} />
+            </span>
           </Button>
         </div>
       </div>}
