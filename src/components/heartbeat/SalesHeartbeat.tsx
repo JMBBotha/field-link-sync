@@ -39,7 +39,7 @@ export default function SalesHeartbeat() {
         <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-8 lg:overflow-visible">{hb.stages.map((s) => <StageTile key={s.key} s={s} items={hb.items} onClick={() => navigate(["new", "contacted", "visit"].includes(s.key) ? "/admin/dispatch" : "/admin/jobs?tab=pipeline")} />)}</div>
       </section>
       <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
-        <section className="rounded-2xl border-2 border-[#1590D6] bg-[#F3FAFE] p-4 dark:bg-sky-500/10">
+        <section className="rounded-2xl border-2 border-border bg-card p-4">
           <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Next step now</h3>
           {hb.next ? (<>
             <div className="mt-1 text-[20px] font-semibold">{hb.next.title}</div>
@@ -63,13 +63,17 @@ export default function SalesHeartbeat() {
 
 function StageTile({ s, items, onClick }: { s: HbStage; items: HbItem[]; onClick: () => void }) {
   const worst = items.filter((i) => i.stage === s.key).reduce((m, i) => Math.max(m, i.limit ? (i.limit + i.overBy) / i.limit : 0), 0);
-  const tone = s.tone === "red" ? "border-[#FF8A80] bg-[#C62828]/40" : s.tone === "amber" ? "border-[#FFCC80] bg-[#B26A00]/35" : "border-white/20 bg-white/10";
+  // Solid tints (Johan 15:54): translucent red over the navy gradient read as purple. Stalled = amber, overdue 2x+ the limit = red.
+  const state = s.stalled ? (worst >= 2 ? "red" : "amber") : s.close ? "soon" : "ok";
+  const tone = state === "red" ? "border-red-400 bg-[#7A1F1F]" : state === "amber" ? "border-amber-400 bg-[#5C4310]" : state === "soon" ? "border-amber-300/70 bg-white/10" : "border-white/20 bg-white/10";
+  const sub = state === "red" ? "text-red-200" : state === "amber" ? "text-amber-200" : "text-[#CFE6F6]";
+  const bar = state === "red" ? "bg-red-300" : state === "amber" || state === "soon" ? "bg-amber-300" : "bg-white";
   return (
-    <button onClick={onClick} className={`min-w-[116px] rounded-xl border p-2.5 text-left ${tone}`} data-stage={s.key}>
-      <div className="text-[13px] text-[#CFE6F6]">{s.label}</div>
+    <button onClick={onClick} className={`min-w-[116px] rounded-xl border p-2.5 text-left ${tone}`} data-stage={s.key} data-state={state}>
+      <div className={`text-[13px] ${sub}`}>{s.label}</div>
       <div className="text-[20px] font-semibold">{s.count}</div>
-      <div className="text-[13px] text-[#CFE6F6]">{s.stalled ? `${s.stalled} stalled` : s.value ? fmtRandShort(s.value) : "on time"}</div>
-      <div className="mt-1.5 h-1 rounded bg-white/20" title="Oldest item vs its time limit"><div className="h-1 rounded bg-white" style={{ width: `${Math.min(100, Math.round(worst * 100))}%` }} /></div>
+      <div className={`text-[13px] ${sub}`}>{s.stalled ? `${s.stalled} stalled` : s.value ? fmtRandShort(s.value) : "on time"}</div>
+      <div className="mt-1.5 h-1 rounded bg-white/20" title="Oldest item vs its time limit"><div className={`h-1 rounded ${bar}`} style={{ width: `${Math.min(100, Math.round(worst * 100))}%` }} /></div>
     </button>
   );
 }
