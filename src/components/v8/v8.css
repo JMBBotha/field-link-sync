@@ -76,3 +76,5 @@
 
 .v8-group{display:flex;width:100%;align-items:center;gap:.5rem;border-radius:10px;padding:.45rem .75rem;font-size:13px;font-weight:700;color:var(--v8-tx);opacity:.85}
 .v8-group:hover{background:var(--v8-in);opacity:1}.v8-group.is-open{opacity:1}.v8-group.has-active{color:var(--v8-b2)}.dark .v8-group.has-active{color:var(--v8-b1)}
+/* V8 standard look vars (20 Oct): shared by PageHeaderCard / ContentCard */
+:root{--v8-hero-from:#0F2A44;--v8-hero-to:#1590D6;--v8-card-radius:16px}
