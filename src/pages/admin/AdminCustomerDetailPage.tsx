@@ -1,4 +1,5 @@
 import { useInvoiceDue } from "@/hooks/useInvoiceDue";
+import { randShort } from "@/lib/invoiceDue";
 import { InvoiceDueChip, FollowupReview } from "@/components/invoiceDue/InvoiceDueChip";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import SendQuotesTogetherDialog from "@/components/quoting/SendQuotesTogetherDialog";
@@ -447,9 +448,9 @@ const AdminCustomerDetailPage = () => {
           </div>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2" data-testid="client-money">
-          <MoneyTile label="Outstanding" value={formatRand(money.outstanding)} onClick={() => setInnerTab("invoices")} />
-          <MoneyTile label="Overdue" value={formatRand(money.overdue)} hot={money.overdue > 0} sub={money.overdueN ? `${money.overdueN} · ${money.maxLate}d` : undefined} onClick={() => setInnerTab("invoices")} />
-          <MoneyTile label="Open quotes" value={`${openQuotes.length} · ${formatRand(quoteSummary.openValue)}`} onClick={() => setInnerTab("quotes")} />
+          <MoneyTile label="Outstanding" value={randShort(money.outstanding)} onClick={() => setInnerTab("invoices")} />
+          <MoneyTile label="Overdue" value={randShort(money.overdue)} hot={money.overdue > 0} sub={money.overdueN ? `${money.overdueN} · ${money.maxLate}d` : undefined} onClick={() => setInnerTab("invoices")} />
+          <MoneyTile label="Open quotes" value={randShort(quoteSummary.openValue)} sub2={`${openQuotes.length} open`} onClick={() => setInnerTab("quotes")} />
         </div>
       </div>
 
@@ -819,11 +820,12 @@ const ContactRow = ({
   </div>
 );
 
-const MoneyTile = ({ label, value, sub, hot, onClick }: { label: string; value: string; sub?: string; hot?: boolean; onClick?: () => void }) => (
-  <button type="button" onClick={onClick} className="min-w-0 rounded-xl border border-white/25 px-3 py-2 text-left hover:bg-white/10">
+const MoneyTile = ({ label, value, sub, sub2, hot, onClick }: { label: string; value: string; sub?: string; sub2?: string; hot?: boolean; onClick?: () => void }) => (
+  <button type="button" onClick={onClick} className="min-w-0 rounded-xl border border-white/25 px-2.5 py-2 text-left sm:px-3 hover:bg-white/10">
     <span className="block truncate text-xs text-[#CFE6F6]">{label}</span>
     <span className={cn("block truncate font-semibold leading-tight text-sm sm:text-lg", hot && "text-[#FFB4B6]")}>{value}</span>
     {sub && <span className="mt-0.5 inline-block rounded-full bg-[#E5484D]/30 px-2 text-[11px]">{sub}</span>}
+    {sub2 && <span className="mt-0.5 block text-[11px] text-[#CFE6F6]">{sub2}</span>}
   </button>
 );
 
