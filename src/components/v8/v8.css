@@ -78,3 +78,16 @@
 .v8-group:hover{background:var(--v8-in);opacity:1}.v8-group.is-open{opacity:1}.v8-group.has-active{color:var(--v8-b2)}.dark .v8-group.has-active{color:var(--v8-b1)}
 /* V8 standard look vars (20 Oct): shared by PageHeaderCard / ContentCard */
 :root{--v8-hero-from:#0F2A44;--v8-hero-to:#1590D6;--v8-card-radius:16px}
+/* V8 standard look scopes (20 Oct): add .v8-navy to a page's existing header row, .v8-scope to its root. Appearance only. */
+.v8-navy{background:linear-gradient(135deg,var(--v8-hero-from,#0F2A44),var(--v8-hero-to,#1590D6));color:#fff;border-radius:16px;padding:12px 16px}
+.v8-navy :is(h1,h2,h3,.text-foreground,.text-ink){color:#fff}
+.v8-navy :is(.text-muted-foreground,.text-ink-secondary,.text-ink-muted,p){color:rgba(255,255,255,.8)}
+.v8-navy svg:not([class*="text-"]){color:currentColor}
+.v8-navy :is(button,a)[class*="border-input"]{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3);color:#fff}
+.v8-navy :is(button,a)[class*="border-input"]:hover{background:rgba(255,255,255,.22)}
+.v8-navy :is(button,a)[class*="bg-primary"]{background:#fff;color:#0F2A44}
+.v8-navy input{color:hsl(var(--foreground))}
+.v8-navy [role="tablist"]{background:rgba(255,255,255,.12)}
+.v8-navy [role="tab"]{color:rgba(255,255,255,.85)}
+.v8-navy [role="tab"][data-state="active"]{background:#fff;color:#0F2A44}
+.v8-scope :is(.rounded-lg.border.bg-card){border-radius:16px}

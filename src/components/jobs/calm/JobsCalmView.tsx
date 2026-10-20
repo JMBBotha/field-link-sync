@@ -28,12 +28,12 @@ type Props = {
 
 const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 const DOT = { green: "bg-emerald-500", orange: "bg-orange-500", grey: "bg-slate-300", blue: "bg-sky-500" };
-const TONE = { green: "bg-emerald-100 text-emerald-700", amber: "bg-amber-100 text-amber-700", red: "bg-red-100 text-red-600" };
+const TONE = { green: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300", amber: "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300", red: "bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-300" };
 const STRIPE = { green: "bg-emerald-500", amber: "bg-amber-400", red: "bg-red-500" };
 const fmtAge = (m: number) => (m >= 1440 ? `${Math.floor(m / 1440)}d` : m >= 60 ? `${Math.floor(m / 60)}h` : `${m}m`);
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 const LaneTag = ({ lane, children }: { lane: "sales" | "service"; children?: ReactNode }) => (
-  <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-semibold", lane === "sales" ? "bg-violet-100 text-violet-700" : "bg-orange-100 text-orange-700")}>
+  <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-semibold", lane === "sales" ? "bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300" : "bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300")}>
     {children || (lane === "sales" ? "Sales quote" : "Technical")}
   </span>
 );
@@ -50,11 +50,11 @@ function LeadCard({ l, now, onCall, onAssign, onOpen }: { l: CalmLead; now?: Dat
         </div>
         <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums", TONE[a.tone])}>{fmtAge(a.mins)}</span>
       </div>
-      <div className="mt-1.5 flex flex-wrap gap-1"><LaneTag lane={l.lane} />{l.tag && <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[11px] font-semibold text-sky-700">{l.tag}</span>}</div>
+      <div className="mt-1.5 flex flex-wrap gap-1"><LaneTag lane={l.lane} />{l.tag && <span className="rounded bg-sky-50 dark:bg-sky-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-sky-700 dark:text-sky-300">{l.tag}</span>}</div>
       <div className="mt-2.5 grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
         {l.phone ? <a href={`tel:${l.phone}`} onClick={onCall} className="rounded-full bg-[#1AA7EC] py-1.5 text-center text-[13px] font-semibold text-white hover:bg-[#1590D6]">Call</a>
           : <span className="rounded-full bg-slate-100 dark:bg-white/10 py-1.5 text-center text-[13px] text-slate-400">No number</span>}
-        <button onClick={onAssign} className="rounded-full bg-sky-50 py-1.5 text-[13px] font-semibold text-[#1590D6] hover:bg-sky-100">Assign</button>
+        <button onClick={onAssign} className="rounded-full bg-sky-50 dark:bg-sky-500/15 py-1.5 text-[13px] font-semibold text-[#1590D6] hover:bg-sky-100 dark:text-sky-300 dark:hover:bg-sky-500/25">Assign</button>
       </div>
     </div>
   );
@@ -164,10 +164,10 @@ export default function JobsCalmView(p: Props) {
         <div key={u.id} className="relative cursor-pointer overflow-hidden rounded-2xl bg-white dark:bg-card p-3 pl-4 shadow-sm ring-1 ring-slate-200/70 dark:ring-white/10" onClick={() => p.onOpenJob(u.id)} data-calm-unassigned>
           <span className="absolute inset-y-0 left-0 w-1 bg-amber-400" />
           <div className="flex items-start gap-2"><div className="min-w-0 flex-1 truncate text-base font-semibold text-slate-900 dark:text-slate-100">{u.title}</div>
-            {u.age && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{u.age}</span>}</div>
+            {u.age && <span className="rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300">{u.age}</span>}</div>
           {u.sub && <div className="truncate text-[13px] text-slate-500 dark:text-slate-400">{u.sub}</div>}
-          <div className="mt-1.5 flex gap-1"><span className="rounded bg-red-50 px-1.5 py-0.5 text-[11px] font-semibold text-red-600">Unassigned</span><LaneTag lane={u.lane} /></div>
-          <button onClick={(e) => { e.stopPropagation(); p.onAssignJob(u.id); }} className="mt-2.5 w-full rounded-full bg-sky-50 py-1.5 text-[13px] font-semibold text-[#1590D6] hover:bg-sky-100">Assign</button>
+          <div className="mt-1.5 flex gap-1"><span className="rounded bg-red-50 dark:bg-red-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-red-600 dark:text-red-300">Unassigned</span><LaneTag lane={u.lane} /></div>
+          <button onClick={(e) => { e.stopPropagation(); p.onAssignJob(u.id); }} className="mt-2.5 w-full rounded-full bg-sky-50 dark:bg-sky-500/15 py-1.5 text-[13px] font-semibold text-[#1590D6] hover:bg-sky-100 dark:text-sky-300 dark:hover:bg-sky-500/25">Assign</button>
         </div>
       ))}
     </section>
@@ -188,9 +188,9 @@ export default function JobsCalmView(p: Props) {
           {p.people.map((per) => {
             const bs = rowBlocks(per.id);
             return (
-              <div key={per.id} className="flex items-stretch border-t border-slate-100 py-1" data-calm-row>
+              <div key={per.id} className="flex items-stretch border-t border-slate-100 dark:border-white/10 py-1" data-calm-row>
                 <div className="flex w-[150px] shrink-0 items-center gap-2 pr-2">
-                  <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sky-50 text-[11px] font-semibold text-sky-700">
+                  <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sky-50 dark:bg-sky-500/15 text-[11px] font-semibold text-sky-700 dark:text-sky-300">
                     {initials(per.name)}<span className={cn("absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white", DOT[per.dot])} />
                   </span>
                   <div className="min-w-0 flex-1">
@@ -199,7 +199,7 @@ export default function JobsCalmView(p: Props) {
                     <div className="mt-1 h-1 w-14 rounded bg-slate-100 dark:bg-white/10"><div className="h-1 rounded bg-[#1AA7EC]" style={{ width: `${dayProgress(bs.map((b) => b.block))}%` }} /></div>
                   </div>
                 </div>
-                <div className={cn("relative h-[72px] flex-1 rounded-lg", dragOver === per.id && "bg-sky-50")}
+                <div className={cn("relative h-[72px] flex-1 rounded-lg", dragOver === per.id && "bg-sky-50 dark:bg-sky-500/15")}
                   style={{ backgroundImage: "repeating-linear-gradient(to right, #eef2f6 0 1px, transparent 1px calc(100% / 9))" }}
                   onDragOver={(e) => { if (p.onMoveBlock) { e.preventDefault(); setDragOver(per.id); } }}
                   onDragLeave={() => setDragOver(null)}
@@ -225,12 +225,12 @@ export default function JobsCalmView(p: Props) {
             <div />{p.weekDays.map((d) => <div key={d.day} className="px-1 pb-2 text-center text-[12px] font-semibold text-slate-500 dark:text-slate-400">{d.label}</div>)}
             {p.people.map((per) => (
               <div key={per.id} className="contents" data-calm-row>
-                <div className="flex items-center gap-2 border-t border-slate-100 py-2 pr-2">
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-sky-50 text-[10px] font-semibold text-sky-700">{initials(per.name)}</span>
+                <div className="flex items-center gap-2 border-t border-slate-100 dark:border-white/10 py-2 pr-2">
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-sky-50 dark:bg-sky-500/15 text-[10px] font-semibold text-sky-700 dark:text-sky-300">{initials(per.name)}</span>
                   <div className="min-w-0"><div className="truncate text-[13px] font-semibold">{per.name}</div><div className="text-[11px] text-slate-500 dark:text-slate-400">{per.role}</div></div>
                 </div>
                 {p.weekDays.map((d) => (
-                  <div key={d.day} className="space-y-1 border-l border-t border-slate-100 p-1">
+                  <div key={d.day} className="space-y-1 border-l border-t border-slate-100 dark:border-white/10 p-1">
                     {rowBlocks(per.id).filter((b) => b.day === d.day).sort((a, b) => (a.start ?? 9999) - (b.start ?? 9999)).map((b) => <Block key={b.id} b={b} compact onOpen={() => p.onOpenBlock(b)} />)}
                   </div>
                 ))}
@@ -250,7 +250,7 @@ export default function JobsCalmView(p: Props) {
       {p.people.map((per) => (
         <div key={per.id} className="rounded-2xl bg-white dark:bg-card p-3 shadow-sm ring-1 ring-slate-200/70 dark:ring-white/10">
           <div className="mb-2 flex items-center gap-2">
-            <span className="relative grid h-7 w-7 place-items-center rounded-full bg-sky-50 text-[10px] font-semibold text-sky-700">{initials(per.name)}<span className={cn("absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white", DOT[per.dot])} /></span>
+            <span className="relative grid h-7 w-7 place-items-center rounded-full bg-sky-50 dark:bg-sky-500/15 text-[10px] font-semibold text-sky-700 dark:text-sky-300">{initials(per.name)}<span className={cn("absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white", DOT[per.dot])} /></span>
             <span className="text-[13px] font-semibold">{per.name}</span><span className="text-[11px] text-slate-500 dark:text-slate-400">{per.role}</span>
           </div>
           <div className="space-y-1.5">{rowBlocks(per.id).sort((a, b) => a.day.localeCompare(b.day) || (a.start ?? 9999) - (b.start ?? 9999)).map((b) => <Block key={b.id} b={b} compact onOpen={() => p.onOpenBlock(b)} />)}</div>
