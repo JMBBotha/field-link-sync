@@ -267,7 +267,7 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
                   </td>
                   <td className="p-2 text-right whitespace-nowrap font-medium">
                     {product.is_price_on_request
-                      ? <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 bg-amber-500/10">POR</Badge>
+                      ? <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 dark:text-amber-300 bg-amber-500/10">POR</Badge>
                       : formatZAR(product.cost_price)}
                   </td>
                   <td className="p-2 text-right whitespace-nowrap">

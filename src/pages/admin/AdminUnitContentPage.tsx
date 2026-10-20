@@ -117,8 +117,8 @@ export default function AdminUnitContentPage() {
   const h = (sel?.feature_highlight || { title: "", text: "", icon: "inverter" }) as any;
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="v8-scope space-y-4 p-4 md:p-6">
+      <div className="v8-navy flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Unit content</h1>
           <p className="text-sm text-muted-foreground">Pictures, specs and highlights for the "units in this quote" cards. Only approved content reaches clients; until then a simple card shows.</p>
@@ -140,7 +140,7 @@ export default function AdminUnitContentPage() {
             {isLoading && <p className="p-3 text-sm text-muted-foreground">Loading…</p>}
             {shown.map((r) => (
               <button key={r.model_key} onClick={() => setSel(r)} className={`flex w-full items-center gap-3 rounded-md p-2 text-left hover:bg-muted ${sel?.model_key === r.model_key ? "bg-muted" : ""}`}>
-                <div className="flex h-10 w-14 items-center justify-center rounded bg-sky-50">{r.image_status === "ready" && r.image_url ? <img src={r.image_url} alt="" className="max-h-9 max-w-12" /> : <span className="text-xs text-muted-foreground">no image</span>}</div>
+                <div className="flex h-10 w-14 items-center justify-center rounded bg-sky-50 dark:bg-sky-500/15">{r.image_status === "ready" && r.image_url ? <img src={r.image_url} alt="" className="max-h-9 max-w-12" /> : <span className="text-xs text-muted-foreground">no image</span>}</div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium">{r.display_name || r.model_code}</div>
                   <div className="truncate text-xs text-muted-foreground">{r.model_code}</div>
@@ -164,9 +164,9 @@ export default function AdminUnitContentPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {(sel as any).fetch_error && <p className="rounded bg-red-50 p-2 text-sm text-red-700">Fetch error: {(sel as any).fetch_error}</p>}
-              {(sel as any).notes && <p className="rounded bg-amber-50 p-2 text-sm text-amber-800">{(sel as any).notes}</p>}
-              {sel.image_status === "needs_cutout" && <p className="rounded bg-amber-50 p-2 text-sm text-amber-800">The source image has a background. Upload a transparent PNG cut-out (source: <a className="underline" href={(sel as any).image_source_url} target="_blank" rel="noreferrer">image</a>).</p>}
+              {(sel as any).fetch_error && <p className="rounded bg-red-50 dark:bg-red-500/15 p-2 text-sm text-red-700 dark:text-red-300">Fetch error: {(sel as any).fetch_error}</p>}
+              {(sel as any).notes && <p className="rounded bg-amber-50 dark:bg-amber-500/15 p-2 text-sm text-amber-800 dark:text-amber-300">{(sel as any).notes}</p>}
+              {sel.image_status === "needs_cutout" && <p className="rounded bg-amber-50 dark:bg-amber-500/15 p-2 text-sm text-amber-800 dark:text-amber-300">The source image has a background. Upload a transparent PNG cut-out (source: <a className="underline" href={(sel as any).image_source_url} target="_blank" rel="noreferrer">image</a>).</p>}
               <div className="grid gap-3 sm:grid-cols-2">
                 {([["display_name", "Name"], ["subtitle", "Subtitle"], ["product_url", "Product page URL"], ["support_url", "Support page URL"], ["source_label", "Source label"], ["family", "Family"]] as const).map(([k, label]) => (
                   <label key={k} className="text-xs text-muted-foreground">{label}

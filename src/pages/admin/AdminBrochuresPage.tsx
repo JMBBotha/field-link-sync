@@ -179,8 +179,8 @@ const AdminBrochuresPage = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="v8-scope space-y-4">
+      <div className="v8-navy flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <FileText className="h-6 w-6 text-primary" />

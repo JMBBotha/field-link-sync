@@ -906,11 +906,11 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                 <div className="text-right">
                   <span className="text-xs font-bold">
                     {product.is_price_on_request || (!product.selling_price && !product.cost_price)
-                      ? <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold px-1">POR</Badge>
+                      ? <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 dark:text-amber-300 bg-amber-500/10 font-semibold px-1">POR</Badge>
                       : <span className="text-primary">{formatZAR(product.selling_price)}</span>}
                   </span>
                   {product.sold_in_length && product.price_per_metre && (
-                    <p className="text-xs text-green-700">📏 R{product.price_per_metre.toFixed(2)}/m</p>
+                    <p className="text-xs text-green-700 dark:text-green-300">📏 R{product.price_per_metre.toFixed(2)}/m</p>
                   )}
                 </div>
                 <div className="flex items-center justify-end">
@@ -965,7 +965,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                             <span className="text-muted-foreground">{product.pipe_size || "—"}</span>
                             <span className="font-bold text-right">
                               {product.is_price_on_request || (!product.selling_price && !product.cost_price)
-                                ? <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold px-1">POR</Badge>
+                                ? <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 dark:text-amber-300 bg-amber-500/10 font-semibold px-1">POR</Badge>
                                 : <span className="text-primary">{formatZAR(product.selling_price)}</span>}
                             </span>
                           </div>
@@ -1064,7 +1064,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                     {product.refrigerant_type && <Badge variant="outline" className="text-xs">{product.refrigerant_type}</Badge>}
                     {product.pipe_size && <Badge variant="outline" className="text-xs">⌀ {product.pipe_size}</Badge>}
                     {product.sold_in_length && product.price_per_metre && (
-                      <Badge variant="outline" className="text-xs gap-0.5 border-green-500/50 text-green-700 bg-green-500/10">
+                      <Badge variant="outline" className="text-xs gap-0.5 border-green-500/50 text-green-700 dark:text-green-300 bg-green-500/10">
                         📏 R{product.price_per_metre.toFixed(2)}/m
                       </Badge>
                     )}
@@ -1075,7 +1075,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                   <div className="flex items-end justify-between">
                     <div>
                       {product.is_price_on_request || (!product.selling_price && !product.cost_price) ? (
-                        <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold">POR</Badge>
+                        <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 dark:text-amber-300 bg-amber-500/10 font-semibold">POR</Badge>
                       ) : (
                         <>
                           <p className="text-xs text-muted-foreground">Cost: {formatZAR(product.discounted_cost || product.cost_price)}</p>

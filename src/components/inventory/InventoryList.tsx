@@ -401,8 +401,8 @@ const InventoryList = () => {
   const isIndeterminate = selectedIds.size > 0 && selectedIds.size < filtered.length;
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+    <div className="v8-scope p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
+      <div className="v8-navy flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Package className="h-5 w-5" />

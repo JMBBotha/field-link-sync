@@ -178,13 +178,13 @@ const AdminCatalogPage = () => {
   const isConsumablesSupplier = selectedSupplier?.supplier_type === "consumables";
 
   return (
-    <div className="p-4 pb-28 lg:pb-24 max-w-7xl mx-auto space-y-4">
-      <div className="flex items-center justify-between mb-2">
+    <div className="v8-scope p-4 pb-28 lg:pb-24 max-w-7xl mx-auto space-y-4">
+      <div className="v8-navy flex flex-wrap items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
           <Package className="h-5 w-5 text-primary" />
           <h2 className="text-xl font-bold">Product Catalog</h2>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Button
             variant="outline"
             size="sm"

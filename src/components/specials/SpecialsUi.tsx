@@ -32,7 +32,7 @@ export function SpecialsPdfDialog({ path, onClose }: { path: string | null; onCl
 export function SpecialChip({ cost, endDate, pdfPath, applied }: { cost: number; endDate: string; pdfPath?: string | null; applied?: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
-    <span data-html2canvas-ignore data-testid="special-chip" className="mt-0.5 inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-1.5 text-xs text-emerald-800 print:hidden">
+    <span data-html2canvas-ignore data-testid="special-chip" className="mt-0.5 inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 px-1.5 text-xs text-emerald-800 dark:text-emerald-300 print:hidden">
       <Tag className="h-2.5 w-2.5" />
       {applied ? "Special applied: " : "Special: "}{formatRand(cost)} until {fmtDate(endDate)}
       {pdfPath && (
@@ -57,7 +57,7 @@ export function useSpecialPrompt() {
       <Dialog open={!!state} onOpenChange={(o) => !o && done(false)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Tag className="h-4 w-4 text-emerald-600" /> On special</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Tag className="h-4 w-4 text-emerald-600 dark:text-emerald-300" /> On special</DialogTitle>
             {state && (
               <DialogDescription>
                 {state.s.model_number}: this model is on special: cost {formatRand(Number(state.s.special_cost))} (normal {formatRand(state.normal)}) until {fmtDate(state.s.end_date)}. Use special cost for this quote?

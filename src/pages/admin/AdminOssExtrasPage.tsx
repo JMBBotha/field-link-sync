@@ -145,8 +145,8 @@ const AdminOssExtrasPage = () => {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-4 p-3 sm:p-6" data-testid="oss-extras-page">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="v8-scope mx-auto w-full max-w-5xl space-y-4 p-3 sm:p-6" data-testid="oss-extras-page">
+      <div className="v8-navy flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="sm" onClick={() => navigate("/admin/price-lists")}><ArrowLeft className="mr-1 h-4 w-4" />Price lists</Button>
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-semibold">One Stop Shop extras</h1>
@@ -224,7 +224,7 @@ const AdminOssExtrasPage = () => {
               <div className="grid gap-1">
                 <Label>Internal SKU (automatic)</Label>
                 <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2 font-mono text-sm" data-testid="oss-sku">{sku.code || "—"}</div>
-                {sku.clashed && <p className="text-xs text-amber-600">{baseSku} is already used, so this item gets {sku.code}. Change size/variant if it is really a different product.</p>}
+                {sku.clashed && <p className="text-xs text-amber-600 dark:text-amber-300">{baseSku} is already used, so this item gets {sku.code}. Change size/variant if it is really a different product.</p>}
               </div>
               <div className="grid gap-1">
                 <Label htmlFor="oss-name">Name</Label>

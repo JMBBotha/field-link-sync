@@ -249,7 +249,7 @@ function ACProductRow({
                           </Label>
                         </div>
                         {c.is_default && (
-                          <Badge className="text-xs bg-green-100 text-green-700 border-green-300">
+                          <Badge className="text-xs bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-300 border-green-300 dark:border-green-400/30">
                             Suggested
                           </Badge>
                         )}
@@ -380,8 +380,8 @@ export default function AdminConsumablesPage() {
   }
 
   return (
-    <div className="space-y-4 p-4 max-w-6xl mx-auto">
-      <div>
+    <div className="v8-scope space-y-4 p-4 max-w-6xl mx-auto">
+      <div className="v8-navy">
         <h1 className="text-xl font-bold">Suggested Consumables Management</h1>
         <p className="text-sm text-muted-foreground">
           Configure which consumables are auto-suggested when an AC unit is selected in the Quote Builder.

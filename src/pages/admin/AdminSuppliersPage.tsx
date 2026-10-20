@@ -237,9 +237,9 @@ const AdminSuppliersPage = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="v8-scope p-4 md:p-6 space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div className="v8-navy flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary" />
@@ -289,8 +289,8 @@ const AdminSuppliersPage = () => {
         <Card className="border-yellow-500/50 bg-yellow-500/5">
           <CardContent className="p-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <span className="font-medium text-yellow-700">
+              <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-300" />
+              <span className="font-medium text-yellow-700 dark:text-yellow-300">
                 ⚠️ {orphanCount} orphan product{orphanCount !== 1 ? "s" : ""} found with no supplier
               </span>
             </div>
