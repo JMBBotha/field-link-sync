@@ -16,6 +16,8 @@ import AttentionStrip from "@/components/jobs/AttentionStrip";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import AdminJobsDispatchPage from "@/pages/admin/AdminJobsDispatchPage";
 import { fmtRandShort } from "@/lib/quotePipeline";
+import JobsCalm from "@/components/jobs/calm/JobsCalm";
+import { calmEnabled } from "@/lib/jobsCalm";
 
 type Tab = "pipeline" | "dispatch";
 /** Pipeline: cards | stages. Dispatch: cards | board (old Stages board) | calendar (Dispatch calendar). */
@@ -61,6 +63,8 @@ export default function AdminJobsHubPage() {
   const pipe = usePipelineData();
   const [showCreate, setShowCreate] = useState(false);
   if (loading || repLoading) return null;
+  // Calm Jobs page (Johan 20 Oct): preview only, OFF by default. ?jobs=calm turns it on for this browser, ?jobs=classic back off.
+  if (!isSalesRep && calmEnabled(window.location.search, typeof localStorage === "undefined" ? null : localStorage)) return <JobsCalm />;
 
   const defTab: Tab = isSalesRep || isAdmin || !isDispatcher ? "pipeline" : "dispatch";
   const defViewFor = (t: Tab): View => (t === "pipeline" ? (isSalesRep ? "cards" : "stages") : "cards");
