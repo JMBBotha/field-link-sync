@@ -2,6 +2,7 @@
  * V8 standard look building blocks (Johan 20 Oct 14:04: client-page look across the whole app).
  * Appearance only: no data, no behaviour. Mirrors AdminCustomerDetailPage / LeadPageC.
  */
+import type React from "react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -87,4 +88,18 @@ export function SectionTitle({ children, className }: { children: ReactNode; cla
 
 export function EmptyState({ children }: { children: ReactNode }) {
   return <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{children}</div>;
+}
+
+/** The ONE primary next-step CTA per page (Johan 20 Oct 14:25): brand orange; red when overdue/urgent. Other buttons stay neutral. */
+export const V8_CTA_CLASS = "bg-[#F7941D] hover:bg-[#e08310] text-white";
+export const V8_CTA_URGENT_CLASS = "bg-[#DC2626] hover:bg-[#b91c1c] text-white";
+export const nextStepClass = (tone: "default" | "urgent" = "default") => (tone === "urgent" ? V8_CTA_URGENT_CLASS : V8_CTA_CLASS);
+
+export function NextStepButton({ tone = "default", className, children, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: "default" | "urgent" }) {
+  return (
+    <button type="button" data-testid="v8-next-step" data-tone={tone} {...rest}
+      className={cn("inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold shadow-sm transition-colors disabled:opacity-50", nextStepClass(tone), className)}>
+      {children}
+    </button>
+  );
 }

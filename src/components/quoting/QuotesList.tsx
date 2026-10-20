@@ -352,9 +352,9 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                                 { label: "Open client", hidden: !quote.customer_id, onSelect: () => navigate(`/admin/customers/${quote.customer_id}`) },
                               ]; };
   return (
-    <div className="min-h-full bg-background">
+    <div className="v8-scope min-h-full bg-background">
       {/* Page header */}
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 v8-navy mx-3 mt-3 px-4 py-4 sm:mx-6 sm:px-6">
         <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Estimates and Proposals
@@ -371,7 +371,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="brand">
+            <Button variant="cta">
               <Plus className="mr-2 h-4 w-4" /> Create New
               <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
@@ -599,7 +599,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                           const gap = r ? costedLabel(r) : null;
                           const none = !r || r.lines_costed === 0;
                           const cell = "whitespace-nowrap text-right text-sm tabular-nums";
-                          const warn = <span className="text-xs font-medium text-amber-600" data-testid="costed-label">{gap}</span>;
+                          const warn = <span className="text-xs font-medium text-amber-600 dark:text-amber-300" data-testid="costed-label">{gap}</span>;
                           return (
                             <>
                               {profit.full && <TableCell className={cell}>{r?.sell_ex_vat != null ? formatZAR(r.sell_ex_vat) : "—"}</TableCell>}

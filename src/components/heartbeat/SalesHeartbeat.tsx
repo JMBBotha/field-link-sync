@@ -1,4 +1,6 @@
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { nextStepClass } from "@/components/v8/ui/V8Blocks";
 import { ChevronRight } from "lucide-react";
 import { useSalesHeartbeat } from "@/hooks/useSalesHeartbeat";
 import { ecgPoints, fmtAge, type HbItem, type HbStage } from "@/lib/salesHeartbeat";
@@ -42,7 +44,7 @@ export default function SalesHeartbeat() {
           {hb.next ? (<>
             <div className="mt-1 text-[20px] font-semibold">{hb.next.title}</div>
             <div className="mb-3 text-[13px] text-muted-foreground">{hb.next.sub} · {hb.next.stalled ? `overdue ${fmtAge(hb.next.overBy)}` : `${hb.next.age} in stage`}{hb.next.value ? ` · ${fmtRandShort(hb.next.value)}` : ""}</div>
-            <button onClick={() => navigate(hb.next!.next.to)} className="rounded-xl bg-[#1590D6] px-5 py-3 text-[16px] font-semibold text-white">{hb.next.next.label}</button>
+            <button onClick={() => navigate(hb.next!.next.to)} data-testid="v8-next-step" data-tone={hb.next.stalled ? "urgent" : "default"} className={cn("rounded-xl px-5 py-3 text-[16px] font-semibold", nextStepClass(hb.next.stalled ? "urgent" : "default"))}>{hb.next.next.label}</button>
           </>) : <div className="mt-1 text-[16px]">All caught up. Nothing waiting on sales.</div>}
           {hb.then.length > 0 && <><h3 className="mt-5 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Then</h3>{hb.then.map((i) => <Row key={i.id} i={i} onClick={() => navigate(i.next.to)} />)}</>}
         </section>

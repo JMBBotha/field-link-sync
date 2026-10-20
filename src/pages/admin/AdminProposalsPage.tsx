@@ -34,8 +34,8 @@ const AdminProposalsPage = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="v8-scope max-w-4xl mx-auto p-4 space-y-4">
+      <div className="v8-navy flex items-center justify-between">
         <h2 className="text-xl font-bold flex items-center gap-2">
           <FileText className="h-5 w-5" /> Templates
         </h2>
@@ -80,7 +80,7 @@ const AdminProposalsPage = () => {
                             <span className="font-mono text-sm font-bold">{quote.quote_number}</span>
                             <QuoteStatusBadge status={quote.status} />
                             {hasSections && (
-                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                              <Badge variant="outline" className="bg-green-50 dark:bg-green-500/15 text-green-700 dark:text-green-300 border-green-200 dark:border-green-400/30 text-xs">
                                 Proposal
                               </Badge>
                             )}

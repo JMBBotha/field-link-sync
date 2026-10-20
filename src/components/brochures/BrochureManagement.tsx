@@ -38,9 +38,9 @@ const CATEGORIES = [
 ];
 
 const brandColor: Record<string, string> = {
-  Samsung: "bg-blue-100 text-blue-700 border-blue-300",
-  Alliance: "bg-green-100 text-green-700 border-green-300",
-  Comfee: "bg-orange-100 text-orange-700 border-orange-300",
+  Samsung: "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-400/30",
+  Alliance: "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-300 border-green-300 dark:border-green-400/30",
+  Comfee: "bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-400/30",
 };
 
 const renderPdfToImages = async (arrayBuffer: ArrayBuffer): Promise<string[]> => {

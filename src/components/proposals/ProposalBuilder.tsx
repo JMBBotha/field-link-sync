@@ -598,7 +598,7 @@ const ProposalBuilder = ({
             Save Draft
           </Button>
           {isEditing && (
-            <Button variant="outline" size="sm" onClick={convertToInvoice} disabled={loading} className="border-amber-500 text-amber-700 hover:bg-amber-50">
+            <Button variant="outline" size="sm" onClick={convertToInvoice} disabled={loading} className="border-amber-500 text-amber-700 dark:text-amber-300 hover:bg-amber-50">
               <ArrowRightLeft className="h-3.5 w-3.5 mr-1.5" />
               Convert to Invoice
             </Button>

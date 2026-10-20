@@ -272,7 +272,7 @@ export default function JobsCalmView(p: Props) {
           ))}
         </div>
         <span className="hidden text-[13px] text-white/75 sm:inline">{p.dateLabel}</span>
-        <button onClick={p.onNew} className="ml-auto rounded-full bg-white px-4 py-1.5 text-[13px] font-semibold text-[#0F2A44] shadow-sm hover:bg-white/90">+ New</button>
+        <button onClick={p.onNew} data-testid="v8-next-step" className="ml-auto rounded-full bg-[#F7941D] px-4 py-1.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#e08310]">+ New</button>
       </div>
       {p.tab !== "pipeline" && chips.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-2" data-calm-chips>

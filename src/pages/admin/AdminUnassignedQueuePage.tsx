@@ -1,4 +1,4 @@
-import { PageHeaderCard } from "@/components/v8/ui/V8Blocks";
+import { PageHeaderCard, nextStepClass } from "@/components/v8/ui/V8Blocks";
 import { useEffect } from "react";
 import CallSummary from "@/components/leads/CallSummary";
 import { useNavigate } from "react-router-dom";
@@ -104,7 +104,7 @@ export default function AdminUnassignedQueuePage() {
       )}
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {data.map((row) => (
+        {data.map((row, idx) => (
           <Card key={row.id} className="rounded-2xl bg-card shadow-sm">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-2">
@@ -131,7 +131,7 @@ export default function AdminUnassignedQueuePage() {
                 {row.escalated ? "Escalated to ops" : dueLabel(row.escalate_at)}
               </p>
               <div className="flex gap-2 pt-1">
-                <Button size="sm" onClick={() => navigate(`/admin/map?lead=${row.lead_id}`)}>
+                <Button size="sm" variant={idx === 0 ? "default" : "outline"} className={idx === 0 ? nextStepClass(row.priority === "emergency" || row.escalated ? "urgent" : "default") : undefined} onClick={() => navigate(`/admin/map?lead=${row.lead_id}`)}>
                   Open lead
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => resolve(row.id)}>

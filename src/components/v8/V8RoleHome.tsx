@@ -78,7 +78,7 @@ export default function V8RoleHome({ role }: { role: V8Role }) {
           {s.next ? (<>
             <div className="mt-2 text-lg font-extrabold">{s.next.title}</div>
             <div className="text-sm text-muted-foreground">{s.next.sub}</div>
-            <Button className="mt-3 w-full" onClick={() => navigate(s.next!.to)}>{s.next.btn === "Book" ? "Open and book" : "Open quote"}</Button>
+            <Button variant="outline" className="mt-3 w-full" onClick={() => navigate(s.next!.to)}>{s.next.btn === "Book" ? "Open and book" : "Open quote"}</Button>
           </>) : <div className="mt-2 text-sm text-muted-foreground">Nothing waiting. Nice.</div>}
         </div>
       </div>
