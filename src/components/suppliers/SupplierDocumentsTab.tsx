@@ -74,6 +74,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
   const importFileRef = useRef<File | null>(null);
   const storedUploadIdRef = useRef<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
+  const [askPriceListDoc, setAskPriceListDoc] = useState<SupplierDocument | null>(null);
   const [processingPriceList, setProcessingPriceList] = useState(false);
   const [priceListProgress, setPriceListProgress] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -542,6 +544,11 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
 
       queryClient.invalidateQueries({ queryKey: ["supplier-documents", supplierId] });
       toast({ title: "Document uploaded" });
+      const lower = file.name.toLowerCase();
+      if (lower.endsWith(".pdf") && /price|list/.test(lower)) {
+        setAskPriceListDoc({ id: "new", supplier_id: supplierId, file_name: file.name, storage_path: path, file_type: file.type, created_at: new Date().toISOString() } as any);
+        return;
+      }
 
       if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
         try {
@@ -780,6 +787,27 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
     priceRows.push({ brand, category: "aircon", book: null, products: 0 });
   }
 
+  /** Turn an already-uploaded "Other documents" PDF into a price list (no re-upload). */
+  const isPdfDoc = (d: { file_name: string; file_type?: string | null }) =>
+    (d.file_type || "").includes("pdf") || d.file_name.toLowerCase().endsWith(".pdf");
+  const startDocAsPriceList = async (doc: SupplierDocument) => {
+    setLoadingDocId(doc.id);
+    try {
+      const { data, error } = await supabase.storage.from("supplier-documents").download(doc.storage_path);
+      if (error || !data) throw error || new Error("File not found");
+      const file = new File([data], doc.file_name, { type: "application/pdf" });
+      setUploadBrand(guessBrandFromFileName(doc.file_name, supplierBrands) || "");
+      setUploadCategory("aircon");
+      setShowNewBrand(false);
+      setPendingReplaceFile(file);
+      setShowReplaceConfirm(true);
+    } catch (err: any) {
+      toast({ title: "Could not open the file", description: err?.message, variant: "destructive" });
+    } finally {
+      setLoadingDocId(null);
+    }
+  };
+
   const openAddPriceList = (brand: string, category?: string | null) => {
     setUploadBrand(brand);
     setUploadCategory(category || "aircon");
@@ -809,6 +837,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
             <p className="text-base font-semibold">Price lists</p>
             <span className="text-xs text-muted-foreground">{priceRows.length} brand{priceRows.length === 1 ? "" : "s"}</span>
           </div>
+          <p className="text-xs text-muted-foreground mb-1">Upload supplier price lists here. They get read into the quote catalogue.</p>
           {processingPriceList && (
             <p className="text-xs text-muted-foreground flex items-center gap-1.5 py-1"><Loader2 className="h-3 w-3 animate-spin" />{priceListProgress || "Processing..."}</p>
           )}
@@ -850,6 +879,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
           <button type="button" onClick={() => openAddPriceList("", "aircon")} disabled={processingPriceList}
             className="mt-2 w-full rounded-md border border-dashed border-primary text-primary text-sm font-semibold py-2 hover:bg-primary/5 disabled:opacity-50">
             + Add price list
+            <span className="block text-[11px] font-normal text-muted-foreground">PDF, pick brand, we import the prices</span>
           </button>
         </CardContent>
       </Card>
@@ -940,6 +970,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
           </Button>
         </div>
       </div>
+      <p className="text-xs text-muted-foreground">For brochures, certificates and spec sheets. Not imported. Price lists go above.</p>
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : documents.length === 0 ? (
@@ -958,6 +989,14 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
                     </p>
                   </div>
                 </div>
+                <div className="flex items-center gap-1 shrink-0">
+                {isPdfDoc(doc) && (
+                  <Button size="sm" variant="outline" className="text-xs h-8" disabled={loadingDocId === doc.id || processingPriceList}
+                    onClick={() => startDocAsPriceList(doc)} data-testid="use-as-price-list">
+                    {loadingDocId === doc.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
+                    Use as price list
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -966,6 +1005,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
                 >
                   <Trash2 className="h-3 w-3" />
                 </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -995,6 +1035,23 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
           }}
         />
       )}
+
+      <AlertDialog open={!!askPriceListDoc} onOpenChange={(o) => !o && setAskPriceListDoc(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Is this a price list?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{askPriceListDoc?.file_name}" looks like a price list. Pick its brand and category to add it under Price lists.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, keep as document</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { const d = askPriceListDoc; setAskPriceListDoc(null); if (d) startDocAsPriceList(d); }}>
+              Yes, use as price list
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
