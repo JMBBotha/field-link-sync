@@ -18,6 +18,7 @@ import ImportPreviewModal, { type ImportReviewRecord } from "./ImportPreviewModa
 import type { ExtractedSupplierInfo } from "@/services/supplierInfoExtractor";
 import type { ImportPreview, ParsedProduct } from "@/services/productImportParser";
 import { cleanImportForSupplier, logImportAction } from "@/services/cleanImportPipeline";
+import { normalizeBrand, guessBrandFromFileName, KNOWN_BRANDS } from "@/lib/brandNormalize";
 import { buildProductDiff, applyProductDiff, type DiffImportRow } from "@/services/diffImportPipeline";
 
 interface SupplierDocument {
@@ -52,6 +53,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const [deletingCatalog, setDeletingCatalog] = useState(false);
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
   const [pendingReplaceFile, setPendingReplaceFile] = useState<File | null>(null);
+  const [uploadBrand, setUploadBrand] = useState("");
+  const [uploadCategory, setUploadCategory] = useState("aircon");
   const [showDeleteProducts, setShowDeleteProducts] = useState(false);
   const [deletingProducts, setDeletingProducts] = useState(false);
   const [productDeleteMode, setProductDeleteMode] = useState<"archive" | "delete">("archive");
@@ -128,6 +131,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
     queryClient.invalidateQueries({ queryKey: ["admin-suppliers-list"] });
     queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
+    queryClient.invalidateQueries({ queryKey: ["supplier-pdf-brands", supplierId] });
+    queryClient.invalidateQueries({ queryKey: ["pdf-uploads-manager"] });
     queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
     queryClient.invalidateQueries({ queryKey: ["supplier-catalog-pages", supplierId] });
     queryClient.invalidateQueries({ queryKey: ["import-audit-log", supplierId] });
@@ -244,6 +249,16 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     return result;
   };
 
+  /** Brands already on this supplier's price lists (for the brand picker). */
+  const { data: supplierBrands = [] } = useQuery({
+    queryKey: ["supplier-pdf-brands", supplierId],
+    enabled: !!supplierId,
+    queryFn: async () => {
+      const { data } = await (supabase.from("pdf_uploads") as any).select("brand").eq("supplier_id", supplierId);
+      return Array.from(new Set(((data || []) as any[]).map((r) => r.brand).filter(Boolean))) as string[];
+    },
+  });
+
   /** Handle replace confirmation */
   const handlePriceListInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -253,13 +268,12 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       if (priceListInputRef.current) priceListInputRef.current.value = "";
       return;
     }
-    if (catalogPageCount > 0) {
-      setPendingReplaceFile(file);
-      setShowReplaceConfirm(true);
-    } else {
-      processUpload(file);
-    }
-  }, [catalogPageCount, toast]);
+    // Always ask which brand (and category) this list is for, pre-filled from the file name.
+    setUploadBrand(guessBrandFromFileName(file.name, supplierBrands) || (supplierBrands.length === 1 ? supplierBrands[0] : ""));
+    setUploadCategory("aircon");
+    setPendingReplaceFile(file);
+    setShowReplaceConfirm(true);
+  }, [toast, supplierBrands]);
 
   /** Process a PDF into page images for the Visual Catalog.
    * Only replaces this supplier's OLD PAGE IMAGES — this flow is purely for
@@ -267,7 +281,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
    * to call cleanImportForSupplier() (full hard-delete of the product catalog)
    * even though it doesn't import any products; see
    * docs/pricing-and-import-architecture-findings.md. */
-  const processUpload = useCallback(async (file: File) => {
+  const processUpload = useCallback(async (file: File, brandIn: string, category: string) => {
+    const brand = normalizeBrand(brandIn);
     setProcessingPriceList(true);
     setPriceListProgress("Removing old pages...");
 
@@ -287,10 +302,13 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       }
       const aliasArr = Array.from(aliases);
 
-      const { data: oldPages } = await (supabase.from("supplier_pdf_pages" as any) as any)
+      // Brand-scoped: only this supplier's pages for the SAME brand are replaced
+      // (e.g. a Comfee list never touches the Samsung pages).
+      let oldPagesQ = (supabase.from("supplier_pdf_pages" as any) as any)
         .select("page_image_url")
-        .in("supplier_id", aliasArr)
-        .or("brand.is.null,brand.neq.In-house"); // keep the One Stop Shop in-house extras book
+        .in("supplier_id", aliasArr);
+      oldPagesQ = brand ? oldPagesQ.eq("brand", brand) : oldPagesQ.is("brand", null);
+      const { data: oldPages } = await oldPagesQ;
       if (oldPages && oldPages.length > 0) {
         const imagePaths = oldPages
           .map((p: any) => {
@@ -303,7 +321,11 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           await supabase.storage.from("supplier-pdf-pages").remove(imagePaths);
         }
       }
-      await (supabase.from("supplier_pdf_pages" as any) as any).delete().in("supplier_id", aliasArr).or("brand.is.null,brand.neq.In-house");
+      {
+        let delQ = (supabase.from("supplier_pdf_pages" as any) as any).delete().in("supplier_id", aliasArr);
+        delQ = brand ? delQ.eq("brand", brand) : delQ.is("brand", null);
+        await delQ;
+      }
 
       // ── Process the new PDF ──
       setPriceListProgress("Loading PDF...");
@@ -326,6 +348,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           page_count: totalPages,
           status: "uploaded",
           is_active: false,
+          brand,
+          category: category || "aircon",
         })
         .select("id")
         .single();
@@ -371,6 +395,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           supplier_id: supplierId,
           pdf_upload_id: newUploadId,
           pdf_filename: file.name,
+          brand,
           page_number: pageNum,
           page_image_url: urlData.publicUrl,
         });
@@ -400,11 +425,16 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       // ── Cleanup OTHER uploads of this supplier, then activate the new one ──
       // Order matters: deactivate/archive old books first (never the new id),
       // then flip the new book active so it can never end up archived.
-      await (supabase.from("pdf_uploads") as any)
-        .update({ is_active: false, status: "archived" })
-        .eq("supplier_id", supplierId)
-        .neq("id", newUploadId)
-        .or("price_list_type.is.null,price_list_type.neq.in_house"); // in-house extras book stays live
+      {
+        // Same supplier + same brand only; other brands' lists stay active.
+        let archQ = (supabase.from("pdf_uploads") as any)
+          .update({ is_active: false, status: "archived" })
+          .eq("supplier_id", supplierId)
+          .neq("id", newUploadId)
+          .or("price_list_type.is.null,price_list_type.neq.in_house"); // in-house extras book stays live
+        archQ = brand ? archQ.eq("brand", brand) : archQ.is("brand", null);
+        await archQ;
+      }
       await (supabase.from("pdf_uploads") as any)
         .update({ is_active: true, status: "parsed", activated_at: new Date().toISOString() })
         .eq("id", newUploadId);
@@ -1010,19 +1040,53 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Replace catalog confirmation */}
+      {/* Upload price list: brand + category (brand-scoped replace) */}
       <AlertDialog open={showReplaceConfirm} onOpenChange={(o) => { if (!o) { setShowReplaceConfirm(false); setPendingReplaceFile(null); if (priceListInputRef.current) priceListInputRef.current.value = ""; } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Replace PDF Catalog?</AlertDialogTitle>
+            <AlertDialogTitle>Upload price list</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the {catalogPageCount} existing page images and replace them with the new PDF. Your product catalog (prices, stock, etc.) is not affected.
+              {pendingReplaceFile?.name}. Pick the brand this list is for. Only older pages of the same brand for this supplier are replaced; other brands stay as they are. Your product prices are not affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-sm font-medium" htmlFor="pl-brand">Brand</label>
+              <input
+                id="pl-brand"
+                list="pl-brand-options"
+                value={uploadBrand}
+                onChange={(e) => setUploadBrand(e.target.value)}
+                placeholder="Choose or type a new brand"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              <datalist id="pl-brand-options">
+                {Array.from(new Set([...supplierBrands, ...KNOWN_BRANDS])).map((b) => <option key={b} value={b} />)}
+              </datalist>
+              <p className="text-xs text-muted-foreground">Pick from the list or type a new brand name.</p>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium" htmlFor="pl-category">Category</label>
+              <select
+                id="pl-category"
+                value={uploadCategory}
+                onChange={(e) => setUploadCategory(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="aircon">Aircon</option>
+                <option value="heat_pump">Heat pump</option>
+                <option value="solar">Solar</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setShowReplaceConfirm(false); if (pendingReplaceFile) { processUpload(pendingReplaceFile); setPendingReplaceFile(null); } }}>
-              Replace Pages
+            <AlertDialogAction
+              disabled={!uploadBrand.trim()}
+              onClick={() => { setShowReplaceConfirm(false); if (pendingReplaceFile) { processUpload(pendingReplaceFile, uploadBrand, uploadCategory); setPendingReplaceFile(null); } }}
+            >
+              Upload
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

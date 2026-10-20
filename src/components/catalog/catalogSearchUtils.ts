@@ -32,23 +32,37 @@ export interface SearchableProduct {
 
 // ── Derive helpers ──────────────────────────────────────
 export function deriveSpeedType(p: SearchableProduct): string {
-  const text = `${p.category} ${p.description} ${p.short_name || ""}`.toLowerCase();
+  // Structured field first (supplier_products.inverter), then text.
+  const inv = (p as { inverter?: boolean | null }).inverter;
+  if (inv === true) return "Inverter";
+  if (inv === false) return "Fixed Speed";
+  const text = ` ${p.category} ${p.description} ${p.short_name || ""} `.toLowerCase();
+  // Check "non-inverter" BEFORE "inverter" (it contains the word).
+  if (/non[\s-]?inv/.test(text) || text.includes("fixed speed") || text.includes(" fs ")) return "Fixed Speed";
   if (text.includes("inverter") || text.includes("inv ")) return "Inverter";
-  if (text.includes("fixed speed") || text.includes("fs ")) return "Fixed Speed";
   return "";
 }
 
+const UNIT_TYPE_CANON: [RegExp, string][] = [
+  [/large ducted/, "Large Ducted"],
+  [/mid\s*-?wall|wall\s*-?mount|high\s*wall|wall\s*split/, "Midwall"],
+  [/cassette/, "Cassette"],
+  [/under\s*-?ceiling|ceiling\s*susp|ceiling\s*floor/, "Under Ceiling"],
+  [/hide\s*-?away|concealed|ducted/, "Ducted / Hideaway"],
+  [/floor\s*standing/, "Floor Standing"],
+  [/window/, "Window"],
+  [/portable/, "Portable"],
+  [/roof\s*-?top|package unit|packaged/, "Rooftop Package"],
+  [/chiller/, "Air Cooled Chiller"],
+  [/accessor/, "Accessories"],
+];
+
 export function deriveUnitType(p: SearchableProduct): string {
-  const text = `${p.category} ${p.description} ${p.short_name || ""}`.toLowerCase();
-  const map: [string, string][] = [
-    ["midwall", "Midwall"], ["cassette", "Cassette"], ["ducted", "Ducted"],
-    ["under ceiling", "Under Ceiling"], ["floor standing", "Floor Standing"],
-    ["window wall", "Window Wall"], ["portable", "Portable"],
-    ["rooftop", "Rooftop Package"], ["chiller", "Air Cooled Chiller"],
-    ["accessor", "Accessories"], ["large ducted", "Large Ducted"],
-  ];
-  for (const [kw, label] of map) {
-    if (text.includes(kw)) return label;
+  // Structured field first (supplier_products.unit_type), then text.
+  const ut = (p as { unit_type?: string | null }).unit_type;
+  const text = `${ut || ""} ${p.category} ${(p as { subcategory?: string | null }).subcategory || ""} ${p.description} ${p.short_name || ""}`.toLowerCase();
+  for (const [re, label] of UNIT_TYPE_CANON) {
+    if (re.test(text)) return label;
   }
   return "";
 }
@@ -216,13 +230,14 @@ const PHASE_PREPROCESS: { pattern: RegExp; value: string }[] = [
 const UNIT_TYPE_PREPROCESS: { pattern: RegExp; value: string }[] = [
   { pattern: /\bunder\s+ceiling\b/gi, value: "Under Ceiling" },
   { pattern: /\bfloor\s+standing\b/gi, value: "Floor Standing" },
-  { pattern: /\bwindow\s+wall\b/gi, value: "Window Wall" },
-  { pattern: /\brooftop\s+package\b/gi, value: "Rooftop Package" },
+  { pattern: /\bwindow(?:\s+wall)?\b/gi, value: "Window" },
+  { pattern: /\broof\s*-?top(?:\s+package)?\b/gi, value: "Rooftop Package" },
   { pattern: /\bair\s+cooled\s+chiller\b/gi, value: "Air Cooled Chiller" },
   { pattern: /\blarge\s+ducted\b/gi, value: "Large Ducted" },
   { pattern: /\bcass?ett?e\b/gi, value: "Cassette" },
   { pattern: /\bmidwall\b/gi, value: "Midwall" },
-  { pattern: /\bducted\b/gi, value: "Ducted" },
+  { pattern: /\b(?:ducted|hide\s*-?away|concealed)\b/gi, value: "Ducted / Hideaway" },
+  { pattern: /\b(?:wall\s*-?mount(?:ed)?|high\s*wall)\b/gi, value: "Midwall" },
   { pattern: /\bportable\b/gi, value: "Portable" },
   { pattern: /\bchiller\b/gi, value: "Air Cooled Chiller" },
   { pattern: /\bbreezeless\b/gi, value: "BREEZELESS E R32 INVERTER" },

@@ -7319,6 +7319,7 @@ export type Database = {
         Row: {
           activated_at: string | null
           brand: string | null
+          category: string
           created_at: string | null
           file_name: string
           file_path: string | null
@@ -7338,6 +7339,7 @@ export type Database = {
         Insert: {
           activated_at?: string | null
           brand?: string | null
+          category?: string
           created_at?: string | null
           file_name: string
           file_path?: string | null
@@ -7357,6 +7359,7 @@ export type Database = {
         Update: {
           activated_at?: string | null
           brand?: string | null
+          category?: string
           created_at?: string | null
           file_name?: string
           file_path?: string | null

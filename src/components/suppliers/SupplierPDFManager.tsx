@@ -42,9 +42,13 @@ interface PDFUploadRow {
   /** Current active book for this supplier+brand. Synthetic page-group rows are always active. */
   is_active?: boolean | null;
   brand?: string | null;
+  /** Price-list category: aircon | heat_pump | solar | other. */
+  category?: string | null;
   /** False for synthetic rows built from supplier_pdf_pages (no pdf_uploads row to flag). */
   can_activate?: boolean;
 }
+
+const CATEGORY_LABELS: Record<string, string> = { aircon: "Aircon", heat_pump: "Heat pump", solar: "Solar", other: "Other" };
 
 /** Row returned by the activate_pdf_book_gate RPC (pre-activation math check). */
 interface GateRow {
@@ -213,6 +217,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   const [searchTerm, setSearchTerm] = useState("");
   const [supplierFilter, setSupplierFilter] = useState(preFilterSupplierId || "all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [brandFilter, setBrandFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<PDFUploadRow | null>(null);
   const [deleteProductCount, setDeleteProductCount] = useState(0);
@@ -399,7 +404,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
     queryFn: async () => {
       // Source 1: pdf_uploads table (legacy)
       const { data: uploadsData } = await (supabase.from("pdf_uploads") as any)
-        .select(`id, file_name, file_path, storage_path, file_url, created_at, status, supplier_id, is_active, brand, suppliers ( id, name )`)
+        .select(`id, file_name, file_path, storage_path, file_url, created_at, status, supplier_id, is_active, brand, category, suppliers ( id, name )`)
         .order("created_at", { ascending: false });
       const uploads = ((uploadsData || []) as PDFUploadRow[]).map((u) => ({
         ...u,
@@ -524,10 +529,16 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
     return pdfUploads.filter((pdf) => {
       if (supplierFilter !== "all" && pdf.supplier_id !== supplierFilter) return false;
       if (statusFilter !== "all" && (pdf.status || "pending") !== statusFilter) return false;
+      if (brandFilter !== "all" && (pdf.brand || "__none") !== brandFilter) return false;
       if (searchTerm && !(pdf.file_name || "").toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
     });
-  }, [pdfUploads, supplierFilter, statusFilter, searchTerm]);
+  }, [pdfUploads, supplierFilter, statusFilter, brandFilter, searchTerm]);
+
+  const brandOptions = useMemo(
+    () => Array.from(new Set(pdfUploads.map((p) => p.brand).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b)),
+    [pdfUploads],
+  );
 
   // Stats
   const totalProducts = Object.values(productCounts).reduce((a, b) => a + b, 0);
@@ -783,6 +794,18 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
             <SelectItem value="failed">Failed</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={brandFilter} onValueChange={setBrandFilter}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="All Brands" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Brands</SelectItem>
+            {brandOptions.map((b) => (
+              <SelectItem key={b} value={b}>{b}</SelectItem>
+            ))}
+            <SelectItem value="__none">No brand</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Bulk action bar */}
@@ -858,6 +881,12 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span className="truncate max-w-[200px]">{pdf.file_name || "Untitled"}</span>
+                      {pdf.brand && (
+                        <Badge variant="outline" className="text-[10px] shrink-0 border-primary/40 text-primary">{pdf.brand}</Badge>
+                      )}
+                      {pdf.category && pdf.category !== "aircon" && (
+                        <Badge variant="secondary" className="text-[10px] shrink-0">{CATEGORY_LABELS[pdf.category] || pdf.category}</Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
