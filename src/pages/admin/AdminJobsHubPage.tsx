@@ -63,8 +63,8 @@ export default function AdminJobsHubPage() {
   const pipe = usePipelineData();
   const [showCreate, setShowCreate] = useState(false);
   if (loading || repLoading) return null;
-  // Calm Jobs page (Johan 20 Oct): preview only, OFF by default. ?jobs=calm turns it on for this browser, ?jobs=classic back off.
-  if (!isSalesRep && calmEnabled(window.location.search, typeof localStorage === "undefined" ? null : localStorage)) return <JobsCalm />;
+  // Calm Jobs page (Johan 20 Oct 12:08): LIVE for everyone. ?jobs=classic opts this browser back to the old page, ?jobs=calm returns.
+  if (calmEnabled(window.location.search, typeof localStorage === "undefined" ? null : localStorage)) return <JobsCalm salesOnly={isSalesRep} />;
 
   const defTab: Tab = isSalesRep || isAdmin || !isDispatcher ? "pipeline" : "dispatch";
   const defViewFor = (t: Tab): View => (t === "pipeline" ? (isSalesRep ? "cards" : "stages") : "cards");

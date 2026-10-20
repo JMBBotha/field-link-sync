@@ -9,7 +9,7 @@ import { type Person } from "@/lib/jobsBoard";
 import { jobToCard, visitToCard, visibleVisitEntries } from "@/lib/cardModel";
 import { loadEntries, todayInJohannesburg } from "@/lib/todaysJobs";
 import { activeAssignee, type DJob } from "@/lib/dispatchCards";
-import { blockKind, jhbMinutes, jhbIso, type ChipKey } from "@/lib/jobsCalm";
+import { blockKind, jhbMinutes, jhbIso, monthGrid, type ChipKey } from "@/lib/jobsCalm";
 import AssignTechDialog from "@/components/jobs/AssignTechDialog";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import V8PipelineBoard from "@/components/v8/V8PipelineBoard";
@@ -23,7 +23,7 @@ const plusDay = (d: string, n: number) => todayInJohannesburg(new Date(new Date(
 const ageLabel = (iso?: string | null) => { if (!iso) return null; const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return m >= 1440 ? `${Math.floor(m / 1440)}d` : m >= 60 ? `${Math.floor(m / 60)}h` : `${Math.max(0, m)}m`; };
 
 /** Calm Jobs page (flag ?jobs=calm). Reuses the Dispatch · Cards queries and the existing assign / create / open flows. */
-export default function JobsCalm({ initialTab = "today" }: { initialTab?: CalmTab }) {
+export default function JobsCalm({ initialTab = "today", salesOnly = false }: { initialTab?: CalmTab; salesOnly?: boolean }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -34,8 +34,10 @@ export default function JobsCalm({ initialTab = "today" }: { initialTab?: CalmTa
   const [assignJobId, setAssignJobId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const today = todayInJohannesburg();
-  const from = tab === "week" ? format(startOfWeek(new Date(`${today}T12:00:00+02:00`), { weekStartsOn: 1 }), "yyyy-MM-dd") : today;
-  const to = plusDay(from, tab === "week" ? 7 : 1);
+  const [sel, setSel] = useState(today);
+  const cells = monthGrid(sel);
+  const from = tab === "week" ? format(startOfWeek(new Date(`${sel}T12:00:00+02:00`), { weekStartsOn: 1 }), "yyyy-MM-dd") : tab === "month" ? cells[0].day : sel;
+  const to = tab === "month" ? plusDay(cells[cells.length - 1].day, 1) : plusDay(from, tab === "week" ? 7 : 1);
 
   const { data: jobs = [] } = useQuery({
     queryKey: ["jobs-calm", from, to], refetchInterval: 30_000, enabled: tab !== "pipeline",
@@ -133,30 +135,33 @@ export default function JobsCalm({ initialTab = "today" }: { initialTab?: CalmTa
     const c = jobToCard(j);
     return { id: j.id, title: j.customers?.name || j.title || "Job", sub: [c.place, j.title].filter(Boolean).join(" · "), age: ageLabel(j.created_at), lane: c.lane === "sales" ? "sales" : "service" };
   });
-  const counts = { leadsNotContacted: rail.filter((l) => !l.first_contact_at).length, late: lateBlocks.length, unassigned: openJobs.length };
+  const counts = { leadsNotContacted: rail.filter((l) => !l.first_contact_at).length, late: salesOnly ? lateBlocks.filter((b) => b.block === "sales" || model.people.find((x) => x.id === b.personId)?.lane === "sales").length : lateBlocks.length, unassigned: salesOnly ? 0 : openJobs.length };
 
   let people = model.people; let blocks = model.blocks;
+  // Sales reps (dispatch lockdown 9 Oct): only the sales lane, no tech schedules, no unassigned jobs, no drag.
+  if (salesOnly) { people = people.filter((p) => p.lane === "sales"); blocks = blocks.filter((b) => people.some((p) => p.id === b.personId)); }
   if (who === "sales") people = people.filter((p) => p.lane === "sales");
   else if (who === "tech") people = people.filter((p) => p.lane !== "sales");
   else if (who !== "all") people = people.filter((p) => p.id === who);
   if (chip === "late") { blocks = lateBlocks; people = people.filter((p) => blocks.some((b) => b.personId === p.id)); }
-  if (tab === "today") blocks = blocks.filter((b) => b.day === today);
+  if (tab === "today") blocks = blocks.filter((b) => b.day === sel);
   const weekDays = Array.from({ length: 7 }, (_, i) => { const d = plusDay(from, i); return { day: d, label: format(new Date(`${d}T12:00:00+02:00`), "EEE d") }; });
   const leadList = (chip === "leads" ? rail.filter((l) => !l.first_contact_at) : rail).map(toLead);
 
   return (
     <>
-      <JobsCalmView tab={tab} onTab={setTab} dateLabel={format(new Date(`${today}T12:00:00+02:00`), "EEE d MMM")} onNew={() => setShowCreate(true)}
+      <JobsCalmView tab={tab} onTab={setTab} dateLabel={format(new Date(`${sel}T12:00:00+02:00`), tab === "month" ? "MMMM yyyy" : "EEE d MMM")} onNew={() => setShowCreate(true)}
         leads={showAll || chip === "leads" ? leadList : leadList.slice(0, 3)} leadsTotal={leadList.length} showAllLeads={showAll} onShowAll={() => setShowAll(true)}
-        people={people} blocks={blocks} unassigned={unassigned} weekDays={weekDays}
+        people={people} blocks={blocks} unassigned={salesOnly ? [] : unassigned}
+        monthCells={cells} todayDay={today} onPickDay={(d) => { setSel(d); setTab("today"); }} weekDays={weekDays}
         everyone={who} onEveryone={setWho}
-        everyoneOptions={[{ value: "all", label: "Everyone ▾" }, { value: "sales", label: "Sales" }, { value: "tech", label: "Technicians" }, ...model.people.map((p) => ({ value: p.id, label: p.name }))]}
+        everyoneOptions={[{ value: "all", label: "Everyone ▾" }, { value: "sales", label: "Sales" }, { value: "tech", label: "Technicians" }, ...model.people.filter((p) => !salesOnly || p.lane === "sales").map((p) => ({ value: p.id, label: p.name }))]}
         chip={chip} onChip={setChip} counts={counts}
         onCallLead={() => {}} onAssignLead={(l) => navigate(`/admin/dispatch?lead=${l.id}`)} onOpenLead={(l) => navigate(`/admin/dispatch?lead=${l.id}`)}
         onAssignJob={setAssignJobId} onOpenJob={(id) => navigate(`/admin/jobs/${id}`)}
         onOpenBlock={(b) => b.kind === "job" ? navigate(`/admin/jobs/${b.id}`) : navigate(`/admin/dispatch?lead=${(booked.entries.find((e) => `v-${e.key}` === b.id)?.lead_id) || ""}`)}
-        onMoveBlock={(b, start) => { if (b.kind !== "job" || !b.draggable) return; const j = jobs.find((x) => x.id === b.id); move.mutate({ id: b.id, iso: jhbIso(b.day, start), prev: j?.scheduled_for || null }); }}
-        pipeline={<V8PipelineBoard />} nowMin={jhbMinutes(new Date().toISOString())} />
+        onMoveBlock={salesOnly ? undefined : (b, start) => { if (b.kind !== "job" || !b.draggable) return; const j = jobs.find((x) => x.id === b.id); move.mutate({ id: b.id, iso: jhbIso(b.day, start), prev: j?.scheduled_for || null }); }}
+        pipeline={<V8PipelineBoard />} nowMin={sel === today ? jhbMinutes(new Date().toISOString()) : null} />
       <AssignTechDialog jobId={assignJobId} onClose={() => { setAssignJobId(null); refresh(); }} />
       <CreateJobDialog open={showCreate} onOpenChange={setShowCreate} />
     </>

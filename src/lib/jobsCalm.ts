@@ -76,13 +76,26 @@ export function ageTone(createdAt: string | null | undefined, now = new Date()):
   return { mins, tone: mins < 15 ? "green" : mins < 60 ? "amber" : "red" };
 }
 
-/** Preview flag: ?jobs=calm turns it on (remembered), ?jobs=classic turns it off. OFF by default. */
-export const CALM_KEY = "fls.jobs.calm";
+/** Calm page is ON by default (live 20 Oct). ?jobs=classic opts this browser out (remembered), ?jobs=calm back in. */
+export const CALM_KEY = "fls.jobs.classic";
 export function calmEnabled(search: string, storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null): boolean {
   const q = new URLSearchParams(search).get("jobs");
   try {
-    if (q === "calm") { storage?.setItem(CALM_KEY, "1"); return true; }
-    if (q === "classic") { storage?.removeItem(CALM_KEY); return false; }
-    return storage?.getItem(CALM_KEY) === "1";
-  } catch { return q === "calm"; }
+    if (q === "classic") { storage?.setItem(CALM_KEY, "1"); return false; }
+    if (q === "calm") { storage?.removeItem(CALM_KEY); return true; }
+    return storage?.getItem(CALM_KEY) !== "1";
+  } catch { return q !== "classic"; }
+}
+
+/** Month grid (Mon–Sun weeks) covering the month of `day` (YYYY-MM-DD): whole weeks, 4–6 rows. */
+export function monthGrid(day: string): { day: string; inMonth: boolean }[] {
+  const [y, m] = day.split("-").map(Number);
+  const first = new Date(Date.UTC(y, m - 1, 1));
+  const lead = (first.getUTCDay() + 6) % 7;
+  const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const cells = Math.ceil((lead + days) / 7) * 7;
+  return Array.from({ length: cells }, (_, i) => {
+    const d = new Date(Date.UTC(y, m - 1, 1 - lead + i));
+    return { day: d.toISOString().slice(0, 10), inMonth: d.getUTCMonth() === m - 1 };
+  });
 }

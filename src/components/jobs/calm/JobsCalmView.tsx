@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { BLOCK_STYLE, DAY_START, DAY_END, blockPos, dayProgress, needsYou, ageTone, snapStart, type BlockKind, type ChipKey } from "@/lib/jobsCalm";
 
 /** Presentational only (no queries) so it can be rendered from sample data. Calm Jobs page, Johan 20 Oct. No WhatsApp. */
-export type CalmTab = "today" | "week" | "pipeline";
+export type CalmTab = "today" | "week" | "month" | "pipeline";
 export type CalmLead = { id: string; name: string; place?: string | null; phone?: string | null; lane: "sales" | "service"; createdAt: string | null; contacted: boolean; tag?: string | null };
 export type CalmBlock = {
   id: string; kind: "job" | "visit"; personId: string | null; day: string; start: number | null; dur: number;
@@ -22,6 +22,8 @@ type Props = {
   onAssignJob: (id: string) => void; onOpenJob: (id: string) => void; onOpenBlock: (b: CalmBlock) => void;
   onMoveBlock?: (b: CalmBlock, start: number) => void;
   pipeline?: ReactNode; now?: Date; nowMin?: number | null;
+  /** Month view: Mon–Sun grid cells; picking a day opens it in Today. */
+  monthCells?: { day: string; inMonth: boolean }[]; todayDay?: string; onPickDay?: (day: string) => void;
 };
 
 const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -86,6 +88,64 @@ function Block({ b, onOpen, onDrop, compact }: { b: CalmBlock; onOpen: () => voi
 
 export default function JobsCalmView(p: Props) {
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [phoneDay, setPhoneDay] = useState<string | null>(null);
+  const DOTC: Record<BlockKind, string> = { install: "bg-sky-400", service: "bg-orange-400", maintenance: "bg-emerald-400", sales: "bg-violet-400", done: "bg-slate-300", late: "bg-red-500" };
+  const shownIds = new Set(p.people.map((x) => x.id));
+  const dayBlocks = (d: string) => p.blocks.filter((b) => b.day === d && (!b.personId || shownIds.has(b.personId))).sort((a, b) => (a.start ?? 9999) - (b.start ?? 9999));
+  const cells = p.monthCells || [];
+  const month = (
+    <>
+      <div className="hidden min-w-0 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70 md:block" data-calm-month>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-slate-900">This month</h2>
+          <select value={p.everyone} onChange={(e) => p.onEveryone(e.target.value)} className="appearance-none rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-700" aria-label="Who">
+            {p.everyoneOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div className="grid grid-cols-7 text-center text-[12px] font-semibold text-slate-500">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => <div key={d} className="pb-2">{d}</div>)}</div>
+        <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl bg-slate-100">
+          {cells.map((c) => {
+            const bs = dayBlocks(c.day);
+            return (
+              <div key={c.day} className={cn("min-h-[104px] space-y-1 bg-white p-1.5", !c.inMonth && "bg-slate-50/70")} data-calm-month-day>
+                <button onClick={() => p.onPickDay?.(c.day)} className={cn("grid h-6 w-6 place-items-center rounded-full text-[12px] font-semibold",
+                  c.day === p.todayDay ? "bg-[#1AA7EC] text-white" : c.inMonth ? "text-slate-700 hover:bg-sky-50" : "text-slate-300")}>{Number(c.day.slice(8))}</button>
+                {bs.slice(0, 3).map((b) => (
+                  <button key={b.id} onClick={() => p.onOpenBlock(b)} className={cn("block w-full truncate rounded-md border px-1.5 py-0.5 text-left text-[11px]", BLOCK_STYLE[b.block])}>
+                    {b.start !== null && <span className="font-semibold">{hhmm(b.start)} </span>}{b.title}
+                  </button>
+                ))}
+                {bs.length > 3 && <button onClick={() => p.onPickDay?.(c.day)} className="text-[11px] font-semibold text-[#1590D6]">+{bs.length - 3} more</button>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="space-y-3 md:hidden" data-calm-month-phone>
+        <div className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/70">
+          <div className="grid grid-cols-7 text-center text-[11px] font-semibold text-slate-400">{["M", "T", "W", "T", "F", "S", "S"].map((d, i) => <div key={i} className="pb-1">{d}</div>)}</div>
+          <div className="grid grid-cols-7 gap-y-1">
+            {cells.map((c) => {
+              const bs = dayBlocks(c.day); const kinds = [...new Set(bs.map((b) => b.block))].slice(0, 3);
+              return (
+                <button key={c.day} onClick={() => setPhoneDay(c.day)} className="flex flex-col items-center gap-0.5 py-1">
+                  <span className={cn("grid h-7 w-7 place-items-center rounded-full text-[13px]",
+                    (phoneDay || p.todayDay) === c.day ? "bg-[#1AA7EC] font-semibold text-white" : c.inMonth ? "text-slate-700" : "text-slate-300")}>{Number(c.day.slice(8))}</span>
+                  <span className="flex h-1.5 gap-0.5">{kinds.map((k) => <span key={k} className={cn("h-1.5 w-1.5 rounded-full", DOTC[k])} />)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {(() => { const d = phoneDay || p.todayDay || ""; const bs = dayBlocks(d); return (
+          <div className="space-y-1.5" data-calm-month-list>
+            <h3 className="text-[13px] font-semibold text-slate-500">{d ? new Date(`${d}T12:00:00+02:00`).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" }) : ""} · {bs.length} job{bs.length === 1 ? "" : "s"}</h3>
+            {bs.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500">Nothing booked</div>
+              : bs.map((b) => <div key={b.id}><div className="mb-0.5 text-[11px] text-slate-500">{p.people.find((x) => x.id === b.personId)?.name || "Unassigned"}</div><Block b={b} compact onOpen={() => p.onOpenBlock(b)} /></div>)}
+          </div>); })()}
+      </div>
+    </>
+  );
   const chips = needsYou(p.counts);
   const hours = Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }, (_, i) => 8 + i);
   const rowBlocks = (pid: string) => p.blocks.filter((b) => b.personId === pid);
@@ -204,10 +264,10 @@ export default function JobsCalmView(p: Props) {
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-[25px] font-semibold tracking-tight text-slate-900">Jobs</h1>
         <div className="inline-flex rounded-full bg-white p-1 shadow-sm ring-1 ring-slate-200/70" role="tablist">
-          {(["today", "week", "pipeline"] as CalmTab[]).map((t) => (
+          {(["today", "week", "month", "pipeline"] as CalmTab[]).map((t) => (
             <button key={t} role="tab" aria-selected={p.tab === t} onClick={() => p.onTab(t)}
               className={cn("rounded-full px-3.5 py-1 text-[13px] font-semibold", p.tab === t ? "bg-[#1AA7EC] text-white" : "text-slate-600")}>
-              {t === "today" ? "Today" : t === "week" ? "Week" : "Pipeline"}
+              {t === "today" ? "Today" : t === "week" ? "Week" : t === "month" ? "Month" : "Pipeline"}
             </button>
           ))}
         </div>
@@ -231,7 +291,7 @@ export default function JobsCalmView(p: Props) {
       {p.tab === "pipeline" ? <div className="mt-4">{p.pipeline}</div> : (
         <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,260px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
           <div className="min-w-0 space-y-4">{p.chip !== "late" && p.chip !== "unassigned" && leadsRail}{p.chip !== "leads" && p.chip !== "late" && unassignedRail}</div>
-          {p.chip !== "leads" && <>{timeline}{phoneJobs}</>}
+          {p.chip !== "leads" && (p.tab === "month" ? <div className="min-w-0">{month}</div> : <>{timeline}{phoneJobs}</>)}
         </div>
       )}
     </div>

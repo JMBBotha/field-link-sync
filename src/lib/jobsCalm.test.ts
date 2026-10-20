@@ -30,13 +30,23 @@ describe("jobsCalm", () => {
     expect(ageTone("2026-10-20T09:30:00Z", now).tone).toBe("amber");
     expect(ageTone("2026-10-20T08:00:00Z", now).tone).toBe("red");
   });
-  it("flag off by default", () => {
+});
+import { monthGrid } from "./jobsCalm";
+describe("monthGrid", () => {
+  it("Oct 2026 starts Mon 28 Sep, whole weeks", () => {
+    const g = monthGrid("2026-10-20");
+    expect(g[0]).toEqual({ day: "2026-09-28", inMonth: false });
+    expect(g.length % 7).toBe(0);
+    expect(g.filter((c) => c.inMonth).length).toBe(31);
+    expect(g[g.length - 1].day).toBe("2026-11-01");
+  });
+  it("calm on by default now", () => {
     const m = new Map<string, string>();
     const s = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
-    expect(calmEnabled("", s)).toBe(false);
-    expect(calmEnabled("?jobs=calm", s)).toBe(true);
     expect(calmEnabled("", s)).toBe(true);
     expect(calmEnabled("?jobs=classic", s)).toBe(false);
     expect(calmEnabled("", s)).toBe(false);
+    expect(calmEnabled("?jobs=calm", s)).toBe(true);
+    expect(calmEnabled("", s)).toBe(true);
   });
 });
