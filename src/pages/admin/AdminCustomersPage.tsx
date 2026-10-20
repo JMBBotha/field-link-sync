@@ -36,18 +36,19 @@ import {
 import { cn } from "@/lib/utils";
 import { formatRand } from "@/utils/formatRand";
 import { LEAD_SOURCE_OPTIONS, DEFAULT_LEAD_SOURCE, toLeadSourceValue, leadSourceLabel } from "@/lib/leadSources";
+import { LEAD_SOURCE_BADGE } from "@/lib/leadSources";
 
 const LEAD_SOURCE_STYLES: Record<string, { badge: string; border: string }> = {
-  manual:        { badge: "bg-slate-100 text-ink border-slate-200",       border: "border-t-slate-400" },
-  facebook_lead: { badge: "bg-blue-100 text-blue-700 border-blue-200",          border: "border-t-blue-500" },
-  website_form:  { badge: "bg-green-100 text-green-700 border-green-200",       border: "border-t-green-500" },
-  website:       { badge: "bg-green-100 text-green-700 border-green-200",       border: "border-t-green-500" },
-  whatsapp:      { badge: "bg-emerald-100 text-emerald-700 border-emerald-200", border: "border-t-emerald-500" },
-  phone_call:    { badge: "bg-orange-100 text-orange-700 border-orange-200",    border: "border-t-orange-500" },
-  vapi:          { badge: "bg-orange-100 text-orange-700 border-orange-200",    border: "border-t-orange-500" },
-  walk_in:       { badge: "bg-purple-100 text-purple-700 border-purple-200",    border: "border-t-purple-500" },
-  referral:      { badge: "bg-pink-100 text-pink-700 border-pink-200",          border: "border-t-pink-500" },
-  other:         { badge: "bg-slate-100 text-ink border-slate-200",       border: "border-t-slate-400" },
+  manual: { badge: LEAD_SOURCE_BADGE.manual,       border: "border-t-slate-400" },
+  facebook_lead: { badge: LEAD_SOURCE_BADGE.facebook_lead,          border: "border-t-blue-500" },
+  website_form: { badge: LEAD_SOURCE_BADGE.website_form,       border: "border-t-green-500" },
+  website: { badge: LEAD_SOURCE_BADGE.website,       border: "border-t-green-500" },
+  whatsapp: { badge: LEAD_SOURCE_BADGE.whatsapp, border: "border-t-emerald-500" },
+  phone_call: { badge: LEAD_SOURCE_BADGE.phone_call,    border: "border-t-orange-500" },
+  vapi: { badge: LEAD_SOURCE_BADGE.vapi,    border: "border-t-orange-500" },
+  walk_in: { badge: LEAD_SOURCE_BADGE.walk_in,    border: "border-t-purple-500" },
+  referral: { badge: LEAD_SOURCE_BADGE.referral,          border: "border-t-pink-500" },
+  other: { badge: LEAD_SOURCE_BADGE.other,       border: "border-t-slate-400" },
 };
 
 const getInitials = (first?: string | null, last?: string | null, company?: string | null) => {

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { dueChip, STEP_LABEL, randShort, type DueRow } from "@/lib/invoiceDue";
 
 const TONE: Record<string, string> = {
-  blue: "bg-[#E8F6FE] text-[#1590D6]", amber: "bg-[#FFF4E0] text-[#B5730A]", orange: "bg-[#FFEBDD] text-[#C2570C]", red: "bg-[#FDECEC] text-[#C9373C]",
+  blue: "bg-[#E8F6FE] text-[#1590D6] dark:bg-sky-500/15 dark:text-sky-300", amber: "bg-[#FFF4E0] text-[#B5730A] dark:bg-amber-500/15 dark:text-amber-300", orange: "bg-[#FFEBDD] text-[#C2570C] dark:bg-orange-500/15 dark:text-orange-300", red: "bg-[#FDECEC] text-[#C9373C] dark:bg-red-500/15 dark:text-red-300",
 };
 
 /** Soft due chip for an invoice row. Pressing it opens the inline review (when there is a draft). */

@@ -54,28 +54,18 @@ import { InvoiceTermsOverride } from "@/components/invoiceDue/InvoiceTermsOverri
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import { useRegisterAssistantContext } from "@/hooks/useAssistantContextTracker";
 
+import { LEAD_SOURCE_BADGE } from "@/lib/leadSources";
 import { LEAD_SOURCE_OPTIONS, DEFAULT_LEAD_SOURCE, toLeadSourceValue, leadSourceLabel } from "@/lib/leadSources";
 
-const LEAD_SOURCE_STYLES: Record<string, string> = {
-  manual:        "bg-slate-100 text-ink border-slate-200",
-  facebook_lead: "bg-blue-100 text-blue-700 border-blue-200",
-  website_form:  "bg-green-100 text-green-700 border-green-200",
-  website:       "bg-green-100 text-green-700 border-green-200",
-  whatsapp:      "bg-emerald-100 text-emerald-700 border-emerald-200",
-  phone_call:    "bg-orange-100 text-orange-700 border-orange-200",
-  vapi:          "bg-orange-100 text-orange-700 border-orange-200",
-  walk_in:       "bg-purple-100 text-purple-700 border-purple-200",
-  referral:      "bg-pink-100 text-pink-700 border-pink-200",
-  other:         "bg-slate-100 text-ink border-slate-200",
-};
+const LEAD_SOURCE_STYLES: Record<string, string> = LEAD_SOURCE_BADGE;
 
 const statusBadge = (status?: string | null) => {
   const s = (status || "").toLowerCase();
-  if (s === "paid" || s === "accepted" || s === "completed" || s === "active") return "bg-emerald-100 text-emerald-700 border-emerald-200";
-  if (s === "overdue" || s === "declined") return "bg-rose-100 text-rose-700 border-rose-200";
-  if (s === "draft") return "bg-slate-100 text-ink border-slate-200";
-  if (s === "sent" || s === "viewed" || s === "scheduled" || s === "in_progress") return "bg-blue-100 text-blue-700 border-blue-200";
-  return "bg-amber-100 text-amber-700 border-amber-200";
+  if (s === "paid" || s === "accepted" || s === "completed" || s === "active") return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/30";
+  if (s === "overdue" || s === "declined") return "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-400/30";
+  if (s === "draft") return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-400/15 dark:text-slate-200 dark:border-slate-400/30";
+  if (s === "sent" || s === "viewed" || s === "scheduled" || s === "in_progress") return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-400/30";
+  return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-400/30";
 };
 
 const getInitials = (first?: string | null, last?: string | null, company?: string | null) => {
@@ -785,11 +775,11 @@ const AdminCustomerDetailPage = () => {
 
 type ChipTone = "slate" | "blue" | "emerald" | "amber" | "rose";
 const CHIP_TONES: Record<ChipTone, string> = {
-  slate:   "bg-slate-50 text-ink border-slate-200",
-  blue:    "bg-blue-50 text-blue-700 border-blue-200",
-  emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  amber:   "bg-amber-50 text-amber-800 border-amber-200",
-  rose:    "bg-rose-50 text-rose-700 border-rose-200",
+  slate:   "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-400/15 dark:text-slate-200 dark:border-slate-400/30",
+  blue:    "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-400/30",
+  emerald: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/30",
+  amber:   "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-400/30",
+  rose:    "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-400/30",
 };
 
 const SummaryChips = ({ items }: { items: { label: string; value: string; tone: ChipTone }[] }) => (
