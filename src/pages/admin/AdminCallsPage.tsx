@@ -61,8 +61,8 @@ export default function AdminCallsPage() {
   }, [calls, search]);
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="v8-scope space-y-4 p-4 md:p-6">
+      <div className="v8-navy flex flex-wrap items-center justify-between gap-3">
         <h1 className="flex items-center gap-2 text-2xl font-bold">
           <Phone className="h-5 w-5" /> Call history
         </h1>

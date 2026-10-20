@@ -23,8 +23,8 @@ interface ReportShellProps {
 
 /** Shared layout for report pages: bold left title, subtitle, filters, export, white content card. */
 const ReportShell = ({ title, subtitle, dateRange, exportRows, exportFilename, children }: ReportShellProps) => (
-  <div className="w-full space-y-6 p-4 sm:p-6">
-    <div className="flex flex-wrap items-start justify-between gap-3">
+  <div className="v8-scope w-full space-y-6 p-4 sm:p-6">
+    <div className="v8-navy flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
         <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
@@ -64,7 +64,7 @@ const ReportShell = ({ title, subtitle, dateRange, exportRows, exportFilename, c
       </div>
     )}
 
-    <div className="rounded-lg border border-border bg-card">{children}</div>
+    <div className="rounded-2xl border border-border bg-card">{children}</div>
   </div>
 );
 

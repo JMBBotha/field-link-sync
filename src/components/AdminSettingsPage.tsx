@@ -21,8 +21,8 @@ const AdminSettingsPage = () => {
   const { canWrite, isLoading } = useCanWriteMasterCatalog();
   const showServices = !isLoading && canWrite;
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto">
-      <h2 className="text-xl font-semibold mb-4">Settings</h2>
+    <div className="v8-scope p-4 md:p-6 max-w-5xl mx-auto">
+      <h2 className="v8-navy text-xl font-semibold mb-4">Settings</h2>
       <Tabs defaultValue="company">
         <TabsList className="grid grid-cols-4 md:grid-cols-8 w-full max-w-4xl">
           <TabsTrigger value="company" className="gap-1 text-xs md:text-sm">

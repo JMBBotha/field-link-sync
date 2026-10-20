@@ -33,7 +33,7 @@ import { LANE_META, UNKNOWN_LANE_META } from "@/lib/leadLane";
 import { inviteOptionKey } from "@/lib/invitePassword";
 
 const ROLE_META: Record<string, { label: string; color: string; icon: React.ElementType; description: string }> = {
-  admin: { label: "Admin", color: "bg-purple-600 text-purple-50", icon: Shield, description: "Full access to all features" },
+  admin: { label: "Admin", color: "bg-[#F7941D] text-white", icon: Shield, description: "Full access to all features" },
   dispatcher: { label: "Dispatcher", color: "bg-blue-600 text-blue-50", icon: LayoutGrid, description: "Dashboard, dispatch, reports" },
   field_agent: { label: "Technician", color: "bg-emerald-600 text-emerald-50", icon: Wrench, description: "Field view only" },
   viewer: { label: "Viewer", color: "bg-gray-600 text-gray-50", icon: Eye, description: "Read-only access" },
@@ -261,9 +261,9 @@ const AdminTeamPage = () => {
   }, [staff]);
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
+    <div className="v8-scope p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="v8-navy flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Users className="h-6 w-6 text-primary" />

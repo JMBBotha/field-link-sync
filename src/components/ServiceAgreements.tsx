@@ -410,9 +410,9 @@ const ServiceAgreements = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="v8-scope p-4 md:p-6 space-y-6">
       {/* Header with Stats */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="v8-navy flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
@@ -423,18 +423,18 @@ const ServiceAgreements = () => {
 
         <div className="flex flex-wrap gap-3">
           <Card className="px-4 py-2 flex items-center gap-2">
-            <RandSign className="h-4 w-4 text-green-600" />
+            <RandSign className="h-4 w-4 text-green-600 dark:text-green-300" />
             <div>
               <p className="text-xs text-muted-foreground">Active Revenue</p>
               <p className="font-semibold text-sm">R {totalActiveValue.toLocaleString()}</p>
             </div>
           </Card>
           {expiringCount > 0 && (
-            <Card className="px-4 py-2 flex items-center gap-2 border-orange-200 bg-orange-50">
-              <AlertTriangle className="h-4 w-4 text-orange-600" />
+            <Card className="px-4 py-2 flex items-center gap-2 border-orange-200 dark:border-orange-400/30 bg-orange-50 dark:bg-orange-500/15">
+              <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-300" />
               <div>
-                <p className="text-xs text-orange-700">Expiring Soon</p>
-                <p className="font-semibold text-sm text-orange-800">{expiringCount} contracts</p>
+                <p className="text-xs text-orange-700 dark:text-orange-300">Expiring Soon</p>
+                <p className="font-semibold text-sm text-orange-800 dark:text-orange-300">{expiringCount} contracts</p>
               </div>
             </Card>
           )}
@@ -521,7 +521,7 @@ const ServiceAgreements = () => {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Annual Value</p>
-                      <p className="font-medium text-green-600">R {Number(agreement.price).toLocaleString()}</p>
+                      <p className="font-medium text-green-600 dark:text-green-300">R {Number(agreement.price).toLocaleString()}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">

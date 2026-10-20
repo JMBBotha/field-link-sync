@@ -300,8 +300,8 @@ const AdminNotificationSettings = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between mb-4">
+    <div className="v8-scope p-4 md:p-6 h-full flex flex-col overflow-hidden">
+      <div className="v8-navy flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-green-500" />
@@ -534,11 +534,11 @@ const AdminNotificationSettings = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {!twilioConfig.configured && (
-                    <div className="flex items-start gap-3 p-3 rounded-lg bg-orange-50 border border-orange-200">
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-orange-50 dark:bg-orange-500/15 border border-orange-200 dark:border-orange-400/30">
                       <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5" />
                       <div className="text-sm">
-                        <p className="font-medium text-orange-800">Not Configured</p>
-                        <p className="text-orange-600">
+                        <p className="font-medium text-orange-800 dark:text-orange-300">Not Configured</p>
+                        <p className="text-orange-600 dark:text-orange-300">
                           WhatsApp notifications are disabled until Twilio is configured.
                         </p>
                       </div>

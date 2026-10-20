@@ -86,8 +86,8 @@ const AdminAreasPage = () => {
   const staffOf = (areaId: string) => new Set(data.staff.filter((s) => s.area_id === areaId).map((s) => s.profile_id));
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-5xl">
-      <div>
+    <div className="v8-scope p-4 md:p-6 space-y-4 max-w-5xl">
+      <div className="v8-navy">
         <h1 className="text-xl font-semibold flex items-center gap-2"><MapPin className="h-5 w-5" /> Service areas</h1>
         <p className="text-sm text-muted-foreground">Where your company works and who covers each area. Used to suggest which company and which people fit a new lead. Customers are never contacted from here.</p>
       </div>
@@ -152,7 +152,7 @@ const AdminAreasPage = () => {
                 </div>}
                 {s && (typeof s === "string" ? <div className="text-sm text-muted-foreground">{s}</div> : (
                   <ul className="text-sm space-y-1">{s.map((x) => (
-                    <li key={x.profile_id} className="flex gap-2"><span className={x.fits ? "text-emerald-600" : "text-muted-foreground"}>{x.fits ? "✓" : "–"}</span><span>{x.name}</span>
+                    <li key={x.profile_id} className="flex gap-2"><span className={x.fits ? "text-emerald-600 dark:text-emerald-300" : "text-muted-foreground"}>{x.fits ? "✓" : "–"}</span><span>{x.name}</span>
                       <span className="text-muted-foreground">{x.fits ? `from ${hhmm(x.best_start)}${x.km != null ? ` · ${x.km} km` : ""}${x.label ? ` · ${x.label}` : ""}` : x.reason}</span></li>))}</ul>))}
               </div>
             );

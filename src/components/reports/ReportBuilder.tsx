@@ -19,8 +19,8 @@ const ReportBuilder = () => {
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split("T")[0]);
 
   return (
-    <div className="min-h-screen bg-muted/30 p-4 md:p-8 space-y-6">
-      <div>
+    <div className="v8-scope min-h-screen bg-muted/30 p-4 md:p-8 space-y-6">
+      <div className="v8-navy">
         <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-2">
           <BarChart3 className="h-7 w-7 text-primary" /> Reports
         </h1>
