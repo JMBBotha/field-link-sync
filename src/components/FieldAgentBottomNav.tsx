@@ -1,3 +1,4 @@
+import VanDriveBy from "@/components/fun/VanDriveBy";
 import { NavLink, useLocation } from "react-router-dom";
 import { Home, ClipboardList, CalendarDays, Map, CloudOff, RefreshCw, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -81,6 +82,7 @@ const FieldAgentBottomNav = () => {
           })}
         </div>
       </nav>}
+      <VanDriveBy bottomClass="bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-2" />
     </>
   );
 };

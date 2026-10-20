@@ -14,6 +14,7 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 import { StatusUndoButton } from "@/components/shared/StatusUndo";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
 import Footer from "@/components/Footer";
+import VanDriveBy from "@/components/fun/VanDriveBy";
 
 import { useQuery } from "@tanstack/react-query";
 import AdminSidebar from "@/components/admin/AdminSidebar";
@@ -333,6 +334,7 @@ const AdminLayout = () => {
         {/* Bottom nav owns the mobile footer area — avoid a double stack */}
         <div className="hidden lg:block">
           <Footer />
+          <VanDriveBy />
         </div>
         <BottomNavC onOpenMenu={() => setMobileMenuOpen(true)} />
       </div>
