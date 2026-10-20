@@ -697,6 +697,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
       {/* Scrollable leads container with pull-to-refresh */}
       <div 
         ref={scrollContainerRef}
+        data-bounce
         className="flex-1 overflow-y-auto overscroll-contain relative"
         style={{ 
           WebkitOverflowScrolling: 'touch',

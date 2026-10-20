@@ -209,7 +209,7 @@ const FBLayout = () => {
         <div className="h-[3px] bg-[hsl(40,96%,53%)] shrink-0" />
 
         {/* Main content */}
-        <main data-scroll-root className="flex-1 overflow-auto min-w-0 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+        <main data-scroll-root className="flex-1 overflow-auto min-w-0 scroll-bounce scroll-room-sheet">
           <div className="p-4 md:p-6">
             <div data-testid="fb-archived" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               Archived area (admins only). Live invoices, payments and reports are in{" "}

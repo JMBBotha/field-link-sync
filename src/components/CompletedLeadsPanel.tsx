@@ -421,6 +421,7 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
       {/* Scrollable leads container */}
       <div 
         ref={scrollContainerRef}
+        data-bounce
         className="flex-1 overflow-y-auto overscroll-contain relative"
         style={{ 
           WebkitOverflowScrolling: 'touch',

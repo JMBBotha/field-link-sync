@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { EntityRealtimeSync } from "@/hooks/useEntityRealtimeSync";
 import ZoomableViewport from "@/components/shared/ZoomableViewport";
 import ScrollManager from "@/components/ScrollManager";
+import RubberBandManager from "@/components/RubberBandManager";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -146,6 +147,7 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <ScrollManager />
+              <RubberBandManager />
               <MandyActionsProvider>
               <MandyDock />
               <ZoomableViewport />

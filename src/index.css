@@ -1235,3 +1235,14 @@ All colors MUST be HSL.
 .estimate-editing [data-testid="kit-contents"] { border-left: 2px solid #1AA7EC; padding-left: 8px; color: #6b7a8c; }
 .estimate-editing .option1-labour > span.font-bold:first-child { color: #0B4FA8; }
 .estimate-editing [data-testid="unassigned-labour"] > p:first-child { color: #0B4FA8; }
+
+/* Shared scroll spacing + bounce (Johan 20 Oct 12:22).
+   .scroll-room: modest top room + last item ends just clear of the 4rem mobile bottom nav
+   (nav + safe area + 1.25rem); desktop has no bottom nav -> 1.5rem.
+   .scroll-bounce: keep native iOS rubber-band (never contain/none on these). */
+@layer utilities {
+  .scroll-room { padding-top: 0.75rem; padding-bottom: calc(4rem + env(safe-area-inset-bottom) + 1.25rem); }
+  @media (min-width: 1024px) { .scroll-room { padding-bottom: 1.5rem; } }
+  .scroll-room-sheet { padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)); }
+  .scroll-bounce { overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; }
+}

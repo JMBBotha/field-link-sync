@@ -979,7 +979,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div data-no-bounce className="flex flex-col h-full overflow-hidden">
       {/* ─── Header Stats Bar ─── */}
       <div className="shrink-0 border-b bg-card p-3 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-4 mr-auto">

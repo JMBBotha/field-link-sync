@@ -311,7 +311,7 @@ const AdminLayout = () => {
 
 
 
-        <main data-scroll-root className={`app-surface flex-1 min-h-0 overflow-auto ${isMapHeroPage ? "" : "pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-12"}`}>
+        <main data-scroll-root data-no-bounce={isMapHeroPage ? "" : undefined} className={`app-surface flex-1 min-h-0 overflow-auto scroll-bounce ${isMapHeroPage ? "" : "scroll-room"}`}>
 
           <AnimatePresence mode="wait">
             <motion.div
