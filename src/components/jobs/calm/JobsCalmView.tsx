@@ -41,19 +41,19 @@ const LaneTag = ({ lane, children }: { lane: "sales" | "service"; children?: Rea
 function LeadCard({ l, now, onCall, onAssign, onOpen }: { l: CalmLead; now?: Date; onCall: () => void; onAssign: () => void; onOpen: () => void }) {
   const a = ageTone(l.createdAt, now);
   return (
-    <div className="relative cursor-pointer overflow-hidden rounded-2xl bg-white p-3 pl-4 shadow-sm ring-1 ring-slate-200/70" onClick={onOpen} data-calm-lead>
+    <div className="relative cursor-pointer overflow-hidden rounded-2xl bg-white dark:bg-card p-3 pl-4 shadow-sm ring-1 ring-slate-200/70 dark:ring-white/10" onClick={onOpen} data-calm-lead>
       <span className={cn("absolute inset-y-0 left-0 w-1", STRIPE[a.tone])} />
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-base font-semibold text-slate-900">{l.name}</div>
-          <div className="truncate text-[13px] text-slate-500">{[l.place, l.phone].filter(Boolean).join(" · ")}</div>
+          <div className="truncate text-base font-semibold text-slate-900 dark:text-slate-100">{l.name}</div>
+          <div className="truncate text-[13px] text-slate-500 dark:text-slate-400">{[l.place, l.phone].filter(Boolean).join(" · ")}</div>
         </div>
         <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums", TONE[a.tone])}>{fmtAge(a.mins)}</span>
       </div>
       <div className="mt-1.5 flex flex-wrap gap-1"><LaneTag lane={l.lane} />{l.tag && <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[11px] font-semibold text-sky-700">{l.tag}</span>}</div>
       <div className="mt-2.5 grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
         {l.phone ? <a href={`tel:${l.phone}`} onClick={onCall} className="rounded-full bg-[#1AA7EC] py-1.5 text-center text-[13px] font-semibold text-white hover:bg-[#1590D6]">Call</a>
-          : <span className="rounded-full bg-slate-100 py-1.5 text-center text-[13px] text-slate-400">No number</span>}
+          : <span className="rounded-full bg-slate-100 dark:bg-white/10 py-1.5 text-center text-[13px] text-slate-400">No number</span>}
         <button onClick={onAssign} className="rounded-full bg-sky-50 py-1.5 text-[13px] font-semibold text-[#1590D6] hover:bg-sky-100">Assign</button>
       </div>
     </div>
@@ -95,21 +95,21 @@ export default function JobsCalmView(p: Props) {
   const cells = p.monthCells || [];
   const month = (
     <>
-      <div className="hidden min-w-0 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70 md:block" data-calm-month>
+      <div className="hidden min-w-0 rounded-3xl bg-white dark:bg-card p-4 shadow-sm ring-1 ring-slate-200/70 dark:ring-white/10 md:block" data-calm-month>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-slate-900">This month</h2>
-          <select value={p.everyone} onChange={(e) => p.onEveryone(e.target.value)} className="appearance-none rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-700" aria-label="Who">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">This month</h2>
+          <select value={p.everyone} onChange={(e) => p.onEveryone(e.target.value)} className="appearance-none rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-card px-3 py-1.5 text-[13px] font-semibold text-slate-700 dark:text-slate-300" aria-label="Who">
             {p.everyoneOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
-        <div className="grid grid-cols-7 text-center text-[12px] font-semibold text-slate-500">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => <div key={d} className="pb-2">{d}</div>)}</div>
-        <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl bg-slate-100">
+        <div className="grid grid-cols-7 text-center text-[12px] font-semibold text-slate-500 dark:text-slate-400">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => <div key={d} className="pb-2">{d}</div>)}</div>
+        <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl bg-slate-100 dark:bg-white/10">
           {cells.map((c) => {
             const bs = dayBlocks(c.day);
             return (
-              <div key={c.day} className={cn("min-h-[104px] space-y-1 bg-white p-1.5", !c.inMonth && "bg-slate-50/70")} data-calm-month-day>
+              <div key={c.day} className={cn("min-h-[104px] space-y-1 bg-white dark:bg-card p-1.5", !c.inMonth && "bg-slate-50/70")} data-calm-month-day>
                 <button onClick={() => p.onPickDay?.(c.day)} className={cn("grid h-6 w-6 place-items-center rounded-full text-[12px] font-semibold",
-                  c.day === p.todayDay ? "bg-[#1AA7EC] text-white" : c.inMonth ? "text-slate-700 hover:bg-sky-50" : "text-slate-300")}>{Number(c.day.slice(8))}</button>
+                  c.day === p.todayDay ? "bg-[#1AA7EC] text-white" : c.inMonth ? "text-slate-700 dark:text-slate-300 hover:bg-sky-50" : "text-slate-300")}>{Number(c.day.slice(8))}</button>
                 {bs.slice(0, 3).map((b) => (
                   <button key={b.id} onClick={() => p.onOpenBlock(b)} className={cn("block w-full truncate rounded-md border px-1.5 py-0.5 text-left text-[11px]", BLOCK_STYLE[b.block])}>
                     {b.start !== null && <span className="font-semibold">{hhmm(b.start)} </span>}{b.title}
@@ -122,7 +122,7 @@ export default function JobsCalmView(p: Props) {
         </div>
       </div>
       <div className="space-y-3 md:hidden" data-calm-month-phone>
-        <div className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/70">
+        <div className="rounded-2xl bg-white dark:bg-card p-3 shadow-sm ring-1 ring-slate-200/70 dark:ring-white/10">
           <div className="grid grid-cols-7 text-center text-[11px] font-semibold text-slate-400">{["M", "T", "W", "T", "F", "S", "S"].map((d, i) => <div key={i} className="pb-1">{d}</div>)}</div>
           <div className="grid grid-cols-7 gap-y-1">
             {cells.map((c) => {
@@ -130,7 +130,7 @@ export default function JobsCalmView(p: Props) {
               return (
                 <button key={c.day} onClick={() => setPhoneDay(c.day)} className="flex flex-col items-center gap-0.5 py-1">
                   <span className={cn("grid h-7 w-7 place-items-center rounded-full text-[13px]",
-                    (phoneDay || p.todayDay) === c.day ? "bg-[#1AA7EC] font-semibold text-white" : c.inMonth ? "text-slate-700" : "text-slate-300")}>{Number(c.day.slice(8))}</span>
+                    (phoneDay || p.todayDay) === c.day ? "bg-[#1AA7EC] font-semibold text-white" : c.inMonth ? "text-slate-700 dark:text-slate-300" : "text-slate-300")}>{Number(c.day.slice(8))}</span>
                   <span className="flex h-1.5 gap-0.5">{kinds.map((k) => <span key={k} className={cn("h-1.5 w-1.5 rounded-full", DOTC[k])} />)}</span>
                 </button>
               );
@@ -139,9 +139,9 @@ export default function JobsCalmView(p: Props) {
         </div>
         {(() => { const d = phoneDay || p.todayDay || ""; const bs = dayBlocks(d); return (
           <div className="space-y-1.5" data-calm-month-list>
-            <h3 className="text-[13px] font-semibold text-slate-500">{d ? new Date(`${d}T12:00:00+02:00`).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" }) : ""} · {bs.length} job{bs.length === 1 ? "" : "s"}</h3>
-            {bs.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500">Nothing booked</div>
-              : bs.map((b) => <div key={b.id}><div className="mb-0.5 text-[11px] text-slate-500">{p.people.find((x) => x.id === b.personId)?.name || "Unassigned"}</div><Block b={b} compact onOpen={() => p.onOpenBlock(b)} /></div>)}
+            <h3 className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">{d ? new Date(`${d}T12:00:00+02:00`).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" }) : ""} · {bs.length} job{bs.length === 1 ? "" : "s"}</h3>
+            {bs.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500 dark:text-slate-400">Nothing booked</div>
+              : bs.map((b) => <div key={b.id}><div className="mb-0.5 text-[11px] text-slate-500 dark:text-slate-400">{p.people.find((x) => x.id === b.personId)?.name || "Unassigned"}</div><Block b={b} compact onOpen={() => p.onOpenBlock(b)} /></div>)}
           </div>); })()}
       </div>
     </>
@@ -151,21 +151,21 @@ export default function JobsCalmView(p: Props) {
   const rowBlocks = (pid: string) => p.blocks.filter((b) => b.personId === pid);
   const leadsRail = (
     <section className="space-y-2.5">
-      <h3 className="flex items-center justify-between text-[13px] font-semibold text-slate-500">Needs you <span>{p.leadsTotal}</span></h3>
-      {p.leads.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500">No new leads</div>
+      <h3 className="flex items-center justify-between text-[13px] font-semibold text-slate-500 dark:text-slate-400">Needs you <span>{p.leadsTotal}</span></h3>
+      {p.leads.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500 dark:text-slate-400">No new leads</div>
         : p.leads.map((l) => <LeadCard key={l.id} l={l} now={p.now} onCall={() => p.onCallLead(l)} onAssign={() => p.onAssignLead(l)} onOpen={() => p.onOpenLead(l)} />)}
       {p.leadsTotal > p.leads.length && !p.showAllLeads && <button onClick={p.onShowAll} className="w-full py-1 text-[13px] font-semibold text-[#1590D6]">Show all ({p.leadsTotal})</button>}
     </section>
   );
   const unassignedRail = p.unassigned.length > 0 && (
     <section className="space-y-2.5">
-      <h3 className="text-[13px] font-semibold text-slate-500">Unassigned jobs</h3>
+      <h3 className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">Unassigned jobs</h3>
       {p.unassigned.map((u) => (
-        <div key={u.id} className="relative cursor-pointer overflow-hidden rounded-2xl bg-white p-3 pl-4 shadow-sm ring-1 ring-slate-200/70" onClick={() => p.onOpenJob(u.id)} data-calm-unassigned>
+        <div key={u.id} className="relative cursor-pointer overflow-hidden rounded-2xl bg-white dark:bg-card p-3 pl-4 shadow-sm ring-1 ring-slate-200/70 dark:ring-white/10" onClick={() => p.onOpenJob(u.id)} data-calm-unassigned>
           <span className="absolute inset-y-0 left-0 w-1 bg-amber-400" />
-          <div className="flex items-start gap-2"><div className="min-w-0 flex-1 truncate text-base font-semibold text-slate-900">{u.title}</div>
+          <div className="flex items-start gap-2"><div className="min-w-0 flex-1 truncate text-base font-semibold text-slate-900 dark:text-slate-100">{u.title}</div>
             {u.age && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{u.age}</span>}</div>
-          {u.sub && <div className="truncate text-[13px] text-slate-500">{u.sub}</div>}
+          {u.sub && <div className="truncate text-[13px] text-slate-500 dark:text-slate-400">{u.sub}</div>}
           <div className="mt-1.5 flex gap-1"><span className="rounded bg-red-50 px-1.5 py-0.5 text-[11px] font-semibold text-red-600">Unassigned</span><LaneTag lane={u.lane} /></div>
           <button onClick={(e) => { e.stopPropagation(); p.onAssignJob(u.id); }} className="mt-2.5 w-full rounded-full bg-sky-50 py-1.5 text-[13px] font-semibold text-[#1590D6] hover:bg-sky-100">Assign</button>
         </div>
@@ -174,17 +174,17 @@ export default function JobsCalmView(p: Props) {
   );
 
   const timeline = (
-    <div className="hidden min-w-0 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70 md:block" data-calm-timeline>
+    <div className="hidden min-w-0 rounded-3xl bg-white dark:bg-card p-4 shadow-sm ring-1 ring-slate-200/70 dark:ring-white/10 md:block" data-calm-timeline>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-900">{p.tab === "week" ? "This week" : "Today"}</h2>
-        <select value={p.everyone} onChange={(e) => p.onEveryone(e.target.value)} className="appearance-none rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-700" aria-label="Who">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{p.tab === "week" ? "This week" : "Today"}</h2>
+        <select value={p.everyone} onChange={(e) => p.onEveryone(e.target.value)} className="appearance-none rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-card px-3 py-1.5 text-[13px] font-semibold text-slate-700 dark:text-slate-300" aria-label="Who">
           {p.everyoneOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
       {p.tab === "today" ? (
         <div>
           <div className="ml-[150px] flex justify-between text-[11px] text-slate-400">{hours.map((h) => <span key={h} className="w-0">{String(h).padStart(2, "0")}</span>)}</div>
-          {p.people.length === 0 && <div className="py-10 text-center text-[13px] text-slate-500">Nobody booked today</div>}
+          {p.people.length === 0 && <div className="py-10 text-center text-[13px] text-slate-500 dark:text-slate-400">Nobody booked today</div>}
           {p.people.map((per) => {
             const bs = rowBlocks(per.id);
             return (
@@ -194,9 +194,9 @@ export default function JobsCalmView(p: Props) {
                     {initials(per.name)}<span className={cn("absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white", DOT[per.dot])} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13px] font-semibold text-slate-900">{per.name}</div>
-                    <div className="text-[11px] text-slate-500">{per.role}</div>
-                    <div className="mt-1 h-1 w-14 rounded bg-slate-100"><div className="h-1 rounded bg-[#1AA7EC]" style={{ width: `${dayProgress(bs.map((b) => b.block))}%` }} /></div>
+                    <div className="truncate text-[13px] font-semibold text-slate-900 dark:text-slate-100">{per.name}</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">{per.role}</div>
+                    <div className="mt-1 h-1 w-14 rounded bg-slate-100 dark:bg-white/10"><div className="h-1 rounded bg-[#1AA7EC]" style={{ width: `${dayProgress(bs.map((b) => b.block))}%` }} /></div>
                   </div>
                 </div>
                 <div className={cn("relative h-[72px] flex-1 rounded-lg", dragOver === per.id && "bg-sky-50")}
@@ -222,12 +222,12 @@ export default function JobsCalmView(p: Props) {
       ) : (
         <div className="overflow-x-auto">
           <div className="grid min-w-[760px]" style={{ gridTemplateColumns: `150px repeat(${p.weekDays.length}, minmax(0,1fr))` }}>
-            <div />{p.weekDays.map((d) => <div key={d.day} className="px-1 pb-2 text-center text-[12px] font-semibold text-slate-500">{d.label}</div>)}
+            <div />{p.weekDays.map((d) => <div key={d.day} className="px-1 pb-2 text-center text-[12px] font-semibold text-slate-500 dark:text-slate-400">{d.label}</div>)}
             {p.people.map((per) => (
               <div key={per.id} className="contents" data-calm-row>
                 <div className="flex items-center gap-2 border-t border-slate-100 py-2 pr-2">
                   <span className="grid h-7 w-7 place-items-center rounded-full bg-sky-50 text-[10px] font-semibold text-sky-700">{initials(per.name)}</span>
-                  <div className="min-w-0"><div className="truncate text-[13px] font-semibold">{per.name}</div><div className="text-[11px] text-slate-500">{per.role}</div></div>
+                  <div className="min-w-0"><div className="truncate text-[13px] font-semibold">{per.name}</div><div className="text-[11px] text-slate-500 dark:text-slate-400">{per.role}</div></div>
                 </div>
                 {p.weekDays.map((d) => (
                   <div key={d.day} className="space-y-1 border-l border-t border-slate-100 p-1">
@@ -237,7 +237,7 @@ export default function JobsCalmView(p: Props) {
               </div>
             ))}
           </div>
-          {p.people.length === 0 && <div className="py-10 text-center text-[13px] text-slate-500">Nothing booked this week</div>}
+          {p.people.length === 0 && <div className="py-10 text-center text-[13px] text-slate-500 dark:text-slate-400">Nothing booked this week</div>}
         </div>
       )}
     </div>
@@ -245,13 +245,13 @@ export default function JobsCalmView(p: Props) {
 
   const phoneJobs = (
     <div className="space-y-3 md:hidden" data-calm-phone-jobs>
-      <h3 className="text-[13px] font-semibold text-slate-500">{p.tab === "week" ? "This week's jobs" : "Today's jobs"}</h3>
-      {p.people.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500">Nothing booked</div>}
+      <h3 className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">{p.tab === "week" ? "This week's jobs" : "Today's jobs"}</h3>
+      {p.people.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500 dark:text-slate-400">Nothing booked</div>}
       {p.people.map((per) => (
-        <div key={per.id} className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/70">
+        <div key={per.id} className="rounded-2xl bg-white dark:bg-card p-3 shadow-sm ring-1 ring-slate-200/70 dark:ring-white/10">
           <div className="mb-2 flex items-center gap-2">
             <span className="relative grid h-7 w-7 place-items-center rounded-full bg-sky-50 text-[10px] font-semibold text-sky-700">{initials(per.name)}<span className={cn("absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white", DOT[per.dot])} /></span>
-            <span className="text-[13px] font-semibold">{per.name}</span><span className="text-[11px] text-slate-500">{per.role}</span>
+            <span className="text-[13px] font-semibold">{per.name}</span><span className="text-[11px] text-slate-500 dark:text-slate-400">{per.role}</span>
           </div>
           <div className="space-y-1.5">{rowBlocks(per.id).sort((a, b) => a.day.localeCompare(b.day) || (a.start ?? 9999) - (b.start ?? 9999)).map((b) => <Block key={b.id} b={b} compact onOpen={() => p.onOpenBlock(b)} />)}</div>
         </div>
@@ -260,32 +260,32 @@ export default function JobsCalmView(p: Props) {
   );
 
   return (
-    <div className="min-h-full bg-[#F3F6FA] p-3 sm:p-4 md:p-6" data-jobs-calm>
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-[25px] font-semibold tracking-tight text-slate-900">Jobs</h1>
-        <div className="inline-flex rounded-full bg-white p-1 shadow-sm ring-1 ring-slate-200/70" role="tablist">
+    <div className="min-h-full bg-[#F3F6FA] dark:bg-background p-3 sm:p-4 md:p-6" data-jobs-calm>
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-gradient-to-br from-[#0F2A44] to-[#1590D6] p-3 text-white sm:px-4" data-testid="v8-page-header">
+        <h1 className="text-[25px] font-semibold tracking-tight text-white">Jobs</h1>
+        <div className="inline-flex rounded-full bg-white/10 p-1 ring-1 ring-white/20" role="tablist">
           {(["today", "week", "month", "pipeline"] as CalmTab[]).map((t) => (
             <button key={t} role="tab" aria-selected={p.tab === t} onClick={() => p.onTab(t)}
-              className={cn("rounded-full px-3.5 py-1 text-[13px] font-semibold", p.tab === t ? "bg-[#1AA7EC] text-white" : "text-slate-600")}>
+              className={cn("rounded-full px-3.5 py-1 text-[13px] font-semibold", p.tab === t ? "bg-white text-[#0F2A44]" : "text-white/80")}>
               {t === "today" ? "Today" : t === "week" ? "Week" : t === "month" ? "Month" : "Pipeline"}
             </button>
           ))}
         </div>
-        <span className="hidden text-[13px] text-slate-500 sm:inline">{p.dateLabel}</span>
-        <button onClick={p.onNew} className="ml-auto rounded-full bg-[#1AA7EC] px-4 py-1.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#1590D6]">+ New</button>
+        <span className="hidden text-[13px] text-white/75 sm:inline">{p.dateLabel}</span>
+        <button onClick={p.onNew} className="ml-auto rounded-full bg-white px-4 py-1.5 text-[13px] font-semibold text-[#0F2A44] shadow-sm hover:bg-white/90">+ New</button>
       </div>
       {p.tab !== "pipeline" && chips.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-2" data-calm-chips>
-          <span className="text-[13px] text-slate-500">Needs you</span>
+          <span className="text-[13px] text-slate-500 dark:text-slate-400">Needs you</span>
           {chips.map((c) => (
             <button key={c.key} onClick={() => p.onChip(p.chip === c.key ? null : c.key)} aria-pressed={p.chip === c.key}
               className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[12px] font-semibold",
-                c.tone === "red" ? "border-red-200 bg-red-50 text-red-600" : "border-amber-200 bg-amber-50 text-amber-700",
+                c.tone === "red" ? "border-red-200 bg-red-50 text-red-600 dark:border-red-400/30 dark:bg-red-500/15 dark:text-red-300" : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/30 dark:bg-amber-500/15 dark:text-amber-300",
                 p.chip === c.key && "ring-2 ring-[#1AA7EC]/50")}>
               <span className={cn("grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] text-white", c.tone === "red" ? "bg-red-500" : "bg-amber-500")}>{c.n}</span>{c.label}
             </button>
           ))}
-          {p.chip && <button onClick={() => p.onChip(null)} className="text-[12px] text-slate-500 underline">Clear</button>}
+          {p.chip && <button onClick={() => p.onChip(null)} className="text-[12px] text-slate-500 dark:text-slate-400 underline">Clear</button>}
         </div>
       )}
       {p.tab === "pipeline" ? <div className="mt-4">{p.pipeline}</div> : (
