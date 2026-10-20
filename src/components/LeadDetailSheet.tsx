@@ -49,6 +49,8 @@ import QuickTemplateDialog from "./quoting/QuickTemplateDialog";
 import AcceptLeadDialog from "./leads/AcceptLeadDialog";
 import { SitePhotosReadOnly } from "./photos/SitePhotosSection";
 import LeadClassificationPanel from "./leads/LeadClassificationPanel";
+import LeadPageC, { callOutTitle, useCallOutFeeIncl } from "./leads/LeadPageC";
+import { laneOf } from "@/lib/leadLane";
 
 
 interface Lead {
@@ -215,6 +217,7 @@ const LeadDetailSheet = ({
   // Fetch invoice status for this lead
   const { isFieldAgent: roleIsFieldAgent, isAdmin: roleIsAdminForInvoice, isDispatcher: roleIsDispatcherForInvoice } = useRole();
   const invoiceTechOnly = roleIsFieldAgent && !roleIsAdminForInvoice && !roleIsDispatcherForInvoice;
+  const callOutFee = useCallOutFeeIncl();
   const { data: leadInvoice } = useQuery({
     queryKey: ['lead-invoice', lead?.id, invoiceTechOnly],
     queryFn: async (): Promise<{ id: string; invoice_number: string | null; status: string | null; grand_total: number | null; remaining?: number } | null> => {
@@ -517,37 +520,7 @@ const LeadDetailSheet = ({
             <div className="w-10 h-1 bg-muted-foreground/40 rounded-full" />
           </div>
 
-          <SheetHeader className="px-4 pb-3 shrink-0">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <SheetTitle className="text-lg font-bold text-left truncate">
-                  {lead.customer_name}
-                </SheetTitle>
-                <p className="text-sm text-muted-foreground line-clamp-2 break-words">{lead.service_type}</p>
-                <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={(lead as any).scheduled_time} status={lead.status} className="mt-1" />
-                {booking && (
-                  <p className="mt-1 text-xs font-medium text-blue-700" data-testid="lead-booked-line">
-                    Booked{booking.techName ? ` · ${booking.techName}` : ""}{bookingWhen ? ` · ${bookingWhen}` : ""}
-                  </p>
-                )}
-                <LeadTimingChip notes={lead.notes} className="mt-1" />
-                {getPriorityIndicator(lead.priority)}
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {booking ? (
-                  <Badge className="bg-blue-600 text-white text-xs" data-testid="lead-booked-badge">Booked</Badge>
-                ) : getStatusBadge(lead.status)}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={onClose}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </SheetHeader>
+          <SheetHeader className="sr-only"><SheetTitle>{lead.customer_name}</SheetTitle></SheetHeader>
 
           {/* Offline mini-banner inside detail sheet */}
           {!isOnline && (
@@ -558,16 +531,76 @@ const LeadDetailSheet = ({
           )}
 
           <ScrollArea className="flex-1 min-h-0 overflow-y-auto">
-            <Tabs defaultValue="details" className="w-full">
-              <TabsList className="w-full grid grid-cols-4 mx-4 mb-2" style={{ width: 'calc(100% - 2rem)' }}>
-                <TabsTrigger value="details" className="text-xs">Details</TabsTrigger>
-                <TabsTrigger value="time" className="text-xs">Time</TabsTrigger>
-                <TabsTrigger value="timeline" className="text-xs">Timeline</TabsTrigger>
-                <TabsTrigger value="comms" className="text-xs">Comms</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="details" className="mt-0">
-            <div className="space-y-3 px-4 pb-4">
+            <div className="px-4 pb-4">
+            <LeadPageC
+              lead={lead}
+              techView={invoiceTechOnly}
+              stickyBar={false}
+              canEdit={canEdit}
+              onClose={onClose}
+              headerExtra={
+                <div className="mt-1.5 space-y-1 [&_*]:text-white/90">
+                  <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={(lead as any).scheduled_time} status={lead.status} />
+                  {booking && (
+                    <p className="text-xs font-medium" data-testid="lead-booked-line">
+                      Booked{booking.techName ? ` · ${booking.techName}` : ""}{bookingWhen ? ` · ${bookingWhen}` : ""}
+                    </p>
+                  )}
+                  <LeadTimingChip notes={lead.notes} />
+                  {getPriorityIndicator(lead.priority)}
+                </div>
+              }
+              next={(() => {
+                const lane = laneOf(lead as any);
+                if (isInProgress) return { title: "Finish the job", note: "Use Complete Job at the bottom when the work is done." };
+                if (isClaimed) return { title: "Start the job when you arrive", note: "Use Start Job at the bottom." };
+                if (isAvailable) {
+                  if (invoiceTechOnly) return { title: "Accept this job", note: "Use Accept at the bottom." };
+                  return lane === "sales"
+                    ? { title: "Book the free quote visit", note: "Assign a rep from the dispatch board or Accept at the bottom." }
+                    : { title: callOutTitle(callOutFee), note: "Assign a tech from the dispatch board or Accept at the bottom." };
+                }
+                if (isCompleted) return { title: invoiceTechOnly ? "Job done. Sent to the office." : "Job done. Invoice and get paid." };
+                return null;
+              })()}
+              editFields={[
+                "customer_name",
+                "customer_phone",
+                "email",
+                "customer_address",
+                "service_type",
+                "priority",
+                "status",
+                "assigned_agent_id",
+                "scheduled_date",
+                "scheduled_time",
+                "order_status",
+                "parts_status",
+                ...(isCallDump(lead.notes) ? [] : ["notes"]),
+              ]}
+              after={
+                <>
+                  <details className="rounded-[14px] border border-border bg-card p-4">
+                    <summary className="cursor-pointer text-[13px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Time</summary>
+                    <div className="mt-3 space-y-4">
+                      {currentUserId && (
+                        <TimeTracker leadId={lead.id} agentId={currentUserId} onSaved={() => setTimeRefreshKey((k) => k + 1)} />
+                      )}
+                      <TimeEntryList leadId={lead.id} refreshKey={timeRefreshKey} />
+                    </div>
+                  </details>
+                  <details className="rounded-[14px] border border-border bg-card p-4">
+                    <summary className="cursor-pointer text-[13px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Messages &amp; calls</summary>
+                    <div className="mt-3 space-y-4">
+                      <CommunicationTimeline leadId={lead.id} customerId={lead.customer_id || undefined} />
+                      <CallHistoryPanel leadId={lead.id} title="Voice assistant calls" />
+                      {lead.customer_id && <CallHistoryPanel customerId={lead.customer_id} title="All calls from this client" />}
+                    </div>
+                  </details>
+                </>
+              }
+            >
+            <div className="space-y-3">
             {isInProgress && lead.actual_start_time && (
               <JobProgressSection
                 startedAt={lead.actual_start_time}
@@ -577,98 +610,19 @@ const LeadDetailSheet = ({
                 onAdjustTime={handleAdjustTime}
               />
             )}
-
-            {/* Phone & Address Row - Compact on same row when possible */}
+            {/* Navigate / map (contact itself is in the header and Details) */}
             <div className="grid grid-cols-2 gap-2">
-              {/* Phone */}
-              <a
-                href={`tel:${lead.customer_phone}`}
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-background/50 hover:bg-background/80 transition-colors"
-              >
-                <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                  <Phone className="h-4 w-4 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-medium truncate">{lead.customer_phone}</p>
-                  <p className="text-xs text-muted-foreground">Call</p>
-                </div>
+              <a href={navigationUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card p-2.5 text-sm font-medium hover:bg-muted/50">
+                <Navigation className="h-4 w-4 text-primary" />Navigate
               </a>
-
-              {/* Navigate */}
-              <a
-                href={navigationUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-background/50 hover:bg-background/80 transition-colors"
-              >
-                <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                  <Navigation className="h-4 w-4 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-medium truncate">Navigate</p>
-                  <p className="text-xs text-muted-foreground">Directions</p>
-                </div>
+              <a href={addressSearchUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card p-2.5 text-sm font-medium hover:bg-muted/50">
+                <MapPin className="h-4 w-4 text-primary" />View on map
               </a>
             </div>
-
-            {/* Address - Full width */}
-            <a
-              href={addressSearchUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2.5 p-2.5 rounded-xl bg-background/50 hover:bg-background/80 transition-colors"
-            >
-              <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                <MapPin className="h-4 w-4 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium line-clamp-2">{lead.customer_address}</p>
-                <p className="text-xs text-muted-foreground">View on map</p>
-              </div>
-            </a>
-
             {/* Classification (rule/AI) with human override */}
             <LeadClassificationPanel leadId={lead.id} />
 
             <LeadCallReports leadId={lead.id} />
-
-            <CallSummary lead={lead as any} />
-
-            {/* Lead Information — full summary of everything captured at intake */}
-
-            <div className="rounded-xl border border-border/60 bg-background/60 p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Lead Information</h3>
-                {lead.created_at && (
-                  <span className="text-xs text-muted-foreground">
-                    Created {formatTimeAgo(lead.created_at)}
-                  </span>
-                )}
-              </div>
-
-              <EntityDetailsForm
-                entityType="lead"
-                entityId={lead.id}
-                initialData={lead as any}
-                readOnly={!canEdit}
-                visibleFields={[
-                  "customer_name",
-                  "customer_phone",
-                  "email",
-                  "customer_address",
-                  "service_type",
-                  "priority",
-                  "status",
-                  "assigned_agent_id",
-                  "scheduled_date",
-                  "scheduled_time",
-                  "order_status",
-                  "parts_status",
-                  ...(isCallDump(lead.notes) ? [] : ["notes"]),
-                ] as any}
-              />
-            </div>
-
 
             {/* Customer Job History */}
             <CustomerJobHistory
@@ -1047,41 +1001,10 @@ const LeadDetailSheet = ({
                 )
               )
             )}
-
-            {/* Created timestamp at bottom */}
-              {lead.created_at && (
-                <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground pt-2">
-                  <Clock className="h-3 w-3" />
-                  <span>Created {formatTimeAgo(lead.created_at)}</span>
-                </div>
-              )}
             </div>
             </div>
-              </TabsContent>
-
-              <TabsContent value="time" className="mt-0 px-4 pb-4 space-y-4">
-                {currentUserId && (
-                  <TimeTracker
-                    leadId={lead.id}
-                    agentId={currentUserId}
-                    onSaved={() => setTimeRefreshKey((k) => k + 1)}
-                  />
-                )}
-                <TimeEntryList leadId={lead.id} refreshKey={timeRefreshKey} />
-              </TabsContent>
-
-              <TabsContent value="timeline" className="mt-0 px-4 pb-4">
-                <JobTimeline leadId={lead.id} lead={lead} />
-              </TabsContent>
-
-              <TabsContent value="comms" className="mt-0 px-4 pb-4 space-y-4">
-                <CommunicationTimeline leadId={lead.id} customerId={lead.customer_id || undefined} />
-                <CallHistoryPanel leadId={lead.id} title="Voice assistant calls" />
-                {lead.customer_id && (
-                  <CallHistoryPanel customerId={lead.customer_id} title="All calls from this client" />
-                )}
-              </TabsContent>
-            </Tabs>
+            </LeadPageC>
+            </div>
           </ScrollArea>
 
           {/* Sticky bottom action bar — always visible, finger-friendly */}

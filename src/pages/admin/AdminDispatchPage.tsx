@@ -18,7 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
+import LeadPageC, { callOutTitle, useCallOutFeeIncl } from "@/components/leads/LeadPageC";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -574,6 +574,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
   });
 
   // Job Details "Calendar slot" follows edits made in the same dialog (DB trigger moves the row; realtime refetches)
+  const callOutFee = useCallOutFeeIncl();
   const liveSlot: any = jobInfoLead
     ? (rawSchedules as any[]).find((r) => jobInfoSchedule && r.id === jobInfoSchedule.id)
       ?? (rawSchedules as any[]).find((r) => r.lead_id === jobInfoLead.id && !r.job_id)
@@ -1434,81 +1435,52 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
 
       {/* ─── Job Info Dialog ─── */}
       <Dialog open={!!jobInfoLead} onOpenChange={(open) => { if (!open) { setJobInfoLead(null); setJobInfoSchedule(null); } }}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5 text-primary" />
-              Job Details
-            </DialogTitle>
-            <DialogDescription>
-              Every field is editable — changes save instantly and sync to the board, calendar and customer.
-            </DialogDescription>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-muted/40 p-3 sm:p-5">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Lead details</DialogTitle>
+            <DialogDescription>Client, call summary, next step, details and history.</DialogDescription>
           </DialogHeader>
-          {jobInfoLead && (
-            <div className="space-y-3">
-              <EntityDetailsForm
-                entityType="lead"
-                entityId={jobInfoLead.id}
-                initialData={jobInfoLead as any}
-                visibleFields={[
-                  "customer_name",
-                  "customer_phone",
-                  "customer_address",
-                  "service_type",
-                  "priority",
-                  "status",
-                  "assigned_agent_id",
-                  "scheduled_date",
-                  "scheduled_time",
-                  "order_status",
-                  "parts_status",
-                  "notes",
-                ]}
-              />
-              {liveSlot && (
-                <>
-                  <Separator />
-                  <p className="text-xs text-muted-foreground">
-                    Calendar slot: {liveSlot.scheduled_date} · {hhmm(liveSlot.start_time)} – {hhmm(liveSlot.end_time)}
-                  </p>
-                </>
-              )}
-              {/* Deposit payment chip for installation handoff jobs */}
-              <InstallDepositChip leadId={jobInfoLead.id} showOpen />
-            </div>
-          )}
+          {jobInfoLead && (() => {
+            const lead = jobInfoLead;
+            const live = allLeads.find((l) => l.id === lead.id) ?? lead;
+            const lane = laneOf(lead);
+            const unassigned = !live.assigned_agent_id;
+            const close = () => { setJobInfoLead(null); setJobInfoSchedule(null); };
+            const assign = () => {
+              close();
+              setQuickAssignLead(lead);
+              setQuickAssignAgent("");
+              setQuickAssignDate(format(currentDate, "yyyy-MM-dd"));
+              setQuickAssignStart("08:00");
+              setQuickAssignEnd("10:00");
+            };
+            const quote = { label: "Create / Open Quote", onClick: () => { close(); openQuoteForLead(lead); } };
+            const next = lane === "sales"
+              ? unassigned
+                ? { title: "Book the free quote visit", primary: { label: "Book free quote visit", onClick: assign, testId: "lead-c-assign" }, secondary: [quote] }
+                : { title: "Prepare and send the quote", primary: quote }
+              : unassigned
+                ? { title: callOutTitle(callOutFee), primary: { label: "Book call-out", onClick: assign, testId: "lead-c-assign" } }
+                : { title: "Call-out booked. Track it on the board." };
+            return (
+              <LeadPageC
+                lead={live}
+                next={next}
+                editFields={["customer_name", "customer_phone", "customer_address", "service_type", "priority", "status", "assigned_agent_id", "scheduled_date", "scheduled_time", "order_status", "parts_status", "notes"]}
+                onClose={close}
+              >
+                <div className="space-y-2">
+                    {liveSlot && (
+                      <p className="text-xs text-muted-foreground">
+                        Calendar slot: {liveSlot.scheduled_date} · {hhmm(liveSlot.start_time)} – {hhmm(liveSlot.end_time)}
+                      </p>
+                    )}
+                  <InstallDepositChip leadId={lead.id} showOpen />
+                </div>
+              </LeadPageC>
+            );
+          })()}
           <DialogFooter>
-            {jobInfoLead && laneOf(jobInfoLead) === "sales" && (
-              <Button
-                variant="brand"
-                onClick={() => {
-                  const lead = jobInfoLead;
-                  setJobInfoLead(null);
-                  setJobInfoSchedule(null);
-                  openQuoteForLead(lead);
-                }}
-              >
-                <FileText className="h-4 w-4 mr-1" />
-                Create / Open Quote
-              </Button>
-            )}
-            {jobInfoLead && !(allLeads.find((l) => l.id === jobInfoLead.id) ?? jobInfoLead).assigned_agent_id && (
-              <Button
-                onClick={() => {
-                  const lead = jobInfoLead;
-                  setJobInfoLead(null);
-                  setJobInfoSchedule(null);
-                  setQuickAssignLead(lead);
-                  setQuickAssignAgent("");
-                  setQuickAssignDate(format(currentDate, "yyyy-MM-dd"));
-                  setQuickAssignStart("08:00");
-                  setQuickAssignEnd("10:00");
-                }}
-              >
-                <User className="h-4 w-4 mr-1" />
-                Assign Job
-              </Button>
-            )}
             <Button variant="outline" onClick={() => { setJobInfoLead(null); setJobInfoSchedule(null); }}>Close</Button>
           </DialogFooter>
         </DialogContent>

@@ -66,3 +66,18 @@ export function callSummaryHtml(lead: CallLeadLike): string {
     : "";
   return `<span style="font-size:11px;color:#374151">${escapeHtml(line)}</span>${full}`;
 }
+
+/** Call summary as short bullet points (lead page C): full call_summary, else the AI summary / plain notes; never the raw transcript. */
+export function summaryBullets(lead: CallLeadLike, max = 6): string[] {
+  const notes = lead.notes?.trim() || "";
+  const dump = isCallDump(notes);
+  const p = dump ? parseCall(notes) : null;
+  const src = lead.call_summary?.trim() || (dump ? (p?.aiSummary || (p?.firstRequest ? `“${p.firstRequest}”` : "")) : notes.split(/\r?\n/).filter((l) => !/^(Timing|Source):/i.test(l.trim())).slice(0, 4).join("\n"));
+  if (!src) return [];
+  return src
+    .split(/\r?\n|\s·\s|(?<=[.!?])\s+(?=[A-Z“"])/)
+    .map((s) => s.replace(/^[-•*\s]+/, "").trim())
+    .filter((s) => s.length > 1)
+    .slice(0, max)
+    .map((s) => clip(s, 180));
+}

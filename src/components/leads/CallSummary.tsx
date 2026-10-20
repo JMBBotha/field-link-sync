@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtDuration, isCallDump, oneLineSummary, parseCall, type CallLeadLike } from "@/lib/callSummary";
+import { fmtDuration, isCallDump, oneLineSummary, parseCall, summaryBullets, type CallLeadLike } from "@/lib/callSummary";
 
 /** One-line call summary (+ area/urgency/next chips) with transcript, recording and call meta behind "Show full call". */
-export default function CallSummary({ lead, compact, className }: { lead: CallLeadLike; compact?: boolean; className?: string }) {
+export default function CallSummary({ lead, compact, bullets, className }: { lead: CallLeadLike; compact?: boolean; bullets?: boolean; className?: string }) {
   const [open, setOpen] = useState(false);
   const line = oneLineSummary(lead);
   if (!line) return null;
+  const points = bullets ? summaryBullets(lead) : [];
   const p = isCallDump(lead.notes) ? parseCall(lead.notes) : null;
   const chips = [
     lead.call_area && `📍 ${lead.call_area}`,
@@ -17,14 +18,16 @@ export default function CallSummary({ lead, compact, className }: { lead: CallLe
   const meta = p ? [p.source && `Source: ${p.source}`, p.durationSec != null && `Duration: ${fmtDuration(p.durationSec)}`, p.endedReason && `Ended: ${p.endedReason}`, p.callId && `Call: ${p.callId}`].filter(Boolean) as string[] : [];
   return (
     <div className={cn("min-w-0 w-full space-y-1", className)} onClick={(e) => e.stopPropagation()}>
-      <p className={cn("rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100 break-words", compact && "line-clamp-2")}>{line}</p>
+      {bullets && points.length > 0 ? (
+        <ul className="list-disc space-y-1 pl-5 text-sm text-foreground" data-testid="call-summary-bullets">{points.map((b, i) => <li key={i} className="break-words">{b}</li>)}</ul>
+      ) : <p className={cn("rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100 break-words", compact && "line-clamp-2")}>{line}</p>}
       {!compact && chips.length > 0 && (
         <div className="flex flex-wrap gap-1">{chips.map((c) => <span key={c} className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{c}</span>)}</div>
       )}
       {p && (
         <>
           <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline">
-            {open ? "Hide full call" : "Show full call"}<ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
+            {bullets ? (open ? "Hide transcript" : "Play recording · Full transcript") : (open ? "Hide full call" : "Show full call")}<ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
           </button>
           {open && (
             <div className="space-y-1.5 rounded-md border bg-muted/30 p-2 text-xs">
