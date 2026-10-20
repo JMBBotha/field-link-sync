@@ -63,6 +63,12 @@ returns void language plpgsql security definer set search_path = public as $$
 declare u uuid; v_users uuid[] := array(select distinct x from unnest(p_users) x where x is not null);
 begin
   if coalesce(array_length(v_users,1),0) = 0 then return; end if;
+  -- Go-live baseline: log existing backlog once without notifying anyone.
+  if current_setting('hb.silent', true) = '1' then
+    insert into public.sales_escalations(company_id, entity_type, entity_id, stage, level, notified_user_ids, message)
+    values (p_company, p_type, p_id, p_stage, p_level, '{}', 'Baseline at go-live (no nudge sent): '||p_body) on conflict do nothing;
+    return;
+  end if;
   insert into public.sales_escalations(company_id, entity_type, entity_id, stage, level, notified_user_ids, message)
   values (p_company, p_type, p_id, p_stage, p_level, v_users, p_body) on conflict do nothing;
   if not found then return; end if;
@@ -82,7 +88,7 @@ begin
   if v_open then
   for r in select l.id, l.company_id, l.customer_name, l.assigned_agent_id, extract(epoch from v_now - l.created_at)/60 as mins
     from public.leads l where l.status = 'pending' and l.first_contact_at is null and l.acknowledged_at is null
-      and l.deleted_at is null and l.merged_into_id is null and coalesce(l.primary_intent,'') <> 'service'
+      and l.deleted_at is null and l.merged_into_id is null and l.primary_intent is distinct from 'service'
       and l.created_at > v_now - interval '3 days' loop
     if r.mins >= public._hb_limit(r.company_id,'leadRepMin',5) then
       perform public._hb_nudge(r.company_id,'lead',r.id,'new',1, array[r.assigned_agent_id] || public._hb_sales(r.company_id), 'Hot lead waiting', coalesce(r.customer_name,'New lead')||' not contacted yet'); end if;
@@ -95,7 +101,7 @@ begin
   -- Contacted, no visit booked, no quote
   for r in select l.id, l.company_id, l.customer_name, l.assigned_agent_id, extract(epoch from v_now - l.first_contact_at)/86400 as d
     from public.leads l where l.status = 'pending' and l.first_contact_at is not null and l.visit_booked_at is null
-      and l.deleted_at is null and l.merged_into_id is null and coalesce(l.primary_intent,'') <> 'service'
+      and l.deleted_at is null and l.merged_into_id is null and l.primary_intent is distinct from 'service'
       and not exists (select 1 from public.quotes q where q.lead_id = l.id) and l.first_contact_at > v_now - interval '30 days' loop
     if r.d >= public._hb_limit(r.company_id,'contactedDays',1) then perform public._hb_nudge(r.company_id,'lead',r.id,'contacted',1, array[r.assigned_agent_id], 'Book the visit', coalesce(r.customer_name,'Lead')||' contacted, no visit booked'); end if;
     if r.d >= public._hb_limit(r.company_id,'contactedAdminDays',2) then perform public._hb_nudge(r.company_id,'lead',r.id,'contacted',2, public._hb_admins(r.company_id), 'Lead stalled', coalesce(r.customer_name,'Lead')||' contacted '||floor(r.d)||' d ago, no visit'); end if;
@@ -127,5 +133,7 @@ begin
   end loop;
 end $$;
 
+-- Baseline existing backlog silently, then schedule.
+select set_config('hb.silent','1',false); select public.process_sales_escalations(); select set_config('hb.silent','0',false);
 select cron.unschedule('sales-heartbeat-escalations') where exists (select 1 from cron.job where jobname = 'sales-heartbeat-escalations');
 select cron.schedule('sales-heartbeat-escalations', '*/2 * * * *', 'select public.process_sales_escalations()');

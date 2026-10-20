@@ -49,7 +49,7 @@ export default function SalesHeartbeat() {
           <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Stalled · escalated</h3>
           {hb.stalled.length === 0 ? <div className="mt-2 text-[13px] text-muted-foreground">Nothing stalled.</div> : hb.stalled.map((i) => {
             const e = escFor(i.id);
-            return <Row key={i.id} i={i} extra={e ? `Nudged ${fmtAge(now - new Date(e.created_at).getTime())} ago${e.level > 1 ? " · escalated to admin" : ""}` : "Not nudged yet"} onClick={() => navigate(i.next.to)} />;
+            return <Row key={i.id} i={i} extra={e && !(e.notified_user_ids || []).length ? "Stalled before go-live" : e ? `Nudged ${fmtAge(now - new Date(e.created_at).getTime())} ago${e.level > 1 ? " · escalated to admin" : ""}` : "Not nudged yet"} onClick={() => navigate(i.next.to)} />;
           })}
         </section>
       </div>
