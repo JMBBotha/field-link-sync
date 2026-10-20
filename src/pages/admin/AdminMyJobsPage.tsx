@@ -226,8 +226,8 @@ const AdminMyJobsPage = () => {
   }, [queryClient]);
 
   const content = (
-    <div className={isFieldContext ? "space-y-4" : "space-y-4 p-4 md:p-6 max-w-3xl mx-auto "}>
-      <div className={`flex items-center ${isFieldContext ? "justify-end" : "justify-between"}`}>
+    <div className={isFieldContext ? "space-y-4" : "v8-scope space-y-4 p-4 md:p-6 max-w-3xl mx-auto "}>
+      <div className={`flex items-center ${isFieldContext ? "justify-end" : "v8-navy justify-between"}`}>
         {!isFieldContext && <h1 className="page-title">My Jobs</h1>}
         <Button size="sm" variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ["my-jobs"] })}>
           <RefreshCw className="h-4 w-4 mr-2" /> Refresh

@@ -60,8 +60,8 @@ export const AdminVisitsPage = () => {
   }, [data]);
   const rows = filterVisits(data, tab);
   return (
-    <div className="p-3 sm:p-6 space-y-3 max-w-3xl" data-testid="visits-page">
-      <div className="flex items-center gap-2">
+    <div className="v8-scope p-3 sm:p-6 space-y-3 max-w-3xl" data-testid="visits-page">
+      <div className="v8-navy flex items-center gap-2">
         <CalendarDays className="h-5 w-5 text-primary" />
         <h1 className="text-xl font-semibold">My visits</h1>
       </div>
@@ -147,11 +147,11 @@ export const AdminVisitDetailPage = () => {
   };
   const canRelease = tab === "upcoming" && !r.quote_accepted && !r.has_install_job;
   return (
-    <div className="p-3 sm:p-6 space-y-3 max-w-3xl" data-testid="visit-detail">
+    <div className="v8-scope p-3 sm:p-6 space-y-3 max-w-3xl" data-testid="visit-detail">
       <Button variant="ghost" className="min-h-[44px] -ml-2" onClick={() => navigate("/admin/visits")}>
         <ArrowLeft className="h-4 w-4 mr-1" />My visits
       </Button>
-      <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2">
+      <div className="v8-navy p-4 space-y-2">
         <h1 className="text-lg font-semibold">{r.customer_name || "Client"}</h1>
         {r.address && <p className="text-sm text-muted-foreground">{r.address}</p>}
         <p className="text-sm flex items-center gap-1"><CalendarDays className="h-4 w-4" />{when(r)}</p>

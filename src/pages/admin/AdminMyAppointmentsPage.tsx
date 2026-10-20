@@ -7,8 +7,8 @@ import MyAppointmentsList from "@/components/admin/MyAppointmentsList";
 const AdminMyAppointmentsPage = () => {
   const { data, isLoading, error } = useMyAppointments(60);
   return (
-    <div className="p-4 sm:p-6 space-y-4 max-w-3xl">
-      <div className="flex items-center gap-2">
+    <div className="v8-scope p-4 sm:p-6 space-y-4 max-w-3xl">
+      <div className="v8-navy flex items-center gap-2">
         <CalendarDays className="h-5 w-5 text-primary" />
         <h1 className="text-xl font-semibold">My appointments</h1>
       </div>

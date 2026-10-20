@@ -8,9 +8,9 @@ import type { SurveyMedia } from "@/lib/siteSurvey/model";
 
 export function SyncBadge({ state, online }: { state: SyncState; online: boolean }) {
   if (state === "syncing") return <Badge variant="outline" className="gap-1 text-xs" data-testid="survey-sync"><Loader2 className="h-3 w-3 animate-spin" />Uploading…</Badge>;
-  if (state === "error") return <Badge variant="outline" className="gap-1 text-xs border-orange-300 text-orange-700" data-testid="survey-sync"><RefreshCw className="h-3 w-3" />Saved on phone · retrying</Badge>;
+  if (state === "error") return <Badge variant="outline" className="gap-1 text-xs border-orange-300 dark:border-orange-400/30 text-orange-700 dark:text-orange-300" data-testid="survey-sync"><RefreshCw className="h-3 w-3" />Saved on phone · retrying</Badge>;
   if (state === "saved-phone" || !online) return <Badge variant="outline" className="gap-1 text-xs" data-testid="survey-sync">{online ? <UploadCloud className="h-3 w-3" /> : <CloudOff className="h-3 w-3" />}Saved on phone</Badge>;
-  return <Badge variant="outline" className="gap-1 text-xs border-green-300 text-green-700" data-testid="survey-sync"><CheckCircle2 className="h-3 w-3" />Synced</Badge>;
+  return <Badge variant="outline" className="gap-1 text-xs border-green-300 dark:border-green-400/30 text-green-700 dark:text-green-300" data-testid="survey-sync"><CheckCircle2 className="h-3 w-3" />Synced</Badge>;
 }
 
 export function Chips<T extends string | number>({ options, value, onChange, label }:

@@ -79,8 +79,8 @@ export default function SiteSurveyPage() {
   const activeIdx = step.k === "room" ? 1 : STEPS.findIndex((x) => x.k === step.k);
 
   return (
-    <div className="p-3 sm:p-6 space-y-3 max-w-3xl pb-40 lg:pb-6" data-testid="site-survey">
-      <div className="flex items-center justify-between gap-2">
+    <div className="v8-scope p-3 sm:p-6 space-y-3 max-w-3xl pb-40 lg:pb-6" data-testid="site-survey">
+      <div className="v8-navy flex items-center justify-between gap-2">
         <Button variant="ghost" className="min-h-[44px] -ml-2" onClick={step.k === "room" ? () => setStep({ k: "rooms" }) : back}>
           <ArrowLeft className="h-4 w-4 mr-1" />{step.k === "room" ? "Rooms" : "Visit"}
         </Button>
@@ -100,7 +100,7 @@ export default function SiteSurveyPage() {
       </div>
       {s.syncError && <p className="text-xs text-muted-foreground">Upload will retry: {s.syncError}</p>}
       {done && step.k !== "review" && (
-        <div className="rounded-xl border border-green-300 bg-green-50 dark:bg-green-950/30 p-3 text-sm">This survey is finished. Changes still save and update the report.</div>
+        <div className="rounded-xl border border-green-300 dark:border-green-400/30 bg-green-50 dark:bg-green-950/30 p-3 text-sm">This survey is finished. Changes still save and update the report.</div>
       )}
 
       {step.k === "arrive" && (
@@ -248,7 +248,7 @@ export default function SiteSurveyPage() {
             )}
           </div>
           {gaps.length > 0 && (
-            <div className="rounded-xl border border-orange-200 bg-orange-50 dark:bg-orange-950/20 p-4 space-y-1" data-testid="survey-gaps">
+            <div className="rounded-xl border border-orange-200 dark:border-orange-400/30 bg-orange-50 dark:bg-orange-950/20 p-4 space-y-1" data-testid="survey-gaps">
               <h2 className="text-sm font-semibold text-orange-800 dark:text-orange-300">Worth checking</h2>
               {gaps.map((g, i) => (
                 <button key={i} type="button" className="block text-left text-sm text-orange-900 dark:text-orange-200"
