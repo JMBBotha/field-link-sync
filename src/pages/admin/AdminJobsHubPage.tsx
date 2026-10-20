@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useRole } from "@/hooks/useRole";
 import { useSalesRep } from "@/hooks/useSalesRep";
@@ -17,7 +17,7 @@ import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import AdminJobsDispatchPage from "@/pages/admin/AdminJobsDispatchPage";
 import { fmtRandShort } from "@/lib/quotePipeline";
 import JobsCalm from "@/components/jobs/calm/JobsCalm";
-import { calmEnabled } from "@/lib/jobsCalm";
+import { clearOldJobsFlags } from "@/lib/jobsCalm";
 
 type Tab = "pipeline" | "dispatch";
 /** Pipeline: cards | stages. Dispatch: cards | board (old Stages board) | calendar (Dispatch calendar). */
@@ -52,7 +52,32 @@ export function DispatchCalendarRedirect() {
  * Choice is remembered per user per tab (localStorage fls.jobs.*) and mirrored in the URL (?tab=&view=).
  * Role defaults on first visit: admin → Pipeline·Stages, sales rep → Pipeline·Cards, dispatcher → Dispatch·Cards.
  */
+/**
+ * Jobs = the calm page only (Johan 20 Oct 12:16, no way back to the old hub).
+ * Deep links still work: ?lead=<id> (bells, lead cards, Assign) opens the existing Job Details sheet via the embedded
+ * dispatch page (mounted hidden; its sheet portals over the calm page), ?date=YYYY-MM-DD opens that day, ?tab=pipeline opens Pipeline.
+ */
 export default function AdminJobsHubPage() {
+  const [sp] = useSearchParams();
+  const { isSalesRep, loading: repLoading } = useSalesRep();
+  const { loading } = useRole();
+  const lead = sp.get("lead");
+  const [dispatchHost, setDispatchHost] = useState(false);
+  useEffect(() => { if (lead) setDispatchHost(true); }, [lead]);
+  useEffect(() => { clearOldJobsFlags(typeof localStorage === "undefined" ? null : localStorage); }, []);
+  if (loading || repLoading) return null;
+  const date = sp.get("date");
+  const initialDay = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined;
+  return (
+    <>
+      <JobsCalm salesOnly={isSalesRep} initialTab={sp.get("tab") === "pipeline" ? "pipeline" : "today"} initialDay={initialDay} />
+      {dispatchHost && !isSalesRep && <div className="hidden" aria-hidden><AdminDispatchPage embedded /></div>}
+    </>
+  );
+}
+
+/** Old Jobs hub, unreachable since 20 Oct 12:16 (kept so a git revert stays simple). */
+export function LegacyJobsHubPage() {
   // v8 Simple: the Lead → Paid board in the New layout (stages view); Classic and the list view keep the old board.
   const { isClassic: isClassicLayout } = useLayoutVersion();
   const [sp, setSp] = useSearchParams();
@@ -63,8 +88,6 @@ export default function AdminJobsHubPage() {
   const pipe = usePipelineData();
   const [showCreate, setShowCreate] = useState(false);
   if (loading || repLoading) return null;
-  // Calm Jobs page (Johan 20 Oct 12:08): LIVE for everyone. ?jobs=classic opts this browser back to the old page, ?jobs=calm returns.
-  if (calmEnabled(window.location.search, typeof localStorage === "undefined" ? null : localStorage)) return <JobsCalm salesOnly={isSalesRep} />;
 
   const defTab: Tab = isSalesRep || isAdmin || !isDispatcher ? "pipeline" : "dispatch";
   const defViewFor = (t: Tab): View => (t === "pipeline" ? (isSalesRep ? "cards" : "stages") : "cards");

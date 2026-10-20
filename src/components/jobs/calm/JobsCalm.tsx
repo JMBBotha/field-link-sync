@@ -22,8 +22,8 @@ const PILL: Record<string, string> = { completed: "Done", in_progress: "On site"
 const plusDay = (d: string, n: number) => todayInJohannesburg(new Date(new Date(`${d}T12:00:00+02:00`).getTime() + n * 86_400_000));
 const ageLabel = (iso?: string | null) => { if (!iso) return null; const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return m >= 1440 ? `${Math.floor(m / 1440)}d` : m >= 60 ? `${Math.floor(m / 60)}h` : `${Math.max(0, m)}m`; };
 
-/** Calm Jobs page (flag ?jobs=calm). Reuses the Dispatch · Cards queries and the existing assign / create / open flows. */
-export default function JobsCalm({ initialTab = "today", salesOnly = false }: { initialTab?: CalmTab; salesOnly?: boolean }) {
+/** Calm Jobs page (the only Jobs page since 20 Oct). Reuses the Dispatch · Cards queries and the existing assign / create / open flows. */
+export default function JobsCalm({ initialTab = "today", salesOnly = false, initialDay }: { initialTab?: CalmTab; salesOnly?: boolean; initialDay?: string }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -34,7 +34,7 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false }: { 
   const [assignJobId, setAssignJobId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const today = todayInJohannesburg();
-  const [sel, setSel] = useState(today);
+  const [sel, setSel] = useState(initialDay || today);
   const cells = monthGrid(sel);
   const from = tab === "week" ? format(startOfWeek(new Date(`${sel}T12:00:00+02:00`), { weekStartsOn: 1 }), "yyyy-MM-dd") : tab === "month" ? cells[0].day : sel;
   const to = tab === "month" ? plusDay(cells[cells.length - 1].day, 1) : plusDay(from, tab === "week" ? 7 : 1);

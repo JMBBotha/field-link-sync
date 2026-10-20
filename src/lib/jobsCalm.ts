@@ -76,15 +76,10 @@ export function ageTone(createdAt: string | null | undefined, now = new Date()):
   return { mins, tone: mins < 15 ? "green" : mins < 60 ? "amber" : "red" };
 }
 
-/** Calm page is ON by default (live 20 Oct). ?jobs=classic opts this browser out (remembered), ?jobs=calm back in. */
-export const CALM_KEY = "fls.jobs.classic";
-export function calmEnabled(search: string, storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null): boolean {
-  const q = new URLSearchParams(search).get("jobs");
-  try {
-    if (q === "classic") { storage?.setItem(CALM_KEY, "1"); return false; }
-    if (q === "calm") { storage?.removeItem(CALM_KEY); return true; }
-    return storage?.getItem(CALM_KEY) !== "1";
-  } catch { return q !== "classic"; }
+/** Old preview/opt-out keys (removed 20 Oct 12:16): clear any stored value. */
+export const OLD_JOBS_FLAG_KEYS = ["fls.jobs.calm", "fls.jobs.classic"];
+export function clearOldJobsFlags(storage: Pick<Storage, "removeItem"> | null): void {
+  try { OLD_JOBS_FLAG_KEYS.forEach((k) => storage?.removeItem(k)); } catch { /* private mode */ }
 }
 
 /** Month grid (Mon–Sun weeks) covering the month of `day` (YYYY-MM-DD): whole weeks, 4–6 rows. */

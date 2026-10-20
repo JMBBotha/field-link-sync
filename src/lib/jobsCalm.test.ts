@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { blockKind, blockPos, jhbMinutes, snapStart, needsYou, ageTone, calmEnabled, jhbIso, dayProgress } from "./jobsCalm";
+import { blockKind, blockPos, jhbMinutes, snapStart, needsYou, ageTone, jhbIso, dayProgress } from "./jobsCalm";
 
 const u = (key: any) => ({ key, rank: 0, mins: null });
 describe("jobsCalm", () => {
@@ -31,7 +31,7 @@ describe("jobsCalm", () => {
     expect(ageTone("2026-10-20T08:00:00Z", now).tone).toBe("red");
   });
 });
-import { monthGrid } from "./jobsCalm";
+import { monthGrid, clearOldJobsFlags } from "./jobsCalm";
 describe("monthGrid", () => {
   it("Oct 2026 starts Mon 28 Sep, whole weeks", () => {
     const g = monthGrid("2026-10-20");
@@ -40,13 +40,10 @@ describe("monthGrid", () => {
     expect(g.filter((c) => c.inMonth).length).toBe(31);
     expect(g[g.length - 1].day).toBe("2026-11-01");
   });
-  it("calm on by default now", () => {
-    const m = new Map<string, string>();
-    const s = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
-    expect(calmEnabled("", s)).toBe(true);
-    expect(calmEnabled("?jobs=classic", s)).toBe(false);
-    expect(calmEnabled("", s)).toBe(false);
-    expect(calmEnabled("?jobs=calm", s)).toBe(true);
-    expect(calmEnabled("", s)).toBe(true);
+  it("clears old flag keys", () => {
+    const m = new Map([["fls.jobs.calm", "1"], ["fls.jobs.classic", "1"], ["other", "x"]]);
+    clearOldJobsFlags({ removeItem: (k: string) => void m.delete(k) });
+    expect([...m.keys()]).toEqual(["other"]);
+    expect(() => clearOldJobsFlags(null)).not.toThrow();
   });
 });
