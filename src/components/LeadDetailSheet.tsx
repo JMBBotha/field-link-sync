@@ -1123,7 +1123,7 @@ const LeadDetailSheet = ({
           <div className="flex flex-col gap-3 pt-2">
             <Button
               variant="outline"
-              className="h-14 text-base font-medium border-2 hover:border-blue-500 hover:bg-blue-50"
+              className="h-14 text-base font-medium border-2 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/15"
               onClick={async () => {
                 if (pendingPhotoFiles.length > 0) {
                   setUploadingMultiple(true);
@@ -1147,7 +1147,7 @@ const LeadDetailSheet = ({
             </Button>
             <Button
               variant="outline"
-              className="h-14 text-base font-medium border-2 hover:border-green-500 hover:bg-green-50"
+              className="h-14 text-base font-medium border-2 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-500/15"
               onClick={async () => {
                 if (pendingPhotoFiles.length > 0) {
                   setUploadingMultiple(true);

@@ -1,3 +1,4 @@
+import { PageHeaderCard } from "@/components/v8/ui/V8Blocks";
 import { useEffect } from "react";
 import CallSummary from "@/components/leads/CallSummary";
 import { useNavigate } from "react-router-dom";
@@ -87,19 +88,15 @@ export default function AdminUnassignedQueuePage() {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-amber-500" />
-          Unassigned Queue
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Leads that could not be auto-dispatched and need manual assignment.
-        </p>
-      </header>
+      <PageHeaderCard
+        eyebrow="Dispatch"
+        title={<span className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-300" />Unassigned Queue</span>}
+        subtitle="Leads that could not be auto-dispatched and need manual assignment."
+      />
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading queue…</p>}
       {!isLoading && data.length === 0 && (
-        <Card>
+        <Card className="rounded-2xl">
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             Nothing waiting — every lead has been dispatched.
           </CardContent>
@@ -108,7 +105,7 @@ export default function AdminUnassignedQueuePage() {
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {data.map((row) => (
-          <Card key={row.id} className="bg-card">
+          <Card key={row.id} className="rounded-2xl bg-card shadow-sm">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-2">
                 <CardTitle className="text-base text-foreground">

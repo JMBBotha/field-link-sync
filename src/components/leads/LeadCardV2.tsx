@@ -175,7 +175,7 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
         )}
         <LeadTimingChip notes={lead.notes} className="mt-1" />
         {booking && (!tech || jobBooking) && (
-          <span data-testid="lead-card-booked" className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-800">
+          <span data-testid="lead-card-booked" className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-800 dark:border-blue-400/30 dark:bg-blue-500/15 dark:text-blue-300">
             <span className="truncate">Booked{booking.techName ? ` · ${tech && booking.techId === user?.id ? "You" : booking.techName}` : ""}{bookingWhen ? ` · ${bookingWhen}` : ""}</span>
           </span>
         )}
@@ -199,8 +199,8 @@ export default function LeadCardV2({ lead, onOpen, onAssign, assigneeName, actio
       )}
       {!compact && <div className="flex flex-wrap gap-1" onClick={stop}>
         <CallSummary lead={tech ? { ...lead, call_summary: text(lead.call_summary), notes: text(lead.notes) } : lead} compact />
-        {/call ?back/i.test(lead.call_next_action || "") && <span className="rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-xs text-red-700">Call back requested</span>}
-        {attempts > 0 && !lead.first_contact_at && <span className="rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-xs text-sky-800">{attempts} attempt{attempts === 1 ? "" : "s"} · no answer</span>}
+        {/call ?back/i.test(lead.call_next_action || "") && <span className="rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-xs text-red-700 dark:border-red-400/30 dark:bg-red-500/15 dark:text-red-300">Call back requested</span>}
+        {attempts > 0 && !lead.first_contact_at && <span className="rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-xs text-sky-800 dark:border-sky-400/30 dark:bg-sky-500/15 dark:text-sky-300">{attempts} attempt{attempts === 1 ? "" : "s"} · no answer</span>}
       </div>}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5" onClick={stop}>
         {(!compact && !tech ? action : null) ?? (unassigned ? (
