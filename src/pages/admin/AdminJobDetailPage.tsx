@@ -169,7 +169,7 @@ const AdminJobDetailPage = () => {
         <Button variant="ghost" size="sm" onClick={() => navigate("/admin/jobs")} className="gap-1.5">
           <ArrowLeft className="h-4 w-4" /> Back to Jobs
         </Button>
-        <Card>
+        <Card className="rounded-2xl">
           <CardContent className="p-8 text-center text-muted-foreground">
             Job not found or you don't have access.
           </CardContent>
@@ -203,34 +203,22 @@ const AdminJobDetailPage = () => {
         </div>
         <AssignTechDialog jobId={assignOpen ? j.id : null} onClose={() => setAssignOpen(false)} />
 
-        {/* Job info */}
-        <Card>
-          <CardContent className="p-4 md:p-5 space-y-3">
-            <div className="flex items-start justify-between gap-3 flex-wrap">
-              <div className="min-w-0 flex-1">
-                <h1 className="text-xl md:text-2xl font-bold leading-tight">{j.title}</h1>
-                <div className="flex items-center gap-2 flex-wrap mt-1.5">
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      STATUS_COLORS[j.status] || "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {(j.status || "unknown").replace(/_/g, " ")}
-                  </span>
-                  {j.priority && (
-                    <Badge variant={PRIORITY_VARIANT[j.priority] || "secondary"} className="text-xs">
-                      {j.priority}
-                    </Badge>
-                  )}
-                  {j.job_type && (
-                    <Badge variant="outline" className="text-xs">
-                      {jobTypeLabel(j.job_type)}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
+        {/* Job header: V8 navy card (Johan 14:04, appearance only) */}
+        <div className="rounded-2xl bg-gradient-to-br from-[#0F2A44] to-[#1590D6] p-4 text-white sm:p-5" data-testid="job-hero">
+          <h1 className="text-xl md:text-2xl font-semibold leading-tight break-words">{j.title}</h1>
+          <div className="flex items-center gap-2 flex-wrap mt-1.5">
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[j.status] || "bg-white/15 text-white"}`}>{(j.status || "unknown").replace(/_/g, " ")}</span>
+            {j.priority && <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold capitalize">{j.priority}</span>}
+            {j.job_type && <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold">{jobTypeLabel(j.job_type)}</span>}
+          </div>
+          {(j.customers?.name || location?.label || location?.address) && (
+            <p className="mt-1.5 text-sm text-[#CFE6F6] break-words">{[j.customers?.name, location?.label, location?.address].filter(Boolean).join(" · ")}</p>
+          )}
+        </div>
 
+        {/* Job info */}
+        <Card className="rounded-2xl">
+          <CardContent className="p-4 md:p-5 space-y-3">
             <EntityDetailsForm
               entityType="job"
               entityId={j.id}
@@ -295,7 +283,7 @@ const AdminJobDetailPage = () => {
 
         {/* Linked invoice */}
         {invoice?.id && (
-          <Card>
+          <Card className="rounded-2xl">
             <CardContent className="p-4 md:p-5 flex items-center justify-between gap-3 flex-wrap">
               <div className="min-w-0">
                 <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
@@ -325,7 +313,7 @@ const AdminJobDetailPage = () => {
 
         {/* Quote / Build path */}
         {quoteId && quoteSummary && (
-          <Card>
+          <Card className="rounded-2xl">
             <CardContent className="p-4 md:p-5 flex items-center justify-between gap-3 flex-wrap">
               <div className="min-w-0">
                 <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
@@ -360,7 +348,7 @@ const AdminJobDetailPage = () => {
 
         {/* Photos (only when the job originated from a lead) */}
         {j.lead_id && (
-          <Card>
+          <Card className="rounded-2xl">
             <CardContent className="p-4 md:p-5 space-y-3">
               <h3 className="font-semibold text-sm flex items-center gap-1.5">
                 <ImageIcon className="h-4 w-4 text-muted-foreground" /> Photos
@@ -371,7 +359,7 @@ const AdminJobDetailPage = () => {
         )}
 
         {/* Notes + activity */}
-        <Card>
+        <Card className="rounded-2xl">
           <CardContent className="p-4 md:p-5">
             <JobActivityTimeline jobId={j.id} />
           </CardContent>

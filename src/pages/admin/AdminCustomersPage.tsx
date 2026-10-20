@@ -1,3 +1,7 @@
+import { useInvoiceDue } from "@/hooks/useInvoiceDue";
+import { useSalesHeartbeat } from "@/hooks/useSalesHeartbeat";
+import { randShort } from "@/lib/invoiceDue";
+import { format } from "date-fns";
 import RowMenu from "@/components/shared/RowMenu";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
 import { TILE_LINKS } from "@/lib/drilldown";
@@ -85,7 +89,7 @@ const AdminCustomersPage = () => {
     queryFn: async () => {
       let q = supabase
         .from("customers")
-        .select("id, first_name, last_name, name, company_name, is_company, phone, email, primary_address_line1, city, status, notes, lead_source, updated_at, created_at");
+        .select("id, first_name, last_name, name, company_name, is_company, phone, email, primary_address_line1, city, status, notes, lead_source, updated_at, created_at, client_type, payment_terms_basis, payment_terms_days");
       q = showArchived ? q.eq("status", "archived") : q.or("status.is.null,status.neq.archived");
       const { data, error } = await q
         .order("updated_at", { ascending: false })
@@ -108,22 +112,6 @@ const AdminCustomersPage = () => {
     },
   });
 
-  // ---- Draft quotes total ----
-  const { data: draftQuotes = [] } = useQuery({
-    queryKey: ["draft-quotes-summary"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("quotes")
-        .select("id, total, status")
-        .eq("status", "draft")
-        .neq("status", "superseded")
-        .limit(2000);
-
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
   const today = new Date().toISOString().slice(0, 10);
 
   const summary = useMemo(() => {
@@ -136,9 +124,8 @@ const AdminCustomersPage = () => {
         overdue += Number(i.grand_total || 0);
       }
     }
-    const draft = draftQuotes.reduce((s, q) => s + Number(q.total || 0), 0);
-    return { overdue, outstanding, draft };
-  }, [invoices, draftQuotes, today]);
+    return { overdue, outstanding };
+  }, [invoices, today]);
 
   const outstandingByCustomer = useMemo(() => {
     const m = new Map<string, number>();
@@ -150,18 +137,45 @@ const AdminCustomersPage = () => {
     return m;
   }, [invoices]);
 
-  const recent = useMemo(() => customers.slice(0, 4), [customers]);
+  // V8 list (Johan 14:03): stats (sites, last activity) run under the caller's RLS; due data from invoice_due_summary.
+  const { data: stats = [] } = useQuery({
+    queryKey: ["client-list-stats"],
+    queryFn: async () => { const { data, error } = await (supabase as any).rpc("client_list_stats"); if (error) throw error; return (data || []) as { customer_id: string; sites: number; last_activity: string | null }[]; },
+  });
+  const statBy = useMemo(() => new Map(stats.map((r) => [r.customer_id, r])), [stats]);
+  const { data: quotesDue = 0 } = useQuery({ queryKey: ["quotes-followup-due"], queryFn: async () => Number((await (supabase as any).rpc("quotes_followup_due_count")).data || 0) });
+  const { rows: dueRows, summary: due } = useInvoiceDue();
+  const { hb } = useSalesHeartbeat();
+  const dueByCustomer = useMemo(() => {
+    const m = new Map<string, { amount: number; overdue: number; maxLate: number; waiting: number }>();
+    for (const r of dueRows) { if (!r.customer_id) continue; const e = m.get(r.customer_id) || { amount: 0, overdue: 0, maxLate: 0, waiting: 0 };
+      const a = Number(r.amount_due) || 0; e.amount += a;
+      if (r.waiting) e.waiting += a; else if (r.days > 0) { e.overdue += a; e.maxLate = Math.max(e.maxLate, r.days); }
+      m.set(r.customer_id, e); }
+    return m;
+  }, [dueRows]);
+  const money = useMemo(() => {
+    let overdue = 0, overdueN = 0, outstanding = 0, outN = 0, waiting = 0;
+    for (const e of dueByCustomer.values()) { outstanding += e.amount; outN++; waiting += e.waiting; if (e.overdue > 0) { overdue += e.overdue; overdueN++; } }
+    return dueRows.length ? { overdue, overdueN, outstanding, outN, waiting } : { overdue: summary.overdue, overdueN: 0, outstanding: summary.outstanding, outN: 0, waiting: 0 };
+  }, [dueByCustomer, dueRows.length, summary]);
+  const topOverdue = useMemo(() => [...dueByCustomer.entries()].filter(([, e]) => e.overdue > 0).sort((a, b) => b[1].maxLate - a[1].maxLate)[0], [dueByCustomer]);
+  const [typeF, setTypeF] = useState<string>("all");
+  const [sourceF, setSourceF] = useState<string>("all");
+  const [overdueOnly, setOverdueOnly] = useState(false);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return customers;
+    let list = customers.filter((c: any) => (typeF === "all" || c.client_type === typeF) && (sourceF === "all" || toLeadSourceValue(c.lead_source) === sourceF) && (!overdueOnly || (dueByCustomer.get(c.id)?.overdue || 0) > 0));
+    list = [...list].sort((x: any, y: any) => +new Date(statBy.get(y.id)?.last_activity || y.updated_at || 0) - +new Date(statBy.get(x.id)?.last_activity || x.updated_at || 0));
+    if (!search.trim()) return list;
     const q = search.toLowerCase();
-    return customers.filter(c =>
+    return list.filter(c =>
       displayName(c).toLowerCase().includes(q) ||
       (c.email || "").toLowerCase().includes(q) ||
       (c.phone || "").toLowerCase().includes(q) ||
       (c.primary_address_line1 || "").toLowerCase().includes(q)
     );
-  }, [customers, search]);
+  }, [customers, search, typeF, sourceF, overdueOnly, dueByCustomer, statBy]);
 
   const exportCSV = () => {
     const rows = [
@@ -179,206 +193,96 @@ const AdminCustomersPage = () => {
     URL.revokeObjectURL(url);
   };
 
+  const ago = (iso?: string | null) => { if (!iso) return "—"; const d = Math.floor((Date.now() - +new Date(iso)) / 864e5); return d <= 0 ? "today" : d === 1 ? "yesterday" : d < 30 ? `${d} days ago` : format(new Date(iso), "dd MMM yyyy"); };
+  const fChip = (on: boolean) => cn("shrink-0 rounded-full border px-3 py-1 text-xs font-medium", on ? "border-[#1590D6] bg-[#1590D6] text-white" : "bg-card hover:border-[#1590D6]");
+  const newLeads = hb?.hot.length ?? 0;
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto" data-testid="clients-list-v8">
+      <div className="rounded-2xl bg-gradient-to-br from-[#0F2A44] to-[#1590D6] p-4 text-white sm:p-5">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h1 className="text-xl font-semibold sm:text-2xl">Clients <span className="text-sm font-normal text-[#CFE6F6]">{isSalesRep ? `${customers.length} of yours` : `${customers.length} ${showArchived ? "archived" : "active"}`}</span></h1>
+          <div className="flex gap-1.5">
+            <Button onClick={() => setShowCreate(true)} className="rounded-xl bg-[#F7941D] hover:bg-[#e08310] text-white"><Plus className="h-4 w-4 mr-1" /> New client</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild><Button aria-label="More actions" className="rounded-xl bg-white/15 hover:bg-white/25 text-white px-3">⋯</Button></DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => toast({ title: "Import coming soon" })}><Upload className="h-4 w-4 mr-2" /> Import Customers</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportCSV}><Download className="h-4 w-4 mr-2" /> Export CSV</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowCreateLead(true)}>New lead</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+        <div className="relative mt-3">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search name, phone, email, address…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-10 rounded-xl border-0 bg-white pl-9 text-[#0F2A44]" data-testid="clients-search" />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => navigate(TILE_LINKS.overdueInvoices)} className="min-w-0 rounded-xl border border-white/25 px-3 py-2 text-left hover:bg-white/10">
+            <span className="block truncate text-xs text-[#CFE6F6]">Overdue{money.overdueN ? ` · ${money.overdueN} client${money.overdueN === 1 ? "" : "s"}` : ""}</span>
+            <span className={cn("block truncate text-lg font-semibold", money.overdue > 0 && "text-[#FFB4B6]")}>{randShort(money.overdue)}</span>
+          </button>
+          <button type="button" onClick={() => navigate("/admin/invoices?state=unpaid")} className="min-w-0 rounded-xl border border-white/25 px-3 py-2 text-left hover:bg-white/10">
+            <span className="block truncate text-xs text-[#CFE6F6]">Outstanding{money.outN ? ` · ${money.outN} client${money.outN === 1 ? "" : "s"}` : ""}</span>
+            <span className="block truncate text-lg font-semibold">{randShort(money.outstanding)}</span>
+            {money.waiting > 0 && <span className="block truncate text-[11px] text-[#CFE6F6]">{randShort(money.waiting)} waiting for job completion</span>}
+          </button>
+        </div>
+      </div>
+
+      {(money.overdueN > 0 || quotesDue > 0 || newLeads > 0) && (
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Clients</h1>
-          <p className="text-sm text-muted-foreground">{isSalesRep ? `${customers.length} of your clients` : `${customers.length} customers in database`}</p>
+          <p className="mb-1.5 text-sm font-semibold">Needs attention</p>
+          <div className="flex gap-2 overflow-x-auto pb-1" data-testid="needs-attention">
+            {money.overdueN > 0 && <AttCard tone="red" chip={`${money.overdueN} overdue`} text={topOverdue ? `${displayName(customers.find((c) => c.id === topOverdue[0]) || {} as any)} · ${topOverdue[1].maxLate}d late` : "clients owe money"} onClick={() => setOverdueOnly(true)} />}
+            {quotesDue > 0 && <AttCard tone="amber" chip={`${quotesDue} quote${quotesDue === 1 ? "" : "s"}`} text="follow-up call due" onClick={() => navigate("/admin/quotes")} />}
+            {newLeads > 0 && <AttCard tone="sky" chip={`${newLeads} new lead${newLeads === 1 ? "" : "s"}`} text="not contacted yet" onClick={() => navigate("/admin/leads")} />}
+          </div>
         </div>
-        <div className="flex gap-2">
+      )}
+
+      <Card className="rounded-2xl"><CardContent className="p-4">
+        <div className="flex gap-1.5 flex-wrap">
+          {[["all", "All"], ["private", "Private"], ["company", "Company"], ["developer", "Developer"]].map(([v, l]) => <button key={v} type="button" className={fChip(typeF === v)} onClick={() => setTypeF(v)}>{l}</button>)}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                More Actions <ChevronDown className="h-4 w-4 ml-1" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => toast({ title: "Import coming soon" })}>
-                <Upload className="h-4 w-4 mr-2" /> Import Customers
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportCSV}>
-                <Download className="h-4 w-4 mr-2" /> Export CSV
-              </DropdownMenuItem>
-            </DropdownMenuContent>
+            <DropdownMenuTrigger asChild><button type="button" className={fChip(sourceF !== "all")}>{sourceF === "all" ? "Source" : leadSourceLabel(sourceF)} <ChevronDown className="inline h-3 w-3" /></button></DropdownMenuTrigger>
+            <DropdownMenuContent><DropdownMenuItem onClick={() => setSourceF("all")}>All sources</DropdownMenuItem>{LEAD_SOURCE_OPTIONS.map((o) => <DropdownMenuItem key={o.value} onClick={() => setSourceF(o.value)}>{o.label}</DropdownMenuItem>)}</DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="brand" onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4 mr-1" /> New Customer
-          </Button>
+          <button type="button" className={fChip(overdueOnly)} onClick={() => setOverdueOnly((v) => !v)}>Has overdue</button>
+          <button type="button" className={fChip(showArchived)} onClick={() => setShowArchived((v) => !v)}>Archived</button>
         </div>
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <SummaryCard label="Overdue" amount={summary.overdue} accent onClick={() => navigate(TILE_LINKS.overdueInvoices)} />
-        <SummaryCard label="Total Outstanding" amount={summary.outstanding} onClick={() => navigate("/admin/invoices?state=unpaid")} />
-        <SummaryCard label="In Draft" amount={summary.draft} onClick={() => navigate("/admin/quotes?status=draft")} />
-      </div>
-
-      {/* Recently Active */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Recently Active</h2>
-        {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {[0,1,2,3].map(i => <Skeleton key={i} className="h-40" />)}
-          </div>
-        ) : (
-          <div className="grid gap-3 pb-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-            {recent.map(c => {
-              const style = LEAD_SOURCE_STYLES[toLeadSourceValue(c.lead_source)] || LEAD_SOURCE_STYLES.manual;
+        {isLoading ? <div className="mt-3 space-y-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-12" />)}</div> : (
+          <div className="mt-2">
+            <div className="hidden md:grid grid-cols-[2.2fr_1fr_.6fr_1.2fr_1.2fr_32px] gap-2 py-2 text-xs text-muted-foreground"><span>Client</span><span>Source</span><span>Sites</span><span>Outstanding</span><span>Last activity</span><span /></div>
+            {filtered.map((c: any) => {
+              const d = dueByCustomer.get(c.id); const st = statBy.get(c.id);
+              const out = d ? d.amount : (outstandingByCustomer.get(c.id) || 0);
+              const sub = [c.is_company && `${c.first_name || ""} ${c.last_name || ""}`.trim(), c.client_type && String(c.client_type).replace(/^./, (x: string) => x.toUpperCase()), c.city].filter(Boolean).join(" · ");
               return (
-                <Card
-                  key={c.id}
-                  onClick={() => navigate(`/admin/customers/${c.id}`)}
-                  className={cn(
-                    "min-w-0 cursor-pointer hover:shadow-md transition-all border-t-4 bg-card",
-                    style.border,
-                  )}
-                >
-                  <CardContent className="p-4 space-y-2">
-                    <div className="flex items-start gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-[#0066CC]/10 text-primary font-semibold text-sm">
-                          {getInitials(c.first_name, c.last_name, c.company_name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-sm leading-snug line-clamp-2 break-words" title={displayName(c)}>{displayName(c)}</p>
-                        {c.company_name && !c.is_company && (
-                          <p className="text-xs text-muted-foreground line-clamp-2 break-words" title={c.company_name}>{c.company_name}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-1 text-xs text-muted-foreground">
-                      {c.email && (
-                        <div className="flex items-center gap-1.5 truncate">
-                          <Mail className="h-3 w-3 shrink-0" /><span className="truncate" title={c.email}>{c.email}</span>
-                        </div>
-                      )}
-                      {c.phone && (
-                        <div className="flex items-center gap-1.5">
-                          <Phone className="h-3 w-3 shrink-0" /><span>{c.phone}</span>
-                        </div>
-                      )}
-                    </div>
-                    <LeadSourceBadge source={c.lead_source} />
-                  </CardContent>
-                </Card>
-              );
+                <div key={c.id} role="link" tabIndex={0} onClick={() => navigate(`/admin/customers/${c.id}`)} onKeyDown={(e) => e.key === "Enter" && navigate(`/admin/customers/${c.id}`)}
+                  className="grid cursor-pointer grid-cols-[1fr_auto] md:grid-cols-[2.2fr_1fr_.6fr_1.2fr_1.2fr_32px] items-center gap-2 border-t py-2.5 text-sm hover:bg-muted/40">
+                  <div className="min-w-0"><p className="font-semibold truncate">{displayName(c)}</p>{sub && <p className="text-xs text-muted-foreground truncate">{sub}</p>}</div>
+                  <div className="hidden md:block"><LeadSourceBadge source={c.lead_source} /></div>
+                  <div className="hidden md:block text-muted-foreground">{st?.sites ?? 0}</div>
+                  <div className="flex items-center justify-end md:justify-start gap-1.5 whitespace-nowrap">
+                    <span className={cn(out > 0 ? "font-semibold" : "text-muted-foreground")}>{randShort(out)}</span>
+                    {d && d.overdue > 0 ? <span className="rounded-full bg-[#FDECEC] px-2 text-[11px] font-semibold text-[#C9373C] dark:bg-red-500/15 dark:text-red-300">{d.maxLate}d</span>
+                      : d && d.waiting > 0 ? <span className="rounded-full bg-[#E8F6FE] px-2 text-[11px] font-semibold text-[#1590D6] dark:bg-sky-500/15 dark:text-sky-300">after completion</span> : null}
+                  </div>
+                  <div className="hidden md:block text-xs text-muted-foreground">{ago(st?.last_activity || c.updated_at)}</div>
+                  <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
+                    <RowMenu items={[
+                      { label: "Open", onSelect: () => navigate(`/admin/customers/${c.id}`) },
+                      { label: "New lead", onSelect: () => setShowCreateLead(true) },
+                      { label: "New quote", onSelect: () => navigate(`/admin/quote-builder?customerId=${c.id}`) },
+                      { label: "Edit", onSelect: () => navigate(`/admin/customers/${c.id}`) },
+                    ]} />
+                  </div>
+                </div>);
             })}
-            {recent.length === 0 && (
-              <p className="text-sm text-muted-foreground">No customers yet.</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* All Clients */}
-      <Card className="bg-card">
-        <CardContent className="p-0">
-          <Tabs defaultValue="clients">
-            <div className="flex items-center justify-between gap-3 px-4 pt-4 flex-wrap">
-              <TabsList>
-                <TabsTrigger value="clients">Clients</TabsTrigger>
-                <TabsTrigger value="emails">Sent Emails</TabsTrigger>
-              </TabsList>
-              <div className="flex gap-2 flex-1 min-w-[240px] max-w-md ml-auto">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search clients..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
-                <Button variant={showArchived ? "secondary" : "outline"} size="sm" className="shrink-0" onClick={() => setShowArchived((v) => !v)}>
-                  {showArchived ? "Show active" : "Show archived"}
-                </Button>
-              </div>
-            </div>
-
-            <TabsContent value="clients" className="p-0 mt-4">
-              {isLoading ? (
-                <div className="p-4 space-y-2">
-                  {[0,1,2,3,4].map(i => <Skeleton key={i} className="h-12" />)}
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-10"><Checkbox /></TableHead>
-                        <TableHead>Client Name / Primary Contact</TableHead>
-                        <TableHead>Internal Note</TableHead>
-                        <TableHead className="text-right">Credit</TableHead>
-                        <TableHead className="text-right">Total Outstanding</TableHead>
-                        <TableHead>Lead Source</TableHead>
-                        <TableHead className="w-10"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filtered.map(c => {
-                        const out = outstandingByCustomer.get(c.id) || 0;
-                        return (
-                          <TableRow
-                            key={c.id}
-                            className="cursor-pointer"
-                            onClick={() => navigate(`/admin/customers/${c.id}`)}
-                          >
-                            <TableCell onClick={(e) => e.stopPropagation()}><Checkbox /></TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarFallback className="bg-[#0066CC]/10 text-primary text-xs font-semibold">
-                                    {getInitials(c.first_name, c.last_name, c.company_name)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium text-sm">{displayName(c)}</p>
-                                  {c.email && <p className="text-xs text-muted-foreground">{c.email}</p>}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="min-w-[160px] max-w-[320px] text-xs text-muted-foreground">
-                              <div className="line-clamp-2 break-words" title={c.notes || undefined}>{c.notes || "—"}</div>
-                            </TableCell>
-                            <TableCell className="text-right text-sm text-muted-foreground">R 0</TableCell>
-                            <TableCell className={cn("text-right text-sm font-medium", out > 0 ? "text-rose-600" : "text-muted-foreground")}>
-                              {formatRand(out)}
-                            </TableCell>
-                            <TableCell><LeadSourceBadge source={c.lead_source} /></TableCell>
-                            <TableCell onClick={(e) => e.stopPropagation()}>
-                              <RowMenu items={[
-                                { label: "Open", onSelect: () => navigate(`/admin/customers/${c.id}`) },
-                                { label: "New lead", onSelect: () => setShowCreateLead(true) },
-                                { label: "New quote", onSelect: () => navigate(`/admin/quote-builder?customerId=${c.id}`) },
-                                { label: "Edit", onSelect: () => navigate(`/admin/customers/${c.id}`) },
-                              ]} />
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      {filtered.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
-                            No customers match your search.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="emails" className="p-8 text-center text-sm text-muted-foreground">
-              Sent emails will appear here.
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+            {filtered.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No clients match.</p>}
+          </div>)}
+      </CardContent></Card>
 
       <CreateLeadDialog open={showCreateLead} onOpenChange={setShowCreateLead} />
 
@@ -391,6 +295,14 @@ const AdminCustomersPage = () => {
     </div>
   );
 };
+
+const ATT_TONE = { red: "bg-[#FDECEC] text-[#C9373C] dark:bg-red-500/15 dark:text-red-300", amber: "bg-[#FFF4E0] text-[#B5730A] dark:bg-amber-500/15 dark:text-amber-300", sky: "bg-[#E8F6FE] text-[#1590D6] dark:bg-sky-500/15 dark:text-sky-300" } as const;
+const AttCard = ({ tone, chip, text, onClick }: { tone: keyof typeof ATT_TONE; chip: string; text: string; onClick: () => void }) => (
+  <button type="button" onClick={onClick} className="min-w-[160px] flex-1 rounded-2xl border bg-card p-3 text-left hover:border-[#1590D6]">
+    <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", ATT_TONE[tone])}>{chip}</span>
+    <p className="mt-1.5 text-sm break-words">{text}</p>
+  </button>
+);
 
 const SummaryCard = ({ label, amount, accent, onClick }: { label: string; amount: number; accent?: boolean; onClick?: () => void }) => (
   <Card role={onClick ? "link" : undefined} tabIndex={onClick ? 0 : undefined} onClick={onClick}
