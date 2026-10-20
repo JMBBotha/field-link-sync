@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -19,9 +19,15 @@ interface SupplierDetailSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: () => void;
+  /** Tab to land on when opened (e.g. the upload icon opens "documents"). */
+  initialTab?: string;
+  /** Scroll the price-list upload area into view on the Docs tab. */
+  focusUpload?: boolean;
 }
 
-const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: SupplierDetailSheetProps) => {
+const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit, initialTab = "contacts", focusUpload = false }: SupplierDetailSheetProps) => {
+  const [tab, setTab] = useState(initialTab);
+  useEffect(() => { setTab(initialTab); }, [supplierId, initialTab, open]);
   const queryClient = useQueryClient();
   const [savingPricing, setSavingPricing] = useState(false);
 
@@ -174,7 +180,7 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
         </Card>
 
         {/* Tabs */}
-        <Tabs defaultValue="contacts">
+        <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="w-full">
             <TabsTrigger value="contacts" className="flex-1 gap-1">
               <Users className="h-3 w-3" /> Contacts
@@ -213,7 +219,7 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
           </TabsContent>
 
           <TabsContent value="documents">
-            <SupplierDocumentsTab supplierId={supplierId} supplierName={supplier.company_name || supplier.name} />
+            <SupplierDocumentsTab supplierId={supplierId} supplierName={supplier.company_name || supplier.name} focusUpload={focusUpload && tab === "documents"} />
           </TabsContent>
 
           <TabsContent value="pricing">

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { runBundleCheckAfterImport } from "@/lib/bundleResolve";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -33,9 +33,20 @@ interface SupplierDocument {
 interface SupplierDocumentsTabProps {
   supplierId: string;
   supplierName?: string;
+  /** When opened from an upload button: scroll the price-list upload card into view. */
+  focusUpload?: boolean;
 }
 
-const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTabProps) => {
+const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }: SupplierDocumentsTabProps) => {
+  const uploadAreaRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!focusUpload) return;
+    // Wait for the sheet slide-in + tab content to mount before scrolling.
+    const t = window.setTimeout(() => {
+      uploadAreaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [focusUpload, supplierId]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -750,7 +761,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       )}
 
       {/* Price List Upload for Visual Catalog */}
-      <Card className="border-dashed border-primary/30 bg-primary/5">
+      <Card ref={uploadAreaRef} className="scroll-mt-4 border-dashed border-primary/30 bg-primary/5">
         <CardContent className="p-3">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">

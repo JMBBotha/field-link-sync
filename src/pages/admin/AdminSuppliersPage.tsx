@@ -67,6 +67,18 @@ const AdminSuppliersPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [dangerOpen, setDangerOpen] = useState(false);
   const [expandedImportId, setExpandedImportId] = useState<string | null>(null);
+  // Which tab the detail sheet opens on; "upload" lands on Docs scrolled to the price-list upload.
+  const [sheetFocus, setSheetFocus] = useState<"default" | "upload">("default");
+  const openSupplier = (id: string) => { setSheetFocus("default"); setSelectedSupplierId(id); };
+  const openSupplierUpload = (id: string) => { setExpandedImportId(null); setSheetFocus("upload"); setSelectedSupplierId(id); };
+  // Inline CSV/PDF import panel renders below the table: bring it into view when opened.
+  useEffect(() => {
+    if (!expandedImportId) return;
+    const t = window.setTimeout(() => {
+      document.getElementById(`supplier-import-${expandedImportId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+    return () => window.clearTimeout(t);
+  }, [expandedImportId]);
 
   // Bulk delete state
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -363,19 +375,19 @@ const AdminSuppliersPage = () => {
                   return (
                     <TableRow key={s.id} className="group">
                       {/* Supplier row */}
-                      <TableCell className="font-medium cursor-pointer" onClick={() => setSelectedSupplierId(s.id)}>
+                      <TableCell className="font-medium cursor-pointer" onClick={() => openSupplier(s.id)}>
                         {s.company_name || s.name}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground cursor-pointer" onClick={() => setSelectedSupplierId(s.id)}>
+                      <TableCell className="hidden md:table-cell text-muted-foreground cursor-pointer" onClick={() => openSupplier(s.id)}>
                         {s.trading_name || "—"}
                       </TableCell>
-                      <TableCell className="text-center cursor-pointer" onClick={() => setSelectedSupplierId(s.id)}>
+                      <TableCell className="text-center cursor-pointer" onClick={() => openSupplier(s.id)}>
                         <Badge variant="secondary" className="text-xs">{contactCounts[s.id] || 0}</Badge>
                       </TableCell>
-                      <TableCell className="text-center cursor-pointer" onClick={() => setSelectedSupplierId(s.id)}>
+                      <TableCell className="text-center cursor-pointer" onClick={() => openSupplier(s.id)}>
                         <Badge variant="outline" className="text-xs">{productCounts[s.id] || 0}</Badge>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => setSelectedSupplierId(s.id)}>
+                      <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => openSupplier(s.id)}>
                         <Badge variant={s.supplier_type === "consumables" ? "default" : "secondary"} className="text-xs">
                           {s.supplier_type === "consumables" ? "Consumables" : "AC Units"}
                         </Badge>
@@ -399,7 +411,7 @@ const AdminSuppliersPage = () => {
                             title="Upload PDF/CSV Price List"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setExpandedImportId(expandedImportId === s.id ? null : s.id);
+                              openSupplierUpload(s.id);
                             }}
                           >
                             <FileUp className="h-4 w-4 text-primary" />
@@ -412,7 +424,7 @@ const AdminSuppliersPage = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setExpandedImportId(expandedImportId === s.id ? null : s.id)}>
+                              <DropdownMenuItem onClick={() => openSupplierUpload(s.id)}>
                                 <FileUp className="h-4 w-4 mr-2" /> Upload & Parse PDF
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => setExpandedImportId(expandedImportId === s.id ? null : s.id)}>
@@ -443,7 +455,7 @@ const AdminSuppliersPage = () => {
 
       {/* Inline import panels (rendered outside table for proper layout) */}
       {filtered.map((s) => expandedImportId === s.id && (
-        <Card key={`import-${s.id}`} className="border-primary/20 bg-primary/5">
+        <Card key={`import-${s.id}`} id={`supplier-import-${s.id}`} className="scroll-mt-20 border-primary/20 bg-primary/5" >
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold">
@@ -561,6 +573,8 @@ const AdminSuppliersPage = () => {
           open={!!selectedSupplierId}
           onOpenChange={(o) => !o && setSelectedSupplierId(null)}
           onEdit={() => handleEdit(selectedSupplierId)}
+          initialTab={sheetFocus === "upload" ? "documents" : "contacts"}
+          focusUpload={sheetFocus === "upload"}
         />
       )}
 
