@@ -11,7 +11,7 @@ import CashflowChart from "@/components/cashflow/CashflowChart";
 
 const Stat = ({ label, value, tone, sub }: { label: string; value: string; tone?: "red" | "green"; sub?: string }) => (
   <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">{label}</div>
-    <div className={`text-lg font-bold ${tone === "red" ? "text-red-600" : tone === "green" ? "text-emerald-600" : ""}`}>{value}</div>{sub && <div className="text-xs text-muted-foreground">{sub}</div>}</CardContent></Card>
+    <div className={`text-lg font-bold ${tone === "red" ? "text-red-600 dark:text-red-300" : tone === "green" ? "text-emerald-600" : ""}`}>{value}</div>{sub && <div className="text-xs text-muted-foreground">{sub}</div>}</CardContent></Card>
 );
 
 /** Owner + admin only: cash flow (bank, in/out, 12 weeks) and profit per job / month. */
@@ -40,15 +40,15 @@ export default function AdminCashflowPage() {
   const odOut = d ? overdue(d.payables) : [];
 
   return (
-    <div className="space-y-4 p-3 md:p-6" data-testid="cashflow-page">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="v8-scope space-y-4 p-3 md:p-6" data-testid="cashflow-page">
+      <div className="v8-navy flex flex-wrap items-center justify-between gap-2">
         <div><h1 className="text-xl font-bold">Cash flow & profit</h1><p className="text-xs text-muted-foreground">Owner and admin only. Amounts incl. VAT on the cash side; profit is excl. VAT.</p></div>
-        <div className="flex gap-1">{(["cash", "profit"] as const).map((t) => <Button key={t} size="sm" variant={tab === t ? "default" : "outline"} onClick={() => setTab(t)}>{t === "cash" ? "Cash flow" : "Profit"}</Button>)}</div>
+        <div className="flex gap-1">{(["cash", "profit"] as const).map((t) => <Button key={t} size="sm" variant={tab === t ? "secondary" : "outline"} onClick={() => setTab(t)}>{t === "cash" ? "Cash flow" : "Profit"}</Button>)}</div>
       </div>
 
       {tab === "cash" && (cf.isLoading || !d ? <Loader2 className="h-5 w-5 animate-spin" /> : <>
         {firstNeg && (
-          <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200" data-testid="cashflow-warning">
+          <div className="flex items-start gap-2 rounded-lg border border-red-300 dark:border-red-400/30 bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200" data-testid="cashflow-warning">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><b>Cash goes below zero in the week of {firstNeg.label}</b> (lowest {formatRand(low)}). Chase overdue invoices or move supplier payments.</div>
           </div>)}
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -68,11 +68,11 @@ export default function AdminCashflowPage() {
               <tbody>{weeks.map((w, i) => { const bal = withExpected ? w.closingWithExpected : w.closing; return (
                 <tr key={w.start} className="border-t" title={w.items.map((it) => `${it.kind === "out" ? "−" : "+"} ${formatRand(it.amount)} ${it.label}`).join("\n")}>
                   <td className="py-1">{w.label}{i === 0 && <span className="text-muted-foreground"> (incl. overdue)</span>}</td>
-                  <td className="text-right text-emerald-700">{w.inflow ? formatRand(w.inflow) : "–"}</td>
+                  <td className="text-right text-emerald-700 dark:text-emerald-300">{w.inflow ? formatRand(w.inflow) : "–"}</td>
                   {withExpected && <td className="text-right text-emerald-500">{w.expected ? formatRand(w.expected) : "–"}</td>}
-                  <td className="text-right text-orange-700">{w.outflow ? formatRand(w.outflow) : "–"}</td>
+                  <td className="text-right text-orange-700 dark:text-orange-300">{w.outflow ? formatRand(w.outflow) : "–"}</td>
                   <td className="text-right">{formatRand(w.net + (withExpected ? w.expected : 0))}</td>
-                  <td className={`text-right font-semibold ${bal < 0 ? "text-red-600" : ""}`}>{formatRand(bal)}</td>
+                  <td className={`text-right font-semibold ${bal < 0 ? "text-red-600 dark:text-red-300" : ""}`}>{formatRand(bal)}</td>
                 </tr>); })}</tbody>
             </table>
           </div>
@@ -102,7 +102,7 @@ export default function AdminCashflowPage() {
           <Card><CardContent className="p-3"><div className="mb-1 font-semibold">Profit per month</div>
             <div className="overflow-x-auto"><table className="w-full text-xs">
               <thead><tr className="text-left text-muted-foreground"><th className="py-1">Month</th><th className="text-right">Income</th><th className="text-right">Units & materials</th><th className="text-right">Tech pay</th><th className="text-right">Overheads</th><th className="text-right">Profit</th></tr></thead>
-              <tbody>{monthly(jp.data).map((m) => <tr key={m.month} className="border-t"><td className="py-1">{m.month}</td><td className="text-right">{formatRand(m.income)}</td><td className="text-right">{formatRand(m.materials)}</td><td className="text-right">{formatRand(m.tech_pay)}</td><td className="text-right">{formatRand(m.overheads)}</td><td className={`text-right font-semibold ${m.profit < 0 ? "text-red-600" : ""}`}>{formatRand(m.profit)}</td></tr>)}</tbody>
+              <tbody>{monthly(jp.data).map((m) => <tr key={m.month} className="border-t"><td className="py-1">{m.month}</td><td className="text-right">{formatRand(m.income)}</td><td className="text-right">{formatRand(m.materials)}</td><td className="text-right">{formatRand(m.tech_pay)}</td><td className="text-right">{formatRand(m.overheads)}</td><td className={`text-right font-semibold ${m.profit < 0 ? "text-red-600 dark:text-red-300" : ""}`}>{formatRand(m.profit)}</td></tr>)}</tbody>
             </table></div>
             <p className="mt-1 text-xs text-muted-foreground">Income = sent/paid invoices excl. VAT. Overheads = expenses not linked to a job.</p>
           </CardContent></Card>
@@ -112,8 +112,8 @@ export default function AdminCashflowPage() {
               <tbody>{jp.data.jobs.map((j) => { const below = j.gp_pct !== null && j.gp_pct < jp.data!.target; return (
                 <tr key={j.id} className="border-t"><td className="py-1"><div className="max-w-[260px] truncate font-medium">{j.title || "Job"}</div><div className="text-xs text-muted-foreground">{j.date} · {j.status}{j.income === 0 ? " · not invoiced yet" : ""}</div></td>
                   <td className="text-right">{formatRand(j.income)}</td><td className="text-right">{formatRand(j.materials)}</td><td className="text-right">{formatRand(j.tech_pay)}</td>
-                  <td className={`text-right font-semibold ${j.profit < 0 ? "text-red-600" : ""}`}>{formatRand(j.profit)}</td>
-                  <td className="text-right">{j.gp_pct === null ? "–" : <span className={`rounded px-1.5 py-0.5 ${below ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>{j.gp_pct}%{below ? " ▼ below target" : ""}</span>}</td></tr>); })}</tbody>
+                  <td className={`text-right font-semibold ${j.profit < 0 ? "text-red-600 dark:text-red-300" : ""}`}>{formatRand(j.profit)}</td>
+                  <td className="text-right">{j.gp_pct === null ? "–" : <span className={`rounded px-1.5 py-0.5 ${below ? "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-300" : "bg-emerald-100 text-emerald-700"}`}>{j.gp_pct}%{below ? " ▼ below target" : ""}</span>}</td></tr>); })}</tbody>
             </table></div>}
           </CardContent></Card>
         </>}

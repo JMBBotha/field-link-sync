@@ -23,9 +23,9 @@ const AdminMoneyPage = () => {
   });
 
   return (
-    <div className="space-y-3 p-3 md:p-6">
+    <div className="v8-scope space-y-3 p-3 md:p-6">
       <OwnerMoneyFlow />
-      <h1 className="text-xl font-bold text-foreground">Money by lead</h1>
+      <h1 className="v8-navy text-xl font-bold text-foreground">Money by lead</h1>
       <div className="grid grid-cols-3 gap-2">
         {[
           ["Deposits due", sum?.depositsDue],

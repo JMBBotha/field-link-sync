@@ -21,8 +21,8 @@ type Bill = { id: string; supplier_id: string | null; supplier_name: string | nu
 type Form = { id?: string; supplier_id: string; bill_number: string; bill_date: string; due_date: string; amount_incl: string; vat_included: boolean; job_id: string; notes: string; status: string };
 const blank = (): Form => ({ supplier_id: NONE, bill_number: "", bill_date: isoDate(new Date()), due_date: "", amount_incl: "", vat_included: true, job_id: NONE, notes: "", status: "unpaid" });
 const STATUS: Record<string, { label: string; cls: string }> = {
-  draft: { label: "Draft (check)", cls: "bg-amber-100 text-amber-800" }, unpaid: { label: "Unpaid", cls: "bg-blue-100 text-blue-800" },
-  part_paid: { label: "Part paid", cls: "bg-violet-100 text-violet-800" }, paid: { label: "Paid", cls: "bg-emerald-100 text-emerald-800" }, void: { label: "Void", cls: "bg-muted text-muted-foreground" },
+  draft: { label: "Draft (check)", cls: "bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300" }, unpaid: { label: "Unpaid", cls: "bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-300" },
+  part_paid: { label: "Part paid", cls: "bg-violet-100 dark:bg-violet-500/15 text-violet-800 dark:text-violet-300" }, paid: { label: "Paid", cls: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300" }, void: { label: "Void", cls: "bg-muted text-muted-foreground" },
 };
 
 /** Owner + admin only. Supplier bills (money we owe), payments and bank-line matching. */
@@ -109,8 +109,8 @@ export default function AdminSupplierBillsPage() {
   };
 
   return (
-    <div className="space-y-4 p-3 md:p-6" data-testid="supplier-bills">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="v8-scope space-y-4 p-3 md:p-6" data-testid="supplier-bills">
+      <div className="v8-navy flex flex-wrap items-center justify-between gap-2">
         <div><h1 className="text-xl font-bold">Supplier bills</h1><p className="text-xs text-muted-foreground">Money we owe suppliers for units and materials. Owner and admin only.</p></div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setTerms(true)}>Payment terms</Button>
@@ -119,7 +119,7 @@ export default function AdminSupplierBillsPage() {
       </div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">We owe (open bills)</div><div className="text-lg font-bold">{formatRand(owed)}</div></CardContent></Card>
-        <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">Overdue</div><div className={`text-lg font-bold ${overdueAmt > 0 ? "text-red-600" : ""}`}>{formatRand(overdueAmt)}</div></CardContent></Card>
+        <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">Overdue</div><div className={`text-lg font-bold ${overdueAmt > 0 ? "text-red-600 dark:text-red-300" : ""}`}>{formatRand(overdueAmt)}</div></CardContent></Card>
         <Card className="col-span-2 md:col-span-1"><CardContent className="p-3"><div className="text-xs text-muted-foreground">Drafts to check</div><div className="text-lg font-bold">{bills.filter((b) => b.status === "draft").length}</div></CardContent></Card>
       </div>
       <div className="flex flex-wrap gap-1">

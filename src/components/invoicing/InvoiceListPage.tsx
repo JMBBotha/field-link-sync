@@ -216,16 +216,16 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   };
 
   return (
-    <div className="w-full space-y-4 p-4 sm:p-6 pb-[calc(env(safe-area-inset-bottom)+5rem)] sm:pb-[calc(env(safe-area-inset-bottom)+5rem)] lg:pb-10" data-testid="invoice-list" /* last row scrolls clear of the bottom nav / sticky bars (Johan 13 Oct) */>
+    <div className="v8-scope w-full space-y-4 p-4 sm:p-6 pb-[calc(env(safe-area-inset-bottom)+5rem)] sm:pb-[calc(env(safe-area-inset-bottom)+5rem)] lg:pb-10" data-testid="invoice-list" /* last row scrolls clear of the bottom nav / sticky bars (Johan 13 Oct) */>
       {/* Page header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="v8-navy flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Invoices</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {invoices.length} invoice{invoices.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button variant="brand" onClick={onCreateInvoice} className="gap-2">
+        <Button variant="cta" onClick={onCreateInvoice} className="gap-2">
           <Plus className="h-4 w-4" /> New Invoice
         </Button>
       </div>
@@ -236,14 +236,14 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
           className={`border-0 shadow-sm cursor-pointer hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === "unpaid" ? "ring-2 ring-primary" : ""}`}>
           <CardContent className="p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Outstanding</p>
-            <p className="text-lg font-bold text-orange-600">{formatCurrency(totalOutstanding)}</p>
+            <p className="text-lg font-bold text-orange-600 dark:text-orange-300">{formatCurrency(totalOutstanding)}</p>
           </CardContent>
         </Card>
         <Card role="button" tabIndex={0} onClick={() => setFilter("paid")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFilter("paid"); } }}
           className={`border-0 shadow-sm cursor-pointer hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === "paid" ? "ring-2 ring-primary" : ""}`}>
           <CardContent className="p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Collected</p>
-            <p className="text-lg font-bold text-green-600">{formatCurrency(totalPaid)}</p>
+            <p className="text-lg font-bold text-green-600 dark:text-green-300">{formatCurrency(totalPaid)}</p>
           </CardContent>
         </Card>
       </div>
@@ -312,7 +312,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
       {/* Create Invoice Button */}
       <Button
         onClick={onCreateInvoice}
-        variant="brand"
+        variant="outline"
         className="w-full h-11 rounded-xl font-semibold gap-2"
       >
         <Plus className="h-4 w-4" />
@@ -339,7 +339,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
               {selected.length > 0 && "reason" in check && <span className="text-xs text-destructive" data-testid="same-client-warning">{check.reason}</span>}
               <div className="ml-auto flex gap-2">
                 <Button size="sm" variant="ghost" onClick={() => { setSelectMode(false); setSelected([]); }}>Cancel</Button>
-                <Button size="sm" variant="brand" disabled={!check.ok} onClick={() => setContractOpen(true)} data-testid="invoice-create-contract">Create service contract</Button>
+                <Button size="sm" variant="cta" disabled={!check.ok} onClick={() => setContractOpen(true)} data-testid="invoice-create-contract">Create service contract</Button>
               </div>
             </div>
           );

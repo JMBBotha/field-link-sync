@@ -783,7 +783,7 @@ const CreateInvoicePage = ({
         {/* ── LINE ITEMS TABLE ── */}
         <div>
           {!autoQuoteId && !!autofill?.suggestions.length && (
-            <div className="mb-3 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 space-y-1">
+            <div className="mb-3 rounded border border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-500/15 p-2 text-xs text-amber-900 dark:text-amber-300 space-y-1">
               <p>No quote is linked to this job. This client has:</p>
               <div className="flex flex-wrap gap-1.5">
                 {autofill.suggestions.map((q) => (
@@ -795,7 +795,7 @@ const CreateInvoicePage = ({
             </div>
           )}
           {lineItems.some((i) => i.flag === "tech") && (
-            <p className="mb-3 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+            <p className="mb-3 rounded border border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-500/15 p-2 text-xs text-amber-900 dark:text-amber-300">
               Lines marked "From tech – check" came from the technician. Check they aren't already in the quote lines and that the price is right.
             </p>
           )}
@@ -818,7 +818,7 @@ const CreateInvoicePage = ({
                   onSelect={(opt) => pickOption(opt, idx)}
                 />
                 {item.flag && (
-                  <span className="mt-0.5 inline-block rounded bg-amber-100 px-1.5 text-xs font-medium text-amber-800">
+                  <span className="mt-0.5 inline-block rounded bg-amber-100 dark:bg-amber-500/15 px-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
                     {item.flag === "tech" ? "From tech – check" : "Deposit credit"}
                   </span>
                 )}
@@ -903,7 +903,7 @@ const CreateInvoicePage = ({
             {!depositType ? (
               <button onClick={() => { setDepositType("percent"); setDepositValue(50); }} className="text-sm text-primary hover:underline" data-testid="request-deposit">+ Request a Deposit</button>
             ) : (
-              <div className="space-y-1 rounded border border-amber-300 bg-amber-50 p-2">
+              <div className="space-y-1 rounded border border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-500/15 p-2">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Deposit</span>
                   <select value={depositType} onChange={(e) => setDepositType(e.target.value as DepositType)} className="text-xs border rounded px-1.5 py-1 bg-background">

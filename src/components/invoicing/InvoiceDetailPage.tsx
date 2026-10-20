@@ -284,9 +284,9 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   );
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-4 pb-24 md:pb-4">
+    <div className="v8-scope max-w-4xl mx-auto p-4 space-y-4 pb-24 md:pb-4">
       {/* Header */}
-      <div ref={headerRef} className="flex flex-wrap items-center justify-between gap-2 print:hidden">
+      <div ref={headerRef} className="v8-navy flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onBack}>
             <ArrowLeft className="h-5 w-5" />

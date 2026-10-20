@@ -30,8 +30,8 @@ export default function CashHealthView({ data, actions, companyName, tab: tabPro
   const safe: Safe = (p, ok) => { p.then(() => ok && notify?.(ok)).catch((e) => notify?.(e?.message || "Couldn't save", true)); };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-3 p-3 md:p-6" data-testid="cash-health-page">
-      <div className="flex flex-wrap items-end justify-between gap-2">
+    <div className="v8-scope mx-auto max-w-6xl space-y-3 p-3 md:p-6" data-testid="cash-health-page">
+      <div className="v8-navy flex flex-wrap items-end justify-between gap-2">
         <div>
           <div className="v8-eyebrow">Owner & management only</div>
           <h1 className="text-2xl font-semibold text-ink">Cash-flow health</h1>
@@ -55,7 +55,7 @@ export default function CashHealthView({ data, actions, companyName, tab: tabPro
 }
 
 // ---------------- Overview ----------------
-const HEALTH = { red: { label: "RED", dot: "bg-red-600", text: "text-red-600" }, amber: { label: "AMBER", dot: "bg-amber-500", text: "text-amber-600" }, green: { label: "GREEN", dot: "bg-emerald-600", text: "text-emerald-600" } } as const;
+const HEALTH = { red: { label: "RED", dot: "bg-red-600", text: "text-red-600 dark:text-red-300" }, amber: { label: "AMBER", dot: "bg-amber-500", text: "text-amber-600 dark:text-amber-300" }, green: { label: "GREEN", dot: "bg-emerald-600", text: "text-emerald-600 dark:text-emerald-300" } } as const;
 
 function BankEntry({ data, actions, safe, today }: { data: CashHealthData; actions: CashHealthActions; safe: Safe; today: Date }) {
   const rows = latestBalances(data.accounts, data.balances);
@@ -138,10 +138,10 @@ function Overview({ data, f, alerts, actions, safe, setTab, today }: { data: Cas
             <thead><tr className="text-left text-ink-muted"><th className="py-1">Week</th><th className="text-right">In</th><th className="text-right">Units</th><th className="text-right">Overheads</th><th className="text-right">VAT</th><th className="text-right">Balance</th><th className="text-right">Cautious</th></tr></thead>
             <tbody>{f.weeks.map((w, i) => (
               <tr key={w.start} className="border-t border-border" title={w.lines.map((l) => `${l.kind === "in" ? "+" : "−"} ${rand0(l.amount)} ${l.label}`).join("\n")}>
-                <td className="py-1">W{i + 1} · {w.label}</td><td className="text-right text-emerald-700">{w.inExpected ? rand0(w.inExpected) : "–"}</td>
-                <td className="text-right text-orange-700">{w.units ? rand0(w.units) : "–"}</td><td className="text-right">{w.overheads ? rand0(w.overheads) : "–"}</td>
-                <td className="text-right">{w.vat ? rand0(w.vat) : "–"}</td><td className={cn("text-right font-semibold", w.balance < 0 && "text-red-600")}>{rand0(w.balance)}</td>
-                <td className={cn("text-right", w.balanceCautious < 0 && "text-red-600")}>{rand0(w.balanceCautious)}</td>
+                <td className="py-1">W{i + 1} · {w.label}</td><td className="text-right text-emerald-700 dark:text-emerald-300">{w.inExpected ? rand0(w.inExpected) : "–"}</td>
+                <td className="text-right text-orange-700 dark:text-orange-300">{w.units ? rand0(w.units) : "–"}</td><td className="text-right">{w.overheads ? rand0(w.overheads) : "–"}</td>
+                <td className="text-right">{w.vat ? rand0(w.vat) : "–"}</td><td className={cn("text-right font-semibold", w.balance < 0 && "text-red-600 dark:text-red-300")}>{rand0(w.balance)}</td>
+                <td className={cn("text-right", w.balanceCautious < 0 && "text-red-600 dark:text-red-300")}>{rand0(w.balanceCautious)}</td>
               </tr>))}</tbody>
           </table>
         </div>
@@ -223,7 +223,7 @@ function ProjectCard({ p, data, actions, safe }: { p: ProjectRow; data: CashHeal
         <span className="text-xs text-ink-muted">Still to buy <b className="text-ink">{rand0(p.stillToBuy)}</b></span>
         {p.stockCovered > 0 && <span className="text-xs text-ink-muted">From stock <b className="text-ink">{rand0(p.stockCovered)}</b></span>}
         <Chip tone={csTone(p.status)}>{p.status === "mixed" ? "Mixed" : p.status === "none" ? "No units" : COMMIT_STATUS[p.status]}</Chip>
-        <span className={cn("ml-auto text-sm font-semibold", p.cover < -0.5 ? "text-red-600" : "text-emerald-700")}>{rand0(p.cover)}</span>
+        <span className={cn("ml-auto text-sm font-semibold", p.cover < -0.5 ? "text-red-600 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300")}>{rand0(p.cover)}</span>
       </button>
       {open && (
         <div className="space-y-1 border-t border-border p-3">

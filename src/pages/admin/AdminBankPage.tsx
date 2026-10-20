@@ -111,8 +111,8 @@ export default function AdminBankPage() {
     return lines.filter((l) => l.account_label === acct && l.txn_date >= sum.from! && l.txn_date <= sum.to!).length;
   }, [parsed, sum?.from, sum?.to, lines]);
   return (
-    <div className="space-y-4 p-3 md:p-6" data-testid="bank-page">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="v8-scope space-y-4 p-3 md:p-6" data-testid="bank-page">
+      <div className="v8-navy flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Bank (FNB CSV / PDF)</h1>
         <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border bg-card px-3 py-2 text-sm font-medium hover:bg-muted">
           {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Upload CSV or PDF
@@ -175,7 +175,7 @@ export default function AdminBankPage() {
                       <div className="truncate font-medium">{l.description || "—"}</div>
                       <div className="truncate text-xs text-muted-foreground">{l.txn_date}{l.reference ? ` · ${l.reference}` : ""} · {l.account_label}</div>
                     </div>
-                    <div className={`whitespace-nowrap font-semibold ${l.amount > 0 ? "text-emerald-600" : ""}`}>{l.amount > 0 ? "+" : "−"}{formatRand(Math.abs(Number(l.amount)))}</div>
+                    <div className={`whitespace-nowrap font-semibold ${l.amount > 0 ? "text-emerald-600 dark:text-emerald-300" : ""}`}>{l.amount > 0 ? "+" : "−"}{formatRand(Math.abs(Number(l.amount)))}</div>
                   </div>
                   {l.status === "new" ? (
                     <div className="flex flex-wrap gap-2">

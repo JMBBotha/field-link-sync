@@ -112,8 +112,8 @@ export default function AdminExpensesPage() {
   };
 
   return (
-    <div className="space-y-4 p-3 md:p-6" data-testid="expenses-page">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="v8-scope space-y-4 p-3 md:p-6" data-testid="expenses-page">
+      <div className="v8-navy flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Expenses</h1>
         <Button onClick={() => { setFile(null); setForm(blank()); }} data-testid="expense-new"><Plus className="mr-1 h-4 w-4" />Add expense</Button>
       </div>

@@ -65,7 +65,7 @@ export default function AdminPaymentFollowupsPage() {
             <Textarea rows={3} value={edit[r.id] ?? r.proposed_message} onChange={(e) => setEdit({ ...edit, [r.id]: e.target.value })} disabled={!owner} />
             {owner ? (
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => decide(r, true)}><CheckCircle2 className="mr-1 h-4 w-4" />Approve this reminder</Button>
+                <Button size="sm" variant={(r.days_late ?? 0) >= 7 ? "urgent" : "cta"} onClick={() => decide(r, true)}><CheckCircle2 className="mr-1 h-4 w-4" />Approve this reminder</Button>
                 <Button size="sm" variant="outline" onClick={() => decide(r, false)}><XCircle className="mr-1 h-4 w-4" />Decline</Button>
               </div>
             ) : <p className="text-xs text-muted-foreground">Only the company owner can approve or decline this.</p>}
@@ -74,15 +74,15 @@ export default function AdminPaymentFollowupsPage() {
           <p className="whitespace-pre-wrap rounded-md bg-muted/50 p-2 text-sm">{r.subject ? <b className="block">{r.subject}</b> : null}{r.approved_message || r.proposed_message}</p>
         )}
         {r.status === "approved" && (
-          <Button size="sm" variant="secondary" onClick={() => setSend(r)}><Mail className="mr-1 h-4 w-4" />Send email</Button>
+          <Button size="sm" variant="cta" onClick={() => setSend(r)}><Mail className="mr-1 h-4 w-4" />Send email</Button>
         )}
       </CardContent>
     </Card>
   );
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-4" data-testid="payment-followups">
-      <div>
+    <div className="v8-scope mx-auto max-w-3xl space-y-4 p-4" data-testid="payment-followups">
+      <div className="v8-navy">
         <h1 className="flex items-center gap-2 text-xl font-semibold"><HandCoins className="h-5 w-5" />Payment follow-ups</h1>
         <p className="text-sm text-muted-foreground">Final invoices get a friendly draft 3 days before the due date, on the due day, and 3 and 7 days after; at 14 days the owner phones the client. Nothing is sent until the owner approves a reminder for that client, and each approval sends once. Keep it friendly: legal or penalty wording is blocked.</p>
       </div>
