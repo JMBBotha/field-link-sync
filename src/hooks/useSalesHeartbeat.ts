@@ -30,7 +30,7 @@ export function useSalesHeartbeat(enabled = true) {
       const db = supabase as any;
       const [leads, quotes, invoices, jobs, esc] = await Promise.all([
         db.from("leads").select("id, customer_name, created_at, first_contact_at, acknowledged_at, visit_booked_at, last_contact_attempt_at, primary_intent, assigned_agent_id, status, call_summary, customer_phone, phone")
-          .is("deleted_at", null).is("merged_into_id", null).gte("created_at", since).order("created_at", { ascending: false }).limit(800),
+          .is("deleted_at", null).is("merged_into_id", null).is("dismissed_at", null).is("closed_at", null).gte("created_at", since).order("created_at", { ascending: false }).limit(800),
         db.from("quotes").select("id, status, total, created_at, sent_at, viewed_at, accepted_at, lead_id, sales_engineer_id, customer_name, quote_number")
           .gte("updated_at", since).neq("status", "superseded").limit(1000),
         db.from("invoices").select("quote_id, status, notes, grand_total, paid_date").not("quote_id", "is", null).gte("created_at", since).limit(2000),

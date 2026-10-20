@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "rea
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useLeadInbox } from "@/hooks/useLeadInbox";
+import LeadCloseActions from "@/components/leads/LeadCloseActions";
+import ClosedLeadsDialog from "@/components/leads/ClosedLeadsDialog";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import { laneOf, leadLaneFields, LANE_META, UNKNOWN_LANE_META, type LeadLane } from "@/lib/leadLane";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
@@ -1098,6 +1100,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                   >
                     {inboxMode ? "Show all" : "Inbox only"}
                   </Button>
+                  {inboxMode && <ClosedLeadsDialog className="flex-1 text-xs h-7" />}
                 </div>
                 <Button
                   variant="brand"
@@ -1167,6 +1170,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                                 {lead.priority}
                               </Badge>
                             )}
+                            {inboxMode && <div className="w-full pt-1"><LeadCloseActions lead={lead} compact /></div>}
                           </div>
                         }
                       />

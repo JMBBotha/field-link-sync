@@ -1,3 +1,4 @@
+import LeadCloseActions from "@/components/leads/LeadCloseActions";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Pencil, X, Phone } from "lucide-react";
@@ -187,6 +188,12 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
             </div>
           )}
           {next.note && <p className="mt-2.5 text-sm text-ink-muted">{next.note}</p>}
+        </section>
+      )}
+
+      {!techView && (
+        <section className={card} data-testid="lead-c-close">
+          <LeadCloseActions lead={lead} onDone={onClose} />
         </section>
       )}
 
