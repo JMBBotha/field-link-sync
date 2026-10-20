@@ -560,7 +560,7 @@ const LeadDetailSheet = ({
                     ? { title: "Book the free quote visit", note: "Assign a rep from the dispatch board or Accept at the bottom." }
                     : { title: callOutTitle(callOutFee), note: "Assign a tech from the dispatch board or Accept at the bottom." };
                 }
-                if (isCompleted) return { title: invoiceTechOnly ? "Job done. Sent to the office." : "Job done. Invoice and get paid." };
+                if (isCompleted) { const when = lead.completed_at ? new Date(lead.completed_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : null; return { title: ["Job done", booking?.techName, when && `${when} (SAST)`].filter(Boolean).join(" · "), note: invoiceTechOnly ? "Sent to the office." : "Next: invoice and get paid." }; }
                 return null;
               })()}
               editFields={[

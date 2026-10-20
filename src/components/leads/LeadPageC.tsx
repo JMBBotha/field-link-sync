@@ -76,7 +76,7 @@ export const callOutTitle = (fee: number | null) => (fee ? `Book call-out (${fmt
 
 function Kv({ k, v }: { k: string; v: ReactNode }) {
   if (v == null || v === "") return null;
-  return (<><dt className="text-ink-muted text-[13px]">{k}</dt><dd className="min-w-0 break-words text-sm">{v}</dd></>);
+  return (<><dt className="text-ink-muted text-sm">{k}</dt><dd className="min-w-0 break-words text-sm">{v}</dd></>);
 }
 
 export default function LeadPageC({ lead, techView, next, stickyBar = true, children, headerExtra, editFields, canEdit = true, onClose, after, stage, className }: LeadPageCProps) {
@@ -92,7 +92,7 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
   const hasSummary = !!oneLineSummary(lead);
   const contact = [lead?.customer_phone, lead?.email, lead?.customer_address].filter(Boolean).join(" · ");
   const card = "rounded-[14px] border border-border bg-card p-4 sm:p-5";
-  const h2 = "mb-3 text-[13px] font-semibold uppercase tracking-[0.06em] text-ink-muted";
+  const h2 = "mb-3 text-sm font-semibold uppercase tracking-[0.06em] text-ink-muted";
 
   return (
     <div className={cn("space-y-4", className)} data-testid="lead-page-c">
@@ -100,15 +100,15 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
       <section className="rounded-[14px] bg-gradient-to-br from-[#0F2A44] to-[#1590D6] p-4 text-white sm:p-5" data-testid="lead-c-header">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold leading-tight sm:text-[25px] break-words">{lead?.customer_name || "Unnamed client"}</h1>
-            {contact && <p className="mt-1 text-[13px] text-[#CFE6F6] break-words">{contact}</p>}
-            {lead?.service_type && <p className="mt-0.5 text-[13px] text-[#CFE6F6] break-words">{lead.service_type}</p>}
+            <h1 className="text-xl font-semibold leading-tight sm:text-2xl break-words">{lead?.customer_name || "Unnamed client"}</h1>
+            {contact && <p className="mt-1 text-sm text-[#CFE6F6] break-words">{contact}</p>}
+            {lead?.service_type && <p className="mt-0.5 text-sm text-[#CFE6F6] break-words">{lead.service_type}</p>}
             {headerExtra}
           </div>
           <div className="flex shrink-0 items-start gap-1.5">
             <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center">
-              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#1590D6]" data-testid="lead-c-lane">{laneLabel}</span>
-              <span className="rounded-full bg-[#FFF4E0] px-2.5 py-1 text-xs font-semibold text-[#B26A00]">{STATUS_LABEL[lead?.status] ?? lead?.status ?? "—"}</span>
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-ink" data-testid="lead-c-lane">{laneLabel}</span>
+              <span className="rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold text-white">{STATUS_LABEL[lead?.status] ?? lead?.status ?? "—"}</span>
             </div>
             {onClose && (
               <button type="button" onClick={onClose} aria-label="Close" className="rounded-md p-1 text-white/80 hover:bg-white/10"><X className="h-4 w-4" /></button>
@@ -119,13 +119,13 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
           {!techView && (
             <div className="min-w-0 flex-1 rounded-xl border border-white/25 px-3 py-2 sm:max-w-[200px]" data-testid="lead-c-clock">
               <span className="block text-xs text-[#CFE6F6]">{clock ? (clock.stage === 1 ? `Respond within ${sla.contactMinutes} min` : clock.stage === 2 ? `${clock.stage2Label} clock` : "Response") : "Response"}</span>
-              <b className="block text-lg leading-tight">{clock ? clock.big : lead?.status === "pending" ? "—" : "Contacted"}</b>
-              {clock?.sub && <span className="block truncate text-[11px] text-[#CFE6F6]">{clock.sub}</span>}
+              <span className="block text-lg font-semibold leading-tight">{clock ? clock.big : lead?.status === "pending" ? "—" : "Contacted"}</span>
+              {clock?.sub && <span className="block truncate text-xs text-[#CFE6F6]">{clock.sub}</span>}
             </div>
           )}
           <div className="min-w-0 flex-1 rounded-xl border border-white/25 px-3 py-2 sm:max-w-[200px]">
             <span className="block text-xs text-[#CFE6F6]">{techView ? "Created" : "Lead age"}</span>
-            <b className="block text-lg leading-tight">{ageMs != null ? hm(ageMs) : "—"}</b>
+            <span className="block text-lg font-semibold leading-tight">{ageMs != null ? hm(ageMs) : "—"}</span>
           </div>
         </div>
         <div className="mt-3.5 flex gap-1.5" aria-label={`Stage: ${steps[st]}`}>
@@ -144,16 +144,16 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
 
       {/* 3. Next step */}
       {next && (
-        <section className="rounded-[14px] border-2 border-[#1590D6] bg-[#F3FAFE] p-4 dark:bg-sky-950/30 sm:p-5" data-testid="lead-c-next">
+        <section className="rounded-[14px] border border-border bg-card p-4 shadow-sm sm:p-5" data-testid="lead-c-next">
           <h2 className={h2}>Next step</h2>
-          <p className="mb-2.5 text-sm font-semibold">{next.title}</p>
+          <p className="mb-2.5 text-base font-semibold">{next.title}</p>
           {(next.primary || next.secondary?.length) && (
             <div className={cn("flex-wrap gap-2", stickyBar ? "hidden md:flex" : "flex")}>
               {next.primary && <Button variant="brand" onClick={next.primary.onClick} disabled={next.primary.disabled} data-testid={next.primary.testId}>{next.primary.label}</Button>}
-              {next.secondary?.map((a) => <Button key={a.label} variant="outline" onClick={a.onClick} disabled={a.disabled} data-testid={a.testId}>{a.label}</Button>)}
+              {next.secondary?.map((a) => <Button key={a.label} variant="ghost" className="text-ink-secondary" onClick={a.onClick} disabled={a.disabled} data-testid={a.testId}>{a.label}</Button>)}
             </div>
           )}
-          {next.note && <p className="mt-2.5 text-[13px] text-ink-muted">{next.note}</p>}
+          {next.note && <p className="mt-2.5 text-sm text-ink-muted">{next.note}</p>}
         </section>
       )}
 
@@ -162,7 +162,7 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
         <div className="mb-3 flex items-center justify-between">
           <h2 className={cn(h2, "mb-0")}>Details</h2>
           {canEdit && (
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-[#1590D6]" onClick={() => setEditing((e) => !e)} data-testid="lead-c-edit">
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-ink-secondary" onClick={() => setEditing((e) => !e)} data-testid="lead-c-edit">
               <Pencil className="mr-1 h-3.5 w-3.5" />{editing ? "Done" : "Edit"}
             </Button>
           )}
@@ -171,7 +171,7 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
           <EntityDetailsForm entityType="lead" entityId={lead.id} initialData={lead} readOnly={!canEdit} visibleFields={editFields as any} />
         ) : (
           <dl className="grid grid-cols-[110px_1fr] gap-x-4 gap-y-2 sm:grid-cols-[140px_1fr]">
-            <Kv k="Phone" v={lead?.customer_phone && <a className="text-[#1590D6]" href={`tel:${lead.customer_phone}`}>{lead.customer_phone}</a>} />
+            <Kv k="Phone" v={lead?.customer_phone && <a className="underline-offset-2 hover:underline" href={`tel:${lead.customer_phone}`}>{lead.customer_phone}</a>} />
             <Kv k="Email" v={lead?.email} />
             <Kv k="Address" v={lead?.customer_address} />
             <Kv k="Service" v={lead?.service_type} />
@@ -198,7 +198,7 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
       {stickyBar && next?.primary && (
         <div className="sticky bottom-0 z-10 -mx-1 flex gap-2 border-t border-border bg-background/95 px-1 pt-2.5 backdrop-blur md:hidden" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }} data-testid="lead-c-bar">
           {lead?.customer_phone && (
-            <Button asChild variant="outline" className="h-12 px-4"><a href={`tel:${lead.customer_phone}`}><Phone className="mr-1 h-4 w-4" />Call</a></Button>
+            <Button asChild variant="ghost" className="h-12 px-4 text-ink-secondary"><a href={`tel:${lead.customer_phone}`}><Phone className="mr-1 h-4 w-4" />Call</a></Button>
           )}
           <Button variant="brand" className="h-12 flex-1 text-base font-semibold" onClick={next.primary.onClick} disabled={next.primary.disabled}>{next.primary.label}</Button>
         </div>

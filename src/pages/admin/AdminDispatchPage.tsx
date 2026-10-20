@@ -1461,7 +1461,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                 : { title: "Prepare and send the quote", primary: quote }
               : unassigned
                 ? { title: callOutTitle(callOutFee), primary: { label: "Book call-out", onClick: assign, testId: "lead-c-assign" } }
-                : { title: "Call-out booked. Track it on the board." };
+                : { title: ["Call-out booked", dispatchAgents.find((a) => a.id === live.assigned_agent_id)?.full_name, liveSlot ? `${liveSlot.scheduled_date} ${hhmm(liveSlot.start_time)}` : live.scheduled_date].filter(Boolean).join(" · ") };
             return (
               <LeadPageC
                 lead={live}
