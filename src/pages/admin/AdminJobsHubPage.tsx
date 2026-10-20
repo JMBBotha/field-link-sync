@@ -117,32 +117,32 @@ export function LegacyJobsHubPage() {
   const open = pipelineOpenValue(pipe.data);
   return (
     <div className="space-y-3 p-3 sm:p-4 md:p-6" data-jobs-hub>
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-gradient-to-br from-[#0F2A44] to-[#1590D6] p-3 text-white" data-testid="v8-page-header">
+      <div className="flex flex-wrap items-center gap-2">
         <h1 className="mr-2 text-2xl font-bold tracking-tight">Jobs</h1>
-        <div className="inline-flex rounded-lg border border-white/20 bg-white/10 p-1" role="tablist">
+        <div className="inline-flex rounded-lg border bg-muted/60 p-1" role="tablist">
           {((isSalesRep ? ["pipeline"] : ["pipeline", "dispatch"]) as Tab[]).map((t) => (
             <button key={t} role="tab" aria-selected={tab === t} onClick={() => go(t)}
-              className={cn("rounded-md px-3 py-1.5 text-sm font-semibold", tab === t ? "bg-white text-[#0F2A44] shadow" : "text-white/80")}>
-              {t === "pipeline" ? <>Pipeline · coming <span className={cn("text-xs font-normal", tab === t ? "text-[#0F2A44]/70" : "text-white/70")}>{fmtRandShort(open)}</span></> : <>Dispatch · live</>}
+              className={cn("rounded-md px-3 py-1.5 text-sm font-semibold", tab === t ? "bg-background shadow" : "text-muted-foreground")}>
+              {t === "pipeline" ? <>Pipeline · coming <span className="text-xs font-normal text-muted-foreground">{fmtRandShort(open)}</span></> : <>Dispatch · live</>}
             </button>
           ))}
         </div>
-        <div className="inline-flex rounded-lg border border-white/20 bg-white/10 p-1">
+        <div className="inline-flex rounded-lg border p-1">
           {viewsFor(tab).map((v) => (
             <button key={v} onClick={() => go(tab, v)} aria-pressed={view === v}
-              className={cn("inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold", view === v ? "bg-white text-[#0F2A44]" : "text-white/80")}>
+              className={cn("inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold", view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>
               {v === "cards" ? <LayoutGrid className="h-3.5 w-3.5" /> : v === "calendar" ? <CalendarDays className="h-3.5 w-3.5" /> : <Columns3 className="h-3.5 w-3.5" />}{VIEW_LABEL[v]}
             </button>
           ))}
         </div>
         {tab === "pipeline" ? (
-          <Button size="sm" variant="secondary" className="ml-auto gap-1 bg-white text-[#0F2A44] hover:bg-white/90" onClick={() => navigate("/admin/quote-builder")}><Plus className="h-4 w-4" /> New quote</Button>
+          <Button size="sm" className="ml-auto gap-1" onClick={() => navigate("/admin/quote-builder")}><Plus className="h-4 w-4" /> New quote</Button>
         ) : (
           <div className="ml-auto flex items-center gap-2">
-            <Button size="icon" variant="outline" className="h-8 w-8 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white" aria-label="Refresh dispatch" title="Refresh dispatch" onClick={() => {
+            <Button size="icon" variant="outline" className="h-8 w-8" aria-label="Refresh dispatch" title="Refresh dispatch" onClick={() => {
               ["dispatch-cards", "jobs-dispatch", "jobs-dispatch-booked", "dispatch-cards-leads", "attention-strip"].forEach((key) => qc.invalidateQueries({ queryKey: [key] }));
             }}><RefreshCw className="h-4 w-4" /></Button>
-            <Button size="sm" variant="secondary" className="gap-1 bg-white text-[#0F2A44] hover:bg-white/90" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4" /> New job</Button>
+            <Button size="sm" className="gap-1" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4" /> New job</Button>
           </div>
         )}
       </div>

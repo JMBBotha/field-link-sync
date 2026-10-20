@@ -37,7 +37,7 @@ export default function SalesHeartbeat() {
         <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-8 lg:overflow-visible">{hb.stages.map((s) => <StageTile key={s.key} s={s} items={hb.items} onClick={() => navigate(["new", "contacted", "visit"].includes(s.key) ? "/admin/dispatch" : "/admin/jobs?tab=pipeline")} />)}</div>
       </section>
       <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
-        <section className="rounded-2xl border-2 border-[#1590D6] bg-[#F3FAFE] p-4">
+        <section className="rounded-2xl border-2 border-[#1590D6] bg-[#F3FAFE] p-4 dark:bg-sky-500/10">
           <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Next step now</h3>
           {hb.next ? (<>
             <div className="mt-1 text-[20px] font-semibold">{hb.next.title}</div>
