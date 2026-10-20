@@ -314,7 +314,10 @@ const AdminLayout = () => {
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              className="h-full"
+              // Map hero pages need a fixed full height; every other page must be
+              // min-h-full so long content grows this box and main's bottom padding
+              // (bottom nav + safe area) lands BELOW the last item instead of under it.
+              className={isMapHeroPage ? "h-full" : "min-h-full"}
               initial={{ opacity: 0, x: 16 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -16 }}
