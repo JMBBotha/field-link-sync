@@ -26,3 +26,13 @@ describe("R0 highlight", () => {
     expect(r0FormOffenders([{ description: "Gas", rate: 0, room_label: "Office" } as any, { description: "", rate: 0 }])).toEqual([{ key: "row:0", name: "Gas", areaKey: "room:Office", areaName: "Office", reason: "price" }]);
   });
 });
+
+import { markR0Quote, draftR0Toast } from "@/lib/zeroPriceGuard";
+describe("R0 drafts", () => {
+  it("draft marks + soft toast, never destructive", () => {
+    const o = markR0Quote([{ id: "x", area_id: "l", item_name: "Bracket", quantity: 1, unit_price: 0 }] as any, { l: "Lounge" });
+    const t: any[] = []; draftR0Toast(o, (x) => t.push(x));
+    expect(t[0]).toMatchObject({ title: "Saved as draft — 1 price missing", variant: "default" });
+    draftR0Toast([], (x) => t.push(x)); expect(t.length).toBe(1);
+  });
+});

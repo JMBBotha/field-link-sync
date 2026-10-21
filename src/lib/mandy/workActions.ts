@@ -1,3 +1,4 @@
+import { invoiceMissingPrices } from "@/lib/invoicePriced";
 /**
  * Mandy work toolkit (Johan 13 Oct 2026, phase 3): invoices, payments, POs, jobs,
  * WhatsApp quotes/invoices. Every handler runs in the browser under the signed-in
@@ -105,6 +106,7 @@ export function makeWorkHandlers(d: WorkDeps) {
       const inv = await resolveInvoice(d, invoice_ref, client, "whatsapp_invoice");
       if (isResult(inv)) return inv;
       if (String(inv.status).toLowerCase() === "paid") return { ok: false, message: `Invoice ${inv.invoice_number} is already paid.` };
+      { const missing = await invoiceMissingPrices(inv.id, d.db); if (missing) return { ok: false, message: `Invoice ${inv.invoice_number}: ${missing}` }; }
       if (invoiceWasSent(inv)) {
         return { ok: false, message: `Invoice ${inv.invoice_number} was already sent, so another message would be a payment follow-up. That needs the owner's approval first — open Payment follow-ups.` };
       }

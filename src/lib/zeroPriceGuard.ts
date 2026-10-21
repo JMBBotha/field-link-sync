@@ -1,6 +1,6 @@
 // R0 guard: a named line priced R0 blocks save/send (invoice, proposal, quote).
 import { setR0, focusFirstR0, r0Summary, r0CountText, type R0Offender } from "@/lib/r0Highlight";
-type T = (t: { title: string; description: string; variant: "destructive" }) => unknown;
+type T = (t: { title: string; description: string; variant?: "destructive" | "default" }) => unknown;
 export const r0Line = (ls: { n?: string | null; p?: unknown }[]) => ls.find((l) => String(l.n ?? "").trim() && !Number(l.p))?.n?.trim() ?? null;
 export const r0Msg = (n: string) => `Enter a price for ${n}`;
 // Blocked: highlight every offending line (lib/r0Highlight), toast lists area + item names, focus the first field.
@@ -58,3 +58,11 @@ export const r0QuoteOffenders = (ls: QL[], areaNames: Record<string, string> = {
   return out;
 };
 export const blockR0Quote = (ls: QL[], t: T, areaNames: Record<string, string> = {}) => blkAll(r0QuoteOffenders(ls, areaNames), t);
+
+// Drafts (Johan 2026-10-21 17:14): a draft save is never blocked by missing prices. The lines are still marked red
+// (no jump/focus), and after the save a soft toast says "Saved as draft — N prices missing". Send / PDF / accept / convert stay blocked.
+export const markR0Quote = (ls: QL[], areaNames: Record<string, string> = {}) => { const o = r0QuoteOffenders(ls, areaNames); setR0(o); return o; };
+export const markR0 = (ls: { description?: string | null; rate?: unknown }[]) => { const o = r0FormOffenders(ls as any); setR0(o); return o; };
+export const draftR0Toast = (offs: R0Offender[], t: T) => {
+  if (offs.length) t({ title: `Saved as draft — ${r0CountText(offs.length)}`, description: `Still to price before sending: ${r0Summary(offs)}`, variant: "default" });
+};

@@ -18,7 +18,8 @@ import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { waitForQuoteWrites } from "@/contexts/QuoteContext";
 import { missingLabourFor, normalizeLabourMode } from "@/lib/areaLabour";
-import { blockR0Quote } from "@/lib/zeroPriceGuard";
+import { blockR0Quote, markR0Quote, draftR0Toast } from "@/lib/zeroPriceGuard";
+import type { R0Offender } from "@/lib/r0Highlight";
 import { warnMissingLabour } from "@/lib/labourWarning";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -56,7 +57,9 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
     await waitForQuoteWrites(5000);
   };
 
-  const checkLabour = async () => {
+  /** draft = true: missing prices only marked red (save goes ahead); otherwise they block. */
+  let draftMissing: R0Offender[] = [];
+  const checkLabour = async (draft?: boolean | unknown) => {
     const [areaRes, lineRes, modeRes] = await Promise.all([
       supabase.from("quote_areas").select("id, name").eq("quote_id", id).order("sort_order"),
       supabase.from("quote_items").select("id, area_id, parent_item_id, item_name, item_type, quantity, metadata, unit_price").eq("quote_id", id),
@@ -67,7 +70,9 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
     const missing = missingLabourFor(normalizeLabourMode(modeRes.data?.labour_mode), (areaRes.data || []) as any[], (lineRes.data || []) as any[], settings.default_install_labour_hours, !!modeRes.data?.labour_included);
     // Warning only (Johan 2026-10-13): never blocks save / send / PDF / print.
     warnMissingLabour(toast, missing, id, refresh);
-    if (blockR0Quote((lineRes.data || []) as any[], toast, Object.fromEntries(((areaRes.data || []) as any[]).map((r) => [r.id, r.name])))) return false;
+    const areaNames = Object.fromEntries(((areaRes.data || []) as any[]).map((r) => [r.id, r.name]));
+    if (draft === true) { draftMissing = markR0Quote((lineRes.data || []) as any[], areaNames); return true; }
+    if (blockR0Quote((lineRes.data || []) as any[], toast, areaNames)) return false;
     return true;
   };
 
@@ -83,7 +88,9 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
     try {
       await flush();
       await new Promise((r) => setTimeout(r, 250));
-      if (!await checkLabour()) return;
+      // Missing prices never block a DRAFT save; a quote already sent/accepted stays blocked (the client can see it).
+      const { data: st } = await supabase.from("quotes").select("status").eq("id", id).maybeSingle();
+      if (!await checkLabour(String(st?.status || "draft").toLowerCase() === "draft")) return;
       const { data: lines, error: linesErr } = await supabase.from("quote_items").select("quantity, unit_price, parent_item_id").eq("quote_id", id);
       if (linesErr) throw linesErr;
       const sub = (lines || []).filter((l: any) => !l.parent_item_id).reduce((s: number, l: any) => s + Number(l.quantity || 0) * Number(l.unit_price || 0), 0);
@@ -101,6 +108,7 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
       if (upErr) throw upErr;
       refresh();
       toast({ title: String(q?.status || "draft").toLowerCase() === "draft" ? "Saved as draft" : "Saved" });
+      draftR0Toast(draftMissing, toast);
     } catch (e: any) {
       toast({ title: "Could not save", description: e.message, variant: "destructive" });
     } finally {

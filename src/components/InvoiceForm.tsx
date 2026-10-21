@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { notifyJobCompleted, notifyInvoiceSent } from "@/lib/notificationService";
 import { recordInvoicePayment } from "@/lib/payments";
-import { blockR0 } from "@/lib/zeroPriceGuard";
+import { blockR0, markR0, draftR0Toast } from "@/lib/zeroPriceGuard";
 
 interface LineItem {
   description: string;
@@ -98,8 +98,10 @@ const InvoiceForm = ({ lead, open, onClose, onSuccess, agentId }: InvoiceFormPro
   };
 
   const saveInvoice = async (status: "draft" | "sent" | "paid") => {
-    if (blockR0(lineItems, toast)) return;
-    if (lineItems.every(item => !item.description || item.amount === 0)) {
+    // Drafts save with missing prices (marked red + soft toast); sent / approved / paid stay blocked.
+    const r0Draft = status === "draft" ? markR0(lineItems) : [];
+    if (status !== "draft" && blockR0(lineItems, toast)) return;
+    if (lineItems.every(item => !item.description || (status !== "draft" && item.amount === 0))) {
       toast({
         title: "Error",
         description: "Please add at least one line item with a description and amount",
@@ -140,7 +142,7 @@ const InvoiceForm = ({ lead, open, onClose, onSuccess, agentId }: InvoiceFormPro
           customer_name: lead.customer_name,
           customer_phone: lead.customer_phone,
           customer_address: lead.customer_address,
-          line_items: lineItems.filter(item => item.description && item.amount > 0),
+          line_items: lineItems.filter(item => item.description && (item.amount > 0 || (status === "draft" && !Number(item.rate)))),
           subtotal,
           tax_rate: taxRate,
           tax_amount: taxAmount,
@@ -205,6 +207,7 @@ const InvoiceForm = ({ lead, open, onClose, onSuccess, agentId }: InvoiceFormPro
         }`,
       });
 
+      draftR0Toast(r0Draft, toast);
       onSuccess();
       onClose();
     } catch (error: any) {

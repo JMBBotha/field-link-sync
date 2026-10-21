@@ -1,3 +1,4 @@
+import { assertQuotePriced } from "@/lib/quoteSend";
 import { useState } from "react";
 import { doneMessage } from "@/lib/doneToast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -59,6 +60,10 @@ export function useQuoteStaffActions(onChanged?: () => void, beforeAccept?: () =
     onChanged?.();
   };
 
+  // No page-level check (pipeline boards): a quote with a missing price can't be marked accepted.
+  const pricedOrToast = async (id: string) => {
+    try { await assertQuotePriced(id); return true; } catch (e: any) { toast({ title: "Price missing", description: e.message, variant: "destructive" }); return false; }
+  };
   const write = async (q: StaffQuote, patch: Record<string, unknown>, log: StatusLogRow) => {
     const { error } = await (supabase.from("quotes") as any).update(patch).eq("id", q.id);
     if (error) throw error;
@@ -113,7 +118,7 @@ export function useQuoteStaffActions(onChanged?: () => void, beforeAccept?: () =
     const canMark = !!me && canMarkQuote(access, q);
     const s = String(q.status || "").toLowerCase();
     return [
-      { label: "Mark accepted", hidden: !canMark || s === "accepted", onSelect: async () => { if (!beforeAccept || await beforeAccept()) setPending({ kind: "accept", quote: q }); }, separatorBefore: true },
+      { label: "Mark accepted", hidden: !canMark || s === "accepted", onSelect: async () => { if (beforeAccept ? await beforeAccept() : await pricedOrToast(q.id)) setPending({ kind: "accept", quote: q }); }, separatorBefore: true },
       { label: "Mark declined", hidden: !canMark || s === "declined", onSelect: () => setPending({ kind: "decline", quote: q }) },
       { label: "Change salesperson…", hidden: !me || !canChangeSalesperson(access), onSelect: () => { setSalesPick(q.sales_engineer_id || ""); setSalesFor(q); } },
     ];

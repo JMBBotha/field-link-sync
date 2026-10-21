@@ -18,7 +18,7 @@ import UnsavedQuoteDialog from "@/components/shared/UnsavedQuoteDialog";
 import BeCoolLogo from "@/components/shared/BeCoolLogo";
 import DocumentHeader from "@/components/shared/DocumentHeader";
 import StickyActionBar from "@/components/shared/StickyActionBar";
-import { blockR0 } from "@/lib/zeroPriceGuard";
+import { blockR0, markR0, draftR0Toast } from "@/lib/zeroPriceGuard";
 import { useInvoiceAutofill, type AutofillFlag } from "@/hooks/useInvoiceAutofill";
 import {
   fetchCompanyProfiles, invoiceTotals, depositAmount as calcDeposit, depositDue, profileBanking, fillTermsPlaceholders,
@@ -480,12 +480,14 @@ const CreateInvoicePage = ({
   /* ─── Save ─── */
   const saveInvoice = async (status: "draft" | "sent" | "paid") => {
     if (!editLoaded) return;
-    if (blockR0(lineItems, toast)) return;
+    // Drafts save with missing prices (marked red + soft toast); sent / approved / paid stay blocked.
+    const r0Draft = status === "draft" ? markR0(lineItems) : [];
+    if (status !== "draft" && blockR0(lineItems, toast)) return;
     if (!customerName.trim()) {
       toast({ title: "Error", description: "Please select or enter a client", variant: "destructive" });
       return;
     }
-    if (lineItems.every((i) => !i.description || i.amount === 0)) {
+    if (lineItems.every((i) => !i.description || (status !== "draft" && i.amount === 0))) {
       toast({ title: "Error", description: "Add at least one line item", variant: "destructive" });
       return;
     }
@@ -528,7 +530,7 @@ const CreateInvoicePage = ({
 
       // Client-facing lines: unit price is the SELL price (cost × markup); cost/markup never saved.
       const validItems = lineItems
-        .filter((i) => i.description && (i.amount > 0 || (i.flag === "credit" && i.amount < 0)))
+        .filter((i) => i.description && (i.amount > 0 || (i.flag === "credit" && i.amount < 0) || (status === "draft" && i.flag !== "credit" && !Number(i.rate)))) // drafts keep unpriced lines so they can be priced later
         .map((i) => ({
           description: i.description,
           line_name: i.line_name?.trim() || null,
@@ -634,6 +636,7 @@ const CreateInvoicePage = ({
         title: editInvoiceId ? "Invoice saved" : "Invoice Created! 💰",
         description: `${finalNumber} – ${status === "paid" ? "Paid" : status === "sent" ? "Sent" : "Draft"}`,
       });
+      draftR0Toast(r0Draft, toast);
       onSuccess();
     } catch (error: any) {
       console.error("Invoice save error:", error);

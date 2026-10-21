@@ -144,6 +144,7 @@ const AdminEstimateDetailPage = () => {
     if (!user?.id) return;
     setBusy("convert");
     try {
+      if (!await checkLabour()) return; // missing prices block convert-to-invoice
       const invoiceId = await convertQuoteToInvoice(id, user.id);
       qc.invalidateQueries({ queryKey: ["quotes"] });
       qc.invalidateQueries({ queryKey: ["invoices"] });

@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Loader2, Mail, Pencil, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { invoiceMissingPrices } from "@/lib/invoicePriced";
 
 interface Preview { to: string | null; accounts_copy: string | null; subject: string; html: string }
 
@@ -23,6 +24,8 @@ export default function SendInvoiceEmailButton({ invoiceId, status, onEdit, onSe
   if (status !== "draft") return null;
 
   const openPreview = async () => {
+    const missing = await invoiceMissingPrices(invoiceId);
+    if (missing) { toast({ title: "Price missing", description: missing, variant: "destructive" }); return; }
     setOpen(true); setLoading(true); setPreview(null);
     const { data, error } = await (supabase.rpc as any)("invoice_email_preview", { p_invoice_id: invoiceId });
     setLoading(false);
@@ -32,6 +35,8 @@ export default function SendInvoiceEmailButton({ invoiceId, status, onEdit, onSe
 
   const send = async () => {
     setSending(true);
+    const missing = await invoiceMissingPrices(invoiceId);
+    if (missing) { setSending(false); toast({ title: "Price missing", description: missing, variant: "destructive" }); return; }
     const { error } = await supabase.from("invoices").update({ status: "sent", updated_at: new Date().toISOString() } as any).eq("id", invoiceId);
     setSending(false);
     if (error) { toast({ title: "Not sent", description: error.message, variant: "destructive" }); return; }

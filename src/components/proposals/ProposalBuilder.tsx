@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { cn } from "@/lib/utils";
-import { blockR0 } from "@/lib/zeroPriceGuard";
+import { blockR0, markR0, draftR0Toast } from "@/lib/zeroPriceGuard";
 import { useProductOptions, type ProductOption } from "@/hooks/useProductOptions";
 import ProductSearchDropdown from "@/components/shared/ProductSearchDropdown";
 import { useQuoteSessionStore } from "@/stores/quoteSessionStore";
@@ -373,12 +373,14 @@ const ProposalBuilder = ({
 
   /* ─── Save ─── */
   const saveProposal = async (status: "draft" | "sent" | "approved") => {
-    if (blockR0(lineItems, toast)) return;
+    // Drafts save with missing prices (marked red + soft toast); sent / approved / paid stay blocked.
+    const r0Draft = status === "draft" ? markR0(lineItems) : [];
+    if (status !== "draft" && blockR0(lineItems, toast)) return;
     if (!customerName.trim()) {
       toast({ title: "Error", description: "Please select or enter a client", variant: "destructive" });
       return;
     }
-    if (lineItems.every((i) => !i.description || i.amount === 0)) {
+    if (lineItems.every((i) => !i.description || (status !== "draft" && i.amount === 0))) {
       toast({ title: "Error", description: "Add at least one line item", variant: "destructive" });
       return;
     }
@@ -458,6 +460,7 @@ const ProposalBuilder = ({
         title: "Proposal Saved! 📋",
         description: `${finalNumber} – ${status === "approved" ? "Approved" : status === "sent" ? "Sent" : "Draft"}`,
       });
+      draftR0Toast(r0Draft, toast);
       onSuccess?.();
     } catch (error: any) {
       console.error("Proposal save error:", error);
