@@ -1,3 +1,4 @@
+import { useR0, clearAllR0, r0PriceInput, R0_FIELD } from "@/lib/r0Highlight";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -116,6 +117,8 @@ const CreateInvoicePage = ({
   editInvoiceId,
 }: CreateInvoicePageProps) => {
   const { toast } = useToast();
+  const r0 = useR0();
+  useEffect(() => () => clearAllR0(), []);
   const { user } = useAuth();
   const { settings: companySettings } = useCompanySettings();
   const allOptions = useProductOptions();
@@ -398,6 +401,7 @@ const CreateInvoicePage = ({
   };
 
   const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
+    if (field === "rate") r0PriceInput(`row:${index}`, value);
     const items = [...lineItems];
     const item = { ...items[index] };
     if (field === "line_name" || field === "room_label") {
@@ -445,6 +449,7 @@ const CreateInvoicePage = ({
     quantity: 1, rate: 0, markup: 0, amount: 0,
   }]);
   const removeLineItem = (i: number) => {
+    clearAllR0();
     if (lineItems.length > 1) setLineItems(lineItems.filter((_, idx) => idx !== i));
   };
 
@@ -835,7 +840,8 @@ const CreateInvoicePage = ({
                 </div>
               </div>
               <div>
-                <GhostInput type="number" min="0" step="0.01" className="text-right" value={item.rate || ""} onChange={(e) => updateLineItem(idx, "rate", e.target.value)} placeholder="0.00" />
+                <GhostInput data-r0-key={`row:${idx}`} aria-invalid={r0.lines.has(`row:${idx}`) || undefined} type="number" min="0" step="0.01" className={`text-right ${r0.lines.has(`row:${idx}`) ? R0_FIELD : ""}`} value={item.rate || ""} onChange={(e) => updateLineItem(idx, "rate", e.target.value)} placeholder="0.00" />
+                {r0.lines.has(`row:${idx}`) && <div data-testid="r0-hint" className="mt-0.5 text-right text-xs font-semibold text-red-600">Enter a price</div>}
               </div>
               <div>
                 <GhostInput type="number" min="0" step="1" className="text-right" value={item.quantity || ""} onChange={(e) => updateLineItem(idx, "quantity", e.target.value)} placeholder="1" />

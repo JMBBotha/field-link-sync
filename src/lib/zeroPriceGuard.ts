@@ -1,9 +1,25 @@
 // R0 guard: a named line priced R0 blocks save/send (invoice, proposal, quote).
+import { setR0, focusFirstR0, r0Summary, r0CountText, type R0Offender } from "@/lib/r0Highlight";
 type T = (t: { title: string; description: string; variant: "destructive" }) => unknown;
 export const r0Line = (ls: { n?: string | null; p?: unknown }[]) => ls.find((l) => String(l.n ?? "").trim() && !Number(l.p))?.n?.trim() ?? null;
 export const r0Msg = (n: string) => `Enter a price for ${n}`;
-const blk = (n: string | null, t: T) => { if (n) t({ title: "Price missing", description: r0Msg(n), variant: "destructive" }); return !!n; };
-export const blockR0 = (ls: { description?: string | null; rate?: unknown }[], t: T) => blk(r0Line(ls.map((l) => ({ n: l.description, p: l.rate }))), t);
+// Blocked: highlight every offending line (lib/r0Highlight), toast lists area + item names, focus the first field.
+const blkAll = (offs: R0Offender[], t: T) => {
+  setR0(offs);
+  if (!offs.length) return false;
+  t({ title: offs.length === 1 ? "Price missing" : r0CountText(offs.length), description: `Enter a price for ${r0Summary(offs)}`, variant: "destructive" });
+  focusFirstR0(offs);
+  return true;
+};
+/** Invoice / proposal lines (keyed by index; area = room/area field when the line has one). */
+export const r0FormOffenders = (ls: { description?: string | null; rate?: unknown; room?: string | null; room_label?: string | null; area?: string | null }[]): R0Offender[] =>
+  ls.flatMap((l, i) => {
+    const n = String(l.description ?? "").trim().split("\n")[0];
+    if (!n || Number(l.rate)) return [];
+    const a = (l.room_label || l.room || l.area || "").trim() || null;
+    return [{ key: `row:${i}`, name: n, areaKey: a ? `room:${a}` : null, areaName: a, reason: "price" as const }];
+  });
+export const blockR0 = (ls: { description?: string | null; rate?: unknown }[], t: T) => blkAll(r0FormOffenders(ls as any), t);
 // A bundle item with no live model match sits inside a kit as "Not found: <model> – remap" (lib/bundleResolve.ts): treated as an unpriced line.
 const kitNotFound = (ls: { metadata?: any }[]) => {
   for (const l of ls) for (const k of (l?.metadata?.kit?.items ?? []) as any[]) if (String(k?.name ?? "").startsWith("Not found: ")) return String(k.name);
@@ -19,4 +35,26 @@ const skipR0 = (l: { item_name?: string | null; item_type?: string | null; quant
 export const r0Quote = (ls: { item_name?: string | null; item_type?: string | null; unit_price?: unknown; quantity?: unknown; parent_item_id?: string | null; metadata?: any }[]) =>
   r0Line(ls.filter((l) => !l.parent_item_id && !skipR0(l)).map((l) => ({ n: l.item_name, p: String(l.item_name ?? "").startsWith("Not found: ") || zeroMetre(l) ? 0 : l.unit_price })))
   ?? kitNotFound(ls);
-export const blockR0Quote = (ls: Parameters<typeof r0Quote>[0], t: T) => blk(r0Quote(ls), t);
+type QL = Parameters<typeof r0Quote>[0][number] & { id?: string | null; area_id?: string | null };
+/** Every offending top-level quote line (same rule as r0Quote), with its area for the red header + toast. */
+export const r0QuoteOffenders = (ls: QL[], areaNames: Record<string, string> = {}): R0Offender[] => {
+  const out: R0Offender[] = [];
+  const area = (l: QL) => ({ areaKey: l.area_id ?? "unassigned", areaName: l.area_id ? areaNames[l.area_id] ?? null : null });
+  ls.forEach((l, i) => {
+    if (l.parent_item_id || skipR0(l)) return;
+    const name = String(l.item_name ?? "").trim();
+    if (!name) return;
+    const notFound = name.startsWith("Not found: ");
+    const metre = zeroMetre(l);
+    if (!notFound && !metre && Number(l.unit_price)) return;
+    out.push({ key: l.id ?? `row:${i}`, name, ...area(l), reason: notFound ? "notfound" : metre ? "metres" : "price" });
+  });
+  if (!out.length) {
+    for (const [i, l] of ls.entries()) {
+      const k = kitNotFound([l]);
+      if (k) out.push({ key: l.id ?? `row:${i}`, name: `${String(l.item_name ?? "Kit").trim()} (${k})`, ...area(l), reason: "notfound" });
+    }
+  }
+  return out;
+};
+export const blockR0Quote = (ls: QL[], t: T, areaNames: Record<string, string> = {}) => blkAll(r0QuoteOffenders(ls, areaNames), t);

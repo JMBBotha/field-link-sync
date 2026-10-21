@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useR0, clearAllR0, r0PriceInput, R0_FIELD } from "@/lib/r0Highlight";
+import { useEffect, useState } from "react";
 import { X, Plus, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,8 @@ const paymentMethods = [
 
 const InvoiceForm = ({ lead, open, onClose, onSuccess, agentId }: InvoiceFormProps) => {
   const { toast } = useToast();
+  const r0 = useR0();
+  useEffect(() => () => clearAllR0(), []);
   const [loading, setLoading] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { description: "", quantity: 1, rate: 0, amount: 0 }
@@ -54,6 +57,7 @@ const InvoiceForm = ({ lead, open, onClose, onSuccess, agentId }: InvoiceFormPro
   const [notes, setNotes] = useState<string>("");
 
   const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
+    if (field === "rate") r0PriceInput(`row:${index}`, value);
     const newItems = [...lineItems];
     const item = { ...newItems[index] };
     
@@ -76,6 +80,7 @@ const InvoiceForm = ({ lead, open, onClose, onSuccess, agentId }: InvoiceFormPro
   };
 
   const removeLineItem = (index: number) => {
+    clearAllR0();
     if (lineItems.length > 1) {
       setLineItems(lineItems.filter((_, i) => i !== index));
     }
@@ -296,9 +301,12 @@ const InvoiceForm = ({ lead, open, onClose, onSuccess, agentId }: InvoiceFormPro
                       min="0"
                       step="0.01"
                       value={item.rate}
+                      data-r0-key={`row:${index}`}
+                      aria-invalid={r0.lines.has(`row:${index}`) || undefined}
                       onChange={(e) => updateLineItem(index, "rate", e.target.value)}
-                      className="h-9 text-sm"
+                      className={`h-9 text-sm ${r0.lines.has(`row:${index}`) ? R0_FIELD : ""}`}
                     />
+                    {r0.lines.has(`row:${index}`) && <div data-testid="r0-hint" className="mt-0.5 text-right text-xs font-semibold text-red-600">Enter a price</div>}
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Amount</Label>

@@ -2,7 +2,8 @@
  * Save draft / Send / Download PDF / Print for one quote — shared by the estimate page and the
  * Quote Builder (QuoteActionBar). Moved from AdminEstimateDetailPage; behaviour unchanged.
  */
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { clearAllR0 } from "@/lib/r0Highlight";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +31,8 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
   const qc = useQueryClient();
   const { settings } = useCompanySettings();
   const [busy, setBusy] = useState<QuoteDocBusy>(null);
+  // Missing-price red is per quote: clear it when leaving / switching quotes.
+  useEffect(() => () => clearAllR0(), [id]);
   const [clientPdf, setClientPdf] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [pdfView, setPdfView] = useState<{ url: string; fileName: string; title: string } | null>(null);
@@ -64,7 +67,7 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
     const missing = missingLabourFor(normalizeLabourMode(modeRes.data?.labour_mode), (areaRes.data || []) as any[], (lineRes.data || []) as any[], settings.default_install_labour_hours, !!modeRes.data?.labour_included);
     // Warning only (Johan 2026-10-13): never blocks save / send / PDF / print.
     warnMissingLabour(toast, missing, id, refresh);
-    if (blockR0Quote((lineRes.data || []) as any[], toast)) return false;
+    if (blockR0Quote((lineRes.data || []) as any[], toast, Object.fromEntries(((areaRes.data || []) as any[]).map((r) => [r.id, r.name])))) return false;
     return true;
   };
 

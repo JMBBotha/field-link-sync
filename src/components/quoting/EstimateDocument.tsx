@@ -2,7 +2,7 @@ import { CanonicalAreaChoices, CanonicalAreaCreateControl } from "@/components/q
 import QtyStepper from "./QtyStepper";
 import { AreaNameLabel, isDefaultAreaName } from "@/components/quote/AreaNameLabel";
 import { SpecialChip } from "@/components/specials/SpecialsUi";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowRightLeft, ChevronDown, ChevronRight, Copy, Menu, Plus, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNewLineScroll } from "@/hooks/useNewLineScroll";
@@ -26,6 +26,7 @@ import { isPaidInFullRemote, usesLegacyPaymentTerms, withRemoteNotice } from "@/
 import { planTermsSentence, type PaymentPlan } from "@/lib/paymentPlans";
 import BrandDocument, { NotesBody, type BrandDocSection } from "@/components/documents/BrandDocument";
 import { foldFlatLines } from "@/lib/clientQuoteRollup";
+import { useR0, clearR0Line, r0PriceInput, r0HintText, r0CountText, R0_FIELD } from "@/lib/r0Highlight";
 
 export interface EstimateDocLineItem {
   description: string;
@@ -388,6 +389,22 @@ const EstimateDocument = ({
   const [namingAreas, setNamingAreas] = useState<Set<string>>(new Set());
   const [openKits, setOpenKits] = useState<Record<string, boolean>>({});
   const [openInstallGroups, setOpenInstallGroups] = useState<Record<string, boolean>>({});
+  const r0 = useR0();
+  // Areas / install groups holding a missing price are opened for real (not just while red), so fixing the price doesn't hide the line again.
+  const r0OpenAreas = useRef(new Set<string>());
+  const r0OpenGroups = useRef(new Set<string>());
+  useEffect(() => {
+    if (r0OpenGroups.current.size) {
+      const ids = [...r0OpenGroups.current];
+      r0OpenGroups.current.clear();
+      setOpenInstallGroups((cur) => ({ ...cur, ...Object.fromEntries(ids.map((id) => [id, true])) }));
+    }
+    if (r0OpenAreas.current.size) {
+      const keys = [...r0OpenAreas.current];
+      r0OpenAreas.current.clear();
+      keys.forEach((k) => editing?.onToggleArea?.(k));
+    }
+  });
   const isPhone = useIsPhone();
   const rollup = !editing && presentationMode === "clientRollup" ? clientAreas ?? [] : null;
   const { settings: authedSettings } = useCompanySettings();
@@ -554,7 +571,10 @@ const EstimateDocument = ({
             {editing.areas.filter((area) => !(!area.id && area.lines.length === 0)).map((area) => {
               const areaKey = area.id ?? "unassigned";
               const canCollapse = editing.collapsedAreaKeys !== undefined && !!editing.onToggleArea;
-              const collapsed = canCollapse && editing.collapsedAreaKeys?.has(areaKey);
+              const r0Count = r0.areas.get(areaKey) ?? 0;
+              // Auto-expand an area that holds a missing price (save/send blocked).
+              if (r0Count && canCollapse && editing.collapsedAreaKeys?.has(areaKey)) r0OpenAreas.current.add(areaKey);
+              const collapsed = canCollapse && editing.collapsedAreaKeys?.has(areaKey) && !r0Count;
               return (
               <section
                 key={areaKey}
@@ -564,7 +584,7 @@ const EstimateDocument = ({
                 onClick={() => editing.onSelectArea?.(area.id)}
                 className="option1-area pb-0 print:pb-0"
               >
-                <div className="option1-title-row flex items-center gap-2 border-b pb-3">
+                <div data-r0-area={r0Count ? "true" : undefined} className={`option1-title-row flex items-center gap-2 border-b pb-3 ${r0Count ? "-mx-2 rounded-md border-red-500 bg-red-50 px-2 pt-2 text-red-700 [&_*]:!text-red-700" : ""}`}>
                   {area.id ? (
                     <AreaNameLabel
                       key={`${area.id}-${area.name}`}
@@ -584,6 +604,9 @@ const EstimateDocument = ({
                       onRename={(v) => editing.onNameDefaultArea?.(v)}
                       className="text-xl font-bold normal-case"
                     />
+                  )}
+                  {r0Count > 0 && (
+                    <span data-testid="r0-area-count" className="shrink-0 rounded-full border border-red-500 bg-white px-2 py-0.5 text-xs font-semibold text-red-700 print:hidden" data-pdf-hide data-html2canvas-ignore>{r0CountText(r0Count)}</span>
                   )}
                   {canCollapse && area.lines.length > 0 && (
                     <Button
@@ -672,17 +695,21 @@ const EstimateDocument = ({
                       }
                       const line = row.line;
                       const selected = editing.selectedLineId === line.id;
+                      const r0Line = r0.lines.get(line.id);
+                      if (r0Line && row.installGroupId && !openInstallGroups[row.installGroupId]) r0OpenGroups.current.add(row.installGroupId);
+                      const groupHidden = row.installGroupId && !openInstallGroups[row.installGroupId] && !r0Line;
                       return (
                         <tr
                           key={line.id}
                           data-line-id={line.id}
                           data-install-role={line.installRole || undefined}
-                          data-install-collapsed={row.installGroupId && !openInstallGroups[row.installGroupId] ? "true" : undefined}
+                          data-install-collapsed={groupHidden ? "true" : undefined}
+                          data-r0-line={r0Line ? "true" : undefined}
                           onFocus={() => editing.onSelectLine(line.id)}
                           onClick={() => editing.onSelectLine(line.id)}
                           className={`estimate-line border-b border-slate-100 align-top ${
-                            row.installGroupId && !openInstallGroups[row.installGroupId] ? "hidden print:table-row" : ""
-                          } ${
+                            groupHidden ? "hidden print:table-row" : ""
+                          } ${r0Line ? "bg-red-50 outline outline-1 -outline-offset-1 outline-red-400 print:bg-transparent print:outline-0" : ""} ${
                             selected ? "bg-sky-50/60 print:bg-transparent" : ""
                           } ${flashId === line.id ? "animate-pulse bg-amber-50 print:bg-transparent" : ""}`}
                         >
@@ -786,15 +813,20 @@ const EstimateDocument = ({
                               type="number"
                               step="0.01"
                               defaultValue={line.unit_price}
-                              onInput={(e) => { const v = Number(e.currentTarget.value); if (Number.isFinite(v)) editing.onDraft?.(line.id, { unit_price: v }); }}
+                              data-r0-key={line.id}
+                              aria-invalid={r0Line ? true : undefined}
+                              onInput={(e) => { const v = Number(e.currentTarget.value); if (Number.isFinite(v)) editing.onDraft?.(line.id, { unit_price: v }); if (r0Line?.reason === "price") r0PriceInput(line.id, v); }}
                               onBlur={(e) => {
                                 const v = Number(e.target.value);
                                 if (Number.isFinite(v) && v !== line.unit_price) {
                                   editing.onLineChange(line.id, { unit_price: v });
                                 }
                               }}
-                              className={`${inputBase} line-price text-right text-ink`}
+                              className={`${inputBase} line-price text-right text-ink ${r0Line ? R0_FIELD : ""}`}
                             />
+                            {r0Line && (
+                              <div data-testid="r0-hint" data-pdf-hide data-html2canvas-ignore className="mt-0.5 text-xs font-semibold text-red-600 print:hidden">{r0HintText(r0Line.reason)}</div>
+                            )}
                             {line.staffNote && (
                               <div data-html2canvas-ignore className="text-xs text-ink-muted print:hidden">{line.staffNote}</div>
                             )}
@@ -819,7 +851,7 @@ const EstimateDocument = ({
                             <QtyStepper value={line.quantity} min={line.perMetre ? 0.1 : 0} step={1}
                               ariaLabel={line.perMetre ? "Metres" : "Quantity"}
                               inputProps={{ "data-line-qty": line.id }}
-                              onCommit={(v) => editing.onLineChange(line.id, { quantity: v })} />
+                              onCommit={(v) => { if (r0Line?.reason === "metres" && v > 0) clearR0Line(line.id); editing.onLineChange(line.id, { quantity: v }); }} />
                             <span className="hidden print:inline">{line.quantity}</span>
                             </>
                             )}
