@@ -12,6 +12,7 @@ import { Building2, Globe, MapPin, Pencil, Users, Package, FileText, Wallet, Tag
 import { toast } from "sonner";
 import SupplierContactsTab from "./SupplierContactsTab";
 import SupplierDocumentsTab from "./SupplierDocumentsTab";
+import SupplierBrandCounts from "./SupplierBrandCounts";
 
 interface SupplierDetailSheetProps {
   supplierId: string;
@@ -171,10 +172,7 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit, initialTa
                 {supplier.supplier_type === "consumables" ? "Consumables" : "AC Units"}
               </Badge>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground flex items-center gap-1"><Package className="h-3 w-3" />Products</span>
-              <span>{productCount}</span>
-            </div>
+            <SupplierBrandCounts supplierId={supplierId} enabled={open} />
           </CardContent>
         </Card>
 
