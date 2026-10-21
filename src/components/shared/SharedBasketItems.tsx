@@ -1,3 +1,4 @@
+import { stockLabel } from "@/lib/specials";
 import { useState, useContext, createContext } from "react";
 import { Plus, Trash2, Minus, Package, Ruler, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -241,7 +242,7 @@ export function RegularItemCard({
   const warn = markupDrift(calculateBasketItemSell(item), lineCost, standardMarkupFor(item.product), item.quantity);
   const { find: findSpecial } = useActiveSpecials();
   const sp = findSpecial(item.product.id, item.product.product_code);
-  const spChip = sp ? <SpecialChip cost={Number(sp.special_cost)} endDate={sp.end_date} pdfPath={sp.specials_pdf_path} /> : null;
+  const spChip = sp ? <SpecialChip cost={Number(sp.special_cost)} endDate={sp.end_date} pdfPath={sp.specials_pdf_path} stock={stockLabel(sp)} /> : null;
   const effectiveMarkup = baseMarkup + markupAdj;
 
   const { unitSell: rawUnitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product);

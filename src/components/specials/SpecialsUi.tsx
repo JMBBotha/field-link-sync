@@ -3,7 +3,7 @@ import { Tag, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { formatRand } from "@/utils/formatRand";
-import { fmtDate, signedSpecialsPdfUrl, type SupplierSpecial } from "@/lib/specials";
+import { fmtDate, signedSpecialsPdfUrl, stockLabel, type SupplierSpecial } from "@/lib/specials";
 
 /** In-app preview of a specials PDF via a short-lived signed URL. */
 export function SpecialsPdfDialog({ path, onClose }: { path: string | null; onClose: () => void }) {
@@ -29,12 +29,12 @@ export function SpecialsPdfDialog({ path, onClose }: { path: string | null; onCl
 }
 
 /** Staff-only row indicator. Never printed / never captured into the client PDF. */
-export function SpecialChip({ cost, endDate, pdfPath, applied }: { cost: number; endDate: string; pdfPath?: string | null; applied?: boolean }) {
+export function SpecialChip({ cost, endDate, pdfPath, applied, stock }: { cost: number; endDate: string; pdfPath?: string | null; applied?: boolean; stock?: string | null }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <span data-html2canvas-ignore data-testid="special-chip" className="mt-0.5 inline-flex items-center gap-1 rounded-full border border-[#F7941D] bg-[#F7941D] px-1.5 text-xs font-semibold text-white print:hidden">
       <Tag className="h-2.5 w-2.5" />
-      {applied ? "Special applied: " : "Special: "}{formatRand(cost)} until {fmtDate(endDate)}
+      {applied ? "Special applied: " : "Special: "}{formatRand(cost)} until {fmtDate(endDate)}{stock ? ` · ${stock}` : ""}
       {pdfPath && (
         <button type="button" className="underline" onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen(pdfPath); }}>
           View specials PDF
@@ -63,6 +63,12 @@ export function useSpecialPrompt() {
                 {state.s.model_number}: this model is on special: cost {formatRand(Number(state.s.special_cost))} (normal {formatRand(state.normal)}) until {fmtDate(state.s.end_date)}. Use special cost for this quote?
               </DialogDescription>
             )}
+            {state && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {stockLabel(state.s) && <LimitedStockTag label={stockLabel(state.s)!} />}
+                <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Ends {fmtDate(state.s.end_date)}</span>
+              </div>
+            )}
           </DialogHeader>
           {state?.s.specials_pdf_path && (
             <button type="button" className="inline-flex items-center gap-1 text-sm text-primary underline" onClick={() => setPdf(state.s.specials_pdf_path)}>
@@ -79,4 +85,9 @@ export function useSpecialPrompt() {
     </>
   );
   return { ask, dialog };
+}
+
+/** Orange "Limited stock" tag (#F7941D). */
+export function LimitedStockTag({ label }: { label: string }) {
+  return <span data-testid="limited-stock-tag" className="inline-flex items-center rounded-full bg-[#F7941D] px-2 py-0.5 text-[11px] font-semibold text-white">{label}</span>;
 }

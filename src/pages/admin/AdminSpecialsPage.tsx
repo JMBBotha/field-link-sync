@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { liveProducts } from "@/lib/liveProducts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tag, Plus, Upload, FileText, Loader2 } from "lucide-react";
@@ -13,11 +14,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { formatRand } from "@/utils/formatRand";
-import { SpecialsPdfDialog } from "@/components/specials/SpecialsUi";
-import { fmtDate, isSpecialRunning, normModel, todayIso, type SupplierSpecial } from "@/lib/specials";
+import { LimitedStockTag, SpecialsPdfDialog } from "@/components/specials/SpecialsUi";
+import { fmtDate, isSpecialRunning, normModel, stockLabel, todayIso, type SupplierSpecial } from "@/lib/specials";
 
-type Draft = { id?: string; supplier_id: string; model_number: string; special_cost: string; start_date: string; end_date: string; notes: string };
-const emptyDraft = (): Draft => ({ supplier_id: "", model_number: "", special_cost: "", start_date: todayIso(), end_date: todayIso(), notes: "" });
+type Draft = { id?: string; supplier_id: string; model_number: string; special_cost: string; start_date: string; end_date: string; notes: string; while_stocks_last: boolean; units_left: string };
+const emptyDraft = (): Draft => ({ supplier_id: "", model_number: "", special_cost: "", start_date: todayIso(), end_date: todayIso(), notes: "", while_stocks_last: false, units_left: "" });
 
 export default function AdminSpecialsPage() {
   const { toast } = useToast();
@@ -64,6 +65,17 @@ export default function AdminSpecialsPage() {
   const supplierName = (id: string | null) => suppliers.find((s) => s.id === id)?.name ?? "—";
   const draftMatch = draft ? byModel.get(normModel(draft.model_number)) ?? null : null;
   const list = specials.filter((s) => showInactive || s.is_active);
+  const openEdit = (s: SupplierSpecial) => setDraft({ id: s.id, supplier_id: s.supplier_id ?? "", model_number: s.model_number, special_cost: String(s.special_cost), start_date: s.start_date, end_date: s.end_date, notes: s.notes ?? "", while_stocks_last: !!s.while_stocks_last, units_left: s.units_left == null ? "" : String(s.units_left) });
+  // Bell link "/admin/specials?edit=<id>" (7-day reminder) opens that special's edit.
+  const [params, setParams] = useSearchParams();
+  const editId = params.get("edit");
+  useEffect(() => {
+    if (!editId || !specials.length) return;
+    const s = specials.find((x) => x.id === editId);
+    if (s) openEdit(s);
+    params.delete("edit"); setParams(params, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId, specials]);
   const refresh = () => { qc.invalidateQueries({ queryKey: ["supplier-specials-admin"] }); qc.invalidateQueries({ queryKey: ["active-specials"] }); };
 
   const save = async () => {
@@ -79,6 +91,8 @@ export default function AdminSpecialsPage() {
       supplier_product_id: match?.id ?? null,
       special_cost: cost, start_date: draft.start_date, end_date: draft.end_date,
       notes: draft.notes.trim() || null,
+      while_stocks_last: draft.while_stocks_last,
+      units_left: draft.units_left.trim() === "" ? null : Math.max(0, parseInt(draft.units_left, 10) || 0),
     };
     const q = (supabase.from("supplier_specials" as any) as any);
     const { data, error } = draft.id ? await q.update(row).eq("id", draft.id).select("id") : await q.insert(row).select("id");
@@ -140,7 +154,9 @@ export default function AdminSpecialsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2 font-medium">
                     {s.model_number}
-                    {!s.is_active ? <Badge variant="outline">Inactive</Badge> : running ? <Badge>Running</Badge> : <Badge variant="secondary">{s.start_date > todayIso() ? "Upcoming" : "Ended"}</Badge>}
+                    {!s.is_active ? <Badge variant="outline">Inactive</Badge> : running ? <Badge>Running</Badge> : <Badge variant="secondary">{s.units_left != null && s.units_left <= 0 ? "Sold out" : s.start_date > todayIso() ? "Upcoming" : "Ended"}</Badge>}
+                    {stockLabel(s) && <LimitedStockTag label={stockLabel(s)!} />}
+                    <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground">Ends {fmtDate(s.end_date)}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {supplierName(s.supplier_id)} · {prod ? `Linked: ${prod.short_name || prod.product_code} (normal ${formatRand(Number(prod.cost_excl_vat || 0))})` : "Not linked to a catalogue product"}
@@ -153,7 +169,7 @@ export default function AdminSpecialsPage() {
                 </div>
                 <div className="flex gap-1">
                   {s.specials_pdf_path && <Button size="sm" variant="ghost" onClick={() => setPdf(s.specials_pdf_path)}><FileText className="h-4 w-4" /></Button>}
-                  <Button size="sm" variant="outline" onClick={() => setDraft({ id: s.id, supplier_id: s.supplier_id ?? "", model_number: s.model_number, special_cost: String(s.special_cost), start_date: s.start_date, end_date: s.end_date, notes: s.notes ?? "" })}>Edit</Button>
+                  <Button size="sm" variant="outline" onClick={() => openEdit(s)}>Edit</Button>
                   <Button size="sm" variant="ghost" onClick={() => setActive(s, !s.is_active)}>{s.is_active ? "Deactivate" : "Activate"}</Button>
                 </div>
               </div>
@@ -189,6 +205,8 @@ export default function AdminSpecialsPage() {
                 <div><Label>Start</Label><Input type="date" value={draft.start_date} onChange={(e) => setDraft({ ...draft, start_date: e.target.value })} /></div>
                 <div><Label>End</Label><Input type="date" value={draft.end_date} onChange={(e) => setDraft({ ...draft, end_date: e.target.value })} /></div>
               </div>
+              <label className="flex items-center gap-2 text-sm"><Checkbox checked={draft.while_stocks_last} onCheckedChange={(v) => setDraft({ ...draft, while_stocks_last: !!v })} /> While stocks last</label>
+              <div><Label>Units left (optional, 0 ends the special)</Label><Input type="number" min="0" step="1" value={draft.units_left} onChange={(e) => setDraft({ ...draft, units_left: e.target.value })} /></div>
               <div><Label>Notes</Label><Textarea rows={2} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} /></div>
             </div>
           )}

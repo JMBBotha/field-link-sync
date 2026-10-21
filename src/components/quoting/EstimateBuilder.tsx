@@ -1,3 +1,4 @@
+import { stockLabel } from "@/lib/specials";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import "./fl-builder.css";
 import { usePdfBasket } from "@/lib/pdfBasketStore";
@@ -236,9 +237,9 @@ export default function EstimateBuilder({
     // Warn-only (staff): this line's markup differs from the standard. Never blocks save/send; not on the client PDF.
     special: margin.visible ? (() => {
       const m = (i.metadata as any)?.special;
-      if (m?.cost != null && m?.end_date) return { cost: Number(m.cost), endDate: String(m.end_date), pdfPath: m.pdf_path ?? null, applied: true };
+      if (m?.cost != null && m?.end_date) return { cost: Number(m.cost), endDate: String(m.end_date), pdfPath: m.pdf_path ?? null, applied: true, stock: m.stock ?? null };
       const sp = findSpecial(i.product_id ?? null, i.item_number ?? null);
-      return sp ? { cost: Number(sp.special_cost), endDate: sp.end_date, pdfPath: sp.specials_pdf_path, applied: false } : null;
+      return sp ? { cost: Number(sp.special_cost), endDate: sp.end_date, pdfPath: sp.specials_pdf_path, applied: false, stock: stockLabel(sp) } : null;
     })() : null,
     priceWarn: margin.visible ? quoteLineDrift(i as any, i.product_id ? liveProducts.find((p) => p.id === i.product_id) : null)?.label ?? null : null,
     priceWarnShort: margin.visible ? quoteLineDrift(i as any, i.product_id ? liveProducts.find((p) => p.id === i.product_id) : null)?.short ?? null : null,

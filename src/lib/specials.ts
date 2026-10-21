@@ -16,6 +16,16 @@ export interface SupplierSpecial {
   specials_pdf_path: string | null;
   notes: string | null;
   is_active: boolean;
+  /** Johan 09:38: "while stocks last" flag + optional units left (0 = sold out, special stops). */
+  while_stocks_last?: boolean | null;
+  units_left?: number | null;
+}
+
+/** "Limited stock" / "Limited stock · 3 left" / null. */
+export function stockLabel(s: { while_stocks_last?: boolean | null; units_left?: number | null } | null | undefined): string | null {
+  if (!s) return null;
+  if (s.units_left != null) return `Limited stock · ${s.units_left} left`;
+  return s.while_stocks_last ? "Limited stock" : null;
 }
 
 /** Case/space/hyphen-insensitive model key. */
@@ -27,6 +37,7 @@ export const todayIso = (d: Date = new Date()) => {
 };
 
 export function isSpecialRunning(s: SupplierSpecial, date: string = todayIso()) {
+  if (s.units_left != null && Number(s.units_left) <= 0) return false; // sold out
   return s.is_active && s.start_date <= date && date <= s.end_date;
 }
 
@@ -64,7 +75,7 @@ export const fmtDate = (iso: string) => {
 /** Line metadata stamped when the user accepts the special for THIS line. */
 export function specialLineMeta(s: SupplierSpecial, normalCost: number) {
   return {
-    special: { id: s.id, cost: Number(s.special_cost), normal_cost: normalCost, end_date: s.end_date, pdf_path: s.specials_pdf_path },
+    special: { id: s.id, cost: Number(s.special_cost), normal_cost: normalCost, end_date: s.end_date, pdf_path: s.specials_pdf_path, stock: stockLabel(s) },
     price_overridden: true,
   };
 }

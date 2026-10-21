@@ -71,7 +71,7 @@ export interface EstimateEditLine {
   /** Chip colour: green = at/above standard markup, orange = below, red = far below. */
   priceWarnTone?: "green" | "orange" | "red" | null;
   /** Staff-only specials indicator (never on client PDF). */
-  special?: { cost: number; endDate: string; pdfPath: string | null; applied: boolean } | null;
+  special?: { cost: number; endDate: string; pdfPath: string | null; applied: boolean; stock?: string | null } | null;
   /** Display-only short name (kit title / install companion); item_name is never rewritten unless edited. */
   displayName?: string | null;
   /** Unit next to qty, e.g. "3 m", "1 each", "0.5 × 3 m length", "3.5 h". */
@@ -799,7 +799,7 @@ const EstimateDocument = ({
                               <div data-html2canvas-ignore className="text-xs text-ink-muted print:hidden">{line.staffNote}</div>
                             )}
                             {line.special && (
-                              <div><SpecialChip cost={line.special.cost} endDate={line.special.endDate} pdfPath={line.special.pdfPath} applied={line.special.applied} /></div>
+                              <div><SpecialChip cost={line.special.cost} endDate={line.special.endDate} pdfPath={line.special.pdfPath} applied={line.special.applied} stock={line.special.stock} /></div>
                             )}
                             {line.priceWarn && (
                               <div data-html2canvas-ignore data-testid="markup-warn" data-tone={line.priceWarnTone ?? "orange"} title={line.priceWarn} className={`mt-0.5 inline-flex max-w-full items-center gap-0.5 whitespace-nowrap rounded-full border px-1 py-0 text-xs leading-[14px] print:hidden ${line.priceWarnTone === "green" ? "border-green-500 bg-green-50 text-green-800" : line.priceWarnTone === "red" ? "border-red-500 bg-red-50 text-red-800" : "border-amber-400 bg-amber-50 text-amber-800"}`}>{line.priceWarnTone === "green" ? "✓" : "⚠"}<span className="truncate">{line.priceWarnShort ?? line.priceWarn}</span></div>

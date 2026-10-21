@@ -1,3 +1,4 @@
+import { stockLabel } from "@/lib/specials";
 import { productMatchesTerms } from "@/lib/productSearchTags";
 import { liveProducts as liveProductsQuery } from "@/lib/liveProducts";
 import { useActiveSpecials } from "@/hooks/useActiveSpecials";
@@ -328,7 +329,7 @@ export default function QuoteQuickEditor({
         {onQuoteProductIds.has(p.id) && (
           <Badge variant="secondary" className="shrink-0 text-xs">on quote</Badge>
         )}
-        {(() => { const sp = findSpecial(p.id, p.product_code); return sp ? <SpecialChip cost={Number(sp.special_cost)} endDate={sp.end_date} /> : null; })()}
+        {(() => { const sp = findSpecial(p.id, p.product_code); return sp ? <SpecialChip cost={Number(sp.special_cost)} endDate={sp.end_date} stock={stockLabel(sp)} /> : null; })()}
         <span className="shrink-0 text-xs font-medium text-ink">{perM != null ? `${money(perM)} / m` : money(unitSell)}</span>
       </button>
     );
