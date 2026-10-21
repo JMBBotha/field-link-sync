@@ -420,6 +420,10 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
 
       setPriceListProgress(`Processing ${totalPages} pages...`);
 
+      // Source PDF public URL is deterministic; store it on each page row at insert
+      // time (a later UPDATE is silently blocked while the book is inactive).
+      const sourcePdfUrl = supabase.storage.from("supplier-pdfs").getPublicUrl(`${supplierId}/${file.name}`).data?.publicUrl || null;
+
       const SCALE = 1.5;
       const batchRows: any[] = [];
 
@@ -458,6 +462,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
           brand,
           page_number: pageNum,
           page_image_url: urlData.publicUrl,
+          pdf_storage_path: sourcePdfUrl,
         });
 
         if (batchRows.length >= 10) {
@@ -474,7 +479,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
 
       // Upload the source PDF
       const pdfStoragePath = `${supplierId}/${file.name}`;
-      await supabase.storage.from("supplier-pdfs").upload(pdfStoragePath, file, { upsert: true, contentType: "application/pdf" });
+      const { error: pdfUpErr } = await supabase.storage.from("supplier-pdfs").upload(pdfStoragePath, file, { upsert: true, contentType: "application/pdf" });
+      if (pdfUpErr) throw new Error(`Could not store the PDF file: ${pdfUpErr.message}`);
       const { data: pdfUrlData } = supabase.storage.from("supplier-pdfs").getPublicUrl(pdfStoragePath);
       if (pdfUrlData?.publicUrl) {
         await (supabase.from("supplier_pdf_pages") as any)
@@ -649,9 +655,16 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
         .eq("pdf_upload_id", up.id).order("page_number");
       if (error) throw error;
       if (!pages?.length) throw new Error("The active upload has no stored pages.");
-      const pdfUrl = pages.find((p: any) => p.pdf_storage_path)?.pdf_storage_path;
+      // Fallback: older uploads may lack pdf_storage_path (the update ran while the
+      // book was still inactive and RLS hid the rows). The source PDF sits at a
+      // fixed path in supplier-pdfs, so derive it.
+      const srcName = pages[0].pdf_filename || up.file_name;
+      const pdfUrl = pages.find((p: any) => p.pdf_storage_path)?.pdf_storage_path
+        || (srcName ? supabase.storage.from("supplier-pdfs").getPublicUrl(`${supplierId}/${srcName}`).data?.publicUrl : null);
       if (!pdfUrl) throw new Error("The stored PDF file is missing.");
-      const blob = await (await fetch(pdfUrl)).blob();
+      const pdfRes = await fetch(pdfUrl);
+      if (!pdfRes.ok) throw new Error("The stored PDF file is missing. Please upload the price list again.");
+      const blob = await pdfRes.blob();
       const name = pages[0].pdf_filename || up.file_name || "price-list.pdf";
       const file = new File([blob], name, { type: "application/pdf" });
       const images: (string | null)[] = [];
