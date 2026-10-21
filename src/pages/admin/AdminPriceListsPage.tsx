@@ -77,7 +77,7 @@ const AdminPriceListsPage = () => {
         showCost
         rememberSupplierKey="fls-price-lists-supplier"
         open={true}
-        onClose={() => navigate("/admin")}
+        onClose={() => (window.history.length > 1 ? navigate(-1) : navigate("/admin"))}
         baskets={[]}
         onAddProductToBasket={() => {}}
         pdfSelection={pdfSelection}

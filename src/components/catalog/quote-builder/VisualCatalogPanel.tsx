@@ -806,9 +806,13 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/70 transition-opacity backdrop-blur-sm" onClick={wizardOpen ? undefined : onClose} />
+      {/* Price Lists page (readOnly) renders in the page, below the app header and above the bottom nav,
+          so its Back button is never hidden under the app header on a phone (Johan 21 Oct). */}
+      {!readOnly && <div className="fixed inset-0 z-40 bg-black/70 transition-opacity backdrop-blur-sm" onClick={wizardOpen ? undefined : onClose} />}
 
-      <div className={`fixed inset-y-0 left-0 z-50 flex bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${panelWidth}`}>
+      <div className={readOnly
+        ? "relative flex-1 min-h-0 w-full flex bg-background"
+        : `fixed inset-y-0 left-0 z-50 flex bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${panelWidth}`}>
         {/* Quote Zones sidebar removed for cleaner PDF viewing experience */}
 
         {/* RIGHT: PDF Viewer */}
@@ -1311,24 +1315,35 @@ const LazyPdfPage = ({
       }
       const supplierName = (page.supplier_id || "").trim();
       if (!supplierName) return [];
-      // Use wildcards: legacy supplier names may have trailing whitespace in DB
-      const { data: supplierRow } = await (supabase.from("suppliers") as any)
-        .select("id")
-        .ilike("name", `%${supplierName}%`)
-        .maybeSingle();
-      const supplierUuid = supplierRow?.id;
+      // Newer pages store the supplier UUID directly; legacy pages store the name.
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(supplierName);
+      let supplierUuid: string | undefined = isUuid ? supplierName : undefined;
+      if (!supplierUuid) {
+        // Use wildcards: legacy supplier names may have trailing whitespace in DB
+        const { data: supplierRow } = await (supabase.from("suppliers") as any)
+          .select("id")
+          .ilike("name", `%${supplierName}%`)
+          .maybeSingle();
+        supplierUuid = supplierRow?.id;
+      }
       if (!supplierUuid) {
         console.warn(`[VisualCatalog] No supplier UUID for "${supplierName}"`);
         return [];
       }
       const { data } = await liveProducts()
-        .select("id, product_code, short_name, description, cost_excl_vat, cost_price, default_markup_percent, row_bbox, price_bbox")
+        .select("id, product_code, short_name, description, cost_excl_vat, cost_price, default_markup_percent, row_bbox, price_bbox, pdf_upload_id")
         .eq("supplier_id", supplierUuid)
         .eq("page_number", page.page_number)
         .not("row_bbox", "is", null)
         .or("subcategory.is.null,subcategory.neq.In-house"); // in-house extras live on their own book
-      console.log(`[VisualCatalog] OCR bbox query: supplier="${supplierName}" uuid=${supplierUuid} page=${page.page_number} → ${(data || []).length} regions`);
-      return data || [];
+      let rows: any[] = data || [];
+      // One supplier can have several PDFs (e.g. Samsung + Comfee): keep this PDF's rows when it has any.
+      if (page.pdf_upload_id) {
+        const own = rows.filter((r: any) => r.pdf_upload_id === page.pdf_upload_id);
+        if (own.length > 0) rows = own;
+      }
+      console.log(`[VisualCatalog] OCR bbox query: supplier="${supplierName}" uuid=${supplierUuid} page=${page.page_number} → ${rows.length} regions`);
+      return rows;
     },
     staleTime: 120000,
   });
@@ -1772,20 +1787,6 @@ const LazyPdfPage = ({
               supplierDiscountPercent={supplierDiscountPercent}
               favoriteIds={favoriteIds}
              />
-          )}
-          {/* Banner for image-based/scanned pages where pdf.js text extraction returns 0 regions */}
-          {isVisible && !extracting && overlayRegions.length === 0 && activeProducts.length > 0 && (
-            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-20 flex justify-center pointer-events-none">
-              <div className="bg-primary/90 text-primary-foreground rounded-lg px-4 py-3 shadow-lg max-w-[80%] text-center pointer-events-auto">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <FileImage className="h-4 w-4" />
-                  <span className="font-semibold text-sm">Scanned Page — No Text Layer</span>
-                </div>
-                <p className="text-xs opacity-90">
-                  {activeProducts.length} products imported for this supplier. Use the <strong>Product Palette</strong> on the left to search and add them to your quote.
-                </p>
-              </div>
-            </div>
           )}
           {extracting && (
             <div className="absolute top-2 right-2 z-30 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
