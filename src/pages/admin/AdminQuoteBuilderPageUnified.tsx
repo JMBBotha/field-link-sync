@@ -1279,6 +1279,25 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
     </>
   );
 
+  const actionBarEl = (
+    <div className={`fl-qb-actions shrink-0 mx-0 lg:mx-3 lg:mb-3 lg:rounded-2xl border-t lg:border px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] ${isCompact && activeTab === "quote" ? "mt-4 mb-20" : "mb-16"}`} data-testid="qb-action-bar">
+      <QuoteActionBar
+        busy={docActions.busy}
+        onSave={docActions.handleSave}
+        onPdf={() => void docActions.handlePdf()}
+        onSend={docActions.handleSend}
+        onPrint={docActions.handlePrint}
+        compact={isCompact}
+        leading={isCompact ? undefined : (
+          <span className="text-xs text-muted-foreground" data-testid="qb-editing-status">
+            {otherEditors.length > 0 ? `${otherEditors[0].name} also has this quote open` : "Nobody else editing"}
+          </span>
+        )}
+        discard={() => { if (window.confirm("Discard the changes made since you opened this quote?")) void discardAndLeave(); }}
+      />
+    </div>
+  );
+
   return (
     <div
       className="fl-qb fixed inset-0 z-50 flex h-[100dvh] flex-row overflow-hidden bg-background">
