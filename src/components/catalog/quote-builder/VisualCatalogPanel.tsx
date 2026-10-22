@@ -808,11 +808,11 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
     <>
       {/* Price Lists page (readOnly) renders in the page, below the app header and above the bottom nav,
           so its Back button is never hidden under the app header on a phone (Johan 21 Oct). */}
-      {!readOnly && <div className="fixed inset-0 z-[10002] bg-black/70 transition-opacity backdrop-blur-sm" onClick={wizardOpen ? undefined : onClose} />}
+      {!readOnly && <div className={`fixed inset-0 ${wizardOpen ? "z-40" : "z-[10002]"} bg-black/70 transition-opacity backdrop-blur-sm`} onClick={wizardOpen ? undefined : onClose} />}
 
       <div className={readOnly
         ? "relative flex-1 min-h-0 w-full flex bg-background"
-        : `fixed inset-y-0 left-0 z-[10003] flex bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${panelWidth}`}>
+        : `fixed inset-y-0 left-0 ${wizardOpen ? "z-50" : "z-[10003]"} flex bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${panelWidth}`}>
         {/* Quote Zones sidebar removed for cleaner PDF viewing experience */}
 
         {/* RIGHT: PDF Viewer */}
@@ -868,7 +868,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent className="z-[10010]">
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete PDF pages?</AlertDialogTitle>
                       <AlertDialogDescription>
@@ -932,7 +932,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
                       <Search className="h-3.5 w-3.5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">Magnifying glass</TooltipContent>
+                  <TooltipContent side="bottom" className="text-xs z-[10010]">Magnifying glass</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -952,7 +952,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
                       HD
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">High quality PDF render (slower)</TooltipContent>
+                  <TooltipContent side="bottom" className="text-xs z-[10010]">High quality PDF render (slower)</TooltipContent>
                 </Tooltip>
               </div>
 
@@ -1160,7 +1160,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
 
       {/* Manual product entry dialog */}
       <Dialog open={manualDialogOpen} onOpenChange={setManualDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md z-[10010]">
           <DialogHeader>
             <DialogTitle>Add Product Manually</DialogTitle>
           </DialogHeader>
