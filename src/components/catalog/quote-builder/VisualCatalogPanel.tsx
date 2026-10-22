@@ -808,11 +808,11 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
     <>
       {/* Price Lists page (readOnly) renders in the page, below the app header and above the bottom nav,
           so its Back button is never hidden under the app header on a phone (Johan 21 Oct). */}
-      {!readOnly && <div className="fixed inset-0 z-40 bg-black/70 transition-opacity backdrop-blur-sm" onClick={wizardOpen ? undefined : onClose} />}
+      {!readOnly && <div className="fixed inset-0 z-[10002] bg-black/70 transition-opacity backdrop-blur-sm" onClick={wizardOpen ? undefined : onClose} />}
 
       <div className={readOnly
         ? "relative flex-1 min-h-0 w-full flex bg-background"
-        : `fixed inset-y-0 left-0 z-50 flex bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${panelWidth}`}>
+        : `fixed inset-y-0 left-0 z-[10003] flex bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${panelWidth}`}>
         {/* Quote Zones sidebar removed for cleaner PDF viewing experience */}
 
         {/* RIGHT: PDF Viewer */}
@@ -987,8 +987,8 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
             <span className="text-xs text-muted-foreground shrink-0">Supplier</span>
             <div className="flex-1 min-w-0 sm:max-w-sm">
               <Select value={selectedSupplier} onValueChange={(v) => { setSelectedSupplier(v); }}>
-                <SelectTrigger className="h-9 w-full text-sm"><SelectValue placeholder="All suppliers" /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="h-9 w-full text-sm" aria-label="Choose supplier"><SelectValue placeholder="All suppliers" /></SelectTrigger>
+                <SelectContent className="z-[10010]">
                   <SelectItem value="all">All suppliers ({allSupplierPages})</SelectItem>
                   {supplierChoices.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label} ({o.count})</SelectItem>))}
                 </SelectContent>
