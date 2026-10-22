@@ -808,11 +808,11 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
     <>
       {/* Price Lists page (readOnly) renders in the page, below the app header and above the bottom nav,
           so its Back button is never hidden under the app header on a phone (Johan 21 Oct). */}
-      {!readOnly && <div className="fixed inset-0 z-40 bg-black/70 transition-opacity backdrop-blur-sm" onClick={wizardOpen ? undefined : onClose} />}
+      {!readOnly && <div className="fixed inset-0 z-[10002] bg-black/70 transition-opacity backdrop-blur-sm" onClick={wizardOpen ? undefined : onClose} />}
 
       <div className={readOnly
         ? "relative flex-1 min-h-0 w-full flex bg-background"
-        : `fixed inset-y-0 left-0 z-50 flex bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${panelWidth}`}>
+        : `fixed inset-y-0 left-0 z-[10003] flex bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${panelWidth}`}>
         {/* Quote Zones sidebar removed for cleaner PDF viewing experience */}
 
         {/* RIGHT: PDF Viewer */}
