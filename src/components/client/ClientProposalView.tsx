@@ -377,6 +377,8 @@ const ClientProposalView = () => {
             </CardContent>
           </Card>
         )}
+        {token && <ClientQuoteDocuments token={token} />}
+
 
         {/* The quote document — identical layout to the staff estimate/PDF */}
         <EstimateDocument
