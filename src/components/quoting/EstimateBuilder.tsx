@@ -489,6 +489,7 @@ export default function EstimateBuilder({
           quoteCreatedAt={meta?.created_at ?? null}
           companyId={meta?.company_id ?? null}
           editing={{
+            onNotesChange: (text) => updateQuote({ notes: text || null } as any),
             areaCreationControl,
             areas: editAreas,
             collapsedAreaKeys,
