@@ -19,9 +19,9 @@ export default function ClientNoteBox({ onChanged }: { onChanged?: () => void })
   return (
     <div className="rounded-lg border border-border bg-card p-3 print:hidden" data-pdf-hide data-html2canvas-ignore>
       <div className="mb-1 flex items-center justify-between">
-        <label htmlFor="client-note" className="text-sm font-semibold">Note for client</label>
+        <label htmlFor="client-note" className="text-sm font-semibold">Overview — note for client</label>
         <span className="text-xs text-muted-foreground">
-          {state === "saving" ? "Saving…" : state === "saved" ? "Saved · shows on the quote" : "Shows on the quote the client sees"}
+          {state === "saving" ? "Saving…" : state === "saved" ? "Saved · shows on the quote" : "Shows as “Overview” on the quote the client sees"}
         </span>
       </div>
       <Textarea
@@ -30,7 +30,8 @@ export default function ClientNoteBox({ onChanged }: { onChanged?: () => void })
         onChange={(e) => { setText(e.target.value); setState("idle"); }}
         onBlur={() => void save()}
         placeholder="e.g. Price includes removal of the old unit. We can start next week."
-        rows={3}
+        rows={Math.min(16, Math.max(4, text.split("\n").length + 1))}
+        className="resize-y"
       />
     </div>
   );
