@@ -448,6 +448,21 @@ serve(async (req) => {
     if (pdfBase64) {
       attachments.push({ filename: `Quote-${quoteRef || "draft"}.pdf`, content: pdfBase64 });
     }
+    // Staff-attached documents (quote_documents) go out with the quote email; cap ~25 MB total.
+    if (quoteId && !depositRequest) {
+      const { data: docs } = await supabase.from("quote_documents").select("storage_path, filename").eq("quote_id", quoteId).order("created_at");
+      let total = 0;
+      for (const d of docs || []) {
+        const { data: blob } = await supabase.storage.from("quote-documents").download(d.storage_path);
+        if (!blob) continue;
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        if (total + bytes.length > 25 * 1024 * 1024) break;
+        total += bytes.length;
+        let bin = "";
+        for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        attachments.push({ filename: d.filename, content: btoa(bin) });
+      }
+    }
 
     // Custom headers travel with the message and come back on replies (In-Reply-To /
     // References threading), which is what the future inbound processor will use to

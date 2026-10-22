@@ -7,6 +7,7 @@ import { Mic } from "lucide-react";
 import { openMandyQuoteMode } from "@/lib/mandy/registry";
 import QuoteSettingsPanel from "@/components/quoting/QuoteSettingsPanel";
 import ClientNoteBox from "@/components/quoting/ClientNoteBox";
+import QuoteDocumentsBox from "@/components/quoting/QuoteDocumentsBox";
 import { ArrowLeft, Pencil, FileCheck2, Send, Download, Printer, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -239,6 +240,7 @@ const AdminEstimateDetailPage = () => {
           <PaymentPlanPicker quoteId={quote.id} onSaved={() => qc.invalidateQueries({ queryKey: ["quote-payment-plan-name", quote.id] })} />
           <QuoteUnitCardsToggle quoteId={quote.id} onChanged={refreshDocument} />
           <ClientNoteBox onChanged={refreshDocument} />
+          <QuoteDocumentsBox quoteId={quote.id} companyId={(quote as any).company_id ?? null} />
           <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => window.dispatchEvent(new Event("fl-voice-quote-open"))}>
             <Mic className="h-4 w-4" /> Ask Mandy (type or talk)
           </Button>
