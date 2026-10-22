@@ -1379,10 +1379,17 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
 
       {/* Accounting step 1: how this quote is paid (locked once invoiced) */}
       {quoteId && meta?.status !== "declined" && (
+        isCompact ? (
+          <details className="fl-qb-strip shrink-0 mx-3 mb-2 rounded-2xl px-3 py-1.5" data-testid="qb-settings-strip">
+            <summary className="fl-qb-eyebrow cursor-pointer select-none py-1">Payment plan</summary>
+            <div className="pt-2"><PaymentPlanPicker quoteId={quoteId} /></div>
+          </details>
+        ) : (
         <div className="fl-qb-strip shrink-0 mx-3 mb-2 flex flex-wrap items-center gap-3 rounded-2xl px-3 py-2" data-testid="qb-settings-strip">
           <span className="fl-qb-eyebrow shrink-0">Payment plan</span>
           <div className="min-w-0 flex-1"><PaymentPlanPicker quoteId={quoteId} /></div>
         </div>
+        )
       )}
 
       {/* Post-acceptance: deposit invoice + hand over to installation */}
@@ -1633,12 +1640,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
             onPdf={() => void docActions.handlePdf()}
             onSend={docActions.handleSend}
             onPrint={docActions.handlePrint}
-            leading={isCompact ? (
-              <div className="min-w-0">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Total incl. VAT</p>
-                <p className="truncate text-base font-bold tabular-nums text-foreground">{formatRand(displayQuoteTotals.total)}</p>
-              </div>
-            ) : (
+            compact={isCompact}
+            leading={isCompact ? undefined : (
               <span className="text-xs text-muted-foreground" data-testid="qb-editing-status">
                 {otherEditors.length > 0 ? `${otherEditors[0].name} also has this quote open` : "Nobody else editing"}
               </span>

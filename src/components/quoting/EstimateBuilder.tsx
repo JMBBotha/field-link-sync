@@ -699,9 +699,9 @@ export default function EstimateBuilder({
       );
       return (
         <div data-testid="live-preview-layout" className="fl-builder" data-side-by-side={sideBySide ? "true" : "false"}>
-          <div className="fl-builder-bar sticky top-2 z-20 mb-3 flex flex-wrap items-center justify-end gap-2 print:hidden" data-html2canvas-ignore data-pdf-hide>
+          <div className={`fl-builder-bar ${isWide ? "sticky top-2 z-20" : ""} mb-3 flex flex-wrap items-center justify-end gap-2 print:hidden`} data-html2canvas-ignore data-pdf-hide>
             <span className="mr-auto" aria-hidden />
-            <DocumentStyleSwitch companyId={meta?.company_id ?? null} onPicked={() => { if (isWide) setShowPreview(true); else setNarrowTab("client"); }} />
+            {(isWide || narrowTab === "client") && <DocumentStyleSwitch companyId={meta?.company_id ?? null} onPicked={() => { if (isWide) setShowPreview(true); else setNarrowTab("client"); }} />}
             {isWide ? (
               <Button type="button" size="sm" variant="outline" className="fl-preview-toggle h-9 rounded-full px-4 text-xs font-semibold"
                 data-testid="live-preview-toggle" aria-pressed={showPreview} onClick={toggleSidePreview}>
