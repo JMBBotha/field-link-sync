@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Download, Home, Loader2, Mail, MessageCircle, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
 
 /**
  * In-app quote PDF viewer for phones (Johan 20:18 / 20:51). The PDF is drawn page by page
@@ -64,7 +65,10 @@ function PdfPages({ url }: { url: string }) {
     (async () => {
       try {
         const pdfjs = await loadPdfjs();
-        doc = await pdfjs.getDocument({ url }).promise;
+        // Load from bytes (not the blob URL) so a re-render never races a destroyed loader.
+        const data = new Uint8Array(await (await fetch(url)).arrayBuffer());
+        if (cancelled) return;
+        doc = await pdfjs.getDocument({ data }).promise;
         const el = host.current; if (!el || cancelled) return;
         el.innerHTML = "";
         const width = Math.max(280, el.clientWidth - 16);
@@ -80,7 +84,7 @@ function PdfPages({ url }: { url: string }) {
           c.className = "mx-auto mb-3 block bg-white shadow";
           c.setAttribute("aria-label", `Page ${n}`);
           el.appendChild(c);
-          await page.render({ canvasContext: c.getContext("2d")!, viewport: vp }).promise;
+          try { await page.render({ canvasContext: c.getContext("2d")!, viewport: vp }).promise; } catch (e) { if (cancelled) return; console.warn("PDF page render failed", n, e); }
           if (n === 1 && !cancelled) setState("ready");
         }
         if (!cancelled) setState("ready");
@@ -111,8 +115,17 @@ type Props = {
 
 export default function QuotePdfViewer({ url, fileName, title, busySave, onBack, onSave, onShare }: Props) {
   const navigate = useNavigate();
+  // Phone/browser back button closes the viewer instead of leaving the quote.
+  const backRef = useRef(onBack); backRef.current = onBack;
+  useEffect(() => {
+    window.history.pushState({ pdfViewer: true }, "");
+    let popped = false;
+    const onPop = () => { popped = true; backRef.current(); };
+    window.addEventListener("popstate", onPop);
+    return () => { window.removeEventListener("popstate", onPop); if (!popped && window.history.state?.pdfViewer) window.history.back(); };
+  }, []);
   const bar = "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-xs font-semibold min-h-[52px] active:bg-slate-100";
-  return (
+  return createPortal(
     <div data-testid="quote-pdf-viewer" role="dialog" aria-label={`${title} PDF`} className="fixed inset-0 z-[70] bg-slate-200">
       <header className="fixed inset-x-0 top-0 z-[71] flex items-center gap-2 bg-primary px-2 pb-1 pt-[max(0.25rem,env(safe-area-inset-top))] text-primary-foreground" style={{ minHeight: "3.5rem" }}>
         <button type="button" onClick={onBack} aria-label="Back to quote" className="inline-flex h-10 w-10 items-center justify-center rounded-md hover:bg-white/10"><ArrowLeft className="h-5 w-5" /></button>
@@ -131,6 +144,7 @@ export default function QuotePdfViewer({ url, fileName, title, busySave, onBack,
         <button type="button" data-no-min className={`${bar} text-sky-700`} onClick={onShare}><Mail className="h-5 w-5" />Email</button>
         <button type="button" data-no-min className={bar} onClick={() => void savePdfFile(url, fileName)}><Download className="h-5 w-5" />Download</button>
       </nav>
-    </div>
+    </div>,
+    document.body,
   );
 }
