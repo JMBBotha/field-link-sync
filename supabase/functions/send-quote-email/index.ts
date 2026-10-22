@@ -502,7 +502,7 @@ serve(async (req) => {
       reply_to: replyToFor(sender) || QUOTES_MAILBOX,
       to: [to],
       subject: emailSubject,
-      html: htmlBody,
+      html: sendHtml,
       text: textFallback,
       headers,
       tags: [
