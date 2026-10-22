@@ -99,6 +99,13 @@
       "when": 1792128845929,
       "tag": "0013_public_accept_bypass_staff_company_check",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792644989882,
+      "tag": "0014_quote_documents",
+      "breakpoints": true
     }
   ]
 }

@@ -8753,6 +8753,54 @@ export type Database = {
           },
         ]
       }
+      quote_documents: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          filename: string
+          id: string
+          quote_id: string
+          size_bytes: number | null
+          storage_path: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          filename: string
+          id?: string
+          quote_id: string
+          size_bytes?: number | null
+          storage_path: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          filename?: string
+          id?: string
+          quote_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_documents_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "quote_documents_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_email_sends: {
         Row: {
           attempts: number
@@ -14658,6 +14706,14 @@ export type Database = {
       public_quote_adjust_data: { Args: { p_token: string }; Returns: Json }
       public_quote_bundle: { Args: { p_token: string }; Returns: Json }
       public_quote_change_state: { Args: { p_token: string }; Returns: Json }
+      public_quote_documents: {
+        Args: { p_token: string }
+        Returns: {
+          filename: string
+          id: string
+          size_bytes: number
+        }[]
+      }
       public_quote_show_unit_cards: {
         Args: { p_token: string }
         Returns: boolean
