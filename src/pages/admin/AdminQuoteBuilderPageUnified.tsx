@@ -1374,22 +1374,27 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
               <Mic className="h-3.5 w-3.5" />
             </Button>
           </TabsList>
+          {isCompact && quoteId && meta?.status !== "declined" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button type="button" size="sm" variant="outline" className="ml-1.5 h-8 gap-1 rounded-full px-2.5 text-xs" data-testid="qb-settings-strip" aria-label="Payment plan">
+                  <CalendarClock className="h-3.5 w-3.5" />Plan
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="z-[10002] w-[min(92vw,360px)] p-2">
+                <PaymentPlanPicker quoteId={quoteId} />
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       </Tabs>
 
-      {/* Accounting step 1: how this quote is paid (locked once invoiced) */}
-      {quoteId && meta?.status !== "declined" && (
-        isCompact ? (
-          <details className="fl-qb-strip shrink-0 mx-3 mb-2 rounded-2xl px-3 py-1.5" data-testid="qb-settings-strip">
-            <summary className="fl-qb-eyebrow cursor-pointer select-none py-1">Payment plan</summary>
-            <div className="pt-2"><PaymentPlanPicker quoteId={quoteId} /></div>
-          </details>
-        ) : (
+      {/* Accounting step 1: how this quote is paid (locked once invoiced). Phones: small "Plan" button beside the tabs. */}
+      {quoteId && meta?.status !== "declined" && !isCompact && (
         <div className="fl-qb-strip shrink-0 mx-3 mb-2 flex flex-wrap items-center gap-3 rounded-2xl px-3 py-2" data-testid="qb-settings-strip">
           <span className="fl-qb-eyebrow shrink-0">Payment plan</span>
           <div className="min-w-0 flex-1"><PaymentPlanPicker quoteId={quoteId} /></div>
         </div>
-        )
       )}
 
       {/* Post-acceptance: deposit invoice + hand over to installation */}
@@ -1429,6 +1434,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
         {!ctxLoading && activeTab === "quote" && (
           <div className="h-full overflow-y-auto bg-muted/30" data-testid="area-first-view">
             <AreaFirstBuilder pdfBasket={selectedFromPdf} />
+            {/* Phones: Save/PDF/Send sit at the very end of the quote, seen only once you scroll down */}
+            {isCompact && quoteId && actionBarEl}
           </div>
         )}
         {!ctxLoading && activeTab === "normal" &&
@@ -1632,24 +1639,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
 
       {/* Shared Save draft · Download PDF · Send bar: Build quote tab at every width, and Visual PDF on phones/tablets
           (replaces the old total + Send bar there). Phones keep the live total and sit above the bottom nav. */}
-      {quoteId && (activeTab === "quote" || isCompact) && (
-        <div className="fl-qb-actions shrink-0 mx-0 lg:mx-3 lg:mb-3 lg:rounded-2xl border-t lg:border px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] mb-16" data-testid="qb-action-bar">
-          <QuoteActionBar
-            busy={docActions.busy}
-            onSave={docActions.handleSave}
-            onPdf={() => void docActions.handlePdf()}
-            onSend={docActions.handleSend}
-            onPrint={docActions.handlePrint}
-            compact={isCompact}
-            leading={isCompact ? undefined : (
-              <span className="text-xs text-muted-foreground" data-testid="qb-editing-status">
-                {otherEditors.length > 0 ? `${otherEditors[0].name} also has this quote open` : "Nobody else editing"}
-              </span>
-            )}
-            discard={() => { if (window.confirm("Discard the changes made since you opened this quote?")) void discardAndLeave(); }}
-          />
-        </div>
-      )}
+      {quoteId && (activeTab === "quote" || isCompact) && !(isCompact && activeTab === "quote") && actionBarEl}
       {docActions.portals}
 
       {/* Floating selected items panel */}
