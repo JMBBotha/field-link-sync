@@ -32,9 +32,11 @@ export function SpecialsPdfDialog({ path, onClose }: { path: string | null; onCl
 export function SpecialChip({ cost, endDate, pdfPath, applied, stock }: { cost: number; endDate: string; pdfPath?: string | null; applied?: boolean; stock?: string | null }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
-    <span data-html2canvas-ignore data-testid="special-chip" className="mt-0.5 inline-flex items-center gap-1 rounded-full border border-[#F7941D] bg-[#F7941D] px-1.5 text-xs font-semibold text-white print:hidden">
-      <Tag className="h-2.5 w-2.5" />
-      {applied ? "Special applied: " : "Special: "}{formatRand(cost)} until {fmtDate(endDate)}{stock ? ` · ${stock}` : ""}
+    <span data-html2canvas-ignore data-testid="special-chip" className="mt-1 inline-flex max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5 whitespace-normal rounded-md border border-[#F7941D]/50 bg-[#F7941D]/10 px-2 py-1 text-left text-[11px] font-semibold leading-snug text-[#B45F06] print:hidden">
+      <Tag className="h-3 w-3 shrink-0" />
+      <span className="whitespace-nowrap">{applied ? "Special" : "On special"} {formatRand(cost)}</span>
+      <span className="whitespace-nowrap font-medium">until {fmtDate(endDate)}</span>
+      {stock && <span className="whitespace-nowrap rounded bg-[#F7941D] px-1 text-white">{stock}</span>}
       {pdfPath && (
         <button type="button" className="underline" onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen(pdfPath); }}>
           View specials PDF
