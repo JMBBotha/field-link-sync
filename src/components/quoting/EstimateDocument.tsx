@@ -28,6 +28,37 @@ import BrandDocument, { NotesBody, type BrandDocSection } from "@/components/doc
 import { foldFlatLines } from "@/lib/clientQuoteRollup";
 import { useR0, clearR0Line, r0PriceInput, r0HintText, r0CountText, R0_FIELD } from "@/lib/r0Highlight";
 
+function EditableNotes({ value, onSave }: { value: string; onSave: (t: string) => void | Promise<unknown> }) {
+  const [text, setText] = useState(value);
+  const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
+  useEffect(() => { setText(value); }, [value]);
+  const save = async () => {
+    if (text.trim() === value.trim()) return;
+    setState("saving");
+    await onSave(text.trim());
+    setState("saved");
+  };
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Notes</p>
+        <span className="text-[11px] text-slate-500 print:hidden">
+          {state === "saving" ? "Saving…" : state === "saved" ? "Saved" : "Tap to edit · client sees this"}
+        </span>
+      </div>
+      <textarea
+        aria-label="Quote notes"
+        value={text}
+        onChange={(e) => { setText(e.target.value); setState("idle"); }}
+        onBlur={() => void save()}
+        placeholder="Add notes for the client…"
+        rows={Math.min(16, Math.max(3, text.split("\n").length + 1))}
+        className="mt-1 w-full resize-y rounded-md border border-slate-300 bg-white p-2 text-xs leading-relaxed text-slate-800 focus:border-sky-500 focus:outline-none"
+      />
+    </div>
+  );
+}
+
 export interface EstimateDocLineItem {
   description: string;
   quantity: number;
@@ -104,6 +135,8 @@ export interface EstimateEditArea {
  */
 export interface EstimateEditing {
   areas: EstimateEditArea[];
+  /** Staff edit of quotes.notes straight on the document (saves on blur). */
+  onNotesChange?: (text: string) => void | Promise<unknown>;
   selectedLineId: string | null;
   onSelectLine: (id: string | null) => void;
   onLineChange: (
@@ -1077,7 +1110,9 @@ const EstimateDocument = ({
         {/* ── Footer ── */}
         <div className="mt-10 space-y-5 border-t border-slate-200 pt-6 text-xs leading-relaxed text-ink-secondary">
           {/* Plain Terms removed: the styled numbered "Terms and conditions" page below is the only terms block (Johan 07:50). */}
-          {notes && (
+          {editing?.onNotesChange ? (
+            <EditableNotes value={notes ?? ""} onSave={editing.onNotesChange} />
+          ) : notes && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Notes</p>
               <p className="mt-1 whitespace-pre-line">{notes}</p>
