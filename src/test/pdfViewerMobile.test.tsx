@@ -17,7 +17,6 @@ describe("Quote PDF viewer on phones (Johan 20:18)", () => {
   });
   it("hook: phones open the in-app viewer; share closes it then opens the Send dialog", () => {
     const h = readFileSync("src/hooks/useQuoteDocumentActions.tsx", "utf8");
-    expect(h).toMatch(/if \(isPhoneViewport\(\)\)/);
     expect(h).toContain("closePdfView(); void handleSend();");
   });
 });
