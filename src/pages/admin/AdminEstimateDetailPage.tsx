@@ -228,6 +228,7 @@ const AdminEstimateDetailPage = () => {
           hideClientNote
         />
         {/* Quote settings & notes: moved from the top (Johan 00:08); collapsed by default, all controls unchanged. */}
+        <QuoteDocumentsBox quoteId={quote.id} companyId={(quote as any).company_id ?? null} />
         <QuoteSettingsPanel quoteId={quote.id} status={quote.status} unitCards={quote.show_unit_cards !== false} note={quote.notes}>
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3">
             <span className="text-sm text-muted-foreground">Status</span>
@@ -240,7 +241,6 @@ const AdminEstimateDetailPage = () => {
           <PaymentPlanPicker quoteId={quote.id} onSaved={() => qc.invalidateQueries({ queryKey: ["quote-payment-plan-name", quote.id] })} />
           <QuoteUnitCardsToggle quoteId={quote.id} onChanged={refreshDocument} />
           <ClientNoteBox onChanged={refreshDocument} />
-          <QuoteDocumentsBox quoteId={quote.id} companyId={(quote as any).company_id ?? null} />
           <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => window.dispatchEvent(new Event("fl-voice-quote-open"))}>
             <Mic className="h-4 w-4" /> Ask Mandy (type or talk)
           </Button>
