@@ -3001,8 +3001,6 @@ export type Database = {
       }
       customers: {
         Row: {
-          payment_terms_basis: string | null
-          payment_terms_days: number | null
           address: string | null
           area: string | null
           assigned_rep_id: string | null
@@ -3028,6 +3026,8 @@ export type Database = {
           normalized_phone: string | null
           notes: string | null
           notification_opt_in: boolean | null
+          payment_terms_basis: string | null
+          payment_terms_days: number | null
           phone: string
           phone_verified: boolean | null
           postal_code: string | null
@@ -3041,8 +3041,6 @@ export type Database = {
           vat_number: string | null
         }
         Insert: {
-          payment_terms_basis?: string | null
-          payment_terms_days?: number | null
           address?: string | null
           area?: string | null
           assigned_rep_id?: string | null
@@ -3068,6 +3066,8 @@ export type Database = {
           normalized_phone?: string | null
           notes?: string | null
           notification_opt_in?: boolean | null
+          payment_terms_basis?: string | null
+          payment_terms_days?: number | null
           phone: string
           phone_verified?: boolean | null
           postal_code?: string | null
@@ -3081,8 +3081,6 @@ export type Database = {
           vat_number?: string | null
         }
         Update: {
-          payment_terms_basis?: string | null
-          payment_terms_days?: number | null
           address?: string | null
           area?: string | null
           assigned_rep_id?: string | null
@@ -3108,6 +3106,8 @@ export type Database = {
           normalized_phone?: string | null
           notes?: string | null
           notification_opt_in?: boolean | null
+          payment_terms_basis?: string | null
+          payment_terms_days?: number | null
           phone?: string
           phone_verified?: boolean | null
           postal_code?: string | null
@@ -4419,8 +4419,6 @@ export type Database = {
       }
       invoices: {
         Row: {
-          payment_terms_basis: string | null
-          payment_terms_days: number | null
           agent_id: string
           billed_to_vat_number: string | null
           company_id: string | null
@@ -4452,6 +4450,8 @@ export type Database = {
           payfast_payment_id: string | null
           payfast_url: string | null
           payment_method: string | null
+          payment_terms_basis: string | null
+          payment_terms_days: number | null
           pdf_url: string | null
           profile_snapshot: Json | null
           quote_id: string | null
@@ -4468,8 +4468,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          payment_terms_basis?: string | null
-          payment_terms_days?: number | null
           agent_id: string
           billed_to_vat_number?: string | null
           company_id?: string | null
@@ -4501,6 +4499,8 @@ export type Database = {
           payfast_payment_id?: string | null
           payfast_url?: string | null
           payment_method?: string | null
+          payment_terms_basis?: string | null
+          payment_terms_days?: number | null
           pdf_url?: string | null
           profile_snapshot?: Json | null
           quote_id?: string | null
@@ -4517,8 +4517,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          payment_terms_basis?: string | null
-          payment_terms_days?: number | null
           agent_id?: string
           billed_to_vat_number?: string | null
           company_id?: string | null
@@ -4550,6 +4548,8 @@ export type Database = {
           payfast_payment_id?: string | null
           payfast_url?: string | null
           payment_method?: string | null
+          payment_terms_basis?: string | null
+          payment_terms_days?: number | null
           pdf_url?: string | null
           profile_snapshot?: Json | null
           quote_id?: string | null
@@ -11313,6 +11313,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           end_date: string
+          ending_reminder_for: string | null
           id: string
           is_active: boolean
           model_number: string
@@ -11322,12 +11323,15 @@ export type Database = {
           start_date: string
           supplier_id: string | null
           supplier_product_id: string | null
+          units_left: number | null
           updated_at: string
+          while_stocks_last: boolean
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           end_date: string
+          ending_reminder_for?: string | null
           id?: string
           is_active?: boolean
           model_number: string
@@ -11337,12 +11341,15 @@ export type Database = {
           start_date: string
           supplier_id?: string | null
           supplier_product_id?: string | null
+          units_left?: number | null
           updated_at?: string
+          while_stocks_last?: boolean
         }
         Update: {
           created_at?: string
           created_by?: string | null
           end_date?: string
+          ending_reminder_for?: string | null
           id?: string
           is_active?: boolean
           model_number?: string
@@ -11352,7 +11359,9 @@ export type Database = {
           start_date?: string
           supplier_id?: string | null
           supplier_product_id?: string | null
+          units_left?: number | null
           updated_at?: string
+          while_stocks_last?: boolean
         }
         Relationships: [
           {
@@ -12903,10 +12912,16 @@ export type Database = {
         Returns: undefined
       }
       _hb_sales: { Args: { p_company: string }; Returns: string[] }
+      _inv_cancel_waiting_drafts: {
+        Args: { p_company: string }
+        Returns: number
+      }
       _inv_due: {
         Args: { p_created: string; p_due: string; p_issue: string }
         Returns: string
       }
+      _inv_due_eff: { Args: { p_invoice: string }; Returns: string }
+      _inv_job_done: { Args: { p_invoice: string }; Returns: string }
       _inv_message: {
         Args: {
           p_amount: number
@@ -12924,6 +12939,10 @@ export type Database = {
         Returns: string
       }
       _inv_subject: { Args: { p_no: string; p_step: string }; Returns: string }
+      _inv_terms: {
+        Args: { p_invoice: string }
+        Returns: Record<string, unknown>
+      }
       _job_alert_office: {
         Args: { _company: string; _uid: string }
         Returns: boolean
@@ -13414,6 +13433,14 @@ export type Database = {
       claim_offer: {
         Args: { p_offer_id: string; p_staff_id: string }
         Returns: Json
+      }
+      client_list_stats: {
+        Args: never
+        Returns: {
+          customer_id: string
+          last_activity: string
+          sites: number
+        }[]
       }
       client_open_bookings: {
         Args: {
@@ -14325,6 +14352,9 @@ export type Database = {
           invoice_number: string
           rep_id: string
           step: string
+          terms_basis: string
+          terms_days: number
+          waiting: boolean
         }[]
       }
       invoice_email_preview: { Args: { p_invoice_id: string }; Returns: Json }
@@ -14506,6 +14536,7 @@ export type Database = {
         Args: { p_send: string }
         Returns: undefined
       }
+      notify_specials_ending: { Args: never; Returns: number }
       open_double_bookings: {
         Args: { p_from: string; p_to: string }
         Returns: {
@@ -14703,6 +14734,7 @@ export type Database = {
         Args: { _name: string; _read: boolean }
         Returns: boolean
       }
+      quotes_followup_due_count: { Args: never; Returns: number }
       rank_booking_candidates: {
         Args: {
           p_date: string
@@ -15000,7 +15032,15 @@ export type Database = {
         }
         Returns: Json
       }
+      set_customer_payment_terms: {
+        Args: { p_basis: string; p_customer: string; p_days: number }
+        Returns: undefined
+      }
       set_install_handoff_default: { Args: { p_mode: string }; Returns: Json }
+      set_invoice_payment_terms: {
+        Args: { p_basis: string; p_days: number; p_invoice: string }
+        Returns: undefined
+      }
       set_quote_labour_mode: {
         Args: {
           p_area_units?: Json
