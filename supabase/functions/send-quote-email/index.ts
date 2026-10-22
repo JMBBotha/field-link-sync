@@ -444,9 +444,32 @@ serve(async (req) => {
       });
     }
 
-    const attachments: Array<{ filename: string; content: string }> = [];
+    const attachments: Array<{ filename: string; content: string; content_id?: string }> = [];
     if (pdfBase64) {
       attachments.push({ filename: `Quote-${quoteRef || "draft"}.pdf`, content: pdfBase64 });
+    }
+    // Inline images (Johan 22 Oct): mail apps that block remote pictures showed "?" boxes.
+    // Embed logo/signature/unit pictures as CID attachments so they always display.
+    let sendHtml = htmlBody;
+    {
+      const urls = [...new Set([...htmlBody.matchAll(/<img[^>]+src="(https:\/\/[^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, "&")))].slice(0, 12);
+      let n = 0;
+      for (const url of urls) {
+        try {
+          const r = await fetch(url);
+          const ct = r.headers.get("content-type") || "";
+          if (!r.ok || !ct.startsWith("image/")) continue;
+          const bytes = new Uint8Array(await r.arrayBuffer());
+          if (bytes.length > 1.5 * 1024 * 1024) continue;
+          let bin = "";
+          for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+          const cid = `img${++n}@becool`;
+          const ext = (ct.split("/")[1] || "png").split(";")[0].replace("jpeg", "jpg");
+          attachments.push({ filename: `image${n}.${ext}`, content: btoa(bin), content_id: cid });
+          const escUrl = url.replace(/&/g, "&amp;");
+          sendHtml = sendHtml.split(`src="${escUrl}"`).join(`src="cid:${cid}"`).split(`src="${url}"`).join(`src="cid:${cid}"`);
+        } catch { /* keep the remote link */ }
+      }
     }
     // Staff-attached documents (quote_documents) go out with the quote email; cap ~25 MB total.
     if (quoteId && !depositRequest) {
