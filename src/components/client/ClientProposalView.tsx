@@ -1,4 +1,5 @@
 import ClientAdjustQuote from "@/components/client/ClientAdjustQuote";
+import ClientQuoteDocuments from "@/components/client/ClientQuoteDocuments";
 import { doneMessage } from "@/lib/doneToast";
 import { useQuoteUnitCards, QuoteUnitCardsView } from "@/components/quoting/QuoteUnitCards";
 import type { CompanyProfile } from "@/lib/companyProfiles";
