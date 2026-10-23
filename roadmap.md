@@ -193,3 +193,5 @@ Follow-ups only: staff working hours and webhook-secret rotation were intentiona
 - [ ] Swap stand-in Midea photos for real Midea indoor-unit images (waiting on user upload)
 - [x] Fix quote PDF download not working
 - [ ] Phones: stop whole page sliding sideways; card edges cut off on Home — tighten margins (owner 2026-10-23)
+- [ ] Remove "No site visit" toggle at top of quote builder (owner 2026-10-23)
+- [ ] Shrink red "Current lead" banner to a small toggle (owner 2026-10-23)
