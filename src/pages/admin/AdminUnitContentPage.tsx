@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Check, RefreshCw, Upload, Undo2, Wand2, Loader2 } from "lucide-react";
@@ -31,6 +32,8 @@ export default function AdminUnitContentPage() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<"todo" | "approved" | "all">("todo");
   const [sel, setSel] = useState<ProductMedia | null>(null);
+  const [params] = useSearchParams();
+  const wantModel = params.get("model");
   const [batch, setBatch] = useState<{ done: number; total: number } | null>(null);
 
   const { data: rows = [], isLoading } = useQuery({
@@ -41,6 +44,13 @@ export default function AdminUnitContentPage() {
       return (data || []) as (ProductMedia & { notes?: string; fetch_error?: string; image_source_url?: string })[];
     },
   });
+  // Deep link from a quote's "awaiting approval" note: open that model straight away.
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current || !wantModel || !rows.length) return;
+    const hit = rows.find((r) => r.model_key === wantModel);
+    if (hit) { opened.current = true; setSel(hit); setFilter(hit.status === "approved" ? "all" : "todo"); }
+  }, [rows, wantModel]);
   // Seed images ship with the app (/product-media/seed/*.png); move them into our own storage bucket on first admin visit.
   const moving = useRef(false);
   useEffect(() => {

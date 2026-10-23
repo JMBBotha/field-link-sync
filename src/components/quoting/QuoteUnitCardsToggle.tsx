@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { LayoutGrid } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { rollupLineFromRow } from "@/lib/clientQuoteRollup";
@@ -14,6 +15,7 @@ export default function QuoteUnitCardsToggle({ quoteId, onChanged }: { quoteId: 
   const [on, setOn] = useState<boolean | null>(null);
   const [revision, setRevision] = useState(0);
   const [stats, setStats] = useState<{ models: number; approved: number; pending: number; fetching: number }>({ models: 0, approved: 0, pending: 0, fetching: 0 });
+  const [firstPending, setFirstPending] = useState<string | null>(null);
 
   useEffect(() => {
     const channel = supabase.channel(`unit-content-quote-${quoteId}`)
@@ -40,6 +42,7 @@ export default function QuoteUnitCardsToggle({ quoteId, onChanged }: { quoteId: 
         const { data: media } = await (supabase.from("product_media" as never) as any).select("model_key, status").in("model_key", keys);
         const rows = (media || []) as ProductMedia[];
         const missing = missingModelKeys(lines as any, rows.map((r) => r.model_key));
+        if (!cancelled) setFirstPending(rows.find((r) => r.status !== "approved")?.model_key || missing[0] || null);
         if (!cancelled) setStats({ models: keys.length, approved: rows.filter((r) => r.status === "approved").length, pending: rows.filter((r) => r.status !== "approved").length, fetching: missing.length });
         if (missing.length) void ensureUnitContent(missing);
       } catch { /* optional */ }
@@ -64,6 +67,11 @@ export default function QuoteUnitCardsToggle({ quoteId, onChanged }: { quoteId: 
           {stats.approved}/{stats.models} model{stats.models === 1 ? "" : "s"} with approved content
           {stats.pending + stats.fetching > 0 ? ` · ${stats.pending + stats.fetching} awaiting approval (simple card shown until then)` : ""}
         </span>
+      )}
+      {stats.pending + stats.fetching > 0 && (
+        <Link to={`/admin/unit-content${firstPending ? `?model=${encodeURIComponent(firstPending)}` : ""}`} className="text-xs font-semibold text-primary underline underline-offset-2">
+          Review &amp; approve →
+        </Link>
       )}
     </div>
   );
