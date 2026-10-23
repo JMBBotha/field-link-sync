@@ -105,21 +105,13 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
     }
   };
 
-  // Unit mockups: approved cut-outs of the units on this lead's latest quote.
-  const mockups = useQuery({
+  // Unit mockups: own uploaded cut-out, else approved catalogue photo, of the units on this lead's latest quote.
+  const mockupUnits = useQuery({
     queryKey: ["lead-unit-mockups", leadId],
     enabled: !!leadId && !readOnly,
-    queryFn: async () => {
-      const { data: q } = await (supabase.from("quotes") as any).select("id").eq("lead_id", leadId).order("created_at", { ascending: false }).limit(1).maybeSingle();
-      if (!q) return [];
-      const { data: items } = await (supabase.from("quote_items") as any).select("item_name, item_type, item_number, product_code, is_bundle, metadata").eq("quote_id", q.id);
-      const keys = [...new Set(((items || []) as any[]).map(unitLineModelKey).filter(Boolean))] as string[];
-      if (!keys.length) return [];
-      const { data: media } = await (supabase.from("product_media" as never) as any).select("model_key, model_code, display_name, image_url, status").in("model_key", keys);
-      return ((media || []) as any[]).filter((m) => m.image_url && m.status === "approved")
-        .map((m) => ({ label: String(m.display_name || m.model_code).slice(0, 40), url: m.image_url as string }));
-    },
+    queryFn: () => loadLeadMockupUnits(leadId),
   }).data ?? [];
+  const mockups = mockupUnits.filter((u) => u.url).map((u) => ({ label: u.label, url: u.url as string }));
 
   const updatePhoto = async (p: SitePhoto, patch: Partial<Pick<SitePhoto, "caption" | "client_visible">>) => {
     const { error } = await (supabase.from("job_photos") as any).update(patch).eq("id", p.id);
