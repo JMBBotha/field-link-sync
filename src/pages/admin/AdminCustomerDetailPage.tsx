@@ -76,6 +76,7 @@ const getInitials = (first?: string | null, last?: string | null, company?: stri
 const AdminCustomerDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const [innerTab, setInnerTab] = useState("activity");
+  const [showArchivedInv, setShowArchivedInv] = useState(false);
   const [site, setSite] = useState<string>("all");
   const [contractSignal, setContractSignal] = useState(0);
   const navigate = useNavigate();
@@ -184,7 +185,7 @@ const AdminCustomerDetailPage = () => {
       if (customer?.name) orParts.push(`customer_name.ilike.${customer.name}`);
       const { data, error } = await supabase
         .from("invoices")
-        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, created_at, customer_id, customer_name, location_id, payment_terms_basis, payment_terms_days")
+        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, created_at, archived_at, customer_id, customer_name, location_id, payment_terms_basis, payment_terms_days")
         .or(orParts.join(","))
         .order("created_at", { ascending: false });
       if (error) throw error;
