@@ -8,8 +8,8 @@ BEGIN
   PERFORM set_config('request.jwt.claims', json_build_object('sub','1e795a9b-f8bd-4af5-8f28-5e0426101daa','role','authenticated')::text, true);
   SELECT public.is_platform_owner() INTO b; r := r || jsonb_build_object('massair_admin_platform', b);
   SELECT count(*) INTO c FROM leads WHERE status='pending' AND assigned_agent_id IS NULL AND deleted_at IS NULL; r := r || jsonb_build_object('admin_unassigned_pending', c);
-  -- Partner admin (AB Refrigeration)
-  PERFORM set_config('request.jwt.claims', json_build_object('sub','420c7731-e8a4-4355-80ca-51c684b42a2c','role','authenticated')::text, true);
+  -- Other-company admin (Test HVAC Services 4ddd72cb, testcompanyb@test.com). AB Refrigeration was removed on 23 Oct 2026.
+  PERFORM set_config('request.jwt.claims', json_build_object('sub','34fe174c-2e6b-4261-91c5-3bede3e7a2c3','role','authenticated')::text, true);
   SELECT public.is_platform_owner() INTO b; r := r || jsonb_build_object('partner_admin_platform', b);
   SELECT count(*) INTO c FROM companies; r := r || jsonb_build_object('partner_companies_visible', c);
   -- Tech
