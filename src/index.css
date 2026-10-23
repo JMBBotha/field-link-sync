@@ -327,12 +327,6 @@ All colors MUST be HSL.
     [data-scroll-root] {
       overflow-x: hidden;
       overscroll-behavior-x: none;
-      touch-action: pan-y pinch-zoom;
-    }
-    [data-scroll-root] .overflow-x-auto,
-    [data-scroll-root] .overflow-auto,
-    [data-scroll-root] .overflow-x-scroll {
-      touch-action: auto;
     }
   }
 
