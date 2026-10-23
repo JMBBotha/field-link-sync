@@ -294,7 +294,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           <h1 className="text-lg font-bold">Invoice</h1>
           {getStatusBadge(invoice.status)}<SentManuallyBadge doc={invoice as any} className="ml-1" />
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1 min-w-0">
           <DocumentStyleSwitch companyId={(invoice as any).company_id ?? null} />
           {docActions()}
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleGenerateAndShare} disabled={generatingPDF}>
