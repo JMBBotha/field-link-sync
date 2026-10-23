@@ -242,9 +242,9 @@ export const EditableDateTime = ({
   useSaveOnUnmount(() => (focused ? nextValue() : undefined), (v) => onSave(v));
 
   return (
-    <Shell label={label} saving={saving} className={className}>
+    <Shell label={label} saving={saving} className={cn("col-span-2 sm:col-span-1", className)}>
       <div
-        className="flex items-center gap-1"
+        className="flex flex-wrap items-center gap-2 min-w-0"
         onFocus={() => setFocused(true)}
         onBlur={(e) => {
           if (e.currentTarget.contains(e.relatedTarget as Node)) return;
@@ -258,14 +258,14 @@ export const EditableDateTime = ({
           disabled={disabled}
           onChange={(e) => setD(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && flush()}
-          className="h-8 text-sm"
+          className="h-9 text-sm min-w-0 flex-1 basis-36"
         />
         <TimeInput24
           value={t}
           disabled={disabled || !d}
           onChange={(e) => setT(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && flush()}
-          className="h-8 w-28 text-sm"
+          className="h-9 w-32 shrink-0 text-sm"
         />
       </div>
     </Shell>
