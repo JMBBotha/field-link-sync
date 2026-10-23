@@ -276,6 +276,7 @@ const AdminCustomerDetailPage = () => {
       buckets.push({ month: format(d, "MMM"), key: format(d, "yyyy-MM"), amount: 0 });
     }
     for (const inv of invoices) {
+      if ((inv as any).archived_at) continue;
       const date = inv.issue_date || inv.created_at;
       if (!date) continue;
       const key = format(new Date(date), "yyyy-MM");
@@ -325,6 +326,7 @@ const AdminCustomerDetailPage = () => {
     const s = { draft: 0, sent: 0, paid: 0, overdue: 0, outstanding: 0, paidValue: 0 };
     const now = new Date();
     for (const inv of invoices as any[]) {
+      if ((inv as any).archived_at) continue;
       const st = (inv.status || "draft").toLowerCase();
       const total = Number(inv.grand_total || 0);
       const overdue = st !== "paid" && inv.due_date && new Date(inv.due_date) < now;
@@ -347,10 +349,14 @@ const AdminCustomerDetailPage = () => {
     },
   });
   const bySite = <T extends { location_id?: string | null }>(arr: T[]) => (site === "all" ? arr : arr.filter((x) => x.location_id === site));
-  const fInvoices = bySite(invoices as any[]); const fQuotes = bySite(quotes as any[]); const fJobs = bySite(jobs as any[]);
+  const activeInvRows = (invoices as any[]).filter((inv: any) => !inv.archived_at);
+  const archivedInvRows = (invoices as any[]).filter((inv: any) => !!inv.archived_at);
+  const fInvoices = bySite(activeInvRows); const fQuotes = bySite(quotes as any[]); const fJobs = bySite(jobs as any[]);
+  const fInvTableRows = bySite(showArchivedInv ? archivedInvRows : activeInvRows);
   const money = useMemo(() => {
     let outstanding = 0, overdue = 0, overdueN = 0, maxLate = 0;
     for (const inv of invoices as any[]) {
+      if ((inv as any).archived_at) continue;
       const r = dueBy.get(inv.id); if (!r) continue;
       outstanding += Number(r.amount_due) || 0;
       if (!r.waiting && r.days > 0) { overdue += Number(r.amount_due) || 0; overdueN++; maxLate = Math.max(maxLate, r.days); }
