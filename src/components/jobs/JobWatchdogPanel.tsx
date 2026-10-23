@@ -1,3 +1,4 @@
+import { dayLabel } from "@/lib/jobDays";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -9,7 +10,7 @@ import { toast } from "sonner";
 import TellClientDialog from "@/components/jobs/TellClientDialog";
 import { TELL_CLIENT_RULES, WATCH_RULE_LABEL } from "@/lib/jobWatch";
 
-type Alert = { id: string; job_id: string; profile_id: string | null; rule: string; severity: string; message: string; created_at: string };
+type Alert = { id: string; job_id: string; profile_id: string | null; rule: string; severity: string; message: string; created_at: string; work_date?: string | null };
 
 export const RULE_LABEL: Record<string, string> = WATCH_RULE_LABEL;
 
@@ -22,7 +23,7 @@ export default function JobWatchdogPanel({ className }: { className?: string }) 
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data: a } = await (supabase.from("job_alerts" as any) as any)
-        .select("id, job_id, profile_id, rule, severity, message, created_at")
+        .select("*") // work_date (multi-day runs) arrives with the phase (b) migration
         .is("resolved_at", null).order("created_at", { ascending: false }).limit(50);
       const alerts = (a || []) as Alert[];
       const ids = [...new Set(alerts.map((x) => x.profile_id).filter(Boolean))] as string[];
@@ -59,6 +60,7 @@ export default function JobWatchdogPanel({ className }: { className?: string }) 
                 : "bg-warning/20 text-warning-foreground")}>
               {RULE_LABEL[a.rule] ?? a.rule}
             </span>
+            {a.work_date && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums" data-testid="job-alert-day">{dayLabel(a.work_date)}</span>}
             <span className="min-w-0 flex-1 text-xs">{a.message}</span>
             <div className="flex gap-1">
               {TELL_CLIENT_RULES.has(a.rule) && (

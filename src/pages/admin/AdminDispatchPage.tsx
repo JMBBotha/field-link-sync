@@ -48,6 +48,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import NeedsSomeoneTray from "@/components/calendar/NeedsSomeoneTray";
 import { useLayoutVersion } from "@/hooks/useLayoutVersion";
 import V8WeekBoard, { type V8Sched } from "@/components/v8/V8WeekBoard";
+import { loadDayStates, planSummary, scheduleJobDays, type BoardDayState, type DaysPlan } from "@/lib/jobDays";
 import { useNeedsReschedule } from "@/hooks/useNeedsReschedule";
 import { v8WindowFor, type HoursRow, type CompanyHours } from "@/lib/v8Hours";
 import { isTestLead } from "@/lib/callSummary";
@@ -460,6 +461,70 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   }, [viewMode, currentDate]);
 
+  // ─── Phase (b): multi-day runs — per-day check-in states and SA holidays / closures for the calendar. ───
+  const rangeFrom = format(dateRange[0], "yyyy-MM-dd");
+  const rangeTo = format(dateRange[dateRange.length - 1], "yyyy-MM-dd");
+  const { data: dayStates } = useQuery({
+    queryKey: ["job-day-states", rangeFrom, rangeTo],
+    staleTime: 30_000,
+    queryFn: async () => {
+      try { return new Map((await loadDayStates(rangeFrom, rangeTo) ?? []).map((r: BoardDayState) => [r.schedule_id, r])); }
+      catch { return new Map<string, BoardDayState>(); } // before the migration lands
+    },
+  });
+  const { data: holidays } = useQuery({
+    queryKey: ["public-holidays", rangeFrom, rangeTo],
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("public_holidays").select("holiday_date, name, kind").gte("holiday_date", rangeFrom).lte("holiday_date", rangeTo);
+      if (error) return new Map<string, string>();
+      const m = new Map<string, string>();
+      for (const h of (data ?? []) as { holiday_date: string; name: string; kind: string }[]) {
+        // A company closure beats the public name on the same day.
+        if (!m.has(h.holiday_date) || h.kind === "closure") m.set(h.holiday_date, h.kind === "closure" ? `${h.name} (closed)` : h.name);
+      }
+      return m;
+    },
+  });
+  // Dragging a multi-day run moves the whole run: the drop day becomes the first not-yet-worked day.
+  const [draggingScheduleRun, setDraggingScheduleRun] = useState(false);
+  const [runAsk, setRunAsk] = useState<{ jobId: string; agentId: string; date: string; plan: DaysPlan } | null>(null);
+  const [runReason, setRunReason] = useState("");
+  const [runBusy, setRunBusy] = useState(false);
+  const afterRunMove = (plan: DaysPlan) => {
+    toast({ title: "Run moved ✅", description: planSummary(plan) });
+    queryClient.invalidateQueries({ queryKey: ["dispatch-schedules"] });
+    queryClient.invalidateQueries({ queryKey: ["job-day-states"] });
+    queryClient.invalidateQueries({ queryKey: ["jobs"] });
+  };
+  const moveRun = async (jobId: string, agentId: string, date: string) => {
+    try {
+      const dry = await scheduleJobDays({ jobId, techId: agentId, startDate: date, dryRun: true });
+      if (dry.clash_days > 0) {
+        if (isAdmin) { setRunReason(""); setRunAsk({ jobId, agentId, date, plan: dry }); return; }
+        toast({ title: "Can't move the run", description: `Busy on ${dry.clash_days} of the ${dry.day_count} days — ask an admin to book anyway.`, variant: "destructive" });
+        return;
+      }
+      const res = await scheduleJobDays({ jobId, techId: agentId, startDate: date });
+      if (res.ok === false) { toast({ title: "Not moved", description: res.message, variant: "destructive" }); return; }
+      afterRunMove(res);
+    } catch (err) {
+      toast({ title: "Move failed", description: (err as Error).message, variant: "destructive" });
+    }
+  };
+  const confirmRunAnyway = async () => {
+    if (!runAsk || runReason.trim().length < 3) return;
+    setRunBusy(true);
+    try {
+      const res = await scheduleJobDays({ jobId: runAsk.jobId, techId: runAsk.agentId, startDate: runAsk.date, force: true, reason: runReason.trim() });
+      if (res.ok === false) toast({ title: "Not moved", description: res.message, variant: "destructive" });
+      else { afterRunMove(res); setRunAsk(null); }
+    } catch (err) {
+      toast({ title: "Move failed", description: (err as Error).message, variant: "destructive" });
+    }
+    setRunBusy(false);
+  };
+
   const schedulesForDates = useMemo(() => {
     const map = new Map<string, Schedule[]>();
     dateRange.forEach(d => {
@@ -641,6 +706,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
   };
 
   const handleScheduleDragStart = (e: React.DragEvent, schedule: Schedule) => {
+    setDraggingScheduleRun(((schedule as Schedule & { day_count?: number | null }).day_count ?? 0) > 1);
     const lead = allLeads.find(l => l.id === schedule.lead_id);
     if (lead) {
       setDraggingLead(lead);
@@ -669,6 +735,12 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     const draggedJobId = e.dataTransfer.getData("application/job-id") || null;
     const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
     const toHHMM = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+    const runRow = draggedScheduleId ? (schedules.find((x) => x.id === draggedScheduleId) as (Schedule & { day_count?: number | null }) | undefined) : undefined;
+    if (draggedJobId && (runRow?.day_count ?? 0) > 1) {
+      setMultiSelectedIds(new Set()); setDraggingLead(null);
+      await moveRun(draggedJobId, agentId, dateStr);
+      return;
+    }
     const dragStart = e.dataTransfer.getData("application/start-time");
     const dragEnd = e.dataTransfer.getData("application/end-time");
     const dragDur = dragStart && dragEnd && toMin(dragEnd) > toMin(dragStart) ? toMin(dragEnd) - toMin(dragStart) : 0;
@@ -742,6 +814,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
   };
 
   const handleDragEnd = () => {
+    setDraggingScheduleRun(false);
     setIsDragging(false);
     setDragOverSlot(null);
     setDraggingLead(null);
@@ -1207,6 +1280,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                 onCardDragStart={(e, sch) => handleScheduleDragStart(e, sch as Schedule)} onDragEnd={handleDragEnd}
                 onOpen={sch => { const l = allLeads.find(x => x.id === sch.lead_id); if (l) { setJobInfoLead(l); setJobInfoSchedule(sch as Schedule); } else if (sch.job_id) navigate(`/admin/jobs/${sch.job_id}`); }}
                 onDropDay={v8DropDay} onDropZone={v8DropZone}
+                dayStates={dayStates} holidays={holidays} draggingRun={draggingScheduleRun}
                 unscheduled={unassignedLeads.length} onTray={() => setSidebarCollapsed(c => !c)}
                 sundayLabel={(() => { const sun = dateRange.find(d => d.getDay() === 0); return viewMode === "month" || !sun ? "Sunday · on-call only" : `Sun ${format(sun, "d")} · on-call only (drop to book)`; })()} />
             ) : (<>
@@ -1276,6 +1350,27 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
       </div>
 
       {clashDialog}
+      <Dialog open={!!runAsk} onOpenChange={o => { if (!o) setRunAsk(null); }}>
+        <DialogContent className="max-w-md" data-testid="run-book-anyway">
+          <DialogHeader>
+            <DialogTitle>Book the run anyway?</DialogTitle>
+            <DialogDescription>{runAsk ? `${planSummary(runAsk.plan)}. Busy on ${runAsk.plan.clash_days} of the ${runAsk.plan.day_count} days.` : ""}</DialogDescription>
+          </DialogHeader>
+          {runAsk && (
+            <ul className="space-y-1 text-sm">
+              {runAsk.plan.days.filter((d) => (d.clashes?.length ?? 0) > 0).map((d) => (
+                <li key={d.date} className="rounded-md bg-red-50 px-2 py-1 text-red-900 dark:bg-red-950/40 dark:text-red-200">
+                  Day {d.day_index} · {d.date}: {d.clashes!.map((c) => `${c.start}–${c.end} ${c.label}`).join(", ")}
+                </li>))}
+            </ul>
+          )}
+          <Textarea value={runReason} onChange={(e) => setRunReason(e.target.value)} placeholder="Why book over the clash?" data-testid="run-book-anyway-reason" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRunAsk(null)}>Cancel</Button>
+            <Button variant="destructive" disabled={runBusy || runReason.trim().length < 3} onClick={() => void confirmRunAnyway()} data-testid="run-book-anyway-confirm">Book anyway</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!v8Ask} onOpenChange={o => { if (!o) setV8Ask(null); }}>
         <DialogContent className="sm:max-w-sm" data-testid="v8-zone-dialog">
           <DialogHeader><DialogTitle>{v8Ask?.kind === "cancel" ? `Cancel ${v8Ask?.name}? (client called it off)` : v8Ask?.kind === "resched" ? `${v8Ask?.name} needs rescheduling` : `Unschedule ${v8Ask?.name}?`}</DialogTitle></DialogHeader>

@@ -20,6 +20,7 @@ import { fetchTodaysJobs, todayInJohannesburg, type CalendarEntry } from "@/lib/
 import { FrontPhoto, useSurveyPack } from "@/components/survey/SurveyPackSection";
 import { cachePackFiles, pipeSummary } from "@/lib/siteSurvey/pack";
 import { primeJobPack } from "@/lib/jobPack";
+import { dayBadge } from "@/lib/jobDays";
 
 const CACHE = (uid: string) => `fls.today.${uid}`;
 
@@ -47,16 +48,20 @@ function TodayCard({ e, job, open, index }: { e: CalendarEntry; job?: JobRow; op
   const href = e.job_id ? `/field/jobs/${e.job_id}` : e.lead_id ? `/field?lead=${e.lead_id}` : "/field/schedule";
   const nav = navLink(e.customer_address);
   const phone = job?.customers?.phone ?? null;
+  // Phase (b): day N of M of a multi-day run; the job pack has the day panel (check in / Done for today).
+  const multi = (e.day_count ?? 0) > 1;
+  const dayTag = multi ? `Day ${e.day_index} of ${e.day_count}` : null;
+  const dayPill = multi ? <Badge variant="outline" className="border-primary/40 text-primary" data-testid="today-day-badge">{dayBadge(e.day_index, e.day_count)}</Badge> : null;
   if (!open) return (
     <JobCard item={scheduleRowToCard(e)} audience="tech" density="compact" onOpen={() => navigate(href)} data-testid="today-row"
-      actions={statusPill(job, !!survey) ?? undefined} />
+      actions={(dayPill || statusPill(job, !!survey)) ? <span className="flex gap-1">{dayPill}{statusPill(job, !!survey)}</span> : undefined} />
   );
   return (
     <Card className="overflow-hidden" data-testid="today-next">
       {survey && <FrontPhoto survey={survey} className="aspect-[16/9] rounded-none" />}
       <CardContent className="space-y-3 p-4">
         <div className="flex items-center justify-between gap-2">
-          <Badge variant="secondary">{timeOf(e)} · Job {index + 1}</Badge>
+          <Badge variant="secondary">{timeOf(e)} · {dayTag ?? `Job ${index + 1}`}</Badge>
           {statusPill(job, !!survey)}
         </div>
         <div>
@@ -80,7 +85,7 @@ function TodayCard({ e, job, open, index }: { e: CalendarEntry; job?: JobRow; op
           {phone ? <Button asChild variant="outline" className="min-h-[44px]"><a href={`tel:${phone}`}><Phone className="mr-1 h-4 w-4" />Call client</a></Button>
             : <Button variant="outline" className="min-h-[44px]" disabled><Phone className="mr-1 h-4 w-4" />No phone</Button>}
         </div>
-        <Button className="w-full min-h-[48px]" onClick={() => navigate(href)} data-testid="today-open-pack">Open job pack<ChevronRight className="ml-1 h-4 w-4" /></Button>
+        <Button className="w-full min-h-[48px]" onClick={() => navigate(href)} data-testid="today-open-pack">{dayTag ? `${dayTag} · Check in` : "Open job pack"}<ChevronRight className="ml-1 h-4 w-4" /></Button>
       </CardContent>
     </Card>
   );

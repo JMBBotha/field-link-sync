@@ -18,6 +18,8 @@ export interface JobCompletionInput {
   photoCount: number;
   /** False when totals could not be read (offline) — they are recomputed on sync. */
   metricsKnown?: boolean;
+  /** Phase (b): why there is no after-photo (only sent when set, so older flows write the same row as before). */
+  noPhotoReason?: string | null;
 }
 
 /**
@@ -50,6 +52,7 @@ export function useJobCompletion() {
         photo_count: input.photoCount,
         status: "completed",
         completed_at: completedAt,
+        ...(input.noPhotoReason ? { no_photo_reason: input.noPhotoReason } : {}),
       };
 
       if (!isOnline) {

@@ -25,7 +25,7 @@ type Job = DJob & {
 const initials = (n?: string | null) => (n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 const STATE: Record<string, { label: string; dot: string }> = {
   on_site: { label: "On site", dot: "bg-emerald-500" }, en_route: { label: "En route", dot: "bg-orange-500" },
-  next: { label: "Next", dot: "bg-blue-500" }, done: { label: "Done for today", dot: "bg-slate-400" },
+  next: { label: "Next", dot: "bg-blue-500" }, done: { label: "No more jobs today", dot: "bg-slate-400" },
 };
 
 /** Dispatch · Cards: new leads (Lead card v2) · the day's jobs, most urgent first · techs today. No money shown. */

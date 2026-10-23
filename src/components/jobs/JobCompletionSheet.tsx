@@ -7,7 +7,7 @@
  * On submit: lead/job -> completed (existing path) and an invoice request goes to the office
  * (submit_invoice_request: "As quoted" or "Changes"). Techs never see prices or invoices.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { doneToast } from "@/lib/doneToast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -16,12 +16,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CheckCircle2, ChevronDown, Clock, Images, Loader2, Minus, Plus, PackagePlus, Trash2, WifiOff } from "lucide-react";
+import { Camera, CheckCircle2, ChevronDown, Clock, Images, Loader2, Minus, Plus, PackagePlus, Trash2, WifiOff } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useJobCompletion } from "@/hooks/useJobCompletion";
+import { useJobPhotos } from "@/hooks/useJobPhotos";
+import { useAuth } from "@/contexts/AuthContext";
 import SignaturePad from "./SignaturePad";
 import { findOpenJobIdsForLead } from "@/lib/completeLeadJobs";
 import { durationText, prefillTimes, timeText, toLocalInput } from "@/lib/completionTimes";
@@ -40,17 +42,30 @@ interface JobCompletionSheetProps {
   scheduledDate?: string | null;
   scheduledTime?: string | null;
   onCompleted?: () => void;
+  /** Phase (b): tech job-sheet / Today flow — at least one after-photo, or a reason, before sign-off. */
+  requireAfterPhotos?: boolean;
+  /** Phase (b) multi-day runs: labour is the sum of the days (server recomputes it from the day log). */
+  dayLabourHours?: number | null;
+  dayCount?: number | null;
 }
 
 type CatalogueRow = { id: string; product_code: string | null; short_name: string | null };
 
 const JobCompletionSheet = ({
   open, onOpenChange, leadId, jobId, customerName, customerEmail, startedAt, scheduledDate, scheduledTime, onCompleted,
+  requireAfterPhotos = false, dayLabourHours = null, dayCount = null,
 }: JobCompletionSheetProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { isOnline } = useOfflineContext();
+  const { isOnline, queueOperation } = useOfflineContext();
   const { submit } = useJobCompletion();
+  const { user } = useAuth();
+  const multiDay = !!dayCount && dayCount > 1;
+  const afterInput = useRef<HTMLInputElement>(null);
+  const [afterTaken, setAfterTaken] = useState(0);
+  const [noPhotoReason, setNoPhotoReason] = useState("");
+  const [noPhotoOpen, setNoPhotoOpen] = useState(false);
+  const photos = useJobPhotos({ leadId, agentId: user?.id ?? "", isOnline, queueOperation: queueOperation as never });
 
   const [asQuoted, setAsQuoted] = useState<boolean | null>(null);
   const [extras, setExtras] = useState<CompletionExtra[]>([]);
@@ -86,6 +101,18 @@ const JobCompletionSheet = ({
     },
     enabled: open && !!leadId && isOnline,
   });
+
+  const { data: afterCount = 0 } = useQuery({
+    queryKey: ["job-after-photo-count", leadId, afterTaken],
+    queryFn: async () => {
+      const { count, error } = await supabase.from("job_photos" as never).select("id", { count: "exact", head: true }).eq("lead_id", leadId).eq("photo_type", "after");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: open && requireAfterPhotos && !!leadId && isOnline,
+  });
+  const afterPhotos = Math.max(afterCount, afterTaken);
+  const photosMissing = requireAfterPhotos && afterPhotos === 0 && noPhotoReason.trim().length < 3;
 
   const { data: resolvedJobId = null } = useQuery({
     queryKey: ["lead-open-job", leadId],
@@ -140,13 +167,15 @@ const JobCompletionSheet = ({
   const hasExtras = extras.some((x) => x.qty > 0) || (extraHours.trim() !== "" && hours > 0);
   const extrasMissing = asQuoted === false && !hasExtras;
   const offlineExtras = asQuoted === false && !isOnline;
-  const canSubmit = asQuoted !== null && !extrasMissing && !offlineExtras && (!!signature || noSignature) && !timesBad && !saving;
+  const canSubmit = asQuoted !== null && !extrasMissing && !offlineExtras && (!!signature || noSignature) && !timesBad && !photosMissing && !saving;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSaving(true);
     try {
-      const labourMinutes = start && finish ? Math.max(0, Math.round((finish.getTime() - start.getTime()) / 60000)) : 0;
+      const labourMinutes = multiDay && dayLabourHours != null
+        ? Math.round(dayLabourHours * 60) // server recomputes from the day log (job_completion_day_labour)
+        : start && finish ? Math.max(0, Math.round((finish.getTime() - start.getTime()) / 60000)) : 0;
       const { queued } = await submit({
         leadId,
         jobId: effectiveJobId,
@@ -156,8 +185,9 @@ const JobCompletionSheet = ({
         signatureDataUrl: signature,
         partsTotal: 0, // server recomputes parts_total
         labourMinutes,
-        photoCount,
+        photoCount: Math.max(photoCount, afterTaken),
         metricsKnown: isOnline,
+        noPhotoReason: requireAfterPhotos && afterPhotos === 0 ? noPhotoReason.trim() : null,
       });
       if (!queued) {
         const { error } = await (supabase.rpc as any)("submit_invoice_request", {
@@ -210,7 +240,14 @@ const JobCompletionSheet = ({
         )}
 
         <div className="space-y-5">
-          {/* 1. Times */}
+          {/* 1. Times (multi-day: labour = the sum of the days) */}
+          {multiDay ? (
+            <section className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm" data-testid="finish-day-labour">
+              <Clock className="h-5 w-5 text-muted-foreground" />
+              <span><b>Labour</b> {dayCount} days · {Math.round((dayLabourHours ?? 0) * 10) / 10} h</span>
+              <span className="ml-auto text-xs text-muted-foreground">from your Day done entries</span>
+            </section>
+          ) : (
           <section className="rounded-xl border border-border p-3" data-testid="finish-times">
             <div className="flex items-center gap-2 text-sm">
               <Clock className="h-5 w-5 text-muted-foreground" />
@@ -238,6 +275,7 @@ const JobCompletionSheet = ({
               </CollapsibleContent>
             </Collapsible>
           </section>
+          )}
 
           {/* 2. As quoted? */}
           <section className="space-y-2">
@@ -325,11 +363,37 @@ const JobCompletionSheet = ({
           </section>
 
           {/* 5. Photos */}
+          {requireAfterPhotos ? (
+            <section className={cn("space-y-2 rounded-xl border-2 p-3", photosMissing ? "border-amber-400" : "border-green-600/50")} data-testid="finish-after-photos">
+              <p className="flex items-center gap-2 text-base font-semibold"><Camera className="h-5 w-5" />After photos</p>
+              <input ref={afterInput} type="file" accept="image/*" capture="environment" className="hidden" data-testid="after-photo-input"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0]; e.target.value = "";
+                  if (!f) return;
+                  await photos.uploadPhoto(f, "after");
+                  setAfterTaken((n) => n + 1);
+                }} />
+              <Button type="button" variant={afterPhotos ? "outline" : "default"} className="h-12 w-full text-base" disabled={photos.uploading}
+                onClick={() => afterInput.current?.click()} data-testid="after-photo-take">
+                {photos.uploading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Camera className="mr-2 h-5 w-5" />}
+                {afterPhotos ? `Take another (${afterPhotos} taken)` : "Take after photo"}
+              </Button>
+              {afterPhotos === 0 && (
+                noPhotoOpen ? (
+                  <Input value={noPhotoReason} onChange={(e) => setNoPhotoReason(e.target.value)} className="h-11" autoFocus
+                    placeholder="Why no photo? (e.g. client refused, camera broken)" aria-label="Reason for no after photo" data-testid="no-photo-reason" />
+                ) : (
+                  <button type="button" className="text-sm font-medium text-primary" onClick={() => setNoPhotoOpen(true)} data-testid="no-photo-open">Can't take a photo?</button>
+                )
+              )}
+            </section>
+          ) : (
           <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm">
             <Images className="h-5 w-5 text-muted-foreground" />
             {isOnline ? `${photoCount} photo${photoCount === 1 ? "" : "s"} attached` : "Photos sync later"}
             <span className="ml-auto text-xs text-muted-foreground">Add photos from the job screen</span>
           </div>
+          )}
 
           {/* 6. Signature */}
           <section className="space-y-2">
@@ -353,6 +417,7 @@ const JobCompletionSheet = ({
                 : offlineExtras ? "You're offline: extras need a connection."
                 : extrasMissing ? "Add the extras, or choose \"Yes, as quoted\"."
                 : timesBad ? "Fix the times."
+                : photosMissing ? "Take at least one after photo — or say why you can't."
                 : "Customer signature needed — or tick \"Customer not available to sign\"."}
             </p>
           )}

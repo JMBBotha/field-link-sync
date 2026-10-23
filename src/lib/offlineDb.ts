@@ -132,7 +132,9 @@ export type OperationType =
   | 'upload_photo'
   | 'delete_photo'
   | 'update_timer_log'
-  | 'job_completion';
+  | 'job_completion'
+  /** Phase (b) day taps (Check in / Done for today / En route) — replayed as RPCs with the tap time. */
+  | 'job_day';
 
 export interface PendingOperation {
   id?: number; // Auto-increment
@@ -364,6 +366,7 @@ class OfflineDatabase extends Dexie {
       delete_photo: 0,
       update_timer_log: 0,
       job_completion: 0,
+      job_day: 0,
     };
     
     pending.forEach(op => {

@@ -11,6 +11,8 @@ const rpcMock = vi.fn(async (name: string, _args?: unknown) => {
 });
 vi.mock("@/hooks/useJobCompletion", () => ({ useJobCompletion: () => ({ submit: submitMock }) }));
 vi.mock("@/contexts/OfflineContext", () => ({ useOfflineContext: () => ({ isOnline: true }) }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "tech-1" } }) }));
+vi.mock("@/hooks/useJobPhotos", () => ({ useJobPhotos: () => ({ uploadPhoto: vi.fn(), uploading: false }) }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: vi.fn() }), toast: vi.fn() }));
 vi.mock("@/lib/completeLeadJobs", () => ({ findOpenJobIdsForLead: async () => ["job-1"] }));
 vi.mock("@/components/jobs/SignaturePad", () => ({ default: () => <div data-testid="sig" /> }));

@@ -24,6 +24,8 @@ import { publicQuoteUrl } from "@/lib/publicAppUrl";
 import { useClashGuard } from "@/components/scheduling/ClashGuard";
 import { DEFAULT_JOB_MINUTES, endTimeFor, minutesToInterval } from "@/lib/schedulingDefaults";
 import DurationPicker from "@/components/scheduling/DurationPicker";
+import MultiDayPicker, { multiDayBlocked, useDaysPlan } from "@/components/scheduling/MultiDayPicker";
+import { useRole } from "@/hooks/useRole";
 import { useQuoteLabourMinutes } from "@/hooks/useQuoteLabourMinutes";
 import { formatDuration } from "@/lib/durationOptions";
 import { TimeInput24 } from "@/components/ui/time-input-24";
@@ -80,6 +82,10 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
   }, [quoteMinutes]);
   const [techId, setTechId] = useState("");
   const [mode, setMode] = useState<HandoffMode>("pick");
+  // Phase (b): whole working days (1 = same-day job). Clash -> admin "Book anyway" with a reason.
+  const [days, setDays] = useState(1);
+  const [overrideReason, setOverrideReason] = useState("");
+  const { isAdmin } = useRole();
 
   // P3: server-side hand-off status (who may hand over, company default, offers in flight)
   const { data: handoff, refetch: refetchHandoff } = useQuery({
@@ -159,6 +165,8 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
       return data as any;
     },
   });
+  const daysPlan = useDaysPlan(mode === "pick" ? techId || null : null, date, days, installJob?.id ?? null);
+  const multiBlock = days > 1 ? multiDayBlocked(daysPlan.data ?? null, isAdmin, overrideReason) : null;
 
   const handleCreateDeposit = async () => {
     setBusy("deposit");
@@ -255,7 +263,13 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
       toast({ title: "Pick a technician", description: "Or choose Offer to my technicians.", variant: "destructive" });
       return;
     }
-    if (pick) {
+    const multi = days > 1;
+    const force = multi && isAdmin && overrideReason.trim().length >= 3;
+    if (multi && pick && multiBlock) {
+      toast({ title: "Can't book these days", description: multiBlock, variant: "destructive" });
+      return;
+    }
+    if (pick && !multi) {
       const ok = await confirmBooking({
         profileId: techId, date, start: startTime || "08:00", end: addMinutesToTime(startTime || "08:00", duration),
         excludeJobId: installJob?.id ?? null,
@@ -273,9 +287,10 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
         p_minutes: duration,
         p_mode: mode,
         p_tech_id: pick ? techId : null,
+        ...(multi ? { p_days: days, p_force: force, p_reason: force ? overrideReason.trim() : null } : {}),
       });
       if (error) throw error;
-      const res = data as { ok: boolean; job_id?: string; message?: string; offered?: number };
+      const res = data as { ok: boolean; job_id?: string; message?: string; offered?: number; clash?: boolean };
       if (res?.job_id && pick) void flushOverride({ type: "job", id: res.job_id });
       await qc.invalidateQueries({ queryKey: ["accepted-work-install-job", quoteId] });
       await refetchHandoff();
@@ -464,12 +479,16 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
               </div>
             </div>
 
-            <DurationPicker
-              value={duration}
-              onChange={(m) => { durationTouched.current = true; setDuration(m); }}
-              startTime={startTime || null}
-              hint={durationTouched.current ? null : quoteMinutes ? `From quote labour (${formatDuration(quoteMinutes)})` : "Default 3 h"}
-            />
+            <MultiDayPicker days={days} onDaysChange={setDays} techId={mode === "pick" ? techId || null : null} date={date}
+              jobId={installJob?.id ?? null} isAdmin={isAdmin} offer={mode === "offer"} reason={overrideReason} onReasonChange={setOverrideReason} />
+            {days === 1 && (
+              <DurationPicker
+                value={duration}
+                onChange={(m) => { durationTouched.current = true; setDuration(m); }}
+                startTime={startTime || null}
+                hint={durationTouched.current ? null : quoteMinutes ? `From quote labour (${formatDuration(quoteMinutes)})` : "Default 3 h"}
+              />
+            )}
 
             {modes.length > 1 ? (
               <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Hand-off" data-testid="handoff-modes">
@@ -500,7 +519,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
                 <p className="text-xs text-muted-foreground">
                   The technician also gets a calendar slot under Technical on dispatch.
                 </p>
-                {date && (
+                {date && days === 1 && (
                   <AvailabilityPicker lane="service" date={date} startTime={startTime} minutes={duration}
                     lat={siteLoc?.lat} lng={siteLoc?.lng} excludeJobId={installJob?.id ?? null} selectedId={techId}
                     onSelect={(id, d, t) => { setTechId(id); if (d) setDate(d); if (t) setStartTime(t); }} />
@@ -518,7 +537,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
             <Button
               variant="brand"
               onClick={handlePassToInstall}
-              disabled={busy === "install" || !hasDeposit || !date || (mode === "pick" && !techId)}
+              disabled={busy === "install" || !hasDeposit || !date || (mode === "pick" && !techId) || (mode === "pick" && days > 1 && !!multiBlock)}
               data-testid="handoff-confirm"
             >
               {busy === "install" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

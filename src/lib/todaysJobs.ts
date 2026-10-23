@@ -36,11 +36,15 @@ export type CalendarEntry = {
   customer_id?: string | null;
   notes?: string | null;
   call_summary?: string | null;
+  /** Phase (b): day N of M of a multi-day run (null for single-day bookings). */
+  day_index?: number | null;
+  day_count?: number | null;
 };
 
 export type ScheduleRowIn = {
   id: string; lead_id: string | null; job_id: string | null; agent_id: string | null;
   scheduled_date: string; start_time: string | null;
+  day_index?: number | null; day_count?: number | null;
   leads?: { customer_name?: string | null; customer_address?: string | null; status?: string | null; service_type?: string | null; primary_intent?: string | null; customer_id?: string | null; notes?: string | null; call_summary?: string | null } | null;
   jobs?: { status?: string | null } | null;
 };
@@ -62,7 +66,8 @@ export function buildCalendarEntries(schedules: ScheduleRowIn[], leads: LeadRowI
   for (const s of schedules) {
     if (isCancelled(s.jobs?.status) || isCancelled(s.leads?.status)) continue;
     if (s.job_id && s.lead_id) jobRowKey.add(`${s.lead_id}|${s.agent_id}|${s.scheduled_date}`);
-    const key = s.job_id ? `job:${s.job_id}` : `lead:${s.lead_id}`;
+    // Multi-day runs: one tile per day (job:<id>:<date>); single-day bookings keep one tile per job.
+    const key = s.job_id ? ((s.day_count ?? 0) > 1 ? `job:${s.job_id}:${s.scheduled_date}` : `job:${s.job_id}`) : `lead:${s.lead_id}`;
     if (out.has(key)) continue;
     out.set(key, {
       key, date: s.scheduled_date, start_time: s.start_time, lead_id: s.lead_id, job_id: s.job_id,
@@ -70,6 +75,7 @@ export function buildCalendarEntries(schedules: ScheduleRowIn[], leads: LeadRowI
       customer_name: s.leads?.customer_name ?? null, customer_address: s.leads?.customer_address ?? null,
       service_type: s.leads?.service_type ?? null, primary_intent: s.leads?.primary_intent ?? null, customer_id: s.leads?.customer_id ?? null,
       notes: s.leads?.notes ?? null, call_summary: s.leads?.call_summary ?? null,
+      day_index: s.day_index ?? null, day_count: s.day_count ?? null,
     });
   }
   for (const l of leads) {
@@ -97,25 +103,35 @@ export function summarizeDay(entries: CalendarEntry[], date: string, agentId?: s
   return { open, completed, total: open.length + completed };
 }
 
+/** Past, still-open visits. An earlier day of a multi-day run is not overdue (the run carries on); its last day is. */
 export function overdueEntries(entries: CalendarEntry[], today: string, agentId?: string) {
-  return entries.filter((e) => e.date < today && !isClosed(e.status) && (!agentId || e.agent_id === agentId));
+  return entries.filter((e) => e.date < today && !isClosed(e.status) && (!agentId || e.agent_id === agentId)
+    && !(e.day_count && e.day_count > 1 && (e.day_index ?? 0) < e.day_count));
 }
 
 export async function loadEntries(opts: { date?: string; before?: string; from?: string; agentId?: string }): Promise<CalendarEntry[]> {
-  let sq = supabase
-    .from("job_schedules")
-    .select("id, lead_id, job_id, agent_id, scheduled_date, start_time, leads(id, customer_name, customer_address, status, service_type, primary_intent, customer_id, notes, call_summary), jobs(status)");
+  const SCHED = "id, lead_id, job_id, agent_id, scheduled_date, start_time, leads(id, customer_name, customer_address, status, service_type, primary_intent, customer_id, notes, call_summary), jobs(status)";
+  // day_index/day_count arrive with the phase (b) migration; until it is applied (42703) fall back to the old select.
+  const build = (sel: string) => {
+    let q = supabase.from("job_schedules").select(sel);
+    if (opts.date) q = q.eq("scheduled_date", opts.date);
+    if (opts.before) q = q.lt("scheduled_date", opts.before);
+    if (opts.from) q = q.gte("scheduled_date", opts.from);
+    if (opts.agentId) q = q.eq("agent_id", opts.agentId);
+    return q;
+  };
   let lq = supabase
     .from("leads")
     .select("id, assigned_agent_id, scheduled_date, scheduled_time, status, customer_name, customer_address, service_type, primary_intent, customer_id, notes, call_summary")
     .not("assigned_agent_id", "is", null)
     .not("scheduled_date", "is", null)
     .is("deleted_at", null);
-  if (opts.date) { sq = sq.eq("scheduled_date", opts.date); lq = lq.eq("scheduled_date", opts.date); }
-  if (opts.before) { sq = sq.lt("scheduled_date", opts.before); lq = lq.lt("scheduled_date", opts.before); }
-  if (opts.from) { sq = sq.gte("scheduled_date", opts.from); lq = lq.gte("scheduled_date", opts.from); }
-  if (opts.agentId) { sq = sq.eq("agent_id", opts.agentId); lq = lq.eq("assigned_agent_id", opts.agentId); }
-  const [s, l] = await Promise.all([sq, lq]);
+  if (opts.date) lq = lq.eq("scheduled_date", opts.date);
+  if (opts.before) lq = lq.lt("scheduled_date", opts.before);
+  if (opts.from) lq = lq.gte("scheduled_date", opts.from);
+  if (opts.agentId) lq = lq.eq("assigned_agent_id", opts.agentId);
+  let [s, l] = await Promise.all([build(`${SCHED}, day_index, day_count`), lq]);
+  if (s.error && (s.error as { code?: string }).code === "42703") s = await build(SCHED);
   if (s.error) throw s.error;
   if (l.error) throw l.error;
   // Lead-level rows suppress synthesized lead tiles (same as dispatch); install rows keyed by job_id.

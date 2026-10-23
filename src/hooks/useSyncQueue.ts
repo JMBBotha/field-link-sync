@@ -34,6 +34,7 @@ export function useSyncQueue(isOnline: boolean) {
       delete_photo: 0,
       update_timer_log: 0,
       job_completion: 0,
+      job_day: 0,
     },
   });
   
@@ -511,6 +512,18 @@ export function useSyncQueue(isOnline: boolean) {
           if (leadErr) throw leadErr;
 
           await completeJobsForLead(operation.recordId, (record.job_id as string | null) ?? null);
+          break;
+        }
+
+        case 'job_day': {
+          // { fn, args } from useDayOps; args.p_at is the tap time so the day is recorded when it happened.
+          const { fn, args } = operation.data as { fn: string; args: Record<string, unknown> };
+          if (!['tech_day_en_route', 'tech_check_in', 'tech_done_for_today'].includes(fn)) {
+            console.warn('[SyncQueue] job_day: unknown fn', fn);
+            return false;
+          }
+          const { error } = await (supabase.rpc as any)(fn, args);
+          if (error) throw error;
           break;
         }
 

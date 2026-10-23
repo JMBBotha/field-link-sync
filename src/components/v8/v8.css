@@ -72,6 +72,17 @@
 .v8-ccard.late{background-image:repeating-linear-gradient(135deg,transparent 0 6px,rgba(249,115,22,.08) 6px 12px)}
 .v8-late{font-size:9.5px;font-weight:800;color:#c2410c;background:rgba(249,115,22,.15);border-radius:6px;padding:0 5px}
 .dark .v8-late{color:#fdba74}
+/* phase (b): multi-day runs + SA holidays */
+.v8-daycol.holiday{background-color:rgba(244,63,94,.05)}
+.v8-hol{color:#be123c;margin-top:2px}
+.dark .v8-hol{color:#fda4af}
+.v8-day{font-size:9.5px;font-weight:800;color:#4338ca;background:rgba(99,102,241,.15);border-radius:6px;padding:0 5px}
+.dark .v8-day{color:#c7d2fe}
+.v8-dstate{margin-top:2px;font-size:10px;font-weight:700;border-radius:6px;padding:0 5px;width:fit-content;background:rgba(100,116,139,.12)}
+.v8-dstate.done{color:#047857;background:rgba(16,185,129,.15)}
+.v8-dstate.on_site{color:#1d4ed8;background:rgba(59,130,246,.15)}
+.v8-dstate.en_route{color:#b45309;background:rgba(245,158,11,.15)}
+.dark .v8-dstate.done{color:#6ee7b7}.dark .v8-dstate.on_site{color:#93c5fd}.dark .v8-dstate.en_route{color:#fcd34d}
 .v8-dz.resched{border-color:rgba(249,115,22,.6);color:#c2410c}.v8-dz.resched.is-over{background:rgba(249,115,22,.1)}
 
 .v8-group{display:flex;width:100%;align-items:center;gap:.5rem;border-radius:10px;padding:.45rem .75rem;font-size:13px;font-weight:700;color:var(--v8-tx);opacity:.85}
