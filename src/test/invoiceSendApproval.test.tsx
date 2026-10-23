@@ -140,3 +140,16 @@ describe("bell routing", () => {
     expect(notificationHref("invoice_send_blocked", "inv-1")).toBe("/admin/invoices/inv-1");
   });
 });
+
+describe("0025 migration: one alert on client online accept", () => {
+  it("accept_quote_by_token folds 'accepted online' into the invoice alert and only falls back to quote_accepted_client", async () => {
+    const fs = await import("node:fs");
+    const sql = fs.readFileSync("drizzle/migrations/0025_accept_invoice_approval.sql", "utf8");
+    const fn = sql.slice(sql.indexOf("FUNCTION public.accept_quote_by_token"), sql.indexOf("-- Accept path: identical"));
+    expect(fn).toMatch(/IF v_appr IS NOT NULL THEN/);
+    expect(fn).toMatch(/accepted online\. /);
+    expect(fn.indexOf("quote_accepted_client")).toBeGreaterThan(fn.indexOf("ELSE"));
+    const rb = fs.readFileSync("drizzle/rollback/0025_accept_invoice_approval_rollback.sql", "utf8");
+    expect(rb).toContain("FUNCTION public.accept_quote_by_token");
+  });
+});

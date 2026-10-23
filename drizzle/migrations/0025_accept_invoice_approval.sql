@@ -287,6 +287,45 @@ DROP TRIGGER IF EXISTS trg_isa_sync_on_invoice_status ON public.invoices;
 CREATE TRIGGER trg_isa_sync_on_invoice_status AFTER UPDATE OF status ON public.invoices
   FOR EACH ROW WHEN (OLD.status IS DISTINCT FROM NEW.status) EXECUTE FUNCTION public.isa_sync_on_invoice_status();
 
+-- Client online accept: ONE alert. The new "<Client> accepted Q-x" invoice alert replaces the old 'quote_accepted_client'
+-- notice and carries its info (who accepted, online). Old notice only if no deposit invoice/approval was created.
+CREATE OR REPLACE FUNCTION public.accept_quote_by_token(p_token uuid, p_accepted_by text, p_signature jsonb DEFAULT NULL::jsonb)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE v_quote_id uuid; v_num text; v_cust text; v_status text; v_who text; v_appr uuid;
+BEGIN
+  SELECT id, quote_number, customer_name, status INTO v_quote_id, v_num, v_cust, v_status
+  FROM public.quotes WHERE public_token = p_token FOR UPDATE;
+  IF v_quote_id IS NULL THEN RETURN false; END IF;
+  IF EXISTS (SELECT 1 FROM public.quotes WHERE id = v_quote_id AND is_variation) THEN RETURN false; END IF; /*r2: use respond_job_variation*/
+  IF v_status = 'accepted' THEN RETURN true; END IF; /*oneinv: retry / queued double-submit is not an error*/
+  IF v_status NOT IN ('sent','viewed') THEN RETURN false; END IF;
+  -- Set BEFORE the update so the on_quote_accepted trigger path is also allowed for the token holder.
+  PERFORM set_config('app.public_quote_accept', v_quote_id::text, true);
+  UPDATE public.quotes SET status = 'accepted', accepted_at = now(), accepted_by = p_accepted_by, accepted_signature = p_signature
+  WHERE id = v_quote_id;
+  PERFORM public.create_deposit_invoice_for_quote(v_quote_id);
+  PERFORM set_config('app.public_quote_accept', '', true);
+  v_who := COALESCE(NULLIF(btrim(p_accepted_by), ''), v_cust, 'Client');
+  SELECT a.id INTO v_appr FROM public.invoice_send_approvals a
+   WHERE a.quote_id = v_quote_id AND a.status IN ('pending','held','blocked') ORDER BY a.created_at DESC LIMIT 1;
+  IF v_appr IS NOT NULL THEN /*isa: merge into the invoice alert*/
+    UPDATE public.notifications n
+       SET body = v_who || ' accepted online. ' || COALESCE(n.body, ''),
+           metadata = COALESCE(n.metadata, '{}'::jsonb) || jsonb_build_object('accepted_online', true, 'accepted_by', v_who)
+     WHERE n.type = 'quote_accepted_send_invoice' AND n.metadata->>'approval_id' = v_appr::text
+       AND COALESCE(n.metadata->>'accepted_online', '') <> 'true';
+  ELSE
+    PERFORM public.qa_notify_rep_and_admins(v_quote_id, 'quote_accepted_client',
+      'Quote ' || COALESCE(v_num, '') || ' accepted by client',
+      v_who || ' accepted quote ' || COALESCE(v_num, '') || ' online.');
+  END IF;
+  RETURN true;
+END $function$;
+
 -- Accept path: identical to the live function except the old 'invoice_ready_to_send' notice is replaced by isa_queue().
 CREATE OR REPLACE FUNCTION public.create_deposit_invoice_for_quote(p_quote_id uuid)
  RETURNS uuid

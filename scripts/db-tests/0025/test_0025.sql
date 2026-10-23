@@ -114,3 +114,28 @@ DO $$ DECLARE q uuid; i uuid; BEGIN
   PERFORM ok((SELECT body FROM notifications WHERE related_id=i LIMIT 1) LIKE '%Nothing has been sent yet%','8 body says nothing sent');
   UPDATE company_settings SET invoice_auto_send_minutes = 15;
 END $$;
+
+-- 9 client online accept: ONE alert per person (invoice alert carries 'accepted online'); old quote_accepted_client not sent
+DO $$ DECLARE q uuid; t uuid; i uuid; BEGIN
+  INSERT INTO quotes (quote_number,status,company_id,customer_id,customer_name,sales_engineer_id,total,vat_amount,vat_rate,created_by)
+  VALUES ('Q-T9','sent','a0000000-0000-0000-0000-00000000000a','c0000000-0000-0000-0000-000000000001','Test Client',
+          '11111111-1111-1111-1111-111111111111',1150,150,0.15,'22222222-2222-2222-2222-222222222222') RETURNING id, public_token INTO q, t;
+  PERFORM ok(accept_quote_by_token(t, 'Hennie Test', NULL), '9 online accept ok');
+  SELECT id INTO i FROM invoices WHERE quote_id=q;
+  PERFORM ok((SELECT count(*) FROM notifications WHERE related_id IN (q,i))=2, '9 exactly one alert each for rep A + admin A');
+  PERFORM ok(NOT EXISTS (SELECT 1 FROM notifications WHERE related_id=q AND type='quote_accepted_client'), '9 old quote_accepted_client not sent');
+  PERFORM ok((SELECT bool_and(body LIKE 'Hennie Test accepted online. Invoice INV-%' AND metadata->>'accepted_by'='Hennie Test'
+                                AND title='Test Client accepted Q-T9') FROM notifications WHERE related_id=i), '9 alert keeps who/online info');
+  PERFORM ok(accept_quote_by_token(t, 'Hennie Test', NULL), '9 re-accept is fine');
+  PERFORM ok((SELECT count(*) FROM notifications WHERE related_id IN (q,i))=2 AND
+             (SELECT count(*) FROM notifications WHERE related_id=i AND body LIKE '%accepted online. %accepted online.%')=0, '9 re-accept adds nothing');
+  PERFORM ok(NOT EXISTS (SELECT 1 FROM fake_outbox WHERE invoice_id=i), '9 nothing emailed');
+END $$;
+
+-- 10 online accept that creates no invoice (no rep, no creator) still tells admins via the old notice
+DO $$ DECLARE q uuid; t uuid; BEGIN
+  INSERT INTO quotes (quote_number,status,company_id,customer_id,customer_name,total,vat_amount,vat_rate)
+  VALUES ('Q-T10','viewed','a0000000-0000-0000-0000-00000000000a','c0000000-0000-0000-0000-000000000001','Test Client',1150,150,0.15) RETURNING id, public_token INTO q, t;
+  PERFORM accept_quote_by_token(t, 'X', NULL);
+  PERFORM ok((SELECT count(*) FROM notifications WHERE related_id=q AND type='quote_accepted_client')=1, '10 no invoice -> old accepted notice to admin');
+END $$;

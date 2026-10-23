@@ -67,6 +67,32 @@ BEGIN
   RETURN v_id;
 END $function$
 ;
+-- Restore live accept_quote_by_token (two alerts on online accept, as before 0025).
+CREATE OR REPLACE FUNCTION public.accept_quote_by_token(p_token uuid, p_accepted_by text, p_signature jsonb DEFAULT NULL::jsonb)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE v_quote_id uuid; v_num text; v_cust text; v_status text;
+BEGIN
+  SELECT id, quote_number, customer_name, status INTO v_quote_id, v_num, v_cust, v_status
+  FROM public.quotes WHERE public_token = p_token FOR UPDATE;
+  IF v_quote_id IS NULL THEN RETURN false; END IF;
+  IF EXISTS (SELECT 1 FROM public.quotes WHERE id = v_quote_id AND is_variation) THEN RETURN false; END IF; /*r2: use respond_job_variation*/
+  IF v_status = 'accepted' THEN RETURN true; END IF; /*oneinv: retry / queued double-submit is not an error*/
+  IF v_status NOT IN ('sent','viewed') THEN RETURN false; END IF;
+  -- Set BEFORE the update so the on_quote_accepted trigger path is also allowed for the token holder.
+  PERFORM set_config('app.public_quote_accept', v_quote_id::text, true);
+  UPDATE public.quotes SET status = 'accepted', accepted_at = now(), accepted_by = p_accepted_by, accepted_signature = p_signature
+  WHERE id = v_quote_id;
+  PERFORM public.create_deposit_invoice_for_quote(v_quote_id);
+  PERFORM set_config('app.public_quote_accept', '', true);
+  PERFORM public.qa_notify_rep_and_admins(v_quote_id, 'quote_accepted_client',
+    'Quote ' || COALESCE(v_num, '') || ' accepted by client',
+    COALESCE(NULLIF(p_accepted_by, ''), v_cust, 'Client') || ' accepted quote ' || COALESCE(v_num, '') || ' online.');
+  RETURN true;
+END $function$;
 DROP FUNCTION IF EXISTS public.process_due_invoice_sends();
 DROP FUNCTION IF EXISTS public.invoice_send_now(uuid);
 DROP FUNCTION IF EXISTS public.invoice_send_hold(uuid, text);

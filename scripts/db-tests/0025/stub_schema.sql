@@ -42,3 +42,25 @@ CREATE TRIGGER trg_invoices_sent_email AFTER UPDATE ON public.invoices FOR EACH 
   WHEN (OLD.status = 'draft' AND NEW.status = 'sent') EXECUTE FUNCTION public.notify_document_sent();
 GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT SELECT, UPDATE ON public.invoices TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.qa_notify_rep_and_admins(p_quote_id uuid, p_type text, p_title text, p_body text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE q public.quotes%ROWTYPE;
+BEGIN
+  SELECT * INTO q FROM public.quotes WHERE id = p_quote_id;
+  IF q.id IS NULL THEN RETURN; END IF;
+  INSERT INTO public.notifications (user_id, type, title, body, related_id, metadata)
+  SELECT DISTINCT u, p_type, p_title, p_body, q.id,
+         jsonb_build_object('quote_id', q.id, 'link', '/admin/estimates/' || q.id::text)
+  FROM (
+    SELECT q.sales_engineer_id AS u WHERE q.sales_engineer_id IS NOT NULL
+    UNION
+    SELECT ur.user_id FROM public.user_roles ur JOIN public.profiles p ON p.id = ur.user_id
+     WHERE ur.role = 'admin' AND p.company_id = q.company_id
+  ) t WHERE u IS NOT NULL;
+END $function$
+;
