@@ -135,6 +135,8 @@ const CSS = `
  .bd .parties{flex-direction:column}.bd .items .c-code{display:none}.bd .items th,.bd .items td{padding:6px 4px}
  .bd .notes,.bd .notes.wide{grid-template-columns:1fr}.bd .foot .terms{margin:0 14px}.bd .phead{padding:10px 14px 0}.bd .tot{min-width:0;width:100%}.bd .sig{flex-wrap:wrap;padding:10px 14px}.bd .sunits{display:none}
  .bd .hco{font-size:11px;line-height:1.35}
+ .bd .hco-lines.co-closed{display:none}
+ .bd .hco-tgl{display:inline-block;margin-top:5px;font-size:10.5px;font-weight:700;color:inherit;background:none;border:0;padding:0;text-decoration:underline;cursor:pointer}
  /* Stacked quote lines on phones (Johan 16 Oct 09:34): name + line total, then qty x rate; no squeezed 4-col table. */
  .bd .items,.bd .items tbody{display:block;width:100%}.bd .items thead{display:none}
  .bd .items tr{display:block}.bd .items td{border:0}
@@ -152,6 +154,7 @@ const CSS = `
  .bd.bd-client .hl{flex-direction:row!important;align-items:center!important;gap:8px!important}
  .bd.bd-client .logo{height:34px!important}
  .bd.bd-client .hco>div{display:none}.bd.bd-client .hco b{font-size:12px}
+ .bd.bd-client .hco-tgl{display:none!important}
  .bd.bd-client .ttl{text-align:right!important;margin-left:auto}.bd.bd-client .ttl h1{font-size:15px!important;margin:0}.bd.bd-client .ttl .no{font-size:11px}
 }
 .bd details.tdet{margin-top:16px;border:1px solid var(--line);border-radius:10px;padding:10px 14px}
