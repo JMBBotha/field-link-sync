@@ -153,8 +153,9 @@ const AdminEstimateDetailPage = () => {
       navigate(`/admin/invoices?highlight=${invoiceId}`);
     } catch (e: any) {
       toast({ title: e.message || "Conversion failed", variant: "destructive" });
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
   };
 
   if (isLoading) {

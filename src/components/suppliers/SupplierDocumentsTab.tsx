@@ -342,7 +342,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
    * even though it doesn't import any products; see
    * docs/pricing-and-import-architecture-findings.md. */
   const processUpload = useCallback(async (file: File, brandIn: string, category: string) => {
-    const brand = normalizeBrand(brandIn);
+    // "No brand" is only a display label for legacy books with brand NULL — map it back so replace targets them.
+    const brand = String(brandIn ?? "").trim().toLowerCase() === "no brand" ? null : normalizeBrand(brandIn);
     setProcessingPriceList(true);
     setPriceListProgress("Removing old pages...");
 
