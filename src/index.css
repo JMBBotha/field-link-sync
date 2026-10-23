@@ -325,7 +325,7 @@ All colors MUST be HSL.
      wide tables/strips keep their own overflow-x-auto box. */
   @media (max-width: 767px) {
     [data-scroll-root] {
-      overflow-x: hidden;
+      overflow-x: hidden !important;
       overscroll-behavior-x: none;
     }
   }
