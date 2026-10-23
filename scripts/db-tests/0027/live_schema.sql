@@ -1427,6 +1427,7 @@ ALTER TABLE public.notifications ADD CONSTRAINT notifications_pkey PRIMARY KEY (
 ALTER TABLE public.communication_log ADD CONSTRAINT communication_log_pkey PRIMARY KEY (id);
 ALTER TABLE public.job_schedules ADD CONSTRAINT job_schedules_pkey PRIMARY KEY (id);
 ALTER TABLE public.audit_log ADD CONSTRAINT audit_log_pkey PRIMARY KEY (id);
+ALTER TABLE public.audit_log ADD CONSTRAINT audit_log_action_check CHECK ((action = ANY (ARRAY['insert'::text, 'update'::text, 'delete'::text])));
 ALTER TABLE public.quote_documents ADD CONSTRAINT quote_documents_pkey PRIMARY KEY (id);
 ALTER TABLE public.quote_documents ADD CONSTRAINT quote_documents_storage_path_key UNIQUE (storage_path);
 ALTER TABLE public.job_used_parts ADD CONSTRAINT job_used_parts_pkey PRIMARY KEY (id);

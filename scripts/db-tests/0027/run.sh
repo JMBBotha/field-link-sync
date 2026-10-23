@@ -15,7 +15,7 @@ cols() { $P "$DB" -Atc "select count(*) from information_schema.columns where ta
 BEFORE=$(fp)
 echo "== apply 0027 (twice, idempotent)"
 $Q "$DB" -f $REPO/drizzle/migrations/0027_quote_delete_archive.sql >/dev/null
-$Q "$DB" -f $REPO/drizzle/migrations/0027_quote_delete_archive.sql >/dev/null
+$Q "$DB" -f $REPO/drizzle/migrations/0028_quote_archive_audit_fix.sql >/dev/null
 [ "$(fp)" != "$BEFORE" ] || { echo "FAIL: crons not patched"; exit 1; }
 $Q "$DB" -f fixtures.sql >/dev/null
 echo "== tests"
@@ -29,4 +29,4 @@ N=$($P "$DB" -Atc "select count(*) from pg_proc where proname in ('quote_delete'
 [ "$N" = "0" ] && echo "PASS: rollback drops RPCs" || { echo "FAIL: rpcs left"; exit 1; }
 $P "$DB" -Atc "select public.process_quote_followups(); select public.process_sales_escalations(); select public.quotes_followup_due_count()" >/dev/null && echo "PASS: crons run after rollback"
 echo "== re-apply after rollback"
-$Q "$DB" -f $REPO/drizzle/migrations/0027_quote_delete_archive.sql >/dev/null && echo "PASS: 0027 re-applies cleanly after rollback"
+$Q "$DB" -f $REPO/drizzle/migrations/0027_quote_delete_archive.sql >/dev/null && $Q "$DB" -f $REPO/drizzle/migrations/0028_quote_archive_audit_fix.sql >/dev/null && echo "PASS: 0027+0028 re-apply cleanly after rollback"
