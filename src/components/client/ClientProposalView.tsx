@@ -83,6 +83,7 @@ const tidyName = (value?: string | null) => (value || "").replace(/\s+/g, " ").t
 
 const ClientProposalView = () => {
   const { token } = useParams<{ token: string }>();
+  const sitePhotos = useQuoteSitePhotos({ token });
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<QuoteData | null>(null);
