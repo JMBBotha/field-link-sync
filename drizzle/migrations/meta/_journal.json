@@ -162,6 +162,13 @@
       "when": 1792754580579,
       "tag": "0022_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792754705456,
+      "tag": "0023_sync_client_contact_to_invoices",
+      "breakpoints": true
     }
   ]
 }
