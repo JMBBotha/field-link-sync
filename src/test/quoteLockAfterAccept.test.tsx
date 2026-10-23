@@ -149,3 +149,12 @@ describe("wiring (source checks)", () => {
     expect(r).toContain("DROP TRIGGER IF EXISTS trg_customers_billing_guard");
   });
 });
+
+describe("CreateInvoicePage surfaces a blocked client VAT update", () => {
+  it("checks the error from the customers VAT update and toasts it", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync("src/components/invoicing/CreateInvoicePage.tsx", "utf8");
+    expect(src).toMatch(/const \{ error: vatErr \} = await supabase\.from\("customers"\)\.update\(\{ vat_number: vat \}/);
+    expect(src).toContain("Client VAT number not updated");
+  });
+});
