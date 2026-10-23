@@ -313,6 +313,13 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  /* Phones: never let wide content drag the whole page sideways (clip keeps sticky headers working). */
+  html, body {
+    max-width: 100%;
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
