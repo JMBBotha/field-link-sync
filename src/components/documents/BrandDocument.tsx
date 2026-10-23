@@ -1,5 +1,5 @@
 import { withEoe } from "@/lib/eoeClause";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import logoLight from "@/assets/brand/logo-light.png";
 import logoWhite from "@/assets/brand/logo-white.png";
 import units from "@/assets/brand/units.png";
@@ -81,6 +81,7 @@ const CSS = `
 .bd .logo{height:110px;width:auto;display:block;object-fit:contain}
 .bd .hco{font-size:10.5px;line-height:1.5;color:var(--b1);border-left:2px solid var(--b2);padding-left:16px}
 .bd .hco b{font-size:13px}
+.bd .hco-tgl{display:none}
 .bd .ttl{text-align:right;flex-shrink:0}
 .bd h1{margin:0;font-weight:800;letter-spacing:.06em;color:var(--b1);font-size:27px;line-height:1.1}
 .bd .no{font-weight:600;margin-top:6px;color:var(--or)}
@@ -134,6 +135,8 @@ const CSS = `
  .bd .parties{flex-direction:column}.bd .items .c-code{display:none}.bd .items th,.bd .items td{padding:6px 4px}
  .bd .notes,.bd .notes.wide{grid-template-columns:1fr}.bd .foot .terms{margin:0 14px}.bd .phead{padding:10px 14px 0}.bd .tot{min-width:0;width:100%}.bd .sig{flex-wrap:wrap;padding:10px 14px}.bd .sunits{display:none}
  .bd .hco{font-size:11px;line-height:1.35}
+ .bd .hco-lines.co-closed{display:none}
+ .bd .hco-tgl{display:inline-block;margin-top:5px;font-size:10.5px;font-weight:700;color:inherit;background:none;border:0;padding:0;text-decoration:underline;cursor:pointer}
  /* Stacked quote lines on phones (Johan 16 Oct 09:34): name + line total, then qty x rate; no squeezed 4-col table. */
  .bd .items,.bd .items tbody{display:block;width:100%}.bd .items thead{display:none}
  .bd .items tr{display:block}.bd .items td{border:0}
@@ -151,6 +154,7 @@ const CSS = `
  .bd.bd-client .hl{flex-direction:row!important;align-items:center!important;gap:8px!important}
  .bd.bd-client .logo{height:34px!important}
  .bd.bd-client .hco>div{display:none}.bd.bd-client .hco b{font-size:12px}
+ .bd.bd-client .hco-tgl{display:none!important}
  .bd.bd-client .ttl{text-align:right!important;margin-left:auto}.bd.bd-client .ttl h1{font-size:15px!important;margin:0}.bd.bd-client .ttl .no{font-size:11px}
 }
 .bd details.tdet{margin-top:16px;border:1px solid var(--line);border-radius:10px;padding:10px 14px}
@@ -185,6 +189,10 @@ export default function BrandDocument(p: BrandDocumentProps) {
   const logo = massair && style === "bold" ? logoWhite : recordLogo || (massair ? (style === "bold" ? logoWhite : logoLight) : null);
   const addr = id.addressLines.join(", ");
   const hasCode = p.sections.some((s) => s.lines.some((l) => l.code));
+  // Phones collapse the company block (Johan 23 Oct): address / tel / WhatsApp / email / web / VAT
+  // fold behind a "Company details" tap. On-screen only — the PDF capture root is 820px wide, so the
+  // capture always prints the full block no matter what the toggle is doing.
+  const [coOpen, setCoOpen] = useState(false);
   return (
     <div data-pdf-capture-root={p.captureRoot} data-doc-style={style} data-testid="brand-document" className={`bd ${style}${p.collapseTerms ? " bd-client" : ""} pdf-page mx-auto w-full ${p.className || ""}`}>
       <style>{CSS}</style>
@@ -209,12 +217,15 @@ export default function BrandDocument(p: BrandDocumentProps) {
             {logo && <img className="logo" src={logo} alt={`${id.legalName} logo`} />}
             <div className="hco" data-testid="company-block" data-company-source={id.fromRecord ? "record" : "fallback"}>
               <b>{id.legalName}</b>
-              {id.addressLines.map((l) => <div key={l}>{l}</div>)}
-              {id.tel && <div>Tel {id.tel}</div>}
-              {id.whatsapp && <div>WhatsApp {id.whatsapp}</div>}
-              {id.email && <div>{id.email}</div>}
-              {id.web && <div>{id.web}</div>}
-              {id.vatNo && <div>VAT {id.vatNo}</div>}
+              <div className={"hco-lines" + (coOpen ? "" : " co-closed")}>
+                {id.addressLines.map((l) => <div key={l}>{l}</div>)}
+                {id.tel && <div>Tel {id.tel}</div>}
+                {id.whatsapp && <div>WhatsApp {id.whatsapp}</div>}
+                {id.email && <div>{id.email}</div>}
+                {id.web && <div>{id.web}</div>}
+                {id.vatNo && <div>VAT {id.vatNo}</div>}
+              </div>
+              <button type="button" className="hco-tgl" data-testid="company-details-toggle" onClick={() => setCoOpen((v) => !v)}>{coOpen ? "Hide company details ▴" : "Company details ▾"}</button>
             </div>
           </div>
           <div className="ttl"><h1>{p.title}</h1><div className="no">{p.number}</div></div>
