@@ -26,8 +26,9 @@ import { useOfflineContext } from "@/contexts/OfflineContext";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { planText, type EnRoutePlan } from "@/lib/jobWatch";
+import { RunProgressBar } from "@/components/scheduling/RunProgress";
 import {
-  addJobDay, autoHours, dayAction, dayLabel, DAY_STATE_TEXT, doneForTodayError, hoursNeedNote, hoursText, loadJobDays, runDayOp,
+  LONG_RUN_FOLD, visibleDayWindow, addJobDay, autoHours, dayAction, dayLabel, DAY_STATE_TEXT, doneForTodayError, hoursNeedNote, hoursText, loadJobDays, runDayOp,
   type DayOp, type DayOpArgs, type JobDay, type JobDays,
 } from "@/lib/jobDays";
 
@@ -118,6 +119,13 @@ export function JobDaysView({ data, today, busy, offline, enRouteHint, onEnRoute
   const todayDay = data.days.find((x) => x.date === today);
   const showEnRoute = !!todayDay && !todayDay.en_route_at && !todayDay.checked_in_at && !todayDay.checked_out_at && !["completed", "cancelled"].includes(data.status);
   const closed = ["completed", "cancelled"].includes(data.status);
+  // Long runs (weeks to months): progress bar + a window around today; the rest folds into summary rows.
+  const [showAll, setShowAll] = useState(false);
+  const long = data.days.length > LONG_RUN_FOLD;
+  const win = long && !showAll ? visibleDayWindow(data.days, today) : { from: 0, to: data.days.length };
+  const before = data.days.slice(0, win.from);
+  const after = data.days.slice(win.to);
+  const doneBefore = before.filter((d) => d.state === "done" || !!d.checked_out_at).length;
   return (
     <Card data-testid="job-days-panel">
       <CardContent className="space-y-3 p-4">
@@ -129,8 +137,16 @@ export function JobDaysView({ data, today, busy, offline, enRouteHint, onEnRoute
           <p className="flex items-center gap-2 rounded-lg bg-amber-50 p-2 text-sm text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
             <WifiOff className="h-4 w-4" />Offline: your taps are saved with the time and sync later.</p>
         )}
-        <ol className="divide-y rounded-lg border" data-testid="job-days-list">
-          {data.days.map((d) => (
+        {data.day_count > 1 && <RunProgressBar data={data} today={today} />}
+        {before.length > 0 && (
+          <button type="button" onClick={() => setShowAll(true)} data-testid="job-days-before"
+            className="w-full rounded-lg border border-dashed px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted">
+            Day 1–{before[before.length - 1].day_index} · {doneBefore} of {before.length} done
+            {before.length - doneBefore > 0 ? ` · ${before.length - doneBefore} not done` : ""}
+          </button>
+        )}
+        <ol className="divide-y rounded-lg border" data-testid="job-days-list" start={data.days[win.from]?.day_index}>
+          {data.days.slice(win.from, win.to).map((d) => (
             <li key={d.schedule_id} className={cn("flex items-center gap-3 px-3 py-2.5", d.date === today && "bg-primary/5")}>
               <span className="w-12 shrink-0 text-sm font-bold tabular-nums">Day {d.day_index}</span>
               <span className="min-w-0 flex-1 text-sm">
@@ -145,6 +161,18 @@ export function JobDaysView({ data, today, busy, offline, enRouteHint, onEnRoute
             </li>
           ))}
         </ol>
+        {after.length > 0 && (
+          <button type="button" onClick={() => setShowAll(true)} data-testid="job-days-after"
+            className="w-full rounded-lg border border-dashed px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted">
+            Day {after[0].day_index}–{after[after.length - 1].day_index} · {after.length} more days to {dayLabel(after[after.length - 1].date)}
+          </button>
+        )}
+        {long && (
+          <button type="button" className="text-sm font-medium text-primary underline-offset-2 hover:underline" data-testid="job-days-toggle"
+            onClick={() => setShowAll((v) => !v)}>
+            {showAll ? "Show fewer days" : `Show all ${data.days.length} days`}
+          </button>
+        )}
 
         {showEnRoute && onEnRoute && (
           <div className="space-y-1">

@@ -32,6 +32,7 @@ import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useToast } from "@/hooks/use-toast";
 import { JobDetailSkeleton } from "@/components/ui/skeletons";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
+import JobRunCard from "@/components/scheduling/JobRunCard";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { attachPaymentTotals } from "@/lib/depositInvoice";
 import { jobStatusPatch, formatJohannesburg } from "@/lib/jobTimes";
@@ -279,8 +280,8 @@ const AdminJobDetailPage = () => {
           </CardContent>
         </Card>
 
-
-
+        {/* Multi-day run progress (Day N of M, % done, expected end) */}
+        <JobRunCard jobId={j.id} />
 
         {/* Linked invoice */}
         {invoice?.id && (
