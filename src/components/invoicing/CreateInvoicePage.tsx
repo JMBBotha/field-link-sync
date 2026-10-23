@@ -612,7 +612,16 @@ const CreateInvoicePage = ({
 
       // Client record keeps its VAT number (shown under Billed To next time)
       if (selectedCustomerId && vat) {
-        await supabase.from("customers").update({ vat_number: vat } as any).eq("id", selectedCustomerId);
+        // Not fatal: the invoice already carries the VAT number. Since 0029 only an admin can change a client's
+        // VAT once they have accepted work, so tell the user instead of failing silently.
+        const { error: vatErr } = await supabase.from("customers").update({ vat_number: vat } as any).eq("id", selectedCustomerId);
+        if (vatErr) {
+          toast({
+            title: "Client VAT number not updated",
+            description: `This invoice shows ${vat}, but the client record kept its old VAT number. ${vatErr.message}`,
+            variant: "destructive",
+          });
+        }
       }
 
       if (status !== "draft") {
