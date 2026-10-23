@@ -1,5 +1,5 @@
 import { withEoe } from "@/lib/eoeClause";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import logoLight from "@/assets/brand/logo-light.png";
 import logoWhite from "@/assets/brand/logo-white.png";
 import units from "@/assets/brand/units.png";
@@ -81,6 +81,7 @@ const CSS = `
 .bd .logo{height:110px;width:auto;display:block;object-fit:contain}
 .bd .hco{font-size:10.5px;line-height:1.5;color:var(--b1);border-left:2px solid var(--b2);padding-left:16px}
 .bd .hco b{font-size:13px}
+.bd .hco-tgl{display:none}
 .bd .ttl{text-align:right;flex-shrink:0}
 .bd h1{margin:0;font-weight:800;letter-spacing:.06em;color:var(--b1);font-size:27px;line-height:1.1}
 .bd .no{font-weight:600;margin-top:6px;color:var(--or)}
@@ -185,6 +186,10 @@ export default function BrandDocument(p: BrandDocumentProps) {
   const logo = massair && style === "bold" ? logoWhite : recordLogo || (massair ? (style === "bold" ? logoWhite : logoLight) : null);
   const addr = id.addressLines.join(", ");
   const hasCode = p.sections.some((s) => s.lines.some((l) => l.code));
+  // Phones collapse the company block (Johan 23 Oct): address / tel / WhatsApp / email / web / VAT
+  // fold behind a "Company details" tap. On-screen only — the PDF capture root is 820px wide, so the
+  // capture always prints the full block no matter what the toggle is doing.
+  const [coOpen, setCoOpen] = useState(false);
   return (
     <div data-pdf-capture-root={p.captureRoot} data-doc-style={style} data-testid="brand-document" className={`bd ${style}${p.collapseTerms ? " bd-client" : ""} pdf-page mx-auto w-full ${p.className || ""}`}>
       <style>{CSS}</style>
@@ -209,12 +214,15 @@ export default function BrandDocument(p: BrandDocumentProps) {
             {logo && <img className="logo" src={logo} alt={`${id.legalName} logo`} />}
             <div className="hco" data-testid="company-block" data-company-source={id.fromRecord ? "record" : "fallback"}>
               <b>{id.legalName}</b>
-              {id.addressLines.map((l) => <div key={l}>{l}</div>)}
-              {id.tel && <div>Tel {id.tel}</div>}
-              {id.whatsapp && <div>WhatsApp {id.whatsapp}</div>}
-              {id.email && <div>{id.email}</div>}
-              {id.web && <div>{id.web}</div>}
-              {id.vatNo && <div>VAT {id.vatNo}</div>}
+              <div className={"hco-lines" + (coOpen ? "" : " co-closed")}>
+                {id.addressLines.map((l) => <div key={l}>{l}</div>)}
+                {id.tel && <div>Tel {id.tel}</div>}
+                {id.whatsapp && <div>WhatsApp {id.whatsapp}</div>}
+                {id.email && <div>{id.email}</div>}
+                {id.web && <div>{id.web}</div>}
+                {id.vatNo && <div>VAT {id.vatNo}</div>}
+              </div>
+              <button type="button" className="hco-tgl" data-testid="company-details-toggle" onClick={() => setCoOpen((v) => !v)}>{coOpen ? "Hide company details ▴" : "Company details ▾"}</button>
             </div>
           </div>
           <div className="ttl"><h1>{p.title}</h1><div className="no">{p.number}</div></div>
