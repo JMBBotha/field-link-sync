@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, ImagePlus, Loader2, PenLine, Trash2, X, Eye, EyeOff } from "lucide-react";
-import { unitLineModelKey } from "@/lib/unitCards";
+import { loadLeadMockupUnits } from "@/lib/unitMockups";
+import UnitMockupUploads from "./UnitMockupUploads";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -140,6 +141,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
           </Button>
         </div>
       )}
+      {!readOnly && canManage && mockupUnits.length > 0 && <UnitMockupUploads leadId={leadId} units={mockupUnits} />}
       {list.length === 0 ? (
         <p className="text-xs text-muted-foreground">No site photos yet. Photos stay internal unless you switch on "Client sees this".</p>
       ) : (
