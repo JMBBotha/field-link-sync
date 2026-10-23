@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, CheckCircle2, MapPin, Navigation, Package, Phone, Play } from "lucide-react";
 import FieldShell from "@/components/field/FieldShell";
+import EnRouteButton from "@/components/field/EnRouteButton";
 import { SitePhotosReadOnly } from "@/components/photos/SitePhotosSection";
 import { useToast } from "@/hooks/use-toast";
 import SiteCheckCard, { siteCheckBlock, useSiteCheck } from "@/components/field/SiteCheckCard";
@@ -88,6 +89,10 @@ export default function FieldJobSheetPage() {
               <p className="flex items-center gap-2 text-sm"><CalendarDays className="h-4 w-4" />
                 {new Date(j.scheduled_for).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</p>
             )}
+            {["scheduled", "dispatched"].includes(j.status) && (
+              <EnRouteButton jobId={id} status={j.status} className="py-1"
+                onDone={() => { toast({ title: "Marked en route", description: "The office can see you're on the way." }); job.refetch(); }} />
+            )}
             {siteAddress && (
               <a className="flex items-center gap-2 text-sm underline" href={`https://maps.google.com/?q=${encodeURIComponent(siteAddress)}`} target="_blank" rel="noreferrer">
                 <MapPin className="h-4 w-4" />{siteAddress}</a>
@@ -109,7 +114,7 @@ export default function FieldJobSheetPage() {
             {["scheduled", "dispatched", "in_progress"].includes(j.status) && (
               <div className="flex gap-2 pt-2">
                 {j.status !== "in_progress" && (
-                  <Button className="h-11 flex-1 gap-1.5" disabled={busy || !!blocked} onClick={() => setStatus("in_progress")}>
+                  <Button className="h-11 flex-1 gap-1.5" variant={j.status === "scheduled" ? "outline" : "default"} disabled={busy || !!blocked} onClick={() => setStatus("in_progress")}>
                     <Play className="h-4 w-4" /> Start job
                   </Button>
                 )}

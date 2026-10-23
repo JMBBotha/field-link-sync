@@ -17,7 +17,7 @@ import DepositPaymentChip, { type DepositChipState } from "@/components/shared/D
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
-/** Accept → On my way → Started → Done, driven by assignment + job status (the job watchdog reads the same fields). */
+/** Accept → En route → Started → Done, driven by assignment + job status (the job watchdog reads the same fields). */
 export function jobStepIndex(assignmentStatus: string, jobStatus?: string | null): number {
   if (assignmentStatus === "completed" || jobStatus === "completed") return 4;
   if (assignmentStatus === "in_progress" || jobStatus === "in_progress") return 3;
@@ -28,7 +28,7 @@ export function jobStepIndex(assignmentStatus: string, jobStatus?: string | null
 
 function JobSteps({ assignmentStatus, jobStatus }: { assignmentStatus: string; jobStatus?: string | null }) {
   const done = jobStepIndex(assignmentStatus, jobStatus);
-  const steps = ["Accepted", "On my way", "Started", "Done"];
+  const steps = ["Accepted", "En route", "Started", "Done"];
   return (
     <ol className="grid grid-cols-4 gap-1" aria-label="Job progress" data-testid="job-steps">
       {steps.map((s, i) => (
@@ -319,16 +319,17 @@ const AdminMyJobsPage = () => {
                         {assignment.status === "accepted" && job.status === "scheduled" && (
                           <div className="grid grid-cols-2 gap-2">
                             <Button
-                              className="h-11 gap-1.5"
+                              className="h-12 gap-1.5 bg-orange-700 text-base font-extrabold text-white shadow-md ring-2 ring-orange-300 hover:bg-orange-800 dark:ring-orange-500/40"
                               disabled={anyPendingForThis}
                               onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "accepted", jobStatus: "dispatched" })}
+                              data-testid="my-jobs-en-route"
                             >
-                              {isPendingFor("accepted") ? <Spinner /> : <Navigation className="h-4 w-4" />}
-                              {isPendingFor("accepted") ? "Saving…" : "On my way"}
+                              {isPendingFor("accepted") ? <Spinner /> : <Navigation className="h-5 w-5" />}
+                              {isPendingFor("accepted") ? "Saving…" : "En route"}
                             </Button>
                             <Button
                               variant="outline"
-                              className="h-11 gap-1.5"
+                              className="h-12 gap-1.5"
                               disabled={anyPendingForThis}
                               onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "in_progress", jobStatus: "in_progress" })}
                             >
