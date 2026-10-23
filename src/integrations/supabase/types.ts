@@ -4731,6 +4731,7 @@ export type Database = {
           resolved_by: string | null
           rule: string
           severity: string
+          work_date: string | null
         }
         Insert: {
           company_id: string
@@ -4744,6 +4745,7 @@ export type Database = {
           resolved_by?: string | null
           rule: string
           severity?: string
+          work_date?: string | null
         }
         Update: {
           company_id?: string
@@ -4757,6 +4759,7 @@ export type Database = {
           resolved_by?: string | null
           rule?: string
           severity?: string
+          work_date?: string | null
         }
         Relationships: [
           {
@@ -4770,6 +4773,7 @@ export type Database = {
       }
       job_completions: {
         Row: {
+          after_photo_count: number | null
           company_id: string | null
           completed_at: string
           created_at: string
@@ -4784,11 +4788,15 @@ export type Database = {
           signature_data_url: string | null
           signed_at: string | null
           status: string
+          tech_signature_data_url: string | null
+          tech_signoff_at: string | null
+          tech_signoff_name: string | null
           technician_id: string
           updated_at: string
           work_summary: string | null
         }
         Insert: {
+          after_photo_count?: number | null
           company_id?: string | null
           completed_at?: string
           created_at?: string
@@ -4803,11 +4811,15 @@ export type Database = {
           signature_data_url?: string | null
           signed_at?: string | null
           status?: string
+          tech_signature_data_url?: string | null
+          tech_signoff_at?: string | null
+          tech_signoff_name?: string | null
           technician_id: string
           updated_at?: string
           work_summary?: string | null
         }
         Update: {
+          after_photo_count?: number | null
           company_id?: string | null
           completed_at?: string
           created_at?: string
@@ -4822,6 +4834,9 @@ export type Database = {
           signature_data_url?: string | null
           signed_at?: string | null
           status?: string
+          tech_signature_data_url?: string | null
+          tech_signoff_at?: string | null
+          tech_signoff_name?: string | null
           technician_id?: string
           updated_at?: string
           work_summary?: string | null
@@ -5012,10 +5027,27 @@ export type Database = {
         }
         Relationships: []
       }
+      job_rule_rollouts: {
+        Row: {
+          effective_at: string
+          rule: string
+        }
+        Insert: {
+          effective_at?: string
+          rule: string
+        }
+        Update: {
+          effective_at?: string
+          rule?: string
+        }
+        Relationships: []
+      }
       job_schedules: {
         Row: {
           agent_id: string | null
           created_at: string
+          day_count: number | null
+          day_index: number | null
           end_time: string
           id: string
           job_id: string | null
@@ -5031,6 +5063,8 @@ export type Database = {
         Insert: {
           agent_id?: string | null
           created_at?: string
+          day_count?: number | null
+          day_index?: number | null
           end_time: string
           id?: string
           job_id?: string | null
@@ -5046,6 +5080,8 @@ export type Database = {
         Update: {
           agent_id?: string | null
           created_at?: string
+          day_count?: number | null
+          day_index?: number | null
           end_time?: string
           id?: string
           job_id?: string | null
@@ -5162,41 +5198,86 @@ export type Database = {
       }
       job_time_entries: {
         Row: {
+          after_photo_count: number | null
           agent_id: string
+          checked_in_at: string | null
+          checked_out_at: string | null
+          client_name: string | null
+          client_signature_data_url: string | null
           created_at: string
+          en_route_at: string | null
           end_time: string
+          hours_auto: number | null
+          hours_edit_note: string | null
           hours_onsite: number | null
+          hours_worked: number | null
           id: string
           is_billable: boolean
+          job_id: string | null
           lead_id: string
           notes: string | null
+          schedule_id: string | null
+          signed_off_at: string | null
+          signed_off_by: string | null
+          signed_off_name: string | null
           start_time: string
+          tech_signature_data_url: string | null
           travel_hours: number
           work_date: string
         }
         Insert: {
+          after_photo_count?: number | null
           agent_id: string
+          checked_in_at?: string | null
+          checked_out_at?: string | null
+          client_name?: string | null
+          client_signature_data_url?: string | null
           created_at?: string
+          en_route_at?: string | null
           end_time: string
+          hours_auto?: number | null
+          hours_edit_note?: string | null
           hours_onsite?: number | null
+          hours_worked?: number | null
           id?: string
           is_billable?: boolean
+          job_id?: string | null
           lead_id: string
           notes?: string | null
+          schedule_id?: string | null
+          signed_off_at?: string | null
+          signed_off_by?: string | null
+          signed_off_name?: string | null
           start_time: string
+          tech_signature_data_url?: string | null
           travel_hours?: number
           work_date?: string
         }
         Update: {
+          after_photo_count?: number | null
           agent_id?: string
+          checked_in_at?: string | null
+          checked_out_at?: string | null
+          client_name?: string | null
+          client_signature_data_url?: string | null
           created_at?: string
+          en_route_at?: string | null
           end_time?: string
+          hours_auto?: number | null
+          hours_edit_note?: string | null
           hours_onsite?: number | null
+          hours_worked?: number | null
           id?: string
           is_billable?: boolean
+          job_id?: string | null
           lead_id?: string
           notes?: string | null
+          schedule_id?: string | null
+          signed_off_at?: string | null
+          signed_off_by?: string | null
+          signed_off_name?: string | null
           start_time?: string
+          tech_signature_data_url?: string | null
           travel_hours?: number
           work_date?: string
         }
@@ -5392,6 +5473,7 @@ export type Database = {
           created_by: string | null
           customer_id: string | null
           description: string | null
+          en_route_at: string | null
           estimated_duration: string | null
           id: string
           invoice_id: string | null
@@ -5403,6 +5485,7 @@ export type Database = {
           priority: string | null
           quote_id: string | null
           scheduled_for: string | null
+          scheduled_until: string | null
           site_check_status: string | null
           started_at: string | null
           status: string | null
@@ -5419,6 +5502,7 @@ export type Database = {
           created_by?: string | null
           customer_id?: string | null
           description?: string | null
+          en_route_at?: string | null
           estimated_duration?: string | null
           id?: string
           invoice_id?: string | null
@@ -5430,6 +5514,7 @@ export type Database = {
           priority?: string | null
           quote_id?: string | null
           scheduled_for?: string | null
+          scheduled_until?: string | null
           site_check_status?: string | null
           started_at?: string | null
           status?: string | null
@@ -5446,6 +5531,7 @@ export type Database = {
           created_by?: string | null
           customer_id?: string | null
           description?: string | null
+          en_route_at?: string | null
           estimated_duration?: string | null
           id?: string
           invoice_id?: string | null
@@ -5457,6 +5543,7 @@ export type Database = {
           priority?: string | null
           quote_id?: string | null
           scheduled_for?: string | null
+          scheduled_until?: string | null
           site_check_status?: string | null
           started_at?: string | null
           status?: string | null
@@ -8153,6 +8240,44 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_holidays: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          holiday_date: string
+          id: string
+          kind: string
+          name: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          holiday_date: string
+          id?: string
+          kind?: string
+          name: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          holiday_date?: string
+          id?: string
+          kind?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_holidays_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -13729,6 +13854,14 @@ export type Database = {
           }
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string }
+      draft_client_job_message: {
+        Args: {
+          p_alert_id?: string
+          p_channel: string
+          p_job_id: string
+        }
+        Returns: Json
+      }
       duplicate_invoice: { Args: { p_invoice: string }; Returns: string }
       duplicate_quote: {
         Args: { p_customer_id?: string; p_quote_id: string }
@@ -14422,9 +14555,12 @@ export type Database = {
       hand_to_technician: {
         Args: {
           p_date: string
+          p_days?: number
+          p_force?: boolean
           p_minutes: number
           p_mode: string
           p_quote_id: string
+          p_reason?: string
           p_start: string
           p_tech_id?: string
         }
@@ -14508,6 +14644,34 @@ export type Database = {
           p_reason?: string
         }
         Returns: string
+      }
+      job_add_day: {
+        Args: {
+          p_force?: boolean
+          p_job_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      job_day_en_route_plan: {
+        Args: {
+          p_date: string
+          p_job_id: string
+        }
+        Returns: Json
+      }
+      job_day_states: {
+        Args: {
+          p_from: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      job_days: {
+        Args: {
+          p_job_id: string
+        }
+        Returns: Json
       }
       job_profit: {
         Args: { p_company: string; p_from: string; p_to: string }
@@ -14769,6 +14933,16 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      preview_job_days: {
+        Args: {
+          p_days?: number
+          p_end_date?: string
+          p_job_id?: string
+          p_start_date: string
+          p_tech_id: string
+        }
+        Returns: Json
+      }
       process_install_offers: { Args: never; Returns: number }
       process_invoice_followups: { Args: never; Returns: number }
       process_quote_followups: { Args: never; Returns: undefined }
@@ -15014,6 +15188,19 @@ export type Database = {
       schedule_in_user_company: {
         Args: { _job: string; _lead: string; _uid: string }
         Returns: boolean
+      }
+      schedule_job_days: {
+        Args: {
+          p_days?: number
+          p_dry_run?: boolean
+          p_end_date?: string
+          p_force?: boolean
+          p_job_id: string
+          p_reason?: string
+          p_start_date: string
+          p_tech_id: string
+        }
+        Returns: Json
       }
       search_customers: {
         Args: { max_results?: number; search_term: string }
@@ -15869,6 +16056,34 @@ export type Database = {
       tech_can_see_lead: {
         Args: { _lead: string; _uid: string }
         Returns: boolean
+      }
+      tech_check_in: {
+        Args: {
+          p_at?: string
+          p_job_id: string
+        }
+        Returns: Json
+      }
+      tech_day_en_route: {
+        Args: {
+          p_at?: string
+          p_job_id: string
+        }
+        Returns: Json
+      }
+      tech_done_for_today: {
+        Args: {
+          p_at?: string
+          p_client_name?: string
+          p_client_signature?: string
+          p_edit_note?: string
+          p_hours?: number
+          p_job_id: string
+          p_notes?: string
+          p_signoff_name?: string
+          p_tech_signature?: string
+        }
+        Returns: Json
       }
       tech_offers: { Args: { p_profile?: string }; Returns: Json }
       tech_owns_lead: {
