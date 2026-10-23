@@ -543,7 +543,7 @@ const AdminCustomerDetailPage = () => {
                           {reviewInv === inv.id && dueBy.get(inv.id) && <TableRow key={inv.id + "-review"}><TableCell colSpan={6}><FollowupReview row={dueBy.get(inv.id)!} onDone={() => setReviewInv(null)} />{isAdmin && !isSalesRep && <InvoiceTermsOverride invoice={inv} />}</TableCell></TableRow>}
                           </Fragment>
                         ))}
-                        {fInvoices.length === 0 && <EmptyRow cols={6} text="No invoices yet." />}
+                        {fInvTableRows.length === 0 && <EmptyRow cols={6} text={showArchivedInv ? "No archived invoices." : "No invoices yet."} />}
                       </TableBody>
                     </Table>
                   </div>
