@@ -1,24 +1,22 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Phone } from "lucide-react";
+import { AlertTriangle, MessageSquare, Phone } from "lucide-react";
 import { toast } from "sonner";
+import TellClientDialog from "@/components/jobs/TellClientDialog";
+import { TELL_CLIENT_RULES, WATCH_RULE_LABEL } from "@/lib/jobWatch";
 
 type Alert = { id: string; job_id: string; profile_id: string | null; rule: string; severity: string; message: string; created_at: string };
 
-export const RULE_LABEL: Record<string, string> = {
-  not_accepted: "Not accepted",
-  not_accepted_urgent: "Not accepted · starts soon",
-  no_en_route: "No “on my way”",
-  not_started: "Not started",
-  not_finished: "Not marked done",
-};
+export const RULE_LABEL: Record<string, string> = WATCH_RULE_LABEL;
 
 /** Open job-watchdog alerts (office only via RLS). Each stays until the job moves on or someone dismisses it. */
 export default function JobWatchdogPanel({ className }: { className?: string }) {
   const navigate = useNavigate();
+  const [tell, setTell] = useState<{ jobId: string; alertId: string; title?: string } | null>(null);
   const { data = [], refetch } = useQuery({
     queryKey: ["job-alerts"],
     refetchInterval: 60_000,
@@ -50,24 +48,31 @@ export default function JobWatchdogPanel({ className }: { className?: string }) 
   return (
     <section data-testid="job-watchdog" className={cn("rounded-xl border border-destructive/40 bg-destructive/5 p-2", className)}>
       <h3 className="flex items-center gap-1.5 px-1 text-xs font-bold tracking-wide text-destructive">
-        <AlertTriangle className="h-3.5 w-3.5" /> JOBS NOT MOVING ({data.length})
+        <AlertTriangle className="h-3.5 w-3.5" /> JOBS AT RISK OR LATE ({data.length})
       </h3>
       <ul className="mt-1 divide-y divide-border">
         {data.map((a) => (
-          <li key={a.id} className="flex flex-wrap items-center gap-2 py-1.5">
+          <li key={a.id} className="flex flex-wrap items-center gap-2 py-1.5" data-testid={`job-alert-${a.rule}`}>
             <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold",
-              a.severity === "critical" ? "bg-destructive text-destructive-foreground" : "bg-warning/20 text-warning-foreground")}>
+              a.severity === "critical" ? "bg-destructive text-destructive-foreground"
+                : a.rule === "no_en_route" ? "bg-amber-200 text-amber-950 dark:bg-amber-500/25 dark:text-amber-200"
+                : "bg-warning/20 text-warning-foreground")}>
               {RULE_LABEL[a.rule] ?? a.rule}
             </span>
             <span className="min-w-0 flex-1 text-xs">{a.message}</span>
             <div className="flex gap-1">
-              {a.phone && <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs"><a href={`tel:${a.phone}`}><Phone className="mr-1 h-3 w-3" />Call</a></Button>}
+              {TELL_CLIENT_RULES.has(a.rule) && (
+                <Button size="sm" className="h-7 px-2 text-xs" onClick={() => setTell({ jobId: a.job_id, alertId: a.id, title: a.message.match(/"([^"]+)"/)?.[1] })} data-testid="tell-client-open">
+                  <MessageSquare className="mr-1 h-3 w-3" />Tell client</Button>
+              )}
+              {a.phone && <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs"><a href={`tel:${a.phone}`}><Phone className="mr-1 h-3 w-3" />Call tech</a></Button>}
               <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => navigate(`/admin/jobs/${a.job_id}`)}>Open</Button>
               <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => dismiss(a.id)}>Dismiss</Button>
             </div>
           </li>
         ))}
       </ul>
+      {tell && <TellClientDialog open onOpenChange={(v) => !v && setTell(null)} jobId={tell.jobId} alertId={tell.alertId} title={tell.title} />}
     </section>
   );
 }
