@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import AttentionChips from "@/components/jobs/AttentionChips";
 import JobWatchdogPanel from "@/components/jobs/JobWatchdogPanel";
+import InvoiceApprovalPanel from "@/components/invoicing/InvoiceApprovalPanel";
 import { leadClock } from "@/lib/leadClock";
 import { isTestLead } from "@/lib/callSummary";
 import { useLeadSla, useNow } from "@/hooks/useLeadSla";
@@ -60,6 +61,7 @@ export default function AttentionStrip({ className }: { className?: string }) {
   return (
     <>
       <AttentionChips chips={chips} className={className} data-testid="attention-strip" />
+      <InvoiceApprovalPanel className={className} />
       <JobWatchdogPanel className={className} />
     </>
   );

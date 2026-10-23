@@ -176,6 +176,13 @@
       "when": 1792768621358,
       "tag": "0024_stop_auto_send_on_accept",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792768982515,
+      "tag": "0025_accept_invoice_approval",
+      "breakpoints": true
     }
   ]
 }

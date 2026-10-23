@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import CallRecordingPlayer from "@/components/calls/CallRecordingPlayer";
+import InvoiceApprovalActions from "@/components/invoicing/InvoiceApprovalActions";
+import { ACCEPT_ALERT_TYPE, SEND_BLOCKED_TYPE } from "@/lib/invoiceSendApproval";
 import { canMarkRead, getFollowUpIds, markFollowUpDone, requiresFollowUp } from "./notificationFollowUp";
 
 interface Notification {
@@ -16,6 +18,7 @@ interface Notification {
   read: boolean;
   related_id: string | null;
   created_at: string;
+  metadata?: Record<string, any> | null;
 }
 
 interface NotificationsListProps {
@@ -36,6 +39,8 @@ const typeIcons: Record<string, typeof Bell> = {
   assignment_accepted: Briefcase,
   assignment_started: Briefcase,
   invoice_paid: CreditCard,
+  [ACCEPT_ALERT_TYPE]: CreditCard,
+  [SEND_BLOCKED_TYPE]: CreditCard,
   invoice_ready: CreditCard,
   deposit_paid: CreditCard,
   quote_status_change: FileText,
@@ -65,6 +70,7 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 const categoryOf = (type: string): FilterKey => {
   const t = (type || "").toLowerCase();
   if (CHANGE_REQUEST_TYPES.has(t) || t === "whatsapp_customer_message") return "leads";
+  if (t === ACCEPT_ALERT_TYPE || t === SEND_BLOCKED_TYPE) return "invoices";
   if (t.includes("call")) return "calls";
   if (t.includes("quote") || t.includes("estimate") || t.includes("proposal")) return "quotes";
   if (t.includes("invoice") || t.includes("payment")) return "invoices";
@@ -91,6 +97,8 @@ export const notificationHref = (type: string, relatedId?: string | null, isTech
   }
   if (t === "unit_content_draft") return "/admin/unit-content";
   if (t === "special_ending") return relatedId ? `/admin/specials?edit=${relatedId}` : "/admin/specials";
+  // Accepted-quote alerts carry the INVOICE id in related_id
+  if (t === ACCEPT_ALERT_TYPE || t === SEND_BLOCKED_TYPE) return relatedId ? `/admin/invoices/${relatedId}` : "/admin/invoices";
   if (t === "deposit_paid") return relatedId ? `/admin/estimates/${relatedId}` : "/admin/quotes";
   if (LEAD_ID_TYPES.has(t) || t.startsWith("lead_") || t.includes("sla")) return relatedId ? `/admin/dispatch?lead=${relatedId}` : "/admin/dispatch";
   if ((type || "").startsWith("network_")) return "/admin/team?tab=applications";
@@ -299,6 +307,11 @@ const NotificationsList = ({
                               <span className="ml-2 text-amber-600 dark:text-amber-500">Needs follow-up</span>
                             )}
                           </p>
+                          {notification.type === ACCEPT_ALERT_TYPE && !notification.read && (notification.metadata?.invoice_id || notification.related_id) && (
+                            <InvoiceApprovalActions className="mt-2 flex flex-wrap gap-1"
+                              invoiceId={notification.metadata?.invoice_id || notification.related_id!}
+                              onDone={() => { markFollowUpDone(notification.id); setFollowUps((prev) => new Set(prev).add(notification.id)); onMarkAsRead(notification.id); }} />
+                          )}
                           {notification.type === "call_logged" && (
                             <div className="mt-2 space-y-1" onClick={(e) => e.stopPropagation()}>
                               <CallRecordingPlayer callId={notification.related_id} />

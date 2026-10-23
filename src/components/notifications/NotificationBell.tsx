@@ -10,6 +10,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { ACCEPT_ALERT_TYPE, resultMessage, sendInvoiceNow } from "@/lib/invoiceSendApproval";
 import NotificationsList, { notificationHref } from "./NotificationsList";
 import { markFollowUpDone } from "./notificationFollowUp";
 import { useRole } from "@/hooks/useRole";
@@ -74,6 +75,29 @@ const NotificationBell = () => {
         (payload) => {
           const n = payload.new as Notification;
           setNotifications((prev) => [n, ...prev].slice(0, 20));
+          // Quote accepted: tell the rep/admin straight away and offer to send the deposit invoice now
+          if (n.type === ACCEPT_ALERT_TYPE) {
+            const invoiceId = (n as any).metadata?.invoice_id || n.related_id;
+            const markRead = () => {
+              markFollowUpDone(n.id);
+              supabase.from("notifications").update({ read: true }).eq("id", n.id).then(() =>
+                setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))
+              );
+            };
+            toast.success(n.title, {
+              description: n.body ?? undefined,
+              duration: 30000,
+              action: invoiceId ? {
+                label: "Send invoice now",
+                onClick: async () => {
+                  markRead();
+                  try { const m = resultMessage(await sendInvoiceNow(invoiceId)); (m.ok ? toast.success : toast.error)(m.text); }
+                  catch (e: any) { toast.error(e?.message || "Could not send the invoice"); }
+                },
+              } : undefined,
+              cancel: { label: "Review", onClick: () => { markRead(); navRef.current(notificationHref(n.type, n.related_id)); } },
+            });
+          }
           // Lead SLA alerts (check_lead_sla cron) also pop a toast; Open marks read + opens the lead
           if ((n.type || "").startsWith("lead_sla")) {
             toast.warning(n.title, {

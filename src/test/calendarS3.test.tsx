@@ -16,6 +16,7 @@ vi.mock("@/hooks/useDoubleBookings", () => ({ useDoubleBookings: () => ({ count:
 vi.mock("@/hooks/useLeadSla", () => ({ useNow: () => new Date(), useLeadSla: () => ({ sla: { contactMinutes: 15 } }) }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { leads: [], lateJobs: 0, paidNoJob: 0 } }) }));
 vi.mock("@/components/leads/CallSummary", () => ({ default: () => null }));
+vi.mock("@/components/invoicing/InvoiceApprovalPanel", () => ({ default: () => null }));
 
 const lead: CalendarLead = { id: "lead", customer_name: "Client", customer_address: "Milnerton, Cape Town", service_type: "Sales visit", status: "pending", priority: "normal", assigned_agent_id: null, scheduled_date: "2026-10-08", scheduled_time: "14:00:00", primary_intent: "sales" };
 const schedule: CalendarSchedule = { id: "schedule", lead_id: "lead", job_id: "job", agent_id: "me", scheduled_date: "2026-10-08", start_time: "14:00:00", end_time: "18:00:00", notes: null, leads: lead };
