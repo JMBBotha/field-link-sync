@@ -22,6 +22,9 @@ export interface InstallOffer {
   minutes: number | null;
   distance_km: number | null;
   respond_by: string;
+  /** Phase (b): whole working days in the run, and its last day. */
+  days?: number | null;
+  until?: string | null;
 }
 
 /** Salespeople can only offer (never name a technician); office can pick or offer. */
@@ -48,7 +51,10 @@ export const countdown = (respondBy: string, now: number = Date.now()): string =
 export const offerSummary = (o: InstallOffer): string => {
   const d = new Date(`${o.date}T00:00:00`);
   const day = d.toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" });
-  return [o.suburb, `${day} ${o.start}`, durationLabel(o.minutes), o.distance_km != null ? `${o.distance_km} km away` : null]
+  const short = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" });
+  const multi = (o.days ?? 1) > 1;
+  const when = multi ? `${o.days} days · ${day}${o.until ? ` – ${short(o.until)}` : ""} · from ${o.start}` : `${day} ${o.start}`;
+  return [o.suburb, when, multi ? null : durationLabel(o.minutes), o.distance_km != null ? `${o.distance_km} km away` : null]
     .filter(Boolean)
     .join(" · ");
 };

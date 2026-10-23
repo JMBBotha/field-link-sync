@@ -14,7 +14,7 @@ export async function withOfflineCache<T>(key: string, fn: () => Promise<T>): Pr
   }
 }
 
-export const JOB_SHEET_SELECT = "id, lead_id, title, description, address, scheduled_for, status, job_type, site_check_status, customers(name, phone, address), leads(customer_address)";
+export const JOB_SHEET_SELECT = "id, lead_id, title, description, address, scheduled_for, started_at, status, job_type, site_check_status, customers(name, phone, address), leads(customer_address)";
 
 export const loadJobSheet = (id: string) => withOfflineCache(`job.${id}`, async () => {
   const { data, error } = await supabase.from("jobs").select(JOB_SHEET_SELECT).eq("id", id).maybeSingle();

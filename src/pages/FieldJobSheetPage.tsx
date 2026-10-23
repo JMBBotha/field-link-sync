@@ -18,6 +18,9 @@ import { loadJobSheet, loadPackingList } from "@/lib/jobPack";
 import { siteCheckHints } from "@/lib/siteSurvey/pack";
 import SurveyPackSection, { FrontPhoto, useSurveyPack } from "@/components/survey/SurveyPackSection";
 import { packQtyText, groupPackingList, loadTicks, saveTicks, type PackingRow } from "@/lib/packingList";
+import JobDaysPanel, { useJobDays } from "@/components/field/JobDaysPanel";
+import JobCompletionSheet from "@/components/jobs/JobCompletionSheet";
+import { lastOpenCheckIn, type JobDays } from "@/lib/jobDays";
 
 export default function FieldJobSheetPage() {
   const { id = "" } = useParams();
@@ -58,7 +61,12 @@ export default function FieldJobSheetPage() {
   const pack = useSurveyPack(j?.lead_id ?? null);
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
+  // Phase (b): multi-day runs use the day panel; every tech completion goes through after-photos + sign-off.
+  const days = useJobDays(id);
+  const multiDay = !!days.data?.multi_day;
+  const [finish, setFinish] = useState<{ open: boolean; days?: JobDays | null }>({ open: false });
   const setStatus = async (status: "in_progress" | "completed") => {
+    if (status === "completed" && j?.lead_id) { setFinish({ open: true, days: null }); return; }
     if (status === "completed" && !window.confirm("Mark this job as completed?")) return;
     setBusy(true);
     const { error } = await (supabase.rpc as any)("tech_set_job_status", { p_job_id: id, p_status: status });
@@ -89,7 +97,7 @@ export default function FieldJobSheetPage() {
               <p className="flex items-center gap-2 text-sm"><CalendarDays className="h-4 w-4" />
                 {new Date(j.scheduled_for).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</p>
             )}
-            {["scheduled", "dispatched"].includes(j.status) && (
+            {!multiDay && ["scheduled", "dispatched"].includes(j.status) && (
               <EnRouteButton jobId={id} status={j.status} className="py-1"
                 onDone={() => { toast({ title: "Marked en route", description: "The office can see you're on the way." }); job.refetch(); }} />
             )}
@@ -111,7 +119,7 @@ export default function FieldJobSheetPage() {
             {blocked && ["scheduled", "dispatched", "in_progress"].includes(j.status) && (
               <p className="rounded-lg bg-amber-50 dark:bg-amber-500/15 p-2 text-sm font-semibold text-amber-800 dark:text-amber-300" data-testid="job-locked-reason">{blocked}</p>
             )}
-            {["scheduled", "dispatched", "in_progress"].includes(j.status) && (
+            {!multiDay && ["scheduled", "dispatched", "in_progress"].includes(j.status) && (
               <div className="flex gap-2 pt-2">
                 {j.status !== "in_progress" && (
                   <Button className="h-11 flex-1 gap-1.5" variant={j.status === "scheduled" ? "outline" : "default"} disabled={busy || !!blocked} onClick={() => setStatus("in_progress")}>
@@ -125,6 +133,18 @@ export default function FieldJobSheetPage() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {j && multiDay && (
+        <JobDaysPanel jobId={id} leadId={j.lead_id ?? null} onChanged={() => job.refetch()}
+          onCompleteJob={(d) => (j.lead_id ? setFinish({ open: true, days: d }) : toast({ title: "Ask the office to close this job", description: "It has no client record to sign off." }))} />
+      )}
+      {j?.lead_id && (
+        <JobCompletionSheet open={finish.open} onOpenChange={(v) => setFinish((f) => ({ ...f, open: v }))}
+          leadId={j.lead_id} jobId={id} customerName={j.customers?.name ?? null} startedAt={(j as any).started_at ?? null}
+          dayCount={finish.days?.day_count ?? null} dayLabourHours={finish.days?.labour_hours ?? null}
+          afterSince={lastOpenCheckIn(finish.days)}
+          onCompleted={() => { void job.refetch(); void days.refetch(); }} />
       )}
 
       {j && site.data && !["completed", "cancelled"].includes(j.status) && (

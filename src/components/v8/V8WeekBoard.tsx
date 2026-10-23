@@ -1,11 +1,14 @@
 import { format, isToday, getDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { v8OutsideHours, v8WinMinutes, v8FillTone, type Win } from "@/lib/v8Hours";
+import { dayBadge, hoursText, type BoardDayState } from "@/lib/jobDays";
 import "./v8.css";
 
 /** v8 Schedule (New layout): pipeline-style day columns. Pure view: every drop goes back to the page's existing handlers. */
 export type V8Sched = { id: string; lead_id: string; job_id?: string | null; agent_id: string | null; scheduled_date: string; start_time: string; end_time: string;
-  leads?: { customer_name: string; service_type: string; status: string; customer_address?: string } | null; jobs?: { status?: string | null } | null };
+  leads?: { customer_name: string; service_type: string; status: string; customer_address?: string } | null; jobs?: { status?: string | null } | null;
+  /** Phase (b): day N of M of a multi-day run. */
+  day_index?: number | null; day_count?: number | null };
 export type V8Kind = "sales" | "callout" | "install" | "other";
 export const V8_KIND: Record<V8Kind, { label: string; cls: string }> = {
   sales: { label: "Sales visit", cls: "k-sales" }, callout: { label: "Call-out R680", cls: "k-call" }, install: { label: "Install", cls: "k-inst" }, other: { label: "Service", cls: "k-other" },
@@ -28,7 +31,10 @@ interface Props {
   onDropDay: (e: React.DragEvent, date: string) => void; onDropZone: (e: React.DragEvent, zone: "unscheduled" | "sunday" | "resched" | "cancel") => void;
   unscheduled: number; onTray: () => void; sundayLabel: string;
   role: V8CalRole; setRole: (r: V8CalRole) => void; salesIds: Set<string>; techIds: Set<string>;
+  /** Phase (b): per-day check-in state by schedule row id, and SA holidays / closures by date. */
+  dayStates?: Map<string, BoardDayState>; holidays?: Map<string, string>; draggingRun?: boolean;
 }
+const DAY_CHIP: Record<string, string> = { done: "Day done", on_site: "On site", en_route: "En route" };
 export type V8CalRole = "all" | "sales" | "tech";
 
 export default function V8WeekBoard(p: Props) {
@@ -72,14 +78,16 @@ export default function V8WeekBoard(p: Props) {
           const cap = inView.reduce((t, a) => t + v8WinMinutes(p.winFor(a.id, key)), 0);
           const pct = cap ? Math.round((booked / cap) * 100) : booked ? 101 : 0;
           const tone = v8FillTone(pct);
+          const hol = p.holidays?.get(key) ?? null;
           return (
             <section key={key} {...over(key)} onDrop={(e) => { p.setDragOver(null); p.onDropDay(e, key); }} data-v8-day={key}
-              className={cn("v8-daycol snap-start", isToday(d) && "today", !cap && "offday", p.dragOver === key && "is-over", p.month && "month")}>
+              className={cn("v8-daycol snap-start", isToday(d) && "today", (!cap || hol) && "offday", hol && "holiday", p.dragOver === key && "is-over", p.month && "month")}>
               <header className="px-2.5 pt-2">
                 <div className="flex items-baseline justify-between gap-1">
                   <span><span className="block text-xs opacity-60">{format(d, "EEE")}</span><span className="text-lg font-extrabold leading-none">{format(d, "d")}</span></span>
                   <span className="text-xs opacity-70 tabular-nums">{list.length} · {Math.round(booked / 6) / 10}h{cap ? ` / ${Math.round(cap / 60)}h` : " · off"}{pct > 100 ? ` · ${pct}%` : ""}</span>
                 </div>
+                {hol && <div className="v8-hol truncate text-xs font-semibold" data-testid="v8-holiday" title={hol}>{hol}</div>}
                 <div className="v8-fill"><i style={{ width: `${Math.min(100, pct)}%` }} className={tone || undefined} /></div>
               </header>
               <div className="flex flex-col gap-1.5 p-1.5">
@@ -87,16 +95,21 @@ export default function V8WeekBoard(p: Props) {
                   const k = v8KindOf(s, p.laneOf(s));
                   const late = !!s.agent_id && v8OutsideHours(p.winFor(s.agent_id, key), s.start_time, s.end_time);
                   const lateTag = late ? (p.salesIds.has(s.agent_id!) && !p.techIds.has(s.agent_id!) ? "After hours" : "Overtime") : null;
+                  const dTag = dayBadge(s.day_index, s.day_count);
+                  const ds = p.dayStates?.get(s.id);
+                  const dsText = ds && ds.state !== "none" ? (ds.state === "done" ? `✓ ${hoursText(ds.hours)}` : DAY_CHIP[ds.state]) : null;
                   return (
                     <div key={s.id} draggable onDragStart={(e) => p.onCardDragStart(e, s)} onDragEnd={p.onDragEnd} onClick={() => p.onOpen(s)}
                       className={cn("v8-ccard", V8_KIND[k].cls, late && "late")} title={`${s.leads?.customer_name || ""} · ${name(s.agent_id)}`}>
-                      <div className="flex items-center justify-between text-xs font-bold tabular-nums">{s.start_time.slice(0, 5)}{lateTag && <span className="v8-late">{lateTag}</span>}</div>
+                      <div className="flex items-center justify-between gap-1 text-xs font-bold tabular-nums">{s.start_time.slice(0, 5)}
+                        <span className="flex gap-1">{dTag && <span className="v8-day" data-testid="v8-day-badge">{dTag}</span>}{lateTag && <span className="v8-late">{lateTag}</span>}</span></div>
                       <div className="truncate text-xs font-bold">{s.leads?.customer_name || "Booking"}</div>
                       {!p.month && <div className="truncate text-xs opacity-70">{s.leads?.customer_address || s.leads?.service_type} · {Math.round(v8Dur(s) / 60 * 10) / 10} h</div>}
+                      {dsText && <div className={cn("v8-dstate", ds!.state)} data-testid="v8-day-state">{dsText}</div>}
                       {!p.month && <div className="mt-1 flex items-center justify-between"><span className="v8-tag">{V8_KIND[k].label}</span><span className="v8-av2">{s.agent_id ? initials(name(s.agent_id)) : "—"}</span></div>}
                     </div>);
                 })}
-                {p.dragOver === key && <div className="v8-ghost">Drop: move here (same time)</div>}
+                {p.dragOver === key && <div className="v8-ghost">{p.draggingRun ? "Drop: move the whole run from here" : "Drop: move here (same time)"}</div>}
               </div>
             </section>);
         })}
