@@ -392,7 +392,7 @@ const AdminCustomerDetailPage = () => {
   // profile card is never blank when an address is actually on file.
   const fullAddress = structuredAddress || (customer.address || "").trim();
 
-  const main: [string, string, number?][] = [["activity", "Activity"], ["quotes", "Quotes", quotes.length], ["invoices", "Invoices & Payments", invoices.length], ["jobs", "Jobs", jobs.length], ["sites", "Sites", locations.length]];
+  const main: [string, string, number?][] = [["activity", "Activity"], ["quotes", "Quotes", quotes.length], ["invoices", "Invoices & Payments", activeInvRows.length], ["jobs", "Jobs", jobs.length], ["sites", "Sites", locations.length]];
   const more: [string, string][] = [["details", "Client details"], ["contacts", "Contacts"], ["contracts", "Contracts"], ["notes", "Notes"], ...(canSeeStatement ? [["statement", "Statement"] as [string, string]] : []), ["calls", "Calls"], ["photos", "Photos"], ["documents", "Documents"], ["history", "History"], ["credits", "Credits"], ["oldsites", `${sitesLabel((customer as any).client_type)} (old list)`], ["relationship", "Relationship"]];
   const moreLabel = more.find(([v]) => v === innerTab)?.[1];
   const phone = (customer as any).phone as string | null; const email = (customer as any).email as string | null;
@@ -510,6 +510,13 @@ const AdminCustomerDetailPage = () => {
               { label: "Draft", value: String(invoiceSummary.draft), tone: "slate" },
             ]}
           />
+                  {archivedInvRows.length > 0 && (
+                    <div className="px-2 md:px-4 mt-2">
+                      <Button size="sm" variant={showArchivedInv ? "default" : "outline"} onClick={() => setShowArchivedInv((v) => !v)}>
+                        Archived <span className="ml-1 opacity-70">{archivedInvRows.length}</span>
+                      </Button>
+                    </div>
+                  )}
                   <div className="max-h-[560px] overflow-auto px-2 md:px-4 pb-6">
                     <Table>
                       <TableHeader>
@@ -523,7 +530,7 @@ const AdminCustomerDetailPage = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {fInvoices.map((inv: any) => (
+                        {fInvTableRows.map((inv: any) => (
                           <Fragment key={inv.id}>
                           <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/invoices/${inv.id}`)}>
                             <TableCell className="font-medium">{inv.invoice_number || "—"}</TableCell>
@@ -531,7 +538,7 @@ const AdminCustomerDetailPage = () => {
                             <TableCell className="text-xs">{inv.issue_date ? format(new Date(inv.issue_date), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-xs">{inv.due_date ? format(new Date(inv.due_date), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-right font-medium">{formatRand(Number(inv.grand_total || 0))}</TableCell>
-                            <TableCell><div className="flex flex-wrap items-center gap-1"><Badge variant="outline" className={cn("text-xs", statusBadge(inv.status))}>{inv.status || "draft"}</Badge>{dueBy.get(inv.id) && <InvoiceDueChip row={dueBy.get(inv.id)!} onClick={() => setReviewInv(reviewInv === inv.id ? null : inv.id)} />}</div></TableCell>
+                            <TableCell><div className="flex flex-wrap items-center gap-1"><Badge variant="outline" className={cn("text-xs", statusBadge(inv.status))}>{inv.status || "draft"}</Badge>{dueBy.get(inv.id) && <InvoiceDueChip row={dueBy.get(inv.id)!} onClick={() => setReviewInv(reviewInv === inv.id ? null : inv.id)} />}{(isAdmin || isDispatcher) && !isSalesRep && ["void", "cancelled"].includes((inv.status || "").toLowerCase()) && <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={(e) => { e.stopPropagation(); archiveInvoice(inv, !inv.archived_at); }}>{inv.archived_at ? "Restore" : "Archive"}</Button>}</div></TableCell>
                           </TableRow>
                           {reviewInv === inv.id && dueBy.get(inv.id) && <TableRow key={inv.id + "-review"}><TableCell colSpan={6}><FollowupReview row={dueBy.get(inv.id)!} onDone={() => setReviewInv(null)} />{isAdmin && !isSalesRep && <InvoiceTermsOverride invoice={inv} />}</TableCell></TableRow>}
                           </Fragment>
