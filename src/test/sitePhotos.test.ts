@@ -50,3 +50,15 @@ describe("site photos: assigned staff can upload and delete", () => {
     expect(s).toContain("!readOnly && canManage");
   });
 });
+
+describe("client-visible photos and unit mockups", () => {
+  it("keeps a unit mockup shape and drops one without a real URL", () => {
+    const u = { t: "unit", c: "#ef4444", at: { x: 0.5, y: 0.5 }, w: 0.3, url: "https://x/y.png", label: "Midea 12K" } as AnnShape;
+    expect(parseAnnotation(serializeAnnotation([u]))).toEqual([u]);
+    expect(parseAnnotation({ v: 1, shapes: [{ ...u, url: "javascript:1" }] })).toEqual([]);
+  });
+  it("client link only returns photos switched to client_visible", () => {
+    const fn = readFileSync("supabase/functions/quote-site-photos/index.ts", "utf8");
+    expect(fn).toContain('.eq("client_visible", true)');
+  });
+});
