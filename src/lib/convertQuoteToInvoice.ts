@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { assertQuotePriced } from "@/lib/quoteSend";
 
 export interface FlatQuoteLineItem {
   description: string;
@@ -122,6 +123,10 @@ export async function convertQuoteToInvoice(quoteId: string, agentUserId: string
     if (!balanceId) throw new Error("Nothing left to invoice on this quote.");
     return balanceId as string;
   }
+
+  // Every caller (quotes list, estimate page, send dialog) must stop on an unpriced line instead of
+  // silently dropping it and freezing a stale total on the invoice.
+  await assertQuotePriced(quoteId);
 
   // Invoices never show R0 lines (headings / included items); totals come from the quote either way.
   const lineItems = (await buildQuoteLineItems(quoteId, quote.visual_sections)).filter((l) => Number(l.amount) !== 0 || Number(l.rate) !== 0);
