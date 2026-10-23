@@ -96,7 +96,7 @@ const AdminHomePage = () => {
           <div className={isClassic ? "absolute inset-0 bg-background/40 pointer-events-none" : "absolute inset-0 bg-background/60 pointer-events-none"} aria-hidden="true" />
 
           {/* Dashboard content floating over the map */}
-          <div className={isClassic ? "relative h-full overflow-y-auto p-3 pb-20 md:p-4 md:pb-20 lg:pb-4 space-y-3" : "relative h-full overflow-y-auto p-3 pb-20 md:p-4 md:pb-20 lg:pb-4 space-y-3"}>
+          <div className="relative h-full overflow-y-auto overflow-x-hidden p-3 pb-20 md:p-4 md:pb-20 lg:pb-4 space-y-3">
             {/* Same-spot view switch on both layouts (Johan 13 Oct: no way back from Classic). */}
             <div className="flex justify-end">
               <Button size="sm" variant="outline" onClick={toggleLayout} data-testid="dashboard-layout-switch" className="gap-1.5 text-xs h-8 bg-card/90 backdrop-blur-sm shadow-sm">

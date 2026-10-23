@@ -38,8 +38,8 @@ export default function SalesHeartbeat() {
         {hb.flatline && <div role="alert" className="mb-3 rounded-lg bg-[#C62828] px-3 py-2 text-[13px] font-semibold">No sales actions while {hb.items.length} items wait. Pick up the next step below.</div>}
         <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-8 lg:overflow-visible">{hb.stages.map((s) => <StageTile key={s.key} s={s} items={hb.items} onClick={() => navigate(["new", "contacted", "visit"].includes(s.key) ? "/admin/dispatch" : "/admin/jobs?tab=pipeline")} />)}</div>
       </section>
-      <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
-        <section className="rounded-2xl border-2 border-border bg-card p-4">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
+        <section className="min-w-0 rounded-2xl border-2 border-border bg-card p-4">
           <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Next step now</h3>
           {hb.next ? (<>
             <div className="mt-1 text-[20px] font-semibold">{hb.next.title}</div>
@@ -48,7 +48,7 @@ export default function SalesHeartbeat() {
           </>) : <div className="mt-1 text-[16px]">All caught up. Nothing waiting on sales.</div>}
           {hb.then.length > 0 && <><h3 className="mt-5 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Then</h3>{hb.then.map((i) => <Row key={i.id} i={i} onClick={() => navigate(i.next.to)} />)}</>}
         </section>
-        <section className="rounded-2xl border bg-card p-4">
+        <section className="min-w-0 rounded-2xl border bg-card p-4">
           <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Stalled · escalated</h3>
           {hb.stalled.length === 0 ? <div className="mt-2 text-[13px] text-muted-foreground">Nothing stalled.</div> : hb.stalled.map((i) => {
             const e = escFor(i.id);

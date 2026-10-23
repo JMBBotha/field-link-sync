@@ -243,7 +243,7 @@ const AdminCatalogPage = () => {
       <BrandDiscountsSection />
 
       <Tabs value={tab} onValueChange={onTab}>
-        <TabsList>
+        <TabsList className="max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="browse" className="gap-1.5">
             <Search className="h-3.5 w-3.5" /> Browse
           </TabsTrigger>

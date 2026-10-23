@@ -321,9 +321,10 @@ const AdminLayout = () => {
               // min-h-full so long content grows this box and main's bottom padding
               // (bottom nav + safe area) lands BELOW the last item instead of under it.
               className={isMapHeroPage ? "h-full" : "min-h-full"}
-              initial={{ opacity: 0, x: 16 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -16 }}
+              // Fade only (Johan 23 Oct): a sideways slide made every page jump left/right on phones.
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
             >
               <ContractGate><Outlet /></ContractGate>
