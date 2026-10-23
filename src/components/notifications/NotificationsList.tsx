@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { Bell, CheckCheck, FileText, Briefcase, CreditCard, MessageSquare, ChevronRight, Check, Lock, Phone, UserPlus } from "lucide-react";
+import { Bell, CheckCheck, FileText, Briefcase, CreditCard, MessageSquare, ChevronRight, Check, Lock, Phone, UserPlus, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -87,6 +87,13 @@ const scrollToHash = (id: string, tries = 15) => {
   if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   else if (tries > 0) setTimeout(() => scrollToHash(id, tries - 1), 200);
 };
+
+/** 0026: the single accept alert carries the old "hand to technician" link (visit, or estimate when no visit). */
+export function handoverLinkOf(n: { type: string; metadata?: any }): string | null {
+  if (n.type !== ACCEPT_ALERT_TYPE) return null;
+  const l = n.metadata?.handover_link;
+  return typeof l === "string" && /^\/admin\/(visits|estimates)\/[\w-]+$/.test(l) ? l : null;
+}
 
 export const notificationHref = (type: string, relatedId?: string | null, isTech = false): string => {
   const t = (type || "").toLowerCase();
@@ -311,6 +318,13 @@ const NotificationsList = ({
                             <InvoiceApprovalActions className="mt-2 flex flex-wrap gap-1"
                               invoiceId={notification.metadata?.invoice_id || notification.related_id!}
                               onDone={() => { markFollowUpDone(notification.id); setFollowUps((prev) => new Set(prev).add(notification.id)); onMarkAsRead(notification.id); }} />
+                          )}
+                          {handoverLinkOf(notification) && (
+                            <button type="button" data-testid="hand-to-technician"
+                              className="mt-1 inline-flex items-center text-xs font-medium text-primary hover:underline"
+                              onClick={(e) => { e.stopPropagation(); onClose?.(); navigate(handoverLinkOf(notification)!); }}>
+                              <Wrench className="mr-1 h-3 w-3" />Hand to technician
+                            </button>
                           )}
                           {notification.type === "call_logged" && (
                             <div className="mt-2 space-y-1" onClick={(e) => e.stopPropagation()}>
