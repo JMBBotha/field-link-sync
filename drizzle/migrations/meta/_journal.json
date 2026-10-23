@@ -134,6 +134,27 @@
       "when": 1792748703685,
       "tag": "0018_invoice_email_logo_fallback",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792753922017,
+      "tag": "0019_auto_send_deposit_invoice_on_accept",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792753938229,
+      "tag": "0020_auto_send_deposit_invoice_fix",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792753992500,
+      "tag": "0021_invoice_archived_at",
+      "breakpoints": true
     }
   ]
 }
