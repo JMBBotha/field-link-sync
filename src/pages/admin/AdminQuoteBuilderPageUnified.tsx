@@ -16,6 +16,8 @@ import { canMergeRepick, freshProduct, standardSell } from "@/lib/priceGuard";
 import { useState, useEffect, useMemo, useRef, useCallback, useSyncExternalStore, type MutableRefObject } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import QuoteAcceptedLock from "@/components/quoting/QuoteAcceptedLock";
+import { useQuoteLock, isQuoteReadOnly } from "@/hooks/useQuoteLock";
 import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2, Send, Copy, CalendarClock } from "lucide-react";
 import QuoteClientDialog, { type QuoteClientMode } from "@/components/quoting/QuoteClientDialog";
 import RowMenu from "@/components/shared/RowMenu";
@@ -2033,6 +2035,8 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
   const paramLeadId = searchParams.get("leadId");
   const paramCustomerId = searchParams.get("customerId");
   const [quoteId, setQuoteId] = useState<string | null>(paramQuoteId);
+  // 0029: an accepted (for non-admins) or invoiced quote never opens in the builder: the builder autosaves.
+  const { lock: quoteLock, loading: quoteLockLoading, refresh: refreshQuoteLock } = useQuoteLock(quoteId);
   const [creating, setCreating] = useState(!paramQuoteId);
   // Set when the resolver determines it needs a client from the user before it can insert.
   const [needsClient, setNeedsClient] = useState(false);
@@ -2344,7 +2348,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
     );
   }
 
-  if (creating || !quoteId) {
+  if (creating || !quoteId || quoteLockLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -2353,6 +2357,19 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         </div>
       </div>);
 
+  }
+
+  if (isQuoteReadOnly(quoteLock)) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-3 p-3 pt-6" data-testid="builder-locked">
+        <h1 className="text-base font-bold">Quote {quoteLock?.status === "accepted" ? "accepted" : ""} — builder closed</h1>
+        <QuoteAcceptedLock quoteId={quoteId} lock={quoteLock} onChanged={refreshQuoteLock} />
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => navigate(`/admin/estimates/${quoteId}`)}>Open the estimate</Button>
+          <Button variant="outline" onClick={() => navigate(mode === "agent" ? "/field" : "/admin/quotes")}>Back to quotes</Button>
+        </div>
+      </div>
+    );
   }
 
   return (

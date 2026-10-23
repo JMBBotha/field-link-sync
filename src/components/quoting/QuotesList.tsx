@@ -245,7 +245,8 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const performDelete = async (targets: typeof docs) => {
     setDeleting(true);
     try {
-      const estimateIds = targets.filter((d) => d.kind === "estimate").map((d) => d.id);
+      // Only drafts are ever deleted here (0029: the child clean-up below must never touch an accepted/sent quote).
+      const estimateIds = targets.filter((d) => d.kind === "estimate" && String((d as any).status || "").toLowerCase() === "draft").map((d) => d.id);
       const proposalIds = targets.filter((d) => d.kind === "proposal").map((d) => d.id);
 
       if (estimateIds.length) {

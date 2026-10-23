@@ -30,6 +30,8 @@ import StatusPill from "@/components/shared/StatusPill";
 import RowMenu from "@/components/shared/RowMenu";
 import { useQuoteDeleteArchive, ArchivedQuoteBanner } from "@/components/quoting/QuoteDeleteArchive";
 import { useQuoteStaffActions } from "@/components/quoting/useQuoteStaffActions";
+import QuoteAcceptedLock from "@/components/quoting/QuoteAcceptedLock";
+import { useQuoteLock, isQuoteReadOnly } from "@/hooks/useQuoteLock";
 
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import PaymentPlanPicker from "@/components/quoting/PaymentPlanPicker";
@@ -66,6 +68,10 @@ const AdminEstimateDetailPage = () => {
   const staffActions = useQuoteStaffActions(undefined, checkLabour);
   const deleteArchive = useQuoteDeleteArchive({ onDeleted: () => navigate("/admin/quotes") });
   const pendingWrites = usePendingQuoteWrites();
+  // 0029: accepted = read-only for reps/techs; invoiced = read-only for everyone (server-enforced).
+  const { lock, refresh: refreshLock } = useQuoteLock(id);
+  const readOnly = isQuoteReadOnly(lock);
+  const inertIf = (on: boolean) => ({ inert: on ? "" : undefined } as Record<string, unknown>);
   const [leaving, setLeaving] = useState(false);
   useEffect(() => {
     if (pendingWrites <= 0) return;
@@ -195,9 +201,9 @@ const AdminEstimateDetailPage = () => {
           </span>
         </h1>
         <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="h-8 w-8 print:hidden" aria-label="Ask Mandy (voice quote)" title="Ask Mandy — build with voice" onClick={() => { window.dispatchEvent(new Event("fl-voice-quote-open")); openMandyQuoteMode(); }}>
+        {!readOnly && <Button variant="ghost" size="icon" className="h-8 w-8 print:hidden" aria-label="Ask Mandy (voice quote)" title="Ask Mandy — build with voice" onClick={() => { window.dispatchEvent(new Event("fl-voice-quote-open")); openMandyQuoteMode(); }}>
           <Mic className="h-4 w-4" />
-        </Button>
+        </Button>}
         {(() => {
           const staff = staffActions.itemsFor(quote as any).map((i) => ({ ...i, separatorBefore: false }));
           const admin = deleteArchive.itemsFor(quote as any).map((i) => ({ ...i, separatorBefore: !!i.separatorBefore && staff.some((x) => !x.hidden) }));
@@ -209,16 +215,20 @@ const AdminEstimateDetailPage = () => {
         {deleteArchive.dialogs}
       </div>
 
+      <QuoteAcceptedLock quoteId={quote.id} lock={lock} onChanged={() => { refreshLock(); refreshDocument(); }} />
+
       <ArchivedQuoteBanner quote={quote} onUnarchive={deleteArchive.isAdmin ? () => void deleteArchive.unarchive(quote) : undefined} />
 
       <AcceptedWorkSection quoteId={quote.id} />
 
       {/* One surface: the estimate document IS the editor */}
       <QuoteProvider quoteId={quote.id}>
+        {/* Locked (accepted/invoiced): the document stays visible but can't be touched; the server refuses edits anyway. */}
+        <div {...inertIf(readOnly)} data-quote-readonly={readOnly ? "true" : undefined} className="space-y-3">
         {/* Quote-by-voice: mutates this same live quote via QuoteContext. */}
-        <VoiceQuoteStrip compact vatRate={Number(quote.vat_rate) || 0.15} onChanged={refreshDocument} />
+        {!readOnly && <VoiceQuoteStrip compact vatRate={Number(quote.vat_rate) || 0.15} onChanged={refreshDocument} />}
         {/* Mandy (Grok dock) quote actions — same QuoteContext + PDF handler as the buttons. */}
-        <MandyQuoteActions vatRate={Number(quote.vat_rate) || 0.15} onPdf={handlePdf} onChanged={refreshDocument} />
+        {!readOnly && <MandyQuoteActions vatRate={Number(quote.vat_rate) || 0.15} onPdf={handlePdf} onChanged={refreshDocument} />}
         <EstimateBuilder
           pdfBasket={pdfBasket}
           quoteNumber={quote.quote_number}
@@ -236,8 +246,10 @@ const AdminEstimateDetailPage = () => {
           onChanged={refreshDocument}
           hideClientNote
         />
+        </div>
         {/* Quote settings & notes: moved from the top (Johan 00:08); collapsed by default, all controls unchanged. */}
         <QuoteDocumentsBox quoteId={quote.id} companyId={(quote as any).company_id ?? null} />
+        <div {...inertIf(readOnly)}>
         <QuoteSettingsPanel quoteId={quote.id} status={quote.status} unitCards={quote.show_unit_cards !== false} note={quote.notes}>
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3">
             <span className="text-sm text-muted-foreground">Status</span>
@@ -254,15 +266,16 @@ const AdminEstimateDetailPage = () => {
             <Mic className="h-4 w-4" /> Ask Mandy (type or talk)
           </Button>
         </QuoteSettingsPanel>
+        </div>
       </QuoteProvider>
 
 
       {/* Actions */}
-      <QuoteActionBar busy={docActions.busy} onSave={docActions.handleSave} onPdf={() => void handlePdf()} onSend={docActions.handleSend} onPrint={docActions.handlePrint} className="pt-2" />
+      <QuoteActionBar busy={docActions.busy} onSave={docActions.handleSave} hideSave={readOnly} onPdf={() => void handlePdf()} onSend={docActions.handleSend} onPrint={docActions.handlePrint} className="pt-2" />
       <div className="flex flex-wrap justify-end gap-2 pt-2 print:hidden">
-        <Button variant="outline" onClick={() => navigate(`/admin/quote-builder?quoteId=${quote.id}`)}>
+        {!readOnly && <Button variant="outline" onClick={() => navigate(`/admin/quote-builder?quoteId=${quote.id}`)}>
           <Pencil className="mr-2 h-4 w-4" /> Full builder / Visual PDF
-        </Button>
+        </Button>}
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
