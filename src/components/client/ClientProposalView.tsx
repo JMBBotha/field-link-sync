@@ -1,6 +1,6 @@
 import ClientAdjustQuote from "@/components/client/ClientAdjustQuote";
 import ClientQuoteDocuments from "@/components/client/ClientQuoteDocuments";
-import ClientQuotePhotos from "@/components/client/ClientQuotePhotos";
+import { QuoteSitePhotosBlock, useQuoteSitePhotos } from "@/components/quoting/QuoteSitePhotos";
 import { doneMessage } from "@/lib/doneToast";
 import { useQuoteUnitCards, QuoteUnitCardsView } from "@/components/quoting/QuoteUnitCards";
 import type { CompanyProfile } from "@/lib/companyProfiles";
@@ -83,6 +83,7 @@ const tidyName = (value?: string | null) => (value || "").replace(/\s+/g, " ").t
 
 const ClientProposalView = () => {
   const { token } = useParams<{ token: string }>();
+  const sitePhotos = useQuoteSitePhotos({ token });
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<QuoteData | null>(null);
@@ -379,7 +380,6 @@ const ClientProposalView = () => {
             </CardContent>
           </Card>
         )}
-        {token && <ClientQuotePhotos token={token} />}
         {token && <ClientQuoteDocuments token={token} />}
 
 
@@ -419,7 +419,7 @@ const ClientProposalView = () => {
               </Button>
             </div>
           ) : null}
-          unitCards={<QuoteUnitCardsView cards={unitCards} companyId={(companyProfile as any)?.company_id ?? null} companyName={(companyProfile as any)?.trading_name || (companyProfile as any)?.legal_name || null} variant={(companyProfile as any)?.document_style === "bold" ? "bold" : "light"} />}
+          unitCards={<><QuoteUnitCardsView cards={unitCards} companyId={(companyProfile as any)?.company_id ?? null} companyName={(companyProfile as any)?.trading_name || (companyProfile as any)?.legal_name || null} variant={(companyProfile as any)?.document_style === "bold" ? "bold" : "light"} /><QuoteSitePhotosBlock photos={sitePhotos} /></>}
         />
 
 

@@ -1,3 +1,4 @@
+import { QuoteSitePhotosBlock, useQuoteSitePhotos } from "./QuoteSitePhotos";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +49,7 @@ const tidy = (v?: string | null) => (v || "").replace(/\s+/g, " ").trim();
 export default function LiveClientPreview(props: LiveClientPreviewProps) {
   const snap = useDebounced({ items: props.items, areas: props.areas, drafts: props.drafts, dt: props.discountType, dv: props.discountValue }, 300);
   const { quoteId } = props;
+  const sitePhotos = useQuoteSitePhotos({ quoteId });
 
   const productIds = useMemo(() => [...new Set(snap.items.map((i: any) => i.product_id).filter(Boolean))].sort() as string[], [snap.items]);
   const { data: products = {} } = useQuery({
@@ -178,7 +180,7 @@ export default function LiveClientPreview(props: LiveClientPreviewProps) {
             remoteQuote={!!props.remoteQuote}
             remoteQuoteSource={props.remoteQuoteSource ?? null}
             quoteCreatedAt={props.quoteCreatedAt ?? null}
-            unitCards={<QuoteUnitCardsView cards={unitCards} companyId={props.companyId ?? null} variant={variant} />}
+            unitCards={<><QuoteUnitCardsView cards={unitCards} companyId={props.companyId ?? null} variant={variant} /><QuoteSitePhotosBlock photos={sitePhotos} /></>}
           />
         </div>
       </div>

@@ -74,7 +74,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
       if (error) throw error;
       toast({ title: "Annotation saved" });
       setEditing(null); setOpen(null);
-      qc.invalidateQueries({ queryKey: ["site-photos", leadId] });
+      { qc.invalidateQueries({ queryKey: ["site-photos", leadId] }); qc.invalidateQueries({ queryKey: ["quote-site-photos"] }); }
     } catch (e: any) {
       toast({ title: "Couldn't save the annotation", description: e?.message, variant: "destructive" });
     } finally { setSaving(false); }
@@ -99,7 +99,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
       await supabase.storage.from("job-photos").remove(paths);
       toast({ title: "Photo deleted" });
       setOpen(null);
-      qc.invalidateQueries({ queryKey: ["site-photos", leadId] });
+      { qc.invalidateQueries({ queryKey: ["site-photos", leadId] }); qc.invalidateQueries({ queryKey: ["quote-site-photos"] }); }
     } catch (e: any) {
       toast({ title: "Couldn't delete the photo", description: e?.message, variant: "destructive" });
     }
@@ -125,7 +125,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
     const { error } = await (supabase.from("job_photos") as any).update(patch).eq("id", p.id);
     if (error) { toast({ title: "Couldn't save", description: error.message, variant: "destructive" }); return; }
     setOpen((o) => (o && o.id === p.id ? { ...o, ...patch } : o));
-    qc.invalidateQueries({ queryKey: ["site-photos", leadId] });
+    { qc.invalidateQueries({ queryKey: ["site-photos", leadId] }); qc.invalidateQueries({ queryKey: ["quote-site-photos"] }); }
   };
 
   const list = photos.data ?? [];

@@ -1,3 +1,4 @@
+import { QuoteSitePhotosBlock, loadQuoteSitePhotos, type QuoteSitePhoto } from "./QuoteSitePhotos";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import EstimateDocument, { type EstimateDocLineItem } from "./EstimateDocument";
@@ -55,6 +56,7 @@ type Loaded = {
   areas: ClientRollupArea[];
   unitCards: UnitCard[];
   brochureCompany: BrochureCompany | null;
+  sitePhotos: QuoteSitePhoto[];
 };
 
 const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
@@ -155,7 +157,9 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
             brochureCompany = (b as any)?.company ?? null;
           } catch { /* brochure pages fall back to neutral branding */ }
         }
-        if (!cancelled) setDoc({ unitCards, brochureCompany, quote: qRes.data, customer, company: cRes.data ? { ...cRes.data, default_deposit_percentage: dRes.data?.default_deposit_percentage ?? cRes.data.default_deposit_percentage } : null, items, areas: buildClientRollup(lines, areaRows, { targetSubtotal: Number(qRes.data.subtotal) }) });
+        let sitePhotos: QuoteSitePhoto[] = [];
+        try { sitePhotos = await loadQuoteSitePhotos(quoteId); } catch { /* optional section */ }
+        if (!cancelled) setDoc({ sitePhotos, unitCards, brochureCompany, quote: qRes.data, customer, company: cRes.data ? { ...cRes.data, default_deposit_percentage: dRes.data?.default_deposit_percentage ?? cRes.data.default_deposit_percentage } : null, items, areas: buildClientRollup(lines, areaRows, { targetSubtotal: Number(qRes.data.subtotal) }) });
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Could not load the quote for the PDF.");
       }
@@ -206,7 +210,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
           remoteQuote={!!(q as any).remote_quote}
           remoteQuoteSource={(q as any).remote_quote_source ?? null}
           quoteCreatedAt={q.created_at}
-          unitCards={<QuoteUnitCardsView cards={doc.unitCards} companyId={doc.quote?.company_id ?? (doc.company as any)?.company_id ?? null} variant={((doc.brochureCompany?.document_style ?? (doc.company as any)?.document_style) === "bold") ? "bold" : "light"} />}
+          unitCards={<><QuoteUnitCardsView cards={doc.unitCards} companyId={doc.quote?.company_id ?? (doc.company as any)?.company_id ?? null} variant={((doc.brochureCompany?.document_style ?? (doc.company as any)?.document_style) === "bold") ? "bold" : "light"} /><QuoteSitePhotosBlock photos={doc.sitePhotos} /></>}
         />
       )}
       {/* Model brochures are opened through the QR links, not appended. */}
