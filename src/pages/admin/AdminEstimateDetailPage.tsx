@@ -28,6 +28,7 @@ import VoiceQuoteStrip from "@/components/quoting/VoiceQuoteStrip";
 import MandyQuoteActions from "@/components/mandy/MandyQuoteActions";
 import StatusPill from "@/components/shared/StatusPill";
 import RowMenu from "@/components/shared/RowMenu";
+import { useQuoteDeleteArchive, ArchivedQuoteBanner } from "@/components/quoting/QuoteDeleteArchive";
 import { useQuoteStaffActions } from "@/components/quoting/useQuoteStaffActions";
 
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
@@ -63,6 +64,7 @@ const AdminEstimateDetailPage = () => {
   const docActions = useQuoteDocumentActions(id);
   const { checkLabour, handlePdf } = docActions;
   const staffActions = useQuoteStaffActions(undefined, checkLabour);
+  const deleteArchive = useQuoteDeleteArchive({ onDeleted: () => navigate("/admin/quotes") });
   const pendingWrites = usePendingQuoteWrites();
   const [leaving, setLeaving] = useState(false);
   useEffect(() => {
@@ -196,12 +198,18 @@ const AdminEstimateDetailPage = () => {
         <Button variant="ghost" size="icon" className="h-8 w-8 print:hidden" aria-label="Ask Mandy (voice quote)" title="Ask Mandy — build with voice" onClick={() => { window.dispatchEvent(new Event("fl-voice-quote-open")); openMandyQuoteMode(); }}>
           <Mic className="h-4 w-4" />
         </Button>
-        {staffActions.itemsFor(quote as any).some((i) => !i.hidden)
-          ? <RowMenu items={staffActions.itemsFor(quote as any).map((i) => ({ ...i, separatorBefore: false }))} />
-          : <div className="w-9" />}
+        {(() => {
+          const staff = staffActions.itemsFor(quote as any).map((i) => ({ ...i, separatorBefore: false }));
+          const admin = deleteArchive.itemsFor(quote as any).map((i) => ({ ...i, separatorBefore: !!i.separatorBefore && staff.some((x) => !x.hidden) }));
+          const all = [...staff, ...admin];
+          return all.some((i) => !i.hidden) ? <RowMenu items={all} /> : <div className="w-9" />;
+        })()}
         </div>
         {staffActions.dialogs}
+        {deleteArchive.dialogs}
       </div>
+
+      <ArchivedQuoteBanner quote={quote} onUnarchive={deleteArchive.isAdmin ? () => void deleteArchive.unarchive(quote) : undefined} />
 
       <AcceptedWorkSection quoteId={quote.id} />
 

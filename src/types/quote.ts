@@ -75,6 +75,8 @@ export interface QuoteMeta {
   parent_quote_id?: string | null;
   locked_at?: string | null;
   locked_reason?: string | null;
+  archived_at?: string | null;
+  archive_reason?: string | null;
   variation_summary?: { summary_line?: string | null } | null;
   created_at?: string | null;
 }

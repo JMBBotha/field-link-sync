@@ -9319,6 +9319,9 @@ export type Database = {
           accepted_by: string | null
           accepted_signature: Json | null
           accepted_version_id: string | null
+          archive_reason: string | null
+          archived_at: string | null
+          archived_by: string | null
           client_summary: string | null
           company_id: string | null
           created_at: string
@@ -9382,6 +9385,9 @@ export type Database = {
           accepted_by?: string | null
           accepted_signature?: Json | null
           accepted_version_id?: string | null
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           client_summary?: string | null
           company_id?: string | null
           created_at?: string
@@ -9445,6 +9451,9 @@ export type Database = {
           accepted_by?: string | null
           accepted_signature?: Json | null
           accepted_version_id?: string | null
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           client_summary?: string | null
           company_id?: string | null
           created_at?: string

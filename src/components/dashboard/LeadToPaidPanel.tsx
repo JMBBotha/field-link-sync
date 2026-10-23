@@ -28,7 +28,7 @@ export function useLeadFlowData() {
       const since = new Date(Date.now() - 120 * 86400_000).toISOString();
       const [l, q, i, j, p] = await Promise.all([
         supabase.from("leads").select("id, customer_name, status, lead_status, source, primary_intent, service_type, created_at, first_contact_at, contact_attempts, scheduled_date, scheduled_time, deleted_at").eq("company_id", co).is("deleted_at", null).gte("created_at", since).limit(500),
-        supabase.from("quotes").select("id, lead_id, customer_name, status, created_at, sent_at, accepted_at, declined_at, superseded_by, quote_number").eq("company_id", co).gte("created_at", since).limit(500),
+        supabase.from("quotes").select("id, lead_id, customer_name, status, created_at, sent_at, accepted_at, declined_at, superseded_by, quote_number").eq("company_id", co).is("archived_at", null).gte("created_at", since).limit(500),
         supabase.from("invoices").select("id, quote_id, lead_id, status, grand_total, deposit_amount, sent_at, created_at, due_date, invoice_number").eq("company_id", co).gte("created_at", since).limit(500),
         (supabase.from("jobs") as any).select("id, lead_id, quote_id, invoice_id, title, status, scheduled_for, started_at, completed_at, awaiting_stock, job_type").eq("company_id", co).gte("created_at", since).limit(500),
         supabase.from("payments").select("invoice_id, amount, status, created_at").eq("company_id", co).gte("created_at", since).limit(1000),

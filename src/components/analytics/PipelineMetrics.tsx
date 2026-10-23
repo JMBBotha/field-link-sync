@@ -45,12 +45,14 @@ const PipelineMetrics = () => {
           .from("quotes")
           .select("id, lead_id, status, total, created_at, accepted_at, declined_at")
           .neq("status", "superseded")
+          .is("archived_at", null)
           .gte("created_at", since),
         // Open quote value (regardless of window — reflects live pipeline)
         supabase
           .from("quotes")
           .select("total, status")
           .neq("status", "superseded")
+          .is("archived_at", null)
           .in("status", OPEN_STATUSES),
 
       ]);

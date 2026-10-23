@@ -12,6 +12,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/hooks/useRole";
+import RowMenu from "@/components/shared/RowMenu";
+import { useQuoteDeleteArchive } from "@/components/quoting/QuoteDeleteArchive";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { format, subMonths, startOfMonth } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
@@ -84,6 +86,7 @@ const AdminCustomerDetailPage = () => {
   const qc = useQueryClient();
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const { isAdmin, isDispatcher } = useRole();
+  const quoteDeleteArchive = useQuoteDeleteArchive();
   const { isSalesRep } = useSalesRep();
   const canAssignRep = isAdmin && !isSalesRep;
   const canArchiveClient = (isAdmin || isDispatcher) && !isSalesRep; // office only; DB enforces the same
@@ -212,9 +215,10 @@ const AdminCustomerDetailPage = () => {
       if (customer?.name) orParts.push(`customer_name.ilike.${customer.name}`);
       const { data, error } = await supabase
         .from("quotes")
-        .select("id, quote_number, notes, client_summary, total, status, created_at, customer_id, customer_name, location_id")
+        .select("id, company_id, quote_number, notes, client_summary, total, status, created_at, customer_id, customer_name, location_id, archived_at")
         .or(orParts.join(","))
         .neq("status", "superseded")
+        .is("archived_at", null)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -579,6 +583,7 @@ const AdminCustomerDetailPage = () => {
                           <TableHead>Date</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead>Status</TableHead>
+                          {isAdmin && <TableHead className="w-10"><span className="sr-only">Actions</span></TableHead>}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -592,11 +597,13 @@ const AdminCustomerDetailPage = () => {
                             <TableCell className="text-xs">{q.created_at ? format(new Date(q.created_at), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-right font-medium">{formatRand(Number(q.total || 0))}</TableCell>
                             <TableCell><Badge variant="outline" className={cn("text-xs", statusBadge(q.status))}>{q.status || "draft"}</Badge></TableCell>
+                            {isAdmin && <TableCell className="w-10 p-1 text-right"><RowMenu label={`Actions for ${q.quote_number || "quote"}`} items={quoteDeleteArchive.itemsFor(q).map((i) => ({ ...i, separatorBefore: false }))} /></TableCell>}
                           </TableRow>
                         ))}
-                        {fQuotes.length === 0 && <EmptyRow cols={6} text="No quotes yet." />}
+                        {fQuotes.length === 0 && <EmptyRow cols={isAdmin ? 7 : 6} text="No quotes yet." />}
                       </TableBody>
                     </Table>
+                    {quoteDeleteArchive.dialogs}
                   </div>
         </CardContent></Card></TabsContent>
 

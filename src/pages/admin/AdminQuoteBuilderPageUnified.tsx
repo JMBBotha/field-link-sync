@@ -18,6 +18,8 @@ import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2, Send, Copy, CalendarClock } from "lucide-react";
 import QuoteClientDialog, { type QuoteClientMode } from "@/components/quoting/QuoteClientDialog";
+import RowMenu from "@/components/shared/RowMenu";
+import { useQuoteDeleteArchive, ArchivedQuoteBanner } from "@/components/quoting/QuoteDeleteArchive";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { formatRand } from "@/utils/formatRand";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
@@ -104,6 +106,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [clientDialog, setClientDialog] = useState<QuoteClientMode | null>(null);
   const navigateTo = useNavigate();
+  const deleteArchive = useQuoteDeleteArchive({ onDeleted: () => navigateTo("/admin/quotes") });
 
   const selectedClient = useMemo(() => {
     if (!meta?.customer_id) return null;
@@ -227,7 +230,12 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
             · {totalItems} items · {zoneCount} zones
           </span>
         </div>
+        {meta?.id && <RowMenu label="Quote actions" items={deleteArchive.itemsFor(meta as any).map((i) => ({ ...i, separatorBefore: false }))} />}
       </div>
+      {deleteArchive.dialogs}
+      {meta?.id && (meta as any).archived_at && (
+        <div className="basis-full"><ArchivedQuoteBanner quote={meta as any} onUnarchive={deleteArchive.isAdmin ? () => void deleteArchive.unarchive(meta as any) : undefined} /></div>
+      )}
       {meta?.id && clientDialog &&
       <QuoteClientDialog
         open

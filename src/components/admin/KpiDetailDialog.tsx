@@ -97,6 +97,7 @@ async function fetchDetail(kpiKey: string, today: string): Promise<DetailRow[]> 
         .select("id, quote_number, total, created_at, customers(name)")
         .eq("status", "draft")
         .neq("status", "superseded")
+        .is("archived_at", null)
         .order("created_at", { ascending: false })
         .limit(50);
 

@@ -107,7 +107,7 @@ const AdminSidebar = ({
     refetchInterval: 120000,
     queryFn: async () => {
       const [q, i] = await Promise.all([
-        supabase.from("quotes").select("id", { count: "exact", head: true }).eq("status", "sent"),
+        supabase.from("quotes").select("id", { count: "exact", head: true }).eq("status", "sent").is("archived_at", null),
         isSalesRep ? Promise.resolve({ count: 0 } as any) : supabase.from("invoices").select("id", { count: "exact", head: true }).eq("status", "overdue"),
       ]);
       return { quotesOpen: q.count ?? 0, invoicesOverdue: i.count ?? 0 };
