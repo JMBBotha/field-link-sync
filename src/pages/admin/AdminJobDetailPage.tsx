@@ -27,6 +27,7 @@ import AssignTechDialog from "@/components/jobs/AssignTechDialog";
 import { useRole } from "@/hooks/useRole";
 import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import { PhotoGallery } from "@/components/PhotoGallery";
+import SitePhotosSection from "@/components/photos/SitePhotosSection";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useToast } from "@/hooks/use-toast";
 import { JobDetailSkeleton } from "@/components/ui/skeletons";
@@ -353,6 +354,7 @@ const AdminJobDetailPage = () => {
               <h3 className="font-semibold text-sm flex items-center gap-1.5">
                 <ImageIcon className="h-4 w-4 text-muted-foreground" /> Photos
               </h3>
+              <SitePhotosSection leadId={j.lead_id} />
               <PhotoGallery leadId={j.lead_id} isOnline={isOnline} compact />
             </CardContent>
           </Card>
