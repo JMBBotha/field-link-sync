@@ -3,20 +3,21 @@
  *   1. Times (prefilled from the actual start / booking; "Times differ?" to adjust)
  *   2. Done as quoted?  [Yes, as quoted] [No, extras used]
  *   3. Extras (only if "No"): materials with quantity only (packing list / catalogue / free text) + extra hours
- *   4. Note (optional)   5. Photos (count)   6. Customer signature   7. [Finish job]
+ *   4. Note (optional)   5. After photos (required)   6. Your sign-off (required) + client signature (optional)   7. [Finish job]
+ * Johan 23 Oct 19:01: photos and the tech's own sign-off are required for the day's work; the client signature is
+ * optional. The server enforces it too (job_completions trigger), so the old "Customer not available" box is gone.
  * On submit: lead/job -> completed (existing path) and an invoice request goes to the office
  * (submit_invoice_request: "As quoted" or "Changes"). Techs never see prices or invoices.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { doneToast } from "@/lib/doneToast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Camera, CheckCircle2, ChevronDown, Clock, Images, Loader2, Minus, Plus, PackagePlus, Trash2, WifiOff } from "lucide-react";
+import { CheckCircle2, ChevronDown, Clock, Loader2, Minus, Plus, PackagePlus, Trash2, WifiOff } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +25,9 @@ import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useJobCompletion } from "@/hooks/useJobCompletion";
 import { useJobPhotos } from "@/hooks/useJobPhotos";
 import { useAuth } from "@/contexts/AuthContext";
-import SignaturePad from "./SignaturePad";
+import { AfterPhotosSection, ClientSignatureSection, TechSignOffSection } from "./SignOffSections";
+import { useSignedInIdentity } from "@/hooks/useSignedInIdentity";
+import { countAfterPhotos, flushAfterPhotos, signOffError } from "@/lib/afterPhotos";
 import { findOpenJobIdsForLead } from "@/lib/completeLeadJobs";
 import { durationText, prefillTimes, timeText, toLocalInput } from "@/lib/completionTimes";
 import { cn } from "@/lib/utils";
@@ -42,8 +45,8 @@ interface JobCompletionSheetProps {
   scheduledDate?: string | null;
   scheduledTime?: string | null;
   onCompleted?: () => void;
-  /** Phase (b): tech job-sheet / Today flow — at least one after-photo, or a reason, before sign-off. */
-  requireAfterPhotos?: boolean;
+  /** Multi-day runs: the last day's check-in — after photos must be from that day. */
+  afterSince?: string | null;
   /** Phase (b) multi-day runs: labour is the sum of the days (server recomputes it from the day log). */
   dayLabourHours?: number | null;
   dayCount?: number | null;
@@ -53,18 +56,19 @@ type CatalogueRow = { id: string; product_code: string | null; short_name: strin
 
 const JobCompletionSheet = ({
   open, onOpenChange, leadId, jobId, customerName, customerEmail, startedAt, scheduledDate, scheduledTime, onCompleted,
-  requireAfterPhotos = false, dayLabourHours = null, dayCount = null,
+  afterSince = null, dayLabourHours = null, dayCount = null,
 }: JobCompletionSheetProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { isOnline, queueOperation } = useOfflineContext();
+  const { isOnline, queueOperation, syncPendingOperations } = useOfflineContext();
   const { submit } = useJobCompletion();
   const { user } = useAuth();
   const multiDay = !!dayCount && dayCount > 1;
-  const afterInput = useRef<HTMLInputElement>(null);
+  const me = useSignedInIdentity();
   const [afterTaken, setAfterTaken] = useState(0);
-  const [noPhotoReason, setNoPhotoReason] = useState("");
-  const [noPhotoOpen, setNoPhotoOpen] = useState(false);
+  const [techName, setTechName] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const [clientOpen, setClientOpen] = useState(false);
   const photos = useJobPhotos({ leadId, agentId: user?.id ?? "", isOnline, queueOperation: queueOperation as never });
 
   const [asQuoted, setAsQuoted] = useState<boolean | null>(null);
@@ -73,7 +77,6 @@ const JobCompletionSheet = ({
   const [note, setNote] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
   const [signerName, setSignerName] = useState(customerName || "");
-  const [noSignature, setNoSignature] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [other, setOther] = useState("");
@@ -87,7 +90,9 @@ const JobCompletionSheet = ({
     const t = prefillTimes({ startedAt, scheduledDate, scheduledTime });
     setStartInput(toLocalInput(t.start));
     setFinishInput(toLocalInput(t.finish));
+    setConfirmed(false);
   }, [open, startedAt, scheduledDate, scheduledTime]);
+  useEffect(() => { if (open && me?.name && !me.pending) setTechName((n) => n || me.name); }, [open, me?.name, me?.pending]);
   const start = startInput ? new Date(startInput) : null;
   const finish = finishInput ? new Date(finishInput) : null;
   const timesBad = !!(start && finish && finish < start);
@@ -103,16 +108,13 @@ const JobCompletionSheet = ({
   });
 
   const { data: afterCount = 0 } = useQuery({
-    queryKey: ["job-after-photo-count", leadId, afterTaken],
-    queryFn: async () => {
-      const { count, error } = await supabase.from("job_photos" as never).select("id", { count: "exact", head: true }).eq("lead_id", leadId).eq("photo_type", "after");
-      if (error) throw error;
-      return count ?? 0;
-    },
-    enabled: open && requireAfterPhotos && !!leadId && isOnline,
+    queryKey: ["job-after-photo-count", leadId, afterSince, afterTaken, isOnline],
+    queryFn: () => countAfterPhotos(leadId, afterSince, isOnline),
+    enabled: open && !!leadId,
+    networkMode: "always",
   });
   const afterPhotos = Math.max(afterCount, afterTaken);
-  const photosMissing = requireAfterPhotos && afterPhotos === 0 && noPhotoReason.trim().length < 3;
+  const signOffMissing = signOffError({ photos: afterPhotos, confirmed, name: techName, what: "job" });
 
   const { data: resolvedJobId = null } = useQuery({
     queryKey: ["lead-open-job", leadId],
@@ -167,12 +169,16 @@ const JobCompletionSheet = ({
   const hasExtras = extras.some((x) => x.qty > 0) || (extraHours.trim() !== "" && hours > 0);
   const extrasMissing = asQuoted === false && !hasExtras;
   const offlineExtras = asQuoted === false && !isOnline;
-  const canSubmit = asQuoted !== null && !extrasMissing && !offlineExtras && (!!signature || noSignature) && !timesBad && !photosMissing && !saving;
+  const canSubmit = asQuoted !== null && !extrasMissing && !offlineExtras && !signOffMissing && !timesBad && !saving;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSaving(true);
     try {
+      // Upload the after photos first so the server (which checks them) can see them.
+      if (isOnline && !(await flushAfterPhotos(leadId, syncPendingOperations))) {
+        throw new Error("Your after photos are still uploading. Check the signal and try again in a moment.");
+      }
       const labourMinutes = multiDay && dayLabourHours != null
         ? Math.round(dayLabourHours * 60) // server recomputes from the day log (job_completion_day_labour)
         : start && finish ? Math.max(0, Math.round((finish.getTime() - start.getTime()) / 60000)) : 0;
@@ -180,14 +186,14 @@ const JobCompletionSheet = ({
         leadId,
         jobId: effectiveJobId,
         workSummary: note.trim() || (asQuoted ? "Done as quoted" : "Done with extras (see invoice request)"),
-        customerName: signerName || customerName,
+        customerName: signerName.trim() || customerName,
         customerEmail: customerEmail || null,
         signatureDataUrl: signature,
         partsTotal: 0, // server recomputes parts_total
         labourMinutes,
         photoCount: Math.max(photoCount, afterTaken),
         metricsKnown: isOnline,
-        noPhotoReason: requireAfterPhotos && afterPhotos === 0 ? noPhotoReason.trim() : null,
+        techSignoffName: techName.trim(),
       });
       if (!queued) {
         const { error } = await (supabase.rpc as any)("submit_invoice_request", {
@@ -362,49 +368,17 @@ const JobCompletionSheet = ({
             <Textarea id="finish-note" value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Anything the office should know…" />
           </section>
 
-          {/* 5. Photos */}
-          {requireAfterPhotos ? (
-            <section className={cn("space-y-2 rounded-xl border-2 p-3", photosMissing ? "border-amber-400" : "border-green-600/50")} data-testid="finish-after-photos">
-              <p className="flex items-center gap-2 text-base font-semibold"><Camera className="h-5 w-5" />After photos</p>
-              <input ref={afterInput} type="file" accept="image/*" capture="environment" className="hidden" data-testid="after-photo-input"
-                onChange={async (e) => {
-                  const f = e.target.files?.[0]; e.target.value = "";
-                  if (!f) return;
-                  await photos.uploadPhoto(f, "after");
-                  setAfterTaken((n) => n + 1);
-                }} />
-              <Button type="button" variant={afterPhotos ? "outline" : "default"} className="h-12 w-full text-base" disabled={photos.uploading}
-                onClick={() => afterInput.current?.click()} data-testid="after-photo-take">
-                {photos.uploading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Camera className="mr-2 h-5 w-5" />}
-                {afterPhotos ? `Take another (${afterPhotos} taken)` : "Take after photo"}
-              </Button>
-              {afterPhotos === 0 && (
-                noPhotoOpen ? (
-                  <Input value={noPhotoReason} onChange={(e) => setNoPhotoReason(e.target.value)} className="h-11" autoFocus
-                    placeholder="Why no photo? (e.g. client refused, camera broken)" aria-label="Reason for no after photo" data-testid="no-photo-reason" />
-                ) : (
-                  <button type="button" className="text-sm font-medium text-primary" onClick={() => setNoPhotoOpen(true)} data-testid="no-photo-open">Can't take a photo?</button>
-                )
-              )}
-            </section>
-          ) : (
-          <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm">
-            <Images className="h-5 w-5 text-muted-foreground" />
-            {isOnline ? `${photoCount} photo${photoCount === 1 ? "" : "s"} attached` : "Photos sync later"}
-            <span className="ml-auto text-xs text-muted-foreground">Add photos from the job screen</span>
-          </div>
+          {/* 5. After photos (required) */}
+          <AfterPhotosSection count={afterPhotos} uploading={photos.uploading} testid="finish-after-photos"
+            hint={afterSince ? "Photos of today's work, taken since you checked in." : undefined}
+            onFile={async (f) => { await photos.uploadPhoto(f, "after"); setAfterTaken((n) => n + 1); }} />
+          {isOnline && photoCount > afterPhotos && (
+            <p className="-mt-3 text-xs text-muted-foreground">{photoCount} photo{photoCount === 1 ? "" : "s"} on this job in total.</p>
           )}
 
-          {/* 6. Signature */}
-          <section className="space-y-2">
-            <Label className="text-base font-semibold">Customer signature</Label>
-            <Input value={signerName} onChange={(e) => setSignerName(e.target.value)} placeholder="Customer name" className="h-11" aria-label="Signed off by" />
-            <SignaturePad value={signature} onChange={setSignature} />
-            <div className="flex items-center gap-2 pt-1">
-              <Checkbox id="no-signature" data-no-min className="h-6 w-6" checked={noSignature} onCheckedChange={(v) => setNoSignature(v === true)} />
-              <Label htmlFor="no-signature" className="text-sm font-normal text-muted-foreground">Customer not available to sign</Label>
-            </div>
-          </section>
+          {/* 6. Sign-off: the tech signs himself; the client signature is optional */}
+          <TechSignOffSection name={techName} onName={setTechName} confirmed={confirmed} onConfirmed={setConfirmed} at={new Date()} what="job" />
+          <ClientSignatureSection open={clientOpen} onOpenChange={setClientOpen} name={signerName} onName={setSignerName} signature={signature} onSignature={setSignature} />
 
           {/* 7. Submit */}
           <Button className="h-14 w-full rounded-xl bg-green-600 text-lg font-bold text-white hover:bg-green-700" disabled={!canSubmit} onClick={handleSubmit} data-testid="finish-submit">
@@ -417,8 +391,7 @@ const JobCompletionSheet = ({
                 : offlineExtras ? "You're offline: extras need a connection."
                 : extrasMissing ? "Add the extras, or choose \"Yes, as quoted\"."
                 : timesBad ? "Fix the times."
-                : photosMissing ? "Take at least one after photo — or say why you can't."
-                : "Customer signature needed — or tick \"Customer not available to sign\"."}
+                : signOffMissing}
             </p>
           )}
           <p className="pb-4 text-center text-xs text-muted-foreground">The office checks it and does the invoice — you never need to invoice.</p>

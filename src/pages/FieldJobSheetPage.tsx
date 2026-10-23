@@ -20,7 +20,7 @@ import SurveyPackSection, { FrontPhoto, useSurveyPack } from "@/components/surve
 import { packQtyText, groupPackingList, loadTicks, saveTicks, type PackingRow } from "@/lib/packingList";
 import JobDaysPanel, { useJobDays } from "@/components/field/JobDaysPanel";
 import JobCompletionSheet from "@/components/jobs/JobCompletionSheet";
-import type { JobDays } from "@/lib/jobDays";
+import { lastOpenCheckIn, type JobDays } from "@/lib/jobDays";
 
 export default function FieldJobSheetPage() {
   const { id = "" } = useParams();
@@ -136,13 +136,14 @@ export default function FieldJobSheetPage() {
       )}
 
       {j && multiDay && (
-        <JobDaysPanel jobId={id} onChanged={() => job.refetch()}
+        <JobDaysPanel jobId={id} leadId={j.lead_id ?? null} onChanged={() => job.refetch()}
           onCompleteJob={(d) => (j.lead_id ? setFinish({ open: true, days: d }) : toast({ title: "Ask the office to close this job", description: "It has no client record to sign off." }))} />
       )}
       {j?.lead_id && (
         <JobCompletionSheet open={finish.open} onOpenChange={(v) => setFinish((f) => ({ ...f, open: v }))}
           leadId={j.lead_id} jobId={id} customerName={j.customers?.name ?? null} startedAt={(j as any).started_at ?? null}
-          requireAfterPhotos dayCount={finish.days?.day_count ?? null} dayLabourHours={finish.days?.labour_hours ?? null}
+          dayCount={finish.days?.day_count ?? null} dayLabourHours={finish.days?.labour_hours ?? null}
+          afterSince={lastOpenCheckIn(finish.days)}
           onCompleted={() => { void job.refetch(); void days.refetch(); }} />
       )}
 

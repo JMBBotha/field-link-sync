@@ -15,11 +15,41 @@ DELETE FROM public.job_alerts WHERE work_date IS NOT NULL;
 -- 3) triggers + new functions
 DROP TRIGGER IF EXISTS trg_job_days_on_complete ON public.jobs;
 DROP TRIGGER IF EXISTS trg_job_completions_00_day_labour ON public.job_completions;
+DROP TRIGGER IF EXISTS trg_job_completions_01_photos_signoff ON public.job_completions;
+DROP FUNCTION IF EXISTS public.job_completion_photos_signoff();
+-- restore the tech completion merge (pre-image)
+CREATE OR REPLACE FUNCTION public.job_completions_rh_merge()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE u uuid := auth.uid();
+BEGIN
+  -- techs cannot SELECT job_completions (cost), so ON CONFLICT upserts fail for them; merge here instead
+  IF pg_trigger_depth() > 1 OR NEW.lead_id IS NULL OR u IS NULL OR NOT public.is_field_tech_only(u) THEN RETURN NEW; END IF;
+  IF NEW.technician_id IS DISTINCT FROM u OR NOT public.tech_can_see_lead(u, NEW.lead_id)
+     OR (NEW.company_id IS NOT NULL AND NEW.company_id IS DISTINCT FROM public.caller_company_id()) THEN
+    RAISE EXCEPTION 'Not allowed' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.job_completions SET job_id = NEW.job_id, work_summary = NEW.work_summary, customer_name = NEW.customer_name,
+    customer_email = NEW.customer_email, signature_data_url = NEW.signature_data_url, signed_at = NEW.signed_at,
+    labour_minutes = NEW.labour_minutes, photo_count = NEW.photo_count, status = NEW.status, completed_at = NEW.completed_at
+  WHERE lead_id = NEW.lead_id AND technician_id = u;
+  IF NOT FOUND THEN
+    IF EXISTS (SELECT 1 FROM public.job_completions WHERE lead_id = NEW.lead_id) THEN
+      RAISE EXCEPTION 'Completion already recorded by another technician' USING ERRCODE = '23505';
+    END IF;
+    INSERT INTO public.job_completions SELECT NEW.*;
+  END IF;
+  RETURN NULL;
+END $function$;
 DROP FUNCTION IF EXISTS public.job_days_on_complete();
 DROP FUNCTION IF EXISTS public.job_completion_day_labour();
 DROP FUNCTION IF EXISTS public.job_day_en_route_plan(uuid, date);
 DROP FUNCTION IF EXISTS public.job_add_day(uuid, boolean, text);
-DROP FUNCTION IF EXISTS public.tech_done_for_today(uuid, numeric, text, text, timestamptz);
+DROP FUNCTION IF EXISTS public.tech_done_for_today(uuid, numeric, text, text, timestamptz, text, text, text, text);
+DROP FUNCTION IF EXISTS public._job_after_photos(uuid, timestamptz);
 DROP FUNCTION IF EXISTS public.tech_check_in(uuid, timestamptz);
 DROP FUNCTION IF EXISTS public.tech_day_en_route(uuid, timestamptz);
 DROP FUNCTION IF EXISTS public._job_day_time(timestamptz);
@@ -428,9 +458,13 @@ END $function$;
 ALTER TABLE public.job_alerts DROP CONSTRAINT IF EXISTS job_alerts_job_rule_day_key;
 ALTER TABLE public.job_alerts ADD CONSTRAINT job_alerts_job_id_rule_key UNIQUE (job_id, rule);
 ALTER TABLE public.job_alerts DROP COLUMN IF EXISTS work_date;
-ALTER TABLE public.job_completions DROP COLUMN IF EXISTS no_photo_reason;
+ALTER TABLE public.job_completions DROP COLUMN IF EXISTS tech_signoff_name, DROP COLUMN IF EXISTS tech_signoff_at,
+  DROP COLUMN IF EXISTS tech_signature_data_url, DROP COLUMN IF EXISTS after_photo_count;
+DROP TABLE IF EXISTS public.job_rule_rollouts;
 DROP INDEX IF EXISTS public.job_time_entries_job_day_key;
-ALTER TABLE public.job_time_entries DROP COLUMN IF EXISTS hours_edit_note, DROP COLUMN IF EXISTS hours_auto, DROP COLUMN IF EXISTS hours_worked,
+ALTER TABLE public.job_time_entries DROP COLUMN IF EXISTS signed_off_at, DROP COLUMN IF EXISTS signed_off_by, DROP COLUMN IF EXISTS signed_off_name,
+  DROP COLUMN IF EXISTS tech_signature_data_url, DROP COLUMN IF EXISTS client_name, DROP COLUMN IF EXISTS client_signature_data_url,
+  DROP COLUMN IF EXISTS after_photo_count, DROP COLUMN IF EXISTS hours_edit_note, DROP COLUMN IF EXISTS hours_auto, DROP COLUMN IF EXISTS hours_worked,
   DROP COLUMN IF EXISTS checked_out_at, DROP COLUMN IF EXISTS checked_in_at, DROP COLUMN IF EXISTS en_route_at,
   DROP COLUMN IF EXISTS schedule_id, DROP COLUMN IF EXISTS job_id;
 ALTER TABLE public.jobs DROP COLUMN IF EXISTS scheduled_until;

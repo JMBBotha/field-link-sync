@@ -10,7 +10,14 @@ const rpcMock = vi.fn(async (name: string, _args?: unknown) => {
   return { data: "req-1", error: null };
 });
 vi.mock("@/hooks/useJobCompletion", () => ({ useJobCompletion: () => ({ submit: submitMock }) }));
-vi.mock("@/contexts/OfflineContext", () => ({ useOfflineContext: () => ({ isOnline: true }) }));
+vi.mock("@/contexts/OfflineContext", () => ({ useOfflineContext: () => ({ isOnline: true, syncPendingOperations: vi.fn() }) }));
+vi.mock("@/hooks/useSignedInIdentity", () => ({ useSignedInIdentity: () => ({ name: "Sipho", role: "tech", pending: false }) }));
+const afterCount = { n: 2 };
+vi.mock("@/lib/afterPhotos", async (orig) => ({
+  ...(await orig<typeof import("@/lib/afterPhotos")>()),
+  countAfterPhotos: async () => afterCount.n,
+  flushAfterPhotos: async () => true,
+}));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "tech-1" } }) }));
 vi.mock("@/hooks/useJobPhotos", () => ({ useJobPhotos: () => ({ uploadPhoto: vi.fn(), uploading: false }) }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: vi.fn() }), toast: vi.fn() }));
@@ -34,7 +41,7 @@ const renderSheet = () =>
   );
 
 describe("Finish-job form (Johan 23:11)", () => {
-  beforeEach(() => { submitMock.mockClear(); rpcMock.mockClear(); });
+  beforeEach(() => { submitMock.mockClear(); rpcMock.mockClear(); afterCount.n = 2; });
 
   it("prefills times from the actual start / booking, finish = now", () => {
     const now = new Date("2026-10-09T12:00:00");
@@ -44,22 +51,25 @@ describe("Finish-job form (Johan 23:11)", () => {
     expect(durationText(new Date("2026-10-09T09:00:00"), new Date("2026-10-09T11:30:00"))).toBe("2 h 30 min");
   });
 
-  it("needs the as-quoted choice and a signature (or 'not available'); times are collapsed under 'Times differ?'", () => {
+  it("needs the as-quoted choice, after photos and the tech's own sign-off (client signature optional); times collapsed", async () => {
     renderSheet();
     expect(screen.getByTestId("times-differ")).toBeTruthy();
     expect(screen.queryByLabelText("Started")).toBeNull(); // collapsed
     expect((screen.getByTestId("finish-submit") as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByTestId("as-quoted-yes"));
     expect((screen.getByTestId("finish-submit") as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getByLabelText("Customer not available to sign"));
-    expect((screen.getByTestId("finish-submit") as HTMLButtonElement).disabled).toBe(false);
+    await waitFor(() => expect((screen.getByTestId("signoff-name") as HTMLInputElement).value).toBe("Sipho"));
+    expect(screen.queryByLabelText("Customer not available to sign")).toBeNull();
+    fireEvent.click(screen.getByTestId("signoff-confirm"));
+    await waitFor(() => expect((screen.getByTestId("finish-submit") as HTMLButtonElement).disabled).toBe(false));
     expect(screen.queryByText(/R\s?\d/)).toBeNull(); // no prices anywhere
   });
 
   it("as quoted: completes and sends an 'as quoted' invoice request (no extras)", async () => {
     renderSheet();
     fireEvent.click(screen.getByTestId("as-quoted-yes"));
-    fireEvent.click(screen.getByLabelText("Customer not available to sign"));
+    fireEvent.click(screen.getByTestId("signoff-confirm"));
+    await waitFor(() => expect((screen.getByTestId("finish-submit") as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId("finish-submit"));
     await waitFor(() => expect(rpcMock).toHaveBeenCalledWith("submit_invoice_request", expect.objectContaining({ p_lead_id: "lead-1", p_extra_items: [], p_extra_hours: null })));
     expect(submitMock).toHaveBeenCalledTimes(1);
@@ -73,7 +83,8 @@ describe("Finish-job form (Johan 23:11)", () => {
     fireEvent.click(screen.getByRole("button", { name: /Add$/ }));
     fireEvent.click(screen.getByLabelText("More TEST extra bracket"));
     fireEvent.click(screen.getByRole("button", { name: "1 h" }));
-    fireEvent.click(screen.getByLabelText("Customer not available to sign"));
+    fireEvent.click(screen.getByTestId("signoff-confirm"));
+    await waitFor(() => expect((screen.getByTestId("finish-submit") as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId("finish-submit"));
     await waitFor(() => expect(rpcMock).toHaveBeenCalledWith("submit_invoice_request", expect.objectContaining({
       p_extra_items: [{ product_id: null, name: "TEST extra bracket", qty: 2 }], p_extra_hours: 1,
@@ -111,5 +122,29 @@ describe("Techs never create or see invoices", () => {
     expect(m).toContain("Only the office can approve invoice requests");
     expect(m).toContain("get_product_sell_options() o WHERE o.id");
     expect(m).toMatch(/'qty', round\(LEAST/); // client prices are never read
+  });
+});
+
+describe("Finish job: after photos are required (Johan 23 Oct 19:01)", () => {
+  it("no after photo → blocked, and the old 'Can't take a photo' escape is gone", async () => {
+    afterCount.n = 0;
+    renderSheet();
+    fireEvent.click(screen.getByTestId("as-quoted-yes"));
+    fireEvent.click(screen.getByTestId("signoff-confirm"));
+    await waitFor(() => expect(screen.getByTestId("finish-hint").textContent).toMatch(/after photo/));
+    expect((screen.getByTestId("finish-submit") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByText(/Can't take a photo/)).toBeNull();
+  });
+  it("sends the tech sign-off with the completion", async () => {
+    afterCount.n = 1;
+    submitMock.mockClear();
+    renderSheet();
+    fireEvent.click(screen.getByTestId("as-quoted-yes"));
+    await waitFor(() => expect((screen.getByTestId("signoff-name") as HTMLInputElement).value).toBe("Sipho"));
+    fireEvent.click(screen.getByTestId("signoff-confirm"));
+    await waitFor(() => expect((screen.getByTestId("finish-submit") as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByTestId("finish-submit"));
+    await waitFor(() => expect(submitMock).toHaveBeenCalled());
+    expect((submitMock.mock.calls as unknown as unknown[][])[0][0]).toMatchObject({ techSignoffName: "Sipho" });
   });
 });

@@ -16,8 +16,10 @@ export type JobDay = {
   schedule_id: string; day_index: number; day_count: number; date: string; start: string | null; end: string | null; agent_id: string | null;
   en_route_at: string | null; checked_in_at: string | null; checked_out_at: string | null;
   hours: number | null; hours_auto: number | null; hours_edit_note: string | null; notes: string | null; state: DayState;
+  /** Johan 23 Oct: each day is signed off by the tech (name + time) with >= 1 after photo. */
+  signed_off_at?: string | null; signed_off_name?: string | null; after_photos?: number | null;
 };
-export type JobDays = { job_id: string; status: string; today: string; multi_day: boolean; day_count: number; scheduled_until: string | null; days: JobDay[]; labour_hours: number };
+export type JobDays = { job_id: string; status: string; today: string; multi_day: boolean; day_count: number; scheduled_until: string | null; days: JobDay[]; labour_hours: number; lead_id?: string | null };
 export type BoardDayState = { schedule_id: string; job_id: string; date: string; state: "done" | "on_site" | "en_route" | "none"; hours: number | null };
 
 /** Biggest run the pickers offer (the server allows 30). */
@@ -44,7 +46,11 @@ export const addJobDay = (jobId: string, force = false, reason: string | null = 
 
 /** The three tech taps that also work offline (queued with the tap time). */
 export type DayOp = "tech_day_en_route" | "tech_check_in" | "tech_done_for_today";
-export type DayOpArgs = { p_job_id: string; p_at: string; p_hours?: number | null; p_notes?: string | null; p_edit_note?: string | null };
+export type DayOpArgs = {
+  p_job_id: string; p_at: string; p_hours?: number | null; p_notes?: string | null; p_edit_note?: string | null;
+  /** Done for today: the tech's sign-off (required) and an optional drawn signature / client signature. */
+  p_signoff_name?: string | null; p_tech_signature?: string | null; p_client_name?: string | null; p_client_signature?: string | null;
+};
 export const runDayOp = (fn: DayOp, args: DayOpArgs) => call<Record<string, any>>(fn, args as unknown as Record<string, unknown>);
 
 // ── pure helpers ────────────────────────────────────────────────────────────────────────────────
@@ -86,13 +92,13 @@ export function dayAction(d: JobDays | null | undefined, today = d?.today ?? "")
   const tag = `Day ${day.day_index} of ${day.day_count}`;
   const last = day.day_index >= day.day_count;
   if (day.checked_out_at) {
-    if (last) return { kind: "job_complete", label: "Job complete", sub: `${tag} · Day done · after-photos and sign-off` };
+    if (last) return { kind: "job_complete", label: "Job complete", sub: `${tag} · Day done · after photos + your sign-off` };
     const next = d.days.find((x) => x.date > today);
     return { kind: "day_done", label: "Day done", sub: next ? `${tag} · back ${dayLabel(next.date)}` : tag };
   }
   if (day.checked_in_at) return last
-    ? { kind: "job_complete", label: "Job complete", sub: `${tag} · last day` }
-    : { kind: "done_for_today", label: "Done for today", sub: tag };
+    ? { kind: "job_complete", label: "Job complete", sub: `${tag} · last day · after photos + your sign-off` }
+    : { kind: "done_for_today", label: "Done for today", sub: `${tag} · after photos + your sign-off` };
   return { kind: "check_in", label: `${tag} · Check in`, sub: day.en_route_at ? "You're en route" : `${day.start ?? ""}–${day.end ?? ""}` };
 }
 
@@ -120,4 +126,10 @@ export const sumDayHours = (days: Pick<JobDay, "hours">[]) => Math.round(days.re
 /** Days of a dragged run: the drop date becomes the first not-yet-worked day; the rest follow on working days. */
 export function remainingDays(days: Pick<JobDay, "checked_in_at">[]): number {
   return days.filter((d) => !d.checked_in_at).length;
+}
+
+/** The last day's check-in while it is still open (multi-day "Job complete"): after photos must be from that day. */
+export function lastOpenCheckIn(d: JobDays | null | undefined): string | null {
+  const last = d?.days?.[d.days.length - 1];
+  return last && last.checked_in_at && !last.checked_out_at ? last.checked_in_at : null;
 }

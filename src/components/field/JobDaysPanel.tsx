@@ -3,6 +3,8 @@
  * ("Day 2 of 3 · Check in" → "Done for today" → "Day done", last day "Job complete"), the Done-for-today sheet
  * (hours prefilled from the check-in time, editable; a note when changed; day notes) and "Add a day".
  * Check in / Done for today / En route also work offline: queued with the tap time (sync op 'job_day').
+ * Johan 23 Oct 19:01: a day only closes with >= 1 after photo taken since check-in AND the tech's own sign-off (name +
+ * time); the client signature is optional. tech_done_for_today enforces the same on the server.
  * POPIA: job_days only returns the caller's company and techs only see their own entries (RLS + RPC checks).
  */
 import { useEffect, useState } from "react";
@@ -15,6 +17,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useJobPhotos } from "@/hooks/useJobPhotos";
+import { useSignedInIdentity } from "@/hooks/useSignedInIdentity";
+import { countAfterPhotos, flushAfterPhotos, signOffError } from "@/lib/afterPhotos";
+import { AfterPhotosSection, ClientSignatureSection, TechSignOffSection } from "@/components/jobs/SignOffSections";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -50,12 +57,12 @@ export function useJobDays(jobId: string, enabled = true) {
 }
 
 /** Applies a tap to the cached days so the button moves on at once (also while offline). */
-export function applyDayOp(d: JobDays, fn: DayOp, at: string, today: string, hours?: number | null, notes?: string | null): JobDays {
+export function applyDayOp(d: JobDays, fn: DayOp, at: string, today: string, hours?: number | null, notes?: string | null, signoffName?: string | null): JobDays {
   const days = d.days.map((x): JobDay => {
     if (x.date !== today) return x;
     if (fn === "tech_day_en_route") return { ...x, en_route_at: x.en_route_at ?? at, state: x.checked_in_at ? x.state : "en_route" };
     if (fn === "tech_check_in") return { ...x, checked_in_at: x.checked_in_at ?? at, state: "on_site" };
-    return { ...x, checked_out_at: at, hours: hours ?? x.hours, notes: notes ?? x.notes, state: "done" };
+    return { ...x, checked_out_at: at, hours: hours ?? x.hours, notes: notes ?? x.notes, signed_off_at: at, signed_off_name: signoffName ?? x.signed_off_name ?? null, state: "done" };
   });
   return { ...d, status: fn === "tech_check_in" && d.status !== "completed" ? "in_progress" : d.status, days, labour_hours: days.reduce((s, x) => s + Number(x.hours || 0), 0) };
 }
@@ -63,15 +70,16 @@ export function applyDayOp(d: JobDays, fn: DayOp, at: string, today: string, hou
 export function useDayOps(jobId: string) {
   const { isOnline, queueOperation } = useOfflineContext();
   const qc = useQueryClient();
-  return async (fn: DayOp, extra: Omit<DayOpArgs, "p_job_id" | "p_at"> = {}): Promise<{ queued: boolean; result?: Record<string, any> }> => {
+  return async (fn: DayOp, extra: Omit<DayOpArgs, "p_job_id" | "p_at"> = {}, opts: { queue?: boolean } = {}): Promise<{ queued: boolean; result?: Record<string, any> }> => {
     const at = new Date().toISOString();
     const args: DayOpArgs = { p_job_id: jobId, p_at: at, ...extra };
     const prev = qc.getQueryData<JobDays>(["job-days", jobId]);
     const today = prev?.today && isOnline ? prev.today : todaySAST();
-    if (!isOnline) {
+    // opts.queue: photos are still uploading — queue behind them so the server sees them first (replay is in tap order).
+    if (!isOnline || opts.queue) {
       await queueOperation("job_day", "job_time_entries", `${jobId}:${fn}:${at}`, { fn, args });
       if (prev) {
-        const next = applyDayOp(prev, fn, at, today, extra.p_hours ?? null, extra.p_notes ?? null);
+        const next = applyDayOp(prev, fn, at, today, extra.p_hours ?? null, extra.p_notes ?? null, extra.p_signoff_name ?? null);
         qc.setQueryData(["job-days", jobId], next);
         try { localStorage.setItem(cacheKey(jobId), JSON.stringify(next)); } catch { /* ignore */ }
       }
@@ -130,6 +138,7 @@ export function JobDaysView({ data, today, busy, offline, enRouteHint, onEnRoute
                 <span className="block text-xs text-muted-foreground">
                   {d.hours != null ? `${hoursText(d.hours)}${d.hours_edit_note ? ` · ${d.hours_edit_note}` : ""}` : d.start ? `${d.start}–${d.end}` : ""}
                   {d.notes ? ` · ${d.notes}` : ""}
+                  {d.signed_off_name ? ` · signed ${d.signed_off_name}` : ""}{d.after_photos ? ` · ${d.after_photos} photo${d.after_photos === 1 ? "" : "s"}` : ""}
                 </span>
               </span>
               <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", STATE_TONE[d.state])}>{DAY_STATE_TEXT[d.state] ?? d.state}</span>
@@ -176,23 +185,42 @@ export function JobDaysView({ data, today, busy, offline, enRouteHint, onEnRoute
   );
 }
 
+export type DoneForTodayValues = {
+  hours: number; notes: string; editNote: string; signoffName: string; clientName: string; clientSignature: string | null;
+};
 type SheetProps = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   tag: string;
   auto: number;
   busy?: boolean;
-  onSubmit: (v: { hours: number; notes: string; editNote: string }) => void;
+  /** After photos taken since today's check-in (null = the job has no client record, so no photos can be stored). */
+  photos: number | null;
+  uploading?: boolean;
+  onPhoto?: (f: File) => void | Promise<void>;
+  /** Prefill for the tech's sign-off name. */
+  techName?: string;
+  onSubmit: (v: DoneForTodayValues) => void;
 };
 
-/** "Done for today": hours prefilled from the check-in time, editable in 0.25 h steps; a note when changed. */
-export function DoneForTodaySheet({ open, onOpenChange, tag, auto, busy, onSubmit }: SheetProps) {
+/** "Done for today": hours (prefilled from check-in, a note when changed), after photos + the tech's sign-off (required),
+ *  client signature (optional). */
+export function DoneForTodaySheet({ open, onOpenChange, tag, auto, busy, photos, uploading, onPhoto, techName = "", onSubmit }: SheetProps) {
   const [hours, setHours] = useState(auto);
   const [notes, setNotes] = useState("");
   const [editNote, setEditNote] = useState("");
-  useEffect(() => { if (open) { setHours(auto); setNotes(""); setEditNote(""); } }, [open, auto]);
+  const [name, setName] = useState(techName);
+  const [confirmed, setConfirmed] = useState(false);
+  const [clientOpen, setClientOpen] = useState(false);
+  const [clientName, setClientName] = useState("");
+  const [clientSig, setClientSig] = useState<string | null>(null);
+  useEffect(() => {
+    if (open) { setHours(auto); setNotes(""); setEditNote(""); setConfirmed(false); setClientOpen(false); setClientName(""); setClientSig(null); }
+  }, [open, auto]);
+  useEffect(() => { if (open) setName((n) => n || techName); }, [open, techName]);
   const changed = hoursNeedNote(hours, auto);
-  const err = doneForTodayError(hours, auto, editNote);
+  const err = doneForTodayError(hours, auto, editNote)
+    ?? signOffError({ photos: photos === null ? 1 : photos, confirmed, name, what: "day" });
   const step = (d: number) => setHours((h) => Math.max(0, Math.min(16, Math.round((h + d) * 4) / 4)));
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -221,9 +249,16 @@ export function DoneForTodaySheet({ open, onOpenChange, tag, auto, busy, onSubmi
             <Label htmlFor="day-notes" className="text-base font-semibold">Day notes <span className="font-normal text-muted-foreground">(optional)</span></Label>
             <Textarea id="day-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What got done, what's left for tomorrow…" data-testid="done-notes" />
           </section>
+          {photos !== null && (
+            <AfterPhotosSection count={photos} uploading={uploading} onFile={(f) => onPhoto?.(f)} hint="Photos of today's work, taken since you checked in." testid="done-after-photos" />
+          )}
+          <TechSignOffSection name={name} onName={setName} confirmed={confirmed} onConfirmed={setConfirmed} at={new Date()} what="day" />
+          <ClientSignatureSection open={clientOpen} onOpenChange={setClientOpen} name={clientName} onName={setClientName} signature={clientSig} onSignature={setClientSig} />
           {err && <p className="text-sm text-amber-700 dark:text-amber-300" data-testid="done-error">{err}</p>}
-          <Button className="h-14 w-full text-lg font-bold" disabled={!!err || busy} onClick={() => onSubmit({ hours, notes: notes.trim(), editNote: editNote.trim() })} data-testid="done-submit">
-            {busy && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}Save · Day done
+          <Button className="h-14 w-full text-lg font-bold" disabled={!!err || busy}
+            onClick={() => onSubmit({ hours, notes: notes.trim(), editNote: editNote.trim(), signoffName: name.trim(), clientName: clientName.trim(), clientSignature: clientSig })}
+            data-testid="done-submit">
+            {busy && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}Sign off · Day done
           </Button>
           <p className="pb-2 text-center text-xs text-muted-foreground">The job stays open. Day hours are not billed to the client.</p>
         </div>
@@ -233,9 +268,14 @@ export function DoneForTodaySheet({ open, onOpenChange, tag, auto, busy, onSubmi
 }
 
 /** Container used on /field/jobs/:id for multi-day jobs. */
-export default function JobDaysPanel({ jobId, onCompleteJob, onChanged }: { jobId: string; onCompleteJob: (d: JobDays) => void; onChanged?: () => void }) {
+export default function JobDaysPanel({ jobId, leadId: leadProp = null, onCompleteJob, onChanged }: {
+  jobId: string; leadId?: string | null; onCompleteJob: (d: JobDays) => void; onChanged?: () => void;
+}) {
   const { toast } = useToast();
-  const { isOnline } = useOfflineContext();
+  const { isOnline, queueOperation, syncPendingOperations } = useOfflineContext();
+  const { user } = useAuth();
+  const me = useSignedInIdentity();
+  const [taken, setTaken] = useState(0);
   const days = useJobDays(jobId);
   const run = useDayOps(jobId);
   const [busy, setBusy] = useState(false);
@@ -251,13 +291,24 @@ export default function JobDaysPanel({ jobId, onCompleteJob, onChanged }: { jobI
       return (data ?? null) as EnRoutePlan | null;
     },
   });
+  const leadId = leadProp ?? d?.lead_id ?? null;
+  const photoApi = useJobPhotos({ leadId: leadId ?? "", agentId: user?.id ?? "", isOnline, queueOperation: queueOperation as never });
+  const since = todayDay?.checked_in_at ?? null;
+  const dayPhotos = useQuery({
+    queryKey: ["day-after-photos", leadId, since, taken, isOnline],
+    enabled: doneOpen && !!leadId && !!since,
+    networkMode: "always",
+    queryFn: () => countAfterPhotos(leadId as string, since, isOnline),
+  });
   if (!d || !d.multi_day) return null;
 
   const go = async (fn: DayOp, extra: Omit<DayOpArgs, "p_job_id" | "p_at"> = {}, ok?: string) => {
     setBusy(true);
     try {
-      const r = await run(fn, extra);
-      if (r.queued) toast({ title: "Saved offline", description: "It will sync with the time you tapped." });
+      // Closing a day: upload today's photos first so the server can see them; if they can't go yet, queue behind them.
+      const queue = fn === "tech_done_for_today" && isOnline && !!leadId && !(await flushAfterPhotos(leadId, syncPendingOperations));
+      const r = await run(fn, extra, { queue });
+      if (r.queued) toast({ title: queue ? "Saved — waiting for photos" : "Saved offline", description: queue ? "Day done syncs right after your photos upload." : "It will sync with the time you tapped." });
       else if (ok) toast({ title: r.result?.already ? "Already done for today" : ok });
       onChanged?.();
       return true;
@@ -292,10 +343,15 @@ export default function JobDaysPanel({ jobId, onCompleteJob, onChanged }: { jobI
       <DoneForTodaySheet open={doneOpen} onOpenChange={setDoneOpen} busy={busy}
         tag={todayDay ? `Day ${todayDay.day_index} of ${todayDay.day_count}` : ""}
         auto={autoHours(todayDay?.checked_in_at)}
+        photos={leadId ? Math.max(dayPhotos.data ?? 0, taken) : null}
+        uploading={photoApi.uploading}
+        onPhoto={async (f) => { await photoApi.uploadPhoto(f, "after"); setTaken((n) => n + 1); }}
+        techName={me?.pending ? "" : me?.name ?? ""}
         onSubmit={async (v) => {
           const auto = autoHours(todayDay?.checked_in_at);
           const ok = await go("tech_done_for_today", {
             p_hours: v.hours, p_notes: v.notes || null, p_edit_note: hoursNeedNote(v.hours, auto) ? v.editNote : null,
+            p_signoff_name: v.signoffName, p_client_name: v.clientName || null, p_client_signature: v.clientSignature,
           }, "Day done");
           if (ok) setDoneOpen(false);
         }} />

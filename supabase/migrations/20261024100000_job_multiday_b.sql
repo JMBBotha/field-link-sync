@@ -21,7 +21,24 @@ ALTER TABLE public.job_time_entries ADD COLUMN IF NOT EXISTS hours_auto numeric(
 ALTER TABLE public.job_time_entries ADD COLUMN IF NOT EXISTS hours_edit_note text;
 CREATE UNIQUE INDEX IF NOT EXISTS job_time_entries_job_day_key ON public.job_time_entries (job_id, agent_id, work_date) WHERE job_id IS NOT NULL;
 
-ALTER TABLE public.job_completions ADD COLUMN IF NOT EXISTS no_photo_reason text;
+-- Johan 23 Oct 19:01: after photos AND a sign-off for every day's work. The tech signs off himself (name + time, optional
+-- drawn signature); a client signature is optional. Recorded per day on the day log and on the completion.
+ALTER TABLE public.job_time_entries ADD COLUMN IF NOT EXISTS signed_off_at timestamptz;
+ALTER TABLE public.job_time_entries ADD COLUMN IF NOT EXISTS signed_off_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.job_time_entries ADD COLUMN IF NOT EXISTS signed_off_name text;
+ALTER TABLE public.job_time_entries ADD COLUMN IF NOT EXISTS tech_signature_data_url text;
+ALTER TABLE public.job_time_entries ADD COLUMN IF NOT EXISTS client_name text;
+ALTER TABLE public.job_time_entries ADD COLUMN IF NOT EXISTS client_signature_data_url text;
+ALTER TABLE public.job_time_entries ADD COLUMN IF NOT EXISTS after_photo_count integer;
+ALTER TABLE public.job_completions ADD COLUMN IF NOT EXISTS tech_signoff_name text;
+ALTER TABLE public.job_completions ADD COLUMN IF NOT EXISTS tech_signoff_at timestamptz;
+ALTER TABLE public.job_completions ADD COLUMN IF NOT EXISTS tech_signature_data_url text;
+ALTER TABLE public.job_completions ADD COLUMN IF NOT EXISTS after_photo_count integer;
+-- When the photo + sign-off rule started: completions finished earlier (old offline queues) are not blocked.
+CREATE TABLE IF NOT EXISTS public.job_rule_rollouts (rule text PRIMARY KEY, effective_at timestamptz NOT NULL DEFAULT now());
+ALTER TABLE public.job_rule_rollouts ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.job_rule_rollouts FROM anon, authenticated;
+INSERT INTO public.job_rule_rollouts (rule) VALUES ('after_photos_signoff') ON CONFLICT (rule) DO NOTHING;
 
 -- Per-day watchdog alerts: work_date NULL = job-level alert (as before)
 ALTER TABLE public.job_alerts ADD COLUMN IF NOT EXISTS work_date date;
@@ -323,6 +340,7 @@ BEGIN
       'agent_id', s.agent_id,
       'en_route_at', e.en_route_at, 'checked_in_at', e.checked_in_at, 'checked_out_at', e.checked_out_at,
       'hours', e.hours_worked, 'hours_auto', e.hours_auto, 'hours_edit_note', e.hours_edit_note, 'notes', e.notes,
+      'signed_off_at', e.signed_off_at, 'signed_off_name', e.signed_off_name, 'after_photos', e.after_photo_count,
       'state', CASE WHEN e.checked_out_at IS NOT NULL THEN 'done' WHEN e.checked_in_at IS NOT NULL THEN 'on_site'
                     WHEN e.en_route_at IS NOT NULL THEN 'en_route'
                     WHEN j.status IN ('completed', 'cancelled') THEN 'not_needed'
@@ -336,7 +354,7 @@ BEGIN
   RETURN jsonb_build_object('job_id', j.id, 'status', j.status, 'today', v_today,
     'multi_day', COALESCE((SELECT max(day_count) FROM public.job_schedules WHERE job_id = j.id), 1) > 1,
     'day_count', COALESCE((SELECT max(day_count) FROM public.job_schedules WHERE job_id = j.id), 1),
-    'scheduled_until', j.scheduled_until, 'days', v,
+    'scheduled_until', j.scheduled_until, 'days', v, 'lead_id', j.lead_id,
     'labour_hours', (SELECT round(COALESCE(sum(hours_worked), 0), 2) FROM public.job_time_entries x
                       WHERE x.job_id = j.id AND (v_ops OR x.agent_id = auth.uid())));
 END $$;
@@ -456,13 +474,27 @@ BEGIN
   RETURN jsonb_build_object('ok', true, 'multi_day', true, 'day_index', s.day_index, 'day_count', s.day_count, 'checked_in_at', v_at);
 END $$;
 
+-- After photos on the job's lead taken since a time (synced photos land in job_photos; offline ones sync before the day tap
+-- because the queue replays in tap order).
+CREATE OR REPLACE FUNCTION public._job_after_photos(p_lead_id uuid, p_since timestamptz)
+RETURNS integer LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
+  SELECT count(*)::int FROM public.job_photos
+   WHERE lead_id = p_lead_id AND photo_type = 'after' AND created_at >= COALESCE(p_since, '-infinity'::timestamptz);
+$$;
+REVOKE ALL ON FUNCTION public._job_after_photos(uuid, timestamptz) FROM PUBLIC, anon, authenticated;
+
 -- Done for today: hours default to check-in -> tap; a changed figure needs a reason. Job stays in progress.
+-- Johan 23 Oct 19:01: closing a day needs >= 1 after photo taken since that day's check-in AND the tech's sign-off
+-- (his name; the time is recorded; a drawn signature is optional). A client signature is optional.
 CREATE OR REPLACE FUNCTION public.tech_done_for_today(p_job_id uuid, p_hours numeric DEFAULT NULL, p_notes text DEFAULT NULL,
-  p_edit_note text DEFAULT NULL, p_at timestamptz DEFAULT NULL)
+  p_edit_note text DEFAULT NULL, p_at timestamptz DEFAULT NULL, p_signoff_name text DEFAULT NULL, p_tech_signature text DEFAULT NULL,
+  p_client_name text DEFAULT NULL, p_client_signature text DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
-DECLARE a record; e record; s record; nx record; v_at timestamptz := public._job_day_time(p_at); v_d date; v_auto numeric; v_h numeric;
+DECLARE a record; j record; e record; s record; nx record; v_at timestamptz := public._job_day_time(p_at); v_d date; v_auto numeric; v_h numeric;
+        v_photos int;
 BEGIN
   SELECT * INTO a FROM public._job_day_actor(p_job_id);
+  SELECT id, lead_id INTO j FROM public.jobs WHERE id = p_job_id;
   v_d := (v_at AT TIME ZONE 'Africa/Johannesburg')::date;
   SELECT * INTO e FROM public.job_time_entries WHERE job_id = p_job_id AND agent_id = a.tech AND work_date = v_d FOR UPDATE;
   IF e.id IS NULL OR e.checked_in_at IS NULL THEN RAISE EXCEPTION 'Check in first'; END IF;
@@ -474,13 +506,24 @@ BEGIN
     IF v_h < 0 OR v_h > 16 THEN RAISE EXCEPTION 'Hours must be between 0 and 16'; END IF;
     IF abs(v_h - v_auto) >= 0.25 AND length(btrim(COALESCE(p_edit_note, ''))) < 3 THEN
       RAISE EXCEPTION 'Say why the hours differ from the check-in time (% h)', v_auto; END IF;
+    v_photos := CASE WHEN j.lead_id IS NULL THEN NULL ELSE public._job_after_photos(j.lead_id, e.checked_in_at) END;
+    IF j.lead_id IS NOT NULL AND v_photos < 1 THEN
+      RAISE EXCEPTION 'Take at least one after photo of today''s work first' USING ERRCODE = 'P0001'; END IF;
+    IF length(btrim(COALESCE(p_signoff_name, ''))) < 2 THEN
+      RAISE EXCEPTION 'Sign off today''s work: confirm with your name' USING ERRCODE = 'P0001'; END IF;
     UPDATE public.job_time_entries SET checked_out_at = v_at, end_time = (v_at AT TIME ZONE 'Africa/Johannesburg')::time,
            hours_worked = v_h, hours_auto = v_auto,
            hours_edit_note = CASE WHEN abs(v_h - v_auto) >= 0.25 THEN left(btrim(p_edit_note), 500) END,
-           notes = NULLIF(left(btrim(COALESCE(p_notes, '')), 2000), ''), is_billable = false
+           notes = NULLIF(left(btrim(COALESCE(p_notes, '')), 2000), ''), is_billable = false,
+           signed_off_at = v_at, signed_off_by = a.tech, signed_off_name = left(btrim(p_signoff_name), 120),
+           tech_signature_data_url = NULLIF(p_tech_signature, ''),
+           client_name = NULLIF(left(btrim(COALESCE(p_client_name, '')), 120), ''),
+           client_signature_data_url = NULLIF(p_client_signature, ''),
+           after_photo_count = v_photos
      WHERE id = e.id;
   END IF;
   RETURN jsonb_build_object('ok', true, 'day_index', s.day_index, 'day_count', s.day_count, 'hours', COALESCE(v_h, e.hours_worked),
+    'after_photos', COALESCE(v_photos, e.after_photo_count), 'signed_off_name', COALESCE(left(btrim(p_signoff_name), 120), e.signed_off_name),
     'is_last', nx.scheduled_date IS NULL, 'next_date', nx.scheduled_date, 'next_day_index', nx.day_index);
 END $$;
 
@@ -554,7 +597,7 @@ REVOKE ALL ON FUNCTION public.job_days(uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.job_day_states(date, date) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.tech_day_en_route(uuid, timestamptz) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.tech_check_in(uuid, timestamptz) FROM PUBLIC, anon;
-REVOKE ALL ON FUNCTION public.tech_done_for_today(uuid, numeric, text, text, timestamptz) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.tech_done_for_today(uuid, numeric, text, text, timestamptz, text, text, text, text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.job_add_day(uuid, boolean, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.preview_job_days(uuid, date, integer, date, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.schedule_job_days(uuid, uuid, date, integer, date, boolean, boolean, text) TO authenticated;
@@ -562,7 +605,7 @@ GRANT EXECUTE ON FUNCTION public.job_days(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.job_day_states(date, date) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.tech_day_en_route(uuid, timestamptz) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.tech_check_in(uuid, timestamptz) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.tech_done_for_today(uuid, numeric, text, text, timestamptz) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.tech_done_for_today(uuid, numeric, text, text, timestamptz, text, text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.job_add_day(uuid, boolean, text) TO authenticated;
 
 -- 5) Keep runs consistent -------------------------------------------------------------------------
@@ -715,6 +758,77 @@ END $$;
 CREATE TRIGGER trg_job_completions_00_day_labour BEFORE INSERT OR UPDATE ON public.job_completions
   FOR EACH ROW EXECUTE FUNCTION public.job_completion_day_labour();
 
+
+-- Johan 23 Oct 19:01: finishing a job (single-day, or the last day of a run) needs >= 1 after photo and the tech's sign-off.
+-- Enforced on the server for every completion recorded from the rollout on; a client signature stays optional.
+-- Multi-day: the after photos must be from the open (last) day, i.e. taken since that day's check-in.
+CREATE OR REPLACE FUNCTION public.job_completion_photos_signoff()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
+DECLARE v_from timestamptz; v_job uuid; v_since timestamptz; v_n int;
+BEGIN
+  IF NEW.status IS DISTINCT FROM 'completed' OR (TG_OP = 'UPDATE' AND OLD.status = 'completed') THEN RETURN NEW; END IF;
+  SELECT effective_at INTO v_from FROM public.job_rule_rollouts WHERE rule = 'after_photos_signoff';
+  IF v_from IS NULL OR COALESCE(NEW.completed_at, now()) < v_from THEN RETURN NEW; END IF;
+  v_job := NEW.job_id;
+  IF v_job IS NULL AND NEW.lead_id IS NOT NULL THEN
+    SELECT j.id INTO v_job FROM public.jobs j WHERE j.lead_id = NEW.lead_id AND j.status <> 'cancelled' ORDER BY j.created_at DESC LIMIT 1;
+  END IF;
+  IF v_job IS NOT NULL THEN
+    SELECT max(e.checked_in_at) INTO v_since FROM public.job_time_entries e
+     WHERE e.job_id = v_job AND e.checked_in_at IS NOT NULL AND e.checked_out_at IS NULL;
+  END IF;
+  v_n := public._job_after_photos(NEW.lead_id, v_since);
+  IF COALESCE(v_n, 0) < 1 THEN
+    RAISE EXCEPTION '%', CASE WHEN v_since IS NULL THEN 'Take at least one after photo before finishing the job'
+                              ELSE 'Take at least one after photo of today''s work before finishing the job' END USING ERRCODE = 'P0001';
+  END IF;
+  IF length(btrim(COALESCE(NEW.tech_signoff_name, ''))) < 2 THEN
+    RAISE EXCEPTION 'Sign off the work: confirm with your name' USING ERRCODE = 'P0001';
+  END IF;
+  NEW.tech_signoff_name := left(btrim(NEW.tech_signoff_name), 120);
+  NEW.tech_signoff_at := COALESCE(NEW.tech_signoff_at, NEW.completed_at, now());
+  NEW.after_photo_count := v_n;
+  -- The run's open (last) day carries the same sign-off.
+  IF v_since IS NOT NULL THEN
+    UPDATE public.job_time_entries SET signed_off_at = NEW.tech_signoff_at, signed_off_by = NEW.technician_id,
+           signed_off_name = NEW.tech_signoff_name, tech_signature_data_url = NEW.tech_signature_data_url,
+           client_name = NEW.customer_name, client_signature_data_url = NEW.signature_data_url, after_photo_count = v_n
+     WHERE job_id = v_job AND checked_in_at IS NOT NULL AND checked_out_at IS NULL;
+  END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER trg_job_completions_01_photos_signoff BEFORE INSERT OR UPDATE ON public.job_completions
+  FOR EACH ROW EXECUTE FUNCTION public.job_completion_photos_signoff();
+REVOKE ALL ON FUNCTION public.job_completion_photos_signoff() FROM PUBLIC, anon, authenticated;
+
+-- The tech merge path (techs cannot upsert) must carry the new sign-off fields too. Pre-image in the rollback.
+CREATE OR REPLACE FUNCTION public.job_completions_rh_merge()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE u uuid := auth.uid();
+BEGIN
+  -- techs cannot SELECT job_completions (cost), so ON CONFLICT upserts fail for them; merge here instead
+  IF pg_trigger_depth() > 1 OR NEW.lead_id IS NULL OR u IS NULL OR NOT public.is_field_tech_only(u) THEN RETURN NEW; END IF;
+  IF NEW.technician_id IS DISTINCT FROM u OR NOT public.tech_can_see_lead(u, NEW.lead_id)
+     OR (NEW.company_id IS NOT NULL AND NEW.company_id IS DISTINCT FROM public.caller_company_id()) THEN
+    RAISE EXCEPTION 'Not allowed' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.job_completions SET job_id = NEW.job_id, work_summary = NEW.work_summary, customer_name = NEW.customer_name,
+    customer_email = NEW.customer_email, signature_data_url = NEW.signature_data_url, signed_at = NEW.signed_at,
+    labour_minutes = NEW.labour_minutes, photo_count = NEW.photo_count, status = NEW.status, completed_at = NEW.completed_at,
+    tech_signoff_name = NEW.tech_signoff_name, tech_signoff_at = NEW.tech_signoff_at, tech_signature_data_url = NEW.tech_signature_data_url
+  WHERE lead_id = NEW.lead_id AND technician_id = u;
+  IF NOT FOUND THEN
+    IF EXISTS (SELECT 1 FROM public.job_completions WHERE lead_id = NEW.lead_id) THEN
+      RAISE EXCEPTION 'Completion already recorded by another technician' USING ERRCODE = '23505';
+    END IF;
+    INSERT INTO public.job_completions SELECT NEW.*;
+  END IF;
+  RETURN NULL;
+END $function$;
 
 -- 6) Hand-over from an accepted quote: optional p_days (> 1 = multi-day run of whole working days).
 DROP FUNCTION public.hand_to_technician(uuid, date, time without time zone, integer, text, uuid);

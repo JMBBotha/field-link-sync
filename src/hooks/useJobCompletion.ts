@@ -18,8 +18,9 @@ export interface JobCompletionInput {
   photoCount: number;
   /** False when totals could not be read (offline) — they are recomputed on sync. */
   metricsKnown?: boolean;
-  /** Phase (b): why there is no after-photo (only sent when set, so older flows write the same row as before). */
-  noPhotoReason?: string | null;
+  /** Johan 23 Oct: the tech's own sign-off (required by the server from the rollout on). */
+  techSignoffName?: string | null;
+  techSignatureDataUrl?: string | null;
 }
 
 /**
@@ -52,7 +53,8 @@ export function useJobCompletion() {
         photo_count: input.photoCount,
         status: "completed",
         completed_at: completedAt,
-        ...(input.noPhotoReason ? { no_photo_reason: input.noPhotoReason } : {}),
+        ...(input.techSignoffName ? { tech_signoff_name: input.techSignoffName, tech_signoff_at: completedAt } : {}),
+        ...(input.techSignatureDataUrl ? { tech_signature_data_url: input.techSignatureDataUrl } : {}),
       };
 
       if (!isOnline) {

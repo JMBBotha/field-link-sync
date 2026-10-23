@@ -2,7 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
-vi.mock("@/contexts/OfflineContext", () => ({ useOfflineContext: () => ({ isOnline: true, queueOperation: vi.fn() }) }));
+vi.mock("@/contexts/OfflineContext", () => ({ useOfflineContext: () => ({ isOnline: true, queueOperation: vi.fn(), syncPendingOperations: vi.fn() }) }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "t1" } }) }));
+vi.mock("@/hooks/useSignedInIdentity", () => ({ useSignedInIdentity: () => ({ name: "Sipho", role: "tech", pending: false }) }));
 
 import {
   autoHours, dayAction, dayBadge, dayLabel, doneForTodayError, hoursNeedNote, planSummary, remainingDays, skipText, sumDayHours,
@@ -82,11 +84,38 @@ describe("tech day-by-day view", () => {
 
   it("Done for today sheet blocks a changed hours figure without a note", () => {
     const onSubmit = vi.fn();
-    render(<DoneForTodaySheet open onOpenChange={() => {}} tag="Day 2 of 3" auto={7} onSubmit={onSubmit} />);
+    render(<DoneForTodaySheet open onOpenChange={() => {}} tag="Day 2 of 3" auto={7} photos={1} techName="Sipho" onSubmit={onSubmit} />);
+    fireEvent.click(screen.getByTestId("signoff-confirm"));
     fireEvent.change(screen.getByTestId("done-hours"), { target: { value: "9" } });
     expect((screen.getByTestId("done-submit") as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(screen.getByTestId("done-edit-note"), { target: { value: "Finished the commissioning" } });
     expect((screen.getByTestId("done-submit") as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("each day needs an after photo and the tech's own sign-off; the client signature is optional", () => {
+    const onSubmit = vi.fn();
+    const { rerender } = render(<DoneForTodaySheet open onOpenChange={() => {}} tag="Day 1 of 3" auto={8} photos={0} techName="Sipho" onSubmit={onSubmit} />);
+    const submit = () => screen.getByTestId("done-submit") as HTMLButtonElement;
+    expect(submit().disabled).toBe(true);
+    expect(screen.getByTestId("done-error").textContent).toMatch(/after photo/);
+    rerender(<DoneForTodaySheet open onOpenChange={() => {}} tag="Day 1 of 3" auto={8} photos={2} techName="Sipho" onSubmit={onSubmit} />);
+    expect(submit().disabled).toBe(true);
+    expect(screen.getByTestId("done-error").textContent).toMatch(/sign off/i);
+    fireEvent.click(screen.getByTestId("signoff-confirm"));
+    expect((screen.getByTestId("signoff-name") as HTMLInputElement).value).toBe("Sipho");
+    expect(screen.getByTestId("tech-signoff").textContent).toContain("Signed Sipho");
+    expect(submit().disabled).toBe(false);
+    fireEvent.change(screen.getByTestId("signoff-name"), { target: { value: "" } });
+    expect(submit().disabled).toBe(true);
+    fireEvent.change(screen.getByTestId("signoff-name"), { target: { value: "Sipho M" } });
+    fireEvent.click(submit());
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ hours: 8, signoffName: "Sipho M", clientName: "", clientSignature: null }));
+  });
+
+  it("a day done offline keeps the sign-off on the day", () => {
+    const d = run([day(1, "2026-10-27", { checked_in_at: "2026-10-27T06:00:00Z", state: "on_site" }), day(2, "2026-10-28")]);
+    const next = applyDayOp(d, "tech_done_for_today", "2026-10-27T15:00:00Z", "2026-10-27", 9, null, "Sipho");
+    expect(next.days[0]).toMatchObject({ state: "done", hours: 9, signed_off_name: "Sipho", signed_off_at: "2026-10-27T15:00:00Z" });
   });
 });
 
