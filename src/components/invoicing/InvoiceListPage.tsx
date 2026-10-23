@@ -88,6 +88,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   const { byInvoice: dueBy } = useInvoiceDue();
   const dueFilter = searchParams.get("due");
   const [reviewId, setReviewId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const inf = parseInvoiceParams(searchParams);
   const filter = inf.state ?? "all";
   const setParam = (k: string, v: string | null) =>
@@ -137,7 +138,14 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
     setLoading(false);
   };
 
-  const filteredInvoices = filterInvoices(invoices, inf)
+  const archivedCount = invoices.filter((i: any) => i.archived_at).length;
+  const archiveInvoice = async (inv: Invoice, archive: boolean) => {
+    const { error } = await (supabase.rpc as any)("archive_void_invoice", { p_invoice_id: inv.id, p_archive: archive });
+    if (error) { toast({ title: "Could not update", description: error.message, variant: "destructive" }); return; }
+    toast({ title: archive ? `${inv.invoice_number} archived` : `${inv.invoice_number} restored` });
+    fetchInvoices();
+  };
+  const filteredInvoices = filterInvoices(invoices.filter((i: any) => showArchived ? !!i.archived_at : !i.archived_at), inf)
     .filter(inv => {
       if (!dueFilter) return true;
       const d = dueBy.get(inv.id); if (!d) return false;
@@ -366,6 +374,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
                 { label: "Send pay link (WhatsApp)", onSelect: () => sendPayLink(invoice), hidden: invoice.status === "paid" || !(invoice as any).quote_id },
                 { label: "Open quote", onSelect: () => navigate(`/admin/quote-builder?quoteId=${(invoice as any).quote_id}`), hidden: !(invoice as any).quote_id, separatorBefore: true },
                 { label: "Open client", onSelect: () => navigate(`/admin/customers/${(invoice as any).customer_id}`), hidden: !(invoice as any).customer_id },
+                { label: (invoice as any).archived_at ? "Restore from archive" : "Archive", onSelect: () => archiveInvoice(invoice, !(invoice as any).archived_at), hidden: !["void", "cancelled"].includes(invoice.status), separatorBefore: true },
               ]} />} />
             {due && reviewId === invoice.id && <FollowupReview row={due} onDone={() => setReviewId(null)} />}
             </div>); })
