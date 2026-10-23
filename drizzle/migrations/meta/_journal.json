@@ -169,6 +169,13 @@
       "when": 1792754705456,
       "tag": "0023_sync_client_contact_to_invoices",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792768621358,
+      "tag": "0024_stop_auto_send_on_accept",
+      "breakpoints": true
     }
   ]
 }
