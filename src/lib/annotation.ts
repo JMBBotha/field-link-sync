@@ -1,12 +1,14 @@
 /** Site-photo annotation model (P2). Coordinates are 0..1 of the image size so strokes survive any display size. */
 export type AnnColor = "#ef4444" | "#facc15" | "#ffffff";
 export const ANN_COLORS: AnnColor[] = ["#ef4444", "#facc15", "#ffffff"];
-export type AnnTool = "pen" | "arrow" | "text";
+export type AnnTool = "pen" | "arrow" | "text" | "unit";
 export interface AnnPoint { x: number; y: number }
 export type AnnShape =
   | { t: "pen"; c: AnnColor; pts: AnnPoint[] }
   | { t: "arrow"; c: AnnColor; a: AnnPoint; b: AnnPoint }
-  | { t: "text"; c: AnnColor; at: AnnPoint; text: string };
+  | { t: "text"; c: AnnColor; at: AnnPoint; text: string }
+  /** Unit mockup: product cut-out centred at `at`, `w` = width as a fraction of the photo width. */
+  | { t: "unit"; c: AnnColor; at: AnnPoint; w: number; url: string; label: string };
 export interface Annotation { v: 1; shapes: AnnShape[] }
 
 const clamp = (n: number) => Math.min(1, Math.max(0, Math.round(n * 10000) / 10000));
@@ -22,6 +24,9 @@ function normShape(s: AnnShape): AnnShape | null {
   if (s.t === "pen") return s.pts?.length ? { t: "pen", c: col(s.c), pts: s.pts.map(pt) } : null;
   if (s.t === "arrow") return { t: "arrow", c: col(s.c), a: pt(s.a), b: pt(s.b) };
   if (s.t === "text") return s.text?.trim() ? { t: "text", c: col(s.c), at: pt(s.at), text: String(s.text).slice(0, 80) } : null;
+  if (s.t === "unit") return typeof s.url === "string" && /^https?:\/\//.test(s.url)
+    ? { t: "unit", c: col(s.c), at: pt(s.at), w: Math.min(1, Math.max(0.05, Number(s.w) || 0.3)), url: s.url, label: String(s.label || "").slice(0, 80) }
+    : null;
   return null;
 }
 
@@ -32,12 +37,18 @@ export function parseAnnotation(raw: unknown): AnnShape[] {
 }
 
 /** Draw shapes onto a 2D context of size w×h. */
-export function drawShapes(ctx: CanvasRenderingContext2D, shapes: AnnShape[], w: number, h: number) {
+export function drawShapes(ctx: CanvasRenderingContext2D, shapes: AnnShape[], w: number, h: number, imgs?: Map<string, HTMLImageElement>) {
   const lw = Math.max(3, Math.round(Math.min(w, h) / 160));
   ctx.lineCap = "round"; ctx.lineJoin = "round";
   for (const s of shapes) {
     ctx.strokeStyle = s.c; ctx.fillStyle = s.c; ctx.lineWidth = lw;
-    if (s.t === "pen") {
+    if (s.t === "unit") {
+      const im = imgs?.get(s.url);
+      if (im && im.naturalWidth) {
+        const dw = s.w * w, dh = dw * (im.naturalHeight / im.naturalWidth);
+        ctx.drawImage(im, s.at.x * w - dw / 2, s.at.y * h - dh / 2, dw, dh);
+      }
+    } else if (s.t === "pen") {
       ctx.beginPath();
       s.pts.forEach((p, i) => (i ? ctx.lineTo(p.x * w, p.y * h) : ctx.moveTo(p.x * w, p.y * h)));
       ctx.stroke();
