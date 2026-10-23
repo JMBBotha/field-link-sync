@@ -1,7 +1,7 @@
 import { format, isToday, getDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { v8OutsideHours, v8WinMinutes, v8FillTone, type Win } from "@/lib/v8Hours";
-import { dayBadge, hoursText, type BoardDayState } from "@/lib/jobDays";
+import { dayBadge, dayBadgeTitle, hoursText, type BoardDayState } from "@/lib/jobDays";
 import "./v8.css";
 
 /** v8 Schedule (New layout): pipeline-style day columns. Pure view: every drop goes back to the page's existing handlers. */
@@ -102,7 +102,7 @@ export default function V8WeekBoard(p: Props) {
                     <div key={s.id} draggable onDragStart={(e) => p.onCardDragStart(e, s)} onDragEnd={p.onDragEnd} onClick={() => p.onOpen(s)}
                       className={cn("v8-ccard", V8_KIND[k].cls, late && "late")} title={`${s.leads?.customer_name || ""} · ${name(s.agent_id)}`}>
                       <div className="flex items-center justify-between gap-1 text-xs font-bold tabular-nums">{s.start_time.slice(0, 5)}
-                        <span className="flex gap-1">{dTag && <span className="v8-day" data-testid="v8-day-badge">{dTag}</span>}{lateTag && <span className="v8-late">{lateTag}</span>}</span></div>
+                        <span className="flex gap-1">{dTag && <span className="v8-day whitespace-nowrap" data-testid="v8-day-badge" title={dayBadgeTitle(s.day_index, s.day_count)}>{dTag}</span>}{lateTag && <span className="v8-late">{lateTag}</span>}</span></div>
                       <div className="truncate text-xs font-bold">{s.leads?.customer_name || "Booking"}</div>
                       {!p.month && <div className="truncate text-xs opacity-70">{s.leads?.customer_address || s.leads?.service_type} · {Math.round(v8Dur(s) / 60 * 10) / 10} h</div>}
                       {dsText && <div className={cn("v8-dstate", ds!.state)} data-testid="v8-day-state">{dsText}</div>}

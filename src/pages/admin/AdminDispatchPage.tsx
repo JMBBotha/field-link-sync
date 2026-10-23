@@ -48,7 +48,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import NeedsSomeoneTray from "@/components/calendar/NeedsSomeoneTray";
 import { useLayoutVersion } from "@/hooks/useLayoutVersion";
 import V8WeekBoard, { type V8Sched } from "@/components/v8/V8WeekBoard";
-import { loadDayStates, planSummary, scheduleJobDays, type BoardDayState, type DaysPlan } from "@/lib/jobDays";
+import { clashGroupText, clashHeadline, clashSummaryOf, dayLabel, loadDayStates, planSummary, scheduleJobDays, type BoardDayState, type DaysPlan } from "@/lib/jobDays";
 import { useNeedsReschedule } from "@/hooks/useNeedsReschedule";
 import { v8WindowFor, type HoursRow, type CompanyHours } from "@/lib/v8Hours";
 import { isTestLead } from "@/lib/callSummary";
@@ -1354,16 +1354,30 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
         <DialogContent className="max-w-md" data-testid="run-book-anyway">
           <DialogHeader>
             <DialogTitle>Book the run anyway?</DialogTitle>
-            <DialogDescription>{runAsk ? `${planSummary(runAsk.plan)}. Busy on ${runAsk.plan.clash_days} of the ${runAsk.plan.day_count} days.` : ""}</DialogDescription>
+            <DialogDescription>{runAsk ? `${planSummary(runAsk.plan)}. ${(() => { const c = clashSummaryOf(runAsk.plan); return c ? clashHeadline(c, runAsk.plan.day_count) : `Busy on ${runAsk.plan.clash_days} of the ${runAsk.plan.day_count} days`; })()}.` : ""}</DialogDescription>
           </DialogHeader>
-          {runAsk && (
-            <ul className="space-y-1 text-sm">
-              {runAsk.plan.days.filter((d) => (d.clashes?.length ?? 0) > 0).map((d) => (
-                <li key={d.date} className="rounded-md bg-red-50 px-2 py-1 text-red-900 dark:bg-red-950/40 dark:text-red-200">
-                  Day {d.day_index} · {d.date}: {d.clashes!.map((c) => `${c.start}–${c.end} ${c.label}`).join(", ")}
-                </li>))}
-            </ul>
-          )}
+          {runAsk && (() => {
+            // Long runs can clash on dozens of days: group by booking, then the first 8 days and "+ N more".
+            const hit = runAsk.plan.days.filter((d) => (d.clashes?.length ?? 0) > 0);
+            const sum = clashSummaryOf(runAsk.plan);
+            return (
+              <div className="max-h-[50vh] space-y-2 overflow-y-auto" data-testid="run-clash-summary">
+                {sum && hit.length > 3 && (
+                  <ul className="space-y-0.5 text-sm" data-testid="run-clash-groups">
+                    {sum.by_label.map((g) => <li key={g.label} className="break-words font-medium">{clashGroupText(g)}</li>)}
+                    {sum.more_labels > 0 && <li className="text-muted-foreground">+ {sum.more_labels} more bookings</li>}
+                  </ul>
+                )}
+                <ul className="space-y-1 text-sm">
+                  {hit.slice(0, 8).map((d) => (
+                    <li key={d.date} className="break-words rounded-md bg-red-50 px-2 py-1 text-red-900 dark:bg-red-950/40 dark:text-red-200">
+                      Day {d.day_index} · {dayLabel(d.date)}: {d.clashes!.map((c) => `${c.start}–${c.end} ${c.label}`).join(", ")}
+                    </li>))}
+                </ul>
+                {hit.length > 8 && <p className="text-xs text-muted-foreground" data-testid="run-clash-more">+ {hit.length - 8} more clash days, up to {dayLabel(hit[hit.length - 1].date)}</p>}
+              </div>
+            );
+          })()}
           <Textarea value={runReason} onChange={(e) => setRunReason(e.target.value)} placeholder="Why book over the clash?" data-testid="run-book-anyway-reason" />
           <DialogFooter>
             <Button variant="outline" onClick={() => setRunAsk(null)}>Cancel</Button>
