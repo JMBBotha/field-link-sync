@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, ImagePlus, Loader2, PenLine, Trash2, X } from "lucide-react";
+import { Camera, ImagePlus, Loader2, PenLine, Trash2, X, Eye, EyeOff } from "lucide-react";
+import { unitLineModelKey } from "@/lib/unitCards";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,7 +13,7 @@ import { photoDisplayPath, signedPhotoUrl } from "@/lib/photoUrls";
 import { parseAnnotation, serializeAnnotation, type AnnShape } from "@/lib/annotation";
 import PhotoAnnotator from "./PhotoAnnotator";
 
-interface SitePhoto { id: string; storage_path: string; annotated_path: string | null; annotation: unknown; uploaded_by: string | null; url: string; originalUrl: string }
+interface SitePhoto { caption: string | null; client_visible: boolean; id: string; storage_path: string; annotated_path: string | null; annotation: unknown; uploaded_by: string | null; url: string; originalUrl: string }
 
 /** Editable (salesperson visit): camera/gallery via the tech photo pipeline (offline queue), annotate own photos. */
 export default function SitePhotosSection({ leadId }: { leadId: string }) {
@@ -45,7 +46,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
     enabled: !!leadId,
     queryFn: async () => {
       const { data, error } = await (supabase.from("job_photos") as any)
-        .select("id, storage_path, annotated_path, annotation, uploaded_by, created_at")
+        .select("id, storage_path, annotated_path, annotation, uploaded_by, created_at, caption, client_visible")
         .eq("lead_id", leadId).eq("photo_type", "site").order("created_at", { ascending: false });
       if (error) throw error;
       return Promise.all(((data ?? []) as any[]).map(async (p) => ({
@@ -104,6 +105,29 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
     }
   };
 
+  // Unit mockups: approved cut-outs of the units on this lead's latest quote.
+  const mockups = useQuery({
+    queryKey: ["lead-unit-mockups", leadId],
+    enabled: !!leadId && !readOnly,
+    queryFn: async () => {
+      const { data: q } = await (supabase.from("quotes") as any).select("id").eq("lead_id", leadId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (!q) return [];
+      const { data: items } = await (supabase.from("quote_items") as any).select("item_name, item_type, item_number, product_code, is_bundle, metadata").eq("quote_id", q.id);
+      const keys = [...new Set(((items || []) as any[]).map(unitLineModelKey).filter(Boolean))] as string[];
+      if (!keys.length) return [];
+      const { data: media } = await (supabase.from("product_media" as never) as any).select("model_key, model_code, display_name, image_url, status").in("model_key", keys);
+      return ((media || []) as any[]).filter((m) => m.image_url && m.status === "approved")
+        .map((m) => ({ label: String(m.display_name || m.model_code).slice(0, 40), url: m.image_url as string }));
+    },
+  }).data ?? [];
+
+  const updatePhoto = async (p: SitePhoto, patch: Partial<Pick<SitePhoto, "caption" | "client_visible">>) => {
+    const { error } = await (supabase.from("job_photos") as any).update(patch).eq("id", p.id);
+    if (error) { toast({ title: "Couldn't save", description: error.message, variant: "destructive" }); return; }
+    setOpen((o) => (o && o.id === p.id ? { ...o, ...patch } : o));
+    qc.invalidateQueries({ queryKey: ["site-photos", leadId] });
+  };
+
   const list = photos.data ?? [];
   if (readOnly && list.length === 0) return null;
   return (
@@ -125,13 +149,14 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
         </div>
       )}
       {list.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No site photos yet. They stay internal (not on the client's quote).</p>
+        <p className="text-xs text-muted-foreground">No site photos yet. Photos stay internal unless you switch on "Client sees this".</p>
       ) : (
         <div className="grid grid-cols-3 gap-2">
           {list.map((p) => (
             <button key={p.id} type="button" onClick={() => setOpen(p)} className="relative aspect-square overflow-hidden rounded-md bg-muted" data-testid="site-photo-thumb">
               {p.url && <img src={p.url} alt="Site photo" className="h-full w-full object-cover" loading="lazy" />}
               {p.annotated_path && <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-xs text-white">Marked</span>}
+              {p.client_visible && <span className="absolute top-1 left-1 rounded bg-primary px-1 text-xs text-primary-foreground flex items-center gap-0.5"><Eye className="h-3 w-3" />Client</span>}
             </button>
           ))}
         </div>
@@ -148,11 +173,24 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
             <Button variant="ghost" className="min-h-[44px] text-white" onClick={() => setOpen(null)} aria-label="Close"><X className="h-5 w-5" /></Button>
           </div>
           <div className="flex-1 min-h-0 flex items-center justify-center p-2"><img src={open.url} alt="Site photo" className="max-h-full max-w-full object-contain" /></div>
+          {readOnly ? (open.caption ? <p className="p-3 text-sm text-white">{open.caption}</p> : null) : (
+            <div className="p-3 space-y-2 bg-black/80">
+              <textarea key={open.id} defaultValue={open.caption ?? ""} placeholder="Add info about this photo…" maxLength={500} rows={2}
+                onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== (open.caption ?? null)) void updatePhoto(open, { caption: v }); }}
+                className="w-full rounded-md bg-white/10 p-2 text-sm text-white placeholder:text-white/50" data-testid="site-photo-caption" />
+              {canManage && (
+                <Button variant={open.client_visible ? "default" : "secondary"} className="min-h-[44px] w-full" data-testid="site-photo-client-toggle"
+                  onClick={() => void updatePhoto(open, { client_visible: !open.client_visible })}>
+                  {open.client_visible ? <><Eye className="h-4 w-4 mr-1" />Client sees this — tap to hide</> : <><EyeOff className="h-4 w-4 mr-1" />Hidden from client — tap to show</>}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       )}
       {editing && (
         <PhotoAnnotator imageUrl={editing.originalUrl} initial={parseAnnotation(editing.annotation)} saving={saving}
-          onCancel={() => setEditing(null)} onSave={saveAnnotation} />
+          onCancel={() => setEditing(null)} onSave={saveAnnotation} mockups={mockups} />
       )}
     </div>
   );

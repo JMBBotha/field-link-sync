@@ -4972,6 +4972,7 @@ export type Database = {
           annotated_path: string | null
           annotation: Json | null
           caption: string | null
+          client_visible: boolean
           created_at: string
           id: string
           lead_id: string
@@ -4984,6 +4985,7 @@ export type Database = {
           annotated_path?: string | null
           annotation?: Json | null
           caption?: string | null
+          client_visible?: boolean
           created_at?: string
           id?: string
           lead_id: string
@@ -4996,6 +4998,7 @@ export type Database = {
           annotated_path?: string | null
           annotation?: Json | null
           caption?: string | null
+          client_visible?: boolean
           created_at?: string
           id?: string
           lead_id?: string

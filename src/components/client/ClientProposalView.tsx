@@ -1,5 +1,6 @@
 import ClientAdjustQuote from "@/components/client/ClientAdjustQuote";
 import ClientQuoteDocuments from "@/components/client/ClientQuoteDocuments";
+import ClientQuotePhotos from "@/components/client/ClientQuotePhotos";
 import { doneMessage } from "@/lib/doneToast";
 import { useQuoteUnitCards, QuoteUnitCardsView } from "@/components/quoting/QuoteUnitCards";
 import type { CompanyProfile } from "@/lib/companyProfiles";
@@ -378,6 +379,7 @@ const ClientProposalView = () => {
             </CardContent>
           </Card>
         )}
+        {token && <ClientQuotePhotos token={token} />}
         {token && <ClientQuoteDocuments token={token} />}
 
 

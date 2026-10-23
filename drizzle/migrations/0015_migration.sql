@@ -1,0 +1,1 @@
+alter table public.job_photos add column if not exists client_visible boolean not null default false;
