@@ -4420,6 +4420,7 @@ export type Database = {
       invoices: {
         Row: {
           agent_id: string
+          archived_at: string | null
           billed_to_vat_number: string | null
           company_id: string | null
           company_profile_id: string | null
@@ -4469,6 +4470,7 @@ export type Database = {
         }
         Insert: {
           agent_id: string
+          archived_at?: string | null
           billed_to_vat_number?: string | null
           company_id?: string | null
           company_profile_id?: string | null
@@ -4518,6 +4520,7 @@ export type Database = {
         }
         Update: {
           agent_id?: string
+          archived_at?: string | null
           billed_to_vat_number?: string | null
           company_id?: string | null
           company_profile_id?: string | null
@@ -13354,6 +13357,10 @@ export type Database = {
       }
       approve_invoice_request: { Args: { p_id: string }; Returns: string }
       archive_customer_note: { Args: { p_id: string }; Returns: undefined }
+      archive_void_invoice: {
+        Args: { p_archive?: boolean; p_invoice_id: string }
+        Returns: boolean
+      }
       area_slot_suggestions: {
         Args: { p_date: string; p_lead: string; p_minutes?: number }
         Returns: Json

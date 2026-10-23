@@ -148,6 +148,13 @@
       "when": 1792753938229,
       "tag": "0020_auto_send_deposit_invoice_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792753992500,
+      "tag": "0021_invoice_archived_at",
+      "breakpoints": true
     }
   ]
 }
