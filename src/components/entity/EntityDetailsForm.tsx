@@ -12,6 +12,8 @@ import {
   EditableNotes,
 } from "./EditableFields";
 import AddressMapField from "./AddressMapField";
+import EditableDuration from "./EditableDuration";
+import { sastParts } from "@/lib/schedulingDefaults";
 
 interface EntityDetailsFormProps {
   entityType: EntityType;
@@ -140,6 +142,8 @@ const EntityDetailsForm = ({
                   }
                 />
               );
+            case "duration":
+              return <EditableDuration {...shared} startTime={(data as any).scheduled_for ? sastParts((data as any).scheduled_for).time : null} />;
             case "datetime":
               return <EditableDateTime {...shared} />;
             case "date":

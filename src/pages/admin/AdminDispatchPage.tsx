@@ -38,7 +38,7 @@ import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { KpiGridSkeleton, JobCardListSkeleton } from "@/components/ui/skeletons";
 import LeadCardV2 from "@/components/leads/LeadCardV2";
 import AttentionStrip from "@/components/jobs/AttentionStrip";
-import { hhmm, leadMinutes, fromMinutes, toMinutes } from "@/lib/schedulingDefaults";
+import { hhmm, leadMinutes, fromMinutes, toMinutes, DEFAULT_JOB_MINUTES } from "@/lib/schedulingDefaults";
 import { overlapMap } from "@/lib/clash";
 import { useClashGuard } from "@/components/scheduling/ClashGuard";
 import { useDoubleBookings } from "@/hooks/useDoubleBookings";
@@ -675,7 +675,10 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     const startMin = keepStart && dragStart ? toMin(dragStart) : dropHour * 60;
     const hour = Math.floor(startMin / 60);
     const startTime = toHHMM(startMin);
-    const endTime = dragDur ? toHHMM(Math.min(startMin + dragDur, 23 * 60 + 59)) : toHHMM(Math.min(startMin + 120, 20 * 60));
+    // New booking from the tray: the lead's own length, else 3 h (1 h sales). Never wraps past midnight.
+    const firstLead = allLeads.find((l) => l.id === leadIds[0]);
+    const newDur = firstLead ? leadMinutes(firstLead as any) : DEFAULT_JOB_MINUTES;
+    const endTime = toHHMM(Math.min(startMin + (dragDur || newDur), 23 * 60 + 59));
 
     // Clash check over the full duration, excluding the dragged booking itself
     const slotKey = `${agentId}-${dateStr}-${hour}`;

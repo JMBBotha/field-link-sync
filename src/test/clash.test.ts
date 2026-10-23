@@ -49,9 +49,14 @@ describe("scheduling defaults", () => {
   it("lengths", () => {
     expect(leadMinutes({ primary_intent: "sales" })).toBe(60);
     expect(leadMinutes({ estimated_duration_minutes: 90 })).toBe(90);
-    expect(defaultMinutes("installation", 2)).toBe(420);
-    expect(defaultMinutes("repair")).toBe(150);
-    expect(defaultMinutes("service")).toBe(120);
+    // 3 h default for every job (flat, not per unit); sales visits stay 1 h (Johan, 23 Oct 2026)
+    expect(defaultMinutes("installation", 2)).toBe(180);
+    expect(defaultMinutes("repair")).toBe(180);
+    expect(defaultMinutes("service")).toBe(180);
+    expect(defaultMinutes(null)).toBe(180);
+    expect(defaultMinutes("quote")).toBe(60);
+    expect(defaultMinutes("New Quote")).toBe(60);
+    expect(leadMinutes({ service_type: "Technical Service Call" })).toBe(180);
     expect(jobMinutes({ estimated_duration: "04:00:00", job_type: "installation" })).toBe(240);
     expect(intervalToMinutes("2.5 hours")).toBe(150);
   });

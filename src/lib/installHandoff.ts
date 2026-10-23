@@ -31,10 +31,10 @@ export const handoffModesFor = (role: HandoffRole | null | undefined): HandoffMo
 export const defaultModeFor = (role: HandoffRole | null | undefined, companyDefault?: string | null): HandoffMode =>
   role === "rep" ? "offer" : companyDefault === "auto" ? "offer" : "pick";
 
-export const durationLabel = (minutes: number | null | undefined): string => {
+/** "Full day" only when it equals company hours (default 9 h); never "2 days" (single-day bookings, 23 Oct 2026). */
+export const durationLabel = (minutes: number | null | undefined, fullDayMinutes = 540): string => {
   const m = Number(minutes) || 0;
-  if (m >= 960) return "2 days";
-  if (m >= 480) return "Full day";
+  if (m === fullDayMinutes) return "Full day";
   if (m % 60 === 0) return `${m / 60} h`;
   return `${Math.round((m / 60) * 10) / 10} h`;
 };

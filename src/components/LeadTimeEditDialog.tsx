@@ -18,6 +18,8 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import DurationPicker from "@/components/scheduling/DurationPicker";
+import { DEFAULT_JOB_MINUTES } from "@/lib/schedulingDefaults";
 import { TimeInput24 } from "@/components/ui/time-input-24";
 
 interface Lead {
@@ -260,16 +262,13 @@ const LeadTimeEditDialog = ({
             </div>
 
             {/* Duration */}
-            <div className="space-y-2">
-              <Label>Estimated Duration (minutes)</Label>
-              <Input
-                type="number"
-                placeholder="60"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                min="1"
-              />
-            </div>
+            <DurationPicker
+              label="Estimated duration"
+              value={Number(duration) > 0 ? Number(duration) : DEFAULT_JOB_MINUTES}
+              onChange={(m) => setDuration(String(m))}
+              startTime={startTime || null}
+              hint={Number(duration) > 0 ? null : "Not set — default 3 h"}
+            />
           </div>
         </ScrollArea>
 

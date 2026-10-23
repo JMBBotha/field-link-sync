@@ -10,7 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2 } from "lucide-react";
 import { useClashGuard } from "./ClashGuard";
 import AppointmentPicker, { type AppointmentValue } from "./AppointmentPicker";
-import { format, parse, addMinutes } from "date-fns";
+import { parse } from "date-fns";
+import { DEFAULT_JOB_MINUTES, endTimeFor } from "@/lib/schedulingDefaults";
 
 interface ScheduleJobModalProps {
   open: boolean;
@@ -25,12 +26,11 @@ interface ScheduleJobModalProps {
 
 const computeEndTime = (start: string, durationMinutes: number) => {
   if (!start) return "";
-  const parsed = parse(start, "HH:mm", new Date());
-  return format(addMinutes(parsed, durationMinutes), "HH:mm");
+  return endTimeFor(start, durationMinutes).end; // never wraps past midnight
 };
 
 const minutesBetween = (start: string, end: string) => {
-  if (!start || !end) return 120;
+  if (!start || !end) return DEFAULT_JOB_MINUTES;
   const s = parse(start, "HH:mm", new Date());
   const e = parse(end, "HH:mm", new Date());
   return Math.max(15, Math.round((e.getTime() - s.getTime()) / 60000));
@@ -46,7 +46,7 @@ const ScheduleJobModal = ({
   const [appt, setAppt] = useState<AppointmentValue>({
     date: "",
     startTime: "08:00",
-    durationMinutes: 120,
+    durationMinutes: DEFAULT_JOB_MINUTES,
     agentId: "",
   });
   const [notes, setNotes] = useState("");
@@ -68,7 +68,7 @@ const ScheduleJobModal = ({
         : prev.startTime || "08:00",
       durationMinutes: selectedStart && selectedEnd
         ? Math.max(15, Math.round((selectedEnd.getTime() - selectedStart.getTime()) / 60000))
-        : prev.durationMinutes || 120,
+        : prev.durationMinutes || DEFAULT_JOB_MINUTES,
       agentId: existingEvent?.agentId ?? prev.agentId,
     }));
   }, [open, existingEvent, selectedDate, selectedStart, selectedEnd]);

@@ -7,12 +7,16 @@ export const WORK_START = "08:00";
 export const WORK_END = "17:00";
 export const TRAVEL_BUFFER_MIN = 30;
 
+/** Johan 23 Oct 2026: 3h default for every job; sales visits stay 1h; quote labour wins when present. */
+export const DEFAULT_JOB_MINUTES = 180;
 export const DEFAULT_MINUTES = {
-  installationPerUnit: 210,
-  service: 120,
-  repair: 150,
+  installationPerUnit: DEFAULT_JOB_MINUTES,
+  service: DEFAULT_JOB_MINUTES,
+  repair: DEFAULT_JOB_MINUTES,
   salesVisit: 60,
 } as const;
+/** Longest single-day booking (minutes). Longer work becomes multi-day (phase b). */
+export const MAX_SINGLE_DAY_MINUTES = 24 * 60 - 1;
 
 /** "14:00:00" | "14:00" | "9:5" → "14:00" / "09:05". Empty → "". */
 export function hhmm(t: string | null | undefined): string {
@@ -58,13 +62,28 @@ export function minutesToInterval(mins: number): string {
  * Default booking length in minutes.
  * kind: job_type / service_type / lane ("sales", "installation", "repair", ...).
  */
-export function defaultMinutes(kind?: string | null, units = 1): number {
-  const k = String(kind || "").toLowerCase();
-  if (k.includes("install")) return DEFAULT_MINUTES.installationPerUnit * Math.max(1, units);
-  if (k.includes("repair")) return DEFAULT_MINUTES.repair;
-  if (["sales", "quote", "sales_visit", "quote_visit", "consultation"].includes(k)) return DEFAULT_MINUTES.salesVisit;
-  if (k.includes("service") || k.includes("maint")) return DEFAULT_MINUTES.service;
-  return DEFAULT_MINUTES.salesVisit;
+export function isSalesKind(kind?: string | null): boolean {
+  const k = String(kind || "").toLowerCase().trim();
+  return k.includes("sales") || k.includes("quote") || k.includes("consult") || k === "survey";
+}
+
+/** Flat 3h for jobs (install, repair, service, unknown), 1h for sales visits. `units` kept for callers; no longer multiplies. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function defaultMinutes(kind?: string | null, _units = 1): number {
+  return isSalesKind(kind) ? DEFAULT_MINUTES.salesVisit : DEFAULT_JOB_MINUTES;
+}
+
+/** Quote labour hours → booking minutes (min 30, max one day). null when no labour. */
+export function quoteLabourMinutes(hours: number | null | undefined): number | null {
+  const h = Number(hours);
+  if (!h || !isFinite(h) || h <= 0) return null;
+  return Math.min(Math.max(Math.round((h * 60) / 30) * 30, 30), 12 * 60);
+}
+
+/** End time for a single-day booking, never wrapping past midnight. */
+export function endTimeFor(start: string, minutes: number): { end: string; clamped: boolean } {
+  const total = toMinutes(start) + Math.max(0, Math.round(minutes));
+  return { end: fromMinutes(total), clamped: total > 23 * 60 + 59 };
 }
 
 /** Length for a job: estimated_duration wins, else the default. */

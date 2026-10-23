@@ -18,7 +18,8 @@ export type EditableFieldKind =
   | "date"
   | "time"
   | "datetime"
-  | "address";
+  | "address"
+  | "duration";
 
 export interface EntityFieldConfig {
   /** Column name on the underlying table. */
@@ -146,7 +147,7 @@ export const ENTITY_REGISTRY: Record<EntityType, EntityConfig> = {
       { key: "priority", label: "Priority", kind: "select", options: PRIORITY },
       { key: "job_type", label: "Job Type", kind: "text" },
       { key: "scheduled_for", label: "Scheduled For", kind: "datetime" },
-      { key: "estimated_duration", label: "Est. Duration", kind: "text" },
+      { key: "estimated_duration", label: "Est. Duration", kind: "duration" },
       { key: "address", label: "Address", kind: "address", wide: true, latKey: "lat", lngKey: "lng" },
       { key: "description", label: "Description", kind: "textarea", wide: true },
     ],

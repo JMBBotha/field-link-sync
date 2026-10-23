@@ -27,6 +27,7 @@ import AppointmentPicker, {
 import { useAcceptLead, type AcceptLeadInput } from "@/hooks/useAcceptLead";
 import { format } from "date-fns";
 import { laneFromServiceType } from "@/lib/leadLane";
+import { DEFAULT_JOB_MINUTES, DEFAULT_MINUTES } from "@/lib/schedulingDefaults";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/useRole";
@@ -49,9 +50,16 @@ const defaultAppointment = (): AppointmentValue => {
   return {
     date: format(now, "yyyy-MM-dd"),
     startTime: `${String(hour).padStart(2, "0")}:00`,
-    durationMinutes: 120,
+    durationMinutes: DEFAULT_JOB_MINUTES,
     agentId: "",
   };
+};
+
+/** Lead's own length wins; sales lane = 1 h visit; everything else 3 h (Johan, 23 Oct 2026). */
+const leadDefaultMinutes = (lead: any): number => {
+  if (lead?.estimated_duration_minutes > 0) return lead.estimated_duration_minutes;
+  const lane = lead?.primary_intent === "sales" ? "sales" : laneFromServiceType(lead?.service_type);
+  return lane === "sales" ? DEFAULT_MINUTES.salesVisit : DEFAULT_JOB_MINUTES;
 };
 
 const AcceptLeadDialog = ({
@@ -81,6 +89,7 @@ const AcceptLeadDialog = ({
     if (!open || !lead) return;
     setAppt({
       ...defaultAppointment(),
+      durationMinutes: leadDefaultMinutes(lead),
       ...(defaults ?? {}),
       agentId: selfOnlyId || defaultAgentId || "",
     });

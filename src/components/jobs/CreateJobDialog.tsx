@@ -18,7 +18,9 @@ import { Loader2, MapPin, AlertTriangle, CheckCircle2 } from "lucide-react";
 import LocationPicker from "@/components/LocationPicker";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import { useClashGuard } from "@/components/scheduling/ClashGuard";
-import { fromMinutes, toMinutes } from "@/lib/schedulingDefaults";
+import { defaultMinutes, fromMinutes, toMinutes } from "@/lib/schedulingDefaults";
+import { useQuoteLabourMinutes } from "@/hooks/useQuoteLabourMinutes";
+import { formatDuration } from "@/lib/durationOptions";
 import AppointmentPicker, { type AppointmentValue } from "@/components/scheduling/AppointmentPicker";
 
 interface Props {
@@ -46,11 +48,18 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [appt, setAppt] = useState<AppointmentValue>(() => ({
     date: "",
     startTime: "",
-    durationMinutes: 120,
+    durationMinutes: defaultMinutes("service"),
     agentId: "",
   }));
   const [priority, setPriority] = useState("normal");
   const [jobType, setJobType] = useState("service");
+  // Duration default: quote labour hours win, else 3 h for jobs / 1 h for a quote (sales) visit. Stops once the user picks a length.
+  const [durationTouched, setDurationTouched] = useState(false);
+  const { data: quoteMinutes } = useQuoteLabourMinutes(quoteId || null);
+  const autoMinutes = quoteMinutes ?? defaultMinutes(jobType);
+  useEffect(() => {
+    if (!durationTouched) setAppt((a) => (a.durationMinutes === autoMinutes ? a : { ...a, durationMinutes: autoMinutes }));
+  }, [autoMinutes, durationTouched]);
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [geocoding, setGeocoding] = useState(false);
@@ -303,7 +312,8 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setQuoteId("");
     setLocationId("");
     setAddress("");
-    setAppt({ date: "", startTime: "", durationMinutes: 120, agentId: "" });
+    setAppt({ date: "", startTime: "", durationMinutes: defaultMinutes("service"), agentId: "" });
+    setDurationTouched(false);
     setPriority("normal");
     setJobType("service");
     setLat(null);
@@ -412,7 +422,8 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
                 Date · Time · Technician
               </span>
             </div>
-            <AppointmentPicker value={appt} onChange={setAppt} lat={lat} lng={lng} />
+            <AppointmentPicker value={appt} onChange={(v) => { if (v.durationMinutes !== appt.durationMinutes) setDurationTouched(true); setAppt(v); }} lat={lat} lng={lng}
+              durationHint={durationTouched ? null : quoteMinutes ? `From quote labour (${formatDuration(quoteMinutes)})` : jobType === "quote" ? "Sales visit 1 h" : "Default 3 h"} />
           </div>
           <div>
             <Label>Priority</Label>
