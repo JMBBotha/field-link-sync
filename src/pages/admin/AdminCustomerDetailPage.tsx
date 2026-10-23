@@ -76,6 +76,7 @@ const getInitials = (first?: string | null, last?: string | null, company?: stri
 const AdminCustomerDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const [innerTab, setInnerTab] = useState("activity");
+  const [showArchivedInv, setShowArchivedInv] = useState(false);
   const [site, setSite] = useState<string>("all");
   const [contractSignal, setContractSignal] = useState(0);
   const navigate = useNavigate();
@@ -184,7 +185,7 @@ const AdminCustomerDetailPage = () => {
       if (customer?.name) orParts.push(`customer_name.ilike.${customer.name}`);
       const { data, error } = await supabase
         .from("invoices")
-        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, created_at, customer_id, customer_name, location_id, payment_terms_basis, payment_terms_days")
+        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, created_at, archived_at, customer_id, customer_name, location_id, payment_terms_basis, payment_terms_days")
         .or(orParts.join(","))
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -192,6 +193,13 @@ const AdminCustomerDetailPage = () => {
       return (data || []).filter((r: any) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
     },
   });
+
+  const archiveInvoice = async (inv: any, archive: boolean) => {
+    const { error } = await (supabase.rpc as any)("archive_void_invoice", { p_invoice_id: inv.id, p_archive: archive });
+    if (error) { toast({ title: "Could not update", description: error.message, variant: "destructive" }); return; }
+    toast({ title: archive ? `${inv.invoice_number} archived` : `${inv.invoice_number} restored` });
+    qc.invalidateQueries({ queryKey: ["customer-invoices", id] });
+  };
 
   const { data: quotes = [] } = useQuery({
     queryKey: ["customer-quotes", id, customer?.name],
@@ -268,6 +276,7 @@ const AdminCustomerDetailPage = () => {
       buckets.push({ month: format(d, "MMM"), key: format(d, "yyyy-MM"), amount: 0 });
     }
     for (const inv of invoices) {
+      if ((inv as any).archived_at) continue;
       const date = inv.issue_date || inv.created_at;
       if (!date) continue;
       const key = format(new Date(date), "yyyy-MM");
@@ -317,6 +326,7 @@ const AdminCustomerDetailPage = () => {
     const s = { draft: 0, sent: 0, paid: 0, overdue: 0, outstanding: 0, paidValue: 0 };
     const now = new Date();
     for (const inv of invoices as any[]) {
+      if ((inv as any).archived_at) continue;
       const st = (inv.status || "draft").toLowerCase();
       const total = Number(inv.grand_total || 0);
       const overdue = st !== "paid" && inv.due_date && new Date(inv.due_date) < now;
@@ -339,10 +349,14 @@ const AdminCustomerDetailPage = () => {
     },
   });
   const bySite = <T extends { location_id?: string | null }>(arr: T[]) => (site === "all" ? arr : arr.filter((x) => x.location_id === site));
-  const fInvoices = bySite(invoices as any[]); const fQuotes = bySite(quotes as any[]); const fJobs = bySite(jobs as any[]);
+  const activeInvRows = (invoices as any[]).filter((inv: any) => !inv.archived_at);
+  const archivedInvRows = (invoices as any[]).filter((inv: any) => !!inv.archived_at);
+  const fInvoices = bySite(activeInvRows); const fQuotes = bySite(quotes as any[]); const fJobs = bySite(jobs as any[]);
+  const fInvTableRows = bySite(showArchivedInv ? archivedInvRows : activeInvRows);
   const money = useMemo(() => {
     let outstanding = 0, overdue = 0, overdueN = 0, maxLate = 0;
     for (const inv of invoices as any[]) {
+      if ((inv as any).archived_at) continue;
       const r = dueBy.get(inv.id); if (!r) continue;
       outstanding += Number(r.amount_due) || 0;
       if (!r.waiting && r.days > 0) { overdue += Number(r.amount_due) || 0; overdueN++; maxLate = Math.max(maxLate, r.days); }
@@ -378,7 +392,7 @@ const AdminCustomerDetailPage = () => {
   // profile card is never blank when an address is actually on file.
   const fullAddress = structuredAddress || (customer.address || "").trim();
 
-  const main: [string, string, number?][] = [["activity", "Activity"], ["quotes", "Quotes", quotes.length], ["invoices", "Invoices & Payments", invoices.length], ["jobs", "Jobs", jobs.length], ["sites", "Sites", locations.length]];
+  const main: [string, string, number?][] = [["activity", "Activity"], ["quotes", "Quotes", quotes.length], ["invoices", "Invoices & Payments", activeInvRows.length], ["jobs", "Jobs", jobs.length], ["sites", "Sites", locations.length]];
   const more: [string, string][] = [["details", "Client details"], ["contacts", "Contacts"], ["contracts", "Contracts"], ["notes", "Notes"], ...(canSeeStatement ? [["statement", "Statement"] as [string, string]] : []), ["calls", "Calls"], ["photos", "Photos"], ["documents", "Documents"], ["history", "History"], ["credits", "Credits"], ["oldsites", `${sitesLabel((customer as any).client_type)} (old list)`], ["relationship", "Relationship"]];
   const moreLabel = more.find(([v]) => v === innerTab)?.[1];
   const phone = (customer as any).phone as string | null; const email = (customer as any).email as string | null;
@@ -496,6 +510,13 @@ const AdminCustomerDetailPage = () => {
               { label: "Draft", value: String(invoiceSummary.draft), tone: "slate" },
             ]}
           />
+                  {archivedInvRows.length > 0 && (
+                    <div className="px-2 md:px-4 mt-2">
+                      <Button size="sm" variant={showArchivedInv ? "default" : "outline"} onClick={() => setShowArchivedInv((v) => !v)}>
+                        Archived <span className="ml-1 opacity-70">{archivedInvRows.length}</span>
+                      </Button>
+                    </div>
+                  )}
                   <div className="max-h-[560px] overflow-auto px-2 md:px-4 pb-6">
                     <Table>
                       <TableHeader>
@@ -509,7 +530,7 @@ const AdminCustomerDetailPage = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {fInvoices.map((inv: any) => (
+                        {fInvTableRows.map((inv: any) => (
                           <Fragment key={inv.id}>
                           <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/invoices/${inv.id}`)}>
                             <TableCell className="font-medium">{inv.invoice_number || "—"}</TableCell>
@@ -517,12 +538,12 @@ const AdminCustomerDetailPage = () => {
                             <TableCell className="text-xs">{inv.issue_date ? format(new Date(inv.issue_date), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-xs">{inv.due_date ? format(new Date(inv.due_date), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-right font-medium">{formatRand(Number(inv.grand_total || 0))}</TableCell>
-                            <TableCell><div className="flex flex-wrap items-center gap-1"><Badge variant="outline" className={cn("text-xs", statusBadge(inv.status))}>{inv.status || "draft"}</Badge>{dueBy.get(inv.id) && <InvoiceDueChip row={dueBy.get(inv.id)!} onClick={() => setReviewInv(reviewInv === inv.id ? null : inv.id)} />}</div></TableCell>
+                            <TableCell><div className="flex flex-wrap items-center gap-1"><Badge variant="outline" className={cn("text-xs", statusBadge(inv.status))}>{inv.status || "draft"}</Badge>{dueBy.get(inv.id) && <InvoiceDueChip row={dueBy.get(inv.id)!} onClick={() => setReviewInv(reviewInv === inv.id ? null : inv.id)} />}{(isAdmin || isDispatcher) && !isSalesRep && ["void", "cancelled"].includes((inv.status || "").toLowerCase()) && <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={(e) => { e.stopPropagation(); archiveInvoice(inv, !inv.archived_at); }}>{inv.archived_at ? "Restore" : "Archive"}</Button>}</div></TableCell>
                           </TableRow>
                           {reviewInv === inv.id && dueBy.get(inv.id) && <TableRow key={inv.id + "-review"}><TableCell colSpan={6}><FollowupReview row={dueBy.get(inv.id)!} onDone={() => setReviewInv(null)} />{isAdmin && !isSalesRep && <InvoiceTermsOverride invoice={inv} />}</TableCell></TableRow>}
                           </Fragment>
                         ))}
-                        {fInvoices.length === 0 && <EmptyRow cols={6} text="No invoices yet." />}
+                        {fInvTableRows.length === 0 && <EmptyRow cols={6} text={showArchivedInv ? "No archived invoices." : "No invoices yet."} />}
                       </TableBody>
                     </Table>
                   </div>
