@@ -11767,6 +11767,57 @@ export type Database = {
           },
         ]
       }
+      unit_mockups: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          image_url: string
+          label: string | null
+          model_key: string
+          storage_path: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url: string
+          label?: string | null
+          model_key: string
+          storage_path: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url?: string
+          label?: string | null
+          model_key?: string
+          storage_path?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unit_mockups_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unit_mockups_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       upgrade_paths: {
         Row: {
           from_participant_type: string | null
