@@ -120,6 +120,20 @@
       "when": 1792748537704,
       "tag": "0016_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792748689739,
+      "tag": "0017_invoice_email_logo",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792748703685,
+      "tag": "0018_invoice_email_logo_fallback",
+      "breakpoints": true
     }
   ]
 }
