@@ -120,7 +120,7 @@ const DepositPaymentChip = ({ invoice, accepted, className, hideAmount }: Deposi
     return (
       <Badge
         className={cn(
-          "border border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+          "rounded-md px-2 py-0.5 text-xs font-semibold whitespace-nowrap shrink-0 leading-5 border border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
           className,
         )}
       >
@@ -133,7 +133,7 @@ const DepositPaymentChip = ({ invoice, accepted, className, hideAmount }: Deposi
     return (
       <Badge
         className={cn(
-          "border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300",
+          "rounded-md px-2 py-0.5 text-xs font-semibold whitespace-nowrap shrink-0 leading-5 border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300",
           className,
         )}
       >
@@ -143,7 +143,7 @@ const DepositPaymentChip = ({ invoice, accepted, className, hideAmount }: Deposi
   }
 
   return (
-    <Badge variant="secondary" className={cn("border border-border bg-muted text-muted-foreground", className)}>
+    <Badge variant="secondary" className={cn("rounded-md px-2 py-0.5 text-xs font-semibold whitespace-nowrap shrink-0 leading-5 border border-border bg-muted text-muted-foreground", className)}>
       No deposit
     </Badge>
   );
