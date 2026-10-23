@@ -315,6 +315,19 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
             )}
           </button>
         ))}
+        {(archivedCount > 0 || showArchived) && (
+          <button
+            onClick={() => setShowArchived((v) => !v)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+              showArchived ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            Archived <span className="ml-1 opacity-70">{archivedCount}</span>
+          </button>
+        )}
+        {[].map(() => (
+          <span />
+        ))}
       </div>
 
       {/* Create Invoice Button */}
