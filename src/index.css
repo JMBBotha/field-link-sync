@@ -320,6 +320,22 @@ All colors MUST be HSL.
     overscroll-behavior-x: none;
   }
 
+  /* Phones: the app scrolls inside <main data-scroll-root> (overflow:auto on both axes), so any
+     slightly-too-wide card let the whole page slide sideways. Lock that scroller horizontally;
+     wide tables/strips keep their own overflow-x-auto box. */
+  @media (max-width: 767px) {
+    [data-scroll-root] {
+      overflow-x: hidden;
+      overscroll-behavior-x: none;
+      touch-action: pan-y pinch-zoom;
+    }
+    [data-scroll-root] .overflow-x-auto,
+    [data-scroll-root] .overflow-auto,
+    [data-scroll-root] .overflow-x-scroll {
+      touch-action: auto;
+    }
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
