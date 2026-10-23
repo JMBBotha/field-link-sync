@@ -25,8 +25,10 @@ describe("P3 hand to technician", () => {
   });
   it("duration labels and countdown", () => {
     expect(durationLabel(90)).toBe("1.5 h");
-    expect(durationLabel(480)).toBe("Full day");
-    expect(durationLabel(960)).toBe("2 days");
+    expect(durationLabel(540)).toBe("Full day");
+    expect(durationLabel(480)).toBe("8 h");
+    expect(durationLabel(480, 480)).toBe("Full day");
+    expect(durationLabel(960)).toBe("16 h"); // "2 days" removed — multi-day comes in phase (b)
     expect(countdown(new Date(1000 * 125).toISOString(), 0)).toBe("2:05");
   });
   it("status text", () => {

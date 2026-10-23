@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, parse, addMinutes, isSameDay } from "date-fns";
+import { format, parse, isSameDay } from "date-fns";
 import { CalendarIcon, Clock, User, Sparkles, CheckCircle2, AlertTriangle, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import type { LeadLane } from "@/lib/leadLane";
 import AvailabilityPicker from "./AvailabilityPicker";
+import DurationPicker from "./DurationPicker";
+import { endTimeFor } from "@/lib/schedulingDefaults";
 
 export interface AppointmentValue {
   /** ISO date "YYYY-MM-DD" */
@@ -35,15 +37,9 @@ interface AppointmentPickerProps {
   lng?: number | null;
   excludeLeadId?: string | null;
   excludeJobId?: string | null;
+  /** Shown next to the duration label, e.g. "Default 3 h" / "From quote labour". */
+  durationHint?: string | null;
 }
-
-const DURATIONS = [
-  { label: "30 min", value: 30 },
-  { label: "1 h", value: 60 },
-  { label: "2 h", value: 120 },
-  { label: "4 h", value: 240 },
-  { label: "All day", value: 480 },
-];
 
 // Hourly & half-hour slots 07:00–17:00 (HVAC standard workday)
 const TIME_SLOTS: string[] = (() => {
@@ -60,7 +56,7 @@ const toMinutes = (t: string) => {
   return h * 60 + (m || 0);
 };
 
-const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignmentLane = "service", className, lat, lng, excludeLeadId, excludeJobId }: AppointmentPickerProps) => {
+const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignmentLane = "service", className, lat, lng, excludeLeadId, excludeJobId, durationHint }: AppointmentPickerProps) => {
   const [calendarOpen, setCalendarOpen] = useState(false);
 
   const selectedDate = useMemo(() => {
@@ -87,8 +83,7 @@ const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignment
   // Per-agent status for the currently selected slot
   const slotEnd = useMemo(() => {
     if (!value.startTime) return null;
-    const start = parse(value.startTime, "HH:mm", new Date());
-    return format(addMinutes(start, value.durationMinutes), "HH:mm");
+    return endTimeFor(value.startTime, value.durationMinutes).end; // never wraps past midnight
   }, [value.startTime, value.durationMinutes]);
 
   const agentStatus = useMemo(() => {
@@ -129,13 +124,13 @@ const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignment
       // If no agent chosen, mark as busy only if ALL agents are busy at that time
       const someoneFree = agents.some((a: any) => {
         const own = daySchedules.filter((s: any) => s.agent_id === a.id);
-        const end = format(addMinutes(parse(slot, "HH:mm", new Date()), value.durationMinutes), "HH:mm");
+        const end = endTimeFor(slot, value.durationMinutes).end;
         return !own.some((s: any) => slot < s.end_time && end > s.start_time);
       });
       return !someoneFree && agents.length > 0;
     }
     const own = daySchedules.filter((s: any) => s.agent_id === value.agentId);
-    const end = format(addMinutes(parse(slot, "HH:mm", new Date()), value.durationMinutes), "HH:mm");
+    const end = endTimeFor(slot, value.durationMinutes).end;
     return own.some((s: any) => slot < s.end_time && end > s.start_time);
   };
 
@@ -179,28 +174,12 @@ const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignment
           </Popover>
         </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Duration
-          </label>
-          <div className="flex flex-wrap gap-1.5">
-            {DURATIONS.map((d) => (
-              <button
-                key={d.value}
-                type="button"
-                onClick={() => onChange({ ...value, durationMinutes: d.value })}
-                className={cn(
-                  "px-3 h-9 rounded-lg text-xs font-medium border transition-colors",
-                  value.durationMinutes === d.value
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background border-border hover:bg-muted"
-                )}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <DurationPicker
+          value={value.durationMinutes}
+          onChange={(m) => onChange({ ...value, durationMinutes: m })}
+          startTime={value.startTime || null}
+          hint={durationHint}
+        />
       </div>
 
       {/* Time slot grid */}

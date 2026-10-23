@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFlConfirm } from "./FlConfirmDialog";
 import { readSendReply, sastTime, waitForSendResult } from "@/lib/quoteEmailSend";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +22,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
 import { useClashGuard } from "@/components/scheduling/ClashGuard";
-import { minutesToInterval } from "@/lib/schedulingDefaults";
+import { DEFAULT_JOB_MINUTES, endTimeFor, minutesToInterval } from "@/lib/schedulingDefaults";
+import DurationPicker from "@/components/scheduling/DurationPicker";
+import { useQuoteLabourMinutes } from "@/hooks/useQuoteLabourMinutes";
+import { formatDuration } from "@/lib/durationOptions";
 import { TimeInput24 } from "@/components/ui/time-input-24";
 import AvailabilityPicker from "@/components/scheduling/AvailabilityPicker";
 import { isValidPlan, stageOf, type PaymentPlan } from "@/lib/paymentPlans";
@@ -32,18 +35,8 @@ interface Props {
   quoteId: string;
 }
 
-const DURATIONS = [
-  { label: "2 h", value: 120 },
-  { label: "4 h", value: 240 },
-  { label: "Full day", value: 480 },
-  { label: "2 days", value: 960 },
-];
-
-const addMinutesToTime = (time: string, minutes: number) => {
-  const [h, m] = time.split(":").map(Number);
-  const total = Math.min(h * 60 + (m || 0) + minutes, 23 * 60 + 59);
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-};
+// Single-day end time; never wraps past midnight (the broken "2 days" option was removed 23 Oct 2026).
+const addMinutesToTime = (time: string, minutes: number) => endTimeFor(time, minutes).end;
 
 /**
  * Post-acceptance workspace for a sales quote.
@@ -78,7 +71,13 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("08:00");
-  const [duration, setDuration] = useState(240);
+  const [duration, setDuration] = useState(DEFAULT_JOB_MINUTES);
+  const durationTouched = useRef(false);
+  // Quote labour hours beat the 3 h default (Johan, 23 Oct 2026).
+  const { data: quoteMinutes } = useQuoteLabourMinutes(quoteId);
+  useEffect(() => {
+    if (!durationTouched.current && quoteMinutes) setDuration(quoteMinutes);
+  }, [quoteMinutes]);
   const [techId, setTechId] = useState("");
   const [mode, setMode] = useState<HandoffMode>("pick");
 
@@ -465,17 +464,12 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Duration</Label>
-              <Select value={String(duration)} onValueChange={(v) => setDuration(Number(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {DURATIONS.map((d) => (
-                    <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <DurationPicker
+              value={duration}
+              onChange={(m) => { durationTouched.current = true; setDuration(m); }}
+              startTime={startTime || null}
+              hint={durationTouched.current ? null : quoteMinutes ? `From quote labour (${formatDuration(quoteMinutes)})` : "Default 3 h"}
+            />
 
             {modes.length > 1 ? (
               <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Hand-off" data-testid="handoff-modes">

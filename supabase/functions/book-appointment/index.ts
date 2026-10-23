@@ -224,6 +224,8 @@ serve(async (req) => {
     const rawService = String(p.service_type || "").trim();
     const notes = String(p.notes || "").trim();
     const { label: serviceType, jobType } = classifyService(rawService, notes);
+    // Mandy bookings: 3 h for a job, 1 h for a quote (sales) visit (Johan, 23 Oct 2026).
+    const bookingMinutes = jobType === "quote" ? 60 : 180;
 
 
     // --- Reuse the caller's open lead (unscheduled OR already scheduled = reschedule) ---
@@ -264,6 +266,7 @@ serve(async (req) => {
           customer_phone: phone || customer.phone,
           customer_address: address,
           service_type: serviceType,
+          estimated_duration_minutes: bookingMinutes,
           status: "accepted",
           priority: "normal",
           scheduled_date: p.date,
@@ -320,7 +323,7 @@ serve(async (req) => {
             description: historyNote,
             address,
             scheduled_for: when.iso,
-            status: "scheduled",
+            status: "scheduled", // reschedule keeps the job's existing length
           })
           .eq("id", existingJobId);
         if (jobErr) console.error("[book-appointment] job reschedule failed:", jobErr);
@@ -334,6 +337,7 @@ serve(async (req) => {
           description: notes || `Booked by phone on ${new Date().toISOString()}`,
           address,
           scheduled_for: when.iso,
+          estimated_duration: `${bookingMinutes} minutes`,
           status: "scheduled",
           job_type: jobType,
           priority: "normal",

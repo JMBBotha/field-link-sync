@@ -251,11 +251,10 @@ function durationMinutes(interval: string | null, jobType: string | null): numbe
   if (days) mins += Number(days[1]) * 1440;
   if (hm) mins += Number(hm[1]) * 60 + Number(hm[2]);
   if (mins > 0) return mins;
+  // 3 h for every job, 1 h for a sales/quote visit (Johan, 23 Oct 2026)
   const k = String(jobType || "").toLowerCase();
-  if (k.includes("install")) return 210;
-  if (k.includes("repair")) return 150;
-  if (k.includes("service") || k.includes("maint")) return 120;
-  return 60;
+  if (k.includes("sales") || k.includes("quote") || k.includes("consult") || k === "survey") return 60;
+  return 180;
 }
 
 function sastSlot(iso: string, mins: number) {
