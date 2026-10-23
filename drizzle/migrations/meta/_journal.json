@@ -134,6 +134,13 @@
       "when": 1792748703685,
       "tag": "0018_invoice_email_logo_fallback",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792753922017,
+      "tag": "0019_auto_send_deposit_invoice_on_accept",
+      "breakpoints": true
     }
   ]
 }
