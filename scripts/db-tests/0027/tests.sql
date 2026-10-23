@@ -78,7 +78,7 @@ END $$;
 SELECT pg_temp.ok(archived_at IS NOT NULL AND archived_by = 'aaaaaaaa-0000-0000-0000-0000000000a1' AND archive_reason = 'Client went elsewhere', 'Q2 archive columns set')
   FROM public.quotes WHERE id = '22222222-0000-0000-0000-000000000002';
 SELECT pg_temp.ok((SELECT count(*) FROM public.invoices WHERE id='44444444-0000-0000-0000-000000000002') = 1 AND (SELECT count(*) FROM public.payments) = 1, 'archive keeps invoice and payment');
-SELECT pg_temp.ok(EXISTS (SELECT 1 FROM public.audit_log WHERE action='archive' AND record_id='22222222-0000-0000-0000-000000000002'
+SELECT pg_temp.ok(EXISTS (SELECT 1 FROM public.audit_log WHERE action='update' AND new_data->>'event'='archive' AND record_id='22222222-0000-0000-0000-000000000002'
    AND company_id='aaaaaaaa-0000-0000-0000-000000000001' AND user_id='aaaaaaaa-0000-0000-0000-0000000000a1'
    AND new_data->>'reason'='Client went elsewhere' AND jsonb_array_length(old_data->'items') = 1), 'archive audit row with quote+items snapshot');
 DO $$ DECLARE e text; BEGIN
@@ -99,7 +99,7 @@ DO $$ DECLARE r jsonb; BEGIN
   PERFORM pg_temp.ok(NOT (r->>'archived')::boolean, 'Q2 unarchived');
 END $$;
 SELECT pg_temp.ok(archived_at IS NULL AND archived_by IS NULL AND archive_reason IS NULL, 'Q2 archive columns cleared') FROM public.quotes WHERE id = '22222222-0000-0000-0000-000000000002';
-SELECT pg_temp.ok(EXISTS (SELECT 1 FROM public.audit_log WHERE action='unarchive' AND record_id='22222222-0000-0000-0000-000000000002' AND company_id IS NOT NULL), 'unarchive audit row');
+SELECT pg_temp.ok(EXISTS (SELECT 1 FROM public.audit_log WHERE action='update' AND new_data->>'event'='unarchive' AND record_id='22222222-0000-0000-0000-000000000002' AND company_id IS NOT NULL), 'unarchive audit row');
 TRUNCATE public._test_nudges;
 SELECT public.process_sales_escalations();
 SELECT pg_temp.ok((SELECT count(*) FROM public._test_nudges WHERE id = '22222222-0000-0000-0000-000000000002') >= 1, 'after unarchive: Q2 nudges resume');
