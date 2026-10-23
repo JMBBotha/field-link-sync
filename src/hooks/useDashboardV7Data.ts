@@ -40,7 +40,7 @@ export function useDashboardV7Data(opts: { office: boolean; owner: boolean }) {
       const sinceDate = since.slice(0, 10);
       const [leads, quotes, invoices, jobs, commissions, earnings, team, assignments] = await Promise.all([
         all((a, b) => supabase.from("leads").select("id, created_at, first_contact_at, contact_attempts, scheduled_date, status, lead_status").eq("company_id", co).is("deleted_at", null).gte("created_at", since).order("created_at").range(a, b)),
-        all((a, b) => supabase.from("quotes").select("id, lead_id, status, sent_at, accepted_at, created_at").eq("company_id", co).gte("created_at", since).order("created_at").range(a, b)),
+        all((a, b) => supabase.from("quotes").select("id, lead_id, status, sent_at, accepted_at, created_at").eq("company_id", co).is("archived_at", null).gte("created_at", since).order("created_at").range(a, b)),
         opts.office ? all((a, b) => supabase.from("invoices").select("id, status, grand_total, issue_date, paid_date, due_date").eq("company_id", co).or(`issue_date.gte.${sinceDate},status.neq.paid`).order("issue_date").range(a, b)) : Promise.resolve([]),
         all((a, b) => (supabase.from("jobs") as any).select("id, status, scheduled_for, completed_at, awaiting_stock, created_at").eq("company_id", co).gte("created_at", since).order("created_at").range(a, b)),
         opts.owner ? all((a, b) => (supabase.from("sales_commission_snapshots") as any).select("rep_id, commission, earned_at, created_at, status").eq("company_id", co).gte("created_at", since).range(a, b)) : Promise.resolve(null),

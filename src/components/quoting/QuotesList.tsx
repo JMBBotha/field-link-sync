@@ -134,6 +134,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
         .from("quotes")
         .select("*, customers(name, phone)")
         .neq("status", "superseded")
+        .is("archived_at", null)
         .order("created_at", { ascending: false });
 
       if (search) {

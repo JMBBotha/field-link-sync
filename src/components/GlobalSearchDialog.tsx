@@ -55,6 +55,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
             .from("quotes")
             .select("id, quote_number, customer_name, reference_text, status, total")
             .neq("status", "superseded")
+            .is("archived_at", null)
             .order("created_at", { ascending: false })
             .limit(ROW_LIMIT),
           supabase

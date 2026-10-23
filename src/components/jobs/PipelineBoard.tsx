@@ -45,7 +45,7 @@ export function usePipelineData() {
       const [quotes, invoices, jobs, leads] = await Promise.all([
         (supabase.from("quotes") as any)
           .select("id, company_id, status, total, created_at, sent_at, viewed_at, accepted_at, accepted_by, declined_at, updated_at, valid_until, lead_id, sales_engineer_id, created_by, owner_id, customer_name, quote_number, customers(name, area, city)")
-          .neq("status", "superseded").order("created_at", { ascending: false }).limit(1000),
+          .neq("status", "superseded").is("archived_at", null).order("created_at", { ascending: false }).limit(1000),
         supabase.from("invoices").select("quote_id, status, notes, grand_total").not("quote_id", "is", null).limit(2000),
         supabase.from("jobs").select("quote_id, status, created_at").not("quote_id", "is", null).limit(2000),
         (supabase.from("leads") as any)

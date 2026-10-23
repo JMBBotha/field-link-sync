@@ -21,7 +21,7 @@ export default function QuoteFollowUpPanel({ lead }: { lead: any }) {
   const q = useQuery({
     queryKey: ["lead-quote-followups", lead?.id], enabled: !!lead?.id,
     queryFn: async () => (await sb.from("quotes").select("id, quote_number, total, followup_kind, followup_state, followup_count, followup_next_at")
-      .eq("lead_id", lead.id).in("followup_state", OPEN).order("sent_at", { ascending: false })).data || [],
+      .eq("lead_id", lead.id).is("archived_at", null).in("followup_state", OPEN).order("sent_at", { ascending: false })).data || [],
   });
   if (!q.data?.length || lead?.closed_at || lead?.dismissed_at) return null;
 

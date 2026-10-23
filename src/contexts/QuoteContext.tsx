@@ -168,7 +168,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     try {
       if (!silent) setLoading(true);
       const [quoteRes, areasRes, itemsRes] = await Promise.all([
-        supabase.from("quotes").select("id, quote_number, customer_id, customer_name, status, subtotal, vat_rate, vat_amount, total, notes, valid_until, discount_type, discount_value, terms_text, reference_text, company_id, units_markup_percent, materials_markup_percent, materials_waste_percent, labour_mode, labour_included, remote_quote, remote_quote_source, created_at, is_variation, parent_quote_id, locked_at, locked_reason, variation_summary").eq("id", quoteId).single(),
+        supabase.from("quotes").select("id, quote_number, customer_id, customer_name, status, subtotal, vat_rate, vat_amount, total, notes, valid_until, discount_type, discount_value, terms_text, reference_text, company_id, units_markup_percent, materials_markup_percent, materials_waste_percent, labour_mode, labour_included, remote_quote, remote_quote_source, created_at, is_variation, parent_quote_id, locked_at, locked_reason, variation_summary, archived_at, archive_reason").eq("id", quoteId).single(),
         supabase.from("quote_areas").select("*").eq("quote_id", quoteId).order("sort_order"),
         supabase.from("quote_items").select("*").eq("quote_id", quoteId).order("sort_order"),
       ]);

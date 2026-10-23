@@ -23,6 +23,7 @@ const AdminProposalsPage = () => {
         .from("quotes")
         .select("*, customers(name), proposal_sections(id)")
         .neq("status", "superseded")
+        .is("archived_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;

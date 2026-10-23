@@ -73,6 +73,7 @@ async function fetchPreview(kpiKey: string, today: string): Promise<PreviewRow[]
         .from("quotes")
         .select("id, quote_number, total, created_at, customer_id, company_id, customer_name, public_token, customers(name, email, address)")
         .eq("status", "draft")
+        .is("archived_at", null)
         .order("created_at", { ascending: false })
         .limit(5);
       return (data || []).map((q: any) => ({

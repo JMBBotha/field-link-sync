@@ -31,7 +31,7 @@ export default function AttentionStrip({ className }: { className?: string }) {
           .eq("status", "pending").is("deleted_at", null).is("merged_into_id", null).limit(500),
         supabase.from("jobs").select("id, title, status, scheduled_for").eq("status", "scheduled").lt("scheduled_for", new Date().toISOString()).limit(500),
         supabase.from("invoices").select("quote_id, customer_name").in("status", ["paid", "partially_paid"]).not("quote_id", "is", null).limit(1000),
-        supabase.from("quotes").select("id, customer_name").eq("status", "accepted").limit(500),
+        supabase.from("quotes").select("id, customer_name").eq("status", "accepted").is("archived_at", null).limit(500),
       ]);
       const quoteIds = (accepted.data || []).map((q: any) => q.id);
       const booked = quoteIds.length
