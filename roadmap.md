@@ -195,4 +195,4 @@ Follow-ups only: staff working hours and webhook-secret rotation were intentiona
 - [x] Phones: stop whole page sliding sideways; card edges cut off on Home — tighten margins (owner 2026-10-23)
 - [x] Remove "No site visit" toggle at top of quote builder (owner 2026-10-23)
 - [ ] Shrink red "Current lead" banner to a small toggle (owner 2026-10-23) — waiting on screenshot to locate it
-- [ ] Archive (hide) voided invoices from the invoice list
+- [x] Archive (hide) voided invoices from the invoice list

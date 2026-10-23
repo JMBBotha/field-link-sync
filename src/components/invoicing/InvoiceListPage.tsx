@@ -325,9 +325,6 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
             Archived <span className="ml-1 opacity-70">{archivedCount}</span>
           </button>
         )}
-        {[].map(() => (
-          <span />
-        ))}
       </div>
 
       {/* Create Invoice Button */}
