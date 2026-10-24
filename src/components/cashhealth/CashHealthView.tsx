@@ -122,7 +122,7 @@ function Overview({ data, f, alerts, actions, safe, setTab, today }: { data: Cas
       <div className="grid gap-3 lg:grid-cols-3">
         <Card title="Money in vs going out, per week" className="lg:col-span-2">
           <FlowBars f={f} />
-          <p className="mt-1 text-xs text-ink-muted">13 weeks: in {rand0(f.totals.inExpected)} · units & materials {rand0(f.totals.units)} · overheads {rand0(f.totals.overheads)} · VAT {rand0(f.totals.vat)}</p>
+          <p className="mt-1 text-xs text-ink-muted">13 weeks: in {rand0(f.totals.inExpected)} · units & materials {rand0(f.totals.units)} · overheads {rand0(f.totals.overheads)} · VAT {rand0(f.totals.vat)}{f.unscheduled.count > 0 && <> · <span className="font-semibold text-amber-700" data-testid="cash-unscheduled">Unscheduled finals {rand0(f.unscheduled.total)} ({f.unscheduled.count}) not in the weeks</span></>}</p>
         </Card>
         <Card title="VAT to SARS" testId="cash-vat" right={<span className="text-xs text-ink-muted">VAT {data.settings.vat_number || "–"}</span>}>
           <div className="text-xs text-ink-muted">Period {fmtD(vs.period.start)} – {fmtD(vs.period.end)} · {data.settings.vat_basis === "payment" ? "payment" : "invoice"} basis</div>
@@ -181,7 +181,7 @@ function MoneyIn({ data, f, actions, safe, today }: { data: CashHealthData; f: F
       <div key={r.id} className="grid grid-cols-2 items-center gap-2 border-t border-border py-2 text-sm md:grid-cols-[1.6fr_.9fr_1fr_.7fr_.7fr_1fr_auto]" data-testid="cash-receipt-row">
         <div className="col-span-2 min-w-0 md:col-span-1">
           <div className="truncate font-semibold text-ink">{r.ref} <span className="font-normal text-ink-secondary">{r.client}</span></div>
-          <div className="flex flex-wrap gap-1"><Chip tone="blue">{PART_LABEL[r.part]}</Chip>{i?.status === "draft" && <Chip tone="amber">Draft – not sent</Chip>}{r.source !== "field_lynk" && <Chip>Added by hand</Chip>}{late && <Chip tone="red">Overdue</Chip>}{r.note && <span className="text-xs text-ink-muted">{r.note}</span>}</div>
+          <div className="flex flex-wrap gap-1"><Chip tone="blue">{PART_LABEL[r.part]}</Chip>{i?.status === "draft" && <Chip tone="amber">Draft – not sent</Chip>}{r.source !== "field_lynk" && <Chip>Added by hand</Chip>}{late && <Chip tone="red">Overdue</Chip>}{r.status === "expected" && !r.expected_date && <Chip tone="amber">Unscheduled – date not set</Chip>}{r.note && <span className="text-xs text-ink-muted">{r.note}</span>}</div>
         </div>
         <div className="text-right font-semibold md:text-left">{rand0(r.amount_incl)}</div>
         <Field ariaLabel="Expected date" type="date" value={r.expected_date} onSave={(v) => safe(actions.updateReceipt(r.id, { expected_date: v || null }), "Date saved")} />
@@ -194,7 +194,7 @@ function MoneyIn({ data, f, actions, safe, today }: { data: CashHealthData; f: F
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <Stat label="Expected in 13 weeks" value={rand0(f.totals.inExpected)} tone="green" />
+        <Stat label="Expected in 13 weeks" value={rand0(f.totals.inExpected)} tone="green" sub={f.unscheduled.count ? `+ ${rand0(f.unscheduled.total)} unscheduled (${f.unscheduled.count}, no date yet)` : undefined} testId="cash-in-expected" />
         <Stat label="Cautious (late + confidence)" value={rand0(cautious)} />
         <Stat label="Open payments" value={String(open.length)} sub={`${open.filter((r) => r.invoice_id && inv.get(r.invoice_id)?.status === "draft").length} on draft invoices`} />
         <Stat label="Received (last 60 days)" value={rand0(recent.filter((r) => r.status === "received").reduce((s, r) => s + r.amount_incl, 0))} />
