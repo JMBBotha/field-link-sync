@@ -97,6 +97,9 @@ export const allocatedQty = (c: Commitment, allocs: Allocation[]) => allocs.filt
 export const unitCostIncl = (c: Commitment) => num(c.unit_cost_excl) * (1 + num(c.vat_rate) / 100);
 /** Cash still to pay for a line: only while 'needed', less whatever stock already covers it. */
 export const stillToPay = (c: Commitment, allocs: Allocation[]) => (c.status === "needed" ? r2(Math.max(0, num(c.qty) - allocatedQty(c, allocs)) * unitCostIncl(c)) : 0);
+/** 3c: a line marked "ordered & paid" (e.g. Fourways, paid on order) after the bank balance date is cash out on its pay date. */
+export const paidAfterBank = (c: Commitment, bankAsOf: string | null) =>
+  c.status === "ordered_paid" && c.pay_date && bankAsOf && c.pay_date > bankAsOf ? r2(num(c.qty) * unitCostIncl(c)) : 0;
 export function freeStock(s: StockItem, allocs: Allocation[]) {
   return num(s.qty_on_hand) - allocs.filter((a) => a.stock_item_id === s.id && !a.drawn_at).reduce((t, a) => t + num(a.qty), 0);
 }
@@ -206,8 +209,9 @@ export function forecast(d: CashHealthData, today = new Date(), nWeeks = 13): Fo
     const j = idx(late);
     if (j >= 0) weeks[j].inCautious += num(r.amount_incl) * Math.min(Math.max(num(r.confidence), 0), 100) / 100;
   }
+  const sb0 = startBalance(d.accounts, d.balances);
   for (const c of d.commitments) {
-    const pay = stillToPay(c, d.allocations); if (pay <= 0) continue;
+    const pay = stillToPay(c, d.allocations) || paidAfterBank(c, sb0.asOf); if (pay <= 0) continue;
     const i = idx(c.pay_date); if (i < 0) continue;
     weeks[i].units += pay; weeks[i].lines.push({ kind: "units", label: `${c.item} · ${c.project}`.trim(), amount: pay });
   }
@@ -309,4 +313,61 @@ export function alerts(d: CashHealthData, f: Forecast, today = new Date()): Aler
   const billWeek = d.commitments.filter((c) => stillToPay(c, d.allocations) > 0 && c.pay_date && c.pay_date <= weekEnd);
   if (billWeek.length) out.push({ tone: "info", text: `Units to pay for this week: ${rand0(billWeek.reduce((s, c) => s + stillToPay(c, d.allocations), 0))} (${billWeek.length} line${billWeek.length > 1 ? "s" : ""}).`, tab: "projects" });
   return out;
+}
+
+// ---------- 2b: inflow lines (week / month) ----------
+export type InflowBucket = { key: string; label: string; deposits: number; finals: number; received: number; past: boolean };
+/** Three separate inflow lines per bucket: deposits expected, finals expected (final/full/progress), money received.
+ *  Expected money already overdue lands in the current bucket (same rule as the forecast). */
+export function inflowSeries(d: Pick<CashHealthData, "receipts">, today: Date, mode: "week" | "month", past = mode === "week" ? 4 : 2, ahead = mode === "week" ? 13 : 4): InflowBucket[] {
+  const startOf = (x: Date) => (mode === "week" ? mondayOf(x) : new Date(x.getFullYear(), x.getMonth(), 1));
+  const step = (x: Date, n: number) => (mode === "week" ? addDays(x, 7 * n) : new Date(x.getFullYear(), x.getMonth() + n, 1));
+  const cur = startOf(today);
+  const out: InflowBucket[] = [];
+  for (let i = -past; i < ahead; i++) {
+    const s = step(cur, i);
+    out.push({ key: isoDate(s), label: s.toLocaleDateString("en-ZA", mode === "week" ? { day: "numeric", month: "short" } : { month: "short", year: "2-digit" }), deposits: 0, finals: 0, received: 0, past: i < 0 });
+  }
+  const first = step(cur, -past), end = step(cur, ahead);
+  const at = (iso: string | null, clampPast: boolean) => {
+    if (!iso) return -1; const x = parseDate(iso);
+    if (x >= end) return -1;
+    if (x < cur && clampPast) return past;
+    if (x < first) return -1;
+    let i = 0; while (i + 1 < out.length && parseDate(out[i + 1].key) <= x) i++; return i;
+  };
+  for (const r of d.receipts) {
+    if (r.status === "received") { const i = at(r.received_date, false); if (i >= 0) out[i].received += num(r.amount_incl); }
+    else if (r.status === "expected") { const i = at(r.expected_date, true); if (i < 0) continue; if (r.part === "deposit") out[i].deposits += num(r.amount_incl); else out[i].finals += num(r.amount_incl); }
+  }
+  for (const b of out) { b.deposits = r2(b.deposits); b.finals = r2(b.finals); b.received = r2(b.received); }
+  return out;
+}
+
+// ---------- 3c: job liabilities ----------
+/** Units/materials still to buy for jobs whose deposit is in but which aren't installed, at supplier cost incl VAT.
+ *  Built only from cf_commitments (each line counted once; stock already allocated is excluded by stillToPay). */
+export function jobLiabilities(d: Pick<CashHealthData, "receipts" | "commitments" | "allocations">) {
+  const ps = projects(d).filter((p) => p.deposit?.received && p.status !== "installed");
+  const lines = ps.flatMap((p) => p.lines.filter((l) => stillToPay(l, d.allocations) > 0));
+  const total = r2(lines.reduce((t, l) => t + stillToPay(l, d.allocations), 0));
+  const jobs = ps.filter((p) => p.lines.some((l) => stillToPay(l, d.allocations) > 0)).length;
+  const notDeposited = r2(projects(d).filter((p) => !p.deposit?.received).reduce((t, p) => t + p.stillToBuy, 0));
+  return { total, jobs, lines: lines.length, notDeposited };
+}
+
+// ---------- 3d: one-view summary ----------
+export function summary(d: CashHealthData, f: Forecast) {
+  const dep = d.receipts.filter((r) => r.part === "deposit" || r.part === "full");
+  return {
+    bank: f.start, bankEntered: f.bankEntered, stock: stockValue(d.stock),
+    liabilities: jobLiabilities(d),
+    depositsPaid: r2(d.receipts.filter((r) => r.status === "received" && r.part === "deposit").reduce((t, r) => t + num(r.amount_incl), 0)),
+    depositsExpected: r2(dep.filter((r) => r.status === "expected" && r.part === "deposit").reduce((t, r) => t + num(r.amount_incl), 0)),
+    finalsExpected: r2(d.receipts.filter((r) => r.status === "expected" && r.part !== "deposit").reduce((t, r) => t + num(r.amount_incl), 0)),
+    overheadsMonth: f.monthlyOverheads,
+    vatNext: f.vatSummary.payments[0] ?? null,
+    low: { value: f.lowest.value, week: f.weeks[f.lowest.index]?.label ?? "" },
+    health: f.health,
+  };
 }

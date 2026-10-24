@@ -49,7 +49,9 @@ export function useCashHealth(companyId: string | null, enabled: boolean) {
       const eq = (t: string, sel = "*") => db.from(t).select(sel).eq("company_id", companyId);
       const settings = must(await eq("cf_settings").maybeSingle()) as CfSettings;
       const today = new Date();
-      const cur = vatPeriodFor(settings, today), prev = prevPeriod(settings, cur);
+      // Before go-live the forecast runs from forecast_start, so the VAT periods must too (else "previous" is the wrong period).
+      const start = settings.forecast_start ? new Date(settings.forecast_start + "T00:00:00") : null;
+      const cur = vatPeriodFor(settings, start && start > today ? start : today), prev = prevPeriod(settings, cur);
       const [receipts, commitments, stock, allocations, overheads, accounts, balances, invoices, vc, vp] = await Promise.all([
         eq("cf_receipts").order("expected_date", { ascending: true, nullsFirst: false }).order("ref").order("part"),
         eq("cf_commitments").order("project").order("created_at"),
