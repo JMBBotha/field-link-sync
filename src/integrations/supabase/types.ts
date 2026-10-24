@@ -2611,6 +2611,7 @@ export type Database = {
           default_install_labour_hours: number
           default_payment_terms_days: number | null
           id: string
+          invoice_auto_send_minutes: number
           is_primary: boolean
           logo_storage_path: string | null
           payfast_merchant_id: string | null
@@ -2632,6 +2633,7 @@ export type Database = {
           default_install_labour_hours?: number
           default_payment_terms_days?: number | null
           id?: string
+          invoice_auto_send_minutes?: number
           is_primary?: boolean
           logo_storage_path?: string | null
           payfast_merchant_id?: string | null
@@ -2653,6 +2655,7 @@ export type Database = {
           default_install_labour_hours?: number
           default_payment_terms_days?: number | null
           id?: string
+          invoice_auto_send_minutes?: number
           is_primary?: boolean
           logo_storage_path?: string | null
           payfast_merchant_id?: string | null
@@ -4387,6 +4390,142 @@ export type Database = {
           },
         ]
       }
+      invoice_send_approvals: {
+        Row: {
+          attempts: number
+          client_name: string | null
+          company_id: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision: string | null
+          deposit_amount: number | null
+          due_at: string | null
+          hold_reason: string | null
+          id: string
+          invoice_id: string
+          invoice_number: string | null
+          last_error: string | null
+          quote_id: string | null
+          quote_number: string | null
+          rep_id: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          client_name?: string | null
+          company_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          deposit_amount?: number | null
+          due_at?: string | null
+          hold_reason?: string | null
+          id?: string
+          invoice_id: string
+          invoice_number?: string | null
+          last_error?: string | null
+          quote_id?: string | null
+          quote_number?: string | null
+          rep_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          client_name?: string | null
+          company_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          deposit_amount?: number | null
+          due_at?: string | null
+          hold_reason?: string | null
+          id?: string
+          invoice_id?: string
+          invoice_number?: string | null
+          last_error?: string | null
+          quote_id?: string | null
+          quote_number?: string | null
+          rep_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_send_approvals_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_send_approvals_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_send_approvals_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "v_accounts_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_send_approvals_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "v_sales_by_product_detail"
+            referencedColumns: ["invoice_id"]
+          },
+        ]
+      }
+      invoice_send_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          approval_id: string | null
+          created_at: string
+          id: number
+          invoice_id: string
+          note: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          approval_id?: string | null
+          created_at?: string
+          id?: number
+          invoice_id: string
+          note?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          approval_id?: string | null
+          created_at?: string
+          id?: number
+          invoice_id?: string
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_send_events_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_send_approvals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_templates: {
         Row: {
           config: Json
@@ -4764,6 +4903,89 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "job_alerts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_client_messages: {
+        Row: {
+          alert_id: string | null
+          approved_at: string | null
+          approved_by: string | null
+          body: string
+          channel: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          net_request_id: number | null
+          sent_via: string | null
+          status: string
+          subject: string | null
+          to_address: string | null
+        }
+        Insert: {
+          alert_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          body: string
+          channel: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id: string
+          net_request_id?: number | null
+          sent_via?: string | null
+          status?: string
+          subject?: string | null
+          to_address?: string | null
+        }
+        Update: {
+          alert_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          body?: string
+          channel?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string
+          net_request_id?: number | null
+          sent_via?: string | null
+          status?: string
+          subject?: string | null
+          to_address?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_client_messages_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "job_alerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_client_messages_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_client_messages_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "job_client_messages_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
@@ -5283,6 +5505,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "job_time_entries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "job_time_entries_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
@@ -5294,6 +5523,20 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_time_entries_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "job_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_time_entries_signed_off_by_fkey"
+            columns: ["signed_off_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -5460,6 +5703,51 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "quotes"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_watch_settings: {
+        Row: {
+          company_id: string
+          en_route_buffer_minutes: number
+          en_route_fallback_minutes: number
+          en_route_floor_minutes: number
+          late_checkin_minutes: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          en_route_buffer_minutes?: number
+          en_route_fallback_minutes?: number
+          en_route_floor_minutes?: number
+          late_checkin_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          en_route_buffer_minutes?: number
+          en_route_fallback_minutes?: number
+          en_route_floor_minutes?: number
+          late_checkin_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_watch_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_watch_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -8279,6 +8567,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_holidays_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -13151,6 +13446,10 @@ export type Database = {
         Returns: undefined
       }
       _hb_sales: { Args: { p_company: string }; Returns: string[] }
+      _holiday_on: {
+        Args: { p_company: string; p_date: string }
+        Returns: string
+      }
       _inv_cancel_waiting_drafts: {
         Args: { p_company: string }
         Returns: number
@@ -13182,9 +13481,56 @@ export type Database = {
         Args: { p_invoice: string }
         Returns: Record<string, unknown>
       }
+      _isa_send: {
+        Args: { p_actor: string; p_decision: string; p_invoice_id: string }
+        Returns: string
+      }
+      _job_after_photos: {
+        Args: { p_lead_id: string; p_since: string }
+        Returns: number
+      }
       _job_alert_office: {
         Args: { _company: string; _uid: string }
         Returns: boolean
+      }
+      _job_client_email_post: {
+        Args: {
+          p_html: string
+          p_sender: string
+          p_subject: string
+          p_to: string
+        }
+        Returns: number
+      }
+      _job_day_actor: {
+        Args: { p_job_id: string }
+        Returns: Record<string, unknown>
+      }
+      _job_day_time: { Args: { p_at: string }; Returns: string }
+      _job_days_apply: {
+        Args: { p_job: string; p_plan: Json; p_tech: string }
+        Returns: undefined
+      }
+      _job_days_plan: {
+        Args: {
+          p_company: string
+          p_days: number
+          p_end: string
+          p_job: string
+          p_start: string
+          p_tech: string
+          p_with_clashes: boolean
+        }
+        Returns: Json
+      }
+      _job_work_day: {
+        Args: { p_company: string; p_date: string; p_profile: string }
+        Returns: {
+          end_time: string
+          is_working: boolean
+          reason: string
+          start_time: string
+        }[]
       }
       _lead_staff_ok: { Args: never; Returns: boolean }
       _mins_time: { Args: { p: number }; Returns: string }
@@ -13264,7 +13610,87 @@ export type Database = {
         Args: { ""?: string; att_name: string; tbl: unknown }
         Returns: string
       }
+      _quote_admin_row: {
+        Args: { p_quote: string }
+        Returns: {
+          accepted_at: string | null
+          accepted_by: string | null
+          accepted_signature: Json | null
+          accepted_version_id: string | null
+          archive_reason: string | null
+          archived_at: string | null
+          archived_by: string | null
+          client_summary: string | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          current_version_id: string | null
+          customer_id: string | null
+          customer_name: string | null
+          declined_at: string | null
+          discount_type: string | null
+          discount_value: number | null
+          followup_count: number
+          followup_kind: string | null
+          followup_next_at: string | null
+          followup_state: string | null
+          id: string
+          is_variation: boolean
+          labour_included: boolean
+          labour_mode: string
+          lead_id: string | null
+          legacy_original_total: number | null
+          location_id: string | null
+          locked_at: string | null
+          locked_by: string | null
+          locked_reason: string | null
+          materials_markup_percent: number | null
+          materials_waste_percent: number | null
+          notes: string | null
+          owner_id: string | null
+          parent_quote_id: string | null
+          payment_plan: Json | null
+          public_token: string | null
+          quote_number: string | null
+          reference_text: string | null
+          remote_quote: boolean
+          remote_quote_source: string | null
+          sales_engineer_id: string
+          sent_at: string | null
+          sent_by: string | null
+          sent_channel: string | null
+          sent_method: string | null
+          sent_note: string | null
+          show_unit_cards: boolean
+          site_id: string | null
+          status: string
+          subtotal: number
+          superseded_by: string | null
+          terms_text: string | null
+          total: number
+          units_markup_percent: number | null
+          updated_at: string
+          valid_until: string | null
+          variation_job_id: string | null
+          variation_summary: Json | null
+          vat_amount: number
+          vat_rate: number
+          viewed_at: string | null
+          visual_sections: Json | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _quote_delete_facts: {
+        Args: { p_lead: string; p_quote: string }
+        Returns: Json
+      }
       _quote_is_visit: { Args: { p_quote: string }; Returns: boolean }
+      _quote_snapshot: { Args: { p_quote: string }; Returns: Json }
       _rank_core: {
         Args: {
           p_date: string
@@ -13521,6 +13947,14 @@ export type Database = {
             }
             Returns: string
           }
+      admin_correct_client_details: {
+        Args: { p_changes: Json; p_quote_id: string; p_reason: string }
+        Returns: Json
+      }
+      admin_create_quote_variation: {
+        Args: { p_quote_id: string; p_reason: string }
+        Returns: Json
+      }
       agent_performance_scores: {
         Args: never
         Returns: {
@@ -13535,6 +13969,32 @@ export type Database = {
       apply_team_invite: {
         Args: { p_email: string; p_user: string }
         Returns: string
+      }
+      approve_client_job_message: {
+        Args: { p_body: string; p_id: string; p_subject: string; p_to: string }
+        Returns: {
+          alert_id: string | null
+          approved_at: string | null
+          approved_by: string | null
+          body: string
+          channel: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          net_request_id: number | null
+          sent_via: string | null
+          status: string
+          subject: string | null
+          to_address: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "job_client_messages"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       approve_company_signup: {
         Args: { p_approve: boolean; p_company?: string; p_user: string }
@@ -13569,6 +14029,10 @@ export type Database = {
           lead_id: string
           start_time: string
         }[]
+      }
+      booking_end_time: {
+        Args: { p_dur: string; p_start: string }
+        Returns: string
       }
       broadcast_lead_to_agents: {
         Args: { p_lead_id: string; p_radius_km?: number }
@@ -13811,6 +14275,7 @@ export type Database = {
         Returns: Json
       }
       disablelongtransactions: { Args: never; Returns: string }
+      discard_client_job_message: { Args: { p_id: string }; Returns: undefined }
       dismiss_lead: {
         Args: { p_lead: string; p_reason: string }
         Returns: string
@@ -13823,6 +14288,36 @@ export type Database = {
           participant_type: string
           profile_id: string
         }[]
+      }
+      draft_client_job_message: {
+        Args: { p_alert_id?: string; p_channel: string; p_job_id: string }
+        Returns: {
+          alert_id: string | null
+          approved_at: string | null
+          approved_by: string | null
+          body: string
+          channel: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          net_request_id: number | null
+          sent_via: string | null
+          status: string
+          subject: string | null
+          to_address: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "job_client_messages"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      drive_minutes_estimate: {
+        Args: { lat1: number; lat2: number; lng1: number; lng2: number }
+        Returns: number
       }
       dropgeometrycolumn:
         | {
@@ -13854,14 +14349,6 @@ export type Database = {
           }
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string }
-      draft_client_job_message: {
-        Args: {
-          p_alert_id?: string
-          p_channel: string
-          p_job_id: string
-        }
-        Returns: Json
-      }
       duplicate_invoice: { Args: { p_invoice: string }; Returns: string }
       duplicate_quote: {
         Args: { p_customer_id?: string; p_quote_id: string }
@@ -13932,6 +14419,10 @@ export type Database = {
         }
         Returns: Json
       }
+      fl_customer_has_locked_work: {
+        Args: { _customer: string }
+        Returns: boolean
+      }
       fl_found_company: {
         Args: {
           p_name: string
@@ -13966,7 +14457,13 @@ export type Database = {
         Args: { _area: string; _quote: string }
         Returns: string
       }
+      fl_quote_admin: {
+        Args: { _company: string; _uid: string }
+        Returns: boolean
+      }
+      fl_quote_edit_block: { Args: { _quote: string }; Returns: string }
       fl_quote_has_install: { Args: { _quote: string }; Returns: boolean }
+      fl_quote_issued_invoice: { Args: { _quote: string }; Returns: string }
       fl_reopen_booking: {
         Args: { p_job_id?: string; p_lead_id: string }
         Returns: Json
@@ -14612,6 +15109,11 @@ export type Database = {
         }[]
       }
       invoice_email_preview: { Args: { p_invoice_id: string }; Returns: Json }
+      invoice_send_hold: {
+        Args: { p_invoice_id: string; p_reason?: string }
+        Returns: Json
+      }
+      invoice_send_now: { Args: { p_invoice_id: string }; Returns: Json }
       is_agent_available_now: { Args: { p_agent_id: string }; Returns: boolean }
       is_approved_network_member: { Args: { _uid: string }; Returns: boolean }
       is_company_admin: {
@@ -14635,6 +15137,16 @@ export type Database = {
       is_platform_owner: { Args: never; Returns: boolean }
       is_sales_rep: { Args: { _uid: string }; Returns: boolean }
       is_staff_member: { Args: { _uid: string }; Returns: boolean }
+      isa_assert_can_act: { Args: { p_invoice_id: string }; Returns: undefined }
+      isa_can_act: {
+        Args: { _company_id: string; _rep_id: string; _uid: string }
+        Returns: boolean
+      }
+      isa_queue: { Args: { p_invoice_id: string }; Returns: string }
+      isa_recipients: {
+        Args: { _company_id: string; _rep_id: string }
+        Returns: string[]
+      }
       issue_credit_note: {
         Args: {
           p_amount?: number
@@ -14646,33 +15158,16 @@ export type Database = {
         Returns: string
       }
       job_add_day: {
-        Args: {
-          p_force?: boolean
-          p_job_id: string
-          p_reason?: string
-        }
+        Args: { p_force?: boolean; p_job_id: string; p_reason?: string }
         Returns: Json
       }
       job_day_en_route_plan: {
-        Args: {
-          p_date: string
-          p_job_id: string
-        }
+        Args: { p_date: string; p_job_id: string }
         Returns: Json
       }
-      job_day_states: {
-        Args: {
-          p_from: string
-          p_to: string
-        }
-        Returns: Json
-      }
-      job_days: {
-        Args: {
-          p_job_id: string
-        }
-        Returns: Json
-      }
+      job_day_states: { Args: { p_from: string; p_to: string }; Returns: Json }
+      job_days: { Args: { p_job_id: string }; Returns: Json }
+      job_en_route_plan: { Args: { p_job_id: string }; Returns: Json }
       job_profit: {
         Args: { p_company: string; p_from: string; p_to: string }
         Returns: Json
@@ -14684,6 +15179,24 @@ export type Database = {
           profit: number
           revenue: number
         }[]
+      }
+      job_watch_cfg: {
+        Args: { p_company_id: string }
+        Returns: {
+          company_id: string
+          en_route_buffer_minutes: number
+          en_route_fallback_minutes: number
+          en_route_floor_minutes: number
+          late_checkin_minutes: number
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "job_watch_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       job_watchdog_scan: { Args: never; Returns: number }
       lead_call_accept: { Args: { p_attempt: string }; Returns: Json }
@@ -14943,6 +15456,7 @@ export type Database = {
         }
         Returns: Json
       }
+      process_due_invoice_sends: { Args: never; Returns: number }
       process_install_offers: { Args: never; Returns: number }
       process_invoice_followups: { Args: never; Returns: number }
       process_quote_followups: { Args: never; Returns: undefined }
@@ -15020,6 +15534,10 @@ export type Database = {
       qcr_pricing: { Args: { p_quote_id: string }; Returns: Json }
       qcr_revision_totals: { Args: { p_lines: Json; pr: Json }; Returns: Json }
       qcr_style: { Args: { p: string }; Returns: string }
+      quote_archive: {
+        Args: { p_quote: string; p_reason: string }
+        Returns: Json
+      }
       quote_auto_summary: { Args: { p_quote_id: string }; Returns: string }
       quote_bundle_preview: { Args: { p_quote_ids: string[] }; Returns: Json }
       quote_conversion_funnel: {
@@ -15029,11 +15547,18 @@ export type Database = {
           status: string
         }[]
       }
+      quote_delete: {
+        Args: { p_delete_photos?: boolean; p_quote: string; p_reason: string }
+        Returns: Json
+      }
+      quote_delete_check: { Args: { p_quote: string }; Returns: Json }
       quote_email_send_state: { Args: { p_quote_id: string }; Returns: Json }
+      quote_lock_state: { Args: { p_quote_id: string }; Returns: Json }
       quote_photo_ok: {
         Args: { _name: string; _read: boolean }
         Returns: boolean
       }
+      quote_unarchive: { Args: { p_quote: string }; Returns: Json }
       quotes_followup_due_count: { Args: never; Returns: number }
       rank_booking_candidates: {
         Args: {
@@ -15082,6 +15607,7 @@ export type Database = {
         }
         Returns: string
       }
+      relock_quote: { Args: { p_quote_id: string }; Returns: boolean }
       rep_can_see_customer: {
         Args: { _customer: string; _uid: string }
         Returns: boolean
@@ -16058,17 +16584,11 @@ export type Database = {
         Returns: boolean
       }
       tech_check_in: {
-        Args: {
-          p_at?: string
-          p_job_id: string
-        }
+        Args: { p_at?: string; p_job_id: string }
         Returns: Json
       }
       tech_day_en_route: {
-        Args: {
-          p_at?: string
-          p_job_id: string
-        }
+        Args: { p_at?: string; p_job_id: string }
         Returns: Json
       }
       tech_done_for_today: {
