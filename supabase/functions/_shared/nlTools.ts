@@ -963,15 +963,9 @@ export async function executeTool(
       const products = (data ?? []) as Record<string, any>[];
 
 
-      let stockByProduct = new Map<string, number>();
-      if (products.length) {
-        const { data: stock } = await db.from("inventory_stock")
-          .select("product_id, quantity").in("product_id", products.map((p) => p.id));
-        stockByProduct = new Map(
-          ((stock ?? []) as { product_id: string; quantity: number | null }[])
-            .map((s) => [String(s.product_id), Number(s.quantity ?? 0)]),
-        );
-      }
+      // 0031: old inventory_stock table was dropped; on-hand stock now lives in Cash Health (cf_stock_items),
+      // which is not keyed by catalogue product, so stock is reported as unknown (null), never "out of stock".
+      const stockByProduct = new Map<string, number>();
       // Stock is tracked separately and may not cover every catalogue item —
       // unknown stock is reported as null, never as "out of stock".
       const known = (id: string) => stockByProduct.has(String(id));

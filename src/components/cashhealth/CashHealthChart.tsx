@@ -1,5 +1,5 @@
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ReferenceArea, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { Forecast } from "@/lib/cashHealth";
+import type { Forecast, InflowBucket } from "@/lib/cashHealth";
 import { rand0 } from "@/lib/cashHealth";
 
 const k = (v: number) => `${v < 0 ? "−" : ""}R${Math.round(Math.abs(v) / 1000)}k`;
@@ -48,6 +48,27 @@ export function FlowBars({ f, height = 200 }: { f: Forecast; height?: number }) 
           <Bar dataKey="Overheads" stackId="a" fill="#94A3B8" isAnimationActive={false} />
           <Bar dataKey="VAT" stackId="a" fill="#7C3AED" isAnimationActive={false} />
         </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** 2b: three separate inflow lines per week or month: deposits expected, finals expected, money received. */
+export function InflowChart({ rows, height = 220 }: { rows: InflowBucket[]; height?: number }) {
+  const data = rows.map((b) => ({ label: b.label, Deposits: Math.round(b.deposits), Finals: Math.round(b.finals), Received: Math.round(b.received) }));
+  return (
+    <div style={{ height }} data-testid="cash-inflow-chart">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.4} />
+          <XAxis dataKey="label" tick={{ fontSize: 11 }} minTickGap={2} />
+          <YAxis tick={{ fontSize: 11 }} tickFormatter={k} width={48} />
+          <Tooltip formatter={(v: number, n: string) => [rand0(Number(v)), n === "Deposits" ? "Deposits expected" : n === "Finals" ? "Finals expected" : "Money received"]} />
+          <Legend wrapperStyle={{ fontSize: 12 }} formatter={(n: string) => (n === "Deposits" ? "Deposits expected" : n === "Finals" ? "Finals expected" : "Money received")} />
+          <Line dataKey="Deposits" stroke="#1590D6" strokeWidth={2.25} dot={{ r: 2.5 }} isAnimationActive={false} />
+          <Line dataKey="Finals" stroke="#F7941D" strokeWidth={2.25} dot={{ r: 2.5 }} isAnimationActive={false} />
+          <Line dataKey="Received" stroke="#16A34A" strokeWidth={2.25} dot={{ r: 2.5 }} isAnimationActive={false} />
+        </LineChart>
       </ResponsiveContainer>
     </div>
   );

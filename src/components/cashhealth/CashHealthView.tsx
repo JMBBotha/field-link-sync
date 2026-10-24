@@ -2,12 +2,12 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronRight, Info, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { isoDate } from "@/lib/cashflow";
 import {
-  COMMIT_STATUS, PART_LABEL, alerts as buildAlerts, forecast as buildForecast, freeStock, latestBalances, projects as buildProjects, rand0, stillToPay, stockValue, unitCostIncl,
+  COMMIT_STATUS, PART_LABEL, inflowSeries, summary as buildSummary, alerts as buildAlerts, forecast as buildForecast, freeStock, latestBalances, projects as buildProjects, rand0, stillToPay, stockValue, unitCostIncl,
   type Alert, type CashHealthData, type CommitStatus, type Commitment, type Forecast, type Overhead, type ProjectRow, type Receipt,
 } from "@/lib/cashHealth";
 import type { CashHealthActions } from "@/hooks/useCashHealth";
 import { cn } from "@/lib/utils";
-import { BalanceChart, FlowBars } from "./CashHealthChart";
+import { BalanceChart, FlowBars, InflowChart } from "./CashHealthChart";
 import { Btn, Card, Chip, Field, Pick, Stat } from "./cashHealthUi";
 
 export type CashTab = "overview" | "in" | "projects" | "stock" | "settings";
@@ -92,6 +92,7 @@ function Overview({ data, f, alerts, actions, safe, setTab, today }: { data: Cas
   const reason = f.health === "red" ? `Cash goes below R0 in W${f.lowest.index + 1} (${low?.label}).` : f.health === "amber" ? (f.lowest.value < f.buffer ? `Dips under the buffer in W${f.lowest.index + 1}.` : "Late payments would take cash below R0.") : "Stays above the buffer all 13 weeks.";
   return (
     <div className="space-y-3">
+      <Summary data={data} f={f} />
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <Stat label="Health" testId="cash-health-light" className="col-span-2 lg:col-span-1">
           <div className="mt-1 flex items-center gap-2"><span className={cn("h-5 w-5 rounded-full", h.dot)} /><span className={cn("text-xl font-semibold", h.text)}>{h.label}</span></div>
@@ -118,6 +119,8 @@ function Overview({ data, f, alerts, actions, safe, setTab, today }: { data: Cas
               </li>))}</ul>)}
         </Card>
       </div>
+
+      <Inflows data={data} today={today} />
 
       <div className="grid gap-3 lg:grid-cols-3">
         <Card title="Money in vs going out, per week" className="lg:col-span-2">
@@ -166,6 +169,68 @@ function Overview({ data, f, alerts, actions, safe, setTab, today }: { data: Cas
 
 // ---------------- Money in ----------------
 const STATUS_OPTS: { value: Receipt["status"]; label: string }[] = [{ value: "expected", label: "Expected" }, { value: "received", label: "Received" }, { value: "written_off", label: "Written off" }];
+
+/** 3d: one view of the whole position. Stock is an asset, not cash; the running-balance low point is ringed. */
+function Summary({ data, f }: { data: CashHealthData; f: Forecast }) {
+  const s = buildSummary(data, f);
+  const h = HEALTH[f.health];
+  const lowTone = f.lowest.value < 0 ? "red" : f.lowest.value < f.buffer ? "amber" : "green";
+  const cell = (label: string, value: string, sub?: string, cls?: string, id?: string) => (
+    <div className={cn("min-w-0 rounded-xl bg-muted/40 px-2.5 py-2", cls)} data-testid={id}>
+      <div className="text-[11px] uppercase tracking-wide text-ink-muted">{label}</div>
+      <div className="truncate text-base font-semibold text-ink">{value}</div>
+      {sub && <div className="truncate text-[11px] text-ink-muted">{sub}</div>}
+    </div>);
+  return (
+    <Card testId="cash-summary">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2"><span className={cn("h-6 w-6 rounded-full", h.dot)} data-testid="cash-summary-light" /><span className={cn("text-lg font-semibold", h.text)}>{h.label}</span></div>
+        <div className={cn("ml-auto rounded-xl border-2 px-3 py-1.5 text-right", lowTone === "red" ? "border-red-600 bg-red-50 dark:bg-red-500/10" : lowTone === "amber" ? "border-amber-500 bg-amber-50 dark:bg-amber-500/10" : "border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10")} data-testid="cash-summary-low">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Lowest bank balance</div>
+          <div className={cn("text-2xl font-bold", lowTone === "red" ? "text-red-700" : lowTone === "amber" ? "text-amber-700" : "text-emerald-700")}>{rand0(s.low.value)}</div>
+          <div className="text-[11px] text-ink-muted">week of {s.low.week}</div>
+        </div>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-8">
+        {cell("Bank", s.bankEntered ? rand0(s.bank) : "Not entered", f.bankAsOf ? `as of ${fmtD(f.bankAsOf)}` : undefined, undefined, "cash-sum-bank")}
+        {cell("Stock value", rand0(s.stock), "asset, not cash · cost excl VAT", undefined, "cash-sum-stock")}
+        {cell("Job liabilities", rand0(s.liabilities.total), `${s.liabilities.jobs} deposited jobs · ${s.liabilities.lines} lines to buy`, undefined, "cash-sum-liab")}
+        {cell("Deposits paid", rand0(s.depositsPaid), `${rand0(s.depositsExpected)} still expected`, undefined, "cash-sum-deposits")}
+        {cell("Finals expected", rand0(s.finalsExpected), f.unscheduled.count ? `${rand0(f.unscheduled.total)} unscheduled` : undefined, undefined, "cash-sum-finals")}
+        {cell("Overheads", `${rand0(s.overheadsMonth)}/mo`, undefined, undefined, "cash-sum-overheads")}
+        {cell("VAT next", s.vatNext ? rand0(s.vatNext.amount) : "R0", s.vatNext ? `due ${fmtD(s.vatNext.date)}` : undefined, undefined, "cash-sum-vat")}
+        {cell("Cash after 13 wks", rand0(f.closing), undefined, f.closing < 0 ? "ring-1 ring-red-600" : undefined, "cash-sum-closing")}
+      </div>
+      <div className="mt-2 flex gap-1 overflow-x-auto pb-1" data-testid="cash-summary-weeks">
+        {f.weeks.map((w, i) => {
+          const isLow = i === f.lowest.index;
+          return (
+            <div key={w.start} className={cn("min-w-[68px] flex-1 rounded-lg px-1.5 py-1 text-center", isLow ? "border-2 border-red-600 bg-red-50 dark:bg-red-500/10" : "bg-muted/40")} data-testid={isLow ? "cash-week-low" : undefined}>
+              <div className="text-[10px] text-ink-muted">W{i + 1} · {w.label}</div>
+              <div className={cn("text-xs font-semibold", w.balance < 0 ? "text-red-700" : w.balance < f.buffer ? "text-amber-700" : "text-ink")}>{rand0(w.balance)}</div>
+              {isLow && <div className="text-[9px] font-bold uppercase text-red-700">Low point</div>}
+            </div>);
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function Inflows({ data, today }: { data: CashHealthData; today: Date }) {
+  const [mode, setMode] = useState<"week" | "month">("week");
+  const rows = useMemo(() => inflowSeries(data, today, mode), [data, today, mode]);
+  const tot = rows.reduce((t, b) => ({ d: t.d + b.deposits, f: t.f + b.finals, r: t.r + b.received }), { d: 0, f: 0, r: 0 });
+  return (
+    <Card title={`Money in, per ${mode}`} testId="cash-inflows" right={
+      <div className="flex rounded-full border border-border p-0.5 text-xs" role="tablist">
+        {(["week", "month"] as const).map((m) => <button key={m} role="tab" aria-selected={mode === m} data-testid={`cash-inflows-${m}`} onClick={() => setMode(m)}
+          className={cn("h-9 rounded-full px-3 font-semibold", mode === m ? "bg-[#E8F6FE] text-[#1590d6]" : "text-ink-muted")}>{m === "week" ? "Week" : "Month"}</button>)}
+      </div>}>
+      <InflowChart rows={rows} />
+      <p className="mt-1 text-xs text-ink-muted">Deposits expected {rand0(tot.d)} · finals expected {rand0(tot.f)} · received {rand0(tot.r)}. Overdue expected money shows in the current {mode}; unscheduled finals are left out.</p>
+    </Card>
+  );
+}
 
 function MoneyIn({ data, f, actions, safe, today }: { data: CashHealthData; f: Forecast; actions: CashHealthActions; safe: Safe; today: Date }) {
   const t = isoDate(today);
@@ -250,7 +315,7 @@ function ProjectCard({ p, data, actions, safe }: { p: ProjectRow; data: CashHeal
                 <Field ariaLabel="Cost each excl VAT" type="number" prefix="R" value={l.unit_cost_excl} onSave={(v) => safe(actions.updateCommitment(l.id, { unit_cost_excl: Math.max(0, n(v)) }), "Cost saved")} />
                 <div className="text-right text-xs text-ink-muted md:text-left">{rand0(l.qty * unitCostIncl(l))} incl<div>{stillToPay(l, data.allocations) > 0 ? `to pay ${rand0(stillToPay(l, data.allocations))}` : "nothing to pay"}</div></div>
                 <Field ariaLabel="Pay date" type="date" value={l.pay_date} onSave={(v) => safe(actions.updateCommitment(l.id, { pay_date: v || null }))} />
-                <Pick ariaLabel="Status" value={l.status} options={CS_OPTS} onChange={(v) => safe(actions.updateCommitment(l.id, { status: v }), v === "installed" ? "Installed – stock drawn down" : undefined)} />
+                <Pick ariaLabel="Status" value={l.status} options={CS_OPTS} onChange={(v) => safe(actions.updateCommitment(l.id, v === "ordered_paid" ? { status: v, pay_date: isoDate(new Date()) } : { status: v }), v === "installed" ? "Installed – stock drawn down" : undefined)} />
                 <div className="flex justify-end gap-1">
                   {l.status !== "installed" && freeItems.length > 0 && <Btn variant="ghost" className="h-8 px-2 text-xs" onClick={() => setAlloc({ line: l, stock: freeItems[0].id, qty: String(Math.max(1, l.qty - al.reduce((s, a) => s + a.qty, 0))) })}>Use stock</Btn>}
                   {al.filter((a) => !a.drawn_at).map((a) => <Btn key={a.id} variant="ghost" className="h-8 px-2 text-xs" onClick={() => safe(actions.unallocate(a.id), "Stock released")}>Release</Btn>)}
