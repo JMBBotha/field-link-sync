@@ -66,19 +66,9 @@ const ClassicAdminSidebar = ({
   const companyName = settings?.company_name?.trim() || "My Company";
   const roleLabel = sidebarRoleLabel(roles, isSalesRep);
 
-  const { data: lowStockItems = [] } = useQuery({
-    queryKey: ["low-stock-items-sidebar"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("inventory_stock")
-        .select("product_id, quantity, low_stock_threshold, stock_mode, supplier_products:product_id(description, product_code)");
-      if (error) return [];
-      return (data || []).filter(
-        (r: any) => r.stock_mode === "stock_sensitive" && r.quantity <= r.low_stock_threshold
-      );
-    },
-    refetchInterval: 60000,
-  });
+  // Old inventory_stock table removed (0031). Stock now lives in Cash Health.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lowStockItems: any[] = [];
   const lowStockCount = lowStockItems.length;
 
   // FreshBooks-style ordering. Every existing route is preserved —
