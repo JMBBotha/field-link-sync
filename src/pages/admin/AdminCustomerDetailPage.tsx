@@ -419,7 +419,7 @@ const AdminCustomerDetailPage = () => {
               {[(customer as any).client_type && String((customer as any).client_type).replace(/^./, (c: string) => c.toUpperCase()), leadSourceLabel(customer.lead_source), (customer as any).assigned_rep_id && salesReps.find((r) => r.id === (customer as any).assigned_rep_id)?.full_name && `Rep: ${salesReps.find((r) => r.id === (customer as any).assigned_rep_id)?.full_name}`].filter(Boolean).join(" · ")}
             </p>
             <p className="mt-0.5 text-sm text-[#CFE6F6] break-words">{[contactName && contactName !== headerName ? contactName : null, phone, email, fullAddress].filter(Boolean).join(" · ") || "No contact details yet"}</p>
-            <div className="mt-2"><PaymentTermsChip customerId={customer.id} basis={(customer as any).payment_terms_basis} days={(customer as any).payment_terms_days} canEdit={isAdmin && !isSalesRep} onSaved={() => qc.invalidateQueries({ queryKey: ["customer-detail", id] })} /></div>
+            <div className="mt-2"><PaymentTermsChip customerId={customer.id} basis={(customer as any).payment_terms_basis} days={(customer as any).payment_terms_days} finalDays={(customer as any).final_after_days} canEdit={isAdmin && !isSalesRep} onSaved={() => qc.invalidateQueries({ queryKey: ["customer-detail", id] })} /></div>
           </div>
           <div className="flex gap-1.5 flex-wrap">
             {phone && <a href={`tel:${phone}`} className="inline-flex items-center gap-1 rounded-xl bg-white/15 px-3 py-2 text-sm hover:bg-white/25"><Phone className="h-4 w-4" /> Call</a>}
