@@ -1504,6 +1504,7 @@ export type Database = {
           conf_sent: number
           default_leeway_days: number
           enabled: boolean
+          forecast_start: string | null
           unit_cost_factor: number
           updated_at: string
           vat_basis: string
@@ -1523,6 +1524,7 @@ export type Database = {
           conf_sent?: number
           default_leeway_days?: number
           enabled?: boolean
+          forecast_start?: string | null
           unit_cost_factor?: number
           updated_at?: string
           vat_basis?: string
@@ -1542,6 +1544,7 @@ export type Database = {
           conf_sent?: number
           default_leeway_days?: number
           enabled?: boolean
+          forecast_start?: string | null
           unit_cost_factor?: number
           updated_at?: string
           vat_basis?: string

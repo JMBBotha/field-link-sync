@@ -6,6 +6,8 @@ export type CfSettings = {
   company_id: string; enabled: boolean; buffer_mode: "overheads_month" | "fixed"; buffer_amount: number; unit_cost_factor: number;
   default_leeway_days: number; conf_sent: number; conf_overdue: number; conf_draft: number; conf_final_before_install: number;
   vat_number: string | null; vat_basis: "invoice" | "payment"; vat_period_months: number; vat_period_end: string | null; vat_due_day: number; vat_rate: number;
+  /** 0033: live forecast start date (ISO). Null = today. */
+  forecast_start?: string | null;
 };
 export type Receipt = {
   id: string; source: "field_lynk" | "manual" | "freshbooks"; invoice_id: string | null; quote_id: string | null; ref: string; client: string | null;

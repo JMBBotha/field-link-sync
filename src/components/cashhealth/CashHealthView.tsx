@@ -19,9 +19,18 @@ const fmtD = (s: string | null) => (s ? new Date(s.slice(0, 10) + "T00:00:00").t
 type Safe = (p: Promise<void>, ok?: string) => void;
 
 /** Cash-flow health: one screen, five tabs. Presentational; all writes go through `actions` (RLS: owner/management only). */
-export default function CashHealthView({ data, actions, companyName, tab: tabProp, onTab, today = new Date(), notify }: {
+export default function CashHealthView({ data, actions, companyName, tab: tabProp, onTab, today: todayProp, notify }: {
   data: CashHealthData; actions: CashHealthActions; companyName?: string; tab?: CashTab; onTab?: (t: CashTab) => void; today?: Date; notify?: (msg: string, error?: boolean) => void;
 }) {
+  // Live forecast start (cf_settings.forecast_start, Massair = 1 Nov 2026): until then the forecast runs from that date.
+  const startIso = data.settings.forecast_start ?? null;
+  const today = useMemo(() => {
+    const now = todayProp ?? new Date();
+    if (startIso && isoDate(now) < startIso) { const [y, m, d] = startIso.split("-").map(Number); return new Date(y, m - 1, d); }
+    return now;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startIso, todayProp ? todayProp.getTime() : isoDate(new Date())]);
+  const preLive = !!startIso && isoDate(todayProp ?? new Date()) < startIso;
   const [tabState, setTabState] = useState<CashTab>("overview");
   const tab = tabProp ?? tabState;
   const setTab = (t: CashTab) => { setTabState(t); onTab?.(t); };
@@ -39,6 +48,11 @@ export default function CashHealthView({ data, actions, companyName, tab: tabPro
         </div>
         <Btn variant="outline" onClick={() => safe(actions.resync(), "Updated from invoices and jobs")}><RefreshCw className="h-4 w-4" />Refresh</Btn>
       </div>
+      {preLive && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="cash-prelive">
+          Live forecast starts {new Date(today).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })}. Figures are set up from that date; the opening bank balance is editable below.
+        </div>
+      )}
       <nav className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1" role="tablist">
         {TABS.map((t) => (
           <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} data-testid={`cash-tab-${t.key}`}
@@ -389,6 +403,11 @@ function Settings({ data, f, actions, safe, today }: { data: CashHealthData; f: 
             {o.note && <div className="col-span-2 -mt-1 text-xs text-ink-muted md:col-span-5">{o.note}</div>}
           </div>))}
         <div className="mt-2 text-xs text-ink-muted">Total about {rand0(f.monthlyOverheads)} a month.</div>
+      </Card>
+
+      <Card title="Forecast start" testId="cash-settings-start">
+        <label className="text-xs text-ink-muted">Live forecast starts on<Field ariaLabel="Forecast start" type="date" value={s.forecast_start ?? null} onSave={(v) => set({ forecast_start: v || null })} /></label>
+        <p className="mt-1 text-xs text-ink-muted">Before this date the forecast and opening bank balance are dated from it. Blank = start today.</p>
       </Card>
 
       <Card title="VAT" testId="cash-settings-vat">
