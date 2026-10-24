@@ -133,7 +133,7 @@ export function vatEvents(d: Pick<CashHealthData, "settings" | "receipts" | "com
   const output: { date: string; amount: number; label: string }[] = [];
   const open = d.receipts.filter((r) => r.status === "expected");
   if (d.settings.vat_basis === "payment") {
-    for (const r of open) output.push({ date: at(r.expected_date), amount: receiptVat(r, rate), label: `${r.ref} ${PART_LABEL[r.part]}` });
+    for (const r of open) if (r.expected_date) output.push({ date: at(r.expected_date), amount: receiptVat(r, rate), label: `${r.ref} ${PART_LABEL[r.part]}` });
   } else {
     const inv = new Map(d.invoices.map((i) => [i.id, i]));
     const firstByInvoice = new Map<string, string>();
@@ -142,6 +142,7 @@ export function vatEvents(d: Pick<CashHealthData, "settings" | "receipts" | "com
         const i = inv.get(r.invoice_id);
         if (!i || i.status !== "draft") continue; // already invoiced: counted in its own period's actuals
         const cur = firstByInvoice.get(i.id);
+        if (!r.expected_date) continue; // unscheduled final: no date yet
         const dd = at(r.expected_date);
         if (!cur || dd < cur) firstByInvoice.set(i.id, dd);
       } else output.push({ date: at(r.expected_date), amount: receiptVat(r, rate), label: `${r.ref} ${PART_LABEL[r.part]}` });
@@ -183,7 +184,7 @@ export type Health = "green" | "amber" | "red";
 export type Forecast = {
   weeks: FWeek[]; start: number; bankEntered: boolean; bankAsOf: string | null; buffer: number; monthlyOverheads: number;
   lowest: { value: number; index: number }; lowestCautious: { value: number; index: number }; runwayWeeks: number | null; health: Health;
-  totals: { inExpected: number; units: number; overheads: number; vat: number }; closing: number; vatSummary: VatSummary;
+  totals: { inExpected: number; units: number; overheads: number; vat: number }; closing: number; vatSummary: VatSummary; unscheduled: { total: number; count: number };
 };
 
 export function forecast(d: CashHealthData, today = new Date(), nWeeks = 13): Forecast {
@@ -195,8 +196,10 @@ export function forecast(d: CashHealthData, today = new Date(), nWeeks = 13): Fo
   });
   const idx = (date: string | null) => { if (!date) return 0; const n = Math.floor((parseDate(date).getTime() - w0.getTime()) / (7 * DAY)); return n < 0 ? 0 : n >= nWeeks ? -1 : n; };
 
+  const unscheduled = { total: 0, count: 0 };
   for (const r of d.receipts) {
     if (r.status !== "expected") continue;
+    if (!r.expected_date) { unscheduled.total += num(r.amount_incl); unscheduled.count++; continue; } // kept out of the dated weeks
     const i = idx(r.expected_date);
     if (i >= 0) { weeks[i].inExpected += num(r.amount_incl); weeks[i].lines.push({ kind: "in", label: `${r.ref} ${r.client ?? ""} · ${PART_LABEL[r.part]}`.trim(), amount: num(r.amount_incl) }); }
     const late = r.expected_date ? isoDate(addDays(parseDate(r.expected_date), num(r.leeway_days))) : null;
@@ -232,7 +235,7 @@ export function forecast(d: CashHealthData, today = new Date(), nWeeks = 13): Fo
   const health: Health = lowest.value < 0 ? "red" : lowest.value < buffer || lowestCautious.value < 0 ? "amber" : "green";
   const sum = (k: "inExpected" | "units" | "overheads" | "vat") => r2(weeks.reduce((t, w) => t + w[k], 0));
   return { weeks, start: sb.total, bankEntered: sb.entered, bankAsOf: sb.asOf, buffer, monthlyOverheads: mo, lowest, lowestCautious, runwayWeeks, health,
-    totals: { inExpected: sum("inExpected"), units: sum("units"), overheads: sum("overheads"), vat: sum("vat") }, closing, vatSummary: vs };
+    totals: { inExpected: sum("inExpected"), units: sum("units"), overheads: sum("overheads"), vat: sum("vat") }, closing, vatSummary: vs, unscheduled: { total: r2(unscheduled.total), count: unscheduled.count } };
 }
 
 // ---------- projects ----------
