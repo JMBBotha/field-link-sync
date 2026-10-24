@@ -10,6 +10,7 @@ import SendInvoiceEmailButton from "@/components/invoicing/SendInvoiceEmailButto
 import { generateAndUploadPDF, downloadInvoicePDF, printInvoicePDF, shareInvoice, sendViaWhatsApp } from "@/lib/invoicePDF";
 import { sumSettled } from "@/lib/payments";
 import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
+import PaymentSchedulePanel from "@/components/invoicing/PaymentSchedulePanel";
 import CreditNotesPanel from "@/components/invoicing/CreditNotesPanel";
 import PurchaseOrdersPanel from "@/components/invoicing/PurchaseOrdersPanel";
 import { creditedByInvoice, fetchCreditNotes, type CreditNoteRow } from "@/lib/creditNotes";
@@ -327,6 +328,9 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         depositLabel={invoice.deposit_type === "percent" ? `${Number(invoice.deposit_value)}% of total incl. VAT` : null}
       />
 
+
+      {/* Expected deposit / final payment dates (feeds cash flow) */}
+      <PaymentSchedulePanel invoiceId={invoice.id} refreshKey={amountPaid} />
 
       {/* Payments — record & history (auto-updates invoice status via DB trigger) */}
       <div className="flex items-center justify-end -mb-2">

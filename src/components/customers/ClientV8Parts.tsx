@@ -83,20 +83,21 @@ export function ClientActivity({ customerId, companyId, quotes, jobs }: { custom
   );
 }
 
-export function PaymentTermsChip({ customerId, basis, days, canEdit, onSaved, tone = "dark" }: { customerId: string; basis?: string | null; days?: number | null; canEdit: boolean; onSaved?: () => void; tone?: "dark" | "light" }) {
+export function PaymentTermsChip({ customerId, basis, days, finalDays, canEdit, onSaved, tone = "dark" }: { customerId: string; basis?: string | null; days?: number | null; finalDays?: number | null; canEdit: boolean; onSaved?: () => void; tone?: "dark" | "light" }) {
   const [open, setOpen] = useState(false);
   const [b, setB] = useState<string>(basis || "default"); const [d, setD] = useState<number>(days ?? (basis === "completion" ? 30 : 7));
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false); const [fd, setFd] = useState<string>(finalDays == null ? "" : String(finalDays));
   const qc = useQueryClient();
   const save = async () => {
     setBusy(true);
     const { error } = await sb.rpc("set_customer_payment_terms", { p_customer: customerId, p_basis: b === "default" ? null : b, p_days: d });
+    if (!error && (fd === "" ? null : Number(fd)) !== (finalDays ?? null)) { const r = await sb.rpc("set_customer_final_after_days", { p_customer: customerId, p_days: fd === "" ? null : Math.max(0, Math.min(365, Number(fd) || 0)) }); if (r.error) { setBusy(false); return toast.error(r.error.message); } }
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Payment terms saved"); setOpen(false); qc.invalidateQueries({ queryKey: ["invoice-due"] }); onSaved?.();
   };
   return (<>
-    <button type="button" data-testid="payment-terms-chip" disabled={!canEdit} onClick={() => { setB(basis || "default"); setD(days ?? (basis === "completion" ? 30 : 7)); setOpen(true); }}
+    <button type="button" data-testid="payment-terms-chip" disabled={!canEdit} onClick={() => { setB(basis || "default"); setD(days ?? (basis === "completion" ? 30 : 7)); setFd(finalDays == null ? "" : String(finalDays)); setOpen(true); }}
       className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", tone === "dark" ? "bg-white/15 text-white" : "bg-[#E8F6FE] text-[#1590D6]", canEdit ? "hover:bg-white/25" : "cursor-default")}>
       Payment terms: {termsLabel(basis, days)}
     </button>
@@ -110,6 +111,7 @@ export function PaymentTermsChip({ customerId, basis, days, canEdit, onSaved, to
               className={cn("rounded-full border px-3 py-1.5 text-sm", b === v ? "border-[#1590D6] bg-[#E8F6FE] text-[#1590D6] font-semibold" : "")}>{l}</button>))}
         </div>
         {b !== "default" && <label className="flex items-center gap-2 text-sm">Days <Input type="number" min={0} max={365} value={d} onChange={(e) => setD(Math.max(0, Math.min(365, Number(e.target.value) || 0)))} className="w-24 rounded-xl" /></label>}
+        <label className="flex flex-wrap items-center gap-2 text-sm" data-testid="final-after-days">Final payment expected <Input type="number" min={0} max={365} placeholder="30" value={fd} onChange={(e) => setFd(e.target.value)} className="w-24 rounded-xl" /> days after the deposit (cash-flow forecast only)</label>
         <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button disabled={busy} onClick={save} className="bg-[#F7941D] hover:bg-[#e08310] text-white">Save</Button></DialogFooter>
       </DialogContent>
     </Dialog>
