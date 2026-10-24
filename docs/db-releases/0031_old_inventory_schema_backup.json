@@ -1,0 +1,231 @@
+<cursor_untrusted_data_1337 source="CallDynamicTool">
+
+{
+  "rows": [
+    {
+      "cols": [
+        {
+          "col": "id",
+          "def": "gen_random_uuid()",
+          "nn": true,
+          "type": "uuid"
+        },
+        {
+          "col": "name",
+          "def": null,
+          "nn": true,
+          "type": "text"
+        },
+        {
+          "col": "sku",
+          "def": null,
+          "nn": false,
+          "type": "text"
+        },
+        {
+          "col": "category",
+          "def": null,
+          "nn": false,
+          "type": "text"
+        },
+        {
+          "col": "quantity_in_stock",
+          "def": "0",
+          "nn": true,
+          "type": "integer"
+        },
+        {
+          "col": "min_stock_level",
+          "def": "5",
+          "nn": true,
+          "type": "integer"
+        },
+        {
+          "col": "unit_cost",
+          "def": "0",
+          "nn": true,
+          "type": "numeric(10,2)"
+        },
+        {
+          "col": "supplier",
+          "def": null,
+          "nn": false,
+          "type": "text"
+        },
+        {
+          "col": "created_at",
+          "def": "now()",
+          "nn": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "col": "updated_at",
+          "def": "now()",
+          "nn": true,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "cons": [
+        "PRIMARY KEY (id) /*inventory_items_pkey*/",
+        "UNIQUE (sku) /*inventory_items_sku_key*/"
+      ],
+      "idx": [
+        "CREATE UNIQUE INDEX inventory_items_pkey ON public.inventory_items USING btree (id)",
+        "CREATE UNIQUE INDEX inventory_items_sku_key ON public.inventory_items USING btree (sku)"
+      ],
+      "pol": [
+        {
+          "cmd": "DELETE",
+          "n": "Master catalogue delete",
+          "q": "can_write_master_catalog(auth.uid())",
+          "roles": [
+            "authenticated"
+          ],
+          "w": null
+        },
+        {
+          "cmd": "INSERT",
+          "n": "Master catalogue insert",
+          "q": null,
+          "roles": [
+            "authenticated"
+          ],
+          "w": "can_write_master_catalog(auth.uid())"
+        },
+        {
+          "cmd": "SELECT",
+          "n": "Master catalogue read",
+          "q": "can_read_master_catalog(auth.uid())",
+          "roles": [
+            "authenticated"
+          ],
+          "w": null
+        },
+        {
+          "cmd": "UPDATE",
+          "n": "Master catalogue update",
+          "q": "can_write_master_catalog(auth.uid())",
+          "roles": [
+            "authenticated"
+          ],
+          "w": "can_write_master_catalog(auth.uid())"
+        },
+        {
+          "cmd": "SELECT",
+          "n": "tech_lockdown_select",
+          "q": "(NOT ( SELECT is_field_tech_only(auth.uid()) AS is_field_tech_only))",
+          "roles": [
+            "authenticated"
+          ],
+          "w": null
+        }
+      ],
+      "relname": "inventory_items",
+      "rls": true,
+      "trg": null
+    },
+    {
+      "cols": [
+        {
+          "col": "id",
+          "def": "gen_random_uuid()",
+          "nn": true,
+          "type": "uuid"
+        },
+        {
+          "col": "product_id",
+          "def": null,
+          "nn": true,
+          "type": "uuid"
+        },
+        {
+          "col": "quantity",
+          "def": "0",
+          "nn": true,
+          "type": "integer"
+        },
+        {
+          "col": "low_stock_threshold",
+          "def": "3",
+          "nn": true,
+          "type": "integer"
+        },
+        {
+          "col": "created_at",
+          "def": "now()",
+          "nn": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "col": "updated_at",
+          "def": "now()",
+          "nn": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "col": "stock_mode",
+          "def": "'order_as_needed'::text",
+          "nn": true,
+          "type": "text"
+        }
+      ],
+      "cons": [
+        "CHECK ((low_stock_threshold >= 0)) /*inventory_stock_low_stock_threshold_check*/",
+        "PRIMARY KEY (id) /*inventory_stock_pkey*/",
+        "FOREIGN KEY (product_id) REFERENCES supplier_products(id) ON DELETE RESTRICT /*inventory_stock_product_id_fkey*/",
+        "UNIQUE (product_id) /*inventory_stock_product_id_key*/",
+        "CHECK ((quantity >= 0)) /*inventory_stock_quantity_check*/",
+        "CHECK ((stock_mode = ANY (ARRAY['order_as_needed'::text, 'stock_sensitive'::text]))) /*inventory_stock_stock_mode_check*/"
+      ],
+      "idx": [
+        "CREATE UNIQUE INDEX inventory_stock_pkey ON public.inventory_stock USING btree (id)",
+        "CREATE UNIQUE INDEX inventory_stock_product_id_key ON public.inventory_stock USING btree (product_id)"
+      ],
+      "pol": [
+        {
+          "cmd": "ALL",
+          "n": "Admins can manage inventory stock",
+          "q": "has_role(auth.uid(), 'admin'::app_role)",
+          "roles": [
+            "public"
+          ],
+          "w": null
+        },
+        {
+          "cmd": "SELECT",
+          "n": "Authenticated users can view inventory stock",
+          "q": "(auth.uid() IS NOT NULL)",
+          "roles": [
+            "public"
+          ],
+          "w": null
+        },
+        {
+          "cmd": "INSERT",
+          "n": "Field agents can insert inventory stock",
+          "q": null,
+          "roles": [
+            "public"
+          ],
+          "w": "has_role(auth.uid(), 'field_agent'::app_role)"
+        },
+        {
+          "cmd": "UPDATE",
+          "n": "Field agents can update inventory stock",
+          "q": "has_role(auth.uid(), 'field_agent'::app_role)",
+          "roles": [
+            "public"
+          ],
+          "w": null
+        }
+      ],
+      "relname": "inventory_stock",
+      "rls": true,
+      "trg": [
+        "CREATE TRIGGER update_inventory_stock_updated_at BEFORE UPDATE ON public.inventory_stock FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()"
+      ]
+    }
+  ]
+}
+
+</cursor_untrusted_data_1337>
