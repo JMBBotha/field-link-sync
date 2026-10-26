@@ -1,0 +1,324 @@
+model_key,key,value,unit,source_url,cross_check_url,status,note
+AC071RN4DKG/EU,cool_kw,7.1,kW,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC071RN4DKG/EU,heat_kw,8.0,kW,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC071RN4DKG/EU,btu,,Btu/h,,,blank - not verified,
+AC071RN4DKG/EU,eer,,W/W,,,blank - not verified,
+AC071RN4DKG/EU,cop,,W/W,,,blank - not verified,
+AC071RN4DKG/EU,seer,6.7,,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC071RN4DKG/EU,energy_class,A++ / A+,,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC071RN4DKG/EU,noise_in_db,36/33/29,dBA H/M/L,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC071RN4DKG/EU,noise_out_db,49,dBA (cooling),https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC071RN4DKG/EU,refrigerant,R32,,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC071RN4DKG/EU,wifi,,,,,blank - not verified,
+AC071RN4DKG/EU,room_m2,,,,,blank - not verified,
+AC071RN4DKG/EU,warranty,,,,,blank - not verified,
+AC071RN4DKG/EU,indoor_dim_mm,840 x 204 x 840,mm WxHxD,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC071RN4DKG/EU,indoor_net_kg,14.5,kg,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,,official single source,"page labels this ""Panel Net Weight"" inside indoor section"
+AC071RN4DKG/EU,outdoor_dim_mm,880 x 798 x 310,mm WxHxD,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC071RN4DKG/EU,outdoor_net_kg,51.0,kg,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC100NN4DEH/AF,cool_kw,,kW,,,blank - not verified,
+AC100NN4DEH/AF,heat_kw,,kW,,,blank - not verified,
+AC100NN4DEH/AF,btu,35000,Btu/h,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac100nn4deh-af/,,official single source,single Samsung source; system with outdoor AC100JX4DEH/AF
+AC100NN4DEH/AF,eer,,W/W,,,blank - not verified,
+AC100NN4DEH/AF,cop,,W/W,,,blank - not verified,
+AC100NN4DEH/AF,seer,,,,,blank - not verified,
+AC100NN4DEH/AF,energy_class,,,,,blank - not verified,
+AC100NN4DEH/AF,noise_in_db,43/38/33,dBA H/M/L,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac100nn4deh-af/,,official single source,single Samsung source; system with outdoor AC100JX4DEH/AF
+AC100NN4DEH/AF,noise_out_db,55,dBA (cooling),https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac100nn4deh-af/,,official single source,single Samsung source; system with outdoor AC100JX4DEH/AF
+AC100NN4DEH/AF,refrigerant,R410A,,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac100nn4deh-af/,,official single source,single Samsung source; system with outdoor AC100JX4DEH/AF
+AC100NN4DEH/AF,wifi,,,,,blank - not verified,
+AC100NN4DEH/AF,room_m2,,,,,blank - not verified,
+AC100NN4DEH/AF,warranty,,,,,blank - not verified,
+AC100NN4DEH/AF,indoor_dim_mm,840 x 288 x 840,mm WxHxD,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac100nn4deh-af/,,official single source,single Samsung source; system with outdoor AC100JX4DEH/AF
+AC100NN4DEH/AF,indoor_net_kg,18.5,kg,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac100nn4deh-af/,,official single source,single Samsung source; system with outdoor AC100JX4DEH/AF
+AC100NN4DEH/AF,outdoor_dim_mm,880 x 967 x 320,mm WxHxD,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac100nn4deh-af/,,official single source,single Samsung source; system with outdoor AC100JX4DEH/AF
+AC100NN4DEH/AF,outdoor_net_kg,67.0,kg,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac100nn4deh-af/,,official single source,single Samsung source; system with outdoor AC100JX4DEH/AF
+AC100RN4DKG/EU,cool_kw,10.0,kW,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC100RN4DKG/EU,heat_kw,11.2,kW,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC100RN4DKG/EU,btu,,Btu/h,,,blank - not verified,
+AC100RN4DKG/EU,eer,,W/W,,,blank - not verified,
+AC100RN4DKG/EU,cop,,W/W,,,blank - not verified,
+AC100RN4DKG/EU,seer,7.0,,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC100RN4DKG/EU,energy_class,A++ / A+,,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC100RN4DKG/EU,noise_in_db,44/39/33,dBA H/M/L,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC100RN4DKG/EU,noise_out_db,52,dBA (cooling),https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC100RN4DKG/EU,refrigerant,R32,,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC100RN4DKG/EU,wifi,,,,,blank - not verified,
+AC100RN4DKG/EU,room_m2,,,,,blank - not verified,
+AC100RN4DKG/EU,warranty,,,,,blank - not verified,
+AC100RN4DKG/EU,indoor_dim_mm,840 x 288 x 840,mm WxHxD,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC100RN4DKG/EU,indoor_net_kg,18.0,kg,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,,official single source,"page labels this ""Panel Net Weight"" inside indoor section; value matches indoor body class"
+AC100RN4DKG/EU,outdoor_dim_mm,940 x 998 x 330,mm WxHxD,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC100RN4DKG/EU,outdoor_net_kg,75.0,kg,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
+AC140NN4DEH/AF,cool_kw,,kW,,,blank - not verified,
+AC140NN4DEH/AF,heat_kw,,kW,,,blank - not verified,
+AC140NN4DEH/AF,btu,48000,Btu/h,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac140nn4deh-af/,,official single source,single Samsung source; system with outdoor AC140JX4DGH/AF
+AC140NN4DEH/AF,eer,,W/W,,,blank - not verified,
+AC140NN4DEH/AF,cop,,W/W,,,blank - not verified,
+AC140NN4DEH/AF,seer,,,,,blank - not verified,
+AC140NN4DEH/AF,energy_class,,,,,blank - not verified,
+AC140NN4DEH/AF,noise_in_db,45/41/36,dBA H/M/L,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac140nn4deh-af/,,official single source,single Samsung source; system with outdoor AC140JX4DGH/AF
+AC140NN4DEH/AF,noise_out_db,57,dBA (cooling),https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac140nn4deh-af/,,official single source,single Samsung source; system with outdoor AC140JX4DGH/AF
+AC140NN4DEH/AF,refrigerant,R410A,,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac140nn4deh-af/,,official single source,single Samsung source; system with outdoor AC140JX4DGH/AF
+AC140NN4DEH/AF,wifi,,,,,blank - not verified,
+AC140NN4DEH/AF,room_m2,,,,,blank - not verified,
+AC140NN4DEH/AF,warranty,,,,,blank - not verified,
+AC140NN4DEH/AF,indoor_dim_mm,840 x 288 x 840,mm WxHxD,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac140nn4deh-af/,,official single source,single Samsung source; system with outdoor AC140JX4DGH/AF
+AC140NN4DEH/AF,indoor_net_kg,18.5,kg,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac140nn4deh-af/,,official single source,single Samsung source; system with outdoor AC140JX4DGH/AF
+AC140NN4DEH/AF,outdoor_dim_mm,932 x 1162 x 375,mm WxHxD,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac140nn4deh-af/,,official single source,single Samsung source; system with outdoor AC140JX4DGH/AF
+AC140NN4DEH/AF,outdoor_net_kg,89.0,kg,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac140nn4deh-af/,,official single source,single Samsung source; system with outdoor AC140JX4DGH/AF
+AJ026TN1DKH/EA,cool_kw,2.6,kW,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-wind-free-1-way-cassette.pdf,,official single source,single Samsung source
+AJ026TN1DKH/EA,heat_kw,2.9,kW,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-wind-free-1-way-cassette.pdf,,official single source,single Samsung source
+AJ026TN1DKH/EA,btu,,Btu/h,,,blank - not verified,
+AJ026TN1DKH/EA,eer,,W/W,,,blank - not verified,
+AJ026TN1DKH/EA,cop,,W/W,,,blank - not verified,
+AJ026TN1DKH/EA,seer,,,,,blank - not verified,
+AJ026TN1DKH/EA,energy_class,,,,,blank - not verified,
+AJ026TN1DKH/EA,noise_in_db,32/29/26,dBA H/M/L,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-wind-free-1-way-cassette.pdf,,official single source,single Samsung source
+AJ026TN1DKH/EA,noise_out_db,,dBA (cooling),,,blank - not verified,
+AJ026TN1DKH/EA,refrigerant,R410A,,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-wind-free-1-way-cassette.pdf,,official single source,single Samsung source
+AJ026TN1DKH/EA,wifi,,,,,blank - not verified,
+AJ026TN1DKH/EA,room_m2,,,,,blank - not verified,
+AJ026TN1DKH/EA,warranty,,,,,blank - not verified,
+AJ026TN1DKH/EA,indoor_dim_mm,970 x 135 x 410,mm WxHxD,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-wind-free-1-way-cassette.pdf,,official single source,single Samsung source
+AJ026TN1DKH/EA,indoor_net_kg,9.5,kg,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-wind-free-1-way-cassette.pdf,,official single source,single Samsung source
+AJ026TN1DKH/EA,outdoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ026TN1DKH/EA,outdoor_net_kg,,kg,,,blank - not verified,
+AJ026TNLPKH/EA,cool_kw,2.6,kW,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,,official single source,Samsung 2024 catalogue (distributor-hosted)
+AJ026TNLPKH/EA,heat_kw,2.9,kW,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,,official single source,Samsung 2024 catalogue (distributor-hosted)
+AJ026TNLPKH/EA,btu,,Btu/h,,,blank - not verified,
+AJ026TNLPKH/EA,eer,,W/W,,,blank - not verified,
+AJ026TNLPKH/EA,cop,,W/W,,,blank - not verified,
+AJ026TNLPKH/EA,seer,,,,,blank - not verified,
+AJ026TNLPKH/EA,energy_class,,,,,blank - not verified,
+AJ026TNLPKH/EA,noise_in_db,32/27/22,dBA H/M/L,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,,official single source,Samsung 2024 catalogue (distributor-hosted)
+AJ026TNLPKH/EA,noise_out_db,,dBA (cooling),,,blank - not verified,
+AJ026TNLPKH/EA,refrigerant,R410A,,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,,official single source,Samsung 2024 catalogue (distributor-hosted)
+AJ026TNLPKH/EA,wifi,,,,,blank - not verified,
+AJ026TNLPKH/EA,room_m2,,,,,blank - not verified,
+AJ026TNLPKH/EA,warranty,,,,,blank - not verified,
+AJ026TNLPKH/EA,indoor_dim_mm,700 x 199 x 440,mm WxHxD,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,,official single source,Samsung 2024 catalogue (distributor-hosted)
+AJ026TNLPKH/EA,indoor_net_kg,15.0,kg,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,,official single source,Samsung 2024 catalogue (distributor-hosted)
+AJ026TNLPKH/EA,outdoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ026TNLPKH/EA,outdoor_net_kg,,kg,,,blank - not verified,
+AJ026TNNDKH/EA,cool_kw,2.6,kW,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj026tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ026TNNDKH/EA,heat_kw,,kW,,,blank - not verified,
+AJ026TNNDKH/EA,btu,8900,Btu/h,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj026tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ026TNNDKH/EA,eer,,W/W,,,blank - not verified,
+AJ026TNNDKH/EA,cop,,W/W,,,blank - not verified,
+AJ026TNNDKH/EA,seer,,,,,blank - not verified,
+AJ026TNNDKH/EA,energy_class,,,,,blank - not verified,
+AJ026TNNDKH/EA,noise_in_db,33/29/24,dBA H/M/L,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj026tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ026TNNDKH/EA,noise_out_db,,dBA (cooling),,,blank - not verified,
+AJ026TNNDKH/EA,refrigerant,R410A,,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj026tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ026TNNDKH/EA,wifi,,,,,blank - not verified,
+AJ026TNNDKH/EA,room_m2,,,,,blank - not verified,
+AJ026TNNDKH/EA,warranty,,,,,blank - not verified,
+AJ026TNNDKH/EA,indoor_dim_mm,575 x 250 x 575,mm WxHxD,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj026tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ026TNNDKH/EA,indoor_net_kg,11.5,kg,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj026tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ026TNNDKH/EA,outdoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ026TNNDKH/EA,outdoor_net_kg,,kg,,,blank - not verified,
+AJ035TN1DKH/EA,cool_kw,3.5,kW,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-wind-free-1-way-cassette.pdf,,official single source,single Samsung source; corrects draft heat_kw 3.8 -> 4.0
+AJ035TN1DKH/EA,heat_kw,4.0,kW,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-wind-free-1-way-cassette.pdf,,official single source,single Samsung source; corrects draft heat_kw 3.8 -> 4.0
+AJ035TN1DKH/EA,btu,,Btu/h,,,blank - not verified,
+AJ035TN1DKH/EA,eer,,W/W,,,blank - not verified,
+AJ035TN1DKH/EA,cop,,W/W,,,blank - not verified,
+AJ035TN1DKH/EA,seer,,,,,blank - not verified,
+AJ035TN1DKH/EA,energy_class,,,,,blank - not verified,
+AJ035TN1DKH/EA,noise_in_db,37/35/30,dBA H/M/L,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-wind-free-1-way-cassette.pdf,,official single source,single Samsung source; corrects draft heat_kw 3.8 -> 4.0
+AJ035TN1DKH/EA,noise_out_db,,dBA (cooling),,,blank - not verified,
+AJ035TN1DKH/EA,refrigerant,R410A,,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-wind-free-1-way-cassette.pdf,,official single source,single Samsung source; corrects draft heat_kw 3.8 -> 4.0
+AJ035TN1DKH/EA,wifi,,,,,blank - not verified,
+AJ035TN1DKH/EA,room_m2,,,,,blank - not verified,
+AJ035TN1DKH/EA,warranty,,,,,blank - not verified,
+AJ035TN1DKH/EA,indoor_dim_mm,970 x 135 x 410,mm WxHxD,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-wind-free-1-way-cassette.pdf,,official single source,single Samsung source; corrects draft heat_kw 3.8 -> 4.0
+AJ035TN1DKH/EA,indoor_net_kg,9.5,kg,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-wind-free-1-way-cassette.pdf,,official single source,single Samsung source; corrects draft heat_kw 3.8 -> 4.0
+AJ035TN1DKH/EA,outdoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ035TN1DKH/EA,outdoor_net_kg,,kg,,,blank - not verified,
+AJ035TNLPKH/EA,cool_kw,3.5,kW,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,,official single source,Samsung 2024 catalogue (distributor-hosted); matches Samsung TR product page seen in search
+AJ035TNLPKH/EA,heat_kw,3.8,kW,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,,official single source,Samsung 2024 catalogue (distributor-hosted); matches Samsung TR product page seen in search
+AJ035TNLPKH/EA,btu,11900,Btu/h,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,,official single source,Samsung 2024 catalogue (distributor-hosted); matches Samsung TR product page seen in search
+AJ035TNLPKH/EA,eer,,W/W,,,blank - not verified,
+AJ035TNLPKH/EA,cop,,W/W,,,blank - not verified,
+AJ035TNLPKH/EA,seer,,,,,blank - not verified,
+AJ035TNLPKH/EA,energy_class,,,,,blank - not verified,
+AJ035TNLPKH/EA,noise_in_db,33/28/23,dBA H/M/L,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,,official single source,Samsung 2024 catalogue (distributor-hosted); matches Samsung TR product page seen in search
+AJ035TNLPKH/EA,noise_out_db,,dBA (cooling),,,blank - not verified,
+AJ035TNLPKH/EA,refrigerant,R410A,,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,,official single source,Samsung 2024 catalogue (distributor-hosted); matches Samsung TR product page seen in search
+AJ035TNLPKH/EA,wifi,,,,,blank - not verified,
+AJ035TNLPKH/EA,room_m2,,,,,blank - not verified,
+AJ035TNLPKH/EA,warranty,,,,,blank - not verified,
+AJ035TNLPKH/EA,indoor_dim_mm,700 x 199 x 440,mm WxHxD,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,,official single source,Samsung 2024 catalogue (distributor-hosted); matches Samsung TR product page seen in search
+AJ035TNLPKH/EA,indoor_net_kg,15.0,kg,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,,official single source,Samsung 2024 catalogue (distributor-hosted); matches Samsung TR product page seen in search
+AJ035TNLPKH/EA,outdoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ035TNLPKH/EA,outdoor_net_kg,,kg,,,blank - not verified,
+AJ035TNNDKH/EA,cool_kw,3.5,kW,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj035tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ035TNNDKH/EA,heat_kw,,kW,,,blank - not verified,
+AJ035TNNDKH/EA,btu,11900,Btu/h,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj035tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ035TNNDKH/EA,eer,,W/W,,,blank - not verified,
+AJ035TNNDKH/EA,cop,,W/W,,,blank - not verified,
+AJ035TNNDKH/EA,seer,,,,,blank - not verified,
+AJ035TNNDKH/EA,energy_class,,,,,blank - not verified,
+AJ035TNNDKH/EA,noise_in_db,35/31/27,dBA H/M/L,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj035tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ035TNNDKH/EA,noise_out_db,,dBA (cooling),,,blank - not verified,
+AJ035TNNDKH/EA,refrigerant,R410A,,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj035tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ035TNNDKH/EA,wifi,,,,,blank - not verified,
+AJ035TNNDKH/EA,room_m2,,,,,blank - not verified,
+AJ035TNNDKH/EA,warranty,,,,,blank - not verified,
+AJ035TNNDKH/EA,indoor_dim_mm,575 x 250 x 575,mm WxHxD,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj035tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ035TNNDKH/EA,indoor_net_kg,11.5,kg,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj035tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ035TNNDKH/EA,outdoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ035TNNDKH/EA,outdoor_net_kg,,kg,,,blank - not verified,
+AJ040TXJ2KH/EA,cool_kw,4.0,kW,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ040TXJ2KH/EA,heat_kw,4.4,kW,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ040TXJ2KH/EA,btu,13600,Btu/h,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ040TXJ2KH/EA,eer,3.92,W/W,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ040TXJ2KH/EA,cop,4.44,W/W,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ040TXJ2KH/EA,seer,,,,,blank - not verified,
+AJ040TXJ2KH/EA,energy_class,,,,,blank - not verified,
+AJ040TXJ2KH/EA,noise_in_db,,dBA H/M/L,,,blank - not verified,
+AJ040TXJ2KH/EA,noise_out_db,45,dBA (cooling),https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ040TXJ2KH/EA,refrigerant,R410A,,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ040TXJ2KH/EA,wifi,,,,,blank - not verified,
+AJ040TXJ2KH/EA,room_m2,,,,,blank - not verified,
+AJ040TXJ2KH/EA,warranty,,,,,blank - not verified,
+AJ040TXJ2KH/EA,indoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ040TXJ2KH/EA,indoor_net_kg,,kg,,,blank - not verified,
+AJ040TXJ2KH/EA,outdoor_dim_mm,790 x 548 x 285,mm WxHxD,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ040TXJ2KH/EA,outdoor_net_kg,35.5,kg,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ052TN1DKH/EA,cool_kw,,kW,,,blank - not verified,
+AJ052TN1DKH/EA,heat_kw,,kW,,,blank - not verified,
+AJ052TN1DKH/EA,btu,,Btu/h,,,blank - not verified,
+AJ052TN1DKH/EA,eer,,W/W,,,blank - not verified,
+AJ052TN1DKH/EA,cop,,W/W,,,blank - not verified,
+AJ052TN1DKH/EA,seer,,,,,blank - not verified,
+AJ052TN1DKH/EA,energy_class,,,,,blank - not verified,
+AJ052TN1DKH/EA,noise_in_db,,dBA H/M/L,,,blank - not verified,
+AJ052TN1DKH/EA,noise_out_db,,dBA (cooling),,,blank - not verified,
+AJ052TN1DKH/EA,refrigerant,,,,,blank - not verified,
+AJ052TN1DKH/EA,wifi,,,,,blank - not verified,
+AJ052TN1DKH/EA,room_m2,,,,,blank - not verified,
+AJ052TN1DKH/EA,warranty,,,,,blank - not verified,
+AJ052TN1DKH/EA,indoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ052TN1DKH/EA,indoor_net_kg,,kg,,,blank - not verified,
+AJ052TN1DKH/EA,outdoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ052TN1DKH/EA,outdoor_net_kg,,kg,,,blank - not verified,
+AJ052TNNDKH/EA,cool_kw,5.2,kW,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj052tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ052TNNDKH/EA,heat_kw,,kW,,,blank - not verified,
+AJ052TNNDKH/EA,btu,17700,Btu/h,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj052tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ052TNNDKH/EA,eer,,W/W,,,blank - not verified,
+AJ052TNNDKH/EA,cop,,W/W,,,blank - not verified,
+AJ052TNNDKH/EA,seer,,,,,blank - not verified,
+AJ052TNNDKH/EA,energy_class,,,,,blank - not verified,
+AJ052TNNDKH/EA,noise_in_db,39/36/32,dBA H/M/L,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj052tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ052TNNDKH/EA,noise_out_db,,dBA (cooling),,,blank - not verified,
+AJ052TNNDKH/EA,refrigerant,R410A,,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj052tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ052TNNDKH/EA,wifi,,,,,blank - not verified,
+AJ052TNNDKH/EA,room_m2,,,,,blank - not verified,
+AJ052TNNDKH/EA,warranty,,,,,blank - not verified,
+AJ052TNNDKH/EA,indoor_dim_mm,575 x 250 x 575,mm WxHxD,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj052tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ052TNNDKH/EA,indoor_net_kg,11.8,kg,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj052tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
+AJ052TNNDKH/EA,outdoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ052TNNDKH/EA,outdoor_net_kg,,kg,,,blank - not verified,
+AJ068TXJ3KH/EA,cool_kw,6.8,kW,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ068TXJ3KH/EA,heat_kw,8.0,kW,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ068TXJ3KH/EA,btu,23200,Btu/h,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ068TXJ3KH/EA,eer,3.4,W/W,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ068TXJ3KH/EA,cop,4.19,W/W,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ068TXJ3KH/EA,seer,,,,,blank - not verified,
+AJ068TXJ3KH/EA,energy_class,,,,,blank - not verified,
+AJ068TXJ3KH/EA,noise_in_db,,dBA H/M/L,,,blank - not verified,
+AJ068TXJ3KH/EA,noise_out_db,48,dBA (cooling),https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ068TXJ3KH/EA,refrigerant,R410A,,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ068TXJ3KH/EA,wifi,,,,,blank - not verified,
+AJ068TXJ3KH/EA,room_m2,,,,,blank - not verified,
+AJ068TXJ3KH/EA,warranty,,,,,blank - not verified,
+AJ068TXJ3KH/EA,indoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ068TXJ3KH/EA,indoor_net_kg,,kg,,,blank - not verified,
+AJ068TXJ3KH/EA,outdoor_dim_mm,880 x 798 x 310,mm WxHxD,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ068TXJ3KH/EA,outdoor_net_kg,53.5,kg,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ071TNLPKH/EA,cool_kw,7.1,kW,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,https://www.samsung.com/hk_en/air-conditioners/floor-standing/fjm-aj071tnldkh-ea/,verified (2 sources),"Samsung 2024 catalogue; HK cross-check is sibling AJ071TNLDKH (same body), values identical"
+AJ071TNLPKH/EA,heat_kw,8.0,kW,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,https://www.samsung.com/hk_en/air-conditioners/floor-standing/fjm-aj071tnldkh-ea/,verified (2 sources),"Samsung 2024 catalogue; HK cross-check is sibling AJ071TNLDKH (same body), values identical"
+AJ071TNLPKH/EA,btu,,Btu/h,,,blank - not verified,
+AJ071TNLPKH/EA,eer,,W/W,,,blank - not verified,
+AJ071TNLPKH/EA,cop,,W/W,,,blank - not verified,
+AJ071TNLPKH/EA,seer,,,,,blank - not verified,
+AJ071TNLPKH/EA,energy_class,,,,,blank - not verified,
+AJ071TNLPKH/EA,noise_in_db,39/36/32,dBA H/M/L,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,https://www.samsung.com/hk_en/air-conditioners/floor-standing/fjm-aj071tnldkh-ea/,verified (2 sources),"Samsung 2024 catalogue; HK cross-check is sibling AJ071TNLDKH (same body), values identical"
+AJ071TNLPKH/EA,noise_out_db,,dBA (cooling),,,blank - not verified,
+AJ071TNLPKH/EA,refrigerant,R410A,,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,https://www.samsung.com/hk_en/air-conditioners/floor-standing/fjm-aj071tnldkh-ea/,verified (2 sources),"Samsung 2024 catalogue; HK cross-check is sibling AJ071TNLDKH (same body), values identical"
+AJ071TNLPKH/EA,wifi,,,,,blank - not verified,
+AJ071TNLPKH/EA,room_m2,,,,,blank - not verified,
+AJ071TNLPKH/EA,warranty,,,,,blank - not verified,
+AJ071TNLPKH/EA,indoor_dim_mm,1100 x 199 x 440,mm WxHxD,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,https://www.samsung.com/hk_en/air-conditioners/floor-standing/fjm-aj071tnldkh-ea/,verified (2 sources),"Samsung 2024 catalogue; HK cross-check is sibling AJ071TNLDKH (same body), values identical"
+AJ071TNLPKH/EA,indoor_net_kg,22.0,kg,https://onokom.ru/dok/samsung/2024/catalog/2024-catalog-duct-ms.pdf,https://www.samsung.com/hk_en/air-conditioners/floor-standing/fjm-aj071tnldkh-ea/,verified (2 sources),"Samsung 2024 catalogue; HK cross-check is sibling AJ071TNLDKH (same body), values identical"
+AJ071TNLPKH/EA,outdoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ071TNLPKH/EA,outdoor_net_kg,,kg,,,blank - not verified,
+AJ080TXJ4KH/EA,cool_kw,8.0,kW,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ080TXJ4KH/EA,heat_kw,9.0,kW,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ080TXJ4KH/EA,btu,27300,Btu/h,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ080TXJ4KH/EA,eer,3.36,W/W,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ080TXJ4KH/EA,cop,4.23,W/W,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ080TXJ4KH/EA,seer,,,,,blank - not verified,
+AJ080TXJ4KH/EA,energy_class,,,,,blank - not verified,
+AJ080TXJ4KH/EA,noise_in_db,,dBA H/M/L,,,blank - not verified,
+AJ080TXJ4KH/EA,noise_out_db,48,dBA (cooling),https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ080TXJ4KH/EA,refrigerant,R410A,,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ080TXJ4KH/EA,wifi,,,,,blank - not verified,
+AJ080TXJ4KH/EA,room_m2,,,,,blank - not verified,
+AJ080TXJ4KH/EA,warranty,,,,,blank - not verified,
+AJ080TXJ4KH/EA,indoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ080TXJ4KH/EA,indoor_net_kg,,kg,,,blank - not verified,
+AJ080TXJ4KH/EA,outdoor_dim_mm,880 x 798 x 310,mm WxHxD,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ080TXJ4KH/EA,outdoor_net_kg,57.5,kg,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ100TXJ5KH/EA,cool_kw,10.0,kW,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ100TXJ5KH/EA,heat_kw,12.0,kW,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ100TXJ5KH/EA,btu,34100,Btu/h,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ100TXJ5KH/EA,eer,3.45,W/W,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ100TXJ5KH/EA,cop,4.1,W/W,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ100TXJ5KH/EA,seer,,,,,blank - not verified,
+AJ100TXJ5KH/EA,energy_class,,,,,blank - not verified,
+AJ100TXJ5KH/EA,noise_in_db,,dBA H/M/L,,,blank - not verified,
+AJ100TXJ5KH/EA,noise_out_db,54,dBA (cooling),https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ100TXJ5KH/EA,refrigerant,R410A,,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ100TXJ5KH/EA,wifi,,,,,blank - not verified,
+AJ100TXJ5KH/EA,room_m2,,,,,blank - not verified,
+AJ100TXJ5KH/EA,warranty,,,,,blank - not verified,
+AJ100TXJ5KH/EA,indoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ100TXJ5KH/EA,indoor_net_kg,,kg,,,blank - not verified,
+AJ100TXJ5KH/EA,outdoor_dim_mm,940 x 998 x 330,mm WxHxD,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ100TXJ5KH/EA,outdoor_net_kg,76.5,kg,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ125TXJ5KH/EA,cool_kw,12.5,kW,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ125TXJ5KH/EA,heat_kw,13.5,kW,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ125TXJ5KH/EA,btu,42600,Btu/h,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ125TXJ5KH/EA,eer,3.16,W/W,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ125TXJ5KH/EA,cop,3.9,W/W,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ125TXJ5KH/EA,seer,,,,,blank - not verified,
+AJ125TXJ5KH/EA,energy_class,,,,,blank - not verified,
+AJ125TXJ5KH/EA,noise_in_db,,dBA H/M/L,,,blank - not verified,
+AJ125TXJ5KH/EA,noise_out_db,52,dBA (cooling),https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ125TXJ5KH/EA,refrigerant,R410A,,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ125TXJ5KH/EA,wifi,,,,,blank - not verified,
+AJ125TXJ5KH/EA,room_m2,,,,,blank - not verified,
+AJ125TXJ5KH/EA,warranty,,,,,blank - not verified,
+AJ125TXJ5KH/EA,indoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ125TXJ5KH/EA,indoor_net_kg,,kg,,,blank - not verified,
+AJ125TXJ5KH/EA,outdoor_dim_mm,940 x 1210 x 330,mm WxHxD,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ125TXJ5KH/EA,outdoor_net_kg,87.5,kg,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,https://images.samsung.com/is/content/samsung/assets/au/air-conditioners/fjm-outdoor.pdf,verified (2 sources),cross-checked
+AJ140TXJ5KH/EA,cool_kw,14.0,kW,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ140TXJ5KH/EA,heat_kw,15.0,kW,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ140TXJ5KH/EA,btu,47700,Btu/h,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ140TXJ5KH/EA,eer,2.89,W/W,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ140TXJ5KH/EA,cop,3.5,W/W,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ140TXJ5KH/EA,seer,,,,,blank - not verified,
+AJ140TXJ5KH/EA,energy_class,,,,,blank - not verified,
+AJ140TXJ5KH/EA,noise_in_db,,dBA H/M/L,,,blank - not verified,
+AJ140TXJ5KH/EA,noise_out_db,52,dBA (cooling),https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ140TXJ5KH/EA,refrigerant,R410A,,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ140TXJ5KH/EA,wifi,,,,,blank - not verified,
+AJ140TXJ5KH/EA,room_m2,,,,,blank - not verified,
+AJ140TXJ5KH/EA,warranty,,,,,blank - not verified,
+AJ140TXJ5KH/EA,indoor_dim_mm,,mm WxHxD,,,blank - not verified,
+AJ140TXJ5KH/EA,indoor_net_kg,,kg,,,blank - not verified,
+AJ140TXJ5KH/EA,outdoor_dim_mm,940 x 1210 x 330,mm WxHxD,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)
+AJ140TXJ5KH/EA,outdoor_net_kg,87.5,kg,https://samsungair.co.za/wp-content/uploads/2023/01/NEW-Samsung-FJM-Brochure.pdf,,official single source,single Samsung source (not in AU outdoor PDF)

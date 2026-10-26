@@ -136,6 +136,7 @@ export function specChips(specs?: Record<string, any> | null, fallback?: { btu?:
   else if (n(s.seer)) chips.push(`SEER ${s.seer}`);
   if (n(s.energy_class)) chips.push(`Class ${s.energy_class}`);
   if (n(s.noise_in_db)) chips.push(`${s.noise_in_db} dBA indoor`);
+  else if (n(s.noise_out_db)) chips.push(`${s.noise_out_db} dBA outdoor`);
   if (n(s.refrigerant) || fallback?.refrigerant) chips.push(String(s.refrigerant || fallback?.refrigerant));
   if (s.wifi === true) chips.push("Wi-Fi");
   if (n(s.room_m2)) chips.push(`Rooms ≈ ${s.room_m2} m²`);
