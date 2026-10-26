@@ -14,6 +14,7 @@ import { useQuoteEditors } from "@/hooks/useQuoteEditors";
 import RemoveUnitDialog from "@/components/quoting/RemoveUnitDialog";
 import ClientNoteBox from "@/components/quoting/ClientNoteBox";
 import QuoteDocumentsBox from "@/components/quoting/QuoteDocumentsBox";
+import QuoteDrawingsBox from "@/components/quoting/QuoteDrawingsBox";
 import { QuoteSitePhotosEditor } from "@/components/quoting/QuoteSitePhotos";
 import { linkedToUnit } from "@/lib/unitInstallLinks";
 import { useIsPhone } from "@/hooks/useIsPhone";
@@ -460,6 +461,7 @@ export default function EstimateBuilder({
       {!hideClientNote && <ClientNoteBox onChanged={onChanged} />}
       {!hideClientNote && quoteId && <QuoteSitePhotosEditor quoteId={quoteId} />}
       {!hideClientNote && quoteId && <QuoteDocumentsBox quoteId={quoteId} companyId={(meta as any)?.company_id ?? null} />}
+      {!hideClientNote && quoteId && <QuoteDrawingsBox quoteId={quoteId} companyId={(meta as any)?.company_id ?? null} />}
       {quoteId && meta && <QuoteLockBanner quoteId={quoteId} lockedAt={meta.locked_at} lockedReason={meta.locked_reason} isVariation={meta.is_variation} status={meta.status} summaryLine={meta.variation_summary?.summary_line ?? null} onChanged={() => { void refetch(); onChanged?.(); }} />}
       {quoteId && meta && <div className="flex"><SurveyReportChip quoteId={quoteId} leadId={(meta as any).lead_id ?? null} /></div>}
       {(() => { const editorDoc = (
