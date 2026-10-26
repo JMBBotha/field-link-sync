@@ -963,9 +963,30 @@ export async function executeTool(
       const products = (data ?? []) as Record<string, any>[];
 
 
-      // 0031: old inventory_stock table was dropped; on-hand stock now lives in Cash Health (cf_stock_items),
-      // which is not keyed by catalogue product, so stock is reported as unknown (null), never "out of stock".
+      // On-hand stock lives in Cash Health (cf_stock_items), matched to catalogue items by model code.
+      // Company-scoped; only qty is read (never unit_cost_excl). Unmatched items stay unknown (null).
+      const norm = (v: unknown) => String(v ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const qtyByCode = new Map<string, number>();
+      if (companyId && products.length) {
+        const { data: stock, error: stockErr } = await db.from("cf_stock_items")
+          .select("model_code, qty_on_hand")
+          .eq("company_id", companyId)
+          .eq("active", true)
+          .not("model_code", "is", null);
+        if (!stockErr) {
+          for (const r of (stock ?? []) as { model_code: string | null; qty_on_hand: number | null }[]) {
+            const k = norm(r.model_code);
+            if (k) qtyByCode.set(k, (qtyByCode.get(k) ?? 0) + Number(r.qty_on_hand ?? 0));
+          }
+        }
+      }
       const stockByProduct = new Map<string, number>();
+      for (const p of products) {
+        for (const c of [p.model, p.product_code]) {
+          const k = norm(c);
+          if (k && qtyByCode.has(k)) { stockByProduct.set(String(p.id), qtyByCode.get(k)!); break; }
+        }
+      }
       // Stock is tracked separately and may not cover every catalogue item —
       // unknown stock is reported as null, never as "out of stock".
       const known = (id: string) => stockByProduct.has(String(id));
