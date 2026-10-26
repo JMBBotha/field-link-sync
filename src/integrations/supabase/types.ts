@@ -3020,6 +3020,7 @@ export type Database = {
           data_consent_date: string | null
           email: string | null
           email_verified: boolean | null
+          final_after_days: number | null
           first_name: string | null
           id: string
           is_company: boolean | null
@@ -3060,6 +3061,7 @@ export type Database = {
           data_consent_date?: string | null
           email?: string | null
           email_verified?: boolean | null
+          final_after_days?: number | null
           first_name?: string | null
           id?: string
           is_company?: boolean | null
@@ -3100,6 +3102,7 @@ export type Database = {
           data_consent_date?: string | null
           email?: string | null
           email_verified?: boolean | null
+          final_after_days?: number | null
           first_name?: string | null
           id?: string
           is_company?: boolean | null
@@ -4093,128 +4096,6 @@ export type Database = {
         }
         Relationships: []
       }
-      inventory_adjustments: {
-        Row: {
-          changed_at: string
-          id: string
-          new_quantity: number
-          old_quantity: number
-          reason: string | null
-          stock_id: string
-          user_id: string | null
-        }
-        Insert: {
-          changed_at?: string
-          id?: string
-          new_quantity: number
-          old_quantity: number
-          reason?: string | null
-          stock_id: string
-          user_id?: string | null
-        }
-        Update: {
-          changed_at?: string
-          id?: string
-          new_quantity?: number
-          old_quantity?: number
-          reason?: string | null
-          stock_id?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "inventory_adjustments_stock_id_fkey"
-            columns: ["stock_id"]
-            isOneToOne: false
-            referencedRelation: "inventory_stock"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      inventory_items: {
-        Row: {
-          category: string | null
-          created_at: string
-          id: string
-          min_stock_level: number
-          name: string
-          quantity_in_stock: number
-          sku: string | null
-          supplier: string | null
-          unit_cost: number
-          updated_at: string
-        }
-        Insert: {
-          category?: string | null
-          created_at?: string
-          id?: string
-          min_stock_level?: number
-          name: string
-          quantity_in_stock?: number
-          sku?: string | null
-          supplier?: string | null
-          unit_cost?: number
-          updated_at?: string
-        }
-        Update: {
-          category?: string | null
-          created_at?: string
-          id?: string
-          min_stock_level?: number
-          name?: string
-          quantity_in_stock?: number
-          sku?: string | null
-          supplier?: string | null
-          unit_cost?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      inventory_stock: {
-        Row: {
-          created_at: string
-          id: string
-          low_stock_threshold: number
-          product_id: string
-          quantity: number
-          stock_mode: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          low_stock_threshold?: number
-          product_id: string
-          quantity?: number
-          stock_mode?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          low_stock_threshold?: number
-          product_id?: string
-          quantity?: number
-          stock_mode?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "inventory_stock_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: true
-            referencedRelation: "live_supplier_products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_stock_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: true
-            referencedRelation: "supplier_products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       invoice_items: {
         Row: {
           amount: number
@@ -4581,6 +4462,10 @@ export type Database = {
           due_date: string | null
           duplicated_from: string | null
           equipment_id: string | null
+          expected_deposit_date: string | null
+          expected_final_date: string | null
+          final_after_days: number | null
+          final_unscheduled: boolean
           grand_total: number
           id: string
           invoice_number: string
@@ -4631,6 +4516,10 @@ export type Database = {
           due_date?: string | null
           duplicated_from?: string | null
           equipment_id?: string | null
+          expected_deposit_date?: string | null
+          expected_final_date?: string | null
+          final_after_days?: number | null
+          final_unscheduled?: boolean
           grand_total?: number
           id?: string
           invoice_number: string
@@ -4681,6 +4570,10 @@ export type Database = {
           due_date?: string | null
           duplicated_from?: string | null
           equipment_id?: string | null
+          expected_deposit_date?: string | null
+          expected_final_date?: string | null
+          final_after_days?: number | null
+          final_unscheduled?: boolean
           grand_total?: number
           id?: string
           invoice_number?: string
@@ -13474,6 +13367,27 @@ export type Database = {
         }
         Returns: string
       }
+      _inv_pay_schedule: {
+        Args: { p_invoice: string }
+        Returns: {
+          deposit_amount: number
+          deposit_date: string
+          deposit_date_auto: boolean
+          deposit_outstanding: number
+          deposit_paid: number
+          deposit_status: string
+          final_after_days: number
+          final_amount: number
+          final_date: string
+          final_date_auto: boolean
+          final_outstanding: number
+          final_paid: number
+          final_status: string
+          has_deposit: boolean
+          invoice_id: string
+          terms_days: number
+        }[]
+      }
       _inv_rep: { Args: { p_invoice: string }; Returns: string }
       _inv_step: {
         Args: { p_company: string; p_days: number }
@@ -15112,6 +15026,28 @@ export type Database = {
         }[]
       }
       invoice_email_preview: { Args: { p_invoice_id: string }; Returns: Json }
+      invoice_payment_schedule: {
+        Args: { p_invoice: string }
+        Returns: {
+          can_edit: boolean
+          deposit_amount: number
+          deposit_date: string
+          deposit_date_auto: boolean
+          deposit_outstanding: number
+          deposit_paid: number
+          deposit_status: string
+          final_after_days: number
+          final_amount: number
+          final_date: string
+          final_date_auto: boolean
+          final_outstanding: number
+          final_paid: number
+          final_status: string
+          has_deposit: boolean
+          invoice_id: string
+          terms_days: number
+        }[]
+      }
       invoice_send_hold: {
         Args: { p_invoice_id: string; p_reason?: string }
         Returns: Json
@@ -15874,11 +15810,28 @@ export type Database = {
         }
         Returns: Json
       }
+      set_customer_final_after_days: {
+        Args: { p_customer: string; p_days: number }
+        Returns: undefined
+      }
       set_customer_payment_terms: {
         Args: { p_basis: string; p_customer: string; p_days: number }
         Returns: undefined
       }
       set_install_handoff_default: { Args: { p_mode: string }; Returns: Json }
+      set_invoice_final_unscheduled: {
+        Args: { p_invoice: string; p_on: boolean }
+        Returns: undefined
+      }
+      set_invoice_payment_dates: {
+        Args: {
+          p_deposit_date: string
+          p_final_after_days: number
+          p_final_date: string
+          p_invoice: string
+        }
+        Returns: undefined
+      }
       set_invoice_payment_terms: {
         Args: { p_basis: string; p_days: number; p_invoice: string }
         Returns: undefined
