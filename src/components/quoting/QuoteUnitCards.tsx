@@ -65,16 +65,15 @@ function Icon({ name, color, size = 22 }: { name?: string | null; color: string;
   );
 }
 
-/** Generic wall-split outline used until a real cut-out is approved. */
-function UnitOutline({ brand }: { brand?: string | null }) {
+/** Neutral placeholder until a real product photo is approved (Johan 26 Oct): no drawn unit, never a fake picture. */
+function PhotoPlaceholder({ modelCode }: { modelCode: string }) {
   return (
-    <div style={{ textAlign: "center" }}>
-      <svg width="132" height="56" viewBox="0 0 132 56" aria-hidden>
-        <rect x="3" y="6" width="126" height="38" rx="8" fill="#fff" stroke="#9fb3c8" strokeWidth="2" />
-        <path d="M14 36h104" stroke="#c8d5e2" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="114" cy="16" r="2.5" fill={SKY} />
+    <div data-testid="unit-card-photo-placeholder" style={{ textAlign: "center", padding: "8px 6px" }}>
+      <svg width="34" height="28" viewBox="0 0 24 20" fill="none" stroke="#9fb3c8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <rect x="1.5" y="3.5" width="21" height="15" rx="2.5" /><circle cx="12" cy="11" r="3.6" /><path d="M8 3.5l1.4-2h5.2l1.4 2" />
       </svg>
-      {brand && <div style={{ fontWeight: 800, letterSpacing: ".12em", fontSize: 11, color: "#9fb3c8", textTransform: "uppercase" }}>{brand}</div>}
+      <div style={{ fontSize: 11, fontWeight: 700, color: "#7d93a8", marginTop: 4 }}>Photo to follow</div>
+      <div style={{ fontSize: 9.5, color: "#9fb3c8", marginTop: 2, wordBreak: "break-all" }}>{modelCode}</div>
     </div>
   );
 }
@@ -124,7 +123,7 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
       }}>
         {img
           ? <img src={img} alt={card.modelCode} crossOrigin="anonymous" style={{ maxWidth: 138, maxHeight: 108, objectFit: "contain", filter: "drop-shadow(0 6px 8px rgba(11,79,168,.22))" }} />
-          : <UnitOutline brand={card.brand} />}
+          : <PhotoPlaceholder modelCode={card.modelCode} />}
       </div>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>

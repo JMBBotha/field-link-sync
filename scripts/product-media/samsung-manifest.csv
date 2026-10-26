@@ -1,0 +1,21 @@
+model,file,status,image_url,source_page,note
+AC100NN4DEH/AF,ac100nn4deh-af.png,OK,https://images.samsung.com/is/image/samsung/p6pim/africa_en/ac100nn4deh-af/gallery/africa-en-ac9000wind-free4way-ac100nn4deh-af-532092061,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000-wind-free-4way-ac100nn4deh-af/,exact model; 4-way cassette; transparent PNG
+AC140NN4DEH/AF,ac140nn4deh-af.png,OK,https://images.samsung.com/is/image/samsung/p6pim/africa_en/ac140nn4deh-af/gallery/africa-en-ac9000wind-free4way-ac140nn4deh-af-532092111,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000-wind-free-4way-ac140nn4deh-af/,exact model; 4-way cassette
+AJ035TNNDKH/EA,aj035tnndkh-ea.png,OK,https://images.samsung.com/is/image/samsung/p6pim/ar/aj035tnndkh-ea/gallery/ar-4way-cst-aj035tnndkh-ea-463384059,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj035tnndkh-ea/,exact; mini 4-way
+AJ026TNNDKH/EA,aj026tnndkh-ea.png,OK,https://images.samsung.com/is/image/samsung/p6pim/ar/aj026tnndkh-ea/gallery/ar-4way-cst-aj026tnndkh-ea-463384036,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj026tnndkh-ea/,exact; mini 4-way
+AJ026TN1DKH/EA,aj026tn1dkh-ea.png,OK,https://images.samsung.com/is/image/samsung/au-1way-cst-am5000m-aj026tn1dkh-ea-front-292275215,https://www.samsung.com/au/support/model/AJ026TN1DKH/EA/,exact; 1-way cassette
+AJ035TN1DKH/EA,aj035tn1dkh-ea.png,OK,https://images.samsung.com/is/image/samsung/au-1way-cst-am5000m-aj035tn1dkh-ea-front-292275228,https://www.samsung.com/au/support/model/AJ035TN1DKH/EA/,exact; 1-way cassette
+AJ068TXJ3KH/EA,aj068txj3kh-ea.png,OK,https://images.samsung.com/is/image/samsung/au-fjm-with-r32-refrigerant-aj068txj3kh-ea-frontwhite-292179127,https://www.samsung.com/au/support/model/AJ068TXJ3KH/EA/,exact; FJM outdoor (AU file name says R32 - cosmetic)
+AJ080TXJ4KH/EA,aj080txj4kh-ea.png,OK,https://images.samsung.com/is/image/samsung/au-fjm-with-r32-refrigerant-aj080txj4kh-ea-frontwhite-292179138,https://www.samsung.com/au/support/model/AJ080TXJ4KH/EA/,exact; FJM outdoor
+AJ100TXJ5KH/EA,aj100txj5kh-ea.png,OK,https://images.samsung.com/is/image/samsung/au-fjm-with-r32-refrigerant-aj100txj5kh-ea-frontwhite-292179145,https://www.samsung.com/au/support/model/AJ100TXJ5KH/EA/,exact; FJM outdoor
+AJ125TXJ5KH/EA,aj125txj5kh-ea.png,OK,https://images.samsung.com/is/image/samsung/au-fjm-with-r32-refrigerant-aj125txj5kh-ea-frontwhite-292179154,https://www.samsung.com/au/support/model/AJ125TXJ5KH/EA/,exact; FJM outdoor (twin fan)
+AC100RN4DKG/EU,ac100rn4dkg-eu.png,OK-front-view,https://images.samsung.com/is/image/samsung/p6pim/levant/ac100rn4dkg-eu/gallery/levant-ac9000wind-free4way-501910-ac100rn4dkg-eu-540674171,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,exact; flat panel front view
+AJ071TNLPKH/EA,NEARMATCH-aj071tnldkh-ea.png,NEAR-MATCH,https://images.samsung.com/is/image/samsung/p6pim/hk_en/aj071tnldkh-ea/gallery/hk-en-slim-duct-tnldkh-350413-aj071tnldkh-ea-535840621,https://www.samsung.com/hk_en/air-conditioners/floor-standing/fjm-aj071tnldkh-ea/,sibling LD (same slim-duct body); needs Johan OK
+AC071RN4DKG/EU,rejected/ac071rn4dkg-eu.png,PAGE-FOUND-pick-other-gallery-image,,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,first gallery image is a close-up crop
+AJ052TNNDKH/EA,rejected/aj052tnndkh-ea.png,PAGE-FOUND-pick-other-gallery-image,,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj052tnndkh-ea/,first gallery image is a close-up crop
+AJ052TN1DKH/EA,,NOT-FOUND,,https://www.samsung.com/au/support/model/AJ052TN1DKH/EA/,placeholder (could reuse 1-way family shot only with OK)
+AJ035TNLPKH/EA,,NOT-FOUND,,,placeholder (slim duct family shot possible)
+AJ026TNLPKH/EA,,NOT-FOUND,,,placeholder
+AJ040TXJ2KH/EA,,NOT-FOUND,,,placeholder (small FJM outdoor)
+AJ140TXJ5KH/EA,,NOT-FOUND,,,placeholder (same body as AJ125 twin-fan per spec sheet 940x1210x330)
+AR40 wall (old quotes 0000084-86 and 0003373),,NO-MODEL-CODE,,,lines have no model code; AR40F18C0AG/FA already approved in product_media
