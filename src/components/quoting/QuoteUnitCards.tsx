@@ -66,9 +66,9 @@ function Icon({ name, color, size = 22 }: { name?: string | null; color: string;
 }
 
 /** Neutral placeholder until a real product photo is approved (Johan 26 Oct): no drawn unit, never a fake picture. */
-function PhotoPlaceholder({ modelCode }: { modelCode: string }) {
+function PhotoPlaceholder({ modelCode, testId = "unit-card-photo-placeholder" }: { modelCode: string; testId?: string }) {
   return (
-    <div data-testid="unit-card-photo-placeholder" style={{ textAlign: "center", padding: "8px 6px" }}>
+    <div data-testid={testId} style={{ textAlign: "center", padding: "8px 6px" }}>
       <svg width="34" height="28" viewBox="0 0 24 20" fill="none" stroke="#9fb3c8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <rect x="1.5" y="3.5" width="21" height="15" rx="2.5" /><circle cx="12" cy="11" r="3.6" /><path d="M8 3.5l1.4-2h5.2l1.4 2" />
       </svg>
@@ -118,12 +118,20 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
       background: bold ? "#eef3f9" : "#fff",
     }}>
       <div className="uc-img" style={{
-        borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 120,
+        borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 120, padding: "6px 0",
         background: bold ? `linear-gradient(160deg, ${BLUE_SOFT}, ${SKY})` : "linear-gradient(160deg,#eaf6fd,#f7fbff)",
       }}>
         {img
           ? <img src={img} alt={card.modelCode} crossOrigin="anonymous" style={{ maxWidth: 138, maxHeight: 108, objectFit: "contain", filter: "drop-shadow(0 6px 8px rgba(11,79,168,.22))" }} />
           : <PhotoPlaceholder modelCode={card.modelCode} />}
+        {m?.outdoor_model_code && (
+          <div data-testid="unit-card-outdoor" style={{ width: "100%", borderTop: "1px dashed #c8d5e2", marginTop: 6, paddingTop: 6, textAlign: "center" }}>
+            {m.outdoor_image_url
+              ? <img src={m.outdoor_image_url} alt={m.outdoor_model_code} crossOrigin="anonymous" style={{ maxWidth: 110, maxHeight: 80, objectFit: "contain" }} />
+              : <PhotoPlaceholder modelCode={m.outdoor_model_code} testId="unit-card-outdoor-placeholder" />}
+            <div style={{ fontSize: 9.5, fontWeight: 700, color: bold ? "#fff" : MUTED }}>Outdoor unit</div>
+          </div>
+        )}
       </div>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
@@ -135,6 +143,8 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
           </div>
           {link ? <a data-pdf-link data-testid="unit-card-model" href={link} target="_blank" rel="noopener" style={{ fontSize: 10, fontWeight: 700, color: bold ? "#fff" : SKY, background: bold ? SKY : "transparent", textDecoration: "none", border: `1px solid ${SKY}`, borderRadius: 5, padding: "2px 7px", whiteSpace: "nowrap" }}>{card.modelCode} ↗</a> : <span data-testid="unit-card-model" style={{ fontSize: 10, fontWeight: 700, color: MUTED, border: "1px solid #c8d5e2", borderRadius: 5, padding: "2px 7px", whiteSpace: "nowrap" }}>{card.modelCode}</span>}
         </div>
+        {m?.description && <p data-testid="unit-card-description" style={{ margin: "6px 0 0", fontSize: 11, lineHeight: 1.4, color: "#3a4859" }}>{m.description}</p>}
+        {m?.outdoor_model_code && <div data-testid="unit-card-outdoor-model" style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>Indoor {card.modelCode} + outdoor <b>{m.outdoor_model_code}</b></div>}
         {m?.bullets && m.bullets.length > 0 && (
           <ul style={{ margin: "6px 0", paddingLeft: 16, fontSize: 11, lineHeight: 1.4, color: "#3a4859" }}>
             {m.bullets.slice(0, 5).map((b, i) => <li key={i} style={{ marginBottom: 1 }}>{b}</li>)}

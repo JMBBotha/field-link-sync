@@ -24,6 +24,11 @@ export interface ProductMedia {
   support_url?: string | null;
   source_label?: string | null;
   bullets?: string[] | null;
+  /** 2-3 line client description, Samsung-sourced only. */
+  description?: string | null;
+  /** Paired outdoor unit (split systems), shown on quote cards. */
+  outdoor_model_code?: string | null;
+  outdoor_image_url?: string | null;
   specs?: Record<string, any> | null;
   feature_highlight?: FeatureHighlight | null;
   status?: "draft" | "approved" | "failed" | null;

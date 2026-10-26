@@ -16,11 +16,11 @@ AC071RN4DKG/EU,indoor_dim_mm,840 x 204 x 840,mm WxHxD,https://www.samsung.com/le
 AC071RN4DKG/EU,indoor_net_kg,14.5,kg,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,,official single source,"page labels this ""Panel Net Weight"" inside indoor section"
 AC071RN4DKG/EU,outdoor_dim_mm,880 x 798 x 310,mm WxHxD,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
 AC071RN4DKG/EU,outdoor_net_kg,51.0,kg,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac071rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
-AC100NN4DEH/AF,cool_kw,,kW,,,blank - not verified,
-AC100NN4DEH/AF,heat_kw,,kW,,,blank - not verified,
+AC100NN4DEH/AF,cool_kw,10.3,kW,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac100nn4deh-af/,https://www.samsung.com/id/business/system-air-conditioners/single-split-cac/ac-cac-acxxxjn4deh-ac100jn4deh-af/,converted,"CONVERTED from Samsung-listed 35,000 Btu/h / 3412.14 = 10.26, rounded to 1 dp; Samsung ID page lists 10.26 kW for the JN4DEH system on the same outdoor unit"
+AC100NN4DEH/AF,heat_kw,10.3,kW,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac100nn4deh-af/,https://www.samsung.com/id/business/system-air-conditioners/single-split-cac/ac-cac-acxxxjn4deh-ac100jn4deh-af/,converted,"CONVERTED from Samsung-listed heating 35,000 Btu/h / 3412.14 = 10.26 -> 10.3"
 AC100NN4DEH/AF,btu,35000,Btu/h,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac100nn4deh-af/,,official single source,single Samsung source; system with outdoor AC100JX4DEH/AF
-AC100NN4DEH/AF,eer,,W/W,,,blank - not verified,
-AC100NN4DEH/AF,cop,,W/W,,,blank - not verified,
+AC100NN4DEH/AF,eer,2.85,W/W,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac100nn4deh-af/,https://www.samsung.com/id/business/system-air-conditioners/single-split-cac/ac-cac-acxxxjn4deh-ac100jn4deh-af/,converted,CONVERTED from Samsung-listed EER 9.72 Btu/Wh / 3.41214 = 2.85 W/W; matches Samsung 2.85 for the JN4DEH system
+AC100NN4DEH/AF,cop,3.73,W/W,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac100nn4deh-af/,https://www.samsung.com/id/business/system-air-conditioners/single-split-cac/ac-cac-acxxxjn4deh-ac100jn4deh-af/,converted,CONVERTED from Samsung-listed COP 12.73 Btu/Wh / 3.41214 = 3.73 W/W; matches Samsung 3.73
 AC100NN4DEH/AF,seer,,,,,blank - not verified,
 AC100NN4DEH/AF,energy_class,,,,,blank - not verified,
 AC100NN4DEH/AF,noise_in_db,43/38/33,dBA H/M/L,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac100nn4deh-af/,,official single source,single Samsung source; system with outdoor AC100JX4DEH/AF
@@ -50,11 +50,11 @@ AC100RN4DKG/EU,indoor_dim_mm,840 x 288 x 840,mm WxHxD,https://www.samsung.com/le
 AC100RN4DKG/EU,indoor_net_kg,18.0,kg,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,,official single source,"page labels this ""Panel Net Weight"" inside indoor section; value matches indoor body class"
 AC100RN4DKG/EU,outdoor_dim_mm,940 x 998 x 330,mm WxHxD,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
 AC100RN4DKG/EU,outdoor_net_kg,75.0,kg,https://www.samsung.com/levant/system-air-conditioners/ceiling-air-conditioner/ac9000wind-free4way-ac100rn4dkg-eu/,,official single source,single Samsung source; outdoor per same page
-AC140NN4DEH/AF,cool_kw,,kW,,,blank - not verified,
-AC140NN4DEH/AF,heat_kw,,kW,,,blank - not verified,
+AC140NN4DEH/AF,cool_kw,14.1,kW,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac140nn4deh-af/,https://www.samsung.com/id/business/system-air-conditioners/single-split-cac/ac-cac-acxxxjn4deh-ac140jn4deh-af/,converted,"CONVERTED from Samsung-listed 48,000 Btu/h / 3412.14 = 14.07 -> 14.1; Samsung ID lists 14.07 kW"
+AC140NN4DEH/AF,heat_kw,14.1,kW,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac140nn4deh-af/,https://www.samsung.com/id/business/system-air-conditioners/single-split-cac/ac-cac-acxxxjn4deh-ac140jn4deh-af/,converted,"CONVERTED from Samsung-listed heating 48,000 Btu/h -> 14.1"
 AC140NN4DEH/AF,btu,48000,Btu/h,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac140nn4deh-af/,,official single source,single Samsung source; system with outdoor AC140JX4DGH/AF
-AC140NN4DEH/AF,eer,,W/W,,,blank - not verified,
-AC140NN4DEH/AF,cop,,W/W,,,blank - not verified,
+AC140NN4DEH/AF,eer,2.63,W/W,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac140nn4deh-af/,,converted,"CONVERTED from Samsung-listed EER 8.97 Btu/Wh / 3.41214 = 2.63 W/W (africa page input 5.35 kW; JN4DEH system lists 2.71 at 5.20 kW input, so no 2-source match)"
+AC140NN4DEH/AF,cop,3.1,W/W,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac140nn4deh-af/,https://www.samsung.com/id/business/system-air-conditioners/single-split-cac/ac-cac-acxxxjn4deh-ac140jn4deh-af/,converted,CONVERTED from Samsung-listed COP 10.57 Btu/Wh / 3.41214 = 3.10 W/W; matches Samsung 3.10
 AC140NN4DEH/AF,seer,,,,,blank - not verified,
 AC140NN4DEH/AF,energy_class,,,,,blank - not verified,
 AC140NN4DEH/AF,noise_in_db,45/41/36,dBA H/M/L,https://www.samsung.com/africa_en/business/system-air-conditioners/single-split-cac/ac9000wind-free4way-ac140nn4deh-af/,,official single source,single Samsung source; system with outdoor AC140JX4DGH/AF
@@ -102,7 +102,7 @@ AJ026TNLPKH/EA,indoor_net_kg,15.0,kg,https://onokom.ru/dok/samsung/2024/catalog/
 AJ026TNLPKH/EA,outdoor_dim_mm,,mm WxHxD,,,blank - not verified,
 AJ026TNLPKH/EA,outdoor_net_kg,,kg,,,blank - not verified,
 AJ026TNNDKH/EA,cool_kw,2.6,kW,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj026tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
-AJ026TNNDKH/EA,heat_kw,,kW,,,blank - not verified,
+AJ026TNNDKH/EA,heat_kw,2.9,kW,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj026tnndkh-ea/,,converted,"CONVERTED from Samsung-listed heating 9,900 Btu/h / 3412.14 = 2.90, rounded to 1 dp"
 AJ026TNNDKH/EA,btu,8900,Btu/h,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj026tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
 AJ026TNNDKH/EA,eer,,W/W,,,blank - not verified,
 AJ026TNNDKH/EA,cop,,W/W,,,blank - not verified,
@@ -153,7 +153,7 @@ AJ035TNLPKH/EA,indoor_net_kg,15.0,kg,https://onokom.ru/dok/samsung/2024/catalog/
 AJ035TNLPKH/EA,outdoor_dim_mm,,mm WxHxD,,,blank - not verified,
 AJ035TNLPKH/EA,outdoor_net_kg,,kg,,,blank - not verified,
 AJ035TNNDKH/EA,cool_kw,3.5,kW,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj035tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
-AJ035TNNDKH/EA,heat_kw,,kW,,,blank - not verified,
+AJ035TNNDKH/EA,heat_kw,3.8,kW,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj035tnndkh-ea/,,converted,"CONVERTED from Samsung-listed heating 13,000 Btu/h / 3412.14 = 3.81, rounded to 1 dp"
 AJ035TNNDKH/EA,btu,11900,Btu/h,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj035tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
 AJ035TNNDKH/EA,eer,,W/W,,,blank - not verified,
 AJ035TNNDKH/EA,cop,,W/W,,,blank - not verified,
@@ -204,7 +204,7 @@ AJ052TN1DKH/EA,indoor_net_kg,,kg,,,blank - not verified,
 AJ052TN1DKH/EA,outdoor_dim_mm,,mm WxHxD,,,blank - not verified,
 AJ052TN1DKH/EA,outdoor_net_kg,,kg,,,blank - not verified,
 AJ052TNNDKH/EA,cool_kw,5.2,kW,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj052tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
-AJ052TNNDKH/EA,heat_kw,,kW,,,blank - not verified,
+AJ052TNNDKH/EA,heat_kw,5.6,kW,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj052tnndkh-ea/,,converted,"CONVERTED from Samsung-listed heating 19,100 Btu/h / 3412.14 = 5.60, rounded to 1 dp"
 AJ052TNNDKH/EA,btu,17700,Btu/h,https://www.samsung.com/ar/system-air-conditioners/free-joint-multi/unidad-interior-cassette-de-4-vas-wind-free-aj052tnndkh-ea/,,official single source,"single Samsung source; heating given in Btu/h only, heat_kw left blank"
 AJ052TNNDKH/EA,eer,,W/W,,,blank - not verified,
 AJ052TNNDKH/EA,cop,,W/W,,,blank - not verified,
