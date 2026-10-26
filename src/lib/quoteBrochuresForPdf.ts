@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { BrochureAttachment } from "./pdfMerger";
 import { resolveAr40SalesCards } from "./ar40SalesCards";
+import { loadQuoteDrawingsForPdf, type DrawingPdfExtras } from "./drawings/quoteDrawings";
 
 interface BrochureRow {
   id: string;
@@ -11,7 +12,7 @@ interface BrochureRow {
   is_active: boolean | null;
 }
 
-export interface QuotePdfExtras {
+export interface QuotePdfExtras extends Partial<DrawingPdfExtras> {
   brochures: BrochureAttachment[];
   /** Sales-card PNG URLs, only used when no PDF brochure is attached. */
   imagePages: string[];
@@ -27,7 +28,13 @@ export interface QuotePdfExtras {
 /** Retired (Johan 13 Oct 11:42): our own /u brochure pages (QR on unit cards) replace PDF attachments. Off by default; tables kept. */
 export const BROCHURE_ATTACHMENTS_ENABLED = false;
 
+/** Brochures (retired flag) + included HVAC drawings: both callers (Send dialog, PDF button) use this. */
 export async function loadQuoteBrochuresForPdf(quoteId?: string | null): Promise<QuotePdfExtras> {
+  const [b, d] = await Promise.all([loadBrochuresOnly(quoteId), loadQuoteDrawingsForPdf(quoteId)]);
+  return { ...b, ...d };
+}
+
+async function loadBrochuresOnly(quoteId?: string | null): Promise<QuotePdfExtras> {
   const empty: QuotePdfExtras = { brochures: [], imagePages: [] };
   if (!quoteId || !BROCHURE_ATTACHMENTS_ENABLED) return empty;
   try {

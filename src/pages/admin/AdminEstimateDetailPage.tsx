@@ -8,6 +8,7 @@ import { openMandyQuoteMode } from "@/lib/mandy/registry";
 import QuoteSettingsPanel from "@/components/quoting/QuoteSettingsPanel";
 import ClientNoteBox from "@/components/quoting/ClientNoteBox";
 import QuoteDocumentsBox from "@/components/quoting/QuoteDocumentsBox";
+import QuoteDrawingsBox from "@/components/quoting/QuoteDrawingsBox";
 import { ArrowLeft, Pencil, FileCheck2, Send, Download, Printer, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -249,6 +250,7 @@ const AdminEstimateDetailPage = () => {
         </div>
         {/* Quote settings & notes: moved from the top (Johan 00:08); collapsed by default, all controls unchanged. */}
         <QuoteDocumentsBox quoteId={quote.id} companyId={(quote as any).company_id ?? null} />
+        <QuoteDrawingsBox quoteId={quote.id} companyId={(quote as any).company_id ?? null} />
         <div {...inertIf(readOnly)}>
         <QuoteSettingsPanel quoteId={quote.id} status={quote.status} unitCards={quote.show_unit_cards !== false} note={quote.notes}>
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3">

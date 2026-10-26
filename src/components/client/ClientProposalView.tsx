@@ -1,5 +1,6 @@
 import ClientAdjustQuote from "@/components/client/ClientAdjustQuote";
 import ClientQuoteDocuments from "@/components/client/ClientQuoteDocuments";
+import ClientQuoteDrawings from "@/components/client/ClientQuoteDrawings";
 import { QuoteSitePhotosBlock, useQuoteSitePhotos } from "@/components/quoting/QuoteSitePhotos";
 import { doneMessage } from "@/lib/doneToast";
 import { useQuoteUnitCards, QuoteUnitCardsView } from "@/components/quoting/QuoteUnitCards";
@@ -381,6 +382,7 @@ const ClientProposalView = () => {
           </Card>
         )}
         {token && <ClientQuoteDocuments token={token} />}
+        {token && <ClientQuoteDrawings token={token} />}
 
 
         {/* The quote document — identical layout to the staff estimate/PDF */}

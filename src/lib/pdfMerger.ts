@@ -22,6 +22,9 @@ interface AssembleOptions {
   brochures: BrochureAttachment[];
   termsPdfBytes?: Uint8Array;
   imagePages?: string[];
+  /** HVAC drawings (signed URLs): PDFs appended page-for-page, PNGs one per full landscape page. */
+  drawingPdfUrls?: string[];
+  drawingImageUrls?: string[];
   quoteNumber?: string;
 }
 
@@ -60,6 +63,34 @@ export async function assembleQuoteWithBrochures(
         pages.forEach((p) => merged.addPage(p));
       } catch (e) {
         console.warn(`Skipping brochure "${brochure.name}":`, e);
+      }
+    }
+
+    // 2a. HVAC drawings: included PDFs first, then PNGs (BOQ never reaches here)
+    for (const url of opts.drawingPdfUrls || []) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const doc = await PDFDocument.load(new Uint8Array(await res.arrayBuffer()), { ignoreEncryption: true });
+        const pages = await merged.copyPages(doc, doc.getPageIndices());
+        pages.forEach((p) => merged.addPage(p));
+      } catch (e) {
+        console.warn("Skipping drawing PDF:", e);
+      }
+    }
+    for (const url of opts.drawingImageUrls || []) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const img = await merged.embedPng(new Uint8Array(await res.arrayBuffer()));
+        const landscape = img.width >= img.height;
+        const [W, H] = landscape ? [841.89, 595.28] : [595.28, 841.89];
+        const m = 18;
+        const s = Math.min((W - m * 2) / img.width, (H - m * 2) / img.height);
+        const page = merged.addPage([W, H]);
+        page.drawImage(img, { x: (W - img.width * s) / 2, y: (H - img.height * s) / 2, width: img.width * s, height: img.height * s });
+      } catch (e) {
+        console.warn("Skipping drawing image:", e);
       }
     }
 

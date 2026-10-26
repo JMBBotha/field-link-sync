@@ -29,6 +29,8 @@ interface DocumentPdfOptions {
   reference?: string;
   brochures?: BrochureAttachment[];
   imagePages?: string[];
+  drawingPdfUrls?: string[];
+  drawingImageUrls?: string[];
   captureSelector?: string;
   /** Extra elements captured as their own A4 page(s) after the document (unit brochures, Johan 13 Oct 11:53). */
   extraPageSelector?: string;
@@ -449,12 +451,15 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       if (footImg) doc.addImage(footImg, "PNG", margin, pageHeight - margin - footH, usableWidth, footH, undefined, "FAST");
     }
 
-    if ((opts.brochures && opts.brochures.length > 0) || (opts.imagePages && opts.imagePages.length > 0)) {
+    if ((opts.brochures && opts.brochures.length > 0) || (opts.imagePages && opts.imagePages.length > 0)
+      || (opts.drawingPdfUrls && opts.drawingPdfUrls.length > 0) || (opts.drawingImageUrls && opts.drawingImageUrls.length > 0)) {
       const quoteBytes = doc.output("arraybuffer");
       const merged = await assembleQuoteWithBrochures({
         mainQuotePdfBytes: new Uint8Array(quoteBytes),
         brochures: opts.brochures || [],
         imagePages: opts.imagePages,
+        drawingPdfUrls: opts.drawingPdfUrls,
+        drawingImageUrls: opts.drawingImageUrls,
         quoteNumber: opts.docNumber,
       });
       return new Uint8Array(merged);
