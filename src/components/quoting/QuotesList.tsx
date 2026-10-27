@@ -19,6 +19,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import SendQuotesTogetherDialog from "@/components/quoting/SendQuotesTogetherDialog";
 import { sendTogetherBlock } from "@/lib/quoteBundle";
+import { useDraftNeeds } from "@/hooks/useDraftNeeds";
+import { DraftNeedsChip } from "@/components/quoting/DraftNeedsChip";
 import {
   Table,
   TableBody,
@@ -240,7 +242,9 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const selectedDrafts = draftDocs.filter((d) => selected.includes(d.id));
   // Send together (Johan 13 Oct 14:58): non-draft quotes of one client, one email.
   const selectedDocs = docs.filter((d) => selected.includes(d.id));
-  const bundleBlock = sendTogetherBlock(selectedDocs.map((d) => ({ id: d.id, kind: d.kind, status: d.status, customer_id: d.raw?.customer_id })));
+  // Red "Needs: …" chip per draft quote (Johan 27 Oct): what's left before it can be sent.
+  const draftNeeds = useDraftNeeds(draftDocs.filter((d) => d.kind === "estimate").map((d) => ({ id: d.id, customer_id: d.raw?.customer_id })));
+  const bundleBlock = sendTogetherBlock(selectedDocs.map((d) => ({ id: d.id, kind: d.kind, status: d.status, customer_id: d.raw?.customer_id, quote_number: d.ref, needs: draftNeeds[d.id] })));
 
   const performDelete = async (targets: typeof docs) => {
     setDeleting(true);
@@ -506,7 +510,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
               <div key={`${doc.kind}-${doc.id}`}>
               <ListCard onOpen={() => openDoc(doc)}
                 title={doc.clientName || "No customer"}
-                chip={<StatusPill status={doc.status} />}
+                chip={<span className="inline-flex flex-wrap items-center gap-1"><StatusPill status={doc.status} /><DraftNeedsChip needs={draftNeeds[doc.id]} /></span>}
                 amount={formatZAR(doc.total)}
                 date={[doc.ref || "Draft", new Date(doc.created_at).toLocaleDateString("en-ZA")].join(" · ")}
                 trailing={<div className="flex items-center">
@@ -584,6 +588,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                         </TableCell>
                         <TableCell>
                           <StatusPill status={doc.status} />
+                          <span className="ml-1 align-middle"><DraftNeedsChip needs={draftNeeds[doc.id]} /></span>
                           {doc.kind === "estimate" && <SentManuallyBadge doc={doc.raw as any} className="ml-1 align-middle" />}
                           {(changeMsgs as Record<string, string>)[doc.id] && (
                             <span title={(changeMsgs as Record<string, string>)[doc.id]} className="ml-1 inline-block rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white align-middle">Changes requested</span>

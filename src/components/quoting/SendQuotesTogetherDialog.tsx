@@ -8,15 +8,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail } from "lucide-react";
 import { getPublicAppOrigin } from "@/lib/publicAppUrl";
-import { sendTogetherBlock } from "@/lib/quoteBundle";
+import { sendTogetherBlock, draftNeeds } from "@/lib/quoteBundle";
+import { assertQuotePriced, ensureQuoteReadyToSend } from "@/lib/quoteSend";
 
 type Row = { id: string; quote_number: string | null; status: string; customer_id: string | null; customer_name: string | null; total: number | null; valid_until: string | null; client_summary: string | null; auto_summary: string | null };
 const fmtR = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
-/** One email, one "View all quotes" button, for several non-draft quotes of the same client. */
+/** One email, one "View all quotes" button, for several ready quotes (sent, or drafts with nothing missing) of the same client. */
 export default function SendQuotesTogetherDialog({ open, onOpenChange, quoteIds, onSent }: { open: boolean; onOpenChange: (v: boolean) => void; quoteIds: string[]; onSent?: () => void }) {
   const { toast } = useToast();
   const [rows, setRows] = useState<Row[]>([]);
+  const [needs, setNeeds] = useState<Record<string, string[]>>({});
   const [desc, setDesc] = useState<Record<string, string>>({});
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,6 +34,12 @@ export default function SendQuotesTogetherDialog({ open, onOpenChange, quoteIds,
       const list = ((data as unknown as Row[]) || []);
       setRows(list);
       setDesc(Object.fromEntries(list.map((r) => [r.id, r.client_summary || r.auto_summary || ""])));
+      const draftIds = list.filter((r) => (r.status || "draft") === "draft").map((r) => r.id);
+      if (draftIds.length) {
+        const { data: ls } = await supabase.from("quote_items").select("quote_id, item_name, item_type, unit_price, quantity, parent_item_id, metadata").in("quote_id", draftIds);
+        if (!live) return;
+        setNeeds(Object.fromEntries(list.filter((r) => draftIds.includes(r.id)).map((r) => [r.id, draftNeeds(r.customer_id, ((ls || []) as any[]).filter((l) => l.quote_id === r.id))])));
+      } else setNeeds({});
       const cid = list[0]?.customer_id;
       if (cid) {
         const { data: c } = await supabase.from("customers").select("email").eq("id", cid).maybeSingle();
@@ -43,7 +51,7 @@ export default function SendQuotesTogetherDialog({ open, onOpenChange, quoteIds,
     return () => { live = false; };
   }, [open, quoteIds.join(",")]);
 
-  const block = rows.length ? sendTogetherBlock(rows) : null;
+  const block = rows.length ? sendTogetherBlock(rows.map((r) => ({ ...r, needs: needs[r.id] }))) : null;
 
   // Duplicate-send guard (17 Oct 2026): two rapid taps fire once; one Resend Idempotency-Key per press.
   const sendingRef = useRef(false);
@@ -58,9 +66,14 @@ export default function SendQuotesTogetherDialog({ open, onOpenChange, quoteIds,
         const v = (desc[r.id] || "").trim();
         return [r.id, v && v !== (r.auto_summary || "") ? v : ""];
       }));
+      // Ready drafts (27 Oct): same price check as a single Send before anything changes…
+      const drafts = rows.filter((r) => (r.status || "draft") === "draft");
+      for (const r of drafts) await assertQuotePriced(r.id).catch((e) => { throw new Error(`${r.quote_number || "Draft"}: ${e.message}`); });
       const { data: b, error: e1 } = await supabase.rpc("create_quote_bundle" as never, { p_quote_ids: rows.map((r) => r.id), p_summaries: summaries } as never);
       if (e1) throw new Error(e1.message);
       const token = (b as unknown as { token: string }).token;
+      // …then mark each draft sent exactly like a single Send (status, sent_at, client link).
+      for (const r of drafts) await ensureQuoteReadyToSend(r.id);
       const { data, error } = await supabase.functions.invoke("send-quote-email", { body: { bundleToken: token, to: email.trim(), appOrigin: getPublicAppOrigin(), sendId: crypto.randomUUID() } });
       const p = data as { success?: boolean; skipped?: boolean; reason?: string; error?: string; details?: { message?: string } } | null;
       if (error || !p?.success) throw new Error(p?.reason || p?.details?.message || p?.error || error?.message || "Send failed");
