@@ -18,3 +18,11 @@ describe("price list pdf", () => {
   });
   it("label", () => { expect(priceListLabel(row, "Samsung")).toBe("Samsung · Samsung 2026"); });
 });
+
+import { priceListViewerSrc } from "@/lib/priceListPdf";
+describe("priceListViewerSrc", () => {
+  it("hides thumbnails and fits width", () => {
+    expect(priceListViewerSrc("blob:x/1")).toBe("blob:x/1#pagemode=none&navpanes=0&view=FitH");
+    expect(priceListViewerSrc("blob:x/1#page=2")).toBe("blob:x/1#pagemode=none&navpanes=0&view=FitH");
+  });
+});

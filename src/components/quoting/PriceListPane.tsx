@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- untyped supabase tables, same as EstimateBuilder */
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { Maximize2, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PRICE_LIST_PREF_KEY, priceListCandidates, priceListLabel, type PriceListRow } from "@/lib/priceListPdf";
+import { PRICE_LIST_PREF_KEY, priceListViewerSrc, priceListCandidates, priceListLabel, type PriceListRow } from "@/lib/priceListPdf";
 
 /** Live price list PDFs, viewed through short-lived signed URLs. Admin-only (caller gates). */
 export default function PriceListPane({ heightClass = "h-[calc(100vh-9rem)]" }: { heightClass?: string }) {
@@ -60,23 +62,59 @@ export default function PriceListPane({ heightClass = "h-[calc(100vh-9rem)]" }: 
     return () => { cancelled = true; if (blobUrl) URL.revokeObjectURL(blobUrl); };
   }, [current]);
 
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setExpanded(false); };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+  }, [expanded]);
+
   if (isLoading) return <p className="p-4 text-sm opacity-70">Loading price lists…</p>;
   if (!lists.length) return <p className="p-4 text-sm opacity-70" data-testid="pricelist-empty">No live price lists yet.</p>;
 
+  const picker = (full: boolean) => lists.length > 1
+    ? (
+      <Select value={current?.row.id} onValueChange={pick}>
+        <SelectTrigger className={`h-10 rounded-full text-xs ${full ? "max-w-md" : ""} flex-1`} data-testid={full ? "pricelist-picker-full" : "pricelist-picker"}><SelectValue /></SelectTrigger>
+        <SelectContent className="z-[110]">
+          {lists.map((l) => <SelectItem key={l.row.id} value={l.row.id}>{l.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    )
+    : <div className="flex-1 truncate text-xs font-medium opacity-80">{current?.label}</div>;
+
+  const frame = (cls: string, testId: string) => err ? <p className="p-4 text-sm text-red-600">{err}</p>
+    : url ? <iframe key={`${testId}-${url}`} title={current?.label ?? "Price list"} src={priceListViewerSrc(url)} className={`w-full ${cls} rounded-md bg-white ring-1 ring-slate-200`} data-testid={testId} />
+    : <p className="p-4 text-sm opacity-70">Opening…</p>;
+
   return (
     <div className="flex flex-col gap-2" data-testid="pricelist-pane">
-      {lists.length > 1 && (
-        <Select value={current?.row.id} onValueChange={pick}>
-          <SelectTrigger className="h-10 rounded-full text-xs" data-testid="pricelist-picker"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {lists.map((l) => <SelectItem key={l.row.id} value={l.row.id}>{l.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
+      <div className="flex items-center gap-2">
+        {picker(false)}
+        <button type="button" onClick={() => setExpanded(true)} disabled={!url}
+          className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium ring-1 ring-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50"
+          aria-label="Expand price list to full page" data-testid="pricelist-expand">
+          <Maximize2 className="h-3.5 w-3.5" /> Expand
+        </button>
+      </div>
+      {!expanded && frame(heightClass, "pricelist-frame")}
+      {expanded && typeof document !== "undefined" && createPortal(
+        <div role="dialog" aria-modal="true" aria-label="Price list" className="fixed inset-0 z-[100] flex flex-col gap-2 bg-slate-100 p-3" data-testid="pricelist-fullpage">
+          <div className="flex items-center gap-2">
+            {picker(true)}
+            <button type="button" onClick={() => setExpanded(false)} autoFocus
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium ring-1 ring-slate-200 bg-white hover:bg-slate-50"
+              aria-label="Close full page price list (Esc)" data-testid="pricelist-close">
+              <X className="h-3.5 w-3.5" /> Close
+            </button>
+          </div>
+          {frame("flex-1 min-h-0", "pricelist-frame-full")}
+        </div>,
+        document.body,
       )}
-      {lists.length === 1 && <div className="text-xs font-medium opacity-80">{current?.label}</div>}
-      {err ? <p className="p-4 text-sm text-red-600">{err}</p>
-        : url ? <iframe title={current?.label ?? "Price list"} src={url} className={`w-full ${heightClass} rounded-md bg-white ring-1 ring-slate-200`} data-testid="pricelist-frame" />
-        : <p className="p-4 text-sm opacity-70">Opening…</p>}
     </div>
   );
 }
