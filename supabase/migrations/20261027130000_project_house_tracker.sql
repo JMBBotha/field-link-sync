@@ -95,9 +95,11 @@ BEGIN
   END IF;
   IF parent_company IS NULL THEN RAISE EXCEPTION 'parent not found'; END IF;
   NEW.company_id := parent_company;
-  IF TG_TABLE_NAME = 'project_houses' AND NEW.phase_id IS NOT NULL
-     AND NOT EXISTS (SELECT 1 FROM public.project_phases p WHERE p.id = NEW.phase_id AND p.project_id = NEW.project_id) THEN
-    RAISE EXCEPTION 'phase belongs to another project';
+  IF TG_TABLE_NAME = 'project_houses' THEN
+    IF NEW.phase_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM public.project_phases p WHERE p.id = NEW.phase_id AND p.project_id = NEW.project_id) THEN
+      RAISE EXCEPTION 'phase belongs to another project';
+    END IF;
   END IF;
   IF TG_TABLE_NAME = 'project_house_steps' THEN
     IF NEW.done AND (TG_OP = 'INSERT' OR NOT OLD.done) THEN NEW.done_at := coalesce(NEW.done_at, now()); END IF;
