@@ -51,3 +51,8 @@ export function priceListLabel(row: PriceListRow, supplierName?: string | null):
 export function canSeePriceListPdfs(roles: string[]): boolean {
   return roles.includes("admin");
 }
+
+/** Open the browser PDF viewer without the thumbnail sidebar, fitted to width. */
+export function priceListViewerSrc(url: string): string {
+  return `${url.split("#")[0]}#pagemode=none&navpanes=0&view=FitH`;
+}
