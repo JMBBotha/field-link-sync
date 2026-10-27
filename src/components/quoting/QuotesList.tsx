@@ -521,7 +521,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                 title={doc.clientName || "No customer"}
                 chip={<span className="inline-flex flex-wrap items-center gap-1"><StatusPill status={doc.status} /><DraftNeedsChip needs={draftNeeds[doc.id]} /></span>}
                 amount={formatZAR(doc.total)}
-                date={[doc.ref || "Draft", shortDate(doc.created_at), unitBriefs[doc.id]].filter(Boolean).join(" · ")}
+                date={[doc.ref || "Draft", shortDate(doc.created_at), unitBriefs[doc.id]?.head, unitBriefs[doc.id]?.sizes].filter(Boolean).join(" · ")}
                 trailing={<div className="flex items-center">
                   {doc.kind === "estimate" && <RowMenu items={[...menuFor(doc), { label: "Delete draft", hidden: doc.status !== "draft", destructive: true, separatorBefore: true, onSelect: () => setPendingDelete([doc]) }]} />}
                   {doc.kind !== "estimate" && doc.status === "draft" && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setPendingDelete([doc])} title="Delete draft"><Trash2 className="h-4 w-4" /></Button>}
@@ -587,7 +587,12 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                           }
                         >
                           {doc.ref || <span className="text-xs text-warning">No number – draft</span>}
-                          {unitBriefs[doc.id] && <p className="max-w-[180px] truncate font-sans text-[11px] font-normal text-muted-foreground" title={unitBriefs[doc.id]} data-testid="quote-unit-brief">{unitBriefs[doc.id]}</p>}
+                          {unitBriefs[doc.id] && (
+                            <span className="block max-w-[130px] font-sans text-[11px] font-normal leading-tight text-muted-foreground" title={[unitBriefs[doc.id].head, unitBriefs[doc.id].sizes].filter(Boolean).join(" · ")} data-testid="quote-unit-brief">
+                              <span className="block truncate">{unitBriefs[doc.id].head}</span>
+                              {unitBriefs[doc.id].sizes && <span className="block truncate">{unitBriefs[doc.id].sizes}</span>}
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="min-w-[130px] max-w-[220px]">
                           <p className="line-clamp-2 break-words text-sm leading-snug text-foreground" title={doc.clientName || undefined}>

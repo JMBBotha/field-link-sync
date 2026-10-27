@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { quoteUnitBrief, type BriefLine } from "@/lib/quoteUnitBrief";
+import { quoteUnitBriefParts, type BriefLine, type UnitBrief } from "@/lib/quoteUnitBrief";
 
 /** Read-only unit summary per quote id (company-scoped by RLS on quote_items). */
 export function useQuoteUnitBriefs(ids: string[]) {
@@ -17,10 +17,10 @@ export function useQuoteUnitBriefs(ids: string[]) {
         if (error) throw error;
         for (const l of (rows || []) as unknown as BriefLine[]) (by[l.quote_id as string] ||= []).push(l);
       }
-      const out: Record<string, string> = {};
-      for (const id of ids) { const b = quoteUnitBrief(by[id] || []); if (b) out[id] = b; }
+      const out: Record<string, UnitBrief> = {};
+      for (const id of ids) { const b = quoteUnitBriefParts(by[id] || []); if (b) out[id] = b; }
       return out;
     },
   });
-  return data as Record<string, string>;
+  return data as Record<string, UnitBrief>;
 }
