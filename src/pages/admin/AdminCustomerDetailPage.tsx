@@ -4,6 +4,8 @@ import { InvoiceDueChip, FollowupReview } from "@/components/invoiceDue/InvoiceD
 import { Fragment, useEffect, useMemo, useState } from "react";
 import SendQuotesTogetherDialog from "@/components/quoting/SendQuotesTogetherDialog";
 import { sendTogetherBlock } from "@/lib/quoteBundle";
+import { useDraftNeeds } from "@/hooks/useDraftNeeds";
+import { DraftNeedsChip } from "@/components/quoting/DraftNeedsChip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import ContractsList from "@/components/agreements/ContractsList";
@@ -293,7 +295,8 @@ const AdminCustomerDetailPage = () => {
   const [pickedQuotes, setPickedQuotes] = useState<string[]>([]);
   const [bundleOpen, setBundleOpen] = useState(false);
   const pickedRows = (quotes as any[]).filter((q) => pickedQuotes.includes(q.id));
-  const bundleBlock = sendTogetherBlock(pickedRows.map((q) => ({ id: q.id, status: q.status, customer_id: q.customer_id || id })));
+  const draftNeeds = useDraftNeeds((quotes as any[]).filter((q) => (q.status || "draft") === "draft").map((q) => ({ id: q.id, customer_id: q.customer_id || id })));
+  const bundleBlock = sendTogetherBlock(pickedRows.map((q) => ({ id: q.id, status: q.status, customer_id: q.customer_id || id, quote_number: q.quote_number, needs: draftNeeds[q.id] })));
   const draftQuotesTotal = useMemo(
     () => quotes.filter(q => q.status === "draft").reduce((s, q) => s + Number(q.total || 0), 0),
     [quotes],
@@ -596,7 +599,7 @@ const AdminCustomerDetailPage = () => {
                             <TableCell className="min-w-[160px] max-w-[320px] text-muted-foreground text-xs"><div className="line-clamp-2 break-words" title={q.client_summary || q.notes || undefined}>{q.client_summary || q.notes || "—"}</div></TableCell>
                             <TableCell className="text-xs">{q.created_at ? format(new Date(q.created_at), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-right font-medium">{formatRand(Number(q.total || 0))}</TableCell>
-                            <TableCell><Badge variant="outline" className={cn("text-xs", statusBadge(q.status))}>{q.status || "draft"}</Badge></TableCell>
+                            <TableCell><Badge variant="outline" className={cn("text-xs", statusBadge(q.status))}>{q.status || "draft"}</Badge> <DraftNeedsChip needs={draftNeeds[q.id]} /></TableCell>
                             {isAdmin && <TableCell className="w-10 p-1 text-right"><RowMenu label={`Actions for ${q.quote_number || "quote"}`} items={quoteDeleteArchive.itemsFor(q).map((i) => ({ ...i, separatorBefore: false }))} /></TableCell>}
                           </TableRow>
                         ))}
