@@ -28,17 +28,25 @@ export const isUnitLine = (l: BriefLine) =>
   !["labour", "service", "material", "materials"].includes(String(l.item_type || "").toLowerCase()) &&
   (l.metadata?.is_unit === true || l.metadata?.is_unit === "true" || (BTU_NAME.test(String(l.item_name || "")) && !NOT_UNIT.test(String(l.item_name || ""))));
 
-/** "Samsung · 9k + 12k · 3 units"; null when the quote has no recognisable units. */
-export function quoteUnitBrief(lines: BriefLine[]): string | null {
+export type UnitBrief = { head: string; sizes: string | null };
+
+/** Two short lines: head "Samsung · 3 units", sizes "9k + 12k"; null when the quote has no recognisable units. */
+export function quoteUnitBriefParts(lines: BriefLine[]): UnitBrief | null {
   const units = lines.filter(isUnitLine);
   if (!units.length) return null;
   const n = units.reduce((s, l) => s + Number(l.quantity), 0);
   const brands = [...new Set(units.map(brandOf).filter(Boolean))] as string[];
   const sizes = [...new Set(units.map(btuOf).filter((x): x is number => x != null))].sort((a, b) => a - b);
-  const parts = [
-    brands.length > 2 ? `${brands.slice(0, 2).join(", ")} +${brands.length - 2}` : brands.join(", "),
-    sizes.length > 3 ? `${sizes[0]}k–${sizes[sizes.length - 1]}k` : sizes.map((s) => `${s}k`).join(" + "),
-    `${Number.isInteger(n) ? n : n.toFixed(1)} ${n === 1 ? "unit" : "units"}`,
-  ].filter(Boolean);
-  return parts.join(" · ");
+  const brand = brands.length > 2 ? `${brands.slice(0, 2).join(", ")} +${brands.length - 2}` : brands.join(", ");
+  const count = `${Number.isInteger(n) ? n : n.toFixed(1)} ${n === 1 ? "unit" : "units"}`;
+  return {
+    head: [brand, count].filter(Boolean).join(" · "),
+    sizes: sizes.length ? (sizes.length > 3 ? `${sizes[0]}k–${sizes[sizes.length - 1]}k` : sizes.map((s) => `${s}k`).join(" + ")) : null,
+  };
+}
+
+/** One-line form for cards: "Samsung · 3 units · 9k + 12k". */
+export function quoteUnitBrief(lines: BriefLine[]): string | null {
+  const p = quoteUnitBriefParts(lines);
+  return p ? [p.head, p.sizes].filter(Boolean).join(" · ") : null;
 }
