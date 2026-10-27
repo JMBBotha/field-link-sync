@@ -21,6 +21,14 @@ import SendQuotesTogetherDialog from "@/components/quoting/SendQuotesTogetherDia
 import { sendTogetherBlock } from "@/lib/quoteBundle";
 import { useDraftNeeds } from "@/hooks/useDraftNeeds";
 import { DraftNeedsChip } from "@/components/quoting/DraftNeedsChip";
+import { useQuoteUnitBriefs } from "@/hooks/useQuoteUnitBriefs";
+
+// Compact list date (27 Oct 11:24): "27 Oct", plus "'25" when not this year.
+const shortDate = (iso: string) => {
+  const d = new Date(iso);
+  const s = d.toLocaleDateString("en-ZA", { day: "numeric", month: "short" });
+  return d.getFullYear() === new Date().getFullYear() ? s : `${s} '${String(d.getFullYear()).slice(2)}`;
+};
 import {
   Table,
   TableBody,
@@ -244,6 +252,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const selectedDocs = docs.filter((d) => selected.includes(d.id));
   // Red "Needs: …" chip per draft quote (Johan 27 Oct): what's left before it can be sent.
   const draftNeeds = useDraftNeeds(draftDocs.filter((d) => d.kind === "estimate").map((d) => ({ id: d.id, customer_id: d.raw?.customer_id })));
+  const unitBriefs = useQuoteUnitBriefs(docs.filter((d) => d.kind === "estimate").map((d) => d.id));
   const bundleBlock = sendTogetherBlock(selectedDocs.map((d) => ({ id: d.id, kind: d.kind, status: d.status, customer_id: d.raw?.customer_id, quote_number: d.ref, needs: draftNeeds[d.id] })));
 
   const performDelete = async (targets: typeof docs) => {
@@ -505,14 +514,14 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
           </Card>
         ) : (
           <>
-          <div className="space-y-2 md:hidden" data-testid="quotes-list-cards">
+          <div className="space-y-2 lg:hidden" data-testid="quotes-list-cards">
             {docs.map((doc) => (
               <div key={`${doc.kind}-${doc.id}`}>
               <ListCard onOpen={() => openDoc(doc)}
                 title={doc.clientName || "No customer"}
                 chip={<span className="inline-flex flex-wrap items-center gap-1"><StatusPill status={doc.status} /><DraftNeedsChip needs={draftNeeds[doc.id]} /></span>}
                 amount={formatZAR(doc.total)}
-                date={[doc.ref || "Draft", new Date(doc.created_at).toLocaleDateString("en-ZA")].join(" · ")}
+                date={[doc.ref || "Draft", shortDate(doc.created_at), unitBriefs[doc.id]].filter(Boolean).join(" · ")}
                 trailing={<div className="flex items-center">
                   {doc.kind === "estimate" && <RowMenu items={[...menuFor(doc), { label: "Delete draft", hidden: doc.status !== "draft", destructive: true, separatorBefore: true, onSelect: () => setPendingDelete([doc]) }]} />}
                   {doc.kind !== "estimate" && doc.status === "draft" && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setPendingDelete([doc])} title="Delete draft"><Trash2 className="h-4 w-4" /></Button>}
@@ -522,8 +531,9 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
               </div>
             ))}
           </div>
-          <Card className="hidden overflow-hidden shadow-sm md:block">
-            <div className="overflow-x-auto">
+          <Card className="hidden overflow-hidden shadow-sm lg:block">
+            {/* Compact at >=1024px (Johan 27 Oct): tighter padding so every column fits without sideways scroll. */}
+            <div className="overflow-x-auto [&_th]:px-2 [&_td]:px-2 [&_td]:py-2 [&_th:first-child]:pl-3 [&_td:first-child]:pl-3" data-testid="quotes-list-table">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -542,8 +552,8 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                     <TableHead className="text-right">Amount</TableHead>
                     {profit.full && <TableHead className="text-right whitespace-nowrap">Sell ex VAT</TableHead>}
                     {profit.full && <TableHead className="text-right">Cost</TableHead>}
-                    {profit.show && <TableHead className="text-right whitespace-nowrap">{profit.full ? "Rep commission" : "My commission"}</TableHead>}
-                    {profit.full && <TableHead className="text-right whitespace-nowrap">Company profit</TableHead>}
+                    {profit.show && <TableHead className="text-right whitespace-nowrap" title={profit.full ? "Rep commission" : "My commission"}>{profit.full ? "Rep comm." : "My comm."}</TableHead>}
+                    {profit.full && <TableHead className="text-right whitespace-nowrap">Profit</TableHead>}
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -560,7 +570,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                           />
                         </TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold capitalize text-muted-foreground">
+                          <span className="inline-flex items-center gap-0.5 rounded-full border px-1.5 py-px text-[10px] font-semibold capitalize leading-4 text-muted-foreground">
                             {doc.kind === "proposal" ? (
                               <FileSignature className="h-3 w-3" />
                             ) : (
@@ -572,17 +582,18 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                         <TableCell
                           className={
                             doc.kind === "estimate"
-                              ? "font-mono text-sm font-bold text-primary"
-                              : "max-w-[220px] truncate text-sm font-semibold text-primary"
+                              ? "whitespace-nowrap font-mono text-sm font-bold text-primary"
+                              : "max-w-[180px] truncate text-sm font-semibold text-primary"
                           }
                         >
                           {doc.ref || <span className="text-xs text-warning">No number – draft</span>}
+                          {unitBriefs[doc.id] && <p className="max-w-[180px] truncate font-sans text-[11px] font-normal text-muted-foreground" title={unitBriefs[doc.id]} data-testid="quote-unit-brief">{unitBriefs[doc.id]}</p>}
                         </TableCell>
-                        <TableCell className="min-w-[160px] max-w-[300px]">
+                        <TableCell className="min-w-[130px] max-w-[220px]">
                           <p className="line-clamp-2 break-words text-sm leading-snug text-foreground" title={doc.clientName || undefined}>
                             {doc.clientName || "No customer"}
                           </p>
-                          <p className="truncate text-xs text-muted-foreground">
+                          <p className="truncate text-[11px] leading-tight text-muted-foreground">
                             {doc.clientPhone || ""}
                           </p>
                         </TableCell>
@@ -596,7 +607,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                           {(pendingRevs as Record<string, any>)[doc.id] && <ClientRevisionActions revision={(pendingRevs as Record<string, any>)[doc.id]} />}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                          {new Date(doc.created_at).toLocaleDateString("en-ZA")}
+                          <span title={new Date(doc.created_at).toLocaleDateString("en-ZA")}>{shortDate(doc.created_at)}</span>
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-right font-bold text-foreground">
                           {formatZAR(doc.total)}
@@ -605,7 +616,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                           const r = doc.kind === "estimate" ? profit.map[doc.id] : undefined;
                           const gap = r ? costedLabel(r) : null;
                           const none = !r || r.lines_costed === 0;
-                          const cell = "whitespace-nowrap text-right text-sm tabular-nums";
+                          const cell = "whitespace-nowrap text-right text-[13px] tabular-nums";
                           const warn = <span className="text-xs font-medium text-amber-600 dark:text-amber-300" data-testid="costed-label">{gap}</span>;
                           return (
                             <>
