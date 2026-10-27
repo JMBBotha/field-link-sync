@@ -11,6 +11,7 @@ import { useProjectDetail, useInvalidateProject, clientName, db } from "@/hooks/
 import { houseStatus, phaseFor, phaseLabel, STATUS_META, STEP_SHORT, DEFAULT_STEPS, type HouseStatus, type ProjectHouse } from "@/lib/projectTracker";
 import HouseDrawer from "./HouseDrawer";
 import PhaseEditor from "./PhaseEditor";
+import SiteMap from "./SiteMap";
 
 const ORDER: HouseStatus[] = ["done", "in_progress", "due", "not_started"];
 
@@ -71,14 +72,12 @@ export default function ProjectView({ projectId, backTo }: { projectId: string; 
           <button key={ph.id} role="tab" aria-selected={activeTab === ph.id} onClick={() => setTab(ph.id)}
             className={cn("rounded-full px-3.5 py-1.5 text-sm font-medium", activeTab === ph.id ? "bg-[#1590D6] text-white" : "bg-card border hover:border-[#1590D6]")}>{phaseLabel(ph)}</button>))}
         <button role="tab" aria-selected={activeTab === "all"} onClick={() => setTab("all")} className={cn("rounded-full px-3.5 py-1.5 text-sm font-medium", activeTab === "all" ? "bg-[#1590D6] text-white" : "bg-card border")}>All{unphased ? ` (${unphased} no phase)` : ""}</button>
-        <button role="tab" aria-selected={activeTab === "map"} onClick={() => setTab("map")} className={cn("rounded-full px-3.5 py-1.5 text-sm font-medium inline-flex items-center gap-1", activeTab === "map" ? "bg-[#1590D6] text-white" : "bg-card border")}><MapIcon className="h-4 w-4" /> Site map (coming)</button>
+        <button role="tab" aria-selected={activeTab === "map"} onClick={() => setTab("map")} className={cn("rounded-full px-3.5 py-1.5 text-sm font-medium inline-flex items-center gap-1", activeTab === "map" ? "bg-[#1590D6] text-white" : "bg-card border")}><MapIcon className="h-4 w-4" /> Site map</button>
         <div className="ml-auto"><PhaseEditor project={p} phases={phases} onSaved={() => invalidate(p.id)} /></div>
       </div>
 
       {activeTab === "map" ? (
-        <div className="rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground" data-testid="site-map-placeholder">
-          The site map is coming next: the phase plans lined up into one map, with each house as a clickable area in its status colour.
-        </div>
+        <SiteMap items={enriched} onOpen={setOpenHouse} />
       ) : (<>
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
           {ORDER.map((s) => (
