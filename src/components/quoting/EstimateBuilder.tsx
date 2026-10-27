@@ -45,6 +45,10 @@ import QuoteLockBanner from "./QuoteLockBanner";
 import SurveyReportChip from "@/components/survey/SurveyReportChip";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import LiveClientPreview from "@/components/quoting/LiveClientPreview";
+import PriceListPane from "@/components/quoting/PriceListPane";
+import { canSeePriceListPdfs } from "@/lib/priceListPdf";
+import { useRole } from "@/hooks/useRole";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import DocumentStyleSwitch from "@/components/quoting/DocumentStyleSwitch";
 import { useQuoteUnitCards } from "@/components/quoting/QuoteUnitCards";
 import { useLivePreviewPref, useIsWideScreen } from "@/hooks/useLivePreviewPref";
@@ -169,6 +173,17 @@ export default function EstimateBuilder({
     return () => mql.removeEventListener?.("change", on);
   }, []);
   const toggleSidePreview = () => setShowPreview((v) => { localStorage.setItem("fl-quote-preview", v ? "hidden" : "shown"); return !v; });
+  // Price list PDF beside the quote (Johan 27 Oct): same side pane as the preview, admin only (cost prices).
+  const { roles: myRoles } = useRole();
+  const canPriceList = canSeePriceListPdfs(myRoles);
+  const [paneMode, setPaneMode] = useState<"preview" | "pricelist">("preview");
+  const [priceSheetOpen, setPriceSheetOpen] = useState(false);
+  const openPriceList = () => {
+    if (!isWide) { setPriceSheetOpen(true); return; }
+    if (showPreview && paneMode === "pricelist") { setPaneMode("preview"); return; }
+    setPaneMode("pricelist");
+    if (!showPreview) toggleSidePreview();
+  };
   const sideBySide = isWide && showPreview;
   const previewActive = isWide ? showPreview : narrowTab === "client";
   const [drafts, setDrafts] = useState<Record<string, { item_name?: string; description?: string | null; unit_price?: number }>>({});
@@ -441,27 +456,6 @@ export default function EstimateBuilder({
         onNo={() => { const r = removeUnit!; setRemoveUnit(null); deleteUnitLine(r.id, r.linked, false); }}
         onCancel={() => setRemoveUnit(null)}
       />
-      <div className="flex items-center justify-end gap-2 print:hidden" data-pdf-hide data-html2canvas-ignore>
-        {editAreas.some((area) => area.lines.length > 0) && (isWide || narrowTab === "editor") && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-8 text-xs"
-            onClick={() => {
-              const keysWithLines = editAreas.filter((area) => area.lines.length > 0).map((area) => area.id ?? "unassigned");
-              const anyCollapsed = keysWithLines.some((key) => collapsedAreaKeys.has(key));
-              setCollapsedAreaKeys(anyCollapsed ? new Set() : new Set(keysWithLines));
-            }}
-          >
-            {editAreas.some((area) => area.lines.length > 0 && collapsedAreaKeys.has(area.id ?? "unassigned")) ? "Expand all" : "Collapse all"}
-          </Button>
-        )}
-      </div>
-      {!hideClientNote && <ClientNoteBox onChanged={onChanged} />}
-      {!hideClientNote && quoteId && <QuoteSitePhotosEditor quoteId={quoteId} />}
-      {!hideClientNote && quoteId && <QuoteDocumentsBox quoteId={quoteId} companyId={(meta as any)?.company_id ?? null} />}
-      {!hideClientNote && quoteId && <QuoteDrawingsBox quoteId={quoteId} companyId={(meta as any)?.company_id ?? null} />}
       {quoteId && meta && <QuoteLockBanner quoteId={quoteId} lockedAt={meta.locked_at} lockedReason={meta.locked_reason} isVariation={meta.is_variation} status={meta.status} summaryLine={meta.variation_summary?.summary_line ?? null} onChanged={() => { void refetch(); onChanged?.(); }} />}
       {quoteId && meta && <div className="flex"><SurveyReportChip quoteId={quoteId} leadId={(meta as any).lead_id ?? null} /></div>}
       {(() => { const editorDoc = (
@@ -704,9 +698,15 @@ export default function EstimateBuilder({
           <div className={`fl-builder-bar ${isWide ? "sticky top-2 z-20" : ""} mb-3 flex flex-wrap items-center justify-end gap-2 print:hidden`} data-html2canvas-ignore data-pdf-hide>
             <span className="mr-auto" aria-hidden />
             {(isWide || narrowTab === "client") && <DocumentStyleSwitch companyId={meta?.company_id ?? null} onPicked={() => { if (isWide) setShowPreview(true); else setNarrowTab("client"); }} />}
+            {canPriceList && (
+              <Button type="button" size="sm" variant="outline" className="fl-preview-toggle h-9 rounded-full px-4 text-xs font-semibold"
+                data-testid="pricelist-toggle" aria-pressed={isWide ? sideBySide && paneMode === "pricelist" : priceSheetOpen} onClick={openPriceList}>
+                Price list
+              </Button>
+            )}
             {isWide ? (
               <Button type="button" size="sm" variant="outline" className="fl-preview-toggle h-9 rounded-full px-4 text-xs font-semibold"
-                data-testid="live-preview-toggle" aria-pressed={showPreview} onClick={toggleSidePreview}>
+                data-testid="live-preview-toggle" aria-pressed={showPreview} onClick={() => { if (!showPreview) setPaneMode("preview"); toggleSidePreview(); }}>
                 {showPreview ? "Hide preview" : "Show preview"}
               </Button>
             ) : (
@@ -722,10 +722,20 @@ export default function EstimateBuilder({
               <div className="min-w-0">{editorDoc}</div>
               {sideBySide && (
                 <aside className="fl-preview-pane sticky top-14 max-h-[calc(100vh-4.5rem)] overflow-auto rounded-2xl p-3 print:hidden" data-html2canvas-ignore data-pdf-hide data-testid="live-preview-pane">
-                  <div className="fl-pane-head mb-2 flex items-center justify-between text-sm font-semibold">
-                    <span>Live client view</span><span className="text-xs font-normal opacity-70">Updates as you type</span>
+                  <div className="fl-pane-head mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
+                    {canPriceList ? (
+                      <div role="tablist" className="inline-flex rounded-full p-0.5 ring-1 ring-slate-200" data-testid="pane-switch">
+                        {(["preview", "pricelist"] as const).map((m) => (
+                          <button key={m} type="button" role="tab" aria-selected={paneMode === m} onClick={() => setPaneMode(m)}
+                            className={`rounded-full px-3 py-1 text-xs ${paneMode === m ? "bg-[var(--fl-b1,#1aa7ec)] text-white" : "opacity-70"}`}>
+                            {m === "preview" ? "Preview" : "Price list"}
+                          </button>
+                        ))}
+                      </div>
+                    ) : <span>Live client view</span>}
+                    {paneMode === "preview" && <span className="text-xs font-normal opacity-70">Updates as you type</span>}
                   </div>
-                  {preview}
+                  {canPriceList && paneMode === "pricelist" ? <PriceListPane /> : preview}
                 </aside>
               )}
             </div>
@@ -733,11 +743,24 @@ export default function EstimateBuilder({
             <>
               <div className={narrowTab === "editor" ? "" : "hidden"}>{editorDoc}</div>
               {narrowTab === "client" && preview}
+              {canPriceList && (
+                <Sheet open={priceSheetOpen} onOpenChange={setPriceSheetOpen}>
+                  <SheetContent side="right" className={`${isPhone ? "w-full max-w-none" : "w-[60vw] max-w-[60vw] sm:max-w-[60vw]"} fl-builder p-3`} data-testid="pricelist-sheet">
+                    <SheetHeader><SheetTitle className="text-sm">Price list</SheetTitle></SheetHeader>
+                    <PriceListPane heightClass="h-[calc(100vh-8rem)]" />
+                  </SheetContent>
+                </Sheet>
+              )}
             </>
           )}
         </div>
       );
       })()}
+
+      {!hideClientNote && <ClientNoteBox onChanged={onChanged} />}
+      {!hideClientNote && quoteId && <QuoteSitePhotosEditor quoteId={quoteId} />}
+      {!hideClientNote && quoteId && <QuoteDocumentsBox quoteId={quoteId} companyId={(meta as any)?.company_id ?? null} />}
+      {!hideClientNote && quoteId && <QuoteDrawingsBox quoteId={quoteId} companyId={(meta as any)?.company_id ?? null} />}
 
       {margin.visible && (
         <div className="print:hidden" data-html2canvas-ignore>
