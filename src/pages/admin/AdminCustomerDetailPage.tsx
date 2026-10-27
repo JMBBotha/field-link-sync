@@ -8,6 +8,7 @@ import { useDraftNeeds } from "@/hooks/useDraftNeeds";
 import { DraftNeedsChip } from "@/components/quoting/DraftNeedsChip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import ProjectsList from "@/components/projects/ProjectsList";
 import ContractsList from "@/components/agreements/ContractsList";
 import CallHistoryPanel from "@/components/calls/CallHistoryPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -399,7 +400,7 @@ const AdminCustomerDetailPage = () => {
   // profile card is never blank when an address is actually on file.
   const fullAddress = structuredAddress || (customer.address || "").trim();
 
-  const main: [string, string, number?][] = [["activity", "Activity"], ["quotes", "Quotes", quotes.length], ["invoices", "Invoices & Payments", activeInvRows.length], ["jobs", "Jobs", jobs.length], ["sites", "Sites", locations.length]];
+  const main: [string, string, number?][] = [["activity", "Activity"], ["quotes", "Quotes", quotes.length], ["invoices", "Invoices & Payments", activeInvRows.length], ["jobs", "Jobs", jobs.length], ["sites", "Sites", locations.length], ...(isAdmin && !isSalesRep ? [["projects", "Projects"] as [string, string]] : [])];
   const more: [string, string][] = [["details", "Client details"], ["contacts", "Contacts"], ["contracts", "Contracts"], ["notes", "Notes"], ...(canSeeStatement ? [["statement", "Statement"] as [string, string]] : []), ["calls", "Calls"], ["photos", "Photos"], ["documents", "Documents"], ["history", "History"], ["credits", "Credits"], ["oldsites", `${sitesLabel((customer as any).client_type)} (old list)`], ["relationship", "Relationship"]];
   const moreLabel = more.find(([v]) => v === innerTab)?.[1];
   const phone = (customer as any).phone as string | null; const email = (customer as any).email as string | null;
@@ -645,6 +646,7 @@ const AdminCustomerDetailPage = () => {
                   </div>
         </CardContent></Card></TabsContent>
 
+        {isAdmin && !isSalesRep && <TabsContent value="projects" className="mt-0"><Card className="rounded-2xl"><CardContent className="p-4"><ProjectsList customerId={customer.id} companyId={(customer as any).company_id} /></CardContent></Card></TabsContent>}
         <TabsContent value="sites" className="mt-0"><Card className="rounded-2xl"><CardContent className="p-4 space-y-4">
           <SitesOverview locations={locations} quotes={quotes as any[]} jobs={jobs as any[]} invoices={invoices as any[]} onPick={(lid) => { setSite(lid); setInnerTab("jobs"); }} />
           {customer.company_id ? <CustomerLocationsManager customerId={customer.id} companyId={customer.company_id} /> : <p className="text-sm text-muted-foreground">Customer is missing a company reference.</p>}
