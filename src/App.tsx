@@ -62,6 +62,7 @@ const AdminBankPage = lazy(() => import("./pages/admin/AdminBankPage"));
 const AdminSupplierBillsPage = lazy(() => import("./pages/admin/AdminSupplierBillsPage"));
 const AdminPaymentFollowupsPage = lazy(() => import("./pages/admin/AdminPaymentFollowupsPage"));
 const AdminCompanyPlansPage = lazy(() => import("./pages/admin/AdminCompanyPlansPage"));
+const AdminProjectsPage = lazy(() => import("./pages/admin/AdminProjectsPage"));
 const AdminCashflowPage = lazy(() => import("./pages/admin/AdminCashflowPage"));
 const AdminCashHealthPage = lazy(() => import("./pages/admin/AdminCashHealthPage"));
 const V8FieldShell = lazy(() => import("./components/v8/V8FieldShell"));
@@ -243,6 +244,8 @@ const App = () => (
                     <Route path="maintenance" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminMaintenancePage /></RequireRole>} />
                     <Route path="customers" element={<AdminCustomersPage />} />
                     <Route path="customers/:id" element={<AdminCustomerDetailPage />} />
+                    <Route path="projects" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminProjectsPage /></RequireRole>} />
+                    <Route path="projects/:projectId" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminProjectsPage /></RequireRole>} />
                     <Route path="inventory" element={<Navigate to="/admin/cash-health?tab=stock" replace />} />
                     <Route element={<V8SectionTabs section="reports" />}><Route path="reports" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} denySalesRep><ReportBuilder /></RequireRole>} /></Route>
                     <Route path="reports/advanced" element={<RequireRole allowedRoles={["admin"]} denySalesRep><RequirePlatformOwner><AdminAdvancedReportsPage /></RequirePlatformOwner></RequireRole>} />

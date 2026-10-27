@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRole, type AppRole } from "@/hooks/useRole";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { LayoutDashboard, CalendarDays, FileText, Receipt, Package, BarChart3, ShoppingBag, LineChart, Bell, History, Upload, Settings, Plus, Users, LogOut, ChevronLeft, ChevronRight, ChevronDown, X, Building2, Briefcase, ClipboardList, Sparkles, HelpCircle, Mail, Navigation, Wallet, BookOpen, UserPlus, Tag, MapPin } from "lucide-react";
+import { LayoutDashboard, CalendarDays, FileText, Receipt, Package, BarChart3, ShoppingBag, LineChart, Bell, History, Upload, Settings, Plus, Users, LogOut, ChevronLeft, ChevronRight, ChevronDown, X, Building2, Briefcase, ClipboardList, Sparkles, HelpCircle, Mail, Navigation, Wallet, BookOpen, UserPlus, Tag, MapPin, FolderKanban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -112,6 +112,7 @@ const AdminSidebar = ({
       items: [
         { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
         { path: "/admin/customers", label: "Clients", icon: Users },
+        ...(isSalesRep ? [] : [{ path: "/admin/projects", label: "Projects", icon: FolderKanban, roles: ["admin"] } as NavItem]),
         {
           // When the badge shows quotes waiting on the client, land on that filter directly.
           path: docCounts?.quotesOpen ? "/admin/quotes?status=sent" : "/admin/quotes",
@@ -232,7 +233,7 @@ const AdminSidebar = ({
 
   // v7 section headings (look only; same items, routes and role filters as before).
   const SECTION_OF: Record<string, string> = {
-    "/admin": "Main", "/admin/customers": "Main", "/admin/quotes": "Main", "/admin/invoices": "Main", "/admin/expenses": "Main", "/admin/bank": "Main", "/admin/supplier-bills": "Main", "/admin/payment-followups": "Main", "/admin/cashflow": "Main", "/admin/company-plans": "Main",
+    "/admin": "Main", "/admin/customers": "Main", "/admin/projects": "Main", "/admin/quotes": "Main", "/admin/invoices": "Main", "/admin/expenses": "Main", "/admin/bank": "Main", "/admin/supplier-bills": "Main", "/admin/payment-followups": "Main", "/admin/cashflow": "Main", "/admin/company-plans": "Main",
     "/admin/jobs": "Operations", "/admin/visits": "Operations", "/admin/my-appointments": "Operations", "/admin/my-commission": "Operations", "/field/earnings": "Operations", "/admin/map": "Operations",
     "/admin/catalog": "Stock & pricing", "/admin/price-lists": "Stock & pricing",
     "/admin/team": "Insights & team", "/admin/reports": "Insights & team",
