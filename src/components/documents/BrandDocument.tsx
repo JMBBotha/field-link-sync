@@ -5,6 +5,7 @@ import logoWhite from "@/assets/brand/logo-white.png";
 import units from "@/assets/brand/units.png";
 import { profileIdentity, type CompanyProfile } from "@/lib/companyProfiles";
 import { formatRand } from "@/utils/formatRand";
+import { sameOriginAsset } from "@/lib/captureImages";
 
 /**
  * Light / Bold client document (Johan 2026-10-13, designs in brand-docs/Light + brand-docs/Bold).
@@ -30,6 +31,8 @@ export interface BrandDocLine {
   rate: number;
   total: number;
   rateSuffix?: string;
+  /** Unit product photo (printed as a small thumbnail beside the line, Johan 28 Oct). */
+  imageUrl?: string | null;
 }
 export interface BrandDocSection { key: string; title?: string | null; lines: BrandDocLine[]; subtotal?: number | null }
 export interface BrandDocCard { title: string; body: ReactNode }
@@ -250,7 +253,12 @@ export default function BrandDocument(p: BrandDocumentProps) {
                 <tr key={l.key} data-testid="doc-line" className="dl">
                   <td className="c-qty">{l.quantity}</td>
                   {hasCode && <td className="code c-code">{l.code || ""}</td>}
-                  <td className="c-desc"><b>{l.name}</b>{l.description ? <><br /><small>{l.description}</small></> : null}</td>
+                  <td className="c-desc">{l.imageUrl
+                    ? <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                        <img src={sameOriginAsset(l.imageUrl) ?? undefined} alt="" data-testid="doc-line-photo" style={{ width: 40, height: 40, objectFit: "contain", flexShrink: 0, background: "#fff" }} />
+                        <div style={{ minWidth: 0 }}><b>{l.name}</b>{l.description ? <><br /><small>{l.description}</small></> : null}</div>
+                      </div>
+                    : <><b>{l.name}</b>{l.description ? <><br /><small>{l.description}</small></> : null}</>}</td>
                   <td className="r c-rate" data-qty={l.quantity}>{money(l.rate)}{l.rateSuffix || ""}</td>
                   <td className="r c-tot" data-testid="doc-line-total">{money(l.total)}</td>
                 </tr>

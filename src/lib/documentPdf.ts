@@ -5,6 +5,7 @@ import { fetchCompanyProfileSafe } from "@/lib/companyProfileSafe";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
 import { buildTermsBlocks, type TermsCompanyInfo } from "./defaultTerms";
 import { supabase } from "@/integrations/supabase/client";
+import { inlineCaptureImages } from "./captureImages";
 
 interface DocumentPdfOptions {
   docType: "Invoice" | "Quote" | "Proposal";
@@ -274,6 +275,13 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     const captureElement = resolveCaptureElement(opts);
 
     disableCaptureMode = enableCaptureMode();
+    // Product/unit photos: inline as data URLs so html2canvas never drops a CORS-less or lazy image.
+    {
+      const extras = opts.extraPageSelector ? Array.from(document.querySelectorAll(opts.extraPageSelector)) : [];
+      const restoreImages = await inlineCaptureImages([captureElement, ...extras]);
+      const off = disableCaptureMode;
+      disableCaptureMode = () => { off(); restoreImages(); };
+    }
     await waitForCaptureFrame();
 
     const html2canvas = (await import("html2canvas")).default;
