@@ -8035,6 +8035,7 @@ export type Database = {
           office_lat: number | null
           office_lng: number | null
           onboarding_completed: boolean
+          pay_type: string
           participant_type: string
           phone: string | null
           search_aliases: string[] | null
@@ -8084,6 +8085,7 @@ export type Database = {
           office_lat?: number | null
           office_lng?: number | null
           onboarding_completed?: boolean
+          pay_type?: string
           participant_type?: string
           phone?: string | null
           search_aliases?: string[] | null
@@ -8133,6 +8135,7 @@ export type Database = {
           office_lat?: number | null
           office_lng?: number | null
           onboarding_completed?: boolean
+          pay_type?: string
           participant_type?: string
           phone?: string | null
           search_aliases?: string[] | null
@@ -13259,6 +13262,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_my_pay_type: { Args: never; Returns: string }
       _acct_is_office: { Args: { p_company: string }; Returns: boolean }
       _acct_office_check: { Args: { p_company: string }; Returns: undefined }
       _acct_receipt_ok: {

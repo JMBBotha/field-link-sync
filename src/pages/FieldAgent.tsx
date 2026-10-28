@@ -47,6 +47,7 @@ import { Filter, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
 import { MyEarningsPeek } from "@/components/field/MyEarnings";
+import { useIsSalaried } from "@/hooks/usePayType";
 import { PeekCard, frontCardClass, usePeekStack } from "@/components/shared/CardStack";
 import { LeadListSegmented } from "@/components/LeadListFilterPills";
 import RoleAccentStrip from "@/components/RoleAccentStrip";
@@ -171,6 +172,7 @@ const FieldAgent = () => {
   const canOpenQuoteBuilder = roleIsAdmin || roleIsDispatcher;
   // Techs never create or see invoices (Johan 23:11); office users on /field keep the invoice button.
   const canInvoice = roleIsAdmin || roleIsDispatcher;
+  const salaried = useIsSalaried();
   const [autoStartCompletion, setAutoStartCompletion] = useState(false);
   const location = useLocation();
   const { toast } = useToast();
@@ -1277,7 +1279,7 @@ const FieldAgent = () => {
           <div className="flex min-w-0 items-center gap-1.5 md:gap-2 xl:gap-3">
             <CompanyLogo className="h-8 w-auto max-w-[6.5rem] shrink-0 object-contain sm:max-w-none md:h-12 xl:h-[4.5rem]" />
             <h1 className="sr-only">Field Agent{userName ? ` – ${userName}` : ""}</h1>
-            {!canInvoice && (
+            {!canInvoice && !salaried && (
               <Button variant="ghost" size="sm" onClick={() => navigate("/field/earnings")} aria-label="My earnings" title="My earnings" data-testid="hdr-my-earnings"
                 className="hidden md:flex shrink-0 gap-1 px-2 xl:px-3 text-white hover:bg-white/20">
                 <Wallet className="h-4 w-4" /><span>My earnings</span>

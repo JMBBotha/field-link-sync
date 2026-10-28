@@ -24,6 +24,7 @@ import logoCard from "@/assets/fieldlynk-logo-card.png";
 import { v8RoleOf, v8Primary, v8More, v8Me, v8IsActive, type V8Role } from "./v8Nav";
 import { useCashHealthEnabled } from "@/hooks/useCashHealth";
 import "./v8.css";
+import { useIsSalaried } from "@/hooks/usePayType";
 
 export const V8_ICONS: Record<string, React.ElementType> = {
   home: Home, pipeline: KanbanSquare, calendar: CalendarDays, users: Users, wallet: Wallet, briefcase: Briefcase, pin: MapPin,
@@ -67,7 +68,8 @@ export default function V8Sidebar({ onCreateLead, onSignOut, mobileOpen, onMobil
   const [moreOpen, setMoreOpen] = useState(false);
   const tech = role === "tech";
   const tone = tech ? null : inboxTone(leads as any[], Math.floor(now / 30_000) * 30_000, sla);
-  const primary = v8Primary(role);
+  const salary = useIsSalaried();
+  const primary = v8Primary(role, { salary });
   const cashHealth = useCashHealthEnabled();
   const { isAdmin } = useRole();
   const { summary: due } = useInvoiceDue();

@@ -11,6 +11,7 @@ import { formatSastDate } from "@/lib/salesTracker";
 import { BUCKET_LABEL, bucketOf, jobsByWeek, lastWeeks, monthCompare, summarizeMine, type MyEarningRow } from "@/lib/myEarnings";
 import { cn } from "@/lib/utils";
 import { PeekCard, usePeekStack } from "@/components/shared/CardStack";
+import { useIsSalaried } from "@/hooks/usePayType";
 
 const money = (v: number) => formatRand(Number(v) || 0);
 
@@ -46,6 +47,11 @@ function Totals({ rows, compact }: { rows: MyEarningRow[]; compact?: boolean }) 
 }
 
 export function MyEarningsCard({ className }: { className?: string }) {
+  if (useIsSalaried()) return null;
+  return <MyEarningsCardInner className={className} />;
+}
+
+function MyEarningsCardInner({ className }: { className?: string }) {
   const { data: rows = [], isLoading } = useMyTechEarnings();
   return (
     <Card className={cn("surface-card-solid", className)} data-testid="my-earnings-card">
@@ -199,7 +205,12 @@ export function MyEarningsView() {
 }
 
 /** Collapsed-by-default earnings strip (this month's total); opens on hover (desktop) or click/tap (pinned). */
-export function MyEarningsPeek({ className, overlapBelow }: { className?: string; overlapBelow?: boolean }) {
+export function MyEarningsPeek(props: { className?: string; overlapBelow?: boolean }) {
+  if (useIsSalaried()) return null;
+  return <MyEarningsPeekInner {...props} />;
+}
+
+function MyEarningsPeekInner({ className, overlapBelow }: { className?: string; overlapBelow?: boolean }) {
   const { data: rows = [], isLoading } = useMyTechEarnings();
   const peek = usePeekStack<"earnings">();
   const open = peek.isOpen("earnings");
