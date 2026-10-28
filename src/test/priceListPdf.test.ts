@@ -18,3 +18,8 @@ describe("price list pdf", () => {
   });
   it("label", () => { expect(priceListLabel(row, "Samsung")).toBe("Samsung · Samsung 2026"); });
 });
+
+import { clampZoom } from "@/lib/priceListPdf";
+describe("clampZoom", () => {
+  it("bounds", () => { expect(clampZoom(0.1)).toBe(0.5); expect(clampZoom(5)).toBe(3); expect(clampZoom(1.25)).toBe(1.25); });
+});
