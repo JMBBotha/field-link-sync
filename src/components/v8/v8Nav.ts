@@ -9,12 +9,12 @@ export function v8RoleOf(r: { isAdmin: boolean; isDispatcher: boolean; isFieldAg
   return r.isMainCo ? "admin" : "owner";
 }
 
-export function v8Primary(role: V8Role): V8Link[] {
+export function v8Primary(role: V8Role, opts?: { salary?: boolean }): V8Link[] {
   if (role === "tech") return [
     { path: "/field", label: "Today", icon: "home", match: ["/field/jobs"] },
     { path: "/field/schedule", label: "Schedule", icon: "calendar" },
     { path: "/field/earnings", label: "Earnings", icon: "wallet" },
-  ];
+  ].filter((l) => !(opts?.salary && l.path === "/field/earnings"));
   // Quotes + Invoices pinned for management AND sales (Johan 19 Oct 08:49). Sales see only their own rows (RLS rh_rep_scope / quote scope).
   if (role === "sales") return [
     { path: "/admin", label: "Home", icon: "home" },
@@ -35,8 +35,8 @@ export function v8Primary(role: V8Role): V8Link[] {
 }
 
 /** Phone bottom tabs: max 4 + More. Quotes/Invoices sit at the top of the More drawer (pinned list) on phones. */
-export function v8Tabs(role: V8Role): V8Link[] {
-  return v8Primary(role).filter((l) => l.label !== "Quotes" && l.label !== "Invoices").slice(0, 4);
+export function v8Tabs(role: V8Role, opts?: { salary?: boolean }): V8Link[] {
+  return v8Primary(role, opts).filter((l) => l.label !== "Quotes" && l.label !== "Invoices").slice(0, 4);
 }
 
 /** Personal links: name-card menu for admin/owner (Johan 19 Oct). */

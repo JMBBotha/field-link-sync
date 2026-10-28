@@ -9,6 +9,7 @@ import IdentityBadge from "@/components/IdentityBadge";
 import RoleAccentStrip from "@/components/RoleAccentStrip";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
 import { useOfflineContext } from "@/contexts/OfflineContext";
+import { useIsSalaried } from "@/hooks/usePayType";
 
 type FieldShellProps = {
   title: string;
@@ -19,6 +20,7 @@ type FieldShellProps = {
 export default function FieldShell({ title, back = false, children }: FieldShellProps) {
   const navigate = useNavigate();
   const { isOnline } = useOfflineContext();
+  const salary = useIsSalaried();
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-background px-3 pt-3">
@@ -32,7 +34,7 @@ export default function FieldShell({ title, back = false, children }: FieldShell
           {/* Desktop has no bottom nav: keep Field home and My earnings one click away (Johan 09:27). */}
           <nav className="hidden md:flex items-center gap-1" aria-label="Field pages">
             <NavLink to="/field" end className="flex items-center gap-1 rounded-md px-2 py-1 text-sm hover:bg-white/15"><Home className="h-4 w-4" />Field home</NavLink>
-            <NavLink to="/field/earnings" className={({ isActive }) => `flex items-center gap-1 rounded-md px-2 py-1 text-sm hover:bg-white/15 ${isActive ? "font-semibold underline underline-offset-4" : ""}`}><Wallet className="h-4 w-4" />My earnings</NavLink>
+            {!salary && <NavLink to="/field/earnings" className={({ isActive }) => `flex items-center gap-1 rounded-md px-2 py-1 text-sm hover:bg-white/15 ${isActive ? "font-semibold underline underline-offset-4" : ""}`}><Wallet className="h-4 w-4" />My earnings</NavLink>}
           </nav>
           <IdentityBadge />
           <Badge variant="outline" className="gap-1 text-muted-foreground" role="status">

@@ -6,6 +6,7 @@ import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useRoleColours } from "@/hooks/useSignedInIdentity";
 import { useContext } from "react";
 import { V8BarContext } from "@/components/v8/v8BarContext";
+import { useIsSalaried } from "@/hooks/usePayType";
 
 /**
  * Mobile bottom navigation for field technicians.
@@ -27,6 +28,8 @@ const FieldAgentBottomNav = () => {
   const { colours } = useRoleColours();
   // New layout: pure techs get the V8 bar (Today / Schedule / Earnings / More) from V8FieldShell, so this old bar hides.
   const v8Bar = useContext(V8BarContext);
+  const salaried = useIsSalaried();
+  const shown = tabs.filter((t) => !(salaried && t.to === "/field/earnings"));
 
   return (
     <>
@@ -60,8 +63,8 @@ const FieldAgentBottomNav = () => {
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-blue-400/20 bg-gradient-to-r from-[#0a1628]/95 via-[#0f2240]/95 to-[#0a1628]/95 backdrop-blur-md md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="grid grid-cols-5 h-[68px]">
-          {tabs.map((tab) => {
+        <div className={cn("grid h-[68px]", shown.length === 5 ? "grid-cols-5" : "grid-cols-4")}>
+          {shown.map((tab) => {
             const active = tab.match(pathname, search);
             return (
               <NavLink

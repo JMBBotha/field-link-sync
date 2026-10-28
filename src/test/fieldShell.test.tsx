@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   loading: false,
   isOnline: true,
 }));
+vi.mock("@/hooks/usePayType", () => ({ useIsSalaried: () => false }));
 vi.mock("@/providers/CompanyProvider", () => ({ useCompany: () => state }));
 vi.mock("@/contexts/OfflineContext", () => ({ useOfflineContext: () => ({ isOnline: state.isOnline, syncStatus: { pendingCount: 0 } }) }));
 

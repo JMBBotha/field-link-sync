@@ -3,6 +3,8 @@
  * paid-on-completion and holdback amounts; the owner sees every tech (tech filter + owner actions); anyone else nothing.
  * Tools share and company figures are never shown here. Phone-first: 44px (h-11) touch targets.
  */
+import { Navigate } from "react-router-dom";
+import { useIsSalaried } from "@/hooks/usePayType";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,6 +73,8 @@ function ReducePanel({ row, onDone }: { row: TechEarningRow; onDone: () => void 
 
 export default function FieldEarningsPage() {
   const { isFieldAgent, isAdmin, isDispatcher, loading: roleLoading } = useRole();
+  const salaried = useIsSalaried();
+  if (!roleLoading && salaried && !isAdmin) return <Navigate to="/field" replace />;
   // Techs: own labour share only (get_my_tech_earnings) — no quote numbers or percentages (Johan 09:27).
   if (!roleLoading && isFieldAgent && !isAdmin && !isDispatcher) {
     return <FieldShell title="My earnings"><MyEarningsView /></FieldShell>;

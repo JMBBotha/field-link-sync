@@ -75,7 +75,7 @@ const AdminTeamPage = () => {
 
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, full_name, phone, avatar_url, availability_status, updated_at, dispatch_role, participant_type, network_status, company_id, archived_at")
+        .select("id, full_name, phone, avatar_url, availability_status, updated_at, dispatch_role, participant_type, network_status, company_id, archived_at, pay_type")
         .in("id", userIds);
       // Only people connected to this company: staff/members, or approved agents with an active affiliation
       const connected = new Set<string>();
@@ -117,6 +117,7 @@ const AdminTeamPage = () => {
           avatar_url: profile?.avatar_url,
           availability: profile?.availability_status || "offline",
           dispatch_role: (profile as any)?.dispatch_role || null,
+          pay_type: ((profile as any)?.pay_type as string) || "commission",
           participant_type: (profile as any)?.participant_type || null,
           archived_at: (profile as any)?.archived_at || null,
           listed_as_staff: listed.has(userId),
@@ -186,6 +187,21 @@ const AdminTeamPage = () => {
     },
     onError: (err: any) => {
       toast({ title: "Failed to update lane", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // Pay type (salary vs commission): salaried staff see no earnings (Johan 28 Oct).
+  const changePayTypeMutation = useMutation({
+    mutationFn: async ({ userId, payType }: { userId: string; payType: string }) => {
+      const { error } = await supabase.from("profiles").update({ pay_type: payType } as any).eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-members"] });
+      toast({ title: "Pay type updated" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to update pay type", description: err.message, variant: "destructive" });
     },
   });
 
@@ -472,6 +488,19 @@ const AdminTeamPage = () => {
                                   </span>
                                 );
                               })()}
+                              <Select
+                                value={(member as any).pay_type ?? "commission"}
+                                onValueChange={(v) => changePayTypeMutation.mutate({ userId: member.id, payType: v })}
+                                disabled={!isAdmin}
+                              >
+                                <SelectTrigger className="h-8 w-[120px] text-xs" aria-label="Pay type" data-testid="pay-type-select">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="commission">Commission</SelectItem>
+                                  <SelectItem value="salary">Salary</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                           </TableCell>
 
