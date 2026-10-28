@@ -27,6 +27,28 @@ const blobToDataUrl = (b: Blob) =>
     r.readAsDataURL(b);
   });
 
+/** Longest side for an inlined photo. Unit photos print ~120-160 px wide, so 480 px is crisp at 2x and
+ * keeps html2canvas from decoding/drawing 1300 px transparent PNGs for every capture (Q-2026-0052/0053). */
+export const MAX_INLINE_PX = 480;
+
+async function downscale(blob: Blob): Promise<string | null> {
+  if (typeof createImageBitmap !== "function" || blob.type === "image/svg+xml") return null;
+  try {
+    const bmp = await createImageBitmap(blob);
+    const k = Math.min(1, MAX_INLINE_PX / Math.max(bmp.width, bmp.height));
+    if (k >= 1 && blob.size < 150_000) { bmp.close?.(); return null; }
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+    const ctx = c.getContext("2d");
+    if (!ctx) return null;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(bmp, 0, 0, c.width, c.height);
+    bmp.close?.();
+    // PNG keeps transparency (unit cut-outs on white cards); JPEG input stays JPEG and smaller.
+    return blob.type === "image/jpeg" ? c.toDataURL("image/jpeg", 0.88) : c.toDataURL("image/png");
+  } catch { return null; }
+}
+
 async function toDataUrl(src: string): Promise<string | null> {
   const tries = [src, sameOriginAsset(src)].filter((s, i, a): s is string => !!s && a.indexOf(s) === i).reverse();
   for (const s of tries) {
@@ -35,7 +57,7 @@ async function toDataUrl(src: string): Promise<string | null> {
       if (!res.ok) continue;
       const blob = await res.blob();
       if (!blob.type.startsWith("image/")) continue;
-      return await blobToDataUrl(blob);
+      return (await downscale(blob)) ?? await blobToDataUrl(blob);
     } catch { /* try next */ }
   }
   return null;
