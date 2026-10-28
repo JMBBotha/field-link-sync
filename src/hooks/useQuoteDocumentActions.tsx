@@ -3,6 +3,7 @@
  * Quote Builder (QuoteActionBar). Moved from AdminEstimateDetailPage; behaviour unchanged.
  */
 import { useEffect, useState, type ReactNode } from "react";
+import { pdfStep as withTimeout } from "@/lib/pdfTimeout";
 import { clearAllR0 } from "@/lib/r0Highlight";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -136,7 +137,11 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
     await flush();
     if (!await checkLabour()) return "Remember labour before generating the PDF.";
     setBusy("pdf");
+    let abandoned = false;
     try {
+      // The whole export is capped: if anything stalls, the user gets the "PDF failed" toast
+      // instead of a spinner that never ends (Cape Estates Q-2026-0052/0053, 28 Oct).
+      await withTimeout((async () => {
       const { data: q, error } = await supabase.from("quotes").select("*, customers(name, address, email)").eq("id", id).maybeSingle();
       if (error || !q) throw error || new Error("Quote not found");
       const c: any = (q as any).customers || {};
@@ -167,15 +172,19 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
       if (mode === "print") {
         // Print = the same full PDF (quote + T&C pages), printed from a hidden frame (Johan 2026-10-12).
         const blob = await generateDocumentPdfBlob(pdfOpts as any);
+        if (abandoned) return;
         printPdfBlob(blob);
       } else {
         // All screens: open the finished PDF in the in-app viewer; its Download/Share buttons fire on a
         // fresh click, so browsers (esp. Safari / the preview frame) don't block the file after the long build.
         const blob = await generateDocumentPdfBlob(pdfOpts as any);
+        if (abandoned) return;
         const num = q.quote_number || "DRAFT";
         setPdfView({ url: URL.createObjectURL(blob), fileName: `Quote-${num}.pdf`, title: `Quote ${num}` });
       }
+      })(), 90000, "building the PDF");
     } catch (e: any) {
+      abandoned = true;
       toast({ title: "PDF failed", description: e?.message, variant: "destructive" });
     } finally {
       setClientPdf(false);

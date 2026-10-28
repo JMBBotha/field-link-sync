@@ -1,4 +1,5 @@
 import { COMPANY, COMPANY_CONTACT_LINE, cleanBanking } from "./companyIdentity";
+import { nextFrame, pdfStep as withTimeout } from "./pdfTimeout";
 import { computePageCuts, isUniformRow } from "./pdfPageBreaks";
 import jsPDF from "jspdf";
 import { fetchCompanyProfileSafe } from "@/lib/companyProfileSafe";
@@ -67,12 +68,13 @@ function enableCaptureMode() {
 
 async function waitForCaptureFrame() {
   try {
-    await document.fonts?.ready;
+    if (document.fonts?.ready) await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 3000))]);
   } catch {
     // Ignore font loading errors
   }
-  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  // rAF never fires in a hidden/occluded tab; nextFrame falls back to a timer so the export can't stall here.
+  await nextFrame();
+  await nextFrame();
 }
 
 /**
@@ -282,9 +284,28 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       const off = disableCaptureMode;
       disableCaptureMode = () => { off(); restoreImages(); };
     }
+    {
+      // html2canvas clones the WHOLE page and (in Chrome/Safari) waits for every <img> in the clone to
+      // load or error, with no timeout. A loading="lazy" image anywhere on the staff page (editor
+      // thumbnails, catalog) never loads in the hidden clone, so the capture hung forever with no
+      // error and no toast. Make them eager for the capture and restore afterwards.
+      const lazy = Array.from(document.querySelectorAll<HTMLImageElement>('img[loading="lazy"]'));
+      lazy.forEach((img) => { img.loading = "eager"; });
+      const off = disableCaptureMode;
+      disableCaptureMode = () => { off(); lazy.forEach((img) => { img.loading = "lazy"; }); };
+    }
     await waitForCaptureFrame();
 
-    const html2canvas = (await import("html2canvas")).default;
+    const html2canvasLib = (await withTimeout(import("html2canvas"), 20000, "loading the PDF renderer")).default;
+    // Every capture is capped so a stuck image/frame becomes an error toast instead of an endless spinner.
+    const html2canvas = (el: HTMLElement, o: Parameters<typeof html2canvasLib>[1]) =>
+      withTimeout(html2canvasLib(el, {
+        imageTimeout: 8000,
+        ...o,
+        onclone: (cloned: Document) => {
+          cloned.querySelectorAll<HTMLImageElement>('img[loading="lazy"]').forEach((img) => { img.loading = "eager"; });
+        },
+      }), 30000, "drawing the quote pages");
 
     // Rendered terms flow directly after unit cards in the main capture.
     const termsEl = captureElement.querySelector<HTMLElement>("[data-pdf-terms-page]");
@@ -440,7 +461,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     }
 
     if (!termsEl && shouldAppendFixedTerms(opts.docType)) {
-      const termsCompany = opts.termsCompany || (await fetchTermsCompanyInfo(opts.companyName));
+      const termsCompany = opts.termsCompany || (await withTimeout(fetchTermsCompanyInfo(opts.companyName), 15000, "loading the company terms"));
       appendTermsPages(doc, termsCompany, headH || footH ? { top: margin + topReserve + contTop, bottom: margin + botReserve } : undefined);
     }
 
@@ -462,14 +483,14 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     if ((opts.brochures && opts.brochures.length > 0) || (opts.imagePages && opts.imagePages.length > 0)
       || (opts.drawingPdfUrls && opts.drawingPdfUrls.length > 0) || (opts.drawingImageUrls && opts.drawingImageUrls.length > 0)) {
       const quoteBytes = doc.output("arraybuffer");
-      const merged = await assembleQuoteWithBrochures({
+      const merged = await withTimeout(assembleQuoteWithBrochures({
         mainQuotePdfBytes: new Uint8Array(quoteBytes),
         brochures: opts.brochures || [],
         imagePages: opts.imagePages,
         drawingPdfUrls: opts.drawingPdfUrls,
         drawingImageUrls: opts.drawingImageUrls,
         quoteNumber: opts.docNumber,
-      });
+      }), 60000, "attaching drawings and brochures");
       return new Uint8Array(merged);
     }
 
