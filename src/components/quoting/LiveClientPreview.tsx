@@ -41,6 +41,7 @@ export interface LiveClientPreviewProps {
   /** quotes.remote_quote_source: "website_shop" switches terms 12.5 to the paid-in-full wording. */
   remoteQuoteSource?: string | null;
   quoteCreatedAt?: string | null;
+  relocationClause?: "on" | "off" | null;
 }
 
 const DOC_WIDTH = 820;
@@ -180,6 +181,8 @@ export default function LiveClientPreview(props: LiveClientPreviewProps) {
             remoteQuote={!!props.remoteQuote}
             remoteQuoteSource={props.remoteQuoteSource ?? null}
             quoteCreatedAt={props.quoteCreatedAt ?? null}
+            relocationClause={props.relocationClause ?? null}
+            relocationLines={(snap.items as any[]).flatMap((i) => [i.item_name, i.description])}
             unitCards={<><QuoteUnitCardsView cards={unitCards} companyId={props.companyId ?? null} variant={variant} /><QuoteSitePhotosBlock photos={sitePhotos} /></>}
           />
         </div>

@@ -39,6 +39,8 @@ describe("company profiles", () => {
     const t = fillTermsPlaceholders("Pay {company} at {bank} acc {account} branch {branch}.", IND);
     expect(t).toBe("Pay MASSAIR IND CC at FNB acc 62326769075 branch 250 655.");
     const blocks = buildTermsBlocks(profileTermsInfo({ ...IND, terms_text: "Payment:\n\nPay {company}." })!);
-    expect(blocks.map((b) => b.text)).toContain("Pay MASSAIR IND CC.");
+    // One company-wide T&C (2026-10-28): a profile's own terms_text no longer replaces the standard terms on invoices.
+    expect(blocks.map((b) => b.text)).not.toContain("Pay MASSAIR IND CC.");
+    expect(blocks.some((b) => b.text === "Warranty:")).toBe(true);
   });
 });

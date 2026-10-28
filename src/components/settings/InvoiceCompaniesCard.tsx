@@ -65,7 +65,7 @@ export default function InvoiceCompaniesCard() {
       <CardContent className="space-y-6">
         <p className="text-sm text-muted-foreground">
           Each company prints its own name, VAT number, banking and terms on its invoices, with its own invoice numbers.
-          Terms placeholders: {"{company} {vat} {bank} {account_name} {account} {branch} {account_type}"}. Leave terms empty to use the standard terms with this company's name and banking.
+          Terms placeholders: {"{company} {vat} {bank} {account_name} {account} {branch} {account_type}"}.
         </p>
         {rows.map((r) => (
           <div key={r.id} className="space-y-3 rounded-lg border p-4" data-testid="invoice-company">
@@ -92,8 +92,8 @@ export default function InvoiceCompaniesCard() {
                   onChange={(e) => update(r.id, "address_lines", e.target.value)} className="min-h-[70px]" />
               </div>
               <div className="md:col-span-2">
-                <Label>Terms and conditions {isMain ? "(main company: used by every company, with each company's own name)" : "(from the main company, with your company name)"}</Label>
-                <Textarea data-testid="terms-text" readOnly={!isMain} value={r.terms_text || ""} onChange={(e) => isMain && update(r.id, "terms_text", e.target.value)} className="min-h-[100px]" />
+                <Label>Terms and conditions</Label>
+                <p data-testid="terms-text" className="mt-1 text-sm text-muted-foreground">Invoices print the one company-wide Terms &amp; Conditions (same as quotes), with this company's name and banking. Managed under Terms &amp; Conditions above.</p>
               </div>
             </div>
             <div className="flex justify-end">

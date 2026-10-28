@@ -21,7 +21,7 @@ import StickyActionBar from "@/components/shared/StickyActionBar";
 import { blockR0, markR0, draftR0Toast } from "@/lib/zeroPriceGuard";
 import { useInvoiceAutofill, type AutofillFlag } from "@/hooks/useInvoiceAutofill";
 import {
-  fetchCompanyProfiles, invoiceTotals, depositAmount as calcDeposit, depositDue, profileBanking, fillTermsPlaceholders,
+  fetchCompanyProfiles, invoiceTotals, depositAmount as calcDeposit, depositDue, profileBanking,
   type CompanyProfile, type DepositType, VAT_PERCENT,
 } from "@/lib/companyProfiles";
 
@@ -358,7 +358,6 @@ const CreateInvoicePage = ({
   useEffect(() => {
     const parts: string[] = [];
     if (profile) {
-      if (profile.terms_text) { setTerms(fillTermsPlaceholders(profile.terms_text, profile)); return; }
       const pb = profileBanking(profile)!;
       parts.push("Banking Details:");
       if (pb.bank_name) parts.push(`Bank: ${pb.bank_name}`);

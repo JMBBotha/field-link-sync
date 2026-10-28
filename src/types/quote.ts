@@ -71,6 +71,8 @@ export interface QuoteMeta {
   /** Phone/online quote (no site visit): terms section 12 + on-site check. */
   remote_quote?: boolean | null;
   remote_quote_source?: string | null;
+  /** 'on' / 'off' admin override of the "Existing / relocated units" clause; null = auto. */
+  relocation_clause?: "on" | "off" | null;
   is_variation?: boolean | null;
   parent_quote_id?: string | null;
   locked_at?: string | null;

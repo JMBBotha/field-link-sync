@@ -23,6 +23,8 @@ import QuoteTermsPage from "@/components/quoting/QuoteTermsPage";
 import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
 import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
 import { withEoe } from "@/lib/eoeClause";
+import { showRelocationClause } from "@/lib/relocationClause";
+import { useCompanyTerms, relocationTextOf } from "@/hooks/useCompanyTerms";
 import { isPaidInFullRemote, usesLegacyPaymentTerms, withRemoteNotice } from "@/lib/remoteQuoteClause";
 import { planTermsSentence, type PaymentPlan } from "@/lib/paymentPlans";
 import BrandDocument, { NotesBody, type BrandDocSection } from "@/components/documents/BrandDocument";
@@ -250,6 +252,12 @@ export interface EstimateDocumentProps {
   remoteQuoteSource?: string | null;
   /** quotes.created_at: quotes issued before the 2.1 payment change keep the old wording. */
   quoteCreatedAt?: string | null;
+  /** quotes.relocation_clause: 'on' / 'off' admin override, null = auto-detect from the lines. */
+  relocationClause?: "on" | "off" | null;
+  /** Company-wide clause text when already in hand (public RPC); otherwise read from company_terms. */
+  relocationText?: string | null;
+  /** Extra line texts for detection when `items` is empty (editor surface). */
+  relocationLines?: string[];
 }
 
 
@@ -413,8 +421,19 @@ const EstimateDocument = ({
   remoteQuote,
   remoteQuoteSource,
   quoteCreatedAt,
+  relocationClause,
+  relocationText,
+  relocationLines: extraRelocationLines,
 }: EstimateDocumentProps) => {
   const legacyPayment = usesLegacyPaymentTerms(quoteCreatedAt);
+  const { data: companyTerms } = useCompanyTerms(!relocationText);
+  const relocationLines = [
+    ...items.map((it) => it.description),
+    ...(clientAreas || []).flatMap((a) => a.items.flatMap((it) => [it.name, it.description || ""])),
+    ...(extraRelocationLines || []),
+  ];
+  const relocatedUnits = showRelocationClause(relocationClause, relocationLines);
+  const relocationWording = (relocationText || "").trim() || relocationTextOf(companyTerms);
   const editRootRef = useRef<HTMLDivElement | null>(null);
   const flashId = useNewLineScroll(
     editing ? editing.areas.flatMap((a) => a.lines.map((l) => l.id)) : [],
@@ -526,6 +545,8 @@ const EstimateDocument = ({
             remoteQuote={!!remoteQuote}
             legacyPayment={legacyPayment}
             remotePaidInFull={isPaidInFullRemote(remoteQuoteSource)}
+            relocatedUnits={relocatedUnits}
+            relocationText={relocationWording}
           />
         }
       />
@@ -1144,6 +1165,8 @@ const EstimateDocument = ({
           remoteQuote={!!remoteQuote}
           legacyPayment={legacyPayment}
           remotePaidInFull={isPaidInFullRemote(remoteQuoteSource)}
+            relocatedUnits={relocatedUnits}
+            relocationText={relocationWording}
         />
       </div>
     </div>

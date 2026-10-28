@@ -135,7 +135,8 @@ export function profileTermsInfo(p?: Partial<CompanyProfile> | null): TermsCompa
     accountNumber: b.account_number || undefined,
     branchCode: b.branch_code || undefined,
     accountType: b.account_type || undefined,
-    customText: p.terms_text ? fillTermsPlaceholders(p.terms_text, p) : undefined,
+    // One company-wide T&C (Johan 2026-10-28): invoices print the same standard terms as quotes, never company_profiles.terms_text.
+    customText: undefined,
     footerLine: profileFooterLine(p),
     contactLine: profileContactLine(p),
   };

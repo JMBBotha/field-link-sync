@@ -64,7 +64,7 @@ const TemplateSaveDialog = ({
           unit_price: li.unit_price,
         })),
         sections: sections,
-        terms_text: termsText || null,
+        terms_text: null, // company-wide terms only (2026-10-28)
         is_active: true,
         created_by: user?.id || null,
       };
