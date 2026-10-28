@@ -62,7 +62,8 @@ const TemplateSelector = ({ onSelect }: TemplateSelectorProps) => {
 
     // Load visual sections from template
     const sections = Array.isArray(template?.sections) ? (template.sections as unknown as VisualSection[]) : undefined;
-    const termsText = template?.terms_text || undefined;
+    // Terms are company-wide (Johan 2026-10-28): templates never set a quote's terms.
+    const termsText = undefined;
 
     onSelect(items, sections, termsText);
   };

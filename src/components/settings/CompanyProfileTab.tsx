@@ -7,6 +7,7 @@ import { useCompanySettings, CompanySettings } from "@/hooks/useCompanySettings"
 import { Loader2, Save, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import CompanyTermsCard from "@/components/settings/CompanyTermsCard";
 import InvoiceCompaniesCard from "@/components/settings/InvoiceCompaniesCard";
 
 const CompanyProfileTab = () => {
@@ -96,6 +97,8 @@ const CompanyProfileTab = () => {
           Save Changes
         </Button>
       </div>
+
+      <CompanyTermsCard />
 
       <InvoiceCompaniesCard />
     </div>

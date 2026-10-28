@@ -412,6 +412,8 @@ const ClientProposalView = () => {
           paymentPlan={(quote as any).payment_plan ?? null}
           remoteQuote={!!quote.remote_quote}
           remoteQuoteSource={(quote as any).remote_quote_source ?? null}
+          relocationClause={(quote as any).relocation_clause ?? null}
+          relocationText={(quote as any).relocation_text ?? null}
           quoteCreatedAt={quote.created_at}
           collapseTerms
           afterTotalsAction={isActionable ? (

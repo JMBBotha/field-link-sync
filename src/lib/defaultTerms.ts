@@ -1,4 +1,5 @@
 import { REMOTE_QUOTE_HEADING, remoteQuoteParagraphs } from "./remoteQuoteClause";
+import { RELOCATION_HEADING, RELOCATION_CLAUSE_DEFAULT } from "./relocationClause";
 /**
  * Structured terms data for formatted PDF rendering.
  * Each block has a type that controls how it renders in the PDF:
@@ -37,7 +38,17 @@ export interface TermsCompanyInfo {
   legacyPayment?: boolean;
   /** Online shop order (paid in full): 2.1 is full payment on order and 12.5 says "refund your payment in full". */
   remotePaidInFull?: boolean;
+  /** Quote removes/relocates existing units: adds "Existing / relocated units" (12, or 13 after the phone/online section). */
+  relocatedUnits?: boolean;
+  /** Company-wide clause wording (company_terms.relocation_clause). Defaults to the approved text. */
+  relocationText?: string;
 }
+
+/** "Existing / relocated units" section blocks, numbered after the last standard section. */
+const relocationBlocks = (company: TermsCompanyInfo, n: number): TermsBlock[] =>
+  company.relocatedUnits
+    ? [{ type: "heading", text: RELOCATION_HEADING }, { type: "paragraph", text: `${n}.1 ${(company.relocationText || "").trim() || RELOCATION_CLAUSE_DEFAULT}` }, { type: "spacer", text: "" }]
+    : [];
 
 const FALLBACK_COMPANY_NAME = "Our Company";
 const LEGACY_PAYMENT_21 = "2.1 To provide the best possible price, the cost of the unit/s is to be paid in full as acceptance of our quotation. The remainder of the installation amount is payable upon completion of the project.";
@@ -62,6 +73,7 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
       ...company.customText.split(/\n\s*\n/).map((para) => para.trim()).filter(Boolean)
         .map((para): TermsBlock => (/^[^\n]{1,60}:$/.test(para) ? { type: "heading", text: para } : { type: "paragraph", text: para })),
       ...(company.remoteQuote ? [{ type: "heading", text: REMOTE_QUOTE_HEADING } as TermsBlock, ...remoteQuoteParagraphs({ paidInFull: company.remotePaidInFull }).map((text): TermsBlock => ({ type: "paragraph", text }))] : []),
+      ...relocationBlocks(company, company.remoteQuote ? 13 : 12),
     ];
   }
   const name = (company.companyName || FALLBACK_COMPANY_NAME).trim();
@@ -148,6 +160,8 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
     ...(company.remoteQuote
       ? [{ type: "heading", text: REMOTE_QUOTE_HEADING } as TermsBlock, ...remoteQuoteParagraphs({ paidInFull: company.remotePaidInFull }).map((text): TermsBlock => ({ type: "paragraph", text })), { type: "spacer", text: "" } as TermsBlock]
       : []),
+
+    ...relocationBlocks(company, company.remoteQuote ? 13 : 12),
 
     { type: "heading", text: "Importance of Servicing AC Units" },
     { type: "spacer", text: "" },
