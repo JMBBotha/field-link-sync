@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { dealWinRate } from "@/lib/quotePipeline";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -43,7 +44,7 @@ const PipelineMetrics = () => {
         // Quotes created in the last 90d — for conversion, time-to-quote, win rate
         supabase
           .from("quotes")
-          .select("id, lead_id, status, total, created_at, accepted_at, declined_at")
+          .select("id, lead_id, status, total, created_at, accepted_at, declined_at, option_group_id")
           .neq("status", "superseded")
           .is("archived_at", null)
           .gte("created_at", since),
@@ -88,9 +89,11 @@ const PipelineMetrics = () => {
       const openValue = open.reduce((sum, q) => sum + Number(q.total || 0), 0);
 
       // Win rate: accepted / (accepted + declined) among quotes created in window
-      const accepted = quotes.filter((q) => q.status === "accepted" || q.accepted_at).length;
-      const declined = quotes.filter((q) => q.status === "declined" || q.status === "rejected" || q.declined_at).length;
-      const winRate = accepted + declined > 0 ? (accepted / (accepted + declined)) * 100 : 0;
+      // Per deal: option quotes count once; "option not chosen" is never a loss.
+      const wr = dealWinRate(quotes as any);
+      const accepted = wr.won;
+      const declined = wr.lost;
+      const winRate = wr.rate;
 
       return {
         conversionRate,

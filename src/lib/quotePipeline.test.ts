@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildDeals, stageOf, columnSummary, followUps, pipelineChips, dropAction, matchesChip, fmtRandShort } from "./quotePipeline";
+import { buildDeals, stageOf, columnSummary, followUps, pipelineChips, dropAction, matchesChip, fmtRandShort, dealWinRate, moveBackTarget } from "./quotePipeline";
 
 const now = new Date("2026-10-01T12:00:00+02:00");
 const q = (o: any) => ({ id: o.id, status: "draft", total: 1000, created_at: "2026-09-28T08:00:00Z", ...o });
@@ -69,5 +69,29 @@ describe("quotePipeline", () => {
     expect(dropAction("sent", "lost").action).toBe("lose");
     expect(dropAction("sent", "draft").action).toBeNull();
     expect(fmtRandShort(287500)).toBe("R287.5k");
+  });
+});
+
+describe("option quotes", () => {
+  const base = { company_id: "c", total: 1000, created_at: "2026-10-01T00:00:00Z" } as any;
+  const a = { ...base, id: "a", status: "accepted", accepted_at: "2026-10-23T00:00:00Z", option_group_id: "g", option_label: "Comfee" };
+  const b = { ...base, id: "b", status: "option_not_chosen", total: 2000, option_group_id: "g", option_label: "Midea" };
+  it("not-chosen quote never lands in lost on its own", () => {
+    expect(stageOf({ ...b, option_group_id: null } as any, [])).toBeNull();
+  });
+  it("groups options into one deal led by the furthest stage", () => {
+    const ds = buildDeals([a, b] as any, [], []);
+    expect(ds).toHaveLength(1);
+    expect(ds[0].quote.id).toBe("a");
+    expect(ds[0].options?.map((o) => o.stage)).toEqual(["accepted", "not_chosen"]);
+  });
+  it("win rate counts per deal and ignores not-chosen", () => {
+    const r = dealWinRate([a, b, { id: "x", status: "declined", declined_at: "z" }] as any);
+    expect(r).toMatchObject({ won: 1, lost: 1 });
+  });
+  it("move back steps one stage", () => {
+    expect(moveBackTarget({ ...a, viewed_at: "v" } as any)).toBe("viewed");
+    expect(moveBackTarget({ ...a, sent_at: "s" } as any)).toBe("sent");
+    expect(moveBackTarget({ ...base, id: "s", status: "sent" } as any)).toBeNull();
   });
 });

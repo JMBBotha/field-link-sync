@@ -28,6 +28,7 @@ export type PipeQuote = {
   id: string; status: string | null; total: number | string | null; created_at: string;
   sent_at?: string | null; viewed_at?: string | null; accepted_at?: string | null; declined_at?: string | null;
   updated_at?: string | null; valid_until?: string | null; lead_id?: string | null; sales_engineer_id?: string | null;
+  option_group_id?: string | null; option_label?: string | null; option_chosen_id?: string | null;
 };
 export type PipeInvoice = { quote_id: string | null; status: string | null; notes?: string | null; grand_total?: number | string | null };
 export type PipeJob = { quote_id: string | null; status: string | null; created_at?: string | null };
@@ -35,7 +36,12 @@ export type PipeJob = { quote_id: string | null; status: string | null; created_
 export type Deal<Q extends PipeQuote = PipeQuote> = {
   quote: Q; stage: PipelineStage; value: number; days: number; flags: DealFlag[];
   paid: number; partPaid: boolean; depositDue: boolean;
+  /** Option quotes of one deal (same option_group_id), lead quote first. Only set when the group has 2+ quotes. */
+  options?: DealOption<Q>[];
 };
+export type DealOption<Q extends PipeQuote = PipeQuote> = { quote: Q; stage: PipelineStage | "not_chosen"; value: number };
+export const NOT_CHOSEN_LABEL = "Alternative option, not chosen";
+export const isNotChosen = (q: { status?: string | null }) => String(q.status || "").toLowerCase() === "option_not_chosen";
 
 const DAY = 86_400_000;
 const OPEN: PipelineStage[] = ["draft", "sent", "viewed"];
@@ -53,7 +59,7 @@ export const fmtRandShort = (n: number) =>
 /** Stage of one quote. Superseded quotes are not deals (null). */
 export function stageOf(q: PipeQuote, jobs: PipeJob[]): PipelineStage | null {
   const s = String(q.status || "draft").toLowerCase();
-  if (s === "superseded") return null;
+  if (s === "superseded" || s === "option_not_chosen") return null;
   if (LOST.has(s)) return "lost";
   if (jobs.some((j) => j.status !== "cancelled")) return "booked";
   if (s === "accepted") return "accepted";
@@ -85,7 +91,12 @@ export function buildDeals<Q extends PipeQuote>(quotes: Q[], invoices: PipeInvoi
   const jobBy = new Map<string, PipeJob[]>();
   jobs.forEach((j) => { if (j.quote_id) jobBy.set(j.quote_id, [...(jobBy.get(j.quote_id) || []), j]); });
   const out: Deal<Q>[] = [];
+  const groups = new Map<string, Q[]>();
+  quotes.forEach((q) => { if (q.option_group_id) groups.set(q.option_group_id, [...(groups.get(q.option_group_id) || []), q]); });
+  const grouped = new Set<string>();
+  groups.forEach((list, gid) => { if (list.length < 2) groups.delete(gid); else list.forEach((q) => grouped.add(q.id)); });
   for (const q of quotes) {
+    if (grouped.has(q.id)) continue;
     const qj = jobBy.get(q.id) || [];
     const stage = stageOf(q, qj);
     if (!stage) continue;
@@ -105,7 +116,44 @@ export function buildDeals<Q extends PipeQuote>(quotes: Q[], invoices: PipeInvoi
     if (value <= 0 && stage !== "lost") flags.push("zero");
     out.push({ quote: q, stage, value, days, flags, paid, partPaid, depositDue });
   }
+  groups.forEach((list) => {
+    const singles = buildDeals(list.map((q) => ({ ...q, option_group_id: null })), invoices, jobs, now);
+    const opts: DealOption<Q>[] = list.map((q) => {
+      const d = singles.find((x) => x.quote.id === q.id);
+      return { quote: q, stage: d ? d.stage : "not_chosen", value: d ? d.value : num(q.total) };
+    });
+    if (!singles.length) return; // every option not chosen (chosen one hidden by filters)
+    const lead = [...singles].sort((a, b) => STAGE_RANK[b.stage] - STAGE_RANK[a.stage] || b.value - a.value)[0];
+    opts.sort((a, b) => (a.quote.id === lead.quote.id ? -1 : b.quote.id === lead.quote.id ? 1 : 0));
+    out.push({ ...lead, options: opts });
+  });
   return out;
+}
+
+/** How far a deal got; the group card follows its furthest option. Lost ranks lowest. */
+export const STAGE_RANK: Record<PipelineStage, number> = { lost: 0, lead: 1, draft: 2, sent: 3, viewed: 4, accepted: 5, booked: 6 };
+
+/** Win rate per deal: a group with one accepted option is one win; it's lost only if every option was declined. */
+export function dealWinRate(quotes: { id: string; status?: string | null; accepted_at?: string | null; declined_at?: string | null; option_group_id?: string | null }[]) {
+  const by = new Map<string, typeof quotes>();
+  quotes.forEach((q) => { const k = q.option_group_id || q.id; by.set(k, [...(by.get(k) || []), q]); });
+  let won = 0, lost = 0;
+  by.forEach((list) => {
+    const live = list.filter((q) => !isNotChosen(q));
+    const isWon = (q: (typeof quotes)[number]) => q.status === "accepted" || (!!q.accepted_at && !LOST.has(String(q.status)));
+    const isLost = (q: (typeof quotes)[number]) => LOST.has(String(q.status || "")) || (!!q.declined_at && q.status !== "accepted");
+    if (live.some(isWon)) won++;
+    else if (live.length && live.every(isLost)) lost++;
+  });
+  return { won, lost, rate: won + lost > 0 ? (won / (won + lost)) * 100 : 0 };
+}
+
+/** Admin Move back: one step back (accepted/declined/not chosen → viewed or sent; viewed → sent). */
+export function moveBackTarget(q: PipeQuote): string | null {
+  const s = String(q.status || "").toLowerCase();
+  if (["accepted", "declined", "option_not_chosen"].includes(s)) return q.viewed_at ? "viewed" : q.sent_at ? "sent" : "draft";
+  if (s === "viewed") return "sent";
+  return null;
 }
 
 export function columnSummary(deals: Deal[], stage: PipelineStage) {
