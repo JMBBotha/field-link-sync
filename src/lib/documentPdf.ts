@@ -298,14 +298,29 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
 
     const html2canvasLib = (await withTimeout(import("html2canvas"), 20000, "loading the PDF renderer")).default;
     // Every capture is capped so a stuck image/frame becomes an error toast instead of an endless spinner.
-    const html2canvas = (el: HTMLElement, o: Parameters<typeof html2canvasLib>[1]) =>
-      withTimeout(html2canvasLib(el, {
+    // Only clone what is being captured: html2canvas otherwise copies the WHOLE staff page (builder,
+    // live preview with full-size unit photos, sidebars) into a fresh iframe for EVERY capture and
+    // re-decodes every image in it. That was the bulk of the export time on photo-heavy quotes.
+    const keepFor = (target: HTMLElement) => (node: Element) => {
+      if (node === target || node.contains(target) || target.contains(node)) return false;
+      const tag = node.tagName;
+      if (tag === "STYLE" || tag === "LINK" || tag === "META" || tag === "HEAD" || tag === "TITLE" || tag === "BASE") return false;
+      return true;
+    };
+    const t0 = performance.now();
+    const html2canvas = async (el: HTMLElement, o: Parameters<typeof html2canvasLib>[1]) => {
+      const t = performance.now();
+      const c = await withTimeout(html2canvasLib(el, {
         imageTimeout: 8000,
         ...o,
+        ignoreElements: keepFor(el),
         onclone: (cloned: Document) => {
           cloned.querySelectorAll<HTMLImageElement>('img[loading="lazy"]').forEach((img) => { img.loading = "eager"; });
         },
       }), 30000, "drawing the quote pages");
+      console.log(`[documentPdf] capture ${el.getAttribute("data-testid") || el.tagName} ${c.width}x${c.height} ${Math.round(performance.now() - t)} ms`);
+      return c;
+    };
 
     // Rendered terms flow directly after unit cards in the main capture.
     const termsEl = captureElement.querySelector<HTMLElement>("[data-pdf-terms-page]");
@@ -339,14 +354,19 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     bottomEls.forEach((el) => { el.style.display = "none"; });
     let capturedCanvas: HTMLCanvasElement;
     try {
-      capturedCanvas = await html2canvas(captureElement, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      logging: false,
-      width: captureElement.scrollWidth,
-      height: captureElement.scrollHeight,
-      });
+      const mainOpts = (scale: number) => ({ scale, useCORS: true, backgroundColor: "#ffffff", logging: false,
+        width: captureElement.scrollWidth, height: captureElement.scrollHeight });
+      try {
+        capturedCanvas = await html2canvas(captureElement, mainOpts(2));
+      } catch (e) {
+        // A photo that will not draw must not cost the whole quote: retry once lighter, photos hidden.
+        console.warn("[documentPdf] main capture failed, retrying without photos", e);
+        const hidden = Array.from(captureElement.querySelectorAll<HTMLImageElement>("img"));
+        const prevVis = hidden.map((img) => img.style.visibility);
+        hidden.forEach((img) => { img.style.visibility = "hidden"; });
+        try { capturedCanvas = await html2canvas(captureElement, mainOpts(1.5)); }
+        finally { hidden.forEach((img, i) => { img.style.visibility = prevVis[i]; }); }
+      }
     } finally {
       bottomEls.forEach((el, i) => { el.style.display = prevDisplay[i]; });
     }
@@ -494,6 +514,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       return new Uint8Array(merged);
     }
 
+    console.log(`[documentPdf] built in ${Math.round(performance.now() - t0)} ms`);
     return new Uint8Array(doc.output("arraybuffer"));
   } finally {
     disableCaptureMode?.();
