@@ -65,16 +65,16 @@ function Icon({ name, color, size = 22 }: { name?: string | null; color: string;
   );
 }
 
-/** Generic wall-split outline used until a real cut-out is approved. */
-function UnitOutline({ brand }: { brand?: string | null }) {
+/** Neutral placeholder until a real product photo is approved (Johan 26 Oct): no drawn unit, never a fake picture. */
+function PhotoPlaceholder({ modelCode, bold }: { modelCode?: string | null; bold: boolean }) {
+  const c = bold ? "#fff" : "#7b8fa6";
   return (
-    <div style={{ textAlign: "center" }}>
-      <svg width="132" height="56" viewBox="0 0 132 56" aria-hidden>
-        <rect x="3" y="6" width="126" height="38" rx="8" fill="#fff" stroke="#9fb3c8" strokeWidth="2" />
-        <path d="M14 36h104" stroke="#c8d5e2" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="114" cy="16" r="2.5" fill={SKY} />
+    <div data-testid="unit-card-photo-placeholder" style={{ textAlign: "center", color: c }}>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" />
       </svg>
-      {brand && <div style={{ fontWeight: 800, letterSpacing: ".12em", fontSize: 11, color: "#9fb3c8", textTransform: "uppercase" }}>{brand}</div>}
+      <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4 }}>Photo to follow</div>
+      {modelCode && <div style={{ fontSize: 10, marginTop: 2, opacity: 0.85 }}>{modelCode}</div>}
     </div>
   );
 }
@@ -124,7 +124,7 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
       }}>
         {img
           ? <img src={img} alt={card.modelCode} crossOrigin="anonymous" style={{ maxWidth: 138, maxHeight: 108, objectFit: "contain", filter: "drop-shadow(0 6px 8px rgba(11,79,168,.22))" }} />
-          : <UnitOutline brand={card.brand} />}
+          : <PhotoPlaceholder modelCode={card.modelCode} bold={bold} />}
       </div>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
