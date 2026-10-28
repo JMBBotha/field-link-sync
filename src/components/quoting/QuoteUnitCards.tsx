@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import qrcode from "@/vendor/qrcodeGenerator";
 import { unitBrochureUrl } from "@/lib/unitBrochure";
+import { sameOriginAsset } from "@/lib/captureImages";
 import {
   buildUnitCards, missingModelKeys, specChips, unitLineModelKey,
   type FeatureHighlight, type ProductMedia, type UnitCard, type UnitCardLine,
@@ -87,7 +88,7 @@ function Highlight({ h, variant }: { h: FeatureHighlight; variant: DocVariant })
       background: bold ? BLUE_SOFT : "#fff4e6", borderLeft: `4px solid ${ORANGE}`,
     }}>
       {h.image_url
-        ? <img src={h.image_url} alt="" crossOrigin="anonymous" style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }} />
+        ? <img src={sameOriginAsset(h.image_url) ?? undefined} alt="" crossOrigin="anonymous" style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }} />
         : <span style={{ flexShrink: 0, display: "inline-flex", width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", background: bold ? "rgba(255,255,255,.12)" : "#fff" }}>
             <Icon name={h.icon} color={bold ? "#fff" : ORANGE} size={18} />
           </span>}
@@ -123,7 +124,7 @@ function Card({ card, variant, companyId }: { card: UnitCard; variant: DocVarian
         background: bold ? `linear-gradient(160deg, ${BLUE_SOFT}, ${SKY})` : "linear-gradient(160deg,#eaf6fd,#f7fbff)",
       }}>
         {img
-          ? <img src={img} alt={card.modelCode} crossOrigin="anonymous" style={{ maxWidth: 138, maxHeight: 108, objectFit: "contain", filter: "drop-shadow(0 6px 8px rgba(11,79,168,.22))" }} />
+          ? <img src={sameOriginAsset(img) ?? undefined} alt={card.modelCode} crossOrigin="anonymous" style={{ maxWidth: 138, maxHeight: 108, objectFit: "contain", filter: "drop-shadow(0 6px 8px rgba(11,79,168,.22))" }} />
           : <PhotoPlaceholder modelCode={card.modelCode} bold={bold} />}
       </div>
       <div style={{ minWidth: 0 }}>

@@ -1,4 +1,5 @@
 import { CanonicalAreaChoices, CanonicalAreaCreateControl } from "@/components/quote/AreaNameChips";
+import { sameOriginAsset } from "@/lib/captureImages";
 import QtyStepper from "./QtyStepper";
 import { AreaNameLabel, isDefaultAreaName } from "@/components/quote/AreaNameLabel";
 import { SpecialChip } from "@/components/specials/SpecialsUi";
@@ -479,7 +480,7 @@ const EstimateDocument = ({
           key: area.areaId ?? `general-${i}`,
           title: rollup.length > 1 || area.areaName !== "General" ? area.areaName : null,
           subtotal: area.areaTotal,
-          lines: area.items.map((it, j) => ({ key: it.id ?? `${i}-${j}`, quantity: it.qtyText || qty(it.quantity), code: it.code, name: it.name, description: it.description, rate: it.unitPrice, total: it.lineTotal })),
+          lines: area.items.map((it, j) => ({ key: it.id ?? `${i}-${j}`, quantity: it.qtyText || qty(it.quantity), code: it.code, name: it.name, description: it.description, rate: it.unitPrice, total: it.lineTotal, imageUrl: it.imageUrl ?? null })),
         }))
       : [{ key: "all", lines: foldFlatLines(items.map((it) => { const [name, ...rest] = it.description.split("\n"); return { name, description: rest.join("\n") || null, quantity: it.quantity, unit_price: it.unit_price, amount: it.amount, qtyText: it.qtyText || null }; })).map((l, j) => ({ key: String(j), quantity: l.qtyText || qty(l.quantity), name: l.name, description: l.description, rate: l.unit_price, total: l.amount })) }];
     const terms = withRemoteNotice(cleanTerms || `This estimate is valid for 30 days from the date of issue. All prices exclude VAT, which is shown separately at ${vatPercent}%. ${planTermsSentence(paymentPlan, settings.default_deposit_percentage, settings.default_payment_terms_days)}`, remoteQuote);
@@ -750,7 +751,7 @@ const EstimateDocument = ({
                             <div className="flex items-start gap-2">
                               {line.imageUrl && (
                                 <img
-                                  src={line.imageUrl}
+                                  src={sameOriginAsset(line.imageUrl) ?? undefined}
                                   alt={line.name}
                                   className="mt-0.5 h-10 w-10 shrink-0 rounded border border-slate-200 bg-white object-contain"
                                   loading="lazy"
@@ -1007,7 +1008,7 @@ const EstimateDocument = ({
                     <div key={ui} className="flex items-start gap-3">
                       {unit.imageUrl && (
                         <img
-                          src={unit.imageUrl}
+                          src={sameOriginAsset(unit.imageUrl) ?? undefined}
                           alt={unit.unitName}
                           className="h-16 w-16 shrink-0 rounded border border-slate-200 bg-white object-contain"
                           loading="lazy"
@@ -1050,7 +1051,7 @@ const EstimateDocument = ({
                       <div className="flex items-start gap-3">
                         {item.imageUrl && (
                           <img
-                            src={item.imageUrl}
+                            src={sameOriginAsset(item.imageUrl) ?? undefined}
                             alt={name}
                             className="h-12 w-12 shrink-0 rounded border border-slate-200 bg-white object-contain"
                             loading="lazy"
