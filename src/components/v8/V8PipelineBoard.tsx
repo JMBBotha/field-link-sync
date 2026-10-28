@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileText, XCircle, PauseCircle } from "lucide-react";
 import { useV8Notes } from "./useV8Notes";
-import { buildDeals, fmtRandShort, type Deal } from "@/lib/quotePipeline";
+import { buildDeals, fmtRandShort, moveBackTarget, NOT_CHOSEN_LABEL, type Deal } from "@/lib/quotePipeline";
+import { supabase } from "@/integrations/supabase/client";
 import { V8_COLS, v8ColOf, v8Drop, v8CanPark, V8_PARK_FIELD, V8_LOST_FIELD, V8_PARK_REASONS, V8_LOST_REASONS, type V8Col } from "@/lib/v8Flow";
 import { usePipelineData, getHideTest, nameOf, type Q, type L } from "@/components/jobs/PipelineBoard";
 import "./v8.css";
@@ -44,6 +45,31 @@ export default function V8PipelineBoard() {
   const notes = useV8Notes();
   const [ask, setAsk] = useState<{ kind: "park" | "lost"; d: Deal<Q> } | null>(null);
   const [why, setWhy] = useState(""); const [whyMore, setWhyMore] = useState("");
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [back, setBack] = useState<Q | null>(null); const [backWhy, setBackWhy] = useState(""); const [busy, setBusy] = useState(false);
+  const [link, setLink] = useState<Q | null>(null); const [pick, setPick] = useState<Record<string, boolean>>({});
+  const rpc = async (fn: string, args: Record<string, unknown>, ok: string) => {
+    setBusy(true);
+    try {
+      const { data: r, error } = await (supabase.rpc as any)(fn, args);
+      if (error) throw error;
+      toast({ title: ok, description: r && (r as any).invoices_voided ? `Unsent invoice voided: ${(r as any).invoices_voided}` : undefined });
+      void refetch(); return true;
+    } catch (e: any) { toast({ title: "Not changed", description: e.message, variant: "destructive" }); return false; }
+    finally { setBusy(false); }
+  };
+  const doBack = async () => { if (back && await rpc("quote_move_back", { p_quote_id: back.id, p_reason: backWhy.trim() }, "Moved back")) { setBack(null); setBackWhy(""); } };
+  const doLink = async () => {
+    if (!link) return;
+    const ids = [link.id, ...Object.keys(pick).filter((k) => pick[k])];
+    if (ids.length < 2) return;
+    if (await rpc("link_quote_options", { p_quote_ids: ids, p_labels: {} }, "Linked as options")) { setLink(null); setPick({}); }
+  };
+  const adminItems = (q: Q) => [
+    { label: q.status === "declined" || q.status === "option_not_chosen" ? "Reopen (not lost)…" : "Move back…", hidden: !isAdmin || !moveBackTarget(q as any), onSelect: () => setBack(q) },
+    { label: "Link as options…", hidden: !isAdmin || !(q as any).customer_id, onSelect: () => { setLink(q); setPick({}); } },
+    { label: "Unlink option", hidden: !isAdmin || !(q as any).option_group_id, onSelect: () => void rpc("unlink_quote_option", { p_quote_id: q.id }, "Unlinked") },
+  ];
 
   const { cols, leads, reps, hiddenN } = useMemo(() => {
     const empty = { hiddenN: 0, cols: {} as Record<V8Col, Deal<Q>[]>, leads: [] as L[], reps: [] as [string, string][] };
@@ -120,7 +146,27 @@ export default function V8PipelineBoard() {
           { label: notes.parked[d.quote.id] ? "Un-park" : "Park…", hidden: !notes.parked[d.quote.id] && !v8CanPark(v8ColOf(d, (data?.invoices || []) as any)),
             onSelect: () => (notes.parked[d.quote.id] ? void unpark(d) : setAsk({ kind: "park", d })) },
           ...staff.itemsFor(d.quote as any),
+          ...adminItems(d.quote),
         ]} />
+      {d.options && (
+        <div className="v8-options mt-1 rounded-md border border-dashed px-2 py-1 text-xs" data-testid="v8-options">
+          <button className="w-full text-left font-medium opacity-80" onClick={() => setOpen((o) => ({ ...o, [d.quote.id]: !o[d.quote.id] }))}>
+            {open[d.quote.id] ? "▾" : "▸"} {d.options.length} options
+          </button>
+          {open[d.quote.id] && d.options.map((o) => (
+            <div key={o.quote.id} className="flex items-center justify-between gap-2 py-0.5">
+              <button className="truncate text-left hover:underline" onClick={() => navigate(`/admin/estimates/${o.quote.id}`)}>
+                {(o.quote as any).option_label || o.quote.quote_number} · {fmtRandShort(o.value)}
+              </button>
+              {o.stage === "not_chosen"
+                ? <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{NOT_CHOSEN_LABEL}</span>
+                : <span className="shrink-0 opacity-60">{o.quote.id === d.quote.id ? "shown" : o.stage}</span>}
+              {isAdmin && moveBackTarget(o.quote as any) && o.quote.id !== d.quote.id && (
+                <button className="shrink-0 underline opacity-70" onClick={() => setBack(o.quote)}>{o.stage === "not_chosen" ? "Reopen" : "Move back"}</button>)}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -192,6 +238,32 @@ export default function V8PipelineBoard() {
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setAsk(null)}>Cancel</Button>
             <Button onClick={() => void confirmAsk()} disabled={!why}>{ask?.kind === "park" ? "Park" : "Continue"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!back} onOpenChange={(o) => { if (!o) { setBack(null); setBackWhy(""); } }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Move {back?.quote_number} back to {back ? moveBackTarget(back as any) : ""}?</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground">{back ? nameOf(back) : ""}. Any unsent deposit invoice from the accept is voided and its email held. Blocked if a payment or a booked job exists.</div>
+          <input value={backWhy} onChange={(e) => setBackWhy(e.target.value)} placeholder="Reason (required)" className="h-9 w-full rounded-md border bg-background px-2 text-sm" />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setBack(null)}>Cancel</Button>
+            <Button onClick={() => void doBack()} disabled={busy || backWhy.trim().length < 3}>Move back</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!link} onOpenChange={(o) => { if (!o) { setLink(null); setPick({}); } }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Link as options</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground">Alternatives for {link ? nameOf(link) : ""}. When the client accepts one, the others show as "{NOT_CHOSEN_LABEL}", not lost.</div>
+          <div className="max-h-60 space-y-1 overflow-y-auto text-sm">
+            {(data?.quotes || []).filter((q) => link && q.id !== link.id && (q as any).customer_id === (link as any).customer_id).map((q) => (
+              <label key={q.id} className="flex items-center gap-2"><input type="checkbox" checked={!!pick[q.id]} onChange={(e) => setPick((p) => ({ ...p, [q.id]: e.target.checked }))} />{q.quote_number} · {q.status} · {fmtRandShort(Number(q.total) || 0)}</label>))}
+            {link && !(data?.quotes || []).some((q) => q.id !== link.id && (q as any).customer_id === (link as any).customer_id) && <div className="opacity-60">No other quotes for this client.</div>}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setLink(null)}>Cancel</Button>
+            <Button onClick={() => void doLink()} disabled={busy || !Object.values(pick).some(Boolean)}>Link</Button>
           </div>
         </DialogContent>
       </Dialog>

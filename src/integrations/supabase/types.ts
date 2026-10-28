@@ -9633,6 +9633,9 @@ export type Database = {
         Row: {
           accepted_at: string | null
           accepted_by: string | null
+          option_label: string | null
+          option_group_id: string | null
+          option_chosen_id: string | null
           accepted_signature: Json | null
           accepted_version_id: string | null
           archive_reason: string | null
@@ -9699,6 +9702,9 @@ export type Database = {
         Insert: {
           accepted_at?: string | null
           accepted_by?: string | null
+          option_label?: string | null
+          option_group_id?: string | null
+          option_chosen_id?: string | null
           accepted_signature?: Json | null
           accepted_version_id?: string | null
           archive_reason?: string | null
@@ -9765,6 +9771,9 @@ export type Database = {
         Update: {
           accepted_at?: string | null
           accepted_by?: string | null
+          option_label?: string | null
+          option_group_id?: string | null
+          option_chosen_id?: string | null
           accepted_signature?: Json | null
           accepted_version_id?: string | null
           archive_reason?: string | null

@@ -26,6 +26,8 @@ export type StaffQuote = {
   id: string; company_id: string; status: string | null; quote_number?: string | null;
   accepted_at?: string | null; accepted_by?: string | null; declined_at?: string | null;
   sales_engineer_id?: string | null; created_by?: string | null; owner_id?: string | null;
+  customer_id?: string | null; customer_name?: string | null; customers?: { name?: string | null } | null;
+  option_group_id?: string | null;
 };
 
 type Pending = { kind: "accept" | "decline"; quote: StaffQuote } | null;
@@ -124,16 +126,36 @@ export function useQuoteStaffActions(onChanged?: () => void, beforeAccept?: () =
     ];
   };
 
+  const pq = pending?.kind === "accept" ? pending.quote : null;
+  const { data: sib } = useQuery({
+    queryKey: ["accept-siblings", pq?.id, pq?.customer_id],
+    enabled: !!pq?.customer_id,
+    queryFn: async () => {
+      const { data } = await (supabase.from("quotes") as any).select("id, quote_number, option_group_id")
+        .eq("customer_id", pq!.customer_id).eq("status", "accepted").neq("id", pq!.id).is("archived_at", null).limit(5);
+      return (data || []) as { id: string; quote_number: string | null; option_group_id: string | null }[];
+    },
+  });
+  const who = pq ? (pq.customers?.name || pq.customer_name || "this client") : "";
   const dialogs = (
     <>
       <AlertDialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{pending?.kind === "accept" ? "Mark this quote accepted?" : "Mark this quote declined?"}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pending?.kind === "accept"
-                ? "Use this when the client accepted by phone or email. The deposit invoice is created, as with an online acceptance. No client signature is recorded."
-                : "Use this when the client declined by phone or email."}
+            <AlertDialogTitle>{pending?.kind === "accept" ? `Mark ${pending.quote.quote_number || "this quote"} accepted for ${who}?` : "Mark this quote declined?"}</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                {pending?.kind === "accept" ? (<>
+                  <p>Use this when the client accepted by phone or email. No client signature is recorded.</p>
+                  <p className="font-medium">A deposit invoice is created automatically and queued to email the client.</p>
+                  {!!sib?.length && (
+                    <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-amber-900">
+                      {who} already has an accepted quote: {sib.map((x) => x.quote_number).join(", ")}.
+                      {sib.some((x) => x.option_group_id && x.option_group_id === pending.quote.option_group_id)
+                        ? " They are linked options, so the other one is set aside as not chosen." : " Check this isn't the wrong quote."}
+                    </p>)}
+                </>) : <p>Use this when the client declined by phone or email.</p>}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
