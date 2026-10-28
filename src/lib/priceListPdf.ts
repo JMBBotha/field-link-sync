@@ -51,3 +51,8 @@ export function priceListLabel(row: PriceListRow, supplierName?: string | null):
 export function canSeePriceListPdfs(roles: string[]): boolean {
   return roles.includes("admin");
 }
+
+/** Viewer zoom bounds (1 = fit to width). */
+export function clampZoom(z: number): number {
+  return Math.min(3, Math.max(0.5, Math.round(z * 100) / 100));
+}
