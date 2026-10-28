@@ -31,7 +31,7 @@ async function loadPdfjs() {
 export async function savePdfFile(url: string, fileName: string): Promise<"shared" | "downloaded" | "cancelled"> {
   try {
     const nav: any = typeof navigator !== "undefined" ? navigator : null;
-    if (nav?.share && nav?.canShare) {
+    if (nav?.share && nav?.canShare && isPhoneViewport()) {
       const blob = await (await fetch(url)).blob();
       const file = new File([blob], fileName, { type: "application/pdf" });
       if (nav.canShare({ files: [file] })) {
