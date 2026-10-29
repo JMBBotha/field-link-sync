@@ -15,7 +15,10 @@ export function AvailabilitySwitch({
   onChange,
   disabled,
   className,
+  labelled,
 }: {
+  /** Always show text labels with equal-width segments (mobile strip). */
+  labelled?: boolean;
   status: AvailabilityStatus;
   onChange: (s: AvailabilityStatus) => void;
   disabled?: boolean;
@@ -42,11 +45,12 @@ export function AvailabilitySwitch({
             onClick={() => !active && onChange(o.value)}
             className={cn(
               "flex h-7 min-w-[30px] items-center justify-center gap-1 rounded-full px-1.5 text-[11px] font-semibold transition-colors sm:px-2",
+              labelled && "flex-1 text-xs",
               active ? o.on : "text-white/85 hover:bg-white/15",
             )}
           >
             {!active && <span className={cn("h-2 w-2 rounded-full", o.dot)} />}
-            <span className={cn(active ? "inline" : "hidden sm:inline")}>{o.label}</span>
+            <span className={cn(active || labelled ? "inline" : "hidden sm:inline")}>{o.label}</span>
           </button>
         );
       })}
@@ -57,7 +61,7 @@ export function AvailabilitySwitch({
 export default AvailabilitySwitch;
 
 /** Self-contained header switch for the signed-in user (used in the sales header). */
-export function MyAvailabilitySwitch({ className }: { className?: string }) {
+export function MyAvailabilitySwitch({ className, labelled }: { className?: string; labelled?: boolean }) {
   const [uid, setUid] = useState<string | undefined>();
   useEffect(() => {
     let off = false;
@@ -66,5 +70,5 @@ export function MyAvailabilitySwitch({ className }: { className?: string }) {
   }, []);
   const availability = useAvailability(uid);
   if (!uid) return null;
-  return <AvailabilitySwitch status={availability.status} onChange={(s) => void availability.setManualStatus(s)} className={className} />;
+  return <AvailabilitySwitch status={availability.status} onChange={(s) => void availability.setManualStatus(s)} className={className} labelled={labelled} />;
 }

@@ -222,6 +222,7 @@ const AdminLayout = () => {
   return (
     <div className="app-surface flex h-screen h-[100dvh] overflow-hidden">
       <SidebarC
+        onSearch={() => setSearchOpen(true)}
         onCreateLead={() => setShowCreateLead(true)}
         onSignOut={handleSignOut}
         pendingRequestsCount={pendingRequestsCount}
