@@ -69,6 +69,7 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
   ];
   if (role === "sales") return [
     { title: "Selling", links: [
+      { path: "/admin/requests", label: "Requests", icon: "inbox" },
       { path: "/admin/my-appointments", label: "My appointments", icon: "calendar" },
       { path: "/admin/price-lists", label: "Price lists", icon: "book" },
     ] },
@@ -77,6 +78,7 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
   const cash = !!opts.cashHealth;
   const groups: V8Group[] = [
     { title: "Work", links: [
+      { path: "/admin/requests", label: "Requests", icon: "inbox" },
       { path: "/admin/unassigned-queue", label: "Unassigned queue", icon: "inbox" },
       { path: "/admin/templates", label: "Templates", icon: "file" },
       { path: "/admin/agreements", label: "Agreements", icon: "file" },

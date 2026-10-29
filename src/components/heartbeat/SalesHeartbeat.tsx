@@ -6,6 +6,7 @@ import { useSalesHeartbeat } from "@/hooks/useSalesHeartbeat";
 import { ecgPoints, fmtAge, type HbItem, type HbStage } from "@/lib/salesHeartbeat";
 import { fmtRandShort } from "@/lib/quotePipeline";
 import MoneyDueTile from "@/components/invoiceDue/MoneyDueTile";
+import RequestsTodayStrip from "@/components/requests/RequestsTodayStrip";
 
 /** Home heartbeat (Johan 20 Oct, mockup B): real ECG + pulse, 8 stage tiles (R4), Next step now, Then, Stalled · escalated. */
 export default function SalesHeartbeat() {
@@ -38,6 +39,7 @@ export default function SalesHeartbeat() {
         {hb.flatline && <div role="alert" className="mb-3 rounded-lg bg-[#C62828] px-3 py-2 text-[13px] font-semibold">No sales actions while {hb.items.length} items wait. Pick up the next step below.</div>}
         <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-8 lg:overflow-visible">{hb.stages.map((s) => <StageTile key={s.key} s={s} items={hb.items} onClick={() => navigate(["new", "contacted", "visit"].includes(s.key) ? "/admin/dispatch" : "/admin/jobs?tab=pipeline")} />)}</div>
       </section>
+      <RequestsTodayStrip />
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
         <section className="min-w-0 rounded-2xl border-2 border-border bg-card p-4">
           <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Next step now</h3>

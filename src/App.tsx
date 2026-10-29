@@ -72,6 +72,7 @@ const AdminQuoteBuilderPageUnified = lazy(() => import("./pages/admin/AdminQuote
 import LegacyBuilderRedirect from "./components/routing/LegacyBuilderRedirect";
 const AdminCatalogPage = lazy(() => import("./pages/admin/AdminCatalogPage"));
 const AdminUnassignedQueuePage = lazy(() => import("./pages/admin/AdminUnassignedQueuePage"));
+const AdminRequestsPage = lazy(() => import("./pages/admin/AdminRequestsPage"));
 const AdminJobsMapPage = lazy(() => import("./pages/admin/AdminJobsMapPage"));
 const AdminMaintenancePage = lazy(() => import("./pages/admin/AdminMaintenancePage"));
 const AdminCustomersPage = lazy(() => import("./pages/admin/AdminCustomersPage"));
@@ -205,6 +206,7 @@ const App = () => (
                     <Route path="jobs-map" element={<RequireRole allowedRoles={["admin","dispatcher","viewer","field_agent"]} denySalesRep><AdminJobsMapPage /></RequireRole>} />
                     {/* Dispatch calendar + old Schedule now live in Jobs → Dispatch · Calendar (hub role check applies); params kept. */}
                     <Route path="dispatch" element={<DispatchCalendarRedirect />} />
+                    <Route path="requests" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminRequestsPage /></RequireRole>} />
                     <Route path="unassigned-queue" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminUnassignedQueuePage /></RequireRole>} />
 
                     <Route path="jobs" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} redirectTo="/admin/my-jobs" redirectOnDeny><AdminJobsHubPage /></RequireRole>} />
