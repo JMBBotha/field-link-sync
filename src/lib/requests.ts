@@ -16,6 +16,8 @@ export interface RequestRow {
   assigned_to?: string | null; assigned_name?: string | null; scheduled_for?: string | null; first_contact_at?: string | null; contacted?: boolean; contact_channel?: string | null;
   task_due_at?: string | null; done_at?: string | null; created_at: string; owner_rep_name?: string | null; mine?: boolean;
   working_min_waiting?: number | null; not_contacted_red?: boolean; unscheduled_nudge?: boolean; task_overdue?: boolean;
+  /** joined client-side from the lead (RLS-scoped): */
+  scheduled_time?: string | null; service_type?: string | null; job_types?: string[] | null; job_info?: string | null; address?: string | null;
 }
 export interface TodayCounts {
   in: number; needs_sorting: number; not_contacted_red: number; mine_today: number;
