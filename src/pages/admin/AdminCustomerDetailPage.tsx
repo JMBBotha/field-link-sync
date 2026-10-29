@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/hooks/useRole";
 import RowMenu from "@/components/shared/RowMenu";
+import CreateLeadDialog from "@/components/CreateLeadDialog";
 import { useQuoteDeleteArchive } from "@/components/quoting/QuoteDeleteArchive";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { format, subMonths, startOfMonth } from "date-fns";
@@ -88,6 +89,7 @@ const AdminCustomerDetailPage = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showCreateLead, setShowCreateLead] = useState(false);
   const { isAdmin, isDispatcher } = useRole();
   const quoteDeleteArchive = useQuoteDeleteArchive();
   const { isSalesRep } = useSalesRep();
@@ -433,6 +435,7 @@ const AdminCustomerDetailPage = () => {
                 <Button className="rounded-xl bg-[#F7941D] hover:bg-[#e08310] text-white"><Plus className="h-4 w-4 mr-1" /> New quote <ChevronDown className="h-4 w-4 ml-1" /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {(isAdmin || isDispatcher) && <DropdownMenuItem data-testid="menu-new-lead" onClick={() => setShowCreateLead(true)}>New lead</DropdownMenuItem>}
                 <DropdownMenuItem onClick={() => setShowTemplatePicker(true)}>Quote from Template</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate(`/admin/quotes?customerId=${id}`)}>New Blank Quote</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/admin/invoices")}>New Invoice</DropdownMenuItem>
@@ -796,6 +799,7 @@ const AdminCustomerDetailPage = () => {
         </CardContent></Card>
       </Tabs>
 
+      <CreateLeadDialog open={showCreateLead} onOpenChange={setShowCreateLead} customerId={customer.id} />
       <QuickTemplateDialog
         open={showTemplatePicker}
         onClose={() => setShowTemplatePicker(false)}

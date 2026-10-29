@@ -77,6 +77,7 @@ const LeadSourceBadge = ({ source }: { source?: string | null }) => {
 const AdminCustomersPage = () => {
   const { isAdmin } = useRole();
   const [showCreateLead, setShowCreateLead] = useState(false);
+  const [leadCustomerId, setLeadCustomerId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isSalesRep } = useSalesRep();
@@ -211,7 +212,7 @@ const AdminCustomersPage = () => {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => toast({ title: "Import coming soon" })}><Upload className="h-4 w-4 mr-2" /> Import Customers</DropdownMenuItem>
                 {isAdmin && <DropdownMenuItem onClick={exportCSV}><Download className="h-4 w-4 mr-2" /> Export CSV</DropdownMenuItem>}
-                <DropdownMenuItem onClick={() => setShowCreateLead(true)}>New lead</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setLeadCustomerId(null); setShowCreateLead(true); }}>New lead</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -276,7 +277,7 @@ const AdminCustomersPage = () => {
                   <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
                     <RowMenu items={[
                       { label: "Open", onSelect: () => navigate(`/admin/customers/${c.id}`) },
-                      { label: "New lead", onSelect: () => setShowCreateLead(true) },
+                      { label: "New lead", onSelect: () => { setLeadCustomerId(c.id); setShowCreateLead(true); } },
                       { label: "New quote", onSelect: () => navigate(`/admin/quote-builder?customerId=${c.id}`) },
                       { label: "Edit", onSelect: () => navigate(`/admin/customers/${c.id}`) },
                     ]} />
@@ -287,7 +288,7 @@ const AdminCustomersPage = () => {
           </div>)}
       </CardContent></Card>
 
-      <CreateLeadDialog open={showCreateLead} onOpenChange={setShowCreateLead} />
+      <CreateLeadDialog open={showCreateLead} onOpenChange={(o) => { setShowCreateLead(o); if (!o) setLeadCustomerId(null); }} customerId={leadCustomerId} />
 
       <CreateCustomerFBDialog
         open={showCreate}
