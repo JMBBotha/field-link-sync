@@ -168,6 +168,7 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
         notes: q.notes || undefined,
         captureSelector,
         extraPageSelector: clientBrochureSelector(id),
+        onWarning: (msg: string) => { if (!abandoned) toast({ title: "PDF made with a compromise", description: msg }); },
       };
       if (mode === "print") {
         // Print = the same full PDF (quote + T&C pages), printed from a hidden frame (Johan 2026-10-12).
@@ -182,7 +183,7 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
         const num = q.quote_number || "DRAFT";
         setPdfView({ url: URL.createObjectURL(blob), fileName: `Quote-${num}.pdf`, title: `Quote ${num}` });
       }
-      })(), 90000, "building the PDF");
+      })(), 120000, "building the PDF");
     } catch (e: any) {
       abandoned = true;
       toast({ title: "PDF failed", description: e?.message, variant: "destructive" });

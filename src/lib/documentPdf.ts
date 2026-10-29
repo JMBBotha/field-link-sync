@@ -38,6 +38,8 @@ interface DocumentPdfOptions {
   extraPageSelector?: string;
   /** Terms page for a specific issuing company (invoices). Omit = the signed-in company's primary settings. */
   termsCompany?: TermsCompanyInfo | null;
+  /** Told when the PDF was made with a compromise (e.g. photos left out) so the UI can say so. */
+  onWarning?: (message: string) => void;
 }
 
 const CAPTURE_MODE_CLASS = "pdf-capture-mode";
@@ -308,7 +310,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       return true;
     };
     const t0 = performance.now();
-    const html2canvas = async (el: HTMLElement, o: Parameters<typeof html2canvasLib>[1]) => {
+    const html2canvas = async (el: HTMLElement, o: Parameters<typeof html2canvasLib>[1], capMs = 30000) => {
       const t = performance.now();
       const c = await withTimeout(html2canvasLib(el, {
         imageTimeout: 8000,
@@ -317,7 +319,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
         onclone: (cloned: Document) => {
           cloned.querySelectorAll<HTMLImageElement>('img[loading="lazy"]').forEach((img) => { img.loading = "eager"; });
         },
-      }), 30000, "drawing the quote pages");
+      }), capMs, "drawing the quote pages");
       console.log(`[documentPdf] capture ${el.getAttribute("data-testid") || el.tagName} ${c.width}x${c.height} ${Math.round(performance.now() - t)} ms`);
       return c;
     };
@@ -356,16 +358,24 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     try {
       const mainOpts = (scale: number) => ({ scale, useCORS: true, backgroundColor: "#ffffff", logging: false,
         width: captureElement.scrollWidth, height: captureElement.scrollHeight });
+      // Slow devices: the full page at 2x can take a while with unit photos. Fall back in steps and
+      // only drop photos as the very last resort, and then say so (Q-2026-0053 printed blank photos, 29 Oct).
       try {
-        capturedCanvas = await html2canvas(captureElement, mainOpts(2));
+        capturedCanvas = await html2canvas(captureElement, mainOpts(2), 40000);
       } catch (e) {
-        // A photo that will not draw must not cost the whole quote: retry once lighter, photos hidden.
-        console.warn("[documentPdf] main capture failed, retrying without photos", e);
-        const hidden = Array.from(captureElement.querySelectorAll<HTMLImageElement>("img"));
-        const prevVis = hidden.map((img) => img.style.visibility);
-        hidden.forEach((img) => { img.style.visibility = "hidden"; });
-        try { capturedCanvas = await html2canvas(captureElement, mainOpts(1.5)); }
-        finally { hidden.forEach((img, i) => { img.style.visibility = prevVis[i]; }); }
+        console.warn("[documentPdf] main capture slow/failed, retrying at 1x with photos", e);
+        try {
+          capturedCanvas = await html2canvas(captureElement, mainOpts(1), 30000);
+          opts.onWarning?.("This PDF was made at a lower resolution because the device was slow.");
+        } catch (e2) {
+          console.warn("[documentPdf] retry with photos failed, retrying without photos", e2);
+          const hidden = Array.from(captureElement.querySelectorAll<HTMLImageElement>("img"));
+          const prevVis = hidden.map((img) => img.style.visibility);
+          hidden.forEach((img) => { img.style.visibility = "hidden"; });
+          try { capturedCanvas = await html2canvas(captureElement, mainOpts(1), 20000); }
+          finally { hidden.forEach((img, i) => { img.style.visibility = prevVis[i]; }); }
+          opts.onWarning?.("Unit photos were left out of this PDF because they took too long to draw. Try Download PDF again.");
+        }
       }
     } finally {
       bottomEls.forEach((el, i) => { el.style.display = prevDisplay[i]; });
