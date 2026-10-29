@@ -2686,6 +2686,42 @@ export type Database = {
           },
         ]
       }
+      company_terms: {
+        Row: {
+          company_id: string
+          relocation_clause: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          relocation_clause: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          relocation_clause?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_terms_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_terms_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       credit_notes: {
         Row: {
           company_id: string
@@ -4482,6 +4518,7 @@ export type Database = {
           payment_terms_days: number | null
           pdf_url: string | null
           profile_snapshot: Json | null
+          project_house_id: string | null
           quote_id: string | null
           sent_at: string | null
           sent_by: string | null
@@ -4536,6 +4573,7 @@ export type Database = {
           payment_terms_days?: number | null
           pdf_url?: string | null
           profile_snapshot?: Json | null
+          project_house_id?: string | null
           quote_id?: string | null
           sent_at?: string | null
           sent_by?: string | null
@@ -4590,6 +4628,7 @@ export type Database = {
           payment_terms_days?: number | null
           pdf_url?: string | null
           profile_snapshot?: Json | null
+          project_house_id?: string | null
           quote_id?: string | null
           sent_at?: string | null
           sent_by?: string | null
@@ -4686,6 +4725,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "customer_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_project_house_id_fkey"
+            columns: ["project_house_id"]
+            isOneToOne: false
+            referencedRelation: "project_houses"
             referencedColumns: ["id"]
           },
           {
@@ -7600,6 +7646,33 @@ export type Database = {
           },
         ]
       }
+      pdf_activity: {
+        Row: {
+          action: string
+          company_id: string
+          created_at: string
+          id: string
+          quote_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          quote_id?: string | null
+          user_id?: string
+        }
+        Update: {
+          action?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          quote_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       pdf_product_regions: {
         Row: {
           auto_matched: boolean | null
@@ -8035,8 +8108,8 @@ export type Database = {
           office_lat: number | null
           office_lng: number | null
           onboarding_completed: boolean
-          pay_type: string
           participant_type: string
+          pay_type: string
           phone: string | null
           search_aliases: string[] | null
           signature_email: string | null
@@ -8085,8 +8158,8 @@ export type Database = {
           office_lat?: number | null
           office_lng?: number | null
           onboarding_completed?: boolean
-          pay_type?: string
           participant_type?: string
+          pay_type?: string
           phone?: string | null
           search_aliases?: string[] | null
           signature_email?: string | null
@@ -8135,8 +8208,8 @@ export type Database = {
           office_lat?: number | null
           office_lng?: number | null
           onboarding_completed?: boolean
-          pay_type?: string
           participant_type?: string
+          pay_type?: string
           phone?: string | null
           search_aliases?: string[] | null
           signature_email?: string | null
@@ -8172,6 +8245,239 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "company_stats"
             referencedColumns: ["company_id"]
+          },
+        ]
+      }
+      project_house_steps: {
+        Row: {
+          company_id: string
+          done: boolean
+          done_at: string | null
+          house_id: string
+          id: string
+          label: string
+          paid: boolean
+          paid_at: string | null
+          rate: number
+          sort_order: number
+          step_key: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          done?: boolean
+          done_at?: string | null
+          house_id: string
+          id?: string
+          label: string
+          paid?: boolean
+          paid_at?: string | null
+          rate?: number
+          sort_order?: number
+          step_key: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          done?: boolean
+          done_at?: string | null
+          house_id?: string
+          id?: string
+          label?: string
+          paid?: boolean
+          paid_at?: string | null
+          rate?: number
+          sort_order?: number
+          step_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_house_steps_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: false
+            referencedRelation: "project_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_houses: {
+        Row: {
+          company_id: string
+          created_at: string
+          house_no: string
+          id: string
+          make: string | null
+          notes: string | null
+          phase_id: string | null
+          po_number: string | null
+          project_id: string
+          ready_for_aircon: boolean
+          ready_for_aircon_at: string | null
+          status_override: string | null
+          unit_sizes: string | null
+          units_ordered: number
+          units_received: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          house_no: string
+          id?: string
+          make?: string | null
+          notes?: string | null
+          phase_id?: string | null
+          po_number?: string | null
+          project_id: string
+          ready_for_aircon?: boolean
+          ready_for_aircon_at?: string | null
+          status_override?: string | null
+          unit_sizes?: string | null
+          units_ordered?: number
+          units_received?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          house_no?: string
+          id?: string
+          make?: string | null
+          notes?: string | null
+          phase_id?: string | null
+          po_number?: string | null
+          project_id?: string
+          ready_for_aircon?: boolean
+          ready_for_aircon_at?: string | null
+          status_override?: string | null
+          unit_sizes?: string | null
+          units_ordered?: number
+          units_received?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_houses_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "project_phases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_houses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_phases: {
+        Row: {
+          company_id: string
+          created_at: string
+          house_from: number | null
+          house_to: number | null
+          id: string
+          name: string
+          project_id: string
+          sort_order: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          house_from?: number | null
+          house_to?: number | null
+          id?: string
+          name: string
+          project_id: string
+          sort_order?: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          house_from?: number | null
+          house_to?: number | null
+          id?: string
+          name?: string
+          project_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_phases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          code: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          default_make: string | null
+          id: string
+          name: string
+          notes: string | null
+          po_number: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          code?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          default_make?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          po_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          default_make?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          po_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "projects_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -9126,6 +9432,90 @@ export type Database = {
           },
         ]
       }
+      quote_drawings: {
+        Row: {
+          area: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          filename: string
+          id: string
+          include_in_client_pdf: boolean
+          kind: string
+          quote_id: string
+          revision: string | null
+          size_bytes: number | null
+          sort_order: number
+          storage_path: string
+          updated_at: string
+        }
+        Insert: {
+          area?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          filename: string
+          id?: string
+          include_in_client_pdf?: boolean
+          kind: string
+          quote_id: string
+          revision?: string | null
+          size_bytes?: number | null
+          sort_order?: number
+          storage_path: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          filename?: string
+          id?: string
+          include_in_client_pdf?: boolean
+          kind?: string
+          quote_id?: string
+          revision?: string | null
+          size_bytes?: number | null
+          sort_order?: number
+          storage_path?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_drawings_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "quote_drawings_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_drawings_deleted_files: {
+        Row: {
+          company_id: string | null
+          deleted_at: string
+          storage_path: string
+        }
+        Insert: {
+          company_id?: string | null
+          deleted_at?: string
+          storage_path: string
+        }
+        Update: {
+          company_id?: string | null
+          deleted_at?: string
+          storage_path?: string
+        }
+        Relationships: []
+      }
       quote_email_sends: {
         Row: {
           attempts: number
@@ -9498,6 +9888,42 @@ export type Database = {
           },
         ]
       }
+      quote_stage_events: {
+        Row: {
+          actor: string | null
+          company_id: string | null
+          created_at: string
+          from_status: string | null
+          id: string
+          kind: string
+          quote_id: string
+          reason: string | null
+          to_status: string | null
+        }
+        Insert: {
+          actor?: string | null
+          company_id?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          kind?: string
+          quote_id: string
+          reason?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          actor?: string | null
+          company_id?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          kind?: string
+          quote_id?: string
+          reason?: string | null
+          to_status?: string | null
+        }
+        Relationships: []
+      }
       quote_template_items: {
         Row: {
           created_at: string
@@ -9636,9 +10062,6 @@ export type Database = {
         Row: {
           accepted_at: string | null
           accepted_by: string | null
-          option_label: string | null
-          option_group_id: string | null
-          option_chosen_id: string | null
           accepted_signature: Json | null
           accepted_version_id: string | null
           archive_reason: string | null
@@ -9671,12 +10094,16 @@ export type Database = {
           materials_markup_percent: number | null
           materials_waste_percent: number | null
           notes: string | null
+          option_chosen_id: string | null
+          option_group_id: string | null
+          option_label: string | null
           owner_id: string | null
           parent_quote_id: string | null
           payment_plan: Json | null
           public_token: string | null
           quote_number: string | null
           reference_text: string | null
+          relocation_clause: string | null
           remote_quote: boolean
           remote_quote_source: string | null
           sales_engineer_id: string
@@ -9705,9 +10132,6 @@ export type Database = {
         Insert: {
           accepted_at?: string | null
           accepted_by?: string | null
-          option_label?: string | null
-          option_group_id?: string | null
-          option_chosen_id?: string | null
           accepted_signature?: Json | null
           accepted_version_id?: string | null
           archive_reason?: string | null
@@ -9740,12 +10164,16 @@ export type Database = {
           materials_markup_percent?: number | null
           materials_waste_percent?: number | null
           notes?: string | null
+          option_chosen_id?: string | null
+          option_group_id?: string | null
+          option_label?: string | null
           owner_id?: string | null
           parent_quote_id?: string | null
           payment_plan?: Json | null
           public_token?: string | null
           quote_number?: string | null
           reference_text?: string | null
+          relocation_clause?: string | null
           remote_quote?: boolean
           remote_quote_source?: string | null
           sales_engineer_id: string
@@ -9774,9 +10202,6 @@ export type Database = {
         Update: {
           accepted_at?: string | null
           accepted_by?: string | null
-          option_label?: string | null
-          option_group_id?: string | null
-          option_chosen_id?: string | null
           accepted_signature?: Json | null
           accepted_version_id?: string | null
           archive_reason?: string | null
@@ -9809,12 +10234,16 @@ export type Database = {
           materials_markup_percent?: number | null
           materials_waste_percent?: number | null
           notes?: string | null
+          option_chosen_id?: string | null
+          option_group_id?: string | null
+          option_label?: string | null
           owner_id?: string | null
           parent_quote_id?: string | null
           payment_plan?: Json | null
           public_token?: string | null
           quote_number?: string | null
           reference_text?: string | null
+          relocation_clause?: string | null
           remote_quote?: boolean
           remote_quote_source?: string | null
           sales_engineer_id?: string
@@ -13159,6 +13588,21 @@ export type Database = {
           },
         ]
       }
+      pdf_activity_daily: {
+        Row: {
+          company_id: string | null
+          day: string | null
+          distinct_quotes: number | null
+          downloads: number | null
+          flagged: boolean | null
+          full_name: string | null
+          prints: number | null
+          sends: number | null
+          total: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       v_accounts_aging: {
         Row: {
           aging_bucket: string | null
@@ -13262,7 +13706,6 @@ export type Database = {
       }
     }
     Functions: {
-      get_my_pay_type: { Args: never; Returns: string }
       _acct_is_office: { Args: { p_company: string }; Returns: boolean }
       _acct_office_check: { Args: { p_company: string }; Returns: undefined }
       _acct_receipt_ok: {
@@ -13577,12 +14020,16 @@ export type Database = {
           materials_markup_percent: number | null
           materials_waste_percent: number | null
           notes: string | null
+          option_chosen_id: string | null
+          option_group_id: string | null
+          option_label: string | null
           owner_id: string | null
           parent_quote_id: string | null
           payment_plan: Json | null
           public_token: string | null
           quote_number: string | null
           reference_text: string | null
+          relocation_clause: string | null
           remote_quote: boolean
           remote_quote_source: string | null
           sales_engineer_id: string
@@ -14245,6 +14692,8 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      drawing_admin_ok: { Args: { _company: string }; Returns: boolean }
+      drawing_quote_ok: { Args: { _quote: string }; Returns: boolean }
       drive_minutes_estimate: {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
         Returns: number
@@ -14326,6 +14775,11 @@ export type Database = {
       fl_area_unit: {
         Args: { _area: string; _quote: string }
         Returns: Record<string, unknown>
+      }
+      fl_can_delete: { Args: { _uid: string }; Returns: boolean }
+      fl_can_manage_quotes: {
+        Args: { p_co: string; p_uid: string }
+        Returns: boolean
       }
       fl_can_see_job: { Args: { _job: string; _uid: string }; Returns: boolean }
       fl_cancel_booking: {
@@ -14868,6 +15322,7 @@ export type Database = {
         }[]
       }
       get_my_earnings: { Args: { p_quote_id?: string }; Returns: Json }
+      get_my_pay_type: { Args: never; Returns: string }
       get_my_tech_earnings: {
         Args: never
         Returns: {
@@ -15214,6 +15669,10 @@ export type Database = {
           linked: number
         }[]
       }
+      link_quote_options: {
+        Args: { p_labels?: Json; p_quote_ids: string[] }
+        Returns: string
+      }
       log_entity_resolution: {
         Args: {
           p_candidates?: Json
@@ -15413,6 +15872,7 @@ export type Database = {
       process_invoice_followups: { Args: never; Returns: number }
       process_quote_followups: { Args: never; Returns: undefined }
       process_sales_escalations: { Args: never; Returns: undefined }
+      project_admin_ok: { Args: { _company: string }; Returns: boolean }
       public_quote_adjust_data: { Args: { p_token: string }; Returns: Json }
       public_quote_bundle: { Args: { p_token: string }; Returns: Json }
       public_quote_change_state: { Args: { p_token: string }; Returns: Json }
@@ -15422,6 +15882,14 @@ export type Database = {
           filename: string
           id: string
           size_bytes: number
+        }[]
+      }
+      public_quote_drawings: {
+        Args: { p_token: string }
+        Returns: {
+          filename: string
+          id: string
+          kind: string
         }[]
       }
       public_quote_show_unit_cards: {
@@ -15504,8 +15972,16 @@ export type Database = {
         Returns: Json
       }
       quote_delete_check: { Args: { p_quote: string }; Returns: Json }
+      quote_drawing_path_ok: {
+        Args: { _admin_only: boolean; _name: string }
+        Returns: boolean
+      }
       quote_email_send_state: { Args: { p_quote_id: string }; Returns: Json }
       quote_lock_state: { Args: { p_quote_id: string }; Returns: Json }
+      quote_move_back: {
+        Args: { p_quote_id: string; p_reason: string }
+        Returns: Json
+      }
       quote_photo_ok: {
         Args: { _name: string; _read: boolean }
         Returns: boolean
@@ -16584,6 +17060,7 @@ export type Database = {
         Returns: string
       }
       unconvert_lead: { Args: { p_lead_id: string }; Returns: undefined }
+      unlink_quote_option: { Args: { p_quote_id: string }; Returns: boolean }
       unlock_quote: {
         Args: { p_quote_id: string; p_reason: string }
         Returns: boolean
