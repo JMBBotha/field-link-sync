@@ -63,7 +63,8 @@ export const useIdleLogout = (enforce = true) => {
     };
     const onActivity = () => { if (!showRef.current) touch(); };
     const onFocus = () => set(TAB, tabId);
-    const onMsg = (e: MessageEvent) => (e.data === "logout" ? void logout(false) : tick());
+    // Exempt users (enforce=false) never follow an idle logout broadcast from another tab.
+    const onMsg = (e: MessageEvent) => (e.data === "logout" ? (enforce ? void logout(false) : undefined) : tick());
     const events = ["mousedown", "keydown", "scroll", "touchstart", "mousemove"];
     events.forEach((e) => window.addEventListener(e, onActivity, { passive: true }));
     window.addEventListener("focus", onFocus);
