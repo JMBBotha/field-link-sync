@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -9,7 +9,8 @@ import AddRequestDialog from "@/components/requests/AddRequestDialog";
 import RequestCorrectionsPanel from "@/components/requests/RequestCorrectionsPanel";
 import { fetchInbox, markContacted, markDone, setType, typeLabel, waitLabel, REQUEST_TYPES, type RequestRow, type RequestType } from "@/lib/requests";
 
-type Filter = "open" | "sorting" | RequestType | "done";
+type Filter = "open" | "sorting" | RequestType | "done" | "red" | "new" | "contacted";
+const FILTER_KEYS = ["open", "sorting", "new_sale", "service", "move", "admin", "done", "red", "new", "contacted"];
 const TYPE_TONE: Record<string, string> = {
   new_sale: "bg-[#E3F2FD] text-[#0D47A1]", service: "bg-[#E8F5E9] text-[#1B5E20]", move: "bg-[#F3E5F5] text-[#4A148C]", admin: "bg-[#FFF8E1] text-[#7A4F01]",
 };
@@ -18,7 +19,11 @@ const TYPE_TONE: Record<string, string> = {
 export default function AdminRequestsPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<Filter>("open");
+  // ?filter= deep links from the Home tiles (red "not contacted 2 h+", per type, stage).
+  const [sp, setSp] = useSearchParams();
+  const urlFilter = sp.get("filter");
+  const [filter, setFilterState] = useState<Filter>(FILTER_KEYS.includes(urlFilter || "") ? (urlFilter as Filter) : "open");
+  const setFilter = (f: Filter) => { setFilterState(f); const n = new URLSearchParams(sp); f === "open" ? n.delete("filter") : n.set("filter", f); setSp(n, { replace: true }); };
   const [assignLead, setAssignLead] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [changing, setChanging] = useState<string | null>(null);
@@ -31,13 +36,16 @@ export default function AdminRequestsPage() {
 
   const open = data.filter((r) => r.status === "open");
   const counts = useMemo(() => ({
-    open: open.length, sorting: open.filter((r) => !r.type).length, done: data.filter((r) => r.status !== "open").length,
+    open: open.length, sorting: open.filter((r) => !r.type).length, red: open.filter((r) => r.not_contacted_red).length,
+    new: open.filter((r) => !r.first_contact_at).length, contacted: open.filter((r) => !!r.first_contact_at).length, done: data.filter((r) => r.status !== "open").length,
     ...Object.fromEntries(REQUEST_TYPES.map((t) => [t.v, open.filter((r) => r.type === t.v).length])),
   }) as Record<Filter, number>, [data]); // eslint-disable-line react-hooks/exhaustive-deps
-  const rows = data.filter((r) => filter === "done" ? r.status !== "open" : r.status === "open" && (filter === "open" || (filter === "sorting" ? !r.type : r.type === filter)))
+  const match = (r: RequestRow) => filter === "open" ? true : filter === "sorting" ? !r.type : filter === "red" ? !!r.not_contacted_red
+    : filter === "new" ? !r.first_contact_at : filter === "contacted" ? !!r.first_contact_at : r.type === filter;
+  const rows = data.filter((r) => filter === "done" ? r.status !== "open" : r.status === "open" && match(r))
     .sort((a, b) => Number(!a.type) === Number(!b.type) ? Number(!!b.not_contacted_red) - Number(!!a.not_contacted_red) : Number(!b.type) - Number(!a.type));
 
-  const chips: { k: Filter; l: string }[] = [{ k: "open", l: "All open" }, { k: "sorting", l: "Needs sorting" }, ...REQUEST_TYPES.map((t) => ({ k: t.v as Filter, l: t.l })), { k: "done", l: "Done" }];
+  const chips: { k: Filter; l: string }[] = [{ k: "open", l: "All open" }, { k: "red", l: "Not contacted · 2 h+" }, { k: "new", l: "Not contacted" }, { k: "contacted", l: "Contacted" }, { k: "sorting", l: "Needs sorting" }, ...REQUEST_TYPES.map((t) => ({ k: t.v as Filter, l: t.l })), { k: "done", l: "Done" }];
   return (
     <div className="mx-auto max-w-5xl space-y-3 p-3 lg:p-5" data-testid="requests-page">
       <PageHeaderCard eyebrow="Requests" title="Every request, one place" subtitle="Sort it, contact the client within 2 working hours, then assign or schedule."
