@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { logPdfActivity } from "@/lib/pdfActivity";
 import { doneToast } from "@/lib/doneToast";
 import { REMOTE_QUOTE_NOTICE } from "@/lib/remoteQuoteClause";
 import { useQueryClient } from "@tanstack/react-query";
@@ -249,6 +250,7 @@ const SendQuoteDialog = ({
       const url = URL.createObjectURL(blob);
       // Phones: share sheet with the file (stays in the app), else a blob download (Johan 20:51).
       await savePdfFile(url, `${quoteNumber || "quote"}.pdf`);
+      logPdfActivity(quoteId, "download");
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
       setPdfState("done");
     } catch (err) {
@@ -314,6 +316,7 @@ const SendQuoteDialog = ({
     setBusy("email");
     setSlow(false);
     setLocalSendLock(quoteId, sendId);
+    logPdfActivity(quoteId, "send");
     // After 90 s we only change the message: the request stays alive and the button stays locked.
     const slowTimer = window.setTimeout(() => setSlow(true), 90000);
     const refresh = () => qc.invalidateQueries({ queryKey: quoteEmailSendKey(quoteId) });

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRole } from "@/hooks/useRole";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +36,7 @@ interface Props {
 const client = supabase as any;
 
 const CustomerLocationsManager = ({ customerId, companyId }: Props) => {
+  const { canDelete } = useRole();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [editing, setEditing] = useState<CustomerLocation | null>(null);
@@ -127,10 +129,12 @@ const CustomerLocationsManager = ({ customerId, companyId }: Props) => {
                     <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(loc)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
+                    {canDelete && (
                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive"
                       onClick={() => { if (confirm(`Delete "${loc.label}"?`)) deleteMut.mutate(loc.id); }}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
+                    )}
                   </div>
                 </div>
                 <p className="text-sm">{loc.address}</p>

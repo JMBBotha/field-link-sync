@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRole } from "@/hooks/useRole";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { FileText, Loader2, Paperclip, X } from "lucide-react";
@@ -8,6 +9,7 @@ type Doc = { id: string; filename: string; storage_path: string; size_bytes: num
 
 /** Staff: extra PDFs that go out with the quote email and appear on the client's quote link. */
 export default function QuoteDocumentsBox({ quoteId, companyId }: { quoteId: string; companyId: string | null }) {
+  const { canDelete } = useRole();
   const [docs, setDocs] = useState<Doc[]>([]);
   const [busy, setBusy] = useState(false);
   const { toast } = useToast();
@@ -70,9 +72,9 @@ export default function QuoteDocumentsBox({ quoteId, companyId }: { quoteId: str
             <li key={d.id} className="flex items-center gap-2 text-sm">
               <FileText className="h-4 w-4 shrink-0 text-primary" />
               <button type="button" className="truncate text-left hover:underline" onClick={() => void open(d)}>{d.filename}</button>
-              <button type="button" aria-label={`Remove ${d.filename}`} className="ml-auto text-muted-foreground hover:text-destructive" onClick={() => void remove(d)}>
+              {canDelete && <button type="button" aria-label={`Remove ${d.filename}`} className="ml-auto text-muted-foreground hover:text-destructive" onClick={() => void remove(d)}>
                 <X className="h-4 w-4" />
-              </button>
+              </button>}
             </li>
           ))}
         </ul>

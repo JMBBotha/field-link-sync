@@ -1,4 +1,5 @@
 import { useInvoiceDue } from "@/hooks/useInvoiceDue";
+import { useRole } from "@/hooks/useRole";
 import { useSalesHeartbeat } from "@/hooks/useSalesHeartbeat";
 import { randShort } from "@/lib/invoiceDue";
 import { format } from "date-fns";
@@ -74,6 +75,7 @@ const LeadSourceBadge = ({ source }: { source?: string | null }) => {
 };
 
 const AdminCustomersPage = () => {
+  const { isAdmin } = useRole();
   const [showCreateLead, setShowCreateLead] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -178,6 +180,7 @@ const AdminCustomersPage = () => {
   }, [customers, search, typeF, sourceF, overdueOnly, dueByCustomer, statBy]);
 
   const exportCSV = () => {
+    if (!isAdmin) return; // bulk client export is owner/admin only (POPIA)
     const rows = [
       ["Name", "Company", "Email", "Phone", "City", "Status", "Lead Source", "Outstanding"],
       ...filtered.map(c => [
@@ -207,7 +210,7 @@ const AdminCustomersPage = () => {
               <DropdownMenuTrigger asChild><Button aria-label="More actions" className="rounded-xl bg-white/15 hover:bg-white/25 text-white px-3">⋯</Button></DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => toast({ title: "Import coming soon" })}><Upload className="h-4 w-4 mr-2" /> Import Customers</DropdownMenuItem>
-                <DropdownMenuItem onClick={exportCSV}><Download className="h-4 w-4 mr-2" /> Export CSV</DropdownMenuItem>
+                {isAdmin && <DropdownMenuItem onClick={exportCSV}><Download className="h-4 w-4 mr-2" /> Export CSV</DropdownMenuItem>}
                 <DropdownMenuItem onClick={() => setShowCreateLead(true)}>New lead</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

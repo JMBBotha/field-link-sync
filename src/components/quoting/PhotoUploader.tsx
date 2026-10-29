@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRole } from "@/hooks/useRole";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ interface PhotoUploaderProps {
 }
 
 const PhotoUploader = ({ quoteId, attachments, onAttachmentsChange }: PhotoUploaderProps) => {
+  const { canDelete } = useRole();
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
 
@@ -93,12 +95,12 @@ const PhotoUploader = ({ quoteId, attachments, onAttachmentsChange }: PhotoUploa
           {attachments.map((att, i) => (
             <div key={i} className="relative group rounded-md overflow-hidden border">
               <img src={att.url} alt={att.filename} className="w-full h-20 object-cover" />
-              <button
+              {canDelete && <button
                 onClick={() => handleRemove(i)}
                 className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="h-3 w-3" />
-              </button>
+              </button>}
               <p className="text-xs truncate px-1 py-0.5 bg-background/80">{att.filename}</p>
             </div>
           ))}

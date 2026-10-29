@@ -98,6 +98,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const qc = useQueryClient();
   const staffActions = useQuoteStaffActions();
   const { isAdmin: roleAdmin, isDispatcher: roleDispatcher } = useRole();
+  const canDeleteDocs = roleAdmin; // staff can't delete quotes/invoices (Johan 29 Oct; DB enforces)
   const { isSalesRep: roleSalesRep } = useSalesRep();
   // Invoicing a quote the client has not accepted: office only (admins + non-sales dispatchers). DB trigger enforces it too.
   const canInvoiceUnaccepted = (roleAdmin || roleDispatcher) && !roleSalesRep;
@@ -436,7 +437,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
         )}
         <SendQuotesTogetherDialog open={bundleOpen} onOpenChange={setBundleOpen} quoteIds={selectedDocs.map((d) => d.id)} onSent={() => setSelected([])} />
 
-        {selectedDrafts.length > 0 && (
+        {canDeleteDocs && selectedDrafts.length > 0 && (
           <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
             <p className="text-sm text-muted-foreground">
               {selectedDrafts.length} draft{selectedDrafts.length !== 1 ? "s" : ""} selected
@@ -523,8 +524,8 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                 amount={formatZAR(doc.total)}
                 date={[doc.ref || "Draft", shortDate(doc.created_at), unitBriefs[doc.id]?.head, unitBriefs[doc.id]?.sizes].filter(Boolean).join(" · ")}
                 trailing={<div className="flex items-center">
-                  {doc.kind === "estimate" && <RowMenu items={[...menuFor(doc), { label: "Delete draft", hidden: doc.status !== "draft", destructive: true, separatorBefore: true, onSelect: () => setPendingDelete([doc]) }]} />}
-                  {doc.kind !== "estimate" && doc.status === "draft" && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setPendingDelete([doc])} title="Delete draft"><Trash2 className="h-4 w-4" /></Button>}
+                  {doc.kind === "estimate" && <RowMenu items={[...menuFor(doc), { label: "Delete draft", hidden: !canDeleteDocs || doc.status !== "draft", destructive: true, separatorBefore: true, onSelect: () => setPendingDelete([doc]) }]} />}
+                  {canDeleteDocs && doc.kind !== "estimate" && doc.status === "draft" && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setPendingDelete([doc])} title="Delete draft"><Trash2 className="h-4 w-4" /></Button>}
                 </div>} />
               {(changeMsgs as Record<string, string>)[doc.id] && <span title={(changeMsgs as Record<string, string>)[doc.id]} className="ml-3 mt-1 inline-block rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">Changes requested</span>}
               {(pendingRevs as Record<string, any>)[doc.id] && <div className="px-3"><ClientRevisionActions revision={(pendingRevs as Record<string, any>)[doc.id]} /></div>}
@@ -694,7 +695,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                             {doc.kind === "estimate" && (
                               <RowMenu items={menuFor(doc)} />
                             )}
-                            {doc.status === "draft" && (
+                            {canDeleteDocs && doc.status === "draft" && (
                               <Button
                                 variant="ghost"
                                 size="icon"

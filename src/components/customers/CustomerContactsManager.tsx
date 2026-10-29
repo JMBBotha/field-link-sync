@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRole } from "@/hooks/useRole";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +30,7 @@ export interface ClientContact {
 const client = supabase as any;
 
 const CustomerContactsManager = ({ customerId }: { customerId: string }) => {
+  const { canDelete } = useRole();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [editing, setEditing] = useState<ClientContact | null>(null);
@@ -109,10 +111,12 @@ const CustomerContactsManager = ({ customerId }: { customerId: string }) => {
                     <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" onClick={() => { setEditing(c); setOpen(true); }}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
+                    {canDelete && (
                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Delete"
                       onClick={() => { if (confirm(`Delete contact "${c.name}"?`)) deleteMut.mutate(c.id); }}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
+                    )}
                   </div>
                 </div>
                 {c.role && <p className="text-xs text-muted-foreground">{c.role}</p>}
