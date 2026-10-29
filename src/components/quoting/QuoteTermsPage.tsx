@@ -90,12 +90,14 @@ export default function QuoteTermsPage(p: QuoteTermsPageProps) {
   const left = sections.slice(0, half);
   const right = sections.slice(half);
   return (
-    <div data-pdf-terms-page data-paper data-testid="quote-terms-page" className="mt-4 pt-2">
+    <div data-pdf-terms-page data-paper data-testid="quote-terms-page" className="fl-terms-page mt-4 pt-2">
       <div className="flex items-baseline gap-3 border-b-2 border-[#1AA7EC] pb-2">
         <span className="border-l-4 border-[#F7941D] pl-2 text-base font-bold text-[#1B3A5C]">Terms and conditions</span>
         {p.quoteNumber && <span className="text-xs text-ink-muted">Quote {p.quoteNumber}</span>}
       </div>
-      <div className="mt-4 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+      {/* Two columns by the page's own width (container query), not the screen: the PDF capture root is
+          always 820px, so a phone-made PDF now gets the same two-column terms as a desktop one (Q-2026-0047, 29 Oct). */}
+      <div className="fl-terms-grid mt-4 grid grid-cols-1 gap-x-8 gap-y-4">
         <div data-pdf-keep className="space-y-4">
           <TermsSections sections={left} startIndex={0} />
         </div>

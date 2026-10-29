@@ -1266,3 +1266,7 @@ All colors MUST be HSL.
 
 /* Ink tokens on the white area paper stay dark in dark mode (QA 2026-10-20). */
 .dark .option1-solid { --text-primary: 215 30% 18%; --text-secondary: 215 14% 45%; --text-muted: 220 9% 45%; }
+
+/* Quote terms page: two columns whenever the document itself is wide enough (PDF capture is always 820px). */
+.fl-terms-page{container-type:inline-size}
+@container (min-width: 600px){.fl-terms-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
