@@ -13,7 +13,7 @@ export interface RequestRow {
   id: string; masked: boolean; source: string; type: RequestType | null; suggested_type: RequestType | null; type_confidence?: number | null;
   sorted_by?: string | null; sort_reason?: string | null; status: string; customer_id?: string | null; lead_id?: string | null; job_id?: string | null;
   customer_name?: string | null; phone?: string | null; area?: string | null; summary?: string | null; routed_to?: string | null;
-  assigned_to?: string | null; assigned_name?: string | null; scheduled_for?: string | null; first_contact_at?: string | null; contact_channel?: string | null;
+  assigned_to?: string | null; assigned_name?: string | null; scheduled_for?: string | null; first_contact_at?: string | null; contacted?: boolean; contact_channel?: string | null;
   task_due_at?: string | null; done_at?: string | null; created_at: string; owner_rep_name?: string | null; mine?: boolean;
   working_min_waiting?: number | null; not_contacted_red?: boolean; unscheduled_nudge?: boolean; task_overdue?: boolean;
 }

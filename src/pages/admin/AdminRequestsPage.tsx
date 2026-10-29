@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSalesRep } from "@/hooks/useSalesRep";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -9,6 +10,11 @@ import AddRequestDialog from "@/components/requests/AddRequestDialog";
 import RequestCorrectionsPanel from "@/components/requests/RequestCorrectionsPanel";
 import { fetchInbox, markContacted, markDone, setType, typeLabel, waitLabel, REQUEST_TYPES, type RequestRow, type RequestType } from "@/lib/requests";
 
+/** Contacted = logged contact, or server rule (manual admin add / assigned / scheduled). */
+const isContacted = (r: RequestRow) => r.contacted ?? !!r.first_contact_at;
+/** Where a request row opens: its job, else its lead (reps -> My jobs item, office -> visit page). */
+export const requestHref = (r: RequestRow, salesRep: boolean) =>
+  r.job_id ? `/admin/jobs/${r.job_id}` : r.lead_id ? (salesRep ? `/admin?myjob=${r.lead_id}` : `/admin/visits/${r.lead_id}`) : "/admin/requests";
 type Filter = "open" | "sorting" | RequestType | "done" | "red" | "new" | "contacted";
 const FILTER_KEYS = ["open", "sorting", "new_sale", "service", "move", "admin", "done", "red", "new", "contacted"];
 const TYPE_TONE: Record<string, string> = {
@@ -19,6 +25,7 @@ const TYPE_TONE: Record<string, string> = {
 export default function AdminRequestsPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const { isSalesRep } = useSalesRep();
   // ?filter= deep links from the Home tiles (red "not contacted 2 h+", per type, stage).
   const [sp, setSp] = useSearchParams();
   const urlFilter = sp.get("filter");
@@ -37,11 +44,11 @@ export default function AdminRequestsPage() {
   const open = data.filter((r) => r.status === "open");
   const counts = useMemo(() => ({
     open: open.length, sorting: open.filter((r) => !r.type).length, red: open.filter((r) => r.not_contacted_red).length,
-    new: open.filter((r) => !r.first_contact_at).length, contacted: open.filter((r) => !!r.first_contact_at).length, done: data.filter((r) => r.status !== "open").length,
+    new: open.filter((r) => !isContacted(r)).length, contacted: open.filter((r) => isContacted(r)).length, done: data.filter((r) => r.status !== "open").length,
     ...Object.fromEntries(REQUEST_TYPES.map((t) => [t.v, open.filter((r) => r.type === t.v).length])),
   }) as Record<Filter, number>, [data]); // eslint-disable-line react-hooks/exhaustive-deps
   const match = (r: RequestRow) => filter === "open" ? true : filter === "sorting" ? !r.type : filter === "red" ? !!r.not_contacted_red
-    : filter === "new" ? !r.first_contact_at : filter === "contacted" ? !!r.first_contact_at : r.type === filter;
+    : filter === "new" ? !isContacted(r) : filter === "contacted" ? isContacted(r) : r.type === filter;
   const rows = data.filter((r) => filter === "done" ? r.status !== "open" : r.status === "open" && match(r))
     .sort((a, b) => Number(!a.type) === Number(!b.type) ? Number(!!b.not_contacted_red) - Number(!!a.not_contacted_red) : Number(!b.type) - Number(!a.type));
 
@@ -69,7 +76,7 @@ export default function AdminRequestsPage() {
             onContacted={(ch) => run(markContacted(r.id, ch), "Marked contacted")}
             onAssign={() => r.lead_id ? setAssignLead(r.lead_id) : r.job_id ? navigate(`/admin/jobs/${r.job_id}`) : toast.error("Nothing to assign yet")}
             onDone={() => run(markDone(r.id), "Done")}
-            onOpenClient={() => r.customer_id && navigate(`/admin/customers/${r.customer_id}`)} />)}
+            onOpenClient={() => navigate(r.customer_id ? `/admin/customers/${r.customer_id}` : requestHref(r, isSalesRep))} onOpen={() => navigate(requestHref(r, isSalesRep))} />)}
         </ul>
       )}
       <LeadAssignDialog leadId={assignLead} onClose={() => { setAssignLead(null); refresh(); }} />
@@ -78,9 +85,9 @@ export default function AdminRequestsPage() {
   );
 }
 
-function RequestCard({ r, changing, onChange, onType, onContacted, onAssign, onDone, onOpenClient }: {
+function RequestCard({ r, changing, onChange, onType, onContacted, onAssign, onDone, onOpenClient, onOpen }: {
   r: RequestRow; changing: boolean; onChange: () => void; onType: (t: RequestType) => void; onContacted: (ch: string) => void;
-  onAssign: () => void; onDone: () => void; onOpenClient: () => void;
+  onAssign: () => void; onDone: () => void; onOpenClient: () => void; onOpen: () => void;
 }) {
   const sorting = !r.type;
   const isOpen = r.status === "open";
@@ -128,7 +135,8 @@ function RequestCard({ r, changing, onChange, onType, onContacted, onAssign, onD
       )}
       {isOpen && !sorting && (
         <div className="mt-3 flex flex-wrap gap-2">
-          {!r.first_contact_at && <>
+          {(r.lead_id || r.job_id) && <button onClick={onOpen} data-testid="request-open" className="min-h-11 rounded-xl border-2 border-[#1590D6] px-4 text-[15px] font-semibold text-[#1590D6]">{r.job_id ? "Open job" : "Open lead"}</button>}
+          {!isContacted(r) && <>
             <button onClick={() => onContacted("phone")} data-testid="mark-contacted" className="min-h-11 rounded-xl bg-[#0F2A44] px-4 text-[15px] font-semibold text-white">Mark contacted</button>
             <button onClick={() => onContacted("whatsapp")} className="min-h-11 rounded-xl border px-3 text-[14px]">by WhatsApp</button>
           </>}
