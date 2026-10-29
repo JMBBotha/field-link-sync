@@ -3069,6 +3069,9 @@ export type Database = {
           normalized_phone: string | null
           notes: string | null
           notification_opt_in: boolean | null
+          owner_rep_id: string | null
+          owner_rep_set_at: string | null
+          owner_rep_source: string | null
           payment_terms_basis: string | null
           payment_terms_days: number | null
           phone: string
@@ -3110,6 +3113,9 @@ export type Database = {
           normalized_phone?: string | null
           notes?: string | null
           notification_opt_in?: boolean | null
+          owner_rep_id?: string | null
+          owner_rep_set_at?: string | null
+          owner_rep_source?: string | null
           payment_terms_basis?: string | null
           payment_terms_days?: number | null
           phone: string
@@ -3151,6 +3157,9 @@ export type Database = {
           normalized_phone?: string | null
           notes?: string | null
           notification_opt_in?: boolean | null
+          owner_rep_id?: string | null
+          owner_rep_set_at?: string | null
+          owner_rep_source?: string | null
           payment_terms_basis?: string | null
           payment_terms_days?: number | null
           phone?: string
@@ -5916,6 +5925,63 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_assignment_log: {
+        Row: {
+          assigned_by: string
+          by_role: string
+          company_id: string
+          created_at: string
+          end_time: string | null
+          id: string
+          lead_id: string
+          previous_agent_id: string | null
+          scheduled_date: string | null
+          start_time: string | null
+          tech_id: string
+        }
+        Insert: {
+          assigned_by: string
+          by_role: string
+          company_id: string
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          lead_id: string
+          previous_agent_id?: string | null
+          scheduled_date?: string | null
+          start_time?: string | null
+          tech_id: string
+        }
+        Update: {
+          assigned_by?: string
+          by_role?: string
+          company_id?: string
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          lead_id?: string
+          previous_agent_id?: string | null
+          scheduled_date?: string | null
+          start_time?: string | null
+          tech_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_assignment_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_assignment_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_call_attempts: {
         Row: {
           company_id: string
@@ -6123,6 +6189,60 @@ export type Database = {
           },
         ]
       }
+      lead_reassign_requests: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          lead_id: string
+          preferred_tech_id: string | null
+          reason: string | null
+          requested_by: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          preferred_tech_id?: string | null
+          reason?: string | null
+          requested_by: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          preferred_tech_id?: string | null
+          reason?: string | null
+          requested_by?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_reassign_requests_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_reassign_requests_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_routing_log: {
         Row: {
           area_id: string | null
@@ -6290,6 +6410,8 @@ export type Database = {
           idempotency_key: string | null
           intents: string[]
           interaction_history: Json
+          job_info: string | null
+          job_types: string[] | null
           last_activity_at: string
           last_contact_attempt_at: string | null
           last_contact_outcome: string | null
@@ -6382,6 +6504,8 @@ export type Database = {
           idempotency_key?: string | null
           intents?: string[]
           interaction_history?: Json
+          job_info?: string | null
+          job_types?: string[] | null
           last_activity_at?: string
           last_contact_attempt_at?: string | null
           last_contact_outcome?: string | null
@@ -6474,6 +6598,8 @@ export type Database = {
           idempotency_key?: string | null
           intents?: string[]
           interaction_history?: Json
+          job_info?: string | null
+          job_types?: string[] | null
           last_activity_at?: string
           last_contact_attempt_at?: string | null
           last_contact_outcome?: string | null
@@ -10366,6 +10492,167 @@ export type Database = {
           },
         ]
       }
+      request_events: {
+        Row: {
+          actor_id: string | null
+          company_id: string | null
+          created_at: string
+          event: string
+          id: string
+          new_value: string | null
+          note: string | null
+          old_value: string | null
+          request_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          event: string
+          id?: string
+          new_value?: string | null
+          note?: string | null
+          old_value?: string | null
+          request_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          event?: string
+          id?: string
+          new_value?: string | null
+          note?: string | null
+          old_value?: string | null
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_events_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      request_keywords: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          keyword: string
+          type: Database["public"]["Enums"]["request_type"]
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          keyword: string
+          type: Database["public"]["Enums"]["request_type"]
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          keyword?: string
+          type?: Database["public"]["Enums"]["request_type"]
+        }
+        Relationships: []
+      }
+      requests: {
+        Row: {
+          area: string | null
+          assigned_at: string | null
+          assigned_to: string | null
+          company_id: string | null
+          contact_channel: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customer_name: string | null
+          done_at: string | null
+          first_contact_at: string | null
+          id: string
+          job_id: string | null
+          lead_id: string | null
+          phone: string | null
+          routed_to: string | null
+          scheduled_for: string | null
+          sort_reason: string | null
+          sorted_by: string | null
+          source: string
+          status: string
+          suggested_type: Database["public"]["Enums"]["request_type"] | null
+          summary: string | null
+          task_due_at: string | null
+          type: Database["public"]["Enums"]["request_type"] | null
+          type_confidence: number | null
+          updated_at: string
+        }
+        Insert: {
+          area?: string | null
+          assigned_at?: string | null
+          assigned_to?: string | null
+          company_id?: string | null
+          contact_channel?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          done_at?: string | null
+          first_contact_at?: string | null
+          id?: string
+          job_id?: string | null
+          lead_id?: string | null
+          phone?: string | null
+          routed_to?: string | null
+          scheduled_for?: string | null
+          sort_reason?: string | null
+          sorted_by?: string | null
+          source?: string
+          status?: string
+          suggested_type?: Database["public"]["Enums"]["request_type"] | null
+          summary?: string | null
+          task_due_at?: string | null
+          type?: Database["public"]["Enums"]["request_type"] | null
+          type_confidence?: number | null
+          updated_at?: string
+        }
+        Update: {
+          area?: string | null
+          assigned_at?: string | null
+          assigned_to?: string | null
+          company_id?: string | null
+          contact_channel?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          done_at?: string | null
+          first_contact_at?: string | null
+          id?: string
+          job_id?: string | null
+          lead_id?: string | null
+          phone?: string | null
+          routed_to?: string | null
+          scheduled_for?: string | null
+          sort_reason?: string | null
+          sorted_by?: string | null
+          source?: string
+          status?: string
+          suggested_type?: Database["public"]["Enums"]["request_type"] | null
+          summary?: string | null
+          task_due_at?: string | null
+          type?: Database["public"]["Enums"]["request_type"] | null
+          type_confidence?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sales_commission_snapshots: {
         Row: {
           commission: number
@@ -13758,6 +14045,10 @@ export type Database = {
           tech_name: string
         }[]
       }
+      _company_tech_ok: {
+        Args: { p_company: string; p_tech: string }
+        Returns: boolean
+      }
       _create_balance_invoice: { Args: { p_quote_id: string }; Returns: string }
       _create_tech_ledger_for_job: {
         Args: { p_job_id: string }
@@ -13899,6 +14190,13 @@ export type Database = {
         }
         Returns: Json
       }
+      _job_stage: {
+        Args: {
+          j: Database["public"]["Tables"]["jobs"]["Row"]
+          l: Database["public"]["Tables"]["leads"]["Row"]
+        }
+        Returns: string
+      }
       _job_work_day: {
         Args: { p_company: string; p_date: string; p_profile: string }
         Returns: {
@@ -13908,9 +14206,28 @@ export type Database = {
           start_time: string
         }[]
       }
+      _km: {
+        Args: { lat1: number; lat2: number; lng1: number; lng2: number }
+        Returns: number
+      }
+      _lead_move_owner_rep: {
+        Args: {
+          p_is_move: boolean
+          p_lead: Database["public"]["Tables"]["leads"]["Row"]
+        }
+        Returns: string
+      }
+      _lead_office: {
+        Args: { p_company: string; p_uid: string }
+        Returns: boolean
+      }
       _lead_staff_ok: { Args: never; Returns: boolean }
       _mins_time: { Args: { p: number }; Returns: string }
       _norm_addr: { Args: { a: string }; Returns: string }
+      _notify_rep_followers: {
+        Args: { p_job: string; p_lead: string; p_stage: string }
+        Returns: undefined
+      }
       _p3_handoff_role: {
         Args: { _quote: string; _uid: string }
         Returns: string
@@ -14098,6 +14415,10 @@ export type Database = {
           work_start: string
         }[]
       }
+      _rep_is_active: {
+        Args: { p_company: string; p_rep: string }
+        Returns: boolean
+      }
       _rep_lead_fit: {
         Args: { p_lead: string; p_profile: string }
         Returns: {
@@ -14108,6 +14429,18 @@ export type Database = {
           reason: string
         }[]
       }
+      _req_can_act: { Args: { p_req: string }; Returns: boolean }
+      _req_event: {
+        Args: {
+          p_event: string
+          p_new: string
+          p_note?: string
+          p_old: string
+          p_req: string
+        }
+        Returns: undefined
+      }
+      _request_route: { Args: { p_req: string }; Returns: undefined }
       _same_client_booked: { Args: { p_lead: string }; Returns: boolean }
       _sb_recalc: { Args: { p_bill: string }; Returns: undefined }
       _slot_fits: {
@@ -14390,6 +14723,18 @@ export type Database = {
         Args: { p_date: string; p_lead: string; p_minutes?: number }
         Returns: Json
       }
+      assign_lead_to_tech: {
+        Args: {
+          p_date: string
+          p_end: string
+          p_job_info?: string
+          p_job_types?: string[]
+          p_lead_id: string
+          p_start: string
+          p_tech_id: string
+        }
+        Returns: Json
+      }
       backfill_leads_to_customers: { Args: never; Returns: Json }
       bank_match_suggestions: { Args: { p_line: string }; Returns: Json }
       booking_clashes: {
@@ -14521,6 +14866,17 @@ export type Database = {
         Args: { p_offer_id: string; p_staff_id: string }
         Returns: Json
       }
+      classify_request: {
+        Args: {
+          p_ai_conf: number
+          p_ai_intent: string
+          p_company: string
+          p_form_intent: string
+          p_source: string
+          p_text: string
+        }
+        Returns: Json
+      }
       client_list_stats: {
         Args: never
         Returns: {
@@ -14645,6 +15001,10 @@ export type Database = {
         Returns: Json
       }
       decline_install_offer: { Args: { p_offer_id: string }; Returns: Json }
+      decline_lead_reassignment: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
       decline_quote_by_token: { Args: { p_token: string }; Returns: boolean }
       default_booking_minutes: { Args: { p_kind: string }; Returns: number }
       default_company_profile: { Args: { p_company: string }; Returns: string }
@@ -14810,6 +15170,7 @@ export type Database = {
         Args: { _customer: string }
         Returns: boolean
       }
+      fl_end_of_sast_day: { Args: { p_at: string }; Returns: string }
       fl_found_company: {
         Args: {
           p_name: string
@@ -14930,6 +15291,10 @@ export type Database = {
           p_window_seconds: number
         }
         Returns: boolean
+      }
+      fl_working_minutes: {
+        Args: { p_from: string; p_to: string }
+        Returns: number
       }
       fmt_rand_sql: { Args: { v: number }; Returns: string }
       fuzzy_digits: { Args: { p_text: string }; Returns: string }
@@ -15171,6 +15536,8 @@ export type Database = {
           idempotency_key: string | null
           intents: string[]
           interaction_history: Json
+          job_info: string | null
+          job_types: string[] | null
           last_activity_at: string
           last_contact_attempt_at: string | null
           last_contact_outcome: string | null
@@ -15609,6 +15976,10 @@ export type Database = {
         }
       }
       job_watchdog_scan: { Args: never; Returns: number }
+      lead_assign_options: {
+        Args: { p_date?: string; p_lead_id: string }
+        Returns: Json
+      }
       lead_call_accept: { Args: { p_attempt: string }; Returns: Json }
       lead_call_candidates: {
         Args: { p_lead: string }
@@ -15741,6 +16112,10 @@ export type Database = {
       next_invoice_number: { Args: { p_profile: string }; Returns: string }
       normalize_model_code: { Args: { p: string }; Returns: string }
       normalize_phone: { Args: { phone: string }; Returns: string }
+      notification_rep_allowed: {
+        Args: { _related: string; _type: string; _uid: string }
+        Returns: boolean
+      }
       notify_quote_email_failed: {
         Args: { p_send: string }
         Returns: undefined
@@ -15790,6 +16165,16 @@ export type Database = {
         }[]
       }
       payment_plan_ok: { Args: { p: Json }; Returns: boolean }
+      pending_reassign_requests: {
+        Args: never
+        Returns: {
+          created_at: string
+          customer_name: string
+          id: string
+          lead_id: string
+          requested_by_name: string
+        }[]
+      }
       pf_claim_send: { Args: { p_id: string }; Returns: Json }
       pf_decide: {
         Args: {
@@ -16056,6 +16441,10 @@ export type Database = {
         Returns: boolean
       }
       rep_customer_ids: { Args: { _uid: string }; Returns: string[] }
+      rep_follows_lead: {
+        Args: { _lead: string; _uid: string }
+        Returns: boolean
+      }
       rep_offerable_leads: {
         Args: never
         Returns: {
@@ -16082,10 +16471,42 @@ export type Database = {
         }
         Returns: undefined
       }
+      request_add_keyword: {
+        Args: {
+          p_keyword: string
+          p_type: Database["public"]["Enums"]["request_type"]
+        }
+        Returns: Json
+      }
       request_call_report: {
         Args: { p_call_id: string; p_force?: boolean; p_test?: boolean }
         Returns: number
       }
+      request_create: {
+        Args: {
+          p_area: string
+          p_customer_id?: string
+          p_name: string
+          p_phone: string
+          p_source?: string
+          p_text: string
+          p_type: Database["public"]["Enums"]["request_type"]
+        }
+        Returns: Json
+      }
+      request_lead_reassignment: {
+        Args: {
+          p_lead_id: string
+          p_preferred_tech_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      request_mark_contacted: {
+        Args: { p_channel?: string; p_request_id: string }
+        Returns: Json
+      }
+      request_mark_done: { Args: { p_request_id: string }; Returns: Json }
       request_quote_changes: {
         Args: {
           p_message: string
@@ -16095,6 +16516,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      request_set_type: {
+        Args: {
+          p_request_id: string
+          p_type: Database["public"]["Enums"]["request_type"]
+        }
+        Returns: Json
+      }
+      request_top_corrections: { Args: { p_days?: number }; Returns: Json }
+      requests_inbox: { Args: { p_days?: number }; Returns: Json }
+      requests_today_counts: { Args: never; Returns: Json }
       resolve_duplicate_lead: {
         Args: { p_action: string; p_lead: string; p_target: string }
         Returns: Json
@@ -16133,6 +16564,7 @@ export type Database = {
         Args: { p_apply?: boolean; p_lead: string }
         Returns: Json
       }
+      sales_my_jobs: { Args: { p_limit?: number }; Returns: Json }
       save_agreement_template: {
         Args: {
           _meta: Json
@@ -16141,6 +16573,10 @@ export type Database = {
           _template_id: string
         }
         Returns: number
+      }
+      save_lead_job_info: {
+        Args: { p_job_info: string; p_job_types: string[]; p_lead_id: string }
+        Returns: Json
       }
       schedule_in_user_company: {
         Args: { _job: string; _lead: string; _uid: string }
@@ -16305,6 +16741,10 @@ export type Database = {
       set_customer_final_after_days: {
         Args: { p_customer: string; p_days: number }
         Returns: undefined
+      }
+      set_customer_owner_rep: {
+        Args: { p_customer_id: string; p_reason: string; p_rep_id: string }
+        Returns: Json
       }
       set_customer_payment_terms: {
         Args: { p_basis: string; p_customer: string; p_days: number }
@@ -17160,6 +17600,7 @@ export type Database = {
         | "box"
         | "pack"
         | "custom"
+      request_type: "new_sale" | "service" | "move" | "admin"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -17339,6 +17780,7 @@ export const Constants = {
         "pack",
         "custom",
       ],
+      request_type: ["new_sale", "service", "move", "admin"],
     },
   },
 } as const
