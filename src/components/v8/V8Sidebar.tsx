@@ -202,8 +202,8 @@ export default function V8Sidebar({ onCreateLead, onSignOut, mobileOpen, onMobil
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/35" onClick={onMobileClose} />
-          <div className="v8-drawer absolute inset-y-0 left-0 w-[280px] max-w-[85vw] shadow-2xl">
-            <button type="button" className="absolute right-2 top-2 rounded-full p-2" onClick={onMobileClose} aria-label="Close menu"><X className="h-5 w-5" /></button>
+          <div className="v8-drawer absolute inset-y-0 left-0 w-[280px] max-w-[85vw] shadow-2xl" style={{ paddingTop: "env(safe-area-inset-top, 0px)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+            <button type="button" style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }} className="absolute right-2 rounded-full p-2" onClick={onMobileClose} aria-label="Close menu"><X className="h-5 w-5" /></button>
             {body}
           </div>
         </div>
