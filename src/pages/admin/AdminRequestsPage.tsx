@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PageHeaderCard } from "@/components/v8/ui/V8Blocks";
@@ -11,7 +12,18 @@ import RequestCorrectionsPanel from "@/components/requests/RequestCorrectionsPan
 import { fetchInbox, markContacted, markDone, setType, typeLabel, waitLabel, REQUEST_TYPES, type RequestRow, type RequestType } from "@/lib/requests";
 
 /** Contacted = logged contact, or server rule (manual admin add / assigned / scheduled). */
-const isContacted = (r: RequestRow) => r.contacted ?? !!r.first_contact_at;
+/** Same rule as fl_request_contacted (server): contacted, added by hand, assigned, has a job or is scheduled. */
+export const isContacted = (r: RequestRow) =>
+  r.contacted === true || !!r.first_contact_at || r.source === "manual" || !!r.assigned_to || !!r.job_id || !!r.scheduled_for;
+const URL_RE = /(https?:\/\/[^\s)]*[^\s).,])/g;
+/** Summary text with raw links (e.g. "Map pin: https://maps.app.goo.gl/...") shown as short tappable links. */
+export function SummaryText({ text }: { text: string }) {
+  const clean = text.replace(/\s*\((-?\d+\.\d+),\s*(-?\d+\.\d+)\)/g, "").replace(/^Map pin:\s*/i, "");
+  const parts = clean.split(URL_RE);
+  return <>{parts.map((p, i) => /^https?:\/\//.test(p)
+    ? <a key={i} href={p} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="font-semibold text-[#1590D6] underline">{/maps|goo\.gl/i.test(p) ? "Open map" : "Open link"}</a>
+    : <span key={i}>{p.replace(/^\.\s*$/, "")}</span>)}</>;
+}
 /** Where a request row opens: its job, else its lead (reps -> My jobs item, office -> visit page). */
 export const requestHref = (r: RequestRow, salesRep: boolean) =>
   r.job_id ? `/admin/jobs/${r.job_id}` : r.lead_id ? (salesRep ? `/admin?myjob=${r.lead_id}` : `/admin/visits/${r.lead_id}`) : "/admin/requests";
@@ -35,6 +47,19 @@ export default function AdminRequestsPage() {
   const [adding, setAdding] = useState(false);
   const [changing, setChanging] = useState<string | null>(null);
   const { data = [], isLoading } = useQuery({ queryKey: ["requests-inbox"], queryFn: () => fetchInbox(30), refetchInterval: 60_000 });
+  // booking time / job types / address from the lead (RLS-scoped, unmasked rows only)
+  const leadIds = useMemo(() => [...new Set(data.filter((r) => !r.masked && r.lead_id).map((r) => r.lead_id!))].sort(), [data]);
+  const { data: leadInfo = {} } = useQuery({
+    queryKey: ["requests-lead-info", leadIds], enabled: leadIds.length > 0, staleTime: 60_000,
+    queryFn: async () => {
+      const { data: ls } = await supabase.from("leads").select("id, scheduled_time, service_type, job_types, job_info, customer_address").in("id", leadIds);
+      return Object.fromEntries((ls || []).map((l: any) => [l.id, l])) as Record<string, any>;
+    },
+  });
+  const withLead = (r: RequestRow): RequestRow => {
+    const l = r.lead_id ? leadInfo[r.lead_id] : null;
+    return l ? { ...r, scheduled_time: l.scheduled_time, service_type: l.service_type, job_types: l.job_types, job_info: l.job_info, address: l.customer_address } : r;
+  };
   const refresh = () => { qc.invalidateQueries({ queryKey: ["requests-inbox"] }); qc.invalidateQueries({ queryKey: ["requests-today"] }); };
   const run = async (p: Promise<{ ok: boolean; message?: string }>, okMsg: string) => {
     try { const r = await p; if (r?.ok) { toast.success(okMsg); refresh(); } else toast.error(r?.message || "Could not save"); }
@@ -71,7 +96,7 @@ export default function AdminRequestsPage() {
         <div className="rounded-2xl border bg-card p-6 text-center text-[16px] text-muted-foreground">Nothing here. New requests land here first.</div>
       ) : (
         <ul className="space-y-2">
-          {rows.map((r) => <RequestCard key={r.id} r={r} changing={changing === r.id} onChange={() => setChanging(changing === r.id ? null : r.id)}
+          {rows.map((r) => <RequestCard key={r.id} r={withLead(r)} isAdmin={!isSalesRep} changing={changing === r.id} onChange={() => setChanging(changing === r.id ? null : r.id)}
             onType={(t) => { setChanging(null); run(setType(r.id, t), `Sorted as ${typeLabel(t)}`); }}
             onContacted={(ch) => run(markContacted(r.id, ch), "Marked contacted")}
             onAssign={() => r.lead_id ? setAssignLead(r.lead_id) : r.job_id ? navigate(`/admin/jobs/${r.job_id}`) : toast.error("Nothing to assign yet")}
@@ -85,8 +110,39 @@ export default function AdminRequestsPage() {
   );
 }
 
-function RequestCard({ r, changing, onChange, onType, onContacted, onAssign, onDone, onOpenClient, onOpen }: {
-  r: RequestRow; changing: boolean; onChange: () => void; onType: (t: RequestType) => void; onContacted: (ch: string) => void;
+/** Friendly SAST date/time, e.g. "Tue 10 Nov, 08:00". */
+export const friendlyWhen = (d?: string | null, t?: string | null) => {
+  if (!d) return "";
+  const dt = new Date(`${d}T${t ? t.slice(0, 5) : "12:00"}:00+02:00`);
+  const day = dt.toLocaleDateString("en-ZA", { timeZone: "Africa/Johannesburg", weekday: "short", day: "numeric", month: "short" });
+  const d2 = day.replace(",", "");
+  return t ? `${d2}, ${t.slice(0, 5)}` : d2;
+};
+const mapUrl = (r: RequestRow) => r.summary?.match(/https?:\/\/[^\s)]*(maps|goo\.gl)[^\s)]*[^\s).,]/i)?.[0]
+  ?? (r.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.address)}` : null);
+/** Short area: suburb from the address, else the request area. */
+const METROS = /^(cape town|johannesburg|durban|pretoria|south africa|western cape|gauteng|kwazulu-natal)$/i;
+export const shortArea = (r: Pick<RequestRow, "area" | "address">) => r.area || (r.address
+  ? r.address.split(",").map((x) => x.trim()).filter((x, i) => i > 0 && x && !/\d/.test(x) && !METROS.test(x)).pop() ?? null : null);
+const cleanSummary = (s?: string | null) => (s || "").replace(/Map pin:\s*/i, "").replace(URL_RE, "").replace(/\s*\((-?\d+\.\d+),\s*(-?\d+\.\d+)\)/g, "").replace(/^[\s.]+|[\s.]+$/g, "");
+
+/** One status line, plus its tone. */
+export function requestStatus(r: RequestRow): { text: string; tone: "red" | "green" | "amber" | "muted" } {
+  if (r.status !== "open") return { text: `Done${r.done_at ? ` · ${new Date(r.done_at).toLocaleDateString("en-ZA", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short" })}` : ""}`, tone: "muted" };
+  if (!r.type) return { text: "Needs sorting", tone: "amber" };
+  if (r.type === "admin") return { text: r.task_overdue ? "Office task · overdue" : "Office task · due today", tone: r.task_overdue ? "red" : "amber" };
+  const who = r.assigned_name?.trim();
+  if (r.scheduled_for) return { text: ["Booked", who, friendlyWhen(r.scheduled_for, r.scheduled_time)].filter(Boolean).join(" · "), tone: "green" };
+  if (!isContacted(r)) return { text: `Not contacted${r.working_min_waiting != null ? ` · ${waitLabel(r.working_min_waiting)}` : ""}`, tone: "red" };
+  if (who) return { text: `With ${who} · not scheduled`, tone: r.unscheduled_nudge ? "red" : "amber" };
+  return { text: `Contacted${r.contact_channel ? ` (${r.contact_channel === "whatsapp" ? "WhatsApp" : r.contact_channel})` : ""} · not scheduled`, tone: r.unscheduled_nudge ? "red" : "amber" };
+}
+const STATUS_TONE = { red: "text-[#C62828]", green: "text-[#1B5E20]", amber: "text-[#E65100]", muted: "text-muted-foreground" };
+const waLink = (p: string) => `https://wa.me/${p.replace(/[^\d]/g, "").replace(/^0/, "27")}`;
+const SEC = "inline-flex min-h-11 items-center rounded-xl border px-3 text-[14px] font-semibold";
+
+export function RequestCard({ r, isAdmin = false, changing, onChange, onType, onContacted, onAssign, onDone, onOpenClient, onOpen }: {
+  r: RequestRow; isAdmin?: boolean; changing: boolean; onChange: () => void; onType: (t: RequestType) => void; onContacted: (ch: string) => void;
   onAssign: () => void; onDone: () => void; onOpenClient: () => void; onOpen: () => void;
 }) {
   const sorting = !r.type;
@@ -97,32 +153,36 @@ function RequestCard({ r, changing, onChange, onType, onContacted, onAssign, onD
       Open request{r.area ? ` · ${r.area}` : ""} · details hidden (POPIA)
     </li>
   );
+  const st = requestStatus(r);
+  const contacted = isContacted(r);
+  const map = mapUrl(r);
+  const area = shortArea(r);
+  const jobInfo = [r.job_types?.length ? r.job_types.join(", ") : r.service_type, cleanSummary(r.job_info || r.summary)].filter(Boolean).join(" · ");
+  const canAssign = r.type !== "admin" && !!(r.lead_id || r.job_id);
+  // ONE primary next step for this status
+  const primary = !isOpen ? null
+    : sorting ? null
+    : r.type === "admin" ? { label: "Done", on: onDone, cls: "bg-[#2E7D32]", id: "request-done" }
+    : !contacted ? { label: "Mark contacted", on: () => onContacted("phone"), cls: "bg-[#0F2A44]", id: "mark-contacted" }
+    : canAssign && !r.scheduled_for ? { label: r.assigned_to ? "Schedule" : "Assign / schedule", on: onAssign, cls: "bg-[#1590D6]", id: "request-assign" }
+    : (r.lead_id || r.job_id) ? { label: r.job_id ? "Open job" : "Open booking", on: onOpen, cls: "bg-[#1590D6]", id: "request-open" }
+    : null;
   return (
     <li data-testid="request-card" data-type={r.type ?? "sorting"}
       className={cn("rounded-2xl border-2 bg-card p-3 lg:p-4", sorting && isOpen ? "border-[#E65100] bg-[#FFF8F1]" : "border-border", r.not_contacted_red && "border-l-8 border-l-[#C62828]")}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            {sorting ? <span className="rounded-full bg-[#E65100] px-2.5 py-0.5 text-[12px] font-semibold text-white">Needs sorting{r.suggested_type ? ` · maybe ${typeLabel(r.suggested_type)}` : ""}</span>
-              : <span className={cn("rounded-full px-2.5 py-0.5 text-[12px] font-semibold", TYPE_TONE[r.type!])}>{typeLabel(r.type)}{r.sorted_by === "auto" ? " · auto-sorted" : ""}{r.type === "move" ? " · internal sale" : ""}</span>}
-            {!sorting && isOpen && <button onClick={onChange} className="text-[13px] font-semibold text-[#1590D6] underline">change</button>}
-            {r.not_contacted_red && <span className="rounded-full bg-[#C62828] px-2 py-0.5 text-[12px] font-semibold text-white">Not contacted · {waitLabel(r.working_min_waiting)} working</span>}
-            {r.unscheduled_nudge && <span className="rounded-full bg-[#FFEBEE] px-2 py-0.5 text-[12px] font-semibold text-[#C62828]">Not scheduled after 24 h</span>}
-            {r.task_overdue && <span className="rounded-full bg-[#FFEBEE] px-2 py-0.5 text-[12px] font-semibold text-[#C62828]">Task overdue</span>}
-          </div>
-          <button onClick={onOpenClient} className="mt-1 block text-left text-[18px] font-semibold">{r.customer_name || "Unknown caller"}</button>
-          <div className="text-[13px] text-muted-foreground">
-            {[r.area, sourceLabel(r.source), new Date(r.created_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })].filter(Boolean).join(" · ")}
-          </div>
-          {r.summary && <p className="mt-1 line-clamp-2 text-[14px]">{r.summary}</p>}
-          <div className="mt-1 text-[13px] text-muted-foreground">
-            {r.assigned_name ? `With ${r.assigned_name.trim()}` : r.type === "admin" ? "Office task · due today" : "Not assigned"}
-            {r.scheduled_for ? ` · ${r.scheduled_for}` : ""}
-            {r.type === "move" && r.owner_rep_name ? ` · client's rep ${r.owner_rep_name.trim()}` : ""}
-            {r.first_contact_at ? ` · contacted (${r.contact_channel || "phone"})` : ""}
-          </div>
-        </div>
-        {r.phone && <a href={`tel:${r.phone}`} className="min-h-11 rounded-xl border px-4 py-2 text-[15px] font-semibold">Call</a>}
+      <div className="flex items-start justify-between gap-2">
+        <button onClick={onOpenClient} className="min-w-0 text-left text-[18px] font-semibold leading-tight break-words">{r.customer_name || "Unknown caller"}</button>
+        {sorting ? <span className="shrink-0 rounded-full bg-[#E65100] px-2.5 py-0.5 text-[12px] font-semibold text-white">Needs sorting</span>
+          : <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-[12px] font-semibold", TYPE_TONE[r.type!])}>{typeLabel(r.type)}{r.type === "move" ? " · internal" : ""}</span>}
+      </div>
+      <div data-testid="request-status" className={cn("mt-1 text-[15px] font-semibold", STATUS_TONE[st.tone])}>{st.text}</div>
+      {(area || map) && (
+        <div className="mt-0.5 text-[14px]">{area}{area && map ? " · " : ""}{map && <a href={map} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#1590D6] underline">Open map</a>}</div>
+      )}
+      {jobInfo && <p className="mt-0.5 line-clamp-2 text-[14px] break-words" data-testid="request-summary">{jobInfo}</p>}
+      {isAdmin && r.owner_rep_name && <div className="mt-0.5 text-[13px]">Client's rep: <span className="font-semibold">{r.owner_rep_name.trim()}</span></div>}
+      <div className="mt-1 text-[12px] text-muted-foreground">
+        {[sourceLabel(r.source), new Date(r.created_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }), r.sorted_by === "auto" ? "auto-sorted" : null].filter(Boolean).join(" · ")}
       </div>
       {(sorting || changing) && isOpen && (
         <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4" data-testid="type-chips">
@@ -133,17 +193,22 @@ function RequestCard({ r, changing, onChange, onType, onContacted, onAssign, onD
           ))}
         </div>
       )}
-      {isOpen && !sorting && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {(r.lead_id || r.job_id) && <button onClick={onOpen} data-testid="request-open" className="min-h-11 rounded-xl border-2 border-[#1590D6] px-4 text-[15px] font-semibold text-[#1590D6]">{r.job_id ? "Open job" : "Open lead"}</button>}
-          {!isContacted(r) && <>
-            <button onClick={() => onContacted("phone")} data-testid="mark-contacted" className="min-h-11 rounded-xl bg-[#0F2A44] px-4 text-[15px] font-semibold text-white">Mark contacted</button>
-            <button onClick={() => onContacted("whatsapp")} className="min-h-11 rounded-xl border px-3 text-[14px]">by WhatsApp</button>
-          </>}
-          {r.type === "admin" ? <button onClick={onDone} className="min-h-11 rounded-xl bg-[#2E7D32] px-4 text-[15px] font-semibold text-white">Done</button>
-            : (r.lead_id || r.job_id) && <button onClick={onAssign} className="min-h-11 rounded-xl bg-[#1590D6] px-4 text-[15px] font-semibold text-white">{r.assigned_to ? "Reassign / schedule" : "Assign / schedule"}</button>}
-        </div>
-      )}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {primary && <button onClick={primary.on} data-testid={primary.id} className={cn("min-h-11 rounded-xl px-4 text-[15px] font-semibold text-white", primary.cls)}>{primary.label}</button>}
+        {r.phone && <a href={`tel:${r.phone}`} className={SEC}>Call</a>}
+        {r.phone && <a href={waLink(r.phone)} target="_blank" rel="noopener noreferrer" className={SEC}>WhatsApp</a>}
+        {isOpen && !sorting && (
+          <details className="relative" data-testid="request-more">
+            <summary className={cn(SEC, "cursor-pointer list-none")}>More</summary>
+            <div className="absolute right-0 z-20 mt-1 flex w-56 flex-col rounded-xl border bg-card p-1 shadow-lg">
+              {!contacted && <button onClick={() => onContacted("whatsapp")} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="mark-contacted-wa">Contacted on WhatsApp</button>}
+              {canAssign && primary?.id !== "request-assign" && <button onClick={onAssign} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="request-reassign">{r.assigned_to ? "Reassign / reschedule" : "Assign / schedule"}</button>}
+              {primary?.id !== "request-open" && (r.lead_id || r.job_id) && <button onClick={onOpen} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="request-open-sec">{r.job_id ? "Open job" : "Open booking"}</button>}
+              <button onClick={onChange} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted">Change type</button>
+            </div>
+          </details>
+        )}
+      </div>
     </li>
   );
 }
