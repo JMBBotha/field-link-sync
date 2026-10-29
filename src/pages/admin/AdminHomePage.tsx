@@ -98,7 +98,8 @@ const AdminHomePage = () => {
           {/* Dashboard content floating over the map */}
           <div className="relative h-full overflow-y-auto overflow-x-hidden p-3 pb-20 md:p-4 md:pb-20 lg:pb-4 space-y-3">
             {/* Same-spot view switch on both layouts (Johan 13 Oct: no way back from Classic). */}
-            <div className="flex justify-end">
+            {/* Hidden on phones (Johan 29 Oct): desktop keeps the switch. */}
+            <div className="hidden md:flex justify-end">
               <Button size="sm" variant="outline" onClick={toggleLayout} data-testid="dashboard-layout-switch" className="gap-1.5 text-xs h-8 bg-card/90 backdrop-blur-sm shadow-sm">
                 <LayoutTemplate className="h-3.5 w-3.5" />
                 {isClassic ? "Switch to new view" : "Switch to classic view"}

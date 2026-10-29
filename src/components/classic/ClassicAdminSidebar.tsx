@@ -601,6 +601,7 @@ const ClassicAdminSidebar = ({
       </aside>
 
       <aside
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-[264px] transform transition-transform duration-300 lg:hidden shadow-2xl bg-nav/95",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
