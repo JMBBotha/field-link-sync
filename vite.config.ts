@@ -44,13 +44,7 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (!id.includes("node_modules")) return;
-          if (/[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/.test(id)) return "vendor-react";
-          if (id.includes("@supabase")) return "vendor-supabase";
-          if (id.includes("@radix-ui")) return "vendor-radix";
-          if (/pdfjs|jspdf|html2canvas|pdf-lib/.test(id)) return "vendor-pdf";
-          if (/mapbox|leaflet/.test(id)) return "vendor-maps";
-          return "vendor";
+          if (id.includes("node_modules")) return "vendor";
         },
       },
     },
