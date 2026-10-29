@@ -8083,6 +8083,7 @@ export type Database = {
       profiles: {
         Row: {
           archived_at: string | null
+          availability_choice: string | null
           availability_status: string | null
           avatar_url: string | null
           company_id: string | null
@@ -8133,6 +8134,7 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          availability_choice?: string | null
           availability_status?: string | null
           avatar_url?: string | null
           company_id?: string | null
@@ -8183,6 +8185,7 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          availability_choice?: string | null
           availability_status?: string | null
           avatar_url?: string | null
           company_id?: string | null
@@ -16325,6 +16328,10 @@ export type Database = {
         Args: { p_basis: string; p_days: number; p_invoice: string }
         Returns: undefined
       }
+      set_my_availability: {
+        Args: { p_manual?: boolean; p_status: string }
+        Returns: string
+      }
       set_quote_labour_mode: {
         Args: {
           p_area_units?: Json
@@ -16942,6 +16949,7 @@ export type Database = {
           start_time: string
         }[]
       }
+      staff_is_available: { Args: { p_uid: string }; Returns: boolean }
       staff_work_window: {
         Args: { p_date: string; p_profile_id: string }
         Returns: {

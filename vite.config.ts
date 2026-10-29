@@ -39,6 +39,16 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "@tanstack/react-query"],
   },
+  build: {
+    // Split vendor code so no single chunk gets big enough to break import analysis.
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) return "vendor";
+        },
+      },
+    },
+  },
   optimizeDeps: {
     include: ["react", "react-dom", "@tanstack/react-query"],
   },
