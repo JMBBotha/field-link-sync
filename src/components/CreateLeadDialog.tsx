@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserCompanyId } from "@/lib/tenantUtils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -50,6 +50,8 @@ import { type ClientBooking } from "@/lib/sameClient";
 interface CreateLeadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Pre-fill from this customer when the dialog opens (same as picking them in the name search). */
+  customerId?: string | null;
 }
 
 interface NearbyAgent {
@@ -59,7 +61,7 @@ interface NearbyAgent {
   is_available: boolean;
 }
 
-const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
+const CreateLeadDialog = ({ open, onOpenChange, customerId: prefillCustomerId }: CreateLeadDialogProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [dupRows, setDupRows] = useState<ClientBooking[] | null>(null);
@@ -210,6 +212,19 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       matchedOn: "phone",
     });
   };
+  // Opened from a customer (row menu / detail page): run the same prefill as picking them.
+  // Reads go through the user's own session, so RLS role/company scoping applies.
+  const prefilledFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open) { prefilledFor.current = null; return; }
+    if (!prefillCustomerId || prefilledFor.current === prefillCustomerId) return;
+    prefilledFor.current = prefillCustomerId;
+    void handleSelectClient({
+      id: prefillCustomerId, customer_id: prefillCustomerId, name: "", phone: "", email: null,
+      address: null, notes: null, created_at: "", source: "customer",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, prefillCustomerId]);
   const { findNearbyAgents, loading: loadingAgents } = useNearbyAgents();
   const { settings: broadcastSettings } = useBroadcastSettings();
   const { salesStaff, laneById } = useLaneStaff();
