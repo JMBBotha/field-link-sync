@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSalesRep } from "@/hooks/useSalesRep";
+import { PipelineBookings } from "@/components/bookings/Bookings";
 import { useRole } from "@/hooks/useRole";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -175,6 +176,7 @@ export default function V8PipelineBoard() {
 
   return (
     <div className="space-y-3" data-testid="v8-pipeline">
+      <PipelineBookings ownOnly={ownOnly} />
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <div className="v8-eyebrow">Lead → Quote sent → Accepted → Job booked → Invoiced → Paid</div>
         <div className="ml-auto inline-flex rounded-md border p-0.5" role="group" aria-label="Lane" data-testid="v8-lane">
