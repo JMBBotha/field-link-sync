@@ -148,7 +148,17 @@ const FieldAgent = () => {
   const techOffers = useTechOffers(!!currentUserId);
   const [userName, setUserName] = useState<string>("");
   const [showMapOnMobile, setShowMapOnMobile] = useState(false);
-  const [isAvailableForLeads, setIsAvailableForLeads] = useState(true);
+  // Starts OFF until the saved choice loads: signing in never makes a tech available.
+  const [isAvailableForLeads, setIsAvailableForLeads] = useState(false);
+  const availableRef = useRef(false);
+  availableRef.current = isAvailableForLeads;
+  useEffect(() => {
+    if (!currentUserId) return;
+    let off = false;
+    supabase.from("agent_locations").select("is_available").eq("agent_id", currentUserId).maybeSingle()
+      .then(({ data }) => { if (!off && data) setIsAvailableForLeads(data.is_available === true); });
+    return () => { off = true; };
+  }, [currentUserId]);
   const [locationUpdating, setLocationUpdating] = useState(false);
   const [homeBaseLat, setHomeBaseLat] = useState<number | null>(null);
   const [homeBaseLng, setHomeBaseLng] = useState<number | null>(null);
@@ -421,7 +431,8 @@ const FieldAgent = () => {
             agent_id: user.id,
             latitude,
             longitude,
-            is_available: true,
+            // Never auto-available: a GPS fix keeps the tech's own Available/Off choice.
+            is_available: availableRef.current,
             last_updated: new Date().toISOString(),
           },
           { onConflict: "agent_id" }
