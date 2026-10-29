@@ -9,6 +9,7 @@ import IdentityBadge from "@/components/IdentityBadge";
 import { openMandyVoice } from "@/lib/mandy/registry";
 import { useRole } from "@/hooks/useRole";
 import { useSalesRep } from "@/hooks/useSalesRep";
+import { MyAvailabilitySwitch } from "@/components/availability/AvailabilitySwitch";
 
 /** v7 header (NEW layout only; Classic keeps its own header in AdminLayout). Same actions, new arrangement:
  *  title · wide search (⌘K) · Ask Mandy · undo · bell · theme · orange "+ New" · who chip. */
@@ -21,7 +22,7 @@ export default function NewAdminHeader({ pageTitle, onMenu, onSearch, onCreateLe
   const techOnly = isFieldAgent && !isAdmin && !isDispatcher;
   const ghost = "text-white/90 hover:bg-white/10 hover:text-white";
   return (
-    <header data-testid="v7-header" className="shrink-0 h-14 border-b flex items-center gap-2 px-2 sm:px-4 z-20 bg-[#1AA7EC] border-[#1590D6] dark:bg-[#0b1a2e] dark:border-white/10">
+    <header data-testid="v7-header" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }} className="box-content shrink-0 h-14 border-b flex items-center gap-2 px-2 sm:px-4 z-20 bg-[#1AA7EC] border-[#1590D6] dark:bg-[#0b1a2e] dark:border-white/10">
       <Button variant="ghost" size="icon" onClick={onMenu} className={`lg:hidden shrink-0 h-9 w-9 ${ghost}`} aria-label="Menu"><Menu className="h-5 w-5" /></Button>
       <CompanyLogo data-testid="header-logo" className="hidden min-[360px]:block h-6 w-auto max-w-[64px] object-contain object-left sm:h-8 lg:hidden" />
       <h1 className="hidden min-[400px]:block min-w-0 truncate text-base sm:text-lg font-bold text-white" title={typeof pageTitle === "string" ? pageTitle : undefined}>{pageTitle}</h1>
@@ -37,6 +38,7 @@ export default function NewAdminHeader({ pageTitle, onMenu, onSearch, onCreateLe
         <Button variant="ghost" size="sm" onClick={() => openMandyVoice()} className={`hidden sm:inline-flex gap-1.5 ${ghost}`} title="Talk to the operations assistant">
           <Sparkle className="h-4 w-4" /><span className="text-xs">Ask Mandy</span>
         </Button>
+        {isSalesRep && <MyAvailabilitySwitch />}
         <StatusUndoButton />
         <NotificationBell />
         <Button variant="ghost" size="icon" onClick={toggleTheme} className={`hidden sm:inline-flex h-9 w-9 ${ghost}`} title={resolvedTheme === "light" ? "Switch to dark mode" : "Switch to light mode"}>
