@@ -1304,7 +1304,7 @@ const FieldAgent = () => {
             <NotificationBell />
             {/* One availability control: connection/sync state, schedule status dot, and the
                 "available for leads" switch (behaviour unchanged: writes agent_locations.is_available only). */}
-            <div data-testid="availability-control" className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-white/25 bg-white/10 py-0 pl-1.5 pr-1">
+            <div data-testid="availability-control" className="hidden md:flex h-8 shrink-0 items-center gap-1 rounded-full border border-white/25 bg-white/10 py-0 pl-1.5 pr-1">
               {(syncStatus.isSyncing || !isOnline || syncStatus.pendingCount > 0 || syncStatus.failedOperations > 0) && (
                 <OfflineIndicator
                   isOnline={isOnline}
@@ -1347,6 +1347,13 @@ const FieldAgent = () => {
             </Button>
           </div>
         </header>
+        {/* Phones only: labelled availability strip under the header (row 1 keeps menu/logo/bell/avatar). */}
+        <div data-testid="field-mobile-strip" className="md:hidden flex h-11 shrink-0 items-center gap-1.5 border-b px-2 z-20" style={{ backgroundColor: '#0077B6', borderColor: '#006699' }}>
+          <AvailabilitySwitch labelled status={availability.status} onChange={changeAvailability} className="flex-1 max-w-[260px]" />
+          <div className="ml-auto flex items-center">
+            <AvailabilityIndicator status={availability.status} isInBufferWindow={availability.isInBufferWindow} nextAvailableText={availability.formatNextAvailable()} compact hideLabel />
+          </div>
+        </div>
         <RoleAccentStrip />
 
         {/* Offline Banner */}

@@ -38,6 +38,7 @@ interface AdminSidebarProps {
   onSignOut: () => void;
   pendingRequestsCount?: number;
   mobileOpen?: boolean;
+  onSearch?: () => void;
   onMobileClose?: () => void;
 }
 

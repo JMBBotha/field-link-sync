@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home, KanbanSquare, CalendarDays, Users, Wallet, Briefcase, MoreHorizontal, Bell, Plus, LogOut, X, ChevronDown,
   MapPin, PenLine, HelpCircle, Settings, BookOpen, FileText, Inbox, Phone, BarChart3, ShoppingBag, Package, Building2, Tag, Upload,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRole } from "@/hooks/useRole";
@@ -49,13 +50,14 @@ function writeOpen(v: Record<string, boolean>) { try { localStorage.setItem(OPEN
 interface Props {
   onCreateLead: () => void;
   onSignOut: () => void;
+  onSearch?: () => void;
   pendingRequestsCount?: number;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
 
 /** Field Lynk v8 Simple sidebar ("New" layout). Classic stays one click away via the layout toggle. */
-export default function V8Sidebar({ onCreateLead, onSignOut, mobileOpen, onMobileClose }: Props) {
+export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpen, onMobileClose }: Props) {
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   const role = useV8Role();
@@ -189,6 +191,13 @@ export default function V8Sidebar({ onCreateLead, onSignOut, mobileOpen, onMobil
             </button>
             <button type="button" className="v8-leads tone-blue w-10 justify-center px-0" onClick={() => { onCreateLead(); onMobileClose?.(); }} title="Create lead" aria-label="Create lead"><Plus className="h-4 w-4" /></button>
           </div>
+        )}
+        {onSearch && (
+          <button type="button" data-testid="v8-side-search" onClick={() => { onSearch(); onMobileClose?.(); }}
+            className="v8-user mb-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm" style={{ color: "var(--v8-mu)" }}>
+            <Search className="h-4 w-4 shrink-0" /><span className="flex-1 truncate">Search clients, jobs, quotes…</span>
+            <kbd className="hidden lg:inline rounded border px-1.5 text-[10px] v8-border">⌘K</kbd>
+          </button>
         )}
         <LayoutToggleButton />
         <button type="button" onClick={onSignOut} className="v8-sub"><LogOut className="h-3.5 w-3.5" />Sign out</button>
