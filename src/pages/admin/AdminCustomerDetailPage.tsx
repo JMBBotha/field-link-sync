@@ -129,13 +129,17 @@ const AdminCustomerDetailPage = () => {
     if (!id) return;
     setSavingRep(true);
     const assigned = value === "none" ? null : value;
-    const { error } = await supabase.from("customers").update({ assigned_rep_id: assigned }).eq("id", id);
+    // owner_rep_id is the single rep field (assigned_rep_id is a DB-side mirror)
+    const { error } = assigned
+      ? await supabase.rpc("set_customer_owner_rep", { p_customer_id: id, p_rep_id: assigned, p_reason: "Admin set on client page" })
+      : await supabase.from("customers").update({ owner_rep_id: null } as any).eq("id", id);
     setSavingRep(false);
     if (error) {
       toast({ title: "Could not save sales rep", description: error.message, variant: "destructive" });
       return;
     }
     qc.invalidateQueries({ queryKey: ["customer-detail", id] });
+    qc.invalidateQueries({ queryKey: ["owner-rep"] });
     toast({ title: assigned ? "Dedicated sales rep saved" : "Dedicated sales rep removed" });
   };
 
@@ -423,7 +427,7 @@ const AdminCustomerDetailPage = () => {
               {customer.status === "archived" && <span className="rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold">Archived</span>}
             </div>
             <p className="mt-1 text-sm text-[#CFE6F6] break-words">
-              {[(customer as any).client_type && String((customer as any).client_type).replace(/^./, (c: string) => c.toUpperCase()), leadSourceLabel(customer.lead_source), (customer as any).assigned_rep_id && salesReps.find((r) => r.id === (customer as any).assigned_rep_id)?.full_name && `Rep: ${salesReps.find((r) => r.id === (customer as any).assigned_rep_id)?.full_name}`].filter(Boolean).join(" · ")}
+              {[(customer as any).client_type && String((customer as any).client_type).replace(/^./, (c: string) => c.toUpperCase()), leadSourceLabel(customer.lead_source), (customer as any).owner_rep_id && salesReps.find((r) => r.id === (customer as any).owner_rep_id)?.full_name && `Rep: ${salesReps.find((r) => r.id === (customer as any).owner_rep_id)?.full_name}`].filter(Boolean).join(" · ")}
             </p>
             <p className="mt-0.5 text-sm text-[#CFE6F6] break-words">{[contactName && contactName !== headerName ? contactName : null, phone, email, fullAddress].filter(Boolean).join(" · ") || "No contact details yet"}</p>
             <OwnerRepChip customerId={customer.id} companyId={(customer as any).company_id} ownerRepId={(customer as any).owner_rep_id} canEdit={isAdmin && !isSalesRep} />
@@ -665,7 +669,7 @@ const AdminCustomerDetailPage = () => {
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">Dedicated sales rep</Label>
                     <Select
-                      value={(customer as any).assigned_rep_id ?? "none"}
+                      value={(customer as any).owner_rep_id ?? "none"}
                       onValueChange={saveAssignedRep}
                       disabled={savingRep}
                     >
