@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
 import { supabase } from "@/integrations/supabase/client";
+import { searchPlaces, parseCoordinates, type PlaceSuggestion } from "@/lib/placeSearch";
 
 const DEFAULT_CENTER: [number, number] = [18.4241, -33.9249]; // [lng, lat] Cape Town
 
@@ -25,12 +26,7 @@ interface LocationPickerProps {
 }
 
 
-interface Suggestion {
-  id: string;
-  text: string;
-  place_name: string;
-  center: [number, number]; // [lng, lat]
-}
+type Suggestion = PlaceSuggestion;
 
 const getStoredToken = () =>
   (typeof window !== "undefined" && localStorage.getItem("mapbox_token")) || "";
@@ -138,6 +134,30 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
     return () => clearTimeout(t);
   }, [isFullscreen]);
 
+  // Fullscreen inside a Radix Dialog: DialogContent is translated (-50%,-50%) and
+  // scrollable, which makes `position: fixed` relative to the dialog instead of the
+  // screen. On a phone the "fullscreen" map then sat partly off-screen with its
+  // exit button hidden, so the only way out closed the whole lead form. While
+  // fullscreen we neutralise the transform/scroll on the nearest dialog and
+  // restore it exactly on exit; the parent form never unmounts.
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const dlg = wrapperRef.current?.closest<HTMLElement>('[role="dialog"]');
+    if (!dlg) return;
+    const prev = { transform: dlg.style.transform, overflow: dlg.style.overflow, animation: dlg.style.animation };
+    const prevScroll = dlg.scrollTop;
+    dlg.style.transform = "none";
+    dlg.style.animation = "none";
+    dlg.style.overflow = "hidden";
+    dlg.scrollTop = 0;
+    return () => {
+      dlg.style.transform = prev.transform;
+      dlg.style.overflow = prev.overflow;
+      dlg.style.animation = prev.animation;
+      dlg.scrollTop = prevScroll;
+    };
+  }, [isFullscreen]);
+
   // ESC closes fullscreen
   useEffect(() => {
     if (!isFullscreen) return;
@@ -204,39 +224,32 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
     [onLocationChange, reverseGeocode],
   );
 
-  // Debounced search for businesses + addresses
+  // Debounced search: pasted coordinates / Google Maps link, then Mapbox (ZA,
+  // all place types, fuzzy), then OpenStreetMap for farms and rural roads.
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     const term = query.trim();
-    if (!token || term.length < 2) {
+    if (term.length < 2) {
       setSuggestions([]);
       return;
     }
+    let cancelled = false;
     debounceRef.current = window.setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const params = new URLSearchParams({
-          access_token: token,
-          autocomplete: "true",
-          limit: "8",
-          types: "poi,address,place",
-          language: "en",
-        });
-        const center = mapRef.current?.getCenter();
-        if (center) params.set("proximity", `${center.lng},${center.lat}`);
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(term)}.json?${params}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        setSuggestions(data.features || []);
+        const c = mapRef.current?.getCenter();
+        const list = await searchPlaces(term, token, c ? [c.lng, c.lat] : undefined);
+        if (cancelled) return;
+        setSuggestions(list);
         setShowSuggestions(true);
       } catch {
-        setSuggestions([]);
+        if (!cancelled) setSuggestions([]);
       } finally {
-        setSearchLoading(false);
+        if (!cancelled) setSearchLoading(false);
       }
-    }, 300);
+    }, 350);
     return () => {
+      cancelled = true;
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
   }, [query, token]);
@@ -245,7 +258,8 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
     const [lng, lat] = s.center;
     placeMarker(lat, lng, false);
     mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, duration: 800 });
-    onLocationChange(lat, lng, s.place_name, "search");
+    const coordsOnly = s.id.startsWith("coords:");
+    onLocationChange(lat, lng, coordsOnly ? undefined : s.place_name, "search");
     setQuery(s.text);
     setShowSuggestions(false);
   };
@@ -279,13 +293,16 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
   }
 
   const containerClasses = isFullscreen
-    ? "fixed inset-0 z-[100] bg-background flex flex-col"
+    ? "fixed inset-0 !m-0 z-[100] bg-background flex flex-col h-[100dvh] w-screen"
     : "relative w-full h-[280px] rounded-md border overflow-hidden";
 
   return (
     <div ref={wrapperRef} className={containerClasses}>
       {/* Top control bar */}
-      <div className="absolute top-2 left-2 right-2 z-10 flex gap-2 items-start">
+      <div
+        className="absolute left-2 right-2 z-10 flex gap-2 items-start"
+        style={{ top: isFullscreen ? "calc(env(safe-area-inset-top, 0px) + 0.5rem)" : "0.5rem" }}
+      >
         <div ref={searchWrapRef} className="relative flex-1">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -293,7 +310,8 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => suggestions.length && setShowSuggestions(true)}
-              placeholder="Search business or address…"
+              placeholder="Search place, farm, road or paste a map link…"
+              enterKeyHint="search"
               className="h-9 pl-7 pr-8 text-xs bg-background/95 backdrop-blur"
             />
             {searchLoading ? (
@@ -308,6 +326,11 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
               </button>
             ) : null}
           </div>
+          {showSuggestions && !searchLoading && query.trim().length >= 3 && suggestions.length === 0 && (
+            <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg px-3 py-2 text-xs text-muted-foreground">
+              Not found on our map. Tap the map to drop the pin, paste a Google Maps link or coordinates, and type the address in the Address box.
+            </div>
+          )}
           {showSuggestions && suggestions.length > 0 && (
             <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg max-h-72 overflow-auto">
               {suggestions.map((s) => (
@@ -321,6 +344,9 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
                   <div className="min-w-0">
                     <div className="text-xs font-medium truncate">{s.text}</div>
                     <div className="text-xs text-muted-foreground truncate">{s.place_name}</div>
+                    {s.source === "osm" ? (
+                      <div className="text-[10px] text-muted-foreground">OpenStreetMap</div>
+                    ) : null}
                   </div>
                 </button>
               ))}
@@ -342,8 +368,9 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
           size="icon"
           variant="secondary"
           className="h-9 w-9 shrink-0 bg-background/95 backdrop-blur"
-          onClick={() => setIsFullscreen((v) => !v)}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsFullscreen((v) => !v); }}
           title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+          aria-label={isFullscreen ? "Exit fullscreen map" : "Open fullscreen map"}
         >
           {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </Button>

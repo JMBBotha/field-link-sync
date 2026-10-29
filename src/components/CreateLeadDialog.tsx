@@ -34,6 +34,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import LocationPicker, { type LocationChangeSource } from "./LocationPicker";
 import { geocodeAddress } from "@/lib/geocodeAddress";
+import { useUnsavedFlag } from "@/lib/buildInfo";
 import { hasValidCoords } from "@/lib/leadCoords";
 import { useNearbyAgents } from "@/hooks/useNearbyAgents";
 import { useBroadcastSettings } from "@/hooks/useBroadcastSettings";
@@ -102,6 +103,63 @@ const CreateLeadDialog = ({ open, onOpenChange, customerId: prefillCustomerId }:
   const [nameFocused, setNameFocused] = useState(false);
   const { data: existingClients = [] } = useUnifiedClients();
   const { toast } = useToast();
+
+  // ── Device-only draft (POPIA: never sent to the server, cleared on save/cancel,
+  // expires after 24h). Protects typed input from an accidental close or an
+  // iPhone reload while the map is open.
+  const draftKey = user?.id ? `fl:create-lead-draft:${user.id}` : null;
+  const draftRestoredRef = useRef(false);
+  const clearDraft = () => {
+    if (!draftKey) return;
+    try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+  };
+  useEffect(() => {
+    if (!open) { draftRestoredRef.current = false; return; }
+    if (!draftKey || draftRestoredRef.current) return;
+    draftRestoredRef.current = true;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (!d || Date.now() - (d.savedAt || 0) > 24 * 3600 * 1000) { localStorage.removeItem(draftKey); return; }
+      if (prefillCustomerId && d.linkedCustomerId && d.linkedCustomerId !== prefillCustomerId) return;
+      if (d.formData) setFormData((p) => ({ ...p, ...d.formData }));
+      if (typeof d.latitude === "number") setLatitude(d.latitude);
+      if (typeof d.longitude === "number") setLongitude(d.longitude);
+      if (d.scheduledDate) setScheduledDate(new Date(d.scheduledDate));
+      if (d.scheduledTime) setScheduledTime(d.scheduledTime);
+      if (typeof d.customRadius === "number") setCustomRadius(d.customRadius);
+      if (d.linkedCustomerId) setLinkedCustomerId(d.linkedCustomerId);
+      if (d.customerMatch) setCustomerMatch(d.customerMatch);
+      if (d.laneOverride) setLaneOverride(d.laneOverride);
+      if (d.salesOwnerId) setSalesOwnerId(d.salesOwnerId);
+      toast({ title: "Draft restored", description: "Your unfinished lead was kept on this device." });
+    } catch { /* ignore corrupt draft */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, draftKey]);
+  useEffect(() => {
+    if (!open || !draftKey || !draftRestoredRef.current) return;
+    const hasInput =
+      Object.entries(formData).some(([k, v]) => k !== "priority" && String(v ?? "").trim() !== "") ||
+      latitude != null || !!scheduledDate || !!scheduledTime;
+    const t = window.setTimeout(() => {
+      try {
+        if (!hasInput) { localStorage.removeItem(draftKey); return; }
+        localStorage.setItem(draftKey, JSON.stringify({
+          savedAt: Date.now(), formData, latitude, longitude,
+          scheduledDate: scheduledDate ? scheduledDate.toISOString() : null,
+          scheduledTime, customRadius, linkedCustomerId, customerMatch, laneOverride, salesOwnerId,
+        }));
+      } catch { /* storage full / private mode: ignore */ }
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [open, draftKey, formData, latitude, longitude, scheduledDate, scheduledTime, customRadius, linkedCustomerId, customerMatch, laneOverride, salesOwnerId]);
+  // A stale-build auto-reload must not wipe a half-filled lead.
+  useUnsavedFlag(open && !!(formData.customer_name || formData.customer_phone || formData.customer_address || formData.notes));
+  const handleDialogOpenChange = (o: boolean) => {
+    if (!o) clearDraft();
+    onOpenChange(o);
+  };
 
   const persistCustomerCoords = async (customerId: string, lat: number, lng: number) => {
     try {
@@ -322,6 +380,7 @@ const CreateLeadDialog = ({ open, onOpenChange, customerId: prefillCustomerId }:
       if (error) throw error;
       toast({ title: "Existing booking moved", description: `${existing.customer_name || "Client"} is now booked for ${scheduledDateStr} ${scheduledTime}. No new lead was created.` });
       setDupRows(null);
+      clearDraft();
       onOpenChange(false);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -472,6 +531,7 @@ const CreateLeadDialog = ({ open, onOpenChange, customerId: prefillCustomerId }:
       setLaneOverride(null);
       setSalesOwnerId("");
       setDupRows(null);
+      clearDraft();
 
 
       onOpenChange(false);
@@ -487,7 +547,7 @@ const CreateLeadDialog = ({ open, onOpenChange, customerId: prefillCustomerId }:
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent
         className="max-w-md max-h-[90vh] overflow-y-auto"
         onInteractOutside={(e) => e.preventDefault()}
@@ -916,7 +976,7 @@ const CreateLeadDialog = ({ open, onOpenChange, customerId: prefillCustomerId }:
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleDialogOpenChange(false)}
               className="flex-1"
             >
               Cancel
