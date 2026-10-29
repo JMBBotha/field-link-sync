@@ -26,7 +26,8 @@ describe("call bell summary (Johan 14:03)", () => {
     expect(v).toContain("const body = buildCallBellBody(");
     expect(v).not.toMatch(/params\.summary\.slice\(0, 180\)/);
     const n = readFileSync("src/components/notifications/NotificationsList.tsx", "utf8");
-    expect(n).toContain('whitespace-pre-line line-clamp-4');
+    expect(n).toContain('whitespace-pre-line');
+    expect(n).toContain('line-clamp-3'); // 29 Oct: 3 lines + Show more on every bell body
     expect(n).toContain('data-testid="view-transcript"');
   });
 });

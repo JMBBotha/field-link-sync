@@ -16,6 +16,7 @@ import { markFollowUpDone } from "./notificationFollowUp";
 import { useRole } from "@/hooks/useRole";
 import SoundControls from "./SoundControls";
 import { useHeartbeatAudience } from "@/hooks/useSalesHeartbeat";
+import { useSalesRep } from "@/hooks/useSalesRep";
 
 interface Notification {
   id: string;
@@ -36,6 +37,9 @@ const NotificationBell = () => {
   const { isAdmin, isDispatcher, isFieldAgent } = useRole();
   const techOnly = isFieldAgent && !isAdmin && !isDispatcher;
   navRef.current = navigate;
+  const { isSalesRep } = useSalesRep();
+  const roleRef = useRef<"admin" | "sales" | "tech">("admin");
+  roleRef.current = window.location.pathname.startsWith("/field") || techOnly ? "tech" : isSalesRep ? "sales" : "admin";
   const { canSee: hearsSounds } = useHeartbeatAudience();
 
   useEffect(() => {
@@ -103,7 +107,7 @@ const NotificationBell = () => {
                   catch (e: any) { toast.error(e?.message || "Could not send the invoice"); }
                 },
               } : undefined,
-              cancel: { label: "Review", onClick: () => { markRead(); navRef.current(notificationHref(n.type, n.related_id)); } },
+              cancel: { label: "Review", onClick: () => { markRead(); navRef.current(notificationHref(n.type, n.related_id, roleRef.current)); } },
             });
           }
           // Lead SLA alerts (check_lead_sla cron) also pop a toast; Open marks read + opens the lead
@@ -118,7 +122,7 @@ const NotificationBell = () => {
                   supabase.from("notifications").update({ read: true }).eq("id", n.id).then(() =>
                     setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))
                   );
-                  navRef.current(notificationHref(n.type, n.related_id, window.location.pathname.startsWith("/field")));
+                  navRef.current(notificationHref(n.type, n.related_id, roleRef.current));
                 },
               },
             });
@@ -177,7 +181,7 @@ const NotificationBell = () => {
           variant="ghost"
           size="icon"
           className="relative text-white hover:bg-white/20"
-          onMouseEnter={() => setOpen(true)}
+          onPointerEnter={(e) => { if (e.pointerType === "mouse") setOpen(true); }}
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
@@ -191,14 +195,17 @@ const NotificationBell = () => {
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-80 p-0 overflow-hidden"
+        data-testid="notif-panel"
+        className="w-[calc(100vw-1rem-env(safe-area-inset-left)-env(safe-area-inset-right))] max-w-[26rem] sm:w-96 p-0 overflow-hidden bg-popover"
         align="end"
+        collisionPadding={8}
         onOpenAutoFocus={(e) => e.preventDefault()}
-        onMouseLeave={() => setOpen(false)}
+        onPointerLeave={(e) => { if (e.pointerType === "mouse") setOpen(false); }}
       >
         <NotificationsList
           notifications={notifications}
           hideLeadsFilter={techOnly}
+          role={roleRef.current}
           onMarkAsRead={markAsRead}
           onMarkAllRead={markAllRead}
           onClose={() => setOpen(false)}

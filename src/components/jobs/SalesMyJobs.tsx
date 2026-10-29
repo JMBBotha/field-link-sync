@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,6 +51,21 @@ export default function SalesMyJobs() {
       return (data ?? []) as MyJob[];
     },
   });
+  // Bell tap (?myjob=<leadId>): scroll to + highlight the item; not in My jobs yet -> open the lead page.
+  const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
+  const target = params.get("myjob");
+  const [hl, setHl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!target || !q.data) return;
+    const next = new URLSearchParams(params); next.delete("myjob");
+    if (q.data.some((j) => j.lead_id === target)) {
+      setHl(target);
+      setParams(next, { replace: true });
+      setTimeout(() => document.getElementById(`myjob-${target}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+      setTimeout(() => setHl(null), 4000);
+    } else navigate(`/admin/visits/${target}`, { replace: true });
+  }, [target, q.data]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <section className="v7-solid space-y-2 rounded-2xl border bg-card p-3" data-testid="sales-my-jobs">
       <h2 className="text-base font-semibold">My jobs</h2>
@@ -58,7 +74,7 @@ export default function SalesMyJobs() {
         : q.data.map((j) => {
           const idx = STAGES.findIndex(([s]) => s === j.stage);
           return (
-            <div key={j.lead_id} className="space-y-2 rounded-xl border p-3" data-testid="sales-my-job">
+            <div key={j.lead_id} id={`myjob-${j.lead_id}`} className={`space-y-2 rounded-xl border p-3 transition-shadow ${hl === j.lead_id ? "ring-2 ring-primary" : ""}`} data-testid="sales-my-job">
               <div className="flex flex-wrap items-baseline justify-between gap-x-2">
                 <p className="min-w-0 truncate font-semibold">{j.customer || "Customer"}</p>
                 <p className="text-xs text-muted-foreground tabular-nums">{j.scheduled_date || "No date"}{j.scheduled_time ? ` · ${j.scheduled_time}` : ""}</p>

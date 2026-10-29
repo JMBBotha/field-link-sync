@@ -41,7 +41,11 @@ export function JobsDispatchRedirect() {
 /** Old /admin/dispatch (?lead= bells, ?inbox=1, ?lane=) and /admin/schedule (?date=, Mandy) land on Dispatch · Calendar, params kept. */
 export function DispatchCalendarRedirect() {
   const { search } = useLocation();
+  const { isSalesRep, loading } = useSalesRep();
   const p = new URLSearchParams(search);
+  // Reps have no dispatch board (hidden), so every old /admin/dispatch?lead= link (bells, Next step, Then) was a dead tap.
+  if (loading) return null;
+  if (isSalesRep) { const lead = p.get("lead"); return <Navigate to={lead ? `/admin?myjob=${lead}` : "/admin/requests"} replace />; }
   p.set("tab", "dispatch");
   p.set("view", "calendar");
   return <Navigate to={`/admin/jobs?${p.toString()}`} replace />;
