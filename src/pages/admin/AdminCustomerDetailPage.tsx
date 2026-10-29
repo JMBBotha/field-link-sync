@@ -56,6 +56,7 @@ import CustomerSitesManager, { sitesLabel } from "@/components/customers/Custome
 import CustomerStatementPanel from "@/components/customers/CustomerStatementPanel";
 import CustomerNotesPanel from "@/components/customers/CustomerNotesPanel";
 import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
+import { UpcomingLine, ClientBookingsList, BookingActivity, useClientBookings } from "@/components/bookings/Bookings";
 import { ClientActivity, PaymentTermsChip, SitesOverview } from "@/components/customers/ClientV8Parts";
 import { InvoiceTermsOverride } from "@/components/invoiceDue/InvoiceTermsOverride";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
@@ -83,6 +84,8 @@ const getInitials = (first?: string | null, last?: string | null, company?: stri
 const AdminCustomerDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const [innerTab, setInnerTab] = useState("activity");
+  const { data: _bookings = [] } = useClientBookings(id);
+  const bookingsN = _bookings.length;
   const [showArchivedInv, setShowArchivedInv] = useState(false);
   const [site, setSite] = useState<string>("all");
   const [contractSignal, setContractSignal] = useState(0);
@@ -407,7 +410,7 @@ const AdminCustomerDetailPage = () => {
   // profile card is never blank when an address is actually on file.
   const fullAddress = structuredAddress || (customer.address || "").trim();
 
-  const main: [string, string, number?][] = [["activity", "Activity"], ["quotes", "Quotes", quotes.length], ["invoices", "Invoices & Payments", activeInvRows.length], ["jobs", "Jobs", jobs.length], ["sites", "Sites", locations.length], ...(isAdmin && !isSalesRep ? [["projects", "Projects"] as [string, string]] : [])];
+  const main: [string, string, number?][] = [["activity", "Activity"], ["quotes", "Quotes", quotes.length], ["invoices", "Invoices & Payments", activeInvRows.length], ["jobs", "Jobs", jobs.length + bookingsN], ["sites", "Sites", locations.length], ...(isAdmin && !isSalesRep ? [["projects", "Projects"] as [string, string]] : [])];
   const more: [string, string][] = [["details", "Client details"], ["contacts", "Contacts"], ["contracts", "Contracts"], ["notes", "Notes"], ...(canSeeStatement ? [["statement", "Statement"] as [string, string]] : []), ["calls", "Calls"], ["photos", "Photos"], ["documents", "Documents"], ["history", "History"], ["credits", "Credits"], ["oldsites", `${sitesLabel((customer as any).client_type)} (old list)`], ["relationship", "Relationship"]];
   const moreLabel = more.find(([v]) => v === innerTab)?.[1];
   const phone = (customer as any).phone as string | null; const email = (customer as any).email as string | null;
@@ -430,6 +433,7 @@ const AdminCustomerDetailPage = () => {
               {[(customer as any).client_type && String((customer as any).client_type).replace(/^./, (c: string) => c.toUpperCase()), leadSourceLabel(customer.lead_source), (customer as any).owner_rep_id && salesReps.find((r) => r.id === (customer as any).owner_rep_id)?.full_name && `Rep: ${salesReps.find((r) => r.id === (customer as any).owner_rep_id)?.full_name}`].filter(Boolean).join(" · ")}
             </p>
             <p className="mt-0.5 text-sm text-[#CFE6F6] break-words">{[contactName && contactName !== headerName ? contactName : null, phone, email, fullAddress].filter(Boolean).join(" · ") || "No contact details yet"}</p>
+            <UpcomingLine customerId={customer.id} />
             <OwnerRepChip customerId={customer.id} companyId={(customer as any).company_id} ownerRepId={(customer as any).owner_rep_id} canEdit={isAdmin && !isSalesRep} />
             <div className="mt-2"><PaymentTermsChip customerId={customer.id} basis={(customer as any).payment_terms_basis} days={(customer as any).payment_terms_days} finalDays={(customer as any).final_after_days} canEdit={isAdmin && !isSalesRep} onSaved={() => qc.invalidateQueries({ queryKey: ["customer-detail", id] })} /></div>
           </div>
@@ -503,6 +507,7 @@ const AdminCustomerDetailPage = () => {
           <div className="grid gap-4 md:grid-cols-3">
             <Card className="rounded-2xl md:col-span-2"><CardContent className="p-4">
               <p className="font-semibold mb-2">Activity <span className="text-xs font-normal text-muted-foreground">calls, emails, notes, follow-ups</span></p>
+              <BookingActivity customerId={customer.id} />
               <ClientActivity customerId={customer.id} companyId={customer.company_id ?? null} quotes={quotes as any[]} jobs={jobs as any[]} />
             </CardContent></Card>
             <Card className="rounded-2xl"><CardContent className="p-4">
@@ -621,6 +626,7 @@ const AdminCustomerDetailPage = () => {
         </CardContent></Card></TabsContent>
 
         <TabsContent value="jobs" className="mt-0"><Card className="rounded-2xl"><CardContent className="p-0 pt-4">
+          <ClientBookingsList customerId={customer.id} />
           <SectionHeader title="Jobs" onNew={() => navigate("/admin/jobs")} cta="+ New Job" />
           <SummaryChips
             items={[

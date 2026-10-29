@@ -110,14 +110,8 @@ export default function AdminRequestsPage() {
   );
 }
 
-/** Friendly SAST date/time, e.g. "Tue 10 Nov, 08:00". */
-export const friendlyWhen = (d?: string | null, t?: string | null) => {
-  if (!d) return "";
-  const dt = new Date(`${d}T${t ? t.slice(0, 5) : "12:00"}:00+02:00`);
-  const day = dt.toLocaleDateString("en-ZA", { timeZone: "Africa/Johannesburg", weekday: "short", day: "numeric", month: "short" });
-  const d2 = day.replace(",", "");
-  return t ? `${d2}, ${t.slice(0, 5)}` : d2;
-};
+export { friendlyWhen } from "@/lib/friendlyWhen";
+import { friendlyWhen } from "@/lib/friendlyWhen";
 const mapUrl = (r: RequestRow) => r.summary?.match(/https?:\/\/[^\s)]*(maps|goo\.gl)[^\s)]*[^\s).,]/i)?.[0]
   ?? (r.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.address)}` : null);
 /** Short area: suburb from the address, else the request area. */
