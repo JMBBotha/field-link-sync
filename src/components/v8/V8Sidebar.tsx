@@ -199,7 +199,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
             <kbd className="hidden lg:inline rounded border px-1.5 text-[10px] v8-border">⌘K</kbd>
           </button>
         )}
-        <LayoutToggleButton />
+        <div className="hidden md:block"><LayoutToggleButton /></div>
         <button type="button" onClick={onSignOut} className="v8-sub"><LogOut className="h-3.5 w-3.5" />Sign out</button>
       </div>
     </div>
