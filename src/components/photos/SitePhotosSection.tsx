@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useRole } from "@/hooks/useRole";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, ImagePlus, Loader2, PenLine, Trash2, X, Eye, EyeOff } from "lucide-react";
 import { loadLeadMockupUnits } from "@/lib/unitMockups";
@@ -34,6 +35,7 @@ export function SitePhotosReadOnly({ leadId }: { leadId: string }) {
 function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
   { leadId: string; readOnly?: boolean; upload?: (f: File) => Promise<void>; uploading?: boolean }) {
   const { user } = useAuth();
+  const { canDelete } = useRole();
   const { toast } = useToast();
   const qc = useQueryClient();
   const camRef = useRef<HTMLInputElement>(null);
@@ -161,7 +163,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
             {!readOnly && (open.uploaded_by === user?.id) ? (
               <Button variant="secondary" className="min-h-[44px]" onClick={() => setEditing(open)} data-testid="site-photo-annotate"><PenLine className="h-4 w-4 mr-1" />Mark up</Button>
             ) : <span />}
-            {!readOnly && canManage && (
+            {!readOnly && canManage && canDelete && (
               <Button variant="destructive" className="min-h-[44px]" onClick={() => deletePhoto(open)} data-testid="site-photo-delete"><Trash2 className="h-4 w-4 mr-1" />Delete</Button>
             )}
             <Button variant="ghost" className="min-h-[44px] text-white" onClick={() => setOpen(null)} aria-label="Close"><X className="h-5 w-5" /></Button>

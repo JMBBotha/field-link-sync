@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRole } from "@/hooks/useRole";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +33,7 @@ export const sitesLabel = (t: ClientType | string | null | undefined) =>
 const singular = (label: string) => (label === "Addresses" ? "address" : label === "Offices" ? "office" : "site");
 
 const CustomerSitesManager = ({ customerId, clientType }: { customerId: string; clientType?: ClientType | string | null }) => {
+  const { canDelete } = useRole();
   const label = sitesLabel(clientType);
   const one = singular(label);
   const { toast } = useToast();
@@ -93,10 +95,12 @@ const CustomerSitesManager = ({ customerId, clientType }: { customerId: string; 
                     <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" onClick={() => { setEditing(s); setOpen(true); }}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
+                    {canDelete && (
                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Delete"
                       onClick={() => { if (confirm(`Delete "${s.name}"?`)) deleteMut.mutate(s.id); }}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
+                    )}
                   </div>
                 </div>
                 <p className="text-sm">{s.address || <span className="text-muted-foreground">No address yet</span>}</p>

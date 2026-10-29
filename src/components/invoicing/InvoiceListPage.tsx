@@ -1,4 +1,5 @@
 import { SentManuallyBadge } from "@/components/documents/MarkSentManually";
+import { useRole } from "@/hooks/useRole";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { invoiceMoney, matchesMoneyFilter, type MoneyFilter } from "@/lib/moneySummary";
@@ -76,6 +77,7 @@ const formatDate = (dateStr: string) =>
   new Date(dateStr).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
 
 const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceListPageProps) => {
+  const { isAdmin } = useRole();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -179,6 +181,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   }
 
   const handleCSVExport = () => {
+    if (!isAdmin) return;
     const rows = filteredInvoices.map(inv => ({
       invoice: inv.invoice_number,
       customer: inv.customer_name,
@@ -192,6 +195,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   };
 
   const handlePDFExport = () => {
+    if (!isAdmin) return;
     const doc = new jsPDF();
     doc.setFontSize(16);
     doc.text("Invoice Report", 14, 20);
@@ -257,15 +261,15 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
       </div>
 
 
-      {/* Export Buttons */}
-      <div className="flex gap-2 justify-end">
+      {/* Export Buttons: bulk export is owner/admin only (POPIA) */}
+      {isAdmin && <div className="flex gap-2 justify-end">
         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCSVExport}>
           <Download className="h-3 w-3 mr-1" />CSV
         </Button>
         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handlePDFExport}>
           <FileText className="h-3 w-3 mr-1" />PDF
         </Button>
-      </div>
+      </div>}
 
       <FilterChips
         shown={filteredInvoices.length}

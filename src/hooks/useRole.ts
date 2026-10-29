@@ -13,6 +13,8 @@ interface UseRoleReturn {
   isViewer: boolean;
   canAccessAdmin: boolean;
   canWrite: boolean;
+  /** Only admins may delete company data or bulk-export it (Johan 29 Oct 2026; DB enforces too). */
+  canDelete: boolean;
   userId: string | null;
   loading: boolean;
 }
@@ -54,6 +56,7 @@ export const useRole = (): UseRoleReturn => {
     isViewer,
     canAccessAdmin: isAdmin || isDispatcher,
     canWrite: isAdmin || isFieldAgent || isDispatcher,
+    canDelete: isAdmin,
     userId,
     loading: authLoading || isLoading || (isError && roles.length === 0),
   };

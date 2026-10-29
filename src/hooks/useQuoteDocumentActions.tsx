@@ -2,6 +2,7 @@
  * Save draft / Send / Download PDF / Print for one quote — shared by the estimate page and the
  * Quote Builder (QuoteActionBar). Moved from AdminEstimateDetailPage; behaviour unchanged.
  */
+import { logPdfActivity } from "@/lib/pdfActivity";
 import { useEffect, useState, type ReactNode } from "react";
 import { pdfStep as withTimeout } from "@/lib/pdfTimeout";
 import { clearAllR0 } from "@/lib/r0Highlight";
@@ -174,12 +175,14 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
         // Print = the same full PDF (quote + T&C pages), printed from a hidden frame (Johan 2026-10-12).
         const blob = await generateDocumentPdfBlob(pdfOpts as any);
         if (abandoned) return;
+        logPdfActivity(id, "print");
         printPdfBlob(blob);
       } else {
         // All screens: open the finished PDF in the in-app viewer; its Download/Share buttons fire on a
         // fresh click, so browsers (esp. Safari / the preview frame) don't block the file after the long build.
         const blob = await generateDocumentPdfBlob(pdfOpts as any);
         if (abandoned) return;
+        logPdfActivity(id, "download");
         const num = q.quote_number || "DRAFT";
         setPdfView({ url: URL.createObjectURL(blob), fileName: `Quote-${num}.pdf`, title: `Quote ${num}` });
       }
