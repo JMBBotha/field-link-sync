@@ -4,7 +4,6 @@ import { useRole } from "@/hooks/useRole";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, LogOut, MapPin, Navigation, ChevronUp, ChevronDown, List, Clock, Loader2, Map, Timer, AlertCircle, RefreshCw, Home, CheckCircle2, FileText, CloudOff, Calculator, Menu, NavigationOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,7 +22,8 @@ import LeadDetailSheet from "@/components/LeadDetailSheet";
 import LeadCardProgress from "@/components/LeadCardProgress";
 import AvailabilityIndicator from "@/components/AvailabilityIndicator";
 import { formatElapsedTime } from "@/hooks/useJobTimer";
-import { useAvailability } from "@/hooks/useAvailability";
+import { AvailabilitySwitch } from "@/components/availability/AvailabilitySwitch";
+import { useAvailability, type AvailabilityStatus } from "@/hooks/useAvailability";
 import { calculateDistanceKm, formatDistance } from "@/lib/geolocation";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useOfflineLeads } from "@/hooks/useOfflineLeads";
@@ -152,13 +152,6 @@ const FieldAgent = () => {
   const [isAvailableForLeads, setIsAvailableForLeads] = useState(false);
   const availableRef = useRef(false);
   availableRef.current = isAvailableForLeads;
-  useEffect(() => {
-    if (!currentUserId) return;
-    let off = false;
-    supabase.from("agent_locations").select("is_available").eq("agent_id", currentUserId).maybeSingle()
-      .then(({ data }) => { if (!off && data) setIsAvailableForLeads(data.is_available === true); });
-    return () => { off = true; };
-  }, [currentUserId]);
   const [locationUpdating, setLocationUpdating] = useState(false);
   const [homeBaseLat, setHomeBaseLat] = useState<number | null>(null);
   const [homeBaseLng, setHomeBaseLng] = useState<number | null>(null);
@@ -200,6 +193,8 @@ const FieldAgent = () => {
 
   // Availability tracking
   const availability = useAvailability(currentUserId);
+  // Leads follow the single availability status (profiles.availability_status).
+  useEffect(() => { setIsAvailableForLeads(availability.status === "available"); }, [availability.status]);
 
   // Completed jobs filter
   const completedJobsFilter = useCompletedJobsFilter();
@@ -1057,30 +1052,13 @@ const FieldAgent = () => {
 
   // Toggle availability
   // NOTE: Must be declared before any conditional returns to follow the Rules of Hooks.
-  const toggleAvailability = useCallback(async (available: boolean) => {
-    setIsAvailableForLeads(available);
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    // Update agent_locations table
-    await supabase
-      .from("agent_locations")
-      .upsert({
-        agent_id: user.id,
-        latitude: currentLocation?.lat || 0,
-        longitude: currentLocation?.lng || 0,
-        is_available: available,
-        last_updated: new Date().toISOString(),
-      }, { onConflict: "agent_id" });
-
+  const changeAvailability = useCallback(async (next: AvailabilityStatus) => {
+    await availability.setManualStatus(next);
     toast({
-      title: available ? "You're Available! ✅" : "You're Offline",
-      description: available
-        ? "You'll see new available leads"
-        : "You won't see new leads, but can work on active jobs",
+      title: next === "available" ? "You're Available! ✅" : next === "busy" ? "You're Busy" : "You're Off",
+      description: next === "available" ? "You'll see new available leads" : "You won't get new leads, but can work on active jobs",
     });
-  }, [currentLocation, toast]);
+  }, [availability, toast]);
 
   // Filter and sort leads - MUST be before early returns to follow React hook rules
   const availableLeads = useMemo(() => applyTechOffers(leads
@@ -1282,9 +1260,9 @@ const FieldAgent = () => {
 
   return (
     <Layout footerLeftContent={footerLeftContent} hideFooterOnMobile>
-      <div className="h-screen flex flex-col overflow-hidden pb-12">
+      <div className="h-screen h-[100dvh] flex flex-col overflow-hidden pb-12">
         {/* Header - Cyan Theme */}
-        <header className="backdrop-blur border-b px-2 sm:px-3 md:px-4 py-2 md:py-3 flex items-center justify-between gap-2 min-w-0 z-20" style={{ backgroundColor: '#0077B6', borderColor: '#006699', color: '#FFFFFF' }}>
+        <header className="backdrop-blur border-b px-2 sm:px-3 md:px-4 py-2 md:py-3 flex items-center justify-between gap-2 min-w-0 z-20" style={{ backgroundColor: '#0077B6', borderColor: '#006699', color: '#FFFFFF', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}>
           {/* Left: logo, office links (text at xl, icons at tablet, menu on phones), GPS state.
               The signed-in person is shown once, by the orange IdentityBadge on the right. */}
           <div className="flex min-w-0 items-center gap-1.5 md:gap-2 xl:gap-3">
@@ -1345,13 +1323,7 @@ const FieldAgent = () => {
                 compact
                 hideLabel
               />
-              <span className="hidden xl:inline text-xs font-medium text-white">{isAvailableForLeads ? "Available" : "Not available"}</span>
-              <Switch
-                checked={isAvailableForLeads}
-                onCheckedChange={toggleAvailability}
-                aria-label="Available for new leads"
-                className="scale-90 origin-center data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-white/30 xl:scale-100"
-              />
+              <AvailabilitySwitch status={availability.status} onChange={changeAvailability} className="border-0 bg-transparent p-0" />
             </div>
             {(roleIsAdmin || roleIsDispatcher || canOpenQuoteBuilder) && (
               <DropdownMenu>

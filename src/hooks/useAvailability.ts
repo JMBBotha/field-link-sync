@@ -18,7 +18,7 @@ interface UseAvailabilityResult {
 const BUFFER_MINUTES = 45; // Auto-available 45 minutes before estimated end
 
 export const useAvailability = (userId: string | undefined): UseAvailabilityResult => {
-  const [status, setStatus] = useState<AvailabilityStatus>("available");
+  const [status, setStatus] = useState<AvailabilityStatus>("offline");
   const [nextAvailableTime, setNextAvailableTime] = useState<Date | null>(null);
   const [isInBufferWindow, setIsInBufferWindow] = useState(false);
   const [manualOverride, setManualOverride] = useState(false);
@@ -59,27 +59,18 @@ export const useAvailability = (userId: string | undefined): UseAvailabilityResu
     };
   }, [status, nextAvailableTime, checkBufferWindow]);
 
-  // Update profile availability status
-  const updateProfileStatus = useCallback(async (newStatus: AvailabilityStatus) => {
-    if (!userId) return;
-
-    await supabase
-      .from("profiles")
-      .update({
-        availability_status: newStatus,
-        last_availability_update: new Date().toISOString(),
-      })
-      .eq("id", userId);
-
-    // Also update agent_locations
-    await supabase
-      .from("agent_locations")
-      .update({
-        is_available: newStatus === "available" || isInBufferWindow,
-        last_updated: new Date().toISOString(),
-      })
-      .eq("agent_id", userId);
-  }, [userId, isInBufferWindow]);
+  // Single source of truth: profiles.availability_status via set_my_availability.
+  // A DB trigger mirrors it onto agent_locations.is_available.
+  const updateProfileStatus = useCallback(async (newStatus: AvailabilityStatus | "restore", manual = true): Promise<AvailabilityStatus | null> => {
+    if (!userId) return null;
+    const { data, error } = await (supabase.rpc as any)("set_my_availability", { p_status: newStatus, p_manual: manual });
+    if (error) {
+      console.error("[useAvailability] set_my_availability failed", error);
+      toast({ title: "Couldn't update availability", description: error.message, variant: "destructive" });
+      return null;
+    }
+    return (data as AvailabilityStatus) ?? null;
+  }, [userId, toast]);
 
   // Manual status toggle
   const setManualStatus = useCallback(async (newStatus: AvailabilityStatus) => {
@@ -104,7 +95,7 @@ export const useAvailability = (userId: string | undefined): UseAvailabilityResu
     setIsInBufferWindow(false);
     setManualOverride(false);
     
-    await updateProfileStatus("busy");
+    await updateProfileStatus("busy", false);
     
     return estimatedEnd;
   }, [updateProfileStatus]);
@@ -122,16 +113,17 @@ export const useAvailability = (userId: string | undefined): UseAvailabilityResu
 
   // Complete job
   const completeJob = useCallback(async () => {
-    setStatus("available");
     setNextAvailableTime(null);
     setIsInBufferWindow(false);
     setManualOverride(false);
-    
-    await updateProfileStatus("available");
-    
+
+    // Go back to whatever the person last chose (Available / Busy / Off).
+    const restored = (await updateProfileStatus("restore", false)) ?? "available";
+    setStatus(restored);
+
     toast({
-      title: "You're Available! ✅",
-      description: "Ready to receive new leads",
+      title: restored === "available" ? "You're Available! ✅" : restored === "busy" ? "Job done — still Busy" : "Job done — you're Off",
+      description: restored === "available" ? "Ready to receive new leads" : "Back to your previous availability",
     });
   }, [updateProfileStatus, toast]);
 
