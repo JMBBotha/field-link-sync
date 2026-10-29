@@ -70,7 +70,7 @@ export default function AdminJobsHubPage() {
   const initialDay = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined;
   return (
     <>
-      <JobsCalm salesOnly={isSalesRep} initialTab={sp.get("tab") === "pipeline" ? "pipeline" : "today"} initialDay={initialDay} />
+      <JobsCalm salesOnly={isSalesRep} initialTab={sp.get("tab") === "pipeline" ? "pipeline" : "today"} initialDay={initialDay} initialAssign={sp.get("assign")} />
       {dispatchHost && !isSalesRep && <div className="hidden" aria-hidden><AdminDispatchPage embedded /></div>}
     </>
   );

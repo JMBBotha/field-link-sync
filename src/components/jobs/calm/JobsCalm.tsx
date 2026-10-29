@@ -11,6 +11,8 @@ import { loadEntries, todayInJohannesburg } from "@/lib/todaysJobs";
 import { activeAssignee, type DJob } from "@/lib/dispatchCards";
 import { blockKind, jhbMinutes, jhbIso, monthGrid, type ChipKey } from "@/lib/jobsCalm";
 import AssignTechDialog from "@/components/jobs/AssignTechDialog";
+import LeadAssignDialog from "@/components/jobs/LeadAssignDialog";
+import ReassignRequestsBanner from "@/components/jobs/ReassignRequestsBanner";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import V8PipelineBoard from "@/components/v8/V8PipelineBoard";
 import JobsCalmView, { type CalmBlock, type CalmLead, type CalmPerson, type CalmTab, type CalmUnassigned } from "./JobsCalmView";
@@ -23,7 +25,7 @@ const plusDay = (d: string, n: number) => todayInJohannesburg(new Date(new Date(
 const ageLabel = (iso?: string | null) => { if (!iso) return null; const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return m >= 1440 ? `${Math.floor(m / 1440)}d` : m >= 60 ? `${Math.floor(m / 60)}h` : `${Math.max(0, m)}m`; };
 
 /** Calm Jobs page (the only Jobs page since 20 Oct). Reuses the Dispatch · Cards queries and the existing assign / create / open flows. */
-export default function JobsCalm({ initialTab = "today", salesOnly = false, initialDay }: { initialTab?: CalmTab; salesOnly?: boolean; initialDay?: string }) {
+export default function JobsCalm({ initialTab = "today", salesOnly = false, initialDay, initialAssign }: { initialTab?: CalmTab; salesOnly?: boolean; initialDay?: string; initialAssign?: string | null }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -32,6 +34,9 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
   const [who, setWho] = useState("all");
   const [showAll, setShowAll] = useState(false);
   const [assignJobId, setAssignJobId] = useState<string | null>(null);
+  // Lead Assign opens right here (29 Oct): the old /admin/dispatch?assign hop never mounted the dispatch page.
+  const [assignLeadId, setAssignLeadId] = useState<string | null>(initialAssign || null);
+  useEffect(() => { if (initialAssign) setAssignLeadId(initialAssign); }, [initialAssign]);
   const [showCreate, setShowCreate] = useState(false);
   const today = todayInJohannesburg();
   const [sel, setSel] = useState(initialDay || today);
@@ -150,6 +155,7 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
 
   return (
     <>
+      {!salesOnly && <ReassignRequestsBanner onOpen={setAssignLeadId} />}
       <JobsCalmView tab={tab} onTab={setTab} dateLabel={format(new Date(`${sel}T12:00:00+02:00`), tab === "month" ? "MMMM yyyy" : "EEE d MMM")} onNew={() => setShowCreate(true)}
         leads={showAll || chip === "leads" ? leadList : leadList.slice(0, 3)} leadsTotal={leadList.length} showAllLeads={showAll} onShowAll={() => setShowAll(true)}
         people={people} blocks={blocks} unassigned={salesOnly ? [] : unassigned}
@@ -157,11 +163,12 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
         everyone={who} onEveryone={setWho}
         everyoneOptions={[{ value: "all", label: "Everyone ▾" }, { value: "sales", label: "Sales" }, { value: "tech", label: "Technicians" }, ...model.people.filter((p) => !salesOnly || p.lane === "sales").map((p) => ({ value: p.id, label: p.name }))]}
         chip={chip} onChip={setChip} counts={counts}
-        onCallLead={() => {}} onAssignLead={(l) => navigate(`/admin/dispatch?assign=${l.id}`)} onOpenLead={(l) => navigate(`/admin/dispatch?lead=${l.id}`)}
+        onCallLead={() => {}} onAssignLead={(l) => setAssignLeadId(l.id)} onOpenLead={(l) => navigate(`/admin/dispatch?lead=${l.id}`)}
         onAssignJob={setAssignJobId} onOpenJob={(id) => navigate(`/admin/jobs/${id}`)}
         onOpenBlock={(b) => b.kind === "job" ? navigate(`/admin/jobs/${b.id}`) : navigate(`/admin/dispatch?lead=${(booked.entries.find((e) => `v-${e.key}` === b.id)?.lead_id) || ""}`)}
         onMoveBlock={salesOnly ? undefined : (b, start) => { if (b.kind !== "job" || !b.draggable) return; const j = jobs.find((x) => x.id === b.id); move.mutate({ id: b.id, iso: jhbIso(b.day, start), prev: j?.scheduled_for || null }); }}
         pipeline={<V8PipelineBoard />} nowMin={sel === today ? jhbMinutes(new Date().toISOString()) : null} />
+      <LeadAssignDialog leadId={assignLeadId} onClose={() => setAssignLeadId(null)} />
       <AssignTechDialog jobId={assignJobId} onClose={() => { setAssignJobId(null); refresh(); }} />
       <CreateJobDialog open={showCreate} onOpenChange={setShowCreate} />
     </>

@@ -1,3 +1,4 @@
+import JobInfoBlock from "@/components/jobs/JobInfoBlock";
 import { forwardRef, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,8 @@ interface Lead {
   latitude: number;
   longitude: number;
   notes?: string | null;
+  job_types?: string[] | null;
+  job_info?: string | null;
   created_at?: string | null;
   assigned_agent_id?: string | null;
   started_at?: string | null;
@@ -191,6 +194,7 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
             {photoCount > 0 && <span className="flex items-center gap-0.5 text-xs text-muted-foreground"><ImageIcon className="h-3 w-3" />{photoCount}</span>}
             {distance && <span className="text-xs text-muted-foreground">{distance}km</span>}
             {lead.status === "in_progress" && lead.started_at && <LeadCardProgress startedAt={lead.started_at} estimatedDurationMinutes={lead.estimated_duration_minutes} estimatedEndTime={lead.estimated_end_time} compact />}
+          {variant === "active" && <JobInfoBlock types={lead.job_types} info={lead.job_info} />}
           </>} action={<>
           {/* Active lead - Action buttons */}
           {variant === "active" && (
