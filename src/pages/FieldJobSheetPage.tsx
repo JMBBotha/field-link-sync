@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarDays, CheckCircle2, MapPin, Navigation, Package, Phone, Play } from "lucide-react";
 import FieldShell from "@/components/field/FieldShell";
 import EnRouteButton from "@/components/field/EnRouteButton";
+import JobInfoBlock from "@/components/jobs/JobInfoBlock";
 import { SitePhotosReadOnly } from "@/components/photos/SitePhotosSection";
 import { useToast } from "@/hooks/use-toast";
 import SiteCheckCard, { siteCheckBlock, useSiteCheck } from "@/components/field/SiteCheckCard";
@@ -116,6 +117,7 @@ export default function FieldJobSheetPage() {
               </div>
             )}
             {j.description && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{j.description}</p>}
+            <JobInfoBlock types={(j as any).leads?.job_types} info={(j as any).leads?.job_info} />
             {blocked && ["scheduled", "dispatched", "in_progress"].includes(j.status) && (
               <p className="rounded-lg bg-amber-50 dark:bg-amber-500/15 p-2 text-sm font-semibold text-amber-800 dark:text-amber-300" data-testid="job-locked-reason">{blocked}</p>
             )}
