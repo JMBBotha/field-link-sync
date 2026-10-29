@@ -8,6 +8,7 @@ import MapView from "@/components/MapView";
 import OfferCards from "@/components/dispatch/OfferCards";
 import { Button } from "@/components/ui/button";
 import { useSalesRep } from "@/hooks/useSalesRep";
+import SalesMyJobs from "@/components/jobs/SalesMyJobs";
 import V8RoleHome from "@/components/v8/V8RoleHome";
 import { useV8Role } from "@/components/v8/V8Sidebar";
 
@@ -106,6 +107,7 @@ const AdminHomePage = () => {
               </Button>
             </div>
             {!isClassic && v8Role !== "tech" && <V8RoleHome role={v8Role} />}
+            {isSalesRep && <SalesMyJobs />}
             <OfferCards />
             {!isClassic && v8Role !== "tech" ? (
             <details className="v7-solid rounded-2xl border bg-card p-2" data-testid="v8-home-details"><summary className="cursor-pointer px-2 py-1 text-sm font-semibold">More details (gauges, funnel, comparisons)</summary>
