@@ -7,7 +7,7 @@ describe("PDF export timeouts (Q-2026-0052/0053 hang)", () => {
     const p = pdfStep(new Promise(() => {}), 30000, "drawing the quote pages");
     const err = p.catch((e) => e);
     await vi.advanceTimersByTimeAsync(30001);
-    const e = await err;
+    const e = (await err) as PdfTimeoutError;
     expect(e).toBeInstanceOf(PdfTimeoutError);
     expect(e.message).toMatch(/PDF timed out while drawing the quote pages/);
     vi.useRealTimers();
