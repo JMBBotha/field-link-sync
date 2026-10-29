@@ -257,6 +257,28 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     return () => { cancelled = true; };
   }, [leadParam, leadsLoading, allLeads, setSearchParams]);
 
+  // ?assign=<id> opens the Assign dialog for that lead (Jobs board "Assign" button).
+  const assignParam = searchParams.get("assign");
+  useEffect(() => {
+    if (!assignParam || leadsLoading) return;
+    let cancelled = false;
+    const clear = () => setSearchParams((p) => { const n = new URLSearchParams(p); n.delete("assign"); return n; }, { replace: true });
+    const open = (lead: Lead) => {
+      setQuickAssignLead(lead); setQuickAssignAgent("");
+      setQuickAssignDate(lead.scheduled_date || format(new Date(), "yyyy-MM-dd"));
+      setQuickAssignStart(hhmm(lead.scheduled_time || "08:00"));
+      setQuickAssignEnd(fromMinutes(toMinutes(lead.scheduled_time || "08:00") + leadMinutes(lead)));
+    };
+    const found = allLeads.find((l) => l.id === assignParam);
+    if (found) { open(found); clear(); return; }
+    supabase.from("leads").select("*").eq("id", assignParam).maybeSingle().then(({ data }) => {
+      if (cancelled) return;
+      if (data) open(data as Lead);
+      clear();
+    });
+    return () => { cancelled = true; };
+  }, [assignParam, leadsLoading, allLeads, setSearchParams]);
+
   // ?date=YYYY-MM-DD or ?date=today (old /admin/schedule links, Mandy) opens that day in Day view.
   const dateParam = searchParams.get("date");
   useEffect(() => {
@@ -1466,10 +1488,10 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
             }
             const candidates =
               lane === "sales"
-                ? salesStaff.map(s => ({ id: s.id, full_name: s.full_name }))
+                ? salesStaff.map(s => ({ id: s.id, full_name: s.full_name, st: s.availability_status }))
                 : technicians.length
-                  ? technicians.map(s => ({ id: s.id, full_name: s.full_name }))
-                  : dispatchAgents.map(a => ({ id: a.id, full_name: a.full_name }));
+                  ? technicians.map(s => ({ id: s.id, full_name: s.full_name, st: s.availability_status }))
+                  : dispatchAgents.map(a => ({ id: a.id, full_name: a.full_name, st: a.availability_status }));
             return (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -1484,6 +1506,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                       <div className="flex items-center gap-2">
                         <div className={`h-2 w-2 rounded-full ${isAgentOnline(a.id) ? "bg-success" : "bg-muted-foreground/40"}`} />
                         {a.full_name}
+                        <span className="text-[10px] text-muted-foreground">{a.st === "available" ? "Available" : a.st === "busy" ? "Busy" : "Off"}</span>
                       </div>
                     </SelectItem>
                   ))}
