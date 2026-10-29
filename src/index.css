@@ -1270,3 +1270,8 @@ All colors MUST be HSL.
 /* Quote terms page: two columns whenever the document itself is wide enough (PDF capture is always 820px). */
 .fl-terms-page{container-type:inline-size}
 @container (min-width: 600px){.fl-terms-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Lead map fullscreen: keep Mapbox zoom buttons clear of the header and iPhone notch */
+[data-map-fullscreen] .mapboxgl-ctrl-top-right {
+  top: calc(env(safe-area-inset-top, 0px) + 6.5rem);
+}
