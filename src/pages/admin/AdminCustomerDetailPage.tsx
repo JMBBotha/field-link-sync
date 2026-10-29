@@ -1,4 +1,5 @@
 import { useInvoiceDue } from "@/hooks/useInvoiceDue";
+import OwnerRepChip from "@/components/requests/OwnerRepChip";
 import { randShort } from "@/lib/invoiceDue";
 import { InvoiceDueChip, FollowupReview } from "@/components/invoiceDue/InvoiceDueChip";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -425,6 +426,7 @@ const AdminCustomerDetailPage = () => {
               {[(customer as any).client_type && String((customer as any).client_type).replace(/^./, (c: string) => c.toUpperCase()), leadSourceLabel(customer.lead_source), (customer as any).assigned_rep_id && salesReps.find((r) => r.id === (customer as any).assigned_rep_id)?.full_name && `Rep: ${salesReps.find((r) => r.id === (customer as any).assigned_rep_id)?.full_name}`].filter(Boolean).join(" · ")}
             </p>
             <p className="mt-0.5 text-sm text-[#CFE6F6] break-words">{[contactName && contactName !== headerName ? contactName : null, phone, email, fullAddress].filter(Boolean).join(" · ") || "No contact details yet"}</p>
+            <OwnerRepChip customerId={customer.id} companyId={(customer as any).company_id} ownerRepId={(customer as any).owner_rep_id} canEdit={isAdmin && !isSalesRep} />
             <div className="mt-2"><PaymentTermsChip customerId={customer.id} basis={(customer as any).payment_terms_basis} days={(customer as any).payment_terms_days} finalDays={(customer as any).final_after_days} canEdit={isAdmin && !isSalesRep} onSaved={() => qc.invalidateQueries({ queryKey: ["customer-detail", id] })} /></div>
           </div>
           <div className="flex gap-1.5 flex-wrap">
