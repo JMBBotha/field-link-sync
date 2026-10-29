@@ -6,6 +6,8 @@ export interface GeocodeResult {
   latitude: number;
   longitude: number;
   place_name?: string;
+  /** False when the match is only a town/suburb/postcode area or a weak match. */
+  precise?: boolean;
 }
 
 export async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
@@ -22,6 +24,7 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult | n
       latitude: data.latitude,
       longitude: data.longitude,
       place_name: data.place_name,
+      precise: data.precise !== false,
     };
   } catch {
     return null;

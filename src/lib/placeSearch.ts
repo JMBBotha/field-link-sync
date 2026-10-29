@@ -11,6 +11,8 @@ export interface PlaceSuggestion {
   place_name: string;
   center: [number, number]; // [lng, lat]
   source?: "mapbox" | "osm" | "coords";
+  /** True for a town/suburb/region centre: centre the map, don't pin it as the property. */
+  approximate?: boolean;
 }
 
 const DEFAULT_PROXIMITY: [number, number] = [18.96, -33.73]; // Paarl / Cape Winelands
@@ -19,12 +21,17 @@ const inZA = (lat: number, lng: number) => lat <= -22 && lat >= -35.5 && lng >= 
 
 /** Parse "-33.74, 19.02", "-33.74 19.02" or a Google/Apple Maps URL holding coordinates. */
 export function parseCoordinates(input: string): { lat: number; lng: number } | null {
-  const s = decodeURIComponent((input || "").trim());
+  let s = (input || "").trim();
+  try { s = decodeURIComponent(s); } catch { /* keep raw */ }
+  s = s.replace(/\+/g, " ");
+  const N = "(-?\\d{1,3}(?:\\.\\d+)?)";
   const patterns = [
     /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/, // google place data (most precise)
     /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/, // google @lat,lng
-    /[?&](?:q|query|ll|sll|daddr|destination)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/,
-    /^(-?\d{1,2}\.\d+)\s*[,; ]\s*(-?\d{1,3}\.\d+)$/,
+    /[?&](?:q|query|ll|sll|daddr|destination|center|cbll|viewpoint)=\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/,
+    /\/maps\/(?:search|place|dir)\/(?:[^/]*\/)?(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/,
+    new RegExp(`^${N}\\s*[,; ]\\s*${N}$`),
+    /(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/, // "lat, lng" inside other text
   ];
   for (const re of patterns) {
     const m = s.match(re);
@@ -39,7 +46,59 @@ export function parseCoordinates(input: string): { lat: number; lng: number } | 
   return null;
 }
 
-interface MapboxFeature { id: string; text: string; place_name: string; center: [number, number] }
+/** Find a Google Maps link anywhere in pasted text (iPhone share text puts the name first). */
+export function extractMapLink(input: string): string | null {
+  const m = (input || "").match(/https?:\/\/(?:maps\.app\.goo\.gl|goo\.gl\/maps|(?:www\.|maps\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+)[^\s<>"']*/i);
+  return m ? m[0].replace(/[).,;]+$/, "") : null;
+}
+
+export const isShortMapLink = (url: string) => /^https?:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps)\//i.test(url);
+
+/** Place name in a full Google Maps URL (/maps/place/Name/... or ?q=Name). */
+export function mapLinkPlaceName(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const p = u.pathname.match(/\/maps\/(?:place|search)\/([^/@]+)/);
+    const raw = p?.[1] || u.searchParams.get("q") || u.searchParams.get("query");
+    if (!raw) return null;
+    const name = decodeURIComponent(raw).replace(/\+/g, " ").trim();
+    return name && !parseCoordinates(name) ? name : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Follow a maps.app.goo.gl / goo.gl/maps link server-side (allowlisted Google hosts only). */
+export async function resolveShortMapLink(url: string): Promise<string | null> {
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data, error } = await supabase.functions.invoke("resolve-map-link", { body: { url } });
+    if (error || !data?.url) return null;
+    return String(data.url);
+  } catch {
+    return null;
+  }
+}
+
+export type MapLinkResult =
+  | { kind: "coords"; lat: number; lng: number; name?: string | null }
+  | { kind: "name"; name: string }
+  | { kind: "failed" };
+
+/** Turn pasted text holding a Google Maps link into coordinates (or a place name to search). */
+export async function resolveMapLink(input: string): Promise<MapLinkResult | null> {
+  const link = extractMapLink(input);
+  if (!link) return null;
+  const full = isShortMapLink(link) ? await resolveShortMapLink(link) : link;
+  if (!full) return { kind: "failed" };
+  const c = parseCoordinates(full);
+  const name = mapLinkPlaceName(full);
+  if (c) return { kind: "coords", ...c, name };
+  if (name) return { kind: "name", name };
+  return { kind: "failed" };
+}
+
+interface MapboxFeature { id: string; text: string; place_name: string; center: [number, number]; place_type?: string[]; relevance?: number }
 interface NominatimRow { osm_type: string; osm_id: number; name?: string; display_name: string; lat: string; lon: string }
 
 const norm = (s: string) =>
@@ -81,6 +140,7 @@ async function mapboxSearch(term: string, token: string, proximity: [number, num
     place_name: f.place_name,
     center: f.center,
     source: "mapbox" as const,
+    approximate: !(f.place_type || []).some((t) => ["address", "poi", "street"].includes(t)),
   }));
 }
 
@@ -144,6 +204,22 @@ export async function searchPlaces(
 ): Promise<PlaceSuggestion[]> {
   const q = term.trim();
   if (q.length < 2) return [];
+
+  const link = extractMapLink(q);
+  if (link) {
+    const r = await resolveMapLink(q);
+    if (r?.kind === "coords") {
+      return [{
+        id: `coords:${r.lat},${r.lng}`,
+        text: r.name || `${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}`,
+        place_name: `Google Maps pin · ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}`,
+        center: [r.lng, r.lat],
+        source: "coords",
+      }];
+    }
+    if (r?.kind === "name") return searchPlaces(r.name, token, proximity);
+    return [];
+  }
 
   const coords = parseCoordinates(q);
   if (coords) {

@@ -251,7 +251,9 @@ const CreateLeadDialog = ({ open, onOpenChange, customerId: prefillCustomerId }:
       setGeocoding(true);
       const geo = await geocodeAddress(fullAddress);
       setGeocoding(false);
-      if (geo && hasValidCoords(geo.latitude, geo.longitude)) {
+      // Only auto-pin a precise match. A vague area match (town centre, suburb)
+      // is never pinned silently; the rep places the pin on the property.
+      if (geo && geo.precise !== false && hasValidCoords(geo.latitude, geo.longitude)) {
         setLatitude(geo.latitude);
         setLongitude(geo.longitude);
         // Persist so the next lead for this client already has a pin (address text untouched)

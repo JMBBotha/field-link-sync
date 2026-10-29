@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { AlertCircle, Crosshair, Loader2, Maximize2, Minimize2, Search, X, MapPin } from "lucide-react";
+import { AlertCircle, Check, Crosshair, Loader2, Maximize2, Search, X, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
@@ -50,6 +50,11 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
   const [gpsLoading, setGpsLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [dragPreview, setDragPreview] = useState<{ lat: number; lng: number } | null>(null);
+  // Warning shown instead of silently trusting a pin: vague area match or a pin in water.
+  const [pinWarning, setPinWarning] = useState<string | null>(null);
+  const historyPushedRef = useRef(false);
+  // Set when a picked suggestion writes its name into the box: don't search it again.
+  const skipSearchRef = useRef(false);
 
   // Fetch shared token if not already cached
   useEffect(() => {
@@ -134,39 +139,105 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
     return () => clearTimeout(t);
   }, [isFullscreen]);
 
-  // Fullscreen inside a Radix Dialog: DialogContent is translated (-50%,-50%) and
-  // scrollable, which makes `position: fixed` relative to the dialog instead of the
-  // screen. On a phone the "fullscreen" map then sat partly off-screen with its
-  // exit button hidden, so the only way out closed the whole lead form. While
-  // fullscreen we neutralise the transform/scroll on the nearest dialog and
-  // restore it exactly on exit; the parent form never unmounts.
+  // True full-screen overlay. The picker lives inside dialogs/sheets whose
+  // transform, scroll box and z-index (z-50, below the mobile bottom nav) trap a
+  // `position: fixed` child: on iPhone the map covered only part of the screen,
+  // the form showed under it and the exit button was out of reach. While
+  // fullscreen we neutralise those styles on every ancestor and lift the
+  // enclosing dialog above everything, then restore them exactly on exit. The
+  // parent form never unmounts, so all typed data stays.
   useEffect(() => {
     if (!isFullscreen) return;
-    const dlg = wrapperRef.current?.closest<HTMLElement>('[role="dialog"]');
-    if (!dlg) return;
-    const prev = { transform: dlg.style.transform, overflow: dlg.style.overflow, animation: dlg.style.animation };
-    const prevScroll = dlg.scrollTop;
-    dlg.style.transform = "none";
-    dlg.style.animation = "none";
-    dlg.style.overflow = "hidden";
-    dlg.scrollTop = 0;
+    const restore: Array<() => void> = [];
+    let el = wrapperRef.current?.parentElement || null;
+    while (el && el !== document.body && el !== document.documentElement) {
+      const node = el;
+      const cs = getComputedStyle(node);
+      const prev = {
+        transform: node.style.transform, animation: node.style.animation, filter: node.style.filter,
+        overflow: node.style.overflow, contain: node.style.contain, willChange: node.style.willChange,
+        zIndex: node.style.zIndex, maxHeight: node.style.maxHeight, backdropFilter: (node.style as any).backdropFilter,
+        scrollTop: node.scrollTop,
+      };
+      if (cs.transform !== "none") node.style.transform = "none";
+      if (cs.animationName !== "none") node.style.animation = "none";
+      if (cs.filter !== "none") node.style.filter = "none";
+      if ((cs as any).backdropFilter && (cs as any).backdropFilter !== "none") (node.style as any).backdropFilter = "none";
+      if (cs.contain !== "none") node.style.contain = "none";
+      if (cs.willChange !== "auto") node.style.willChange = "auto";
+      if (cs.overflow !== "visible") { node.style.overflow = "hidden"; node.scrollTop = 0; }
+      if (cs.position !== "static" && cs.zIndex !== "auto") node.style.zIndex = "2147483000";
+      restore.push(() => {
+        node.style.transform = prev.transform; node.style.animation = prev.animation;
+        node.style.filter = prev.filter; (node.style as any).backdropFilter = prev.backdropFilter;
+        node.style.contain = prev.contain; node.style.willChange = prev.willChange;
+        node.style.overflow = prev.overflow; node.style.zIndex = prev.zIndex; node.style.maxHeight = prev.maxHeight;
+        node.scrollTop = prev.scrollTop;
+      });
+      el = el.parentElement;
+    }
+    const prevBody = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
-      dlg.style.transform = prev.transform;
-      dlg.style.overflow = prev.overflow;
-      dlg.style.animation = prev.animation;
-      dlg.scrollTop = prevScroll;
+      restore.reverse().forEach((f) => f());
+      document.body.style.overflow = prevBody;
     };
   }, [isFullscreen]);
+
+  // Back gesture / history pop closes the fullscreen map (not the form).
+  const openFullscreen = useCallback(() => {
+    setIsFullscreen(true);
+    try {
+      window.history.pushState({ ...(window.history.state || {}), flMapFullscreen: true }, "");
+      historyPushedRef.current = true;
+    } catch { historyPushedRef.current = false; }
+  }, []);
+  const closeFullscreen = useCallback(() => {
+    setIsFullscreen(false);
+    if (historyPushedRef.current) {
+      historyPushedRef.current = false;
+      if (window.history.state?.flMapFullscreen) window.history.back();
+    }
+  }, []);
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onPop = () => {
+      historyPushedRef.current = false;
+      setIsFullscreen(false);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [isFullscreen]);
+  // Unmounting while fullscreen (form closed) drops our extra history entry.
+  useEffect(() => () => {
+    if (historyPushedRef.current && window.history.state?.flMapFullscreen) window.history.back();
+  }, []);
 
   // ESC closes fullscreen
   useEffect(() => {
     if (!isFullscreen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsFullscreen(false);
+      if (e.key === "Escape") { e.stopPropagation(); closeFullscreen(); }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isFullscreen]);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [isFullscreen, closeFullscreen]);
+
+  // Never trust a pin in the sea: check the map's water layer under the pin.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded || latitude == null || longitude == null) return;
+    const check = () => {
+      try {
+        const pt = map.project([longitude, latitude]);
+        const hits = map.queryRenderedFeatures(pt).filter((f: any) => f.sourceLayer === "water");
+        if (hits.length) setPinWarning("This pin is in the water. Drag it onto the property or tap the right spot.");
+        else setPinWarning((w) => (w && w.includes("water") ? null : w));
+      } catch { /* style not ready */ }
+    };
+    const t = window.setTimeout(() => { if (map.loaded()) check(); else map.once("idle", check); }, 900);
+    return () => window.clearTimeout(t);
+  }, [mapLoaded, latitude, longitude]);
 
   // Click outside suggestions
   useEffect(() => {
@@ -212,12 +283,14 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
         m.on("dragend", async () => {
           const ll = m.getLngLat();
           setDragPreview(null);
+          setPinWarning(null);
           const address = await reverseGeocode(ll.lat, ll.lng);
           onLocationChange(ll.lat, ll.lng, address, "drag");
         });
         markerRef.current = m;
       }
       if (emit) {
+        setPinWarning(null);
         reverseGeocode(lat, lng).then((address) => onLocationChange(lat, lng, address, "map"));
       }
     },
@@ -229,6 +302,10 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     const term = query.trim();
+    if (skipSearchRef.current) {
+      skipSearchRef.current = false;
+      return;
+    }
     if (term.length < 2) {
       setSuggestions([]);
       return;
@@ -254,14 +331,25 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
     };
   }, [query, token]);
 
-  const handlePickSuggestion = (s: Suggestion) => {
+  const handlePickSuggestion = async (s: Suggestion) => {
     const [lng, lat] = s.center;
+    if (s.text !== query) {
+      skipSearchRef.current = true;
+      setQuery(s.text);
+    }
+    setShowSuggestions(false);
+    if (s.approximate) {
+      // A town/suburb centre is not the property: centre the map, no silent pin.
+      mapRef.current?.flyTo({ center: [lng, lat], zoom: 14, duration: 800 });
+      setPinWarning(`"${s.text}" is an area, not an exact spot. Tap the property on the map to drop the pin.`);
+      return;
+    }
+    setPinWarning(null);
     placeMarker(lat, lng, false);
     mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, duration: 800 });
     const coordsOnly = s.id.startsWith("coords:");
-    onLocationChange(lat, lng, coordsOnly ? undefined : s.place_name, "search");
-    setQuery(s.text);
-    setShowSuggestions(false);
+    const address = coordsOnly ? await reverseGeocode(lat, lng) : s.place_name;
+    onLocationChange(lat, lng, address, "search");
   };
 
   const handleGps = () => {
@@ -293,15 +381,51 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
   }
 
   const containerClasses = isFullscreen
-    ? "fixed inset-0 !m-0 z-[100] bg-background flex flex-col h-[100dvh] w-screen"
+    ? "fixed inset-0 !m-0 z-[2147483000] bg-background h-[100dvh] w-screen isolate"
     : "relative w-full h-[280px] rounded-md border overflow-hidden";
+  const fsTop = "env(safe-area-inset-top, 0px)";
+  const fsBottom = "env(safe-area-inset-bottom, 0px)";
 
   return (
-    <div ref={wrapperRef} className={containerClasses}>
+    <div
+      ref={wrapperRef}
+      className={containerClasses}
+      style={isFullscreen ? { pointerEvents: "auto" } : undefined}
+      data-map-fullscreen={isFullscreen ? "true" : undefined}
+    >
+      {/* Fullscreen header: always below the iPhone status bar / notch */}
+      {isFullscreen && (
+        <div
+          className="absolute inset-x-0 top-0 z-20 flex items-center gap-2 border-b bg-background/95 backdrop-blur px-3 pb-2"
+          style={{ paddingTop: `calc(${fsTop} + 0.5rem)` }}
+        >
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 px-3"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); closeFullscreen(); }}
+            title="Close map"
+            aria-label="Close map"
+          >
+            <X className="h-4 w-4 mr-1" /> Close
+          </Button>
+          <div className="flex-1 text-center text-sm font-semibold">Set the pin</div>
+          <Button
+            type="button"
+            size="sm"
+            className="h-9 px-3"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); closeFullscreen(); }}
+            title="Done"
+          >
+            Done
+          </Button>
+        </div>
+      )}
       {/* Top control bar */}
       <div
         className="absolute left-2 right-2 z-10 flex gap-2 items-start"
-        style={{ top: isFullscreen ? "calc(env(safe-area-inset-top, 0px) + 0.5rem)" : "0.5rem" }}
+        style={{ top: isFullscreen ? `calc(${fsTop} + 3.75rem)` : "0.5rem" }}
       >
         <div ref={searchWrapRef} className="relative flex-1">
           <div className="relative">
@@ -363,22 +487,27 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
         >
           {gpsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4" />}
         </Button>
-        <Button
-          type="button"
-          size="icon"
-          variant="secondary"
-          className="h-9 w-9 shrink-0 bg-background/95 backdrop-blur"
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsFullscreen((v) => !v); }}
-          title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-          aria-label={isFullscreen ? "Exit fullscreen map" : "Open fullscreen map"}
-        >
-          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-        </Button>
+        {!isFullscreen && (
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            className="h-9 w-9 shrink-0 bg-background/95 backdrop-blur"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); openFullscreen(); }}
+            title="Fullscreen"
+            aria-label="Open fullscreen map"
+          >
+            <Maximize2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Drag preview */}
       {dragPreview && (
-        <div className="absolute bottom-2 left-2 z-10 rounded-md bg-background/95 backdrop-blur px-2 py-1 text-xs font-mono shadow">
+        <div
+          className="absolute left-2 z-10 rounded-md bg-background/95 backdrop-blur px-2 py-1 text-xs font-mono shadow"
+          style={{ bottom: isFullscreen ? `calc(${fsBottom} + 4.5rem)` : "0.5rem" }}
+        >
           {dragPreview.lat.toFixed(5)}, {dragPreview.lng.toFixed(5)}
         </div>
       )}
@@ -386,19 +515,43 @@ const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: 
       {/* Map */}
       <div ref={containerRef} className="absolute inset-0" />
 
-      {/* Pin guidance */}
-      {latitude == null || longitude == null ? (
-        <div className="absolute bottom-2 left-2 right-2 z-10 rounded-md bg-background/95 backdrop-blur px-3 py-2 text-xs shadow pointer-events-none">
-          <div className="font-medium">No pin yet — search or tap the map to drop a pin.</div>
-          {addressHint ? (
-            <div className="text-muted-foreground truncate">{addressHint}</div>
-          ) : null}
-        </div>
-      ) : !dragPreview ? (
-        <div className="absolute bottom-2 left-2 z-10 rounded-md bg-background/90 backdrop-blur px-2 py-1 text-xs shadow pointer-events-none">
-          Pin looks wrong? Drag it, tap the map, or search.
-        </div>
-      ) : null}
+      {/* Pin guidance / warnings */}
+      <div
+        className="absolute left-2 right-2 z-10 flex flex-col gap-2 pointer-events-none"
+        style={{ bottom: isFullscreen ? `calc(${fsBottom} + 0.75rem)` : "0.5rem" }}
+      >
+        {pinWarning ? (
+          <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 text-amber-900 px-3 py-2 text-xs shadow">
+            <div className="flex gap-2 items-start">
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>{pinWarning}</span>
+            </div>
+          </div>
+        ) : null}
+        {latitude == null || longitude == null ? (
+          <div className="rounded-md bg-background/95 backdrop-blur px-3 py-2 text-xs shadow">
+            <div className="font-medium">No pin yet — search or tap the map to drop a pin.</div>
+            {addressHint ? (
+              <div className="text-muted-foreground truncate">{addressHint}</div>
+            ) : null}
+          </div>
+        ) : !dragPreview && !isFullscreen ? (
+          <div className="self-start rounded-md bg-background/90 backdrop-blur px-2 py-1 text-xs shadow">
+            Pin looks wrong? Drag it, tap the map, or search.
+          </div>
+        ) : null}
+        {isFullscreen ? (
+          <Button
+            type="button"
+            className="pointer-events-auto h-11 w-full shadow-lg"
+            disabled={latitude == null || longitude == null}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); closeFullscreen(); }}
+          >
+            <Check className="h-4 w-4 mr-2" />
+            {latitude == null || longitude == null ? "Tap the map to drop a pin" : "Use this pin"}
+          </Button>
+        ) : null}
+      </div>
 
       {mapError && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 p-4">

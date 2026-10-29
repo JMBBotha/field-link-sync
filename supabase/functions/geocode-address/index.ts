@@ -61,6 +61,14 @@ Deno.serve(async (req) => {
         latitude: lat,
         longitude: lng,
         place_name: feat.place_name || address,
+        place_type: Array.isArray(feat.place_type) ? feat.place_type : [],
+        relevance: typeof feat.relevance === 'number' ? feat.relevance : null,
+        // Precise = an address, street or named place with a confident match.
+        // A town/suburb/postcode centroid is only an area (it can land in the sea).
+        precise:
+          (Array.isArray(feat.place_type) ? feat.place_type : []).some((t: string) =>
+            ['address', 'poi', 'street'].includes(t),
+          ) && (typeof feat.relevance !== 'number' || feat.relevance >= 0.8),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
     )
