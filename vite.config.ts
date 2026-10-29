@@ -39,6 +39,22 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "@tanstack/react-query"],
   },
+  build: {
+    // Split vendor code so no single chunk gets big enough to break import analysis.
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (/[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/.test(id)) return "vendor-react";
+          if (id.includes("@supabase")) return "vendor-supabase";
+          if (id.includes("@radix-ui")) return "vendor-radix";
+          if (/pdfjs|jspdf|html2canvas|pdf-lib/.test(id)) return "vendor-pdf";
+          if (/mapbox|leaflet/.test(id)) return "vendor-maps";
+          return "vendor";
+        },
+      },
+    },
+  },
   optimizeDeps: {
     include: ["react", "react-dom", "@tanstack/react-query"],
   },
