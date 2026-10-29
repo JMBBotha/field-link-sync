@@ -56,7 +56,15 @@ const NotificationBell = () => {
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(20);
-      setNotifications((data as Notification[]) || []);
+      let list = (data as Notification[]) || [];
+      // Follow-up nudges for quotes that are accepted / option not chosen / closed no longer show (old data too).
+      const fu = list.filter((n) => n.type === "sales_nudge" && (n as any).metadata?.stage === "followup" && n.related_id);
+      if (fu.length) {
+        const { data: qs } = await (supabase as any).from("quotes").select("id, followup_state, status").in("id", fu.map((n) => n.related_id));
+        const done = new Set(((qs as any[]) || []).filter((q) => q.followup_state === "closed" || ["accepted", "option_not_chosen", "declined", "superseded", "void"].includes(q.status)).map((q) => q.id));
+        list = list.filter((n) => !(fu.includes(n) && done.has(n.related_id!)));
+      }
+      setNotifications(list);
     };
 
     fetchNotifications();
