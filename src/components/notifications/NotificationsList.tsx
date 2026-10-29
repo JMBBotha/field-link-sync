@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import CallRecordingPlayer from "@/components/calls/CallRecordingPlayer";
 import InvoiceApprovalActions from "@/components/invoicing/InvoiceApprovalActions";
 import { ACCEPT_ALERT_TYPE, SEND_BLOCKED_TYPE } from "@/lib/invoiceSendApproval";
+import { groupNotifications } from "./groupNotifications";
 import { canMarkRead, getFollowUpIds, markFollowUpDone, requiresFollowUp } from "./notificationFollowUp";
 
 interface Notification {
@@ -132,6 +133,7 @@ const NotificationsList = ({
   const [followUps, setFollowUps] = useState<Set<string>>(() => getFollowUpIds());
   const [swipeId, setSwipeId] = useState<string | null>(null);
   const [swipeX, setSwipeX] = useState(0);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   const counts = useMemo(() => {
@@ -179,66 +181,7 @@ const NotificationsList = ({
     touchStart.current = null;
   };
 
-  return (
-    <TooltipProvider delayDuration={200}>
-      <div className="flex flex-col h-[28rem] max-h-[80vh]">
-        {/* Header */}
-        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b">
-          <h3 className="font-semibold text-sm">Notifications</h3>
-          {unreadCount > 0 && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs h-7"
-                    disabled={eligibleUnread.length === 0}
-                    onClick={() => onMarkAllRead(eligibleUnread.map((n) => n.id))}
-                  >
-                    <CheckCheck className="h-3 w-3 mr-1" />
-                    Mark all read
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-[15rem] text-xs">
-                {blockedCount > 0
-                  ? `${blockedCount} notification${blockedCount > 1 ? "s" : ""} still need follow-up — open them first.`
-                  : `Marks ${eligibleUnread.length} notification${eligibleUnread.length === 1 ? "" : "s"} as read.`}
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-
-        {/* Filters */}
-        <div className="shrink-0 flex gap-1 overflow-x-auto px-3 py-2 border-b">
-          {FILTERS.filter((f) => !(hideLeadsFilter && f.key === "leads")).map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => setFilter(f.key)}
-              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-                filter === f.key
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-accent"
-              }`}
-            >
-              {f.label}
-              {counts[f.key] > 0 && <span className="ml-1 opacity-70">{counts[f.key]}</span>}
-            </button>
-          ))}
-        </div>
-
-        {/* List */}
-        <ScrollArea className="flex-1 min-h-0 h-full">
-          {visible.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground text-sm">
-              <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p>{filter === "all" ? "No notifications yet" : `No ${filter} notifications`}</p>
-            </div>
-          ) : (
-            <div className="divide-y">
-              {visible.map((notification) => {
+  const renderRow = (notification: Notification) => {
                 const Icon = typeIcons[notification.type] || MessageSquare;
                 const allowed = canMarkRead(notification, followUps);
                 const offset = swipeId === notification.id ? swipeX : 0;
@@ -379,6 +322,94 @@ const NotificationsList = ({
                         </div>
                       </button>
                     </div>
+                  </div>
+                );
+  };
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <div className="flex flex-col h-[28rem] max-h-[80vh]">
+        {/* Header */}
+        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b">
+          <h3 className="font-semibold text-sm">Notifications</h3>
+          {unreadCount > 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-7"
+                    disabled={eligibleUnread.length === 0}
+                    onClick={() => onMarkAllRead(eligibleUnread.map((n) => n.id))}
+                  >
+                    <CheckCheck className="h-3 w-3 mr-1" />
+                    Mark all read
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[15rem] text-xs">
+                {blockedCount > 0
+                  ? `${blockedCount} notification${blockedCount > 1 ? "s" : ""} still need follow-up — open them first.`
+                  : `Marks ${eligibleUnread.length} notification${eligibleUnread.length === 1 ? "" : "s"} as read.`}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+
+        {/* Filters */}
+        <div className="shrink-0 flex gap-1 overflow-x-auto px-3 py-2 border-b">
+          {FILTERS.filter((f) => !(hideLeadsFilter && f.key === "leads")).map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setFilter(f.key)}
+              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                filter === f.key
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              {f.label}
+              {counts[f.key] > 0 && <span className="ml-1 opacity-70">{counts[f.key]}</span>}
+            </button>
+          ))}
+        </div>
+
+        {/* List */}
+        <ScrollArea className="flex-1 min-h-0 h-full">
+          {visible.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground text-sm">
+              <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              <p>{filter === "all" ? "No notifications yet" : `No ${filter} notifications`}</p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {groupNotifications(visible).map((g) => {
+                if (g.items.length === 1) return <div key={g.items[0].id}>{renderRow(g.items[0])}</div>;
+                const latest = g.items[0];
+                const isOpen = expanded.has(g.key);
+                const unread = g.items.filter((x) => !x.read).length;
+                return (
+                  <div key={g.key} data-testid="notif-group">
+                    <button type="button" aria-expanded={isOpen}
+                      onClick={() => setExpanded((prev) => { const n = new Set(prev); n.has(g.key) ? n.delete(g.key) : n.add(g.key); return n; })}
+                      className={`relative w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors flex gap-3 ${unread ? "bg-primary/5" : ""}`}>
+                      <div className="relative h-8 w-8 shrink-0">
+                        <span className="absolute inset-0 translate-x-1 -translate-y-1 rounded-full bg-muted" />
+                        <span className={`absolute inset-0 rounded-full flex items-center justify-center text-[11px] font-bold ${unread ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>{g.items.length}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className={`text-sm truncate ${unread ? "font-semibold" : "font-medium"}`}>{g.label}</p>
+                          <span className="shrink-0 text-[11px] text-muted-foreground">{g.items.length} updates{unread ? ` · ${unread} new` : ""}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{latest.title}{latest.body ? ` · ${latest.body}` : ""}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(new Date(latest.created_at), { addSuffix: true })}</p>
+                      </div>
+                      <ChevronRight className={`h-3.5 w-3.5 self-center text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`} />
+                    </button>
+                    {isOpen && <div className="border-l-2 border-primary/30 ml-4 divide-y">{g.items.map((x) => <div key={x.id}>{renderRow(x)}</div>)}</div>}
                   </div>
                 );
               })}
