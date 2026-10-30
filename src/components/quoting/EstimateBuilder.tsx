@@ -2,6 +2,13 @@ import { stockLabel } from "@/lib/specials";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import "./fl-builder.css";
 import { usePdfBasket } from "@/lib/pdfBasketStore";
+import { matchChosenToLines } from "@/lib/chosenItems";
+import ChosenItemsList from "./ChosenItemsList";
+import FloatingSelectedItems from "@/components/catalog/quote-builder/FloatingSelectedItems";
+/** Side pane beside the quote from large tablets up (Johan 30 Oct: 1024+, was 1280). */
+export const SIDE_PANE_MIN = 1024;
+const CHOSEN_PIN_OPEN_KEY = "fl-chosen-pin-open";
+const CHOSEN_PIN_POS_KEY = "fl-chosen-pin-pos";
 /**
  * EstimateBuilder — the single quote surface on /admin/estimates/:id.
  *
@@ -126,7 +133,7 @@ export default function EstimateBuilder({
     quoteId, meta, areas, items, loading,
     addArea, updateArea, deleteArea, updateItem, deleteItem, updateQuote, addItem, refetch,
   } = useQuoteContext();
-  const [savedPdfBasket] = usePdfBasket(quoteId);
+  const [savedPdfBasket, saveChosenBasket] = usePdfBasket(quoteId);
   const labourMode = normalizeLabourMode((meta as any)?.labour_mode);
   const { others: otherEditors } = useQuoteEditors(areaFirst ? null : quoteId, "estimate");
   const builderEditor = otherEditors.find((e) => e.surface === "builder");
@@ -170,7 +177,7 @@ export default function EstimateBuilder({
   const [showPreview, setShowPreview] = useState(() => typeof window === "undefined" || localStorage.getItem("fl-quote-preview") !== "hidden");
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
-    const mql = window.matchMedia("(min-width: 1280px)");
+    const mql = window.matchMedia(`(min-width: ${SIDE_PANE_MIN}px)`);
     const on = () => setIsWide(mql.matches);
     mql.addEventListener?.("change", on);
     return () => mql.removeEventListener?.("change", on);
@@ -179,7 +186,11 @@ export default function EstimateBuilder({
   // Price list PDF beside the quote (Johan 27 Oct): same side pane as the preview, admin only (cost prices).
   const { roles: myRoles } = useRole();
   const canPriceList = canSeePriceListPdfs(myRoles);
-  const [paneMode, setPaneMode] = useState<"preview" | "pricelist">("preview");
+  const [paneMode, setPaneMode] = useState<"preview" | "pricelist" | "chosen">("preview");
+  // Chosen items (Johan 30 Oct): the Visual PDF basket as a list; basket-only edits. Pin floats over the PDF.
+  const chosenRefs = useMemo(() => matchChosenToLines(savedPdfBasket, items as any[], areas as any[]), [savedPdfBasket, items, areas]);
+  const [chosenPinned, setChosenPinned] = useState(() => { try { return localStorage.getItem(CHOSEN_PIN_OPEN_KEY) === "1"; } catch { return false; } });
+  const setPin = (v: boolean) => { setChosenPinned(v); try { localStorage.setItem(CHOSEN_PIN_OPEN_KEY, v ? "1" : "0"); } catch { /* private mode */ } };
   const [priceSheetOpen, setPriceSheetOpen] = useState(false);
   const openPriceList = () => {
     if (!isWide) { setPriceSheetOpen(true); return; }
@@ -726,25 +737,38 @@ export default function EstimateBuilder({
               </Button>
             )}
           </div>
+          {isWide && canPriceList && sideBySide && paneMode === "pricelist" && chosenPinned && (
+            <FloatingSelectedItems persistKey={CHOSEN_PIN_POS_KEY} title={`Chosen items`} onClose={() => setPin(false)}
+              pdfSelection={{ selectedFromPdf: savedPdfBasket, setSelectedFromPdf: (v: any) => saveChosenBasket(typeof v === "function" ? v(savedPdfBasket) : v), handleSelectProduct: () => {}, updateSelectedItem: () => {} }}>
+              <ChosenItemsList compact basket={savedPdfBasket} onChange={saveChosenBasket} refs={chosenRefs} />
+            </FloatingSelectedItems>
+          )}
           {isWide ? (
-            <div className={sideBySide ? "grid grid-cols-[minmax(0,1fr)_minmax(380px,46%)] gap-4 items-start" : ""}>
+            <div className={sideBySide ? "grid grid-cols-[minmax(0,1fr)_minmax(340px,44%)] xl:grid-cols-[minmax(0,1fr)_minmax(380px,46%)] gap-4 items-start" : ""}>
               <div className="min-w-0">{editorDoc}</div>
               {sideBySide && (
                 <aside className="fl-preview-pane sticky top-14 max-h-[calc(100vh-4.5rem)] overflow-auto rounded-2xl p-3 print:hidden" data-html2canvas-ignore data-pdf-hide data-testid="live-preview-pane">
                   <div className="fl-pane-head mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
                     {canPriceList ? (
                       <div role="tablist" className="inline-flex rounded-full p-0.5 ring-1 ring-slate-200" data-testid="pane-switch">
-                        {(["preview", "pricelist"] as const).map((m) => (
+                        {(["preview", "pricelist", "chosen"] as const).map((m) => (
                           <button key={m} type="button" role="tab" aria-selected={paneMode === m} onClick={() => setPaneMode(m)}
                             className={`rounded-full px-3 py-1 text-xs ${paneMode === m ? "bg-[var(--fl-b1,#1aa7ec)] text-white" : "opacity-70"}`}>
-                            {m === "preview" ? "Preview" : "Price list"}
+                            {m === "preview" ? "Preview" : m === "pricelist" ? "Price list" : `Chosen (${savedPdfBasket.length})`}
                           </button>
                         ))}
                       </div>
                     ) : <span>Live client view</span>}
                     {paneMode === "preview" && <span className="text-xs font-normal opacity-70">Updates as you type</span>}
+                    {canPriceList && paneMode === "pricelist" && (
+                      <button type="button" data-testid="chosen-pin-toggle" aria-pressed={chosenPinned} onClick={() => setPin(!chosenPinned)}
+                        className="fl-preview-toggle rounded-full border px-3 py-1 text-xs font-semibold">📌 {chosenPinned ? "Hide chosen" : "Chosen on PDF"}</button>
+                    )}
+                    {canPriceList && paneMode === "chosen" && <span className="text-xs font-normal opacity-70">From the price list · tap to jump</span>}
                   </div>
-                  {canPriceList && paneMode === "pricelist" ? <PriceListPane /> : preview}
+                  {canPriceList && paneMode === "pricelist" ? <PriceListPane />
+                    : canPriceList && paneMode === "chosen" ? <ChosenItemsList basket={savedPdfBasket} onChange={saveChosenBasket} refs={chosenRefs} />
+                    : preview}
                 </aside>
               )}
             </div>

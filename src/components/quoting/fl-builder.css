@@ -9,3 +9,4 @@
 .dark .fl-builder .fl-preview-pane{box-shadow:0 24px 60px rgba(0,0,0,.4)}
 .fl-builder .option1-add-unit{background:linear-gradient(180deg,#5CC6F5,#1AA7EC 55%,#1590D6);color:#fff;border-color:transparent;border-radius:999px}
 .fl-builder .option1-add-secondary{border-radius:999px}
+.fl-chosen-flash{outline:2px solid #1AA7EC;outline-offset:-2px;background:#E8F6FD!important;transition:background .3s}

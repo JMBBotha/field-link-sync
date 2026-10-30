@@ -33,11 +33,31 @@ interface FloatingSelectedItemsProps {
   onClose: () => void;
   /** Push all selected PDF products into the shared quote baskets */
   onAddSelectedToQuote?: () => void;
+  /** Remember position + minimised state in localStorage under this key (Chosen items pin, 30 Oct). */
+  persistKey?: string;
+  title?: string;
+  /** Replaces the default item body (used by the Chosen items pin). */
+  children?: React.ReactNode;
 }
 
-const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: FloatingSelectedItemsProps) => {
-  const [pos, setPos] = useState({ x: window.innerWidth - 340, y: 80 });
-  const [minimized, setMinimized] = useState(false);
+type FloatPref = { x: number; y: number; minimized: boolean };
+const clampPos = (x: number, y: number) => ({
+  x: Math.min(Math.max(8, x), Math.max(8, (typeof window !== "undefined" ? window.innerWidth : 1280) - 220)),
+  y: Math.min(Math.max(8, y), Math.max(8, (typeof window !== "undefined" ? window.innerHeight : 800) - 60)),
+});
+export const readFloatPref = (key?: string): FloatPref | null => {
+  if (!key) return null;
+  try { const v = JSON.parse(localStorage.getItem(key) || "null"); return v && typeof v.x === "number" ? v : null; } catch { return null; }
+};
+
+const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote, persistKey, title = "Selected Items", children }: FloatingSelectedItemsProps) => {
+  const saved = readFloatPref(persistKey);
+  const [pos, setPos] = useState(() => (saved ? clampPos(saved.x, saved.y) : { x: window.innerWidth - 340, y: persistKey ? 160 : 80 }));
+  const [minimized, setMinimized] = useState(saved?.minimized ?? false);
+  useEffect(() => {
+    if (!persistKey) return;
+    try { localStorage.setItem(persistKey, JSON.stringify({ ...pos, minimized })); } catch { /* private mode */ }
+  }, [persistKey, pos, minimized]);
   const dragging = useRef(false);
   const offset = useRef({ x: 0, y: 0 });
 
@@ -62,6 +82,7 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
   return (
     <div
       className="fixed z-[9999] rounded-xl border bg-card shadow-2xl"
+      data-testid="floating-selected-items"
       style={{ left: pos.x, top: pos.y, width: minimized ? 200 : 300 }}
     >
       {/* Drag handle + header */}
@@ -74,7 +95,7 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
       >
         <GripVertical className="h-3.5 w-3.5 text-primary-foreground/70" />
         <span className="text-xs font-semibold text-primary-foreground flex-1">
-          Selected Items
+          {title}
         </span>
         <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4 bg-primary-foreground/20 text-primary-foreground border-0">
           {items.length}
@@ -88,15 +109,19 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
             Clear
           </button>
         )}
-        <button onClick={() => setMinimized(!minimized)} className="text-primary-foreground/70 hover:text-primary-foreground">
+        <button aria-label={minimized ? "Expand" : "Minimise"} onClick={() => setMinimized(!minimized)} className="text-primary-foreground/70 hover:text-primary-foreground">
           {minimized ? <Maximize2 className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
         </button>
-        <button onClick={onClose} className="text-primary-foreground/70 hover:text-primary-foreground">
+        <button aria-label="Close" onClick={onClose} className="text-primary-foreground/70 hover:text-primary-foreground">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      {!minimized && (
+      {!minimized && children && (
+        <div className="p-2 max-h-[60vh] overflow-y-auto" data-testid="floating-custom-body">{children}</div>
+      )}
+
+      {!minimized && !children && (
         <div className="p-2 max-h-72 overflow-y-auto space-y-1.5">
           {items.length === 0 ? (
             <p className="text-xs text-muted-foreground italic text-center py-4">
@@ -241,7 +266,7 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
       )}
 
       {/* Total footer */}
-      {!minimized && items.length > 0 && (
+      {!minimized && !children && items.length > 0 && (
         <div className="border-t px-3 py-2 space-y-0.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">Total (excl VAT)</span>
