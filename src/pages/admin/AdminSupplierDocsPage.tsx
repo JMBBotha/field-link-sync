@@ -9,10 +9,10 @@ import SupplierDocCard from "@/components/supplierDocs/SupplierDocCard";
 import AddSupplierDocDialog from "@/components/supplierDocs/AddSupplierDocDialog";
 import BotLoginCard from "@/components/supplierDocs/BotLoginCard";
 
-/** Office-only list: "Needs linking" inbox + warranty search by model, serial, supplier, doc/PO number or client. */
+/** Office-only list: warranty search by model, serial, supplier, doc/PO number or client. */
 export default function AdminSupplierDocsPage() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<"needs" | "all">("needs");
+  const tab = "all";
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const { data: companyId } = useQuery({
@@ -24,12 +24,7 @@ export default function AdminSupplierDocsPage() {
     queryFn: async () => {
       const { data: hits, error } = await sb.rpc("sjd_search", { p_q: q, p_limit: 100 });
       if (error) throw error;
-      let ids = (hits ?? []).filter((h: any) => tab === "all" || h.needs_linking).map((h: any) => h.document_id);
-      if (tab === "needs") {
-        const { data: sug } = await sb.from("supplier_job_document_links").select("document_id").eq("status", "suggested");
-        const sugIds = new Set((sug ?? []).map((s: any) => s.document_id));
-        ids = (hits ?? []).filter((h: any) => h.needs_linking || sugIds.has(h.document_id)).map((h: any) => h.document_id);
-      }
+      const ids = (hits ?? []).map((h: any) => h.document_id);
       if (!ids.length) return [];
       const { data } = await sb.from("supplier_job_documents").select(DOC_SELECT).in("id", ids).order("created_at", { ascending: false });
       return data ?? [];
@@ -43,14 +38,10 @@ export default function AdminSupplierDocsPage() {
       </div>
       <p className="text-xs text-muted-foreground">Delivery notes, supplier invoices and POs. Private to admin and dispatch.</p>
       <BotLoginCard />
-      <div className="flex gap-2">
-        <Button size="sm" variant={tab === "needs" ? "default" : "outline"} onClick={() => setTab("needs")} data-testid="sjd-tab-needs">Needs linking</Button>
-        <Button size="sm" variant={tab === "all" ? "default" : "outline"} onClick={() => setTab("all")}>All</Button>
-      </div>
       <Input placeholder="Search model, serial, supplier, doc or PO number, client" value={q} onChange={(e) => setQ(e.target.value)} data-testid="sjd-search" />
       {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p>
         : docs.length ? <div className="space-y-2">{docs.map((d: any) => <SupplierDocCard key={d.id} doc={d} onChanged={() => refetch()} />)}</div>
-        : <p className="text-sm text-muted-foreground">{tab === "needs" ? "Nothing waiting to be linked." : "No documents found."}</p>}
+        : <p className="text-sm text-muted-foreground">No documents found.</p>}
       {companyId && <AddSupplierDocDialog open={open} onOpenChange={setOpen} companyId={companyId} onSaved={() => refetch()} />}
     </div>
   );

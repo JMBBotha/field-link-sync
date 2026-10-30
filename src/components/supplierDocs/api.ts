@@ -25,8 +25,8 @@ export async function openDocFile(path: string | null) {
   window.open(data.signedUrl, "_blank", "noopener");
 }
 
-export async function linkDoc(documentId: string, jobId?: string | null, customerId?: string | null) {
-  const { error } = await sb.rpc("sjd_link", { p_document_id: documentId, p_job_id: jobId ?? null, p_customer_id: customerId ?? null });
+export async function linkDoc(documentId: string, jobId?: string | null, customerId?: string | null, note?: string | null, lines?: { line_id: string; qty: number; serials?: string[] }[] | null) {
+  const { error } = await sb.rpc("sjd_link", { p_document_id: documentId, p_job_id: jobId ?? null, p_customer_id: customerId ?? null, p_note: note ?? null, p_lines: lines ?? null });
   if (error) throw error;
 }
 export async function unlinkDoc(linkId: string) {

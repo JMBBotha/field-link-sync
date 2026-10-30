@@ -34,7 +34,6 @@ import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useToast } from "@/hooks/use-toast";
 import { JobDetailSkeleton } from "@/components/ui/skeletons";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
-import SupplierDocsSection from "@/components/supplierDocs/SupplierDocsSection";
 import TechLocationBlock from "@/components/jobs/TechLocationBlock";
 import AdminBackfillPanel from "@/components/jobs/AdminBackfillPanel";
 import JobRunCard from "@/components/scheduling/JobRunCard";
@@ -378,7 +377,6 @@ const AdminJobDetailPage = () => {
         )}
 
         {/* Private supplier documents (office only) */}
-        <SupplierDocsSection companyId={j.company_id} jobId={j.id} />
 
         {/* Admin backfill on behalf of tech (Johan t1929u) */}
         {isAdmin && (
