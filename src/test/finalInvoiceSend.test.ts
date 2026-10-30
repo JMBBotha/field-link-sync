@@ -23,3 +23,20 @@ describe("final invoice send", () => {
     expect(filterInvoices(rows, { state: "paid" })).toHaveLength(1);
   });
 });
+
+import { readFileSync } from "fs";
+describe("final invoice email (Johan 30 Oct 20:29)", () => {
+  const src = readFileSync("src/components/invoicing/FinalInvoiceSendDialog.tsx", "utf8");
+  it("defaults to email with a preview step, WhatsApp stays", () => {
+    expect(src).toContain('p_mode: "preview"');
+    expect(src).toContain('p_mode: "send"');
+    expect(src).toContain("Send by WhatsApp instead");
+    expect(src).toContain("Emailed to ${emailed.to} at");
+  });
+  it("migration builds the subject and never prints Ind CC / old number", () => {
+    const sql = readFileSync("supabase/migrations/20261030210000_final_invoice_email.sql", "utf8");
+    expect(sql).toContain("'Final invoice ' || coalesce(inv.invoice_number,'') || ' - balance '");
+    expect(sql).toContain("interval '10 minutes'");
+    expect(sql).toMatch(/Ind\\\.\?\\s\*CC/);
+  });
+});

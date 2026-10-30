@@ -402,7 +402,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           {/* Primary action based on status */}
           {/* Mark as sent without emailing: dialog asks how (WhatsApp / handed over / other), server logs + notifies the owner. */}
           {/* Final invoice (Johan 30 Oct): deposit paid, balance open → orange primary next step. Opens WhatsApp with the invoice PDF + balance. */}
-          {invoice.status !== "draft" && amountPaid > 0.005 && Number(invoice.grand_total) - amountPaid > 0.005 && (
+          {!["draft", "void", "cancelled"].includes(invoice.status) && (amountPaid > 0.005 || ["sent", "overdue", "partially_paid", "part_paid"].includes(invoice.status)) && Number(invoice.grand_total) - amountPaid > 0.005 && (
             <FinalInvoiceSendDialog invoice={invoice} balance={Math.max(0, Number(invoice.grand_total) - amountPaid)}
               autoOpen={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("final") === "1"}
               onDone={() => { fetchInvoice(); onUpdate?.(); }} />
