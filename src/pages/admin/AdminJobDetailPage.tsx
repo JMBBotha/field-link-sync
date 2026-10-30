@@ -32,6 +32,7 @@ import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useToast } from "@/hooks/use-toast";
 import { JobDetailSkeleton } from "@/components/ui/skeletons";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
+import TechLocationBlock from "@/components/jobs/TechLocationBlock";
 import JobRunCard from "@/components/scheduling/JobRunCard";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { attachPaymentTotals } from "@/lib/depositInvoice";
@@ -217,6 +218,8 @@ const AdminJobDetailPage = () => {
             <p className="mt-1.5 text-sm text-[#CFE6F6] break-words">{[j.customers?.name, location?.label, location?.address].filter(Boolean).join(" · ")}</p>
           )}
         </div>
+
+        <TechLocationBlock jobId={j.id} />
 
         {/* Job info */}
         <Card className="rounded-2xl">

@@ -1,3 +1,4 @@
+import JobLocationShare from "@/components/jobs/JobLocationShare";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useRole } from "@/hooks/useRole";
@@ -1347,6 +1348,7 @@ const FieldAgent = () => {
             </Button>
           </div>
         </header>
+        <JobLocationShare />
         {/* Phones only: labelled availability strip under the header (row 1 keeps menu/logo/bell/avatar). */}
         <div data-testid="field-mobile-strip" className="md:hidden flex h-11 shrink-0 items-center gap-1.5 border-b px-2 z-20" style={{ backgroundColor: '#0077B6', borderColor: '#006699' }}>
           <AvailabilitySwitch labelled status={availability.status} onChange={changeAvailability} className="flex-1 max-w-[260px]" />

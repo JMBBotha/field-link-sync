@@ -1,3 +1,4 @@
+import TechLocationBlock from "@/components/jobs/TechLocationBlock";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -81,6 +82,7 @@ export default function SalesMyJobs() {
               </div>
               {j.title && <p className="text-xs text-muted-foreground">{j.title}</p>}
               <p className="text-sm">{j.tech_name?.trim() || "No technician"}{j.tech_name ? <span className="text-muted-foreground"> · {TECH[j.tech_status] || "Off"}</span> : null}</p>
+              {j.job_id && <TechLocationBlock jobId={j.job_id} compact />}
               <ol className="grid grid-cols-4 gap-1" aria-label="Job progress">
                 {STAGES.map(([s, label], i) => (
                   <li key={s} aria-current={i === idx ? "step" : undefined} className="space-y-1 text-center">

@@ -1,3 +1,4 @@
+import JobLocationShare from "@/components/jobs/JobLocationShare";
 import { useEffect, useRef, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ContractGate } from "@/components/plans/ContractGate";
@@ -328,7 +329,7 @@ const AdminLayout = () => {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
             >
-              <ContractGate><Outlet /></ContractGate>
+              <JobLocationShare /><ContractGate><Outlet /></ContractGate>
             </motion.div>
           </AnimatePresence>
         </main>
