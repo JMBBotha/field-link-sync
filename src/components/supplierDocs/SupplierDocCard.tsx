@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Check, X, Link2 } from "lucide-react";
-import { docTypeLabel, openDocFile, linkDoc, unlinkDoc } from "./api";
+import { docTypeLabel, openDocFile, linkDoc, unlinkDoc, attachDocFile } from "./api";
 import JobPicker from "./JobPicker";
 
 export default function SupplierDocCard({ doc, onChanged, highlightJobId }: { doc: any; onChanged: () => void; highlightJobId?: string }) {
@@ -18,9 +18,10 @@ export default function SupplierDocCard({ doc, onChanged, highlightJobId }: { do
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="font-medium text-sm truncate">{supplier} · {docTypeLabel(doc.doc_type)}{doc.doc_number ? ` ${doc.doc_number}` : ""}</div>
-          <div className="text-xs text-muted-foreground">{[doc.po_number && `PO ${doc.po_number}`, doc.doc_date && new Date(doc.doc_date).toLocaleDateString("en-ZA")].filter(Boolean).join(" · ") || "No date"}{doc.source === "assistant" ? " · from email" : ""}</div>
+          <div className="text-xs text-muted-foreground">{[doc.po_number && `PO ${doc.po_number}`, doc.doc_date && new Date(doc.doc_date).toLocaleDateString("en-ZA")].filter(Boolean).join(" · ") || "No date"}{doc.source === "assistant" ? " · added by WALDA (bot)" : ""}</div>
         </div>
         {doc.storage_path && <Button size="sm" variant="outline" onClick={() => run(() => openDocFile(doc.storage_path))}><FileText className="h-4 w-4 mr-1" />Open</Button>}
+        {!doc.storage_path && <label className="inline-flex"><input type="file" accept="application/pdf,image/*" className="hidden" data-testid="sjd-attach" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) run(() => attachDocFile(doc, f)); }} /><span className="cursor-pointer text-xs border rounded-md px-2 py-1 inline-flex items-center"><FileText className="h-4 w-4 mr-1" />Attach file</span></label>}
       </div>
       {lines.length > 0 && (
         <ul className="text-xs space-y-0.5">

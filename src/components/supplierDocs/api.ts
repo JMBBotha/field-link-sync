@@ -51,3 +51,13 @@ export async function searchJobs(companyId: string, q: string) {
   }
   return rows as any[];
 }
+
+/** Attach a file to a document that has none: uploads to <company>/<doc>/<file>, then sjd_attach_file records it. */
+export async function attachDocFile(doc: { id: string; company_id: string }, file: File) {
+  const safe = file.name.replace(/[^A-Za-z0-9._-]+/g, "_").slice(-120) || "file";
+  const path = `${doc.company_id}/${doc.id}/${safe}`;
+  const up = await supabase.storage.from(SJD_BUCKET).upload(path, file, { upsert: false, contentType: file.type || undefined });
+  if (up.error) throw up.error;
+  const { error } = await sb.rpc("sjd_attach_file", { p_document_id: doc.id, p_storage_path: path, p_file_name: file.name, p_mime_type: file.type || null });
+  if (error) throw error;
+}

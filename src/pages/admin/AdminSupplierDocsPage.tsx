@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { sb, DOC_SELECT } from "@/components/supplierDocs/api";
 import SupplierDocCard from "@/components/supplierDocs/SupplierDocCard";
 import AddSupplierDocDialog from "@/components/supplierDocs/AddSupplierDocDialog";
+import BotLoginCard from "@/components/supplierDocs/BotLoginCard";
 
 /** Office-only list: "Needs linking" inbox + warranty search by model, serial, supplier, doc/PO number or client. */
 export default function AdminSupplierDocsPage() {
@@ -41,6 +42,7 @@ export default function AdminSupplierDocsPage() {
         {companyId && <Button size="sm" onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />Add</Button>}
       </div>
       <p className="text-xs text-muted-foreground">Delivery notes, supplier invoices and POs. Private to admin and dispatch.</p>
+      <BotLoginCard />
       <div className="flex gap-2">
         <Button size="sm" variant={tab === "needs" ? "default" : "outline"} onClick={() => setTab("needs")} data-testid="sjd-tab-needs">Needs linking</Button>
         <Button size="sm" variant={tab === "all" ? "default" : "outline"} onClick={() => setTab("all")}>All</Button>
