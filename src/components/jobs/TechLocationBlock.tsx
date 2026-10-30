@@ -44,6 +44,7 @@ export default function TechLocationBlock({ jobId, compact = false }: { jobId: s
               <span className="text-muted-foreground"> · {techStatusLabel(t)}</span>
               {t.shared && (
                 <span className="block text-xs text-muted-foreground">
+                  {t.arrived_at ? `Arrived ${sastTime(t.arrived_at)}${t.left_at ? ` · left ${sastTime(t.left_at)}` : ""} · ` : ""}
                   Updated {friendlyAgo(t.last_updated)}
                   {t.distance_km != null ? ` · ${t.distance_km} km away` : ""}
                   {eta ? ` · about ${eta} min` : ""}

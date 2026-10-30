@@ -8,6 +8,7 @@ import MapView from "@/components/MapView";
 import OfferCards from "@/components/dispatch/OfferCards";
 import { Button } from "@/components/ui/button";
 import { useSalesRep } from "@/hooks/useSalesRep";
+import FieldPresenceBoard from "@/components/admin/FieldPresenceBoard";
 import SalesMyJobs from "@/components/jobs/SalesMyJobs";
 import V8RoleHome from "@/components/v8/V8RoleHome";
 import { useV8Role } from "@/components/v8/V8Sidebar";
@@ -107,6 +108,7 @@ const AdminHomePage = () => {
               </Button>
             </div>
             {!isClassic && v8Role !== "tech" && <V8RoleHome role={v8Role} />}
+            {!isSalesRep && <FieldPresenceBoard />}
             {isSalesRep && <SalesMyJobs />}
             <OfferCards />
             {!isClassic && v8Role !== "tech" ? (

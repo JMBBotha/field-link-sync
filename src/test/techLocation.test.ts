@@ -17,3 +17,11 @@ describe("tech location helpers", () => {
     expect(mapUrl({ ...t, lat: null }, 1, 2)).toBeNull();
   });
 });
+import { presenceLabel } from "@/lib/techLocation";
+describe("presence labels", () => {
+  it("check-in/out", () => {
+    expect(presenceLabel({ kind: "job", title: "", distance_m: 1, arrived_at: "2026-10-30T07:00:00Z" })).toBe("Checked in 09:00");
+    expect(presenceLabel({ kind: "sales_visit", title: "", distance_m: 1, en_route_at: "x" })).toBe("On the way");
+    expect(techStatusLabel({ ...t, shared: false, status: "left_site", arrived_at: "x" })).toBe("Left site");
+  });
+});

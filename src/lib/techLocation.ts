@@ -2,7 +2,8 @@
 export type TechLoc = {
   tech_id: string; name: string; lat: number | null; lng: number | null;
   last_updated: string | null; distance_km: number | null;
-  status: "on_site" | "on_the_way" | "not_started"; shared: boolean;
+  status: "on_site" | "on_the_way" | "not_started" | "left_site"; shared: boolean;
+  arrived_at?: string | null; left_at?: string | null; en_route_at?: string | null;
 };
 export type JobTechLocation = {
   allowed: boolean; in_window?: boolean; window_start?: string | null; window_end?: string | null;
@@ -10,10 +11,11 @@ export type JobTechLocation = {
 };
 
 export const STATUS_LABEL: Record<string, string> = {
-  on_site: "On site", on_the_way: "On the way", not_started: "Not started",
+  on_site: "On site", on_the_way: "On the way", not_started: "Not started", left_site: "Left site",
 };
 
 export function techStatusLabel(t: TechLoc): string {
+  if (t.status === "left_site" || t.arrived_at) return STATUS_LABEL[t.status] || "On site";
   if (!t.shared) return "Location not shared";
   return STATUS_LABEL[t.status] || "Not started";
 }
@@ -43,4 +45,15 @@ export function mapUrl(t: TechLoc, jobLat?: number | null, jobLng?: number | nul
   if (jobLat != null && jobLng != null)
     return `https://www.google.com/maps/dir/?api=1&origin=${t.lat},${t.lng}&destination=${jobLat},${jobLng}`;
   return `https://www.google.com/maps/search/?api=1&query=${t.lat},${t.lng}`;
+}
+
+export type PresenceTarget = {
+  id?: string; target?: string; kind: "job" | "sales_visit"; title: string | null; distance_m: number | null;
+  en_route_at?: string | null; arrived_at?: string | null; left_at?: string | null; window_end?: string | null;
+};
+export function presenceLabel(t: PresenceTarget): string {
+  if (t.left_at) return `Checked out ${sastTime(t.left_at)}`;
+  if (t.arrived_at) return `Checked in ${sastTime(t.arrived_at)}`;
+  if (t.en_route_at) return "On the way";
+  return "Not started";
 }
