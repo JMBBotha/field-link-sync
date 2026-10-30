@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
 import { renderSignatureHtml, renderReminderSignatureHtml, renderSignatureText, isDesignedCompany, SIGNATURE_IMAGE_BASE, type SignatureCompany } from "../_shared/emailSignature.ts";
 import { loadSignaturePerson, loadSignatureCompany, replyToFor } from "../_shared/signaturePerson.ts";
+import { brandedTopStrip, brandedSummaryTable, brandedButton, renderBrandedEmail, type EmailBrand } from "../_shared/brandedEmail.ts";
+import { inlineEmailImages } from "../_shared/inlineEmailImages.ts";
 import { loadUnitCardsStripHtml } from "../_shared/unitCardsEmail.ts";
 
 const corsHeaders = {
@@ -56,58 +58,36 @@ async function loadBrand(sb: any, quoteId?: string | null): Promise<Brand> {
   return b;
 }
 
-// Top line on every client email (Johan 14 Oct): short company line
-// from the sending company's own record, matching the PDF page head.
-function topStrip(brand: Brand): string {
-  const parts = [brand.name, brand.sig?.vatNo ? `VAT ${brand.sig.vatNo}` : "", brand.phone ? `Tel ${brand.phone}` : (brand.sig?.tel ? `Tel ${brand.sig.tel}` : ""), brand.email || brand.sig?.email || ""].filter(Boolean).map(escH);
-  // An email is a first page: company line only, no rule (Johan 14 Oct 07:53).
-  if (!parts.length) return "";
-  return `<tr><td style="padding:12px 28px 10px;background:#ffffff;"><div style="font-size:10px;color:#6b7a8c;">${parts.join(" &middot; ")}</div></td></tr>`;
-}
+// Top line on every client email (Johan 14 Oct): short company line from the sending company's own record.
+const emailBrand = (brand: Brand): EmailBrand => ({
+  name: brand.name, logoUrl: brand.logoUrl, logoOnColour: brand.logoOnColour,
+  topParts: [brand.name, brand.sig?.vatNo ? `VAT ${brand.sig.vatNo}` : "", brand.phone ? `Tel ${brand.phone}` : (brand.sig?.tel ? `Tel ${brand.sig.tel}` : ""), brand.email || brand.sig?.email || ""],
+});
+function topStrip(brand: Brand): string { return brandedTopStrip(emailBrand(brand)); }
 
+// Quote + deposit invoice: the shared latest-approved layout (_shared/brandedEmail.ts, Johan 30 Oct 20:47).
 function buildHtmlEmail(brand: Brand, clientName: string, quoteNumber: string, date: string, totalAmount: number, unsubscribeUrl: string, quoteUrl?: string | null, depositRequest = false, signatureHtml = "", unitCardsHtml = "", customMessage = ""): string {
   const formattedTotal = formatZAR(totalAmount);
   const currentYear = new Date().getFullYear();
   const company = escH(brand.name || "Your installer");
-  const hi = firstName(clientName);
   const deposit = brand.depositPct ? `A ${brand.depositPct}% deposit is due on acceptance.` : "";
   const validity = brand.validUntil ? `This quote is valid until <strong>${escH(brand.validUntil)}</strong>.` : "This quote is valid for <strong>30 days</strong> from the date of issue.";
   const contact = brand.phone ? `call us on ${escH(brand.phone)}` : "reply to this email";
-  const row = (k: string, v: string, top = true) => `<tr><td style="padding:10px 14px;color:#6b7a8c;${top ? "border-top:1px solid #e3eaf2;" : ""}">${k}</td><td style="padding:10px 14px;text-align:right;${top ? "border-top:1px solid #e3eaf2;" : ""}">${v}</td></tr>`;
-
-  return `<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Your quotation from ${company}</title></head>
-<body style="margin:0;padding:0;background-color:#eef3f9;font-family:Arial,Helvetica,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef3f9;"><tr><td align="center" style="padding:24px 12px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:10px;overflow:hidden;">
-  ${topStrip(brand)}
-  <tr><td style="background:#0B4FA8;background-image:linear-gradient(90deg,#0B4FA8,#1AA7EC);padding:22px 28px;color:#ffffff;">
-    ${brand.logoUrl && brand.logoOnColour ? `<img src="${escH(brand.logoUrl)}" alt="${company}" width="200" style="display:block;width:200px;max-width:200px;height:auto;border:0;margin-bottom:10px;">` : brand.logoUrl ? `<div style="background:#ffffff;border-radius:8px;display:inline-block;padding:6px 10px;margin-bottom:10px;"><img src="${escH(brand.logoUrl)}" alt="${company}" width="180" style="display:block;width:180px;max-width:180px;height:auto;border:0;"></div>` : ""}
-    <div style="font-size:20px;font-weight:800;">${company}</div>
-    <div style="font-size:12px;opacity:.9;">${depositRequest ? "Your deposit invoice is ready" : "Your quotation is ready"}</div>
-  </td></tr>
-  <tr><td style="padding:24px 28px;color:#1d2a3a;font-size:14px;line-height:1.5;">
-    ${hi ? `Hi ${escH(hi)},` : "Hello,"}<br><br>
-    ${depositRequest ? `Thank you for accepting your quotation.${brand.depositPct ? ` Your ${brand.depositPct}% deposit invoice is ready.` : " Your deposit invoice is ready."} Use the button below to view and pay it.` : customMessage ? escH(customMessage).replace(/\n/g, "<br>") : "Thank you for the opportunity. Your quotation is ready to view online."}
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;border:1px solid #e3eaf2;border-radius:8px;border-collapse:separate;font-size:13px;">
-      ${row("Quote", `<b>${escH(quoteNumber || "—")}</b>`, false)}
-      ${row("Date", escH(date))}
-      ${!depositRequest && brand.validUntil ? row("Valid until", escH(brand.validUntil)) : ""}
-      <tr><td style="padding:12px 14px;font-weight:800;color:#0B4FA8;border-top:3px solid #F7941D;">Total incl. VAT</td><td style="padding:12px 14px;text-align:right;font-weight:800;color:#0B4FA8;font-size:18px;border-top:3px solid #F7941D;">${formattedTotal}</td></tr>
-    </table>
-    ${quoteUrl ? `<div style="text-align:center;margin:22px 0 8px;"><a href="${escH(quoteUrl)}" style="display:inline-block;background:#F7941D;color:#ffffff;text-decoration:none;font-size:17px;font-weight:800;padding:16px 56px;border-radius:8px;">${depositRequest ? "View &amp; pay deposit" : "View quote"}</a></div>
-    <div style="text-align:center;font-size:12px;color:#6b7a8c;">${depositRequest ? "" : "Open the quote to see every line, then accept it or ask for changes there.<br>"}${depositRequest ? "" : "The full quote PDF is attached."}</div>
-    <div style="text-align:center;font-size:11px;color:#9aa7b5;margin-top:8px;word-break:break-all;">If the button does not work, copy this link: ${escH(quoteUrl)}</div>`
+  const rows: Array<[string, string]> = [["Quote", `<b>${escH(quoteNumber || "—")}</b>`], ["Date", escH(date)]];
+  if (!depositRequest && brand.validUntil) rows.push(["Valid until", escH(brand.validUntil)]);
+  const body = `${depositRequest ? `Thank you for accepting your quotation.${brand.depositPct ? ` Your ${brand.depositPct}% deposit invoice is ready.` : " Your deposit invoice is ready."} Use the button below to view and pay it.` : customMessage ? escH(customMessage).replace(/\n/g, "<br>") : "Thank you for the opportunity. Your quotation is ready to view online."}
+    ${brandedSummaryTable(rows, ["Total incl. VAT", formattedTotal])}
+    ${quoteUrl ? brandedButton(quoteUrl, depositRequest ? "View &amp; pay deposit" : "View quote", depositRequest ? "" : "Open the quote to see every line, then accept it or ask for changes there.<br>The full quote PDF is attached.")
     : `<p style="text-align:center;font-size:13px;color:#6b7a8c;">To accept, ${contact}.</p>`}
     <div style="margin-top:22px;">${unitCardsHtml}</div>
-    ${depositRequest ? "" : `<p style="margin:0 0 8px;font-size:12px;color:#6b7a8c;">⏱ ${validity}${deposit ? " " + deposit : ""}</p>`}
-    <div style="margin-top:18px;border-top:1px solid #e3eaf2;padding-top:16px;">${signatureHtml || renderSignatureHtml(null)}</div>
-  </td></tr>
-  <tr><td style="background:#f2f9fe;padding:12px 28px;font-size:10px;color:#9aa7b5;line-height:1.5;">
-    This email and any attachments are confidential and intended solely for the addressee. Prices are in South African Rand (ZAR) and include VAT at 15% where indicated. E&amp;OE. Terms and conditions apply, see the quotation. © ${currentYear} ${company}.<br>
-    You received this email because you asked ${company} for a quote. <a href="${unsubscribeUrl}" style="color:#64748b;">Unsubscribe from marketing emails</a>
-  </td></tr>
-</table></td></tr></table></body></html>`;
+    ${depositRequest ? "" : `<p style="margin:0 0 8px;font-size:12px;color:#6b7a8c;">⏱ ${validity}${deposit ? " " + deposit : ""}</p>`}`;
+  return renderBrandedEmail({
+    brand: emailBrand(brand), title: `Your quotation from ${brand.name || "Your installer"}`,
+    kicker: depositRequest ? "Your deposit invoice is ready" : "Your quotation is ready",
+    greetingName: clientName, bodyHtml: body, signatureHtml: signatureHtml || renderSignatureHtml(null),
+    footerHtml: `This email and any attachments are confidential and intended solely for the addressee. Prices are in South African Rand (ZAR) and include VAT at 15% where indicated. E&amp;OE. Terms and conditions apply, see the quotation. © ${currentYear} ${company}.<br>
+    You received this email because you asked ${company} for a quote. <a href="${unsubscribeUrl}" style="color:#64748b;">Unsubscribe from marketing emails</a>`,
+  });
 }
 
 // Several quotes for one client in ONE email with ONE "View all quotes" button (Johan 13 Oct 14:58).
@@ -450,27 +430,9 @@ serve(async (req) => {
     }
     // Inline images (Johan 22 Oct): mail apps that block remote pictures showed "?" boxes.
     // Embed logo/signature/unit pictures as CID attachments so they always display.
-    let sendHtml = htmlBody;
-    {
-      const urls = [...new Set([...htmlBody.matchAll(/<img[^>]+src="(https:\/\/[^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, "&")))].slice(0, 12);
-      let n = 0;
-      for (const url of urls) {
-        try {
-          const r = await fetch(url);
-          const ct = r.headers.get("content-type") || "";
-          if (!r.ok || !ct.startsWith("image/")) continue;
-          const bytes = new Uint8Array(await r.arrayBuffer());
-          if (bytes.length > 1.5 * 1024 * 1024) continue;
-          let bin = "";
-          for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-          const cid = `img${++n}@becool`;
-          const ext = (ct.split("/")[1] || "png").split(";")[0].replace("jpeg", "jpg");
-          attachments.push({ filename: `image${n}.${ext}`, content: btoa(bin), content_id: cid });
-          const escUrl = url.replace(/&/g, "&amp;");
-          sendHtml = sendHtml.split(`src="${escUrl}"`).join(`src="cid:${cid}"`).split(`src="${url}"`).join(`src="cid:${cid}"`);
-        } catch { /* keep the remote link */ }
-      }
-    }
+    const inl = await inlineEmailImages(htmlBody);
+    const sendHtml = inl.html;
+    attachments.push(...inl.attachments);
     // Staff-attached documents (quote_documents) go out with the quote email; cap ~25 MB total.
     if (quoteId && !depositRequest) {
       const { data: docs } = await supabase.from("quote_documents").select("storage_path, filename").eq("quote_id", quoteId).order("created_at");
