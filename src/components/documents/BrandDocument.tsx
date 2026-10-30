@@ -60,6 +60,8 @@ export interface BrandDocumentProps {
   /** Full terms & conditions page (quotes), rendered last on its own page. */
   fullTermsPage?: ReactNode;
   captureRoot: "estimate" | "invoice";
+  /** Big red stamp across the document (screen + PDF), e.g. "VOID". */
+  stamp?: string | null;
   /**
    * Invoice closing layout (Johan 14 Oct, AVEC La Terre invoices): the Payment / Banking /
    * Warranty block starts its own page, laid out full width; the Terms + logo/unit footer
@@ -199,8 +201,13 @@ export default function BrandDocument(p: BrandDocumentProps) {
   // capture always prints the full block no matter what the toggle is doing.
   const [coOpen, setCoOpen] = useState(false);
   return (
-    <div data-pdf-capture-root={p.captureRoot} data-doc-style={style} data-testid="brand-document" className={`bd ${style}${p.collapseTerms ? " bd-client" : ""} pdf-page mx-auto w-full ${p.className || ""}`}>
+    <div data-pdf-capture-root={p.captureRoot} data-doc-style={style} data-testid="brand-document" className={`bd ${style}${p.collapseTerms ? " bd-client" : ""} pdf-page mx-auto w-full ${p.className || ""}`} style={p.stamp ? { position: "relative" } : undefined}>
       <style>{CSS}</style>
+      {p.stamp && (
+        <div aria-label={p.stamp} data-testid="doc-stamp" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 160, pointerEvents: "none", zIndex: 20 }}>
+          <span style={{ transform: "rotate(-18deg)", border: "8px solid #DC2626", color: "#DC2626", borderRadius: 12, padding: "6px 36px", fontSize: 96, fontWeight: 900, letterSpacing: 12, opacity: 0.85, background: "rgba(255,255,255,0.6)" }}>{p.stamp}</span>
+        </div>
+      )}
       {closing && (
         <>
           {/* Page 1: company line only. Pages 2+: company line above the thin blue/orange rule (Johan 14 Oct 07:53).

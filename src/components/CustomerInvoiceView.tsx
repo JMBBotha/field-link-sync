@@ -96,7 +96,7 @@ const CustomerInvoiceView = () => {
       if (invError) throw invError;
 
       // Parse line_items for each invoice
-      const parsedInvoices = (invoicesData || []).map((inv) => ({
+      const parsedInvoices = (invoicesData || []).filter((inv: any) => !["void", "cancelled", "draft"].includes(String(inv.status || ""))).map((inv) => ({
         ...inv,
         line_items: Array.isArray(inv.line_items)
           ? inv.line_items

@@ -65,6 +65,7 @@ export function getDepositChipState(
   opts?: { accepted?: boolean },
 ): DepositChipState | null {
   if (!invoice?.id) return opts?.accepted ? "none" : null;
+  if (["void", "cancelled"].includes(String(invoice.status || "").toLowerCase())) return null; // void owes nothing
   if (invoice.chip_state) return invoice.chip_state;
   // Allocation is the only source of truth. Status/paid_date never decide.
   const paid = getDepositAmountPaid(invoice);
