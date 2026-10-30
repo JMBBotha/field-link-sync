@@ -165,7 +165,7 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
         everyone={who} onEveryone={setWho}
         everyoneOptions={[{ value: "all", label: "Everyone ▾" }, { value: "sales", label: "Sales" }, { value: "tech", label: "Technicians" }, ...model.people.filter((p) => !salesOnly || p.lane === "sales").map((p) => ({ value: p.id, label: p.name }))]}
         chip={chip} onChip={setChip} counts={counts}
-        onCallLead={() => {}} onAssignLead={(l) => setAssignLeadId(l.id)} onOpenLead={(l) => navigate(`/admin/dispatch?lead=${l.id}`)}
+        onCallLead={() => {}} onAssignLead={(l) => setAssignLeadId(l.id)} onOpenLead={(l) => navigate(isAssigned(l as any) ? `/admin/bookings/${l.id}` : `/admin/dispatch?lead=${l.id}`)}
         onAssignJob={setAssignJobId} onOpenJob={(id) => navigate(`/admin/jobs/${id}`)}
         onOpenBlock={(b) => b.kind === "job" ? navigate(`/admin/jobs/${b.id}`) : navigate(`/admin/dispatch?lead=${(booked.entries.find((e) => `v-${e.key}` === b.id)?.lead_id) || ""}`)}
         onMoveBlock={salesOnly ? undefined : (b, start) => { if (b.kind !== "job" || !b.draggable) return; const j = jobs.find((x) => x.id === b.id); move.mutate({ id: b.id, iso: jhbIso(b.day, start), prev: j?.scheduled_for || null }); }}

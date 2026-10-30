@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { friendlyWhen } from "@/lib/friendlyWhen";
+import { isAssigned, assignedLabel, cardHref } from "@/lib/assignedLabel";
 
 /** An open lead that is (or is about to be) a booking — no job row yet. From client_bookings / pipeline_open_leads (RLS-equivalent scope). */
 export interface Booking {
@@ -16,11 +17,13 @@ export const bookingStage = (b: Booking): BookingStage =>
 export const STAGE_LABEL: Record<BookingStage, string> = { booked: "Booked", assigned: "Assigned · not scheduled", contacted: "Contacted · not scheduled", new: "New · not contacted" };
 export const bookingLine = (b: Booking) => {
   const st = bookingStage(b);
+  if (isAssigned(b) && b.scheduled_date) return assignedLabel(b.assigned_name || "a technician", b.scheduled_date, b.scheduled_time);
   if (st === "booked") return ["Booked", b.assigned_name ? `with ${b.assigned_name}` : null, "for", friendlyWhen(b.scheduled_date, b.scheduled_time)].filter(Boolean).join(" ");
   if (st === "assigned") return `With ${b.assigned_name || "a technician"} · not scheduled`;
   return STAGE_LABEL[st];
 };
-export const bookingHref = (b: Booking, salesRep: boolean) => (salesRep ? `/admin?myjob=${b.id}` : `/admin/visits/${b.id}`);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const bookingHref = (b: Booking, _salesRep?: boolean) => cardHref({ lead_id: b.id }) ?? `/admin/bookings/${b.id}`;
 const sast = (iso: string) => new Date(iso).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const SRC: Record<string, string> = { manual: "Added by hand", vapi_call: "Mandy call", website_form: "Website", whatsapp: "WhatsApp", phone: "Phone", email: "Email" };
 export const sourceText = (s?: string | null) => (s ? SRC[s] ?? s : "Added");
@@ -54,7 +57,7 @@ export function UpcomingLine({ customerId }: { customerId: string }) {
   const st = bookingStage(next);
   return (
     <p data-testid="client-upcoming" className="mt-1.5 inline-block rounded-lg bg-white/15 px-2.5 py-1 text-[14px] font-semibold text-white break-words">
-      {st === "booked" ? `Upcoming: booked${next.assigned_name ? ` with ${next.assigned_name}` : ""} for ${friendlyWhen(next.scheduled_date, next.scheduled_time)}` : `Open: ${bookingLine(next).toLowerCase()}`}
+      {isAssigned(next) && next.scheduled_date ? `Upcoming: ${bookingLine(next)}` : st === "booked" ? `Upcoming: booked for ${friendlyWhen(next.scheduled_date, next.scheduled_time)}` : `Open: ${bookingLine(next).toLowerCase()}`}
       {data.length > 1 ? ` · +${data.length - 1} more` : ""}
     </p>
   );
