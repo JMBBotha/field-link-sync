@@ -29,12 +29,24 @@ export const setChosenQty = (basket: PdfSelectedProduct[], code: string, qty: nu
 export const removeChosen = (basket: PdfSelectedProduct[], code: string) => basket.filter((b) => b.code !== code);
 export const chosenTotal = (basket: PdfSelectedProduct[]) => basket.reduce((s, b) => s + (parseFloat(b.price) || 0) * (Number(b.quantity) || 0), 0);
 
-/** Jump to a quote line: scroll it into view and flash it. */
+/** Jump to a quote line: open its room if collapsed, scroll it into view and flash it. */
 export function jumpToQuoteLine(lineId: string) {
   if (typeof document === "undefined") return;
-  const el = document.querySelector<HTMLElement>(`[data-line-id="${CSS.escape(lineId)}"]`);
+  const sel = `[data-line-id="${CSS.escape(lineId)}"]`;
+  const el = document.querySelector<HTMLElement>(sel);
   if (!el) return;
-  el.scrollIntoView({ behavior: "smooth", block: "center" });
-  el.classList.add("fl-chosen-flash");
-  window.setTimeout(() => el.classList.remove("fl-chosen-flash"), 1600);
+  const go = () => {
+    const row = document.querySelector<HTMLElement>(sel) || el;
+    row.scrollIntoView({ behavior: "smooth", block: "center" });
+    row.classList.add("fl-chosen-flash");
+    window.setTimeout(() => row.classList.remove("fl-chosen-flash"), 1600);
+  };
+  const room = el.closest<HTMLElement>('[data-area-collapsed="true"]');
+  const toggle = room?.querySelector<HTMLElement>('.option1-collapse[aria-expanded="false"]');
+  if (toggle) {
+    toggle.click();
+    window.setTimeout(go, 120);
+    return;
+  }
+  go();
 }

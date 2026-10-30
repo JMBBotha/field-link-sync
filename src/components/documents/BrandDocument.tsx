@@ -204,8 +204,8 @@ export default function BrandDocument(p: BrandDocumentProps) {
     <div data-pdf-capture-root={p.captureRoot} data-doc-style={style} data-testid="brand-document" className={`bd ${style}${p.collapseTerms ? " bd-client" : ""} pdf-page mx-auto w-full ${p.className || ""}`} style={p.stamp ? { position: "relative" } : undefined}>
       <style>{CSS}</style>
       {p.stamp && (
-        <div aria-label={p.stamp} data-testid="doc-stamp" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 160, pointerEvents: "none", zIndex: 20 }}>
-          <span style={{ transform: "rotate(-18deg)", border: "8px solid #DC2626", color: "#DC2626", borderRadius: 12, padding: "6px 36px", fontSize: 96, fontWeight: 900, letterSpacing: 12, opacity: 0.85, background: "rgba(255,255,255,0.6)" }}>{p.stamp}</span>
+        <div aria-label={p.stamp} data-testid="doc-stamp" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "clamp(90px, 25vw, 160px)", pointerEvents: "none", zIndex: 20 }}>
+          <span style={{ transform: "rotate(-18deg)", borderStyle: "solid", borderColor: "#DC2626", borderWidth: "clamp(4px, 1.4vw, 8px)", color: "#DC2626", borderRadius: 12, padding: "clamp(2px, 1vw, 6px) clamp(14px, 6vw, 36px)", fontSize: "clamp(40px, 12vw, 96px)", fontWeight: 900, letterSpacing: "clamp(4px, 2vw, 12px)", lineHeight: 1.1, opacity: 0.85, background: "rgba(255,255,255,0.6)" }}>{p.stamp}</span>
         </div>
       )}
       {closing && (
