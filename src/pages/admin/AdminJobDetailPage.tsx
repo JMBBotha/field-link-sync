@@ -34,6 +34,7 @@ import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useToast } from "@/hooks/use-toast";
 import { JobDetailSkeleton } from "@/components/ui/skeletons";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
+import SupplierDocsSection from "@/components/supplierDocs/SupplierDocsSection";
 import TechLocationBlock from "@/components/jobs/TechLocationBlock";
 import JobRunCard from "@/components/scheduling/JobRunCard";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
@@ -374,6 +375,9 @@ const AdminJobDetailPage = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Private supplier documents (office only) */}
+        <SupplierDocsSection companyId={j.company_id} jobId={j.id} />
 
         {/* Notes + activity */}
         <Card className="rounded-2xl">
