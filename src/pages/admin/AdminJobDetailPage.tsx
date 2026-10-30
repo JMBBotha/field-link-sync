@@ -36,6 +36,7 @@ import { JobDetailSkeleton } from "@/components/ui/skeletons";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import SupplierDocsSection from "@/components/supplierDocs/SupplierDocsSection";
 import TechLocationBlock from "@/components/jobs/TechLocationBlock";
+import AdminBackfillPanel from "@/components/jobs/AdminBackfillPanel";
 import JobRunCard from "@/components/scheduling/JobRunCard";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { attachPaymentTotals } from "@/lib/depositInvoice";
@@ -68,7 +69,7 @@ const AdminJobDetailPage = () => {
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const statusUndo = useUndoAction();
-  const { canAccessAdmin } = useRole();
+  const { canAccessAdmin, isAdmin } = useRole();
   const { isSalesRep } = useSalesRep();
 
   const { data: job, isLoading } = useQuery({
@@ -98,7 +99,7 @@ const AdminJobDetailPage = () => {
         .order("created_at", { ascending: true })
         .limit(1);
       const a: any = data?.[0];
-      return a ? { id: a.id, name: (a.profiles?.full_name || "").trim() || "Technician" } : null;
+      return a ? { id: a.id, profileId: a.profile_id as string, name: (a.profiles?.full_name || "").trim() || "Technician" } : null;
     },
   });
 
@@ -378,6 +379,15 @@ const AdminJobDetailPage = () => {
 
         {/* Private supplier documents (office only) */}
         <SupplierDocsSection companyId={j.company_id} jobId={j.id} />
+
+        {/* Admin backfill on behalf of tech (Johan t1929u) */}
+        {isAdmin && (
+          <Card className="rounded-2xl">
+            <CardContent className="p-4 md:p-5">
+              <AdminBackfillPanel jobId={j.id} leadId={j.lead_id ?? null} companyId={j.company_id} defaultTechId={assignedTech?.profileId ?? null} />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Notes + activity */}
         <Card className="rounded-2xl">
