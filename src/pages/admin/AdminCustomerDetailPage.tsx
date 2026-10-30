@@ -133,12 +133,14 @@ const AdminCustomerDetailPage = () => {
     setSavingRep(true);
     const assigned = value === "none" ? null : value;
     // owner_rep_id is the single rep field (assigned_rep_id is a DB-side mirror)
-    const { error } = assigned
-      ? await supabase.rpc("set_customer_owner_rep", { p_customer_id: id, p_rep_id: assigned, p_reason: "Admin set on client page" })
-      : await supabase.from("customers").update({ owner_rep_id: null } as any).eq("id", id);
+    // admin-only RPC for set AND clear, so every change is checked and logged server-side
+    const { data, error } = await supabase.rpc("set_customer_owner_rep" as any, {
+      p_customer_id: id, p_rep_id: assigned, p_reason: assigned ? "Admin set on client page" : "Admin cleared on client page",
+    });
     setSavingRep(false);
-    if (error) {
-      toast({ title: "Could not save sales rep", description: error.message, variant: "destructive" });
+    const res = data as { ok?: boolean; message?: string } | null;
+    if (error || res?.ok === false) {
+      toast({ title: "Could not save sales rep", description: error?.message ?? res?.message, variant: "destructive" });
       return;
     }
     qc.invalidateQueries({ queryKey: ["customer-detail", id] });
