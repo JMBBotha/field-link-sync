@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useBotProposalCount } from "@/hooks/useBotProposalCount";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home, KanbanSquare, CalendarDays, Users, Wallet, Briefcase, MoreHorizontal, Bell, Plus, LogOut, X, ChevronDown,
@@ -67,6 +68,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
   const { sla } = useLeadSla();
   const now = useNow();
   const { count: pending } = usePendingApplicants();
+  const proposals = useBotProposalCount(role === "admin" || role === "owner");
   const [moreOpen, setMoreOpen] = useState(false);
   const tech = role === "tech";
   const tone = tech ? null : inboxTone(leads as any[], Math.floor(now / 30_000) * 30_000, sla);
@@ -133,6 +135,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
                     <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !isOpen && "-rotate-90")} />
                     <span className="flex-1 text-left">{g.title}</span>
                     {g.title === "Team & settings" && pending > 0 && <span className="v8-dot">{pending}</span>}
+                    {g.title === "Money" && proposals > 0 && <span className="v8-dot" data-testid="v8-walda-dot">{proposals}</span>}
                     <span className="text-[11px] font-medium opacity-60">{g.links.length}</span>
                   </button>
                   {isOpen && g.links.map((l) => {
@@ -141,6 +144,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
                     return (
                       <button key={g.title + l.path} type="button" onClick={() => go(l.path)} className={cn("v8-sub pl-6", active && "is-active")}>
                         <Icon className="h-3.5 w-3.5" />{l.label}
+                        {l.path === "/admin/walda-approvals" && proposals > 0 && <span className="v8-dot ml-auto">{proposals}</span>}
                       </button>
                     );
                   })}
@@ -151,7 +155,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
         ) : (<>
         <button type="button" onClick={() => setMoreOpen((v) => !v)} className={cn("v8-nav", moreActive && "is-active")} aria-expanded={moreOpen} data-testid="v8-more">
           <MoreHorizontal className="h-4 w-4" />More
-          {pending > 0 && role !== "sales" && <span className="v8-dot ml-auto">{pending}</span>}
+          {pending + proposals > 0 && role !== "sales" && <span className="v8-dot ml-auto">{pending + proposals}</span>}
           <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", pending > 0 ? "ml-1" : "ml-auto", moreOpen && "rotate-180")} />
         </button>
         {(moreOpen || moreActive) && (
