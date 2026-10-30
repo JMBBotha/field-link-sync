@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { renderBrandedEmail, finalInvoiceBodyHtml, brandedTransactionalFooter } from "@/lib/brandedEmail";
 import { CheckCircle2, Loader2, Mail, MessageCircle, Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,11 @@ export default function FinalInvoiceSendDialog({ invoice, balance, autoOpen, onD
     const { data, error } = await (supabase.rpc as any)("send_final_invoice_email", { p_invoice: invoice.id, p_to: to.trim() || null, p_mode: "preview" });
     setBusy(false); lock.current = false;
     if (error) { toast.error(error.message || "Could not build the email"); return; }
-    setPreview({ to: data.to, subject: data.subject, html: data.html }); setStep("preview");
+    const lay = data.layout;
+    const html = lay?.template === "final_invoice" && lay.brand && lay.data
+      ? renderBrandedEmail({ brand: lay.brand, title: lay.title || data.subject, kicker: lay.kicker || "", greetingName: lay.greeting_name, bodyHtml: finalInvoiceBodyHtml(lay.data), footerHtml: brandedTransactionalFooter(lay.brand.name || "") })
+      : data.html;
+    setPreview({ to: data.to, subject: data.subject, html }); setStep("preview");
   };
 
   const sendEmail = async () => {
