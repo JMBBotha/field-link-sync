@@ -1,3 +1,4 @@
+import { CUSTOMER_BILLTO_COLUMNS, resolveBillTo } from "@/lib/billTo";
 import { useLivePreviewPref, useIsWideScreen } from "@/hooks/useLivePreviewPref";
 import { useAuth } from "@/contexts/AuthContext";
 import { CanonicalAreaCreateControl } from "@/components/quote/AreaNameChips";
@@ -21,11 +22,13 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
     queryKey: ["quote-prepared-for", quoteId, m.customer_id ?? null],
     enabled: !!quoteId,
     queryFn: async () => {
-      const { data } = await (supabase.from("quotes") as any).select("quote_number, customer_name, created_at, customers(name)").eq("id", quoteId).maybeSingle();
+      const { data } = await (supabase.from("quotes") as any).select(`quote_number, customer_name, created_at, customers(${CUSTOMER_BILLTO_COLUMNS}), customer_locations!quotes_location_id_fkey(address), leads!quotes_lead_id_fkey(customer_address)`).eq("id", quoteId).maybeSingle();
       return data as any;
     },
   });
   const customerName = String(m.customer_name || header?.customer_name || header?.customers?.name || "").trim() || "Customer";
+  // Bill-to = linked client's company record; lead/location address is only the Site line.
+  const billTo = resolveBillTo({ customer: header?.customers ?? null, fallbackName: customerName, fallbackAddress: header?.leads?.customer_address ?? null });
   const quoteNumber = m.quote_number || header?.quote_number || "";
   const createAreaSection = (
       <section className="w-full print:hidden" data-html2canvas-ignore data-testid="create-area">
@@ -46,10 +49,12 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
         issueDate={m.created_at ?? header?.created_at ?? new Date().toISOString()}
         validUntil={m.valid_until ?? null}
         customerName={customerName}
-        customerCompany={null}
-        customerAddress={m.customer_address ?? null}
-        customerEmail={m.customer_email ?? null}
-        customerPhone={m.customer_phone ?? null}
+        customerCompany={billTo.company}
+        customerAddress={billTo.address}
+        customerEmail={header?.customers?.email ?? null}
+        customerPhone={header?.customers?.phone ?? null}
+        customerVat={billTo.vat}
+        siteAddress={header?.customer_locations?.address || header?.leads?.customer_address || null}
         vatRate={Number(m.vat_rate) || 0.15}
         notes={m.notes ?? null}
         termsText={m.terms_text ?? null}

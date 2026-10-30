@@ -1,3 +1,4 @@
+import { formatCustomerAddress } from "@/lib/billTo";
 import { QuoteSitePhotosBlock, loadQuoteSitePhotos, type QuoteSitePhoto } from "./QuoteSitePhotos";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +52,7 @@ const tidyName = (value?: string | null) => (value || "").replace(/\s+/g, " ").t
 type Loaded = {
   quote: any;
   customer: { name: string | null; company_name: string | null; address: string | null; email: string | null; phone: string | null; vat_number?: string | null } | null;
+  siteAddress: string | null;
   company: any;
   items: EstimateDocLineItem[];
   areas: ClientRollupArea[];
@@ -70,7 +72,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
         const [qRes, iRes, aRes, cRes, dRes] = await Promise.all([
           (supabase.from("quotes") as any)
             .select(
-              "id, company_id, quote_number, subtotal, vat_rate, vat_amount, total, notes, valid_until, created_at, customer_name, terms_text, discount_type, discount_value, payment_plan, remote_quote, remote_quote_source, relocation_clause, customers(name, first_name, last_name, company_name, primary_address_line1, email, phone, vat_number)",
+              "id, company_id, quote_number, subtotal, vat_rate, vat_amount, total, notes, valid_until, created_at, customer_name, terms_text, discount_type, discount_value, payment_plan, remote_quote, remote_quote_source, relocation_clause, location_id, lead_id, customers(name, first_name, last_name, company_name, primary_address_line1, primary_address_line2, city, postal_code, address, email, phone, vat_number), customer_locations!quotes_location_id_fkey(address), leads!quotes_lead_id_fkey(customer_address)",
             )
             .eq("id", quoteId)
             .maybeSingle(),
@@ -113,12 +115,13 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
           ? {
               name: tidyName(`${c.first_name || ""} ${c.last_name || ""}`) || c.name || null,
               company_name: c.company_name ?? null,
-              address: c.primary_address_line1 ?? null,
+              address: formatCustomerAddress(c),
               email: c.email ?? null,
               phone: c.phone ?? null,
               vat_number: c.vat_number ?? null,
             }
           : null;
+        const siteAddress: string | null = qRes.data.customer_locations?.address || qRes.data.leads?.customer_address || null;
         // Same line shape as the /quote page (only used if a quote has no roll-up blocks).
         const items: EstimateDocLineItem[] = lines.map((it) => {
           const name = it.item_name || it.description || "Item";
@@ -159,7 +162,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
         }
         let sitePhotos: QuoteSitePhoto[] = [];
         try { sitePhotos = await loadQuoteSitePhotos(quoteId); } catch { /* optional section */ }
-        if (!cancelled) setDoc({ sitePhotos, unitCards, brochureCompany, quote: qRes.data, customer, company: cRes.data ? { ...cRes.data, default_deposit_percentage: dRes.data?.default_deposit_percentage ?? cRes.data.default_deposit_percentage } : null, items, areas: buildClientRollup(lines, areaRows, { targetSubtotal: Number(qRes.data.subtotal) }) });
+        if (!cancelled) setDoc({ sitePhotos, unitCards, brochureCompany, quote: qRes.data, customer, siteAddress, company: cRes.data ? { ...cRes.data, default_deposit_percentage: dRes.data?.default_deposit_percentage ?? cRes.data.default_deposit_percentage } : null, items, areas: buildClientRollup(lines, areaRows, { targetSubtotal: Number(qRes.data.subtotal) }) });
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Could not load the quote for the PDF.");
       }
@@ -193,6 +196,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
           customerEmail={doc.customer?.email}
           customerPhone={doc.customer?.phone}
           customerVat={doc.customer?.vat_number}
+          siteAddress={doc.siteAddress}
           items={doc.items}
           presentationMode="clientRollup"
           clientAreas={doc.areas}

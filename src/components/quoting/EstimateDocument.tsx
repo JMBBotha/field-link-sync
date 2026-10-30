@@ -1,3 +1,4 @@
+import { siteLineFor } from "@/lib/billTo";
 import { CanonicalAreaChoices, CanonicalAreaCreateControl } from "@/components/quote/AreaNameChips";
 import { sameOriginAsset } from "@/lib/captureImages";
 import QtyStepper from "./QtyStepper";
@@ -203,6 +204,8 @@ export interface EstimateDocumentProps {
   customerEmail?: string | null;
   /** Client's VAT number, printed under Prepared For when present. */
   customerVat?: string | null;
+  /** Site / job address (only when it differs from the billing address). */
+  siteAddress?: string | null;
   customerPhone?: string | null;
   items: EstimateDocLineItem[];
   subtotal: number;
@@ -398,6 +401,7 @@ const EstimateDocument = ({
   customerAddress,
   customerEmail,
   customerVat,
+  siteAddress,
   customerPhone,
   items,
   subtotal,
@@ -515,6 +519,7 @@ const EstimateDocument = ({
         partyName={customerName}
         partyLines={[customerCompany, customerAddress, customerEmail, customerPhone]}
         partyVat={customerVat}
+        partySite={siteLineFor(siteAddress, customerAddress)}
         meta={[["Quote No", estimateNumber], ["Date", formatDate(issueDate)], ["Valid until", validUntil ? formatDate(validUntil) : "30 days"]]}
         sections={sections.filter((sec) => sec.lines.length)}
         totals={[
@@ -596,6 +601,7 @@ const EstimateDocument = ({
             {customerEmail && <p className="text-xs text-ink-secondary">{customerEmail}</p>}
             {customerPhone && <p className="text-xs text-ink-secondary">{customerPhone}</p>}
             {customerVat && customerVat.trim() && <p className="text-xs text-ink-secondary" data-testid="customer-vat">VAT No {customerVat.trim()}</p>}
+            {siteLineFor(siteAddress, customerAddress) && <p className="text-xs text-ink-secondary" data-testid="party-site"><b>Site:</b> {siteLineFor(siteAddress, customerAddress)}</p>}
           </div>
           <div>
             <p className={META_LABEL}>Date</p>

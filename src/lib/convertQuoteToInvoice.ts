@@ -1,3 +1,4 @@
+import { CUSTOMER_BILLTO_COLUMNS, formatCustomerAddress } from "@/lib/billTo";
 import { supabase } from "@/integrations/supabase/client";
 import { assertQuotePriced } from "@/lib/quoteSend";
 
@@ -136,14 +137,17 @@ export async function convertQuoteToInvoice(quoteId: string, agentUserId: string
   let customer_phone: string | null = null;
   let customer_address: string | null = null;
   let customer_email: string | null = null;
+  let billed_to_vat_number: string | null = null;
   if (quote.customer_id) {
     const { data: cust } = await supabase
       .from("customers")
-      .select("phone, address, email")
+      .select(CUSTOMER_BILLTO_COLUMNS)
       .eq("id", quote.customer_id)
       .maybeSingle();
     customer_phone = cust?.phone ?? null;
-    customer_address = cust?.address ?? null;
+    // Bill-to = the client's full company address (line 1, line 2, city, postal code).
+    customer_address = formatCustomerAddress(cust as any);
+    billed_to_vat_number = (cust as any)?.vat_number?.trim() || null;
     customer_email = cust?.email ?? null;
   }
 
@@ -166,6 +170,7 @@ export async function convertQuoteToInvoice(quoteId: string, agentUserId: string
         customer_phone,
         customer_address,
         customer_email,
+        billed_to_vat_number,
         line_items: lineItems,
         subtotal: quote.subtotal,
         tax_rate: Number(quote.vat_rate) * 100, // legacy invoices store % (e.g. 15), quotes store 0.15

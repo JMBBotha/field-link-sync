@@ -1,3 +1,4 @@
+import { siteLineFor } from "@/lib/billTo";
 import BrandDocument, { NotesBody } from "@/components/documents/BrandDocument";
 import { foldFlatLines } from "@/lib/clientQuoteRollup";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
@@ -36,6 +37,9 @@ export interface InvoiceDocumentProps {
   profile?: Partial<CompanyProfile> | null;
   /** Client's VAT number, printed under Billed To. */
   billedToVat?: string | null;
+  /** Site / job address (only when it differs from the billing address). */
+  siteAddress?: string | null;
+  customerCompany?: string | null;
   discountAmount?: number;
   /** Requested deposit in rand (already worked out on the VAT-inclusive total). */
   depositAmount?: number | null;
@@ -83,6 +87,8 @@ const InvoiceDocument = ({
   notes,
   profile,
   billedToVat,
+  siteAddress,
+  customerCompany,
   discountAmount = 0,
   depositAmount,
   depositLabel,
@@ -129,8 +135,9 @@ const InvoiceDocument = ({
       profile={profile}
       partyLabel="Bill to"
       partyName={customerName}
-      partyLines={[customerAddress, customerEmail, customerPhone]}
+      partyLines={[customerCompany, customerAddress, customerEmail, customerPhone]}
       partyVat={billedToVat}
+      partySite={siteLineFor(siteAddress, customerAddress)}
       meta={[["Invoice No", invoiceNumber], ["Date", formatDate(issueDate)], ["Due", dueDate ? formatDate(dueDate) : "On receipt"]]}
       sections={sections}
       totals={[

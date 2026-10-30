@@ -1,3 +1,4 @@
+import { CUSTOMER_BILLTO_COLUMNS, resolveBillTo } from "@/lib/billTo";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays } from "date-fns";
@@ -104,13 +105,20 @@ export const useInvoiceAgentContext = (leadId: string | null) => {
       }
 
       const cs = companyRes.data;
+      // Bill-to = linked client's company record; the lead address is only the site.
+      let billCustomer: any = null;
+      if ((lead as any).customer_id) {
+        const { data } = await (supabase.from("customers") as any).select(CUSTOMER_BILLTO_COLUMNS).eq("id", (lead as any).customer_id).maybeSingle();
+        billCustomer = data ?? null;
+      }
+      const billTo = resolveBillTo({ customer: billCustomer, fallbackName: lead.customer_name, fallbackAddress: lead.customer_address });
 
       return {
         client: {
-          name: lead.customer_name,
-          phone: lead.customer_phone,
-          email: null, // leads table doesn't store email directly
-          address: lead.customer_address,
+          name: billTo.name || lead.customer_name,
+          phone: billCustomer?.phone || lead.customer_phone,
+          email: billCustomer?.email ?? null,
+          address: billTo.address || "",
         },
         invoice: inv
           ? {
