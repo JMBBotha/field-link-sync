@@ -112,7 +112,7 @@ const CustomerPortal = () => {
       setCustomer(pd.customer);
       const jobsData = (pd.jobs || []) as Job[];
       setJobs(jobsData);
-      setInvoices(pd.invoices || []);
+      setInvoices((pd.invoices || []).filter((i: any) => !["void", "cancelled"].includes(String(i?.status || ""))));
       setPayments(pd.payments || []);
       const names: Record<string, string> = {};
       (pd.jobs || []).forEach((j: any) => { if (j.assigned_agent_id && j.agent_name) names[j.assigned_agent_id] = j.agent_name; });

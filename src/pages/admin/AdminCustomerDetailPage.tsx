@@ -298,7 +298,7 @@ const AdminCustomerDetailPage = () => {
       buckets.push({ month: format(d, "MMM"), key: format(d, "yyyy-MM"), amount: 0 });
     }
     for (const inv of invoices) {
-      if ((inv as any).archived_at) continue;
+      if ((inv as any).archived_at || ["void", "cancelled"].includes(String(inv.status || "").toLowerCase())) continue;
       const date = inv.issue_date || inv.created_at;
       if (!date) continue;
       const key = format(new Date(date), "yyyy-MM");

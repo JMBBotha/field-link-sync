@@ -57,6 +57,7 @@ const statusFilters = [
   { value: "sent", label: "Sent" },
   { value: "paid", label: "Paid" },
   { value: "overdue", label: "Overdue" },
+  { value: "void", label: "Void" },
 ];
 
 const getStatusBadge = (status: string) => {

@@ -76,7 +76,7 @@ const AnalyticsDashboard = () => {
       if (agentFilter !== "all") invoicedQ = invoicedQ.eq("agent_id", agentFilter);
       const { data: invoices } = await invoicedQ;
 
-      const totalInvoiced = invoices?.reduce((s, i) => s + Number(i.grand_total), 0) || 0;
+      const totalInvoiced = invoices?.filter(i => !["void", "cancelled"].includes(String(i.status || ""))).reduce((s, i) => s + Number(i.grand_total), 0) || 0;
       const totalPaid = invoices?.filter(i => i.status === "paid").reduce((s, i) => s + Number(i.grand_total), 0) || 0;
       return { totalInvoiced, totalPaid };
     },

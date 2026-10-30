@@ -61,11 +61,11 @@ export function filterQuoteDocs<T extends QuoteDoc>(docs: T[], f: Partial<QuoteF
 }
 
 // ───────── Invoices (/admin/invoices) ─────────
-export type InvoiceState = "draft" | "sent" | "paid" | "overdue" | "unpaid";
+export type InvoiceState = "draft" | "sent" | "paid" | "overdue" | "unpaid" | "void";
 export type InvoiceRow = { status: string | null; issue_date?: string | null; paid_date?: string | null };
 export type InvoiceFilters = { state: InvoiceState | null; period: Period | null };
 
-const STATES: InvoiceState[] = ["draft", "sent", "paid", "overdue", "unpaid"];
+const STATES: InvoiceState[] = ["draft", "sent", "paid", "overdue", "unpaid", "void"];
 
 export function parseInvoiceParams(p: URLSearchParams): InvoiceFilters {
   const s = p.get("state") as InvoiceState | null;
@@ -75,8 +75,11 @@ export function parseInvoiceParams(p: URLSearchParams): InvoiceFilters {
 
 /** unpaid = sent + overdue (same rule as the Outstanding card). */
 export function matchesInvoiceState(status: string | null | undefined, state: InvoiceState | null): boolean {
-  if (!state) return true;
   const s = String(status || "").toLowerCase();
+  const isVoid = s === "void" || s === "cancelled";
+  if (state === "void") return isVoid;
+  if (isVoid) return false; // void invoices only show under the Void filter and never count
+  if (!state) return true;
   const part = s === "partially_paid" || s === "part_paid";
   if (state === "unpaid") return s === "sent" || s === "overdue" || part; // part-paid still has a balance
   if (state === "sent") return s === "sent" || part; // part-paid invoices were sent

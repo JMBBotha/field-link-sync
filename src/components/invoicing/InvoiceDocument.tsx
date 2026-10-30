@@ -18,6 +18,8 @@ export interface InvoiceDocLineItem {
 
 export interface InvoiceDocumentProps {
   invoiceNumber: string;
+  /** Invoice status; void/cancelled get a red VOID stamp and title. */
+  status?: string | null;
   issueDate: string;
   dueDate?: string | null;
   customerName: string;
@@ -70,7 +72,7 @@ const formatDate = (dateStr?: string | null) =>
  * Used both for on-screen viewing and print / PDF capture.
  */
 const InvoiceDocument = ({
-  invoiceNumber,
+  invoiceNumber, status,
   issueDate,
   dueDate,
   customerName,
@@ -122,6 +124,7 @@ const InvoiceDocument = ({
     };
   });
   const bankLine = [bank.account_name, bank.bank_name, accountType && `${accountType} account`, bank.account_number, bank.branch_code && `Branch ${bank.branch_code}`].filter(Boolean).join(" · ");
+  const isVoid = ["void", "cancelled"].includes(String(status || "").toLowerCase());
   const paid = Number(amountPaid) || 0;
   const cred = Number(credited) || 0;
   return (
@@ -130,7 +133,8 @@ const InvoiceDocument = ({
       captureRoot="invoice"
       closingPage
       className="invoice-document max-w-[820px]"
-      title="TAX INVOICE"
+      title={isVoid ? "TAX INVOICE (VOID)" : "TAX INVOICE"}
+      stamp={isVoid ? "VOID" : null}
       number={invoiceNumber}
       profile={profile}
       partyLabel="Bill to"

@@ -328,6 +328,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
       {/* FreshBooks-style invoice document (screen + print/PDF) */}
       <InvoiceDocument
         invoiceNumber={invoice.invoice_number}
+        status={invoice.status}
         issueDate={invoice.issue_date || invoice.created_at}
         dueDate={invoice.due_date}
         customerName={invoice.customer_name}

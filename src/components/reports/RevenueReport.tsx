@@ -30,8 +30,8 @@ const RevenueReport = ({ startDate, endDate }: Props) => {
   });
 
   const totalRevenue = invoices.filter((i) => i.status === "paid").reduce((s, i) => s + Number(i.grand_total), 0);
-  const totalInvoiced = invoices.reduce((s, i) => s + Number(i.grand_total), 0);
-  const totalOutstanding = invoices.filter((i) => i.status !== "paid" && i.status !== "cancelled").reduce((s, i) => s + Number(i.grand_total), 0);
+  const totalInvoiced = invoices.filter((i) => !["void", "cancelled"].includes(String(i.status || ""))).reduce((s, i) => s + Number(i.grand_total), 0);
+  const totalOutstanding = invoices.filter((i) => i.status !== "paid" && i.status !== "cancelled" && i.status !== "void" && i.status !== "draft").reduce((s, i) => s + Number(i.grand_total), 0);
 
   // Group by month for chart
   const monthlyData = invoices
