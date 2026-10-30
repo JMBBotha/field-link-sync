@@ -14,7 +14,7 @@ export default function FinalInvoiceCTA({ step, className }: { step: FinalStep |
   if (!step) return null;
   return (
     <div className={"rounded-2xl border border-orange-300 bg-orange-50 p-3 dark:bg-orange-500/10 " + (className || "")} data-testid="final-invoice-cta">
-      <p className="text-xs font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-300">Next step · job done, deposit paid</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-300">Next step · {step.jobDone ? "job done, deposit paid" : "deposit paid, final invoice ready"}</p>
       <Button
         className="mt-2 h-12 w-full rounded-xl bg-orange-500 text-base font-semibold text-white hover:bg-orange-600"
         onClick={() => navigate(`/admin/invoices/${step.invoiceId}?final=1`)}

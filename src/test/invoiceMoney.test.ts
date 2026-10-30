@@ -29,8 +29,11 @@ describe("finalInvoiceStep", () => {
   it("shows when deposit paid and job completed", () => {
     expect(finalInvoiceStep(inv, pay, [{ status: "completed", invoice_id: "a" }])).toMatchObject({ invoiceId: "a", balance: 6412.2, kind: "send_balance" });
   });
-  it("hidden while job is only scheduled", () => {
-    expect(finalInvoiceStep(inv, pay, [{ status: "scheduled" }])).toBeNull();
+  it("shows (final invoice ready) while job is only scheduled", () => {
+    expect(finalInvoiceStep(inv, pay, [{ status: "scheduled" }])).toMatchObject({ invoiceId: "a", balance: 6412.2, jobDone: false });
+  });
+  it("hidden once fully paid", () => {
+    expect(finalInvoiceStep(inv, [{ invoice_id: "a", amount: 21374, status: "paid" }], [{ status: "completed" }])).toBeNull();
   });
   it("hidden without a paid deposit", () => {
     expect(finalInvoiceStep(inv, [], [{ status: "completed" }])).toBeNull();

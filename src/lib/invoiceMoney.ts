@@ -40,7 +40,7 @@ export function summarizeInvoices(invoices: MoneyInvoice[], payments: MoneyPayme
 
 const JOB_DONE = ["completed", "done", "installed", "complete"];
 export type FinalStepJob = { id?: string; status?: string | null; completed_at?: string | null; invoice_id?: string | null };
-export type FinalStep = { invoiceId: string; invoiceNumber?: string | null; balance: number; kind: "send_draft" | "send_balance" };
+export type FinalStep = { invoiceId: string; invoiceNumber?: string | null; balance: number; kind: "send_draft" | "send_balance"; jobDone?: boolean };
 
 /**
  * Next step "Send final invoice" (Johan 30 Oct): deposit paid + job completed/installed.
@@ -48,15 +48,15 @@ export type FinalStep = { invoiceId: string; invoiceNumber?: string | null; bala
  */
 export function finalInvoiceStep(invoices: any[], payments: MoneyPayment[], jobs: FinalStepJob[]): FinalStep | null {
   const done = (jobs || []).filter((j) => JOB_DONE.includes((j.status || "").toLowerCase()) || !!j.completed_at);
-  if (!done.length) return null;
+  // Johan 19:39: final invoice is "ready" once the deposit is paid and a balance is open, even if the job is not marked done yet.
   const paid = paidByInvoice(payments);
   const live = (invoices || []).filter((i) => !i.archived_at && !["void", "cancelled"].includes((i.status || "").toLowerCase()));
   const depositPaid = live.some((i) => (paid.get(i.id) || 0) > 0);
   if (!depositPaid) return null;
   const draft = live.find((i) => (i.status || "draft").toLowerCase() === "draft" && !i.sent_at && (Number(i.grand_total) || 0) > 0);
-  if (draft) return { invoiceId: draft.id, invoiceNumber: draft.invoice_number, balance: invoiceBalance(draft, paid), kind: "send_draft" };
+  if (draft) return { invoiceId: draft.id, invoiceNumber: draft.invoice_number, balance: invoiceBalance(draft, paid), kind: "send_draft", jobDone: done.length > 0 };
   const open = live
     .filter((i) => (paid.get(i.id) || 0) > 0 && invoiceBalance(i, paid) > 0)
     .sort((a, b) => (done.some((j) => j.invoice_id === b.id) ? 1 : 0) - (done.some((j) => j.invoice_id === a.id) ? 1 : 0))[0];
-  return open ? { invoiceId: open.id, invoiceNumber: open.invoice_number, balance: invoiceBalance(open, paid), kind: "send_balance" } : null;
+  return open ? { invoiceId: open.id, invoiceNumber: open.invoice_number, balance: invoiceBalance(open, paid), kind: "send_balance", jobDone: done.length > 0 } : null;
 }
