@@ -47,6 +47,8 @@ export interface BrandDocumentProps {
   partyName: string;
   partyLines: (string | null | undefined)[];
   partyVat?: string | null;
+  /** Site / job address, printed as a separate "Site:" line under the bill-to block. */
+  partySite?: string | null;
   meta: [string, string][];
   sections: BrandDocSection[];
   totals: { label: string; value: number; negative?: boolean }[];
@@ -240,6 +242,7 @@ export default function BrandDocument(p: BrandDocumentProps) {
             <div className="tn">{p.partyName}</div>
             {p.partyLines.filter((l) => l && String(l).trim()).map((l, i) => <div key={i}>{l}</div>)}
             {p.partyVat && p.partyVat.trim() && <div data-testid={p.docType === "invoice" ? "billed-to-vat" : "customer-vat"}>VAT No {p.partyVat.trim()}</div>}
+            {p.partySite && p.partySite.trim() && <div className="site" data-testid="party-site"><b>Site:</b> {p.partySite.trim()}</div>}
           </div>
           <table className="meta"><tbody>{p.meta.map(([k, v]) => <tr key={k}><th>{k}</th><td>{v}</td></tr>)}</tbody></table>
         </div>

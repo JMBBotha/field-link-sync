@@ -27,6 +27,7 @@ export interface LiveClientPreviewProps {
   customerEmail?: string | null;
   customerPhone?: string | null;
   customerVat?: string | null;
+  siteAddress?: string | null;
   vatRate: number;
   notes?: string | null;
   termsText?: string | null;
@@ -164,6 +165,7 @@ export default function LiveClientPreview(props: LiveClientPreviewProps) {
             customerEmail={props.customerEmail}
             customerPhone={props.customerPhone}
             customerVat={props.customerVat}
+            siteAddress={props.siteAddress}
             items={docItems}
             presentationMode="clientRollup"
             clientAreas={areasRollup}

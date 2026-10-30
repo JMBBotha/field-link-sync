@@ -1,3 +1,4 @@
+import { CUSTOMER_BILLTO_COLUMNS, resolveBillTo } from "@/lib/billTo";
 import { useState, useEffect, useRef } from "react";
 import { MarkSentManuallyButton, SentManuallyBadge } from "@/components/documents/MarkSentManually";
 import { ArrowLeft, Loader2, Send, CheckCircle, Printer, Download, Share2, Phone, Mail, MapPin, MessageCircle, Copy, Pencil, Lock } from "lucide-react";
@@ -87,6 +88,23 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   const { user } = useAuth();
 
   useEffect(() => { fetchCompanyProfiles().then(setProfiles); }, []);
+  // Display-only: client's company name + Site line (linked location, else lead address). Saved bill-to is never rewritten.
+  const [billExtra, setBillExtra] = useState<{ company: string | null; site: string | null }>({ company: null, site: null });
+  useEffect(() => {
+    if (!invoice) return;
+    let off = false;
+    (async () => {
+      const [c, loc, lead] = await Promise.all([
+        invoice.customer_id ? (supabase.from("customers") as any).select(CUSTOMER_BILLTO_COLUMNS).eq("id", invoice.customer_id).maybeSingle() : Promise.resolve({ data: null }),
+        invoice.location_id ? (supabase.from("customer_locations") as any).select("address").eq("id", invoice.location_id).maybeSingle() : Promise.resolve({ data: null }),
+        invoice.lead_id ? (supabase.from("leads") as any).select("customer_address").eq("id", invoice.lead_id).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+      if (off) return;
+      const company = c.data ? resolveBillTo({ customer: c.data, fallbackName: invoice.customer_name }).company : null;
+      setBillExtra({ company: company && company !== invoice.customer_name ? company : null, site: loc.data?.address || lead.data?.customer_address || null });
+    })();
+    return () => { off = true; };
+  }, [invoice?.id, invoice?.customer_id, invoice?.location_id, invoice?.lead_id]);
 
   useEffect(() => {
     fetchInvoice();
@@ -311,6 +329,8 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         dueDate={invoice.due_date}
         customerName={invoice.customer_name}
         customerAddress={invoice.customer_address}
+        customerCompany={billExtra.company}
+        siteAddress={billExtra.site}
         customerEmail={invoice.customer_email}
         customerPhone={invoice.customer_phone}
         items={displayItems}

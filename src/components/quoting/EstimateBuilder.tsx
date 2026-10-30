@@ -78,6 +78,7 @@ interface Props {
   customerEmail?: string | null;
   customerPhone?: string | null;
   customerVat?: string | null;
+  siteAddress?: string | null;
   vatRate: number;
   notes?: string | null;
   termsText?: string | null;
@@ -111,6 +112,7 @@ export default function EstimateBuilder({
   customerEmail,
   customerPhone,
   customerVat,
+  siteAddress,
   vatRate,
   notes,
   termsText,
@@ -470,6 +472,7 @@ export default function EstimateBuilder({
           customerEmail={customerEmail}
           customerPhone={customerPhone}
           customerVat={customerVat}
+          siteAddress={siteAddress}
           items={[]}
           relocationLines={(items as any[]).flatMap((i) => [i.item_name, i.description])}
           subtotal={subtotal}
@@ -682,6 +685,7 @@ export default function EstimateBuilder({
           customerEmail={customerEmail}
           customerPhone={customerPhone}
           customerVat={customerVat}
+          siteAddress={siteAddress}
           vatRate={vatRate}
           notes={notes}
           termsText={termsText}

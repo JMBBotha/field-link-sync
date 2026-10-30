@@ -1,3 +1,4 @@
+import { CUSTOMER_BILLTO_COLUMNS, resolveBillTo, siteLineFor } from "@/lib/billTo";
 import { useR0, clearAllR0, r0PriceInput, R0_FIELD } from "@/lib/r0Highlight";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload } from "lucide-react";
@@ -135,6 +136,11 @@ const CreateInvoicePage = ({
   );
   const [customerPhone, setCustomerPhone] = useState(prefillLead?.customer_phone || prefillFromLead?.customer_phone || "");
   const [customerAddress, setCustomerAddress] = useState(prefillLead?.customer_address || prefillFromLead?.customer_address || "");
+  // Site / job address (lead). Only used as the bill-to address when no client is linked.
+  const [siteAddress, setSiteAddress] = useState(prefillLead?.customer_address || prefillFromLead?.customer_address || "");
+  const [customerCompany, setCustomerCompany] = useState<string | null>(null);
+  // Existing drafts keep their saved bill-to; only new invoices are re-filled from the client record.
+  const keepSavedBillTo = useRef(!!editInvoiceId);
   const [customerEmail, setCustomerEmail] = useState("");
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
@@ -269,11 +275,20 @@ const CreateInvoicePage = ({
     if (!cid) return;
     supabase
       .from("customers")
-      .select("email, name, phone, address, vat_number")
+      .select(CUSTOMER_BILLTO_COLUMNS)
       .eq("id", cid)
       .single()
       .then(({ data }) => {
         if (data) {
+          const bill = resolveBillTo({ customer: data as any });
+          setCustomerCompany(bill.company);
+          if (!keepSavedBillTo.current) {
+            // Bill-to comes from the client's company record; the lead address stays as the Site line.
+            if (bill.name) setCustomerName(bill.name);
+            if (bill.address) setCustomerAddress(bill.address);
+            if (bill.vat) setClientVat(bill.vat);
+            if (data.phone) setCustomerPhone(data.phone);
+          }
           if ((data as any).vat_number) setClientVat((prev) => prev || (data as any).vat_number);
           if (data.email) setCustomerEmail(data.email);
           if (!customerName && data.name) setCustomerName(data.name);
@@ -329,6 +344,12 @@ const CreateInvoicePage = ({
       if (i.due_date) setDueDate(i.due_date);
       setNotes(i.notes || "");
       setLeadId(i.lead_id || "");
+      if (i.location_id || i.lead_id) {
+        const site = i.location_id
+          ? (await (supabase.from("customer_locations") as any).select("address").eq("id", i.location_id).maybeSingle()).data?.address
+          : (await supabase.from("leads").select("customer_address").eq("id", i.lead_id).maybeSingle()).data?.customer_address;
+        if (site) setSiteAddress(site);
+      }
       setEditLeadId(i.lead_id || null);
       setAutoQuoteId(i.quote_id || null);
       if (i.company_profile_id) setProfileId(i.company_profile_id);
@@ -395,6 +416,7 @@ const CreateInvoicePage = ({
     setCustomerPhone(c.phone);
     setCustomerAddress(c.address || "");
     setCustomerEmail(c.email || "");
+    keepSavedBillTo.current = false;
     setShowCustomerPicker(false);
     setCustomerSearch("");
   };
@@ -735,7 +757,9 @@ const CreateInvoicePage = ({
               {customerName && !showCustomerPicker ? (
                 <div>
                   <p className="text-sm font-semibold text-foreground">{customerName}</p>
+                  {customerCompany && <p className="text-xs text-muted-foreground">{customerCompany}</p>}
                   {customerAddress && <p className="text-xs text-muted-foreground">{customerAddress}</p>}
+                  {siteLineFor(siteAddress, customerAddress) && <p className="text-xs text-muted-foreground" data-testid="invoice-site-line"><b>Site:</b> {siteLineFor(siteAddress, customerAddress)}</p>}
                   {customerEmail && <p className="text-xs text-muted-foreground">{customerEmail}</p>}
                   <GhostInput placeholder="Client VAT No (optional)" value={clientVat} onChange={(e) => setClientVat(e.target.value)} className="!px-0 text-xs" data-testid="client-vat-input" />
                   <button onClick={() => setShowCustomerPicker(true)} className="text-xs text-primary hover:underline mt-1">Change</button>
