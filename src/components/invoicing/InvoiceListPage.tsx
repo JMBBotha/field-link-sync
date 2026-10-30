@@ -165,12 +165,13 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
     );
 
   // Summary stats
+  // Shared maths: outstanding = balances after payments/credits; collected counts partial payments.
   const totalOutstanding = invoices
     .filter(inv => matchesInvoiceState(inv.status, "unpaid"))
-    .reduce((sum, inv) => sum + inv.grand_total, 0);
+    .reduce((sum, inv) => sum + invoiceMoney(inv as any, payRows, creditRows).balance, 0);
   const totalPaid = invoices
-    .filter(inv => inv.status === "paid")
-    .reduce((sum, inv) => sum + inv.grand_total, 0);
+    .filter(inv => !["void", "cancelled"].includes((inv.status || "").toLowerCase()))
+    .reduce((sum, inv) => sum + invoiceMoney(inv as any, payRows, creditRows).paid, 0);
 
   if (loading) {
     return (

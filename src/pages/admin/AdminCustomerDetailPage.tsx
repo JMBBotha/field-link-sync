@@ -31,6 +31,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DetailPageSkeleton } from "@/components/ui/skeletons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { summarizeInvoices, finalInvoiceStep } from "@/lib/invoiceMoney";
+import FinalInvoiceCTA from "@/components/invoicing/FinalInvoiceCTA";
 import { CustomerPaymentsTab, CustomerPhotosTab, CustomerDocumentsTab, CustomerHistoryTab } from "@/components/customers/CustomerRecordTabs";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -204,7 +206,7 @@ const AdminCustomerDetailPage = () => {
       if (customer?.name) orParts.push(`customer_name.ilike.${customer.name}`);
       const { data, error } = await supabase
         .from("invoices")
-        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, created_at, archived_at, customer_id, customer_name, location_id, payment_terms_basis, payment_terms_days")
+        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, sent_at, created_at, archived_at, customer_id, customer_name, location_id, payment_terms_basis, payment_terms_days")
         .or(orParts.join(","))
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -251,7 +253,7 @@ const AdminCustomerDetailPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("jobs")
-        .select("id, title, description, status, scheduled_for, created_at, lead_id, location_id")
+        .select("id, title, description, status, scheduled_for, created_at, completed_at, invoice_id, lead_id, location_id")
         .eq("customer_id", id!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -343,22 +345,12 @@ const AdminCustomerDetailPage = () => {
     return s;
   }, [jobs]);
 
-  const invoiceSummary = useMemo(() => {
-    const s = { draft: 0, sent: 0, paid: 0, overdue: 0, outstanding: 0, paidValue: 0 };
-    const now = new Date();
-    for (const inv of invoices as any[]) {
-      if ((inv as any).archived_at) continue;
-      const st = (inv.status || "draft").toLowerCase();
-      const total = Number(inv.grand_total || 0);
-      const overdue = st !== "paid" && inv.due_date && new Date(inv.due_date) < now;
-      if (st === "paid") { s.paid++; s.paidValue += total; }
-      else if (overdue) { s.overdue++; s.outstanding += total; }
-      else if (st === "sent" || st === "viewed") { s.sent++; s.outstanding += total; }
-      else if (st === "draft") s.draft++;
-      else s.outstanding += total;
-    }
-    return s;
-  }, [invoices]);
+  const invIdsKey = (invoices as any[]).map((i: any) => i.id).join(",");
+  const { data: invPayments = [] } = useQuery({
+    queryKey: ["cust-payments", invIdsKey], enabled: invIdsKey.length > 0,
+    queryFn: async () => (await (supabase as any).from("payments").select("invoice_id,amount,status").in("invoice_id", invIdsKey.split(","))).data || [],
+  });
+  const invoiceSummary = useMemo(() => summarizeInvoices(invoices as any[], invPayments as any[]), [invoices, invPayments]);
 
   const { data: locations = [] } = useQuery({
     queryKey: ["customer-locations", id], enabled: !!id,
@@ -382,7 +374,7 @@ const AdminCustomerDetailPage = () => {
       outstanding += Number(r.amount_due) || 0;
       if (!r.waiting && r.days > 0) { overdue += Number(r.amount_due) || 0; overdueN++; maxLate = Math.max(maxLate, r.days); }
     }
-    return { outstanding: outstanding || invoiceSummary.outstanding, overdue, overdueN, maxLate };
+    return { outstanding: invoiceSummary.outstanding, overdue, overdueN, maxLate };
   }, [invoices, dueBy, invoiceSummary]);
   const openQuotes = (quotes as any[]).filter((q) => ["draft", "sent", "viewed", "pending"].includes((q.status || "draft").toLowerCase()));
 
@@ -482,6 +474,8 @@ const AdminCustomerDetailPage = () => {
         </div>
       </div>
 
+      <FinalInvoiceCTA step={finalInvoiceStep(invoices as any[], invPayments as any[], jobs as any[])} />
+
       {/* Tabs */}
       <div className="flex gap-1.5 overflow-x-auto pb-1" role="tablist">
         {main.map(([v, l, n]) => (
@@ -531,7 +525,7 @@ const AdminCustomerDetailPage = () => {
             items={[
               { label: "Outstanding", value: formatRand(invoiceSummary.outstanding), tone: invoiceSummary.outstanding > 0 ? "amber" : "slate" },
               { label: "Overdue", value: String(money.overdueN), tone: money.overdueN > 0 ? "rose" : "slate" },
-              { label: "Paid", value: `${invoiceSummary.paid} · ${formatRand(invoiceSummary.paidValue)}`, tone: "emerald" },
+              { label: "Paid", value: `${invoiceSummary.paidInvoices} · ${formatRand(invoiceSummary.paidValue)}`, tone: "emerald" },
               { label: "Draft", value: String(invoiceSummary.draft), tone: "slate" },
             ]}
           />
