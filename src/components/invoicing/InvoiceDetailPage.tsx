@@ -397,6 +397,13 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           </div>
           {/* Primary action based on status */}
           {/* Mark as sent without emailing: dialog asks how (WhatsApp / handed over / other), server logs + notifies the owner. */}
+          {/* Final invoice (Johan 30 Oct): deposit paid, balance open → orange primary next step. Opens WhatsApp with the invoice PDF + balance. */}
+          {invoice.status !== "draft" && amountPaid > 0.005 && Number(invoice.grand_total) - amountPaid > 0.005 && (
+            <Button data-testid="send-final-invoice" className="w-full h-12 rounded-xl text-base font-semibold bg-orange-500 hover:bg-orange-600 text-white" onClick={handleWhatsApp} disabled={generatingPDF}>
+              {generatingPDF ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+              Send final invoice · {formatCurrency(Math.max(0, Number(invoice.grand_total) - amountPaid))} balance
+            </Button>
+          )}
           <SendInvoiceEmailButton invoiceId={invoice.id} status={invoice.status} className="w-full h-11 rounded-lg font-semibold" onEdit={() => setEditingId(invoice.id)} onSent={() => { fetchInvoice(); onUpdate?.(); }} />
           <MarkSentManuallyButton kind="invoice" id={invoice.id} status={invoice.status} size="default" className="w-full h-11 rounded-lg font-semibold" onDone={() => { fetchInvoice(); onUpdate?.(); }} />
           {/* Paid is DERIVED from recorded payments — never set directly. */}
