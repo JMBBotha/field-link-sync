@@ -152,8 +152,8 @@ const InvoiceDocument = ({
         ...(paid > 0 ? [{ label: "Amount paid", value: paid, negative: true }] : []),
         ...(cred > 0 ? [{ label: "Credit notes", value: cred, negative: true }] : []),
       ]}
-      grandLabel="Amount due (ZAR)"
-      grandTotal={amountDue}
+      grandLabel={isVoid ? "VOID · nothing due (ZAR)" : "Amount due (ZAR)"}
+      grandTotal={isVoid ? 0 : amountDue}
       afterTotals={deposit > 0 ? (
         <div data-testid="deposit-box" style={{ margin: "10px 0 0 auto", maxWidth: 300, border: "1px solid #F7941D", background: "#fff7ed", padding: 8, borderRadius: 6 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}><span>Deposit requested{depositLabel ? ` (${depositLabel})` : ""}</span><span>{formatCurrency(deposit)}</span></div>
