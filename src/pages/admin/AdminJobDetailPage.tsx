@@ -1,5 +1,7 @@
 import { useUndoAction } from "@/components/shared/StatusUndo";
 import { useNavigate, useParams } from "react-router-dom";
+import { useSalesRep } from "@/hooks/useSalesRep";
+import { assignedLabel } from "@/lib/assignedLabel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { jobTypeLabel } from "@/lib/jobTypes";
@@ -53,6 +55,9 @@ const PRIORITY_VARIANT: Record<string, "destructive" | "default" | "secondary" |
   low: "outline",
 };
 
+const jhbDate = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" }) : null);
+const jhbTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleTimeString("en-GB", { timeZone: "Africa/Johannesburg", hour: "2-digit", minute: "2-digit" }) : null);
+
 const AdminJobDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -63,6 +68,7 @@ const AdminJobDetailPage = () => {
   const [assignOpen, setAssignOpen] = useState(false);
   const statusUndo = useUndoAction();
   const { canAccessAdmin } = useRole();
+  const { isSalesRep } = useSalesRep();
 
   const { data: job, isLoading } = useQuery({
     queryKey: ["job-detail", id],
@@ -194,14 +200,19 @@ const AdminJobDetailPage = () => {
             <ArrowLeft className="h-4 w-4" /> Jobs
           </Button>
           <div className="ml-auto flex min-w-0 items-center gap-2">
-            <span className="min-w-0 truncate text-sm" data-testid="job-tech">
-              {assignedTech ? <>Tech: <span className="font-medium">{assignedTech.name}</span></> : <span className="text-muted-foreground">No tech yet</span>}
+            <span className="min-w-0 truncate text-sm font-medium" data-testid="job-tech">
+              {assignedTech ? assignedLabel(assignedTech.name, jhbDate((job as any)?.scheduled_for), jhbTime((job as any)?.scheduled_for)) : <span className="text-muted-foreground">No tech yet</span>}
             </span>
-            {canAccessAdmin && (
-              <Button variant="outline" size="sm" className="shrink-0" onClick={() => setAssignOpen(true)}>
-                {assignedTech ? "Change tech" : "Assign tech"}
-              </Button>
-            )}
+            {canAccessAdmin && !isSalesRep && (assignedTech ? (
+              <details className="relative shrink-0" data-testid="job-more">
+                <summary className="inline-flex h-9 cursor-pointer list-none items-center rounded-md border px-3 text-sm">More</summary>
+                <div className="absolute right-0 z-20 mt-1 flex w-44 flex-col rounded-xl border bg-card p-1 shadow-lg">
+                  <button onClick={() => setAssignOpen(true)} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="job-reassign">Reassign tech</button>
+                </div>
+              </details>
+            ) : (
+              <Button variant="outline" size="sm" className="shrink-0" onClick={() => setAssignOpen(true)}>Assign tech</Button>
+            ))}
           </div>
         </div>
         <AssignTechDialog jobId={assignOpen ? j.id : null} onClose={() => setAssignOpen(false)} />

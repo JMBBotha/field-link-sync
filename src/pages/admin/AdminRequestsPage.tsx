@@ -9,6 +9,7 @@ import { PageHeaderCard } from "@/components/v8/ui/V8Blocks";
 import LeadAssignDialog from "@/components/jobs/LeadAssignDialog";
 import AddRequestDialog from "@/components/requests/AddRequestDialog";
 import RequestCorrectionsPanel from "@/components/requests/RequestCorrectionsPanel";
+import { assignedLabel, cardHref, isAssigned } from "@/lib/assignedLabel";
 import { fetchInbox, markContacted, markDone, setType, typeLabel, waitLabel, REQUEST_TYPES, type RequestRow, type RequestType } from "@/lib/requests";
 
 /** Contacted = logged contact, or server rule (manual admin add / assigned / scheduled). */
@@ -25,8 +26,7 @@ export function SummaryText({ text }: { text: string }) {
     : <span key={i}>{p.replace(/^\.\s*$/, "")}</span>)}</>;
 }
 /** Where a request row opens: its job, else its lead (reps -> My jobs item, office -> visit page). */
-export const requestHref = (r: RequestRow, salesRep: boolean) =>
-  r.job_id ? `/admin/jobs/${r.job_id}` : r.lead_id ? (salesRep ? `/admin?myjob=${r.lead_id}` : `/admin/visits/${r.lead_id}`) : "/admin/requests";
+export const requestHref = (r: RequestRow, _salesRep?: boolean) => cardHref(r) ?? "/admin/requests";
 type Filter = "open" | "sorting" | RequestType | "done" | "red" | "new" | "contacted";
 const FILTER_KEYS = ["open", "sorting", "new_sale", "service", "move", "admin", "done", "red", "new", "contacted"];
 const TYPE_TONE: Record<string, string> = {
@@ -126,7 +126,8 @@ export function requestStatus(r: RequestRow): { text: string; tone: "red" | "gre
   if (!r.type) return { text: "Needs sorting", tone: "amber" };
   if (r.type === "admin") return { text: r.task_overdue ? "Office task · overdue" : "Office task · due today", tone: r.task_overdue ? "red" : "amber" };
   const who = r.assigned_name?.trim();
-  if (r.scheduled_for) return { text: ["Booked", who, friendlyWhen(r.scheduled_for, r.scheduled_time)].filter(Boolean).join(" · "), tone: "green" };
+  if (who && (r.scheduled_for || isAssigned(r))) return { text: assignedLabel(who, r.scheduled_for, r.scheduled_time)!, tone: "green" };
+  if (r.scheduled_for) return { text: ["Booked", friendlyWhen(r.scheduled_for, r.scheduled_time)].filter(Boolean).join(" · "), tone: "green" };
   if (!isContacted(r)) return { text: `Not contacted${r.working_min_waiting != null ? ` · ${waitLabel(r.working_min_waiting)}` : ""}`, tone: "red" };
   if (who) return { text: `With ${who} · not scheduled`, tone: r.unscheduled_nudge ? "red" : "amber" };
   return { text: `Contacted${r.contact_channel ? ` (${r.contact_channel === "whatsapp" ? "WhatsApp" : r.contact_channel})` : ""} · not scheduled`, tone: r.unscheduled_nudge ? "red" : "amber" };
@@ -158,7 +159,7 @@ export function RequestCard({ r, isAdmin = false, changing, onChange, onType, on
     : sorting ? null
     : r.type === "admin" ? { label: "Done", on: onDone, cls: "bg-[#2E7D32]", id: "request-done" }
     : !contacted ? { label: "Mark contacted", on: () => onContacted("phone"), cls: "bg-[#0F2A44]", id: "mark-contacted" }
-    : canAssign && !r.scheduled_for ? { label: r.assigned_to ? "Schedule" : "Assign / schedule", on: onAssign, cls: "bg-[#1590D6]", id: "request-assign" }
+    : canAssign && !r.scheduled_for && !isAssigned(r) ? { label: "Assign / schedule", on: onAssign, cls: "bg-[#1590D6]", id: "request-assign" }
     : (r.lead_id || r.job_id) ? { label: r.job_id ? "Open job" : "Open booking", on: onOpen, cls: "bg-[#1590D6]", id: "request-open" }
     : null;
   return (
@@ -196,7 +197,7 @@ export function RequestCard({ r, isAdmin = false, changing, onChange, onType, on
             <summary className={cn(SEC, "cursor-pointer list-none")}>More</summary>
             <div className="absolute right-0 z-20 mt-1 flex w-56 flex-col rounded-xl border bg-card p-1 shadow-lg">
               {!contacted && <button onClick={() => onContacted("whatsapp")} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="mark-contacted-wa">Contacted on WhatsApp</button>}
-              {canAssign && primary?.id !== "request-assign" && <button onClick={onAssign} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="request-reassign">{r.assigned_to ? "Reassign / reschedule" : "Assign / schedule"}</button>}
+              {canAssign && primary?.id !== "request-assign" && <button onClick={onAssign} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="request-reassign">{isAssigned(r) ? "Reassign / reschedule" : "Assign / schedule"}</button>}
               {primary?.id !== "request-open" && (r.lead_id || r.job_id) && <button onClick={onOpen} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="request-open-sec">{r.job_id ? "Open job" : "Open booking"}</button>}
               <button onClick={onChange} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted">Change type</button>
             </div>

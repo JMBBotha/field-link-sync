@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import JobInfoBlock from "@/components/jobs/JobInfoBlock";
+import { assignedLabel, cardHref } from "@/lib/assignedLabel";
 import { photoDisplayPath, signedPhotoUrl } from "@/lib/photoUrls";
 
 type MyJob = {
@@ -65,7 +66,7 @@ export default function SalesMyJobs() {
       setParams(next, { replace: true });
       setTimeout(() => document.getElementById(`myjob-${target}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
       setTimeout(() => setHl(null), 4000);
-    } else navigate(`/admin/visits/${target}`, { replace: true });
+    } else navigate(`/admin/bookings/${target}`, { replace: true });
   }, [target, q.data]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <section className="v7-solid space-y-2 rounded-2xl border bg-card p-3" data-testid="sales-my-jobs">
@@ -76,12 +77,17 @@ export default function SalesMyJobs() {
           const idx = STAGES.findIndex(([s]) => s === j.stage);
           return (
             <div key={j.lead_id} id={`myjob-${j.lead_id}`} className={`space-y-2 rounded-xl border p-3 transition-shadow ${hl === j.lead_id ? "ring-2 ring-primary" : ""}`} data-testid="sales-my-job">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-2">
-                <p className="min-w-0 truncate font-semibold">{j.customer || "Customer"}</p>
-                <p className="text-xs text-muted-foreground tabular-nums">{j.scheduled_date || "No date"}{j.scheduled_time ? ` · ${j.scheduled_time}` : ""}</p>
-              </div>
-              {j.title && <p className="text-xs text-muted-foreground">{j.title}</p>}
-              <p className="text-sm">{j.tech_name?.trim() || "No technician"}{j.tech_name ? <span className="text-muted-foreground"> · {TECH[j.tech_status] || "Off"}</span> : null}</p>
+              <button type="button" onClick={() => navigate(cardHref(j)!)} className="block w-full space-y-1 text-left" data-testid="sales-my-job-open" aria-label={`Open ${j.job_id ? "job" : "booking"} for ${j.customer || "customer"}`}>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+                  <p className="min-w-0 truncate font-semibold">{j.customer || "Customer"}</p>
+                  <span className="text-xs font-semibold text-primary">{j.job_id ? "Open job ›" : "Open booking ›"}</span>
+                </div>
+                {j.title && <p className="text-xs text-muted-foreground">{j.title}</p>}
+                <p className="text-sm font-medium" data-testid="sales-my-job-assigned">
+                  {assignedLabel(j.tech_name, j.scheduled_date, j.scheduled_time) || <span className="text-muted-foreground">No technician yet{j.scheduled_date ? ` · ${j.scheduled_date}` : ""}</span>}
+                  {j.tech_name?.trim() ? <span className="text-muted-foreground"> · {TECH[j.tech_status] || "Off"}</span> : null}
+                </p>
+              </button>
               {j.job_id && <TechLocationBlock jobId={j.job_id} compact />}
               <ol className="grid grid-cols-4 gap-1" aria-label="Job progress">
                 {STAGES.map(([s, label], i) => (

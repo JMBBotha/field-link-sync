@@ -78,6 +78,7 @@ const AdminMaintenancePage = lazy(() => import("./pages/admin/AdminMaintenancePa
 const AdminCustomersPage = lazy(() => import("./pages/admin/AdminCustomersPage"));
 const AdminCustomerDetailPage = lazy(() => import("./pages/admin/AdminCustomerDetailPage"));
 const AdminJobDetailPage = lazy(() => import("./pages/admin/AdminJobDetailPage"));
+const AdminBookingDetailPage = lazy(() => import("./pages/admin/AdminBookingDetailPage"));
 const AdminMyJobsPage = lazy(() => import("./pages/admin/AdminMyJobsPage"));
 const AdminMyAppointmentsPage = lazy(() => import("./pages/admin/AdminMyAppointmentsPage"));
 const AdminPriceListsPage = lazy(() => import("./pages/admin/AdminPriceListsPage"));
@@ -212,6 +213,7 @@ const App = () => (
                     <Route path="jobs" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} redirectTo="/admin/my-jobs" redirectOnDeny><AdminJobsHubPage /></RequireRole>} />
                     <Route path="jobs/dispatch" element={<JobsDispatchRedirect />} />
                     <Route path="jobs/:id" element={<AdminJobDetailPage />} />
+                    <Route path="bookings/:leadId" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer", "field_agent"]}><AdminBookingDetailPage /></RequireRole>} />
                     <Route path="my-jobs" element={<AdminMyJobsPage />} />
                     <Route path="my-base" element={<MyBasePage />} />
                     <Route path="my-appointments" element={<AdminMyAppointmentsPage />} />
