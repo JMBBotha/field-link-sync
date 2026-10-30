@@ -54,7 +54,8 @@ const AdminInvoicesPage = () => {
     <div className="h-full">
       {view === "list" && (
         <InvoiceListPage
-          agentId={isAdmin ? undefined : currentUserId}
+          // Scope is enforced by RLS (rep_can_see_invoice / tech_lockdown_select).
+          agentId={undefined}
           onSelectInvoice={(inv) => {
             setSelectedInvoiceId(inv.id);
             setView("detail");
