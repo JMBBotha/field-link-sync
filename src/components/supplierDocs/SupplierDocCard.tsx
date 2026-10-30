@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Check, X, Link2 } from "lucide-react";
+import { FileText, X, Link2 } from "lucide-react";
 import { docTypeLabel, openDocFile, linkDoc, unlinkDoc, attachDocFile } from "./api";
 import JobPicker from "./JobPicker";
 
@@ -35,8 +35,7 @@ export default function SupplierDocCard({ doc, onChanged, highlightJobId }: { do
       <div className="flex flex-wrap gap-1.5">
         {links.map((k) => (
           <Badge key={k.id} variant={k.status === "suggested" ? "outline" : "secondary"} className={`gap-1 ${k.status === "suggested" ? "border-amber-500 text-amber-700" : ""}`}>
-            {k.status === "suggested" && "Suggested: "}{k.customers?.name ?? "Client"}{k.jobs?.title ? ` · ${k.jobs.title}` : ""}
-            {k.status === "suggested" && <button type="button" aria-label="Confirm link" title={k.reason ?? ""} onClick={() => run(() => linkDoc(doc.id, k.job_id, k.customer_id))}><Check className="h-3 w-3" /></button>}
+            {k.customers?.name ?? "Client"}{k.jobs?.title ? ` · ${k.jobs.title}` : ""}
             <button type="button" aria-label="Remove link" onClick={() => run(() => unlinkDoc(k.id))}><X className="h-3 w-3" /></button>
           </Badge>
         ))}
