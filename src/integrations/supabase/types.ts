@@ -771,6 +771,183 @@ export type Database = {
           },
         ]
       }
+      bot_accounts: {
+        Row: {
+          company_id: string
+          created_at: string
+          disabled: boolean
+          disabled_at: string | null
+          disabled_by: string | null
+          display_name: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          disabled?: boolean
+          disabled_at?: string | null
+          disabled_by?: string | null
+          display_name?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          disabled?: boolean
+          disabled_at?: string | null
+          disabled_by?: string | null
+          display_name?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_accounts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_accounts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
+      bot_audit_log: {
+        Row: {
+          action: string
+          actor_id: string
+          after: Json | null
+          before: Json | null
+          company_id: string
+          created_at: string
+          id: string
+          proposal_id: string | null
+          target_id: string | null
+          target_table: string | null
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          after?: Json | null
+          before?: Json | null
+          company_id: string
+          created_at?: string
+          id?: string
+          proposal_id?: string | null
+          target_id?: string | null
+          target_table?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          after?: Json | null
+          before?: Json | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          proposal_id?: string | null
+          target_id?: string | null
+          target_table?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_audit_log_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_audit_log_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
+      bot_proposed_changes: {
+        Row: {
+          action_type: string
+          applied_at: string | null
+          checked_note: string | null
+          company_id: string
+          created_at: string
+          id: string
+          payload: Json
+          proposer_id: string
+          reason: string | null
+          result: Json | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewer_id: string | null
+          status: string
+          summary: string
+          target_id: string | null
+          target_table: string | null
+        }
+        Insert: {
+          action_type: string
+          applied_at?: string | null
+          checked_note?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          proposer_id: string
+          reason?: string | null
+          result?: Json | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          status?: string
+          summary: string
+          target_id?: string | null
+          target_table?: string | null
+        }
+        Update: {
+          action_type?: string
+          applied_at?: string | null
+          checked_note?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          proposer_id?: string
+          reason?: string | null
+          result?: Json | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          status?: string
+          summary?: string
+          target_id?: string | null
+          target_table?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_proposed_changes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_proposed_changes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       brand_discounts: {
         Row: {
           applied_at: string
@@ -2971,6 +3148,39 @@ export type Database = {
           },
         ]
       }
+      customer_owner_rep_log: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          company_id: string | null
+          customer_id: string
+          from_rep: string | null
+          id: number
+          source: string | null
+          to_rep: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          company_id?: string | null
+          customer_id: string
+          from_rep?: string | null
+          id?: number
+          source?: string | null
+          to_rep?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          company_id?: string | null
+          customer_id?: string
+          from_rep?: string | null
+          id?: number
+          source?: string | null
+          to_rep?: string | null
+        }
+        Relationships: []
+      }
       customer_tokens: {
         Row: {
           created_at: string
@@ -4487,9 +4697,6 @@ export type Database = {
       }
       invoices: {
         Row: {
-          final_sent_at: string | null
-          final_sent_by: string | null
-          final_sent_channel: string | null
           agent_id: string
           archived_at: string | null
           billed_to_vat_number: string | null
@@ -4513,6 +4720,9 @@ export type Database = {
           expected_deposit_date: string | null
           expected_final_date: string | null
           final_after_days: number | null
+          final_sent_at: string | null
+          final_sent_by: string | null
+          final_sent_channel: string | null
           final_unscheduled: boolean
           grand_total: number
           id: string
@@ -4545,9 +4755,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          final_sent_at?: string | null
-          final_sent_by?: string | null
-          final_sent_channel?: string | null
           agent_id: string
           archived_at?: string | null
           billed_to_vat_number?: string | null
@@ -4571,6 +4778,9 @@ export type Database = {
           expected_deposit_date?: string | null
           expected_final_date?: string | null
           final_after_days?: number | null
+          final_sent_at?: string | null
+          final_sent_by?: string | null
+          final_sent_channel?: string | null
           final_unscheduled?: boolean
           grand_total?: number
           id?: string
@@ -4603,9 +4813,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          final_sent_at?: string | null
-          final_sent_by?: string | null
-          final_sent_channel?: string | null
           agent_id?: string
           archived_at?: string | null
           billed_to_vat_number?: string | null
@@ -4629,6 +4836,9 @@ export type Database = {
           expected_deposit_date?: string | null
           expected_final_date?: string | null
           final_after_days?: number | null
+          final_sent_at?: string | null
+          final_sent_by?: string | null
+          final_sent_channel?: string | null
           final_unscheduled?: boolean
           grand_total?: number
           id?: string
@@ -5095,6 +5305,72 @@ export type Database = {
           },
         ]
       }
+      job_materials_used: {
+        Row: {
+          company_id: string
+          created_at: string
+          draw_note: string | null
+          draw_stock: boolean
+          drawn_qty: number
+          entered_at: string
+          entered_by: string | null
+          id: string
+          item: string
+          job_id: string
+          occurred_at: string | null
+          on_behalf_of: string | null
+          qty: number
+          stock_item_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          draw_note?: string | null
+          draw_stock?: boolean
+          drawn_qty?: number
+          entered_at?: string
+          entered_by?: string | null
+          id?: string
+          item: string
+          job_id: string
+          occurred_at?: string | null
+          on_behalf_of?: string | null
+          qty: number
+          stock_item_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          draw_note?: string | null
+          draw_stock?: boolean
+          drawn_qty?: number
+          entered_at?: string
+          entered_by?: string | null
+          id?: string
+          item?: string
+          job_id?: string
+          occurred_at?: string | null
+          on_behalf_of?: string | null
+          qty?: number
+          stock_item_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_materials_used_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_materials_used_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "cf_stock_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_overruns: {
         Row: {
           actual_hours: number | null
@@ -5174,8 +5450,12 @@ export type Database = {
           caption: string | null
           client_visible: boolean
           created_at: string
+          entered_at: string | null
+          entered_by: string | null
           id: string
           lead_id: string
+          occurred_at: string | null
+          on_behalf_of: string | null
           photo_type: string | null
           storage_path: string
           synced_from_offline: boolean | null
@@ -5187,8 +5467,12 @@ export type Database = {
           caption?: string | null
           client_visible?: boolean
           created_at?: string
+          entered_at?: string | null
+          entered_by?: string | null
           id?: string
           lead_id: string
+          occurred_at?: string | null
+          on_behalf_of?: string | null
           photo_type?: string | null
           storage_path: string
           synced_from_offline?: boolean | null
@@ -5200,8 +5484,12 @@ export type Database = {
           caption?: string | null
           client_visible?: boolean
           created_at?: string
+          entered_at?: string | null
+          entered_by?: string | null
           id?: string
           lead_id?: string
+          occurred_at?: string | null
+          on_behalf_of?: string | null
           photo_type?: string | null
           storage_path?: string
           synced_from_offline?: boolean | null
@@ -5389,6 +5677,8 @@ export type Database = {
           created_at: string
           en_route_at: string | null
           end_time: string
+          entered_at: string | null
+          entered_by: string | null
           hours_auto: number | null
           hours_edit_note: string | null
           hours_onsite: number | null
@@ -5398,6 +5688,8 @@ export type Database = {
           job_id: string | null
           lead_id: string
           notes: string | null
+          occurred_at: string | null
+          on_behalf_of: string | null
           schedule_id: string | null
           signed_off_at: string | null
           signed_off_by: string | null
@@ -5417,6 +5709,8 @@ export type Database = {
           created_at?: string
           en_route_at?: string | null
           end_time: string
+          entered_at?: string | null
+          entered_by?: string | null
           hours_auto?: number | null
           hours_edit_note?: string | null
           hours_onsite?: number | null
@@ -5426,6 +5720,8 @@ export type Database = {
           job_id?: string | null
           lead_id: string
           notes?: string | null
+          occurred_at?: string | null
+          on_behalf_of?: string | null
           schedule_id?: string | null
           signed_off_at?: string | null
           signed_off_by?: string | null
@@ -5445,6 +5741,8 @@ export type Database = {
           created_at?: string
           en_route_at?: string | null
           end_time?: string
+          entered_at?: string | null
+          entered_by?: string | null
           hours_auto?: number | null
           hours_edit_note?: string | null
           hours_onsite?: number | null
@@ -5454,6 +5752,8 @@ export type Database = {
           job_id?: string | null
           lead_id?: string
           notes?: string | null
+          occurred_at?: string | null
+          on_behalf_of?: string | null
           schedule_id?: string | null
           signed_off_at?: string | null
           signed_off_by?: string | null
@@ -5497,6 +5797,65 @@ export type Database = {
             columns: ["signed_off_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_unit_details: {
+        Row: {
+          brand: string | null
+          company_id: string
+          created_at: string
+          entered_at: string
+          entered_by: string | null
+          equipment_id: string | null
+          id: string
+          job_id: string
+          model: string | null
+          occurred_at: string | null
+          on_behalf_of: string | null
+          position: string
+          serial_number: string | null
+          unit_label: string | null
+        }
+        Insert: {
+          brand?: string | null
+          company_id: string
+          created_at?: string
+          entered_at?: string
+          entered_by?: string | null
+          equipment_id?: string | null
+          id?: string
+          job_id: string
+          model?: string | null
+          occurred_at?: string | null
+          on_behalf_of?: string | null
+          position?: string
+          serial_number?: string | null
+          unit_label?: string | null
+        }
+        Update: {
+          brand?: string | null
+          company_id?: string
+          created_at?: string
+          entered_at?: string
+          entered_by?: string | null
+          equipment_id?: string | null
+          id?: string
+          job_id?: string
+          model?: string | null
+          occurred_at?: string | null
+          on_behalf_of?: string | null
+          position?: string
+          serial_number?: string | null
+          unit_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_unit_details_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -7979,6 +8338,109 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "company_stats"
             referencedColumns: ["company_id"]
+          },
+        ]
+      }
+      presence_visits: {
+        Row: {
+          arrived_at: string | null
+          arrived_source: string | null
+          company_id: string
+          created_at: string
+          en_route_at: string | null
+          en_route_source: string | null
+          entered_at: string | null
+          entered_by: string | null
+          id: string
+          inside_since: string | null
+          job_id: string | null
+          kind: string
+          last_distance_m: number | null
+          last_fix_at: string | null
+          lead_id: string | null
+          left_at: string | null
+          left_source: string | null
+          nudged_at: string | null
+          occurred_at: string | null
+          on_behalf_of: string | null
+          outside_since: string | null
+          updated_at: string
+          user_id: string
+          visit_date: string
+        }
+        Insert: {
+          arrived_at?: string | null
+          arrived_source?: string | null
+          company_id: string
+          created_at?: string
+          en_route_at?: string | null
+          en_route_source?: string | null
+          entered_at?: string | null
+          entered_by?: string | null
+          id?: string
+          inside_since?: string | null
+          job_id?: string | null
+          kind: string
+          last_distance_m?: number | null
+          last_fix_at?: string | null
+          lead_id?: string | null
+          left_at?: string | null
+          left_source?: string | null
+          nudged_at?: string | null
+          occurred_at?: string | null
+          on_behalf_of?: string | null
+          outside_since?: string | null
+          updated_at?: string
+          user_id: string
+          visit_date: string
+        }
+        Update: {
+          arrived_at?: string | null
+          arrived_source?: string | null
+          company_id?: string
+          created_at?: string
+          en_route_at?: string | null
+          en_route_source?: string | null
+          entered_at?: string | null
+          entered_by?: string | null
+          id?: string
+          inside_since?: string | null
+          job_id?: string | null
+          kind?: string
+          last_distance_m?: number | null
+          last_fix_at?: string | null
+          lead_id?: string | null
+          left_at?: string | null
+          left_source?: string | null
+          nudged_at?: string | null
+          occurred_at?: string | null
+          on_behalf_of?: string | null
+          outside_since?: string | null
+          updated_at?: string
+          user_id?: string
+          visit_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presence_visits_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presence_visits_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "presence_visits_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -10501,6 +10963,30 @@ export type Database = {
           },
         ]
       }
+      rep_linked_admin: {
+        Row: {
+          admin_user_id: string
+          company_id: string
+          rep_user_id: string
+          set_at: string
+          set_by: string | null
+        }
+        Insert: {
+          admin_user_id: string
+          company_id: string
+          rep_user_id: string
+          set_at?: string
+          set_by?: string | null
+        }
+        Update: {
+          admin_user_id?: string
+          company_id?: string
+          rep_user_id?: string
+          set_at?: string
+          set_by?: string | null
+        }
+        Relationships: []
+      }
       request_events: {
         Row: {
           actor_id: string | null
@@ -11996,6 +12482,300 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "supplier_documents_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_job_document_line_allocations: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          document_id: string
+          id: string
+          line_id: string
+          link_id: string
+          qty: number
+          serials: string[] | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+          id?: string
+          line_id: string
+          link_id: string
+          qty?: number
+          serials?: string[] | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+          id?: string
+          line_id?: string
+          link_id?: string
+          qty?: number
+          serials?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_job_document_line_allocations_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_job_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_job_document_line_allocations_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_job_document_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_job_document_line_allocations_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_job_document_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_job_document_lines: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          document_id: string
+          id: string
+          job_id: string | null
+          line_no: number | null
+          model_number: string | null
+          qty: number | null
+          serial_number: string | null
+          unit_detail_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          document_id: string
+          id?: string
+          job_id?: string | null
+          line_no?: number | null
+          model_number?: string | null
+          qty?: number | null
+          serial_number?: string | null
+          unit_detail_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          document_id?: string
+          id?: string
+          job_id?: string | null
+          line_no?: number | null
+          model_number?: string | null
+          qty?: number | null
+          serial_number?: string | null
+          unit_detail_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_job_document_lines_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_job_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_job_document_lines_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_job_document_links: {
+        Row: {
+          company_id: string
+          confidence: number | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          customer_id: string | null
+          document_id: string
+          id: string
+          job_id: string | null
+          line_id: string | null
+          note: string | null
+          quote_id: string | null
+          reason: string | null
+          status: string
+          suggested_by: string | null
+        }
+        Insert: {
+          company_id: string
+          confidence?: number | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          customer_id?: string | null
+          document_id: string
+          id?: string
+          job_id?: string | null
+          line_id?: string | null
+          note?: string | null
+          quote_id?: string | null
+          reason?: string | null
+          status?: string
+          suggested_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          confidence?: number | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          customer_id?: string | null
+          document_id?: string
+          id?: string
+          job_id?: string | null
+          line_id?: string | null
+          note?: string | null
+          quote_id?: string | null
+          reason?: string | null
+          status?: string
+          suggested_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_job_document_links_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_job_document_links_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_job_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_job_document_links_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_job_document_links_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_job_document_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_job_document_links_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "supplier_job_document_links_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_job_documents: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          doc_date: string | null
+          doc_number: string | null
+          doc_type: string
+          file_name: string | null
+          id: string
+          mime_type: string | null
+          notes: string | null
+          po_number: string | null
+          source: string
+          source_ref: string | null
+          storage_path: string | null
+          supplier_id: string | null
+          supplier_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          doc_date?: string | null
+          doc_number?: string | null
+          doc_type?: string
+          file_name?: string | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          po_number?: string | null
+          source?: string
+          source_ref?: string | null
+          storage_path?: string | null
+          supplier_id?: string | null
+          supplier_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          doc_date?: string | null
+          doc_number?: string | null
+          doc_type?: string
+          file_name?: string | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          po_number?: string | null
+          source?: string
+          source_ref?: string | null
+          storage_path?: string | null
+          supplier_id?: string | null
+          supplier_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_job_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_job_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "supplier_job_documents_supplier_id_fkey"
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
@@ -14012,7 +14792,24 @@ export type Database = {
         Returns: boolean
       }
       _apply_commission_snapshot: { Args: { e: Json }; Returns: Json }
+      _backfill_ctx: {
+        Args: { p_job: string; p_tech: string }
+        Returns: Record<string, unknown>
+      }
       _bank_norm: { Args: { t: string }; Returns: string }
+      _bot_audit: {
+        Args: {
+          p_action: string
+          p_after: Json
+          p_before: Json
+          p_co: string
+          p_id: string
+          p_proposal?: string
+          p_table: string
+        }
+        Returns: undefined
+      }
+      _bpc_admin_check: { Args: { p_co: string }; Returns: undefined }
       _cf_check: { Args: { p_company: string }; Returns: undefined }
       _cf_is_unit_line: {
         Args: {
@@ -14080,6 +14877,25 @@ export type Database = {
           p_ws: number
         }
         Returns: number
+      }
+      _fl_open_leads_visible: {
+        Args: { p_customer: string }
+        Returns: {
+          address: string
+          assigned_name: string
+          assigned_to: string
+          created_at: string
+          customer_id: string
+          customer_name: string
+          first_contact_at: string
+          has_quote: boolean
+          id: string
+          intent: string
+          scheduled_date: string
+          scheduled_time: string
+          service_type: string
+          source: string
+        }[]
       }
       _hb_admins: { Args: { p_company: string }; Returns: string[] }
       _hb_dispatch: { Args: { p_company: string }; Returns: string[] }
@@ -14312,6 +15128,16 @@ export type Database = {
         Args: { ""?: string; att_name: string; tbl: unknown }
         Returns: string
       }
+      _presence_notify_admins: {
+        Args: {
+          p_body: string
+          p_company: string
+          p_meta: Json
+          p_related: string
+          p_title: string
+        }
+        Returns: undefined
+      }
       _quote_admin_row: {
         Args: { p_quote: string }
         Returns: {
@@ -14452,6 +15278,19 @@ export type Database = {
       _request_route: { Args: { p_req: string }; Returns: undefined }
       _same_client_booked: { Args: { p_lead: string }; Returns: boolean }
       _sb_recalc: { Args: { p_bill: string }; Returns: undefined }
+      _sjd_link_apply: {
+        Args: {
+          co: string
+          p_by: string
+          p_customer_id: string
+          p_document_id: string
+          p_job_id: string
+          p_line_id: string
+          p_lines: Json
+          p_note: string
+        }
+        Returns: string
+      }
       _slot_fits: {
         Args: {
           p_b: Json
@@ -14596,6 +15435,7 @@ export type Database = {
           source: string
         }[]
       }
+      _walda_co: { Args: never; Returns: string }
       accept_company_contract: {
         Args: {
           p_signer_name: string
@@ -14612,6 +15452,7 @@ export type Database = {
         Args: { p_accepted_by: string; p_signature?: Json; p_token: string }
         Returns: boolean
       }
+      accounts_bot_company: { Args: never; Returns: string }
       acknowledge_lead: { Args: { p_lead: string }; Returns: string }
       activate_pdf_book_gate: {
         Args: { p_pdf_upload_id: string; p_sample_n?: number }
@@ -14669,6 +15510,59 @@ export type Database = {
             }
             Returns: string
           }
+      admin_backfill_delete: {
+        Args: { p_id: string; p_kind: string }
+        Returns: undefined
+      }
+      admin_backfill_list: { Args: { p_job: string }; Returns: Json }
+      admin_backfill_material: {
+        Args: {
+          p_draw?: boolean
+          p_item: string
+          p_job: string
+          p_occurred?: string
+          p_qty: number
+          p_stock_item?: string
+          p_tech: string
+        }
+        Returns: Json
+      }
+      admin_backfill_unit: {
+        Args: {
+          p_brand: string
+          p_job: string
+          p_label?: string
+          p_model: string
+          p_occurred?: string
+          p_position: string
+          p_serial: string
+          p_tech: string
+        }
+        Returns: string
+      }
+      admin_backfill_visit: {
+        Args: {
+          p_arrive: string
+          p_completed?: boolean
+          p_date: string
+          p_job: string
+          p_leave: string
+          p_note?: string
+          p_tech: string
+        }
+        Returns: Json
+      }
+      admin_bot_accounts: {
+        Args: never
+        Returns: {
+          disabled: boolean
+          disabled_at: string
+          display_name: string
+          email: string
+          last_sign_in_at: string
+          user_id: string
+        }[]
+      }
       admin_correct_client_details: {
         Args: { p_changes: Json; p_quote_id: string; p_reason: string }
         Returns: Json
@@ -14676,6 +15570,11 @@ export type Database = {
       admin_create_quote_variation: {
         Args: { p_quote_id: string; p_reason: string }
         Returns: Json
+      }
+      admin_pending_proposal_count: { Args: never; Returns: number }
+      admin_set_bot_disabled: {
+        Args: { p_disabled: boolean; p_user_id: string }
+        Returns: boolean
       }
       agent_performance_scores: {
         Args: never
@@ -14768,6 +15667,7 @@ export type Database = {
         Args: { p_dur: string; p_start: string }
         Returns: string
       }
+      bot_action_kind: { Args: { p_type: string }; Returns: string }
       broadcast_lead_to_agents: {
         Args: { p_lead_id: string; p_radius_km?: number }
         Returns: {
@@ -14886,6 +15786,7 @@ export type Database = {
         }
         Returns: Json
       }
+      client_bookings: { Args: { p_customer: string }; Returns: Json[] }
       client_list_stats: {
         Args: never
         Returns: {
@@ -15195,11 +16096,19 @@ export type Database = {
         Args: { _p: Database["public"]["Tables"]["company_profiles"]["Row"] }
         Returns: string
       }
+      fl_is_company_admin: {
+        Args: { _company: string; _uid: string }
+        Returns: boolean
+      }
       fl_is_company_office: {
         Args: { _company: string; _uid: string }
         Returns: boolean
       }
       fl_is_founder_approved: { Args: { _u: string }; Returns: boolean }
+      fl_is_job_salesperson: {
+        Args: { _job: string; _uid: string }
+        Returns: boolean
+      }
       fl_job_needs_site_check: { Args: { _job: string }; Returns: boolean }
       fl_lock_quote: {
         Args: { _actor: string; _quote: string; _reason: string }
@@ -15224,6 +16133,26 @@ export type Database = {
       fl_reopen_booking: {
         Args: { p_job_id?: string; p_lead_id: string }
         Returns: Json
+      }
+      fl_rep_owns_customer: {
+        Args: { _company: string; _customer: string; _uid: string }
+        Returns: boolean
+      }
+      fl_request_contacted: {
+        Args: { r: Database["public"]["Tables"]["requests"]["Row"] }
+        Returns: boolean
+      }
+      fl_request_red: {
+        Args: { r: Database["public"]["Tables"]["requests"]["Row"] }
+        Returns: boolean
+      }
+      fl_request_visible: {
+        Args: {
+          p_office: boolean
+          p_uid: string
+          r: Database["public"]["Tables"]["requests"]["Row"]
+        }
+        Returns: boolean
       }
       fl_sam_price_extras: { Args: { p_key: string }; Returns: Json }
       fl_shares_company: { Args: { _a: string; _b: string }; Returns: boolean }
@@ -15900,6 +16829,7 @@ export type Database = {
         Returns: Json
       }
       invoice_send_now: { Args: { p_invoice_id: string }; Returns: Json }
+      is_accounts_bot: { Args: { _uid?: string }; Returns: boolean }
       is_agent_available_now: { Args: { p_agent_id: string }; Returns: boolean }
       is_approved_network_member: { Args: { _uid: string }; Returns: boolean }
       is_company_admin: {
@@ -15954,6 +16884,14 @@ export type Database = {
       job_day_states: { Args: { p_from: string; p_to: string }; Returns: Json }
       job_days: { Args: { p_job_id: string }; Returns: Json }
       job_en_route_plan: { Args: { p_job_id: string }; Returns: Json }
+      job_location_window: {
+        Args: { p_at?: string; p_job_id: string }
+        Returns: {
+          sched_start: string
+          window_end: string
+          window_start: string
+        }[]
+      }
       job_profit: {
         Args: { p_company: string; p_from: string; p_to: string }
         Returns: Json
@@ -15966,6 +16904,7 @@ export type Database = {
           revenue: number
         }[]
       }
+      job_tech_location: { Args: { p_job_id: string }; Returns: Json }
       job_watch_cfg: {
         Args: { p_company_id: string }
         Returns: {
@@ -16045,6 +16984,13 @@ export type Database = {
         }
         Returns: string
       }
+      lead_visit_window: {
+        Args: { p_lead: string }
+        Returns: {
+          window_end: string
+          window_start: string
+        }[]
+      }
       link_products_to_pdf_book: {
         Args: { p_pdf_upload_id: string }
         Returns: {
@@ -16068,6 +17014,16 @@ export type Database = {
           p_score?: number
         }
         Returns: string
+      }
+      log_final_invoice_send: {
+        Args: {
+          p_channel: string
+          p_force?: boolean
+          p_id: string
+          p_note?: string
+          p_stage?: string
+        }
+        Returns: Json
       }
       log_lead_contact: {
         Args: { p_channel: string; p_lead_id: string; p_outcome: string }
@@ -16118,6 +17074,21 @@ export type Database = {
         }[]
       }
       my_install_offers: { Args: never; Returns: Json }
+      my_location_share_jobs: { Args: never; Returns: Json }
+      my_presence_targets: {
+        Args: never
+        Returns: {
+          company_id: string
+          job_id: string
+          kind: string
+          lat: number
+          lead_id: string
+          lng: number
+          title: string
+          window_end: string
+          window_start: string
+        }[]
+      }
       next_invoice_number: { Args: { p_profile: string }; Returns: string }
       normalize_model_code: { Args: { p: string }; Returns: string }
       normalize_phone: { Args: { phone: string }; Returns: string }
@@ -16207,6 +17178,7 @@ export type Database = {
       photo_folder_lead: { Args: { _name: string }; Returns: string }
       photo_lead_ok: { Args: { _lead: string }; Returns: boolean }
       photo_quote_ok: { Args: { _quote: string }; Returns: boolean }
+      pipeline_open_leads: { Args: never; Returns: Json[] }
       plan_admin_overview: { Args: never; Returns: Json }
       plan_admin_set: {
         Args: { p_company: string; p_mandy_enabled: boolean; p_status: string }
@@ -16254,6 +17226,11 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      presence_board: { Args: never; Returns: Json }
+      presence_manual: {
+        Args: { p_event: string; p_kind: string; p_target: string }
+        Returns: Json
+      }
       preview_job_days: {
         Args: {
           p_days?: number
@@ -16270,6 +17247,18 @@ export type Database = {
       process_quote_followups: { Args: never; Returns: undefined }
       process_sales_escalations: { Args: never; Returns: undefined }
       project_admin_ok: { Args: { _company: string }; Returns: boolean }
+      propose_change: {
+        Args: {
+          p_action_type: string
+          p_checked_note?: string
+          p_payload?: Json
+          p_reason?: string
+          p_summary: string
+          p_target_id?: string
+          p_target_table?: string
+        }
+        Returns: string
+      }
       public_quote_adjust_data: { Args: { p_token: string }; Returns: Json }
       public_quote_bundle: { Args: { p_token: string }; Returns: Json }
       public_quote_change_state: { Args: { p_token: string }; Returns: Json }
@@ -16480,6 +17469,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      report_presence: {
+        Args: { p_accuracy?: number; p_lat: number; p_lng: number }
+        Returns: Json
+      }
       request_add_keyword: {
         Args: {
           p_keyword: string
@@ -16564,6 +17557,10 @@ export type Database = {
           month: string
           revenue: number
         }[]
+      }
+      review_proposed_change: {
+        Args: { p_approve: boolean; p_id: string; p_note?: string }
+        Returns: Json
       }
       revoke_statement_links: { Args: { p_customer: string }; Returns: number }
       rh_assert: { Args: { _block_sales: boolean }; Returns: undefined }
@@ -16733,6 +17730,10 @@ export type Database = {
               supplier_name: string
             }[]
           }
+      send_final_invoice_email: {
+        Args: { p_invoice: string; p_mode?: string; p_to?: string }
+        Returns: Json
+      }
       set_commission_paid: {
         Args: { p_paid?: boolean; p_paid_at?: string; p_snapshot_id: string }
         Returns: Json
@@ -16760,6 +17761,10 @@ export type Database = {
         Returns: undefined
       }
       set_install_handoff_default: { Args: { p_mode: string }; Returns: Json }
+      set_invoice_due_date: {
+        Args: { p_due: string; p_invoice: string; p_reason?: string }
+        Returns: Json
+      }
       set_invoice_final_unscheduled: {
         Args: { p_invoice: string; p_on: boolean }
         Returns: undefined
@@ -16790,6 +17795,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_rep_linked_admin: {
+        Args: { p_admin: string; p_rep: string }
+        Returns: Json
+      }
       set_tech_earning_status: {
         Args: {
           p_action: string
@@ -16803,6 +17812,65 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      sjd_attach_file: {
+        Args: {
+          p_document_id: string
+          p_file_name?: string
+          p_mime_type?: string
+          p_storage_path: string
+        }
+        Returns: Json
+      }
+      sjd_client_docs: { Args: { p_customer_id: string }; Returns: Json }
+      sjd_ingest: {
+        Args: {
+          p_company_id: string
+          p_doc: Json
+          p_lines?: Json
+          p_source_ref?: string
+        }
+        Returns: Json
+      }
+      sjd_link: {
+        Args: {
+          p_customer_id?: string
+          p_document_id: string
+          p_job_id?: string
+          p_line_id?: string
+          p_lines?: Json
+          p_note?: string
+        }
+        Returns: string
+      }
+      sjd_match_units: { Args: { _doc: string }; Returns: number }
+      sjd_ok: { Args: { _company: string }; Returns: boolean }
+      sjd_search: {
+        Args: { p_limit?: number; p_q: string }
+        Returns: {
+          clients: string
+          doc_date: string
+          doc_number: string
+          doc_type: string
+          document_id: string
+          file_name: string
+          jobs: string
+          matched: string
+          needs_linking: boolean
+          po_number: string
+          supplier: string
+        }[]
+      }
+      sjd_suggest_for_model: {
+        Args: { _company: string; _model: string }
+        Returns: {
+          confidence: number
+          customer_id: string
+          job_id: string
+          quote_id: string
+          reason: string
+        }[]
+      }
+      sjd_unlink: { Args: { p_link_id: string }; Returns: undefined }
       ss_can_write: { Args: { _survey: string }; Returns: boolean }
       ss_folder_ok: { Args: { _name: string }; Returns: boolean }
       ss_folder_survey: { Args: { _name: string }; Returns: string }
@@ -17560,6 +18628,62 @@ export type Database = {
       void_credit_note: {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
+      }
+      walda_bank_match: {
+        Args: {
+          p_kind: string
+          p_line_id: string
+          p_note?: string
+          p_target: string
+        }
+        Returns: Json
+      }
+      walda_invoice_draft_save: {
+        Args: { p_fields: Json; p_invoice_id: string }
+        Returns: Json
+      }
+      walda_job_unit_save: {
+        Args: {
+          p_brand?: string
+          p_job_id: string
+          p_label?: string
+          p_model?: string
+          p_position?: string
+          p_serial?: string
+          p_unit_id?: string
+        }
+        Returns: string
+      }
+      walda_read: {
+        Args: { p_entity: string; p_limit?: number; p_since?: string }
+        Returns: Json
+      }
+      walda_read_accounting: {
+        Args: { p_entity: string; p_limit?: number; p_since?: string }
+        Returns: Json
+      }
+      walda_record_payment: {
+        Args: {
+          p_amount: number
+          p_bank_line_id?: string
+          p_invoice_id: string
+          p_method?: string
+          p_payment_date?: string
+          p_reference?: string
+        }
+        Returns: Json
+      }
+      walda_sjd_confirm: { Args: { p_link_id: string }; Returns: string }
+      walda_sjd_link: {
+        Args: {
+          p_customer_id?: string
+          p_document_id: string
+          p_job_id?: string
+          p_line_id?: string
+          p_lines?: Json
+          p_note?: string
+        }
+        Returns: string
       }
     }
     Enums: {
