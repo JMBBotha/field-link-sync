@@ -75,7 +75,9 @@ const Invoices = () => {
         <div className="flex-1 overflow-y-auto bg-background">
           {view === "list" && (
             <InvoiceListPage
-              agentId={isAdmin ? undefined : currentUserId}
+              // Scope is enforced by RLS (rep_can_see_invoice: rep sees own clients,
+              // linked-admin rep sees admin's + unassigned; techs see none).
+              agentId={undefined}
               onSelectInvoice={(inv) => {
                 setSelectedInvoiceId(inv.id);
                 setView("detail");
