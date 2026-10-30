@@ -94,6 +94,7 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
       { path: "/admin/expenses", label: "Expenses", icon: "wallet" },
       { path: "/admin/supplier-bills", label: "Supplier bills", icon: "wallet" },
       { path: "/admin/bank", label: "Bank (FNB)", icon: "wallet", match: ["/admin/billing"] },
+      { path: "/admin/walda-approvals", label: "WALDA approvals", icon: "file" },
       { path: "/admin/money", label: "Money by lead", icon: "wallet" },
       { path: "/admin/reports", label: "Reports", icon: "chart", match: ["/admin/analytics"] },
     ] },

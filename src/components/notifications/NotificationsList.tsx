@@ -136,6 +136,7 @@ export const notificationHref = (type: string, relatedId?: string | null, isTech
   const category = categoryOf(type);
   if (category === "calls") return "/admin/calls";
   if (type === "invoice_ready") return "/admin#ready-to-invoice";
+  if (type === "bot_proposal") return "/admin/walda-approvals";
 
   if (category === "quotes") return relatedId ? `/admin/estimates/${relatedId}` : "/admin/quotes";
   if (category === "invoices") return relatedId ? `/admin/invoices/${relatedId}` : "/admin/invoices";

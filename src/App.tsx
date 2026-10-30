@@ -101,6 +101,7 @@ const AdminTeamPage = lazy(() => import("./pages/admin/AdminTeamPage"));
 const AdminAreasPage = lazy(() => import("./pages/admin/AdminAreasPage"));
 const AdminSuppliersPage = lazy(() => import("./pages/admin/AdminSuppliersPage"));
 const AdminSupplierDocsPage = lazy(() => import("./pages/admin/AdminSupplierDocsPage"));
+const AdminWaldaProposalsPage = lazy(() => import("./pages/admin/AdminWaldaProposalsPage"));
 const AdminSpecialsPage = lazy(() => import("./pages/admin/AdminSpecialsPage"));
 const AdminConsumablesPage = lazy(() => import("./pages/admin/AdminConsumablesPage"));
 const AdminCallsPage = lazy(() => import("./pages/admin/AdminCallsPage"));
@@ -271,6 +272,7 @@ const App = () => (
                     <Route path="specials" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSpecialsPage /></RequireRole>} />
                     <Route path="suppliers" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSuppliersPage /></RequireRole>} />
                     <Route path="supplier-docs" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSupplierDocsPage /></RequireRole>} />
+                    <Route path="walda-approvals" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminWaldaProposalsPage /></RequireRole>} />
                     <Route element={<V8SectionTabs section="extras" />}><Route path="consumables" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminConsumablesPage /></RequireRole>} /></Route>
                     {/* WhatsApp quote bot retired — page hidden (the backend function is a no-op behind WHATSAPP_QUOTE_BOT_ENABLED). */}
                     <Route path="whatsapp" element={<Navigate to="/admin" replace />} />

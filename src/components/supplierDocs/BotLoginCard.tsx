@@ -16,7 +16,7 @@ export default function BotLoginCard() {
         <div key={b.user_id} className="flex items-center justify-between gap-2 text-sm">
           <div>
             <div className="font-medium">{b.display_name} login</div>
-            <div className="text-xs text-muted-foreground">{b.disabled ? "Disabled" : "Active"} · read-only, can add documents and suggest links</div>
+            <div className="text-xs text-muted-foreground">{b.disabled ? "Disabled" : "Active"} · accounting helper: drafts invoices, records payments, matches bank lines, links documents; anything else waits for your OK</div>
           </div>
           <Switch checked={!b.disabled} data-testid="bot-login-toggle" onCheckedChange={async (on) => {
             const { error } = await sb.rpc("admin_set_bot_disabled", { p_user_id: b.user_id, p_disabled: !on });
