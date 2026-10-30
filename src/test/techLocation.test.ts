@@ -25,3 +25,12 @@ describe("presence labels", () => {
     expect(techStatusLabel({ ...t, shared: false, status: "left_site", arrived_at: "x" })).toBe("Left site");
   });
 });
+import { canCancelTrip } from "@/lib/techLocation";
+describe("cancel trip window", () => {
+  it("5 minutes, not after arrival", () => {
+    const now = Date.parse("2026-10-30T10:00:00Z");
+    expect(canCancelTrip({ kind: "job", title: "", distance_m: 1, en_route_at: "2026-10-30T09:57:00Z" }, now)).toBe(true);
+    expect(canCancelTrip({ kind: "job", title: "", distance_m: 1, en_route_at: "2026-10-30T09:54:00Z" }, now)).toBe(false);
+    expect(canCancelTrip({ kind: "job", title: "", distance_m: 1, en_route_at: "2026-10-30T09:58:00Z", arrived_at: "x" }, now)).toBe(false);
+  });
+});

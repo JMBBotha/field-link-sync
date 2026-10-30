@@ -50,7 +50,12 @@ export function mapUrl(t: TechLoc, jobLat?: number | null, jobLng?: number | nul
 export type PresenceTarget = {
   id?: string; target?: string; kind: "job" | "sales_visit"; title: string | null; distance_m: number | null;
   en_route_at?: string | null; arrived_at?: string | null; left_at?: string | null; window_end?: string | null;
+  en_route_source?: string | null; nudge?: boolean;
 };
+export const CANCEL_TRIP_MS = 5 * 60_000;
+export function canCancelTrip(t: PresenceTarget, now = Date.now()): boolean {
+  return !!t.en_route_at && !t.arrived_at && now - new Date(t.en_route_at).getTime() < CANCEL_TRIP_MS;
+}
 export function presenceLabel(t: PresenceTarget): string {
   if (t.left_at) return `Checked out ${sastTime(t.left_at)}`;
   if (t.arrived_at) return `Checked in ${sastTime(t.arrived_at)}`;
