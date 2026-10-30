@@ -4487,6 +4487,9 @@ export type Database = {
       }
       invoices: {
         Row: {
+          final_sent_at: string | null
+          final_sent_by: string | null
+          final_sent_channel: string | null
           agent_id: string
           archived_at: string | null
           billed_to_vat_number: string | null
@@ -4542,6 +4545,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          final_sent_at?: string | null
+          final_sent_by?: string | null
+          final_sent_channel?: string | null
           agent_id: string
           archived_at?: string | null
           billed_to_vat_number?: string | null
@@ -4597,6 +4603,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          final_sent_at?: string | null
+          final_sent_by?: string | null
+          final_sent_channel?: string | null
           agent_id?: string
           archived_at?: string | null
           billed_to_vat_number?: string | null

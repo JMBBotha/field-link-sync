@@ -206,7 +206,7 @@ const AdminCustomerDetailPage = () => {
       if (customer?.name) orParts.push(`customer_name.ilike.${customer.name}`);
       const { data, error } = await supabase
         .from("invoices")
-        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, sent_at, created_at, archived_at, customer_id, customer_name, location_id, payment_terms_basis, payment_terms_days")
+        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, sent_at, final_sent_at, final_sent_channel, created_at, archived_at, customer_id, customer_name, location_id, payment_terms_basis, payment_terms_days")
         .or(orParts.join(","))
         .order("created_at", { ascending: false });
       if (error) throw error;

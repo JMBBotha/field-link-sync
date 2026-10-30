@@ -53,7 +53,7 @@ export const useQuoteSessionStore = create<QuoteSessionState>((set) => ({
 function getEmptyDraft(): DraftData {
   const now = new Date();
   const due = new Date();
-  due.setDate(due.getDate() + 30);
+  due.setDate(due.getDate() + 7);
   return {
     clientId: null,
     clientName: "",

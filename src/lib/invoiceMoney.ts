@@ -40,7 +40,7 @@ export function summarizeInvoices(invoices: MoneyInvoice[], payments: MoneyPayme
 
 const JOB_DONE = ["completed", "done", "installed", "complete"];
 export type FinalStepJob = { id?: string; status?: string | null; completed_at?: string | null; invoice_id?: string | null };
-export type FinalStep = { invoiceId: string; invoiceNumber?: string | null; balance: number; kind: "send_draft" | "send_balance"; jobDone?: boolean };
+export type FinalStep = { invoiceId: string; invoiceNumber?: string | null; balance: number; kind: "send_draft" | "send_balance"; jobDone?: boolean; sentLabel?: string | null };
 
 /**
  * Next step "Send final invoice" (Johan 30 Oct): deposit paid + job completed/installed.
@@ -58,5 +58,24 @@ export function finalInvoiceStep(invoices: any[], payments: MoneyPayment[], jobs
   const open = live
     .filter((i) => (paid.get(i.id) || 0) > 0 && invoiceBalance(i, paid) > 0)
     .sort((a, b) => (done.some((j) => j.invoice_id === b.id) ? 1 : 0) - (done.some((j) => j.invoice_id === a.id) ? 1 : 0))[0];
-  return open ? { invoiceId: open.id, invoiceNumber: open.invoice_number, balance: invoiceBalance(open, paid), kind: "send_balance", jobDone: done.length > 0 } : null;
+  return open ? { invoiceId: open.id, invoiceNumber: open.invoice_number, balance: invoiceBalance(open, paid), kind: "send_balance", jobDone: done.length > 0, sentLabel: finalSentLabel(open) } : null;
+}
+
+/** "Final invoice sent 30 Oct 19:52 via WhatsApp" (SAST), or null. */
+export function finalSentLabel(inv: { final_sent_at?: string | null; final_sent_channel?: string | null }): string | null {
+  if (!inv?.final_sent_at) return null;
+  const d = new Date(inv.final_sent_at);
+  const when = d.toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+  const ch = ({ whatsapp: "WhatsApp", email: "email", handed_over: "hand-over", other: "other" } as Record<string, string>)[inv.final_sent_channel || "other"] || "other";
+  return `Final invoice sent ${when} via ${ch}`;
+}
+
+/** wa.me link for the final balance (synchronous so the tap opens WhatsApp on iPhone). */
+export function finalInvoiceWhatsAppUrl(inv: { invoice_number?: string | null; customer_name?: string | null; customer_phone?: string | null; due_date?: string | null; pdf_url?: string | null }, balance: number): string | null {
+  let phone = (inv?.customer_phone || "").replace(/\D/g, "");
+  if (!phone) return null;
+  if (phone.startsWith("0")) phone = "27" + phone.slice(1);
+  const amt = "R " + balance.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const msg = `Hi ${inv.customer_name || ""},\n\nThank you, your deposit was received. Please find your final invoice:\n\n📋 ${inv.invoice_number || ""}\n💰 Balance due: ${amt}${inv.due_date ? `\n📅 Due: ${inv.due_date}` : ""}${inv.pdf_url ? `\n\nView PDF: ${inv.pdf_url}` : ""}\n\nThank you for your business! 🙏`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
 }

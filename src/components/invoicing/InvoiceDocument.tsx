@@ -157,7 +157,7 @@ const InvoiceDocument = ({
         </div>
       ) : undefined}
       cards={[
-        { title: "Payment", body: <p>Payment due within {settings.default_payment_terms_days || 30} days of invoice date. Please use the invoice number as your payment reference.</p> },
+        { title: "Payment", body: <p>Payment due within {settings.default_payment_terms_days || 7} days of invoice date. Please use the invoice number as your payment reference.</p> },
         { title: "Banking", body: <p>{bankLine || "—"}</p> },
         { title: "Warranty & notes", body: <NotesBody text={notes || "All workmanship carries a 12-month warranty. Equipment is covered by the manufacturer's warranty terms. Warranty excludes damage caused by misuse, power surges, or lack of scheduled maintenance."} /> },
       ]}
