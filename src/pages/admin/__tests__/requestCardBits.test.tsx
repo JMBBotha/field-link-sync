@@ -18,7 +18,7 @@ describe("status line", () => {
   it("booked reads friendly", () => {
     expect(friendlyWhen("2026-11-10", "08:00:00")).toBe("Tue 10 Nov, 08:00");
     expect(requestStatus({ status: "open", type: "service", source: "manual", assigned_to: "x", assigned_name: "Innocent Mattienga ", scheduled_for: "2026-11-10", scheduled_time: "08:00:00" } as any).text)
-      .toBe("Booked · Innocent Mattienga · Tue 10 Nov, 08:00");
+      .toBe("Assigned to Innocent Mattienga · Tue 10 Nov, 08:00");
     expect(shortArea({ area: null, address: "5 Camelot, Rhodes Drive, Constantia, Cape Town, 7606, Constantia" })).toBe("Constantia");
   });
 });

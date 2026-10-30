@@ -15,6 +15,7 @@ import LeadAssignDialog from "@/components/jobs/LeadAssignDialog";
 import ReassignRequestsBanner from "@/components/jobs/ReassignRequestsBanner";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import V8PipelineBoard from "@/components/v8/V8PipelineBoard";
+import { isAssigned } from "@/lib/assignedLabel";
 import JobsCalmView, { type CalmBlock, type CalmLead, type CalmPerson, type CalmTab, type CalmUnassigned } from "./JobsCalmView";
 
 type Job = DJob & { address?: string | null; customer_id?: string | null; created_at?: string | null; customers?: { name?: string | null; phone?: string | null } | null; customer_locations?: { address?: string | null } | null };
@@ -132,7 +133,8 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
     return { people: Object.values(people).sort((a, b) => a.role.localeCompare(b.role) * -1 || a.name.localeCompare(b.name)), blocks };
   }, [jobs, booked, today]);
 
-  const rail = leads.slice().sort((a, b) => Number(!!a.first_contact_at) - Number(!!b.first_contact_at) || String(a.created_at).localeCompare(String(b.created_at)));
+  // Booked leads keep status "pending"; the rail is for leads nobody has yet (shared isAssigned rule).
+  const rail = leads.filter((l) => !isAssigned(l)).sort((a, b) => Number(!!a.first_contact_at) - Number(!!b.first_contact_at) || String(a.created_at).localeCompare(String(b.created_at)));
   const toLead = (l: any): CalmLead => ({ id: l.id, name: l.customer_name || "New lead", place: (l.call_area || (l.customer_address || "").split(",")[0] || "").trim() || null,
     phone: l.customer_phone || null, lane: (laneOf(l) || "sales") as "sales" | "service", createdAt: l.created_at, contacted: !!l.first_contact_at });
   const lateBlocks = model.blocks.filter((b) => b.late && b.day === today);
