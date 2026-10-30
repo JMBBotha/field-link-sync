@@ -65,6 +65,10 @@ const getStatusBadge = (status: string) => {
     sent: { bg: "bg-blue-500", text: "text-white", label: "Sent" },
     paid: { bg: "bg-green-500", text: "text-white", label: "Paid" },
     overdue: { bg: "bg-red-500", text: "text-white", label: "Overdue" },
+    partially_paid: { bg: "bg-amber-500", text: "text-white", label: "Part paid" },
+    part_paid: { bg: "bg-amber-500", text: "text-white", label: "Part paid" },
+    void: { bg: "bg-muted", text: "text-muted-foreground", label: "Void" },
+    cancelled: { bg: "bg-muted", text: "text-muted-foreground", label: "Cancelled" },
   };
   const c = config[status] || { bg: "bg-muted", text: "text-muted-foreground", label: status };
   return <Badge className={`${c.bg} ${c.text} text-xs px-2 py-0.5`}>{c.label}</Badge>;
@@ -379,9 +383,10 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
               onOpen={() => (selectMode ? setSelected((s) => (s.includes(invoice.id) ? s.filter((x) => x !== invoice.id) : [...s, invoice.id])) : onSelectInvoice(invoice))}
               leading={selectMode ? <Checkbox checked={selected.includes(invoice.id)} aria-label={`Select ${invoice.invoice_number}`}
                 onCheckedChange={() => setSelected((s) => (s.includes(invoice.id) ? s.filter((x) => x !== invoice.id) : [...s, invoice.id]))} /> : undefined}
+              stacked
               title={invoice.customer_name || invoice.invoice_number}
               chip={<>{getStatusBadge(invoice.status)}<DepositPaymentChip invoice={invoice} className="text-xs px-2 py-0.5" />{due && <InvoiceDueChip row={due} onClick={() => setReviewId(reviewId === invoice.id ? null : invoice.id)} />}</>}
-              amount={formatCurrency(invoice.grand_total)}
+              amount={(() => { const m = invoiceMoney(invoice as any, payRows, creditRows); return ["paid", "void", "cancelled", "draft"].includes(invoice.status) ? formatCurrency(invoice.grand_total) : formatCurrency(m.balance); })()}
               date={[invoice.invoice_number, formatDate(invoice.created_at)].join(" · ")}
               trailing={<RowMenu items={[
                 { label: "Open", onSelect: () => onSelectInvoice(invoice) },

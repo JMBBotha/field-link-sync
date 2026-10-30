@@ -77,7 +77,10 @@ export function parseInvoiceParams(p: URLSearchParams): InvoiceFilters {
 export function matchesInvoiceState(status: string | null | undefined, state: InvoiceState | null): boolean {
   if (!state) return true;
   const s = String(status || "").toLowerCase();
-  return state === "unpaid" ? s === "sent" || s === "overdue" : s === state;
+  const part = s === "partially_paid" || s === "part_paid";
+  if (state === "unpaid") return s === "sent" || s === "overdue" || part; // part-paid still has a balance
+  if (state === "sent") return s === "sent" || part; // part-paid invoices were sent
+  return s === state;
 }
 
 export function filterInvoices<T extends InvoiceRow>(rows: T[], f: Partial<InvoiceFilters>, now = new Date()): T[] {

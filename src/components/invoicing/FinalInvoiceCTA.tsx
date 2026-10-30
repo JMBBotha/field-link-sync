@@ -19,9 +19,11 @@ export default function FinalInvoiceCTA({ step, className }: { step: FinalStep |
         className="mt-2 h-12 w-full rounded-xl bg-orange-500 text-base font-semibold text-white hover:bg-orange-600"
         onClick={() => navigate(`/admin/invoices/${step.invoiceId}?final=1`)}
       >
-        <Send className="mr-2 h-5 w-5" /> Send final invoice · {rand(step.balance)}
+        <Send className="mr-2 h-5 w-5" /> {step.sentLabel ? "Send again" : "Send final invoice"} · {rand(step.balance)}
       </Button>
-      <p className="mt-1 text-xs text-muted-foreground">{step.invoiceNumber || "Invoice"} · balance due on completion</p>
+      {step.sentLabel
+        ? <p data-testid="final-sent-label" className="mt-1 text-sm font-medium text-emerald-700 dark:text-emerald-400">✓ {step.sentLabel}</p>
+        : <p className="mt-1 text-xs text-muted-foreground">{step.invoiceNumber || "Invoice"} · not sent yet</p>}
     </div>
   );
 }
@@ -32,7 +34,7 @@ export function FinalInvoiceCTAForJob({ customerId, job, className }: { customer
     queryKey: ["final-invoice-step", customerId, job.id, job.status],
     enabled: !!customerId,
     queryFn: async () => {
-      const { data: invs } = await (supabase as any).from("invoices").select("id, invoice_number, status, grand_total, sent_at, archived_at").eq("customer_id", customerId);
+      const { data: invs } = await (supabase as any).from("invoices").select("id, invoice_number, status, grand_total, sent_at, archived_at, final_sent_at, final_sent_channel").eq("customer_id", customerId);
       const ids = (invs || []).map((i: any) => i.id);
       const { data: pays } = ids.length ? await (supabase as any).from("payments").select("invoice_id, amount, status").in("invoice_id", ids) : { data: [] };
       return finalInvoiceStep(invs || [], pays || [], [job]);

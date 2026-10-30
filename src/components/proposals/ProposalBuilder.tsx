@@ -114,7 +114,7 @@ const ProposalBuilder = ({
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() + (companySettings.default_payment_terms_days || 30));
+    d.setDate(d.getDate() + (companySettings.default_payment_terms_days || 7));
     return d.toISOString().split("T")[0];
   });
   const [reference, setReference] = useState("");

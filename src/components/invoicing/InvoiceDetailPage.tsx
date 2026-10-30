@@ -1,3 +1,4 @@
+import FinalInvoiceSendDialog from "@/components/invoicing/FinalInvoiceSendDialog";
 import { CUSTOMER_BILLTO_COLUMNS, resolveBillTo } from "@/lib/billTo";
 import { useState, useEffect, useRef } from "react";
 import { MarkSentManuallyButton, SentManuallyBadge } from "@/components/documents/MarkSentManually";
@@ -18,6 +19,7 @@ import { creditedByInvoice, fetchCreditNotes, type CreditNoteRow } from "@/lib/c
 import InvoiceDocument from "@/components/invoicing/InvoiceDocument";
 import CreateInvoicePage from "@/components/invoicing/CreateInvoicePage";
 import { useAuth } from "@/contexts/AuthContext";
+import { InvoiceDueDateEdit } from "./InvoiceDueDateEdit";
 import { documentProfile, fetchCompanyProfiles, profileTermsInfo, type CompanyProfile } from "@/lib/companyProfiles";
 
 
@@ -322,6 +324,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         </div>
       </div>
 
+      <InvoiceDueDateEdit invoice={invoice} onDone={() => { fetchInvoice(); onUpdate?.(); }} />
       {/* FreshBooks-style invoice document (screen + print/PDF) */}
       <InvoiceDocument
         invoiceNumber={invoice.invoice_number}
@@ -399,10 +402,9 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           {/* Mark as sent without emailing: dialog asks how (WhatsApp / handed over / other), server logs + notifies the owner. */}
           {/* Final invoice (Johan 30 Oct): deposit paid, balance open → orange primary next step. Opens WhatsApp with the invoice PDF + balance. */}
           {invoice.status !== "draft" && amountPaid > 0.005 && Number(invoice.grand_total) - amountPaid > 0.005 && (
-            <Button data-testid="send-final-invoice" className="w-full h-12 rounded-xl text-base font-semibold bg-orange-500 hover:bg-orange-600 text-white" onClick={handleWhatsApp} disabled={generatingPDF}>
-              {generatingPDF ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-              Send final invoice · {formatCurrency(Math.max(0, Number(invoice.grand_total) - amountPaid))} balance
-            </Button>
+            <FinalInvoiceSendDialog invoice={invoice} balance={Math.max(0, Number(invoice.grand_total) - amountPaid)}
+              autoOpen={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("final") === "1"}
+              onDone={() => { fetchInvoice(); onUpdate?.(); }} />
           )}
           <SendInvoiceEmailButton invoiceId={invoice.id} status={invoice.status} className="w-full h-11 rounded-lg font-semibold" onEdit={() => setEditingId(invoice.id)} onSent={() => { fetchInvoice(); onUpdate?.(); }} />
           <MarkSentManuallyButton kind="invoice" id={invoice.id} status={invoice.status} size="default" className="w-full h-11 rounded-lg font-semibold" onDone={() => { fetchInvoice(); onUpdate?.(); }} />
