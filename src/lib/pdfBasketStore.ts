@@ -7,7 +7,8 @@ import { useCallback, useEffect, useState } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 
 const PREFIX = "fls.pdfBasket.";
-const LOCAL_EVENT = "fls-pdf-basket";
+export const PDF_BASKET_EVENT = "fls-pdf-basket";
+const LOCAL_EVENT = PDF_BASKET_EVENT;
 export const pdfBasketKey = (quoteId?: string | null) => `${PREFIX}${quoteId || "draft"}`;
 
 export function readPdfBasket(quoteId?: string | null): PdfSelectedProduct[] {

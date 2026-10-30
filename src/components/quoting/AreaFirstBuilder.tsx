@@ -38,7 +38,7 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
 
   const { user: livePreviewUser } = useAuth();
   const [livePreviewOpen] = useLivePreviewPref(livePreviewUser?.id ?? null);
-  const livePreviewWide = useIsWideScreen() && livePreviewOpen;
+  const livePreviewWide = useIsWideScreen(1024) && livePreviewOpen;
   return (
     <div className={`mx-auto w-full ${livePreviewWide ? "max-w-[1760px]" : "max-w-4xl"} space-y-4 p-3 pb-24 sm:p-4`}>
       <EstimateBuilder

@@ -1,4 +1,4 @@
-import { readPdfBasket, writePdfBasket, migrateDraftPdfBasket, pdfBasketKey } from "@/lib/pdfBasketStore";
+import { readPdfBasket, writePdfBasket, migrateDraftPdfBasket, pdfBasketKey, PDF_BASKET_EVENT } from "@/lib/pdfBasketStore";
 import QuoteTotalsBar from "@/components/quoting/QuoteTotalsBar";
 import { liveProducts } from "@/lib/liveProducts";
 import { resolveBundlesLive } from "@/lib/bundleResolve";
@@ -676,8 +676,18 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
       basketJsonRef.current = JSON.stringify(v);
       setSelectedFromPdf(v);
     };
+    // Same-tab edits (Chosen items pane writes the basket directly).
+    const onLocal = (e: Event) => {
+      if ((e as CustomEvent).detail !== basketKeyRef.current) return;
+      const v = readPdfBasket(quoteId);
+      const json = JSON.stringify(v);
+      if (json === basketJsonRef.current) return;
+      basketJsonRef.current = json;
+      setSelectedFromPdf(v);
+    };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener(PDF_BASKET_EVENT, onLocal);
+    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener(PDF_BASKET_EVENT, onLocal); };
   }, [quoteId]);
   useEffect(() => {
     if (basketKeyRef.current !== pdfBasketKey(quoteId)) return;
