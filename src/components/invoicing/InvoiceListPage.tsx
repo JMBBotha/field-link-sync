@@ -29,6 +29,8 @@ import ContractEditorDialog from "@/components/agreements/ContractEditorDialog";
 import { sameClientCheck } from "@/lib/agreementTemplates/contracts";
 import { useInvoiceDue } from "@/hooks/useInvoiceDue";
 import { InvoiceDueChip, FollowupReview } from "@/components/invoiceDue/InvoiceDueChip";
+import { dueChip } from "@/lib/invoiceDue";
+import { isUnpaid, unpaidBucket, sortUnpaid, BUCKET_LABEL, BUCKET_TONE } from "@/lib/unpaidBuckets";
 
 interface Invoice {
   id: string;
@@ -152,9 +154,16 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
     toast({ title: archive ? `${inv.invoice_number} archived` : `${inv.invoice_number} restored` });
     fetchInvoices();
   };
-  const filteredInvoices = filterInvoices(invoices.filter((i: any) => showArchived ? !!i.archived_at : !i.archived_at), inf)
+  // One pipeline for list AND chip counts, so count = list (Johan 31 Oct). Unpaid = any balance owing,
+  // overdue, due soon or due on completion; the old due=... filter is merged into it.
+  const unpaidMode = inf.state === "unpaid";
+  const balOf = (inv: Invoice) => invoiceMoney(inv as any, payRows, creditRows).balance;
+  const listFor = (state: string | null) => {
+    const base = invoices.filter((i: any) => showArchived ? !!i.archived_at : !i.archived_at);
+    const byState = state === "unpaid" ? base.filter(inv => isUnpaid(inv.status, balOf(inv))) : filterInvoices(base, { ...inf, state: (state as any) ?? null });
+    const rows = byState
     .filter(inv => {
-      if (!dueFilter) return true;
+      if (!dueFilter || state === "unpaid") return true;
       const d = dueBy.get(inv.id); if (!d) return false;
       return dueFilter === "overdue" ? d.days > 0 : dueFilter === "today" ? d.days === 0 : dueFilter === "soon" ? d.days < 0 && d.days >= -7 : true;
     })
@@ -168,11 +177,14 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
       inv.customer_name.toLowerCase().includes(search.toLowerCase()) ||
       inv.invoice_number.toLowerCase().includes(search.toLowerCase())
     );
+    return state === "unpaid" ? sortUnpaid(rows, (inv) => ({ status: inv.status, due: dueBy.get(inv.id) as any })) : rows;
+  };
+  const filteredInvoices = listFor(inf.state ?? null);
 
   // Summary stats
   // Shared maths: outstanding = balances after payments/credits; collected counts partial payments.
   const totalOutstanding = invoices
-    .filter(inv => matchesInvoiceState(inv.status, "unpaid"))
+    .filter((inv: any) => !inv.archived_at && isUnpaid(inv.status, balOf(inv)))
     .reduce((sum, inv) => sum + invoiceMoney(inv as any, payRows, creditRows).balance, 0);
   const totalPaid = invoices
     .filter(inv => !["void", "cancelled"].includes((inv.status || "").toLowerCase()))
@@ -281,7 +293,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
         shown={filteredInvoices.length}
         chips={[
           ...(moneyIsAlias ? [{ key: "kind", label: MONEY_LABEL[moneyFilter as keyof typeof MONEY_LABEL] }] : []),
-          ...(inf.state ? [{ key: "state", label: inf.state === "unpaid" ? "Unpaid (sent + overdue)" : `State: ${inf.state}` }] : []),
+          ...(inf.state ? [{ key: "state", label: inf.state === "unpaid" ? "Unpaid (balance owing)" : `State: ${inf.state}` }] : []),
           ...(inf.period ? [{ key: "period", label: inf.period === "today" ? "Today" : /d$/.test(inf.period) ? `Last ${inf.period.replace("d", "")} days` : inf.period }] : []),
         ]}
         onClear={(k) => setSearchParams((p) => clearParams(p, k === "kind" ? ["kind", "state"] : [k]))}
@@ -320,7 +332,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
             {f.label}
             {f.value !== "all" && (
               <span className="ml-1 opacity-70">
-                {filterInvoices(invoices, { state: f.value as any }).length}
+                {listFor(f.value).length}
               </span>
             )}
           </button>
@@ -386,7 +398,11 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
                 onCheckedChange={() => setSelected((s) => (s.includes(invoice.id) ? s.filter((x) => x !== invoice.id) : [...s, invoice.id]))} /> : undefined}
               stacked
               title={invoice.customer_name || invoice.invoice_number}
-              chip={<>{getStatusBadge(invoice.status)}<DepositPaymentChip invoice={invoice} className="text-xs px-2 py-0.5" />{due && <InvoiceDueChip row={due} onClick={() => setReviewId(reviewId === invoice.id ? null : invoice.id)} />}</>}
+              chip={<>{getStatusBadge(invoice.status)}<DepositPaymentChip invoice={invoice} className="text-xs px-2 py-0.5" />{unpaidMode ? (() => { const b = unpaidBucket(invoice.status, due as any); const tone = BUCKET_TONE[b];
+                return <span data-testid="unpaid-bucket" data-bucket={b} onClick={(e) => { if (due) { e.stopPropagation(); setReviewId(reviewId === invoice.id ? null : invoice.id); } }}
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${tone === "red" ? "bg-[#FDECEC] text-[#C9373C]" : tone === "orange" ? "bg-[#FFEBDD] text-[#C2570C]" : "bg-muted text-muted-foreground"}`}>
+                  {b === "completion" ? BUCKET_LABEL.completion : due ? `${BUCKET_LABEL[b]} · ${dueChip(due as any).label}` : BUCKET_LABEL[b]}</span>; })()
+                : due && <InvoiceDueChip row={due} onClick={() => setReviewId(reviewId === invoice.id ? null : invoice.id)} />}</>}
               amount={(() => { const m = invoiceMoney(invoice as any, payRows, creditRows); return ["paid", "void", "cancelled", "draft"].includes(invoice.status) ? formatCurrency(invoice.grand_total) : formatCurrency(m.balance); })()}
               date={[invoice.invoice_number, formatDate(invoice.created_at)].join(" · ")}
               trailing={<RowMenu items={[
