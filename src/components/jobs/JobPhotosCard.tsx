@@ -4,14 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { photoDisplayPath, signedPhotoUrl } from "@/lib/photoUrls";
 import { photoSummary } from "@/lib/jobActionBar";
 import SitePhotosSection from "@/components/photos/SitePhotosSection";
-import { Image as ImageIcon, Loader2, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Image as ImageIcon, Loader2 } from "lucide-react";
+import { PhotoViewer, PHOTO_GRID } from "@/components/photos/PhotoViewer";
 
 type P = { id: string; url: string; photo_type: string; caption: string | null };
 
 /** Job photos with clear Site / Before / After labels. "No photos yet" only when all three are empty. */
 export default function JobPhotosCard({ leadId, addSlot }: { leadId: string; addSlot?: React.ReactNode }) {
-  const [open, setOpen] = useState<P | null>(null);
+  const [open, setOpen] = useState<{ list: P[]; i: number; label: string } | null>(null);
   const q = useQuery({
     queryKey: ["job-photos-typed", leadId],
     enabled: !!leadId,
@@ -35,12 +35,12 @@ export default function JobPhotosCard({ leadId, addSlot }: { leadId: string; add
   const { empty } = photoSummary(counts);
 
   const Group = ({ label, list, testId }: { label: string; list: P[]; testId: string }) => (
-    <div className="rounded-xl border border-border/60 bg-card p-4 space-y-3" data-testid={testId}>
+    <div className="rounded-xl border border-border/60 bg-card p-3 sm:p-4 space-y-3" data-testid={testId}>
       <h2 className="text-sm font-semibold">{label} ({list.length})</h2>
       {list.length === 0 ? <p className="text-xs text-muted-foreground">None yet</p> : (
-        <div className="grid grid-cols-3 gap-2">
-          {list.map((p) => (
-            <button key={p.id} type="button" onClick={() => setOpen(p)} className="aspect-square overflow-hidden rounded-md bg-muted">
+        <div className={PHOTO_GRID}>
+          {list.map((p, i) => (
+            <button key={p.id} type="button" onClick={() => setOpen({ list, i, label })} className="aspect-square overflow-hidden rounded-md bg-muted">
               {p.url && <img src={p.url} alt={`${label} photo`} className="h-full w-full object-cover" loading="lazy" />}
             </button>
           ))}
@@ -69,15 +69,7 @@ export default function JobPhotosCard({ leadId, addSlot }: { leadId: string; add
           <Group label="After" list={q.data?.after ?? []} testId="job-photos-after" />
         </>
       )}
-      {open && (
-        <div className="fixed inset-0 z-[90] bg-black/95 flex flex-col">
-          <div className="flex justify-end p-2">
-            <Button variant="ghost" className="min-h-[44px] text-white" onClick={() => setOpen(null)} aria-label="Close"><X className="h-5 w-5" /></Button>
-          </div>
-          <div className="flex-1 min-h-0 flex items-center justify-center p-2"><img src={open.url} alt="Job photo" className="max-h-full max-w-full object-contain" /></div>
-          {open.caption && <p className="p-3 text-sm text-white">{open.caption}</p>}
-        </div>
-      )}
+      {open && <PhotoViewer photos={open.list} index={open.i} onIndex={(i) => setOpen({ ...open, i })} onClose={() => setOpen(null)} label={open.label} />}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { useJobPhotos } from "@/hooks/useJobPhotos";
 import { photoDisplayPath, signedPhotoUrl } from "@/lib/photoUrls";
 import { parseAnnotation, serializeAnnotation, type AnnShape } from "@/lib/annotation";
 import PhotoAnnotator from "./PhotoAnnotator";
+import { PhotoViewer, PHOTO_GRID } from "./PhotoViewer";
 
 interface SitePhoto { caption: string | null; client_visible: boolean; id: string; storage_path: string; annotated_path: string | null; annotation: unknown; uploaded_by: string | null; url: string; originalUrl: string }
 
@@ -147,7 +148,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
       {list.length === 0 ? (
         <p className="text-xs text-muted-foreground">No site photos yet. Photos stay internal unless you switch on "Client sees this".</p>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
+        <div className={PHOTO_GRID}>
           {list.map((p) => (
             <button key={p.id} type="button" onClick={() => setOpen(p)} className="relative aspect-square overflow-hidden rounded-md bg-muted" data-testid="site-photo-thumb">
               {p.url && <img src={p.url} alt="Site photo" className="h-full w-full object-cover" loading="lazy" />}
@@ -158,18 +159,15 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
         </div>
       )}
       {open && !editing && (
-        <div className="fixed inset-0 z-[90] bg-black/95 flex flex-col" data-testid="site-photo-viewer">
-          <div className="flex justify-between p-2">
-            {!readOnly && (open.uploaded_by === user?.id) ? (
+        <PhotoViewer testId="site-photo-viewer" photos={list} index={Math.max(0, list.findIndex((x) => x.id === open.id))}
+          onIndex={(i) => setOpen(list[i])} onClose={() => setOpen(null)} label={open.client_visible ? "Site photo · client sees this" : "Site photo"}
+          actions={<>{!readOnly && (open.uploaded_by === user?.id) ? (
               <Button variant="secondary" className="min-h-[44px]" onClick={() => setEditing(open)} data-testid="site-photo-annotate"><PenLine className="h-4 w-4 mr-1" />Mark up</Button>
-            ) : <span />}
+            ) : null}
             {!readOnly && canManage && canDelete && (
               <Button variant="destructive" className="min-h-[44px]" onClick={() => deletePhoto(open)} data-testid="site-photo-delete"><Trash2 className="h-4 w-4 mr-1" />Delete</Button>
-            )}
-            <Button variant="ghost" className="min-h-[44px] text-white" onClick={() => setOpen(null)} aria-label="Close"><X className="h-5 w-5" /></Button>
-          </div>
-          <div className="flex-1 min-h-0 flex items-center justify-center p-2"><img src={open.url} alt="Site photo" className="max-h-full max-w-full object-contain" /></div>
-          {readOnly ? (open.caption ? <p className="p-3 text-sm text-white">{open.caption}</p> : null) : (
+            )}</>}
+          footer={readOnly ? (open.caption ? <p className="p-3 text-sm text-white">{open.caption}</p> : null) : (
             <div className="p-3 space-y-2 bg-black/80">
               <textarea key={open.id} defaultValue={open.caption ?? ""} placeholder="Add info about this photo…" maxLength={500} rows={2}
                 onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== (open.caption ?? null)) void updatePhoto(open, { caption: v }); }}
@@ -181,8 +179,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
                 </Button>
               )}
             </div>
-          )}
-        </div>
+          )} />
       )}
       {editing && (
         <PhotoAnnotator imageUrl={editing.originalUrl} initial={parseAnnotation(editing.annotation)} saving={saving}
