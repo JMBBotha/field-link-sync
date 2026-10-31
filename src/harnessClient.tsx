@@ -1,0 +1,14 @@
+import "./index.css";
+import { createRoot } from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import Page from "@/pages/admin/AdminCustomerDetailPage";
+const qc = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
+const id = "c1"; const name = "Demo Builders (Pty) Ltd";
+qc.setQueryData(["customer-detail", id], { id, name, company_id: "co", phone: "021 000 0000", email: "demo@example.com", created_at: "2026-08-01T00:00:00Z" });
+const q = (n: string, status: string, total: number, d: string, sum: string) => ({ id: n, company_id: "co", quote_number: n, notes: "", client_summary: sum, total, status, created_at: d, customer_id: id, customer_name: name, location_id: null, archived_at: null });
+qc.setQueryData(["customer-quotes", id, name], [q("Q-D-0047", "draft", 950378.63, "2026-08-12T08:00:00Z", "Option C · 3 floors VRV, 24 indoor units"), q("Q-D-0041", "viewed", 819099.71, "2026-10-16T08:00:00Z", "Option A · full office ducted system"), q("Q-D-0042", "sent", 446464.71, "2026-10-16T08:00:00Z", "Option B · ground floor only, 8 units"), q("Q-D-0043", "draft", 0, "2026-10-16T08:00:00Z", "")]);
+qc.setQueryData(["customer-invoices", id, name], []); qc.setQueryData(["customer-jobs-detail", id], []); qc.setQueryData(["customer-locations", id], []);
+createRoot(document.getElementById("root")!).render(<MemoryRouter initialEntries={["/admin/customers/c1?tab=quotes"]}><QueryClientProvider client={qc}><AuthProvider><TooltipProvider><Routes><Route path="/admin/customers/:id" element={<Page />} /></Routes></TooltipProvider></AuthProvider></QueryClientProvider></MemoryRouter>);
