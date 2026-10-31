@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazyRetry } from "@/lib/chunkReload";
 import { useSaveOnUnmount } from "@/hooks/useSaveOnUnmount";
 import { Check, Loader2, MapPin, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import { hasValidCoords } from "@/lib/leadCoords";
 import type { LocationChangeSource } from "@/components/LocationPicker";
 
 // Mapbox GL is heavy: only load it when someone actually edits an address.
-const LocationPicker = lazy(() => import("@/components/LocationPicker"));
+const LocationPicker = lazyRetry(() => import("@/components/LocationPicker"));
 
 type Pin = { lat: number; lng: number };
 export interface AddressMapValue { address: string | null; lat: number | null; lng: number | null }

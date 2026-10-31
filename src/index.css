@@ -1275,3 +1275,7 @@ All colors MUST be HSL.
 [data-map-fullscreen] .mapboxgl-ctrl-top-right {
   top: calc(env(safe-area-inset-top, 0px) + 6.5rem);
 }
+
+/* Red-on-dark was unreadable (Johan 31 Oct 16:14): dark --destructive is a deep red meant for fills.
+   As text on dark surfaces use a light tint (#FCA5A5 on #030712 = 10.6:1). Solid fills keep their white text. */
+.dark .text-destructive { color: #FCA5A5; }

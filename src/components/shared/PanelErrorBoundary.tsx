@@ -1,3 +1,4 @@
+import { isChunkLoadError, reloadOnceForStaleChunk } from "@/lib/chunkReload";
 import { Component, ErrorInfo, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
@@ -24,6 +25,7 @@ class PanelErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    if (isChunkLoadError(error) && reloadOnceForStaleChunk()) return;
     const panel = this.props.panelName || "Panel";
     console.error(`[${panel}] Error:`, error.message, errorInfo.componentStack);
     toast({
