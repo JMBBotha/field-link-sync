@@ -9,14 +9,12 @@ import { cn } from "@/lib/utils";
 import { useNextSteps } from "@/hooks/useNextSteps";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { useNow } from "@/hooks/useLeadSla";
-import { RULES, countByRule, minutesWaiting, waitingLabel, type NextStep } from "@/lib/nextSteps";
+import { RULES, countByRule, minutesWaiting, waitingLabel, urgency, worstUrgency, type NextStep } from "@/lib/nextSteps";
 
-const TONE_CHIP = {
-  red: "bg-destructive text-destructive-foreground border-transparent",
-  orange: "border-warning/50 text-warning-foreground bg-warning/10",
-  blue: "border-info/40 text-info bg-info/10",
-};
-const TONE_BAR = { red: "border-l-destructive", orange: "border-l-warning", blue: "border-l-info" };
+// Calm colours by time urgency (Johan 31 Oct 10:44): soft tint + coloured left edge / dot, never full red blocks.
+const CHIP = { green: "border-success/40 bg-success/10 text-success", orange: "border-warning/50 bg-warning/10 text-warning-foreground", red: "border-destructive/40 bg-destructive/10 text-destructive" };
+const CARD = { green: "border-l-success bg-success/5", orange: "border-l-warning bg-warning/10", red: "border-l-destructive bg-destructive/5" };
+const DOT = { green: "bg-success", orange: "bg-warning", red: "bg-destructive" };
 const money = (n: number | null) => (n == null ? "" : `R ${Math.round(n).toLocaleString("en-ZA").replace(/,/g, " ")}`);
 
 function SnoozeDialog({ row, onClose, onSave }: { row: NextStep | null; onClose: () => void; onSave: (o: { until?: Date; dismiss?: boolean; reason: string }) => Promise<void> }) {
@@ -89,7 +87,7 @@ export default function NextStepsPanel({ className }: { className?: string }) {
         <div className="flex flex-wrap gap-1.5">
           {counts.map(({ rule, n }) => (
             <button key={rule} type="button" onClick={() => setFilter(filter === rule ? null : rule)} aria-pressed={filter === rule}
-              className={cn("rounded-full border px-2.5 py-1 text-xs font-bold", TONE_CHIP[RULES[rule].tone], filter === rule && "ring-2 ring-ring ring-offset-1")}>
+              className={cn("rounded-full border px-2.5 py-1 text-xs font-bold", CHIP[worstUrgency(rows.filter((r) => r.rule === rule), now)], filter === rule && "ring-2 ring-ring ring-offset-1")}>
               {RULES[rule].chip(n)}
             </button>
           ))}
@@ -98,12 +96,12 @@ export default function NextStepsPanel({ className }: { className?: string }) {
       {leads.length > 0 && (() => {
         const l = leads[0]; const mins = minutesWaiting(l.since, now);
         return (
-          <div className="rounded-2xl bg-destructive p-4 text-destructive-foreground shadow-lg" data-testid="next-steps-urgent">
-            <div className="text-lg font-extrabold">New lead waiting · {waitingLabel(mins)}</div>
-            <div className="text-sm opacity-95">{l.detail}{leads.length > 1 ? ` · ${leads.length - 1} more waiting` : ""}</div>
+          <div className={cn("rounded-xl border border-l-[6px] p-3.5", CARD[urgency(l, now)])} data-testid="next-steps-urgent">
+            <div className="flex items-center gap-2 text-base font-bold"><span className={cn("h-2.5 w-2.5 rounded-full", DOT[urgency(l, now)])} />New lead waiting · {waitingLabel(mins)}</div>
+            <div className="text-sm text-muted-foreground">{l.detail}{leads.length > 1 ? ` · ${leads.length - 1} more waiting` : ""}</div>
             <div className="mt-2 flex gap-2">
-              <Button asChild size="sm" variant="secondary" className="bg-white text-destructive hover:bg-white/90"><Link to={l.link}>Open lead</Link></Button>
-              {leads.length > 1 && <Button size="sm" variant="ghost" className="bg-white/20 text-white hover:bg-white/30" onClick={() => setFilter("new_lead")}>View all leads</Button>}
+              <Button asChild size="sm"><Link to={l.link}>Open lead</Link></Button>
+              {leads.length > 1 && <Button size="sm" variant="outline" onClick={() => setFilter("new_lead")}>View all leads</Button>}
             </div>
           </div>
         );
@@ -111,8 +109,8 @@ export default function NextStepsPanel({ className }: { className?: string }) {
       {shown.length > 0 && (
         <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
           {shown.map((r) => (
-            <div key={r.rule + r.entity_id} className={cn("rounded-xl border border-l-[5px] bg-background p-3", TONE_BAR[RULES[r.rule].tone])} data-testid={`next-step-${r.rule}`}>
-              <div className="truncate font-semibold">{r.title}</div>
+            <div key={r.rule + r.entity_id} className={cn("rounded-xl border border-l-[5px] p-3", CARD[urgency(r, now)])} data-testid={`next-step-${r.rule}`}>
+              <div className="flex items-center gap-2 font-semibold"><span className={cn("h-2 w-2 shrink-0 rounded-full", DOT[urgency(r, now)])} /><span className="truncate">{r.title}</span></div>
               <div className="text-xs text-muted-foreground">{[r.detail, money(r.amount)].filter(Boolean).join(" · ")}</div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <Button asChild size="sm"><Link to={r.link}>{RULES[r.rule].action}</Link></Button>
