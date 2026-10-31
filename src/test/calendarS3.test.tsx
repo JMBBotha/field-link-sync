@@ -15,6 +15,7 @@ vi.mock("@/hooks/useRole", () => ({ useRole: () => ({ userId: "me" }) }));
 vi.mock("@/hooks/useDoubleBookings", () => ({ useDoubleBookings: () => ({ count: state.count, rows: [{ profile_id: "me" }, { profile_id: "other" }] }) }));
 vi.mock("@/hooks/useLeadSla", () => ({ useNow: () => new Date(), useLeadSla: () => ({ sla: { contactMinutes: 15 } }) }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { leads: [], lateJobs: 0, paidNoJob: 0 } }) }));
+vi.mock("@/hooks/useNextSteps", () => ({ useNextSteps: () => ({ rows: [], loading: false, snooze: async () => {} }) }));
 vi.mock("@/components/leads/CallSummary", () => ({ default: () => null }));
 vi.mock("@/components/invoicing/InvoiceApprovalPanel", () => ({ default: () => null }));
 
