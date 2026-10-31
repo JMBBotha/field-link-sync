@@ -56,10 +56,8 @@ const AdminInvoicesPage = () => {
         <InvoiceListPage
           // Scope is enforced by RLS (rep_can_see_invoice / tech_lockdown_select).
           agentId={undefined}
-          onSelectInvoice={(inv) => {
-            setSelectedInvoiceId(inv.id);
-            setView("detail");
-          }}
+          // Open as a real route so the shared header back arrow returns to this list (with its chips).
+          onSelectInvoice={(inv) => navigate(`/admin/invoices/${inv.id}`)}
           onCreateInvoice={() => setView("create")}
         />
       )}

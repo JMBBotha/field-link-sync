@@ -57,7 +57,7 @@ export default function AdminBookingDetailPage() {
   const map = b.customer_address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.customer_address)}` : null;
   return (
     <div className="v8-scope mx-auto max-w-3xl space-y-3 p-3 sm:p-6" data-testid="booking-detail">
-      <Button variant="ghost" className="-ml-2 min-h-[44px]" onClick={back}><ArrowLeft className="mr-1 h-4 w-4" />Back</Button>
+      {/* One back arrow: the shared header BackButton (Johan 31 Oct). */}
       <div className="space-y-2 rounded-2xl bg-gradient-to-br from-[#0F2A44] to-[#1590D6] p-4 text-white">
         <p className="text-xs font-semibold uppercase tracking-wide opacity-80">Booking</p>
         <h1 className="text-xl font-semibold leading-tight break-words">{b.customer_name || "Client"}</h1>

@@ -147,7 +147,6 @@ const AdminOssExtrasPage = () => {
   return (
     <div className="v8-scope mx-auto w-full max-w-5xl space-y-4 p-3 sm:p-6" data-testid="oss-extras-page">
       <div className="v8-navy flex flex-wrap items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/admin/price-lists")}><ArrowLeft className="mr-1 h-4 w-4" />Price lists</Button>
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-semibold">One Stop Shop extras</h1>
           <p className="text-xs text-muted-foreground">Items not on the supplier PDF. Each save rebuilds the in-house price book shown after the One Stop Shop list.</p>

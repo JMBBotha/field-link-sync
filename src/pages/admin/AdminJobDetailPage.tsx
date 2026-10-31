@@ -188,9 +188,6 @@ const AdminJobDetailPage = () => {
   if (!job) {
     return (
       <div className="p-6 max-w-2xl mx-auto space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/admin/jobs")} className="gap-1.5">
-          <ArrowLeft className="h-4 w-4" /> Back to Jobs
-        </Button>
         <Card className="rounded-2xl">
           <CardContent className="p-8 text-center text-muted-foreground">
             Job not found or you don't have access.
@@ -211,9 +208,7 @@ const AdminJobDetailPage = () => {
       <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4 has-sticky-action-bar">
         {/* Header */}
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/admin/jobs")} className="gap-1.5 -ml-2">
-            <ArrowLeft className="h-4 w-4" /> Jobs
-          </Button>
+          {/* One back arrow: the shared header BackButton (Johan 31 Oct). */}
           <div className="ml-auto flex min-w-0 items-center gap-2">
             <span className="min-w-0 truncate text-sm font-medium" data-testid="job-tech">
               {assignedTech ? assignedLabel(assignedTech.name, jhbDate((job as any)?.scheduled_for), jhbTime((job as any)?.scheduled_for)) : <span className="text-muted-foreground">No tech yet</span>}
