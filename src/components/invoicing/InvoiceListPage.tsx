@@ -102,7 +102,10 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   const filter = inf.state ?? "all";
   const setParam = (k: string, v: string | null) =>
     setSearchParams((p) => { const n = new URLSearchParams(p); if (v && v !== "all") n.set(k, v); else n.delete(k); return n; });
-  const setFilter = (v: string) => setParam("state", v);
+  // A status chip is a fresh filter: drop hidden due=/money=/kind=/period= drill-down params that would
+  // otherwise silently empty the list while the chip count ignores them (Johan 31 Oct t2018u).
+  const setFilter = (v: string) => setSearchParams((p) => { const n = new URLSearchParams(p);
+    ["due", "money", "kind", "period"].forEach((k) => n.delete(k)); if (v && v !== "all") n.set("state", v); else n.delete("state"); return n; });
   const moneyFilter = resolveMoneyFilter(searchParams) as MoneyFilter | null;
   const moneyIsAlias = !!moneyFilter && !searchParams.get("money");
   const navigate = useNavigate();
@@ -158,17 +161,17 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   // overdue, due soon or due on completion; the old due=... filter is merged into it.
   const unpaidMode = inf.state === "unpaid";
   const balOf = (inv: Invoice) => invoiceMoney(inv as any, payRows, creditRows).balance;
-  const listFor = (state: string | null) => {
+  const listFor = (state: string | null, chip = false) => {
     const base = invoices.filter((i: any) => showArchived ? !!i.archived_at : !i.archived_at);
-    const byState = state === "unpaid" ? base.filter(inv => isUnpaid(inv.status, balOf(inv))) : filterInvoices(base, { ...inf, state: (state as any) ?? null });
+    const byState = state === "unpaid" ? base.filter(inv => isUnpaid(inv.status, balOf(inv))) : filterInvoices(base, chip ? { state: (state as any) ?? null } : { ...inf, state: (state as any) ?? null });
     const rows = byState
     .filter(inv => {
-      if (!dueFilter || state === "unpaid") return true;
+      if (chip || !dueFilter || state === "unpaid") return true;
       const d = dueBy.get(inv.id); if (!d) return false;
       return dueFilter === "overdue" ? d.days > 0 : dueFilter === "today" ? d.days === 0 : dueFilter === "soon" ? d.days < 0 && d.days >= -7 : true;
     })
     .filter(inv => {
-      if (!moneyFilter) return true;
+      if (chip || !moneyFilter) return true;
       const { paid, balance } = invoiceMoney(inv as any, payRows, creditRows);
       return matchesMoneyFilter(inv as any, paid, balance, moneyFilter);
     })
@@ -294,10 +297,11 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
         chips={[
           ...(moneyIsAlias ? [{ key: "kind", label: MONEY_LABEL[moneyFilter as keyof typeof MONEY_LABEL] }] : []),
           ...(inf.state ? [{ key: "state", label: inf.state === "unpaid" ? "Unpaid (balance owing)" : `State: ${inf.state}` }] : []),
+          ...(dueFilter && inf.state !== "unpaid" ? [{ key: "due", label: dueFilter === "soon" ? "Due in 7 days" : dueFilter === "today" ? "Due today" : dueFilter === "overdue" ? "Overdue (past due date)" : `Due: ${dueFilter}` }] : []),
           ...(inf.period ? [{ key: "period", label: inf.period === "today" ? "Today" : /d$/.test(inf.period) ? `Last ${inf.period.replace("d", "")} days` : inf.period }] : []),
         ]}
         onClear={(k) => setSearchParams((p) => clearParams(p, k === "kind" ? ["kind", "state"] : [k]))}
-        onClearAll={() => setSearchParams((p) => clearParams(p, ["state", "period", "money", "kind"]))}
+        onClearAll={() => setSearchParams((p) => clearParams(p, ["state", "period", "money", "kind", "due"]))}
       />
 
       {moneyFilter && !moneyIsAlias && (
@@ -332,7 +336,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
             {f.label}
             {f.value !== "all" && (
               <span className="ml-1 opacity-70">
-                {listFor(f.value).length}
+                {listFor(f.value, true).length}
               </span>
             )}
           </button>
