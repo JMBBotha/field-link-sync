@@ -1,3 +1,4 @@
+import { BalanceDueBlock } from "@/components/invoicing/BalanceDueBlock";
 import FinalInvoiceSendDialog from "@/components/invoicing/FinalInvoiceSendDialog";
 import { CUSTOMER_BILLTO_COLUMNS, resolveBillTo } from "@/lib/billTo";
 import { useState, useEffect, useRef } from "react";
@@ -324,7 +325,8 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         </div>
       </div>
 
-      <InvoiceDueDateEdit invoice={invoice} onDone={() => { fetchInvoice(); onUpdate?.(); }} />
+      <BalanceDueBlock invoiceId={invoice.id} />
+      {!(Number((invoice as any).deposit_amount) > 0) && <InvoiceDueDateEdit invoice={invoice} onDone={() => { fetchInvoice(); onUpdate?.(); }} />}
       {/* FreshBooks-style invoice document (screen + print/PDF) */}
       <InvoiceDocument
         invoiceNumber={invoice.invoice_number}

@@ -1,11 +1,14 @@
+import { onCompletionLabel } from "@/lib/balanceDue";
 /** Invoice due follow-ups (Johan 20 Oct 12:04): final invoices only, steps -3 / due / +3 / +7 / +14. Rows from rpc invoice_due_summary. */
-export type DueStep = "pre" | "due" | "plus3" | "plus7" | "plus14" | null;
+export type DueStep = "pre" | "due" | "plus2" | "plus3" | "plus7" | "plus14" | null;
 export type DueRow = {
   invoice_id: string; invoice_number: string | null; customer_id: string | null; customer_name: string | null; customer_email: string | null;
   amount_due: number; due: string; days: number; step: DueStep; rep_id: string | null;
   followup_id: string | null; followup_status: "pending" | "approved" | null; followup_step: string | null; followup_subject: string | null; followup_message: string | null;
   /** Client/invoice payment terms (20 Oct). waiting = completion terms, job not done yet: no due date, no reminders. */
   terms_basis?: "invoice" | "completion" | null; terms_days?: number | null; waiting?: boolean;
+  /** Balance invoice (has a deposit): due on completion (31 Oct). install_at = booked installation. */
+  install_at?: string | null; on_completion?: boolean;
 };
 export type DueTone = "blue" | "amber" | "orange" | "red";
 export type DueSummary = {
@@ -14,7 +17,8 @@ export type DueSummary = {
   toApprove: number; urgent: DueRow[]; ownerCalls: DueRow[];
 };
 
-export function dueChip(r: Pick<DueRow, "days"> & Partial<Pick<DueRow, "waiting" | "terms_days">>): { label: string; tone: DueTone } {
+export function dueChip(r: Pick<DueRow, "days"> & Partial<Pick<DueRow, "waiting" | "terms_days" | "install_at" | "on_completion">>): { label: string; tone: DueTone } {
+  if (r.waiting && r.on_completion) return { label: onCompletionLabel(r.install_at), tone: "blue" };
   if (r.waiting) return { label: `Due ${r.terms_days ?? 30} days after completion`, tone: "blue" };
   const d = r.days;
   if (d < 0) return { label: `Due in ${-d} day${d === -1 ? "" : "s"}`, tone: "blue" };
@@ -24,7 +28,7 @@ export function dueChip(r: Pick<DueRow, "days"> & Partial<Pick<DueRow, "waiting"
 }
 
 export const STEP_LABEL: Record<string, string> = {
-  pre: "friendly heads-up", due: "polite reminder", plus3: "reminder + call", plus7: "urgent reminder", plus14: "owner to phone", manual: "reminder",
+  pre: "friendly heads-up", due: "polite reminder", plus2: "payment reminder (2 days after completion)", plus3: "reminder + call", plus7: "urgent reminder", plus14: "owner to phone", manual: "reminder",
 };
 
 export function summarizeDue(rows: DueRow[], soonDays = 7): DueSummary {

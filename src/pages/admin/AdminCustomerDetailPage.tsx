@@ -1,3 +1,4 @@
+import { BalanceDueBlock } from "@/components/invoicing/BalanceDueBlock";
 import { useInvoiceDue } from "@/hooks/useInvoiceDue";
 import OwnerRepChip from "@/components/requests/OwnerRepChip";
 import { randShort } from "@/lib/invoiceDue";
@@ -206,7 +207,7 @@ const AdminCustomerDetailPage = () => {
       if (customer?.name) orParts.push(`customer_name.ilike.${customer.name}`);
       const { data, error } = await supabase
         .from("invoices")
-        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, sent_at, final_sent_at, final_sent_channel, created_at, archived_at, customer_id, customer_name, location_id, payment_terms_basis, payment_terms_days")
+        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, sent_at, final_sent_at, final_sent_channel, created_at, archived_at, customer_id, customer_name, location_id, payment_terms_basis, payment_terms_days, deposit_amount, deposit_type")
         .or(orParts.join(","))
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -350,7 +351,7 @@ const AdminCustomerDetailPage = () => {
     queryKey: ["cust-payments", invIdsKey], enabled: invIdsKey.length > 0,
     queryFn: async () => (await (supabase as any).from("payments").select("invoice_id,amount,status").in("invoice_id", invIdsKey.split(","))).data || [],
   });
-  const invoiceSummary = useMemo(() => summarizeInvoices(invoices as any[], invPayments as any[]), [invoices, invPayments]);
+  const invoiceSummary = useMemo(() => summarizeInvoices(invoices as any[], invPayments as any[], new Date(), dueBy as any), [invoices, invPayments, dueBy]);
 
   const { data: locations = [] } = useQuery({
     queryKey: ["customer-locations", id], enabled: !!id,
@@ -473,6 +474,9 @@ const AdminCustomerDetailPage = () => {
           <MoneyTile label="Open quotes" value={randShort(quoteSummary.openValue)} sub2={`${openQuotes.length} open`} onClick={() => setInnerTab("quotes")} />
         </div>
       </div>
+
+      {(invoices as any[]).filter((inv) => !inv.archived_at && Number(inv.deposit_amount) > 0 && !["paid", "void", "cancelled", "draft"].includes((inv.status || "").toLowerCase()) && (inv.deposit_type || "") !== "deposit_invoice")
+        .map((inv) => <BalanceDueBlock key={inv.id} invoiceId={inv.id} />)}
 
       <FinalInvoiceCTA step={finalInvoiceStep(invoices as any[], invPayments as any[], jobs as any[])} />
 

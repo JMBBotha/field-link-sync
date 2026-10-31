@@ -1,3 +1,4 @@
+import { BalanceDueBlockForJob } from "@/components/invoicing/BalanceDueBlock";
 import { FinalInvoiceCTAForJob } from "@/components/invoicing/FinalInvoiceCTA";
 import { useUndoAction } from "@/components/shared/StatusUndo";
 import { useNavigate, useParams } from "react-router-dom";
@@ -231,6 +232,7 @@ const AdminJobDetailPage = () => {
             <p className="mt-1.5 text-sm text-[#CFE6F6] break-words">{[j.customers?.name, location?.label, location?.address].filter(Boolean).join(" · ")}</p>
           )}
         </div>
+        <BalanceDueBlockForJob job={j as any} />
         <FinalInvoiceCTAForJob customerId={j.customers?.id ?? j.customer_id} job={j as any} />
 
         <TechLocationBlock jobId={j.id} />

@@ -109,3 +109,18 @@ export function finalInvoiceBodyHtml(d: FinalInvoiceEmailData): string {
     ${lines ? `<p style="margin:18px 0 8px;font-size:12px;color:${EMAIL_BRAND.muted};">${lines}</p>` : ""}
     ${d.termsHtml ? `<p style="margin:0 0 8px;font-size:11px;color:${EMAIL_BRAND.muted};"><b>Terms</b><br>${d.termsHtml}</p>` : ""}`;
 }
+
+/** Payment reminder body (Johan 31 Oct 09:58): the admin's reminder text + the same invoice summary and pay button. */
+export interface PaymentReminderEmailData extends FinalInvoiceEmailData { message: string }
+export function reminderMessageCore(msg: string): string {
+  return String(msg || "").replace(/^\s*(hi|hello|dear)\b[^\n]*\n+/i, "").replace(/\n+\s*(kind regards|regards|thank you),?[\s\S]*$/i, "").trim();
+}
+export function paymentReminderBodyHtml(d: PaymentReminderEmailData): string {
+  const paras = reminderMessageCore(d.message).split(/\n{2,}/).filter(Boolean)
+    .map((p) => `<p style="margin:0 0 12px;">${escEmail(p).replace(/\n/g, "<br>")}</p>`).join("");
+  const lines = (d.companyLines || []).filter(Boolean).map(escEmail).join("<br>");
+  return `${paras}
+    ${brandedSummaryTable([["Invoice", `<b>${escEmail(d.invoiceNumber)}</b>`], ...(d.dueDate ? [["Due", escEmail(d.dueDate)] as [string, string]] : []), ["Invoice total", escEmail(d.total)], ["Already paid", escEmail(d.paid)]], ["Balance due incl. VAT", escEmail(d.balance)])}
+    ${d.link ? brandedButton(d.link, "View &amp; pay invoice") : ""}
+    ${lines ? `<p style="margin:18px 0 8px;font-size:12px;color:${EMAIL_BRAND.muted};">${lines}</p>` : ""}`;
+}
