@@ -413,9 +413,7 @@ const AdminCustomerDetailPage = () => {
   const showSiteFilter = locations.length > 1 && ["quotes", "invoices", "jobs"].includes(innerTab);
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto" data-testid="client-page-v8">
-      <Link to="/admin/customers" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
-        <ArrowLeft className="h-4 w-4" /> Clients
-      </Link>
+      {/* One back arrow: the shared header BackButton (Johan 31 Oct). */}
 
       {/* Header: name, contact, quick actions, money */}
       <div className="rounded-2xl bg-gradient-to-br from-[#0F2A44] to-[#1590D6] p-4 text-white sm:p-5">

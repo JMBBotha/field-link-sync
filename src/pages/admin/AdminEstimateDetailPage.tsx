@@ -178,9 +178,6 @@ const AdminEstimateDetailPage = () => {
   if (!quote) {
     return (
       <div className="p-6">
-        <Button variant="ghost" onClick={() => navigate("/admin/quotes")}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
         <p className="mt-8 text-center text-muted-foreground">Estimate not found</p>
       </div>
     );

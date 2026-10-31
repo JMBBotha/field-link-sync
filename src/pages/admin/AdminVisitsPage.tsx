@@ -148,9 +148,7 @@ export const AdminVisitDetailPage = () => {
   const canRelease = tab === "upcoming" && !r.quote_accepted && !r.has_install_job;
   return (
     <div className="v8-scope p-3 sm:p-6 space-y-3 max-w-3xl" data-testid="visit-detail">
-      <Button variant="ghost" className="min-h-[44px] -ml-2" onClick={() => navigate("/admin/visits")}>
-        <ArrowLeft className="h-4 w-4 mr-1" />My visits
-      </Button>
+      {/* One back arrow: the shared header BackButton (Johan 31 Oct). */}
       <div className="v8-navy p-4 space-y-2">
         <h1 className="text-lg font-semibold">{r.customer_name || "Client"}</h1>
         {r.address && <p className="text-sm text-muted-foreground">{r.address}</p>}
