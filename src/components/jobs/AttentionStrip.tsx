@@ -7,7 +7,7 @@ import { leadClock } from "@/lib/leadClock";
 import { isTestLead } from "@/lib/callSummary";
 import { useLeadSla, useNow } from "@/hooks/useLeadSla";
 import { useDoubleBookings } from "@/hooks/useDoubleBookings";
-import { useSalesRep } from "@/hooks/useSalesRep";
+import { useOwnScope } from "@/hooks/useOwnScope";
 import { useRole } from "@/hooks/useRole";
 
 type Chip = { key: string; n: number; label: string; tone: "red" | "orange" | "blue"; to: string };
@@ -20,7 +20,7 @@ export default function AttentionStrip({ className }: { className?: string }) {
   const now = useNow();
   const { sla } = useLeadSla();
   const { count, rows } = useDoubleBookings();
-  const { isSalesRep, loading: salesLoading } = useSalesRep();
+  const { ownOnly: isSalesRep, loading: salesLoading } = useOwnScope();
   const { userId } = useRole();
   const doubleBookings = salesLoading ? 0 : isSalesRep ? rows.filter(r => r.profile_id === userId).length : count;
   const { data } = useQuery({

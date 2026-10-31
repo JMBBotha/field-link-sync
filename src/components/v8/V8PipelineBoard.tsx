@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSalesRep } from "@/hooks/useSalesRep";
+import { useOwnScope } from "@/hooks/useOwnScope";
 import { PipelineBookings } from "@/components/bookings/Bookings";
 import { useRole } from "@/hooks/useRole";
 import { useToast } from "@/hooks/use-toast";
@@ -30,8 +30,8 @@ export default function V8PipelineBoard() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { isAdmin } = useRole();
-  const { isSalesRep } = useSalesRep();
-  const ownOnly = isSalesRep && !isAdmin;
+  const { ownOnly: repOwn } = useOwnScope();
+  const ownOnly = repOwn && !isAdmin; // linked-admin sales login sees the company board
   const { data, isLoading, refetch } = usePipelineData();
   const staff = useQuoteStaffActions(() => { void refetch(); });
   const [rep, setRep] = useState("all");

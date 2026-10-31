@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/hooks/useRole";
 import { useSalesRep } from "@/hooks/useSalesRep";
+import { useOwnScope } from "@/hooks/useOwnScope";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useLeadSla } from "@/hooks/useLeadSla";
 import { isTestLead } from "@/lib/callSummary";
@@ -17,7 +18,8 @@ export function useHeartbeatAudience() {
 }
 
 export function useSalesHeartbeat(enabled = true) {
-  const { userId, isSalesRep, canSee } = useHeartbeatAudience();
+  const { userId, canSee } = useHeartbeatAudience();
+  const { ownOnly: isSalesRep } = useOwnScope(); // linked-admin sales login = company scope
   const { settings } = useCompanySettings();
   const { sla } = useLeadSla();
   const qc = useQueryClient();

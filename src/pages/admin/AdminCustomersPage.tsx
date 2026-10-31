@@ -240,7 +240,7 @@ const AdminCustomersPage = () => {
           <div className="flex gap-2 overflow-x-auto pb-1" data-testid="needs-attention">
             {money.overdueN > 0 && <AttCard tone="red" chip={`${money.overdueN} overdue`} text={topOverdue ? `${displayName(customers.find((c) => c.id === topOverdue[0]) || {} as any)} · ${topOverdue[1].maxLate}d late` : "clients owe money"} onClick={() => setOverdueOnly(true)} />}
             {quotesDue > 0 && <AttCard tone="amber" chip={`${quotesDue} quote${quotesDue === 1 ? "" : "s"}`} text="follow-up call due" onClick={() => navigate("/admin/quotes")} />}
-            {newLeads > 0 && <AttCard tone="sky" chip={`${newLeads} new lead${newLeads === 1 ? "" : "s"}`} text="not contacted yet" onClick={() => navigate("/admin/leads")} />}
+            {newLeads > 0 && <AttCard tone="sky" chip={`${newLeads} new lead${newLeads === 1 ? "" : "s"}`} text="not contacted yet" onClick={() => navigate("/admin/requests")} />}
           </div>
         </div>
       )}

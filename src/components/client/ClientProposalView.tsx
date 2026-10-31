@@ -578,9 +578,7 @@ const ClientProposalView = () => {
               By accepting this quote, you consent to {brandName || "us"} processing your personal information
               in accordance with the Protection of Personal Information Act (POPIA).
             </p>
-            <p className="text-xs text-muted-foreground">
-              <a href="#" className="underline hover:text-foreground">Privacy Policy</a> | <a href="#" className="underline hover:text-foreground">Terms & Conditions</a>
-            </p>
+            {/* Dead "#" Privacy/Terms links removed (audit 31 Oct #7): no company privacy/terms URL is stored yet. */}
           </div>
           <p className="text-xs text-muted-foreground mt-4">{brandName} © {new Date().getFullYear()}</p>
         </div>

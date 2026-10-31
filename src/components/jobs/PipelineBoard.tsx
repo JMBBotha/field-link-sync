@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/useRole";
-import { useSalesRep } from "@/hooks/useSalesRep";
+import { useOwnScope } from "@/hooks/useOwnScope";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { isTestLead } from "@/lib/callSummary";
@@ -85,7 +85,7 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
   const { toast } = useToast();
   const { user } = useAuth();
   const { isAdmin } = useRole();
-  const { isSalesRep } = useSalesRep();
+  const { ownOnly: isSalesRep } = useOwnScope();
   const { data, isLoading, refetch } = usePipelineData();
   const staff = useQuoteStaffActions(() => { void refetch(); });
   const [rep, setRep] = useState("all");

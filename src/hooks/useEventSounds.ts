@@ -1,3 +1,4 @@
+import { useOwnScope } from "@/hooks/useOwnScope";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useHeartbeatAudience } from "@/hooks/useSalesHeartbeat";
@@ -9,7 +10,8 @@ const fresh = (ts?: string | null) => !ts || Date.now() - new Date(ts).getTime()
 
 /** Plays event sounds from realtime lead/quote/invoice changes (RLS scopes them to the user's company). Admins + sales reps only; never techs. Mount once. */
 export function useEventSounds() {
-  const { canSee, isSalesRep, userId } = useHeartbeatAudience();
+  const { canSee, userId } = useHeartbeatAudience();
+  const { ownOnly: isSalesRep } = useOwnScope(); // linked-admin sales login hears company events
   useEffect(() => {
     if (!canSee) return;
     installAutoplayUnlock();

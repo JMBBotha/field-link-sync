@@ -42,7 +42,7 @@ import { hhmm, leadMinutes, fromMinutes, toMinutes, DEFAULT_JOB_MINUTES } from "
 import { overlapMap } from "@/lib/clash";
 import { useClashGuard } from "@/components/scheduling/ClashGuard";
 import { useDoubleBookings } from "@/hooks/useDoubleBookings";
-import { useSalesRep } from "@/hooks/useSalesRep";
+import { useOwnScope } from "@/hooks/useOwnScope";
 import { useRole } from "@/hooks/useRole";
 import { useIsMobile } from "@/hooks/use-mobile";
 import NeedsSomeoneTray from "@/components/calendar/NeedsSomeoneTray";
@@ -158,7 +158,8 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
   const { toast } = useToast();
   const { confirmBooking, dialog: clashDialog } = useClashGuard();
   const { count: allDoubleBookings, rows: doubleBookingRows } = useDoubleBookings();
-  const { isSalesRep, loading: salesLoading } = useSalesRep();
+  // Linked-admin sales login = company scope (shared rule, homeScope.ownScopeOnly).
+  const { ownOnly: isSalesRep, loading: salesLoading } = useOwnScope();
   const { userId, isAdmin, isDispatcher } = useRole();
   const mobile = useIsMobile();
   const doubleBookings = salesLoading ? 0 : isSalesRep ? doubleBookingRows.filter(r => r.profile_id === userId).length : allDoubleBookings;

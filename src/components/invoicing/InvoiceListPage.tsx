@@ -163,10 +163,12 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   const balOf = (inv: Invoice) => invoiceMoney(inv as any, payRows, creditRows).balance;
   const listFor = (state: string | null, chip = false) => {
     const base = invoices.filter((i: any) => showArchived ? !!i.archived_at : !i.archived_at);
-    const byState = state === "unpaid" ? base.filter(inv => isUnpaid(inv.status, balOf(inv))) : filterInvoices(base, chip ? { state: (state as any) ?? null } : { ...inf, state: (state as any) ?? null });
+    const byState = state === "unpaid" ? base.filter(inv => isUnpaid(inv.status, balOf(inv)))
+      // Overdue = past its due date with a balance (date-based, like the Money due tile); not the literal status (audit #4).
+      : state === "overdue" ? base.filter(inv => isUnpaid(inv.status, balOf(inv)) && unpaidBucket(inv.status, dueBy.get(inv.id) as any) === "overdue") : filterInvoices(base, chip ? { state: (state as any) ?? null } : { ...inf, state: (state as any) ?? null });
     const rows = byState
     .filter(inv => {
-      if (chip || !dueFilter || state === "unpaid") return true;
+      if (chip || !dueFilter || state === "unpaid" || state === "overdue") return true;
       const d = dueBy.get(inv.id); if (!d) return false;
       return dueFilter === "overdue" ? d.days > 0 : dueFilter === "today" ? d.days === 0 : dueFilter === "soon" ? d.days < 0 && d.days >= -7 : true;
     })

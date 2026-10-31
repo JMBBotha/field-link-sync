@@ -278,7 +278,6 @@ const App = () => (
                     <Route path="whatsapp" element={<Navigate to="/admin" replace />} />
                     {/* Dead sidebar links removed 19 Oct 2026; old addresses land somewhere useful. */}
                     <Route path="payments" element={<Navigate to="/admin/invoices" replace />} />
-                    <Route path="projects" element={<Navigate to="/admin/jobs?tab=pipeline" replace />} />
                     <Route path="portal" element={<Navigate to="/admin" replace />} />
                     <Route path="calls" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminCallsPage /></RequireRole>} />
                     <Route element={<V8SectionTabs section="documents" />}><Route path="pdf-documents" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminPDFDocumentsPage /></RequireRole>} /></Route>
