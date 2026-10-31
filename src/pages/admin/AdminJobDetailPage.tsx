@@ -44,6 +44,7 @@ import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import TechLocationBlock from "@/components/jobs/TechLocationBlock";
 import AdminBackfillPanel from "@/components/jobs/AdminBackfillPanel";
 import JobRunCard from "@/components/scheduling/JobRunCard";
+import JobVisitsCard from "@/components/jobs/JobVisits";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { attachPaymentTotals } from "@/lib/depositInvoice";
 import { jobStatusPatch, formatJohannesburg } from "@/lib/jobTimes";
@@ -316,6 +317,9 @@ const AdminJobDetailPage = () => {
         {/* Multi-day run progress (Day N of M, % done, expected end) */}
         <JobRunCard jobId={j.id} />
 
+        {/* Visits: each day with its own hours, plus total (Johan 31 Oct) */}
+        {j.lead_id && <JobVisitsCard jobId={j.id} />}
+
         {/* Linked invoice */}
         {invoice?.id && (
           <Card className="rounded-2xl">
@@ -501,7 +505,7 @@ const AdminJobDetailPage = () => {
       <MarkCompletedDialog key={`mc-${markOpen}`} jobId={j.id} open={markOpen} onOpenChange={setMarkOpen} suggestedAt={(j as any).scheduled_for} />
       {editableJobFields(jobPerms).any && (
         <EditJobDetailsSheet key={`ej-${editOpen}`} open={editOpen} onOpenChange={setEditOpen} jobId={j.id} companyId={j.company_id}
-          scheduledFor={j.scheduled_for ?? null} techId={assignedTech?.profileId ?? null} perms={{ admin: !!jobPerms?.admin, rep: !!jobPerms?.rep }} />
+          scheduledFor={j.scheduled_for ?? null} techId={assignedTech?.profileId ?? null} perms={{ admin: !!jobPerms?.admin, rep: !!jobPerms?.rep }} hasLead={!!j.lead_id} />
       )}
       <ReopenJobDialog key={`ro-${reopenOpen}`} jobId={j.id} open={reopenOpen} onOpenChange={setReopenOpen} />
     </div>
