@@ -11,6 +11,7 @@ import { useSalesRep } from "@/hooks/useSalesRep";
 import FieldPresenceBoard from "@/components/admin/FieldPresenceBoard";
 import SalesMyJobs from "@/components/jobs/SalesMyJobs";
 import V8RoleHome from "@/components/v8/V8RoleHome";
+import NextStepsPanel from "@/components/sales/NextStepsPanel";
 import { useV8Role } from "@/components/v8/V8Sidebar";
 
 import { Map, ExternalLink, Maximize2, Minimize2, LayoutTemplate } from "lucide-react";
@@ -107,6 +108,8 @@ const AdminHomePage = () => {
                 {isClassic ? "Switch to new view" : "Switch to classic view"}
               </Button>
             </div>
+            {/* Next steps to-do on top for sales + admin (Johan 31 Oct 2026). */}
+            {v8Role !== "tech" && <NextStepsPanel />}
             {!isClassic && v8Role !== "tech" && <V8RoleHome role={v8Role} />}
             {!isSalesRep && <FieldPresenceBoard />}
             {isSalesRep && <SalesMyJobs />}

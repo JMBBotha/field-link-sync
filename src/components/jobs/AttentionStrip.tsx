@@ -14,6 +14,7 @@ type Chip = { key: string; n: number; label: string; tone: "red" | "orange" | "b
 
 /** Needs-attention strip (counts only, test records hidden). Click a chip to go where it is fixed. */
 import { useNeedsReschedule } from "@/hooks/useNeedsReschedule";
+import { useNextSteps } from "@/hooks/useNextSteps";
 
 export default function AttentionStrip({ className }: { className?: string }) {
   const now = useNow();
@@ -46,6 +47,10 @@ export default function AttentionStrip({ className }: { className?: string }) {
     },
   });
   const { data: resched = [] } = useNeedsReschedule();
+  // Shared with the Next steps panel (same SQL), so the Jobs hub never counts differently.
+  const { rows: steps } = useNextSteps();
+  const nTech = steps.filter((s) => s.rule === "assign_tech").length;
+  const nFinal = steps.filter((s) => s.rule === "final_invoice" || s.rule === "final_unpaid").length;
   const leads = data?.leads || [];
   const clocks = leads.map((l) => leadClock(l, now, sla));
   const chips = ([
@@ -55,6 +60,8 @@ export default function AttentionStrip({ className }: { className?: string }) {
     { key: "late", n: data?.lateJobs || 0, label: "jobs late to start", tone: "red", to: "/admin/jobs?tab=dispatch&view=cards" },
     { key: "paid", n: data?.paidNoJob || 0, label: "deposits paid, no job booked", tone: "red", to: "/admin/jobs?tab=pipeline&view=stages" },
     { key: "resched", n: resched.length, label: resched.length === 1 ? "booking needs rescheduling" : "bookings need rescheduling", tone: "red", to: "/admin/jobs?tab=dispatch&view=calendar" },
+    { key: "tech", n: nTech, label: nTech === 1 ? "booked job without a technician" : "booked jobs without a technician", tone: "orange", to: "/admin/jobs?tab=dispatch&view=cards" },
+    { key: "final", n: nFinal, label: nFinal === 1 ? "final invoice to send or chase" : "final invoices to send or chase", tone: "orange", to: "/admin/invoices" },
     { key: "unassigned", n: leads.filter((l) => !l.assigned_agent_id).length, label: "unassigned leads", tone: "orange", to: "/admin/dispatch" },
     { key: "queued", n: clocks.filter((c) => c?.stage === 0).length, label: "after-hours leads queued", tone: "blue", to: "/admin/dispatch" },
   ] as Chip[]).filter((c) => c.n > 0);
