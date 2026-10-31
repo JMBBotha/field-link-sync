@@ -5,6 +5,8 @@ import { Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { dueChip, STEP_LABEL, randShort, type DueRow } from "@/lib/invoiceDue";
+import { onCompletionLabel } from "@/lib/balanceDue";
+import { PaymentReminderDialog } from "@/components/invoicing/PaymentReminderDialog";
 
 const TONE: Record<string, string> = {
   blue: "bg-[#E8F6FE] text-[#1590D6] dark:bg-sky-500/15 dark:text-sky-300", amber: "bg-[#FFF4E0] text-[#B5730A] dark:bg-amber-500/15 dark:text-amber-300", orange: "bg-[#FFEBDD] text-[#C2570C] dark:bg-orange-500/15 dark:text-orange-300", red: "bg-[#FDECEC] text-[#C9373C] dark:bg-red-500/15 dark:text-red-300",
@@ -28,10 +30,11 @@ export function FollowupReview({ row, onDone }: { row: DueRow; onDone?: () => vo
   const [subject, setSubject] = useState(row.followup_subject || `Invoice ${row.invoice_number || ""}`);
   const [body, setBody] = useState(row.followup_message || "");
   const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState(false);
   const refresh = () => { qc.invalidateQueries({ queryKey: ["invoice-due"] }); qc.invalidateQueries({ queryKey: ["payment-followups"] }); onDone?.(); };
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   if (row.waiting) return (
-    <div onClick={stop} className="mt-2 rounded-xl border bg-[#F3FAFE] p-3 text-sm text-muted-foreground">Due {row.terms_days ?? 30} days after the job is completed. No reminders until then.</div>);
+    <div onClick={stop} className="mt-2 rounded-xl border bg-[#F3FAFE] p-3 text-sm text-muted-foreground">{row.on_completion ? onCompletionLabel(row.install_at) : `Due ${row.terms_days ?? 30} days after the job is completed`}. No reminders until then.</div>);
   if (row.step === "plus14" && !row.followup_id) return (
     <div onClick={stop} className="mt-2 rounded-xl border border-[#F5C2C3] bg-[#FDECEC] p-3 text-sm text-[#8A1F23]">
       {row.days} days late · {randShort(row.amount_due)}. Owner to phone {row.customer_name || "the client"} personally. No more reminder emails are drafted.
@@ -46,14 +49,8 @@ export function FollowupReview({ row, onDone }: { row: DueRow; onDone?: () => vo
     toast.success(approve ? "Approved. Press Send email to send it once." : "Declined. Nothing will be sent.");
     refresh();
   };
-  const send = async () => {
-    if (!window.confirm(`Send this email to ${row.customer_name || "the client"}${row.customer_email ? ` (${row.customer_email})` : ""} now? It sends once.`)) return;
-    setBusy(true);
-    const { data, error } = await supabase.functions.invoke("send-reminder-email", { body: { followup_id: row.followup_id } });
-    setBusy(false);
-    if (error || !data?.success) return toast.error((data as any)?.error || error?.message || "Not sent");
-    toast.success(`Reminder emailed to ${data.sentTo}`); refresh();
-  };
+  // Branded reminder (shared brandedEmail.ts): preview, then Send. Never automatic (Johan 31 Oct 09:58).
+  const send = () => setPreview(true);
   const pending = row.followup_status === "pending";
   return (
     <div onClick={stop} className="mt-2 space-y-2 rounded-xl border border-[#BFE3F8] bg-[#F3FAFE] p-3 text-sm" data-testid="followup-review">
@@ -70,8 +67,9 @@ export function FollowupReview({ row, onDone }: { row: DueRow; onDone?: () => vo
       </>) : (<>
         <div className="font-semibold">{row.followup_subject}</div>
         <div className="whitespace-pre-wrap text-muted-foreground">{row.followup_message}</div>
-        <button disabled={busy} onClick={send} className="rounded-xl bg-[#1AA7EC] px-4 py-2 font-semibold text-white">Send email (once)</button>
+        <button disabled={busy} onClick={send} className="rounded-xl bg-[#1AA7EC] px-4 py-2 font-semibold text-white">Preview &amp; send email</button>
       </>)}
+      <PaymentReminderDialog followupId={row.followup_id} open={preview} onOpenChange={setPreview} onSent={refresh} />
     </div>
   );
 }

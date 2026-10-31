@@ -1,3 +1,4 @@
+import { PaymentReminderDialog } from "@/components/invoicing/PaymentReminderDialog";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, HandCoins, Mail, XCircle } from "lucide-react";
@@ -40,12 +41,7 @@ export default function AdminPaymentFollowupsPage() {
     refresh();
   };
 
-  const doSend = async (r: Row) => {
-    const { data, error } = await supabase.functions.invoke("send-reminder-email", { body: { followup_id: r.id } });
-    if (error || !data?.success) toast({ title: "Not sent", description: (data as any)?.error || error?.message || "Email failed", variant: "destructive" });
-    else toast({ title: "Email sent", description: `Reminder emailed to ${data.sentTo}.` });
-    setSend(null); refresh();
-  };
+
 
   const open = rows.filter((r) => r.status === "pending" || r.status === "approved");
   const done = rows.filter((r) => !(r.status === "pending" || r.status === "approved"));
@@ -88,13 +84,8 @@ export default function AdminPaymentFollowupsPage() {
       </div>
       {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : open.length ? open.map(card) : <Card><CardContent className="p-4 text-sm text-muted-foreground">Nothing waiting. No client will be chased without your approval.</CardContent></Card>}
       {!!done.length && <><h2 className="pt-2 text-sm font-medium text-muted-foreground">History</h2>{done.slice(0, 20).map(card)}</>}
-      <Dialog open={!!send} onOpenChange={(o) => !o && setSend(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Send this?</DialogTitle><DialogDescription>Email to {send?.customer_name}. This approval can be used once.</DialogDescription></DialogHeader>
-          <p className="whitespace-pre-wrap rounded-md bg-muted/50 p-2 text-sm">{send?.approved_message}</p>
-          <DialogFooter><Button variant="outline" onClick={() => setSend(null)}>Cancel</Button><Button onClick={() => send && doSend(send)}>Send</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Branded reminder on the shared template: preview, then Send (Johan 31 Oct). */}
+      <PaymentReminderDialog followupId={send?.id ?? null} open={!!send} onOpenChange={(o) => !o && setSend(null)} onSent={() => { setSend(null); refresh(); }} />
     </div>
   );
 }

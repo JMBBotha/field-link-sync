@@ -18,7 +18,8 @@ export function invoiceBalance(inv: MoneyInvoice, paid: Map<string, number>): nu
 }
 
 /** Summary used by client header + Invoices & Payments chips. Paid counts partial payments. */
-export function summarizeInvoices(invoices: MoneyInvoice[], payments: MoneyPayment[], now = new Date()) {
+/** effDue: due dates from rpc invoice_due_summary (Johan 31 Oct: balance due ON COMPLETION; waiting = never overdue). */
+export function summarizeInvoices(invoices: MoneyInvoice[], payments: MoneyPayment[], now = new Date(), effDue?: Map<string, { due?: string | null; waiting?: boolean }>) {
   const paid = paidByInvoice(payments);
   const s = { draft: 0, sent: 0, paid: 0, overdue: 0, outstanding: 0, paidValue: 0, paidInvoices: 0 };
   for (const inv of invoices as any[]) {
@@ -31,7 +32,9 @@ export function summarizeInvoices(invoices: MoneyInvoice[], payments: MoneyPayme
     const bal = st === "paid" ? 0 : invoiceBalance(inv, paid);
     if (st === "paid" || bal === 0) { s.paid++; continue; }
     s.outstanding += bal;
-    if (inv.due_date && new Date(inv.due_date) < now) s.overdue++; else s.sent++;
+    const eff = effDue?.get(inv.id);
+    const due = eff ? (eff.waiting ? null : eff.due) : inv.due_date;
+    if (due && new Date(due) < now) s.overdue++; else s.sent++;
   }
   s.outstanding = Math.round(s.outstanding * 100) / 100;
   s.paidValue = Math.round(s.paidValue * 100) / 100;
