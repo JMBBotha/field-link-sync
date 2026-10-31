@@ -43,3 +43,28 @@ export function waitingLabel(mins: number | null): string {
   if (mins < 48 * 60) return `${Math.floor(mins / 60)} h`;
   return `${Math.floor(mins / 1440)} days`;
 }
+
+export type Urgency = "green" | "orange" | "red";
+const H = 3600000, D = 24 * H, M = 60000;
+/** Time-urgency thresholds per rule (Johan 31 Oct 10:44): [orange from, red from], measured from `since`. */
+export const URGENCY: Record<NextStepRule, { orange: number; red: number; note: string }> = {
+  new_lead: { orange: 2 * M, red: 5 * M, note: "0-2 min green, 2-5 min orange, 5+ min red" },
+  no_quote: { orange: 1 * D, red: 2 * D, note: "visit day green, day 1-2 orange, 2+ days red" },
+  followup: { orange: 5 * D, red: 7 * D, note: "sent 0-5 days green, 5-7 orange, 7+ red" },
+  cold: { orange: 0, red: 20 * D, note: "Cold is orange; red in the last 10 days before archive (50+ days)" },
+  deposit_invoice: { orange: 4 * H, red: 1 * D, note: "accepted 0-4 h green, 4-24 h orange, 1+ day red" },
+  book_install: { orange: 2 * D, red: 3 * D, note: "deposit paid 0-2 days green, 2-3 orange, 3+ red" },
+  assign_tech: { orange: -3 * D, red: -1 * D, note: "install 3+ days away green, 1-3 days orange, under 1 day red" },
+  final_invoice: { orange: 1 * D, red: 2 * D, note: "completion day green, day 1 orange, 2+ days red" },
+  final_unpaid: { orange: 0, red: 0, note: "always red (already 2 days after completion)" },
+};
+export function urgency(row: Pick<NextStep, "rule" | "since">, now = Date.now()): Urgency {
+  const t = URGENCY[row.rule];
+  if (!row.since) return "green";
+  const age = now - new Date(row.since).getTime();
+  return age >= t.red ? "red" : age >= t.orange ? "orange" : "green";
+}
+const RANK: Record<Urgency, number> = { red: 0, orange: 1, green: 2 };
+export function worstUrgency(rows: NextStep[], now = Date.now()): Urgency {
+  return rows.reduce<Urgency>((w, r) => (RANK[urgency(r, now)] < RANK[w] ? urgency(r, now) : w), "green");
+}

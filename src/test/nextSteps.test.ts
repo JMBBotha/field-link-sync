@@ -19,3 +19,24 @@ describe("next steps", () => {
     expect(waitingLabel(3000)).toBe("2 days");
   });
 });
+
+import { urgency } from "@/lib/nextSteps";
+describe("time urgency colours", () => {
+  const now = new Date("2026-10-31T10:00:00Z").getTime();
+  const ago = (ms: number) => new Date(now - ms).toISOString();
+  it("new lead: green 0-2 min, orange 2-5, red 5+", () => {
+    expect(urgency({ rule: "new_lead", since: ago(60e3) }, now)).toBe("green");
+    expect(urgency({ rule: "new_lead", since: ago(3 * 60e3) }, now)).toBe("orange");
+    expect(urgency({ rule: "new_lead", since: ago(6 * 60e3) }, now)).toBe("red");
+  });
+  it("follow-up: green before day 5, orange 5-7, red after 7", () => {
+    expect(urgency({ rule: "followup", since: ago(4 * 864e5) }, now)).toBe("green");
+    expect(urgency({ rule: "followup", since: ago(6 * 864e5) }, now)).toBe("orange");
+    expect(urgency({ rule: "followup", since: ago(8 * 864e5) }, now)).toBe("red");
+  });
+  it("technician: by days until install", () => {
+    expect(urgency({ rule: "assign_tech", since: ago(-5 * 864e5) }, now)).toBe("green");
+    expect(urgency({ rule: "assign_tech", since: ago(-2 * 864e5) }, now)).toBe("orange");
+    expect(urgency({ rule: "assign_tech", since: ago(-0.5 * 864e5) }, now)).toBe("red");
+  });
+});
