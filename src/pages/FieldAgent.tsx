@@ -1263,7 +1263,7 @@ const FieldAgent = () => {
     <Layout footerLeftContent={footerLeftContent} hideFooterOnMobile>
       <div className="h-screen h-[100dvh] flex flex-col overflow-hidden pb-12">
         {/* Header - Cyan Theme */}
-        <header className="backdrop-blur border-b px-2 sm:px-3 md:px-4 py-2 md:py-3 flex items-center justify-between gap-2 min-w-0 z-20" style={{ backgroundColor: '#0077B6', borderColor: '#006699', color: '#FFFFFF', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}>
+        <header className="backdrop-blur border-b px-2 sm:px-3 md:px-4 py-2 md:py-3 flex items-center justify-between gap-2 min-w-0 z-20" style={{ backgroundColor: 'var(--v8-bar)', borderColor: 'var(--v8-bar-bd)', color: '#FFFFFF', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}>
           {/* Left: logo, office links (text at xl, icons at tablet, menu on phones), GPS state.
               The signed-in person is shown once, by the orange IdentityBadge on the right. */}
           <div className="flex min-w-0 items-center gap-1.5 md:gap-2 xl:gap-3">
@@ -1350,7 +1350,7 @@ const FieldAgent = () => {
         </header>
         <JobLocationShare />
         {/* Phones only: labelled availability strip under the header (row 1 keeps menu/logo/bell/avatar). */}
-        <div data-testid="field-mobile-strip" className="md:hidden flex h-11 shrink-0 items-center gap-1.5 border-b px-2 z-20" style={{ backgroundColor: '#0077B6', borderColor: '#006699' }}>
+        <div data-testid="field-mobile-strip" className="md:hidden flex h-11 shrink-0 items-center gap-1.5 border-b px-2 z-20" style={{ backgroundColor: 'var(--v8-bar)', borderColor: 'var(--v8-bar-bd)' }}>
           <AvailabilitySwitch labelled status={availability.status} onChange={changeAvailability} className="flex-1 max-w-[260px]" />
           <div className="ml-auto flex items-center">
             <AvailabilityIndicator status={availability.status} isInBufferWindow={availability.isInBufferWindow} nextAvailableText={availability.formatNextAvailable()} compact hideLabel />
