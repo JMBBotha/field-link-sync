@@ -1,6 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { isChunkLoadError, reloadOnceForStaleChunk } from "@/lib/chunkReload";
 
 interface Props {
   children: ReactNode;
@@ -23,6 +24,8 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // Stale chunk after a deploy: reload once (guarded); a second failure within 30s shows this screen.
+    if (isChunkLoadError(error) && reloadOnceForStaleChunk()) return;
     // Log with context for debugging
     console.error("[ErrorBoundary] Unhandled error:", {
       message: error.message,

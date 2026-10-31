@@ -1,9 +1,10 @@
-import { lazy } from "react";
+
+import { lazyRetry } from "@/lib/chunkReload";
 import { useSearchParams } from "react-router-dom";
 import { useRole } from "@/hooks/useRole";
 import FieldAgent from "./FieldAgent";
 
-const FieldTodayPage = lazy(() => import("./FieldTodayPage"));
+const FieldTodayPage = lazyRetry(() => import("./FieldTodayPage"));
 
 /** /field: pure technicians land on Today; admins/office and deep links (?lead=, ?view=) keep the full field view. */
 export default function FieldHome() {

@@ -1,4 +1,8 @@
 import { installFeedback } from "@/lib/feedback";
+import { installChunkReload } from "@/lib/chunkReload";
+
+// Stale lazy chunk after a deploy: one guarded hard reload (Johan 31 Oct 16:11).
+installChunkReload();
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";

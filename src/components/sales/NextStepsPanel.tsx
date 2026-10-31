@@ -12,9 +12,14 @@ import { useNow } from "@/hooks/useLeadSla";
 import { RULES, countByRule, minutesWaiting, waitingLabel, urgency, worstUrgency, type NextStep } from "@/lib/nextSteps";
 
 // Calm colours by time urgency (Johan 31 Oct 10:44): soft tint + coloured left edge / dot, never full red blocks.
-const CHIP = { green: "border-success/40 bg-success/10 text-success", orange: "border-warning/50 bg-warning/10 text-warning-foreground", red: "border-destructive/40 bg-destructive/10 text-destructive" };
+// Readable on dark too (Johan 31 Oct 16:14): light tint text on a dark tint, all >= 4.5:1 (see test).
+export const CHIP = {
+  green: "border-success/40 bg-success/10 text-[#166534] dark:border-[#16A34A]/60 dark:bg-[#16A34A]/20 dark:text-[#86EFAC]",
+  orange: "border-warning/50 bg-warning/10 text-[#9A3412] dark:border-[#EA8C0C]/60 dark:bg-[#EA8C0C]/20 dark:text-[#FDBA74]",
+  red: "border-destructive/40 bg-destructive/10 text-[#B91C1C] dark:border-[#DC2626]/60 dark:bg-[#DC2626]/20 dark:text-[#FCA5A5]",
+};
 const CARD = { green: "border-l-success bg-success/5", orange: "border-l-warning bg-warning/10", red: "border-l-destructive bg-destructive/5" };
-const DOT = { green: "bg-success", orange: "bg-warning", red: "bg-destructive" };
+export const DOT = { green: "bg-[#22C55E]", orange: "bg-[#F59E0B]", red: "bg-[#EF4444]" };
 const money = (n: number | null) => (n == null ? "" : `R ${Math.round(n).toLocaleString("en-ZA").replace(/,/g, " ")}`);
 
 function SnoozeDialog({ row, onClose, onSave }: { row: NextStep | null; onClose: () => void; onSave: (o: { until?: Date; dismiss?: boolean; reason: string }) => Promise<void> }) {
@@ -97,7 +102,7 @@ export default function NextStepsPanel({ className }: { className?: string }) {
         const l = leads[0]; const mins = minutesWaiting(l.since, now);
         return (
           <div className={cn("rounded-xl border border-l-[6px] p-3.5", CARD[urgency(l, now)])} data-testid="next-steps-urgent">
-            <div className="flex items-center gap-2 text-base font-bold"><span className={cn("h-2.5 w-2.5 rounded-full", DOT[urgency(l, now)])} />New lead waiting · {waitingLabel(mins)}</div>
+            <div className="flex items-center gap-2 text-base font-bold"><span className={cn("h-[10px] w-[10px] shrink-0 rounded-full", DOT[urgency(l, now)])} />New lead waiting · {waitingLabel(mins)}</div>
             <div className="text-sm text-muted-foreground">{l.detail}{leads.length > 1 ? ` · ${leads.length - 1} more waiting` : ""}</div>
             <div className="mt-2 flex gap-2">
               <Button asChild size="sm"><Link to={l.link}>Open lead</Link></Button>
@@ -110,7 +115,7 @@ export default function NextStepsPanel({ className }: { className?: string }) {
         <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
           {shown.map((r) => (
             <div key={r.rule + r.entity_id} className={cn("rounded-xl border border-l-[5px] p-3", CARD[urgency(r, now)])} data-testid={`next-step-${r.rule}`}>
-              <div className="flex items-center gap-2 font-semibold"><span className={cn("h-2 w-2 shrink-0 rounded-full", DOT[urgency(r, now)])} /><span className="truncate">{r.title}</span></div>
+              <div className="flex items-center gap-2 font-semibold"><span className={cn("h-[10px] w-[10px] shrink-0 rounded-full", DOT[urgency(r, now)])} /><span className="truncate">{r.title}</span></div>
               <div className="text-xs text-muted-foreground">{[r.detail, money(r.amount)].filter(Boolean).join(" · ")}</div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <Button asChild size="sm"><Link to={r.link}>{RULES[r.rule].action}</Link></Button>
