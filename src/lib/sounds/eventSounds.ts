@@ -1,3 +1,4 @@
+import { vibrate } from "@/lib/feedback";
 /** Dashboard event sounds (Johan 20 Oct). Per-user mute/volume in localStorage; queue with max one sound per 4 s; a burst plays only its highest-value event once. */
 export type SoundEvent = "new_lead" | "deal_closed" | "deposit_paid" | "final_payment";
 export const SOUND_SRC: Record<SoundEvent, string> = {
@@ -63,4 +64,4 @@ export function playNow(e: SoundEvent, force = false) {
   try { const a = el(e); a.volume = p.volume; a.currentTime = 0; void a.play().catch(() => {}); } catch { /* blocked */ }
 }
 const queue = typeof window !== "undefined" ? createSoundQueue((e) => playNow(e)) : null;
-export function queueSound(e: SoundEvent) { if (!getSoundPrefs().muted) queue?.push(e); }
+export function queueSound(e: SoundEvent) { if (e === "new_lead") vibrate("alert"); if (!getSoundPrefs().muted) queue?.push(e); }

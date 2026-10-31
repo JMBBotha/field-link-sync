@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { feedback } from "@/lib/feedback";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -63,7 +64,7 @@ const OfferCards = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "offers", filter: `staff_id=eq.${user.id}` },
-        () => load(),
+        (p: any) => { if (p?.eventType === "INSERT") feedback("alert"); load(); },
       )
       .subscribe();
     return () => {

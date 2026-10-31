@@ -1,3 +1,4 @@
+import { feedbackForToast } from "@/lib/feedback";
 import * as React from "react";
 
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
@@ -135,6 +136,7 @@ function dispatch(action: Action) {
 type Toast = Omit<ToasterToast, "id">;
 
 function toast({ ...props }: Toast) {
+  try { feedbackForToast(props as any); } catch { /* never block a toast */ }
   const id = genId();
 
   const update = (props: ToasterToast) =>
