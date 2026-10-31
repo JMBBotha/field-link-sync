@@ -1,4 +1,5 @@
 import { useState } from "react";
+import BackButton from "@/components/shared/BackButton";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useCompany } from "@/providers/CompanyProvider";
 import { useTheme } from "@/hooks/useTheme";
@@ -152,10 +153,11 @@ const FBLayout = () => {
       {/* Main column */}
       <div className="flex flex-col flex-1 min-w-0 h-screen">
         {/* Top Header Bar */}
-        <header className="sticky top-0 z-30 bg-primary text-primary-foreground">
+        <header style={{ paddingTop: "env(safe-area-inset-top, 0px)" }} className="sticky top-0 z-30 bg-primary text-primary-foreground">
           <div className="flex items-center justify-between h-14 px-4 md:px-6">
             {/* Left: hamburger + logo (mobile only) */}
             <div className="flex items-center gap-3">
+              <BackButton className="-ml-2" />
               {isMobile && (
                 <>
                   <Button

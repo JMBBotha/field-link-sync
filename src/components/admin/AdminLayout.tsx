@@ -1,4 +1,5 @@
 import JobLocationShare from "@/components/jobs/JobLocationShare";
+import BackButton from "@/components/shared/BackButton";
 import { useEffect, useRef, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ContractGate } from "@/components/plans/ContractGate";
@@ -237,6 +238,7 @@ const AdminLayout = () => {
         ) : (
         <header style={{ paddingTop: "env(safe-area-inset-top, 0px)" }} className="v8-bar-hdr box-content shrink-0 h-14 border-b flex items-center justify-between px-2 sm:px-4 gap-2 z-20 bg-[var(--v8-bar)] dark:bg-gradient-to-r dark:from-[#070e1a] dark:via-[#153258]/90 dark:to-[#070e1a] border-[var(--v8-bar-bd)] dark:border-[#153258]">
           <div className="flex items-center gap-2 min-w-0 flex-1">
+            <BackButton />
             <Button
               variant="ghost"
               size="icon"
