@@ -30,8 +30,10 @@ import RequireRole from "@/components/RequireRole";
 import AssignTechDialog from "@/components/jobs/AssignTechDialog";
 import { useRole } from "@/hooks/useRole";
 import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
-import { PhotoGallery } from "@/components/PhotoGallery";
-import SitePhotosSection from "@/components/photos/SitePhotosSection";
+import JobPhotosCard from "@/components/jobs/JobPhotosCard";
+import { MarkCompletedDialog, ReopenJobDialog } from "@/components/jobs/JobAdminStatusDialogs";
+import { useJobPermissions } from "@/hooks/useJobPermissions";
+import { jobActionBar, completedLabel } from "@/lib/jobActionBar";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useToast } from "@/hooks/use-toast";
 import { JobDetailSkeleton } from "@/components/ui/skeletons";
@@ -69,9 +71,12 @@ const AdminJobDetailPage = () => {
   const qc = useQueryClient();
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [markOpen, setMarkOpen] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
   const statusUndo = useUndoAction();
   const { canAccessAdmin, isAdmin } = useRole();
   const { isSalesRep } = useSalesRep();
+  const { data: jobPerms } = useJobPermissions(id);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ["job-detail", id],
@@ -191,6 +196,8 @@ const AdminJobDetailPage = () => {
   }
 
   const j: any = job;
+  // Sales logins can't change status themselves (server trigger), unless assigned as the tech.
+  const bar = jobActionBar(j.status, jobPerms, !isSalesRep || !!jobPerms?.tech);
   const location = j.customer_locations;
   const invoice = depositInvoice ?? j.invoices;
 
@@ -367,15 +374,11 @@ const AdminJobDetailPage = () => {
           </Card>
         )}
 
-        {/* Photos (only when the job originated from a lead) */}
+        {/* Photos: Site / Before / After with counts (Johan 31 Oct) */}
         {j.lead_id && (
           <Card className="rounded-2xl">
-            <CardContent className="p-4 md:p-5 space-y-3">
-              <h3 className="font-semibold text-sm flex items-center gap-1.5">
-                <ImageIcon className="h-4 w-4 text-muted-foreground" /> Photos
-              </h3>
-              <SitePhotosSection leadId={j.lead_id} />
-              <PhotoGallery leadId={j.lead_id} isOnline={isOnline} compact />
+            <CardContent className="p-4 md:p-5">
+              <JobPhotosCard leadId={j.lead_id} />
             </CardContent>
           </Card>
         )}
@@ -399,8 +402,8 @@ const AdminJobDetailPage = () => {
         </Card>
       </div>
 
-      {/* Sticky action bar — mobile-first: Call · Navigate · Start/Complete */}
-      {(j.status === "scheduled" || j.status === "dispatched" || j.status === "in_progress") && (
+      {/* Sticky action bar follows the job status (Johan 31 Oct) */}
+      {(
         <div className="sticky-action-bar">
           <div className="sticky-action-bar-inner">
             {/* Quick action: Call customer */}
@@ -441,8 +444,7 @@ const AdminJobDetailPage = () => {
               );
             })()}
 
-            {/* Primary contextual action */}
-            {(j.status === "scheduled" || j.status === "dispatched") && (
+            {bar.primary === "start" && (
               <Button
                 className="sticky-action-primary bg-primary hover:bg-primary/90 text-white"
                 onClick={() => changeStatus("in_progress")}
@@ -455,7 +457,7 @@ const AdminJobDetailPage = () => {
                 )}
               </Button>
             )}
-            {j.status === "in_progress" && (
+            {bar.primary === "complete" && (
               <Button
                 className="sticky-action-primary bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => changeStatus("completed")}
@@ -468,9 +470,29 @@ const AdminJobDetailPage = () => {
                 )}
               </Button>
             )}
+            {bar.canMarkCompleted && (
+              <Button
+                variant={bar.primary ? "outline" : "default"}
+                className={bar.primary ? "min-h-[48px] px-2 text-sm shrink-0" : "sticky-action-primary bg-green-600 hover:bg-green-700 text-white"}
+                onClick={() => setMarkOpen(true)}
+                data-testid="mark-completed-btn"
+              >
+                <CheckCircle2 className="h-5 w-5" /> {bar.primary ? "Mark done" : "Mark completed"}
+              </Button>
+            )}
+            {bar.completedBadge && (
+              <div className="sticky-action-primary flex items-center justify-center gap-1.5 rounded-xl bg-green-50 text-green-800 border border-green-200 text-xs leading-tight font-semibold px-2 dark:bg-green-950/40 dark:text-green-300 dark:border-green-900" data-testid="completed-badge">
+                <CheckCircle2 className="h-5 w-5" /> {completedLabel((j as any).completed_at)}
+              </div>
+            )}
+            {bar.canReopen && (
+              <Button variant="outline" className="min-h-[48px] px-3" onClick={() => setReopenOpen(true)} data-testid="reopen-btn">Reopen</Button>
+            )}
           </div>
         </div>
       )}
+      <MarkCompletedDialog key={`mc-${markOpen}`} jobId={j.id} open={markOpen} onOpenChange={setMarkOpen} suggestedAt={(j as any).scheduled_for} />
+      <ReopenJobDialog key={`ro-${reopenOpen}`} jobId={j.id} open={reopenOpen} onOpenChange={setReopenOpen} />
     </div>
   );
 };
