@@ -1263,7 +1263,7 @@ const FieldAgent = () => {
     <Layout footerLeftContent={footerLeftContent} hideFooterOnMobile>
       <div className="h-screen h-[100dvh] flex flex-col overflow-hidden pb-12">
         {/* Header - Cyan Theme */}
-        <header className="backdrop-blur border-b px-2 sm:px-3 md:px-4 py-2 md:py-3 flex items-center justify-between gap-2 min-w-0 z-20" style={{ backgroundColor: 'var(--v8-bar)', borderColor: 'var(--v8-bar-bd)', color: '#FFFFFF', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}>
+        <header className="v8-bar-hdr backdrop-blur border-b px-2 sm:px-3 md:px-4 py-2 md:py-3 flex items-center justify-between gap-2 min-w-0 z-20" style={{ backgroundColor: 'var(--v8-bar)', borderColor: 'var(--v8-bar-bd)', color: '#FFFFFF', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}>
           {/* Left: logo, office links (text at xl, icons at tablet, menu on phones), GPS state.
               The signed-in person is shown once, by the orange IdentityBadge on the right. */}
           <div className="flex min-w-0 items-center gap-1.5 md:gap-2 xl:gap-3">
