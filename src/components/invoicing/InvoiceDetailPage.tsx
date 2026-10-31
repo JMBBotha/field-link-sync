@@ -325,7 +325,12 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         </div>
       </div>
 
-      <BalanceDueBlock invoiceId={invoice.id} />
+      <BalanceDueBlock invoiceId={invoice.id} onRecordPayment={() => {
+        const box = document.getElementById("invoice-payment-recorder");
+        const form = box?.querySelector<HTMLElement>('[data-testid="record-payment-form"]');
+        (form || box)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => form?.querySelector<HTMLInputElement>('input[type="number"]')?.focus(), 350);
+      }} />
       {!(Number((invoice as any).deposit_amount) > 0) && <InvoiceDueDateEdit invoice={invoice} onDone={() => { fetchInvoice(); onUpdate?.(); }} />}
       {/* FreshBooks-style invoice document (screen + print/PDF) */}
       <InvoiceDocument

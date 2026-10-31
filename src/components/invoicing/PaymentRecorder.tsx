@@ -365,7 +365,7 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, credited = 0, onChange }: Pa
 
         {/* Add payment form */}
         {outstanding > 0 && (
-          <div className="border-t pt-3 space-y-2">
+          <div className="border-t pt-3 space-y-2" data-testid="record-payment-form">
             <p className="text-xs font-medium">Record Payment</p>
             <div className="grid grid-cols-2 gap-2">
               <div>
