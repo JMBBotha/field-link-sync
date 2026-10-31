@@ -9,3 +9,6 @@ export const homeScope = (role: string, linkedAdmin: string | null | undefined):
   role === "sales" && !linkedAdmin ? "own" : "company";
 export const quoteInScope = (q: { sales_engineer_id?: string | null }, scope: HomeScope, userId: string | null | undefined) =>
   scope === "company" || (!!userId && q.sales_engineer_id === userId);
+/** One shared rule (Johan 31 Oct t2022u/t2023u): a sales login linked to an admin account works company-wide;
+ * only a plain sales rep is limited to their own records. Use at every own-filter call site. */
+export const ownScopeOnly = (isSalesRep: boolean, linkedAdmin: string | null | undefined) => isSalesRep && !linkedAdmin;

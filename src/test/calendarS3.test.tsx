@@ -11,6 +11,7 @@ import AttentionStrip from "@/components/jobs/AttentionStrip";
 const state = vi.hoisted(() => ({ count: 1, sales: false, mobile: false }));
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => state.mobile }));
 vi.mock("@/hooks/useSalesRep", () => ({ useSalesRep: () => ({ isSalesRep: state.sales, loading: false }) }));
+vi.mock("@/hooks/useLinkedAdmin", () => ({ useLinkedAdmin: () => ({ data: null, isLoading: false }) }));
 vi.mock("@/hooks/useRole", () => ({ useRole: () => ({ userId: "me" }) }));
 vi.mock("@/hooks/useDoubleBookings", () => ({ useDoubleBookings: () => ({ count: state.count, rows: [{ profile_id: "me" }, { profile_id: "other" }] }) }));
 vi.mock("@/hooks/useLeadSla", () => ({ useNow: () => new Date(), useLeadSla: () => ({ sla: { contactMinutes: 15 } }) }));
