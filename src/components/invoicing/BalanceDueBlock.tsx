@@ -17,7 +17,7 @@ export function useBalanceInfo(invoiceId?: string | null) {
 }
 
 /** Installation · Deposit · Balance · Final payment, on every client view (Johan 31 Oct 09:56). Edits are logged server-side. */
-export function BalanceDueBlock({ invoiceId, compact, className }: { invoiceId: string; compact?: boolean; className?: string }) {
+export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment }: { invoiceId: string; compact?: boolean; className?: string; onRecordPayment?: () => void }) {
   const qc = useQueryClient();
   const { data: b } = useBalanceInfo(invoiceId);
   const [edit, setEdit] = useState<"install" | "due" | null>(null);
@@ -55,7 +55,11 @@ export function BalanceDueBlock({ invoiceId, compact, className }: { invoiceId: 
         <div className={cell}><div className={lab}>Balance</div><div className="text-sm font-bold">{rand(b.balance)}</div></div>
         <div className={cell}><div className={lab}>Final payment</div>
           <div className={cn("text-sm font-semibold", TONE[final.tone])} data-testid="final-payment-line">{final.label}
-            {b.can_edit_due && !closed && editBtn("due", b.due_manual && b.due ? b.due : "")}</div></div>
+            {b.can_edit_due && !closed && editBtn("due", b.due_manual && b.due ? b.due : "")}</div>
+          {onRecordPayment && !closed && b.balance > 0.005 && (
+            <button type="button" data-testid="final-tile-record-payment" onClick={onRecordPayment}
+              className="mt-1.5 w-full rounded-xl bg-[#1AA7EC] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1590D6]">Record payment</button>)}
+        </div>
       </div>
       {edit && (
         <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
