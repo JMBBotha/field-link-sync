@@ -39,3 +39,18 @@ describe("helpers", () => {
     expect(photoSummary({ site: 0, before: 0, after: 0 }).empty).toBe(true);
   });
 });
+
+import { editableJobFields, canAddJobPhotos } from "@/lib/jobEdit";
+describe("job edit permissions", () => {
+  it("admin edits everything; rep only date/time + notes", () => {
+    expect(editableJobFields({ admin: true, rep: false })).toEqual({ any: true, schedule: true, notes: true, tech: true, units: true });
+    expect(editableJobFields({ admin: false, rep: true })).toEqual({ any: true, schedule: true, notes: true, tech: false, units: false });
+    expect(editableJobFields({ admin: false, rep: false }).any).toBe(false);
+  });
+  it("photos: tech, rep, admin or office staff", () => {
+    expect(canAddJobPhotos({ admin: false, rep: false, tech: true }, false)).toBe(true);
+    expect(canAddJobPhotos({ admin: false, rep: true, tech: false }, false)).toBe(true);
+    expect(canAddJobPhotos({ admin: false, rep: false, tech: false }, true)).toBe(true);
+    expect(canAddJobPhotos({ admin: false, rep: false, tech: false }, false)).toBe(false);
+  });
+});

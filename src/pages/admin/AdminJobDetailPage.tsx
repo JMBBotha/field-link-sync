@@ -31,6 +31,9 @@ import AssignTechDialog from "@/components/jobs/AssignTechDialog";
 import { useRole } from "@/hooks/useRole";
 import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import JobPhotosCard from "@/components/jobs/JobPhotosCard";
+import AddJobPhotosButton from "@/components/jobs/AddJobPhotosButton";
+import EditJobDetailsSheet from "@/components/jobs/EditJobDetailsSheet";
+import { editableJobFields, canAddJobPhotos } from "@/lib/jobEdit";
 import { MarkCompletedDialog, ReopenJobDialog } from "@/components/jobs/JobAdminStatusDialogs";
 import { useJobPermissions } from "@/hooks/useJobPermissions";
 import { jobActionBar, completedLabel } from "@/lib/jobActionBar";
@@ -73,6 +76,7 @@ const AdminJobDetailPage = () => {
   const [assignOpen, setAssignOpen] = useState(false);
   const [markOpen, setMarkOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const statusUndo = useUndoAction();
   const { canAccessAdmin, isAdmin } = useRole();
   const { isSalesRep } = useSalesRep();
@@ -213,6 +217,9 @@ const AdminJobDetailPage = () => {
             <span className="min-w-0 truncate text-sm font-medium" data-testid="job-tech">
               {assignedTech ? assignedLabel(assignedTech.name, jhbDate((job as any)?.scheduled_for), jhbTime((job as any)?.scheduled_for)) : <span className="text-muted-foreground">No tech yet</span>}
             </span>
+            {editableJobFields(jobPerms).any && (
+              <Button variant="outline" size="sm" className="shrink-0" onClick={() => setEditOpen(true)} data-testid="job-edit">Edit</Button>
+            )}
             {canAccessAdmin && !isSalesRep && (assignedTech ? (
               <details className="relative shrink-0" data-testid="job-more">
                 <summary className="inline-flex h-9 cursor-pointer list-none items-center rounded-md border px-3 text-sm">More</summary>
@@ -378,7 +385,7 @@ const AdminJobDetailPage = () => {
         {j.lead_id && (
           <Card className="rounded-2xl">
             <CardContent className="p-4 md:p-5">
-              <JobPhotosCard leadId={j.lead_id} />
+              <JobPhotosCard leadId={j.lead_id} addSlot={canAddJobPhotos(jobPerms, canAccessAdmin && !isSalesRep) ? <AddJobPhotosButton leadId={j.lead_id} defaultType={j.status === "completed" || j.status === "in_progress" ? "after" : "before"} /> : null} />
             </CardContent>
           </Card>
         )}
@@ -492,6 +499,10 @@ const AdminJobDetailPage = () => {
         </div>
       )}
       <MarkCompletedDialog key={`mc-${markOpen}`} jobId={j.id} open={markOpen} onOpenChange={setMarkOpen} suggestedAt={(j as any).scheduled_for} />
+      {editableJobFields(jobPerms).any && (
+        <EditJobDetailsSheet key={`ej-${editOpen}`} open={editOpen} onOpenChange={setEditOpen} jobId={j.id} companyId={j.company_id}
+          scheduledFor={j.scheduled_for ?? null} techId={assignedTech?.profileId ?? null} perms={{ admin: !!jobPerms?.admin, rep: !!jobPerms?.rep }} />
+      )}
       <ReopenJobDialog key={`ro-${reopenOpen}`} jobId={j.id} open={reopenOpen} onOpenChange={setReopenOpen} />
     </div>
   );
