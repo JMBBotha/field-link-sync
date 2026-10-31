@@ -146,15 +146,18 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 
 
   return (
-    <header className="fl-qb-header shrink-0 flex flex-wrap items-center justify-between gap-2 px-2 sm:px-4 py-2" data-testid="qb-header">
+    <header className="fl-qb-header relative z-30 shrink-0 flex flex-wrap items-center justify-between gap-2 px-2 sm:px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top,0px))]" data-testid="qb-header">
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
           onClick={onBack}
-          className="fl-qb-round h-9 w-9 rounded-full">
+          aria-label="Back"
+          data-testid="qb-back"
+          className="fl-qb-round h-9 w-auto rounded-full px-3 gap-1">
 
           <ArrowLeft className="h-4 w-4" />
+          <span className="text-xs font-semibold">Back</span>
         </Button>
         <img src={logo} alt="Logo" className="lg:hidden" style={{ height: "36px" }} />
         <div className="min-w-0">

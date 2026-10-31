@@ -592,7 +592,29 @@ const AdminCustomerDetailPage = () => {
                     </div>
                   )}
                   <SendQuotesTogetherDialog open={bundleOpen} onOpenChange={setBundleOpen} quoteIds={pickedQuotes} onSent={() => setPickedQuotes([])} />
-                  <div className="max-h-[560px] overflow-auto px-2 md:px-4 pb-6">
+                  <ul className="md:hidden space-y-2 px-2 pb-4" data-testid="client-quote-cards">
+                    {fQuotes.map((q: any) => (
+                      <li key={q.id} data-testid="client-quote-card" className="rounded-xl border bg-card p-3 cursor-pointer active:bg-muted/50" onClick={() => navigate(`/admin/quote-builder?quoteId=${q.id}`)}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold">{q.quote_number || "—"}</div>
+                            <div className="text-xs text-muted-foreground">{q.created_at ? format(new Date(q.created_at), "dd MMM yyyy") : "—"}</div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-base font-bold tabular-nums">{formatRand(Number(q.total || 0))}</div>
+                            <div className="text-[10px] text-muted-foreground">incl. VAT</div>
+                          </div>
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <Badge variant="outline" className={cn("text-xs", statusBadge(q.status))}>{q.status || "draft"}</Badge>
+                          <DraftNeedsChip needs={draftNeeds[q.id]} />
+                        </div>
+                        {(q.client_summary || q.notes) && <div className="mt-1.5 line-clamp-2 break-words text-xs text-muted-foreground">{q.client_summary || q.notes}</div>}
+                      </li>
+                    ))}
+                    {fQuotes.length === 0 && <li className="py-4 text-center text-sm text-muted-foreground">No quotes yet.</li>}
+                  </ul>
+                  <div className="hidden md:block max-h-[560px] overflow-auto px-2 md:px-4 pb-6">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -600,7 +622,7 @@ const AdminCustomerDetailPage = () => {
                           <TableHead>Quote #</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Date</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead className="text-right">Total incl. VAT</TableHead>
                           <TableHead>Status</TableHead>
                           {isAdmin && <TableHead className="w-10"><span className="sr-only">Actions</span></TableHead>}
                         </TableRow>

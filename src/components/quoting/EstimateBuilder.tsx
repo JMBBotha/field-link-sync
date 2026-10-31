@@ -714,7 +714,7 @@ export default function EstimateBuilder({
       );
       return (
         <div data-testid="live-preview-layout" className="fl-builder" data-side-by-side={sideBySide ? "true" : "false"}>
-          <div className={`fl-builder-bar ${isWide ? "sticky top-2 z-20" : ""} mb-3 flex flex-wrap items-center justify-end gap-2 print:hidden`} data-html2canvas-ignore data-pdf-hide>
+          <div className={`fl-builder-bar ${isWide || narrowTab === "client" ? "sticky top-2 z-20" : ""} mb-3 flex flex-wrap items-center justify-end gap-2 print:hidden`} data-html2canvas-ignore data-pdf-hide>
             <span className="mr-auto" aria-hidden />
             {quoteId && meta && <RelocationClauseSwitch quoteId={quoteId} value={(meta as any).relocation_clause ?? null} lines={(items as any[]).flatMap((i) => [i.item_name, i.description])} onChanged={() => { void refetch(); }} />}
             {(isWide || narrowTab === "client") && <DocumentStyleSwitch companyId={meta?.company_id ?? null} onPicked={() => { if (isWide) setShowPreview(true); else setNarrowTab("client"); }} />}
