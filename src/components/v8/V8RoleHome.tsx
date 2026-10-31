@@ -4,6 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSignedInIdentity } from "@/hooks/useSignedInIdentity";
 import { useLeadInbox } from "@/hooks/useLeadInbox";
+import { useLinkedAdmin } from "@/hooks/useLinkedAdmin";
+import { homeScope, quoteInScope } from "@/lib/homeScope";
 import { Button } from "@/components/ui/button";
 import { buildDeals, fmtRandShort } from "@/lib/quotePipeline";
 import { V8_COLS, v8ColOf, type V8Col } from "@/lib/v8Flow";
@@ -25,11 +27,13 @@ export default function V8RoleHome({ role }: { role: V8Role }) {
   const identity = useSignedInIdentity();
   const { data } = usePipelineData();
   const { leads: inbox, count: inboxCount } = useLeadInbox();
-  const own = role === "sales";
+  const linked = useLinkedAdmin();
+  // Sales login linked to an admin account counts company-wide; a plain rep counts their own quotes.
+  const own = homeScope(role, linked.data) === "own";
   const s = useMemo(() => {
     const out = { count: {} as Record<V8Col, number>, value: {} as Record<V8Col, number>, month: 0, needs: [] as Item[], next: null as Item | null };
     if (!data) return out;
-    const qs = own ? data.quotes.filter((q) => q.sales_engineer_id === user?.id) : data.quotes;
+    const qs = data.quotes.filter((q) => quoteInScope(q, own ? "own" : "company", user?.id));
     const m0 = new Date(); m0.setDate(1); m0.setHours(0, 0, 0, 0);
     const accepted: Item[] = [], viewed: Item[] = [], unpaid: Item[] = [];
     buildDeals(qs, data.invoices as any, data.jobs as any).forEach((d) => {
