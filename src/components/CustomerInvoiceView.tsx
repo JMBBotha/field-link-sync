@@ -8,7 +8,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, FileText, Download, Clock, CheckCircle } from "lucide-react";
 import PayfastPayButton from "@/components/payments/PayfastPayButton";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
-import { attachPaymentTotals } from "@/lib/depositInvoice";
 import { format } from "date-fns";
 import logo from "@/assets/logo.png";
 import { publicCustomerUrl } from "@/lib/publicAppUrl";
@@ -73,30 +72,11 @@ const CustomerInvoiceView = () => {
 
       setCustomerId(custId);
 
-      // Get customer's leads
-      const { data: leads } = await supabase
-        .from("leads")
-        .select("id")
-        .eq("customer_id", custId);
-
-      const leadIds = leads?.map((l) => l.id) || [];
-
-      if (leadIds.length === 0) {
-        setInvoices([]);
-        return;
-      }
-
-      // Fetch invoices for customer's leads
-      const { data: invoicesData, error: invError } = await supabase
-        .from("invoices")
-        .select("*")
-        .in("lead_id", leadIds)
-        .order("created_at", { ascending: false });
-
+      // Read through the token (anon cannot read invoices directly).
+      const { data: invoicesData, error: invError } = await (supabase.rpc as any)("get_customer_invoices_public", { p_token: token });
       if (invError) throw invError;
 
-      // Parse line_items for each invoice
-      const parsedInvoices = (invoicesData || []).filter((inv: any) => !["void", "cancelled", "draft"].includes(String(inv.status || ""))).map((inv) => ({
+      const parsedInvoices = ((invoicesData as any[]) || []).map((inv: any) => ({
         ...inv,
         line_items: Array.isArray(inv.line_items)
           ? inv.line_items
@@ -104,8 +84,11 @@ const CustomerInvoiceView = () => {
           ? JSON.parse(inv.line_items)
           : [],
       })) as Invoice[];
+      for (const inv of parsedInvoices as any[]) {
+        const paid = Number(inv.amount_paid) || 0;
+        inv.remaining = Math.max(0, (Number(inv.grand_total) || 0) - paid);
+      }
 
-      await attachPaymentTotals(parsedInvoices as any[]);
       setInvoices([...parsedInvoices]);
 
       // If specific invoice requested, select it
