@@ -1,5 +1,6 @@
+/* App top bar + phone tab bar colour (light mode): --v8-bar. */
 /* Field Lynk v8 Simple shell. One calm accent (#1590D6/#1AA7EC); orange only for alerts. */
-:root{--v8-b1:#1AA7EC;--v8-b2:#1590D6;--v8-side:#F4F8FB;--v8-bd:#DCE7F0;--v8-in:#EAF2F8;--v8-tx:#0F1B2A;--v8-mu:#5D7086}
+:root{--v8-bar:#0B4FA8;--v8-bar-bd:#093F86;--v8-b1:#1AA7EC;--v8-b2:#1590D6;--v8-side:#F4F8FB;--v8-bd:#DCE7F0;--v8-in:#EAF2F8;--v8-tx:#0F1B2A;--v8-mu:#5D7086}
 .dark{--v8-side:#0B1626;--v8-bd:#1F3550;--v8-in:#122238;--v8-tx:#EAF2FA;--v8-mu:#8CA2BA}
 .v8-side,.v8-drawer{background:var(--v8-side);color:var(--v8-tx)}
 .v8-border{border-color:var(--v8-bd)}
@@ -20,9 +21,10 @@
 .v8-leads.tone-green{background:#16a34a}.v8-leads.tone-amber{background:#EAB308;color:#111827}.v8-leads.tone-grey{background:#6b7280}
 .v8-leads.tone-red{background:#DC2626;animation:v8pulse 1.6s infinite}
 @keyframes v8pulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}50%{box-shadow:0 0 0 6px rgba(220,38,38,0)}}
-.v8-tabs{background:var(--v8-side);border-color:var(--v8-bd);color:var(--v8-mu)}
+.v8-tabs{background:var(--v8-bar);border-color:var(--v8-bar-bd);color:rgba(255,255,255,.82)}
+.dark .v8-tabs{background:var(--v8-side);border-color:var(--v8-bd);color:var(--v8-mu)}
 .v8-tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;font-weight:600;min-height:48px}
-.v8-tab.is-active{color:var(--v8-b2)}.dark .v8-tab.is-active{color:var(--v8-b1)}
+.v8-tab.is-active{color:#fff;box-shadow:inset 0 3px 0 #fff}.dark .v8-tab.is-active{box-shadow:none}.dark .v8-tab.is-active{color:var(--v8-b1)}
 .v8-page{animation:v8in .24s cubic-bezier(.2,.8,.2,1)}
 @keyframes v8in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.v8-page{animation:v8fade .12s}.v8-leads.tone-red{animation:none;box-shadow:0 0 0 2px #fff,0 0 0 4px #DC2626}}
