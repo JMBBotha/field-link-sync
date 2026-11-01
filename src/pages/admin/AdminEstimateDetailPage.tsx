@@ -40,7 +40,6 @@ import PaymentPlanPicker from "@/components/quoting/PaymentPlanPicker";
 import QuoteUnitCardsToggle from "@/components/quoting/QuoteUnitCardsToggle";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { fetchQuoteInvoice } from "@/lib/depositInvoice";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import QuoteActionBar from "@/components/quoting/QuoteActionBar";
 import { useQuoteDocumentActions } from "@/hooks/useQuoteDocumentActions";
 import { QuoteProvider, usePendingQuoteWrites, waitForQuoteWrites } from "@/contexts/QuoteContext";
@@ -272,36 +271,16 @@ const AdminEstimateDetailPage = () => {
 
 
       {/* Actions */}
-      <QuoteActionBar busy={docActions.busy} onSave={docActions.handleSave} hideSave={readOnly} onPdf={() => void handlePdf()} onSend={docActions.handleSend} onPrint={docActions.handlePrint} className="pt-2" />
+      <QuoteActionBar busy={docActions.busy} onSave={docActions.handleSave} hideSave={readOnly} onPdf={() => void handlePdf()} onSend={docActions.handleSend} sendSecondary={canConvert} onPrint={docActions.handlePrint} className="pt-2" />
       <div className="flex flex-wrap justify-end gap-2 pt-2 print:hidden">
         {!readOnly && <Button variant="outline" onClick={() => navigate(`/admin/quote-builder?quoteId=${quote.id}`)}>
           <Pencil className="mr-2 h-4 w-4" /> Full builder / Visual PDF
         </Button>}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex">
-                <Button
-                  variant="brand"
-                  onClick={handleConvert}
-                  disabled={busy === "convert" || !canConvert}
-                >
-                  {busy === "convert" ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileCheck2 className="mr-2 h-4 w-4" />
-                  )}
-                  Convert to Invoice
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {!canConvert && (
-              <TooltipContent>
-                Estimate must be Accepted before converting to an invoice
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
+        {/* p113: Convert is the primary step only once accepted; before that it was a disabled brand button (dead tap). */}
+        {canConvert && <Button variant="brand" onClick={handleConvert} disabled={busy === "convert"} data-testid="estimate-convert">
+          {busy === "convert" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck2 className="mr-2 h-4 w-4" />}
+          Convert to Invoice
+        </Button>}
       </div>
 
       {docActions.portals}
