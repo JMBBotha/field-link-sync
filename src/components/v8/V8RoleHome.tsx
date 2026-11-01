@@ -13,6 +13,7 @@ import { usePipelineData, nameOf } from "@/components/jobs/PipelineBoard";
 import type { V8Role } from "./v8Nav";
 import V8NumberRow from "./V8NumberRow";
 import SalesHeartbeat from "@/components/heartbeat/SalesHeartbeat";
+import { useHeartbeatAudience } from "@/hooks/useSalesHeartbeat";
 import InvoiceApprovalPanel from "@/components/invoicing/InvoiceApprovalPanel";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,6 +54,9 @@ export default function V8RoleHome({ role }: { role: V8Role }) {
   const { data } = usePipelineData();
   const { leads: inbox, count: inboxCount } = useLeadInbox();
   const linked = useLinkedAdmin();
+  // p117 (Johan "Merge into one"): the heartbeat "Next step" card (one button + Then, tap = pop-up) is the only next-step card when it shows.
+  const hbAud = useHeartbeatAudience();
+  const hbShows = role !== "tech" && hbAud.canSee;
   // Sales login linked to an admin account counts company-wide; a plain rep counts their own quotes.
   const own = homeScope(role, linked.data) === "own";
   const s = useMemo(() => {
@@ -106,7 +110,7 @@ export default function V8RoleHome({ role }: { role: V8Role }) {
       {role !== "tech" && <InvoiceApprovalPanel />}
       {role !== "tech" && <SalesHeartbeat />}
       {(role === "owner" || role === "admin") && <V8NumberRow />}
-      <div className="grid gap-3 lg:grid-cols-[1.5fr_1fr]">
+      <div className={hbShows ? "grid gap-3" : "grid gap-3 lg:grid-cols-[1.5fr_1fr]"}>
         <div className="v8-hero">
           <div className="text-sm opacity-90">{own ? "My quotes accepted" : "Quotes accepted"} in {monthName} · incl. VAT</div>
           <div className="text-4xl font-extrabold tabular-nums" data-testid="hero-accepted">{fmtRandShort(s.month)}</div>
@@ -117,14 +121,14 @@ export default function V8RoleHome({ role }: { role: V8Role }) {
           </div>
           {own && <Button size="sm" variant="secondary" className="mt-3" onClick={() => navigate("/admin/my-commission")}>My commission</Button>}
         </div>
-        <div className="rounded-2xl border bg-card p-4">
-          <div className="text-sm font-bold">Next up</div>
+        {!hbShows && <div className="rounded-2xl border bg-card p-4" data-testid="v8-next-fallback">
+          <div className="text-sm font-bold">Next step</div>
           {s.next ? (<>
             <div className="mt-2 text-lg font-extrabold">{s.next.title}</div>
             <div className="text-sm text-muted-foreground">{s.next.sub}</div>
             <Button variant="outline" className="mt-3 w-full" onClick={() => navigate(s.next!.to)}>{s.next.btn === "Book" ? "Book install" : s.next.btn === "Open deposit" ? "Take deposit" : s.next.btn === "Follow up" ? "Follow up" : "Open quote"}</Button>
           </>) : <div className="mt-2 text-sm text-muted-foreground">Nothing waiting. Nice.</div>}
-        </div>
+        </div>}
       </div>
       <div className="rounded-2xl border bg-card p-3">
         <div className="mb-2 flex items-center justify-between"><span className="text-sm font-bold">The flow · all open deals, incl. VAT</span>
