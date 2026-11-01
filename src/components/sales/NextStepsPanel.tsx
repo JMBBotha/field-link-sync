@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import NextStepSheet from "@/components/sales/NextStepSheet";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useNextSteps } from "@/hooks/useNextSteps";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { useNow } from "@/hooks/useLeadSla";
-import { RULES, countByRule, minutesWaiting, waitingLabel, urgency, worstUrgency, type NextStep } from "@/lib/nextSteps";
+import { RULES, cardTarget, buttonTarget, countByRule, minutesWaiting, waitingLabel, urgency, worstUrgency, type NextStep } from "@/lib/nextSteps";
 
 // Calm colours by time urgency (Johan 31 Oct 10:44): soft tint + coloured left edge / dot, never full red blocks.
 // Readable on dark too (Johan 31 Oct 16:14): light tint text on a dark tint, all >= 4.5:1 (see test).
@@ -57,6 +58,7 @@ function SnoozeDialog({ row, onClose, onSave }: { row: NextStep | null; onClose:
 /** "Next steps" to-do panel on top of the Sales / Admin home (Johan 31 Oct 2026). */
 export default function NextStepsPanel({ className }: { className?: string }) {
   const { isSalesRep } = useSalesRep();
+  const [openRow, setOpenRow] = useState<NextStep | null>(null);
   const [rep, setRep] = useState<string | null>(null);
   const [filter, setFilter] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
@@ -101,11 +103,14 @@ export default function NextStepsPanel({ className }: { className?: string }) {
       {leads.length > 0 && (() => {
         const l = leads[0]; const mins = minutesWaiting(l.since, now);
         return (
-          <div className={cn("rounded-xl border border-l-[6px] p-3.5", CARD[urgency(l, now)])} data-testid="next-steps-urgent">
+          <div role="button" tabIndex={0} aria-label={`Open lead ${l.title}`} data-href={cardTarget(l)}
+            onClick={(e) => { if (!(e.target as HTMLElement).closest("button,a")) setOpenRow(l); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) setOpenRow(l); }}
+            className={cn("cursor-pointer rounded-xl border border-l-[6px] p-3.5", CARD[urgency(l, now)])} data-testid="next-steps-urgent">
             <div className="flex items-center gap-2 text-base font-bold"><span className={cn("h-[10px] w-[10px] shrink-0 rounded-full", DOT[urgency(l, now)])} />New lead waiting · {waitingLabel(mins)}</div>
             <div className="text-sm text-muted-foreground">{l.detail}{leads.length > 1 ? ` · ${leads.length - 1} more waiting` : ""}</div>
             <div className="mt-2 flex gap-2">
-              <Button asChild size="sm"><Link to={l.link}>Open lead</Link></Button>
+              <Button asChild size="sm"><Link to={buttonTarget(l)}>Open lead</Link></Button>
               {leads.length > 1 && <Button size="sm" variant="outline" onClick={() => setFilter("new_lead")}>View all leads</Button>}
             </div>
           </div>
@@ -114,11 +119,14 @@ export default function NextStepsPanel({ className }: { className?: string }) {
       {shown.length > 0 && (
         <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
           {shown.map((r) => (
-            <div key={r.rule + r.entity_id} className={cn("rounded-xl border border-l-[5px] p-3", CARD[urgency(r, now)])} data-testid={`next-step-${r.rule}`}>
+            <div key={r.rule + r.entity_id} role="button" tabIndex={0} aria-label={`Show summary for ${r.title}`}
+              onClick={(e) => { if (!(e.target as HTMLElement).closest("button,a")) setOpenRow(r); }}
+              onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) setOpenRow(r); }}
+              className={cn("cursor-pointer rounded-xl border border-l-[5px] p-3 transition-colors hover:brightness-110 active:opacity-80", CARD[urgency(r, now)])} data-testid={`next-step-${r.rule}`} data-href={cardTarget(r)}>
               <div className="flex items-center gap-2 font-semibold"><span className={cn("h-[10px] w-[10px] shrink-0 rounded-full", DOT[urgency(r, now)])} /><span className="truncate">{r.title}</span></div>
               <div className="text-xs text-muted-foreground">{[r.detail, money(r.amount)].filter(Boolean).join(" · ")}</div>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                <Button asChild size="sm"><Link to={r.link}>{RULES[r.rule].action}</Link></Button>
+                <Button asChild size="sm"><Link to={buttonTarget(r)}>{RULES[r.rule].action}</Link></Button>
                 {r.snoozable && <Button size="sm" variant="outline" onClick={() => setSnoozing(r)}>Snooze</Button>}
               </div>
             </div>
@@ -126,6 +134,7 @@ export default function NextStepsPanel({ className }: { className?: string }) {
         </div>
       )}
       {rest.length > 6 && <button type="button" className="w-full text-center text-sm font-bold text-primary" onClick={() => setShowAll(!showAll)}>{showAll ? "Show less" : `Show all ${rest.length}`}</button>}
+      <NextStepSheet row={openRow} onClose={() => setOpenRow(null)} />
       <SnoozeDialog row={snoozing} onClose={() => setSnoozing(null)} onSave={(o) => snooze(snoozing!, o)} />
     </section>
   );
