@@ -14,7 +14,32 @@ import type { V8Role } from "./v8Nav";
 import V8NumberRow from "./V8NumberRow";
 import SalesHeartbeat from "@/components/heartbeat/SalesHeartbeat";
 import InvoiceApprovalPanel from "@/components/invoicing/InvoiceApprovalPanel";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { invoiceMoney } from "@/lib/moneySummary";
+import { isUnpaid } from "@/lib/unpaidBuckets";
+import { fetchCreditNotes } from "@/lib/creditNotes";
 import "./v8.css";
+
+/** p112: Outstanding = balance owing after payments and credits on every unpaid invoice (same rule as Invoices > Unpaid).
+ *  ownQuoteIds = plain rep: only invoices on their own quotes; null = company-wide. */
+function useHomeOutstanding(ownQuoteIds: string[] | null) {
+  return useQuery({
+    queryKey: ["v8-home-outstanding", ownQuoteIds ? ownQuoteIds.join(",") : "all"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data: inv } = await (supabase.from("invoices") as any).select("id, quote_id, status, grand_total, notes, archived_at").not("status", "in", "(paid,void,cancelled,draft)").limit(2000);
+      const rows = ((inv || []) as any[]).filter((i) => !i.archived_at && (!ownQuoteIds || (i.quote_id && ownQuoteIds.includes(i.quote_id))));
+      if (!rows.length) return { total: 0, count: 0 };
+      const ids = rows.map((r) => r.id);
+      const { data: pays } = await supabase.from("payments").select("invoice_id, amount, status, gateway").in("invoice_id", ids);
+      const credits = await fetchCreditNotes(ids);
+      let total = 0, count = 0;
+      rows.forEach((r) => { const b = invoiceMoney(r, (pays || []) as any, credits as any).balance; if (isUnpaid(r.status, b)) { total += b; count += 1; } });
+      return { total: Math.round(total * 100) / 100, count };
+    },
+  });
+}
 
 type Item = { id: string; title: string; sub: string; btn: string; to: string; tag: string };
 
@@ -31,15 +56,18 @@ export default function V8RoleHome({ role }: { role: V8Role }) {
   // Sales login linked to an admin account counts company-wide; a plain rep counts their own quotes.
   const own = homeScope(role, linked.data) === "own";
   const s = useMemo(() => {
-    const out = { count: {} as Record<V8Col, number>, value: {} as Record<V8Col, number>, month: 0, needs: [] as Item[], next: null as Item | null };
+    const out = { count: {} as Record<V8Col, number>, value: {} as Record<V8Col, number>, month: 0, prevMonth: 0, drafts: 0, needs: [] as Item[], next: null as Item | null };
     if (!data) return out;
     const qs = data.quotes.filter((q) => quoteInScope(q, own ? "own" : "company", user?.id));
     const m0 = new Date(); m0.setDate(1); m0.setHours(0, 0, 0, 0);
+    const p0 = new Date(m0); p0.setMonth(p0.getMonth() - 1);
     const accepted: Item[] = [], viewed: Item[] = [], unpaid: Item[] = [];
     buildDeals(qs, data.invoices as any, data.jobs as any).forEach((d) => {
       const c = v8ColOf(d, data.invoices as any);
       out.count[c] = (out.count[c] || 0) + 1; out.value[c] = (out.value[c] || 0) + d.value;
-      if (d.quote.accepted_at && new Date(d.quote.accepted_at) >= m0) out.month += d.value;
+      const acc = d.quote.accepted_at ? new Date(d.quote.accepted_at) : null;
+      if (acc && acc >= m0) out.month += d.value; else if (acc && acc >= p0) out.prevMonth += d.value;
+      if (d.stage === "draft") out.drafts += d.value;
       const n = nameOf(d.quote as any), num = d.quote.quote_number || "Quote";
       const to = `/admin/estimates/${d.quote.id}`;
       if (c === "accepted") accepted.push({ id: d.quote.id, title: `${d.depositDue ? "Deposit due" : "Book the job"} · ${n}`, sub: `${num} accepted · ${fmtRandShort(d.value)}`, btn: "Book", to, tag: "J" });
@@ -55,7 +83,12 @@ export default function V8RoleHome({ role }: { role: V8Role }) {
   const first = (identity?.name || "").split(/\s+/)[0];
   const h = new Date().getHours();
   const greet = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-  const outstanding = s.value.invoiced || 0;
+  const ownIds = useMemo(() => (own && data ? data.quotes.filter((q) => q.sales_engineer_id === user?.id).map((q) => q.id) : null), [own, data, user?.id]);
+  const out = useHomeOutstanding(ownIds);
+  const outstanding = out.data?.total ?? 0;
+  const monthName = new Date().toLocaleDateString("en-ZA", { month: "long" });
+  const prevName = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.toLocaleDateString("en-ZA", { month: "long" }); })();
+  const openTotal = (s.value.quote || 0) + (s.value.accepted || 0);
   const today = new Date().toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "short" });
   const ago = (t?: string) => { if (!t) return ""; const m = Math.max(0, Math.round((Date.now() - new Date(t).getTime()) / 60000)); return m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
 
@@ -71,11 +104,12 @@ export default function V8RoleHome({ role }: { role: V8Role }) {
       {(role === "owner" || role === "admin") && <V8NumberRow />}
       <div className="grid gap-3 lg:grid-cols-[1.5fr_1fr]">
         <div className="v8-hero">
-          <div className="text-sm opacity-90">{own ? "My accepted work this month" : "Accepted this month"}</div>
-          <div className="text-4xl font-extrabold tabular-nums">{fmtRandShort(s.month)}</div>
+          <div className="text-sm opacity-90">{own ? "My quotes accepted" : "Quotes accepted"} in {monthName} · incl. VAT</div>
+          <div className="text-4xl font-extrabold tabular-nums" data-testid="hero-accepted">{fmtRandShort(s.month)}</div>
+          <div className="text-xs opacity-80">By accepted date · {prevName}: {fmtRandShort(s.prevMonth)}</div>
           <div className="mt-3 flex flex-wrap items-end justify-between gap-2 text-sm">
-            <span className="opacity-85">Open pipeline {fmtRandShort((s.value.quote || 0) + (s.value.accepted || 0))}</span>
-            <span className="text-right"><span className="block text-xs opacity-80">Outstanding</span><span className="text-xl font-bold tabular-nums">{fmtRandShort(outstanding)}</span></span>
+            <span className="opacity-85" data-testid="hero-open">Open quotes {fmtRandShort(openTotal)} incl. VAT<span className="block text-xs opacity-80">{s.drafts > 0 ? `of which ${fmtRandShort(s.drafts)} not sent yet (drafts) · ` : ""}option groups count once</span></span>
+            <button type="button" className="text-right" onClick={() => navigate("/admin/invoices?state=unpaid")} data-testid="hero-outstanding"><span className="block text-xs opacity-80">Owed on unpaid invoices · incl. VAT</span><span className="text-xl font-bold tabular-nums">{fmtRandShort(outstanding)}</span><span className="block text-xs opacity-80">{out.data?.count ?? 0} invoice{out.data?.count === 1 ? "" : "s"} · all dates →</span></button>
           </div>
           {own && <Button size="sm" variant="secondary" className="mt-3" onClick={() => navigate("/admin/my-commission")}>My commission</Button>}
         </div>
@@ -89,7 +123,7 @@ export default function V8RoleHome({ role }: { role: V8Role }) {
         </div>
       </div>
       <div className="rounded-2xl border bg-card p-3">
-        <div className="mb-2 flex items-center justify-between"><span className="text-sm font-bold">The flow this month</span>
+        <div className="mb-2 flex items-center justify-between"><span className="text-sm font-bold">The flow · all open deals, incl. VAT</span>
           <button className="text-xs font-semibold text-[#1590d6]" onClick={() => navigate("/admin/jobs?tab=pipeline")}>Open pipeline →</button></div>
         <div className="v8-flow">
           {V8_COLS.filter((c) => !(own && c.key === "lead")).map((c) => (
