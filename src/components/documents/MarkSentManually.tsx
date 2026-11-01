@@ -10,12 +10,16 @@ import { cn } from "@/lib/utils";
 
 /** Mark as sent (without emailing), Johan 2026-10-13 13:45. Shared by quotes and invoices in every company.
  *  Permission, status change, audit log and the owner notification all happen server-side in mark_document_sent. */
+// p111 (Johan t2038u): labels only. Picking one never emails, downloads or WhatsApps anything.
 export const SENT_CHANNELS = [
+  { k: "email", label: "Email" },
+  { k: "pdf_downloaded", label: "PDF downloaded" },
   { k: "whatsapp", label: "WhatsApp" },
-  { k: "handed_over", label: "Handed over" },
+  { k: "in_person", label: "In person" },
   { k: "other", label: "Other" },
 ] as const;
-export const channelLabel = (c?: string | null) => SENT_CHANNELS.find((x) => x.k === c)?.label ?? "Other";
+const LEGACY: Record<string, string> = { handed_over: "Handed over" };
+export const channelLabel = (c?: string | null) => SENT_CHANNELS.find((x) => x.k === c)?.label ?? (c && LEGACY[c]) ?? "Other";
 
 export function SentManuallyBadge({ doc, className }: { doc: { sent_method?: string | null; sent_channel?: string | null; status?: string | null }; className?: string }) {
   if (doc?.sent_method !== "manual") return null;
@@ -27,16 +31,17 @@ export function SentManuallyBadge({ doc, className }: { doc: { sent_method?: str
   );
 }
 
-export function MarkSentManuallyButton({ kind, id, status, onDone, size = "sm", className }: {
+export function MarkSentManuallyButton({ kind, id, status, onDone, size = "sm", className, anyRole }: {
   kind: "quote" | "invoice"; id: string; status?: string | null; onDone?: () => void; size?: "sm" | "default"; className?: string;
+  /** Show for sales reps too (the server still limits reps to their own documents). */ anyRole?: boolean;
 }) {
   const { isAdmin, isDispatcher } = useRole();
   const [open, setOpen] = useState(false);
-  const [ch, setCh] = useState<string>("whatsapp");
+  const [ch, setCh] = useState<string>("email");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   // Techs/viewers never see it; reps are limited to their own docs by the server.
-  if (status !== "draft" || !(isAdmin || isDispatcher)) return null;
+  if (status !== "draft" || !(anyRole || isAdmin || isDispatcher)) return null;
   const save = async () => {
     setBusy(true);
     const { error } = await (supabase.rpc as any)("mark_document_sent", { p_kind: kind, p_id: id, p_channel: ch, p_note: note || null });
@@ -63,7 +68,7 @@ export function MarkSentManuallyButton({ kind, id, status, onDone, size = "sm", 
                 <Button key={c.k} type="button" variant={ch === c.k ? "default" : "outline"} size="sm" onClick={() => setCh(c.k)}>{c.label}</Button>
               ))}
             </div>
-            <Textarea placeholder="Note (optional), e.g. sent to Josh on WhatsApp" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} rows={2} />
+            <Textarea placeholder="Note (optional), e.g. sent from my own email" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} rows={2} />
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>

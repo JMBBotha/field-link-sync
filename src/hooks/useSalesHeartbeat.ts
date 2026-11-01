@@ -30,7 +30,7 @@ export function useSalesHeartbeat(enabled = true) {
     queryFn: async () => {
       const since = new Date(Date.now() - 60 * 86400_000).toISOString();
       const db = supabase as any;
-      const [leads, quotes, invoices, jobs, esc] = await Promise.all([
+      const [leads, quotes, invoices, jobs, esc, snz] = await Promise.all([
         db.from("leads").select("id, customer_name, created_at, first_contact_at, acknowledged_at, visit_booked_at, last_contact_attempt_at, primary_intent, assigned_agent_id, status, call_summary, customer_phone, phone")
           .is("deleted_at", null).is("merged_into_id", null).is("dismissed_at", null).is("closed_at", null).gte("created_at", since).order("created_at", { ascending: false }).limit(800),
         db.from("quotes").select("id, status, total, created_at, sent_at, viewed_at, accepted_at, lead_id, sales_engineer_id, customer_name, quote_number")
@@ -38,9 +38,11 @@ export function useSalesHeartbeat(enabled = true) {
         db.from("invoices").select("quote_id, status, notes, grand_total, paid_date").not("quote_id", "is", null).gte("created_at", since).limit(2000),
         db.from("jobs").select("id, quote_id, status, created_at, scheduled_for, completed_at, title").not("quote_id", "is", null).gte("created_at", since).limit(2000),
         db.from("sales_escalations").select("entity_id, stage, level, created_at, message, notified_user_ids").gte("created_at", since).order("created_at", { ascending: false }).limit(500),
+        // p111: snoozed / dismissed from the pop-up drops out of Next step now / Then until it wakes.
+        db.from("next_step_snoozes").select("entity_id, snoozed_until, dismissed").is("cleared_at", null).limit(2000),
       ]);
       if (leads.error) throw leads.error;
-      return { leads: (leads.data || []) as HbLead[], quotes: (quotes.data || []) as HbQuote[], invoices: (invoices.data || []) as HbInvoice[], jobs: (jobs.data || []) as HbJob[], esc: (esc.data || []) as any[] };
+      return { leads: (leads.data || []) as HbLead[], quotes: (quotes.data || []) as HbQuote[], invoices: (invoices.data || []) as HbInvoice[], jobs: (jobs.data || []) as HbJob[], esc: (esc.data || []) as any[], snoozed: ((snz?.data || []) as any[]).filter((x) => x.dismissed || (x.snoozed_until && new Date(x.snoozed_until).getTime() > Date.now())).map((x) => x.entity_id as string) };
     },
   });
   // Live: new / changed leads refresh at once (realtime), everything else every minute.
@@ -57,11 +59,15 @@ export function useSalesHeartbeat(enabled = true) {
     const d = q.data; const mine = (id?: string | null) => !isSalesRep || !id || id === userId;
     const leads = d.leads.filter((l) => !isTestLead(l.customer_name || "") && mine(l.assigned_agent_id));
     const quotes = d.quotes.filter((x) => !isTestLead(x.customer_name || "") && (!isSalesRep || x.sales_engineer_id === userId));
+    const snoozed = new Set(d.snoozed || []);
     const qIds = new Set(quotes.map((x) => x.id));
-    return buildHeartbeat({
+    const r = buildHeartbeat({
       leads, quotes, invoices: d.invoices.filter((i) => i.quote_id && qIds.has(i.quote_id)), jobs: d.jobs.filter((j) => j.quote_id && qIds.has(j.quote_id)),
       limits: toLimits((settings as any)?.sales_stage_limits), contactMinutes: sla?.contactMinutes, escalatedIds: new Set(d.esc.map((e) => e.entity_id)), now: minute * 60_000,
     });
+    // Stage counts stay true; only the to-do queue skips snoozed items.
+    const queue = [r.next, ...r.then].filter((i): i is NonNullable<typeof i> => !!i && !snoozed.has(i.quote_id || i.id));
+    return { ...r, next: queue[0] ?? null, then: queue.slice(1) };
   }, [q.data, isSalesRep, userId, settings, sla?.contactMinutes, minute]);
   return { hb, now, esc: q.data?.esc || [], loading: q.isLoading, canSee, refetch: q.refetch };
 }
