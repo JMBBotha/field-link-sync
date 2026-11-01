@@ -68,3 +68,33 @@ const RANK: Record<Urgency, number> = { red: 0, orange: 1, green: 2 };
 export function worstUrgency(rows: NextStep[], now = Date.now()): Urgency {
   return rows.reduce<Urgency>((w, r) => (RANK[urgency(r, now)] < RANK[w] ? urgency(r, now) : w), "green");
 }
+
+/** Where tapping the card opens: the exact record (Johan 1 Nov, t2028u), not just the client. Buttons keep `buttonTarget`. */
+export function cardTarget(row: Pick<NextStep, "rule" | "entity_type" | "entity_id" | "link">): string {
+  if (row.entity_type === "quote") return `/admin/estimates/${row.entity_id}`;
+  if (row.entity_type === "lead") return `/admin/dispatch?lead=${row.entity_id}`; // lead / appointment sheet (reps: /admin?myjob=)
+  return row.link;
+}
+
+/** The action button. New leads used to point at the bare dispatch board; now the lead itself. */
+export function buttonTarget(row: Pick<NextStep, "rule" | "entity_type" | "entity_id" | "link">): string {
+  if (row.rule === "new_lead") return `/admin/dispatch?lead=${row.entity_id}`;
+  return row.link;
+}
+
+/** Pop-up summary helpers (Johan 1 Nov 09:38). */
+export function daysSince(iso: string | null | undefined, now = Date.now()): number | null {
+  if (!iso) return null;
+  const d = Math.floor((now - new Date(iso).getTime()) / 86_400_000);
+  return d < 0 ? 0 : d;
+}
+/** "Lounge, Main bedroom · +2 more" from rooms/areas, else first line items. */
+export function shortDescription(areas: string[], items: string[], max = 3): string {
+  const list = (areas.filter(Boolean).length ? areas : items).filter(Boolean);
+  if (!list.length) return "";
+  const head = list.slice(0, max).join(", ");
+  return list.length > max ? `${head} · +${list.length - max} more` : head;
+}
+export function recordKind(row: Pick<NextStep, "entity_type">): "quote" | "invoice" | "lead" | "job" {
+  return (["quote", "invoice", "lead"].includes(row.entity_type) ? row.entity_type : "job") as "quote" | "invoice" | "lead" | "job";
+}
