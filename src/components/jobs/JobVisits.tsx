@@ -1,3 +1,4 @@
+import type React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +17,7 @@ export const useJobVisits = (jobId: string, enabled = true) =>
   useQuery({ queryKey: ["job-visits", jobId], enabled: enabled && !!jobId, queryFn: () => loadJobVisits(jobId), staleTime: 30_000 });
 
 /** Job page: every visit with its hours, plus the total. */
-export function JobVisitsCardView({ visits }: { visits: JobVisit[] }) {
+export function JobVisitsCardView({ visits, actions }: { visits: JobVisit[]; actions?: React.ReactNode }) {
   const total = totalVisitMinutes(visits);
   return (
     <Card className="rounded-2xl" data-testid="job-visits-card">
@@ -39,6 +40,7 @@ export function JobVisitsCardView({ visits }: { visits: JobVisit[] }) {
             </li>
           ))}
         </ul>
+        {actions}
       </CardContent>
     </Card>
   );
@@ -50,8 +52,10 @@ export default function JobVisitsCard({ jobId }: { jobId: string }) {
 }
 
 /** Sheet editor. Admin: add / remove / tech / note. Rep: date + times only. */
-export function VisitsEditor({ visits, onChange, admin, techs, today }: {
+export function VisitsEditor({ visits, onChange, admin, techs, today, canAdd = admin, canNote = admin }: {
   visits: JobVisit[]; onChange: (v: JobVisit[]) => void; admin: boolean; techs: { id: string; name: string }[]; today: string;
+  /** Client's rep may add visits and write notes (Johan 1 Nov); only admins remove saved visits or pick techs. */
+  canAdd?: boolean; canNote?: boolean;
 }) {
   const set = (i: number, patch: Partial<JobVisit>) => onChange(visits.map((v, j) => (j === i ? { ...v, ...patch } : v)));
   return (
@@ -64,7 +68,7 @@ export function VisitsEditor({ visits, onChange, admin, techs, today }: {
         <div key={v.id ?? `n${i}`} className="rounded-xl border p-3 space-y-2" data-testid="visit-row">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Day {i + 1}{v.worked ? " · checked in" : ""}</span>
-            {admin && visits.length > 1 && !v.worked && (
+            {(admin || (canAdd && !v.id)) && visits.length > 1 && !v.worked && (
               <Button type="button" size="sm" variant="ghost" className="h-8 px-2 text-destructive" onClick={() => onChange(visits.filter((_, j) => j !== i))} aria-label={`Remove day ${i + 1}`}>
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -78,19 +82,19 @@ export function VisitsEditor({ visits, onChange, admin, techs, today }: {
             <div className="space-y-1"><label className="block text-xs text-muted-foreground" htmlFor={`v-e-${i}`}>End</label>
               <TimeInput24 id={`v-e-${i}`} value={v.end} onChange={(e) => set(i, { end: e.target.value })} /></div>
           </div>
-          {admin && (
+          {(admin || canNote) && (
             <div className="grid gap-2 md:grid-cols-2">
-              <select aria-label={`Day ${i + 1} technician`} data-testid="visit-tech" className="w-full min-h-[40px] rounded-md border bg-background px-2 text-sm" value={v.tech ?? ""} onChange={(e) => set(i, { tech: e.target.value || null })}>
+              {admin && <select aria-label={`Day ${i + 1} technician`} data-testid="visit-tech" className="w-full min-h-[40px] rounded-md border bg-background px-2 text-sm" value={v.tech ?? ""} onChange={(e) => set(i, { tech: e.target.value || null })}>
                 <option value="">Job's technician</option>
                 {techs.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 {v.tech && !techs.some((t) => t.id === v.tech) && <option value={v.tech}>{v.tech_name?.trim() || "Current tech"}</option>}
-              </select>
+              </select>}
               <Input aria-label={`Day ${i + 1} note`} placeholder="Visit note (optional)" maxLength={500} value={v.note ?? ""} onChange={(e) => set(i, { note: e.target.value })} />
             </div>
           )}
         </div>
       ))}
-      {admin && (
+      {canAdd && (
         <Button type="button" variant="outline" className="w-full min-h-[44px]" onClick={() => onChange([...visits, nextVisit(visits, today)])} data-testid="add-visit">
           <Plus className="h-4 w-4 mr-1" />Add another day
         </Button>

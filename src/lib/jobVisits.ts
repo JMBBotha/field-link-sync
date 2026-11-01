@@ -37,3 +37,23 @@ export function nextVisit(vs: JobVisit[], today: string): JobVisit {
 export function visitDayLabel(date: string) {
   return new Date(`${date}T12:00:00Z`).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 }
+
+/** Return visit (Johan 1 Nov): optional reason, stored in the visit note. No default reason. */
+export const RETURN_REASONS = ["Parts needed", "Finish work", "Testing or commissioning", "Client request", "Other"] as const;
+export type ReturnReason = (typeof RETURN_REASONS)[number];
+export function returnVisitNote(reason: ReturnReason | "" | null | undefined, other?: string): string {
+  if (!reason) return "Return visit";
+  if (reason === "Other") { const t = (other ?? "").trim(); return t ? `Return visit: ${t.slice(0, 480)}` : "Return visit"; }
+  return `Return visit: ${reason}`;
+}
+/** Blank-date return visit: same hours and tech as the last visit; the user picks the date. */
+export function returnVisitDraft(vs: JobVisit[]): JobVisit {
+  const last = sortVisits(vs).at(-1);
+  return { id: null, date: "", start: last?.start ?? "08:00", end: last?.end ?? "11:00", tech: last?.tech ?? null, note: "Return visit" };
+}
+/** Payload for set_job_visits / set_booking_visits. Admin sends tech + note; a rep sends note but never tech. */
+export function visitsPayload(vs: JobVisit[], admin: boolean) {
+  return sortVisits(vs).map((v) => admin
+    ? { id: v.id ?? null, date: v.date, start: v.start, end: v.end, tech: v.tech ?? null, note: v.note ?? null }
+    : { id: v.id ?? null, date: v.date, start: v.start, end: v.end, note: v.note ?? null });
+}

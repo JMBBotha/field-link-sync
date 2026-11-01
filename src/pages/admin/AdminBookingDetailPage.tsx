@@ -10,6 +10,7 @@ import { assignedLabel, isAssigned } from "@/lib/assignedLabel";
 import { friendlyWhen } from "@/lib/friendlyWhen";
 import EditBookingSheet from "@/components/jobs/EditBookingSheet";
 import JobPhotosCard from "@/components/jobs/JobPhotosCard";
+import BookingVisitsCard from "@/components/jobs/BookingVisits";
 import AddJobPhotosButton from "@/components/jobs/AddJobPhotosButton";
 import { bookingStatus, editableBookingFields, type BookingPerms } from "@/lib/bookingEdit";
 
@@ -29,7 +30,7 @@ export default function AdminBookingDetailPage() {
     queryKey: ["booking-detail", leadId], enabled: !!leadId,
     queryFn: async () => {
       const { data: l, error } = await (supabase.from("leads") as any)
-        .select("id, customer_name, customer_phone, customer_address, customer_id, assigned_agent_id, scheduled_date, scheduled_time, service_type, job_types, job_info, status, lead_status, notes")
+        .select("id, customer_name, customer_phone, customer_address, customer_id, company_id, assigned_agent_id, scheduled_date, scheduled_time, service_type, job_types, job_info, status, lead_status, notes")
         .eq("id", leadId!).maybeSingle();
       if (error) throw error;
       if (!l) return null;
@@ -111,6 +112,8 @@ export default function AdminBookingDetailPage() {
             : <p className="text-sm text-muted-foreground">No job notes yet.</p>
         )}
       </div>
+      <BookingVisitsCard leadId={b.id} companyId={b.company_id} perms={{ admin: !!b.perms?.admin, rep: !!b.perms?.rep }}
+        seed={{ date: b.date, time: b.time }} onSaved={() => q.refetch()} />
       <JobPhotosCard leadId={b.id} addSlot={f.any ? <AddJobPhotosButton leadId={b.id} defaultType="site" /> : null} />
       {edit && <EditBookingSheet key={edit} open onOpenChange={(o) => !o && setEdit(null)} notesOnly={edit === "notes"} perms={b.perms}
         booking={{ id: b.id, date: b.scheduled_date ?? b.date, time: b.scheduled_time ?? b.time, notes: b.notes ?? null, service_type: b.service_type, customer_address: b.customer_address }}

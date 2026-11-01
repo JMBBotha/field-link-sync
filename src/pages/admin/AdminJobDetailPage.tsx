@@ -44,7 +44,8 @@ import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import TechLocationBlock from "@/components/jobs/TechLocationBlock";
 import AdminBackfillPanel from "@/components/jobs/AdminBackfillPanel";
 import JobRunCard from "@/components/scheduling/JobRunCard";
-import JobVisitsCard from "@/components/jobs/JobVisits";
+import { useJobVisits } from "@/components/jobs/JobVisits";
+import { JobVisitsSection } from "@/components/jobs/BookingVisits";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { attachPaymentTotals } from "@/lib/depositInvoice";
 import { jobStatusPatch, formatJohannesburg } from "@/lib/jobTimes";
@@ -82,6 +83,7 @@ const AdminJobDetailPage = () => {
   const { canAccessAdmin, isAdmin } = useRole();
   const { isSalesRep } = useSalesRep();
   const { data: jobPerms } = useJobPermissions(id);
+  const jobVisitsQ = useJobVisits(id ?? "");
 
   const { data: job, isLoading } = useQuery({
     queryKey: ["job-detail", id],
@@ -310,10 +312,11 @@ const AdminJobDetailPage = () => {
         </Card>
 
         {/* Multi-day run progress (Day N of M, % done, expected end) */}
-        <JobRunCard jobId={j.id} />
+        {/* Old "N-day" run card only when there are no per-day visits (Johan 1 Nov) */}
+        {!(j.lead_id && jobVisitsQ.data?.length) && <JobRunCard jobId={j.id} />}
 
-        {/* Visits: each day with its own hours, plus total (Johan 31 Oct) */}
-        {j.lead_id && <JobVisitsCard jobId={j.id} />}
+        {/* Visits: each day with its own hours, plus total, Edit and Add return visit */}
+        {j.lead_id && <JobVisitsSection jobId={j.id} companyId={j.company_id} perms={{ admin: !!jobPerms?.admin, rep: !!jobPerms?.rep }} onEdit={() => setEditOpen(true)} />}
 
         {/* Linked invoice */}
         {invoice?.id && (
