@@ -404,6 +404,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
             </Button>
           </div>
           {/* Primary action based on status */}
+          {/* Final balance due -> Send final invoice is the one orange button; Record payment is secondary (Johan simpler rule, 1 Nov). */}
           {/* Mark as sent without emailing: dialog asks how (WhatsApp / handed over / other), server logs + notifies the owner. */}
           {/* Final invoice (Johan 30 Oct): deposit paid, balance open → orange primary next step. Opens WhatsApp with the invoice PDF + balance. */}
           {!["draft", "void", "cancelled"].includes(invoice.status) && (amountPaid > 0.005 || ["sent", "overdue", "partially_paid", "part_paid"].includes(invoice.status)) && Number(invoice.grand_total) - amountPaid > 0.005 && (
@@ -418,7 +419,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
             Number(invoice.grand_total) - amountPaid > 0.005 && (
             <Button
               variant="default"
-              className="w-full h-11 rounded-lg font-semibold bg-[#C2410C] text-white hover:bg-[#9A3412]"
+              className={(!["draft", "void", "cancelled"].includes(invoice.status) && (amountPaid > 0.005 || ["sent", "overdue", "partially_paid", "part_paid"].includes(invoice.status)) && Number(invoice.grand_total) - amountPaid > 0.005) ? "w-full h-11 rounded-lg font-semibold border border-input bg-background text-foreground hover:bg-muted" : "w-full h-11 rounded-lg font-semibold bg-[#C2410C] text-white hover:bg-[#9A3412]"}
               data-testid="invoice-record-payment"
               onClick={() => document.getElementById("invoice-payment-recorder")?.scrollIntoView({ behavior: "smooth", block: "center" })}
             >
