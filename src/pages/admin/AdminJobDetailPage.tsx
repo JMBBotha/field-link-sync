@@ -458,7 +458,7 @@ const AdminJobDetailPage = () => {
 
             {bar.primary === "start" && (
               <Button
-                className="sticky-action-primary bg-primary hover:bg-primary/90 text-white"
+                className="sticky-action-primary bg-[#C2410C] hover:bg-[#9A3412] text-white"
                 onClick={() => changeStatus("in_progress")}
                 disabled={pendingStatus !== null}
               >
@@ -471,7 +471,7 @@ const AdminJobDetailPage = () => {
             )}
             {bar.primary === "complete" && (
               <Button
-                className="sticky-action-primary bg-green-600 hover:bg-green-700 text-white"
+                className="sticky-action-primary bg-[#C2410C] hover:bg-[#9A3412] text-white"
                 onClick={() => changeStatus("completed")}
                 disabled={pendingStatus !== null}
               >
@@ -485,7 +485,7 @@ const AdminJobDetailPage = () => {
             {bar.canMarkCompleted && (
               <Button
                 variant={bar.primary ? "outline" : "default"}
-                className={bar.primary ? "min-h-[48px] px-2 text-sm shrink-0" : "sticky-action-primary bg-green-600 hover:bg-green-700 text-white"}
+                className={bar.primary ? "min-h-[48px] px-2 text-sm shrink-0" : "sticky-action-primary bg-[#C2410C] hover:bg-[#9A3412] text-white"}
                 onClick={() => setMarkOpen(true)}
                 data-testid="mark-completed-btn"
               >
