@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Pencil, Phone } from "lucide-react";
+import { MapPin, Phone } from "lucide-react";
+import { RULES } from "@/lib/nextSteps";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import LeadAssignDialog from "@/components/jobs/LeadAssignDialog";
@@ -75,39 +76,39 @@ export default function AdminBookingDetailPage() {
   return (
     <div className="v8-scope mx-auto max-w-3xl space-y-3 p-3 sm:p-6" data-testid="booking-detail">
       {/* One back arrow: the shared header BackButton (Johan 31 Oct). */}
-      <div className="space-y-2 rounded-2xl bg-gradient-to-br from-[#0F2A44] to-[#1590D6] p-4 text-white">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide opacity-80">Booking</p>
+      {/* One white header card with a status pill (UI polish 4/5). */}
+      <div className="space-y-3 rounded-2xl border bg-white p-4" data-testid="booking-header">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#475569]">Booking{b.service_type ? ` · ${b.service_type}` : ""}</p>
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${stCls}`} data-testid="booking-status">{st.label}</span>
         </div>
-        <h1 className="text-xl font-semibold leading-tight break-words">{b.customer_name || "Client"}</h1>
-        {b.customer_address && <p className="flex items-start gap-1 text-sm opacity-90"><MapPin className="mt-0.5 h-4 w-4 shrink-0" />{b.customer_address}</p>}
-        {b.service_type && <p className="text-sm opacity-90">{b.service_type}</p>}
-      </div>
-      <div className={`rounded-2xl border-2 p-4 ${assigned ? "border-[#2E7D32] bg-[#F1F8F1]" : "border-[#E65100] bg-[#FFF8F1]"}`} data-testid="booking-assigned">
-        <p className={`text-[16px] font-semibold ${assigned ? "text-[#1B5E20]" : "text-[#E65100]"}`}>
-          {label || (b.date ? `Booked · ${friendlyWhen(b.date, b.time)} · no technician yet` : "Not assigned yet")}
+        <h1 className="text-[24px] font-semibold leading-tight break-words text-[#0F1B2A]">{b.customer_name || "Client"}</h1>
+        {b.customer_address && <p className="flex items-start gap-1 text-sm text-[#334155]"><MapPin className="mt-0.5 h-4 w-4 shrink-0" />{b.customer_address}</p>}
+        <p data-testid="booking-assigned">
+          <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${assigned ? "bg-[#E8F5E9] text-[#1B5E20]" : "bg-[#FFF3E0] text-[#8A3B00]"}`}>
+            {assigned ? (label || `Tech: ${b.tech_name}`) : (b.date ? `${friendlyWhen(b.date, b.time)} · No technician yet` : "No technician yet")}
+          </span>
         </p>
-        {!assigned && <Button className="mt-3 min-h-11 bg-[#1590D6]" onClick={() => setAssignOpen(true)} data-testid="booking-assign">Assign / schedule</Button>}
+        <div className="flex flex-wrap items-center gap-2">
+          {!assigned && <button type="button" className="fl-btn-primary px-5" onClick={() => setAssignOpen(true)} data-testid="booking-assign">{RULES.assign_tech.action}</button>}
+          {b.customer_phone && <a className="fl-btn-secondary inline-flex items-center px-4" href={`tel:${b.customer_phone}`}><Phone className="mr-1 h-4 w-4" />Call</a>}
+          {map && <a className="fl-btn-secondary inline-flex items-center px-4" href={map} target="_blank" rel="noreferrer"><MapPin className="mr-1 h-4 w-4" />Map</a>}
+          {(assigned || f.any || b.customer_id) && (
+            <details ref={moreRef} className="relative" data-testid="booking-more">
+              <summary className="fl-btn-text inline-flex cursor-pointer list-none items-center px-3">⋯ More</summary>
+              <div className="absolute left-0 z-20 mt-1 flex w-56 flex-col rounded-xl border bg-card p-1 shadow-lg">
+                {f.any && <button onClick={() => { closeMore(); setEdit("all"); }} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="booking-edit">Edit booking</button>}
+                {b.customer_id && <button onClick={() => { closeMore(); navigate(`/admin/customers/${b.customer_id}`); }} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted">Open client</button>}
+                {f.any && <button onClick={() => { closeMore(); setPinOpen(true); }} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="booking-set-pin">Set map pin</button>}
+                {assigned && <button onClick={() => { closeMore(); setAssignOpen(true); }} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="booking-reassign">Reschedule / reassign</button>}
+              </div>
+            </details>
+          )}
+        </div>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {f.any && <Button className="min-h-11 bg-[#1590D6]" onClick={() => setEdit("all")} data-testid="booking-edit"><Pencil className="mr-1 h-4 w-4" />Edit</Button>}
-        {b.customer_phone && <Button asChild variant="outline" className="min-h-11"><a href={`tel:${b.customer_phone}`}><Phone className="mr-1 h-4 w-4" />Call</a></Button>}
-        {map && <Button asChild variant="outline" className="min-h-11"><a href={map} target="_blank" rel="noreferrer"><MapPin className="mr-1 h-4 w-4" />Map</a></Button>}
-        {b.customer_id && <Button variant="outline" className="min-h-11" onClick={() => navigate(`/admin/customers/${b.customer_id}`)}>Open client</Button>}
-        {(assigned || f.any) && (
-          <details ref={moreRef} className="relative" data-testid="booking-more">
-            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center rounded-md border px-3 text-sm font-medium">More</summary>
-            <div className="absolute left-0 z-20 mt-1 flex w-56 flex-col rounded-xl border bg-card p-1 shadow-lg">
-              {f.any && <button onClick={() => { closeMore(); setPinOpen(true); }} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="booking-set-pin">Set pin on map</button>}
-              {assigned && <button onClick={() => { closeMore(); setAssignOpen(true); }} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="booking-reassign">Reassign / reschedule</button>}
-            </div>
-          </details>
-        )}
-      </div>
-      <div className="rounded-2xl border p-3 space-y-2" data-testid="booking-notes">
+      <div className="rounded-2xl border bg-white p-3 space-y-2" data-testid="booking-notes">
         <div className="flex items-center justify-between"><p className="text-sm font-semibold">Job notes</p>
-          {f.notes && <Button variant="ghost" size="sm" className="min-h-11" onClick={() => setEdit("notes")} data-testid="booking-notes-edit"><Pencil className="mr-1 h-4 w-4" />{b.notes ? "Edit" : "Add"}</Button>}</div>
+          {f.notes && <button type="button" className="fl-btn-text px-2" onClick={() => setEdit("notes")} data-testid="booking-notes-edit">{b.notes ? "Edit" : "Add"}</button>}</div>
         <JobInfoBlock types={b.job_types} info={b.job_info} />
         {b.notes ? (
           <div role={f.notes ? "button" : undefined} tabIndex={f.notes ? 0 : undefined} onClick={() => f.notes && setEdit("notes")} className="block w-full whitespace-pre-wrap break-words rounded-lg bg-muted/40 p-2 text-left text-sm" data-testid="booking-notes-text"><LinkifiedText text={b.notes} /></div>
@@ -117,9 +118,11 @@ export default function AdminBookingDetailPage() {
             : <p className="text-sm text-muted-foreground">No job notes yet.</p>
         )}
       </div>
+      <div className="grid gap-3 md:grid-cols-2">
       <BookingVisitsCard leadId={b.id} companyId={b.company_id} perms={{ admin: !!b.perms?.admin, rep: !!b.perms?.rep }}
         seed={{ date: b.date, time: b.time }} onSaved={() => q.refetch()} />
       <JobPhotosCard leadId={b.id} addSlot={f.any ? <AddJobPhotosButton leadId={b.id} defaultType="site" /> : null} />
+      </div>
       {edit && <EditBookingSheet key={edit} open onOpenChange={(o) => !o && setEdit(null)} notesOnly={edit === "notes"} perms={b.perms}
         booking={{ id: b.id, date: b.scheduled_date ?? b.date, time: b.scheduled_time ?? b.time, notes: b.notes ?? null, service_type: b.service_type, customer_address: b.customer_address }}
         onSaved={() => q.refetch()} />}
