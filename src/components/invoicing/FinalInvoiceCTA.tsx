@@ -5,6 +5,7 @@ import { finalInvoiceStep } from "@/lib/invoiceMoney";
 import { useState } from "react";
 import { Send, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useHeartbeatAudience } from "@/hooks/useSalesHeartbeat";
 import { convertQuoteToInvoice } from "@/lib/convertQuoteToInvoice";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -37,10 +38,13 @@ export function FinalInvoiceCTAForJob({ customerId, job, className }: { customer
   const navigate = useNavigate();
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
+  // p118: technician-only users mark the job complete; admin or sales raise the final invoice.
+  const aud = useHeartbeatAudience();
+  const staff = aud.canSee;
   const done = ["completed", "installed", "done", "complete"].includes(String(job.status || "").toLowerCase()) || !!job.completed_at;
   const { data } = useQuery({
     queryKey: ["final-invoice-step", customerId, job.id, job.status, job.quote_id],
-    enabled: !!customerId,
+    enabled: !!customerId && staff,
     queryFn: async () => {
       const { data: invs } = await (supabase as any).from("invoices").select("id, invoice_number, status, grand_total, sent_at, archived_at, final_sent_at, final_sent_channel, quote_id").eq("customer_id", customerId);
       const ids = (invs || []).map((i: any) => i.id);
@@ -58,6 +62,7 @@ export function FinalInvoiceCTAForJob({ customerId, job, className }: { customer
       return { step, createBalance };
     },
   });
+  if (!staff) return null;
   if (data?.step || !data?.createBalance) return <FinalInvoiceCTA step={data?.step ?? null} className={className} />;
   const create = async () => {
     if (!user?.id || !job.quote_id) return;
