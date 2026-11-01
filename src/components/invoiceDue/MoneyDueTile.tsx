@@ -24,7 +24,7 @@ export default function MoneyDueTile() {
         <button onClick={() => navigate("/admin/invoices?due=today")} className="rounded-full bg-[#FFF4E0] px-3 py-1 text-[#B5730A]">Due today · {randShort(s.today.amount)} ({s.today.count})</button>
         <button onClick={() => navigate("/admin/invoices?due=overdue")} className="rounded-full bg-[#FDECEC] px-3 py-1 text-[#C9373C]">Overdue · {randShort(s.overdue.amount)} ({s.overdue.count})</button>
       </div>
-      {next && <button onClick={() => navigate(next.to)} className="mt-3 rounded-xl bg-[#1AA7EC] px-4 py-2 text-[14px] font-semibold text-white">Next step now: {next.label}</button>}
+      {next && <button onClick={() => navigate(next.to)} className="mt-3 rounded-xl bg-[#1AA7EC] px-4 py-2 text-[14px] font-semibold text-white">{next.label}</button>}
     </section>
   );
 }

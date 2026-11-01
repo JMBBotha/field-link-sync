@@ -64,7 +64,7 @@ export default function SalesHeartbeat() {
       <RequestsTodayStrip />
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
         <section className="min-w-0 rounded-2xl border-2 border-border bg-card p-4">
-          <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Next step now</h3>
+          <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Next step</h3>
           {hb.next ? (<div role="button" tabIndex={0} aria-label={`Show details for ${hb.next.title}`} data-testid="hb-next-card" className="-mx-2 cursor-pointer rounded-xl px-2 py-1 transition-colors hover:bg-muted/50 active:opacity-80"
             onClick={(e) => { if (!(e.target as HTMLElement).closest("button,a")) tap(hb.next!); }}
             onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) tap(hb.next!); }}>
