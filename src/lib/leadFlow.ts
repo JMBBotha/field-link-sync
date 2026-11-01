@@ -118,7 +118,7 @@ export function deriveFlow(d: FlowData, now: number, s: SlaSettings = DEFAULT_SL
     const final = invs.find((i) => i.due_date);
     if (!invs.length || invs.every((i) => i.status === "draft" && !i.sent_at)) {
       const due = done + DAY;
-      return out.push({ key, client, stage: "DONE", ...urgencyFor(now, due, done + 4 * HOUR), action: "Send final invoice", href: invHref || jobHref, dueAt: due });
+      return out.push({ key, client, stage: "DONE", ...urgencyFor(now, due, done + 4 * HOUR), action: "Final invoice", href: invHref || jobHref, dueAt: due });
     }
     const due = final?.due_date ? endOfLocalDay(t(final.due_date)) : done + 7 * DAY;
     return out.push({ key, client, stage: "DONE", ...urgencyFor(now, due, due - 2 * DAY, true), action: "Chase payment", href: invHref || jobHref, dueAt: due });

@@ -52,10 +52,10 @@ export const RULES: Record<NextStepRule, { chip: (n: number) => string; action: 
   no_quote: { chip: (n) => `${n} quote${n === 1 ? "" : "s"} to send`, action: "Start quote", tone: "orange" },
   followup: { chip: (n) => `${n} follow-up${n === 1 ? "" : "s"}`, action: "Follow up", tone: "orange" },
   cold: { chip: (n) => `${n} cold quote${n === 1 ? "" : "s"}`, action: "Follow up now", tone: "orange" },
-  deposit_invoice: { chip: (n) => `${n} deposit invoice${n === 1 ? "" : "s"}`, action: "Send invoice", tone: "orange" },
-  book_install: { chip: (n) => `${n} install date${n === 1 ? "" : "s"}`, action: "Book installation", tone: "blue" },
+  deposit_invoice: { chip: (n) => `${n} deposit invoice${n === 1 ? "" : "s"}`, action: "Open deposit invoice", tone: "orange" },
+  book_install: { chip: (n) => `${n} install date${n === 1 ? "" : "s"}`, action: "Book install", tone: "blue" },
   assign_tech: { chip: (n) => `${n} need${n === 1 ? "s" : ""} a technician`, action: "Assign technician", tone: "blue" },
-  final_invoice: { chip: (n) => `${n} final invoice${n === 1 ? "" : "s"}`, action: "Send final invoice", tone: "blue" },
+  final_invoice: { chip: (n) => `${n} final invoice${n === 1 ? "" : "s"}`, action: "Final invoice", tone: "blue" },
   final_unpaid: { chip: (n) => `${n} final unpaid`, action: "Send reminder", tone: "blue" },
 };
 
