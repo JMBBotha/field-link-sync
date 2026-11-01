@@ -275,8 +275,8 @@ const FBInvoiceList = () => {
         </Select>
         {selectedIds.size > 0 && (
           <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" onClick={() => bulkSendMutation.mutate()}>
-              <Send className="h-4 w-4 mr-1" />Send ({selectedIds.size})
+            <Button size="sm" variant="outline" onClick={() => { if (window.confirm(`Mark ${selectedIds.size} invoice(s) as sent? Nothing is emailed to clients.`)) bulkSendMutation.mutate(); }} data-testid="bulk-mark-sent">
+              <Send className="h-4 w-4 mr-1" />Mark sent ({selectedIds.size})
             </Button>
             <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => bulkMarkPaidMutation.mutate()}>
               <CheckCircle className="h-4 w-4 mr-1" />Paid ({selectedIds.size})
