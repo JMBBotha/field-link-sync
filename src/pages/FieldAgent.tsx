@@ -1350,7 +1350,7 @@ const FieldAgent = () => {
         </header>
         <JobLocationShare />
         {/* Phones only: labelled availability strip under the header (row 1 keeps menu/logo/bell/avatar). */}
-        <div data-testid="field-mobile-strip" className="md:hidden flex h-11 shrink-0 items-center gap-1.5 border-b px-2 z-20" style={{ backgroundColor: 'var(--v8-bar)', borderColor: 'var(--v8-bar-bd)' }}>
+        <div data-testid="field-mobile-strip" className="v8-bar-hdr md:hidden flex h-11 shrink-0 items-center gap-1.5 border-b px-2 z-20" style={{ backgroundColor: 'var(--v8-bar)', borderColor: 'var(--v8-bar-bd)' }}>
           <AvailabilitySwitch labelled status={availability.status} onChange={changeAvailability} className="flex-1 max-w-[260px]" />
           <div className="ml-auto flex items-center">
             <AvailabilityIndicator status={availability.status} isInBufferWindow={availability.isInBufferWindow} nextAvailableText={availability.formatNextAvailable()} compact hideLabel />

@@ -24,6 +24,7 @@ import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import { MarkSentManuallyButton, SentManuallyBadge } from "@/components/documents/MarkSentManually";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import QuoteEmailSendBadge from "@/components/quoting/QuoteEmailSendBadge";
+import QuoteOptionChip from "@/components/quoting/QuoteOptionChip";
 import EstimateBuilder from "@/components/quoting/EstimateBuilder";
 import VoiceQuoteStrip from "@/components/quoting/VoiceQuoteStrip";
 import MandyQuoteActions from "@/components/mandy/MandyQuoteActions";
@@ -194,6 +195,7 @@ const AdminEstimateDetailPage = () => {
           <span className="truncate">Estimate {quote.quote_number}</span>
           <span className="print:hidden"><StatusPill status={quote.status} /></span>
           <span data-pdf-hide className="print:hidden"><QuoteEmailSendBadge quoteId={quote.id} onRetry={() => void docActions.handleSend()} /></span>
+          <QuoteOptionChip quoteId={quote.id} groupId={quote.option_group_id} />
           <span data-pdf-hide className="ml-2 text-xs font-normal text-muted-foreground print:hidden" aria-live="polite">
             {pendingWrites > 0 || leaving ? "Saving…" : "Saved"}
           </span>
