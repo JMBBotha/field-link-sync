@@ -126,3 +126,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 .dark .fl-btn-text{color:#7CC4F5}
 @media (max-width:640px){.fl-btn-primary.fl-phone{min-height:52px}}
 .v8-scope button.h-7,.v8-scope button.h-8,.v8-scope button.h-9{min-height:44px}
+
+/* UI polish 3/5: 24px checkboxes in 44px rows (quote pop-up) */
+.fl-check-lg { min-height: 44px; align-items: center; }
+.fl-check-lg input[type="checkbox"] { width: 24px; height: 24px; flex-shrink: 0; accent-color: var(--fl-primary, #C2410C); }
