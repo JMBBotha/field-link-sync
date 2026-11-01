@@ -1,4 +1,5 @@
 import LeadCloseActions from "@/components/leads/LeadCloseActions";
+import LinkifiedText from "@/components/shared/LinkifiedText";
 import QuoteFollowUpPanel from "@/components/leads/QuoteFollowUpPanel";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -222,7 +223,7 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
             <Kv k="Scheduled" v={[lead?.scheduled_date, lead?.scheduled_time && String(lead.scheduled_time).slice(0, 5)].filter(Boolean).join(" · ")} />
             <Kv k="Order" v={lead?.order_status} />
             <Kv k="Parts" v={lead?.parts_status} />
-            <Kv k="Notes" v={lead?.notes && !/(^|\n)\s*(Transcript:\s*)?(User|AI):|CallSid:|Vapi call:/i.test(lead.notes) ? <span className="whitespace-pre-wrap">{lead.notes}</span> : null} />
+            <Kv k="Notes" v={lead?.notes && !/(^|\n)\s*(Transcript:\s*)?(User|AI):|CallSid:|Vapi call:/i.test(lead.notes) ? <span className="whitespace-pre-wrap break-words"><LinkifiedText text={lead.notes} /></span> : null} />
           </dl>
         )}
       </section>

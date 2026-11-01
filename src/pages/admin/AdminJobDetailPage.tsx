@@ -1,4 +1,5 @@
 import { BalanceDueBlockForJob } from "@/components/invoicing/BalanceDueBlock";
+import { storedPin, coordsFromText } from "@/lib/mapPin";
 import { FinalInvoiceCTAForJob } from "@/components/invoicing/FinalInvoiceCTA";
 import { useUndoAction } from "@/components/shared/StatusUndo";
 import { useNavigate, useParams } from "react-router-dom";
@@ -433,9 +434,11 @@ const AdminJobDetailPage = () => {
             {/* Quick action: Navigate (opens native maps) */}
             {(() => {
               const addr = j.address || location?.address;
-              const href = addr
-                ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`
-                : null;
+              // Exact pin first (job lat/lng or coordinates in the description), typed address last.
+              const pin = storedPin((j as any).lat, (j as any).lng) || coordsFromText((j as any).description);
+              const href = pin
+                ? `https://www.google.com/maps/dir/?api=1&destination=${pin.lat},${pin.lng}`
+                : addr ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}` : null;
               return href ? (
                 <a
                   href={href}

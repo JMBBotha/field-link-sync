@@ -12,6 +12,9 @@ import EditBookingSheet from "@/components/jobs/EditBookingSheet";
 import JobPhotosCard from "@/components/jobs/JobPhotosCard";
 import BookingVisitsCard from "@/components/jobs/BookingVisits";
 import AddJobPhotosButton from "@/components/jobs/AddJobPhotosButton";
+import SetPinDialog from "@/components/jobs/SetPinDialog";
+import LinkifiedText from "@/components/shared/LinkifiedText";
+import { mapHref } from "@/lib/mapPin";
 import { bookingStatus, editableBookingFields, type BookingPerms } from "@/lib/bookingEdit";
 
 /**
@@ -23,6 +26,7 @@ export default function AdminBookingDetailPage() {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
   const [assignOpen, setAssignOpen] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
   const [edit, setEdit] = useState<null | "all" | "notes">(null);
   const moreRef = useRef<HTMLDetailsElement>(null);
   const closeMore = () => moreRef.current?.removeAttribute("open");
@@ -30,7 +34,7 @@ export default function AdminBookingDetailPage() {
     queryKey: ["booking-detail", leadId], enabled: !!leadId,
     queryFn: async () => {
       const { data: l, error } = await (supabase.from("leads") as any)
-        .select("id, customer_name, customer_phone, customer_address, customer_id, company_id, assigned_agent_id, scheduled_date, scheduled_time, service_type, job_types, job_info, status, lead_status, notes")
+        .select("id, customer_name, customer_phone, customer_address, customer_id, company_id, assigned_agent_id, scheduled_date, scheduled_time, service_type, job_types, job_info, status, lead_status, notes, latitude, longitude")
         .eq("id", leadId!).maybeSingle();
       if (error) throw error;
       if (!l) return null;
@@ -66,7 +70,8 @@ export default function AdminBookingDetailPage() {
   const f = editableBookingFields(b.perms);
   const st = bookingStatus(b.status, b.lead_status, assigned);
   const stCls = { green: "bg-[#E8F5E9] text-[#1B5E20]", amber: "bg-[#FFF3E0] text-[#8A3B00]", red: "bg-[#FDECEA] text-[#B71C1C]", blue: "bg-[#E3F2FD] text-[#0D47A1]" }[st.tone];
-  const map = b.customer_address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.customer_address)}` : null;
+  // Exact pin first (stored lat/lng, else coordinates in the notes), typed address last (Johan t2045u).
+  const map = mapHref({ lat: b.latitude, lng: b.longitude, notes: b.notes, address: b.customer_address });
   return (
     <div className="v8-scope mx-auto max-w-3xl space-y-3 p-3 sm:p-6" data-testid="booking-detail">
       {/* One back arrow: the shared header BackButton (Johan 31 Oct). */}
@@ -90,12 +95,12 @@ export default function AdminBookingDetailPage() {
         {b.customer_phone && <Button asChild variant="outline" className="min-h-11"><a href={`tel:${b.customer_phone}`}><Phone className="mr-1 h-4 w-4" />Call</a></Button>}
         {map && <Button asChild variant="outline" className="min-h-11"><a href={map} target="_blank" rel="noreferrer"><MapPin className="mr-1 h-4 w-4" />Map</a></Button>}
         {b.customer_id && <Button variant="outline" className="min-h-11" onClick={() => navigate(`/admin/customers/${b.customer_id}`)}>Open client</Button>}
-        {assigned && (
+        {(assigned || f.any) && (
           <details ref={moreRef} className="relative" data-testid="booking-more">
             <summary className="inline-flex min-h-11 cursor-pointer list-none items-center rounded-md border px-3 text-sm font-medium">More</summary>
             <div className="absolute left-0 z-20 mt-1 flex w-56 flex-col rounded-xl border bg-card p-1 shadow-lg">
-              {f.any && <button onClick={() => { closeMore(); setEdit("all"); }} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="booking-more-edit">Edit date, time &amp; notes</button>}
-              <button onClick={() => { closeMore(); setAssignOpen(true); }} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="booking-reassign">Reassign / reschedule</button>
+              {f.any && <button onClick={() => { closeMore(); setPinOpen(true); }} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="booking-set-pin">Set pin on map</button>}
+              {assigned && <button onClick={() => { closeMore(); setAssignOpen(true); }} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="booking-reassign">Reassign / reschedule</button>}
             </div>
           </details>
         )}
@@ -105,7 +110,7 @@ export default function AdminBookingDetailPage() {
           {f.notes && <Button variant="ghost" size="sm" className="min-h-11" onClick={() => setEdit("notes")} data-testid="booking-notes-edit"><Pencil className="mr-1 h-4 w-4" />{b.notes ? "Edit" : "Add"}</Button>}</div>
         <JobInfoBlock types={b.job_types} info={b.job_info} />
         {b.notes ? (
-          <button type="button" disabled={!f.notes} onClick={() => setEdit("notes")} className="block w-full whitespace-pre-wrap break-words rounded-lg bg-muted/40 p-2 text-left text-sm" data-testid="booking-notes-text">{b.notes}</button>
+          <div role={f.notes ? "button" : undefined} tabIndex={f.notes ? 0 : undefined} onClick={() => f.notes && setEdit("notes")} className="block w-full whitespace-pre-wrap break-words rounded-lg bg-muted/40 p-2 text-left text-sm" data-testid="booking-notes-text"><LinkifiedText text={b.notes} /></div>
         ) : !b.job_types?.length && !b.job_info && (
           f.notes
             ? <button type="button" onClick={() => setEdit("notes")} className="block w-full rounded-lg border border-dashed p-3 text-left text-sm text-muted-foreground" data-testid="booking-notes-add">No job notes yet. Tap to add.</button>
@@ -118,6 +123,8 @@ export default function AdminBookingDetailPage() {
       {edit && <EditBookingSheet key={edit} open onOpenChange={(o) => !o && setEdit(null)} notesOnly={edit === "notes"} perms={b.perms}
         booking={{ id: b.id, date: b.scheduled_date ?? b.date, time: b.scheduled_time ?? b.time, notes: b.notes ?? null, service_type: b.service_type, customer_address: b.customer_address }}
         onSaved={() => q.refetch()} />}
+      {pinOpen && <SetPinDialog open onClose={() => setPinOpen(false)} leadId={b.id} lat={b.latitude} lng={b.longitude} notes={b.notes}
+        address={b.customer_address} canSetAddress={!!b.perms?.admin} onSaved={() => q.refetch()} />}
       <LeadAssignDialog leadId={assignOpen ? b.id : null} onClose={() => { setAssignOpen(false); q.refetch(); }} />
     </div>
   );

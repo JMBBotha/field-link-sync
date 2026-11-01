@@ -2,6 +2,8 @@
  * /field/jobs/:id — tech job sheet (step 4). No money anywhere: the header is the jobs row (RLS: assigned tech or company),
  * the packing list is get_job_packing_list (name, code, quantity, area only). Ticks are saved on this device only.
  */
+import LinkifiedText from "@/components/shared/LinkifiedText";
+import { storedPin, coordsFromText } from "@/lib/mapPin";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -59,6 +61,8 @@ export default function FieldJobSheetPage() {
   // Site check (phone/online install quotes): Start/Complete stay locked until costs are confirmed
   const site = useSiteCheck(id, (job.data as any)?.site_check_status ?? null);
   const blocked = siteCheckBlock(site.data);
+  // Exact pin first: job lat/lng, then the booking pin, then coordinates in the description (Johan t2045u).
+  const sitePin = storedPin((j as any)?.lat, (j as any)?.lng) || storedPin((j as any)?.leads?.latitude, (j as any)?.leads?.longitude) || coordsFromText((j as any)?.description);
   const siteAddress: string | null = (j as any)?.address || (j as any)?.leads?.customer_address || (j as any)?.customers?.address || null;
   const pack = useSurveyPack(j?.lead_id ?? null);
   const { toast } = useToast();
@@ -104,7 +108,7 @@ export default function FieldJobSheetPage() {
                 onDone={() => { toast({ title: "Marked en route", description: "The office can see you're on the way." }); job.refetch(); }} />
             )}
             {siteAddress && (
-              <a className="flex items-center gap-2 text-sm underline" href={`https://maps.google.com/?q=${encodeURIComponent(siteAddress)}`} target="_blank" rel="noreferrer">
+              <a className="flex items-center gap-2 text-sm underline" href={sitePin ? `https://www.google.com/maps/search/?api=1&query=${sitePin.lat},${sitePin.lng}` : `https://maps.google.com/?q=${encodeURIComponent(siteAddress)}`} target="_blank" rel="noreferrer">
                 <MapPin className="h-4 w-4" />{siteAddress}</a>
             )}
             {j.customers?.name && (
@@ -113,11 +117,11 @@ export default function FieldJobSheetPage() {
             )}
             {(siteAddress || j.customers?.phone) && (
               <div className="grid grid-cols-2 gap-2" data-testid="job-pack-actions">
-                {siteAddress ? <Button asChild variant="outline" className="min-h-[44px]"><a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(siteAddress)}`} target="_blank" rel="noreferrer"><Navigation className="mr-1 h-4 w-4" />Navigate</a></Button> : <span />}
+                {siteAddress ? <Button asChild variant="outline" className="min-h-[44px]"><a href={`https://www.google.com/maps/dir/?api=1&destination=${sitePin ? `${sitePin.lat},${sitePin.lng}` : encodeURIComponent(siteAddress)}`} target="_blank" rel="noreferrer"><Navigation className="mr-1 h-4 w-4" />Navigate</a></Button> : <span />}
                 {j.customers?.phone ? <Button asChild variant="outline" className="min-h-[44px]"><a href={`tel:${j.customers.phone}`}><Phone className="mr-1 h-4 w-4" />Call client</a></Button> : <span />}
               </div>
             )}
-            {j.description && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{j.description}</p>}
+            {j.description && <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground"><LinkifiedText text={j.description} /></p>}
             <JobInfoBlock types={(j as any).leads?.job_types} info={(j as any).leads?.job_info} />
             {blocked && ["scheduled", "dispatched", "in_progress"].includes(j.status) && (
               <p className="rounded-lg bg-amber-50 dark:bg-amber-500/15 p-2 text-sm font-semibold text-amber-800 dark:text-amber-300" data-testid="job-locked-reason">{blocked}</p>
