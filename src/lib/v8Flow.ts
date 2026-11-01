@@ -5,7 +5,7 @@ import { dropAction } from "@/lib/quotePipeline";
 export type V8Col = "lead" | "quote" | "accepted" | "booked" | "invoiced" | "paid" | "lost";
 export const V8_COLS: { key: V8Col; label: string; hint: string }[] = [
   { key: "lead", label: "Lead", hint: "not quoted yet" },
-  { key: "quote", label: "Quote sent", hint: "draft, sent or viewed" },
+  { key: "quote", label: "Quotes open", hint: "draft, sent or viewed" },
   { key: "accepted", label: "Accepted", hint: "deposit invoice · book the job" },
   { key: "booked", label: "Job booked", hint: "on Dispatch" },
   { key: "invoiced", label: "Invoiced", hint: "waiting for payment" },
