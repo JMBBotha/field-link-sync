@@ -11,7 +11,7 @@ import { TimeInput24 } from "@/components/ui/time-input-24";
 import { Loader2 } from "lucide-react";
 import { jhbLocalToIso } from "@/lib/jobActionBar";
 import { editableJobFields, type UnitRow } from "@/lib/jobEdit";
-import { sortVisits, visitsChanged, visitsError, type JobVisit } from "@/lib/jobVisits";
+import { sortVisits, visitsChanged, visitsPayload, visitsError, type JobVisit } from "@/lib/jobVisits";
 import { useJobVisits, VisitsEditor } from "@/components/jobs/JobVisits";
 
 const jhb = (iso: string | null | undefined, kind: "date" | "time") => {
@@ -47,8 +47,8 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
   const seedVisits: JobVisit[] = visitQ.data?.length ? visitQ.data
     : date ? [{ date, start: time, end: `${String(Math.min(23, +time.slice(0, 2) + 3)).padStart(2, "0")}:${time.slice(3, 5)}` }] : [];
   const vRows = visits ?? seedVisits;
-  // A rep can only move existing visits; with none yet they keep the single date + time.
-  const useVisits = hasLead && !visitQ.isError && (perms.admin || visitQ.isLoading || !!visitQ.data?.length);
+  // Admin and the client's rep both edit visits (a rep may add, including the first; only admin removes / picks techs).
+  const useVisits = hasLead && !visitQ.isError && (perms.admin || perms.rep);
 
   const techs = useQuery({
     queryKey: ["dispatchable-techs", companyId], enabled: open && f.tech,
@@ -78,9 +78,7 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
       setBusy(true);
       const { error: vErr } = await (supabase.rpc as any)("set_job_visits", {
         p_job: jobId,
-        p_visits: sortVisits(visits!).map((v) => perms.admin
-          ? { id: v.id ?? null, date: v.date, start: v.start, end: v.end, tech: v.tech ?? null, note: v.note ?? null }
-          : { id: v.id, date: v.date, start: v.start, end: v.end }),
+        p_visits: visitsPayload(visits!, perms.admin),
         p_note: null,
       });
       setBusy(false);
@@ -120,7 +118,7 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
         <div className="space-y-4 py-4">
           {useVisits ? (
             visitQ.isLoading ? <p className="text-sm text-muted-foreground">Loading visits…</p>
-              : <VisitsEditor visits={vRows} onChange={setVisits} admin={perms.admin} techs={techs.data ?? []} today={today} />
+              : <VisitsEditor visits={vRows} onChange={setVisits} admin={perms.admin} canAdd={perms.admin || perms.rep} canNote={perms.admin || perms.rep} techs={techs.data ?? []} today={today} />
           ) : (
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1"><Label className="block" htmlFor="ej-date">Installation date</Label><Input id="ej-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
@@ -129,7 +127,7 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
           )}
           {f.tech && (
             <div className="space-y-1">
-              <Label className="block" htmlFor="ej-tech">{useVisits ? "Job technician (sets every visit)" : "Technician"}</Label>
+              <Label className="block" htmlFor="ej-tech">{useVisits ? "Job technician (visits with their own tech keep it)" : "Technician"}</Label>
               <select id="ej-tech" className="w-full min-h-[44px] rounded-md border bg-background px-3 text-sm" value={tech} onChange={(e) => setTech(e.target.value)} data-testid="edit-job-tech">
                 <option value="">{techId ? "Keep current tech" : "No tech yet"}</option>
                 {(techs.data ?? []).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}

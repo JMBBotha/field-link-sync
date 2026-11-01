@@ -19,6 +19,7 @@ import { loadJobSheet, loadPackingList } from "@/lib/jobPack";
 import { siteCheckHints } from "@/lib/siteSurvey/pack";
 import SurveyPackSection, { FrontPhoto, useSurveyPack } from "@/components/survey/SurveyPackSection";
 import { packQtyText, groupPackingList, loadTicks, saveTicks, type PackingRow } from "@/lib/packingList";
+import JobVisitsCard from "@/components/jobs/JobVisits";
 import JobDaysPanel, { useJobDays } from "@/components/field/JobDaysPanel";
 import JobCompletionSheet from "@/components/jobs/JobCompletionSheet";
 import { lastOpenCheckIn, type JobDays } from "@/lib/jobDays";
@@ -137,6 +138,8 @@ export default function FieldJobSheetPage() {
         </Card>
       )}
 
+      {/* Read-only: the tech sees every visit and its hours */}
+      {j?.lead_id && id && <JobVisitsCard jobId={id} />}
       {j && multiDay && (
         <JobDaysPanel jobId={id} leadId={j.lead_id ?? null} onChanged={() => job.refetch()}
           onCompleteJob={(d) => (j.lead_id ? setFinish({ open: true, days: d }) : toast({ title: "Ask the office to close this job", description: "It has no client record to sign off." }))} />
