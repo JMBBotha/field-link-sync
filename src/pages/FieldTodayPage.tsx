@@ -6,7 +6,7 @@ import { useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Briefcase, ChevronRight, MapPin, Navigation, Phone, RefreshCw } from "lucide-react";
+import { Briefcase, ChevronRight, MapPin, Navigation, Phone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import FieldShell from "@/components/field/FieldShell";
@@ -38,7 +38,7 @@ function statusPill(job: JobRow | undefined, survey: boolean) {
 const timeOf = (e: CalendarEntry) => (e.start_time ? e.start_time.slice(0, 5) : "Any time");
 const navLink = (addr: string | null) => (addr ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}` : null);
 
-function TodayCard({ e, job, open, index }: { e: CalendarEntry; job?: JobRow; open: boolean; index: number }) {
+function TodayCard({ e, job, open, index, total }: { e: CalendarEntry; job?: JobRow; open: boolean; index: number; total: number }) {
   const navigate = useNavigate();
   const pack = useSurveyPack(e.lead_id);
   const survey = pack.data ?? null;
@@ -57,37 +57,39 @@ function TodayCard({ e, job, open, index }: { e: CalendarEntry; job?: JobRow; op
       actions={(dayPill || statusPill(job, !!survey)) ? <span className="flex gap-1">{dayPill}{statusPill(job, !!survey)}</span> : undefined} />
   );
   return (
-    <Card className="overflow-hidden" data-testid="today-next">
-      {survey && <FrontPhoto survey={survey} className="aspect-[16/9] rounded-none" />}
-      <CardContent className="space-y-3 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <Badge variant="secondary">{timeOf(e)} · {dayTag ?? `Job ${index + 1}`}</Badge>
-          {statusPill(job, !!survey)}
-        </div>
-        <div>
+    <div className="space-y-3 rounded-2xl border-2 border-[#C2410C] bg-white p-4" data-testid="today-next">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-bold uppercase tracking-wide text-[#C2410C]">Next job · {timeOf(e)}{dayTag ? ` · ${dayTag}` : ""}</span>
+        <span className="flex items-center gap-1 text-xs text-[#475569]">{statusPill(job, !!survey)}{index + 1} of {total}</span>
+      </div>
+      <div className="flex items-start gap-3">
+        {survey && <FrontPhoto survey={survey} className="h-16 w-16 shrink-0 rounded-lg object-cover" />}
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold">{e.customer_name || "Client"}</h2>
           {e.customer_address && <p className="flex items-start gap-1 text-sm text-muted-foreground"><MapPin className="mt-0.5 h-4 w-4 shrink-0" />{e.customer_address}</p>}
         </div>
-        {(job?.title || job?.description) && <p className="text-sm"><span className="font-semibold">{job?.title}</span>{job?.description ? <span className="block text-muted-foreground line-clamp-2">{job.description}</span> : null}</p>}
-        {pipes.length > 0 && (
-          <div className="grid grid-cols-2 gap-2">
-            {pipes.slice(0, 4).map((p) => (
-              <div key={p.name} className="rounded-lg bg-muted/50 px-3 py-2">
-                <div className="truncate text-xs uppercase tracking-wide text-muted-foreground">{p.name}</div>
-                <div className="font-semibold">{p.m != null ? `${p.m} m pipe` : "–"}</div>
-              </div>
-            ))}
-          </div>
-        )}
+      </div>
+      {(job?.title || job?.description) && <p className="text-sm"><span className="font-semibold">{job?.title}</span>{job?.description ? <span className="block text-muted-foreground line-clamp-2">{job.description}</span> : null}</p>}
+      {pipes.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
-          {nav ? <Button asChild variant="outline" className="min-h-[44px]"><a href={nav} target="_blank" rel="noreferrer"><Navigation className="mr-1 h-4 w-4" />Navigate</a></Button>
-            : <Button variant="outline" className="min-h-[44px]" disabled><Navigation className="mr-1 h-4 w-4" />No address</Button>}
-          {phone ? <Button asChild variant="outline" className="min-h-[44px]"><a href={`tel:${phone}`}><Phone className="mr-1 h-4 w-4" />Call client</a></Button>
-            : <Button variant="outline" className="min-h-[44px]" disabled><Phone className="mr-1 h-4 w-4" />No phone</Button>}
+          {pipes.slice(0, 4).map((p) => (
+            <div key={p.name} className="rounded-lg bg-muted/50 px-3 py-2">
+              <div className="truncate text-xs uppercase tracking-wide text-muted-foreground">{p.name}</div>
+              <div className="font-semibold">{p.m != null ? `${p.m} m pipe` : "–"}</div>
+            </div>
+          ))}
         </div>
-        <Button className="w-full min-h-[48px]" onClick={() => navigate(href)} data-testid="today-open-pack">{dayTag ? `${dayTag} · Check in` : "Open job pack"}<ChevronRight className="ml-1 h-4 w-4" /></Button>
-      </CardContent>
-    </Card>
+      )}
+      <button type="button" className="fl-btn-primary fl-phone w-full" style={{ minHeight: 52 }} onClick={() => navigate(href)} data-testid="today-open-pack">
+        {dayTag ? `${dayTag} · Check in` : "Check in · open job pack"}<ChevronRight className="ml-1 inline h-4 w-4" />
+      </button>
+      <div className="grid grid-cols-2 gap-2">
+        {nav ? <a className="fl-btn-text inline-flex items-center justify-center" style={{ minHeight: 48 }} href={nav} target="_blank" rel="noreferrer"><Navigation className="mr-1 h-4 w-4" />Navigate</a>
+          : <span className="inline-flex items-center justify-center text-sm text-muted-foreground" style={{ minHeight: 48 }}>No address</span>}
+        {phone ? <a className="fl-btn-text inline-flex items-center justify-center" style={{ minHeight: 48 }} href={`tel:${phone}`}><Phone className="mr-1 h-4 w-4" />Call client</a>
+          : <span className="inline-flex items-center justify-center text-sm text-muted-foreground" style={{ minHeight: 48 }}>No phone</span>}
+      </div>
+    </div>
   );
 }
 
@@ -151,12 +153,9 @@ export default function FieldTodayPage() {
   return (
     <FieldShell title="Today">
       <div className="space-y-3" data-testid="field-today">
-        <div className="flex items-end justify-between gap-2">
-          <div>
-            <div className="v8-eyebrow">Technician</div>
-            <p className="text-sm text-muted-foreground">{format(new Date(`${date}T12:00:00`), "EEEE d MMMM")} · {open.length} job{open.length === 1 ? "" : "s"}</p>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => qc.invalidateQueries({ queryKey: ["my-jobs"] })}><RefreshCw className="mr-1 h-4 w-4" />Refresh</Button>
+        <div>
+          <h1 className="text-[22px] font-semibold text-[#0F1B2A]">Today</h1>
+          <p className="text-sm text-muted-foreground">{format(new Date(`${date}T12:00:00`), "EEEE d MMMM")} · {open.length} job{open.length === 1 ? "" : "s"}{tomorrow.data != null ? ` · ${tomorrow.data} tomorrow` : ""}</p>
         </div>
         {day.isLoading ? <JobCardListSkeleton rows={2} /> : day.error ? (
           <Card><CardContent className="p-4 text-sm">Couldn't load today's jobs. Pull to refresh when you have signal.</CardContent></Card>
@@ -165,10 +164,10 @@ export default function FieldTodayPage() {
             <p className="font-semibold">No jobs today</p>
             <p className="text-sm text-muted-foreground">New job offers show under More → Job offers.</p>
           </CardContent></Card>
-        ) : open.map((e, i) => <TodayCard key={e.key} e={e} job={e.job_id ? byId.get(e.job_id) : undefined} open={i === nextIdx} index={i} />)}
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          <Button asChild variant="outline" className="min-h-[44px]"><Link to="/admin/my-jobs"><Briefcase className="mr-1 h-4 w-4" />Job offers</Link></Button>
-          <Button asChild variant="outline" className="min-h-[44px]"><Link to="/field/schedule">Week{tomorrow.data != null ? ` · ${tomorrow.data} tomorrow` : ""}</Link></Button>
+        ) : open.map((e, i) => <TodayCard key={e.key} e={e} job={e.job_id ? byId.get(e.job_id) : undefined} open={i === nextIdx} index={i} total={open.length} />)}
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <Button asChild variant="outline" className="min-h-[48px]"><Link to="/admin/my-jobs"><Briefcase className="mr-1 h-4 w-4" />Job offers</Link></Button>
+          <Link to="/field/schedule" className="fl-btn-text inline-flex items-center" data-testid="today-week">See the week →</Link>
         </div>
       </div>
     </FieldShell>
