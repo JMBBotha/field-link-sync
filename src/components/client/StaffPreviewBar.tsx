@@ -5,7 +5,8 @@ import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { MarkSentManuallyButton } from "@/components/documents/MarkSentManually";
-import RecordSheet from "@/components/sales/RecordSheet";
+import { SnoozeDialog } from "@/components/sales/NextStepsPanel";
+import type { NextStep } from "@/lib/nextSteps";
 
 /** Staff-only bar on the client view (?preview=1) (Johan 1 Nov 21:28).
  *  Renders only when the signed-in staff login can read the quote under RLS; a client never sees it. */
@@ -37,7 +38,17 @@ export default function StaffPreviewBar({ token }: { token: string }) {
         </>}
       </div>
       {d && <SendQuoteDialog open={sendOpen} onOpenChange={setSendOpen} quoteId={d.id} quoteNumber={d.quote_number || "Draft"} customerId={d.customer_id ?? null} customerName={d.customer_name || "Customer"} />}
-      {d && sheet && <RecordSheet r={{ kind: "quote", id: d.id, title: d.quote_number || "Quote", primary: null, snoozeRule: "followup" } as any} onClose={() => setSheet(false)} />}
+      {d && sheet && <SnoozeDialog
+        row={{ rule: "followup", entity_type: "quote", entity_id: d.id, title: d.customer_name || "Quote", detail: d.quote_number || "" } as unknown as NextStep}
+        onClose={() => setSheet(false)}
+        onSave={async (o) => {
+          const { error } = await (supabase.rpc as any)("snooze_next_step", { p_rule: "followup", p_entity_type: "quote", p_entity_id: d.id, p_until: o.until?.toISOString() ?? null, p_dismiss: !!o.dismiss, p_reason: o.reason });
+          if (error) throw error; qc.invalidateQueries({ queryKey: ["sales-next-steps"] }); setSheet(false);
+        }}
+        onGroup={async (other) => {
+          const { error } = await (supabase.rpc as any)("group_quote_option", { p_quote: d.id, p_other: other });
+          if (error) throw error; qc.invalidateQueries({ queryKey: ["sales-next-steps"] });
+        }} />}
     </div>
   );
 }
