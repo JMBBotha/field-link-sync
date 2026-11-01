@@ -108,12 +108,12 @@ export default function FieldJobSheetPage() {
                 onDone={() => { toast({ title: "Marked en route", description: "The office can see you're on the way." }); job.refetch(); }} />
             )}
             {siteAddress && (
-              <a className="flex items-center gap-2 text-sm underline" href={sitePin ? `https://www.google.com/maps/search/?api=1&query=${sitePin.lat},${sitePin.lng}` : `https://maps.google.com/?q=${encodeURIComponent(siteAddress)}`} target="_blank" rel="noreferrer">
+              <a className="flex min-h-[44px] items-center gap-2 text-sm underline" href={sitePin ? `https://www.google.com/maps/search/?api=1&query=${sitePin.lat},${sitePin.lng}` : `https://maps.google.com/?q=${encodeURIComponent(siteAddress)}`} target="_blank" rel="noreferrer">
                 <MapPin className="h-4 w-4" />{siteAddress}</a>
             )}
             {j.customers?.name && (
               <p className="flex flex-wrap items-center gap-2 text-sm"><Phone className="h-4 w-4" />{j.customers.name}
-                {j.customers.phone && <a className="underline" href={`tel:${j.customers.phone}`}>{j.customers.phone}</a>}</p>
+                {j.customers.phone && <a className="inline-flex min-h-[44px] items-center underline" href={`tel:${j.customers.phone}`}>{j.customers.phone}</a>}</p>
             )}
             {(siteAddress || j.customers?.phone) && (
               <div className="grid grid-cols-2 gap-2" data-testid="job-pack-actions">

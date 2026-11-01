@@ -406,9 +406,10 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           {/* Primary action based on status */}
           {/* Final balance due -> Send final invoice is the one orange button; Record payment is secondary (Johan simpler rule, 1 Nov). */}
           {/* Mark as sent without emailing: dialog asks how (WhatsApp / handed over / other), server logs + notifies the owner. */}
+          {/* No deposit in the chain → same action, labelled 'Send reminder' (Johan 1 Nov 22:06). */}
           {/* Final invoice (Johan 30 Oct): deposit paid, balance open → orange primary next step. Opens WhatsApp with the invoice PDF + balance. */}
           {!["draft", "void", "cancelled"].includes(invoice.status) && (amountPaid > 0.005 || ["sent", "overdue", "partially_paid", "part_paid"].includes(invoice.status)) && Number(invoice.grand_total) - amountPaid > 0.005 && (
-            <FinalInvoiceSendDialog invoice={invoice} balance={Math.max(0, Number(invoice.grand_total) - amountPaid)}
+            <FinalInvoiceSendDialog reminder={!(Number((invoice as any).deposit_amount) > 0) && !(amountPaid > 0.005)} invoice={invoice} balance={Math.max(0, Number(invoice.grand_total) - amountPaid)}
               autoOpen={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("final") === "1"}
               onDone={() => { fetchInvoice(); onUpdate?.(); }} />
           )}

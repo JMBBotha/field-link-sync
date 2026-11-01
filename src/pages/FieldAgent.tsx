@@ -1271,7 +1271,7 @@ const FieldAgent = () => {
             <h1 className="sr-only">Field Agent{userName ? ` – ${userName}` : ""}</h1>
             {!canInvoice && !salaried && (
               <Button variant="ghost" size="sm" onClick={() => navigate("/field/earnings")} aria-label="My earnings" title="My earnings" data-testid="hdr-my-earnings"
-                className="hidden md:flex shrink-0 gap-1 px-2 xl:px-3 text-white hover:bg-white/20">
+                className="hidden md:flex min-h-[44px] shrink-0 gap-1 px-2 xl:px-3 text-white hover:bg-white/20">
                 <Wallet className="h-4 w-4" /><span>My earnings</span>
               </Button>
             )}

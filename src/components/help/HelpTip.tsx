@@ -26,7 +26,7 @@ const HelpTip = ({ title, children, className, label = "Help", side = "top" }: H
         type="button"
         aria-label={label}
         className={cn(
-          "inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors",
+          "relative inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors after:absolute after:-inset-3 after:content-['']",
           className,
         )}
         onClick={(e) => e.stopPropagation()}

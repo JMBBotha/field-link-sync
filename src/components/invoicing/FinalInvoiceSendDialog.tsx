@@ -16,7 +16,8 @@ import { finalSentLabel, finalInvoiceWhatsAppUrl } from "@/lib/invoiceMoney";
  * Email (Johan 30 Oct 20:29, the default): preview the email, press Send → server emails via
  * send-transactional-email (0800becool.co.za), logs who/when/where and shows "Emailed to … at …".
  */
-export default function FinalInvoiceSendDialog({ invoice, balance, autoOpen, onDone }: {
+export default function FinalInvoiceSendDialog({ invoice, balance, autoOpen, onDone, reminder }: {
+  reminder?: boolean;
   invoice: { id: string; invoice_number?: string | null; customer_name?: string | null; customer_phone?: string | null; customer_email?: string | null; due_date?: string | null; pdf_url?: string | null; final_sent_at?: string | null; final_sent_channel?: string | null };
   balance: number; autoOpen?: boolean; onDone?: () => void;
 }) {
@@ -74,7 +75,7 @@ export default function FinalInvoiceSendDialog({ invoice, balance, autoOpen, onD
     <>
       <Button data-testid="send-final-invoice" onClick={() => { reset(); setOpen(true); }}
         className="w-full h-12 rounded-xl text-base font-semibold bg-orange-500 hover:bg-orange-600 text-white">
-        <Send className="h-4 w-4 mr-2" /> {sentLabel ? "Send final invoice again" : "Send final invoice"} · R {Math.round(balance).toLocaleString("en-ZA").replace(/,/g, " ")}
+        <Send className="h-4 w-4 mr-2" /> {reminder ? "Send reminder" : sentLabel ? "Send final invoice again" : "Send final invoice"} · R {Math.round(balance).toLocaleString("en-ZA").replace(/,/g, " ")}
       </Button>
       {sentLabel && <p data-testid="final-sent-label" className="flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="h-4 w-4" />{sentLabel}</p>}
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
