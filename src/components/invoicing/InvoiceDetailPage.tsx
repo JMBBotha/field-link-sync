@@ -411,14 +411,15 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
               autoOpen={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("final") === "1"}
               onDone={() => { fetchInvoice(); onUpdate?.(); }} />
           )}
-          <SendInvoiceEmailButton invoiceId={invoice.id} status={invoice.status} className="w-full h-11 rounded-lg font-semibold" onEdit={() => setEditingId(invoice.id)} onSent={() => { fetchInvoice(); onUpdate?.(); }} />
+          <SendInvoiceEmailButton invoiceId={invoice.id} status={invoice.status} className={isDraft ? "w-full h-11 rounded-lg font-semibold bg-[#C2410C] text-white hover:bg-[#9A3412]" : "w-full h-11 rounded-lg font-semibold border border-input bg-background text-foreground hover:bg-muted"} onEdit={() => setEditingId(invoice.id)} onSent={() => { fetchInvoice(); onUpdate?.(); }} />
           <MarkSentManuallyButton kind="invoice" id={invoice.id} status={invoice.status} size="default" className="w-full h-11 rounded-lg font-semibold" onDone={() => { fetchInvoice(); onUpdate?.(); }} />
           {/* Paid is DERIVED from recorded payments — never set directly. */}
           {(invoice.status === "sent" || invoice.status === "partially_paid" || invoice.status === "overdue") &&
             Number(invoice.grand_total) - amountPaid > 0.005 && (
             <Button
               variant="default"
-              className="w-full h-11 rounded-lg font-semibold"
+              className="w-full h-11 rounded-lg font-semibold bg-[#C2410C] text-white hover:bg-[#9A3412]"
+              data-testid="invoice-record-payment"
               onClick={() => document.getElementById("invoice-payment-recorder")?.scrollIntoView({ behavior: "smooth", block: "center" })}
             >
               <CheckCircle className="h-4 w-4 mr-2" />

@@ -129,11 +129,11 @@ export default function FieldJobSheetPage() {
             {!multiDay && ["scheduled", "dispatched", "in_progress"].includes(j.status) && (
               <div className="flex gap-2 pt-2">
                 {j.status !== "in_progress" && (
-                  <Button className="h-11 flex-1 gap-1.5" variant={j.status === "scheduled" ? "outline" : "default"} disabled={busy || !!blocked} onClick={() => setStatus("in_progress")}>
+                  <Button className="h-11 flex-1 gap-1.5 bg-[#C2410C] text-white hover:bg-[#9A3412]" data-testid="tech-start" disabled={busy || !!blocked} onClick={() => setStatus("in_progress")}>
                     <Play className="h-4 w-4" /> Start job
                   </Button>
                 )}
-                <Button className="h-11 flex-1 gap-1.5" variant={j.status === "in_progress" ? "default" : "outline"} disabled={busy || !!blocked} onClick={() => setStatus("completed")}>
+                <Button className={j.status === "in_progress" ? "h-11 flex-1 gap-1.5 bg-[#C2410C] text-white hover:bg-[#9A3412]" : "h-11 flex-1 gap-1.5"} variant={j.status === "in_progress" ? "default" : "outline"} data-testid="tech-complete" disabled={busy || !!blocked} onClick={() => setStatus("completed")}>
                   <CheckCircle2 className="h-4 w-4" /> Complete job
                 </Button>
               </div>
