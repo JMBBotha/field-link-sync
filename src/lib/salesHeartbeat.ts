@@ -124,7 +124,7 @@ export function buildHeartbeat(input: {
     const fullyPaid = inv.some((i) => !isDeposit(i) && String(i.status) === "paid");
     const depositPaid = inv.some((i) => isPaid(i));
     if (job?.status === "completed") {
-      if (!fullyPaid) push({ quote_id: q.id, id: job.id || q.id, kind: "job", stage: "done", title: `Get paid · ${n}`, sub: `${num_} · job finished, not paid in full`, value, since: job.completed_at || job.created_at || q.created_at, overBy: 0, next: { label: "Send reminder", to: job.id ? `/admin/jobs/${job.id}` : to }, owner: q.sales_engineer_id, limitMs: L.doneDays * DAY });
+      if (!fullyPaid) push({ quote_id: q.id, id: job.id || q.id, kind: "job", stage: "done", title: `Get paid · ${n}`, sub: `${num_} · job finished, not paid in full`, value, since: job.completed_at || job.created_at || q.created_at, overBy: 0, next: { label: "Final invoice", to: job.id ? `/admin/jobs/${job.id}` : to }, owner: q.sales_engineer_id, limitMs: L.doneDays * DAY });
       return;
     }
     if (job) { push({ quote_id: q.id, id: job.id || q.id, kind: "job", stage: "install", title: `Install · ${n}`, sub: job.scheduled_for ? `Booked ${new Date(job.scheduled_for).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}` : "Install booked", value, since: job.created_at || q.created_at, overBy: 0, next: { label: "Open job", to: job.id ? `/admin/jobs/${job.id}` : to }, owner: q.sales_engineer_id, limitMs: Math.max(0, t(job.scheduled_for) - t(job.created_at || q.created_at)) + DAY }); return; }

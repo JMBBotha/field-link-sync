@@ -158,8 +158,8 @@ const AdminEstimateDetailPage = () => {
       const invoiceId = await convertQuoteToInvoice(id, user.id);
       qc.invalidateQueries({ queryKey: ["quotes"] });
       qc.invalidateQueries({ queryKey: ["invoices"] });
-      toast({ title: "Invoice created", description: "Draft invoice generated from estimate." });
-      navigate(`/admin/invoices?highlight=${invoiceId}`);
+      toast({ title: "Draft invoice ready", description: "Nothing was sent. Check it and tap Send when ready." });
+      navigate(`/admin/invoices/${invoiceId}`);
     } catch (e: any) {
       toast({ title: e.message || "Conversion failed", variant: "destructive" });
     } finally {
@@ -277,9 +277,16 @@ const AdminEstimateDetailPage = () => {
           <Pencil className="mr-2 h-4 w-4" /> Full builder / Visual PDF
         </Button>}
         {/* p113: Convert is the primary step only once accepted; before that it was a disabled brand button (dead tap). */}
-        {canConvert && <Button variant="brand" onClick={handleConvert} disabled={busy === "convert"} data-testid="estimate-convert">
+        {/* p115 (Johan t2044): accepted → "Send deposit invoice" opens the existing deposit invoice ready to send; nothing is emailed from here.
+            The deposit invoice already exists from acceptance. Without one, the old convert stays, labelled honestly as a draft. */}
+        {canConvert && depositInvoice && !["paid"].includes(String(depositInvoice.status)) && (
+          <Button variant="brand" onClick={() => navigate(`/admin/invoices/${depositInvoice.id}`)} data-testid="estimate-send-deposit">
+            <Send className="mr-2 h-4 w-4" /> Send deposit invoice
+          </Button>
+        )}
+        {canConvert && (!depositInvoice || String(depositInvoice.status) === "paid") && <Button variant="brand" onClick={handleConvert} disabled={busy === "convert"} data-testid="estimate-convert">
           {busy === "convert" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck2 className="mr-2 h-4 w-4" />}
-          Convert to Invoice
+          {depositInvoice ? "Create balance invoice (draft)" : "Create invoice (draft)"}
         </Button>}
       </div>
 
