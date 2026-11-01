@@ -90,17 +90,18 @@ export default function AdminBookingDetailPage() {
           </span>
         </p>
         <div className="flex flex-wrap items-center gap-2">
+          {/* Never a dead end: assigned bookings get Reschedule / reassign as the main step (sweep 1 Nov). */}
           {!assigned && <button type="button" className="fl-btn-primary px-5" onClick={() => setAssignOpen(true)} data-testid="booking-assign">{RULES.assign_tech.action}</button>}
+          {assigned && <button type="button" className="fl-btn-primary px-5" onClick={() => setAssignOpen(true)} data-testid="booking-reassign">Reschedule / reassign</button>}
           {b.customer_phone && <a className="fl-btn-secondary inline-flex items-center px-4" href={`tel:${b.customer_phone}`}><Phone className="mr-1 h-4 w-4" />Call</a>}
           {map && <a className="fl-btn-secondary inline-flex items-center px-4" href={map} target="_blank" rel="noreferrer"><MapPin className="mr-1 h-4 w-4" />Map</a>}
-          {(assigned || f.any || b.customer_id) && (
+          {(f.any || b.customer_id) && (
             <details ref={moreRef} className="relative" data-testid="booking-more">
               <summary className="fl-btn-text inline-flex cursor-pointer list-none items-center px-3">⋯ More</summary>
               <div className="absolute left-0 z-20 mt-1 flex w-56 flex-col rounded-xl border bg-card p-1 shadow-lg">
                 {f.any && <button onClick={() => { closeMore(); setEdit("all"); }} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="booking-edit">Edit booking</button>}
                 {b.customer_id && <button onClick={() => { closeMore(); navigate(`/admin/customers/${b.customer_id}`); }} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted">Open client</button>}
                 {f.any && <button onClick={() => { closeMore(); setPinOpen(true); }} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="booking-set-pin">Set map pin</button>}
-                {assigned && <button onClick={() => { closeMore(); setAssignOpen(true); }} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="booking-reassign">Reschedule / reassign</button>}
               </div>
             </details>
           )}
