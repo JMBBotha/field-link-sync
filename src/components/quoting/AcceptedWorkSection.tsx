@@ -433,7 +433,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
-                  <Button size="sm" variant="brand" disabled={!hasDeposit || !handoff} onClick={() => openHandoff()} data-testid="handoff-open">
+                  <Button size="sm" variant={hasDeposit ? "brand" : "outline"} disabled={!hasDeposit || !handoff} onClick={() => openHandoff()} data-testid="handoff-open">
                     Pass to Technical / Installation
                   </Button>
                 </span>
