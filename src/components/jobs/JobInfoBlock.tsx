@@ -1,3 +1,4 @@
+import LinkifiedText from "@/components/shared/LinkifiedText";
 const LABEL: Record<string, string> = { service: "Service", repair: "Repair", installation: "Installation" };
 
 /** Job type(s) + job information from the office/sales Assign step. Shown to the assigned tech only. */
@@ -10,7 +11,7 @@ export default function JobInfoBlock({ types, info }: { types?: string[] | null;
           {types.map((t) => <span key={t} className="rounded-full border bg-background px-2 py-0.5 text-xs font-semibold">{LABEL[t] || t}</span>)}
         </div>
       )}
-      {info && <p className="whitespace-pre-wrap">{info}</p>}
+      {info && <p className="whitespace-pre-wrap break-words"><LinkifiedText text={info} /></p>}
     </div>
   );
 }

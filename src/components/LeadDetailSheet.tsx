@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { mapHref } from "@/lib/mapPin";
 import LeadTimingChip from "@/components/leads/LeadTimingChip";
 import { isCallDump } from "@/lib/callSummary";
 import { useNavigate } from "react-router-dom";
@@ -250,7 +251,7 @@ const LeadDetailSheet = ({
   const canEdit = isOwner || isClaimed || isInProgress || roleIsAdminForInvoice || roleIsDispatcherForInvoice;
 
   const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${lead.latitude},${lead.longitude}`;
-  const addressSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.customer_address)}`;
+  const addressSearchUrl = mapHref({ lat: lead.latitude, lng: lead.longitude, notes: lead.notes, address: lead.customer_address }) || "#";
 
   const handleCompleteClick = () => {
     // On-site sign-off first: photos/parts/time recap + customer signature
