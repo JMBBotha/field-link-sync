@@ -55,6 +55,7 @@ const IndependentSignup = lazyRetry(() => import("./pages/IndependentSignup"));
 const SetPassword = lazyRetry(() => import("./pages/SetPassword"));
 const PendingApproval = lazyRetry(() => import("./pages/PendingApproval"));
 const ClientProposalView = lazyRetry(() => import("./components/client/ClientProposalView"));
+const QuotePreviewRedirect = lazyRetry(() => import("./pages/admin/QuotePreviewRedirect"));
 const ClientQuoteBundleView = lazyRetry(() => import("./components/client/ClientQuoteBundleView"));
 const UnitBrochurePage = lazyRetry(() => import("./pages/public/UnitBrochurePage"));
 const PublicStatement = lazyRetry(() => import("./pages/PublicStatement"));
@@ -290,6 +291,7 @@ const App = () => (
 
 
                   {/* Unified Quote Builder — single source of truth (quote_items + quote_areas). */}
+                  <Route path="/admin/quote-preview/:id" element={<QuotePreviewRedirect />} />
                   <Route path="/admin/proposal-builder" element={<LegacyBuilderRedirect />} />
                   <Route path="/admin/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminQuoteBuilderPageUnified mode="admin" /></RequireRole>} />
 

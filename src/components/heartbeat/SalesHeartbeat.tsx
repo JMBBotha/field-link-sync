@@ -1,4 +1,8 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import RecordSheet, { type RecordRef } from "@/components/sales/RecordSheet";
+import NextStepSheet from "@/components/sales/NextStepSheet";
+import type { NextStep, NextStepRule } from "@/lib/nextSteps";
 import { cn } from "@/lib/utils";
 import { nextStepClass } from "@/components/v8/ui/V8Blocks";
 import { ChevronRight } from "lucide-react";
@@ -14,8 +18,20 @@ export const stageHref = (key: string, salesRep: boolean) =>
   key === "new" ? "/admin/requests?filter=new" : key === "contacted" ? "/admin/requests?filter=contacted"
   : key === "visit" ? (salesRep ? "/admin/my-appointments" : "/admin/visits") : "/admin/jobs?tab=pipeline";
 
+/** p111 (Johan t2038u): Next step now + Then open a pop-up instead of jumping away. */
+const SNOOZE_RULE: Record<string, NextStepRule> = { sent: "followup", accepted: "deposit_invoice", deposit: "book_install", install: "assign_tech", done: "final_unpaid" };
+export function hbRecord(i: HbItem): RecordRef | null {
+  if (!i.quote_id) return null;
+  return { kind: "quote", id: i.quote_id, title: i.title, primary: i.next, snoozeRule: SNOOZE_RULE[i.stage] ?? "followup" };
+}
+export function hbLeadRow(i: HbItem): NextStep {
+  return { rule: i.stage === "new" ? "new_lead" : "no_quote", prio: 0, entity_type: "lead", entity_id: i.id, title: i.title, detail: i.sub, amount: null, since: i.since, owner_id: i.owner ?? null, link: i.next.to, snoozable: false };
+}
+
 export default function SalesHeartbeat() {
   const navigate = useNavigate();
+  const [open, setOpen] = useState<HbItem | null>(null);
+  const tap = (i: HbItem) => (i.quote_id || i.kind === "lead" ? setOpen(i) : navigate(i.next.to));
   const { hb, now, esc, canSee, loading } = useSalesHeartbeat();
   const { isSalesRep } = useHeartbeatAudience();
   if (!canSee) return null;
@@ -49,12 +65,14 @@ export default function SalesHeartbeat() {
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
         <section className="min-w-0 rounded-2xl border-2 border-border bg-card p-4">
           <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Next step now</h3>
-          {hb.next ? (<>
-            <div className="mt-1 text-[20px] font-semibold">{hb.next.title}</div>
+          {hb.next ? (<div role="button" tabIndex={0} aria-label={`Show details for ${hb.next.title}`} data-testid="hb-next-card" className="-mx-2 cursor-pointer rounded-xl px-2 py-1 transition-colors hover:bg-muted/50 active:opacity-80"
+            onClick={(e) => { if (!(e.target as HTMLElement).closest("button,a")) tap(hb.next!); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) tap(hb.next!); }}>
+            <div className="mt-1 flex items-center gap-2 text-[20px] font-semibold"><span className="min-w-0 flex-1">{hb.next.title}</span><ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" /></div>
             <div className="mb-3 text-[13px] text-muted-foreground">{hb.next.sub} · {hb.next.stalled ? `overdue ${fmtAge(hb.next.overBy)}` : `${hb.next.age} in stage`}{hb.next.value ? ` · ${fmtRandShort(hb.next.value)}` : ""}</div>
             <button onClick={() => navigate(hb.next!.next.to)} data-testid="v8-next-step" data-tone={hb.next.stalled ? "urgent" : "default"} className={cn("rounded-xl px-5 py-3 text-[16px] font-semibold", nextStepClass(hb.next.stalled ? "urgent" : "default"))}>{hb.next.next.label}</button>
-          </>) : <div className="mt-1 text-[16px]">All caught up. Nothing waiting on sales.</div>}
-          {hb.then.length > 0 && <><h3 className="mt-5 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Then</h3>{hb.then.map((i) => <Row key={i.id} i={i} onClick={() => navigate(i.next.to)} />)}</>}
+          </div>) : <div className="mt-1 text-[16px]">All caught up. Nothing waiting on sales.</div>}
+          {hb.then.length > 0 && <><h3 className="mt-5 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Then</h3>{hb.then.map((i) => <Row key={i.id} i={i} onClick={() => tap(i)} />)}</>}
         </section>
         <section className="min-w-0 rounded-2xl border bg-card p-4">
           <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Stalled · escalated</h3>
@@ -65,6 +83,7 @@ export default function SalesHeartbeat() {
         </section>
       </div>
       <MoneyDueTile />
+      {open && (hbRecord(open) ? <RecordSheet r={hbRecord(open)} onClose={() => setOpen(null)} /> : <NextStepSheet row={hbLeadRow(open)} onClose={() => setOpen(null)} />)}
     </div>
   );
 }

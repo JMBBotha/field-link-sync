@@ -59,6 +59,7 @@ export type HbJob = { id?: string; quote_id: string | null; status: string | nul
 export type HbItem = {
   id: string; kind: "lead" | "quote" | "job"; stage: HbStageKey; title: string; sub: string; value: number;
   since: string; age: string; overBy: number; limit: number; stalled: boolean; escalated: boolean; next: { label: string; to: string }; owner?: string | null;
+  /** The quote behind a quote / job item (p111: tap opens its pop-up). */ quote_id?: string;
 };
 export type HbStage = { key: HbStageKey; label: string; count: number; value: number; stalled: number; close: number; tone: "grey" | "amber" | "red" };
 export type HbBeat = { t: number; h: number; label: string };
@@ -123,19 +124,19 @@ export function buildHeartbeat(input: {
     const fullyPaid = inv.some((i) => !isDeposit(i) && String(i.status) === "paid");
     const depositPaid = inv.some((i) => isPaid(i));
     if (job?.status === "completed") {
-      if (!fullyPaid) push({ id: job.id || q.id, kind: "job", stage: "done", title: `Get paid · ${n}`, sub: `${num_} · job finished, not paid in full`, value, since: job.completed_at || job.created_at || q.created_at, overBy: 0, next: { label: "Send reminder", to: job.id ? `/admin/jobs/${job.id}` : to }, owner: q.sales_engineer_id, limitMs: L.doneDays * DAY });
+      if (!fullyPaid) push({ quote_id: q.id, id: job.id || q.id, kind: "job", stage: "done", title: `Get paid · ${n}`, sub: `${num_} · job finished, not paid in full`, value, since: job.completed_at || job.created_at || q.created_at, overBy: 0, next: { label: "Send reminder", to: job.id ? `/admin/jobs/${job.id}` : to }, owner: q.sales_engineer_id, limitMs: L.doneDays * DAY });
       return;
     }
-    if (job) { push({ id: job.id || q.id, kind: "job", stage: "install", title: `Install · ${n}`, sub: job.scheduled_for ? `Booked ${new Date(job.scheduled_for).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}` : "Install booked", value, since: job.created_at || q.created_at, overBy: 0, next: { label: "Open job", to: job.id ? `/admin/jobs/${job.id}` : to }, owner: q.sales_engineer_id, limitMs: Math.max(0, t(job.scheduled_for) - t(job.created_at || q.created_at)) + DAY }); return; }
+    if (job) { push({ quote_id: q.id, id: job.id || q.id, kind: "job", stage: "install", title: `Install · ${n}`, sub: job.scheduled_for ? `Booked ${new Date(job.scheduled_for).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}` : "Install booked", value, since: job.created_at || q.created_at, overBy: 0, next: { label: "Open job", to: job.id ? `/admin/jobs/${job.id}` : to }, owner: q.sales_engineer_id, limitMs: Math.max(0, t(job.scheduled_for) - t(job.created_at || q.created_at)) + DAY }); return; }
     const status = String(q.status);
     if (status === "accepted" || q.accepted_at) {
-      if (depositPaid) push({ id: q.id, kind: "quote", stage: "deposit", title: `Book install · ${n}`, sub: `${num_} · deposit in, no install date`, value, since: q.accepted_at || q.created_at, overBy: 0, next: { label: "Book install", to }, owner: q.sales_engineer_id, limitMs: L.depositDays * DAY });
-      else push({ id: q.id, kind: "quote", stage: "accepted", title: `Take deposit · ${n}`, sub: `${num_} accepted · no deposit yet`, value, since: q.accepted_at || q.created_at, overBy: 0, next: { label: "Take deposit", to }, owner: q.sales_engineer_id, limitMs: L.acceptedDays * DAY });
+      if (depositPaid) push({ quote_id: q.id, id: q.id, kind: "quote", stage: "deposit", title: `Book install · ${n}`, sub: `${num_} · deposit in, no install date`, value, since: q.accepted_at || q.created_at, overBy: 0, next: { label: "Book install", to }, owner: q.sales_engineer_id, limitMs: L.depositDays * DAY });
+      else push({ quote_id: q.id, id: q.id, kind: "quote", stage: "accepted", title: `Take deposit · ${n}`, sub: `${num_} accepted · no deposit yet`, value, since: q.accepted_at || q.created_at, overBy: 0, next: { label: "Take deposit", to }, owner: q.sales_engineer_id, limitMs: L.acceptedDays * DAY });
       return;
     }
-    if (status === "draft") { push({ id: q.id, kind: "quote", stage: "sent", title: `Send quote · ${n}`, sub: `${num_} · draft, not sent`, value, since: q.created_at, overBy: 0, next: { label: "Send quote", to }, owner: q.sales_engineer_id, limitMs: DAY }); return; }
-    if (q.viewed_at) push({ id: q.id, kind: "quote", stage: "sent", title: `Follow up · ${n}`, sub: `${num_} viewed · no answer`, value, since: q.viewed_at, overBy: 0, next: { label: "Follow up", to }, owner: q.sales_engineer_id, limitMs: L.viewedDays * DAY });
-    else push({ id: q.id, kind: "quote", stage: "sent", title: `Check quote landed · ${n}`, sub: `${num_} sent · not opened`, value, since: q.sent_at || q.created_at, overBy: 0, next: { label: "Follow up", to }, owner: q.sales_engineer_id, limitMs: L.sentDays * DAY });
+    if (status === "draft") { push({ quote_id: q.id, id: q.id, kind: "quote", stage: "sent", title: `Send quote · ${n}`, sub: `${num_} · draft, not sent`, value, since: q.created_at, overBy: 0, next: { label: "Send quote", to }, owner: q.sales_engineer_id, limitMs: DAY }); return; }
+    if (q.viewed_at) push({ quote_id: q.id, id: q.id, kind: "quote", stage: "sent", title: `Follow up · ${n}`, sub: `${num_} viewed · no answer`, value, since: q.viewed_at, overBy: 0, next: { label: "Follow up", to }, owner: q.sales_engineer_id, limitMs: L.viewedDays * DAY });
+    else push({ quote_id: q.id, id: q.id, kind: "quote", stage: "sent", title: `Check quote landed · ${n}`, sub: `${num_} sent · not opened`, value, since: q.sent_at || q.created_at, overBy: 0, next: { label: "Follow up", to }, owner: q.sales_engineer_id, limitMs: L.sentDays * DAY });
   });
 
   const stages: HbStage[] = STAGE_META.map((s) => {

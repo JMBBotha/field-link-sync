@@ -6,7 +6,7 @@ import { doneMessage } from "@/lib/doneToast";
 import { useQuoteUnitCards, QuoteUnitCardsView } from "@/components/quoting/QuoteUnitCards";
 import type { CompanyProfile } from "@/lib/companyProfiles";
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,6 +84,10 @@ const tidyName = (value?: string | null) => (value || "").replace(/\s+/g, " ").t
 
 const ClientProposalView = () => {
   const { token } = useParams<{ token: string }>();
+  // Staff preview (p111, Johan t2039u): same page the client sees, but opened from the app with ?preview=1.
+  // It never marks the quote viewed and hides every client action button.
+  const [sp] = useSearchParams();
+  const preview = sp.get("preview") === "1";
   const sitePhotos = useQuoteSitePhotos({ token });
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -149,8 +153,8 @@ const ClientProposalView = () => {
         return;
       }
 
-      // Mark as viewed (also token-scoped).
-      await supabase.rpc("get_quote_by_public_token", { p_token: token });
+      // Mark as viewed (also token-scoped). Skipped for a staff preview.
+      if (!preview) await supabase.rpc("get_quote_by_public_token", { p_token: token });
 
       const bundle = payload as any;
       const q = bundle.quote;
@@ -314,7 +318,7 @@ const ClientProposalView = () => {
   // Drafts are not accepted online (Johan 2026-10-13); the database refuses them too.
   // Updated quote after the site check: Approve/Decline card instead of the normal Accept flow.
   const isVariation = !!quote.is_variation;
-  const isActionable = !isVariation && ["sent", "viewed"].includes(quote.status) && !actionDone;
+  const isActionable = !preview && !isVariation && ["sent", "viewed"].includes(quote.status) && !actionDone;
   const isDraft = !isVariation && quote.status === "draft" && !actionDone;
   const brandName = (companyProfile as any)?.legal_name || (companyProfile as any)?.trading_name || company?.company_name || "";
   // Massair CT: transparent logo straight on the blue header, no white box (Johan 13 Oct 12:52).
@@ -352,11 +356,16 @@ const ClientProposalView = () => {
         </div>
       )}
 
+      {preview && (
+        <div className="sticky top-0 z-50 bg-[#0F2A44] px-3 py-2 text-center text-[13px] font-semibold text-white print:hidden" data-testid="staff-preview-banner">
+          Staff preview · this is what the client sees · not logged as a client view · buttons hidden
+        </div>
+      )}
       <main className="max-w-4xl mx-auto p-3 md:p-8 space-y-4 md:space-y-6">
         {bundleToken && (
           <a href={`/quote/all/${encodeURIComponent(bundleToken)}`} className="inline-block text-sm text-[#0B4FA8] underline print:hidden">← Back to all quotes</a>
         )}
-        {isVariation && token && (
+        {isVariation && token && !preview && (
           <VariationResponseCard token={token} status={quote.status} summary={quote.variation_summary ?? null}
             total={Number(quote.total) || 0} parentTotal={quote.parent_total ?? null} parentNumber={quote.parent_quote_number ?? null}
             defaultName={acceptedName} acceptedBy={quote.accepted_by} />
@@ -529,7 +538,7 @@ const ClientProposalView = () => {
         )}
 
         {/* Outcome Messages */}
-        {!isVariation && (actionDone === "accepted" || quote.status === "accepted") && (
+        {!preview && !isVariation && (actionDone === "accepted" || quote.status === "accepted") && (
           <Card className="rounded-2xl shadow-lg border-0 bg-emerald-50 border-t-4 border-t-emerald-500">
             <CardContent className="p-6 text-center space-y-3">
               <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto" />

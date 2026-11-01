@@ -68,7 +68,7 @@ function GroupPicker({ row, onPick, onBack }: { row: NextStep; onPick: (id: stri
   );
 }
 
-function SnoozeDialog({ row, onClose, onSave, onGroup }: { row: NextStep | null; onClose: () => void; onSave: (o: { until?: Date; dismiss?: boolean; reason: string }) => Promise<void>; onGroup: (other: string) => Promise<void> }) {
+export function SnoozeDialog({ row, onClose, onSave, onGroup }: { row: NextStep | null; onClose: () => void; onSave: (o: { until?: Date; dismiss?: boolean; reason: string }) => Promise<void>; onGroup: (other: string) => Promise<void> }) {
   const [grouping, setGrouping] = useState(false);
   const [days, setDays] = useState<number | "dismiss">(3);
   const [reason, setReason] = useState("");
@@ -122,7 +122,8 @@ function GroupSheet({ row, onClose, onUngroup }: { row: NextStep; onClose: () =>
             <li key={o.entity_id} className="flex flex-wrap items-center gap-2 p-2.5 text-sm">
               <div className="min-w-0 flex-1"><div className="font-semibold">{(o.detail || "").split(" · ")[0]}</div>
                 <div className="text-xs text-muted-foreground">{[money(o.amount), o.since ? `sent ${shortDate(o.since)}` : ""].filter(Boolean).join(" · ")}</div></div>
-              <Button asChild size="sm"><Link to={cardTarget(o)} onClick={onClose}>Open</Link></Button>
+              <Button asChild size="sm"><Link to={`/admin/quote-preview/${o.entity_id}`} onClick={onClose} data-testid="group-client-view">Client view</Link></Button>
+              <Button asChild size="sm" variant="outline"><Link to={cardTarget(o)} onClick={onClose}>Edit</Link></Button>
               <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => un(o.entity_id)}>{busy === o.entity_id ? "…" : "Ungroup"}</Button>
             </li>
           ))}

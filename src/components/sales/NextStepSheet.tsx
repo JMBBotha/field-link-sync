@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import RecordSheet from "@/components/sales/RecordSheet";
 import { RULES, buttonTarget, cardTarget, daysSince, recordKind, shortDescription, type NextStep } from "@/lib/nextSteps";
 
 const R = (n: number | null | undefined) => (n == null ? "—" : `R ${Number(n).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
@@ -80,8 +81,12 @@ export function NextStepSummaryBody({ row, s, loading, onClose }: { row: NextSte
 
 export default function NextStepSheet({ row, onClose }: { row: NextStep | null; onClose: () => void }) {
   const isMobile = useIsMobile();
-  const q = useQuery({ queryKey: ["next-step-summary", row?.entity_type, row?.entity_id], enabled: !!row, queryFn: () => loadSummary(row!) });
+  const q = useQuery({ queryKey: ["next-step-summary", row?.entity_type, row?.entity_id], enabled: !!row && !["quote", "invoice"].includes(recordKind(row)), queryFn: () => loadSummary(row!) });
   if (!row) return null;
+  const kind = recordKind(row);
+  // Quotes and invoices (p111): client view + edit, timeline, Send / Mark as sent / Snooze in one pop-up.
+  if (kind === "quote" || kind === "invoice") return <RecordSheet onClose={onClose}
+    r={{ kind, id: row.entity_id, title: row.title, primary: { label: RULES[row.rule].action, to: buttonTarget(row) }, snoozeRule: row.snoozable ? row.rule : null }} />;
   const title = row.title;
   const body = <NextStepSummaryBody row={row} s={q.data} loading={q.isLoading} onClose={onClose} />;
   return isMobile ? (
