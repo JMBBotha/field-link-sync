@@ -71,7 +71,7 @@ export type Heartbeat = {
 
 export const STAGE_META: { key: HbStageKey; label: string }[] = [
   { key: "new", label: "New lead" }, { key: "contacted", label: "Contacted" }, { key: "visit", label: "Quote visit" },
-  { key: "sent", label: "Quote sent" }, { key: "accepted", label: "Accepted" }, { key: "deposit", label: "Deposit in" },
+  { key: "sent", label: "Quoted" }, { key: "accepted", label: "Accepted" }, { key: "deposit", label: "Deposit in" },
   { key: "install", label: "Install booked" }, { key: "done", label: "Done · unpaid" },
 ];
 const MIN = 60_000, HOUR = 60 * MIN, DAY = 24 * HOUR;

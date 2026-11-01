@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useInvoiceApprovals } from "@/hooks/useInvoiceApprovals";
@@ -39,4 +41,37 @@ export default function InvoiceApprovalPanel({ className }: { className?: string
   const now = useNow();
   const { items } = useInvoiceApprovals();
   return <InvoiceApprovalList items={items} now={now} className={className} />;
+}
+
+/** UI polish (Johan 1 Nov 20:58): bold orange card on sales home + admin dashboard whenever ≥1 invoice waits.
+ *  Shows count + total incl. VAT. "Review & send" only opens the waiting list; it never sends by itself. */
+export function InvoiceApprovalCard({ items, now }: { items: InvoiceSendApproval[]; now: number }) {
+  const [open, setOpen] = useState(false);
+  const waiting = items.filter((a) => a.status === "pending" || a.status === "blocked" || a.status === "held");
+  if (!waiting.length) return null;
+  const total = waiting.reduce((t, a) => t + Number(a.deposit_amount || 0), 0);
+  return (
+    <>
+      <section data-testid="invoice-approval-card" className="flex flex-wrap items-center gap-3 rounded-xl bg-[#F97316] p-4 text-[#0F1B2A] shadow-sm">
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] font-bold uppercase tracking-wide">Invoices waiting to send</div>
+          <div className="text-[22px] font-extrabold leading-tight tabular-nums">{waiting.length} · {fmtRand(total)} <span className="text-[13px] font-semibold">incl. VAT</span></div>
+        </div>
+        <button type="button" data-testid="invoice-approval-review" onClick={() => setOpen(true)} className="min-h-[44px] rounded-[10px] bg-[#9A3412] px-5 text-[16px] font-bold text-white ring-2 ring-white/70 hover:bg-[#7C2D12]">Review &amp; send</button>
+      </section>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg" data-testid="invoice-approval-review-list">
+          <DialogHeader><DialogTitle>Invoices waiting · {waiting.length}</DialogTitle></DialogHeader>
+          <p className="text-[13px] text-muted-foreground">Nothing is sent from this list until you tap Send on a row.</p>
+          <InvoiceApprovalList items={waiting} now={now} className="border-0 bg-transparent p-0" />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+export function InvoiceApprovalHomeCard() {
+  const now = useNow();
+  const { items } = useInvoiceApprovals();
+  return <InvoiceApprovalCard items={items} now={now} />;
 }
