@@ -263,9 +263,11 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         void flushOverride({ type: "job", id: data.id });
         if (safeLeadId) {
           // The assignment trigger usually creates the job-keyed row; set its times, else insert it.
-          const { data: rows } = await supabase.from("job_schedules").select("id").eq("job_id", data.id).limit(1);
+          // Visits carried over from the booking (2+ rows) are kept as they are (Johan 1 Nov).
+          const { data: rows } = await supabase.from("job_schedules").select("id").eq("job_id", data.id).limit(2);
           const times = { agent_id: appt.agentId, scheduled_date: appt.date, start_time: appt.startTime, end_time: endTimeParts };
-          const { error: schedErr } = rows?.[0]
+          const { error: schedErr } = (rows?.length ?? 0) > 1 ? { error: null }
+            : rows?.[0]
             ? await supabase.from("job_schedules").update(times).eq("id", rows[0].id)
             : await supabase.from("job_schedules").insert({ ...times, lead_id: safeLeadId, job_id: data.id } as any);
           if (schedErr) throw new Error(`Job created, but the calendar slot failed: ${schedErr.message}`);
