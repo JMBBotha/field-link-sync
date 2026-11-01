@@ -17,7 +17,6 @@ import { generateDocumentPdfBlob } from "@/lib/documentPdf";
 import { savePdfFile } from "@/components/quoting/QuotePdfViewer";
 import { loadQuoteBrochuresForPdf } from "@/lib/quoteBrochuresForPdf";
 import ClientQuotePdfRoot, { waitForClientPdfRoot, clientBrochureSelector } from "./ClientQuotePdfRoot";
-import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 import { formatRand } from "@/utils/formatRand";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
 import SendStateButton, { type SendButtonState } from "./SendStateButton";
@@ -91,6 +90,7 @@ const SendQuoteDialog = ({
   const [leadId, setLeadId] = useState<string | null>(null);
   const [busy, setBusy] = useState<"email" | "pdf" | "preview" | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [sent, setSent] = useState<{ email: boolean }>({ email: false });
   const [approved, setApproved] = useState({ terms: false, brochure: false, pricing: false });
   // Set once the backend tells us email isn't configured — we then stop
@@ -423,126 +423,68 @@ const SendQuoteDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="fl-send sm:max-w-lg max-h-[92dvh] gap-0 overflow-y-auto p-0" data-testid="send-quote-dialog">
         <DialogHeader className="space-y-1.5 px-5 pb-3 pt-5 text-left sm:text-left">
-          <div className="fl-send-eyebrow">Send quote</div>
-          <DialogTitle className="fl-send-title pr-6">Send quote {quoteNumber} to client</DialogTitle>
+          <DialogTitle className="fl-send-title pr-8">Send {quoteNumber} to {resolvedCustomerName || "client"}</DialogTitle>
           <DialogDescription className="fl-send-sub">
-            Share the live quote link with {resolvedCustomerName || "the client"} — they can view and accept it online.
+            They can view and accept it online.
           </DialogDescription>
           {total > 0 && <div><span className="fl-send-total">{formatRand(total)} incl. VAT</span></div>}
         </DialogHeader>
 
         <div className="space-y-3 px-5 pb-4">
-          {/* Primary send: live client link via copy / WhatsApp */}
-          <section className="fl-send-card space-y-2">
-            <div className="fl-send-label">Client link</div>
-            {clientUrl ? (
-              <>
-                <Input readOnly value={clientUrl} className="fl-send-field font-mono text-xs" onFocus={(e) => e.target.select()} />
-                <div className="flex flex-wrap gap-2">
-                  <SendStateButton
-                    state={copyState} small onClick={handleCopyLink} title="Copy client link" testId="send-copy-link"
-                    icon={<Link2 className="h-4 w-4" />} labels={{ idle: "Copy link", done: "Link copied ✓", failed: "Copy failed" }}
-                  />
-                  {/* Test-only WhatsApp: always goes to Johan, never the client. */}
-                  <WhatsAppShareButton phone={JOHAN_TEST_WHATSAPP} message={shareMessage} variant="outline" className="fl-sbtn is-outline is-sm h-9 shrink-0">
-                    <span className="flex items-center gap-1.5">WhatsApp (test)</span>
-                  </WhatsAppShareButton>
-                </div>
-              </>
-            ) : (
-              <p className="fl-send-note flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating client link…</p>
-            )}
-          </section>
-
-          {/* Sign-off before emailing */}
-          <section className="fl-send-card space-y-2" data-testid="send-approval">
-            <div className="fl-send-label">Sign off before emailing <b>{approvedCount} of 3</b></div>
+          {/* 1 · Check */}
+          <section className="fl-send-card space-y-1" data-testid="send-approval">
+            <div className="fl-send-label">1 · Check <b>{approvedCount} of 3</b></div>
             {checks.map(([k, label]) => (
-              <label key={k} className={`fl-send-check${approved[k] ? " is-on" : ""}`}>
+              <label key={k} className={`fl-send-check fl-check-lg${approved[k] ? " is-on" : ""}`}>
                 <input type="checkbox" data-testid={`approve-${k}`}
                   checked={approved[k]} onChange={(e) => setApproved((a) => ({ ...a, [k]: e.target.checked }))} />
                 {label}
               </label>
             ))}
-            {!allApproved && <p className="fl-send-note">Tick all three to unlock Email.</p>}
           </section>
 
-          {/* Email the quote */}
+          {/* 2 · Send to */}
           <section ref={emailCardRef} className="fl-send-card space-y-2.5">
-            <Label htmlFor="send-quote-email" className="fl-send-label">Email address</Label>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                id="send-quote-email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="client@example.com"
-                className="fl-send-field min-w-0 flex-1"
-              />
-              <SendStateButton
-                state={emailState}
-                testId="send-quote-email-button"
-                className="w-full sm:w-auto sm:min-w-[9.5rem]"
-                icon={<Mail className="h-4 w-4" />}
-                disabled={busy !== null || sendLocked || emailUnavailable || !allApproved || emailState === "done" || emailState === "failed"}
-                onClick={() => void handleEmail()}
-                labels={{ idle: "Email", busy: "Email sending…", slow: "Still sending, please wait", done: "Email sent ✓", failed: "Not sent" }}
-              />
-            </div>
-            {activeSend && busy !== "email" && (
-              <div className="fl-send-status tone-amber" data-testid="send-in-progress">
-                <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
-                <span>Sending… started {sastTime(activeSend.started_at)} to {activeSend.recipient}. Please wait, don't resend.</span>
-              </div>
-            )}
-            {busy === "email" && slow && (
-              <div className="fl-send-status tone-amber" data-testid="send-slow">
-                <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
-                <span>Still sending, please wait, don't resend.</span>
-              </div>
-            )}
-            {emailState === "done" && sentInfo && (
-              <div className="fl-send-status tone-green items-center justify-between" data-testid="send-done">
-                <span>Sent to {sentInfo.to} at {sastTime(sentInfo.at)}.</span>
-                <button type="button" className="fl-send-link shrink-0" onClick={() => setRecentAsk({ to: sentInfo.to, at: sentInfo.at })}>Send again</button>
-              </div>
-            )}
-            {lastFailed && emailState === "failed" && (
-              <div className="fl-send-status tone-red" data-testid="send-failed">
-                <span><b>Not sent</b> to {lastFailed.recipient} ({sastTime(lastFailed.finished_at || lastFailed.started_at)}): {lastFailed.error || "unknown error"}</span>
-              </div>
-            )}
-            {emailUnavailable && (
-              <div className="fl-send-status tone-red">Email not configured — use Copy link or Download PDF.</div>
-            )}
-
-            <Label htmlFor="send-quote-message" className="fl-send-label pt-1">Message to client (optional)</Label>
-            <Textarea
-              id="send-quote-message"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Thank you for the opportunity. Your quotation is ready to view online."
-              rows={4}
-              className="fl-send-field"
-            />
-            <SendStateButton state={busy === "preview" ? "busy" : "idle"} outline small onClick={handlePreview} disabled={busy !== null}
-              icon={<Eye className="h-4 w-4" />} labels={{ idle: "Preview email", busy: "Loading preview…" }} />
-            <Label htmlFor="send-quote-cc" className="fl-send-label pt-1">Extra email addresses (optional)</Label>
+            <Label htmlFor="send-quote-email" className="fl-send-label">2 · Send to</Label>
             <Input
-              id="send-quote-cc"
-              value={extraEmails}
-              onChange={(e) => setExtraEmails(e.target.value)}
-              placeholder="me@company.com, other@company.com"
-              className="fl-send-field"
+              id="send-quote-email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="client@example.com"
+              className="fl-send-field min-w-0"
             />
-            <p className="fl-send-note">Separate multiple addresses with a comma — they each get a copy.</p>
-            <label className={`fl-send-check${copyToCompany ? " is-on" : ""}`}>
-              <input type="checkbox" checked={copyToCompany} onChange={(e) => setCopyToCompany(e.target.checked)} />
-              Also send a copy to our company email
-            </label>
-            <button type="button" onClick={handleDownload} disabled={busy !== null} className="fl-send-link">
-              {busy === "pdf" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-              Download the quote PDF file
+            <button type="button" className="fl-btn-text px-0" data-testid="send-more-toggle"
+              aria-expanded={moreOpen} onClick={() => setMoreOpen((o) => !o)}>
+              {moreOpen ? "− Hide message, CC and company copy" : "+ Add a message, CC or company copy"}
             </button>
+            {moreOpen && (
+              <div className="space-y-2.5" data-testid="send-more">
+                <Label htmlFor="send-quote-message" className="fl-send-label pt-1">Message to client (optional)</Label>
+                <Textarea
+                  id="send-quote-message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Thank you for the opportunity. Your quotation is ready to view online."
+                  rows={4}
+                  className="fl-send-field"
+                />
+                <SendStateButton state={busy === "preview" ? "busy" : "idle"} outline small onClick={handlePreview} disabled={busy !== null}
+                  icon={<Eye className="h-4 w-4" />} labels={{ idle: "Preview email", busy: "Loading preview…" }} />
+                <Label htmlFor="send-quote-cc" className="fl-send-label pt-1">Extra email addresses (optional)</Label>
+                <Input
+                  id="send-quote-cc"
+                  value={extraEmails}
+                  onChange={(e) => setExtraEmails(e.target.value)}
+                  placeholder="me@company.com, other@company.com"
+                  className="fl-send-field"
+                />
+                <p className="fl-send-note">Separate multiple addresses with a comma — they each get a copy.</p>
+                <label className={`fl-send-check fl-check-lg${copyToCompany ? " is-on" : ""}`}>
+                  <input type="checkbox" checked={copyToCompany} onChange={(e) => setCopyToCompany(e.target.checked)} />
+                  Also send a copy to our company email
+                </label>
+              </div>
+            )}
           </section>
         </div>
 
@@ -557,12 +499,54 @@ const SendQuoteDialog = ({
                 onClick={() => setRetryAsk(true)} labels={{ idle: "Retry", failed: "Retry" }} testId="send-retry" />
             </div>
           )}
-          <div className="flex w-full flex-row items-center justify-between gap-2">
           <SendStateButton
-            state={busy === "pdf" ? "busy" : pdfState} outline small onClick={handleDownload} disabled={busy !== null && busy !== "pdf"}
-            icon={<Download className="h-4 w-4" />} labels={{ idle: "Download PDF", busy: "Preparing PDF…", done: "PDF ready ✓", failed: "PDF failed, retry" }}
+            state={emailState}
+            testId="send-quote-email-button"
+            className="fl-btn-primary w-full"
+            icon={<Mail className="h-4 w-4" />}
+            disabled={busy !== null || sendLocked || emailUnavailable || !allApproved || emailState === "done" || emailState === "failed"}
+            onClick={() => void handleEmail()}
+            labels={{ idle: allApproved ? "Email quote" : `Email quote · tick ${3 - approvedCount} more check${3 - approvedCount === 1 ? "" : "s"}`, busy: "Email sending…", slow: "Still sending, please wait", done: "Email sent ✓", failed: "Not sent" }}
           />
-          <button type="button" className="fl-sbtn is-outline is-sm" onClick={() => onOpenChange(false)}>Close</button>
+          {activeSend && busy !== "email" && (
+            <div className="fl-send-status tone-amber w-full" data-testid="send-in-progress">
+              <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
+              <span>Sending… started {sastTime(activeSend.started_at)} to {activeSend.recipient}. Please wait, don't resend.</span>
+            </div>
+          )}
+          {busy === "email" && slow && (
+            <div className="fl-send-status tone-amber w-full" data-testid="send-slow">
+              <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
+              <span>Still sending, please wait, don't resend.</span>
+            </div>
+          )}
+          {emailState === "done" && sentInfo && (
+            <div className="fl-send-status tone-green w-full items-center justify-between" data-testid="send-done">
+              <span>Sent to {sentInfo.to} at {sastTime(sentInfo.at)}.</span>
+              <button type="button" className="fl-send-link shrink-0" onClick={() => setRecentAsk({ to: sentInfo.to, at: sentInfo.at })}>Send again</button>
+            </div>
+          )}
+          {lastFailed && emailState === "failed" && (
+            <div className="fl-send-status tone-red w-full" data-testid="send-failed">
+              <span><b>Not sent</b> to {lastFailed.recipient} ({sastTime(lastFailed.finished_at || lastFailed.started_at)}): {lastFailed.error || "unknown error"}</span>
+            </div>
+          )}
+          {emailUnavailable && (
+            <div className="fl-send-status tone-red w-full">Email not configured — use Copy link or Download PDF.</div>
+          )}
+          <div className="flex w-full flex-wrap items-center justify-center gap-x-4">
+            {clientUrl ? (
+              <button type="button" className="fl-btn-text" onClick={handleCopyLink} title="Copy client link" data-testid="send-copy-link">
+                <Link2 className="mr-1 inline h-4 w-4" />{copyState === "done" ? "Link copied ✓" : copyState === "failed" ? "Copy failed" : "Copy link"}
+              </button>
+            ) : (
+              <span className="fl-send-note flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating client link…</span>
+            )}
+            <button type="button" className="fl-btn-text" onClick={handleDownload} disabled={busy !== null && busy !== "pdf"} data-testid="send-download-pdf">
+              {busy === "pdf" ? <Loader2 className="mr-1 inline h-4 w-4 animate-spin" /> : <Download className="mr-1 inline h-4 w-4" />}
+              {busy === "pdf" ? "Preparing PDF…" : pdfState === "done" ? "PDF ready ✓" : pdfState === "failed" ? "PDF failed, retry" : "Download PDF"}
+            </button>
+            {/* WhatsApp (test) hidden per UI polish; JOHAN_TEST_WHATSAPP lock kept for when it returns. */}
           </div>
         </DialogFooter>
       </DialogContent>
