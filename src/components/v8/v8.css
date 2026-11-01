@@ -109,6 +109,8 @@
 .v8-navy [role="tab"]{color:rgba(255,255,255,.85)}
 .v8-navy [role="tab"][data-state="active"]{background:#fff;color:#0F2A44}
 .v8-scope :is(.rounded-lg.border.bg-card){border-radius:16px}
-/* Top bar: flat deep navy, no gradient, everywhere (Johan 1 Nov 2026). Bottom tab bar keeps --v8-bar sky blue. */
-:root{--v8-top:#0B4FA8;--v8-top-bd:#093F87}
-.v8-bar-hdr,.dark .v8-bar-hdr{background:var(--v8-top)!important;background-image:none!important;border-color:var(--v8-top-bd)!important;color:#fff}
+/* Top bar + iOS status-bar zone: flat sky blue, same as the bottom tabs, no gradient/blur/fade, light and dark (Johan 1 Nov 2026 19:08). */
+:root{--v8-top:#3D9BEB;--v8-top-bd:#2F86D1}
+.v8-bar-hdr,.dark .v8-bar-hdr{background:var(--v8-top)!important;background-image:none!important;border-color:var(--v8-top-bd)!important;color:#fff;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:none!important}
+.v8-bar-hdr::before,.v8-bar-hdr::after{background:none!important;background-image:none!important}
+body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:#3D9BEB;z-index:2147483000;pointer-events:none}

@@ -6,6 +6,7 @@ installChunkReload();
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import "./components/v8/v8.css";
 import { primeMapboxToken } from "@/lib/mapboxToken";
 
 // ── Apply saved / system theme BEFORE first paint to avoid a flash ──
