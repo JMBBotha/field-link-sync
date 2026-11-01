@@ -5,7 +5,47 @@ export type NextStepRule =
 export type NextStep = {
   rule: NextStepRule; prio: number; entity_type: string; entity_id: string; title: string; detail: string | null;
   amount: number | null; since: string | null; owner_id: string | null; link: string; snoozable: boolean;
+  /** Set when this card stands for 2+ option quotes of one project (quotes.option_group_id). */
+  options?: NextStep[]; group_id?: string; amount_max?: number | null;
 };
+
+/** Quote fields the panel needs to group option quotes. */
+export type QuoteMeta = { id: string; option_group_id: string | null; quote_number: string | null; total: number | null; sent_at: string | null };
+
+/** "Q-2026-0041" -> "Q-0041" for tight card text. */
+export const shortQuoteNo = (n: string | null | undefined) => (n || "").replace(/^Q-\d{4}-/, "Q-");
+
+/** One card per option group (Johan 1 Nov 2026): same rule + same option_group_id merge.
+ *  Oldest sent date drives urgency; amount is the lowest total, detail lists the options and range. */
+export function groupSteps(rows: NextStep[], meta: Record<string, QuoteMeta>): NextStep[] {
+  const out: NextStep[] = []; const byKey = new Map<string, NextStep[]>();
+  for (const r of rows) {
+    const g = r.entity_type === "quote" ? meta[r.entity_id]?.option_group_id : null;
+    if (!g) { out.push(r); continue; }
+    const k = r.rule + ":" + g;
+    if (!byKey.has(k)) { byKey.set(k, []); out.push({ ...r, group_id: g, options: byKey.get(k) }); }
+    byKey.get(k)!.push(r);
+  }
+  return out.map((r) => {
+    if (!r.options) return r;
+    const opts = [...r.options].sort((a, b) => String(a.since ?? "9").localeCompare(String(b.since ?? "9")));
+    if (opts.length < 2) return { ...opts[0], group_id: r.group_id };
+    const nums = opts.map((o) => shortQuoteNo(meta[o.entity_id]?.quote_number) || "quote");
+    const totals = opts.map((o) => o.amount).filter((a): a is number => a != null);
+    const oldest = opts[0];
+    return { ...oldest, group_id: r.group_id, options: opts,
+      detail: `${opts.length} options · ${nums.join(", ")}`,
+      amount: totals.length ? Math.min(...totals) : null,
+      amount_max: totals.length ? Math.max(...totals) : null };
+  });
+}
+
+/** "R 446 465 – R 819 100" or a single amount. */
+export function amountLabel(r: NextStep, fmt: (n: number | null) => string): string {
+  const mx = r.amount_max;
+  if (r.options && mx != null && r.amount != null && mx !== r.amount) return `${fmt(r.amount)} – ${fmt(mx)}`;
+  return fmt(r.amount);
+}
 
 export const RULES: Record<NextStepRule, { chip: (n: number) => string; action: string; tone: "red" | "orange" | "blue" }> = {
   new_lead: { chip: (n) => `${n} new lead${n === 1 ? "" : "s"}`, action: "Open lead", tone: "red" },

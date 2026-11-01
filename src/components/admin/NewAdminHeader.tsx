@@ -28,7 +28,7 @@ export default function NewAdminHeader({ pageTitle, onMenu, onSearch, onCreateLe
       <div className="h-14 flex items-center gap-2 px-2 sm:px-4">
       <BackButton />
       <Button variant="ghost" size="icon" onClick={onMenu} className={`lg:hidden shrink-0 h-9 w-9 ${ghost}`} aria-label="Menu"><Menu className="h-5 w-5" /></Button>
-      <CompanyLogo data-testid="header-logo" className="hidden min-[360px]:block h-6 w-auto max-w-[64px] object-contain object-left sm:h-8 lg:hidden" />
+      <CompanyLogo data-testid="header-logo" className="hidden min-[360px]:block h-9 w-auto max-w-[112px] object-contain object-left sm:h-10 sm:max-w-[140px] lg:hidden" />
       <h1 className="hidden min-[400px]:block min-w-0 truncate text-base sm:text-lg font-bold text-white" title={typeof pageTitle === "string" ? pageTitle : undefined}>{pageTitle}</h1>
 
 
