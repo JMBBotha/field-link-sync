@@ -5,7 +5,8 @@ import { QuoteSitePhotosBlock, useQuoteSitePhotos } from "@/components/quoting/Q
 import { doneMessage } from "@/lib/doneToast";
 import { useQuoteUnitCards, QuoteUnitCardsView } from "@/components/quoting/QuoteUnitCards";
 import type { CompanyProfile } from "@/lib/companyProfiles";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+const StaffPreviewBar = lazy(() => import("@/components/client/StaffPreviewBar"));
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -356,11 +357,7 @@ const ClientProposalView = () => {
         </div>
       )}
 
-      {preview && (
-        <div className="sticky top-0 z-50 bg-[#0F2A44] px-3 py-2 text-center text-[13px] font-semibold text-white print:hidden" data-testid="staff-preview-banner">
-          Staff preview · this is what the client sees · not logged as a client view · buttons hidden
-        </div>
-      )}
+      {preview && token && <Suspense fallback={null}><StaffPreviewBar token={token} /></Suspense>}
       <main className="max-w-4xl mx-auto p-3 md:p-8 space-y-4 md:space-y-6">
         {bundleToken && (
           <a href={`/quote/all/${encodeURIComponent(bundleToken)}`} className="inline-block text-sm text-[#0B4FA8] underline print:hidden">← Back to all quotes</a>
