@@ -70,7 +70,7 @@ export default function SalesHeartbeat() {
             onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) tap(hb.next!); }}>
             <div className="mt-1 flex items-center gap-2 text-[20px] font-semibold"><span className="min-w-0 flex-1">{hb.next.title}</span><ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" /></div>
             <div className="mb-3 text-[13px] text-muted-foreground">{hb.next.sub} · {hb.next.stalled ? `overdue ${fmtAge(hb.next.overBy)}` : `${hb.next.age} in stage`}{hb.next.value ? ` · ${fmtRandShort(hb.next.value)}` : ""}</div>
-            <button onClick={() => navigate(hb.next!.next.to)} data-testid="v8-next-step" data-tone={hb.next.stalled ? "urgent" : "default"} className={cn("rounded-xl px-5 py-3 text-[16px] font-semibold", nextStepClass(hb.next.stalled ? "urgent" : "default"))}>{hb.next.next.label}</button>
+            <button onClick={() => navigate(hb.next!.next.to)} data-testid="v8-next-step" data-tone={hb.next.stalled ? "urgent" : "default"} className="fl-btn-primary px-5">{hb.next.next.label}</button>
           </div>) : <div className="mt-1 text-[16px]">All caught up. Nothing waiting on sales.</div>}
           {hb.then.length > 0 && <><h3 className="mt-5 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Then</h3>{hb.then.map((i) => <Row key={i.id} i={i} onClick={() => tap(i)} />)}</>}
         </section>

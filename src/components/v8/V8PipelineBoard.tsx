@@ -178,7 +178,7 @@ export default function V8PipelineBoard() {
     <div className="space-y-3" data-testid="v8-pipeline">
       <PipelineBookings ownOnly={ownOnly} />
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <div className="v8-eyebrow">Lead → Quote sent → Accepted → Job booked → Invoiced → Paid</div>
+        <div className="v8-eyebrow">Lead → Quoted → Accepted → Job booked → Invoiced → Paid</div>
         <div className="ml-auto inline-flex rounded-md border p-0.5" role="group" aria-label="Lane" data-testid="v8-lane">
           {(["all", "sales", "service"] as const).map((k) => (
             <button key={k} onClick={() => setLane(k)} className={"rounded px-2.5 py-1 text-xs font-medium " + (lane === k ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>{k === "all" ? "All" : LANE_META[k].label}</button>
