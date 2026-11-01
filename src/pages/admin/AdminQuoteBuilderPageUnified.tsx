@@ -2378,7 +2378,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         <h1 className="text-base font-bold">Quote {quoteLock?.status === "accepted" ? "accepted" : ""} — builder closed</h1>
         <QuoteAcceptedLock quoteId={quoteId} lock={quoteLock} onChanged={refreshQuoteLock} />
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => navigate(`/admin/estimates/${quoteId}`)}>Open the estimate</Button>
+          <Button variant="brand" onClick={() => navigate(`/admin/estimates/${quoteId}`)} data-testid="locked-open-estimate">Open the estimate</Button>
           <Button variant="outline" onClick={() => navigate(mode === "agent" ? "/field" : "/admin/quotes")}>Back to quotes</Button>
         </div>
       </div>
