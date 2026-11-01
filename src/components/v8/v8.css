@@ -1,6 +1,6 @@
 /* App top bar + phone tab bar colour (light mode): --v8-bar. */
 /* Field Lynk v8 Simple shell. One calm accent (#1590D6/#1AA7EC); orange only for alerts. */
-:root{--v8-bar:#3D9BEB;--v8-bar-bd:#2F86D1;--v8-b1:#1AA7EC;--v8-b2:#1590D6;--v8-side:#F4F8FB;--v8-bd:#DCE7F0;--v8-in:#EAF2F8;--v8-tx:#0F1B2A;--v8-mu:#5D7086}
+:root{--v8-bar:#1478C8;--v8-bar-bd:#0F6FB8;--v8-b1:#1AA7EC;--v8-b2:#1590D6;--v8-side:#F4F8FB;--v8-bd:#DCE7F0;--v8-in:#EAF2F8;--v8-tx:#0F1B2A;--v8-mu:#5D7086}
 .dark{--v8-side:#0B1626;--v8-bd:#1F3550;--v8-in:#122238;--v8-tx:#EAF2FA;--v8-mu:#8CA2BA}
 .v8-side,.v8-drawer{background:var(--v8-side);color:var(--v8-tx)}
 .v8-border{border-color:var(--v8-bd)}
@@ -109,8 +109,20 @@
 .v8-navy [role="tab"]{color:rgba(255,255,255,.85)}
 .v8-navy [role="tab"][data-state="active"]{background:#fff;color:#0F2A44}
 .v8-scope :is(.rounded-lg.border.bg-card){border-radius:16px}
-/* Top bar + iOS status-bar zone: flat sky blue, same as the bottom tabs, no gradient/blur/fade, light and dark (Johan 1 Nov 2026 19:08). */
-:root{--v8-top:#3D9BEB;--v8-top-bd:#2F86D1}
+/* UI polish 1 Nov (Johan): bars #1478C8 with white text (4.62:1 AA); was #3D9BEB (2.96:1, failed). Top bar + iOS status-bar zone: flat, same as the bottom tabs, no gradient/blur/fade, light and dark (Johan 1 Nov 2026 19:08). */
+:root{--v8-top:#1478C8;--v8-top-bd:#0F6FB8}
 .v8-bar-hdr,.dark .v8-bar-hdr{background:var(--v8-top)!important;background-image:none!important;border-color:var(--v8-top-bd)!important;color:#fff;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:none!important}
 .v8-bar-hdr::before,.v8-bar-hdr::after{background:none!important;background-image:none!important}
-body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:#3D9BEB;z-index:2147483000;pointer-events:none}
+body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:#1478C8;z-index:2147483000;pointer-events:none}
+
+/* UI polish (Johan 1 Nov 20:56): primary = orange. White on #F97316 is 2.80:1 (fails AA even for large text), so the filled primary uses #C2410C (white 5.18:1, AA normal text); pressed #9A3412. #F97316 stays for calendar tints. */
+:root{--fl-primary:#C2410C;--fl-primary-pressed:#9A3412;--fl-link:#0F63A8;--fl-btn2-bd:#CFD8E3;--fl-muted:#5B6B7F}
+.fl-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;padding:0 1.1rem;border-radius:10px;background:var(--fl-primary);color:#fff;font-weight:600;font-size:16px;box-shadow:0 2px 6px rgba(194,65,12,.30);transition:background .15s}
+.fl-btn-primary:hover,.fl-btn-primary:active{background:var(--fl-primary-pressed)}
+.fl-btn-primary:disabled,.fl-btn-primary[aria-disabled=true]{background:#E3E8EF;color:#475569;box-shadow:none;cursor:not-allowed}
+.fl-btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;padding:0 1rem;border-radius:10px;background:#fff;border:1px solid var(--fl-btn2-bd);color:#0F1B2A;font-weight:600}
+.dark .fl-btn-secondary{background:transparent;color:inherit}
+.fl-btn-text{display:inline-flex;align-items:center;gap:.3rem;min-height:44px;color:var(--fl-link);font-weight:600}
+.dark .fl-btn-text{color:#7CC4F5}
+@media (max-width:640px){.fl-btn-primary.fl-phone{min-height:52px}}
+.v8-scope button.h-7,.v8-scope button.h-8,.v8-scope button.h-9{min-height:44px}
