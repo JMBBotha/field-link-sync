@@ -278,9 +278,6 @@ const FBInvoiceList = () => {
             <Button size="sm" variant="outline" onClick={() => bulkSendMutation.mutate()}>
               <Send className="h-4 w-4 mr-1" />Send ({selectedIds.size})
             </Button>
-            <Button size="sm" variant="outline" onClick={() => toast({ title: "PDF export coming soon" })}>
-              <FileDown className="h-4 w-4 mr-1" />Export
-            </Button>
             <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => bulkMarkPaidMutation.mutate()}>
               <CheckCircle className="h-4 w-4 mr-1" />Paid ({selectedIds.size})
             </Button>

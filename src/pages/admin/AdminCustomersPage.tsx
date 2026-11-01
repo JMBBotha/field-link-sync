@@ -210,7 +210,6 @@ const AdminCustomersPage = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild><Button aria-label="More actions" className="rounded-xl bg-white/15 hover:bg-white/25 text-white px-3">⋯</Button></DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => toast({ title: "Import coming soon" })}><Upload className="h-4 w-4 mr-2" /> Import Customers</DropdownMenuItem>
                 {isAdmin && <DropdownMenuItem onClick={exportCSV}><Download className="h-4 w-4 mr-2" /> Export CSV</DropdownMenuItem>}
                 <DropdownMenuItem onClick={() => { setLeadCustomerId(null); setShowCreateLead(true); }}>New lead</DropdownMenuItem>
               </DropdownMenuContent>
