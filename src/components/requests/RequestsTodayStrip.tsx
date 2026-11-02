@@ -8,7 +8,7 @@ export default function RequestsTodayStrip() {
   const { data } = useQuery({ queryKey: ["requests-today"], queryFn: fetchToday, refetchInterval: 60_000 });
   if (!data) return null;
   return (
-    <section className="rounded-2xl border bg-card p-3" data-testid="requests-today">
+    <section className="glass-card rounded-2xl border p-3" data-testid="requests-today">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Requests today · {data.in} in</h3>
         <button onClick={() => navigate("/admin/requests")} className="text-[14px] font-semibold text-[#1590D6]">Open inbox</button>

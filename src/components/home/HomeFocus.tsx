@@ -31,18 +31,19 @@ export function HomeFocusView({ steps, due, now = Date.now(), requests }: { step
   const t = owingTotals(due);
   return (
     <div className="space-y-3" data-testid="home-focus">
-      <section className="v7-solid rounded-2xl border bg-card p-4" data-testid="home-next-step">
-        <p className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Your next step{top ? ` · ${STAGE_LABEL[STAGE[top.rule]]}` : ""}</p>
+      {/* Johan 2 Nov 18:25: V8 colours, not white. Navy-to-blue hero, glass cards, #3D9BEB accents. */}
+      <section className="v8-navy rounded-2xl p-4 shadow-md" data-testid="home-next-step">
+        <p className="text-[13px] font-semibold uppercase tracking-wide text-[#CFE6F6]">Your next step{top ? ` · ${STAGE_LABEL[STAGE[top.rule]]}` : ""}</p>
         {top ? (<>
           <p className="mt-1 flex items-center gap-2 text-lg font-bold leading-tight"><span className={cn("h-[10px] w-[10px] shrink-0 rounded-full", DOT[urgency(top, now)])} /><span className="min-w-0 break-words">{top.title}</span></p>
-          <p className="text-sm text-muted-foreground">{[RULES[top.rule].chip(1).replace(/^1 /, ""), top.detail, amountLabel(top, r)].filter(Boolean).join(" · ")}</p>
+          <p className="text-sm text-white/80">{[RULES[top.rule].chip(1).replace(/^1 /, ""), top.detail, amountLabel(top, r)].filter(Boolean).join(" · ")}</p>
           <Link to={buttonTarget(top)} data-testid="home-next-step-go" className="fl-btn-primary mt-3 flex h-12 w-full items-center justify-center rounded-xl bg-[#C2410C] text-base font-semibold text-white hover:bg-[#9A3412]">{RULES[top.rule].action}</Link>
-        </>) : <p className="mt-1 text-base font-semibold text-success">All clear. Nothing waiting.</p>}
+        </>) : <p className="mt-1 text-base font-semibold text-white">All clear. Nothing waiting.</p>}
       </section>
 
       {t.out > 0.005 && (
         <button type="button" data-testid="home-owing-strip" onClick={() => navigate("/admin/invoices?state=unpaid")}
-          className="block w-full rounded-2xl border-2 border-[#F97316] bg-[#FFF7ED] p-4 text-left text-[#F97316] shadow-sm dark:bg-[#F97316]/10">
+          className="block w-full rounded-2xl border-2 border-[#F97316] bg-[#FFF7ED]/85 p-4 text-left text-[#F97316] shadow-sm backdrop-blur-sm dark:bg-[#F97316]/10">
           <span className="block text-[13px] font-semibold uppercase tracking-wide">Invoices waiting · {t.n}</span>
           <span className="block text-xl font-bold leading-tight sm:text-2xl">{r(t.out)} outstanding{t.late > 0 ? ` · ${r(t.late)} overdue` : ""}</span>
           <span className="block text-sm font-semibold">{t.lateN ? `${t.lateN} late` : "None late"}{t.wait > 0 ? ` · ${r(t.wait)} due on completion` : ""} · open →</span>
@@ -52,13 +53,13 @@ export function HomeFocusView({ steps, due, now = Date.now(), requests }: { step
       {requests}
 
       {rest.length > 0 && (
-        <section className="v7-solid rounded-2xl border bg-card p-3" data-testid="home-then">
-          <h3 className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Then, in order · {rest.length}</h3>
-          <ol className="divide-y">
+        <section className="glass-card rounded-2xl border border-l-4 border-l-[#3D9BEB] p-3" data-testid="home-then">
+          <h3 className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-[#3D9BEB]">Then, in order · {rest.length}</h3>
+          <ol className="divide-y divide-[rgba(120,140,165,0.35)]">
             {rest.slice(0, 8).map((s, i) => (
               <li key={s.rule + s.entity_id}>
                 <Link to={cardTarget(s)} className="flex min-h-11 items-center gap-2 py-2 text-sm">
-                  <span className="w-5 shrink-0 text-right font-semibold text-muted-foreground">{i + 2}.</span>
+                  <span className="w-5 shrink-0 text-right font-semibold text-[#3D9BEB]">{i + 2}.</span>
                   <span className={cn("h-2 w-2 shrink-0 rounded-full", DOT[urgency(s, now)])} />
                   <span className="min-w-0 flex-1 truncate"><b>{s.title}</b> · {RULES[s.rule].action}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">{amountLabel(s, r)}</span>
