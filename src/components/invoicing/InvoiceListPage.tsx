@@ -160,6 +160,10 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   // One pipeline for list AND chip counts, so count = list (Johan 31 Oct). Unpaid = any balance owing,
   // overdue, due soon or due on completion; the old due=... filter is merged into it.
   const unpaidMode = inf.state === "unpaid";
+  // Collected tile drill-down: every non-void invoice with money received, archived included, so the list adds up to the tile (Johan 2 Nov 18:40).
+  const collectedMode = searchParams.get("view") === "collected";
+  const paidOf = (inv: Invoice) => invoiceMoney(inv as any, payRows, creditRows).paid;
+  const isCollectedRow = (inv: Invoice) => !["void", "cancelled"].includes((inv.status || "").toLowerCase()) && paidOf(inv) > 0;
   const balOf = (inv: Invoice) => invoiceMoney(inv as any, payRows, creditRows).balance;
   const listFor = (state: string | null, chip = false) => {
     const base = invoices.filter((i: any) => showArchived ? !!i.archived_at : !i.archived_at);
@@ -184,7 +188,11 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
     );
     return state === "unpaid" ? sortUnpaid(rows, (inv) => ({ status: inv.status, due: dueBy.get(inv.id) as any })) : rows;
   };
-  const filteredInvoices = listFor(inf.state ?? null);
+  const filteredInvoices = collectedMode
+    ? invoices.filter(isCollectedRow).filter((inv) => !search || inv.customer_name.toLowerCase().includes(search.toLowerCase()) || inv.invoice_number.toLowerCase().includes(search.toLowerCase()))
+    : listFor(inf.state ?? null);
+  const openCollected = () => setSearchParams((p) => { const n = new URLSearchParams(); n.set("view", "collected"); return n; });
+  const openOutstanding = () => setSearchParams(() => { const n = new URLSearchParams(); n.set("state", "unpaid"); return n; });
 
   // Summary stats
   // Shared maths: outstanding = balances after payments/credits; collected counts partial payments.
@@ -192,8 +200,8 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
     .filter((inv: any) => !inv.archived_at && isUnpaid(inv.status, balOf(inv)))
     .reduce((sum, inv) => sum + invoiceMoney(inv as any, payRows, creditRows).balance, 0);
   const totalPaid = invoices
-    .filter(inv => !["void", "cancelled"].includes((inv.status || "").toLowerCase()))
-    .reduce((sum, inv) => sum + invoiceMoney(inv as any, payRows, creditRows).paid, 0);
+    .filter(isCollectedRow)
+    .reduce((sum, inv) => sum + paidOf(inv), 0);
 
   if (loading) {
     return (
@@ -267,20 +275,16 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:max-w-md">
-        <Card role="button" tabIndex={0} onClick={() => setFilter("unpaid")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFilter("unpaid"); } }}
-          className={`border-0 shadow-sm cursor-pointer hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === "unpaid" ? "ring-2 ring-primary" : ""}`}>
-          <CardContent className="p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Outstanding</p>
-            <p className="text-lg font-bold text-orange-600 dark:text-orange-300">{formatCurrency(totalOutstanding)}</p>
-          </CardContent>
-        </Card>
-        <Card role="button" tabIndex={0} onClick={() => setFilter("paid")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFilter("paid"); } }}
-          className={`border-0 shadow-sm cursor-pointer hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === "paid" ? "ring-2 ring-primary" : ""}`}>
-          <CardContent className="p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Collected</p>
-            <p className="text-lg font-bold text-green-600 dark:text-green-300">{formatCurrency(totalPaid)}</p>
-          </CardContent>
-        </Card>
+        <button type="button" data-testid="tile-outstanding" onClick={openOutstanding}
+          className={`min-h-11 rounded-xl bg-card p-3 text-left shadow-sm hover:bg-accent/40 active:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${unpaidMode && !collectedMode ? "ring-2 ring-primary" : ""}`}>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Outstanding</p>
+          <p className="text-lg font-bold text-orange-600 dark:text-orange-300">{formatCurrency(totalOutstanding)}</p>
+        </button>
+        <button type="button" data-testid="tile-collected" onClick={openCollected}
+          className={`min-h-11 rounded-xl bg-card p-3 text-left shadow-sm hover:bg-accent/40 active:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${collectedMode ? "ring-2 ring-primary" : ""}`}>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Collected</p>
+          <p className="text-lg font-bold text-green-600 dark:text-green-300">{formatCurrency(totalPaid)}</p>
+        </button>
       </div>
 
 
@@ -297,6 +301,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
       <FilterChips
         shown={filteredInvoices.length}
         chips={[
+          ...(collectedMode ? [{ key: "view", label: `Money received · ${formatCurrency(totalPaid)}` }] : []),
           ...(moneyIsAlias ? [{ key: "kind", label: MONEY_LABEL[moneyFilter as keyof typeof MONEY_LABEL] }] : []),
           ...(inf.state ? [{ key: "state", label: inf.state === "unpaid" ? "Unpaid (balance owing)" : `State: ${inf.state}` }] : []),
           ...(dueFilter && inf.state !== "unpaid" ? [{ key: "due", label: dueFilter === "soon" ? "Due in 7 days" : dueFilter === "today" ? "Due today" : dueFilter === "overdue" ? "Overdue (past due date)" : `Due: ${dueFilter}` }] : []),
@@ -409,7 +414,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
                   className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${tone === "red" ? "bg-[#FDECEC] text-[#C9373C]" : tone === "orange" ? "bg-[#FFEBDD] text-[#C2570C]" : "bg-muted text-muted-foreground"}`}>
                   {b === "completion" ? BUCKET_LABEL.completion : due ? `${BUCKET_LABEL[b]} · ${dueChip(due as any).label}` : BUCKET_LABEL[b]}</span>; })()
                 : due && <InvoiceDueChip row={due} onClick={() => setReviewId(reviewId === invoice.id ? null : invoice.id)} />}</>}
-              amount={(() => { const m = invoiceMoney(invoice as any, payRows, creditRows); return ["paid", "void", "cancelled", "draft"].includes(invoice.status) ? formatCurrency(invoice.grand_total) : formatCurrency(m.balance); })()}
+              amount={(() => { const m = invoiceMoney(invoice as any, payRows, creditRows); if (collectedMode) return `${formatCurrency(m.paid)} received`; return ["paid", "void", "cancelled", "draft"].includes(invoice.status) ? formatCurrency(invoice.grand_total) : formatCurrency(m.balance); })()}
               date={[invoice.invoice_number, formatDate(invoice.created_at)].join(" · ")}
               trailing={<RowMenu items={[
                 { label: "Open", onSelect: () => onSelectInvoice(invoice) },
