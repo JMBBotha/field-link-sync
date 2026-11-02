@@ -72,7 +72,7 @@ export default function NewAdminHeader({ pageTitle, onMenu, onSearch, onCreateLe
       </div>
       {twoRow && (
         /* Phones only: second slim strip so row 1 (menu, logo, bell, avatar) never clips. */
-        <div data-testid="v7-mobile-strip" className="md:hidden flex h-11 items-center gap-1.5 border-t border-white/15 px-2">
+        <div data-testid="v7-mobile-strip" className="md:hidden flex min-h-12 items-center gap-1.5 border-t border-white/15 px-2">
           <MyAvailabilitySwitch labelled className="flex-1 max-w-[260px]" />
           <div className="ml-auto flex items-center gap-0.5">
             <StatusUndoButton />

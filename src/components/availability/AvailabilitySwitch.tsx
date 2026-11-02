@@ -29,7 +29,8 @@ export function AvailabilitySwitch({
       role="radiogroup"
       aria-label="Availability"
       data-testid="availability-switch"
-      className={cn("flex h-8 shrink-0 items-center rounded-full border border-white/25 bg-white/10 p-0.5", className)}
+      // Johan 2 Nov 18:08: true segmented control. Three equal 44px segments; highlight inset inside the pill (ring, not border, so height stays 44).
+      className={cn("grid h-11 shrink-0 grid-cols-3 items-stretch rounded-full bg-white/10 ring-1 ring-inset ring-white/25", className)}
     >
       {OPTIONS.map((o) => {
         const active = status === o.value;
@@ -44,13 +45,15 @@ export function AvailabilitySwitch({
             data-testid={`availability-${o.value}`}
             onClick={() => !active && onChange(o.value)}
             className={cn(
-              "flex h-7 min-w-[30px] items-center justify-center gap-1 rounded-full px-1.5 text-[11px] font-semibold transition-colors sm:px-2",
-              labelled && "flex-1 text-xs",
-              active ? o.on : "text-white/85 hover:bg-white/15",
+              "relative flex h-11 min-w-11 items-center justify-center rounded-full px-1 text-[11px] font-semibold",
+              labelled && "text-xs",
             )}
           >
-            {!active && <span className={cn("h-2 w-2 rounded-full", o.dot)} />}
-            <span className={cn(active || labelled ? "inline" : "hidden sm:inline")}>{o.label}</span>
+            <span className={cn("absolute inset-[4px] rounded-full transition-colors", active ? o.on : "hover:bg-white/15")} aria-hidden />
+            <span className={cn("relative flex items-center gap-1 px-1.5 leading-none", active ? o.on.split(" ").filter((c) => c.startsWith("text-")).join(" ") : "text-white/85")}>
+              {!active && <span className={cn("h-2 w-2 rounded-full", o.dot)} />}
+              <span className={cn(active || labelled ? "inline" : "hidden sm:inline")}>{o.label}</span>
+            </span>
           </button>
         );
       })}
