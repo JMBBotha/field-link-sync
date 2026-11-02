@@ -48,17 +48,18 @@ export default function SalesHeartbeat() {
             <div className="text-[13px] font-semibold text-[#CFE6F6]">Sales heartbeat · last 24 h · {fmtRandShort(hb.openValue)} open</div>
             <h2 className="text-[20px] font-semibold">{hb.flatline ? "Flatline: nothing has moved" : hb.strength < 0.7 ? "Weak pulse: items stalling" : "Heartbeat healthy"}</h2>
           </div>
-          <div className="text-right" title="Sales leads in the last 7 days answered within the contact limit">
+          <button type="button" data-testid="hb-pulse" onClick={() => navigate(isSalesRep ? "/admin/my-appointments" : "/admin/requests?filter=new_sale")} className="min-h-11 rounded-xl px-2 text-right hover:bg-white/10 active:opacity-80" title="Sales leads in the last 7 days answered within the contact limit">
             <div className="text-[13px] text-[#CFE6F6]">Leads answered in time · 7 days</div>
             <div className="text-[25px] font-semibold">{hb.pulse.pct == null ? "–" : `${hb.pulse.pct}%`}</div>
-            <div className="text-[13px] text-[#CFE6F6]">{hb.pulse.answered} of {hb.pulse.total}</div>
-          </div>
+            <div className="text-[13px] text-[#CFE6F6]">{hb.pulse.answered} of {hb.pulse.total} · open →</div>
+          </button>
         </div>
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="mt-2 h-10 w-full" aria-label={`Heartbeat: ${hb.beats.length} actions, ${last}`}>
           <polyline fill="none" stroke={hb.flatline ? "#FF8A80" : "#fff"} strokeWidth="2" points={pts} />
         </svg>
         <div className="mb-3 flex justify-between text-[13px] text-[#CFE6F6]"><span>24 h ago</span><span>{hb.beats.length} actions · {last}</span><span>now</span></div>
-        {hb.flatline && <div role="alert" className="mb-3 rounded-lg bg-[#C62828] px-3 py-2 text-[13px] font-semibold">No sales actions while {hb.items.length} items wait. Pick up the next step below.</div>}
+        {hb.flatline && <button type="button" role="alert" data-testid="hb-flatline-go" onClick={() => (hb.next ? navigate(hb.next.next.to) : document.querySelector("[data-testid=hb-next-card]")?.scrollIntoView({ behavior: "smooth", block: "center" }))}
+          className="mb-3 block min-h-11 w-full rounded-lg bg-[#C62828] px-3 py-2 text-left text-[13px] font-semibold hover:bg-[#B71C1C] active:opacity-80">No sales actions while {hb.items.length} items wait. {hb.next ? `Open the first: ${hb.next.title} →` : "Pick up the next step below."}</button>}
         <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-8 lg:overflow-visible">{hb.stages.map((s) => <StageTile key={s.key} s={s} items={hb.items} onClick={() => navigate(stageHref(s.key, isSalesRep))} />)}</div>
       </section>
       <RequestsTodayStrip />

@@ -123,7 +123,7 @@ const cleanSummary = (s?: string | null) => (s || "").replace(/Map pin:\s*/i, ""
 /** One status line, plus its tone. */
 export function requestStatus(r: RequestRow): { text: string; tone: "red" | "green" | "amber" | "muted" } {
   if (r.status !== "open") return { text: `Done${r.done_at ? ` · ${new Date(r.done_at).toLocaleDateString("en-ZA", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short" })}` : ""}`, tone: "muted" };
-  if (!r.type) return { text: "Needs sorting", tone: "amber" };
+  if (!r.type) return { text: "Pick a type", tone: "amber" };
   if (r.type === "admin") return { text: r.task_overdue ? "Office task · overdue" : "Office task · due today", tone: r.task_overdue ? "red" : "amber" };
   const who = r.assigned_name?.trim();
   if (who && (r.scheduled_for || isAssigned(r))) return { text: assignedLabel(who, r.scheduled_for, r.scheduled_time)!, tone: "green" };
@@ -167,7 +167,9 @@ export function RequestCard({ r, isAdmin = false, changing, onChange, onType, on
       className={cn("rounded-2xl border-2 bg-card p-3 lg:p-4", sorting && isOpen ? "border-[#E65100] bg-[#FFF8F1]" : "border-border", r.not_contacted_red && "border-l-8 border-l-[#C62828]")}>
       <div className="flex items-start justify-between gap-2">
         <button onClick={onOpenClient} className="min-w-0 text-left text-[18px] font-semibold leading-tight break-words">{r.customer_name || "Unknown caller"}</button>
-        {sorting ? <span className="shrink-0 rounded-full bg-[#E65100] px-2.5 py-0.5 text-[12px] font-semibold text-white">Needs sorting</span>
+        {/* Johan 2 Nov 18:05: no orange chip on done requests; open + untyped says "Pick a type" and opens the picker. */}
+        {sorting ? (isOpen ? <button type="button" data-testid="pick-type-chip" onClick={(e) => { if (!changing) onChange(); (e.currentTarget.closest("li")?.querySelector("[data-testid=type-chips]") as HTMLElement | null)?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
+            className="min-h-8 shrink-0 rounded-full bg-[#E65100] px-3 py-1 text-[12px] font-semibold text-white active:opacity-80">Pick a type</button> : null)
           : <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-[12px] font-semibold", TYPE_TONE[r.type!])}>{typeLabel(r.type)}{r.type === "move" ? " · internal" : ""}</span>}
       </div>
       <div data-testid="request-status" className={cn("mt-1 text-[15px] font-semibold", STATUS_TONE[st.tone])}>{st.text}</div>
