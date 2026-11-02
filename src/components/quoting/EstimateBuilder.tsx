@@ -53,7 +53,6 @@ import QuoteLockBanner from "./QuoteLockBanner";
 import SurveyReportChip from "@/components/survey/SurveyReportChip";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import LiveClientPreview from "@/components/quoting/LiveClientPreview";
-import RelocationClauseSwitch from "@/components/quoting/RelocationClauseSwitch";
 import PriceListPane from "@/components/quoting/PriceListPane";
 import { canSeePriceListPdfs } from "@/lib/priceListPdf";
 import { useRole } from "@/hooks/useRole";
@@ -205,7 +204,6 @@ export default function EstimateBuilder({
   useEffect(() => { if (qbv.external && !isWide) setNarrowTab(qbv.view); }, [qbv.external, qbv.view, isWide]);
   useEffect(() => { setQbView({ view: narrowTab }); }, [narrowTab]);
   useEffect(() => () => setQbView({ view: "editor" }), []);
-  const [zoom, setZoom] = useState(1);
   const clientOpen = !isWide && narrowTab === "client";
   useEffect(() => { if (!clientOpen) return; allowPinchZoom(true); return () => { allowPinchZoom(false); }; }, [clientOpen]);
   const sideBySide = isWide && showPreview;
@@ -495,7 +493,6 @@ export default function EstimateBuilder({
           customerVat={customerVat}
           siteAddress={siteAddress}
           items={[]}
-          relocationLines={(items as any[]).flatMap((i) => [i.item_name, i.description])}
           subtotal={subtotal}
           taxRate={vatRate}
           taxAmount={taxAmount}
@@ -509,7 +506,6 @@ export default function EstimateBuilder({
           remoteQuote={!!meta?.remote_quote}
           remoteQuoteSource={(meta as any)?.remote_quote_source ?? null}
           quoteCreatedAt={meta?.created_at ?? null}
-          relocationClause={(meta as any)?.relocation_clause ?? null}
           companyId={meta?.company_id ?? null}
           editing={{
             onNotesChange: (text) => updateQuote({ notes: text || null } as any),
@@ -713,7 +709,6 @@ export default function EstimateBuilder({
           remoteQuote={!!meta?.remote_quote}
           remoteQuoteSource={(meta as any)?.remote_quote_source ?? null}
           quoteCreatedAt={meta?.created_at ?? null}
-          relocationClause={(meta as any)?.relocation_clause ?? null}
           items={items}
           areas={areas}
           discountType={discountType}
@@ -726,7 +721,6 @@ export default function EstimateBuilder({
         <div data-testid="live-preview-layout" className="fl-builder" data-side-by-side={sideBySide ? "true" : "false"}>
           <div className={`fl-builder-bar ${isWide || narrowTab === "client" ? "sticky top-2 z-20" : ""} mb-3 flex flex-wrap items-center justify-end gap-2 print:hidden`} data-html2canvas-ignore data-pdf-hide>
             <span className="mr-auto" aria-hidden />
-            {quoteId && meta && <RelocationClauseSwitch quoteId={quoteId} value={(meta as any).relocation_clause ?? null} lines={(items as any[]).flatMap((i) => [i.item_name, i.description])} onChanged={() => { void refetch(); }} />}
             {(isWide || narrowTab === "client") && <DocumentStyleSwitch companyId={meta?.company_id ?? null} onPicked={() => { if (isWide) setShowPreview(true); else setNarrowTab("client"); }} />}
             {canPriceList && (
               <Button type="button" size="sm" variant="outline" className="fl-preview-toggle h-9 rounded-full px-4 text-xs font-semibold"
@@ -787,15 +781,8 @@ export default function EstimateBuilder({
               <div className={narrowTab === "editor" ? "" : "hidden"}>{editorDoc}</div>
               {narrowTab === "client" && (
                 <div data-testid="client-zoom">
-                  <div className="mb-2 flex items-center justify-end gap-1 print:hidden" data-html2canvas-ignore data-pdf-hide>
-                    <span className="mr-auto text-xs opacity-70">Pinch to zoom</span>
-                    <button type="button" className="fl-btn-secondary h-11 w-11 !px-0 text-lg" aria-label="Zoom out" data-testid="zoom-out" onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}>−</button>
-                    <span className="w-12 text-center text-xs font-semibold" data-testid="zoom-level">{Math.round(zoom * 100)}%</span>
-                    <button type="button" className="fl-btn-secondary h-11 w-11 !px-0 text-lg" aria-label="Zoom in" data-testid="zoom-in" onClick={() => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)))}>+</button>
-                    <button type="button" className="fl-btn-secondary h-11 !px-3 text-xs" data-testid="zoom-fit" onClick={() => setZoom(1)}>Fit width</button>
-                  </div>
                   <div className="overflow-auto [touch-action:pan-x_pan-y_pinch-zoom]">
-                    <div style={{ width: `${zoom * 100}%` }} data-testid="client-zoom-body">{preview}</div>
+                    <div data-testid="client-zoom-body">{preview}</div>
                   </div>
                 </div>
               )}

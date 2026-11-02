@@ -72,7 +72,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
         const [qRes, iRes, aRes, cRes, dRes] = await Promise.all([
           (supabase.from("quotes") as any)
             .select(
-              "id, company_id, quote_number, subtotal, vat_rate, vat_amount, total, notes, valid_until, created_at, customer_name, terms_text, discount_type, discount_value, payment_plan, remote_quote, remote_quote_source, relocation_clause, location_id, lead_id, customers(name, first_name, last_name, company_name, primary_address_line1, primary_address_line2, city, postal_code, address, email, phone, vat_number), customer_locations!quotes_location_id_fkey(address), leads!quotes_lead_id_fkey(customer_address)",
+              "id, company_id, quote_number, subtotal, vat_rate, vat_amount, total, notes, valid_until, created_at, customer_name, terms_text, discount_type, discount_value, payment_plan, remote_quote, remote_quote_source, location_id, lead_id, customers(name, first_name, last_name, company_name, primary_address_line1, primary_address_line2, city, postal_code, address, email, phone, vat_number), customer_locations!quotes_location_id_fkey(address), leads!quotes_lead_id_fkey(customer_address)",
             )
             .eq("id", quoteId)
             .maybeSingle(),
@@ -213,7 +213,6 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
           paymentPlan={q.payment_plan ?? null}
           remoteQuote={!!(q as any).remote_quote}
           remoteQuoteSource={(q as any).remote_quote_source ?? null}
-          relocationClause={(q as any).relocation_clause ?? null}
           quoteCreatedAt={q.created_at}
           unitCards={<><QuoteUnitCardsView cards={doc.unitCards} companyId={doc.quote?.company_id ?? (doc.company as any)?.company_id ?? null} variant={((doc.brochureCompany?.document_style ?? (doc.company as any)?.document_style) === "bold") ? "bold" : "light"} /><QuoteSitePhotosBlock photos={doc.sitePhotos} /></>}
         />
