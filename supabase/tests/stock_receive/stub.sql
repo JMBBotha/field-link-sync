@@ -1,0 +1,16 @@
+CREATE SCHEMA auth; CREATE TABLE auth.me(uid uuid);
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS 'SELECT uid FROM auth.me LIMIT 1';
+CREATE TABLE okco(company_id uuid);
+CREATE FUNCTION public._cf_ok(c uuid) RETURNS boolean LANGUAGE sql AS 'SELECT EXISTS(SELECT 1 FROM okco WHERE company_id=c)';
+CREATE TABLE supplier_products(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), product_code text, description text, cost_price numeric, short_name text, product_type text, sold_in_length boolean DEFAULT false, unit_length numeric, name text, price_per_unit_label text DEFAULT 'each');
+CREATE TABLE quotes(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), quote_number text, customer_name text);
+CREATE TABLE quote_items(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), quote_id uuid, product_id uuid, item_name text, quantity numeric);
+CREATE TABLE jobs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), company_id uuid, quote_id uuid, title text);
+CREATE TABLE assignments(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), job_id uuid, profile_id uuid);
+CREATE TABLE cf_stock_items(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), company_id uuid NOT NULL, item text NOT NULL, model_code text, qty_on_hand numeric NOT NULL DEFAULT 0, unit_cost_excl numeric NOT NULL DEFAULT 0, location text, last_counted_at timestamptz, active boolean NOT NULL DEFAULT true, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE cf_commitments(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), company_id uuid NOT NULL, source_key text, invoice_id uuid, quote_id uuid, job_id uuid, project text NOT NULL DEFAULT '', item text NOT NULL, kind text NOT NULL DEFAULT 'unit', qty numeric NOT NULL DEFAULT 1, supplier text, unit_cost_excl numeric NOT NULL DEFAULT 0, vat_rate numeric NOT NULL DEFAULT 15, status text NOT NULL DEFAULT 'needed', pay_date date, edited boolean NOT NULL DEFAULT false, note text, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now(), UNIQUE(company_id, source_key));
+CREATE TABLE cf_stock_allocations(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), company_id uuid, stock_item_id uuid, commitment_id uuid, qty numeric, drawn_at timestamptz);
+CREATE TABLE supplier_job_documents(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), company_id uuid, doc_type text, doc_number text, supplier_name text, po_number text);
+CREATE TABLE supplier_job_document_lines(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), document_id uuid, company_id uuid, line_no int, description text, model_number text, serial_number text, qty numeric, job_id uuid, unit_detail_id uuid, created_at timestamptz DEFAULT now());
+CREATE TABLE job_materials_used(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), company_id uuid NOT NULL, job_id uuid NOT NULL, item text NOT NULL, qty numeric NOT NULL, stock_item_id uuid, draw_stock boolean NOT NULL DEFAULT true, drawn_qty numeric NOT NULL DEFAULT 0, draw_note text, entered_by uuid, on_behalf_of uuid, entered_at timestamptz NOT NULL DEFAULT now(), occurred_at timestamptz, created_at timestamptz NOT NULL DEFAULT now());
+CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
