@@ -26,6 +26,7 @@ import { QuoteSitePhotosEditor } from "@/components/quoting/QuoteSitePhotos";
 import { linkedToUnit } from "@/lib/unitInstallLinks";
 import { useIsPhone } from "@/hooks/useIsPhone";
 import { isLabourItem } from "@/lib/labour";
+import { useQbView, setQbView, allowPinchZoom } from "@/lib/qbView";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -198,6 +199,15 @@ export default function EstimateBuilder({
     setPaneMode("pricelist");
     if (!showPreview) toggleSidePreview();
   };
+  const qbv = useQbView();
+  // Zoom widens the box; the preview refits to it, so text grows and the box scrolls.
+  // Phone tab row (builder page) drives this view; report back so the active tab is right.
+  useEffect(() => { if (qbv.external && !isWide) setNarrowTab(qbv.view); }, [qbv.external, qbv.view, isWide]);
+  useEffect(() => { setQbView({ view: narrowTab }); }, [narrowTab]);
+  useEffect(() => () => setQbView({ view: "editor" }), []);
+  const [zoom, setZoom] = useState(1);
+  const clientOpen = !isWide && narrowTab === "client";
+  useEffect(() => { if (!clientOpen) return; allowPinchZoom(true); return () => { allowPinchZoom(false); }; }, [clientOpen]);
   const sideBySide = isWide && showPreview;
   const previewActive = isWide ? showPreview : narrowTab === "client";
   const [drafts, setDrafts] = useState<Record<string, { item_name?: string; description?: string | null; unit_price?: number }>>({});
@@ -729,7 +739,7 @@ export default function EstimateBuilder({
                 data-testid="live-preview-toggle" aria-pressed={showPreview} onClick={() => { if (!showPreview) setPaneMode("preview"); toggleSidePreview(); }}>
                 {showPreview ? "Hide preview" : "Show preview"}
               </Button>
-            ) : (
+            ) : qbv.external ? null : (
               <Button type="button" size="sm" variant="outline" className="fl-preview-toggle h-9 rounded-full px-4 text-xs font-semibold"
                 data-testid="live-preview-toggle" aria-pressed={narrowTab === "client"}
                 onClick={() => setNarrowTab(narrowTab === "editor" ? "client" : "editor")}>
@@ -775,7 +785,20 @@ export default function EstimateBuilder({
           ) : (
             <>
               <div className={narrowTab === "editor" ? "" : "hidden"}>{editorDoc}</div>
-              {narrowTab === "client" && preview}
+              {narrowTab === "client" && (
+                <div data-testid="client-zoom">
+                  <div className="mb-2 flex items-center justify-end gap-1 print:hidden" data-html2canvas-ignore data-pdf-hide>
+                    <span className="mr-auto text-xs opacity-70">Pinch to zoom</span>
+                    <button type="button" className="fl-btn-secondary h-11 w-11 !px-0 text-lg" aria-label="Zoom out" data-testid="zoom-out" onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}>−</button>
+                    <span className="w-12 text-center text-xs font-semibold" data-testid="zoom-level">{Math.round(zoom * 100)}%</span>
+                    <button type="button" className="fl-btn-secondary h-11 w-11 !px-0 text-lg" aria-label="Zoom in" data-testid="zoom-in" onClick={() => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)))}>+</button>
+                    <button type="button" className="fl-btn-secondary h-11 !px-3 text-xs" data-testid="zoom-fit" onClick={() => setZoom(1)}>Fit width</button>
+                  </div>
+                  <div className="overflow-auto [touch-action:pan-x_pan-y_pinch-zoom]">
+                    <div style={{ width: `${zoom * 100}%` }} data-testid="client-zoom-body">{preview}</div>
+                  </div>
+                </div>
+              )}
               {canPriceList && (
                 <Sheet open={priceSheetOpen} onOpenChange={setPriceSheetOpen}>
                   <SheetContent side="right" className={`${isPhone ? "w-full max-w-none" : "w-[60vw] max-w-[60vw] sm:max-w-[60vw]"} fl-builder p-3`} data-testid="pricelist-sheet">

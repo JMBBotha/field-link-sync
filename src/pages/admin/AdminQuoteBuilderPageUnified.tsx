@@ -13,6 +13,7 @@ import { canMergeRepick, freshProduct, standardSell } from "@/lib/priceGuard";
  * in a shared header with tabs. Each tab renders the real builder component.
  */
 
+import { useQbView, setQbView } from "@/lib/qbView";
 import { useState, useEffect, useMemo, useRef, useCallback, useSyncExternalStore, type MutableRefObject } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -226,11 +227,11 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
           }
         </div>
 
-        <div className="fl-qb-total flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-1.5" data-testid="qb-total-pill">
+        <div className="fl-qb-total flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-3 sm:gap-1.5 sm:px-4 py-1.5" data-testid="qb-total-pill">
           <span className="text-xs sm:text-sm font-bold">
             {formatRand(totalAmount)}
           </span>
-          <span className="text-xs opacity-90">incl. VAT</span>
+          <span className="text-[10px] sm:text-xs opacity-90">incl. VAT</span>
           <span className="hidden sm:inline text-xs opacity-90">
             · {totalItems} items · {zoneCount} zones
           </span>
@@ -319,6 +320,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   // R6: "quote" (area-first, edits saved lines directly) is the default view on every device.
   const [activeTab, setActiveTab] = useState(() => tabRef?.current ?? "quote");
   useEffect(() => { if (tabRef) tabRef.current = activeTab; }, [activeTab, tabRef]);
+  const qbv = useQbView();
+  useEffect(() => { setQbView({ external: isCompact }); return () => setQbView({ external: false }); }, [isCompact]);
+  const clientTab = isCompact && activeTab === "quote" && qbv.view === "client";
   // While the area-first view is open the basket replace-all autosave is paused, so the two
   // save paths can never overwrite each other; leaving it remounts the builder from saved lines.
   const livePausedRef = useRef(activeTab === "quote");
@@ -1401,17 +1405,20 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
       {/* Builder mode tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className={`relative z-[10001] shrink-0 ${activeTab === "visual" ? "max-sm:hidden vpdf-desk" : ""}`}>
         <div className="fl-qb-modes flex flex-wrap items-center justify-center gap-y-1 py-1.5">
-          <TabsList className="fl-qb-seg h-9 rounded-full p-1">
-            <TabsTrigger value="quote" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4 font-semibold">Build quote</TabsTrigger>
+          <TabsList className="fl-qb-seg h-9 rounded-full p-1 max-sm:h-auto">
+            <TabsTrigger value="quote" onClick={() => setQbView({ view: "editor" })} className={`text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4 font-semibold max-sm:min-h-11 max-sm:px-3 ${clientTab ? "!bg-transparent !text-muted-foreground !shadow-none" : ""}`}>Build quote</TabsTrigger>
             <TabsTrigger value="normal" disabled aria-hidden="true" className="hidden text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4">Build</TabsTrigger>
-            <TabsTrigger value="visual" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4">Visual PDF</TabsTrigger>
+            <TabsTrigger value="visual" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4 max-sm:min-h-11 max-sm:px-3">Visual PDF</TabsTrigger>
+            {isCompact && <button type="button" role="tab" aria-selected={clientTab} data-testid="qb-tab-client"
+              onClick={() => { if (activeTab !== "quote") void handleTabChange("quote"); setQbView({ view: "client" }); }}
+              className={`inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 text-xs font-medium max-sm:min-h-11 sm:px-4 ${clientTab ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>Client view</button>}
             <TabsTrigger value="area" disabled aria-hidden="true" className="hidden text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4">Build Area Quote</TabsTrigger>
             <Button
               size="icon"
               variant="outline"
               onClick={() => openMandyQuoteMode()}
               aria-label="Build with voice"
-              className="h-7 w-7 ml-0.5 border-transparent bg-transparent hover:bg-accent"
+              className="h-7 w-7 ml-0.5 border-transparent bg-transparent hover:bg-accent max-sm:h-11 max-sm:w-9"
               title="Build with voice — Ask Mandy"
             >
               <Mic className="h-3.5 w-3.5" />
