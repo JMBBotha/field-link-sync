@@ -13,8 +13,9 @@ export default function QuoteOptionChip({ quoteId, groupId }: { quoteId: string;
   });
   if (!groupId || !q.data?.length) return null;
   return (
-    <span data-pdf-hide data-testid="quote-option-chip" className="inline-flex flex-wrap items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-xs font-semibold text-sky-800 dark:text-sky-200 print:hidden">
-      Option of {q.data.map((s, i) => <span key={s.id}>{i > 0 && ", "}<Link className="underline" to={`/admin/estimates/${s.id}`}>{s.quote_number || "quote"}</Link></span>)}
-    </span>
+    <div data-pdf-hide data-testid="quote-option-chip" className="flex min-w-0 flex-wrap items-center gap-x-1 rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 text-xs font-semibold text-sky-800 dark:text-sky-200 print:hidden">
+      <span className="shrink-0">Option of</span>
+      {q.data.map((s, i) => <span key={s.id} className="inline-flex items-center">{i > 0 && <span aria-hidden className="px-1">·</span>}<Link className="inline-flex min-h-11 items-center whitespace-nowrap underline" to={`/admin/estimates/${s.id}`}>{s.quote_number || "quote"}</Link></span>)}
+    </div>
   );
 }
