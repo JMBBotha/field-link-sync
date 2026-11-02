@@ -24,3 +24,4 @@ $function$;
 CREATE OR REPLACE FUNCTION public.fl_request_contacted(r requests) RETURNS boolean LANGUAGE sql STABLE AS $function$
   SELECT r.first_contact_at IS NOT NULL OR r.source = 'manual' OR r.assigned_to IS NOT NULL OR r.job_id IS NOT NULL OR r.scheduled_for IS NOT NULL;
 $function$;
+CREATE SCHEMA IF NOT EXISTS vault; CREATE TABLE IF NOT EXISTS vault.decrypted_secrets(name text, decrypted_secret text);

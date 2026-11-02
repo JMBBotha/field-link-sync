@@ -8,6 +8,7 @@ import App from "./App.tsx";
 import "./index.css";
 import "./components/v8/v8.css";
 import { primeMapboxToken } from "@/lib/mapboxToken";
+import { isPushWorkerUrl } from "@/lib/webPush";
 
 // ── Apply saved / system theme BEFORE first paint to avoid a flash ──
 (() => {
@@ -28,10 +29,13 @@ import { primeMapboxToken } from "@/lib/mapboxToken";
   }
 })();
 
-// No service worker is used. Unregister any stray one (old installs/extensions) so a cached shell can
-// never pin an old bundle; VersionBanner handles "new version available" for open tabs.
+// Only the push-only worker (/push-sw.js, no fetch/caching) is kept. Unregister any other stray one
+// (old installs/extensions) so a cached shell can never pin an old bundle; VersionBanner handles updates.
 try {
-  navigator.serviceWorker?.getRegistrations?.().then((regs) => regs.forEach((r) => void r.unregister())).catch(() => {});
+  navigator.serviceWorker?.getRegistrations?.().then((regs) => regs.forEach((r) => {
+    const url = r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || "";
+    if (!isPushWorkerUrl(url)) void r.unregister();
+  })).catch(() => {});
 } catch {
   /* ignore */
 }
