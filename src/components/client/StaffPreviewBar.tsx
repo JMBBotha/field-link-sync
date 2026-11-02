@@ -26,16 +26,21 @@ export default function StaffPreviewBar({ token }: { token: string }) {
   const back = () => (window.history.length > 1 ? navigate(-1) : navigate("/admin/quotes"));
   const draft = !d || ["draft", "pending"].includes(d.status || "draft");
   return (
-    <div className="sticky top-0 z-50 border-b border-[#2F86D1] bg-[#3D9BEB] px-2 py-2 text-white print:hidden" data-testid="staff-preview-bar">
-      <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-2">
-        <button type="button" onClick={back} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-[14px] font-bold text-white hover:bg-white/15" data-testid="staff-preview-back"><ArrowLeft className="h-4 w-4" />Back</button>
-        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-white/90">Staff preview{d?.quote_number ? ` · ${d.quote_number}` : ""} · client sees no bar</span>
-        {d && <>
-          <button type="button" onClick={() => setSendOpen(true)} className="fl-btn-primary px-4" data-testid="staff-preview-send">{draft ? "Send" : "Resend"}</button>
-          <button type="button" onClick={() => navigate(`/admin/estimates/${d.id}`)} className="fl-btn-secondary px-3" data-testid="staff-preview-edit">Edit</button>
-          {draft && <MarkSentManuallyButton kind="quote" id={d.id} status={d.status} size="default" className="min-h-11" onDone={() => qc.invalidateQueries({ queryKey: ["staff-preview-quote", token] })} />}
-          <button type="button" onClick={() => setSheet(true)} className="fl-btn-secondary px-3" data-testid="staff-preview-snooze">Snooze / Group</button>
-        </>}
+    // iPhone: clear the notch/status bar (viewport-fit=cover + the V8 body::before inset strip would hide the top
+    // of the bar), Back first, then 44px actions that wrap below Back so all fit at 375-390px (Johan 2 Nov 14:36).
+    <div className="sticky top-0 z-50 border-b border-[#2F86D1] bg-[#3D9BEB] px-2 pb-2 text-white print:hidden" data-testid="staff-preview-bar"
+      style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}>
+      <div className="mx-auto flex max-w-4xl flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+        <div className="flex min-w-0 items-center gap-2 sm:flex-1">
+          <button type="button" onClick={back} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-[14px] font-bold text-white hover:bg-white/15" data-testid="staff-preview-back"><ArrowLeft className="h-4 w-4" />Back</button>
+          <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-white/90">Staff preview{d?.quote_number ? ` · ${d.quote_number}` : ""} · client sees no bar</span>
+        </div>
+        {d && <div className="flex flex-wrap items-center gap-2" data-testid="staff-preview-actions">
+          <button type="button" onClick={() => setSendOpen(true)} className="fl-btn-primary shrink-0 whitespace-nowrap px-4" data-testid="staff-preview-send">{draft ? "Send" : "Resend"}</button>
+          <button type="button" onClick={() => navigate(`/admin/estimates/${d.id}`)} className="fl-btn-secondary shrink-0 whitespace-nowrap px-3" data-testid="staff-preview-edit">Edit</button>
+          {draft && <MarkSentManuallyButton kind="quote" id={d.id} status={d.status} size="default" className="min-h-11 shrink-0 whitespace-nowrap" onDone={() => qc.invalidateQueries({ queryKey: ["staff-preview-quote", token] })} />}
+          <button type="button" onClick={() => setSheet(true)} className="fl-btn-secondary shrink-0 whitespace-nowrap px-3" data-testid="staff-preview-snooze">Snooze / Group</button>
+        </div>}
       </div>
       {d && <SendQuoteDialog open={sendOpen} onOpenChange={setSendOpen} quoteId={d.id} quoteNumber={d.quote_number || "Draft"} customerId={d.customer_id ?? null} customerName={d.customer_name || "Customer"} />}
       {d && sheet && <SnoozeDialog
