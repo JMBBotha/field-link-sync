@@ -62,7 +62,9 @@ const termsItemClass = (s: TermsSection, it: TermsBlock) =>
   `text-xs leading-relaxed text-ink ${/^(building|electrical) work$/i.test(s.heading) ? "font-bold" : it.type === "banking" || /^(banking details|deposit reference)$/i.test(s.heading) ? "font-bold" : ""}`;
 const termsItemText = (it: TermsBlock) => (it.type === "bullet" ? `• ${it.text}` : it.text);
 
-const TermsSectionBlock = ({ s, index }: { s: TermsSection; index: number }) => {
+/** pointKeep (invoice rowFlow, Johan 2 Nov 21:10): the page may break between points, never inside one;
+ *  the heading stays with the first point. Whole-section keeps pushed long sections to the next page. */
+const TermsSectionBlock = ({ s, index, pointKeep }: { s: TermsSection; index: number; pointKeep?: boolean }) => {
   const head = (
         <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-xs font-bold text-white">
@@ -71,6 +73,18 @@ const TermsSectionBlock = ({ s, index }: { s: TermsSection; index: number }) => 
           <h4 className="text-xs font-bold uppercase tracking-wide text-[#1AA7EC]">{s.heading || "Terms"}</h4>
         </div>
   );
+  if (pointKeep && s.items.length > 0) {
+    const [first, ...rest] = s.items;
+    return (
+      <div data-testid="terms-section">
+        <div data-pdf-keep>
+          {head}
+          <p className={`mt-1.5 ${termsItemClass(s, first)}`}>{termsItemText(first)}</p>
+        </div>
+        {rest.map((it, j) => <p key={j} data-pdf-keep className={`mt-1.5 ${termsItemClass(s, it)}`}>{termsItemText(it)}</p>)}
+      </div>
+    );
+  }
   return (
       <div data-pdf-keep className="break-inside-avoid">
         {head}
@@ -112,18 +126,16 @@ export default function QuoteTermsPage(p: QuoteTermsPageProps) {
     const rows: TermsSection[][] = [];
     for (let i = 0; i < sections.length; i += 2) rows.push(sections.slice(i, i + 2));
     const row = (r: TermsSection[], ri: number) => (
-      <div key={ri} data-pdf-keep data-testid="terms-row" className="fl-terms-grid grid grid-cols-1 gap-x-8 gap-y-4 break-inside-avoid">
-        {r.map((s, j) => <TermsSectionBlock key={j} s={s} index={ri * 2 + j} />)}
+      <div key={ri} data-testid="terms-row" className="fl-terms-grid grid grid-cols-1 gap-x-8 gap-y-4">
+        {r.map((s, j) => <TermsSectionBlock key={j} s={s} index={ri * 2 + j} pointKeep />)}
       </div>
     );
     // pb-6: the terms are the last thing in the capture, and html2canvas draws text a few px lower than the
     // DOM box, so without room below the final line was clipped in half.
     return (
       <div data-pdf-terms-page data-paper data-testid="quote-terms-page" className="fl-terms-page fl-terms-compact mt-4 pt-2 pb-6">
-        <div data-pdf-keep className="break-inside-avoid">
-          {heading}
-          {rows.length > 0 && <div className="mt-4">{row(rows[0], 0)}</div>}
-        </div>
+        <div data-pdf-keep>{heading}</div>
+        {rows.length > 0 && <div className="mt-4">{row(rows[0], 0)}</div>}
         {rows.length > 1 && <div className="mt-4 space-y-4">{rows.slice(1).map((r, i) => row(r, i + 1))}</div>}
       </div>
     );

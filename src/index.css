@@ -1283,12 +1283,12 @@ All colors MUST be HSL.
 .bd.invoice-document .closing{padding:4px 0 8px}
 .bd.invoice-document .notes.wide{gap:8px 24px}
 .bd.invoice-document .foot{margin-top:10px}
-.bd.invoice-document .fl-terms-page{margin-top:6px;padding-top:0}
+.bd.invoice-document .fl-terms-page{margin-top:20px;padding-top:0}
 .bd.invoice-document .fl-terms-compact p{font-size:10.5px;line-height:1.4}
 .bd.invoice-document .fl-terms-compact .mt-4{margin-top:.5rem}
 .bd.invoice-document .fl-terms-compact .space-y-4>:not([hidden])~:not([hidden]){margin-top:.5rem}
 .bd.invoice-document .fl-terms-compact .gap-y-4{row-gap:.5rem}
-.bd.invoice-document .fl-terms-compact .mt-1\.5{margin-top:.25rem}
+.bd.invoice-document .fl-terms-compact .mt-1\.5{margin-top:.375rem}
 
 /* Lead map fullscreen: keep Mapbox zoom buttons clear of the header and iPhone notch */
 [data-map-fullscreen] .mapboxgl-ctrl-top-right {

@@ -2,6 +2,7 @@ import { siteLineFor } from "@/lib/billTo";
 import BrandDocument, { NotesBody } from "@/components/documents/BrandDocument";
 import { foldFlatLines } from "@/lib/clientQuoteRollup";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import InvoiceSignOff from "./InvoiceSignOff";
 import { cleanBanking } from "@/lib/companyIdentity";
 import { formatRand } from "@/utils/formatRand";
 import InvoiceStamps from "@/components/documents/InvoiceStamps";
@@ -178,6 +179,7 @@ const InvoiceDocument = ({
         { title: "Warranty & notes", body: <NotesBody text={notes || "All workmanship carries a 12-month warranty. Equipment is covered by the manufacturer's warranty terms. Warranty excludes damage caused by misuse, power surges, or lack of scheduled maintenance."} /> },
       ]}
       fullTermsPage={termsCompany && !termsCompany.customText ? (
+        <>
         <QuoteTermsPage
           companyName={termsCompany.companyName || "Our Company"}
           bankName={termsCompany.bankName}
@@ -189,6 +191,8 @@ const InvoiceDocument = ({
           docLabel="Invoice"
           rowFlow
         />
+        <InvoiceSignOff profile={profile} />
+        </>
       ) : undefined}
     />
   );
