@@ -217,5 +217,5 @@ GRANT EXECUTE ON FUNCTION public.job_materials_draw(uuid, jsonb) TO authenticate
 -- UI/edge gate: may the caller receive stock for this company? (admin only, same rule as RLS)
 CREATE OR REPLACE FUNCTION public.cf_can_receive(p_company uuid)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$ SELECT public._cf_ok(p_company) $$;
-REVOKE ALL ON FUNCTION public.cf_can_receive(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.cf_can_receive(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.cf_can_receive(uuid) TO authenticated;
