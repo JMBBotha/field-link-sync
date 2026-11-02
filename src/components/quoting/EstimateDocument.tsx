@@ -241,6 +241,8 @@ export interface EstimateDocumentProps {
   presentationMode?: "flat" | "clientRollup";
   /** Accounting step 1: the quote's payment plan (null = company deposit %). */
   paymentPlan?: PaymentPlan | null;
+  /** Staff editor only: the payment plan picker, shown inside the Payment section (Johan 2 Nov 16:05). */
+  paymentSlot?: ReactNode;
   /** "The units in this quote" cards: printed after the totals, before the terms. */
   unitCards?: ReactNode;
   /** Public client page only (not PDF): collapse terms into one expander. */
@@ -411,6 +413,7 @@ const EstimateDocument = ({
   clientAreas,
   presentationMode,
   paymentPlan,
+  paymentSlot,
   unitCards,
   collapseTerms,
   afterTotalsAction,
@@ -1123,6 +1126,13 @@ const EstimateDocument = ({
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Notes</p>
               <p className="mt-1 whitespace-pre-line">{notes}</p>
+            </div>
+          )}
+
+          {paymentSlot && (
+            <div data-testid="editor-payment" className="print:hidden" data-html2canvas-ignore data-pdf-hide>
+              <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Payment</p>
+              <div className="mt-1">{paymentSlot}</div>
             </div>
           )}
 
