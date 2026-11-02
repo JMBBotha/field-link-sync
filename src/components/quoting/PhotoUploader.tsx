@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import PhotoDeleteButton from "@/components/photos/PhotoDeleteButton";
+import { deleteQuotePhoto } from "@/lib/photoDelete";
 import { useRole } from "@/hooks/useRole";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -72,10 +74,18 @@ const PhotoUploader = ({ quoteId, attachments, onAttachmentsChange }: PhotoUploa
 
   const handleRemove = async (index: number) => {
     const att = attachments[index];
-    await supabase.storage.from("quote-photos").remove([att.storage_path]);
-    await supabase.from("quote_attachments").delete().eq("storage_path", att.storage_path);
+    await deleteQuotePhoto(att.storage_path);
     onAttachmentsChange(attachments.filter((_, i) => i !== index));
+    toast({ title: "Photo deleted" });
   };
+  // Same rule as RLS (photo_quote_ok): office any quote in the company, reps only their own.
+  const [quoteOk, setQuoteOk] = useState(false);
+  useEffect(() => {
+    let live = true;
+    if (!quoteId) { setQuoteOk(false); return; }
+    (supabase.rpc as any)("photo_quote_ok", { _quote: quoteId }).then(({ data }: any) => { if (live) setQuoteOk(data === true); });
+    return () => { live = false; };
+  }, [quoteId]);
 
   return (
     <div className="space-y-3">
@@ -94,13 +104,8 @@ const PhotoUploader = ({ quoteId, attachments, onAttachmentsChange }: PhotoUploa
         <div className="grid grid-cols-3 gap-2">
           {attachments.map((att, i) => (
             <div key={i} className="relative group rounded-md overflow-hidden border">
-              <img src={att.url} alt={att.filename} className="w-full h-20 object-cover" />
-              {canDelete && <button
-                onClick={() => handleRemove(i)}
-                className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <X className="h-3 w-3" />
-              </button>}
+              <img src={att.url} alt={att.filename} className="w-full h-24 object-cover" />
+              {(canDelete || quoteOk) && <PhotoDeleteButton variant="thumb" className="absolute top-1 right-1" onConfirm={() => handleRemove(i)} testId="quote-photo-delete" />}
               <p className="text-xs truncate px-1 py-0.5 bg-background/80">{att.filename}</p>
             </div>
           ))}

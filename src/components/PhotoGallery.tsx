@@ -210,7 +210,7 @@ export function PhotoGallery({
         <AlertDialog open={!!photoToDelete} onOpenChange={() => setPhotoToDelete(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Photo?</AlertDialogTitle>
+              <AlertDialogTitle>Delete this photo?</AlertDialogTitle>
               <AlertDialogDescription>
                 {photoToDelete?.isQueued 
                   ? "This queued photo will be removed and won't be uploaded."
@@ -315,7 +315,7 @@ export function PhotoGallery({
       <AlertDialog open={!!photoToDelete} onOpenChange={() => setPhotoToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Photo?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this photo?</AlertDialogTitle>
             <AlertDialogDescription>
               {photoToDelete?.isQueued 
                 ? "This queued photo will be removed and won't be uploaded."

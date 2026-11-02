@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { useRole } from "@/hooks/useRole";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, ImagePlus, Loader2, PenLine, Trash2, X, Eye, EyeOff } from "lucide-react";
 import { loadLeadMockupUnits } from "@/lib/unitMockups";
@@ -14,6 +13,8 @@ import { useJobPhotos } from "@/hooks/useJobPhotos";
 import { photoDisplayPath, signedPhotoUrl } from "@/lib/photoUrls";
 import { parseAnnotation, serializeAnnotation, type AnnShape } from "@/lib/annotation";
 import PhotoAnnotator from "./PhotoAnnotator";
+import PhotoDeleteButton from "./PhotoDeleteButton";
+import { deleteJobPhoto } from "@/lib/photoDelete";
 import { PhotoViewer, PHOTO_GRID } from "./PhotoViewer";
 
 interface SitePhoto { caption: string | null; client_visible: boolean; id: string; storage_path: string; annotated_path: string | null; annotation: unknown; uploaded_by: string | null; url: string; originalUrl: string }
@@ -36,7 +37,6 @@ export function SitePhotosReadOnly({ leadId }: { leadId: string }) {
 function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
   { leadId: string; readOnly?: boolean; upload?: (f: File) => Promise<void>; uploading?: boolean }) {
   const { user } = useAuth();
-  const { canDelete } = useRole();
   const { toast } = useToast();
   const qc = useQueryClient();
   const camRef = useRef<HTMLInputElement>(null);
@@ -87,7 +87,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
   // assigned tech/salesperson (or office) may upload + delete; RLS enforces the same rule (photo_lead_ok)
   const canManage = useQuery({
     queryKey: ["photo-lead-ok", leadId],
-    enabled: !!leadId && !readOnly,
+    enabled: !!leadId,
     queryFn: async () => {
       const { data } = await (supabase.rpc as any)("photo_lead_ok", { _lead: leadId });
       return data === true;
@@ -95,18 +95,10 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
   }).data === true;
 
   const deletePhoto = async (p: SitePhoto) => {
-    if (!window.confirm("Delete this photo? This can't be undone.")) return;
-    try {
-      const paths = [p.storage_path, p.annotated_path].filter(Boolean) as string[];
-      const { error } = await (supabase.from("job_photos") as any).delete().eq("id", p.id);
-      if (error) throw error;
-      await supabase.storage.from("job-photos").remove(paths);
-      toast({ title: "Photo deleted" });
-      setOpen(null);
-      { qc.invalidateQueries({ queryKey: ["site-photos", leadId] }); qc.invalidateQueries({ queryKey: ["quote-site-photos"] }); }
-    } catch (e: any) {
-      toast({ title: "Couldn't delete the photo", description: e?.message, variant: "destructive" });
-    }
+    await deleteJobPhoto(p.id);
+    toast({ title: "Photo deleted" });
+    setOpen(null);
+    ["site-photos", "quote-site-photos", "job-photos-typed", "lead-photo-count"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
   };
 
   // Unit mockups: own uploaded cut-out, else approved catalogue photo, of the units on this lead's latest quote.
@@ -164,9 +156,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
           actions={<>{!readOnly && (open.uploaded_by === user?.id) ? (
               <Button variant="secondary" className="min-h-[44px]" onClick={() => setEditing(open)} data-testid="site-photo-annotate"><PenLine className="h-4 w-4 mr-1" />Mark up</Button>
             ) : null}
-            {!readOnly && canManage && canDelete && (
-              <Button variant="destructive" className="min-h-[44px]" onClick={() => deletePhoto(open)} data-testid="site-photo-delete"><Trash2 className="h-4 w-4 mr-1" />Delete</Button>
-            )}</>}
+            {canManage && <PhotoDeleteButton onConfirm={() => deletePhoto(open)} testId="site-photo-delete" />}</>}
           footer={readOnly ? (open.caption ? <p className="p-3 text-sm text-white">{open.caption}</p> : null) : (
             <div className="p-3 space-y-2 bg-black/80">
               <textarea key={open.id} defaultValue={open.caption ?? ""} placeholder="Add info about this photo…" maxLength={500} rows={2}

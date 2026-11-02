@@ -46,8 +46,23 @@ describe("site photos: assigned staff can upload and delete", () => {
   it("gates upload/delete on photo_lead_ok and offers delete", () => {
     const s = readFileSync("src/components/photos/SitePhotosSection.tsx", "utf8");
     expect(s).toContain('"photo_lead_ok"');
-    expect(s).toContain('data-testid="site-photo-delete"');
+    expect(s).toContain('testId="site-photo-delete"');
+    expect(s).toContain("{canManage && <PhotoDeleteButton");
     expect(s).toContain("!readOnly && canManage");
+  });
+});
+
+describe("delete photo (Johan 2 Nov 07:27)", () => {
+  it("confirms, is 44px, and removes row + storage everywhere photos show", () => {
+    const b = readFileSync("src/components/photos/PhotoDeleteButton.tsx", "utf8");
+    expect(b).toContain("Delete this photo?");
+    expect(b).toMatch(/min-h-\[44px\]|h-11 w-11/);
+    const d = readFileSync("src/lib/photoDelete.ts", "utf8");
+    expect(d).toMatch(/from\("job_photos"\) as any\)\.delete\(\)\.eq\("id", id\)\.select/);
+    expect(d).toContain('storage.from("job-photos").remove');
+    expect(d).toContain('storage.from("quote-photos").remove');
+    expect(readFileSync("src/components/jobs/JobPhotosCard.tsx", "utf8")).toContain('"photo_lead_ok"');
+    expect(readFileSync("src/components/quoting/PhotoUploader.tsx", "utf8")).toContain('"photo_quote_ok"');
   });
 });
 
