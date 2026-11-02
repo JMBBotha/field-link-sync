@@ -16,12 +16,16 @@ import { finalSentLabel, finalInvoiceWhatsAppUrl } from "@/lib/invoiceMoney";
  * Email (Johan 30 Oct 20:29, the default): preview the email, press Send → server emails via
  * send-transactional-email (0800becool.co.za), logs who/when/where and shows "Emailed to … at …".
  */
-export default function FinalInvoiceSendDialog({ invoice, balance, autoOpen, onDone, reminder }: {
+export default function FinalInvoiceSendDialog({ invoice, balance, autoOpen, onDone, reminder, open: openCtl, onOpenChange, hideTrigger }: {
   reminder?: boolean;
+  /** Controlled use from the balance block / client tiles (Johan 2 Nov 17:00). */
+  open?: boolean; onOpenChange?: (o: boolean) => void; hideTrigger?: boolean;
   invoice: { id: string; invoice_number?: string | null; customer_name?: string | null; customer_phone?: string | null; customer_email?: string | null; due_date?: string | null; pdf_url?: string | null; final_sent_at?: string | null; final_sent_channel?: string | null };
   balance: number; autoOpen?: boolean; onDone?: () => void;
 }) {
-  const [open, setOpen] = useState(!!autoOpen);
+  const [openSt, setOpenSt] = useState(!!autoOpen);
+  const open = openCtl ?? openSt;
+  const setOpen = (o: boolean) => { setOpenSt(o); onOpenChange?.(o); };
   const [step, setStep] = useState<"choose" | "preview" | "emailed" | "confirm">("choose");
   const [busy, setBusy] = useState(false);
   const [to, setTo] = useState(invoice.customer_email || "");
@@ -69,14 +73,14 @@ export default function FinalInvoiceSendDialog({ invoice, balance, autoOpen, onD
   };
 
   const at = (iso: string) => new Date(iso).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
-  const title = { choose: "Send final invoice", preview: "Check the email", emailed: "Email sent", confirm: "Did it send?" }[step];
+  const title = { choose: reminder ? "Send reminder" : "Send final invoice", preview: "Check the email", emailed: "Email sent", confirm: "Did it send?" }[step];
 
   return (
     <>
-      <Button data-testid="send-final-invoice" onClick={() => { reset(); setOpen(true); }}
+      {!hideTrigger && <Button data-testid="send-final-invoice" onClick={() => { reset(); setOpen(true); }}
         className="w-full h-12 rounded-xl text-base font-semibold bg-orange-500 hover:bg-orange-600 text-white">
         <Send className="h-4 w-4 mr-2" /> {reminder ? "Send reminder" : sentLabel ? "Send final invoice again" : "Send final invoice"} · R {Math.round(balance).toLocaleString("en-ZA").replace(/,/g, " ")}
-      </Button>
+      </Button>}
       {sentLabel && <p data-testid="final-sent-label" className="flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="h-4 w-4" />{sentLabel}</p>}
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
         <DialogContent className="max-w-sm max-h-[92vh] overflow-y-auto">

@@ -6,6 +6,7 @@ import { InvoiceDueChip, FollowupReview } from "@/components/invoiceDue/InvoiceD
 import { Fragment, useEffect, useMemo, useState } from "react";
 import SendQuotesTogetherDialog from "@/components/quoting/SendQuotesTogetherDialog";
 import AddPaymentDialog, { type UnpaidInvoice } from "@/components/invoicing/AddPaymentDialog";
+import SendReminderDialog from "@/components/invoicing/SendReminderDialog";
 import { sendTogetherBlock } from "@/lib/quoteBundle";
 import { useDraftNeeds } from "@/hooks/useDraftNeeds";
 import { DraftNeedsChip } from "@/components/quoting/DraftNeedsChip";
@@ -316,6 +317,8 @@ const AdminCustomerDetailPage = () => {
   const [payList, setPayList] = useState<UnpaidInvoice[]>([]);
   const [payInv, setPayInv] = useState<string | null>(null);
   const [sendOneOpen, setSendOneOpen] = useState(false);
+  const [remOpen, setRemOpen] = useState(false);
+  const [remList, setRemList] = useState<UnpaidInvoice[]>([]);
   const pickedRows = (quotes as any[]).filter((q) => pickedQuotes.includes(q.id));
   const draftNeeds = useDraftNeeds((quotes as any[]).filter((q) => (q.status || "draft") === "draft").map((q) => ({ id: q.id, customer_id: q.customer_id || id })));
   const bundleBlock = sendTogetherBlock(pickedRows.map((q) => ({ id: q.id, status: q.status, customer_id: q.customer_id || id, quote_number: q.quote_number, needs: draftNeeds[q.id] })));
@@ -392,6 +395,7 @@ const AdminCustomerDetailPage = () => {
   const owing = unpaid.length > 0;
   const sendQuote = [...openQuotes].sort((x, y) => String(y.created_at || "").localeCompare(String(x.created_at || "")))[0] as any | undefined;
   const sendIsResend = !!sendQuote && (sendQuote.status || "draft").toLowerCase() !== "draft";
+  const openRem = (list: UnpaidInvoice[]) => { setRemList(list.length ? list : unpaid); setRemOpen(true); };
   const openPay = (list: UnpaidInvoice[], invId?: string | null) => { setPayList(list.length ? list : unpaid); setPayInv(invId ?? null); setPayOpen(true); };
 
   if (isLoading) {
@@ -485,14 +489,15 @@ const AdminCustomerDetailPage = () => {
           </div>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2" data-testid="client-money">
-          <MoneyTile testId="tile-outstanding" label="Outstanding" value={randShort(money.outstanding)} onClick={() => setInnerTab("invoices")} action={owing ? { label: "Add payment", onClick: () => openPay(unpaid) } : undefined} />
-          <MoneyTile testId="tile-overdue" label="Overdue" value={randShort(money.overdue)} hot={money.overdue > 0} sub={money.overdueN ? `${money.overdueN} · ${money.maxLate}d` : undefined} onClick={() => setInnerTab("invoices")} action={overdueUnpaid.length ? { label: "Add payment", onClick: () => openPay(overdueUnpaid) } : undefined} />
+          <MoneyTile testId="tile-outstanding" label="Outstanding" value={randShort(money.outstanding)} onClick={() => setInnerTab("invoices")} action={owing ? { label: "Add payment", onClick: () => openPay(unpaid) } : undefined} action2={owing ? { label: "Send reminder", onClick: () => openRem(unpaid) } : undefined} />
+          <MoneyTile testId="tile-overdue" label="Overdue" value={randShort(money.overdue)} hot={money.overdue > 0} sub={money.overdueN ? `${money.overdueN} · ${money.maxLate}d` : undefined} onClick={() => setInnerTab("invoices")} action={overdueUnpaid.length ? { label: "Add payment", onClick: () => openPay(overdueUnpaid) } : undefined} action2={overdueUnpaid.length ? { label: "Send reminder", onClick: () => openRem(overdueUnpaid) } : undefined} />
           <MoneyTile label="Open quotes" value={randShort(quoteSummary.openValue)} sub2={`${openQuotes.length} open`} onClick={() => setInnerTab("quotes")} />
         </div>
       </div>
 
       {(invoices as any[]).filter((inv) => !inv.archived_at && Number(inv.deposit_amount) > 0 && !["paid", "void", "cancelled", "draft"].includes((inv.status || "").toLowerCase()) && (inv.deposit_type || "") !== "deposit_invoice")
         .map((inv) => <BalanceDueBlock key={inv.id} invoiceId={inv.id} onRecordPayment={() => openPay(unpaid.filter((u) => u.id === inv.id), inv.id)} />)}
+      <SendReminderDialog open={remOpen} onOpenChange={setRemOpen} invoices={remList} onDone={() => qc.invalidateQueries()} />
       <AddPaymentDialog open={payOpen} onOpenChange={setPayOpen} invoices={payList} initialId={payInv} onDone={() => qc.invalidateQueries()} />
       {sendQuote && <SendQuotesTogetherDialog open={sendOneOpen} onOpenChange={setSendOneOpen} quoteIds={[sendQuote.id]} onSent={() => qc.invalidateQueries()} />}
 
@@ -901,7 +906,7 @@ const ContactRow = ({
   </div>
 );
 
-const MoneyTile = ({ label, value, sub, sub2, hot, onClick, action, testId }: { label: string; value: string; sub?: string; sub2?: string; hot?: boolean; onClick?: () => void; action?: { label: string; onClick: () => void }; testId?: string }) => (
+const MoneyTile = ({ label, value, sub, sub2, hot, onClick, action, action2, testId }: { label: string; value: string; sub?: string; sub2?: string; hot?: boolean; onClick?: () => void; action?: { label: string; onClick: () => void }; action2?: { label: string; onClick: () => void }; testId?: string }) => (
   <div data-testid={testId} className="flex min-w-0 flex-col rounded-xl border border-white/25 hover:bg-white/10">
     <button type="button" onClick={onClick} className="min-w-0 flex-1 px-2.5 py-2 text-left sm:px-3">
       <span className="block truncate text-xs text-[#CFE6F6]">{label}</span>
@@ -909,7 +914,8 @@ const MoneyTile = ({ label, value, sub, sub2, hot, onClick, action, testId }: { 
       {sub && <span className="mt-0.5 inline-block rounded-full bg-[#E5484D]/30 px-2 text-[11px]">{sub}</span>}
       {sub2 && <span className="mt-0.5 block text-[11px] text-[#CFE6F6]">{sub2}</span>}
     </button>
-    {action && <button type="button" data-testid={testId ? `${testId}-add-payment` : undefined} onClick={action.onClick} className="mx-1.5 mb-1.5 min-h-9 rounded-lg bg-[#F7941D] px-1 text-xs font-semibold text-white hover:bg-[#e08310]">+ {action.label}</button>}
+    {action && <button type="button" data-testid={testId ? `${testId}-add-payment` : undefined} onClick={action.onClick} className="mx-1.5 mb-1.5 min-h-11 rounded-lg bg-[#F7941D] px-1 text-xs font-semibold text-white hover:bg-[#e08310]">+ {action.label}</button>}
+    {action2 && <button type="button" data-testid={testId ? `${testId}-send-reminder` : undefined} onClick={action2.onClick} className="mx-1.5 mb-1.5 min-h-11 rounded-lg border border-white/40 bg-white/10 px-1 text-xs font-semibold text-white hover:bg-white/20">{action2.label}</button>}
   </div>
 );
 
