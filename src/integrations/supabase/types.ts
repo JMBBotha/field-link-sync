@@ -1818,9 +1818,13 @@ export type Database = {
           id: string
           item: string
           last_counted_at: string | null
+          last_received_at: string | null
           location: string | null
           model_code: string | null
+          pack_size: number
+          product_id: string | null
           qty_on_hand: number
+          stock_unit: string
           unit_cost_excl: number
           updated_at: string
         }
@@ -1831,9 +1835,13 @@ export type Database = {
           id?: string
           item: string
           last_counted_at?: string | null
+          last_received_at?: string | null
           location?: string | null
           model_code?: string | null
+          pack_size?: number
+          product_id?: string | null
           qty_on_hand?: number
+          stock_unit?: string
           unit_cost_excl?: number
           updated_at?: string
         }
@@ -1844,9 +1852,13 @@ export type Database = {
           id?: string
           item?: string
           last_counted_at?: string | null
+          last_received_at?: string | null
           location?: string | null
           model_code?: string | null
+          pack_size?: number
+          product_id?: string | null
           qty_on_hand?: number
+          stock_unit?: string
           unit_cost_excl?: number
           updated_at?: string
         }
@@ -1864,6 +1876,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "company_stats"
             referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "cf_stock_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "live_supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cf_stock_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -5323,6 +5349,7 @@ export type Database = {
           occurred_at: string | null
           on_behalf_of: string | null
           qty: number
+          quote_item_id: string | null
           stock_item_id: string | null
         }
         Insert: {
@@ -5339,6 +5366,7 @@ export type Database = {
           occurred_at?: string | null
           on_behalf_of?: string | null
           qty: number
+          quote_item_id?: string | null
           stock_item_id?: string | null
         }
         Update: {
@@ -5355,6 +5383,7 @@ export type Database = {
           occurred_at?: string | null
           on_behalf_of?: string | null
           qty?: number
+          quote_item_id?: string | null
           stock_item_id?: string | null
         }
         Relationships: [
@@ -12925,6 +12954,7 @@ export type Database = {
       supplier_job_document_lines: {
         Row: {
           company_id: string
+          cost_source: string | null
           created_at: string
           description: string | null
           document_id: string
@@ -12932,12 +12962,23 @@ export type Database = {
           job_id: string | null
           line_no: number | null
           model_number: string | null
+          price_flag: string | null
+          price_note: string | null
+          product_id: string | null
           qty: number | null
+          receive_action: string | null
+          receive_job_id: string | null
+          received_at: string | null
+          received_by: string | null
           serial_number: string | null
+          stock_item_id: string | null
+          stock_qty: number | null
+          unit_cost_excl: number | null
           unit_detail_id: string | null
         }
         Insert: {
           company_id: string
+          cost_source?: string | null
           created_at?: string
           description?: string | null
           document_id: string
@@ -12945,12 +12986,23 @@ export type Database = {
           job_id?: string | null
           line_no?: number | null
           model_number?: string | null
+          price_flag?: string | null
+          price_note?: string | null
+          product_id?: string | null
           qty?: number | null
+          receive_action?: string | null
+          receive_job_id?: string | null
+          received_at?: string | null
+          received_by?: string | null
           serial_number?: string | null
+          stock_item_id?: string | null
+          stock_qty?: number | null
+          unit_cost_excl?: number | null
           unit_detail_id?: string | null
         }
         Update: {
           company_id?: string
+          cost_source?: string | null
           created_at?: string
           description?: string | null
           document_id?: string
@@ -12958,8 +13010,18 @@ export type Database = {
           job_id?: string | null
           line_no?: number | null
           model_number?: string | null
+          price_flag?: string | null
+          price_note?: string | null
+          product_id?: string | null
           qty?: number | null
+          receive_action?: string | null
+          receive_job_id?: string | null
+          received_at?: string | null
+          received_by?: string | null
           serial_number?: string | null
+          stock_item_id?: string | null
+          stock_qty?: number | null
+          unit_cost_excl?: number | null
           unit_detail_id?: string | null
         }
         Relationships: [
@@ -12975,6 +13037,34 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_job_document_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "live_supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_job_document_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_job_document_lines_receive_job_id_fkey"
+            columns: ["receive_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_job_document_lines_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "cf_stock_items"
             referencedColumns: ["id"]
           },
         ]
@@ -15399,6 +15489,7 @@ export type Database = {
         }
         Returns: string
       }
+      _job_stock_ok: { Args: { p_job: string }; Returns: boolean }
       _job_work_day: {
         Args: { p_company: string; p_date: string; p_profile: string }
         Returns: {
@@ -15662,6 +15753,18 @@ export type Database = {
         Returns: undefined
       }
       _request_route: { Args: { p_req: string }; Returns: undefined }
+      _reserve_commitment: {
+        Args: {
+          p_cost: number
+          p_item: string
+          p_job: string
+          p_line: string
+          p_product: string
+          p_qty: number
+          p_supplier: string
+        }
+        Returns: string
+      }
       _same_client_booked: { Args: { p_lead: string }; Returns: boolean }
       _sb_recalc: { Args: { p_bill: string }; Returns: undefined }
       _sjd_link_apply: {
@@ -15800,6 +15903,39 @@ export type Database = {
           label: string
           reason: string
         }[]
+      }
+      _stock_item_for: {
+        Args: {
+          p_company: string
+          p_item: string
+          p_model: string
+          p_pack: number
+          p_product: string
+          p_unit: string
+        }
+        Returns: {
+          active: boolean
+          company_id: string
+          created_at: string
+          id: string
+          item: string
+          last_counted_at: string | null
+          last_received_at: string | null
+          location: string | null
+          model_code: string | null
+          pack_size: number
+          product_id: string | null
+          qty_on_hand: number
+          stock_unit: string
+          unit_cost_excl: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cf_stock_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       _tech_offer_fit: {
         Args: { p_lead: string; p_profile: string }
@@ -16130,6 +16266,7 @@ export type Database = {
         Args: { p_commitment: string; p_qty: number; p_stock_item: string }
         Returns: string
       }
+      cf_can_receive: { Args: { p_company: string }; Returns: boolean }
       cf_stock_take: {
         Args: { p_clean?: boolean; p_company: string; p_rows: Json }
         Returns: number
@@ -17342,6 +17479,11 @@ export type Database = {
           window_start: string
         }[]
       }
+      job_materials_draw: {
+        Args: { p_job: string; p_lines: Json }
+        Returns: Json
+      }
+      job_materials_plan: { Args: { p_job: string }; Returns: Json }
       job_profit: {
         Args: { p_company: string; p_from: string; p_to: string }
         Returns: Json
@@ -18391,6 +18533,10 @@ export type Database = {
       }
       sjd_match_units: { Args: { _doc: string }; Returns: number }
       sjd_ok: { Args: { _company: string }; Returns: boolean }
+      sjd_receive: {
+        Args: { p_document: string; p_lines: Json }
+        Returns: Json
+      }
       sjd_search: {
         Args: { p_limit?: number; p_q: string }
         Returns: {
