@@ -14,13 +14,16 @@ export function stockKey(code: string | null | undefined) {
   return (code ?? "").toUpperCase().replace(/[\s_/.]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").replace(/-P$/, "").replace(/-/g, "");
 }
 /**
- * Catalogue key: the price-book row covers the indoor+outdoor pair, so also drop the outdoor X suffix and the -L- variant infix.
- * FCMI-24-P, FCMI-24X-P -> FCMI24;  FCMI-L-12X -> FCMI12
+ * Catalogue key: the price-book row covers the indoor+outdoor pair, so also drop the outdoor X suffix.
+ * FCMI-24-P, FCMI-24X-P -> FCMI24;  FCMI-L-12X -> FCMIL12 (a different "Lite" model: never merged, only offered as a look-alike)
  */
 export function normaliseModel(code: string | null | undefined) {
   const d = (code ?? "").toUpperCase().replace(/[\s_/.]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").replace(/-P$/, "");
-  return d.replace(/^([A-Z]+)-L-(?=\d)/, "$1-").replace(/(\d)X$/, "$1").replace(/-/g, "");
+  return d.replace(/(\d)X$/, "$1").replace(/-/g, "");
 }
+/** Loose key for look-alikes only: also drops a single-letter variant (FCMI-L-12 ~ FCMI-12). */
+const looseKey = (code: string | null | undefined) =>
+  normaliseModel((code ?? "").toUpperCase().replace(/^([A-Z]+)-[A-Z]-(?=\d)/, "$1-"));
 
 export interface Match { product: Product | null; how: "exact" | "normalised" | "none"; lookalikes: Product[] }
 
@@ -38,7 +41,8 @@ export function matchProduct(model: string | null, products: Product[]): Match {
     if (p === hit) return false;
     const pn = normaliseModel(p.product_code);
     const pf = pn.replace(/\d.*$/, "");
-    return pf !== fam && pn.slice(pf.length) === digits && pf.length === fam.length && editDistance(pf, fam) === 1;
+    const sameDigitsOtherFamily = pf !== fam && pn.slice(pf.length) === digits && pf.length === fam.length && editDistance(pf, fam) === 1;
+    return sameDigitsOtherFamily || (!hit && looseKey(p.product_code) === looseKey(model));
   });
   return { product: hit, how: exact ? "exact" : norm ? "normalised" : "none", lookalikes };
 }

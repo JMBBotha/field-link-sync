@@ -14,7 +14,7 @@ describe("model codes", () => {
   it("catalogue key joins indoor/outdoor and suffixes; stock key keeps them apart", () => {
     expect(normaliseModel("FCMI-24-P")).toBe("FCMI24");
     expect(normaliseModel("FCMI-24X-P")).toBe("FCMI24");
-    expect(normaliseModel("FCMI-L-12X")).toBe("FCMI12");
+    expect(normaliseModel("FCMI-L-12X")).toBe("FCMIL12");
     expect(stockKey("FCMI-24-P")).toBe("FCMI24");
     expect(stockKey("FCMI-24X-P")).toBe("FCMI24X");
   });
@@ -24,6 +24,9 @@ describe("model codes", () => {
     expect(m.how).toBe("normalised");
     expect(m.lookalikes.map((p) => p.product_code)).toEqual(["FCMF-24"]);
     expect(matchProduct("FCMZ-24", products).product).toBeNull();
+    const lite = matchProduct("FCMI-L-12", products);
+    expect(lite.product).toBeNull();
+    expect(lite.lookalikes.map((p) => p.product_code)).toEqual(["FCMI-12"]);
   });
 });
 
