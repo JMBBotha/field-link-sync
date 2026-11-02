@@ -6,9 +6,10 @@ import type { CompanyProfile } from "@/lib/companyProfiles";
 /**
  * Company sign-off at the very end of an invoice, after the terms (Johan 2 Nov 21:10: "page 3 looks dead,
  * put company info like the mail signature there"). Same data and look as the email signature
- * (emailSignature.ts): logo | blue bar | company lines, V8 colours. Company data comes only from the issuing
+^ * (emailSignature.ts): logo | blue bar | company lines, V8 colours. Company data comes only from the issuing
  * company's own record via signatureCompanyFromProfile; Massair CT keeps the designed block.
  */
+/* data-pdf-bottom (Johan 2 Nov 21:28 "signature should be at bottom of page"): the PDF pins it to the bottom of the last page. */
 export default function InvoiceSignOff({ profile }: { profile?: Partial<CompanyProfile> | null }) {
   const co = signatureCompanyFromProfile(profile);
   if (!co) return null;
@@ -19,7 +20,7 @@ export default function InvoiceSignOff({ profile }: { profile?: Partial<CompanyP
   const webVat = [co.web && <span key="w">{co.web}</span>, co.vatNo && <span key="v">VAT No {co.vatNo}</span>].filter(Boolean);
   const join = (xs: unknown[]) => xs.flatMap((x, i) => (i ? [<span key={`s${i}`}>{sep}</span>, x] : [x])) as React.ReactNode[];
   return (
-    <div data-pdf-keep data-testid="invoice-signoff" className="mt-4 pb-6" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+    <div data-pdf-bottom data-testid="invoice-signoff" className="pt-2 pb-4" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
       <div style={{ height: 3, background: "linear-gradient(90deg,#1AA7EC 75%,#F7941D 75%)" }} />
       <p className="mt-2 text-xs font-bold uppercase tracking-wide text-[#1AA7EC]">Thank you for your business</p>
       <div className="mt-2 flex items-center">
