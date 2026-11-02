@@ -1273,6 +1273,22 @@ All colors MUST be HSL.
 /* Invoice terms (Johan 2 Nov): denser type so the full terms take fewer pages. */
 .fl-terms-compact p{font-size:11px;line-height:1.45}
 .fl-terms-compact .space-y-1\.5>:not([hidden])~:not([hidden]){margin-top:0.25rem}
+/* Invoice compact pass 2 (Johan 2 Nov 20:58): less white space between header, bill-to, lines, cards and terms. */
+.bd.invoice-document .pg{padding:26px 34px 0}
+.bd.invoice-document .accent{margin-top:10px}
+.bd.invoice-document .parties{margin:12px 0 8px;gap:14px}
+.bd.invoice-document h4{margin-bottom:3px}
+.bd.invoice-document .items th{padding:6px 8px}.bd.invoice-document .items td{padding:5px 8px}
+.bd.invoice-document .tot{margin-top:8px}.bd.invoice-document .tot td{padding:3px 8px}
+.bd.invoice-document .closing{padding:4px 0 8px}
+.bd.invoice-document .notes.wide{gap:8px 24px}
+.bd.invoice-document .foot{margin-top:10px}
+.bd.invoice-document .fl-terms-page{margin-top:6px;padding-top:0}
+.bd.invoice-document .fl-terms-compact p{font-size:10.5px;line-height:1.4}
+.bd.invoice-document .fl-terms-compact .mt-4{margin-top:.5rem}
+.bd.invoice-document .fl-terms-compact .space-y-4>:not([hidden])~:not([hidden]){margin-top:.5rem}
+.bd.invoice-document .fl-terms-compact .gap-y-4{row-gap:.5rem}
+.bd.invoice-document .fl-terms-compact .mt-1\.5{margin-top:.25rem}
 
 /* Lead map fullscreen: keep Mapbox zoom buttons clear of the header and iPhone notch */
 [data-map-fullscreen] .mapboxgl-ctrl-top-right {

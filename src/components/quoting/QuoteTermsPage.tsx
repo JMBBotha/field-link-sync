@@ -58,23 +58,32 @@ export interface QuoteTermsPageProps {
   remotePaidInFull?: boolean;
 }
 
-const TermsSectionBlock = ({ s, index }: { s: TermsSection; index: number }) => (
-      <div data-pdf-keep className="break-inside-avoid">
+const termsItemClass = (s: TermsSection, it: TermsBlock) =>
+  `text-xs leading-relaxed text-ink ${/^(building|electrical) work$/i.test(s.heading) ? "font-bold" : it.type === "banking" || /^(banking details|deposit reference)$/i.test(s.heading) ? "font-bold" : ""}`;
+const termsItemText = (it: TermsBlock) => (it.type === "bullet" ? `• ${it.text}` : it.text);
+
+const TermsSectionBlock = ({ s, index }: { s: TermsSection; index: number }) => {
+  const head = (
         <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-xs font-bold text-white">
             {String(index + 1).padStart(2, "0")}
           </span>
           <h4 className="text-xs font-bold uppercase tracking-wide text-[#1AA7EC]">{s.heading || "Terms"}</h4>
         </div>
+  );
+  return (
+      <div data-pdf-keep className="break-inside-avoid">
+        {head}
         <div className="mt-1.5 space-y-1.5">
           {s.items.map((it, j) => (
-            <p key={j} className={`text-xs leading-relaxed text-ink ${/^(building|electrical) work$/i.test(s.heading) ? "font-bold" : it.type === "banking" ? "font-semibold" : ""}`}>
-              {it.type === "bullet" ? `• ${it.text}` : it.text}
+            <p key={j} className={termsItemClass(s, it)}>
+              {termsItemText(it)}
             </p>
           ))}
         </div>
       </div>
-);
+  );
+};
 
 const TermsSections = ({ sections, startIndex = 0 }: { sections: TermsSection[]; startIndex?: number }) => (
   <div className="space-y-4">
