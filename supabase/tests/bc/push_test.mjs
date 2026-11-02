@@ -1,0 +1,17 @@
+import { PGlite } from "@electric-sql/pglite"; import fs from "fs";
+const db = new PGlite(); let pass=0, fail=0; const ok=(c,m)=>{c?pass++:fail++; console.log((c?"ok  ":"FAIL ")+m)};
+await db.exec(fs.readFileSync("stub.sql","utf8"));
+for (const m of process.argv.slice(2)) await db.exec(fs.readFileSync(m,"utf8"));
+const one=async(s,p)=>Object.values((await db.query(s,p)).rows[0])[0];
+const A='00000000-0000-0000-0000-0000000000a1', B='00000000-0000-0000-0000-0000000000b1';
+await db.query(`select set_config('test.uid',$1,false)`,[A]);
+await db.query(`insert into push_subscriptions(user_id,endpoint,p256dh,auth) values ($1,'https://push/a','p','a')`,[A]);
+await db.query(`select fl_alert_deliver($1,'request_offer','New sale offer','Demo Area',null,'{"push":true}')`,[A]);
+await db.query(`select fl_alert_deliver($1,'request_alert','x','y',null,'{"push":true}')`,[B]);
+await db.query(`select fl_alert_deliver($1,'other','x','y',null,'{}')`,[A]);
+ok(await one(`select count(*)::int from notifications`)===3, "bell row always written");
+ok(await one(`select count(*)::int from push_outbox where user_id=$1`,[A])===1, "opted-in user + push flag → 1 outbox row");
+ok(await one(`select count(*)::int from push_outbox where user_id=$1`,[B])===0, "not opted in → no push (opt-in only)");
+ok(await one(`select relrowsecurity from pg_class where relname='push_subscriptions'`)===true, "RLS on push_subscriptions");
+ok(await one(`select count(*)::int from pg_policies where tablename='push_subscriptions' and qual like '%auth.uid()%'`)>=3, "own-row policies");
+console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail?1:0);

@@ -11,6 +11,7 @@ import { Building2, CreditCard, Wrench, Users, MapPin, Database, BarChart3, Pale
 import AppearanceTab from "@/components/settings/AppearanceTab";
 import CompanyProfileTab from "@/components/settings/CompanyProfileTab";
 import MySignatureCard from "@/components/settings/MySignatureCard";
+import PushOptInCard from "@/components/settings/PushOptInCard";
 import AssistantSettingsCard from "@/components/settings/AssistantSettingsCard";
 import BillingTab from "@/components/settings/BillingTab";
 import ServicesTab from "@/components/settings/ServicesTab";
@@ -56,7 +57,7 @@ const AdminSettingsPage = () => {
             <Palette className="h-4 w-4 hidden sm:block" />Appearance
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="company"><CompanyProfileTab /><MySignatureCard /><AssistantSettingsCard /><LeadSlaSettingsCard /><SalesStageLimitsCard /><InvoiceAutoSendCard /><CompanyWorkHoursCard /><JobWatchSettingsCard /><InstallHandoffSettingsCard /><RequestAlertsSettingsCard /><LeadOfferSettingsCard /></TabsContent>
+        <TabsContent value="company"><CompanyProfileTab /><MySignatureCard /><PushOptInCard /><AssistantSettingsCard /><LeadSlaSettingsCard /><SalesStageLimitsCard /><InvoiceAutoSendCard /><CompanyWorkHoursCard /><JobWatchSettingsCard /><InstallHandoffSettingsCard /><RequestAlertsSettingsCard /><LeadOfferSettingsCard /></TabsContent>
         <TabsContent value="billing"><BillingTab /></TabsContent>
         {showServices && <TabsContent value="services"><ServicesTab /></TabsContent>}
         <TabsContent value="agents"><AgentManagementTab /></TabsContent>
