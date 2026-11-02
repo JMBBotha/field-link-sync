@@ -466,12 +466,17 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     }
 
     // Signature block: bottom of the last page, or bottom of a new page if it would overlap.
-    for (const c of bottomCanvases) {
+    // A block marked data-pdf-replaces-foot (invoice sign-off, Johan 2 Nov 21:32) takes the small
+    // footer's place on its page: placed down to the bottom margin, and that page gets no small footer.
+    let noFootPage = 0;
+    for (const [bi, c] of bottomCanvases.entries()) {
       if (!c.width || !c.height) continue;
+      const replacesFoot = bottomEls[bi]?.hasAttribute("data-pdf-replaces-foot");
       const h = (c.height * usableWidth) / capturedCanvas.width;
       const w = (c.width * usableWidth) / capturedCanvas.width;
-      const { newPage, y } = placeBottomBlock(lastPageUsed, h, pageHeight - botReserve, margin);
+      const { newPage, y } = placeBottomBlock(lastPageUsed, h, replacesFoot ? pageHeight : pageHeight - botReserve, margin);
       if (newPage) doc.addPage();
+      if (replacesFoot) noFootPage = doc.getNumberOfPages();
       doc.addImage(c.toDataURL("image/png"), "PNG", margin, y, w, h, undefined, "FAST");
       lastPageUsed = pageHeight;
     }
@@ -507,7 +512,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       if (i === 1) { if (headFirstImg) doc.addImage(headFirstImg, "PNG", margin, margin, usableWidth, headFirstH, undefined, "FAST"); }
       else if (last) { if (headImg || headFirstImg) { doc.setDrawColor(14, 165, 233); doc.setLineWidth(2.5); doc.line(20, 18, pageWidth - 20, 18); } }
       else if (headImg) doc.addImage(headImg, "PNG", margin, margin, usableWidth, headLaterH, undefined, "FAST");
-      if (footImg) doc.addImage(footImg, "PNG", margin, pageHeight - margin - footH, usableWidth, footH, undefined, "FAST");
+      if (footImg && i !== noFootPage) doc.addImage(footImg, "PNG", margin, pageHeight - margin - footH, usableWidth, footH, undefined, "FAST");
     }
 
     if ((opts.brochures && opts.brochures.length > 0) || (opts.imagePages && opts.imagePages.length > 0)

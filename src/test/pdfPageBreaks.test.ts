@@ -50,3 +50,13 @@ describe("computePageCuts keep ranges + forced-break snapping (Johan 14 Oct)", (
     expect(cuts).toEqual([1000, 1500]);
   });
 });
+
+describe("side-by-side keep blocks (invoice terms points, Johan 2 Nov 21:10)", () => {
+  it("moves up out of every keep it lands in, without cascading to the top of the page", () => {
+    // two columns of points with aligned gaps near 900; ideal cut 1000 (pageRows 1000)
+    const keep: [number, number][] = [[800, 900], [905, 1010], [850, 898], [902, 1050]];
+    const cuts = computePageCuts(() => false, 3000, 1000, 0, [], 8, keep);
+    expect(cuts[0]).toBe(901);
+    expect(keep.some(([a, b]) => a < cuts[0] && cuts[0] < b)).toBe(false);
+  });
+});

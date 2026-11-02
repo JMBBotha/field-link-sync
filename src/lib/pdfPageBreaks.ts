@@ -80,8 +80,15 @@ export function computePageCuts(
         break;
       }
     }
-    const k = keep.find(([a, b]) => a < cut && cut < b && a - start > pageRows * 0.2);
-    if (k) cut = Math.max(start + 1, k[0] - 4);
+    // Never cut inside a keep block. Blocks may sit side by side (two-column terms, one keep per point),
+    // so move up until the cut is inside none of them, then snap to a quiet run so no line is sliced.
+    for (let guard = 0; guard < 50; guard++) {
+      const inside = keep.filter(([a, b]) => a < cut && cut < b && a - start > pageRows * 0.2);
+      if (!inside.length) break;
+      // Right at the top of the block: html2canvas draws text a few px below its DOM box, so the line above
+      // bleeds into the gap and a cut in the middle of the gap could clip it.
+      cut = Math.max(start + 1, Math.min(...inside.map(([a]) => a)) - 1);
+    }
     cuts.push(cut);
     start = cut;
   }

@@ -50,7 +50,10 @@ describe("QuoteTermsPage", () => {
     const pdf = readFileSync("src/lib/documentPdf.ts", "utf8");
     expect(pdf).toContain("!termsEl && shouldAppendFixedTerms");
     const doc = readFileSync("src/components/documents/BrandDocument.tsx", "utf8");
-    expect(doc).toContain('data-pdf-break-before={p.fullTermsPage ? undefined : ""}');
+    // Johan 2 Nov: the closing cards flow under the totals (no forced break); each card is a keep block.
+    expect(doc).not.toContain("data-pdf-break-before");
+    expect(doc).not.toMatch(/\.closing\{break-before:page/);
+    expect(doc).toContain('<div data-pdf-keep className={`note');
     expect(doc.indexOf("{p.fullTermsPage && !p.collapseTerms && p.afterTotals}")).toBeLessThan(doc.indexOf("{closing && p.fullTermsPage && !p.collapseTerms && p.fullTermsPage}"));
     expect(doc.indexOf("{closing && p.fullTermsPage && !p.collapseTerms && p.fullTermsPage}")).toBeGreaterThan(-1);
   });
@@ -65,5 +68,26 @@ describe("QuoteTermsPage", () => {
     expect(html).toContain(">01<");
     expect(html).toContain("Scope of Work");
     expect(html).toContain("63226563591");
+  });
+
+  it("invoice row-flow terms: rows are keep blocks, heading kept with the first row, labelled Invoice", () => {
+    const html = renderToString(<QuoteTermsPage companyName="Demo Co" quoteNumber="INV-1" docLabel="Invoice" rowFlow />);
+    const n = groupTermsSections(buildTermsBlocks({ companyName: "Demo Co" })).length;
+    expect((html.match(/data-testid="terms-row"/g) || []).length).toBe(Math.ceil(n / 2));
+    expect(html).toContain("Invoice<!-- --> <!-- -->INV-1");
+    expect(html).toContain("fl-terms-compact");
+    const head = html.indexOf("Terms and conditions");
+    const firstRow = html.indexOf('data-testid="terms-row"');
+    expect(html.lastIndexOf("data-pdf-keep", head)).toBeGreaterThan(-1);
+    expect(firstRow).toBeGreaterThan(head);
+    expect(html.indexOf(">01<")).toBeLessThan(html.indexOf(">02<"));
+    expect(html.indexOf(">02<")).toBeLessThan(html.indexOf(">03<"));
+  });
+  it("invoice document renders the two-column terms when termsCompany is given", () => {
+    const inv = readFileSync("src/components/invoicing/InvoiceDocument.tsx", "utf8");
+    expect(inv).toContain('docLabel="Invoice"');
+    expect(inv).toContain("rowFlow");
+    const page = readFileSync("src/components/invoicing/InvoiceDetailPage.tsx", "utf8");
+    expect(page).toContain("termsCompany={profileTermsInfo(docProfile)}");
   });
 });

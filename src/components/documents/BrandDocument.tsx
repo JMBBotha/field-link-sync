@@ -125,7 +125,7 @@ const CSS = `
 .bd .notes.wide .note.full{grid-column:1/-1}
 .bd .notes.wide .note p,.bd .notes.wide .note div{line-height:1.55}
 .bd .foot{margin-top:22px}.bd .foot .terms{margin:0 42px;padding-bottom:4px}
-@media print{.bd .closing{break-before:page;page-break-before:always}.bd .foot{break-inside:avoid;page-break-inside:avoid}}
+@media print{.bd .closing .note{break-inside:avoid;page-break-inside:avoid}.bd .foot{break-inside:avoid;page-break-inside:avoid}}
 /* Bold */
 .bd.bold .pg{padding-top:0}
 .bd.bold .top{background:linear-gradient(120deg,#1AA7EC 55%,#1590D6);margin:0 -42px;padding:22px 42px 20px;color:#fff;align-items:flex-start}
@@ -309,9 +309,10 @@ export default function BrandDocument(p: BrandDocumentProps) {
             {!closing && p.fullTermsPage}
           </>
         )}
+        {/* Closing cards flow straight on under the totals (Johan 2 Nov: no forced page break); each card is kept whole so a heading never strands from its body. */}
         {closing && p.cards.length > 0 && (
-          <div className="closing" data-pdf-break-before={p.fullTermsPage ? undefined : ""} data-testid="doc-closing">
-            <div className="notes wide">{p.cards.map((c, i) => <div className={`note${p.cards.length % 2 === 1 && i === p.cards.length - 1 ? " full" : ""}`} key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
+          <div className="closing" data-testid="doc-closing">
+            <div className="notes wide">{p.cards.map((c, i) => <div data-pdf-keep className={`note${p.cards.length % 2 === 1 && i === p.cards.length - 1 ? " full" : ""}`} key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
           </div>
         )}
         {p.fullTermsPage && !p.collapseTerms && p.afterTotals}
