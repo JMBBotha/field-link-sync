@@ -269,7 +269,7 @@ export function ExpandedPhotoGallery({
                   <Button
                     variant="destructive"
                     size="sm"
-                    className="h-7 text-xs"
+                    className="min-h-[44px] text-xs"
                     onClick={() => setShowDeleteConfirm(true)}
                     disabled={selectedIds.size === 0}
                   >
@@ -404,7 +404,7 @@ export function ExpandedPhotoGallery({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-9 text-red-400 hover:text-red-300 hover:bg-red-500/20"
+                className="min-h-[44px] text-red-400 hover:text-red-300 hover:bg-red-500/20"
                 onClick={() => setShowDeleteConfirm(true)}
                 disabled={deleting}
               >
@@ -467,7 +467,7 @@ export function ExpandedPhotoGallery({
             <AlertDialogTitle>
               Delete {isMultiSelectMode && selectedIds.size > 1 
                 ? `${selectedIds.size} photos` 
-                : 'photo'}?
+                : 'this photo'}?
             </AlertDialogTitle>
             <AlertDialogDescription>
               {isOnline 

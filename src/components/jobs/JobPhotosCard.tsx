@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import PhotoDeleteButton from "@/components/photos/PhotoDeleteButton";
+import { deleteJobPhoto } from "@/lib/photoDelete";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { photoDisplayPath, signedPhotoUrl } from "@/lib/photoUrls";
 import { photoSummary } from "@/lib/jobActionBar";
@@ -12,6 +15,21 @@ type P = { id: string; url: string; photo_type: string; caption: string | null }
 /** Job photos with clear Site / Before / After labels. "No photos yet" only when all three are empty. */
 export default function JobPhotosCard({ leadId, addSlot }: { leadId: string; addSlot?: React.ReactNode }) {
   const [open, setOpen] = useState<{ list: P[]; i: number; label: string } | null>(null);
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  // Same rule as RLS (photo_lead_ok): office any lead in the company, techs/reps only assigned ones.
+  const canManage = useQuery({
+    queryKey: ["photo-lead-ok", leadId],
+    enabled: !!leadId,
+    queryFn: async () => (await (supabase.rpc as any)("photo_lead_ok", { _lead: leadId })).data === true,
+  }).data === true;
+  const removeOpen = async () => {
+    if (!open) return;
+    await deleteJobPhoto(open.list[open.i].id);
+    toast({ title: "Photo deleted" });
+    setOpen(null);
+    ["job-photos-typed", "site-photos", "lead-photo-count"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+  };
   const q = useQuery({
     queryKey: ["job-photos-typed", leadId],
     enabled: !!leadId,
@@ -69,7 +87,8 @@ export default function JobPhotosCard({ leadId, addSlot }: { leadId: string; add
           <Group label="After" list={q.data?.after ?? []} testId="job-photos-after" />
         </>
       )}
-      {open && <PhotoViewer photos={open.list} index={open.i} onIndex={(i) => setOpen({ ...open, i })} onClose={() => setOpen(null)} label={open.label} />}
+      {open && <PhotoViewer photos={open.list} index={open.i} onIndex={(i) => setOpen({ ...open, i })} onClose={() => setOpen(null)} label={open.label}
+        actions={canManage ? <PhotoDeleteButton onConfirm={removeOpen} testId="job-photo-delete" /> : null} />}
     </div>
   );
 }
