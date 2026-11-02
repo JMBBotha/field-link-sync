@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, FileText, Download, Clock, CheckCircle } from "lucide-react";
+import InvoiceStamps from "@/components/documents/InvoiceStamps";
+import { invoiceStamps } from "@/lib/invoiceStamps";
 import PayfastPayButton from "@/components/payments/PayfastPayButton";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { format } from "date-fns";
@@ -160,6 +162,7 @@ const CustomerInvoiceView = () => {
 
         <main className="max-w-2xl mx-auto p-4 space-y-3">
           <section className="rounded-2xl bg-white p-5 shadow-sm text-center" data-testid="client-amount-due">
+            <InvoiceStamps stamps={invoiceStamps(inv, inv.stamp_payments || [])} center />
             {due > 0 ? (<>
               <p className="text-sm font-medium text-muted-foreground">Amount due</p>
               <p className="mt-1 text-[40px] leading-tight font-extrabold tabular-nums text-ink">{money(due)}</p>
