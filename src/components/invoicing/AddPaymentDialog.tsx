@@ -4,7 +4,7 @@ import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
 import { creditedByInvoice, fetchCreditNotes, type CreditNoteRow } from "@/lib/creditNotes";
 import { cn } from "@/lib/utils";
 
-export type UnpaidInvoice = { id: string; invoice_number: string | null; grand_total: number; amount_due: number; days?: number };
+export type UnpaidInvoice = { id: string; invoice_number: string | null; grand_total: number; amount_due: number; days?: number; waiting?: boolean };
 const rand = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
 /** Add payment from the client page (Johan 2 Nov 16:42). Same recorder as the invoice page "Record payment".

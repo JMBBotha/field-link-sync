@@ -376,23 +376,26 @@ const AdminCustomerDetailPage = () => {
   const fInvoices = bySite(activeInvRows); const fQuotes = bySite(quotes as any[]); const fJobs = bySite(jobs as any[]);
   const fInvTableRows = bySite(showArchivedInv ? archivedInvRows : activeInvRows);
   const money = useMemo(() => {
-    let outstanding = 0, overdue = 0, overdueN = 0, maxLate = 0;
+    let outstanding = 0, overdue = 0, overdueN = 0, maxLate = 0, waiting = 0;
     for (const inv of invoices as any[]) {
       if ((inv as any).archived_at) continue;
       const r = dueBy.get(inv.id); if (!r) continue;
       outstanding += Number(r.amount_due) || 0;
+      if (r.waiting) waiting += Number(r.amount_due) || 0;
       if (!r.waiting && r.days > 0) { overdue += Number(r.amount_due) || 0; overdueN++; maxLate = Math.max(maxLate, r.days); }
     }
-    return { outstanding: invoiceSummary.outstanding, overdue, overdueN, maxLate };
+    return { outstanding: invoiceSummary.outstanding, overdue, overdueN, maxLate, waiting };
   }, [invoices, dueBy, invoiceSummary]);
   const openQuotes = (quotes as any[]).filter((q) => ["draft", "sent", "viewed", "pending"].includes((q.status || "draft").toLowerCase()));
   const unpaid: UnpaidInvoice[] = useMemo(() => (invoices as any[])
     .filter((inv) => !inv.archived_at && !["paid", "void", "cancelled", "draft"].includes((inv.status || "").toLowerCase()))
-    .map((inv) => { const r = dueBy.get(inv.id); return { id: inv.id, invoice_number: inv.invoice_number, grand_total: Number(inv.grand_total) || 0, amount_due: Number(r?.amount_due) || 0, days: r && !r.waiting ? r.days : 0, _d: inv.due_date || inv.issue_date || inv.created_at || "" }; })
+    .map((inv) => { const r = dueBy.get(inv.id); return { id: inv.id, invoice_number: inv.invoice_number, grand_total: Number(inv.grand_total) || 0, amount_due: Number(r?.amount_due) || 0, days: r && !r.waiting ? r.days : 0, waiting: !!r?.waiting, _d: inv.due_date || inv.issue_date || inv.created_at || "" }; })
     .filter((i) => i.amount_due > 0.005)
     .sort((x, y) => String(x._d).localeCompare(String(y._d))), [invoices, dueBy]);
   const overdueUnpaid = unpaid.filter((i) => (i.days || 0) > 0);
   const owing = unpaid.length > 0;
+  // Balances still "Due on completion" are never chased (Johan 2 Nov 17:49).
+  const remindable = unpaid.filter((i) => !i.waiting);
   const sendQuote = [...openQuotes].sort((x, y) => String(y.created_at || "").localeCompare(String(x.created_at || "")))[0] as any | undefined;
   const sendIsResend = !!sendQuote && (sendQuote.status || "draft").toLowerCase() !== "draft";
   const openRem = (list: UnpaidInvoice[]) => { setRemList(list.length ? list : unpaid); setRemOpen(true); };
@@ -433,6 +436,22 @@ const AdminCustomerDetailPage = () => {
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto" data-testid="client-page-v8">
       {/* One back arrow: the shared header BackButton (Johan 31 Oct). */}
+
+      {/* Money owing sits at the very top in bold orange (Johan 2 Nov 17:49). */}
+      {owing && (
+        <div data-testid="client-owing-strip" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border-2 border-[#F97316] bg-[#FFF7ED] p-3 dark:bg-[#F97316]/10">
+          <div className="min-w-0 text-[#F97316]">
+            <p className="text-lg font-bold leading-tight sm:text-xl">
+              {randShort(money.outstanding)} outstanding{money.overdue > 0 ? ` · ${randShort(money.overdue)} overdue` : ""}
+            </p>
+            {money.waiting > 0 && <p data-testid="client-owing-waiting" className="text-sm font-semibold">{randShort(money.waiting)} due on completion</p>}
+          </div>
+          <div className="flex gap-2">
+            <Button data-testid="strip-add-payment" onClick={() => openPay(unpaid)} className="h-11 rounded-xl bg-[#F97316] font-semibold text-white hover:bg-[#EA580C]"><Plus className="mr-1 h-4 w-4" /> Add payment</Button>
+            {remindable.length > 0 && <Button data-testid="strip-send-reminder" variant="outline" onClick={() => openRem(remindable)} className="h-11 rounded-xl border-[#F97316] font-semibold text-[#C2410C] hover:bg-[#FFEDD5]"><Mail className="mr-1 h-4 w-4" /> Send reminder</Button>}
+          </div>
+        </div>
+      )}
 
       {/* Header: name, contact, quick actions, money */}
       <div className="rounded-2xl bg-gradient-to-br from-[#0F2A44] to-[#1590D6] p-4 text-white sm:p-5">
@@ -489,7 +508,7 @@ const AdminCustomerDetailPage = () => {
           </div>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2" data-testid="client-money">
-          <MoneyTile testId="tile-outstanding" label="Outstanding" value={randShort(money.outstanding)} onClick={() => setInnerTab("invoices")} action={owing ? { label: "Add payment", onClick: () => openPay(unpaid) } : undefined} action2={owing ? { label: "Send reminder", onClick: () => openRem(unpaid) } : undefined} />
+          <MoneyTile testId="tile-outstanding" label="Outstanding" value={randShort(money.outstanding)} onClick={() => setInnerTab("invoices")} action={owing ? { label: "Add payment", onClick: () => openPay(unpaid) } : undefined} action2={remindable.length ? { label: "Send reminder", onClick: () => openRem(remindable) } : undefined} />
           <MoneyTile testId="tile-overdue" label="Overdue" value={randShort(money.overdue)} hot={money.overdue > 0} sub={money.overdueN ? `${money.overdueN} · ${money.maxLate}d` : undefined} onClick={() => setInnerTab("invoices")} action={overdueUnpaid.length ? { label: "Add payment", onClick: () => openPay(overdueUnpaid) } : undefined} action2={overdueUnpaid.length ? { label: "Send reminder", onClick: () => openRem(overdueUnpaid) } : undefined} />
           <MoneyTile label="Open quotes" value={randShort(quoteSummary.openValue)} sub2={`${openQuotes.length} open`} onClick={() => setInnerTab("quotes")} />
         </div>

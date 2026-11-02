@@ -15,23 +15,26 @@ export function reminderHtml(layout: any, subject: string, message: string): str
 }
 
 /** Admin previews the branded reminder, can edit the words, then presses Send. Never sent automatically (Johan 31 Oct 09:58). */
-export function PaymentReminderDialog({ followupId, open, onOpenChange, onSent }: { followupId: string | null; open: boolean; onOpenChange: (o: boolean) => void; onSent?: () => void }) {
+export function PaymentReminderDialog({ followupId, invoiceId, open, onOpenChange, onSent }: { followupId?: string | null; invoiceId?: string | null; open: boolean; onOpenChange: (o: boolean) => void; onSent?: () => void }) {
   const [pre, setPre] = useState<any>(null);
   const [subject, setSubject] = useState(""); const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  // Friendly reminder straight from an invoice (Johan 2 Nov) or a daily follow-up.
+  const rpcName = followupId ? "send_payment_reminder" : "send_invoice_reminder";
+  const rpcKey = followupId ? { p_followup: followupId } : { p_invoice: invoiceId };
   useEffect(() => {
-    if (!open || !followupId) return;
+    if (!open || (!followupId && !invoiceId)) return;
     setPre(null);
-    (supabase as any).rpc("send_payment_reminder", { p_followup: followupId, p_mode: "preview" }).then(({ data, error }: any) => {
+    (supabase as any).rpc(rpcName, { ...rpcKey, p_mode: "preview" }).then(({ data, error }: any) => {
       if (error) { toast.error(error.message); onOpenChange(false); return; }
       setPre(data); setSubject(data.subject || ""); setMsg(data.message || "");
     });
-  }, [open, followupId]);
+  }, [open, followupId, invoiceId]);
   const html = useMemo(() => (pre?.layout ? reminderHtml(pre.layout, subject, msg) : ""), [pre, subject, msg]);
   const send = async () => {
     if (!window.confirm(`Send this payment reminder to ${pre?.to}? It sends once.`)) return;
     setBusy(true);
-    const { data, error } = await (supabase as any).rpc("send_payment_reminder", { p_followup: followupId, p_mode: "send", p_html: html, p_subject: subject, p_message: msg });
+    const { data, error } = await (supabase as any).rpc(rpcName, { ...rpcKey, p_mode: "send", p_html: html, p_subject: subject, p_message: msg });
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success(`Reminder emailed to ${data?.to}`); onOpenChange(false); onSent?.();
