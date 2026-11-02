@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { type BalanceInfo, finalPaymentLine, fmtDay, fmtDayTime, rand, toLocalInput, fromLocalInput } from "@/lib/balanceDue";
 import { PaymentReminderDialog } from "@/components/invoicing/PaymentReminderDialog";
+import SendReminderDialog from "@/components/invoicing/SendReminderDialog";
 
 const TONE = { blue: "text-[#1590D6]", green: "text-emerald-600", amber: "text-[#B5730A]", red: "text-[#C9373C]" } as const;
 
@@ -21,7 +22,7 @@ export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment
   const qc = useQueryClient();
   const { data: b } = useBalanceInfo(invoiceId);
   const [edit, setEdit] = useState<"install" | "due" | null>(null);
-  const [val, setVal] = useState(""); const [busy, setBusy] = useState(false); const [preview, setPreview] = useState(false);
+  const [val, setVal] = useState(""); const [busy, setBusy] = useState(false); const [preview, setPreview] = useState(false); const [remind, setRemind] = useState(false);
   if (!b) return null;
   const st = (b.status || "").toLowerCase();
   if (st === "draft" && !b.is_balance) return null;
@@ -58,7 +59,10 @@ export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment
             {b.can_edit_due && !closed && editBtn("due", b.due_manual && b.due ? b.due : "")}</div>
           {onRecordPayment && !closed && b.balance > 0.005 && (
             <button type="button" data-testid="final-tile-record-payment" onClick={onRecordPayment}
-              className="mt-1.5 min-h-9 w-full rounded-xl bg-[#F7941D] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#e08310]">+ Add payment</button>)}
+              className="mt-1.5 min-h-11 w-full rounded-xl bg-[#F7941D] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#e08310]">+ Add payment</button>)}
+          {!closed && b.balance > 0.005 && (
+            <button type="button" data-testid="final-tile-send-reminder" onClick={() => setRemind(true)}
+              className="mt-1.5 min-h-11 w-full rounded-xl border border-[#1AA7EC] bg-white px-3 py-1.5 text-xs font-semibold text-[#1590D6] hover:bg-[#E8F6FE]">Send reminder</button>)}
         </div>
       </div>
       {edit && (
@@ -83,6 +87,7 @@ export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment
           {b.is_admin && b.followup_id ? <button onClick={() => setPreview(true)} className="ml-auto rounded-xl bg-[#1AA7EC] px-3 py-1.5 font-semibold text-white">Preview reminder</button>
             : <span className="ml-auto text-xs">{b.followup_id ? "Admin to preview and send the reminder." : "Reminder draft appears with the next daily check."}</span>}
         </div>)}
+      <SendReminderDialog open={remind} onOpenChange={setRemind} initialId={b.invoice_id} invoices={[{ id: b.invoice_id, invoice_number: b.invoice_number, grand_total: Number(b.total) || 0, amount_due: b.balance }]} onDone={refresh} />
       <PaymentReminderDialog followupId={b.followup_id} open={preview} onOpenChange={setPreview} onSent={refresh} />
     </div>
   );
