@@ -140,6 +140,19 @@ serve(async (req) => {
       });
     }
 
+    // New sale offers (C) on for this company → request_offers handles it; no double offers
+    const { data: usesOffers } = await supabase.rpc("fl_lead_uses_request_offers", { p_lead_id: lead_id });
+    if (usesOffers === true) {
+      return new Response(JSON.stringify({
+        success: true,
+        message: "New sale offers handle this lead",
+        skipped: true,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Skip if no coordinates
     if (!lead.latitude || lead.latitude === 0) {
       return new Response(JSON.stringify({

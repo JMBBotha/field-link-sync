@@ -2,7 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import fs from "fs";
 const db = new PGlite();
 await db.exec(fs.readFileSync("stub.sql","utf8"));
-await db.exec(fs.readFileSync(process.argv[2],"utf8"));
+for (const m of process.argv.slice(2)) await db.exec(fs.readFileSync(m,"utf8"));
 const q = async (s, p=[]) => (await db.query(s, p)).rows;
 const one = async (s,p) => Object.values((await q(s,p))[0])[0];
 let pass=0, fail=0; const ok=(c,m)=>{ if(c){pass++;console.log("PASS",m)} else {fail++;console.log("FAIL",m)} };
@@ -98,4 +98,14 @@ await q(`insert into requests(id,company_id,type,area,created_at) values ($1,$2,
 ok(await otick("09 12:00")===5, "C settings respected: first_wave 5");
 const N3=id(803); await q(`insert into requests(id,company_id,type,created_at) values ($1,$2,'new_sale','${T("09 07:00")}')`,[N3,C1]);
 await otick("09 12:01"); ok(await one(`select count(*)::int from request_offers where request_id=$1`,[N3])===0, "C requests from before switch-on are not offered");
+// follow-up: old auto-assign-lead broadcast skipped only for C-handled New sale leads
+const L1=id(901), L2=id(902), L3=id(903);
+await q(`insert into requests(id,company_id,type,lead_id,created_at) values ($1,$2,'new_sale',$3,'${T("09 12:30")}')`,[id(911),C1,L1]);
+await q(`insert into requests(id,company_id,type,lead_id,created_at) values ($1,$2,'service',$3,'${T("09 12:30")}')`,[id(912),C1,L2]);
+await q(`insert into requests(id,company_id,type,lead_id,created_at) values ($1,$2,'new_sale',$3,'${T("09 07:00")}')`,[id(913),C1,L3]);
+ok(await one(`select fl_lead_uses_request_offers($1)`,[L1])===true, "C on: old broadcast skipped for New sale lead");
+ok(await one(`select fl_lead_uses_request_offers($1)`,[L2])===false, "C on: Service lead still uses old broadcast");
+ok(await one(`select fl_lead_uses_request_offers($1)`,[L3])===false, "C on: pre-switch-on New sale still uses old broadcast (not offered by C either)");
+await q(`update lead_offer_settings set enabled=false`);
+ok(await one(`select fl_lead_uses_request_offers($1)`,[L1])===false, "C off: old broadcast runs as before");
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail?1:0);

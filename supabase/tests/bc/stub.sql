@@ -1,4 +1,4 @@
-CREATE SCHEMA auth; CREATE ROLE authenticated; CREATE ROLE anon;
+CREATE SCHEMA auth; CREATE ROLE authenticated; CREATE ROLE anon; CREATE ROLE service_role;
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('test.uid', true),'')::uuid $$;
 CREATE TYPE request_type AS ENUM ('new_sale','service','move','admin');
 CREATE TABLE company_members(id uuid default gen_random_uuid(), user_id uuid, company_id uuid, role text, is_owner boolean default false);
