@@ -32,6 +32,7 @@ import AssignTechDialog from "@/components/jobs/AssignTechDialog";
 import { useRole } from "@/hooks/useRole";
 import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import JobPhotosCard from "@/components/jobs/JobPhotosCard";
+import JobMaterialsDrawdown from "@/components/stock/JobMaterialsDrawdown";
 import AddJobPhotosButton from "@/components/jobs/AddJobPhotosButton";
 import EditJobDetailsSheet from "@/components/jobs/EditJobDetailsSheet";
 import { editableJobFields, canAddJobPhotos } from "@/lib/jobEdit";
@@ -383,6 +384,9 @@ const AdminJobDetailPage = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Materials draw-down from the quote (stock-from-invoices) */}
+        <JobMaterialsDrawdown jobId={j.id} />
 
         {/* Photos: Site / Before / After with counts (Johan 31 Oct) */}
         {j.lead_id && (
