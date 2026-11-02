@@ -60,7 +60,8 @@ export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment
           {onRecordPayment && !closed && b.balance > 0.005 && (
             <button type="button" data-testid="final-tile-record-payment" onClick={onRecordPayment}
               className="mt-1.5 min-h-11 w-full rounded-xl bg-[#F7941D] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#e08310]">+ Add payment</button>)}
-          {!closed && b.balance > 0.005 && (
+          {/* Not chased before the job is done: balance is due on completion (Johan 2 Nov 17:49). */}
+          {!closed && b.balance > 0.005 && !!(b.due || b.job_done) && (
             <button type="button" data-testid="final-tile-send-reminder" onClick={() => setRemind(true)}
               className="mt-1.5 min-h-11 w-full rounded-xl border border-[#1AA7EC] bg-white px-3 py-1.5 text-xs font-semibold text-[#1590D6] hover:bg-[#E8F6FE]">Send reminder</button>)}
         </div>
