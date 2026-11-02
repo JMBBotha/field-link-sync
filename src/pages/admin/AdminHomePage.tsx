@@ -12,7 +12,8 @@ import FieldPresenceBoard from "@/components/admin/FieldPresenceBoard";
 import SalesMyJobs from "@/components/jobs/SalesMyJobs";
 import V8RoleHome from "@/components/v8/V8RoleHome";
 import NextStepsPanel from "@/components/sales/NextStepsPanel";
-import HomeMoneyStrip from "@/components/home/HomeMoneyStrip";
+import HomeFocus from "@/components/home/HomeFocus";
+import RequestsTodayStrip from "@/components/requests/RequestsTodayStrip";
 import { useV8Role } from "@/components/v8/V8Sidebar";
 
 import { Map, ExternalLink, Maximize2, Minimize2, LayoutTemplate } from "lucide-react";
@@ -63,7 +64,7 @@ const AdminHomePage = () => {
 
   return (
     <ErrorBoundary>
-      <div ref={pageRef} className="relative h-full min-h-0 flex flex-col bg-background">
+      <div ref={pageRef} className="relative h-full min-h-0 flex flex-col bg-gradient-to-b from-[#F3FAFE] to-[#E8F6FE] dark:from-background dark:to-background">
         {/* Desktop map controls; mobile navigation already exposes these destinations. */}
         <div className="hidden lg:flex shrink-0 flex-wrap items-center gap-2 px-3 py-2 border-b bg-card/80 backdrop-blur-sm z-20">
           <span aria-current="page" className="inline-flex items-center gap-1.5 rounded-md bg-primary text-primary-foreground px-3 h-8 text-xs font-medium">
@@ -110,9 +111,13 @@ const AdminHomePage = () => {
               </Button>
             </div>
             {/* Next steps to-do on top for sales + admin (Johan 31 Oct 2026). */}
-            {v8Role !== "tech" && <HomeMoneyStrip />}
-            {v8Role !== "tech" && <NextStepsPanel />}
-            {!isClassic && v8Role !== "tech" && <V8RoleHome role={v8Role} />}
+            {/* Admin home polish (Johan 2 Nov 17:51): next step, orange invoices waiting, requests today, then in order. */}
+            {v8Role !== "tech" && <HomeFocus requests={<RequestsTodayStrip blue />} />}
+            {!isClassic && v8Role !== "tech" && <V8RoleHome role={v8Role} hideRequests />}
+            {v8Role !== "tech" && (
+              <details className="v7-solid rounded-2xl border bg-card p-2" data-testid="home-all-next-steps"><summary className="cursor-pointer px-2 py-1 text-sm font-semibold">All next steps (filter, snooze)</summary>
+                <NextStepsPanel className="mt-2 border-0 p-1" /></details>
+            )}
             {!isSalesRep && <FieldPresenceBoard />}
             {isSalesRep && <SalesMyJobs />}
             <OfferCards />
