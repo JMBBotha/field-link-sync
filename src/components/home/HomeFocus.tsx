@@ -53,21 +53,21 @@ export function HomeFocusView({ steps, due, now = Date.now(), requests }: { step
       {requests}
 
       {rest.length > 0 && (
-        <section className="glass-card rounded-2xl border border-l-4 border-l-[#3D9BEB] p-3" data-testid="home-then">
-          <h3 className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-[#3D9BEB]">Then, in order · {rest.length}</h3>
-          <ol className="divide-y divide-[rgba(120,140,165,0.35)]">
+        <section className="rounded-2xl border border-white/20 bg-gradient-to-br from-[#1478C8]/95 to-[#3D9BEB]/90 p-3 text-white shadow-md backdrop-blur-sm" data-testid="home-then">
+          <h3 className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-[#E8F6FE]">Then, in order · {rest.length}</h3>
+          <ol className="divide-y divide-white/20">
             {rest.slice(0, 8).map((s, i) => (
               <li key={s.rule + s.entity_id}>
                 <Link to={cardTarget(s)} className="flex min-h-11 items-center gap-2 py-2 text-sm">
-                  <span className="w-5 shrink-0 text-right font-semibold text-[#3D9BEB]">{i + 2}.</span>
+                  <span className="w-5 shrink-0 text-right font-semibold text-white/85">{i + 2}.</span>
                   <span className={cn("h-2 w-2 shrink-0 rounded-full", DOT[urgency(s, now)])} />
                   <span className="min-w-0 flex-1 truncate"><b>{s.title}</b> · {RULES[s.rule].action}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{amountLabel(s, r)}</span>
+                  <span className="shrink-0 text-xs text-white/85">{amountLabel(s, r)}</span>
                 </Link>
               </li>
             ))}
           </ol>
-          {rest.length > 8 && <p className="pt-1 text-center text-xs text-muted-foreground">+{rest.length - 8} more in Next steps</p>}
+          {rest.length > 8 && <p className="pt-1 text-center text-xs text-white/85">+{rest.length - 8} more in Next steps</p>}
         </section>
       )}
     </div>
