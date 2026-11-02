@@ -191,10 +191,9 @@ const AdminEstimateDetailPage = () => {
           {leaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowLeft className="h-5 w-5" />}
         </Button>
         <h1 className="flex min-w-0 items-center gap-2 text-base font-bold">
-          <span className="truncate">Estimate {quote.quote_number}</span>
+          <span className="truncate"><span className="hidden sm:inline">Estimate </span>{quote.quote_number || "Estimate"}</span>
           <span className="print:hidden"><StatusPill status={quote.status} /></span>
           <span data-pdf-hide className="print:hidden"><QuoteEmailSendBadge quoteId={quote.id} onRetry={() => void docActions.handleSend()} /></span>
-          <QuoteOptionChip quoteId={quote.id} groupId={quote.option_group_id} />
           <span data-pdf-hide className="ml-2 text-xs font-normal text-muted-foreground print:hidden" aria-live="polite">
             {pendingWrites > 0 || leaving ? "Saving…" : "Saved"}
           </span>
@@ -213,6 +212,9 @@ const AdminEstimateDetailPage = () => {
         {staffActions.dialogs}
         {deleteArchive.dialogs}
       </div>
+
+      {/* Own full-width line under the header so it never crams the title row on a phone (Johan 2 Nov 14:52). */}
+      <QuoteOptionChip quoteId={quote.id} groupId={quote.option_group_id} />
 
       <QuoteAcceptedLock quoteId={quote.id} lock={lock} onChanged={() => { refreshLock(); refreshDocument(); }} />
 
