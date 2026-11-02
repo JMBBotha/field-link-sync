@@ -74,7 +74,7 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 
 const categoryOf = (type: string): FilterKey => {
   const t = (type || "").toLowerCase();
-  if (CHANGE_REQUEST_TYPES.has(t) || t === "whatsapp_customer_message") return "leads";
+  if (CHANGE_REQUEST_TYPES.has(t) || t === "whatsapp_customer_message" || t.startsWith("request_")) return "leads";
   if (t === ACCEPT_ALERT_TYPE || t === SEND_BLOCKED_TYPE) return "invoices";
   if (t.includes("call")) return "calls";
   if (t.includes("quote") || t.includes("estimate") || t.includes("proposal")) return "quotes";
@@ -112,6 +112,9 @@ const isLeadType = (t: string) => LEAD_ID_TYPES.has(t) || t.startsWith("lead_") 
 export const notificationHref = (type: string, relatedId?: string | null, isTech: boolean | NotifRole = false): string => {
   const t = (type || "").toLowerCase();
   const role: NotifRole = isTech === true ? "tech" : isTech === false ? "admin" : isTech;
+  // B/C request alerts + offers: reps land on home (offer cards), office on the Requests inbox.
+  if (t === "request_offer") return "/admin";
+  if (t === "request_alert" || t === "request_offer_unclaimed") return role === "admin" ? "/admin/requests" : "/admin";
   if (role === "sales") {
     if (t === ACCEPT_ALERT_TYPE || t === SEND_BLOCKED_TYPE) return relatedId ? `/admin/invoices/${relatedId}` : "/admin/invoices";
     if (t === "deposit_paid") return relatedId ? `/admin/estimates/${relatedId}` : "/admin/quotes";
