@@ -6,11 +6,20 @@ export type ReceiveAction = "stock" | "reserve" | "installed" | "skip";
 export interface ExtractedLine { line_no: number; description: string; model_number: string | null; qty: number; unit_price_excl: number | null }
 export interface Product extends CatalogueProduct { id: string; cost_price?: number | null; product_type?: string | null }
 
-/** FCMI-24-P / FCMI-24X-P / "fcmi 24" -> FCMI24.  Strips spaces, dashes and the -P/-X/-L supplier suffixes. */
+/**
+ * Stock key: one stock item per physical model, so indoor (FCMI-24) and outdoor (FCMI-24X) stay separate.
+ * Strips spaces/dashes and the supplier packaging suffix -P.   FCMI-24X-P -> FCMI24X
+ */
+export function stockKey(code: string | null | undefined) {
+  return (code ?? "").toUpperCase().replace(/[\s_/.]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").replace(/-P$/, "").replace(/-/g, "");
+}
+/**
+ * Catalogue key: the price-book row covers the indoor+outdoor pair, so also drop the outdoor X suffix and the -L- variant infix.
+ * FCMI-24-P, FCMI-24X-P -> FCMI24;  FCMI-L-12X -> FCMI12
+ */
 export function normaliseModel(code: string | null | undefined) {
-  let c = (code ?? "").toUpperCase().replace(/[\s_/.]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-  c = c.replace(/-(P|L)$/i, "").replace(/X$/i, "").replace(/-(P|L)$/i, "");
-  return c.replace(/-/g, "");
+  const d = (code ?? "").toUpperCase().replace(/[\s_/.]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").replace(/-P$/, "");
+  return d.replace(/^([A-Z]+)-L-(?=\d)/, "$1-").replace(/(\d)X$/, "$1").replace(/-/g, "");
 }
 
 export interface Match { product: Product | null; how: "exact" | "normalised" | "none"; lookalikes: Product[] }
@@ -52,7 +61,7 @@ export function priceCheck(invoiceUnit: number | null, expectedUnit: number | nu
 
 export interface EarlierLine { product_id: string | null; normalised: string; unit_cost_excl: number | null; receive_action: string | null; receive_job_id: string | null }
 export interface PreviewRow {
-  line: ExtractedLine; match: Match; map: UnitMapping | null; action: ReceiveAction; job_id: string | null;
+  stock_key: string; line: ExtractedLine; match: Match; map: UnitMapping | null; action: ReceiveAction; job_id: string | null;
   unit_cost_pack: number | null; cost_source: "invoice" | "catalogue" | "none";
   stock_qty: number; cost_per_stock_unit: number | null; adds_stock: boolean; price: PriceFlag; notes: string[];
 }
@@ -86,7 +95,7 @@ export function buildPreview(docType: DocType, lines: ExtractedLine[], products:
     const expected = prev?.unit_cost_excl ?? (p?.cost_price != null ? Number(p.cost_price) : null);
     const price = isInvoice && cost_source === "invoice" ? priceCheck(unit_cost_pack, expected) : { level: "none" as const, text: "" };
     if (!isInvoice && action === "stock") notes.push("Delivery note: stock is added when the invoice is loaded");
-    return { line, match, map, action, job_id, unit_cost_pack, cost_source, stock_qty, cost_per_stock_unit,
+    return { stock_key: stockKey(line.model_number) || (line.description ?? "").slice(0, 60).toUpperCase(), line, match, map, action, job_id, unit_cost_pack, cost_source, stock_qty, cost_per_stock_unit,
       adds_stock: isInvoice && (action === "stock" || action === "reserve"), price, notes };
   });
 }
@@ -95,7 +104,7 @@ export function buildPreview(docType: DocType, lines: ExtractedLine[], products:
 export function toReceivePayload(rows: PreviewRow[], lineIds: Record<number, string>) {
   return rows.filter((r) => lineIds[r.line.line_no]).map((r) => ({
     line_id: lineIds[r.line.line_no], action: r.action, job_id: r.action === "reserve" || r.action === "installed" ? r.job_id : null,
-    product_id: r.match.product?.id ?? null, stock_unit: r.map?.stock_unit ?? "each", pack_size: r.map?.pack_size ?? 1,
+    product_id: r.match.product?.id ?? null, model_code: r.stock_key, item: r.match.product?.short_name || r.match.product?.name || r.line.description, stock_unit: r.map?.stock_unit ?? "each", pack_size: r.map?.pack_size ?? 1,
     qty_packs: r.line.qty, unit_cost_pack: r.unit_cost_pack, cost_source: r.cost_source,
     price_flag: r.price.level === "none" ? null : r.price.level, price_note: r.price.text || null,
   }));
