@@ -5,6 +5,7 @@ import { randShort } from "@/lib/invoiceDue";
 import { InvoiceDueChip, FollowupReview } from "@/components/invoiceDue/InvoiceDueChip";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import SendQuotesTogetherDialog from "@/components/quoting/SendQuotesTogetherDialog";
+import AddPaymentDialog, { type UnpaidInvoice } from "@/components/invoicing/AddPaymentDialog";
 import { sendTogetherBlock } from "@/lib/quoteBundle";
 import { useDraftNeeds } from "@/hooks/useDraftNeeds";
 import { DraftNeedsChip } from "@/components/quoting/DraftNeedsChip";
@@ -311,6 +312,10 @@ const AdminCustomerDetailPage = () => {
 
   const [pickedQuotes, setPickedQuotes] = useState<string[]>([]);
   const [bundleOpen, setBundleOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
+  const [payList, setPayList] = useState<UnpaidInvoice[]>([]);
+  const [payInv, setPayInv] = useState<string | null>(null);
+  const [sendOneOpen, setSendOneOpen] = useState(false);
   const pickedRows = (quotes as any[]).filter((q) => pickedQuotes.includes(q.id));
   const draftNeeds = useDraftNeeds((quotes as any[]).filter((q) => (q.status || "draft") === "draft").map((q) => ({ id: q.id, customer_id: q.customer_id || id })));
   const bundleBlock = sendTogetherBlock(pickedRows.map((q) => ({ id: q.id, status: q.status, customer_id: q.customer_id || id, quote_number: q.quote_number, needs: draftNeeds[q.id] })));
@@ -378,6 +383,16 @@ const AdminCustomerDetailPage = () => {
     return { outstanding: invoiceSummary.outstanding, overdue, overdueN, maxLate };
   }, [invoices, dueBy, invoiceSummary]);
   const openQuotes = (quotes as any[]).filter((q) => ["draft", "sent", "viewed", "pending"].includes((q.status || "draft").toLowerCase()));
+  const unpaid: UnpaidInvoice[] = useMemo(() => (invoices as any[])
+    .filter((inv) => !inv.archived_at && !["paid", "void", "cancelled", "draft"].includes((inv.status || "").toLowerCase()))
+    .map((inv) => { const r = dueBy.get(inv.id); return { id: inv.id, invoice_number: inv.invoice_number, grand_total: Number(inv.grand_total) || 0, amount_due: Number(r?.amount_due) || 0, days: r && !r.waiting ? r.days : 0, _d: inv.due_date || inv.issue_date || inv.created_at || "" }; })
+    .filter((i) => i.amount_due > 0.005)
+    .sort((x, y) => String(x._d).localeCompare(String(y._d))), [invoices, dueBy]);
+  const overdueUnpaid = unpaid.filter((i) => (i.days || 0) > 0);
+  const owing = unpaid.length > 0;
+  const sendQuote = [...openQuotes].sort((x, y) => String(y.created_at || "").localeCompare(String(x.created_at || "")))[0] as any | undefined;
+  const sendIsResend = !!sendQuote && (sendQuote.status || "draft").toLowerCase() !== "draft";
+  const openPay = (list: UnpaidInvoice[], invId?: string | null) => { setPayList(list.length ? list : unpaid); setPayInv(invId ?? null); setPayOpen(true); };
 
   if (isLoading) {
     return <DetailPageSkeleton />;
@@ -434,9 +449,10 @@ const AdminCustomerDetailPage = () => {
           <div className="flex gap-1.5 flex-wrap">
             {phone && <a href={`tel:${phone}`} className="inline-flex items-center gap-1 rounded-xl bg-white/15 px-3 py-2 text-sm hover:bg-white/25"><Phone className="h-4 w-4" /> Call</a>}
             {email && <a href={`mailto:${email}`} className="inline-flex items-center gap-1 rounded-xl bg-white/15 px-3 py-2 text-sm hover:bg-white/25"><Mail className="h-4 w-4" /> Email</a>}
+            {owing && <Button data-testid="client-add-payment" onClick={() => openPay(unpaid)} className="rounded-xl bg-[#F7941D] hover:bg-[#e08310] text-white"><Plus className="h-4 w-4 mr-1" /> Add payment</Button>}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button className="rounded-xl bg-[#F7941D] hover:bg-[#e08310] text-white"><Plus className="h-4 w-4 mr-1" /> New quote <ChevronDown className="h-4 w-4 ml-1" /></Button>
+                <Button data-testid="client-new-quote" className={cn("rounded-xl text-white", owing ? "bg-white/15 hover:bg-white/25" : "bg-[#F7941D] hover:bg-[#e08310]")}><Plus className="h-4 w-4 mr-1" /> New quote <ChevronDown className="h-4 w-4 ml-1" /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {(isAdmin || isDispatcher) && <DropdownMenuItem data-testid="menu-new-lead" onClick={() => setShowCreateLead(true)}>New lead</DropdownMenuItem>}
@@ -452,6 +468,8 @@ const AdminCustomerDetailPage = () => {
                 <Button aria-label="More actions" className="rounded-xl bg-white/15 hover:bg-white/25 text-white px-3">⋯</Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {owing && <DropdownMenuItem data-testid="menu-add-payment" onClick={() => openPay(unpaid)}>Add payment</DropdownMenuItem>}
+                {sendQuote && <DropdownMenuItem data-testid="menu-send-quote" onClick={() => setSendOneOpen(true)}>{sendIsResend ? "Resend quote" : "Send quote"} {sendQuote.quote_number ? `(${sendQuote.quote_number})` : ""}</DropdownMenuItem>}
                 <DropdownMenuItem onClick={() => setInnerTab("details")}>Edit client details</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate(`/admin/customers`)}>Back to list</DropdownMenuItem>
                 {canArchiveClient && (customer.status === "archived" ? (
@@ -467,14 +485,16 @@ const AdminCustomerDetailPage = () => {
           </div>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2" data-testid="client-money">
-          <MoneyTile label="Outstanding" value={randShort(money.outstanding)} onClick={() => setInnerTab("invoices")} />
-          <MoneyTile label="Overdue" value={randShort(money.overdue)} hot={money.overdue > 0} sub={money.overdueN ? `${money.overdueN} · ${money.maxLate}d` : undefined} onClick={() => setInnerTab("invoices")} />
+          <MoneyTile testId="tile-outstanding" label="Outstanding" value={randShort(money.outstanding)} onClick={() => setInnerTab("invoices")} action={owing ? { label: "Add payment", onClick: () => openPay(unpaid) } : undefined} />
+          <MoneyTile testId="tile-overdue" label="Overdue" value={randShort(money.overdue)} hot={money.overdue > 0} sub={money.overdueN ? `${money.overdueN} · ${money.maxLate}d` : undefined} onClick={() => setInnerTab("invoices")} action={overdueUnpaid.length ? { label: "Add payment", onClick: () => openPay(overdueUnpaid) } : undefined} />
           <MoneyTile label="Open quotes" value={randShort(quoteSummary.openValue)} sub2={`${openQuotes.length} open`} onClick={() => setInnerTab("quotes")} />
         </div>
       </div>
 
       {(invoices as any[]).filter((inv) => !inv.archived_at && Number(inv.deposit_amount) > 0 && !["paid", "void", "cancelled", "draft"].includes((inv.status || "").toLowerCase()) && (inv.deposit_type || "") !== "deposit_invoice")
-        .map((inv) => <BalanceDueBlock key={inv.id} invoiceId={inv.id} />)}
+        .map((inv) => <BalanceDueBlock key={inv.id} invoiceId={inv.id} onRecordPayment={() => openPay(unpaid.filter((u) => u.id === inv.id), inv.id)} />)}
+      <AddPaymentDialog open={payOpen} onOpenChange={setPayOpen} invoices={payList} initialId={payInv} onDone={() => qc.invalidateQueries()} />
+      {sendQuote && <SendQuotesTogetherDialog open={sendOneOpen} onOpenChange={setSendOneOpen} quoteIds={[sendQuote.id]} onSent={() => qc.invalidateQueries()} />}
 
       <FinalInvoiceCTA step={finalInvoiceStep(invoices as any[], invPayments as any[], jobs as any[])} />
 
@@ -881,13 +901,16 @@ const ContactRow = ({
   </div>
 );
 
-const MoneyTile = ({ label, value, sub, sub2, hot, onClick }: { label: string; value: string; sub?: string; sub2?: string; hot?: boolean; onClick?: () => void }) => (
-  <button type="button" onClick={onClick} className="min-w-0 rounded-xl border border-white/25 px-2.5 py-2 text-left sm:px-3 hover:bg-white/10">
-    <span className="block truncate text-xs text-[#CFE6F6]">{label}</span>
-    <span className={cn("block truncate font-semibold leading-tight text-sm sm:text-lg", hot && "text-[#FFB4B6]")}>{value}</span>
-    {sub && <span className="mt-0.5 inline-block rounded-full bg-[#E5484D]/30 px-2 text-[11px]">{sub}</span>}
-    {sub2 && <span className="mt-0.5 block text-[11px] text-[#CFE6F6]">{sub2}</span>}
-  </button>
+const MoneyTile = ({ label, value, sub, sub2, hot, onClick, action, testId }: { label: string; value: string; sub?: string; sub2?: string; hot?: boolean; onClick?: () => void; action?: { label: string; onClick: () => void }; testId?: string }) => (
+  <div data-testid={testId} className="flex min-w-0 flex-col rounded-xl border border-white/25 hover:bg-white/10">
+    <button type="button" onClick={onClick} className="min-w-0 flex-1 px-2.5 py-2 text-left sm:px-3">
+      <span className="block truncate text-xs text-[#CFE6F6]">{label}</span>
+      <span className={cn("block truncate font-semibold leading-tight text-sm sm:text-lg", hot && "text-[#FFB4B6]")}>{value}</span>
+      {sub && <span className="mt-0.5 inline-block rounded-full bg-[#E5484D]/30 px-2 text-[11px]">{sub}</span>}
+      {sub2 && <span className="mt-0.5 block text-[11px] text-[#CFE6F6]">{sub2}</span>}
+    </button>
+    {action && <button type="button" data-testid={testId ? `${testId}-add-payment` : undefined} onClick={action.onClick} className="mx-1.5 mb-1.5 min-h-9 rounded-lg bg-[#F7941D] px-1 text-xs font-semibold text-white hover:bg-[#e08310]">+ {action.label}</button>}
+  </div>
 );
 
 const Stat = ({ label, value }: { label: string; value: string }) => (
