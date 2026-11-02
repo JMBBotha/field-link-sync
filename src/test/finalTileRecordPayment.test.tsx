@@ -9,7 +9,7 @@ function mount(b: any, fn?: () => void) {
   return render(<QueryClientProvider client={qc}><BalanceDueBlock invoiceId="i1" onRecordPayment={fn} /></QueryClientProvider>);
 }
 describe("Final payment tile Record payment", () => {
-  it("shows when balance > 0 and calls the handler", () => { const fn = vi.fn(); mount(info(1000), fn); fireEvent.click(screen.getByTestId("final-tile-record-payment")); expect(fn).toHaveBeenCalled(); });
-  it("hidden when paid, or no handler", () => { mount(info(0, "paid"), vi.fn()); expect(screen.queryByTestId("final-tile-record-payment")).toBeNull(); });
-  it("hidden without handler", () => { mount(info(500)); expect(screen.queryByTestId("final-tile-record-payment")).toBeNull(); });
+  it("shows when balance > 0 and calls the handler", () => { const fn = vi.fn(); mount(info(1000), fn); fireEvent.click(screen.getByTestId("balance-add-payment")); expect(fn).toHaveBeenCalled(); });
+  it("hidden when paid, or no handler", () => { mount(info(0, "paid"), vi.fn()); expect(screen.queryByTestId("balance-add-payment")).toBeNull(); });
+  it("hidden without handler", () => { mount(info(500)); expect(screen.queryByTestId("balance-add-payment")).toBeNull(); });
 });

@@ -322,7 +322,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         </div>
       </div>
 
-      <BalanceDueBlock invoiceId={invoice.id} onRecordPayment={() => {
+      <BalanceDueBlock ownerStrip invoiceId={invoice.id} onRecordPayment={() => {
         const box = document.getElementById("invoice-payment-recorder");
         const form = box?.querySelector<HTMLElement>('[data-testid="record-payment-form"]');
         (form || box)?.scrollIntoView({ behavior: "smooth", block: "center" });
