@@ -46,7 +46,7 @@ type Item = { id: string; title: string; sub: string; btn: string; to: string; t
 
 /** v8 Simple home (New layout only): hero · Next up · flow strip · New leads · Needs you today.
  *  Read-only over the existing pipeline + lead inbox queries; RLS scopes rows (company admins see only their company, sales only theirs). */
-export default function V8RoleHome({ role }: { role: V8Role }) {
+export default function V8RoleHome({ role, hideRequests }: { role: V8Role; hideRequests?: boolean }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { settings } = useCompanySettings();
@@ -107,7 +107,7 @@ export default function V8RoleHome({ role }: { role: V8Role }) {
         <h1 className="text-2xl font-extrabold">{greet}{first ? `, ${first}` : ""}</h1>
       </div>
       {role !== "tech" && <InvoiceApprovalHomeCard />}
-      {role !== "tech" && <SalesHeartbeat />}
+      {role !== "tech" && <SalesHeartbeat hideRequests={hideRequests} />}
       {(role === "owner" || role === "admin") && <V8NumberRow />}
       <div className={hbShows ? "grid gap-3" : "grid gap-3 lg:grid-cols-[1.5fr_1fr]"}>
         <div className="v8-hero">

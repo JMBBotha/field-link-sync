@@ -28,7 +28,7 @@ export function hbLeadRow(i: HbItem): NextStep {
   return { rule: i.stage === "new" ? "new_lead" : "no_quote", prio: 0, entity_type: "lead", entity_id: i.id, title: i.title, detail: i.sub, amount: null, since: i.since, owner_id: i.owner ?? null, link: i.next.to, snoozable: false };
 }
 
-export default function SalesHeartbeat() {
+export default function SalesHeartbeat({ hideRequests }: { hideRequests?: boolean } = {}) {
   const navigate = useNavigate();
   const [open, setOpen] = useState<HbItem | null>(null);
   const tap = (i: HbItem) => (i.quote_id || i.kind === "lead" ? setOpen(i) : navigate(i.next.to));
@@ -62,7 +62,7 @@ export default function SalesHeartbeat() {
           className="mb-3 block min-h-11 w-full rounded-lg bg-[#C62828] px-3 py-2 text-left text-[13px] font-semibold hover:bg-[#B71C1C] active:opacity-80">No sales actions while {hb.items.length} items wait. {hb.next ? `Open the first: ${hb.next.title} →` : "Pick up the next step below."}</button>}
         <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-8 lg:overflow-visible">{hb.stages.map((s) => <StageTile key={s.key} s={s} items={hb.items} onClick={() => navigate(stageHref(s.key, isSalesRep))} />)}</div>
       </section>
-      <RequestsTodayStrip />
+      {!hideRequests && <RequestsTodayStrip />}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
         <section className="min-w-0 rounded-2xl border-2 border-border bg-card p-4">
           <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Next step</h3>
