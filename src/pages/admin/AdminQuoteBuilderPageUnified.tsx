@@ -19,20 +19,18 @@ import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import QuoteAcceptedLock from "@/components/quoting/QuoteAcceptedLock";
 import { useQuoteLock, isQuoteReadOnly } from "@/hooks/useQuoteLock";
-import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2, Send, Copy, CalendarClock } from "lucide-react";
+import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2, Send, Copy } from "lucide-react";
 import QuoteClientDialog, { type QuoteClientMode } from "@/components/quoting/QuoteClientDialog";
 import RowMenu from "@/components/shared/RowMenu";
 import { useQuoteDeleteArchive, ArchivedQuoteBanner } from "@/components/quoting/QuoteDeleteArchive";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { formatRand } from "@/utils/formatRand";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
-import PaymentPlanPicker from "@/components/quoting/PaymentPlanPicker";
 import { openMandyQuoteMode } from "@/lib/mandy/registry";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 import ProductPalette from "@/components/catalog/quote-builder/ProductPalette";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -323,6 +321,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   const qbv = useQbView();
   useEffect(() => { setQbView({ external: isCompact }); return () => setQbView({ external: false }); }, [isCompact]);
   const clientTab = isCompact && activeTab === "quote" && qbv.view === "client";
+  const priceTab = isCompact && activeTab === "quote" && qbv.view === "pricelist";
   // While the area-first view is open the basket replace-all autosave is paused, so the two
   // save paths can never overwrite each other; leaving it remounts the builder from saved lines.
   const livePausedRef = useRef(activeTab === "quote");
@@ -1405,48 +1404,32 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
       {/* Builder mode tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className={`relative z-[10001] shrink-0 ${activeTab === "visual" ? "max-sm:hidden vpdf-desk" : ""}`}>
         <div className="fl-qb-modes flex flex-wrap items-center justify-center gap-y-1 py-1.5">
-          <TabsList className="fl-qb-seg h-9 rounded-full p-1 max-sm:h-auto">
-            <TabsTrigger value="quote" onClick={() => setQbView({ view: "editor" })} className={`text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4 font-semibold max-sm:min-h-11 max-sm:px-3 ${clientTab ? "!bg-transparent !text-muted-foreground !shadow-none" : ""}`}>Build quote</TabsTrigger>
+          <TabsList className="fl-qb-seg h-9 max-w-full overflow-x-auto rounded-full p-1 max-sm:h-auto max-sm:justify-start">
+            <TabsTrigger value="quote" onClick={() => setQbView({ view: "editor" })} className={`text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4 font-semibold max-sm:min-h-11 max-sm:px-2.5 ${clientTab || priceTab ? "!bg-transparent !text-muted-foreground !shadow-none" : ""}`}>Build quote</TabsTrigger>
             <TabsTrigger value="normal" disabled aria-hidden="true" className="hidden text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4">Build</TabsTrigger>
-            <TabsTrigger value="visual" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4 max-sm:min-h-11 max-sm:px-3">Visual PDF</TabsTrigger>
+            <TabsTrigger value="visual" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4 max-sm:min-h-11 max-sm:px-2.5">Visual PDF</TabsTrigger>
             {isCompact && <button type="button" role="tab" aria-selected={clientTab} data-testid="qb-tab-client"
               onClick={() => { if (activeTab !== "quote") void handleTabChange("quote"); setQbView({ view: "client" }); }}
               className={`inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 text-xs font-medium max-sm:min-h-11 sm:px-4 ${clientTab ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>Client view</button>}
+            {isCompact && qbv.canPriceList && <button type="button" role="tab" aria-selected={priceTab} data-testid="qb-tab-pricelist"
+              onClick={() => { if (activeTab !== "quote") void handleTabChange("quote"); setQbView({ view: "pricelist" }); }}
+              className={`inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 text-xs font-medium max-sm:min-h-11 sm:px-4 ${priceTab ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>Prices</button>}
             <TabsTrigger value="area" disabled aria-hidden="true" className="hidden text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground rounded-full px-4">Build Area Quote</TabsTrigger>
             <Button
               size="icon"
               variant="outline"
               onClick={() => openMandyQuoteMode()}
               aria-label="Build with voice"
-              className="h-7 w-7 ml-0.5 border-transparent bg-transparent hover:bg-accent max-sm:h-11 max-sm:w-9"
+              className="h-7 w-7 ml-0.5 shrink-0 border-transparent bg-transparent hover:bg-accent max-sm:h-11 max-sm:w-9"
               title="Build with voice — Ask Mandy"
             >
               <Mic className="h-3.5 w-3.5" />
             </Button>
           </TabsList>
-          {isCompact && quoteId && meta?.status !== "declined" && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button type="button" size="sm" variant="outline" className="ml-1.5 h-8 gap-1 rounded-full px-2.5 text-xs" data-testid="qb-settings-strip" aria-label="Payment plan">
-                  <CalendarClock className="h-3.5 w-3.5" />Plan
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="z-[10002] w-[min(92vw,360px)] p-2">
-                <PaymentPlanPicker quoteId={quoteId} />
-              </PopoverContent>
-            </Popover>
-          )}
         </div>
       </Tabs>
 
-      {/* Accounting step 1: how this quote is paid (locked once invoiced). Phones: small "Plan" button beside the tabs. */}
-      {quoteId && meta?.status !== "declined" && !isCompact && (
-        <div className="fl-qb-strip shrink-0 mx-3 mb-2 flex flex-wrap items-center gap-3 rounded-2xl px-3 py-2" data-testid="qb-settings-strip">
-          <span className="fl-qb-eyebrow shrink-0">Payment plan</span>
-          <div className="min-w-0 flex-1"><PaymentPlanPicker quoteId={quoteId} /></div>
-        </div>
-      )}
-
+      {/* Payment plan now lives in the quote editor's Payment section (Johan 2 Nov 16:05). */}
       {/* Post-acceptance: deposit invoice + hand over to installation */}
       {quoteId && meta?.status === "accepted" && (
         <div className="shrink-0 px-3 pb-2">

@@ -27,6 +27,7 @@ import { linkedToUnit } from "@/lib/unitInstallLinks";
 import { useIsPhone } from "@/hooks/useIsPhone";
 import { isLabourItem } from "@/lib/labour";
 import { useQbView, setQbView, allowPinchZoom } from "@/lib/qbView";
+import PaymentPlanPicker from "@/components/quoting/PaymentPlanPicker";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -170,7 +171,7 @@ export default function EstimateBuilder({
   const { user } = useAuth();
   const [previewOpen, setPreviewOpen] = useLivePreviewPref(user?.id ?? null);
   const wide = useIsWideScreen();
-  const [narrowTab, setNarrowTab] = useState<"editor" | "client">("editor");
+  const [narrowTab, setNarrowTab] = useState<"editor" | "client" | "pricelist">("editor");
   // PDF builder v1 (Johan 16 Oct 22:05, overrides the 15 Oct one-view rule): on wide screens the
   // live preview sits beside the builder and can be hidden; narrow screens still swap views.
   const [isWide, setIsWide] = useState(() => typeof window !== "undefined" && window.matchMedia?.("(min-width: 1280px)").matches);
@@ -204,6 +205,7 @@ export default function EstimateBuilder({
   useEffect(() => { if (qbv.external && !isWide) setNarrowTab(qbv.view); }, [qbv.external, qbv.view, isWide]);
   useEffect(() => { setQbView({ view: narrowTab }); }, [narrowTab]);
   useEffect(() => () => setQbView({ view: "editor" }), []);
+  useEffect(() => { setQbView({ canPriceList }); }, [canPriceList]);
   const clientOpen = !isWide && narrowTab === "client";
   useEffect(() => { if (!clientOpen) return; allowPinchZoom(true); return () => { allowPinchZoom(false); }; }, [clientOpen]);
   const sideBySide = isWide && showPreview;
@@ -482,6 +484,7 @@ export default function EstimateBuilder({
       {quoteId && meta && <div className="flex"><SurveyReportChip quoteId={quoteId} leadId={(meta as any).lead_id ?? null} /></div>}
       {(() => { const editorDoc = (
       <EstimateDocument
+          paymentSlot={quoteId && meta && meta.status !== "declined" ? <PaymentPlanPicker quoteId={quoteId} /> : undefined}
           estimateNumber={quoteNumber}
           issueDate={issueDate}
           validUntil={validUntil}
@@ -722,7 +725,7 @@ export default function EstimateBuilder({
           <div className={`fl-builder-bar ${isWide || narrowTab === "client" ? "sticky top-2 z-20" : ""} mb-3 flex flex-wrap items-center justify-end gap-2 print:hidden`} data-html2canvas-ignore data-pdf-hide>
             <span className="mr-auto" aria-hidden />
             {(isWide || narrowTab === "client") && <DocumentStyleSwitch companyId={meta?.company_id ?? null} onPicked={() => { if (isWide) setShowPreview(true); else setNarrowTab("client"); }} />}
-            {canPriceList && (
+            {canPriceList && !(qbv.external && !isWide) && (
               <Button type="button" size="sm" variant="outline" className="fl-preview-toggle h-9 rounded-full px-4 text-xs font-semibold"
                 data-testid="pricelist-toggle" aria-pressed={isWide ? sideBySide && paneMode === "pricelist" : priceSheetOpen} onClick={openPriceList}>
                 Price list
@@ -779,6 +782,9 @@ export default function EstimateBuilder({
           ) : (
             <>
               <div className={narrowTab === "editor" ? "" : "hidden"}>{editorDoc}</div>
+              {narrowTab === "pricelist" && canPriceList && (
+                <div data-testid="pricelist-inline"><PriceListPane heightClass="h-[calc(100dvh-12rem)]" /></div>
+              )}
               {narrowTab === "client" && (
                 <div data-testid="client-zoom">
                   <div className="overflow-auto [touch-action:pan-x_pan-y_pinch-zoom]">
