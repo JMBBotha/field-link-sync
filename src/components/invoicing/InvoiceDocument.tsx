@@ -4,6 +4,8 @@ import { foldFlatLines } from "@/lib/clientQuoteRollup";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { cleanBanking } from "@/lib/companyIdentity";
 import { formatRand } from "@/utils/formatRand";
+import InvoiceStamps from "@/components/documents/InvoiceStamps";
+import type { InvoiceStamp } from "@/lib/invoiceStamps";
 import { profileBanking, depositDue, type CompanyProfile } from "@/lib/companyProfiles";
 
 export interface InvoiceDocLineItem {
@@ -46,6 +48,8 @@ export interface InvoiceDocumentProps {
   /** Requested deposit in rand (already worked out on the VAT-inclusive total). */
   depositAmount?: number | null;
   depositLabel?: string | null;
+  /** MAILED / DEPOSIT PAID / PAID IN FULL stamps (from invoiceStamps()). */
+  stamps?: InvoiceStamp[];
 }
 
 const formatCurrency = (amount: number) => {
@@ -94,6 +98,7 @@ const InvoiceDocument = ({
   discountAmount = 0,
   depositAmount,
   depositLabel,
+  stamps = [],
 }: InvoiceDocumentProps) => {
   const { settings } = useCompanySettings();
   const bank = profileBanking(profile) || cleanBanking(settings.banking_details);
@@ -135,6 +140,7 @@ const InvoiceDocument = ({
       className="invoice-document max-w-[820px]"
       title={isVoid ? "TAX INVOICE (VOID)" : "TAX INVOICE"}
       stamp={isVoid ? "VOID" : null}
+      stampsRow={isVoid ? null : <InvoiceStamps stamps={stamps} />}
       number={invoiceNumber}
       profile={profile}
       partyLabel="Bill to"

@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import SendInvoiceEmailButton from "@/components/invoicing/SendInvoiceEmailButton";
 import { generateAndUploadPDF, downloadInvoicePDF, printInvoicePDF, shareInvoice, sendViaWhatsApp } from "@/lib/invoicePDF";
 import { sumSettled } from "@/lib/payments";
+import { invoiceStamps, type StampPayment } from "@/lib/invoiceStamps";
 import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
 import PaymentSchedulePanel from "@/components/invoicing/PaymentSchedulePanel";
 import CreditNotesPanel from "@/components/invoicing/CreditNotesPanel";
@@ -82,6 +83,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   const [invoice, setInvoice] = useState<any>(null);
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
   const [amountPaid, setAmountPaid] = useState(0);
+  const [payRows, setPayRows] = useState<StampPayment[]>([]);
   const [credits, setCredits] = useState<CreditNoteRow[]>([]);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const [showMobileBar, setShowMobileBar] = useState(false);
@@ -129,7 +131,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     const [invoiceResult, itemsResult, paymentsResult] = await Promise.all([
       supabase.from("invoices").select("*").eq("id", invoiceId).single(),
       supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId).order("sort_order" as any, { ascending: true }).order("created_at", { ascending: true }),
-      supabase.from("payments").select("amount, status, gateway").eq("invoice_id", invoiceId),
+      supabase.from("payments").select("amount, status, gateway, payment_date, created_at").eq("invoice_id", invoiceId),
     ]);
 
     if (invoiceResult.error) {
@@ -141,6 +143,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     setInvoiceItems((itemsResult.data as unknown as InvoiceItem[]) || []);
     // Only settled payments count as cash applied (payment allocation SoT).
     setAmountPaid(sumSettled(((paymentsResult.data as any[]) || [])));
+    setPayRows(((paymentsResult.data as any[]) || []) as StampPayment[]);
     setCredits(await fetchCreditNotes([invoiceId]));
     setLoading(false);
   };
@@ -353,6 +356,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         billedToVat={invoice.billed_to_vat_number}
         discountAmount={Number(invoice.discount_amount) || 0}
         depositAmount={Number(invoice.deposit_amount) || 0}
+        stamps={invoiceStamps(invoice as any, payRows, creditedByInvoice(credits).get(invoice.id) || 0)}
         depositLabel={invoice.deposit_type === "percent" ? `${Number(invoice.deposit_value)}% of total incl. VAT` : null}
       />
 
