@@ -132,9 +132,15 @@ export function costPerStockUnit(price: number, map: Pick<UnitMapping, "pack_siz
  * Default quantity to draw from stock for one quote line.
  * Catalogue priced per metre ⇒ the quote quantity is already metres. Otherwise the quote counts packs.
  */
-export function quoteDrawQty(quoteQty: number, product: CatalogueProduct, map: UnitMapping = stockUnitFor(product)) {
+export function quoteDrawQty(quoteQty: number, product: CatalogueProduct, map: UnitMapping = stockUnitFor(product), quoteText = "") {
   const lbl = (product.price_per_unit_label ?? "").toLowerCase();
   if (map.stock_unit === "m" && (lbl === "m" || lbl === "metre" || lbl === "meter")) return round(quoteQty);
+  // Gas (Johan 2 Nov): never default to a full cylinder. Prefill only when the quote states kg; else the tech enters kg used.
+  if (map.stock_unit === "kg") {
+    if (lbl === "kg") return round(quoteQty);
+    const m = quoteText.match(/(\d+(?:[.,]\d+)?)\s*kg\b/i);
+    return m && !/cylinder|disp|bottle|can\b/i.test(quoteText) ? round(Number(m[1].replace(",", ".")) * quoteQty) : 0;
+  }
   return round(quoteQty * (map.pack_size || 1));
 }
 export const unitShort = (u: StockUnit) => ({ each: "ea", m: "m", kg: "kg", l: "L", roll: "roll" })[u];

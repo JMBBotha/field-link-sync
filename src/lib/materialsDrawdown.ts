@@ -16,12 +16,13 @@ export function buildDrawPlan(items: PlanQuoteItem[], stock: PlanStockItem[], dr
     const map = q.product ? stockUnitFor(q.product) : null;
     if (map && map.kind !== "consumable") continue;
     const s = q.product_id ? stock.find((x) => x.product_id === q.product_id) : undefined;
-    const quoted = q.product ? quoteDrawQty(q.quantity, q.product, map!) : q.quantity;
+    const quoted = q.product ? quoteDrawQty(q.quantity, q.product, map!, q.item_name) : q.quantity;
     const already = s ? drawn.filter((d) => d.stock_item_id === s.id).reduce((a, d) => a + Number(d.drawn_qty || 0), 0) : 0;
     const isReserved = !!s && reserved.some((r) => r.stock_item_id === s.id);
     const suggested = isReserved ? 0 : Math.max(0, round(quoted - already));
     let note: string | null = null;
     if (!s) note = "Not a stock item: nothing drawn";
+    else if (!isReserved && s.stock_unit === "kg" && quoted === 0) note = "Enter the kg actually used";
     else if (isReserved) note = "Reserved on a Projects line: drawn when the job is installed";
     else if (suggested > s.qty_on_hand) note = `Only ${s.qty_on_hand} ${s.stock_unit} on hand`;
     else if (already > 0) note = `${already} ${s.stock_unit} already drawn`;

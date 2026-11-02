@@ -47,7 +47,7 @@ describe("conversions", () => {
   it("quote qty: per-metre catalogue rows are metres, pack rows are packs", () => {
     const trunk = { name: "PVC Trunking 16 x 16 x 3mtr", price_per_unit_label: "m", sold_in_length: true, unit_length: 3 };
     expect(quoteDrawQty(4.5, trunk)).toBe(4.5);
-    expect(quoteDrawQty(1, { name: "R410a - 11.3kg Cylinder", price_per_unit_label: "each" })).toBe(11.3);
+    expect(quoteDrawQty(1, { name: "R410a - 11.3kg Cylinder", price_per_unit_label: "each" })).toBe(0);
     expect(quoteDrawQty(3, { name: "Copper Nut - 1/4", price_per_unit_label: "each" })).toBe(3);
   });
 });

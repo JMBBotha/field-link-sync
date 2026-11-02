@@ -77,6 +77,14 @@ export interface PreviewRow {
  */
 export function buildPreview(docType: DocType, lines: ExtractedLine[], products: Product[], earlier: EarlierLine[] = [], defaultJobId: string | null = null): PreviewRow[] {
   const isInvoice = docType === "supplier_invoice";
+  // Indoor+outdoor halves that match one catalogue pair row (stockKey differs, product same).
+  const halves = new Map<string, Set<string>>();
+  for (const l of lines) { const m = matchProduct(l.model_number, products).product; if (m) { const k = halves.get(m.id) ?? new Set(); k.add(stockKey(l.model_number)); halves.set(m.id, k); } }
+  const pairSum = new Map<string, number | null>();
+  for (const [pid, keys] of halves) if (keys.size > 1) {
+    const prices = [...keys].map((k) => lines.find((l) => stockKey(l.model_number) === k && matchProduct(l.model_number, products).product?.id === pid)?.unit_price_excl ?? null);
+    pairSum.set(pid, prices.every((p) => p != null) ? prices.reduce((a, p) => a + (p as number), 0) : null);
+  }
   return lines.map((line) => {
     const match = matchProduct(line.model_number, products);
     const p = match.product;
@@ -93,11 +101,14 @@ export function buildPreview(docType: DocType, lines: ExtractedLine[], products:
     else if (match.how === "normalised") notes.push(`Matched ${line.model_number} → ${p.product_code}`);
     let unit_cost_pack: number | null = null; let cost_source: PreviewRow["cost_source"] = "none";
     if (isInvoice && line.unit_price_excl != null) { unit_cost_pack = line.unit_price_excl; cost_source = "invoice"; }
-    else if (p?.cost_price != null) { unit_cost_pack = Number(p.cost_price); cost_source = "catalogue"; if (!isInvoice || line.unit_price_excl == null) notes.push("No price on document: catalogue cost used"); }
+    else if (p?.cost_price != null) { unit_cost_pack = Number(p.cost_price) / (p && pairSum.has(p.id) ? 2 : 1); cost_source = "catalogue"; if (p && pairSum.has(p.id)) notes.push("Pair price split 50/50 between indoor and outdoor"); if (!isInvoice || line.unit_price_excl == null) notes.push("No price on document: catalogue cost used"); }
     const stock_qty = map ? toStockQty(line.qty, map) : line.qty;
     const cost_per_stock_unit = unit_cost_pack != null && map ? costPerStockUnit(unit_cost_pack, map) : unit_cost_pack;
     const expected = prev?.unit_cost_excl ?? (p?.cost_price != null ? Number(p.cost_price) : null);
-    const price = isInvoice && cost_source === "invoice" ? priceCheck(unit_cost_pack, expected) : { level: "none" as const, text: "" };
+    const isPair = !!p && pairSum.has(p.id);
+    const price = !(isInvoice && cost_source === "invoice") ? { level: "none" as const, text: "" }
+      : isPair ? (pairSum.get(p!.id) == null ? { level: "none" as const, text: "" } : (() => { const f = priceCheck(pairSum.get(p!.id)!, p!.cost_price != null ? Number(p!.cost_price) : expected); return f.level === "none" ? f : { ...f, text: `Pair (indoor + outdoor) ${f.text.replace(/^Invoice /, "")}` }; })())
+      : priceCheck(unit_cost_pack, expected);
     if (!isInvoice && action === "stock") notes.push("Delivery note: stock is added when the invoice is loaded");
     return { stock_key: stockKey(line.model_number) || (line.description ?? "").slice(0, 60).toUpperCase(), line, match, map, action, job_id, unit_cost_pack, cost_source, stock_qty, cost_per_stock_unit,
       adds_stock: isInvoice && (action === "stock" || action === "reserve"), price, notes };

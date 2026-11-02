@@ -47,7 +47,8 @@ describe("buildPreview", () => {
   ];
   it("delivery note: catalogue cost, no stock added, units can be reserved for a job", () => {
     const rows = buildPreview("delivery_note", lines, products, [], "job-test-1");
-    expect(rows[0]).toMatchObject({ action: "reserve", job_id: "job-test-1", cost_source: "catalogue", adds_stock: false, unit_cost_pack: 10434.09 });
+    expect(rows[0]).toMatchObject({ action: "reserve", job_id: "job-test-1", cost_source: "catalogue", adds_stock: false, unit_cost_pack: 10434.09 / 2 });
+    expect(rows[1].unit_cost_pack).toBe(10434.09 / 2);
     expect(rows[0].stock_key).not.toBe(rows[1].stock_key);
     expect(rows[2]).toMatchObject({ action: "stock", stock_qty: 22.6, cost_per_stock_unit: 200, adds_stock: false });
     expect(rows[2].notes.join()).toMatch(/invoice/);
@@ -59,8 +60,13 @@ describe("buildPreview", () => {
     ];
     const rows = buildPreview("supplier_invoice", inv, products, earlier);
     expect(rows[0]).toMatchObject({ action: "reserve", job_id: "job-test-2", cost_source: "invoice", adds_stock: true });
-    expect(rows[0].price.level).toBe("warn");
-    expect(rows[1].price.level).toBe("note");
+    expect(rows[0].price.level).toBe("warn"); // pair 21000 vs 10434.09
+    expect(rows[1].price.level).toBe("warn");
+    expect(rows[0].price.text).toMatch(/^Pair/);
+    const cheap = buildPreview("supplier_invoice", lines.map((l, i) => ({ ...l, unit_price_excl: [5000, 5000, 2260][i] })), products, earlier);
+    expect(cheap.map((r) => r.price.level)).toEqual(["note", "note", "none"]); // 10000 < 10434.09
+    const ok = buildPreview("supplier_invoice", lines.map((l, i) => ({ ...l, unit_price_excl: [5217.05, 5217.04, 2260][i] })), products, earlier);
+    expect(ok[0].price.level).toBe("none");
     expect(rows[2].price.level).toBe("none");
     expect(canConfirm(rows)).toBe(true);
     const payload = toReceivePayload(rows, { 1: "l1", 2: "l2", 3: "l3" });
@@ -89,10 +95,16 @@ describe("materials draw plan", () => {
   it("quote metres, pack conversions, already drawn, reserved units", () => {
     const rows = buildDrawPlan(items, stock, [{ stock_item_id: "s-cu", drawn_qty: 2 }], [{ stock_item_id: "s-unit", qty: 1 }]);
     expect(rows.find((r) => r.key === "q1")).toMatchObject({ quoted: 6, already: 2, suggested: 4, unit: "m" });
-    expect(rows.find((r) => r.key === "q2")).toMatchObject({ suggested: 11.3, unit: "kg" });
+    expect(rows.find((r) => r.key === "q2")).toMatchObject({ suggested: 0, unit: "kg", note: "Enter the kg actually used" });
     expect(rows.find((r) => r.key === "q3")).toMatchObject({ stock_item_id: null });
     expect(rows.find((r) => r.key === "q4")).toMatchObject({ reserved: true, suggested: 0 });
     const pay = toDrawPayload(rows, { q2: 1.4 });
     expect(pay).toEqual([{ stock_item_id: "s-cu", quote_item_id: "q1", qty: 4 }, { stock_item_id: "s-gas", quote_item_id: "q2", qty: 1.4 }]);
+  });
+  it("gas prefills only from quote kg", () => {
+    const g = buildDrawPlan([{ quote_item_id: "g1", product_id: "p-gas", item_name: "R410a top-up 1.5kg", quantity: 1, product: products[3] }], stock);
+    expect(g[0].suggested).toBe(1.5);
+    const kgLbl = buildDrawPlan([{ quote_item_id: "g2", product_id: "p-gas", item_name: "Gas", quantity: 2.2, product: { ...products[3], price_per_unit_label: "kg" } }], stock);
+    expect(kgLbl[0].suggested).toBe(2.2);
   });
 });
