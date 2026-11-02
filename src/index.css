@@ -1270,6 +1270,9 @@ All colors MUST be HSL.
 /* Quote terms page: two columns whenever the document itself is wide enough (PDF capture is always 820px). */
 .fl-terms-page{container-type:inline-size}
 @container (min-width: 600px){.fl-terms-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Invoice terms (Johan 2 Nov): denser type so the full terms take fewer pages. */
+.fl-terms-compact p{font-size:11px;line-height:1.45}
+.fl-terms-compact .space-y-1\.5>:not([hidden])~:not([hidden]){margin-top:0.25rem}
 
 /* Lead map fullscreen: keep Mapbox zoom buttons clear of the header and iPhone notch */
 [data-map-fullscreen] .mapboxgl-ctrl-top-right {
