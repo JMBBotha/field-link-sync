@@ -58,16 +58,24 @@ export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment
             {b.can_edit_due && !closed && editBtn("due", b.due_manual && b.due ? b.due : "")}</div>
           {onRecordPayment && !closed && b.balance > 0.005 && (
             <button type="button" data-testid="final-tile-record-payment" onClick={onRecordPayment}
-              className="mt-1.5 w-full rounded-xl bg-[#1AA7EC] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1590D6]">Record payment</button>)}
+              className="mt-1.5 min-h-9 w-full rounded-xl bg-[#F7941D] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#e08310]">+ Add payment</button>)}
         </div>
       </div>
       {edit && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-          <input type={edit === "install" ? "datetime-local" : "date"} value={val} onChange={(e) => setVal(e.target.value)} aria-label="New date" className="rounded-lg border bg-white px-3 py-1.5" />
-          <button disabled={busy || (edit === "install" && !val)} onClick={() => save()} className="rounded-xl bg-[#1AA7EC] px-3 py-1.5 font-semibold text-white">Save</button>
-          {edit === "due" && b.due_manual && <button disabled={busy} onClick={() => save("")} className="rounded-xl border bg-white px-3 py-1.5">Back to on completion</button>}
-          <button onClick={() => setEdit(null)} className="rounded-xl border bg-white px-3 py-1.5">Cancel</button>
-          <span className="text-xs text-muted-foreground">Change is logged{edit === "due" ? ". Empty = due on completion" : ""}.</span>
+        <div data-testid="balance-edit-row" className="mt-2 space-y-2 rounded-xl border bg-white p-3 text-sm">
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold text-muted-foreground">{edit === "install" ? "New installation date and time" : "New final payment date"}</span>
+            <input type={edit === "install" ? "datetime-local" : "date"} value={val} onChange={(e) => setVal(e.target.value)} aria-label="New date"
+              className="block min-h-11 w-full appearance-none rounded-lg border bg-white px-3 py-2 text-base" />
+            {!val && <span className="mt-1 block text-xs text-muted-foreground">{edit === "due" ? "No date set: due on completion. Tap above to pick one." : "Tap above to pick a date."}</span>}
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <button disabled={busy || (edit === "install" && !val)} onClick={() => save()} className="min-h-10 rounded-xl bg-[#1AA7EC] px-4 py-1.5 font-semibold text-white disabled:opacity-50">Save</button>
+            <button onClick={() => setEdit(null)} className="min-h-10 rounded-xl border bg-white px-4 py-1.5">Cancel</button>
+            {edit === "due" && b.due_manual && <button disabled={busy} onClick={() => save("")} className="min-h-10 rounded-xl border bg-white px-3 py-1.5">Back to on completion</button>}
+            {edit === "due" && onRecordPayment && !closed && b.balance > 0.005 && <button type="button" data-testid="edit-row-add-payment" onClick={() => { setEdit(null); onRecordPayment(); }} className="ml-auto min-h-10 rounded-xl bg-[#F7941D] px-4 py-1.5 font-semibold text-white hover:bg-[#e08310]">+ Add payment</button>}
+          </div>
+          <p className="text-xs text-muted-foreground">Change is logged.</p>
         </div>)}
       {b.reminder_due && !closed && (
         <div data-testid="reminder-alert" className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-[#F5C2C3] bg-[#FDECEC] px-3 py-2 text-sm text-[#8A1F23]">
