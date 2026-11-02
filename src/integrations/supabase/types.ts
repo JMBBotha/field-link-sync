@@ -4715,6 +4715,7 @@ export type Database = {
           discount_type: string | null
           discount_value: number | null
           due_date: string | null
+          due_date_manual: boolean
           duplicated_from: string | null
           equipment_id: string | null
           expected_deposit_date: string | null
@@ -4773,6 +4774,7 @@ export type Database = {
           discount_type?: string | null
           discount_value?: number | null
           due_date?: string | null
+          due_date_manual?: boolean
           duplicated_from?: string | null
           equipment_id?: string | null
           expected_deposit_date?: string | null
@@ -4831,6 +4833,7 @@ export type Database = {
           discount_type?: string | null
           discount_value?: number | null
           due_date?: string | null
+          due_date_manual?: boolean
           duplicated_from?: string | null
           equipment_id?: string | null
           expected_deposit_date?: string | null
@@ -6557,6 +6560,48 @@ export type Database = {
           },
         ]
       }
+      lead_offer_settings: {
+        Row: {
+          company_id: string
+          enabled: boolean
+          enabled_at: string | null
+          escalate_after_min: number
+          escalate_to: string | null
+          first_wave: number
+          first_window_min: number
+          updated_at: string
+          updated_by: string | null
+          widen_by: number
+          widen_every_min: number
+        }
+        Insert: {
+          company_id: string
+          enabled?: boolean
+          enabled_at?: string | null
+          escalate_after_min?: number
+          escalate_to?: string | null
+          first_wave?: number
+          first_window_min?: number
+          updated_at?: string
+          updated_by?: string | null
+          widen_by?: number
+          widen_every_min?: number
+        }
+        Update: {
+          company_id?: string
+          enabled?: boolean
+          enabled_at?: string | null
+          escalate_after_min?: number
+          escalate_to?: string | null
+          first_wave?: number
+          first_window_min?: number
+          updated_at?: string
+          updated_by?: string | null
+          widen_by?: number
+          widen_every_min?: number
+        }
+        Relationships: []
+      }
       lead_reassign_requests: {
         Row: {
           company_id: string
@@ -7304,6 +7349,48 @@ export type Database = {
           transcript?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      next_step_snoozes: {
+        Row: {
+          cleared_at: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          dismissed: boolean
+          entity_id: string
+          entity_type: string
+          id: string
+          reason: string
+          rule: string
+          snoozed_until: string | null
+        }
+        Insert: {
+          cleared_at?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          dismissed?: boolean
+          entity_id: string
+          entity_type: string
+          id?: string
+          reason: string
+          rule: string
+          snoozed_until?: string | null
+        }
+        Update: {
+          cleared_at?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          dismissed?: boolean
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          reason?: string
+          rule?: string
+          snoozed_until?: string | null
         }
         Relationships: []
       }
@@ -9674,6 +9761,108 @@ export type Database = {
           },
         ]
       }
+      push_outbox: {
+        Row: {
+          attempts: number
+          body: string
+          created_at: string
+          id: number
+          last_error: string | null
+          notification_id: string
+          sent_at: string | null
+          title: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          body: string
+          created_at?: string
+          id?: number
+          last_error?: string | null
+          notification_id: string
+          sent_at?: string | null
+          title: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          body?: string
+          created_at?: string
+          id?: number
+          last_error?: string | null
+          notification_id?: string
+          sent_at?: string | null
+          title?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_ok_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_ok_at?: string | null
+          p256dh: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_ok_at?: string | null
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quote_aging_log: {
+        Row: {
+          action: string
+          company_id: string | null
+          created_at: string
+          id: string
+          prev_aging_state: string | null
+          prev_archived_at: string | null
+          quote_id: string
+        }
+        Insert: {
+          action: string
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          prev_aging_state?: string | null
+          prev_archived_at?: string | null
+          quote_id: string
+        }
+        Update: {
+          action?: string
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          prev_aging_state?: string | null
+          prev_archived_at?: string | null
+          quote_id?: string
+        }
+        Relationships: []
+      }
       quote_areas: {
         Row: {
           created_at: string
@@ -10664,6 +10853,8 @@ export type Database = {
           accepted_by: string | null
           accepted_signature: Json | null
           accepted_version_id: string | null
+          aging_at: string | null
+          aging_state: string | null
           archive_reason: string | null
           archived_at: string | null
           archived_by: string | null
@@ -10734,6 +10925,8 @@ export type Database = {
           accepted_by?: string | null
           accepted_signature?: Json | null
           accepted_version_id?: string | null
+          aging_at?: string | null
+          aging_state?: string | null
           archive_reason?: string | null
           archived_at?: string | null
           archived_by?: string | null
@@ -10804,6 +10997,8 @@ export type Database = {
           accepted_by?: string | null
           accepted_signature?: Json | null
           accepted_version_id?: string | null
+          aging_at?: string | null
+          aging_state?: string | null
           archive_reason?: string | null
           archived_at?: string | null
           archived_by?: string | null
@@ -10987,6 +11182,74 @@ export type Database = {
         }
         Relationships: []
       }
+      request_alert_settings: {
+        Row: {
+          company_id: string
+          contact_limit_wmin: number
+          enabled: boolean
+          task_overdue_wdays: number
+          unscheduled_limit_wmin: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          contact_limit_wmin?: number
+          enabled?: boolean
+          task_overdue_wdays?: number
+          unscheduled_limit_wmin?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          contact_limit_wmin?: number
+          enabled?: boolean
+          task_overdue_wdays?: number
+          unscheduled_limit_wmin?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      request_alerts: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          kind: string
+          read_at: string | null
+          recipient_id: string
+          request_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          recipient_id: string
+          request_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          recipient_id?: string
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_alerts_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       request_events: {
         Row: {
           actor_id: string | null
@@ -11057,6 +11320,91 @@ export type Database = {
           type?: Database["public"]["Enums"]["request_type"]
         }
         Relationships: []
+      }
+      request_offer_runs: {
+        Row: {
+          company_id: string
+          escalated_at: string | null
+          request_id: string
+          started_at: string
+          waves: number
+          won_at: string | null
+          won_by: string | null
+        }
+        Insert: {
+          company_id: string
+          escalated_at?: string | null
+          request_id: string
+          started_at: string
+          waves?: number
+          won_at?: string | null
+          won_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          escalated_at?: string | null
+          request_id?: string
+          started_at?: string
+          waves?: number
+          won_at?: string | null
+          won_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_offer_runs_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      request_offers: {
+        Row: {
+          company_id: string
+          distance_km: number | null
+          id: string
+          offered_at: string
+          rank: number
+          rep_id: string
+          request_id: string
+          responded_at: string | null
+          status: string
+          wave: number
+        }
+        Insert: {
+          company_id: string
+          distance_km?: number | null
+          id?: string
+          offered_at: string
+          rank: number
+          rep_id: string
+          request_id: string
+          responded_at?: string | null
+          status?: string
+          wave: number
+        }
+        Update: {
+          company_id?: string
+          distance_km?: number | null
+          id?: string
+          offered_at?: string
+          rank?: number
+          rep_id?: string
+          request_id?: string
+          responded_at?: string | null
+          status?: string
+          wave?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_offers_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       requests: {
         Row: {
@@ -11144,6 +11492,33 @@ export type Database = {
           task_due_at?: string | null
           type?: Database["public"]["Enums"]["request_type"] | null
           type_confidence?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sales_automation_settings: {
+        Row: {
+          archive_after_days: number
+          cold_after_days: number
+          company_id: string
+          last_aging_run: string | null
+          quote_aging_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          archive_after_days?: number
+          cold_after_days?: number
+          company_id: string
+          last_aging_run?: string | null
+          quote_aging_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          archive_after_days?: number
+          cold_after_days?: number
+          company_id?: string
+          last_aging_run?: string | null
+          quote_aging_enabled?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -14930,6 +15305,8 @@ export type Database = {
         Returns: string
       }
       _inv_due_eff: { Args: { p_invoice: string }; Returns: string }
+      _inv_install_job: { Args: { p_invoice: string }; Returns: string }
+      _inv_is_balance: { Args: { p_invoice: string }; Returns: boolean }
       _inv_job_done: { Args: { p_invoice: string }; Returns: string }
       _inv_message: {
         Args: {
@@ -15145,6 +15522,8 @@ export type Database = {
           accepted_by: string | null
           accepted_signature: Json | null
           accepted_version_id: string | null
+          aging_at: string | null
+          aging_state: string | null
           archive_reason: string | null
           archived_at: string | null
           archived_by: string | null
@@ -15220,6 +15599,13 @@ export type Database = {
       _quote_delete_facts: {
         Args: { p_lead: string; p_quote: string }
         Returns: Json
+      }
+      _quote_group_can: {
+        Args: {
+          p_uid: string
+          q: Database["public"]["Tables"]["quotes"]["Row"]
+        }
+        Returns: boolean
       }
       _quote_is_visit: { Args: { p_quote: string }; Returns: boolean }
       _quote_snapshot: { Args: { p_quote: string }; Returns: Json }
@@ -15452,6 +15838,7 @@ export type Database = {
         Args: { p_accepted_by: string; p_signature?: Json; p_token: string }
         Returns: boolean
       }
+      accept_request_offer: { Args: { p_offer: string }; Returns: string }
       accounts_bot_company: { Args: never; Returns: string }
       acknowledge_lead: { Args: { p_lead: string }; Returns: string }
       activate_pdf_book_gate: {
@@ -15571,7 +15958,15 @@ export type Database = {
         Args: { p_quote_id: string; p_reason: string }
         Returns: Json
       }
+      admin_mark_job_completed: {
+        Args: { p_at: string; p_job: string; p_note?: string }
+        Returns: Json
+      }
       admin_pending_proposal_count: { Args: never; Returns: number }
+      admin_reopen_job: {
+        Args: { p_job: string; p_note?: string; p_status?: string }
+        Returns: Json
+      }
       admin_set_bot_disabled: {
         Args: { p_disabled: boolean; p_user_id: string }
         Returns: boolean
@@ -15663,10 +16058,12 @@ export type Database = {
           start_time: string
         }[]
       }
+      booking_edit_perms: { Args: { p_lead: string }; Returns: Json }
       booking_end_time: {
         Args: { p_dur: string; p_start: string }
         Returns: string
       }
+      booking_visits: { Args: { p_lead: string }; Returns: Json }
       bot_action_kind: { Args: { p_type: string }; Returns: string }
       broadcast_lead_to_agents: {
         Args: { p_lead_id: string; p_radius_km?: number }
@@ -16045,6 +16442,17 @@ export type Database = {
           staff_id: string
         }[]
       }
+      fl_alert_deliver: {
+        Args: {
+          p_body: string
+          p_meta: Json
+          p_related: string
+          p_title: string
+          p_type: string
+          p_user: string
+        }
+        Returns: string
+      }
       fl_area_unit: {
         Args: { _area: string; _quote: string }
         Returns: Record<string, unknown>
@@ -16064,6 +16472,7 @@ export type Database = {
         }
         Returns: Json
       }
+      fl_company_admin_ids: { Args: { p_company: string }; Returns: string[] }
       fl_company_unclaimed: { Args: { _co: string }; Returns: boolean }
       fl_create_job_variation: {
         Args: {
@@ -16109,7 +16518,19 @@ export type Database = {
         Args: { _job: string; _uid: string }
         Returns: boolean
       }
+      fl_job_admin_ok: {
+        Args: { _company: string; _uid: string }
+        Returns: boolean
+      }
       fl_job_needs_site_check: { Args: { _job: string }; Returns: boolean }
+      fl_km: {
+        Args: { lat1: number; lat2: number; lng1: number; lng2: number }
+        Returns: number
+      }
+      fl_lead_uses_request_offers: {
+        Args: { p_lead_id: string }
+        Returns: boolean
+      }
       fl_lock_quote: {
         Args: { _actor: string; _quote: string; _reason: string }
         Returns: undefined
@@ -16119,9 +16540,24 @@ export type Database = {
         Args: { _body: string; _job: string; _title: string; _type: string }
         Returns: undefined
       }
+      fl_offer_tick: { Args: { p_now?: string }; Returns: number }
+      fl_offer_waves_due: {
+        Args: { p_elapsed_min: number; p_every: number; p_first_window: number }
+        Returns: number
+      }
       fl_pipe_rate_code: {
         Args: { _area: string; _quote: string }
         Returns: string
+      }
+      fl_push_area: { Args: { p: string }; Returns: string }
+      fl_push_secret: { Args: { p_name: string }; Returns: string }
+      fl_push_text: {
+        Args: { p_request: string; p_type: string }
+        Returns: {
+          body: string
+          title: string
+          url: string
+        }[]
       }
       fl_quote_admin: {
         Args: { _company: string; _uid: string }
@@ -16138,6 +16574,11 @@ export type Database = {
         Args: { _company: string; _customer: string; _uid: string }
         Returns: boolean
       }
+      fl_request_alert_recipients: {
+        Args: { r: Database["public"]["Tables"]["requests"]["Row"] }
+        Returns: string[]
+      }
+      fl_request_alerts_tick: { Args: { p_now?: string }; Returns: number }
       fl_request_contacted: {
         Args: { r: Database["public"]["Tables"]["requests"]["Row"] }
         Returns: boolean
@@ -16154,6 +16595,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      fl_rough_area: { Args: { p: string }; Returns: string }
       fl_sam_price_extras: { Args: { p_key: string }; Returns: Json }
       fl_shares_company: { Args: { _a: string; _b: string }; Returns: boolean }
       fl_shop_finalize: {
@@ -16524,6 +16966,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_customer_invoices_public: { Args: { p_token: string }; Returns: Json }
       get_customer_portal_data: { Args: { p_token: string }; Returns: Json }
       get_deposit_invoice_by_quote_token: {
         Args: { p_token: string }
@@ -16742,6 +17185,10 @@ export type Database = {
       get_tech_earnings: { Args: { p_tech_id?: string }; Returns: Json }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       gettransactionid: { Args: never; Returns: unknown }
+      group_quote_option: {
+        Args: { p_other: string; p_quote: string }
+        Returns: string
+      }
       hand_to_technician: {
         Args: {
           p_date: string
@@ -16778,6 +17225,7 @@ export type Database = {
         Returns: number
       }
       invoice_amount_paid: { Args: { p_invoice_id: string }; Returns: number }
+      invoice_balance_info: { Args: { p_invoice: string }; Returns: Json }
       invoice_due_summary: {
         Args: never
         Returns: {
@@ -16792,8 +17240,10 @@ export type Database = {
           followup_status: string
           followup_step: string
           followup_subject: string
+          install_at: string
           invoice_id: string
           invoice_number: string
+          on_completion: boolean
           rep_id: string
           step: string
           terms_basis: string
@@ -16905,6 +17355,7 @@ export type Database = {
         }[]
       }
       job_tech_location: { Args: { p_job_id: string }; Returns: Json }
+      job_visits: { Args: { p_job: string }; Returns: Json }
       job_watch_cfg: {
         Args: { p_company_id: string }
         Returns: {
@@ -17074,6 +17525,8 @@ export type Database = {
         }[]
       }
       my_install_offers: { Args: never; Returns: Json }
+      my_job_permissions: { Args: { p_job: string }; Returns: Json }
+      my_linked_admin: { Args: never; Returns: string }
       my_location_share_jobs: { Args: never; Returns: Json }
       my_presence_targets: {
         Args: never
@@ -17087,6 +17540,20 @@ export type Database = {
           title: string
           window_end: string
           window_start: string
+        }[]
+      }
+      my_request_offers: {
+        Args: never
+        Returns: {
+          address: string
+          area: string
+          customer_name: string
+          job_type: string
+          offer_id: string
+          offered_at: string
+          phone: string
+          request_id: string
+          state: string
         }[]
       }
       next_invoice_number: { Args: { p_profile: string }; Returns: string }
@@ -17135,6 +17602,7 @@ export type Database = {
       p6_area_ok: { Args: { _admin: boolean; _area: string }; Returns: boolean }
       parent_overdue: { Args: { p_limit?: number }; Returns: Json }
       parent_overview: { Args: never; Returns: Json }
+      pass_request_offer: { Args: { p_offer: string }; Returns: string }
       past_quote_analytics: {
         Args: { p_job_type?: string }
         Returns: {
@@ -17340,6 +17808,19 @@ export type Database = {
       qcr_pricing: { Args: { p_quote_id: string }; Returns: Json }
       qcr_revision_totals: { Args: { p_lines: Json; pr: Json }; Returns: Json }
       qcr_style: { Args: { p: string }; Returns: string }
+      quote_aging_candidates: {
+        Args: { p_company?: string }
+        Returns: {
+          action: string
+          company_id: string
+          days_since_sent: number
+          quote_id: string
+          quote_number: string
+          sent_at: string
+        }[]
+      }
+      quote_aging_sweep: { Args: { p_force?: boolean }; Returns: number }
+      quote_aging_undo: { Args: { p_quote: string }; Returns: undefined }
       quote_archive: {
         Args: { p_quote: string; p_reason: string }
         Returns: Json
@@ -17397,6 +17878,17 @@ export type Database = {
           tier: number
           work_end: string
           work_start: string
+        }[]
+      }
+      rank_reps_for_request: {
+        Args: { p_request: string }
+        Returns: {
+          available: boolean
+          distance_km: number
+          rank: number
+          rep_id: string
+          skill_match: boolean
+          workload: number
         }[]
       }
       reap_stuck_outbox: { Args: never; Returns: number }
@@ -17532,6 +18024,7 @@ export type Database = {
         Args: { p_action: string; p_lead: string; p_target: string }
         Returns: Json
       }
+      resolve_public_link: { Args: { p_id: string }; Returns: string }
       respond_job_variation: {
         Args: { p_approve: boolean; p_name?: string; p_token: string }
         Returns: Json
@@ -17571,6 +18064,23 @@ export type Database = {
         Returns: Json
       }
       sales_my_jobs: { Args: { p_limit?: number }; Returns: Json }
+      sales_next_steps: {
+        Args: { p_rep?: string }
+        Returns: {
+          amount: number
+          detail: string
+          entity_id: string
+          entity_type: string
+          link: string
+          owner_id: string
+          prio: number
+          rule: string
+          since: string
+          snoozable: boolean
+          title: string
+        }[]
+      }
+      sales_scope_own: { Args: { p_uid: string }; Returns: boolean }
       save_agreement_template: {
         Args: {
           _meta: Json
@@ -17734,6 +18244,35 @@ export type Database = {
         Args: { p_invoice: string; p_mode?: string; p_to?: string }
         Returns: Json
       }
+      send_invoice_reminder: {
+        Args: {
+          p_html?: string
+          p_invoice: string
+          p_message?: string
+          p_mode?: string
+          p_subject?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
+      send_payment_reminder: {
+        Args: {
+          p_followup: string
+          p_html?: string
+          p_message?: string
+          p_mode?: string
+          p_subject?: string
+        }
+        Returns: Json
+      }
+      set_booking_pin: {
+        Args: { p_lat: number; p_lead: string; p_lng: number }
+        Returns: Json
+      }
+      set_booking_visits: {
+        Args: { p_lead: string; p_visits: Json }
+        Returns: Json
+      }
       set_commission_paid: {
         Args: { p_paid?: boolean; p_paid_at?: string; p_snapshot_id: string }
         Returns: Json
@@ -17781,6 +18320,14 @@ export type Database = {
       set_invoice_payment_terms: {
         Args: { p_basis: string; p_days: number; p_invoice: string }
         Returns: undefined
+      }
+      set_job_install_date: {
+        Args: { p_at: string; p_job: string; p_reason?: string }
+        Returns: Json
+      }
+      set_job_visits: {
+        Args: { p_job: string; p_note?: string; p_visits: Json }
+        Returns: Json
       }
       set_my_availability: {
         Args: { p_manual?: boolean; p_status: string }
@@ -17871,6 +18418,17 @@ export type Database = {
         }[]
       }
       sjd_unlink: { Args: { p_link_id: string }; Returns: undefined }
+      snooze_next_step: {
+        Args: {
+          p_dismiss: boolean
+          p_entity_id: string
+          p_entity_type: string
+          p_reason: string
+          p_rule: string
+          p_until: string
+        }
+        Returns: string
+      }
       ss_can_write: { Args: { _survey: string }; Returns: boolean }
       ss_folder_ok: { Args: { _name: string }; Returns: boolean }
       ss_folder_survey: { Args: { _name: string }; Returns: string }
@@ -18585,6 +19143,7 @@ export type Database = {
         Returns: string
       }
       unconvert_lead: { Args: { p_lead_id: string }; Returns: undefined }
+      ungroup_quote_option: { Args: { p_quote: string }; Returns: boolean }
       unlink_quote_option: { Args: { p_quote_id: string }; Returns: boolean }
       unlock_quote: {
         Args: { p_quote_id: string; p_reason: string }
@@ -18592,8 +19151,29 @@ export type Database = {
       }
       unlockrows: { Args: { "": string }; Returns: number }
       unmatch_bank_line: { Args: { p_line: string }; Returns: undefined }
+      update_booking_details: {
+        Args: {
+          p_address?: string
+          p_date?: string
+          p_lead: string
+          p_notes?: string
+          p_service_type?: string
+          p_time?: string
+        }
+        Returns: Json
+      }
       update_entity: {
         Args: { p_entity_id: string; p_entity_type: string; p_patch: Json }
+        Returns: Json
+      }
+      update_job_details: {
+        Args: {
+          p_job: string
+          p_note?: string
+          p_scheduled_for?: string
+          p_tech?: string
+          p_units?: Json
+        }
         Returns: Json
       }
       update_overdue_invoices: { Args: never; Returns: undefined }
