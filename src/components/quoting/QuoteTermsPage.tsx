@@ -44,6 +44,12 @@ export interface QuoteTermsPageProps {
   branchCode?: string;
   accountType?: string;
   quoteNumber?: string;
+  /** Label before the number in the heading ("Quote" by default; invoices pass "Invoice"). */
+  docLabel?: string;
+  /** Invoices (Johan 2 Nov): the terms flow on under the closing cards and may span pages, so lay the two
+   *  columns out row by row (01 02 / 03 04 ...). Each row is one keep block, so a page break always lands
+   *  between rows and never slices a line in the other column; the heading stays with the first row. */
+  rowFlow?: boolean;
   /** Phone/online quote: adds section 12. */
   remoteQuote?: boolean;
   /** Issued before the 2.1 payment change: keep the old wording. */
@@ -52,13 +58,11 @@ export interface QuoteTermsPageProps {
   remotePaidInFull?: boolean;
 }
 
-const TermsSections = ({ sections, startIndex = 0 }: { sections: TermsSection[]; startIndex?: number }) => (
-  <div className="space-y-4">
-    {sections.map((s, i) => (
-      <div key={i} data-pdf-keep className="break-inside-avoid">
+const TermsSectionBlock = ({ s, index }: { s: TermsSection; index: number }) => (
+      <div data-pdf-keep className="break-inside-avoid">
         <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-xs font-bold text-white">
-            {String(startIndex + i + 1).padStart(2, "0")}
+            {String(index + 1).padStart(2, "0")}
           </span>
           <h4 className="text-xs font-bold uppercase tracking-wide text-[#1AA7EC]">{s.heading || "Terms"}</h4>
         </div>
@@ -70,7 +74,11 @@ const TermsSections = ({ sections, startIndex = 0 }: { sections: TermsSection[];
           ))}
         </div>
       </div>
-    ))}
+);
+
+const TermsSections = ({ sections, startIndex = 0 }: { sections: TermsSection[]; startIndex?: number }) => (
+  <div className="space-y-4">
+    {sections.map((s, i) => <TermsSectionBlock key={i} s={s} index={startIndex + i} />)}
   </div>
 );
 
@@ -85,11 +93,37 @@ export default function QuoteTermsPage(p: QuoteTermsPageProps) {
   const half = Math.ceil(sections.length / 2);
   const left = sections.slice(0, half);
   const right = sections.slice(half);
+  const heading = (
+    <div className="flex items-baseline gap-3 border-b-2 border-[#1AA7EC] pb-2">
+      <span className="border-l-4 border-[#F7941D] pl-2 text-base font-bold text-[#1B3A5C]">Terms and conditions</span>
+      {p.quoteNumber && <span className="text-xs text-ink-muted">{p.docLabel || "Quote"} {p.quoteNumber}</span>}
+    </div>
+  );
+  if (p.rowFlow) {
+    const rows: TermsSection[][] = [];
+    for (let i = 0; i < sections.length; i += 2) rows.push(sections.slice(i, i + 2));
+    const row = (r: TermsSection[], ri: number) => (
+      <div key={ri} data-pdf-keep data-testid="terms-row" className="fl-terms-grid grid grid-cols-1 gap-x-8 gap-y-4 break-inside-avoid">
+        {r.map((s, j) => <TermsSectionBlock key={j} s={s} index={ri * 2 + j} />)}
+      </div>
+    );
+    // pb-6: the terms are the last thing in the capture, and html2canvas draws text a few px lower than the
+    // DOM box, so without room below the final line was clipped in half.
+    return (
+      <div data-pdf-terms-page data-paper data-testid="quote-terms-page" className="fl-terms-page fl-terms-compact mt-4 pt-2 pb-6">
+        <div data-pdf-keep className="break-inside-avoid">
+          {heading}
+          {rows.length > 0 && <div className="mt-4">{row(rows[0], 0)}</div>}
+        </div>
+        {rows.length > 1 && <div className="mt-4 space-y-4">{rows.slice(1).map((r, i) => row(r, i + 1))}</div>}
+      </div>
+    );
+  }
   return (
     <div data-pdf-terms-page data-paper data-testid="quote-terms-page" className="fl-terms-page mt-4 pt-2">
       <div className="flex items-baseline gap-3 border-b-2 border-[#1AA7EC] pb-2">
         <span className="border-l-4 border-[#F7941D] pl-2 text-base font-bold text-[#1B3A5C]">Terms and conditions</span>
-        {p.quoteNumber && <span className="text-xs text-ink-muted">Quote {p.quoteNumber}</span>}
+        {p.quoteNumber && <span className="text-xs text-ink-muted">{p.docLabel || "Quote"} {p.quoteNumber}</span>}
       </div>
       {/* Two columns by the page's own width (container query), not the screen: the PDF capture root is
           always 820px, so a phone-made PDF now gets the same two-column terms as a desktop one (Q-2026-0047, 29 Oct). */}
