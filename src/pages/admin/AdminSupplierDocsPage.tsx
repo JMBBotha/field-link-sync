@@ -8,6 +8,8 @@ import { sb, DOC_SELECT } from "@/components/supplierDocs/api";
 import SupplierDocCard from "@/components/supplierDocs/SupplierDocCard";
 import AddSupplierDocDialog from "@/components/supplierDocs/AddSupplierDocDialog";
 import BotLoginCard from "@/components/supplierDocs/BotLoginCard";
+import ReceiveSupplierDocDialog from "@/components/stock/ReceiveSupplierDocDialog";
+import { PackagePlus } from "lucide-react";
 
 /** Office-only list: warranty search by model, serial, supplier, doc/PO number or client. */
 export default function AdminSupplierDocsPage() {
@@ -15,9 +17,15 @@ export default function AdminSupplierDocsPage() {
   const tab = "all";
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [recv, setRecv] = useState(false);
   const { data: companyId } = useQuery({
     queryKey: ["my-company-id", user?.id], enabled: !!user?.id,
     queryFn: async () => (await sb.rpc("caller_company_id")).data as string | null,
+  });
+  // Receiving stock is admin only; dispatch can still view documents. Missing RPC (migration not applied) = hidden.
+  const { data: canReceive = false } = useQuery({
+    queryKey: ["cf-can-receive", companyId], enabled: !!companyId,
+    queryFn: async () => { const { data, error } = await sb.rpc("cf_can_receive", { p_company: companyId }); return !error && data === true; },
   });
   const { data: docs = [], refetch, isLoading } = useQuery({
     queryKey: ["supplier-docs-page", tab, q], enabled: !!companyId,
@@ -34,7 +42,10 @@ export default function AdminSupplierDocsPage() {
     <div className="max-w-3xl mx-auto p-4 space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-semibold flex items-center gap-2"><Lock className="h-5 w-5" /> Supplier documents</h1>
-        {companyId && <Button size="sm" onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />Add</Button>}
+        <div className="flex gap-2">
+          {companyId && canReceive && <Button size="sm" variant="outline" onClick={() => setRecv(true)} data-testid="receive-stock"><PackagePlus className="h-4 w-4 mr-1" />Receive stock</Button>}
+          {companyId && <Button size="sm" onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />Add</Button>}
+        </div>
       </div>
       <p className="text-xs text-muted-foreground">Delivery notes, supplier invoices and POs. Private to admin and dispatch.</p>
       <BotLoginCard />
@@ -43,6 +54,7 @@ export default function AdminSupplierDocsPage() {
         : docs.length ? <div className="space-y-2">{docs.map((d: any) => <SupplierDocCard key={d.id} doc={d} onChanged={() => refetch()} />)}</div>
         : <p className="text-sm text-muted-foreground">No documents found.</p>}
       {companyId && <AddSupplierDocDialog open={open} onOpenChange={setOpen} companyId={companyId} onSaved={() => refetch()} />}
+      {companyId && canReceive && <ReceiveSupplierDocDialog open={recv} onOpenChange={setRecv} companyId={companyId} onSaved={() => refetch()} />}
     </div>
   );
 }
