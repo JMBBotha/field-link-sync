@@ -143,25 +143,25 @@ export default function V8RoleHome({ role, hideRequests }: { role: V8Role; hideR
           ))}
         </div>
       </div>
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {!own && (
-          <div className="rounded-2xl border bg-card p-3">
-            <div className="mb-1 flex items-center justify-between"><span className="text-sm font-bold">New leads · reply within 5 min</span>
-              <button className="text-xs font-semibold text-[#1590d6]" onClick={() => navigate("/admin/dispatch")}>Inbox ({inboxCount}) →</button></div>
+          <div className="min-w-0 rounded-2xl border bg-card p-3" data-testid="v8-leads">
+            <div className="mb-1 flex items-center justify-between gap-2"><span className="min-w-0 truncate text-sm font-bold">New leads · reply within 5 min</span>
+              <button className="shrink-0 whitespace-nowrap text-xs font-semibold text-[#1590d6]" onClick={() => navigate("/admin/dispatch")}>Inbox ({inboxCount}) →</button></div>
             {(inbox as any[]).slice(0, 3).map((l) => (
               <div key={l.id} className="flex items-center gap-2 border-t py-2 text-sm first:border-t-0">
                 <span className="min-w-0 flex-1 truncate font-semibold">{l.customer_name || "New lead"}<span className="ml-2 font-normal text-muted-foreground">{l.source || ""}</span></span>
-                <span className="rounded-full bg-muted px-2 text-xs tabular-nums">{ago(l.created_at)}</span>
+                <span className="shrink-0 rounded-full bg-muted px-2 text-xs tabular-nums">{ago(l.created_at)}</span>
               </div>))}
             {inboxCount === 0 && <div className="py-2 text-sm text-muted-foreground">No new leads waiting.</div>}
           </div>
         )}
-        <div data-testid="v8-needs" className="rounded-2xl border bg-card p-3">
-          <div className="mb-1 flex items-center justify-between"><span className="text-sm font-bold">Then, in order</span></div>
+        <div data-testid="v8-needs" className="min-w-0 rounded-2xl border bg-card p-3">
+          <div className="mb-1 flex items-center justify-between"><span className="min-w-0 truncate text-sm font-bold">Then, in order</span></div>
           {s.needs.slice(0, 3).map((n) => (
             <div key={n.id + n.btn} className="flex min-h-[56px] items-center gap-2 border-t py-2 text-sm first:border-t-0">
               <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{n.title}</span><span className="block truncate text-xs text-muted-foreground">{n.tag === "I" && out.data?.byQuote?.[n.id] != null ? `Invoiced · ${fmtRandShort(out.data.byQuote[n.id])} still owed` : n.sub}</span></span>
-              <button type="button" className="fl-btn-secondary text-[14px]" onClick={() => navigate(n.to)}>{n.btn}</button>
+              <button type="button" className="fl-btn-secondary shrink-0 whitespace-nowrap text-[14px]" onClick={() => navigate(n.to)}>{n.btn}</button>
             </div>))}
           {s.needs.length === 0 && <div className="py-2 text-sm text-muted-foreground">All clear.</div>}
         </div>
