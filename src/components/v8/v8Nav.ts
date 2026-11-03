@@ -51,7 +51,7 @@ export function v8Me(role: V8Role): V8Link[] {
 
 export interface V8NavOpts { cashHealth?: boolean; manager?: boolean }
 /** Admin-only routes (RequireRole ["admin"] / owner): hidden from managers (dispatchers). Route guards stay the security. */
-const ADMIN_ONLY = ["/admin/supplier-bills", "/admin/cashflow", "/admin/cash-health", "/admin/money", "/admin/team", "/admin/areas", "/field/earnings", "/admin/notifications", "/admin/settings", "/admin/oss-extras"];
+const ADMIN_ONLY = ["/admin/supplier-bills", "/admin/cashflow", "/admin/cash-health", "/admin/money", "/admin/team", "/admin/areas", "/field/earnings", "/admin/notifications", "/admin/settings", "/admin/oss-extras", "/admin/tools"];
 
 /** Everything else, so every page stays one click away. Admin/owner: 4-5 collapsible groups. */
 export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
@@ -64,6 +64,7 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
     { title: "Work", links: [
       { path: "/admin/my-jobs", label: "Job offers", icon: "briefcase", match: ["/field/my-jobs"] },
       { path: "/field/all", label: "Full field view", icon: "home" },
+      { path: "/field/my-tools", label: "My tools", icon: "box" },
     ] },
     me,
   ];
@@ -104,6 +105,7 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
       { path: "/admin/suppliers", label: "Suppliers", icon: "building" },
       { path: "/admin/specials", label: "Specials", icon: "tag" },
       { path: "/admin/oss-extras", label: "Extras & consumables", icon: "box", match: ["/admin/consumables"] },
+      { path: "/admin/tools", label: "Company tools", icon: "box" },
       { path: "/admin/pdf-documents", label: "Documents", icon: "file", match: ["/admin/brochures", "/admin/unit-content"] },
     ] },
     { title: "Team & settings", links: [
