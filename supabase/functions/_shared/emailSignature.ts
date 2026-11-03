@@ -87,15 +87,15 @@ export function renderSignatureHtml(person?: SignaturePerson | null, imageBase: 
   if (webVat.length) rows.push(line(webVat.join(" &nbsp;|&nbsp; ")));
   if (co.address) rows.push(line(esc(co.address)));
   const logoCell = co.logoUrl
-    ? `<img src="${esc(co.logoUrl)}" width="140" alt="${esc(co.brand)}" style="display:block;border:0;width:140px;max-width:140px;height:auto">`
+    ? `<img src="${esc(co.logoUrl)}" width="224" alt="${esc(co.brand)}" style="display:block;border:0;max-width:224px;height:auto">`
     : isDesignedCompany(co)
-      ? `<img src="${imageBase}/logo-block-shadow.png" width="140" alt="${esc(co.brand)}" style="display:block;border:0;width:140px;height:auto">`
-      : `<div style="font-size:20px;font-weight:800;${C};max-width:140px">${esc(co.brand)}</div>`;
-  return `<table cellpadding="0" cellspacing="0" role="presentation" data-email-signature width="544" style="width:544px;max-width:544px;font-family:Arial,Helvetica,sans-serif;background:#ffffff;padding:18px 0"><tr>`
-    + `<td width="140" valign="middle" style="width:140px;padding-right:8px;border-right:3px solid #1aa7ec;vertical-align:middle">${logoCell}</td>`
-    + `<td valign="middle" nowrap style="padding-left:8px;line-height:1.5;white-space:nowrap;vertical-align:middle">${rows.join("")}</td>`
-    // Fits a 544px body: logo 140 + original text lines (no wrapping) + unit image 76px (source 499x325), right of the text, vertically centred. Always an absolute https URL so it loads in every mail app.
-    + `<td width="82" valign="middle" style="width:82px;padding-left:6px;vertical-align:middle"><img src="${/^https:\/\//.test(imageBase) ? imageBase : SIGNATURE_IMAGE_BASE}/units-pair5.png" width="76" height="50" alt="Air conditioners" style="display:block;border:0;width:76px;height:50px;max-width:none"></td>`
+      ? `<img src="${imageBase}/logo-block-shadow.png" width="224" alt="${esc(co.brand)}" style="display:block;border:0">`
+      : `<div style="font-size:20px;font-weight:800;${C};max-width:224px">${esc(co.brand)}</div>`;
+  return `<table cellpadding="0" cellspacing="0" role="presentation" data-email-signature style="font-family:Arial,Helvetica,sans-serif;background:#ffffff;padding:18px 0"><tr>`
+    + `<td width="224" valign="middle" style="width:224px;padding-right:22px;border-right:3px solid #1aa7ec;vertical-align:middle">${logoCell}</td>`
+    + `<td valign="middle" nowrap style="padding-left:22px;line-height:1.5;white-space:nowrap;vertical-align:middle">${rows.join("")}</td>`
+    // Unit image: 180px (source 499x325), right of the text, vertically centred. Always an absolute https URL so it loads in every mail app.
+    + `<td width="198" valign="middle" style="width:198px;padding-left:18px;vertical-align:middle"><img src="${/^https:\/\//.test(imageBase) ? imageBase : SIGNATURE_IMAGE_BASE}/units-pair5.png" width="180" height="117" alt="Air conditioners" style="display:block;border:0;width:180px;height:117px;max-width:none"></td>`
     + `</tr></table>`;
 }
 
