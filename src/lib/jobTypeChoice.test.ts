@@ -22,7 +22,7 @@ describe("job type choice", () => {
   it("call-out line only on service bookings", () => {
     expect(bookingSms({ kind: "service", day: "Thu 5 Nov", time: "10:00" })).toContain("R680 excl. VAT");
     expect(bookingSms({ kind: "installation", day: "Thu 5 Nov" })).not.toContain("R680");
-    expect(bookingEmail({ kind: "service", day: "Thu 5 Nov" }).html).toContain("never deducted");
+    expect(bookingEmail({ kind: "service", day: "Thu 5 Nov" }).html).toContain("R680 excl. VAT");
     expect(bookingEmail({ kind: "installation", day: "Thu 5 Nov" }).html).not.toContain("R680");
     expect(bookingSms({ kind: "service", day: "x" })).not.toMatch(/0800 232 665/);
   });
@@ -46,7 +46,7 @@ describe("14:45 release additions", () => {
   });
   it("WhatsApp template has the call-out line for service bookings", () => {
     const wa = fs.readFileSync("supabase/functions/_shared/appointmentConfirmation.ts", "utf8");
-    expect(wa).toContain("R680 excl. VAT call-out");
+    expect(wa).toContain("Call-out fee: R680 excl. VAT");
     expect(wa).toContain("isCallOutService(opts.serviceType)");
   });
 });

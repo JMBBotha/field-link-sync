@@ -88,7 +88,8 @@ export function isPlaceholderAddress(addr?: string | null): boolean {
   return !addr || /^address (pending|to be confirmed)/i.test(String(addr).trim());
 }
 
-export const CALL_OUT_LINE = "R680 excl. VAT call-out per technician visit, charged separately, never deducted from the repair or any quote.";
+/** Client wording only (Johan 14:54). The full call-out rule stays in admin notes. */
+export const CALL_OUT_LINE = "Call-out fee: R680 excl. VAT";
 /** Service / repair / maintenance bookings carry the call-out line; installs and sales site visits do not. */
 export function isCallOutService(t?: string | null): boolean {
   const s = String(t || "").toLowerCase();
