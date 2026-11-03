@@ -25,6 +25,8 @@ import JobVisitsCard from "@/components/jobs/JobVisits";
 import JobDaysPanel, { useJobDays } from "@/components/field/JobDaysPanel";
 import JobCompletionSheet from "@/components/jobs/JobCompletionSheet";
 import { lastOpenCheckIn, type JobDays } from "@/lib/jobDays";
+import TechJobTypePanel from "@/components/field/TechJobTypePanel";
+import { techJobTypeLabel } from "@/lib/jobTypeChoice";
 
 export default function FieldJobSheetPage() {
   const { id = "" } = useParams();
@@ -98,7 +100,7 @@ export default function FieldJobSheetPage() {
           <FrontPhoto survey={pack.data} className="aspect-[16/9] rounded-none" />
           <CardContent className="space-y-2 p-4">
             <h2 className="text-lg font-semibold">{j.title || "Job"}</h2>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">{[j.job_type, j.status].filter(Boolean).join(" · ")}</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{[techJobTypeLabel(j.job_type), j.status].filter(Boolean).join(" · ")}</p>
             {j.scheduled_for && (
               <p className="flex items-center gap-2 text-sm"><CalendarDays className="h-4 w-4" />
                 {new Date(j.scheduled_for).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</p>
@@ -141,6 +143,8 @@ export default function FieldJobSheetPage() {
           </CardContent>
         </Card>
       )}
+
+      {j && id && !["completed", "cancelled"].includes(j.status) && <TechJobTypePanel jobId={id} jobType={j.job_type ?? null} leadId={j.lead_id ?? null} />}
 
       {/* Read-only: the tech sees every visit and its hours */}
       {j?.lead_id && id && <JobVisitsCard jobId={id} />}
