@@ -1,10 +1,10 @@
-// Dry-run of 20261103120000_company_tools.sql (+ rollback) on in-memory Postgres (PGlite) with stub schema and fake data.
+// Dry-run of 20261103130000_company_tools.sql (+ rollback) on in-memory Postgres (PGlite) with stub schema and fake data.
 // node supabase/tests/company_tools/run.mjs   (needs @electric-sql/pglite). Exits 1 on any failed check.
 import { PGlite } from "@electric-sql/pglite"; import fs from "fs"; import path from "path"; import { fileURLToPath } from "url";
 const here = path.dirname(fileURLToPath(import.meta.url)); const mig = path.join(here, "../../migrations");
 const db = new PGlite(); let fail = 0;
 await db.exec(fs.readFileSync(path.join(here, "stub.sql"), "utf8"));
-await db.exec(fs.readFileSync(path.join(mig, "20261103120000_company_tools.sql"), "utf8"));
+await db.exec(fs.readFileSync(path.join(mig, "20261103130000_company_tools.sql"), "utf8"));
 const A = "aaaaaaaa-0000-0000-0000-000000000001", OWN = "00000000-0000-0000-0000-00000000000a", ADM = "00000000-0000-0000-0000-00000000000d", TECH = "00000000-0000-0000-0000-00000000000e", XADM = "00000000-0000-0000-0000-00000000000f";
 const as = (u) => db.exec(`DELETE FROM auth.me; INSERT INTO auth.me VALUES (${u ? `'${u}'` : "NULL"})`);
 const q = async (s, p) => (await db.query(s, p)).rows;
@@ -49,6 +49,6 @@ ok((await asRole(XADM, "SELECT * FROM tools")).length === 0, "RLS: other company
 ok((await asRole(TECH, "SELECT * FROM tools")).length === 0, "RLS: tech sees none once tool is retired/unassigned");
 ok((await asRole(ADM, "SELECT * FROM tools")).length === 3, "RLS: admin sees company tools");
 await throws(() => asRole(ADM, "INSERT INTO tools(company_id,label,name,tool_type_id) VALUES ('" + A + "','X','x','" + fk + "')"), /permission|policy/i, "RLS: no direct insert");
-await db.exec(fs.readFileSync(path.join(mig, "20261103120000_company_tools_rollback.sql"), "utf8"));
+await db.exec(fs.readFileSync(path.join(mig, "20261103130000_company_tools_rollback.sql"), "utf8"));
 ok((await q("SELECT to_regclass('public.tools') t"))[0].t === null, "rollback removes tables");
 console.log(fail ? `${fail} FAILED` : "ALL OK"); process.exit(fail ? 1 : 0);

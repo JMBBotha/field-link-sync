@@ -1,4 +1,4 @@
--- Rollback for 20261103120000_company_tools.sql. Run manually ONLY if the register must be removed (drops all tool data).
+-- Rollback for 20261103130000_company_tools.sql. Run manually ONLY if the register must be removed (drops all tool data).
 DO $$ BEGIN IF to_regclass('storage.objects') IS NOT NULL THEN EXECUTE 'DROP POLICY IF EXISTS tool_invoices_admin_rw ON storage.objects'; END IF; END $$;
 -- The tool-invoices bucket is left in place (empty it in the dashboard first if it must go).
 DROP VIEW IF EXISTS public.tool_type_stats;
