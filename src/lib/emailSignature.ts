@@ -94,8 +94,8 @@ export function renderSignatureHtml(person?: SignaturePerson | null, imageBase: 
   return `<table cellpadding="0" cellspacing="0" role="presentation" data-email-signature style="font-family:Arial,Helvetica,sans-serif;background:#ffffff;padding:18px 0"><tr>`
     + `<td width="224" valign="middle" style="width:224px;padding-right:22px;border-right:3px solid #1aa7ec;vertical-align:middle">${logoCell}</td>`
     + `<td valign="middle" nowrap style="padding-left:22px;line-height:1.5;white-space:nowrap;vertical-align:middle">${rows.join("")}</td>`
-    // Unit image: 100px, right of the text, vertically centred. Always an absolute https URL so it loads in every mail app.
-    + `<td width="118" valign="middle" style="width:118px;padding-left:18px;vertical-align:middle"><img src="${/^https:\/\//.test(imageBase) ? imageBase : SIGNATURE_IMAGE_BASE}/units-pair5.png" width="100" height="65" alt="Air conditioners" style="display:block;border:0;width:100px;height:65px;max-width:none"></td>`
+    // Unit image: 180px (source 499x325), right of the text, vertically centred. Always an absolute https URL so it loads in every mail app.
+    + `<td width="198" valign="middle" style="width:198px;padding-left:18px;vertical-align:middle"><img src="${/^https:\/\//.test(imageBase) ? imageBase : SIGNATURE_IMAGE_BASE}/units-pair5.png" width="180" height="117" alt="Air conditioners" style="display:block;border:0;width:180px;height:117px;max-width:none"></td>`
     + `</tr></table>`;
 }
 
