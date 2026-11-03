@@ -65,5 +65,7 @@ export async function recordInvoicePayment(input: RecordPaymentInput): Promise<s
     ...(input.paymentDate ? { p_payment_date: input.paymentDate } : {}),
   } as any);
   if (error) throw error;
+  // Every caller (invoice page, client dialog, Mandy, invoice form) refreshes all money screens via App's listener.
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("fl:payment-changed", { detail: { invoiceId: input.invoiceId } }));
   return data as unknown as string;
 }

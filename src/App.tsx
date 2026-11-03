@@ -139,6 +139,10 @@ const queryClient = new QueryClient({
     },
   },
 });
+// A payment was recorded anywhere (Johan 3 Nov 07:10): refresh every money view at once — home tiles,
+// client strip, Balance block, invoice lists, pipeline/job cards, stamps.
+if (typeof window !== "undefined") window.addEventListener("fl:payment-changed", () => { void queryClient.invalidateQueries(); });
+
 
 const App = () => (
   <AuthProvider>

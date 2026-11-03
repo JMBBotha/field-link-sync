@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { notifyPaymentChanged, findLikelyDuplicate } from "@/lib/paymentChanged";
 import { doneToast } from "@/lib/doneToast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +49,9 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, credited = 0, onChange }: Pa
   const [reference, setReference] = useState("");
   const [paymentDate, setPaymentDate] = useState(toDateInput(new Date()));
   const [adding, setAdding] = useState(false);
+  // Double-submit lock (Johan 3 Nov 07:09): a ref blocks a second tap before React re-renders the disabled button.
+  const busy = useRef(false);
+  const [saved, setSaved] = useState<string | null>(null);
 
   // Inline edit state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -90,12 +94,17 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, credited = 0, onChange }: Pa
     queryClient.invalidateQueries({ queryKey: ["payments", invoiceId] });
     queryClient.invalidateQueries({ queryKey: ["invoices"] });
     queryClient.invalidateQueries({ queryKey: ["invoice", invoiceId] });
+    notifyPaymentChanged(queryClient, invoiceId);
     onChange?.();
   };
 
   const addPayment = async () => {
     const amt = Number(amountValue);
-    if (!amountValue || amt <= 0) return;
+    if (!amountValue || amt <= 0 || busy.current) return;
+    const same = findLikelyDuplicate(payments as any[], amt, paymentDate);
+    if (same && !window.confirm(`${formatPayR(amt)} on ${paymentDate} was already recorded on this invoice just now / on that date. Record it again?`)) return;
+    busy.current = true;
+    setSaved(null);
     setAdding(true);
 
     const paymentsKey = ["payments", invoiceId];
@@ -153,6 +162,7 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, credited = 0, onChange }: Pa
       });
 
       refresh();
+      setSaved(`Saved: ${formatPayR(amt)} allocated to ${invNo || "invoice"} at ${new Date().toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit", hour12: false })}`);
       doneToast(`Payment ${formatPayR(amt)} allocated to ${invNo || "invoice"}`, window.location.pathname.includes(invoiceId) ? undefined : { label: "View invoice", onClick: () => { window.location.assign(`/admin/invoices/${invoiceId}`); } });
     } catch (err: any) {
       // Rollback
@@ -165,6 +175,7 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, credited = 0, onChange }: Pa
         variant: "destructive",
       });
     } finally {
+      busy.current = false;
       setAdding(false);
     }
   };
@@ -415,8 +426,9 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, credited = 0, onChange }: Pa
             </div>
             <Button size="sm" onClick={addPayment} disabled={adding} className="w-full">
               {adding ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-              Record Payment
+              {adding ? "Saving…" : "Record Payment"}
             </Button>
+            {saved && <p role="status" data-testid="payment-saved" className="rounded-md bg-emerald-50 px-2 py-1.5 text-center text-sm font-semibold text-emerald-700">{saved}</p>}
           </div>
         )}
       </CardContent>
