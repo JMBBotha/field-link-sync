@@ -1,4 +1,5 @@
 import { SentManuallyBadge } from "@/components/documents/MarkSentManually";
+import { invoiceHouseNo, matchesHouseSearch } from "@/lib/invoiceHouse";
 import { useRole } from "@/hooks/useRole";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -88,6 +89,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [houseNoById, setHouseNoById] = useState<Map<string, string>>(new Map());
   // Multi-select -> "Create service contract" (same client only, Johan 18 Oct 2026)
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
@@ -145,6 +147,11 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
         setPayRows(pays || []);
         setCreditRows(await fetchCreditNotes(results.map(r => r.id)));
       }
+      const phIds = [...new Set(results.map((r: any) => r.project_house_id).filter(Boolean))] as string[];
+      if (phIds.length) {
+        const { data: hs } = await (supabase.from as any)("project_houses").select("id, house_no").in("id", phIds);
+        setHouseNoById(new Map((hs || []).map((h: any) => [h.id, String(h.house_no)])));
+      }
       setInvoices([...results]);
     }
     setLoading(false);
@@ -165,6 +172,16 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   const paidOf = (inv: Invoice) => invoiceMoney(inv as any, payRows, creditRows).paid;
   const isCollectedRow = (inv: Invoice) => !["void", "cancelled"].includes((inv.status || "").toLowerCase()) && paidOf(inv) > 0;
   const balOf = (inv: Invoice) => invoiceMoney(inv as any, payRows, creditRows).balance;
+  const houseOf = (inv: Invoice) => invoiceHouseNo(inv as any, houseNoById);
+  // Search also matches the house number ("House 32", "h32", "32") and the warranty-notes text (Johan 3 Nov 08:53).
+  const matchesSearch = (inv: Invoice) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (inv.customer_name || "").toLowerCase().includes(q) || (inv.invoice_number || "").toLowerCase().includes(q)
+      || matchesHouseSearch(houseOf(inv), search)
+      // Free-text notes match only for word queries, so "32" doesn't hit bank or PO digits in the terms.
+      || (q.length >= 3 && !/\d/.test(q) && ((inv as any).notes || "").toLowerCase().includes(q));
+  };
   const listFor = (state: string | null, chip = false) => {
     const base = invoices.filter((i: any) => showArchived ? !!i.archived_at : !i.archived_at);
     const byState = state === "unpaid" ? base.filter(inv => isUnpaid(inv.status, balOf(inv)))
@@ -181,15 +198,11 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
       const { paid, balance } = invoiceMoney(inv as any, payRows, creditRows);
       return matchesMoneyFilter(inv as any, paid, balance, moneyFilter);
     })
-    .filter(inv =>
-      !search ||
-      inv.customer_name.toLowerCase().includes(search.toLowerCase()) ||
-      inv.invoice_number.toLowerCase().includes(search.toLowerCase())
-    );
+    .filter(matchesSearch);
     return state === "unpaid" ? sortUnpaid(rows, (inv) => ({ status: inv.status, due: dueBy.get(inv.id) as any })) : rows;
   };
   const filteredInvoices = collectedMode
-    ? invoices.filter(isCollectedRow).filter((inv) => !search || inv.customer_name.toLowerCase().includes(search.toLowerCase()) || inv.invoice_number.toLowerCase().includes(search.toLowerCase()))
+    ? invoices.filter(isCollectedRow).filter(matchesSearch)
     : listFor(inf.state ?? null);
   const openCollected = () => setSearchParams((p) => { const n = new URLSearchParams(); n.set("view", "collected"); return n; });
   const openOutstanding = () => setSearchParams(() => { const n = new URLSearchParams(); n.set("state", "unpaid"); return n; });
@@ -321,7 +334,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search invoices..."
+          placeholder="Search client, invoice # or house…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9 h-10 rounded-xl"
@@ -409,7 +422,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
                 onCheckedChange={() => setSelected((s) => (s.includes(invoice.id) ? s.filter((x) => x !== invoice.id) : [...s, invoice.id]))} /> : undefined}
               stacked
               title={invoice.customer_name || invoice.invoice_number}
-              chip={<>{getStatusBadge(invoice.status)}<DepositPaymentChip invoice={invoice} className="text-xs px-2 py-0.5" />{unpaidMode ? (() => { const b = unpaidBucket(invoice.status, due as any); const tone = BUCKET_TONE[b];
+              chip={<>{houseOf(invoice) && <span data-testid="invoice-house-chip" className="shrink-0 rounded-full bg-[#E8F0FE] px-2 py-0.5 text-xs font-semibold text-[#1A56DB]">House {houseOf(invoice)}</span>}{getStatusBadge(invoice.status)}<DepositPaymentChip invoice={invoice} className="text-xs px-2 py-0.5" />{unpaidMode ? (() => { const b = unpaidBucket(invoice.status, due as any); const tone = BUCKET_TONE[b];
                 return <span data-testid="unpaid-bucket" data-bucket={b} onClick={(e) => { if (due) { e.stopPropagation(); setReviewId(reviewId === invoice.id ? null : invoice.id); } }}
                   className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${tone === "red" ? "bg-[#FDECEC] text-[#C9373C]" : tone === "orange" ? "bg-[#FFEBDD] text-[#C2570C]" : "bg-muted text-muted-foreground"}`}>
                   {b === "completion" ? BUCKET_LABEL.completion : due ? `${BUCKET_LABEL[b]} · ${dueChip(due as any).label}` : BUCKET_LABEL[b]}</span>; })()
