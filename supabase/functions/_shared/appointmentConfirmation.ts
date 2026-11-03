@@ -88,6 +88,13 @@ export function isPlaceholderAddress(addr?: string | null): boolean {
   return !addr || /^address (pending|to be confirmed)/i.test(String(addr).trim());
 }
 
+export const CALL_OUT_LINE = "R680 excl. VAT call-out per technician visit, charged separately, never deducted from the repair or any quote.";
+/** Service / repair / maintenance bookings carry the call-out line; installs and sales site visits do not. */
+export function isCallOutService(t?: string | null): boolean {
+  const s = String(t || "").toLowerCase();
+  return /service|repair|maint|call.?out|not cooling|leak|fault/.test(s) && !/install|quote|new sale|site visit/.test(s);
+}
+
 export function buildConfirmationMessage(opts: {
   firstName: string;
   serviceType: string;
@@ -96,6 +103,8 @@ export function buildConfirmationMessage(opts: {
   address: string;
   rescheduled?: boolean;
   askEmail: boolean;
+  /** Service / repair bookings: R680 call-out line (Johan 14:45). WhatsApp itself stays off. */
+  callOut?: boolean;
 }): string {
   const lines = [
     `Hi ${opts.firstName}! 👋`,
@@ -109,6 +118,7 @@ export function buildConfirmationMessage(opts: {
     `⏰ ${opts.time}`,
   ];
   if (opts.address) lines.push(`📍 ${opts.address}`);
+  if (opts.callOut ?? isCallOutService(opts.serviceType)) lines.push("", `💬 ${CALL_OUT_LINE}`);
   lines.push("", "Our technician will call you before arriving.");
   if (opts.askEmail) {
     lines.push(

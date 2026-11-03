@@ -116,7 +116,7 @@ export default function TechJobTypePanel({ jobId, jobType, leadId, onClosed }: {
               {saleMode === "done_not_viable"
                 ? <p>This job is closed as a call-out: {CALL_OUT_NOTE} A replacement quote lead went to the client's own rep, or the rep offer.</p>
                 : <p>A sales rep gets the lead (the client's own rep, or the rep offer). This job stays as it is.</p>}
-              {leadId && <div><div className="mb-1 text-xs text-muted-foreground">Optional: add site photos for the rep</div><AddJobPhotosButton leadId={leadId} defaultType="site" /></div>}
+              {leadId && <div><div className="mb-1 text-xs text-muted-foreground">Optional: add site photos. They stay on this job and the new lead links to them</div><AddJobPhotosButton leadId={leadId} defaultType="site" /></div>}
               <Button className="w-full" onClick={() => { setSaleOpen(false); if (saleMode === "done_not_viable") onClosed?.(); }}>Done</Button>
             </div>
           ) : (

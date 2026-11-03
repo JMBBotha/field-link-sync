@@ -32,3 +32,21 @@ describe("job type choice", () => {
   });
   it("reason is required", () => { expect(validReason("  ")).toBe(false); expect(validReason("Unit beyond repair")).toBe(true); });
 });
+
+describe("14:45 release additions", () => {
+  const fs = require("node:fs") as typeof import("node:fs");
+  const mig = fs.readFileSync("supabase/migrations/20261103143000_job_type_choice.sql", "utf8");
+  it("booking email goes through send-transactional-email with the R680 line for service only", () => {
+    expect(mig).toContain("send_booking_confirmation");
+    expect(mig).toContain("functions/v1/send-transactional-email");
+    expect(mig).toMatch(/WHEN p_kind = 'service' THEN '<p[^']*R680 excl\. VAT/);
+  });
+  it("new lead links back to the service job for photos", () => {
+    expect(mig).toContain("source_job_id uuid REFERENCES public.jobs(id)");
+  });
+  it("WhatsApp template has the call-out line for service bookings", () => {
+    const wa = fs.readFileSync("supabase/functions/_shared/appointmentConfirmation.ts", "utf8");
+    expect(wa).toContain("R680 excl. VAT call-out");
+    expect(wa).toContain("isCallOutService(opts.serviceType)");
+  });
+});

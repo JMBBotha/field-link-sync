@@ -47,8 +47,8 @@ export function techJobTypeLabel(t?: string | null): string {
   return t || "Not set";
 }
 
-// Booking confirmation templates (Johan answer 4). Template text only: nothing here sends anything,
-// and WhatsApp stays off. The call-out line is added for service / repair bookings only.
+// Booking confirmation templates (Johan answer 4). Email sends via send_booking_confirmation (SQL builds the same text);
+// SMS later, WhatsApp stays off. The call-out line is added for service / repair bookings only.
 export interface BookingMsg { firstName?: string | null; kind: JobKind | null; day: string; time?: string | null; company?: string }
 const callOutLine = (k: JobKind | null) => (k === "service" ? ` Please note: ${CALL_OUT_NOTE}` : "");
 export function bookingSms(m: BookingMsg): string {
@@ -87,3 +87,8 @@ export async function quoteStatus(quoteId: string): Promise<string | null> {
 /** Unit not viable: closes the service job as a call-out (R680 excl. VAT, never deducted) + replacement-quote lead. */
 export const unitNotViable = (jobId: string, note: string) => rpc<Res>("tech_unit_not_viable", { p_job_id: jobId, p_note: note || null });
 export const validReason = (r: string) => r.trim().length >= 3;
+
+// Booking confirmation by email (Johan 14:45): preview, then send through send-transactional-email.
+export interface BookingPreview { ok: boolean; to: string; subject: string; html: string; call_out: boolean }
+export const previewBookingEmail = (jobId: string) => rpc<BookingPreview>("send_booking_confirmation", { p_job_id: jobId, p_mode: "preview", p_to: null });
+export const sendBookingEmail = (jobId: string, to: string) => rpc<{ ok: boolean; to: string; subject: string }>("send_booking_confirmation", { p_job_id: jobId, p_mode: "send", p_to: to });

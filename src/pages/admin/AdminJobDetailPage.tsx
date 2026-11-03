@@ -51,6 +51,7 @@ import { JobVisitsSection } from "@/components/jobs/BookingVisits";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { attachPaymentTotals } from "@/lib/depositInvoice";
 import { jobStatusPatch, formatJohannesburg } from "@/lib/jobTimes";
+import BookingConfirmationEmail from "@/components/jobs/BookingConfirmationEmail";
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -383,6 +384,10 @@ const AdminJobDetailPage = () => {
               </Button>
             </CardContent>
           </Card>
+        )}
+
+        {canAccessAdmin && !isSalesRep && j.status !== "completed" && j.status !== "cancelled" && (
+          <div className="flex justify-end"><BookingConfirmationEmail jobId={j.id} disabled={!(j as any).scheduled_for} /></div>
         )}
 
         {/* Materials draw-down from the quote (stock-from-invoices) */}
