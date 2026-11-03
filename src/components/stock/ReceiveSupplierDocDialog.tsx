@@ -9,6 +9,8 @@ import { pdfTextPages } from "@/lib/pdfTextLines";
 import { parsePagesLocally, productLinesOnly } from "../../../supabase/functions/_shared/supplierDocLines";
 import { buildPreview, canConfirm, normaliseModel, toReceivePayload, type DocType, type ExtractedLine, type PreviewRow, type Product } from "@/lib/stockReceive";
 import ReceivePreviewTable, { type JobOption } from "./ReceivePreviewTable";
+import ReceiveReconTable from "./ReceiveReconTable";
+import { buildRecon, type JobQuoteLine } from "@/lib/stockRecon";
 
 const PRODUCT_COLS = "id, product_code, short_name, name, description, price_per_unit_label, sold_in_length, unit_length, cost_price, product_type";
 
@@ -25,8 +27,17 @@ export default function ReceiveSupplierDocDialog({ open, onOpenChange, companyId
   const { data: products = [] } = useQuery({ queryKey: ["receive-products", companyId], enabled: open,
     queryFn: async () => ((await sb.from("supplier_products").select(PRODUCT_COLS).limit(5000)).data ?? []) as Product[] });
   const { data: jobs = [] } = useQuery({ queryKey: ["receive-jobs", companyId], enabled: open,
-    queryFn: async () => (((await sb.from("jobs").select("id, title, status").neq("status", "cancelled").order("created_at", { ascending: false }).limit(150)).data ?? []) as any[])
-      .map((j) => ({ id: j.id, label: j.title || j.id.slice(0, 8) })) as JobOption[] });
+    queryFn: async () => (((await sb.from("jobs").select("id, title, status, quote_id").neq("status", "cancelled").order("created_at", { ascending: false }).limit(150)).data ?? []) as any[])
+      .map((j) => ({ id: j.id, label: j.title || j.id.slice(0, 8), quote_id: j.quote_id ?? null, has_quote: !!j.quote_id })) as (JobOption & { quote_id: string | null; has_quote: boolean })[] });
+  const jobIds = useMemo(() => [...new Set(rows.filter((r) => (r.action === "reserve" || r.action === "installed") && r.job_id).map((r) => r.job_id as string))].sort(), [rows]);
+  const { data: quoteLines = [], isFetching: quoteLoading } = useQuery({ queryKey: ["receive-quote-lines", jobIds.join(",")], enabled: open && jobIds.length > 0,
+    queryFn: async () => {
+      const qmap = new Map(jobs.filter((j) => jobIds.includes(j.id) && j.quote_id).map((j) => [j.quote_id as string, j.id]));
+      if (!qmap.size) return [] as JobQuoteLine[];
+      const { data, error } = await sb.from("quote_items").select("quote_id, product_id, quantity").in("quote_id", [...qmap.keys()]);
+      if (error) throw error;
+      return (data ?? []).map((q: any) => ({ job_id: qmap.get(q.quote_id)!, product_id: q.product_id, quantity: Number(q.quantity ?? 0) })) as JobQuoteLine[];
+    } });
 
   const read = async () => {
     if (!file) return;
@@ -56,6 +67,7 @@ export default function ReceiveSupplierDocDialog({ open, onOpenChange, companyId
   };
 
   const confirm = async () => {
+    if (!buildRecon(rows, jobs, quoteLines).ok) return;
     setBusy("Saving…");
     try {
       const { data: ing, error } = await sb.rpc("sjd_ingest", { p_company_id: companyId, p_doc: { supplier_name: supplier || null, doc_type: docType, doc_number: docNo || null, po_number: poNo || null, file_name: file?.name ?? null },
@@ -71,7 +83,8 @@ export default function ReceiveSupplierDocDialog({ open, onOpenChange, companyId
     finally { setBusy(null); }
   };
 
-  const ok = useMemo(() => canConfirm(rows), [rows]);
+  const recon = useMemo(() => buildRecon(rows, jobs, jobIds.length ? quoteLines : []), [rows, jobs, quoteLines, jobIds]);
+  const ok = useMemo(() => canConfirm(rows) && recon.ok && !quoteLoading, [rows, recon, quoteLoading]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
@@ -79,6 +92,7 @@ export default function ReceiveSupplierDocDialog({ open, onOpenChange, companyId
         <ReceiveForm {...{ docType, setDocType, docNo, setDocNo, poNo, setPoNo, supplier, setSupplier, file, setFile }} onRead={read} busy={busy} />
         {rows.length > 0 && <>
           <ReceivePreviewTable rows={rows} jobs={jobs} isInvoice={docType === "supplier_invoice"} onChange={(i, patch) => setRows((rs) => rs.map((r, k) => (k === i ? { ...r, ...patch, adds_stock: docType === "supplier_invoice" && ["stock", "reserve"].includes((patch.action ?? r.action) as string) } : r)))} />
+          <ReceiveReconTable recon={recon} />
           <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setRows([])}>Back</Button><Button disabled={!ok || !!busy} onClick={confirm}>{docType === "supplier_invoice" ? "Confirm and add stock" : "Confirm delivery note"}</Button></div>
         </>}
       </DialogContent>
