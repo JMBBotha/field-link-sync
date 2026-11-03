@@ -20,6 +20,7 @@ const SECTIONS: Record<SectionKey, { path: string; label: string; gate?: Gate; s
   extras: [
     { path: "/admin/oss-extras", label: "Extras", gate: "admin" },
     { path: "/admin/consumables", label: "Consumables" },
+    { path: "/admin/tools", label: "Company tools", gate: "admin" },
   ],
   documents: [
     { path: "/admin/pdf-documents", label: "PDF documents" },

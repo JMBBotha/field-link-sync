@@ -103,6 +103,8 @@ const AdminTeamPage = lazyRetry(() => import("./pages/admin/AdminTeamPage"));
 const AdminAreasPage = lazyRetry(() => import("./pages/admin/AdminAreasPage"));
 const AdminSuppliersPage = lazyRetry(() => import("./pages/admin/AdminSuppliersPage"));
 const AdminSupplierDocsPage = lazyRetry(() => import("./pages/admin/AdminSupplierDocsPage"));
+const AdminCompanyToolsPage = lazyRetry(() => import("./pages/admin/AdminCompanyToolsPage"));
+const MyToolsPage = lazyRetry(() => import("./pages/field/MyToolsPage"));
 const AdminWaldaProposalsPage = lazyRetry(() => import("./pages/admin/AdminWaldaProposalsPage"));
 const AdminSpecialsPage = lazyRetry(() => import("./pages/admin/AdminSpecialsPage"));
 const AdminConsumablesPage = lazyRetry(() => import("./pages/admin/AdminConsumablesPage"));
@@ -279,6 +281,7 @@ const App = () => (
                     <Route path="suppliers" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSuppliersPage /></RequireRole>} />
                     <Route path="supplier-docs" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSupplierDocsPage /></RequireRole>} />
                     <Route path="walda-approvals" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminWaldaProposalsPage /></RequireRole>} />
+                    <Route element={<V8SectionTabs section="extras" />}><Route path="tools" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminCompanyToolsPage /></RequireRole>} /></Route>
                     <Route element={<V8SectionTabs section="extras" />}><Route path="consumables" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminConsumablesPage /></RequireRole>} /></Route>
                     {/* WhatsApp quote bot retired — page hidden (the backend function is a no-op behind WHATSAPP_QUOTE_BOT_ENABLED). */}
                     <Route path="whatsapp" element={<Navigate to="/admin" replace />} />
@@ -307,6 +310,7 @@ const App = () => (
                   <Route path="/field/my-jobs" element={<SalesRepFieldRedirect><V8FieldShell><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><AdminMyJobsPage /></RequireRole></V8FieldShell></SalesRepFieldRedirect>} />
 
                   {/* Field agent Schedule (agenda view) */}
+                  <Route path="/field/my-tools" element={<SalesRepFieldRedirect><V8FieldShell><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><MyToolsPage /></RequireRole></V8FieldShell></SalesRepFieldRedirect>} />
                   <Route path="/field/my-base" element={<SalesRepFieldRedirect><V8FieldShell><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><MyBasePage field /></RequireRole></V8FieldShell></SalesRepFieldRedirect>} />
                   <Route path="/field/schedule" element={<SalesRepFieldRedirect><V8FieldShell><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldSchedulePage /></RequireRole></V8FieldShell></SalesRepFieldRedirect>} />
 
