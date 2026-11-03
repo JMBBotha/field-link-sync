@@ -468,6 +468,9 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
           technician_name: lead.technician_name,
           technician_eta: lead.technician_eta,
         }}
+        assignedName={(lead as any).profiles?.full_name ?? null}
+        scheduledDate={lead.scheduled_date}
+        scheduledTime={lead.scheduled_time}
       />
       {/* Expandable Job History */}
       <div onClick={(e) => e.stopPropagation()}>

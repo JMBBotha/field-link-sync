@@ -11,6 +11,7 @@ import AddRequestDialog from "@/components/requests/AddRequestDialog";
 import RequestCorrectionsPanel from "@/components/requests/RequestCorrectionsPanel";
 import JobTypeChangesPanel from "@/components/requests/JobTypeChangesPanel";
 import { assignedLabel, cardHref, isAssigned } from "@/lib/assignedLabel";
+import { requestBadgeLabel } from "@/lib/requestBadge";
 import { fetchInbox, markContacted, markDone, setType, typeLabel, waitLabel, REQUEST_TYPES, type RequestRow, type RequestType } from "@/lib/requests";
 
 /** Contacted = logged contact, or server rule (manual admin add / assigned / scheduled). */
@@ -57,8 +58,19 @@ export default function AdminRequestsPage() {
       return Object.fromEntries((ls || []).map((l: any) => [l.id, l])) as Record<string, any>;
     },
   });
+  // Johan 3 Nov 14:46: the badge showed the request's triage type ("Service" request vs sale) even on installation jobs.
+  const jobIds = useMemo(() => [...new Set(data.filter((r) => !r.masked && r.job_id).map((r) => r.job_id!))].sort(), [data]);
+  const { data: jobTypes = {} } = useQuery({
+    queryKey: ["requests-job-types", jobIds], enabled: jobIds.length > 0, staleTime: 60_000,
+    queryFn: async () => {
+      const { data: js } = await supabase.from("jobs").select("id, job_type").in("id", jobIds);
+      return Object.fromEntries((js || []).map((j: any) => [j.id, j.job_type])) as Record<string, string | null>;
+    },
+  });
   const withLead = (r: RequestRow): RequestRow => {
     const l = r.lead_id ? leadInfo[r.lead_id] : null;
+    const jt = r.job_id ? jobTypes[r.job_id] ?? null : null;
+    r = jt ? { ...r, job_type: jt } as RequestRow : r;
     return l ? { ...r, scheduled_time: l.scheduled_time, service_type: l.service_type, job_types: l.job_types, job_info: l.job_info, address: l.customer_address } : r;
   };
   const refresh = () => { qc.invalidateQueries({ queryKey: ["requests-inbox"] }); qc.invalidateQueries({ queryKey: ["requests-today"] }); };
@@ -172,7 +184,7 @@ export function RequestCard({ r, isAdmin = false, changing, onChange, onType, on
         {/* Johan 2 Nov 18:05: no orange chip on done requests; open + untyped says "Pick a type" and opens the picker. */}
         {sorting ? (isOpen ? <button type="button" data-testid="pick-type-chip" onClick={(e) => { if (!changing) onChange(); (e.currentTarget.closest("li")?.querySelector("[data-testid=type-chips]") as HTMLElement | null)?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
             className="min-h-8 shrink-0 rounded-full bg-[#E65100] px-3 py-1 text-[12px] font-semibold text-white active:opacity-80">Pick a type</button> : null)
-          : <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-[12px] font-semibold", TYPE_TONE[r.type!])}>{typeLabel(r.type)}{r.type === "move" ? " · internal" : ""}</span>}
+          : <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-[12px] font-semibold", TYPE_TONE[r.type!])}>{requestBadgeLabel(r.type, (r as any).job_type)}{r.type === "move" ? " · internal" : ""}</span>}
       </div>
       <div data-testid="request-status" className={cn("mt-1 text-[15px] font-semibold", STATUS_TONE[st.tone])}>{st.text}</div>
       {(area || map) && (
