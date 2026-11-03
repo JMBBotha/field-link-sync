@@ -62,10 +62,6 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 const C = "color:#0b4fa8";
 const line = (html: string, extra = "") => `<div style="font-size:13px;${C};${extra}">${html}</div>`;
 const link = (href: string, text: string) => `<a href="${esc(href)}" style="${C};text-decoration:none">${esc(text)}</a>`;
-/** "0800-BE-COOL! AC Super Service" -> two lines, so the text column stays narrow. */
-const splitBrand = (b: string) => { const t = esc(b); const i = t.indexOf("! "); return i > 0 ? `${t.slice(0, i + 1)}<br>${t.slice(i + 2)}` : t; };
-/** Long address -> break after the last comma before the middle. */
-const splitAddress = (a: string) => { if (a.length <= 30) return esc(a); const i = a.lastIndexOf(",", Math.ceil(a.length * 0.7)); return i > 0 ? `${esc(a.slice(0, i + 1))}<br>${esc(a.slice(i + 1).trim())}` : esc(a); };
 const digits = (p: string) => p.replace(/[^0-9+]/g, "").replace(/^0/, "+27");
 
 /** Mac design. person = the sender (or the quote's salesperson); omitted = company only (automatic emails). */
@@ -73,7 +69,7 @@ export function renderSignatureHtml(person?: SignaturePerson | null, imageBase: 
   const co: SignatureCompany = company || SIGNATURE_COMPANY;
   const p = person && person.name && person.name.trim() ? person : null;
   const rows: string[] = [];
-  rows.push(`<div style="font-size:16px;font-weight:bold;line-height:1.25;${C}">${p ? esc(p.name.trim()) : splitBrand(co.brand)}</div>`);
+  rows.push(`<div style="font-size:18px;font-weight:bold;${C}">${esc(p ? p.name.trim() : co.brand)}</div>`);
   if (p?.title && p.title.trim()) rows.push(line(esc(p.title.trim())));
   // "For <company>" under a person (Johan 14 Oct); company-only block keeps the plain name.
   rows.push(line(esc(p ? `For ${co.legalName}` : co.legalName), "font-weight:bold"));
@@ -82,26 +78,24 @@ export function renderSignatureHtml(person?: SignaturePerson | null, imageBase: 
   const cell = phone
     ? `Cell: ${link(`tel:${digits(phone)}`, phone)}`
     : co.whatsapp ? `WhatsApp/Cell: ${link(`https://wa.me/${digits(co.whatsapp).replace("+", "")}`, co.whatsapp)}` : "";
-  // One number per line, each kept on one line (nowrap), so the unit picture fits beside the text.
-  if (tel) rows.push(line(tel));
-  if (cell) rows.push(line(cell));
+  if (tel || cell) rows.push(line([tel, cell].filter(Boolean).join(" &nbsp;|&nbsp; ")));
   const mail = p?.email && p.email.trim() ? p.email.trim() : null;
   const coMail = co.email || "";
   const mails = [mail && mail.toLowerCase() !== coMail.toLowerCase() ? link(`mailto:${mail}`, mail) : "", coMail ? link(`mailto:${coMail}`, coMail) : ""].filter(Boolean);
-  for (const m of mails) rows.push(line(m));
+  if (mails.length) rows.push(line(mails.join(" &nbsp;|&nbsp; ")));
   const webVat = [co.web ? link(`https://${co.web.replace(/^https?:\/\//, "")}`, co.web) : "", co.vatNo ? `VAT No ${esc(co.vatNo)}` : ""].filter(Boolean);
-  for (const w of webVat) rows.push(line(w));
-  if (co.address) rows.push(line(splitAddress(co.address)));
+  if (webVat.length) rows.push(line(webVat.join(" &nbsp;|&nbsp; ")));
+  if (co.address) rows.push(line(esc(co.address)));
   const logoCell = co.logoUrl
-    ? `<img src="${esc(co.logoUrl)}" width="160" alt="${esc(co.brand)}" style="display:block;border:0;width:160px;max-width:160px;height:auto">`
+    ? `<img src="${esc(co.logoUrl)}" width="140" alt="${esc(co.brand)}" style="display:block;border:0;width:140px;max-width:140px;height:auto">`
     : isDesignedCompany(co)
-      ? `<img src="${imageBase}/logo-block-shadow.png" width="160" alt="${esc(co.brand)}" style="display:block;border:0;width:160px;height:auto">`
-      : `<div style="font-size:20px;font-weight:800;${C};max-width:160px">${esc(co.brand)}</div>`;
+      ? `<img src="${imageBase}/logo-block-shadow.png" width="140" alt="${esc(co.brand)}" style="display:block;border:0;width:140px;height:auto">`
+      : `<div style="font-size:20px;font-weight:800;${C};max-width:140px">${esc(co.brand)}</div>`;
   return `<table cellpadding="0" cellspacing="0" role="presentation" data-email-signature width="544" style="width:544px;max-width:544px;font-family:Arial,Helvetica,sans-serif;background:#ffffff;padding:18px 0"><tr>`
-    + `<td width="160" valign="middle" style="width:160px;padding-right:10px;border-right:3px solid #1aa7ec;vertical-align:middle">${logoCell}</td>`
-    + `<td valign="middle" nowrap style="padding-left:10px;line-height:1.5;white-space:nowrap;vertical-align:middle">${rows.join("")}</td>`
-    // Fits a 544px email body (600 minus padding): logo 160 + text ~205 + unit image 158px (source 499x325), right of the text, vertically centred. Always an absolute https URL so it loads in every mail app.
-    + `<td width="166" valign="middle" style="width:166px;padding-left:8px;vertical-align:middle"><img src="${/^https:\/\//.test(imageBase) ? imageBase : SIGNATURE_IMAGE_BASE}/units-pair5.png" width="158" height="103" alt="Air conditioners" style="display:block;border:0;width:158px;height:103px;max-width:none"></td>`
+    + `<td width="140" valign="middle" style="width:140px;padding-right:8px;border-right:3px solid #1aa7ec;vertical-align:middle">${logoCell}</td>`
+    + `<td valign="middle" nowrap style="padding-left:8px;line-height:1.5;white-space:nowrap;vertical-align:middle">${rows.join("")}</td>`
+    // Fits a 544px body: logo 140 + original text lines (no wrapping) + unit image 76px (source 499x325), right of the text, vertically centred. Always an absolute https URL so it loads in every mail app.
+    + `<td width="82" valign="middle" style="width:82px;padding-left:6px;vertical-align:middle"><img src="${/^https:\/\//.test(imageBase) ? imageBase : SIGNATURE_IMAGE_BASE}/units-pair5.png" width="76" height="50" alt="Air conditioners" style="display:block;border:0;width:76px;height:50px;max-width:none"></td>`
     + `</tr></table>`;
 }
 
