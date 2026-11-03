@@ -15,10 +15,12 @@ const STATUS_TEXT: Record<string, [string, string]> = {
 export const statusText = (s?: string | null) => STATUS_TEXT[s || ""] ?? [(s || "Unknown").replace(/_/g, " "), "Job stage."];
 export const priorityText = (p?: string | null) => `${(p || "normal").replace(/^./, (c) => c.toUpperCase())} priority`;
 
-type Props = { status?: string | null; priority?: string | null; typeLabel?: string | null; statusClass?: string; onRequestTypeChange?: () => void };
+type Props = { status?: string | null; priority?: string | null; typeLabel?: string | null; statusClass?: string; onRequestTypeChange?: () => void;
+  /** Admin only: the same next step as the action bar (existing changeStatus path + jobActionBar rules). */
+  stageAction?: { label: string; onClick: () => void; busy?: boolean } | null };
 const pill = "rounded-full px-2.5 py-1 text-xs font-semibold underline decoration-dotted underline-offset-2 active:opacity-70";
 
-export default function JobHeaderPills({ status, priority, typeLabel, statusClass, onRequestTypeChange }: Props) {
+export default function JobHeaderPills({ status, priority, typeLabel, statusClass, onRequestTypeChange, stageAction }: Props) {
   const [label, help] = statusText(status);
   const Item = ({ text, title, body, cls, children, id }: { text: string; title: string; body: string; cls: string; children?: React.ReactNode; id: string }) => (
     <Popover>
@@ -28,7 +30,9 @@ export default function JobHeaderPills({ status, priority, typeLabel, statusClas
   );
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-2" data-testid="job-header-pills">
-      <Item id="pill-status" text={label} title="Stage" body={help} cls={statusClass || "bg-white/15 text-white"} />
+      <Item id="pill-status" text={label} title="Stage" body={help} cls={statusClass || "bg-white/15 text-white"}>
+        {stageAction && <button type="button" disabled={stageAction.busy} className="mt-2 w-full rounded-lg bg-[#C2410C] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60" onClick={stageAction.onClick} data-testid="pill-stage-action">{stageAction.label}</button>}
+      </Item>
       {priority && <Item id="pill-priority" text={priorityText(priority)} title="Priority" body="How urgent the office marked it. Urgent and high jobs show first on the dispatch board." cls="bg-white/15 text-white" />}
       {typeLabel && (
         <Item id="pill-type" text={typeLabel} title="Job type" body="What kind of work this is. It decides which checklist and technicians fit the job." cls="bg-white/15 text-white">

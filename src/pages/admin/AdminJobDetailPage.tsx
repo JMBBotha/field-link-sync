@@ -239,7 +239,8 @@ const AdminJobDetailPage = () => {
         {/* Job header: V8 navy card (Johan 14:04, appearance only) */}
         <div className="rounded-2xl bg-gradient-to-br from-[#0F2A44] to-[#1590D6] p-4 text-white sm:p-5" data-testid="job-hero">
           <h1 className="text-xl md:text-2xl font-semibold leading-tight break-words">{j.title}</h1>
-          <JobHeaderPills status={j.status} priority={j.priority} typeLabel={j.job_type ? jobTypeLabel(j.job_type) : null} statusClass={STATUS_COLORS[j.status]} />
+          <JobHeaderPills status={j.status} priority={j.priority} typeLabel={j.job_type ? jobTypeLabel(j.job_type) : null} statusClass={STATUS_COLORS[j.status]}
+            stageAction={!isAdmin ? null : bar.primary === "start" ? { label: "Start job (On site)", onClick: () => changeStatus("in_progress"), busy: pendingStatus !== null } : bar.primary === "complete" ? { label: "Mark done", onClick: () => changeStatus("completed"), busy: pendingStatus !== null } : null} />
           {(j.customers?.name || location?.label || location?.address) && (
             <p className="mt-1.5 text-sm text-[#CFE6F6] break-words">{[j.customers?.name, location?.label, location?.address].filter(Boolean).join(" · ")}</p>
           )}
