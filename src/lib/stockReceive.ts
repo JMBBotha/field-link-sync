@@ -25,7 +25,24 @@ export function normaliseModel(code: string | null | undefined) {
 const looseKey = (code: string | null | undefined) =>
   normaliseModel((code ?? "").toUpperCase().replace(/^([A-Z]+)-[A-Z]-(?=\d)/, "$1-"));
 
-export interface Match { product: Product | null; how: "exact" | "normalised" | "none"; lookalikes: Product[] }
+export interface Match { product: Product | null; how: "exact" | "normalised" | "family" | "none"; lookalikes: Product[] }
+
+/**
+ * Supplier codes that differ from the catalogue code but are the same unit family (approved by the office).
+ * Only used when there is no exact or normalised match; the match is flagged "family" and shown as a warning.
+ * Patterns run on stockKey() of the supplier code.
+ */
+export const FAMILY_ALIASES: { pattern: RegExp; code: string; label: string }[] = [
+  { pattern: /^AR40H12[A-Z0-9]*[NX]$/, code: "AR40F12C0AG/FA", label: "Samsung AR40 12K" },
+  { pattern: /^AR40H18[A-Z0-9]*[NX]$/, code: "AR40F18C0AG/FA", label: "Samsung AR40 18K" },
+  { pattern: /^AR24BSHCMWK[NX]$/, code: "AR24BSHCMWK/FA", label: "Samsung AR6500 WindFree 24K" },
+];
+/** Samsung split halves end in a letter + N (indoor) or X (outdoor): AR40H12C1AMN / AR40H12C1AMX. Not FCMI-24X (digit + X). */
+export const samsungHalf = (code: string | null | undefined): "indoor" | "outdoor" | null => {
+  const k = stockKey(code);
+  if (!/^AR\d/.test(k)) return null;
+  return /[A-Z]X$/.test(k) ? "outdoor" : /[A-Z]N$/.test(k) ? "indoor" : null;
+};
 
 /** Match a supplier line to the catalogue. Never guesses across families: FCMI vs FCMF is reported as a look-alike, not a match. */
 export function matchProduct(model: string | null, products: Product[]): Match {
@@ -44,6 +61,12 @@ export function matchProduct(model: string | null, products: Product[]): Match {
     const sameDigitsOtherFamily = pf !== fam && pn.slice(pf.length) === digits && pf.length === fam.length && editDistance(pf, fam) === 1;
     return sameDigitsOtherFamily || (!hit && looseKey(p.product_code) === looseKey(model));
   });
+  if (!hit) {
+    const k = stockKey(model);
+    const alias = FAMILY_ALIASES.find((a) => a.pattern.test(k));
+    const fp = alias ? products.find((p) => (p.product_code ?? "").trim().toUpperCase() === alias.code) ?? null : null;
+    if (fp) return { product: fp, how: "family", lookalikes: [] };
+  }
   return { product: hit, how: exact ? "exact" : norm ? "normalised" : "none", lookalikes };
 }
 function editDistance(a: string, b: string) {
@@ -99,6 +122,7 @@ export function buildPreview(docType: DocType, lines: ExtractedLine[], products:
     } else if (defaultJobId && p?.product_type === "ac_unit") { action = "reserve"; job_id = defaultJobId; }
     if (!p) notes.push(match.lookalikes.length ? `Not in catalogue. Look-alike: ${match.lookalikes.map((x) => x.product_code).join(", ")} (different model, not matched)` : "Not in catalogue");
     else if (match.how === "normalised") notes.push(`Matched ${line.model_number} → ${p.product_code}`);
+    else if (match.how === "family") notes.push(`Family match (check): ${line.model_number} → ${p.product_code}. Supplier code differs from the catalogue`);
     let unit_cost_pack: number | null = null; let cost_source: PreviewRow["cost_source"] = "none";
     if (isInvoice && line.unit_price_excl != null) { unit_cost_pack = line.unit_price_excl; cost_source = "invoice"; }
     else if (p?.cost_price != null) { unit_cost_pack = Number(p.cost_price) / (p && pairSum.has(p.id) ? 2 : 1); cost_source = "catalogue"; if (p && pairSum.has(p.id)) notes.push("Pair price split 50/50 between indoor and outdoor"); if (!isInvoice || line.unit_price_excl == null) notes.push("No price on document: catalogue cost used"); }

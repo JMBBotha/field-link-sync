@@ -1,4 +1,4 @@
-import type { PreviewRow } from "./stockReceive";
+import { samsungHalf, type PreviewRow } from "./stockReceive";
 
 /** One quote line on a job (quote_items via jobs.quote_id). A split AC quote line covers indoor + outdoor. */
 export interface JobQuoteLine { job_id: string; product_id: string | null; quantity: number }
@@ -17,7 +17,7 @@ export const isPairProduct = (r: PreviewRow) => {
   return !/portable|window|mobile/i.test(`${p.name ?? ""} ${p.short_name ?? ""} ${p.description ?? ""}`);
 };
 /** Outdoor half carries an X after the size digits (FCMI-24X-P); the indoor half does not. */
-export const halfOf = (r: PreviewRow): Half => (isPairProduct(r) ? (/\dX$/.test(r.stock_key) ? "outdoor" : "indoor") : null);
+export const halfOf = (r: PreviewRow): Half => (isPairProduct(r) ? (samsungHalf(r.stock_key) ?? (/\dX$/.test(r.stock_key) ? "outdoor" : "indoor")) : null);
 
 const nice = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 

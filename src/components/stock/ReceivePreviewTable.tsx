@@ -23,7 +23,7 @@ export default function ReceivePreviewTable({ rows, jobs, isInvoice, onChange }:
             <div className="min-w-0">
               <div className="font-medium text-sm truncate">{r.match.product?.short_name || r.match.product?.name || r.line.description}</div>
               <div className="text-xs text-muted-foreground truncate">{r.line.model_number} {r.match.product ? "" : "· not matched"}</div>
-              {r.notes.map((n, k) => <div key={k} className="text-[11px] text-muted-foreground">{n}</div>)}
+              {r.notes.map((n, k) => <div key={k} className={n.startsWith("Family match") ? "text-[11px] font-medium text-amber-600" : "text-[11px] text-muted-foreground"}>{n.startsWith("Family match") ? `⚠ ${n}` : n}</div>)}
               {r.price.level !== "none" && <Badge variant={r.price.level === "warn" ? "destructive" : "secondary"} className="mt-1 text-[11px]">{r.price.level === "warn" ? "⚠ " : ""}{r.price.text}</Badge>}
             </div>
             <div className="flex sm:block justify-between text-sm sm:text-right"><span className="sm:hidden text-muted-foreground">Qty</span>
