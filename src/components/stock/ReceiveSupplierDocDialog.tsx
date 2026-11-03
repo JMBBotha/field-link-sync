@@ -78,6 +78,8 @@ export default function ReceiveSupplierDocDialog({ open, onOpenChange, companyId
       if (error) throw error;
       const { data: dl } = await sb.from("supplier_job_document_lines").select("id, line_no").eq("document_id", ing.document_id);
       const ids: Record<number, string> = {}; (dl ?? []).forEach((l: any) => { ids[l.line_no] = l.id; });
+      // serials first, so the job_delivered_units capture (on receive) picks them up
+      for (const r of rows) if (r.serial_no?.trim() && ids[r.line.line_no]) await sb.from("supplier_job_document_lines").update({ serial_no: r.serial_no.trim() }).eq("id", ids[r.line.line_no]);
       const { data: res, error: e2 } = await sb.rpc("sjd_receive", { p_document: ing.document_id, p_lines: toReceivePayload(rows, ids) });
       if (e2) throw e2;
       toast({ title: docType === "supplier_invoice" ? `Stock added: ${res.stocked} line(s)` : "Delivery note recorded", description: `${res.reserved} reserved for jobs · ${res.installed} installed${res.already_received ? ` · ${res.already_received} already received` : ""}` });

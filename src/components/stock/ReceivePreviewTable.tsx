@@ -39,6 +39,8 @@ export default function ReceivePreviewTable({ rows, jobs, isInvoice, onChange }:
               <option value="">{needsJob ? "Choose job…" : "—"}</option>
               {jobs.map((j) => <option key={j.id} value={j.id}>{j.label}</option>)}
             </select>
+            {needsJob && <input aria-label="Serial no." placeholder="Serial no. (optional)" className="w-full h-8 rounded-md border bg-background px-2 text-xs sm:col-span-full"
+              value={r.serial_no ?? ""} onChange={(e) => onChange(i, { serial_no: e.target.value })} />}
           </div>
         );
       })}
