@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { leadServiceTypeFor, jobTypeFor, kindOfJobType, techJobTypeLabel, bookingSms, bookingEmail, validReason } from "./jobTypeChoice";
+import { isAcceptedQuote, leadServiceTypeFor, jobTypeFor, kindOfJobType, techJobTypeLabel, bookingSms, bookingEmail, validReason } from "./jobTypeChoice";
 import { laneFromServiceType } from "./leadLane";
 
 describe("job type choice", () => {
@@ -25,6 +25,10 @@ describe("job type choice", () => {
     expect(bookingEmail({ kind: "service", day: "Thu 5 Nov" }).html).toContain("never deducted");
     expect(bookingEmail({ kind: "installation", day: "Thu 5 Nov" }).html).not.toContain("R680");
     expect(bookingSms({ kind: "service", day: "x" })).not.toMatch(/0800 232 665/);
+  });
+  it("only an accepted quote counts", () => {
+    expect(isAcceptedQuote("accepted")).toBe(true);
+    for (const st of ["draft", "sent", "viewed", "option_not_chosen", null]) expect(isAcceptedQuote(st)).toBe(false);
   });
   it("reason is required", () => { expect(validReason("  ")).toBe(false); expect(validReason("Unit beyond repair")).toBe(true); });
 });

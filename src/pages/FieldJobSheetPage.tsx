@@ -144,7 +144,7 @@ export default function FieldJobSheetPage() {
         </Card>
       )}
 
-      {j && id && !["completed", "cancelled"].includes(j.status) && <TechJobTypePanel jobId={id} jobType={j.job_type ?? null} leadId={j.lead_id ?? null} />}
+      {j && id && !["completed", "cancelled"].includes(j.status) && <TechJobTypePanel jobId={id} jobType={j.job_type ?? null} leadId={j.lead_id ?? null} onClosed={() => job.refetch()} />}
 
       {/* Read-only: the tech sees every visit and its hours */}
       {j?.lead_id && id && <JobVisitsCard jobId={id} />}

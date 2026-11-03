@@ -6,7 +6,7 @@ import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { JobTypeChoice } from "@/components/jobs/JobTypeChoice";
-import { jobTypeFor, type JobKind } from "@/lib/jobTypeChoice";
+import { jobTypeFor, isAcceptedQuote, quoteStatus, type JobKind } from "@/lib/jobTypeChoice";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -53,9 +53,10 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     agentId: "",
   }));
   const [priority, setPriority] = useState("normal");
-  // Required choice, no default. A linked quote means it was accepted, so installation jobs become "installation".
+  // Required choice, no default. Installation is "quote" until the linked quote's status is "accepted".
   const [jobKind, setJobKind] = useState<JobKind | null>(null);
-  const jobType = jobKind ? jobTypeFor(jobKind, !!quoteId) : "service";
+  const { data: linkedQuoteStatus } = useQuery({ queryKey: ["quote-status", quoteId], enabled: !!quoteId, queryFn: () => quoteStatus(quoteId) });
+  const jobType = jobKind ? jobTypeFor(jobKind, !!quoteId && isAcceptedQuote(linkedQuoteStatus)) : "service";
   // Duration default: quote labour hours win, else 3 h for jobs / 1 h for a quote (sales) visit. Stops once the user picks a length.
   const [durationTouched, setDurationTouched] = useState(false);
   const { data: quoteMinutes } = useQuoteLabourMinutes(quoteId || null);

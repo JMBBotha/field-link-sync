@@ -2,9 +2,10 @@
 //   service      = AC service call-out / repair -> request "service", intent service, job_type "service"
 //   installation = new AC                       -> request "new_sale", intent sales, job_type "quote" until the
 //                                                 quote is accepted, then "installation" (Johan answer 1).
-// Decided (Johan 14:18): repair is part of service (one type); Move stays its own request type; a service job stays
-// open while a service->installation request waits for admin; the tech's sales button gives no lead credit or
-// commission, the lead only records raised_by_tech for reporting.
+// Decided (Johan 14:17/14:18): repair is part of service (one type); Move stays its own request type. No on-site
+// service->installation conversion: an approved type change only changes the type label. The tech's sales button
+// has two options (unit not viable -> call-out closed + replacement quote lead; client also needs a new quote).
+// No lead credit or commission: leads only record raised_by_tech for reporting.
 import { supabase } from "@/integrations/supabase/client";
 
 export type JobKind = "service" | "installation";
@@ -26,7 +27,7 @@ export const JOB_KIND_META: Record<JobKind, { icon: string; title: string; reque
 /** Lead form: the existing service_type wording, so lane/intent routing (leadLane.ts) is unchanged. */
 export const leadServiceTypeFor = (k: JobKind) => (k === "service" ? "Technical/Repairs" : "Sales/Consultation");
 
-/** Job row: installation stays "quote" until a quote is accepted (Johan answer 1). */
+/** Job row: installation stays "quote" until its quote has status "accepted" (Johan answer 1). */
 export const jobTypeFor = (k: JobKind, hasAcceptedQuote = false) => (k === "service" ? "service" : hasAcceptedQuote ? "installation" : "quote");
 
 /** Which card a stored job_type belongs to. */
@@ -65,7 +66,7 @@ export function bookingEmail(m: BookingMsg): { subject: string; html: string } {
 
 // Tech change requests (Johan answer 5): a tech never changes the type directly. Change = request + reason;
 // nothing changes until an admin/owner approves; the tech sees "Waiting for admin".
-export interface TypeChangeRequest { id: string; job_id: string; from_type: string | null; to_type: string; reason: string; status: "pending" | "approved" | "declined"; created_at: string; decided_at?: string | null; handoff_lead_id?: string | null }
+export interface TypeChangeRequest { id: string; job_id: string; from_type: string | null; to_type: string; reason: string; status: "pending" | "approved" | "declined"; created_at: string; decided_at?: string | null }
 type Res = { ok: boolean; message?: string; request_id?: string; lead_id?: string | null };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const rpc = async <T,>(fn: string, args: Record<string, unknown>): Promise<T> => { const { data, error } = await (supabase.rpc as any)(fn, args); if (error) throw new Error(error.message); return data as T; };
@@ -74,8 +75,15 @@ export const decideTypeChange = (requestId: string, approve: boolean, note?: str
 export const flagSalesLead = (jobId: string, note: string) => rpc<Res>("tech_flag_sales_lead", { p_job_id: jobId, p_note: note || null });
 export async function latestTypeChange(jobId: string): Promise<TypeChangeRequest | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (supabase.from as any)("job_type_change_requests").select("id, job_id, from_type, to_type, reason, status, created_at, decided_at, handoff_lead_id")
+  const { data } = await (supabase.from as any)("job_type_change_requests").select("id, job_id, from_type, to_type, reason, status, created_at, decided_at")
     .eq("job_id", jobId).order("created_at", { ascending: false }).limit(1);
   return (data && data[0]) || null;
 }
+export const isAcceptedQuote = (status?: string | null) => (status || "").toLowerCase() === "accepted";
+export async function quoteStatus(quoteId: string): Promise<string | null> {
+  const { data } = await supabase.from("quotes").select("status").eq("id", quoteId).maybeSingle();
+  return (data as { status?: string } | null)?.status ?? null;
+}
+/** Unit not viable: closes the service job as a call-out (R680 excl. VAT, never deducted) + replacement-quote lead. */
+export const unitNotViable = (jobId: string, note: string) => rpc<Res>("tech_unit_not_viable", { p_job_id: jobId, p_note: note || null });
 export const validReason = (r: string) => r.trim().length >= 3;

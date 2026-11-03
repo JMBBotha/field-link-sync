@@ -27,7 +27,7 @@ export default function JobTypeChangesPanel() {
     try {
       const r = await decideTypeChange(id, approve);
       if (!r?.ok) throw new Error(r?.message || "Not saved");
-      toast({ title: approve ? "Approved" : "Declined", description: approve && r.lead_id ? "A New sale lead was created; the service job stays open." : undefined });
+      toast({ title: approve ? "Approved" : "Declined", description: approve ? "Job type label changed." : undefined });
       void q.refetch();
     } catch (e) { toast({ title: "Couldn't save", description: (e as Error).message, variant: "destructive" }); }
     finally { setBusy(null); }
@@ -41,7 +41,7 @@ export default function JobTypeChangesPanel() {
             <Link to={`/admin/jobs/${r.job_id}`} className="font-medium underline">{r.jobs?.title || "Job"}</Link>
             <div className="text-xs text-muted-foreground">{techJobTypeLabel(r.from_type)} → {JOB_KIND_META[r.to_type as JobKind]?.icon} {JOB_KIND_META[r.to_type as JobKind]?.title ?? r.to_type}</div>
             <div className="mt-1">Why: {r.reason}</div>
-            {r.to_type === "installation" && <div className="mt-1 text-xs text-muted-foreground">Approve creates a New sale lead. The service job stays open.</div>}
+            <div className="mt-1 text-xs text-muted-foreground">Approve only changes the job type label.</div>
             <div className="mt-2 flex gap-2">
               <Button size="sm" className="bg-[#C2410C] text-white hover:bg-[#9A3412]" disabled={busy === r.id} onClick={() => decide(r.id, true)}>Approve</Button>
               <Button size="sm" variant="outline" disabled={busy === r.id} onClick={() => decide(r.id, false)}>Decline</Button>
