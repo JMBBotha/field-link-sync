@@ -22,6 +22,15 @@ SELECT count(*) allocations FROM cf_stock_allocations;
 SELECT job_materials_plan('00000000-0000-0000-0000-0000000000b1') AS plan;
 SELECT job_materials_draw('00000000-0000-0000-0000-0000000000b1', (SELECT jsonb_build_array(jsonb_build_object('stock_item_id',id,'qty',30)) FROM cf_stock_items WHERE model_code='G005')) AS draw;
 SELECT item, qty_on_hand FROM cf_stock_items ORDER BY item;
+INSERT INTO quotes VALUES ('00000000-0000-0000-0000-0000000000e2'::text::uuid,'Q-TEST-2','Test Client B');
+INSERT INTO quote_items(id,quote_id,product_id,item_name,quantity) VALUES ('00000000-0000-0000-0000-0000000000d3','00000000-0000-0000-0000-0000000000e2','00000000-0000-0000-0000-000000000f01','FCMI-24',1);
+INSERT INTO jobs VALUES ('00000000-0000-0000-0000-0000000000b2','00000000-0000-0000-0000-0000000000c1','00000000-0000-0000-0000-0000000000e2','Test job B');
+INSERT INTO supplier_job_documents VALUES ('00000000-0000-0000-0000-00000000dd03','00000000-0000-0000-0000-0000000000c1','delivery_note','DN-2','Test Supplier','PO2');
+INSERT INTO supplier_job_document_lines(id,document_id,company_id,line_no,description,model_number,qty) VALUES
+ ('00000000-0000-0000-0000-0000000000a4','00000000-0000-0000-0000-00000000dd03','00000000-0000-0000-0000-0000000000c1',1,'Indoor','FCMI-24-P',1),
+ ('00000000-0000-0000-0000-0000000000a5','00000000-0000-0000-0000-00000000dd03','00000000-0000-0000-0000-0000000000c1',2,'Outdoor','FCMI-24X-P',1);
+SELECT sjd_receive('00000000-0000-0000-0000-00000000dd03','[{"line_id":"00000000-0000-0000-0000-0000000000a4","action":"reserve","job_id":"00000000-0000-0000-0000-0000000000b2","product_id":"00000000-0000-0000-0000-000000000f01","qty_packs":1,"unit_cost_pack":5217.05},{"line_id":"00000000-0000-0000-0000-0000000000a5","action":"reserve","job_id":"00000000-0000-0000-0000-0000000000b2","product_id":"00000000-0000-0000-0000-000000000f01","qty_packs":1,"unit_cost_pack":5217.04}]') AS pair_dn;
+SELECT source_key, qty, unit_cost_excl AS pair_cost_expect_10434_09 FROM cf_commitments WHERE job_id='00000000-0000-0000-0000-0000000000b2';
 DELETE FROM auth.me;
 INSERT INTO auth.me VALUES ('00000000-0000-0000-0000-0000000000ff');
 DELETE FROM okco;
