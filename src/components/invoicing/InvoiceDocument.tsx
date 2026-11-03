@@ -23,6 +23,8 @@ export interface InvoiceDocLineItem {
 
 export interface InvoiceDocumentProps {
   invoiceNumber: string;
+  /** House / site reference shown big under the title (estate invoices), e.g. "House 12 · Estate". */
+  reference?: string | null;
   /** Invoice status; void/cancelled get a red VOID stamp and title. */
   status?: string | null;
   issueDate: string;
@@ -82,7 +84,7 @@ const formatDate = (dateStr?: string | null) =>
  * Used both for on-screen viewing and print / PDF capture.
  */
 const InvoiceDocument = ({
-  invoiceNumber, status,
+  invoiceNumber, reference, status,
   issueDate,
   dueDate,
   customerName,
@@ -149,13 +151,14 @@ const InvoiceDocument = ({
       stamp={isVoid ? "VOID" : null}
       stampsRow={isVoid ? null : <InvoiceStamps stamps={stamps} />}
       number={invoiceNumber}
+      reference={reference}
       profile={profile}
       partyLabel="Bill to"
       partyName={customerName}
       partyLines={[customerCompany, customerAddress, customerEmail, customerPhone]}
       partyVat={billedToVat}
       partySite={siteLineFor(siteAddress, customerAddress)}
-      meta={[["Invoice No", invoiceNumber], ["Date", formatDate(issueDate)], ["Due", dueDate ? formatDate(dueDate) : "On receipt"]]}
+      meta={[...(reference ? [["House / site", reference] as [string, string]] : []), ["Invoice No", invoiceNumber], ["Date", formatDate(issueDate)], ["Due", dueDate ? formatDate(dueDate) : "On receipt"]]}
       sections={sections}
       totals={[
         { label: "Subtotal excl VAT", value: subtotal },

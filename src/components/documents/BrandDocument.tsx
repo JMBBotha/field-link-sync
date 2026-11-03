@@ -41,6 +41,8 @@ export interface BrandDocumentProps {
   docType: "quote" | "invoice";
   title: string;
   number: string;
+  /** Big house / site reference under the document number (estate invoices). */
+  reference?: string | null;
   profile?: Partial<CompanyProfile> | null;
   style?: DocumentStyle;
   partyLabel: string;
@@ -242,7 +244,7 @@ export default function BrandDocument(p: BrandDocumentProps) {
               <button type="button" className="hco-tgl" data-testid="company-details-toggle" onClick={() => setCoOpen((v) => !v)}>{coOpen ? "Hide company details ▴" : "Company details ▾"}</button>
             </div>
           </div>
-          <div className="ttl"><h1>{p.title}</h1><div className="no">{p.number}</div></div>
+          <div className="ttl"><h1>{p.title}</h1><div className="no">{p.number}</div>{p.reference ? <div className="ref" data-testid="doc-reference" style={{ fontSize: 18, fontWeight: 800, marginTop: 4 }}>{p.reference}</div> : null}</div>
         </div>
         <div className="accent" />
         {p.stampsRow}
