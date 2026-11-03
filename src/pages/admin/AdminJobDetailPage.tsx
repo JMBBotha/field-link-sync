@@ -44,6 +44,7 @@ import { useToast } from "@/hooks/use-toast";
 import { JobDetailSkeleton } from "@/components/ui/skeletons";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import TechLocationBlock from "@/components/jobs/TechLocationBlock";
+import JobHeaderPills from "@/components/jobs/JobHeaderPills";
 import AdminBackfillPanel from "@/components/jobs/AdminBackfillPanel";
 import JobRunCard from "@/components/scheduling/JobRunCard";
 import { useJobVisits } from "@/components/jobs/JobVisits";
@@ -237,11 +238,7 @@ const AdminJobDetailPage = () => {
         {/* Job header: V8 navy card (Johan 14:04, appearance only) */}
         <div className="rounded-2xl bg-gradient-to-br from-[#0F2A44] to-[#1590D6] p-4 text-white sm:p-5" data-testid="job-hero">
           <h1 className="text-xl md:text-2xl font-semibold leading-tight break-words">{j.title}</h1>
-          <div className="flex items-center gap-2 flex-wrap mt-1.5">
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[j.status] || "bg-white/15 text-white"}`}>{(j.status || "unknown").replace(/_/g, " ")}</span>
-            {j.priority && <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold capitalize">{j.priority}</span>}
-            {j.job_type && <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold">{jobTypeLabel(j.job_type)}</span>}
-          </div>
+          <JobHeaderPills status={j.status} priority={j.priority} typeLabel={j.job_type ? jobTypeLabel(j.job_type) : null} statusClass={STATUS_COLORS[j.status]} />
           {(j.customers?.name || location?.label || location?.address) && (
             <p className="mt-1.5 text-sm text-[#CFE6F6] break-words">{[j.customers?.name, location?.label, location?.address].filter(Boolean).join(" · ")}</p>
           )}

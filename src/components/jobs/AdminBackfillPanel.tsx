@@ -162,7 +162,7 @@ export default function AdminBackfillPanel({ jobId, leadId, companyId, defaultTe
         <p className="text-xs text-muted-foreground">For work the tech didn't log in the app. Backdated entries don't message the client or alert reps.</p>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <Button variant="outline" className={btn} onClick={() => setMode("visit")} data-testid="backfill-visit-btn"><CalendarClock className="h-4 w-4 text-[#1590D6]" />Record visit</Button>
+        <Button variant="outline" className={btn} onClick={() => setMode("visit")} data-testid="backfill-visit-btn"><CalendarClock className="h-4 w-4 text-[#1590D6]" />Add past visit</Button>
         <Button variant="outline" className={btn} onClick={() => setMode("photos")} disabled={!leadId}><Camera className="h-4 w-4 text-[#1590D6]" />Add photos</Button>
         <Button variant="outline" className={btn} onClick={() => setMode("unit")}><Wrench className="h-4 w-4 text-[#1590D6]" />Model &amp; serial</Button>
         <Button variant="outline" className={btn} onClick={() => setMode("material")}><Package className="h-4 w-4 text-[#1590D6]" />Materials used</Button>
@@ -211,7 +211,7 @@ export default function AdminBackfillPanel({ jobId, leadId, companyId, defaultTe
 
       <Dialog open={mode !== null} onOpenChange={(o) => !o && setMode(null)}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-2xl sm:max-w-md">
-          <DialogHeader><DialogTitle>{mode === "visit" ? "Record visit" : mode === "photos" ? "Add photos" : mode === "unit" ? "Model & serial numbers" : "Materials used"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{mode === "visit" ? "Add past visit" : mode === "photos" ? "Add photos" : mode === "unit" ? "Model & serial numbers" : "Materials used"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             {techSelect}
             {dateRow}
@@ -220,7 +220,7 @@ export default function AdminBackfillPanel({ jobId, leadId, companyId, defaultTe
                 <label className="text-sm"><span className="mb-1 block text-muted-foreground">Arrived</span><TimeInput24 className="mt-1" value={arrive} onChange={(e) => setArrive(e.target.value)} /></label>
                 <label className="text-sm"><span className="mb-1 block text-muted-foreground">Left</span><TimeInput24 className="mt-1" value={leave} onChange={(e) => setLeave(e.target.value)} /></label>
               </div>
-              <label className="flex items-center justify-between rounded-xl border p-3 text-sm"><span>Job was completed</span><Switch checked={completed} onCheckedChange={setCompleted} /></label>
+              <label className="flex items-center justify-between rounded-xl border p-3 text-sm"><span>Whole job finished on this visit</span><Switch checked={completed} onCheckedChange={setCompleted} /></label>
               <Input placeholder="Note (optional)" className="h-11" value={note} onChange={(e) => setNote(e.target.value)} />
               <Button className="h-11 w-full bg-[#1590D6] hover:bg-[#0F7BBB]" disabled={busy || !arrive} onClick={saveVisit} data-testid="backfill-visit-save">{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save visit</Button>
             </>)}
