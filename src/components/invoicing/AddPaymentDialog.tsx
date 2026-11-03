@@ -25,6 +25,9 @@ export default function AddPaymentDialog({ open, onOpenChange, invoices, initial
           <DialogDescription>{inv ? `${inv.invoice_number || "Invoice"} · ${rand(inv.amount_due)} due` : "Which invoice is this payment for?"}</DialogDescription>
         </DialogHeader>
         {invoices.length > 1 && <InvoicePicker invoices={invoices} pick={pick} onPick={setPick} />}
+        {pick && !inv && (
+          <p role="status" data-testid="add-payment-done" className="rounded-md bg-emerald-50 px-3 py-2 text-center text-sm font-semibold text-emerald-700">Payment saved. This invoice has no balance left.</p>
+        )}
         {inv && (
           <PaymentRecorder key={inv.id} invoiceId={inv.id} invoiceTotal={Number(inv.grand_total)} credited={creditedByInvoice(credits).get(inv.id) || 0} onChange={() => onDone?.()} />
         )}
