@@ -92,9 +92,10 @@ export function renderSignatureHtml(person?: SignaturePerson | null, imageBase: 
       ? `<img src="${imageBase}/logo-block-shadow.png" width="224" alt="${esc(co.brand)}" style="display:block;border:0">`
       : `<div style="font-size:20px;font-weight:800;${C};max-width:224px">${esc(co.brand)}</div>`;
   return `<table cellpadding="0" cellspacing="0" role="presentation" data-email-signature style="font-family:Arial,Helvetica,sans-serif;background:#ffffff;padding:18px 0"><tr>`
-    + `<td style="padding-right:22px;border-right:3px solid #1aa7ec;vertical-align:middle">${logoCell}</td>`
-    + `<td style="padding-left:22px;line-height:1.5;white-space:nowrap;vertical-align:middle">${rows.join("")}</td>`
-    + `<td style="padding-left:18px;vertical-align:middle"><img src="${imageBase}/units-pair5.png" width="270" alt="Air conditioners" style="display:block;border:0"></td>`
+    + `<td width="224" valign="middle" style="width:224px;padding-right:22px;border-right:3px solid #1aa7ec;vertical-align:middle">${logoCell}</td>`
+    + `<td valign="middle" nowrap style="padding-left:22px;line-height:1.5;white-space:nowrap;vertical-align:middle">${rows.join("")}</td>`
+    // Unit image: 180px (source 499x325), right of the text, vertically centred. Always an absolute https URL so it loads in every mail app.
+    + `<td width="198" valign="middle" style="width:198px;padding-left:18px;vertical-align:middle"><img src="${/^https:\/\//.test(imageBase) ? imageBase : SIGNATURE_IMAGE_BASE}/units-pair5.png" width="180" height="117" alt="Air conditioners" style="display:block;border:0;width:180px;height:117px;max-width:none"></td>`
     + `</tr></table>`;
 }
 

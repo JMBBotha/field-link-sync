@@ -11,6 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 export type JobKind = "service" | "installation";
 
 export const CALL_OUT_EXCL_VAT = 680;
+/** Client-facing wording (Johan 14:54): only this, in every email / SMS / WhatsApp a client sees. */
+export const CLIENT_CALL_OUT = "Call-out fee: R680 excl. VAT";
+/** Internal / admin rule only. Never in client text. */
 export const CALL_OUT_NOTE = "R680 excl. VAT call-out per technician visit, charged separately, never deducted from the repair or any quote.";
 
 export const JOB_KIND_META: Record<JobKind, { icon: string; title: string; request: string; requestLabel: string; hint: string; note: string; next: string }> = {
@@ -50,14 +53,14 @@ export function techJobTypeLabel(t?: string | null): string {
 // Booking confirmation templates (Johan answer 4). Email sends via send_booking_confirmation (SQL builds the same text);
 // SMS later, WhatsApp stays off. The call-out line is added for service / repair bookings only.
 export interface BookingMsg { firstName?: string | null; kind: JobKind | null; day: string; time?: string | null; company?: string }
-const callOutLine = (k: JobKind | null) => (k === "service" ? ` Please note: ${CALL_OUT_NOTE}` : "");
+const callOutLine = (k: JobKind | null) => (k === "service" ? ` ${CLIENT_CALL_OUT}.` : "");
 export function bookingSms(m: BookingMsg): string {
   const what = m.kind === "installation" ? "free sales site visit" : "technician visit";
   return `Hi ${m.firstName || "there"}, your ${m.company || "0800-BE-COOL"} ${what} is booked for ${m.day}${m.time ? ` at ${m.time}` : ""}.${callOutLine(m.kind)} Reply to change it.`;
 }
 export function bookingEmail(m: BookingMsg): { subject: string; html: string } {
   const what = m.kind === "installation" ? "free sales site visit" : "technician visit";
-  const fee = m.kind === "service" ? `<p style="background:#FFF4E5;border:1px solid #F5B66B;border-radius:8px;padding:10px"><b>Call-out fee:</b> ${CALL_OUT_NOTE}</p>` : "";
+  const fee = m.kind === "service" ? `<p style="background:#FFF4E5;border:1px solid #F5B66B;border-radius:8px;padding:10px"><b>Call-out fee:</b> R680 excl. VAT</p>` : "";
   return {
     subject: `Your ${what} is booked – ${m.day}`,
     html: `<p>Hi ${m.firstName || "there"},</p><p>Your ${what} is booked for <b>${m.day}${m.time ? ` at ${m.time}` : ""}</b>.</p>${fee}<p>Reply to this email if you need to change it.</p>`,
