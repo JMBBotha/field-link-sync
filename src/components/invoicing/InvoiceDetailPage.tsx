@@ -1,3 +1,4 @@
+import { HOUSE_EMBED, invoiceHouseLabel } from "@/lib/invoiceHouse";
 import { DeliveredHint, useDeliveredSuggestions } from "@/components/invoicing/DeliveredCodes";
 import { BalanceDueBlock } from "@/components/invoicing/BalanceDueBlock";
 import FinalInvoiceSendDialog from "@/components/invoicing/FinalInvoiceSendDialog";
@@ -130,7 +131,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   const fetchInvoice = async () => {
     setLoading(true);
     const [invoiceResult, itemsResult, paymentsResult] = await Promise.all([
-      supabase.from("invoices").select("*").eq("id", invoiceId).single(),
+      supabase.from("invoices").select(`*, ${HOUSE_EMBED}`).eq("id", invoiceId).single(),
       supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId).order("sort_order" as any, { ascending: true }).order("created_at", { ascending: true }),
       supabase.from("payments").select("amount, status, gateway, payment_date, created_at").eq("invoice_id", invoiceId),
     ]);
@@ -315,7 +316,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
       <div ref={headerRef} className="v8-navy flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="flex items-center gap-2">
           {/* One back arrow: the shared header BackButton (Johan 31 Oct). */}
-          <h1 className="text-lg font-bold">Invoice</h1>
+          <h1 className="text-lg font-bold">{invoiceHouseLabel(invoice as any) ? <><span data-testid="invoice-house">{invoiceHouseLabel(invoice as any)}</span> · Invoice {invoice.invoice_number}</> : "Invoice"}</h1>
           {getStatusBadge(invoice.status)}<SentManuallyBadge doc={invoice as any} className="ml-1" />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1 min-w-0">
@@ -346,6 +347,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
       {/* FreshBooks-style invoice document (screen + print/PDF) */}
       <InvoiceDocument
         invoiceNumber={invoice.invoice_number}
+        reference={invoiceHouseLabel(invoice as any, true)}
         termsCompany={profileTermsInfo(docProfile)}
         status={invoice.status}
         issueDate={invoice.issue_date || invoice.created_at}

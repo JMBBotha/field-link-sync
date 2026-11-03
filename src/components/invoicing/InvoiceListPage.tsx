@@ -1,3 +1,4 @@
+import { HOUSE_EMBED, invoiceHouseLabel, invoiceMatchesSearch } from "@/lib/invoiceHouse";
 import { SentManuallyBadge } from "@/components/documents/MarkSentManually";
 import { useRole } from "@/hooks/useRole";
 import { useState, useEffect } from "react";
@@ -129,7 +130,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
     setLoading(true);
     const { data, error } = await supabase
       .from("invoices")
-      .select("*")
+      .select(`*, ${HOUSE_EMBED}`)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -181,15 +182,11 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
       const { paid, balance } = invoiceMoney(inv as any, payRows, creditRows);
       return matchesMoneyFilter(inv as any, paid, balance, moneyFilter);
     })
-    .filter(inv =>
-      !search ||
-      inv.customer_name.toLowerCase().includes(search.toLowerCase()) ||
-      inv.invoice_number.toLowerCase().includes(search.toLowerCase())
-    );
+    .filter(inv => invoiceMatchesSearch(inv as any, search));
     return state === "unpaid" ? sortUnpaid(rows, (inv) => ({ status: inv.status, due: dueBy.get(inv.id) as any })) : rows;
   };
   const filteredInvoices = collectedMode
-    ? invoices.filter(isCollectedRow).filter((inv) => !search || inv.customer_name.toLowerCase().includes(search.toLowerCase()) || inv.invoice_number.toLowerCase().includes(search.toLowerCase()))
+    ? invoices.filter(isCollectedRow).filter((inv) => invoiceMatchesSearch(inv as any, search))
     : listFor(inf.state ?? null);
   const openCollected = () => setSearchParams((p) => { const n = new URLSearchParams(); n.set("view", "collected"); return n; });
   const openOutstanding = () => setSearchParams(() => { const n = new URLSearchParams(); n.set("state", "unpaid"); return n; });
@@ -408,7 +405,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
               leading={selectMode ? <Checkbox checked={selected.includes(invoice.id)} aria-label={`Select ${invoice.invoice_number}`}
                 onCheckedChange={() => setSelected((s) => (s.includes(invoice.id) ? s.filter((x) => x !== invoice.id) : [...s, invoice.id]))} /> : undefined}
               stacked
-              title={invoice.customer_name || invoice.invoice_number}
+              title={(() => { const h = invoiceHouseLabel(invoice as any); const n = invoice.customer_name || invoice.invoice_number; return h ? <><span data-testid="invoice-house" className="font-bold">{h}</span> · {n}</> : n; })()}
               chip={<>{getStatusBadge(invoice.status)}<DepositPaymentChip invoice={invoice} className="text-xs px-2 py-0.5" />{unpaidMode ? (() => { const b = unpaidBucket(invoice.status, due as any); const tone = BUCKET_TONE[b];
                 return <span data-testid="unpaid-bucket" data-bucket={b} onClick={(e) => { if (due) { e.stopPropagation(); setReviewId(reviewId === invoice.id ? null : invoice.id); } }}
                   className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${tone === "red" ? "bg-[#FDECEC] text-[#C9373C]" : tone === "orange" ? "bg-[#FFEBDD] text-[#C2570C]" : "bg-muted text-muted-foreground"}`}>

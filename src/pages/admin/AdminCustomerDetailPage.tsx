@@ -1,3 +1,4 @@
+import { HOUSE_EMBED, invoiceHouseLabel } from "@/lib/invoiceHouse";
 import { BalanceDueBlock } from "@/components/invoicing/BalanceDueBlock";
 import { useInvoiceDue } from "@/hooks/useInvoiceDue";
 import OwnerRepChip from "@/components/requests/OwnerRepChip";
@@ -209,7 +210,7 @@ const AdminCustomerDetailPage = () => {
       if (customer?.name) orParts.push(`customer_name.ilike.${customer.name}`);
       const { data, error } = await supabase
         .from("invoices")
-        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, sent_at, final_sent_at, final_sent_channel, created_at, archived_at, customer_id, customer_name, location_id, payment_terms_basis, payment_terms_days, deposit_amount, deposit_type")
+        .select(`id, invoice_number, notes, line_items, issue_date, due_date, grand_total, status, sent_at, final_sent_at, final_sent_channel, created_at, archived_at, customer_id, customer_name, location_id, payment_terms_basis, payment_terms_days, deposit_amount, deposit_type, ${HOUSE_EMBED}`)
         .or(orParts.join(","))
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -599,7 +600,7 @@ const AdminCustomerDetailPage = () => {
                           <Fragment key={inv.id}>
                           <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/invoices/${inv.id}`)}>
                             <TableCell className="font-medium">{inv.invoice_number || "—"}</TableCell>
-                            <TableCell className="min-w-[160px] max-w-[320px] text-muted-foreground text-xs"><div className="line-clamp-2 break-words" title={inv.notes || undefined}>{inv.notes || "—"}</div></TableCell>
+                            <TableCell className="min-w-[160px] max-w-[320px] text-muted-foreground text-xs">{invoiceHouseLabel(inv) && <div data-testid="invoice-house" className="font-bold text-sm text-foreground">{invoiceHouseLabel(inv)}</div>}<div className="line-clamp-2 break-words" title={inv.notes || undefined}>{inv.notes || "—"}</div></TableCell>
                             <TableCell className="text-xs">{inv.issue_date ? format(new Date(inv.issue_date), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-xs">{inv.due_date ? format(new Date(inv.due_date), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-right font-medium">{formatRand(Number(inv.grand_total || 0))}</TableCell>
