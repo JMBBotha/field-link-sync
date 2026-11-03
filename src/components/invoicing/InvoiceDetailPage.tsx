@@ -1,3 +1,4 @@
+import { DeliveredHint, useDeliveredSuggestions } from "@/components/invoicing/DeliveredCodes";
 import { BalanceDueBlock } from "@/components/invoicing/BalanceDueBlock";
 import FinalInvoiceSendDialog from "@/components/invoicing/FinalInvoiceSendDialog";
 import { CUSTOMER_BILLTO_COLUMNS, resolveBillTo } from "@/lib/billTo";
@@ -158,6 +159,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         unit_price: i.rate || i.unit_price || 0,
         amount: i.amount,
       }));
+  const deliveredHints = useDeliveredSuggestions(invoice?.id, displayItems.map((i) => ({ description: i.description || "" })));
 
   const docProfile = documentProfile(invoice, profiles);
   const isDraft = invoice?.status === "draft";
@@ -332,6 +334,15 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         setTimeout(() => form?.querySelector<HTMLInputElement>('input[type="number"]')?.focus(), 350);
       }} />
       {!(Number((invoice as any).deposit_amount) > 0) && <InvoiceDueDateEdit invoice={invoice} onDone={() => { fetchInvoice(); onUpdate?.(); }} />}
+      {deliveredHints.length > 0 && (
+        <div className="print:hidden rounded-md border p-2 space-y-1" data-testid="delivered-panel">
+          <div className="text-xs font-medium text-muted-foreground">Delivered units for this job{invoice.status !== "draft" ? " – invoice locked, suggestion only" : ""}</div>
+          {deliveredHints.map((d) => (
+            <div key={d.lineIndex} className="text-xs"><span className="text-muted-foreground">Line {d.lineIndex + 1}: {(displayItems[d.lineIndex]?.description || "").slice(0, 60)}</span>
+              <DeliveredHint s={d} /></div>
+          ))}
+        </div>
+      )}
       {/* FreshBooks-style invoice document (screen + print/PDF) */}
       <InvoiceDocument
         invoiceNumber={invoice.invoice_number}
