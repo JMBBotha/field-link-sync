@@ -12,6 +12,7 @@ import { TimeInput24 } from "@/components/ui/time-input-24";
 import { Loader2 } from "lucide-react";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
 import SitePhotosSection from "@/components/photos/SitePhotosSection";
+import LinkedJobPhotos from "@/components/photos/LinkedJobPhotos";
 import LeadPhotoUploader from "@/components/jobs/LeadPhotoUploader";
 
 export const JOB_TYPES = [{ v: "service", l: "Service" }, { v: "repair", l: "Repair" }, { v: "installation", l: "Installation" }] as const;
@@ -195,6 +196,7 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
                     <p className="text-xs text-muted-foreground">Only the assigned technician sees this, with the client details.</p>
                   </div>
                   {data.office && <SitePhotosSection leadId={data.lead.id} />}
+                  {data.office && <LinkedJobPhotos leadId={data.lead.id} />}
                 </>
               )}
             </div>

@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { JOB_TYPE_OPTIONS } from "@/lib/jobTypes";
+import { JobTypeChoice } from "@/components/jobs/JobTypeChoice";
+import { jobTypeFor, isAcceptedQuote, quoteStatus, type JobKind } from "@/lib/jobTypeChoice";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -52,7 +53,10 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     agentId: "",
   }));
   const [priority, setPriority] = useState("normal");
-  const [jobType, setJobType] = useState("service");
+  // Required choice, no default. Installation is "quote" until the linked quote's status is "accepted".
+  const [jobKind, setJobKind] = useState<JobKind | null>(null);
+  const { data: linkedQuoteStatus } = useQuery({ queryKey: ["quote-status", quoteId], enabled: !!quoteId, queryFn: () => quoteStatus(quoteId) });
+  const jobType = jobKind ? jobTypeFor(jobKind, !!quoteId && isAcceptedQuote(linkedQuoteStatus)) : "service";
   // Duration default: quote labour hours win, else 3 h for jobs / 1 h for a quote (sales) visit. Stops once the user picks a length.
   const [durationTouched, setDurationTouched] = useState(false);
   const { data: quoteMinutes } = useQuoteLabourMinutes(quoteId || null);
@@ -317,7 +321,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setAppt({ date: "", startTime: "", durationMinutes: defaultMinutes("service"), agentId: "" });
     setDurationTouched(false);
     setPriority("normal");
-    setJobType("service");
+    setJobKind(null);
     setLat(null);
     setLng(null);
     setGeoStatus("idle");
@@ -349,17 +353,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             <Label>Description</Label>
             <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Job details..." rows={3} />
           </div>
-          <div>
-            <Label>Job Type</Label>
-            <Select value={jobType} onValueChange={setJobType}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {JOB_TYPE_OPTIONS.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <JobTypeChoice value={jobKind} onChange={setJobKind} label="What does the client need?" />
           <div>
             <Label>Customer <span className="text-destructive">*</span></Label>
             <Select value={customerId} onValueChange={(v) => { setCustomerId(v); setLocationId(""); setLat(null); setLng(null); setGeoStatus("idle"); }}>
@@ -454,7 +448,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
               }
               createMutation.mutate();
             }}
-            disabled={!title || !customerId || !address || !appt.date || !appt.startTime || !companyId || createMutation.isPending}
+            disabled={!jobKind || !title || !customerId || !address || !appt.date || !appt.startTime || !companyId || createMutation.isPending}
           >
             {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Create Job

@@ -47,6 +47,8 @@ import ClientTypeahead from "./ClientTypeahead";
 import { TimeInput24 } from "@/components/ui/time-input-24";
 import SameClientDialog from "@/components/leads/SameClientDialog";
 import { type ClientBooking } from "@/lib/sameClient";
+import { JobTypeChoice } from "@/components/jobs/JobTypeChoice";
+import { leadServiceTypeFor, bookingSms, CALL_OUT_NOTE, type JobKind } from "@/lib/jobTypeChoice";
 
 interface CreateLeadDialogProps {
   open: boolean;
@@ -288,6 +290,7 @@ const CreateLeadDialog = ({ open, onOpenChange, customerId: prefillCustomerId }:
   const { findNearbyAgents, loading: loadingAgents } = useNearbyAgents();
   const { settings: broadcastSettings } = useBroadcastSettings();
   const { salesStaff, laneById } = useLaneStaff();
+  const [saved, setSaved] = useState<{ kind: JobKind; day: string; time: string } | null>(null);
 
   // Lane: derived from the service type, dispatcher can override
   const derivedLane = laneFromServiceType(formData.service_type);
@@ -534,7 +537,7 @@ const CreateLeadDialog = ({ open, onOpenChange, customerId: prefillCustomerId }:
       setSalesOwnerId("");
       setDupRows(null);
       clearDraft();
-
+      setSaved({ kind: formData.service_type === "Technical/Repairs" ? "service" : "installation", day: scheduledDateStr ? format(scheduledDate!, "EEE d MMM") : "", time: scheduledTime || "" });
 
       onOpenChange(false);
     } catch (error: any) {
@@ -687,29 +690,12 @@ const CreateLeadDialog = ({ open, onOpenChange, customerId: prefillCustomerId }:
             />
           </div>
 
+          <JobTypeChoice
+            value={formData.service_type === "Technical/Repairs" ? "service" : formData.service_type === "Sales/Consultation" ? "installation" : null}
+            onChange={(k) => { setFormData({ ...formData, service_type: leadServiceTypeFor(k) }); setLaneOverride(null); }}
+          />
+
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="service_type">
-                Service Type <span className="text-destructive">*</span>
-              </Label>
-              <Select
-                value={formData.service_type}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, service_type: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Sales/Consultation">Sales/Consultation</SelectItem>
-                  <SelectItem value="Technical/Repairs">Technical/Repairs</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
               <Select
@@ -743,42 +729,6 @@ const CreateLeadDialog = ({ open, onOpenChange, customerId: prefillCustomerId }:
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          {/* Lane: Sales vs Service */}
-          <div className="space-y-2">
-            <Label>
-              Lane <span className="text-destructive">*</span>
-            </Label>
-            <div className="grid grid-cols-3 gap-2">
-              {([
-                { key: "sales" as const, label: "Sales" },
-                { key: "service" as const, label: "Service" },
-                { key: "unknown" as const, label: "Not sure" },
-              ]).map(opt => {
-                const active =
-                  opt.key === "unknown" ? lane === null : lane === opt.key;
-                return (
-                  <Button
-                    key={opt.key}
-                    type="button"
-                    size="sm"
-                    variant={active ? "default" : "outline"}
-                    className="h-9"
-                    onClick={() => setLaneOverride(opt.key)}
-                  >
-                    {opt.label}
-                  </Button>
-                );
-              })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {lane === "sales"
-                ? "Sales lead — assigned to a named salesperson, no first-accept race."
-                : lane === "service"
-                  ? "Service lead — broadcast to nearby technicians, first accept wins."
-                  : "Lane unknown — this lead stays in the inbox and will not be broadcast."}
-            </p>
           </div>
 
           {/* Sales owner picker */}
@@ -994,6 +944,27 @@ const CreateLeadDialog = ({ open, onOpenChange, customerId: prefillCustomerId }:
         onReplace={replaceExisting}
         onSecondVisit={(b) => saveLead(b.lead_id)}
         onCancel={() => setDupRows(null)} />
+      <Dialog open={!!saved} onOpenChange={(o) => { if (!o) setSaved(null); }}>
+        <DialogContent className="max-w-md" data-testid="lead-saved">
+          <DialogHeader><DialogTitle>Saved ✓</DialogTitle></DialogHeader>
+          {saved?.kind === "service" ? (
+            <div className="space-y-3 text-sm">
+              <div className="font-semibold">🔧 Service call-out booked for scheduling</div>
+              <div className="text-xs text-muted-foreground">Request type: Service</div>
+              <div className="rounded-lg border border-orange-300 bg-orange-50 p-3"><b>Tell the client now:</b> {CALL_OUT_NOTE}</div>
+              <div className="text-xs text-muted-foreground">Booking SMS / email text (includes the call-out line):</div>
+              <div className="rounded-lg border bg-muted/40 p-2 text-xs">{bookingSms({ kind: "service", day: saved.day || "the booked day", time: saved.time })}</div>
+            </div>
+          ) : (
+            <div className="space-y-2 text-sm">
+              <div className="font-semibold">❄️ Installation lead created</div>
+              <div className="text-xs text-muted-foreground">Request type: New sale · shows as Quote until the quote is accepted</div>
+              <div className="rounded-lg border border-green-300 bg-green-50 p-3">Free sales site visit → rep offer (or the client's own rep) → quote → deposit</div>
+            </div>
+          )}
+          <Button onClick={() => setSaved(null)}>Done</Button>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
