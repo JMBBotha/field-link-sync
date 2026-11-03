@@ -1,0 +1,54 @@
+// Dry-run of 20261103120000_company_tools.sql (+ rollback) on in-memory Postgres (PGlite) with stub schema and fake data.
+// node supabase/tests/company_tools/run.mjs   (needs @electric-sql/pglite). Exits 1 on any failed check.
+import { PGlite } from "@electric-sql/pglite"; import fs from "fs"; import path from "path"; import { fileURLToPath } from "url";
+const here = path.dirname(fileURLToPath(import.meta.url)); const mig = path.join(here, "../../migrations");
+const db = new PGlite(); let fail = 0;
+await db.exec(fs.readFileSync(path.join(here, "stub.sql"), "utf8"));
+await db.exec(fs.readFileSync(path.join(mig, "20261103120000_company_tools.sql"), "utf8"));
+const A = "aaaaaaaa-0000-0000-0000-000000000001", OWN = "00000000-0000-0000-0000-00000000000a", ADM = "00000000-0000-0000-0000-00000000000d", TECH = "00000000-0000-0000-0000-00000000000e", XADM = "00000000-0000-0000-0000-00000000000f";
+const as = (u) => db.exec(`DELETE FROM auth.me; INSERT INTO auth.me VALUES (${u ? `'${u}'` : "NULL"})`);
+const q = async (s, p) => (await db.query(s, p)).rows;
+const ok = (c, m) => { console.log((c ? "ok  " : "FAIL") + " " + m); if (!c) fail++; };
+const throws = async (fn, re, m) => { try { await fn(); ok(false, m + " (no error)"); } catch (e) { ok(re.test(e.message), `${m}: ${e.message}`); } };
+const fk = (await q("SELECT id FROM tool_types WHERE name='Flaring kit' AND company_id IS NULL"))[0].id;
+ok((await q("SELECT count(*)::int n FROM tool_types WHERE company_id IS NULL"))[0].n === 6, "6 default tool types");
+
+await as(TECH); await throws(() => q("SELECT add_tools($1,$2,'Flaring kit',ARRAY['FK-01'])", [A, fk]), /not allowed/, "tech cannot add");
+await as(XADM); await throws(() => q("SELECT add_tools($1,$2,'Flaring kit',ARRAY['FK-01'])", [A, fk]), /not allowed/, "other company admin cannot add");
+await as(ADM);
+const ids = (await q("SELECT add_tools($1,$2,'Flaring kit',ARRAY['fk-01','FK-02','FK-03'],'Max Cool',DATE '2026-11-03',275000,true) ids", [A, fk]))[0].ids;
+const rows = await q("SELECT label, cost_cents, cost_tbc, status FROM tools ORDER BY label");
+ok(rows.map((r) => r.label).join() === "FK-01,FK-02,FK-03", "labels upper-cased FK-01..03");
+ok(rows.map((r) => r.cost_cents).join() === "91667,91667,91666" && rows.reduce((a, r) => a + r.cost_cents, 0) === 275000, "total split per tool, cents add up");
+await throws(() => q("SELECT add_tools($1,$2,'Flaring kit',ARRAY['FK-02'])", [A, fk]), /duplicate|unique/i, "label unique per company");
+await as(OWN); const own = await q("SELECT add_tool_type($1,'Torque wrench') id", [A]); ok(!!own[0].id, "owner can add a tool type");
+await as(ADM); await q("SELECT issue_tool($1,$2)", [ids[0], TECH]);
+await throws(() => q("SELECT issue_tool($1,$2)", [ids[1], XADM]), /not in this company/, "cannot issue to another company's person");
+await throws(() => q("SELECT issue_tool($1,$2)", [ids[0], TECH]), /in store/, "cannot issue twice");
+await as(TECH);
+ok((await q("SELECT label FROM tools WHERE assigned_tech_id=auth.uid()")).map((r) => r.label).join() === "FK-01", "tech sees own tool");
+await throws(() => q("SELECT report_tool_issue($1,'lost','left on site')", [ids[1]]), /not allowed/, "tech cannot report a tool not theirs");
+await throws(() => q("SELECT set_tool_status($1,'retired')", [ids[0]]), /not allowed/, "tech cannot retire");
+await q("SELECT report_tool_issue($1,'lost','Left at a site in Demo Street')", [ids[0]]);
+const n = await q("SELECT user_id, type, title, body, metadata->>'route' r FROM notifications");
+ok(n.length === 1 && n[0].user_id === OWN && n[0].type === "tool_lost" && /FK-01/.test(n[0].title), "owner gets one in-app tool_lost alert");
+console.log("   alert:", JSON.stringify(n[0]));
+await throws(() => q("DELETE FROM tools WHERE id=$1", [ids[0]]), /never deleted/, "delete blocked (trigger)");
+await throws(() => q("UPDATE tool_events SET note='x'"), /append-only/, "history is append-only");
+await as(ADM); await q("SELECT set_tool_status($1,'retired','Written off')", [ids[0]]);
+await throws(() => q("SELECT return_tool($1)", [ids[0]]), /Retired/, "retired is final");
+await q("SELECT update_tool($1,'{\"cost_cents\": 92000, \"cost_tbc\": false}')", [ids[1]]);
+const ev = await q("SELECT event::text, to_status::text, tech_name, done_by_name FROM tool_events WHERE tool_id=$1 ORDER BY event_date, event", [ids[0]]);
+ok(ev.map((e) => e.event).join() === "added,issued,reported,retired", "history: " + ev.map((e) => e.event).join());
+const st = await q("SELECT total::int, in_store::int, retired::int, total_spend_cents::int s, cost_tbc_count::int c FROM tool_type_stats");
+ok(st[0].total === 3 && st[0].retired === 1 && st[0].in_store === 2, "stats view: " + JSON.stringify(st[0]));
+// Real RLS check as the authenticated role
+await db.exec("GRANT USAGE ON SCHEMA public, auth TO authenticated; GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated; GRANT SELECT ON auth.me TO authenticated; GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated; GRANT SELECT ON tool_type_stats TO authenticated;");
+const asRole = async (u, sql) => { await as(u); await db.exec("SET ROLE authenticated"); try { return (await db.query(sql)).rows; } finally { await db.exec("RESET ROLE"); } };
+ok((await asRole(XADM, "SELECT * FROM tools")).length === 0, "RLS: other company sees no tools");
+ok((await asRole(TECH, "SELECT * FROM tools")).length === 0, "RLS: tech sees none once tool is retired/unassigned");
+ok((await asRole(ADM, "SELECT * FROM tools")).length === 3, "RLS: admin sees company tools");
+await throws(() => asRole(ADM, "INSERT INTO tools(company_id,label,name,tool_type_id) VALUES ('" + A + "','X','x','" + fk + "')"), /permission|policy/i, "RLS: no direct insert");
+await db.exec(fs.readFileSync(path.join(mig, "20261103120000_company_tools_rollback.sql"), "utf8"));
+ok((await q("SELECT to_regclass('public.tools') t"))[0].t === null, "rollback removes tables");
+console.log(fail ? `${fail} FAILED` : "ALL OK"); process.exit(fail ? 1 : 0);
