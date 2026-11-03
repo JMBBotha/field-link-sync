@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { deliveredSuggestions, type DeliveredSuggestion, type DeliveredUnit, type InvoiceLineLite } from "@/lib/deliveredCodes";
 
-const sb = supabase as any;
+type Q = { eq: (c: string, v: unknown) => Q; in: (c: string, v: unknown[]) => Q; order: (c: string) => Q; then: Promise<{ data: unknown[] | null; error: unknown }>["then"] };
+const sb = supabase as unknown as { from: (t: string) => { select: (c: string) => Q } };
 
 /** Delivered units on the job(s) linked to this invoice (job_delivered_units). Empty until the table exists. */
 export function useDeliveredSuggestions(invoiceId: string | null | undefined, lines: InvoiceLineLite[]) {
@@ -12,11 +13,11 @@ export function useDeliveredSuggestions(invoiceId: string | null | undefined, li
     staleTime: 60_000,
     queryFn: async (): Promise<DeliveredUnit[]> => {
       const { data: jobs } = await sb.from("jobs").select("id").eq("invoice_id", invoiceId);
-      const ids = (jobs ?? []).map((j: any) => j.id);
+      const ids = ((jobs ?? []) as { id: string }[]).map((j) => j.id);
       if (!ids.length) return [];
       const { data, error } = await sb.from("job_delivered_units").select("job_id, product_id, half, supplier_code, serial_no, qty").in("job_id", ids).order("delivered_at");
       if (error) return []; // table not deployed yet
-      return data ?? [];
+      return (data ?? []) as DeliveredUnit[];
     },
   });
   return deliveredSuggestions(lines, q.data ?? []);
