@@ -1,3 +1,5 @@
+import { DeliveredHint, useDeliveredSuggestions } from "@/components/invoicing/DeliveredCodes";
+import { writeDelivered } from "@/lib/deliveredCodes";
 import { CUSTOMER_BILLTO_COLUMNS, resolveBillTo, siteLineFor } from "@/lib/billTo";
 import { useR0, clearAllR0, r0PriceInput, R0_FIELD } from "@/lib/r0Highlight";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
@@ -235,6 +237,7 @@ const CreateInvoicePage = ({
   });
 
   /* ─── Derived ─── */
+  const delivered = useDeliveredSuggestions(editInvoiceId, lineItems);
   const totals = invoiceTotals(lineItems.map((i) => i.amount), showDiscount && discountValue > 0 ? { type: discountType, value: discountValue } : null);
   const subtotal = totals.subtotal;
   const discountAmount = totals.discountAmount;
@@ -857,6 +860,7 @@ const CreateInvoicePage = ({
                   onChange={(val) => updateLineItem(idx, "description", val)}
                   onSelect={(opt) => pickOption(opt, idx)}
                 />
+                <DeliveredHint s={delivered.find((d) => d.lineIndex === idx)} onWrite={() => { const d = delivered.find((x) => x.lineIndex === idx); if (d) updateLineItem(idx, "description", writeDelivered(item.description, d.text)); }} />
                 {item.flag && (
                   <span className="mt-0.5 inline-block rounded bg-amber-100 dark:bg-amber-500/15 px-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
                     {item.flag === "tech" ? "From tech – check" : "Deposit credit"}

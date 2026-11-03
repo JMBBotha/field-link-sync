@@ -87,6 +87,8 @@ export interface PreviewRow {
   stock_key: string; line: ExtractedLine; match: Match; map: UnitMapping | null; action: ReceiveAction; job_id: string | null;
   unit_cost_pack: number | null; cost_source: "invoice" | "catalogue" | "none";
   stock_qty: number; cost_per_stock_unit: number | null; adds_stock: boolean; price: PriceFlag; notes: string[];
+  /** Serial number(s) as printed on the unit / delivery note; saved per job on receive. */
+  serial_no?: string | null;
 }
 
 /**
@@ -141,7 +143,7 @@ export function toReceivePayload(rows: PreviewRow[], lineIds: Record<number, str
     line_id: lineIds[r.line.line_no], action: r.action, job_id: r.action === "reserve" || r.action === "installed" ? r.job_id : null,
     product_id: r.match.product?.id ?? null, model_code: r.stock_key, item: r.match.product?.short_name || r.match.product?.name || r.line.description, stock_unit: r.map?.stock_unit ?? "each", pack_size: r.map?.pack_size ?? 1,
     qty_packs: r.line.qty, unit_cost_pack: r.unit_cost_pack, cost_source: r.cost_source,
-    price_flag: r.price.level === "none" ? null : r.price.level, price_note: r.price.text || null,
+    price_flag: r.price.level === "none" ? null : r.price.level, price_note: r.price.text || null, serial_no: r.serial_no?.trim() || null,
   }));
 }
 export const canConfirm = (rows: PreviewRow[]) =>
