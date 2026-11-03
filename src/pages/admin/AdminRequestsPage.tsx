@@ -9,6 +9,7 @@ import { PageHeaderCard } from "@/components/v8/ui/V8Blocks";
 import LeadAssignDialog from "@/components/jobs/LeadAssignDialog";
 import AddRequestDialog from "@/components/requests/AddRequestDialog";
 import RequestCorrectionsPanel from "@/components/requests/RequestCorrectionsPanel";
+import JobTypeChangesPanel from "@/components/requests/JobTypeChangesPanel";
 import { assignedLabel, cardHref, isAssigned } from "@/lib/assignedLabel";
 import { requestBadgeLabel } from "@/lib/requestBadge";
 import { fetchInbox, markContacted, markDone, setType, typeLabel, waitLabel, REQUEST_TYPES, type RequestRow, type RequestType } from "@/lib/requests";
@@ -103,6 +104,7 @@ export default function AdminRequestsPage() {
           </button>
         ))}
       </div>
+      <JobTypeChangesPanel />
       <RequestCorrectionsPanel />
       {isLoading ? <div className="h-40 animate-pulse rounded-2xl bg-muted" /> : rows.length === 0 ? (
         <div className="rounded-2xl border bg-card p-6 text-center text-[16px] text-muted-foreground">Nothing here. New requests land here first.</div>
