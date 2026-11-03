@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { sb } from "@/components/supplierDocs/api";
 import { pdfTextPages } from "@/lib/pdfTextLines";
 import { parsePagesLocally, productLinesOnly } from "../../../supabase/functions/_shared/supplierDocLines";
-import { buildPreview, canConfirm, normaliseModel, toReceivePayload, type DocType, type ExtractedLine, type PreviewRow, type Product } from "@/lib/stockReceive";
+import { buildPreview, canConfirm, normaliseModel, toReceivePayload, type CodeAlias, type DocType, type ExtractedLine, type PreviewRow, type Product } from "@/lib/stockReceive";
 import ReceivePreviewTable, { type JobOption } from "./ReceivePreviewTable";
 import ReceiveReconTable from "./ReceiveReconTable";
 import { buildRecon, type JobQuoteLine } from "@/lib/stockRecon";
@@ -26,6 +26,9 @@ export default function ReceiveSupplierDocDialog({ open, onOpenChange, companyId
 
   const { data: products = [] } = useQuery({ queryKey: ["receive-products", companyId], enabled: open,
     queryFn: async () => ((await sb.from("supplier_products").select(PRODUCT_COLS).limit(5000)).data ?? []) as Product[] });
+  const { data: aliases = [] } = useQuery({ queryKey: ["receive-code-aliases", companyId], enabled: open,
+    // Table may not exist before its migration is applied: fall back to no aliases.
+    queryFn: async () => { const { data, error } = await (sb as any).from("supplier_product_code_aliases").select("product_id, supplier_code, half, supplier_name").eq("active", true).limit(5000); return (error ? [] : data ?? []) as CodeAlias[]; } });
   const { data: jobs = [] } = useQuery({ queryKey: ["receive-jobs", companyId], enabled: open,
     queryFn: async () => (((await sb.from("jobs").select("id, title, status, quote_id").neq("status", "cancelled").order("created_at", { ascending: false }).limit(150)).data ?? []) as any[])
       .map((j) => ({ id: j.id, label: j.title || j.id.slice(0, 8), quote_id: j.quote_id ?? null, has_quote: !!j.quote_id })) as (JobOption & { quote_id: string | null; has_quote: boolean })[] });
@@ -61,7 +64,7 @@ export default function ReceiveSupplierDocDialog({ open, onOpenChange, companyId
           .eq("supplier_job_documents.po_number", poNo.trim()).eq("supplier_job_documents.doc_type", "delivery_note");
         earlier = (data ?? []).map((e: any) => ({ ...e, normalised: normaliseModel(e.model_number) }));
       }
-      setLines(got); setRows(buildPreview(docType, got, products, earlier));
+      setLines(got); setRows(buildPreview(docType, got, products, earlier, null, aliases));
     } catch (e: any) { toast({ title: "Could not read document", description: e.message, variant: "destructive" }); }
     finally { setBusy(null); }
   };

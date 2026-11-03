@@ -25,18 +25,14 @@ export function normaliseModel(code: string | null | undefined) {
 const looseKey = (code: string | null | undefined) =>
   normaliseModel((code ?? "").toUpperCase().replace(/^([A-Z]+)-[A-Z]-(?=\d)/, "$1-"));
 
-export interface Match { product: Product | null; how: "exact" | "normalised" | "family" | "none"; lookalikes: Product[] }
+export interface Match { product: Product | null; how: "exact" | "normalised" | "alias" | "none"; lookalikes: Product[] }
 
 /**
- * Supplier codes that differ from the catalogue code but are the same unit family (approved by the office).
- * Only used when there is no exact or normalised match; the match is flagged "family" and shown as a warning.
- * Patterns run on stockKey() of the supplier code.
+ * Supplier / superseded code for a catalogue item (table supplier_product_code_aliases).
+ * Lets a new supplier code (e.g. a revised machine with the same model name) match the catalogue item without a code deploy.
+ * Only used when there is no exact or normalised match; such matches are flagged "alias" and shown as a warning.
  */
-export const FAMILY_ALIASES: { pattern: RegExp; code: string; label: string }[] = [
-  { pattern: /^AR40H12[A-Z0-9]*[NX]$/, code: "AR40F12C0AG/FA", label: "Samsung AR40 12K" },
-  { pattern: /^AR40H18[A-Z0-9]*[NX]$/, code: "AR40F18C0AG/FA", label: "Samsung AR40 18K" },
-  { pattern: /^AR24BSHCMWK[NX]$/, code: "AR24BSHCMWK/FA", label: "Samsung AR6500 WindFree 24K" },
-];
+export interface CodeAlias { product_id: string; supplier_code: string; half?: "indoor" | "outdoor" | null; supplier_name?: string | null }
 /** Samsung split halves end in a letter + N (indoor) or X (outdoor): AR40H12C1AMN / AR40H12C1AMX. Not FCMI-24X (digit + X). */
 export const samsungHalf = (code: string | null | undefined): "indoor" | "outdoor" | null => {
   const k = stockKey(code);
@@ -45,7 +41,7 @@ export const samsungHalf = (code: string | null | undefined): "indoor" | "outdoo
 };
 
 /** Match a supplier line to the catalogue. Never guesses across families: FCMI vs FCMF is reported as a look-alike, not a match. */
-export function matchProduct(model: string | null, products: Product[]): Match {
+export function matchProduct(model: string | null, products: Product[], aliases: CodeAlias[] = []): Match {
   if (!model) return { product: null, how: "none", lookalikes: [] };
   const raw = model.trim().toUpperCase();
   const exact = products.find((p) => (p.product_code ?? "").trim().toUpperCase() === raw);
@@ -61,11 +57,11 @@ export function matchProduct(model: string | null, products: Product[]): Match {
     const sameDigitsOtherFamily = pf !== fam && pn.slice(pf.length) === digits && pf.length === fam.length && editDistance(pf, fam) === 1;
     return sameDigitsOtherFamily || (!hit && looseKey(p.product_code) === looseKey(model));
   });
-  if (!hit) {
+  if (!hit && aliases.length) {
     const k = stockKey(model);
-    const alias = FAMILY_ALIASES.find((a) => a.pattern.test(k));
-    const fp = alias ? products.find((p) => (p.product_code ?? "").trim().toUpperCase() === alias.code) ?? null : null;
-    if (fp) return { product: fp, how: "family", lookalikes: [] };
+    const a = aliases.find((x) => stockKey(x.supplier_code) === k);
+    const ap = a ? products.find((p) => p.id === a.product_id) ?? null : null;
+    if (ap) return { product: ap, how: "alias", lookalikes: [] };
   }
   return { product: hit, how: exact ? "exact" : norm ? "normalised" : "none", lookalikes };
 }
@@ -98,18 +94,18 @@ export interface PreviewRow {
  * - Invoice lines add stock at invoice price. Delivery notes record the catalogue cost but never add stock.
  * - An invoice line inherits reserve/installed + job from the earlier delivery note line for the same product (same PO).
  */
-export function buildPreview(docType: DocType, lines: ExtractedLine[], products: Product[], earlier: EarlierLine[] = [], defaultJobId: string | null = null): PreviewRow[] {
+export function buildPreview(docType: DocType, lines: ExtractedLine[], products: Product[], earlier: EarlierLine[] = [], defaultJobId: string | null = null, aliases: CodeAlias[] = []): PreviewRow[] {
   const isInvoice = docType === "supplier_invoice";
   // Indoor+outdoor halves that match one catalogue pair row (stockKey differs, product same).
   const halves = new Map<string, Set<string>>();
-  for (const l of lines) { const m = matchProduct(l.model_number, products).product; if (m) { const k = halves.get(m.id) ?? new Set(); k.add(stockKey(l.model_number)); halves.set(m.id, k); } }
+  for (const l of lines) { const m = matchProduct(l.model_number, products, aliases).product; if (m) { const k = halves.get(m.id) ?? new Set(); k.add(stockKey(l.model_number)); halves.set(m.id, k); } }
   const pairSum = new Map<string, number | null>();
   for (const [pid, keys] of halves) if (keys.size > 1) {
-    const prices = [...keys].map((k) => lines.find((l) => stockKey(l.model_number) === k && matchProduct(l.model_number, products).product?.id === pid)?.unit_price_excl ?? null);
+    const prices = [...keys].map((k) => lines.find((l) => stockKey(l.model_number) === k && matchProduct(l.model_number, products, aliases).product?.id === pid)?.unit_price_excl ?? null);
     pairSum.set(pid, prices.every((p) => p != null) ? prices.reduce((a, p) => a + (p as number), 0) : null);
   }
   return lines.map((line) => {
-    const match = matchProduct(line.model_number, products);
+    const match = matchProduct(line.model_number, products, aliases);
     const p = match.product;
     const map = p ? stockUnitFor(p) : null;
     const notes: string[] = [];
@@ -122,7 +118,7 @@ export function buildPreview(docType: DocType, lines: ExtractedLine[], products:
     } else if (defaultJobId && p?.product_type === "ac_unit") { action = "reserve"; job_id = defaultJobId; }
     if (!p) notes.push(match.lookalikes.length ? `Not in catalogue. Look-alike: ${match.lookalikes.map((x) => x.product_code).join(", ")} (different model, not matched)` : "Not in catalogue");
     else if (match.how === "normalised") notes.push(`Matched ${line.model_number} → ${p.product_code}`);
-    else if (match.how === "family") notes.push(`Family match (check): ${line.model_number} → ${p.product_code}. Supplier code differs from the catalogue`);
+    else if (match.how === "alias") notes.push(`Code alias (check): ${line.model_number} → ${p.product_code}. Supplier code differs from the catalogue`);
     let unit_cost_pack: number | null = null; let cost_source: PreviewRow["cost_source"] = "none";
     if (isInvoice && line.unit_price_excl != null) { unit_cost_pack = line.unit_price_excl; cost_source = "invoice"; }
     else if (p?.cost_price != null) { unit_cost_pack = Number(p.cost_price) / (p && pairSum.has(p.id) ? 2 : 1); cost_source = "catalogue"; if (p && pairSum.has(p.id)) notes.push("Pair price split 50/50 between indoor and outdoor"); if (!isInvoice || line.unit_price_excl == null) notes.push("No price on document: catalogue cost used"); }
