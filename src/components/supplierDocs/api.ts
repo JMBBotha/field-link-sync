@@ -16,7 +16,7 @@ export const DOC_TYPES: [string, string][] = [
 export const docTypeLabel = (t: string) => DOC_TYPES.find(([k]) => k === t)?.[1] ?? t;
 
 export const DOC_SELECT =
-  "id, company_id, supplier_name, doc_type, doc_number, po_number, doc_date, file_name, storage_path, source, notes, created_at, suppliers(name), supplier_job_document_lines(id, line_no, description, model_number, serial_number, qty, job_id, unit_detail_id), supplier_job_document_links(id, job_id, customer_id, status, reason, confidence, jobs(id, title, scheduled_for), customers(id, name))";
+  "id, company_id, supplier_id, supplier_name, doc_type, doc_number, po_number, doc_date, file_name, storage_path, source, notes, created_at, suppliers(name), supplier_job_document_lines(id, line_no, description, model_number, serial_number, qty, job_id, unit_detail_id), supplier_job_document_links(id, job_id, customer_id, status, reason, confidence, jobs(id, title, scheduled_for), customers(id, name))";
 
 export async function openDocFile(path: string | null) {
   if (!path) return;

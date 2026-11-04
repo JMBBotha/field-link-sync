@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { invoiceHref, jobHref, quoteHref, houseHref } from "@/lib/recordLinks";
+import { namesHouse } from "@/lib/projectTracker";
 /** Client page V8 parts (Johan 20 Oct 13:30): activity timeline (read-only from existing tables), payment terms chip, sites overview. */
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,25 +15,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const sb = supabase as any;
-export type ActivityItem = { id: string; at: string; kind: "email" | "call" | "note" | "reminder" | "followup" | "job"; text: string; sub?: string; jobId?: string };
+export type ActivityItem = { id: string; at: string; kind: "email" | "call" | "note" | "reminder" | "followup" | "job"; text: string; sub?: string; jobId?: string; href?: string; house?: { label: string; href: string } };
 const ICON = { email: Mail, call: Phone, note: StickyNote, reminder: Clock, followup: Repeat, job: MapPin } as const;
+
+export type ClientHouse = { id: string; house_no: string; project_id: string };
+/** "House 32" in a job title -> that client's project house (whole number match only). */
+export function houseFor(houses: ClientHouse[] | undefined, title: string | undefined): { label: string; href: string } | undefined {
+  if (!houses?.length || !title) return undefined;
+  const h = houses.find((x) => namesHouse(title, x.house_no));
+  return h ? { label: `House ${h.house_no}`, href: houseHref(h.project_id, h.id) } : undefined;
+}
 
 export function buildActivity(src: {
   notes?: any[]; calls?: any[]; reports?: any[]; reminders?: any[]; sends?: any[]; followups?: any[]; jobLog?: any[];
-  quoteNo?: Map<string, string>; jobTitle?: Map<string, string>;
+  quoteNo?: Map<string, string>; jobTitle?: Map<string, string>; houses?: ClientHouse[];
 }): ActivityItem[] {
   const out: ActivityItem[] = [];
   for (const n of src.notes || []) out.push({ id: "n" + n.id, at: n.created_at, kind: "note", text: n.body });
   for (const c of src.calls || []) out.push({ id: "c" + c.id, at: c.started_at || c.created_at, kind: "call",
     text: `${c.direction === "outbound" ? "Outgoing" : "Incoming"} call${c.duration_seconds ? ` · ${Math.max(1, Math.round(c.duration_seconds / 60))} min` : ""}`, sub: c.summary || c.outcome || undefined });
   for (const r of src.reports || []) out.push({ id: "r" + r.id, at: r.created_at, kind: "call", text: "Call report", sub: r.next_action || undefined });
-  for (const p of src.reminders || []) out.push({ id: "p" + p.id, at: p.sent_at || p.created_at, kind: "reminder",
+  for (const p of src.reminders || []) out.push({ id: "p" + p.id, at: p.sent_at || p.created_at, kind: "reminder", href: p.invoice_id ? invoiceHref(p.invoice_id) : undefined,
     text: `Payment reminder ${p.invoice_number || ""} · ${p.status === "sent" ? "emailed" : p.status === "pending" ? "waiting for approval" : p.status}` });
-  for (const s of src.sends || []) out.push({ id: "s" + s.id, at: s.finished_at || s.started_at || s.created_at, kind: "email",
+  for (const s of src.sends || []) out.push({ id: "s" + s.id, at: s.finished_at || s.started_at || s.created_at, kind: "email", href: s.quote_id ? quoteHref(s.quote_id) : undefined,
     text: `Quote ${src.quoteNo?.get(s.quote_id) || ""} emailed to ${s.recipient}`, sub: s.status === "sent" || s.status === "delivered" ? undefined : s.status });
-  for (const f of src.followups || []) out.push({ id: "f" + f.id, at: f.created_at, kind: "followup",
+  for (const f of src.followups || []) out.push({ id: "f" + f.id, at: f.created_at, kind: "followup", href: f.quote_id ? quoteHref(f.quote_id) : undefined,
     text: `Quote ${src.quoteNo?.get(f.quote_id) || ""} follow-up #${f.seq} · ${String(f.result || "").replace(/_/g, " ")}`, sub: f.note || undefined });
-  for (const j of src.jobLog || []) out.push({ id: "j" + j.id, at: j.created_at, kind: "job", jobId: j.job_id || undefined,
+  for (const j of src.jobLog || []) out.push({ id: "j" + j.id, at: j.created_at, kind: "job", jobId: j.job_id || undefined, href: j.job_id ? jobHref(j.job_id) : undefined,
+    house: houseFor(src.houses, src.jobTitle?.get(j.job_id)),
     text: `${src.jobTitle?.get(j.job_id) || "Job"} · ${String(j.action || j.event_type || j.activity_type || "update").replace(/_/g, " ")}` });
   return out.filter((x) => x.at).sort((a, b) => +new Date(b.at) - +new Date(a.at));
 }
@@ -47,12 +58,14 @@ export function ClientActivity({ customerId, companyId, quotes, jobs }: { custom
         safe(sb.from("customer_notes").select("id, body, created_at").eq("customer_id", customerId).is("archived_at", null).order("created_at", { ascending: false }).limit(50)),
         safe(sb.from("vapi_calls").select("id, direction, duration_seconds, summary, outcome, started_at, created_at").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(50)),
         safe(sb.from("call_reports").select("id, next_action, created_at").eq("customer_id", customerId).eq("is_test", false).order("created_at", { ascending: false }).limit(30)),
-        safe(sb.from("payment_followups").select("id, invoice_number, status, created_at, sent_at").eq("customer_id", customerId).neq("status", "cancelled").order("created_at", { ascending: false }).limit(30)),
+        safe(sb.from("payment_followups").select("id, invoice_id, invoice_number, status, created_at, sent_at").eq("customer_id", customerId).neq("status", "cancelled").order("created_at", { ascending: false }).limit(30)),
         qIds.length ? safe(sb.from("quote_email_sends").select("id, quote_id, recipient, status, created_at, started_at, finished_at").in("quote_id", qIds).order("created_at", { ascending: false }).limit(50)) : [],
         qIds.length ? safe(sb.from("quote_followups").select("id, quote_id, seq, result, note, created_at").in("quote_id", qIds).order("created_at", { ascending: false }).limit(50)) : [],
         jIds.length ? safe(sb.from("job_activity_log").select("*").in("job_id", jIds).order("created_at", { ascending: false }).limit(50)) : [],
       ]);
-      return { notes, calls, reports, reminders, sends, followups, jobLog };
+      const projects = await safe(sb.from("projects").select("id, project_houses(id, house_no)").eq("customer_id", customerId));
+      const houses: ClientHouse[] = (projects as any[]).flatMap((pr) => (pr.project_houses || []).map((h: any) => ({ id: h.id, house_no: String(h.house_no), project_id: pr.id })));
+      return { notes, calls, reports, reminders, sends, followups, jobLog, houses };
     },
   });
   const items = useMemo(() => buildActivity({ ...(data || {}), quoteNo: new Map(quotes.map((q) => [q.id, q.quote_number || ""])), jobTitle: new Map(jobs.map((j) => [j.id, j.title || "Job"])) }), [data, quotes, jobs]);
@@ -77,8 +90,9 @@ export function ClientActivity({ customerId, companyId, quotes, jobs }: { custom
         : <ul className="divide-y">{items.slice(0, 80).map((it) => { const I = ICON[it.kind]; return (
           <li key={it.id} className="flex items-start gap-3 py-2.5">
             <span className="mt-0.5 rounded-full bg-[#E8F6FE] p-1.5 text-[#1590D6] dark:bg-sky-500/15 dark:text-sky-300"><I className="h-3.5 w-3.5" /></span>
-            {it.jobId
-              ? <Link to={`/admin/jobs/${it.jobId}`} data-testid="activity-job-link" className="min-w-0 flex-1 rounded-md hover:bg-muted/50"><p className="text-sm break-words font-medium text-[#1590D6]">{it.text} ›</p>{it.sub && <p className="text-xs text-muted-foreground line-clamp-2 break-words">{it.sub}</p>}</Link>
+            {it.href
+              ? <div className="min-w-0 flex-1"><Link to={it.href} data-testid={it.jobId ? "activity-job-link" : "activity-record-link"} className="block rounded-md hover:bg-muted/50"><p className="text-sm break-words font-medium text-[#1590D6]">{it.text} ›</p>{it.sub && <p className="text-xs text-muted-foreground line-clamp-2 break-words">{it.sub}</p>}</Link>
+                {it.house && <Link to={it.house.href} data-testid="activity-house-link" className="mt-0.5 inline-block rounded-full bg-[#E8F6FE] px-2 py-0.5 text-[11px] font-semibold text-[#1590D6]">{it.house.label} ↗</Link>}</div>
               : <div className="min-w-0 flex-1"><p className="text-sm break-words">{it.text}</p>{it.sub && <p className="text-xs text-muted-foreground line-clamp-2 break-words">{it.sub}</p>}</div>}
             <span className="shrink-0 text-xs text-muted-foreground">{format(new Date(it.at), "dd MMM HH:mm")}</span>
           </li>); })}</ul>}

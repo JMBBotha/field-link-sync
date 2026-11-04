@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,9 @@ interface DeleteState {
 
 const AdminSuppliersPage = () => {
   const [search, setSearch] = useState("");
-  const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  // ?supplier=<id> deep link opens that supplier's sheet.
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(() => searchParams.get("supplier"));
   const [formOpen, setFormOpen] = useState(false);
   const [editingSupplierId, setEditingSupplierId] = useState<string | null>(null);
   const [deleteState, setDeleteState] = useState<DeleteState | null>(null);

@@ -61,7 +61,7 @@ export function useProjectDetail(projectId?: string) {
         const jobIds = [...new Set(Object.values(photos).flatMap((x) => x.jobs.map((j) => j.id)))];
         if (jobIds.length) {
           const lk = await db.from("supplier_job_document_links")
-            .select("job_id, status, doc:supplier_job_documents(id, doc_type, doc_number, supplier_name, doc_date, storage_path, suppliers(name))")
+            .select("job_id, status, doc:supplier_job_documents(id, doc_type, doc_number, supplier_name, supplier_id, doc_date, storage_path, suppliers(name))")
             .in("job_id", jobIds).eq("status", "confirmed");
           const rows = (lk.error ? [] : lk.data || []).map((r: { job_id: string | null; status: string; doc: { suppliers?: { name: string } | null } & Record<string, unknown> | null }) =>
             ({ ...r, doc: r.doc ? { ...r.doc, supplier: r.doc.suppliers?.name ?? null } : null }));

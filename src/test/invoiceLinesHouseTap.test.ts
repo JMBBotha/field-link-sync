@@ -25,7 +25,7 @@ describe("Activity job rows open the job", () => {
   it("carries jobId", () => {
     const items = buildActivity({ jobLog: [{ id: "1", job_id: "job-a", created_at: "2026-11-03T10:00:00Z", action: "assigned" }], jobTitle: new Map([["job-a", "Installation — Test Estate House 7"]]) } as any);
     expect(items[0].jobId).toBe("job-a");
-    expect(readFileSync("src/components/customers/ClientV8Parts.tsx", "utf8")).toContain("/admin/jobs/${it.jobId}");
+    expect(readFileSync("src/components/customers/ClientV8Parts.tsx", "utf8")).toContain("jobHref(");
   });
 });
 

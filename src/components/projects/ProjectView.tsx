@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { supplierDocHref } from "@/lib/recordLinks";
 import { ArrowLeft, Map as MapIcon, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,10 @@ export default function ProjectView({ projectId, backTo }: { projectId: string; 
   const invalidate = useInvalidateProject();
   const { toast } = useToast();
   const [tab, setTab] = useState<string | null>(null);
-  const [openHouse, setOpenHouse] = useState<string | null>(null);
+  const [params, setParams] = useSearchParams();
+  const [openHouse, setOpenHouseRaw] = useState<string | null>(() => params.get("house"));
+  // ?house=<id> deep link opens that house's drawer; keep the URL in step so Back/links work.
+  const setOpenHouse = (id: string | null) => { setOpenHouseRaw(id); const n = new URLSearchParams(params); if (id) n.set("house", id); else n.delete("house"); setParams(n, { replace: true }); };
   const [filter, setFilter] = useState<HouseStatus | null>(null);
   const [newNo, setNewNo] = useState("");
   const [adding, setAdding] = useState(false);
@@ -128,7 +132,9 @@ export function HouseCard({ h, status, money, photos, docs, onOpen }: { h: Proje
       {photos && photos.jobs.length > 0 && (
         <Link to={`/admin/jobs/${(photos.jobs.find((j) => j.count) || photos.jobs[0]).id}#job-photos`} onClick={(e) => e.stopPropagation()} data-testid="house-photos-link"
           className="mt-0.5 inline-block text-xs font-medium text-[#1590D6] hover:underline">📷 {photos.count} photo{photos.count === 1 ? "" : "s"}</Link>)}
-      {docs && docs.count > 0 && <div data-testid="house-docs-count" className="text-xs text-muted-foreground">📄 {docs.count} supplier doc{docs.count === 1 ? "" : "s"}</div>}
+      {docs && docs.count > 0 && (docs.count === 1
+        ? <Link to={supplierDocHref(docs.docs[0].id)} onClick={(e) => e.stopPropagation()} data-testid="house-docs-count" className="block text-xs font-medium text-[#1590D6] hover:underline">📄 1 supplier doc</Link>
+        : <button type="button" data-testid="house-docs-count" onClick={(e) => { e.stopPropagation(); onOpen(); setTimeout(() => document.getElementById("house-docs")?.scrollIntoView({ behavior: "smooth" }), 300); }} className="block text-left text-xs font-medium text-[#1590D6] hover:underline">📄 {docs.count} supplier docs</button>)}
       {rem && <div data-testid="house-reminder" className="mt-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-200">🔔 {rem.text}</div>}
       <div className="mt-1.5 grid grid-cols-4 gap-1">
         {h.steps.map((s) => (
