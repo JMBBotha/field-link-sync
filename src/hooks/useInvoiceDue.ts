@@ -12,7 +12,15 @@ export function useInvoiceDue() {
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc("invoice_due_summary");
       if (error) throw error;
-      return (data || []) as DueRow[];
+      const rows = (data || []) as DueRow[];
+      // Pencil-set expected final payment dates (due_date_source = manual) on waiting rows: read-only, shown as "Expected <date>".
+      const ids = rows.filter((r) => r.waiting).map((r) => r.invoice_id);
+      if (ids.length) {
+        const { data: inv } = await (supabase as any).from("invoices").select("id, due_date, due_date_source").in("id", ids);
+        const m = new Map(((inv || []) as any[]).filter((i) => i.due_date && i.due_date_source === "manual").map((i) => [i.id, i.due_date as string]));
+        rows.forEach((r) => { if (m.has(r.invoice_id)) r.expected_at = m.get(r.invoice_id); });
+      }
+      return rows;
     },
   });
   const rows = q.data || [];

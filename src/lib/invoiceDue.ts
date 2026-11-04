@@ -1,4 +1,4 @@
-import { onCompletionLabel } from "@/lib/balanceDue";
+import { onCompletionLabel, fmtDay } from "@/lib/balanceDue";
 /** Invoice due follow-ups (Johan 20 Oct 12:04): final invoices only, steps -3 / due / +3 / +7 / +14. Rows from rpc invoice_due_summary. */
 export type DueStep = "pre" | "due" | "plus2" | "plus3" | "plus7" | "plus14" | null;
 export type DueRow = {
@@ -9,6 +9,8 @@ export type DueRow = {
   terms_basis?: "invoice" | "completion" | null; terms_days?: number | null; waiting?: boolean;
   /** Balance invoice (has a deposit): due on completion (31 Oct). install_at = booked installation. */
   install_at?: string | null; on_completion?: boolean;
+  /** Expected final payment date set with the pencil while still waiting (display only, Johan 4 Nov 23:00). */
+  expected_at?: string | null;
 };
 export type DueTone = "blue" | "amber" | "orange" | "red";
 export type DueSummary = {
@@ -17,7 +19,8 @@ export type DueSummary = {
   toApprove: number; urgent: DueRow[]; ownerCalls: DueRow[];
 };
 
-export function dueChip(r: Pick<DueRow, "days"> & Partial<Pick<DueRow, "waiting" | "terms_days" | "install_at" | "on_completion">>): { label: string; tone: DueTone } {
+export function dueChip(r: Pick<DueRow, "days"> & Partial<Pick<DueRow, "waiting" | "terms_days" | "install_at" | "on_completion" | "expected_at">>): { label: string; tone: DueTone } {
+  if (r.waiting && r.expected_at) return { label: `Expected ${fmtDay(r.expected_at)}`, tone: "blue" };
   if (r.waiting && r.on_completion) return { label: onCompletionLabel(r.install_at), tone: "blue" };
   if (r.waiting) return { label: `Due ${r.terms_days ?? 30} days after completion`, tone: "blue" };
   const d = r.days;
