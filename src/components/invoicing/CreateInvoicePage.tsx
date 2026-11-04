@@ -155,6 +155,18 @@ const CreateInvoicePage = ({
     d.setDate(d.getDate() + (companySettings.default_payment_terms_days || 7));
     return d.toISOString().split("T")[0];
   });
+  // Due date: follows the client's payment terms until the user picks a date themselves (then it is saved as 'manual'
+  // and the DB trigger never overwrites it).
+  const [dueDateManual, setDueDateManual] = useState(!!editInvoiceId);
+  const [clientTerms, setClientTerms] = useState<{ basis: string | null; days: number | null } | null>(null);
+  const termsDays = clientTerms?.basis === "completion" ? null : (clientTerms?.days ?? (companySettings.default_payment_terms_days || 7));
+  useEffect(() => {
+    if (dueDateManual || termsDays == null || !issueDate) return;
+    const d = new Date(`${issueDate}T00:00:00Z`);
+    if (isNaN(d.getTime())) return;
+    d.setUTCDate(d.getUTCDate() + termsDays);
+    setDueDate(d.toISOString().split("T")[0]);
+  }, [issueDate, termsDays, dueDateManual]);
   const [reference, setReference] = useState("");
 
   // Line items
@@ -271,6 +283,23 @@ const CreateInvoicePage = ({
         if (data) setLeads(data);
       });
   }, []);
+
+  // Client payment terms (for the due date + hint)
+  useEffect(() => {
+    const cid = selectedCustomerId;
+    if (!cid) { setClientTerms(null); return; }
+    supabase
+      .from("customers")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .select("payment_terms_basis, payment_terms_days" as any)
+      .eq("id", cid)
+      .single()
+      .then(({ data }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const t = data as any;
+        setClientTerms(t ? { basis: t.payment_terms_basis ?? null, days: t.payment_terms_days ?? null } : null);
+      });
+  }, [selectedCustomerId]);
 
   // Prefill customer email
   useEffect(() => {
@@ -589,6 +618,8 @@ const CreateInvoicePage = ({
         deposit_value: depositType ? depositValue : null,
         notes: notes || null,
         due_date: dueDate || null,
+        // 'manual' = the user picked this date; the DB keeps it as is. 'terms' = filled from the client's terms.
+        due_date_source: dueDate ? (dueDateManual ? "manual" : "terms") : null,
         issue_date: issueDate,
       };
 
@@ -811,7 +842,15 @@ const CreateInvoicePage = ({
             <div />
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Due Date</p>
-              <GhostInput type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <GhostInput type="date" value={dueDate} onChange={(e) => { setDueDateManual(true); setDueDate(e.target.value); }} />
+              <p className="text-[11px] text-muted-foreground px-2" data-testid="due-terms-hint">
+                {clientTerms?.basis === "completion"
+                  ? `Client terms: ${clientTerms.days ?? 0} days after job completion`
+                  : `${clientTerms?.days != null ? "Client terms" : "Company terms"}: ${termsDays} days`}
+                {dueDateManual && termsDays != null && !editInvoiceId && (
+                  <button type="button" className="ml-1 text-primary hover:underline" onClick={() => setDueDateManual(false)}>Use terms</button>
+                )}
+              </p>
             </div>
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reference / PO#</p>
