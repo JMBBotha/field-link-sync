@@ -121,11 +121,12 @@ const ClassicAdminSidebar = ({
             ...(isSalesRep ? [] : [
               { path: "/admin/inventory", label: "Stock", icon: Package, badge: lowStockCount > 0 ? lowStockCount : undefined } as NavItem,
               { path: "/admin/suppliers", label: "Suppliers", icon: Building2 } as NavItem,
+              { path: "/admin/supplier-docs", label: "Supplier docs", icon: BookOpen } as NavItem,
               { path: "/admin/specials", label: "Specials", icon: Tag } as NavItem,
             ]),
+            { path: "/admin/price-lists", label: "Price lists", icon: BookOpen },
           ],
         },
-        { path: "/admin/price-lists", label: "Price lists", icon: BookOpen, roles: ["admin", "dispatcher"] },
         { path: "/admin/team", label: "Team", icon: Users, roles: ["admin"], badge: pendingApplicants > 0 ? pendingApplicants : undefined },
         ...(isSalesRep ? [] : [{
           path: "/admin/reports",

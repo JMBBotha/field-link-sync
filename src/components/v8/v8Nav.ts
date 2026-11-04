@@ -78,35 +78,39 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
   ];
   const cash = !!opts.cashHealth;
   const groups: V8Group[] = [
-    { title: "Work", links: [
+    // Menu cleanup (Johan 4 Nov 21:10): same things bundled, supplier pages together, quote paperwork together. Routes unchanged.
+    { title: "Jobs & requests", links: [
       { path: "/admin/requests", label: "Requests", icon: "inbox" },
       { path: "/admin/unassigned-queue", label: "Unassigned queue", icon: "inbox" },
-      { path: "/admin/templates", label: "Templates", icon: "file" },
-      { path: "/admin/agreements", label: "Agreements", icon: "file" },
       { path: "/admin/change-requests", label: "Change requests", icon: "file" },
       { path: "/admin/maintenance", label: "Maintenance", icon: "calendar" },
       { path: "/admin/map", label: "Live tracking", icon: "pin", match: ["/admin/jobs-map"] },
       { path: "/admin/calls", label: "Calls", icon: "phone" },
+    ] },
+    { title: "Quotes & docs", links: [
+      { path: "/admin/templates", label: "Templates", icon: "file", match: ["/admin/proposals"] },
+      { path: "/admin/agreements", label: "Agreements", icon: "file" },
+      { path: "/admin/pdf-documents", label: "Brochures & PDFs", icon: "file", match: ["/admin/brochures", "/admin/unit-content"] },
     ] },
     { title: "Money", links: [
       cash ? { path: "/admin/cash-health", label: "Cash-flow health", icon: "chart", match: ["/admin/cashflow"] }
            : { path: "/admin/cashflow", label: "Cash flow & profit", icon: "chart" },
       { path: "/admin/payment-followups", label: "Payment follow-ups", icon: "wallet" },
       { path: "/admin/expenses", label: "Expenses", icon: "wallet" },
-      { path: "/admin/supplier-bills", label: "Supplier bills", icon: "wallet" },
       { path: "/admin/bank", label: "Bank (FNB)", icon: "wallet", match: ["/admin/billing"] },
       { path: "/admin/walda-approvals", label: "WALDA approvals", icon: "file" },
       { path: "/admin/money", label: "Money by lead", icon: "wallet" },
       { path: "/admin/reports", label: "Reports", icon: "chart", match: ["/admin/analytics"] },
     ] },
-    { title: "Catalogue & stock", links: [
+    { title: "Suppliers & stock", links: [
+      { path: "/admin/suppliers", label: "Suppliers", icon: "building" },
+      { path: "/admin/supplier-docs", label: "Supplier docs", icon: "file" },
+      { path: "/admin/supplier-bills", label: "Supplier bills", icon: "wallet" },
       { path: "/admin/catalog", label: "Catalogue", icon: "bag", match: ["/admin/price-lists"] },
       { path: cash ? "/admin/cash-health?tab=stock" : "/admin/inventory", label: "Stock", icon: "box", match: ["/admin/inventory"] },
-      { path: "/admin/suppliers", label: "Suppliers", icon: "building" },
       { path: "/admin/specials", label: "Specials", icon: "tag" },
       { path: "/admin/oss-extras", label: "Extras & consumables", icon: "box", match: ["/admin/consumables"] },
       { path: "/admin/tools", label: "Company tools", icon: "box" },
-      { path: "/admin/pdf-documents", label: "Documents", icon: "file", match: ["/admin/brochures", "/admin/unit-content"] },
     ] },
     { title: "Team & settings", links: [
       { path: "/admin/team", label: "Team", icon: "users", match: ["/admin/network-agents"] },

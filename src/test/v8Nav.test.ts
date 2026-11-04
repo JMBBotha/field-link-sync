@@ -24,9 +24,9 @@ describe("v8 Simple navigation", () => {
       expect(app.includes(`path="${base}"`) || app.includes(`path="${leaf}"`)).toBe(true);
     }
   });
-  it("groups: max 5 headings, no duplicate or dead links, phones keep 4 tabs + More", () => {
+  it("groups: 5 headings + Platform, no duplicate or dead links, phones keep 4 tabs + More", () => {
     const g = v8More("admin", { cashHealth: true });
-    expect(g.map((x) => x.title)).toEqual(["Work", "Money", "Catalogue & stock", "Team & settings", "Platform (Massair)"]);
+    expect(g.map((x) => x.title)).toEqual(["Jobs & requests", "Quotes & docs", "Money", "Suppliers & stock", "Team & settings", "Platform (Massair)"]);
     const paths = [...v8Primary("admin"), ...g.flatMap((x) => x.links)].map((l) => l.path);
     for (const dead of ["/admin/payments", "/admin/projects", "/admin/portal", "/admin/whatsapp", "/admin/dispatch", "/admin/network-agents", "/admin/price-lists", "/admin/consumables", "/admin/brochures", "/admin/analytics", "/admin/cashflow"]) expect(paths).not.toContain(dead);
     expect(new Set(paths.map((p) => p.split("?")[0] + (p.includes("tab=stock") ? "#stock" : ""))).size).toBe(paths.length);
@@ -36,6 +36,14 @@ describe("v8 Simple navigation", () => {
     expect(mgr).not.toContain("/admin/money");
     expect(mgr).not.toContain("/admin/settings");
     expect(v8IsActive(v8Primary("admin")[2], "/admin/jobs", "?tab=dispatch")).toBe(true);
+  });
+  it("supplier pages bundled; Supplier docs added and hidden from sales", () => {
+    const g = v8More("admin").find((x) => x.title === "Suppliers & stock")!.links.map((l) => l.path);
+    expect(g).toEqual(expect.arrayContaining(["/admin/suppliers", "/admin/supplier-docs", "/admin/supplier-bills"]));
+    expect(v8More("sales").flatMap((x) => x.links).some((l) => l.path === "/admin/supplier-docs")).toBe(false);
+    const mgr = v8More("owner", { manager: true }).flatMap((x) => x.links).map((l) => l.path);
+    expect(mgr).toContain("/admin/supplier-docs");
+    expect(mgr).not.toContain("/admin/supplier-bills");
   });
   it("marks the active area", () => {
     const pipe = v8Primary("admin")[1];
