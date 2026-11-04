@@ -1,3 +1,5 @@
+-- MANUAL ROLLBACK - DO NOT RUN AS MIGRATION
+-- Moved out of supabase/migrations on 4 Nov 2026: run by hand only, after Johan approves.
 -- Rollback for 20261103140000_lead_tech_to_job.sql
 DROP TRIGGER IF EXISTS trg_zz_lead_tech_to_job ON public.leads;
 DROP FUNCTION IF EXISTS public.copy_lead_tech_to_job();

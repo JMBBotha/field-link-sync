@@ -1,3 +1,5 @@
+-- MANUAL ROLLBACK - DO NOT RUN AS MIGRATION
+-- Moved out of supabase/migrations on 4 Nov 2026: run by hand only, after Johan approves.
 -- Rollback for 20261103120000_job_delivered_units.sql
 DROP TRIGGER IF EXISTS trg_jdu_capture ON public.supplier_job_document_lines;
 DROP FUNCTION IF EXISTS public.jdu_capture();

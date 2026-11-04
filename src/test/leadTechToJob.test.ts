@@ -5,7 +5,7 @@ import { resolve } from "path";
 // 3 Nov 2026: jobs created before the lead was dispatched showed "No tech yet".
 const dir = resolve(__dirname, "../../supabase/migrations");
 const up = readFileSync(resolve(dir, "20261103140000_lead_tech_to_job.sql"), "utf8");
-const down = readFileSync(resolve(dir, "20261103140000_lead_tech_to_job_ROLLBACK.sql"), "utf8");
+const down = readFileSync(resolve(dir, "../manual/20261103140000_lead_tech_to_job_ROLLBACK.sql"), "utf8");
 
 describe("lead tech -> job copy migration", () => {
   it("fires after the lead's tech changes, last among lead triggers", () => {

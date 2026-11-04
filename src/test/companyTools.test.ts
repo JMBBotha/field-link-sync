@@ -67,6 +67,6 @@ describe("company tools wiring", () => {
   });
   it("seed is a separate file and the migration has a rollback", () => {
     expect(readFileSync("supabase/seed/20261103_company_tools_massair_ct.sql", "utf8")).toContain("FK-03");
-    expect(readFileSync("supabase/migrations/20261103130000_company_tools_rollback.sql", "utf8")).toMatch(/DROP TABLE/i);
+    expect(readFileSync("supabase/manual/20261103130000_company_tools_rollback.sql", "utf8")).toMatch(/DROP TABLE/i);
   });
 });
