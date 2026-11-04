@@ -7,15 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
+import { docTypeLabel, openDocFile } from "@/components/supplierDocs/api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { formatRand } from "@/utils/formatRand";
 import { db } from "@/hooks/useProjectTracker";
-import { houseStatus, houseReminders, primaryInvoice, phaseLabel, STATUS_META, OVERRIDE_OK, FIRST_FIT_STEP, daysSince, type HouseMoney, type HousePhotos, type ProjectHouse, type ProjectPhase, type HouseStatus } from "@/lib/projectTracker";
+import { houseStatus, houseReminders, primaryInvoice, phaseLabel, STATUS_META, OVERRIDE_OK, FIRST_FIT_STEP, daysSince, type HouseMoney, type HousePhotos, type HouseDocs, type ProjectHouse, type ProjectPhase, type HouseStatus } from "@/lib/projectTracker";
 
 type Form = Pick<ProjectHouse, "house_no" | "phase_id" | "po_number" | "make" | "unit_sizes" | "units_ordered" | "units_received" | "ready_for_aircon" | "ready_for_aircon_at" | "status_override" | "notes">;
 
-export default function HouseDrawer({ house, money, photos, phases, onClose, onSaved }: { house: ProjectHouse | null; money?: HouseMoney; photos?: HousePhotos; phases: ProjectPhase[]; onClose: () => void; onSaved: () => void }) {
+export default function HouseDrawer({ house, money, photos, docs, showDocs, phases, onClose, onSaved }: { house: ProjectHouse | null; money?: HouseMoney; photos?: HousePhotos; docs?: HouseDocs; showDocs?: boolean; phases: ProjectPhase[]; onClose: () => void; onSaved: () => void }) {
   const { toast } = useToast();
   const [f, setF] = useState<Form | null>(null);
   const [steps, setSteps] = useState(house?.steps || []);
@@ -88,8 +89,21 @@ export default function HouseDrawer({ house, money, photos, phases, onClose, onS
             {photos?.jobs.length ? photos.jobs.map((j) => (
               <div key={j.id} className="flex justify-between gap-2"><span className="truncate">{j.title}</span>
                 <Link to={`/admin/jobs/${j.id}#job-photos`} className="shrink-0 font-semibold text-[#1590D6] hover:underline">📷 {j.count} photo{j.count === 1 ? "" : "s"} ↗</Link></div>))
-              : <div className="text-muted-foreground">No job linked to this house's invoice yet.</div>}
+              : <div className="text-muted-foreground">No job found for this house yet (by invoice or a job titled "House {house.house_no}").</div>}
           </section>
+          {showDocs && <section className="rounded-xl border p-3 text-sm" data-testid="drawer-supplier-docs">
+            <div className="mb-1 font-semibold">Supplier documents <span className="text-xs font-normal text-muted-foreground">(private, office only)</span></div>
+            {docs?.docs.length ? docs.docs.map((d) => (
+              <div key={d.id} className="flex items-center justify-between gap-2 py-0.5">
+                <span className="min-w-0 truncate"><span className="font-medium">{docTypeLabel(d.doc_type)} {d.doc_number || ""}</span>
+                  <span className="text-xs text-muted-foreground"> · {[d.supplier, d.doc_date].filter(Boolean).join(" · ")}</span></span>
+                {d.storage_path
+                  ? <button type="button" data-testid="drawer-doc-open" className="shrink-0 font-semibold text-[#1590D6] hover:underline"
+                      onClick={() => openDocFile(d.storage_path).catch((e) => toast({ title: "Could not open file", description: e?.message, variant: "destructive" }))}>Open ↗</button>
+                  : <span className="shrink-0 text-xs text-muted-foreground">no file attached</span>}
+              </div>))
+              : <div className="text-muted-foreground">No supplier documents linked to this house's job(s).</div>}
+          </section>}
 
           <div className="grid grid-cols-2 gap-3">
             <div><Label>House no</Label><Input value={f.house_no} onChange={(e) => set("house_no", e.target.value)} /></div>

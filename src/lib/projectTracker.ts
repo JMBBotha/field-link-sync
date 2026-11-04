@@ -124,6 +124,7 @@ export function photosByHouse(
   invoices: { id: string; project_house_id: string | null; lead_id?: string | null }[],
   jobs: { id: string; title: string | null; invoice_id: string | null; lead_id: string | null }[],
   photos: { lead_id: string }[],
+  direct: Record<string, { id: string; title: string | null; lead_id: string | null }[]> = {},
 ): Record<string, HousePhotos> {
   const perLead: Record<string, number> = {};
   for (const p of photos) perLead[p.lead_id] = (perLead[p.lead_id] || 0) + 1;
@@ -139,7 +140,62 @@ export function photosByHouse(
       h.count += c;
     }
   }
+  // Direct house -> job matches (no invoice needed), deduped with the invoice path.
+  for (const [houseId, js] of Object.entries(direct)) {
+    for (const j of js) {
+      const h = (out[houseId] ||= { count: 0, jobs: [] });
+      if (h.jobs.some((x) => x.id === j.id)) continue;
+      const c = j.lead_id ? perLead[j.lead_id] || 0 : 0;
+      h.jobs.push({ id: j.id, title: j.title || "Job", count: c });
+      h.count += c;
+    }
+  }
   return out;
 }
 
 export const stepsTotal = (steps: ProjectStep[]) => steps.reduce((a, s) => a + Number(s.rate || 0), 0);
+
+export interface HouseDoc { id: string; doc_type: string; doc_number: string | null; supplier: string | null; doc_date: string | null; storage_path: string | null; jobIds: string[] }
+export interface HouseDocs { count: number; docs: HouseDoc[] }
+/** Private supplier docs per house (office only; RLS sjd_ok): house -> its jobs (from photosByHouse) -> confirmed supplier_job_document_links. */
+export function docsByHouse(
+  photos: Record<string, HousePhotos>,
+  links: { job_id: string | null; status: string; doc: { id: string; doc_type: string; doc_number: string | null; supplier_name: string | null; doc_date: string | null; storage_path: string | null; supplier?: string | null } | null }[],
+): Record<string, HouseDocs> {
+  const out: Record<string, HouseDocs> = {};
+  for (const [houseId, hp] of Object.entries(photos)) {
+    const jobIds = new Set(hp.jobs.map((j) => j.id));
+    const byDoc = new Map<string, HouseDoc>();
+    for (const l of links) {
+      if (l.status !== "confirmed" || !l.doc || !l.job_id || !jobIds.has(l.job_id)) continue;
+      const d = byDoc.get(l.doc.id) || { id: l.doc.id, doc_type: l.doc.doc_type, doc_number: l.doc.doc_number, supplier: l.doc.supplier || l.doc.supplier_name, doc_date: l.doc.doc_date, storage_path: l.doc.storage_path, jobIds: [] };
+      if (!d.jobIds.includes(l.job_id)) d.jobIds.push(l.job_id);
+      byDoc.set(l.doc.id, d);
+    }
+    if (byDoc.size) out[houseId] = { count: byDoc.size, docs: [...byDoc.values()].sort((a, b) => (b.doc_date || "").localeCompare(a.doc_date || "")) };
+  }
+  return out;
+}
+
+/** True when text names this house number as a whole number: "House 32", "house no. 32", "House #32" (never House 3 vs 32 / 132). */
+export function namesHouse(text: string | null | undefined, houseNo: string): boolean {
+  const n = String(houseNo || "").trim();
+  if (!text || !n) return false;
+  const esc = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|[^a-z0-9])house\\s*(?:no\\.?\\s*|#\\s*)?${esc}(?![0-9a-z])`, "i").test(text);
+}
+/** Direct house -> jobs: jobs of the project's client whose title (or else description) names the house number. No invoice needed. */
+export function directJobsByHouse<J extends { id: string; title: string | null; description?: string | null; customer_id: string | null; lead_id: string | null }>(
+  houses: { id: string; house_no: string }[], jobs: J[], customerId: string | null | undefined,
+): Record<string, J[]> {
+  const out: Record<string, J[]> = {};
+  if (!customerId) return out;
+  for (const j of jobs) {
+    if (j.customer_id !== customerId) continue;
+    // Title wins; only fall back to the description when the title names no house at all.
+    const titleHouses = houses.filter((h) => namesHouse(j.title, h.house_no));
+    const hits = titleHouses.length ? titleHouses : houses.filter((h) => namesHouse(j.description, h.house_no));
+    for (const h of hits) (out[h.id] ||= []).push(j);
+  }
+  return out;
+}
