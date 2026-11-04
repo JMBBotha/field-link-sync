@@ -1,3 +1,5 @@
+-- MANUAL ROLLBACK - DO NOT RUN AS MIGRATION
+-- Moved out of supabase/migrations on 4 Nov 2026: run by hand only, after Johan approves.
 -- Rollback for 20261103130000_company_tools.sql. Run manually ONLY if the register must be removed (drops all tool data).
 DO $$ BEGIN IF to_regclass('storage.objects') IS NOT NULL THEN EXECUTE 'DROP POLICY IF EXISTS tool_invoices_admin_rw ON storage.objects'; END IF; END $$;
 -- The tool-invoices bucket is left in place (empty it in the dashboard first if it must go).
