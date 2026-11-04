@@ -36,7 +36,7 @@ export function useProjectDetail(projectId?: string) {
       const ids = houses.map((h) => h.id);
       let money: Record<string, HouseMoney> = {};
       if (ids.length) {
-        const inv = await db.from("invoices").select("id, project_house_id, grand_total, status, invoice_number, archived_at").in("project_house_id", ids);
+        const inv = await db.from("invoices").select("id, project_house_id, grand_total, status, invoice_number, archived_at, sent_at, issue_date").in("project_house_id", ids);
         if (inv.error) throw inv.error;
         const invIds = (inv.data || []).map((i: { id: string }) => i.id);
         const pay = invIds.length ? await db.from("payments").select("invoice_id, amount, status").in("invoice_id", invIds) : { data: [] };

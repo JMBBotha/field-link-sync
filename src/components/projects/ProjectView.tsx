@@ -8,12 +8,12 @@ import { cn } from "@/lib/utils";
 import { formatRand } from "@/utils/formatRand";
 import { useToast } from "@/hooks/use-toast";
 import { useProjectDetail, useInvalidateProject, clientName, db } from "@/hooks/useProjectTracker";
-import { houseStatus, phaseFor, phaseLabel, STATUS_META, STEP_SHORT, DEFAULT_STEPS, type HouseStatus, type ProjectHouse } from "@/lib/projectTracker";
+import { houseStatus, houseReminders, primaryInvoice, phaseFor, phaseLabel, STATUS_META, STATUS_ORDER, STEP_SHORT, DEFAULT_STEPS, type HouseStatus, type HouseMoney, type ProjectHouse } from "@/lib/projectTracker";
 import HouseDrawer from "./HouseDrawer";
 import PhaseEditor from "./PhaseEditor";
 import SiteMap from "./SiteMap";
 
-const ORDER: HouseStatus[] = ["done", "in_progress", "due", "not_started"];
+const ORDER: HouseStatus[] = STATUS_ORDER;
 
 export default function ProjectView({ projectId, backTo }: { projectId: string; backTo?: { to: string; label: string } }) {
   const { data, isLoading, error } = useProjectDetail(projectId);
@@ -89,6 +89,11 @@ export default function ProjectView({ projectId, backTo }: { projectId: string; 
             <Button size="sm" variant="outline" onClick={addHouse} disabled={adding || !newNo.trim()}>{adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Add house</Button>
           </div>
         </div>
+        {(() => { const r = inTab.flatMap((e) => houseReminders(e.h, e.money).map((x) => ({ ...x, e }))); return r.length ? (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm dark:bg-amber-950" data-testid="project-reminders">
+            <div className="mb-1 font-semibold">Reminders ({r.length})</div>
+            <ul className="space-y-0.5">{r.slice(0, 8).map((x, i) => <li key={i}><button className="hover:underline" onClick={() => setOpenHouse(x.e.h.id)}>House {x.e.h.house_no}: {x.text}</button></li>)}</ul>
+          </div>) : null; })()}
         {shown.length === 0 ? <div className="rounded-2xl border p-8 text-center text-sm text-muted-foreground">No houses here yet.</div> : (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" data-testid="house-grid">
             {shown.map(({ h, status, money }) => <HouseCard key={h.id} h={h} status={status} money={money} onOpen={() => setOpenHouse(h.id)} />)}
@@ -101,24 +106,28 @@ export default function ProjectView({ projectId, backTo }: { projectId: string; 
   );
 }
 
-function HouseCard({ h, status, money, onOpen }: { h: ProjectHouse; status: HouseStatus; money?: { invoiced: number; paid: number; invoiceNumbers: string[] }; onOpen: () => void }) {
+function HouseCard({ h, status, money, onOpen }: { h: ProjectHouse; status: HouseStatus; money?: HouseMoney; onOpen: () => void }) {
+  const inv = primaryInvoice(money);
+  const rem = houseReminders(h, money)[0];
   return (
-    <button type="button" onClick={onOpen} data-status={status} title={STATUS_META[status].label}
-      className={cn("rounded-xl border-[3px] bg-card p-2.5 text-left shadow-sm transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1590D6]", STATUS_META[status].ring)}>
-      <div className="flex items-baseline justify-between gap-1">
-        <span className="text-base font-semibold">House {h.house_no}</span>
-        {h.ready_for_aircon && <span className="text-[10px] font-semibold uppercase text-red-600">Ready</span>}
-      </div>
+    <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} data-status={status} title={STATUS_META[status].label}
+      className={cn("cursor-pointer rounded-xl border-[3px] bg-card p-2.5 text-left shadow-sm transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1590D6]", STATUS_META[status].ring)}>
+      <div className="text-base font-semibold">House {h.house_no}</div>
       <div className="truncate text-xs text-muted-foreground">{[h.make, h.unit_sizes].filter(Boolean).join(" ") || "No units set"}</div>
-      <div className={cn("truncate text-xs", money ? "text-foreground" : "text-red-600")}>
-        {money ? `${formatRand(money.paid)} / ${formatRand(money.invoiced)}` : "no invoice"}
-      </div>
-      <div className="mt-1.5 grid grid-cols-3 gap-1">
+      <span data-testid="stage-chip" className={cn("mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-bold", STATUS_META[status].chip)}>{STATUS_META[status].label}</span>
+      {inv ? (
+        <div className="mt-1 flex items-center justify-between gap-1 text-xs">
+          <span className="text-muted-foreground">Invoice</span>
+          <Link to={`/admin/invoices/${inv.id}`} onClick={(e) => e.stopPropagation()} data-testid="house-invoice-link" className="font-semibold text-[#1590D6] hover:underline">{inv.number || "draft"} ↗</Link>
+        </div>) : <div className="mt-1 text-xs text-red-600">no invoice</div>}
+      {money && <div className="truncate text-xs">{formatRand(money.paid)} / {formatRand(money.invoiced)} paid</div>}
+      {rem && <div data-testid="house-reminder" className="mt-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-200">🔔 {rem.text}</div>}
+      <div className="mt-1.5 grid grid-cols-4 gap-1">
         {h.steps.map((s) => (
-          <span key={s.id} className={cn("rounded-md py-0.5 text-center text-[11px] font-medium", s.done ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground")}>
-            {STEP_SHORT[s.step_key] || s.label.slice(0, 5)}{s.paid ? " ✓" : ""}
+          <span key={s.id} className={cn("rounded-md py-0.5 text-center text-[10px] font-medium", s.done ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground")}>
+            {STEP_SHORT[s.step_key] || s.label.slice(0, 5)}
           </span>))}
       </div>
-    </button>
+    </div>
   );
 }

@@ -6,12 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
+import { Link } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { formatRand } from "@/utils/formatRand";
 import { db } from "@/hooks/useProjectTracker";
-import { houseStatus, phaseLabel, stepsTotal, STATUS_META, type HouseMoney, type ProjectHouse, type ProjectPhase, type HouseStatus } from "@/lib/projectTracker";
+import { houseStatus, houseReminders, primaryInvoice, phaseLabel, STATUS_META, OVERRIDE_OK, FIRST_FIT_STEP, daysSince, type HouseMoney, type ProjectHouse, type ProjectPhase, type HouseStatus } from "@/lib/projectTracker";
 
 type Form = Pick<ProjectHouse, "house_no" | "phase_id" | "po_number" | "make" | "unit_sizes" | "units_ordered" | "units_received" | "ready_for_aircon" | "ready_for_aircon_at" | "status_override" | "notes">;
 
@@ -24,7 +24,9 @@ export default function HouseDrawer({ house, money, phases, onClose, onSaved }: 
     if (!house) return;
     const { house_no, phase_id, po_number, make, unit_sizes, units_ordered, units_received, ready_for_aircon, ready_for_aircon_at, status_override, notes } = house;
     setF({ house_no, phase_id, po_number, make, unit_sizes, units_ordered, units_received, ready_for_aircon, ready_for_aircon_at, status_override, notes });
-    setSteps(house.steps);
+    // Older houses were created before "First fit" existed: show it unticked; the row is only created when ticked + saved.
+    setSteps(house.steps.some((s) => s.step_key === FIRST_FIT_STEP) ? house.steps
+      : [{ id: `new-${FIRST_FIT_STEP}`, step_key: FIRST_FIT_STEP, label: "First fit (sleeves & drains)", rate: 0, sort_order: 0, done: false, paid: false }, ...house.steps]);
   }, [house]);
   if (!house || !f) return <Sheet open={false} onOpenChange={() => onClose()}><SheetContent /></Sheet>;
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF({ ...f, [k]: v });
@@ -32,12 +34,16 @@ export default function HouseDrawer({ house, money, phases, onClose, onSaved }: 
 
   const save = async () => {
     setSaving(true);
-    const { error } = await db.from("project_houses").update({ ...f, ready_for_aircon_at: f.ready_for_aircon ? (f.ready_for_aircon_at || new Date().toISOString().slice(0, 10)) : null }).eq("id", house.id);
+    const { error } = await db.from("project_houses").update(f).eq("id", house.id);
     let err = error;
     for (const s of steps) {
+      if (!err && s.id.startsWith("new-") && s.done) {
+        const r = await db.from("project_house_steps").insert({ house_id: house.id, company_id: (house as { company_id?: string }).company_id, step_key: s.step_key, label: s.label, rate: 0, sort_order: s.sort_order, done: true });
+        err = r.error; continue;
+      }
       const o = house.steps.find((x) => x.id === s.id);
-      if (!err && o && (o.done !== s.done || o.paid !== s.paid || Number(o.rate) !== Number(s.rate))) {
-        const r = await db.from("project_house_steps").update({ done: s.done, paid: s.paid, rate: s.rate }).eq("id", s.id);
+      if (!err && o && o.done !== s.done) {
+        const r = await db.from("project_house_steps").update({ done: s.done }).eq("id", s.id);
         err = r.error;
       }
     }
@@ -54,33 +60,28 @@ export default function HouseDrawer({ house, money, phases, onClose, onSaved }: 
           <SheetDescription>Status now: {STATUS_META[f.status_override || computed].label}</SheetDescription>
         </SheetHeader>
         <div className="mt-4 space-y-4">
+          {houseReminders({ ...house, steps, status_override: null }, money).map((x) => (
+            <div key={x.kind} data-testid="drawer-reminder" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-100">🔔 {x.text}</div>))}
           <section className="rounded-xl border p-3">
-            <div className="mb-2 text-sm font-semibold">Steps</div>
+            <div className="mb-2 text-sm font-semibold">Done ticks</div>
             {steps.map((s, i) => (
-              <div key={s.id} className="grid grid-cols-[1fr_auto_auto_5.5rem] items-center gap-2 py-1 text-sm">
-                <span>{s.label}</span>
-                <label className="flex items-center gap-1 text-xs"><Checkbox checked={s.done} onCheckedChange={(v) => setSteps(steps.map((x, j) => j === i ? { ...x, done: !!v } : x))} /> Done</label>
-                <label className="flex items-center gap-1 text-xs"><Checkbox checked={s.paid} onCheckedChange={(v) => setSteps(steps.map((x, j) => j === i ? { ...x, paid: !!v } : x))} /> Paid</label>
-                <Input type="number" className="h-8" value={s.rate} onChange={(e) => setSteps(steps.map((x, j) => j === i ? { ...x, rate: Number(e.target.value) } : x))} aria-label={`${s.label} rate`} />
-              </div>))}
-            <div className="mt-1 text-right text-xs text-muted-foreground">Labour total {formatRand(stepsTotal(steps))}</div>
+              <label key={s.id} className="flex items-center gap-2 py-1 text-sm">
+                <Checkbox checked={s.done} onCheckedChange={(v) => setSteps(steps.map((x, j) => j === i ? { ...x, done: !!v } : x))} aria-label={s.label} /> {s.label}
+              </label>))}
           </section>
 
           <section className="rounded-xl border p-3 text-sm">
-            <div className="mb-1 font-semibold">Money (from Field Lynk invoices)</div>
-            {money ? (<>
-              <div className="flex justify-between"><span>Invoiced</span><span>{formatRand(money.invoiced)}</span></div>
+            <div className="mb-1 font-semibold">Invoice (one per house)</div>
+            {(() => { const pi = primaryInvoice(money); if (!pi || !money) return <div className="text-red-600">No invoice linked yet. After first fit: send the estimate to get the PO, then invoice 50% of this house's quote.</div>;
+              const d = daysSince(pi.sent_at); return (<>
+              <div className="flex justify-between"><span>Invoice</span><Link to={`/admin/invoices/${pi.id}`} className="font-semibold text-[#1590D6] hover:underline">{pi.number || "draft"} ↗</Link></div>
+              <div className="flex justify-between"><span>Sent</span><span>{pi.sent_at ? `${pi.sent_at.slice(0, 10)} (${d} days ago)` : "not sent yet"}</span></div>
+              <div className="flex justify-between"><span>Total</span><span>{formatRand(money.invoiced)}</span></div>
               <div className="flex justify-between"><span>Paid</span><span>{formatRand(money.paid)}</span></div>
               <div className="flex justify-between font-medium"><span>Balance</span><span>{formatRand(money.invoiced - money.paid)}</span></div>
-              <div className="mt-1 text-xs text-muted-foreground">Invoices: {money.invoiceNumbers.join(", ")}</div>
-            </>) : <div className="text-red-600">No invoice linked to this house.</div>}
+              {money.invoiceCount > 1 && <div className="mt-1 text-xs text-muted-foreground">Also linked: {money.invoiceNumbers.join(", ")}</div>}
+            </>); })()}
           </section>
-
-          <div className="flex items-center justify-between rounded-xl border p-3">
-            <div><div className="text-sm font-semibold">Ready for aircon</div><div className="text-xs text-muted-foreground">Turns the house red until units are installed</div></div>
-            <Switch checked={f.ready_for_aircon} onCheckedChange={(v) => set("ready_for_aircon", v)} aria-label="Ready for aircon" />
-          </div>
-          {f.ready_for_aircon && <div><Label>Ready since</Label><Input type="date" value={f.ready_for_aircon_at || ""} onChange={(e) => set("ready_for_aircon_at", e.target.value || null)} /></div>}
 
           <div className="grid grid-cols-2 gap-3">
             <div><Label>House no</Label><Input value={f.house_no} onChange={(e) => set("house_no", e.target.value)} /></div>
@@ -98,7 +99,7 @@ export default function HouseDrawer({ house, money, phases, onClose, onSaved }: 
           <div><Label>Colour override</Label>
             <Select value={f.status_override || "auto"} onValueChange={(v) => set("status_override", v === "auto" ? null : (v as HouseStatus))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="auto">Automatic ({STATUS_META[computed].label})</SelectItem>{(Object.keys(STATUS_META) as HouseStatus[]).map((s) => <SelectItem key={s} value={s}>{STATUS_META[s].label}</SelectItem>)}</SelectContent>
+              <SelectContent><SelectItem value="auto">Automatic ({STATUS_META[computed].label})</SelectItem>{OVERRIDE_OK.map((s) => <SelectItem key={s} value={s}>{STATUS_META[s].label}</SelectItem>)}</SelectContent>
             </Select></div>
           <div><Label>Notes</Label><Textarea rows={3} value={f.notes || ""} onChange={(e) => set("notes", e.target.value || null)} /></div>
           <div className="flex justify-end gap-2 pb-4">
