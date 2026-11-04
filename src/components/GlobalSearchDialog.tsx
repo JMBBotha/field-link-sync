@@ -20,10 +20,10 @@ interface SearchItem {
 const typeConfig = {
   quote: { icon: FileText, color: "bg-blue-500/20 text-blue-400 border-blue-500/30", label: "Quote" },
   invoice: { icon: Receipt, color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", label: "Invoice" },
-  customer: { icon: Users, color: "bg-purple-500/20 text-purple-400 border-purple-500/30", label: "Customer" },
+  customer: { icon: Users, color: "bg-purple-500/20 text-purple-400 border-purple-500/30", label: "Client" },
   lead: { icon: Briefcase, color: "bg-amber-500/20 text-amber-400 border-amber-500/30", label: "Job" },
   supplier: { icon: Truck, color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30", label: "Supplier" },
-  proposal: { icon: ClipboardList, color: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30", label: "Proposal" },
+  proposal: { icon: ClipboardList, color: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30", label: "Template" },
   maintenance: { icon: Wrench, color: "bg-rose-500/20 text-rose-400 border-rose-500/30", label: "Maintenance" },
   room: { icon: Home, color: "bg-teal-500/20 text-teal-400 border-teal-500/30", label: "Room" },
   location: { icon: MapPin, color: "bg-orange-500/20 text-orange-400 border-orange-500/30", label: "Location" },
@@ -35,6 +35,13 @@ interface GlobalSearchDialogProps {
 }
 
 const ROW_LIMIT = 500;
+/** Four bundled groups (Johan 4 Nov: as few links as possible, info under its natural home). */
+const SEARCH_GROUPS: { key: string; label: string; types: SearchItem["type"][] }[] = [
+  { key: "clients", label: "Clients", types: ["customer"] },
+  { key: "jobs", label: "Jobs & maintenance", types: ["lead", "maintenance"] },
+  { key: "money", label: "Quotes & invoices", types: ["quote", "invoice", "proposal"] },
+  { key: "suppliers", label: "Suppliers", types: ["supplier"] },
+];
 const join = (...parts: (string | null | undefined | number)[]) =>
   parts.filter((p) => p !== null && p !== undefined && `${p}`.trim() !== "").join(" • ");
 
@@ -115,7 +122,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
           title: join(q.quote_number, q.customer_name) || "Quote",
           subtitle: join(q.reference_text, `R${Number(q.total || 0).toLocaleString("en-ZA")}`, q.status),
           searchText: join(q.quote_number, q.customer_name, q.reference_text, q.status),
-          path: "/admin/quotes",
+          path: `/admin/estimates/${q.id}`,
         })
       );
       invoices.data?.forEach((i: any) =>
@@ -125,9 +132,14 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
           title: join(i.invoice_number, i.customer_name) || "Invoice",
           subtitle: join(i.customer_address, `R${Number(i.grand_total || 0).toLocaleString("en-ZA")}`, i.status),
           searchText: join(i.invoice_number, i.customer_name, i.customer_address, i.status),
-          path: "/admin/invoices",
+          path: `/admin/invoices/${i.id}`,
         })
       );
+      // Rooms and locations are not separate rows any more (Johan 4 Nov): their text is folded into the client row,
+      // so searching an address or room name finds the client once instead of 3 times.
+      const extraByCustomer: Record<string, string[]> = {};
+      units.data?.forEach((u: any) => { if (u.customer_id) (extraByCustomer[u.customer_id] ||= []).push(join(u.label, u.full_address)); });
+      locations.data?.forEach((loc: any) => { if (loc.customer_id) (extraByCustomer[loc.customer_id] ||= []).push(join(loc.label, loc.address)); });
       customers.data?.forEach((c: any) =>
         result.push({
           id: c.id,
@@ -142,7 +154,8 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
             c.address,
             c.primary_address_line1,
             c.city,
-            Array.isArray(c.search_aliases) ? c.search_aliases.join(" ") : c.search_aliases
+            Array.isArray(c.search_aliases) ? c.search_aliases.join(" ") : c.search_aliases,
+            ...(extraByCustomer[c.id] || [])
           ),
           path: `/admin/customers/${c.id}`,
         })
@@ -162,7 +175,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
             l.service_type,
             l.status
           ),
-          path: "/admin/dispatch",
+          path: `/admin/dispatch?lead=${l.id}`,
         })
       );
       suppliers.data?.forEach((s: any) =>
@@ -195,26 +208,6 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
           path: "/admin/maintenance",
         })
       );
-      units.data?.forEach((u: any) =>
-        result.push({
-          id: u.id,
-          type: "room",
-          title: u.label || "Room",
-          subtitle: join(u.full_address, u.notes),
-          searchText: join(u.label, u.full_address, u.notes),
-          path: u.customer_id ? `/admin/customers/${u.customer_id}` : "/admin/customers",
-        })
-      );
-      locations.data?.forEach((loc: any) =>
-        result.push({
-          id: loc.id,
-          type: "location",
-          title: loc.label || loc.address || "Location",
-          subtitle: loc.address || "",
-          searchText: join(loc.label, loc.address),
-          path: loc.customer_id ? `/admin/customers/${loc.customer_id}` : "/admin/customers",
-        })
-      );
       return result;
     },
     staleTime: 60000,
@@ -236,7 +229,8 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
     [items]
   );
 
-  const results = query.length > 1 ? fuse.search(query).slice(0, 10) : [];
+  const results = query.length > 1 ? fuse.search(query).slice(0, 12) : [];
+  const grouped = SEARCH_GROUPS.map((g) => ({ ...g, rows: results.filter(({ item }) => g.types.includes(item.type)) })).filter((g) => g.rows.length);
 
   const handleSelect = useCallback((item: SearchItem) => {
     onOpenChange(false);
@@ -250,7 +244,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
           <Search className="h-4 w-4 text-muted-foreground mr-3 shrink-0" />
           <Input
             autoFocus
-            placeholder="Search jobs, customers, quotes, suppliers, proposals, maintenance..."
+            placeholder="Search clients, jobs, quotes, invoices, suppliers…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="border-0 shadow-none focus-visible:ring-0 px-0 text-base"
@@ -266,7 +260,9 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
               No results for "{query}"
             </div>
           )}
-          {results.map(({ item }) => {
+          {grouped.map((g) => (<div key={g.label} data-testid={`search-group-${g.key}`}>
+            <div className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{g.label}</div>
+          {g.rows.map(({ item }) => {
             const cfg = typeConfig[item.type];
             const Icon = cfg.icon;
             return (
@@ -286,6 +282,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
               </button>
             );
           })}
+          </div>))}
           {query.length <= 1 && (
             <div className="py-12 text-center text-sm text-muted-foreground">
               <Command className="h-5 w-5 mx-auto mb-2 opacity-40" />
