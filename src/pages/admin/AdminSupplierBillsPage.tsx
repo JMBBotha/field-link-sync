@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { jobHref, supplierHref } from "@/lib/recordLinks";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban, CheckCircle2, Loader2, Plus, Wallet } from "lucide-react";
@@ -133,10 +135,11 @@ export default function AdminSupplierBillsPage() {
             return (
               <Card key={b.id}><CardContent className="flex flex-wrap items-center justify-between gap-2 p-3">
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{(b.supplier_name || "Supplier").trim()}</span>
+                  <div className="flex flex-wrap items-center gap-2">{b.supplier_id ? <Link to={supplierHref(b.supplier_id)} data-testid="bill-supplier-link" className="font-medium text-[#1590D6] hover:underline">{(b.supplier_name || "Supplier").trim()}</Link> : <span className="font-medium">{(b.supplier_name || "Supplier").trim()}</span>}
                     <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${STATUS[b.status]?.cls}`}>{STATUS[b.status]?.label}</span>
                     {late && <Badge variant="destructive" className="h-5 text-xs">Overdue</Badge>}</div>
                   <div className="text-xs text-muted-foreground">{b.bill_number ? `Bill ${b.bill_number}` : "No bill number yet"}{b.po?.po_number ? ` · ${b.po.po_number}` : ""} · billed {b.bill_date} · due {b.due_date || "—"}</div>
+                  {b.job_id && <Link to={jobHref(b.job_id)} data-testid="bill-job-link" className="text-xs text-[#1590D6] hover:underline">Open job ↗</Link>}
                   {b.notes && <div className="text-xs text-muted-foreground">{b.notes}</div>}
                 </div>
                 <div className="flex items-center gap-2">

@@ -133,6 +133,7 @@ export default function PipelineBoard({ view }: { view: "cards" | "stages" }) {
     { label: "Open quote", onSelect: () => navigate(`/admin/estimates/${d.quote.id}`) },
     { label: "Edit in builder", onSelect: () => navigate(`/admin/quote-builder?quoteId=${d.quote.id}`) },
     { label: "Book job…", hidden: d.stage !== "accepted", onSelect: () => setBookId(d.quote.id) },
+    { label: "Open client", hidden: !(d.quote as any).customer_id, onSelect: () => navigate(`/admin/customers/${(d.quote as any).customer_id}`) },
     ...staff.itemsFor(d.quote as any),
   ];
 

@@ -20,3 +20,12 @@ describe("record links", () => {
     expect(invoiceHouseHref(null)).toBeNull();
   });
 });
+
+import { readFileSync } from "fs";
+describe("app-wide click-through", () => {
+  it("pipeline menu opens the client; supplier bills link supplier + job", () => {
+    expect(readFileSync("src/components/jobs/PipelineBoard.tsx", "utf8")).toContain('label: "Open client"');
+    const b = readFileSync("src/pages/admin/AdminSupplierBillsPage.tsx", "utf8");
+    expect(b).toContain("bill-supplier-link"); expect(b).toContain("bill-job-link");
+  });
+});
