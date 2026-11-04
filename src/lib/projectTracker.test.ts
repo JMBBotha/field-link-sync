@@ -82,3 +82,34 @@ describe("docsByHouse", () => {
     expect(out.h2).toBeUndefined();
   });
 });
+
+import { namesHouse, directJobsByHouse } from "./projectTracker";
+describe("direct house -> job", () => {
+  it("matches whole house numbers only", () => {
+    expect(namesHouse("Installation — Avec Cape Estates House 32", "32")).toBe(true);
+    expect(namesHouse("Installation — Avec Cape Estates House 32", "3")).toBe(false);
+    expect(namesHouse("House 132", "32")).toBe(false);
+    expect(namesHouse("house no. 7 and House #8", "8")).toBe(true);
+    expect(namesHouse("project house 2dfbcf8f", "2")).toBe(false);
+  });
+  const houses = [{ id: "h3", house_no: "3" }, { id: "h32", house_no: "32" }, { id: "h88", house_no: "88" }];
+  const jobs = [
+    { id: "j32", title: "Installation — Avec Cape Estates House 32", description: "House 32 (project house cc784a1b). No invoice", customer_id: "c1", lead_id: "L32", invoice_id: null },
+    { id: "j88", title: "Installation — Avec Cape Estates House 88", description: "House 88. Invoice 0010006", customer_id: "c1", lead_id: "L88", invoice_id: "i88" },
+    { id: "jx", title: "Avec House 32", description: null, customer_id: "OTHER", lead_id: null, invoice_id: null },
+    { id: "jd", title: "Service call", description: "Leak at house 3", customer_id: "c1", lead_id: null, invoice_id: null },
+  ];
+  it("same client only, title first, description fallback", () => {
+    const d = directJobsByHouse(houses, jobs, "c1");
+    expect(d.h32.map((j) => j.id)).toEqual(["j32"]);
+    expect(d.h88.map((j) => j.id)).toEqual(["j88"]);
+    expect(d.h3.map((j) => j.id)).toEqual(["jd"]);
+  });
+  it("un-invoiced house gets its job + photos; invoice + direct are deduped", () => {
+    const d = directJobsByHouse(houses, jobs, "c1");
+    const out = photosByHouse([{ id: "i88", project_house_id: "h88", lead_id: null }], [jobs[1]], [{ lead_id: "L32" }, { lead_id: "L32" }, { lead_id: "L88" }], d);
+    expect(out.h32).toEqual({ count: 2, jobs: [{ id: "j32", title: jobs[0].title, count: 2 }] });
+    expect(out.h88.jobs.length).toBe(1);
+    expect(out.h88.count).toBe(1);
+  });
+});

@@ -89,7 +89,7 @@ export default function HouseDrawer({ house, money, photos, docs, showDocs, phas
             {photos?.jobs.length ? photos.jobs.map((j) => (
               <div key={j.id} className="flex justify-between gap-2"><span className="truncate">{j.title}</span>
                 <Link to={`/admin/jobs/${j.id}#job-photos`} className="shrink-0 font-semibold text-[#1590D6] hover:underline">📷 {j.count} photo{j.count === 1 ? "" : "s"} ↗</Link></div>))
-              : <div className="text-muted-foreground">No job linked to this house's invoice yet.</div>}
+              : <div className="text-muted-foreground">No job found for this house yet (by invoice or a job titled "House {house.house_no}").</div>}
           </section>
           {showDocs && <section className="rounded-xl border p-3 text-sm" data-testid="drawer-supplier-docs">
             <div className="mb-1 font-semibold">Supplier documents <span className="text-xs font-normal text-muted-foreground">(private, office only)</span></div>

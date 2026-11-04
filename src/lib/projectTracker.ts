@@ -124,6 +124,7 @@ export function photosByHouse(
   invoices: { id: string; project_house_id: string | null; lead_id?: string | null }[],
   jobs: { id: string; title: string | null; invoice_id: string | null; lead_id: string | null }[],
   photos: { lead_id: string }[],
+  direct: Record<string, { id: string; title: string | null; lead_id: string | null }[]> = {},
 ): Record<string, HousePhotos> {
   const perLead: Record<string, number> = {};
   for (const p of photos) perLead[p.lead_id] = (perLead[p.lead_id] || 0) + 1;
@@ -133,6 +134,16 @@ export function photosByHouse(
     for (const j of jobs) {
       if (j.invoice_id !== i.id && !(i.lead_id && j.lead_id === i.lead_id)) continue;
       const h = (out[i.project_house_id] ||= { count: 0, jobs: [] });
+      if (h.jobs.some((x) => x.id === j.id)) continue;
+      const c = j.lead_id ? perLead[j.lead_id] || 0 : 0;
+      h.jobs.push({ id: j.id, title: j.title || "Job", count: c });
+      h.count += c;
+    }
+  }
+  // Direct house -> job matches (no invoice needed), deduped with the invoice path.
+  for (const [houseId, js] of Object.entries(direct)) {
+    for (const j of js) {
+      const h = (out[houseId] ||= { count: 0, jobs: [] });
       if (h.jobs.some((x) => x.id === j.id)) continue;
       const c = j.lead_id ? perLead[j.lead_id] || 0 : 0;
       h.jobs.push({ id: j.id, title: j.title || "Job", count: c });
@@ -162,6 +173,29 @@ export function docsByHouse(
       byDoc.set(l.doc.id, d);
     }
     if (byDoc.size) out[houseId] = { count: byDoc.size, docs: [...byDoc.values()].sort((a, b) => (b.doc_date || "").localeCompare(a.doc_date || "")) };
+  }
+  return out;
+}
+
+/** True when text names this house number as a whole number: "House 32", "house no. 32", "House #32" (never House 3 vs 32 / 132). */
+export function namesHouse(text: string | null | undefined, houseNo: string): boolean {
+  const n = String(houseNo || "").trim();
+  if (!text || !n) return false;
+  const esc = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|[^a-z0-9])house\\s*(?:no\\.?\\s*|#\\s*)?${esc}(?![0-9a-z])`, "i").test(text);
+}
+/** Direct house -> jobs: jobs of the project's client whose title (or else description) names the house number. No invoice needed. */
+export function directJobsByHouse<J extends { id: string; title: string | null; description?: string | null; customer_id: string | null; lead_id: string | null }>(
+  houses: { id: string; house_no: string }[], jobs: J[], customerId: string | null | undefined,
+): Record<string, J[]> {
+  const out: Record<string, J[]> = {};
+  if (!customerId) return out;
+  for (const j of jobs) {
+    if (j.customer_id !== customerId) continue;
+    // Title wins; only fall back to the description when the title names no house at all.
+    const titleHouses = houses.filter((h) => namesHouse(j.title, h.house_no));
+    const hits = titleHouses.length ? titleHouses : houses.filter((h) => namesHouse(j.description, h.house_no));
+    for (const h of hits) (out[h.id] ||= []).push(j);
   }
   return out;
 }
