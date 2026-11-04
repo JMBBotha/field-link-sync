@@ -1,3 +1,4 @@
+-- MANUAL ROLLBACK - DO NOT RUN AS MIGRATION
 -- ROLLBACK for 20261104070000_invoice_due_date_source.sql (do NOT run as a forward migration).
 -- Restores the trigger function exactly as it is live on 4 Nov 2026 (overwrites only issue+30), and set_invoice_due_date
 -- without due_date_source, then drops the column. Roll back the front end first (it sends due_date_source).
