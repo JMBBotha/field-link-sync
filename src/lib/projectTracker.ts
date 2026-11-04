@@ -143,3 +143,25 @@ export function photosByHouse(
 }
 
 export const stepsTotal = (steps: ProjectStep[]) => steps.reduce((a, s) => a + Number(s.rate || 0), 0);
+
+export interface HouseDoc { id: string; doc_type: string; doc_number: string | null; supplier: string | null; doc_date: string | null; storage_path: string | null; jobIds: string[] }
+export interface HouseDocs { count: number; docs: HouseDoc[] }
+/** Private supplier docs per house (office only; RLS sjd_ok): house -> its jobs (from photosByHouse) -> confirmed supplier_job_document_links. */
+export function docsByHouse(
+  photos: Record<string, HousePhotos>,
+  links: { job_id: string | null; status: string; doc: { id: string; doc_type: string; doc_number: string | null; supplier_name: string | null; doc_date: string | null; storage_path: string | null; supplier?: string | null } | null }[],
+): Record<string, HouseDocs> {
+  const out: Record<string, HouseDocs> = {};
+  for (const [houseId, hp] of Object.entries(photos)) {
+    const jobIds = new Set(hp.jobs.map((j) => j.id));
+    const byDoc = new Map<string, HouseDoc>();
+    for (const l of links) {
+      if (l.status !== "confirmed" || !l.doc || !l.job_id || !jobIds.has(l.job_id)) continue;
+      const d = byDoc.get(l.doc.id) || { id: l.doc.id, doc_type: l.doc.doc_type, doc_number: l.doc.doc_number, supplier: l.doc.supplier || l.doc.supplier_name, doc_date: l.doc.doc_date, storage_path: l.doc.storage_path, jobIds: [] };
+      if (!d.jobIds.includes(l.job_id)) d.jobIds.push(l.job_id);
+      byDoc.set(l.doc.id, d);
+    }
+    if (byDoc.size) out[houseId] = { count: byDoc.size, docs: [...byDoc.values()].sort((a, b) => (b.doc_date || "").localeCompare(a.doc_date || "")) };
+  }
+  return out;
+}

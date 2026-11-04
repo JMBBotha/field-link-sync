@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { moneyByHouse, photosByHouse, type HousePhotos, sortHouses, type ProjectHouse, type ProjectPhase, type HouseMoney } from "@/lib/projectTracker";
+import { moneyByHouse, photosByHouse, type HousePhotos, docsByHouse, type HouseDocs, sortHouses, type ProjectHouse, type ProjectPhase, type HouseMoney } from "@/lib/projectTracker";
 
 // Tables are new (20261027130000_project_house_tracker.sql); typed loosely until types are regenerated.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- new tables not in generated types yet
@@ -36,6 +36,7 @@ export function useProjectDetail(projectId?: string) {
       const ids = houses.map((h) => h.id);
       let money: Record<string, HouseMoney> = {};
       let photos: Record<string, HousePhotos> = {};
+      let docs: Record<string, HouseDocs> = {};
       if (ids.length) {
         const inv = await db.from("invoices").select("id, project_house_id, grand_total, status, invoice_number, archived_at, sent_at, issue_date, lead_id").in("project_house_id", ids);
         if (inv.error) throw inv.error;
@@ -50,9 +51,19 @@ export function useProjectDetail(projectId?: string) {
           const jobLeads = [...new Set(jobs.map((j: { lead_id: string | null }) => j.lead_id).filter(Boolean))] as string[];
           const ph = jobLeads.length ? await db.from("job_photos").select("lead_id").in("lead_id", jobLeads) : { data: [] };
           photos = photosByHouse(inv.data || [], jobs, ph.error ? [] : ph.data || []);
+          // Supplier docs (display only, office only: RLS sjd_ok returns nothing for anyone else).
+          const jobIds = jobs.map((j: { id: string }) => j.id);
+          if (jobIds.length) {
+            const lk = await db.from("supplier_job_document_links")
+              .select("job_id, status, doc:supplier_job_documents(id, doc_type, doc_number, supplier_name, doc_date, storage_path, suppliers(name))")
+              .in("job_id", jobIds).eq("status", "confirmed");
+            const rows = (lk.error ? [] : lk.data || []).map((r: { job_id: string | null; status: string; doc: { suppliers?: { name: string } | null } & Record<string, unknown> | null }) =>
+              ({ ...r, doc: r.doc ? { ...r.doc, supplier: r.doc.suppliers?.name ?? null } : null }));
+            docs = docsByHouse(photos, rows as Parameters<typeof docsByHouse>[1]);
+          }
         }
       }
-      return { project: p.data as ProjectRow | null, phases: (ph.data || []) as ProjectPhase[], houses, money, photos };
+      return { project: p.data as ProjectRow | null, phases: (ph.data || []) as ProjectPhase[], houses, money, photos, docs };
     },
   });
 }

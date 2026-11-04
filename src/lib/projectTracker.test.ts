@@ -65,3 +65,20 @@ describe("photosByHouse", () => {
     expect(Object.keys(r)).toEqual(["h1"]);
   });
 });
+
+import { docsByHouse } from "./projectTracker";
+describe("docsByHouse", () => {
+  const doc = (id: string, path: string | null) => ({ id, doc_type: "delivery_note", doc_number: id, supplier_name: "Acme", doc_date: "2026-01-02", storage_path: path });
+  it("groups confirmed links by the house's jobs, one entry per doc", () => {
+    const photos = { h1: { count: 0, jobs: [{ id: "j1", title: "A", count: 0 }, { id: "j2", title: "B", count: 0 }] }, h2: { count: 0, jobs: [{ id: "j3", title: "C", count: 0 }] } };
+    const out = docsByHouse(photos, [
+      { job_id: "j1", status: "confirmed", doc: doc("D1", "x.pdf") },
+      { job_id: "j2", status: "confirmed", doc: doc("D1", "x.pdf") },
+      { job_id: "j2", status: "suggested", doc: doc("D2", null) },
+      { job_id: "j9", status: "confirmed", doc: doc("D3", null) },
+    ]);
+    expect(out.h1.count).toBe(1);
+    expect(out.h1.docs[0].jobIds).toEqual(["j1", "j2"]);
+    expect(out.h2).toBeUndefined();
+  });
+});
