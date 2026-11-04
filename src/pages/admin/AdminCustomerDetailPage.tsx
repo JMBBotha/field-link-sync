@@ -390,7 +390,7 @@ const AdminCustomerDetailPage = () => {
   const openQuotes = (quotes as any[]).filter((q) => ["draft", "sent", "viewed", "pending"].includes((q.status || "draft").toLowerCase()));
   const unpaid: UnpaidInvoice[] = useMemo(() => (invoices as any[])
     .filter((inv) => !inv.archived_at && !["paid", "void", "cancelled", "draft"].includes((inv.status || "").toLowerCase()))
-    .map((inv) => { const r = dueBy.get(inv.id); return { id: inv.id, invoice_number: inv.invoice_number, grand_total: Number(inv.grand_total) || 0, amount_due: Number(r?.amount_due) || 0, days: r && !r.waiting ? r.days : 0, waiting: !!r?.waiting, _d: inv.due_date || inv.issue_date || inv.created_at || "" }; })
+    .map((inv) => { const r = dueBy.get(inv.id); return { id: inv.id, invoice_number: inv.invoice_number, house: invoiceHouseLabel(inv), grand_total: Number(inv.grand_total) || 0, amount_due: Number(r?.amount_due) || 0, days: r && !r.waiting ? r.days : 0, waiting: !!r?.waiting, _d: inv.due_date || inv.issue_date || inv.created_at || "" }; })
     .filter((i) => i.amount_due > 0.005)
     .sort((x, y) => String(x._d).localeCompare(String(y._d))), [invoices, dueBy]);
   const overdueUnpaid = unpaid.filter((i) => (i.days || 0) > 0);

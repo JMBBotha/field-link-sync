@@ -1,3 +1,4 @@
+import { invoiceHouseLabel } from "@/lib/invoiceHouse";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -156,7 +157,7 @@ const CustomerInvoiceView = () => {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             {prof?.logo_url ? <img src={prof.logo_url} alt={brand || ""} className="h-9" /> : brand ? <span className="font-semibold truncate">{brand}</span> : <img src={logo} alt="" className="h-9" />}
-            <span className="ml-auto text-sm opacity-90 shrink-0">{inv.invoice_number}</span>
+            <span className="ml-auto text-sm opacity-90 shrink-0">{invoiceHouseLabel(inv as any) && <span data-testid="client-house" className="font-bold">{invoiceHouseLabel(inv as any)} · </span>}{inv.invoice_number}</span>
           </div>
         </header>
 
@@ -216,7 +217,7 @@ const CustomerInvoiceView = () => {
             <summary className="cursor-pointer list-none text-base font-bold text-ink flex items-center justify-between">Invoice details <span className="text-sm font-medium text-primary group-open:hidden">Show</span><span className="text-sm font-medium text-primary hidden group-open:inline">Hide</span></summary>
             <div className="mt-3 space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-2">
-                <div><p className="text-muted-foreground">Invoice</p><p className="font-medium">{inv.invoice_number}</p></div>
+                {invoiceHouseLabel(inv as any) && <div><p className="text-muted-foreground">House / site</p><p className="font-medium">{invoiceHouseLabel(inv as any)}</p></div>}<div><p className="text-muted-foreground">Invoice</p><p className="font-medium">{inv.invoice_number}</p></div>
                 <div><p className="text-muted-foreground">Date</p><p className="font-medium">{format(new Date(inv.issue_date || inv.created_at), "d MMM yyyy")}</p></div>
               </div>
               <div>

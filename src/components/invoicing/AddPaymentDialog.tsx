@@ -4,7 +4,7 @@ import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
 import { creditedByInvoice, fetchCreditNotes, type CreditNoteRow } from "@/lib/creditNotes";
 import { cn } from "@/lib/utils";
 
-export type UnpaidInvoice = { id: string; invoice_number: string | null; grand_total: number; amount_due: number; days?: number; waiting?: boolean };
+export type UnpaidInvoice = { id: string; invoice_number: string | null; grand_total: number; amount_due: number; days?: number; waiting?: boolean; house?: string | null };
 const rand = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
 /** Add payment from the client page (Johan 2 Nov 16:42). Same recorder as the invoice page "Record payment".
@@ -22,7 +22,7 @@ export default function AddPaymentDialog({ open, onOpenChange, invoices, initial
       <DialogContent data-testid="add-payment-dialog" className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-1.5rem)] max-w-lg overflow-y-auto rounded-2xl p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>Add payment</DialogTitle>
-          <DialogDescription>{inv ? `${inv.invoice_number || "Invoice"} · ${rand(inv.amount_due)} due` : "Which invoice is this payment for?"}</DialogDescription>
+          <DialogDescription>{inv ? `${inv.house ? `${inv.house} · ` : ""}${inv.invoice_number || "Invoice"} · ${rand(inv.amount_due)} due` : "Which invoice is this payment for?"}</DialogDescription>
         </DialogHeader>
         {invoices.length > 1 && <InvoicePicker invoices={invoices} pick={pick} onPick={setPick} />}
         {pick && !inv && (
@@ -42,7 +42,7 @@ export function InvoicePicker({ invoices, pick, onPick }: { invoices: UnpaidInvo
       {invoices.map((i) => (
         <button key={i.id} type="button" role="radio" aria-checked={pick === i.id} onClick={() => onPick(i.id)}
           className={cn("flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-sm", pick === i.id ? "border-[#1AA7EC] bg-[#E8F6FE]" : "bg-card")}>
-          <span className="font-semibold">{i.invoice_number || "Invoice"}</span>
+          <span className="font-semibold">{i.house && <span data-testid="pay-house">{i.house} · </span>}{i.invoice_number || "Invoice"}</span>
           <span className="text-right">{rand(i.amount_due)} due{i.days && i.days > 0 ? <span className="ml-1 text-[#C9373C]">· {i.days}d late</span> : null}</span>
         </button>
       ))}

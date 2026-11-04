@@ -1,3 +1,4 @@
+import { useInvoiceHouseLabels } from "@/hooks/useInvoiceHouse";
 import { PaymentReminderDialog } from "@/components/invoicing/PaymentReminderDialog";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -43,6 +44,7 @@ export default function AdminPaymentFollowupsPage() {
 
 
 
+  const houses = useInvoiceHouseLabels(rows.map((r: any) => r.invoice_id));
   const open = rows.filter((r) => r.status === "pending" || r.status === "approved");
   const done = rows.filter((r) => !(r.status === "pending" || r.status === "approved"));
 
@@ -51,7 +53,7 @@ export default function AdminPaymentFollowupsPage() {
       <CardContent className="space-y-3 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <div className="font-medium">{r.customer_name}</div>
+            <div className="font-medium">{houses.get((r as any).invoice_id) && <span data-testid="pf-house" className="font-bold">{houses.get((r as any).invoice_id)} · </span>}{r.customer_name}</div>
             <div className="text-xs text-muted-foreground">Invoice {r.invoice_number} · {formatRand(Number(r.amount_due))} outstanding{r.days_late != null ? ` · ${r.days_late} days past due` : ""}{r.stage ? ` · flagged at ${r.stage} days` : " · asked by staff"}</div>
           </div>
           <Badge variant={r.status === "approved" ? "default" : "secondary"}>{STATUS[r.status] || r.status}</Badge>
