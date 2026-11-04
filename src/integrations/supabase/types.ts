@@ -4741,6 +4741,7 @@ export type Database = {
           discount_type: string | null
           discount_value: number | null
           due_date: string | null
+          due_date_source: string | null
           due_date_manual: boolean
           duplicated_from: string | null
           equipment_id: string | null
@@ -4800,6 +4801,7 @@ export type Database = {
           discount_type?: string | null
           discount_value?: number | null
           due_date?: string | null
+          due_date_source?: string | null
           due_date_manual?: boolean
           duplicated_from?: string | null
           equipment_id?: string | null
@@ -4859,6 +4861,7 @@ export type Database = {
           discount_type?: string | null
           discount_value?: number | null
           due_date?: string | null
+          due_date_source?: string | null
           due_date_manual?: boolean
           duplicated_from?: string | null
           equipment_id?: string | null
