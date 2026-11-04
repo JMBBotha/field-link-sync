@@ -69,7 +69,7 @@ export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment
     <>
     {ownerStrip && !closed && (
       <div data-testid="invoice-owing-strip" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border-2 border-[#F97316] bg-[#FFF7ED] p-3 dark:bg-[#F97316]/10">
-        <p className="min-w-0 text-lg font-bold leading-tight text-[#F97316] sm:text-xl">{rand(b.balance)} outstanding{overdue ? ` · ${rand(b.balance)} overdue` : b.due ? "" : " · due on completion"}</p>
+        <p className="min-w-0 text-lg font-bold leading-tight text-[#F97316] sm:text-xl">{rand(b.balance)} outstanding{overdue ? ` · ${rand(b.balance)} overdue` : b.due ? "" : expected ? ` · expected ${fmtDay(expected)}` : " · due on completion"}</p>
         <div className="flex gap-2">
           {onRecordPayment && <button type="button" data-testid="strip-add-payment" onClick={onRecordPayment} className="min-h-11 rounded-xl bg-[#F97316] px-4 text-sm font-semibold text-white hover:bg-[#EA580C]">+ Add payment</button>}
           {canRemind && <button type="button" data-testid="strip-send-reminder" onClick={() => setRemind(true)} className="min-h-11 rounded-xl border border-[#F97316] bg-white px-4 text-sm font-semibold text-[#C2410C] hover:bg-[#FFEDD5]">Send reminder</button>}
