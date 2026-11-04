@@ -86,8 +86,6 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
       { path: "/admin/maintenance", label: "Maintenance", icon: "calendar" },
       { path: "/admin/map", label: "Live tracking", icon: "pin", match: ["/admin/jobs-map"] },
       { path: "/admin/calls", label: "Calls", icon: "phone" },
-    ] },
-    { title: "Quotes & docs", links: [
       { path: "/admin/templates", label: "Templates", icon: "file", match: ["/admin/proposals"] },
       { path: "/admin/agreements", label: "Agreements", icon: "file" },
       { path: "/admin/pdf-documents", label: "Brochures & PDFs", icon: "file", match: ["/admin/brochures", "/admin/unit-content"] },

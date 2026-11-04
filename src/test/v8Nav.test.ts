@@ -24,9 +24,9 @@ describe("v8 Simple navigation", () => {
       expect(app.includes(`path="${base}"`) || app.includes(`path="${leaf}"`)).toBe(true);
     }
   });
-  it("groups: 5 headings + Platform, no duplicate or dead links, phones keep 4 tabs + More", () => {
+  it("groups: max 5 headings, no duplicate or dead links, phones keep 4 tabs + More", () => {
     const g = v8More("admin", { cashHealth: true });
-    expect(g.map((x) => x.title)).toEqual(["Jobs & requests", "Quotes & docs", "Money", "Suppliers & stock", "Team & settings", "Platform (Massair)"]);
+    expect(g.map((x) => x.title)).toEqual(["Jobs & requests", "Money", "Suppliers & stock", "Team & settings", "Platform (Massair)"]);
     const paths = [...v8Primary("admin"), ...g.flatMap((x) => x.links)].map((l) => l.path);
     for (const dead of ["/admin/payments", "/admin/projects", "/admin/portal", "/admin/whatsapp", "/admin/dispatch", "/admin/network-agents", "/admin/price-lists", "/admin/consumables", "/admin/brochures", "/admin/analytics", "/admin/cashflow"]) expect(paths).not.toContain(dead);
     expect(new Set(paths.map((p) => p.split("?")[0] + (p.includes("tab=stock") ? "#stock" : ""))).size).toBe(paths.length);
