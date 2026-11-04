@@ -12,19 +12,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { formatRand } from "@/utils/formatRand";
 import { db } from "@/hooks/useProjectTracker";
+import PanelErrorBoundary from "@/components/shared/PanelErrorBoundary";
 import { houseStatus, houseReminders, primaryInvoice, phaseLabel, STATUS_META, OVERRIDE_OK, FIRST_FIT_STEP, daysSince, type HouseMoney, type HousePhotos, type HouseDocs, type ProjectHouse, type ProjectPhase, type HouseStatus } from "@/lib/projectTracker";
 
 type Form = Pick<ProjectHouse, "house_no" | "phase_id" | "po_number" | "make" | "unit_sizes" | "units_ordered" | "units_received" | "ready_for_aircon" | "ready_for_aircon_at" | "status_override" | "notes">;
+/** Form values straight from the house row, so the drawer opens on the first tap (no wait for an effect). */
+export function formFromHouse(house: ProjectHouse): Form {
+  const { house_no, phase_id, po_number, make, unit_sizes, units_ordered, units_received, ready_for_aircon, ready_for_aircon_at, status_override, notes } = house;
+  return { house_no, phase_id, po_number, make, unit_sizes, units_ordered, units_received, ready_for_aircon, ready_for_aircon_at, status_override, notes };
+}
 
-export default function HouseDrawer({ house, money, photos, docs, showDocs, phases, onClose, onSaved }: { house: ProjectHouse | null; money?: HouseMoney; photos?: HousePhotos; docs?: HouseDocs; showDocs?: boolean; phases: ProjectPhase[]; onClose: () => void; onSaved: () => void }) {
+function HouseDrawerInner({ house, money, photos, docs, showDocs, phases, onClose, onSaved }: { house: ProjectHouse | null; money?: HouseMoney; photos?: HousePhotos; docs?: HouseDocs; showDocs?: boolean; phases: ProjectPhase[]; onClose: () => void; onSaved: () => void }) {
   const { toast } = useToast();
-  const [f, setF] = useState<Form | null>(null);
+  const [f0, setF] = useState<Form | null>(() => (house ? formFromHouse(house) : null));
+  const f = f0 ?? (house ? formFromHouse(house) : null);
   const [steps, setSteps] = useState(house?.steps || []);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     if (!house) return;
-    const { house_no, phase_id, po_number, make, unit_sizes, units_ordered, units_received, ready_for_aircon, ready_for_aircon_at, status_override, notes } = house;
-    setF({ house_no, phase_id, po_number, make, unit_sizes, units_ordered, units_received, ready_for_aircon, ready_for_aircon_at, status_override, notes });
+    setF(formFromHouse(house));
     // Older houses were created before "First fit" existed: show it unticked; the row is only created when ticked + saved.
     setSteps(house.steps.some((s) => s.step_key === FIRST_FIT_STEP) ? house.steps
       : [{ id: `new-${FIRST_FIT_STEP}`, step_key: FIRST_FIT_STEP, label: "First fit (sleeves & drains)", rate: 0, sort_order: 0, done: false, paid: false }, ...house.steps]);
@@ -60,6 +66,7 @@ export default function HouseDrawer({ house, money, photos, docs, showDocs, phas
           <SheetTitle>House {house.house_no}</SheetTitle>
           <SheetDescription>Status now: {STATUS_META[f.status_override || computed].label}</SheetDescription>
         </SheetHeader>
+        <PanelErrorBoundary panelName={`House ${house.house_no} details`}>
         <div className="mt-4 space-y-4">
           {houseReminders({ ...house, steps, status_override: null }, money).map((x) => (
             <div key={x.kind} data-testid="drawer-reminder" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-100">🔔 {x.text}</div>))}
@@ -129,7 +136,19 @@ export default function HouseDrawer({ house, money, photos, docs, showDocs, phas
             <Button onClick={save} disabled={saving} className="bg-[#1590D6] hover:bg-[#127bb8]">{saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Save</Button>
           </div>
         </div>
+        </PanelErrorBoundary>
       </SheetContent>
     </Sheet>
+  );
+}
+
+type DrawerProps = Parameters<typeof HouseDrawerInner>[0];
+/** Error boundary: a bad house/doc row shows a message in the drawer instead of the tap silently doing nothing. */
+export default function HouseDrawer(props: DrawerProps) {
+  if (!props.house) return <HouseDrawerInner {...props} />;
+  return (
+    <PanelErrorBoundary key={props.house.id} panelName={`House ${props.house.house_no}`}>
+      <HouseDrawerInner {...props} />
+    </PanelErrorBoundary>
   );
 }

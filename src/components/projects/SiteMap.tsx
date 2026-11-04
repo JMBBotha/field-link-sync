@@ -18,9 +18,10 @@ export default function SiteMap({ items, onOpen }: { items: { h: ProjectHouse; s
           const pts = pl.pts.map((p) => p.join(",")).join(" ");
           const color = e ? FILL[e.status] : "#cbd5e1";
           return (
-            <g key={pl.n} onClick={() => e && onOpen(e.h.id)} className={e ? "cursor-pointer" : "opacity-60"}>
+            <g key={pl.n} role={e ? "button" : undefined} aria-label={e ? `Open house ${pl.n}` : undefined} data-testid={e ? "sitemap-plot" : undefined}
+              className={e ? "cursor-pointer" : "opacity-60"} style={e ? { cursor: "pointer", touchAction: "manipulation" } : undefined}>
               <title>{`House ${pl.n}${pl.phase ? ` · plan phase ${pl.phase}` : ""}${pl.marked ? " · marked on plan" : ""}${e ? "" : " · not in project"}`}</title>
-              <polygon points={pts} fill={color} fillOpacity={0.35} stroke={color} strokeWidth={4} />
+              <polygon points={pts} fill={color} fillOpacity={0.35} stroke={color} strokeWidth={4} pointerEvents="all" onClick={() => e && onOpen(e.h.id)} />
               {pl.marked && <polygon points={pts} fill="url(#hatch)" fillOpacity={0.35} pointerEvents="none" />}
             </g>
           );

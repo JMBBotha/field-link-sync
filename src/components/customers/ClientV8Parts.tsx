@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 /** Client page V8 parts (Johan 20 Oct 13:30): activity timeline (read-only from existing tables), payment terms chip, sites overview. */
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const sb = supabase as any;
-export type ActivityItem = { id: string; at: string; kind: "email" | "call" | "note" | "reminder" | "followup" | "job"; text: string; sub?: string };
+export type ActivityItem = { id: string; at: string; kind: "email" | "call" | "note" | "reminder" | "followup" | "job"; text: string; sub?: string; jobId?: string };
 const ICON = { email: Mail, call: Phone, note: StickyNote, reminder: Clock, followup: Repeat, job: MapPin } as const;
 
 export function buildActivity(src: {
@@ -30,7 +31,7 @@ export function buildActivity(src: {
     text: `Quote ${src.quoteNo?.get(s.quote_id) || ""} emailed to ${s.recipient}`, sub: s.status === "sent" || s.status === "delivered" ? undefined : s.status });
   for (const f of src.followups || []) out.push({ id: "f" + f.id, at: f.created_at, kind: "followup",
     text: `Quote ${src.quoteNo?.get(f.quote_id) || ""} follow-up #${f.seq} · ${String(f.result || "").replace(/_/g, " ")}`, sub: f.note || undefined });
-  for (const j of src.jobLog || []) out.push({ id: "j" + j.id, at: j.created_at, kind: "job",
+  for (const j of src.jobLog || []) out.push({ id: "j" + j.id, at: j.created_at, kind: "job", jobId: j.job_id || undefined,
     text: `${src.jobTitle?.get(j.job_id) || "Job"} · ${String(j.action || j.event_type || j.activity_type || "update").replace(/_/g, " ")}` });
   return out.filter((x) => x.at).sort((a, b) => +new Date(b.at) - +new Date(a.at));
 }
@@ -76,7 +77,9 @@ export function ClientActivity({ customerId, companyId, quotes, jobs }: { custom
         : <ul className="divide-y">{items.slice(0, 80).map((it) => { const I = ICON[it.kind]; return (
           <li key={it.id} className="flex items-start gap-3 py-2.5">
             <span className="mt-0.5 rounded-full bg-[#E8F6FE] p-1.5 text-[#1590D6] dark:bg-sky-500/15 dark:text-sky-300"><I className="h-3.5 w-3.5" /></span>
-            <div className="min-w-0 flex-1"><p className="text-sm break-words">{it.text}</p>{it.sub && <p className="text-xs text-muted-foreground line-clamp-2 break-words">{it.sub}</p>}</div>
+            {it.jobId
+              ? <Link to={`/admin/jobs/${it.jobId}`} data-testid="activity-job-link" className="min-w-0 flex-1 rounded-md hover:bg-muted/50"><p className="text-sm break-words font-medium text-[#1590D6]">{it.text} ›</p>{it.sub && <p className="text-xs text-muted-foreground line-clamp-2 break-words">{it.sub}</p>}</Link>
+              : <div className="min-w-0 flex-1"><p className="text-sm break-words">{it.text}</p>{it.sub && <p className="text-xs text-muted-foreground line-clamp-2 break-words">{it.sub}</p>}</div>}
             <span className="shrink-0 text-xs text-muted-foreground">{format(new Date(it.at), "dd MMM HH:mm")}</span>
           </li>); })}</ul>}
     </div>

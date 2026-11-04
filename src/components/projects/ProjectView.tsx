@@ -114,8 +114,9 @@ export function HouseCard({ h, status, money, photos, docs, onOpen }: { h: Proje
   const rem = houseReminders(h, money)[0];
   return (
     <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} data-status={status} title={STATUS_META[status].label}
-      className={cn("cursor-pointer rounded-xl border-[3px] bg-card p-2.5 text-left shadow-sm transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1590D6]", STATUS_META[status].ring)}>
-      <div className="text-base font-semibold">House {h.house_no}</div>
+      style={{ touchAction: "manipulation" }} data-testid="house-card"
+      className={cn("cursor-pointer select-none rounded-xl border-[3px] bg-card p-2.5 text-left shadow-sm transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1590D6]", STATUS_META[status].ring)}>
+      <button type="button" data-testid="house-open" onClick={(e) => { e.stopPropagation(); onOpen(); }} className="block w-full text-left text-base font-semibold">House {h.house_no}</button>
       <div className="truncate text-xs text-muted-foreground">{[h.make, h.unit_sizes].filter(Boolean).join(" ") || "No units set"}</div>
       <span data-testid="stage-chip" className={cn("mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-bold", STATUS_META[status].chip)}>{STATUS_META[status].label}</span>
       {inv ? (
