@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { dueChip, STEP_LABEL, randShort, type DueRow } from "@/lib/invoiceDue";
+import { dueChip, shortDueLabel, STEP_LABEL, randShort, type DueRow } from "@/lib/invoiceDue";
 import { onCompletionLabel } from "@/lib/balanceDue";
 import { PaymentReminderDialog } from "@/components/invoicing/PaymentReminderDialog";
 
@@ -13,11 +13,12 @@ const TONE: Record<string, string> = {
 };
 
 /** Soft due chip for an invoice row. Pressing it opens the inline review (when there is a draft). */
-export function InvoiceDueChip({ row, onClick, className }: { row: DueRow; onClick?: () => void; className?: string }) {
-  const c = dueChip(row);
+export function InvoiceDueChip({ row, onClick, className, short }: { row: DueRow; onClick?: () => void; className?: string; short?: boolean }) {
+  const c0 = dueChip(row);
+  const c = short ? { ...c0, label: shortDueLabel(c0.label) } : c0;
   return (
     <button type="button" data-testid="invoice-due-chip" onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-      className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold", TONE[c.tone], className)}>
+      className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold", short && "shrink whitespace-normal text-left text-[11px] leading-snug", TONE[c.tone], className)}>
       {c.label}{row.waiting ? "" : row.followup_status === "pending" ? " · review" : row.followup_status === "approved" ? " · ready to send" : ""}
     </button>
   );

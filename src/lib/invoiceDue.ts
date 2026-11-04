@@ -56,3 +56,15 @@ export function termsLabel(basis?: string | null, days?: number | null): string 
   if (basis === "invoice") return `${days ?? 7} days after invoice`;
   return "Company default (7 days after invoice)";
 }
+
+/** Short wrapping label for narrow rows (Johan 4 Nov 22:17): "Due on completion · not booked" / "· booked 3 Nov". */
+export function shortDueLabel(label: string): string {
+  const m = /^Due on completion \(installation (?:booked (.+)|not booked yet)\)$/.exec(label);
+  if (!m) return label;
+  return m[1] ? `Due on completion · booked ${m[1]}` : "Due on completion · not booked";
+}
+
+/** Line 1 of an "Invoices due" row: "House 32 · INV-0010021 · R 18 400.00" (house only when known). */
+export function dueRowTitle(houseLabel: string | null | undefined, invoiceNumber: string | null | undefined, amount: string): string {
+  return [houseLabel, invoiceNumber || "Invoice (draft)", amount].filter(Boolean).join(" · ");
+}

@@ -1,4 +1,5 @@
 import { HOUSE_EMBED, invoiceHouseLabel } from "@/lib/invoiceHouse";
+import { dueRowTitle } from "@/lib/invoiceDue";
 import { BalanceDueBlock } from "@/components/invoicing/BalanceDueBlock";
 import { useInvoiceDue } from "@/hooks/useInvoiceDue";
 import OwnerRepChip from "@/components/requests/OwnerRepChip";
@@ -558,9 +559,9 @@ const AdminCustomerDetailPage = () => {
               <p className="font-semibold mb-2">Invoices due</p>
               {(invoices as any[]).filter((inv) => dueBy.get(inv.id)).length === 0 ? <p className="text-sm text-muted-foreground">Nothing outstanding.</p> : (
                 <ul className="divide-y">{(invoices as any[]).filter((inv) => dueBy.get(inv.id)).map((inv) => (
-                  <li key={inv.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-                    <button type="button" className="min-w-0 truncate text-left hover:underline" onClick={() => navigate(`/admin/invoices/${inv.id}`)}>{inv.invoice_number || "Invoice"} · {formatRand(Number(dueBy.get(inv.id)!.amount_due || 0))}</button>
-                    <InvoiceDueChip row={dueBy.get(inv.id)!} onClick={() => { setInnerTab("invoices"); setReviewInv(inv.id); }} />
+                  <li key={inv.id} data-testid="invoice-due-row" className="flex flex-col items-start gap-1 py-2 text-sm">
+                    <button type="button" className="w-full min-w-0 break-words text-left font-semibold hover:underline" onClick={() => navigate(`/admin/invoices/${inv.id}`)}>{dueRowTitle(invoiceHouseLabel(inv), inv.invoice_number, formatRand(Number(dueBy.get(inv.id)!.amount_due || 0)))}</button>
+                    <InvoiceDueChip short row={dueBy.get(inv.id)!} onClick={() => { setInnerTab("invoices"); setReviewInv(inv.id); }} />
                   </li>))}</ul>)}
             </CardContent></Card>
           </div>
