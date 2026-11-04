@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { type BalanceInfo, finalPaymentLine, fmtDay, fmtDayTime, rand, toLocalInput, fromLocalInput } from "@/lib/balanceDue";
 import { PaymentReminderDialog } from "@/components/invoicing/PaymentReminderDialog";
 import SendReminderDialog from "@/components/invoicing/SendReminderDialog";
+import { useInvoiceHouseLabel } from "@/hooks/useInvoiceHouse";
 
 const TONE = { blue: "text-[#1590D6]", green: "text-emerald-600", amber: "text-[#B5730A]", red: "text-[#C9373C]" } as const;
 
@@ -21,6 +22,7 @@ export function useBalanceInfo(invoiceId?: string | null) {
 export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment, ownerStrip }: { invoiceId: string; compact?: boolean; className?: string; onRecordPayment?: () => void; /** Bold orange owing strip on top (invoice detail, Johan 2 Nov 18:13). */ ownerStrip?: boolean }) {
   const qc = useQueryClient();
   const { data: b } = useBalanceInfo(invoiceId);
+  const house = useInvoiceHouseLabel(invoiceId);
   const [edit, setEdit] = useState<"install" | "due" | null>(null);
   const [val, setVal] = useState(""); const [busy, setBusy] = useState(false); const [preview, setPreview] = useState(false); const [remind, setRemind] = useState(false);
   if (!b) return null;
@@ -59,7 +61,7 @@ export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment
         </div>
       </div>)}
     <div data-testid="balance-due-block" className={cn("rounded-2xl border border-[#BFE3F8] bg-[#F3FAFE] p-3 dark:bg-sky-500/10", className)}>
-      {!compact && <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-[#1590D6]"><CalendarClock className="h-4 w-4" />Payment &amp; installation · {b.invoice_number}</div>}
+      {!compact && <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-[#1590D6]"><CalendarClock className="h-4 w-4" />{house && <><span data-testid="balance-house" className="font-bold text-foreground">{house}</span> · </>}Payment &amp; installation · {b.invoice_number}</div>}
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <div className={cell}><div className={lab}>Installation</div>
           <div className="text-sm font-semibold">{b.job_done ? `Completed ${fmtDay(b.job_done)}` : b.install_at ? fmtDayTime(b.install_at) : "Not booked"}
