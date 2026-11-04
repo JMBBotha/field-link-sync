@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { clientHref } from "@/lib/recordLinks";
 import { Plus, Loader2, FolderKanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { DEFAULT_PHASES } from "@/lib/projectTracker";
 
 /** Projects list. With customerId: that client's projects + "New project". Without: every client (admin sidebar). */
 export default function ProjectsList({ customerId, companyId }: { customerId?: string; companyId?: string | null }) {
+  const navigate = useNavigate();
   const { data = [], isLoading } = useProjects(customerId);
   const invalidate = useInvalidateProject();
   const { toast } = useToast();
@@ -37,7 +39,7 @@ export default function ProjectsList({ customerId, companyId }: { customerId?: s
           {data.map((p) => (
             <Link key={p.id} to={`/admin/projects/${p.id}`} className="rounded-xl border bg-card p-3 hover:border-[#1590D6]">
               <div className="flex items-center gap-2 font-semibold"><FolderKanban className="h-4 w-4 text-[#1590D6]" /> {p.name}</div>
-              <div className="text-xs text-muted-foreground">{!customerId && `${clientName(p.customers)} · `}{p.project_houses?.[0]?.count ?? 0} houses{p.po_number ? ` · PO ${p.po_number}` : ""} · {p.status}</div>
+              <div className="text-xs text-muted-foreground">{!customerId && <><span role="link" tabIndex={0} data-testid="project-client-link" className="font-medium text-[#1590D6] hover:underline" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(clientHref(p.customer_id)); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); navigate(clientHref(p.customer_id)); } }}>{clientName(p.customers)}</span>{" · "}</>}{p.project_houses?.[0]?.count ?? 0} houses{p.po_number ? ` · PO ${p.po_number}` : ""} · {p.status}</div>
             </Link>))}
         </div>)}
     </div>

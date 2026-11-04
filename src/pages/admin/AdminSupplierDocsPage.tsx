@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,14 @@ export default function AdminSupplierDocsPage() {
   const { user } = useAuth();
   const tab = "all";
   const [q, setQ] = useState("");
+  const [params, setParams] = useSearchParams();
+  const docId = params.get("doc");
+  // ?doc=<id> deep link: show that document first, highlighted.
+  const { data: focusDoc, refetch: refetchFocus } = useQuery({
+    queryKey: ["supplier-doc-focus", docId], enabled: !!docId,
+    queryFn: async () => { const { data } = await sb.from("supplier_job_documents").select(DOC_SELECT).eq("id", docId!).maybeSingle(); return data ?? null; },
+  });
+  useEffect(() => { if (focusDoc) setTimeout(() => document.getElementById(`sjd-${focusDoc.id}`)?.scrollIntoView({ block: "center" }), 100); }, [focusDoc]);
   const [open, setOpen] = useState(false);
   const [recv, setRecv] = useState(false);
   const { data: companyId } = useQuery({
@@ -51,7 +60,10 @@ export default function AdminSupplierDocsPage() {
       <BotLoginCard />
       <Input placeholder="Search model, serial, supplier, doc or PO number, client" value={q} onChange={(e) => setQ(e.target.value)} data-testid="sjd-search" />
       {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p>
-        : docs.length ? <div className="space-y-2">{docs.map((d: any) => <SupplierDocCard key={d.id} doc={d} onChanged={() => refetch()} />)}</div>
+        : (docs.length || focusDoc) ? <div className="space-y-2">
+            {focusDoc && <div id={`sjd-${focusDoc.id}`} data-testid="sjd-focus" className="rounded-xl ring-2 ring-[#1590D6]"><SupplierDocCard doc={focusDoc} onChanged={() => { refetch(); refetchFocus(); }} />
+              <button type="button" className="px-3 pb-2 text-xs text-muted-foreground hover:underline" onClick={() => { const n = new URLSearchParams(params); n.delete("doc"); setParams(n, { replace: true }); }}>Show all documents</button></div>}
+            {docs.filter((d: any) => d.id !== focusDoc?.id).map((d: any) => <div key={d.id} id={`sjd-${d.id}`}><SupplierDocCard doc={d} onChanged={() => refetch()} /></div>)}</div>
         : <p className="text-sm text-muted-foreground">No documents found.</p>}
       {companyId && <AddSupplierDocDialog open={open} onOpenChange={setOpen} companyId={companyId} onSaved={() => refetch()} />}
       {companyId && canReceive && <ReceiveSupplierDocDialog open={recv} onOpenChange={setRecv} companyId={companyId} onSaved={() => refetch()} />}

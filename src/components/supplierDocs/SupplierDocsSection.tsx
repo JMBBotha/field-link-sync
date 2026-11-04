@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { supplierDocHref } from "@/lib/recordLinks";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,7 +42,7 @@ function DocRow({ d }: { d: ClientDoc }) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-sm font-medium truncate">{d.supplier ?? "Supplier"}</div>
-          <div className="text-xs text-muted-foreground">{docTypeLabel(d.doc_type)} {d.doc_number ?? ""}{d.doc_date ? ` · ${d.doc_date}` : ""}</div>
+          <div className="text-xs text-muted-foreground">{docTypeLabel(d.doc_type)} {d.id && d.doc_number ? <Link to={supplierDocHref(d.id)} data-testid="sjd-client-doc-link" className="text-[#1590D6] hover:underline">{d.doc_number}</Link> : (d.doc_number ?? "")}{d.doc_date ? ` · ${d.doc_date}` : ""}</div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {notes.length > 0 && <button type="button" onClick={() => setShowNote((v) => !v)} className="rounded-full bg-orange-100 text-orange-700 px-2 py-0.5 text-xs font-medium" data-testid="sjd-check">check</button>}

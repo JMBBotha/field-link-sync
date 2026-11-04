@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
+import { invoiceHref, supplierDocHref, supplierHref } from "@/lib/recordLinks";
 import { docTypeLabel, openDocFile } from "@/components/supplierDocs/api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -87,7 +88,7 @@ function HouseDrawerInner({ house, money, photos, docs, showDocs, phases, onClos
               <div className="flex justify-between"><span>Total</span><span>{formatRand(money.invoiced)}</span></div>
               <div className="flex justify-between"><span>Paid</span><span>{formatRand(money.paid)}</span></div>
               <div className="flex justify-between font-medium"><span>Balance</span><span>{formatRand(money.invoiced - money.paid)}</span></div>
-              {money.invoiceCount > 1 && <div className="mt-1 text-xs text-muted-foreground">Also linked: {money.invoiceNumbers.join(", ")}</div>}
+              {money.invoiceCount > 1 && <div className="mt-1 text-xs text-muted-foreground" data-testid="drawer-also-linked">Also linked: {(money.invoices?.length ? money.invoices : money.invoiceNumbers.map((n) => ({ id: "", number: n }))).map((x, i) => <span key={x.id || i}>{i ? ", " : ""}{x.id ? <Link to={invoiceHref(x.id)} className="font-medium text-[#1590D6] hover:underline">{x.number || "draft"}</Link> : x.number}</span>)}</div>}
             </>); })()}
           </section>
 
@@ -98,12 +99,12 @@ function HouseDrawerInner({ house, money, photos, docs, showDocs, phases, onClos
                 <Link to={`/admin/jobs/${j.id}#job-photos`} className="shrink-0 font-semibold text-[#1590D6] hover:underline">📷 {j.count} photo{j.count === 1 ? "" : "s"} ↗</Link></div>))
               : <div className="text-muted-foreground">No job found for this house yet (by invoice or a job titled "House {house.house_no}").</div>}
           </section>
-          {showDocs && <section className="rounded-xl border p-3 text-sm" data-testid="drawer-supplier-docs">
+          {showDocs && <section id="house-docs" className="rounded-xl border p-3 text-sm" data-testid="drawer-supplier-docs">
             <div className="mb-1 font-semibold">Supplier documents <span className="text-xs font-normal text-muted-foreground">(private, office only)</span></div>
             {docs?.docs.length ? docs.docs.map((d) => (
               <div key={d.id} className="flex items-center justify-between gap-2 py-0.5">
-                <span className="min-w-0 truncate"><span className="font-medium">{docTypeLabel(d.doc_type)} {d.doc_number || ""}</span>
-                  <span className="text-xs text-muted-foreground"> · {[d.supplier, d.doc_date].filter(Boolean).join(" · ")}</span></span>
+                <span className="min-w-0 truncate"><Link to={supplierDocHref(d.id)} data-testid="drawer-doc-link" className="font-medium text-[#1590D6] hover:underline">{docTypeLabel(d.doc_type)} {d.doc_number || ""}</Link>
+                  <span className="text-xs text-muted-foreground"> · {d.supplier_id && d.supplier ? <Link to={supplierHref(d.supplier_id)} className="hover:underline">{d.supplier}</Link> : d.supplier}{d.doc_date ? ` · ${d.doc_date}` : ""}</span></span>
                 {d.storage_path
                   ? <button type="button" data-testid="drawer-doc-open" className="shrink-0 font-semibold text-[#1590D6] hover:underline"
                       onClick={() => openDocFile(d.storage_path).catch((e) => toast({ title: "Could not open file", description: e?.message, variant: "destructive" }))}>Open ↗</button>

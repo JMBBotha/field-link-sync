@@ -1,4 +1,4 @@
-import { HOUSE_EMBED, invoiceHouseLabel } from "@/lib/invoiceHouse";
+import { HOUSE_EMBED, invoiceHouseLabel, invoiceHouseHref } from "@/lib/invoiceHouse";
 import { dueRowTitle } from "@/lib/invoiceDue";
 import { BalanceDueBlock } from "@/components/invoicing/BalanceDueBlock";
 import { useInvoiceDue } from "@/hooks/useInvoiceDue";
@@ -601,7 +601,7 @@ const AdminCustomerDetailPage = () => {
                           <Fragment key={inv.id}>
                           <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/invoices/${inv.id}`)}>
                             <TableCell className="font-medium">{inv.invoice_number || "—"}</TableCell>
-                            <TableCell className="min-w-[160px] max-w-[320px] text-muted-foreground text-xs">{invoiceHouseLabel(inv) && <div data-testid="invoice-house" className="font-bold text-sm text-foreground">{invoiceHouseLabel(inv)}</div>}<div className="line-clamp-2 break-words" title={inv.notes || undefined}>{inv.notes || "—"}</div></TableCell>
+                            <TableCell className="min-w-[160px] max-w-[320px] text-muted-foreground text-xs">{invoiceHouseLabel(inv) && <div data-testid="invoice-house" className="font-bold text-sm text-foreground">{invoiceHouseHref(inv) ? <Link to={invoiceHouseHref(inv)!} onClick={(e) => e.stopPropagation()} data-testid="invoice-house-link" className="text-[#1590D6] hover:underline">{invoiceHouseLabel(inv)} ↗</Link> : invoiceHouseLabel(inv)}</div>}<div className="line-clamp-2 break-words" title={inv.notes || undefined}>{inv.notes || "—"}</div></TableCell>
                             <TableCell className="text-xs">{inv.issue_date ? format(new Date(inv.issue_date), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-xs">{inv.due_date ? format(new Date(inv.due_date), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-right font-medium">{formatRand(Number(inv.grand_total || 0))}</TableCell>

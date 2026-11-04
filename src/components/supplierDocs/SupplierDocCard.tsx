@@ -5,6 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import { FileText, X, Link2 } from "lucide-react";
 import { docTypeLabel, openDocFile, linkDoc, unlinkDoc, attachDocFile } from "./api";
 import JobPicker from "./JobPicker";
+import { Link } from "react-router-dom";
+import { clientHref, jobHref, supplierHref } from "@/lib/recordLinks";
 
 export default function SupplierDocCard({ doc, onChanged, highlightJobId }: { doc: any; onChanged: () => void; highlightJobId?: string }) {
   const { toast } = useToast();
@@ -17,7 +19,7 @@ export default function SupplierDocCard({ doc, onChanged, highlightJobId }: { do
     <div className="rounded-xl border p-3 space-y-2" data-testid="sjd-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="font-medium text-sm truncate">{supplier} · {docTypeLabel(doc.doc_type)}{doc.doc_number ? ` ${doc.doc_number}` : ""}</div>
+          <div className="font-medium text-sm truncate">{doc.supplier_id ? <Link to={supplierHref(doc.supplier_id)} data-testid="sjd-supplier-link" className="text-[#1590D6] hover:underline">{supplier}</Link> : supplier} · {docTypeLabel(doc.doc_type)}{doc.doc_number ? ` ${doc.doc_number}` : ""}</div>
           <div className="text-xs text-muted-foreground">{[doc.po_number && `PO ${doc.po_number}`, doc.doc_date && new Date(doc.doc_date).toLocaleDateString("en-ZA")].filter(Boolean).join(" · ") || "No date"}{doc.source === "assistant" ? " · added by WALDA (bot)" : ""}</div>
         </div>
         {doc.storage_path && <Button size="sm" variant="outline" onClick={() => run(() => openDocFile(doc.storage_path))}><FileText className="h-4 w-4 mr-1" />Open</Button>}
@@ -35,7 +37,8 @@ export default function SupplierDocCard({ doc, onChanged, highlightJobId }: { do
       <div className="flex flex-wrap gap-1.5">
         {links.map((k) => (
           <Badge key={k.id} variant={k.status === "suggested" ? "outline" : "secondary"} className={`gap-1 ${k.status === "suggested" ? "border-amber-500 text-amber-700" : ""}`}>
-            {k.customers?.name ?? "Client"}{k.jobs?.title ? ` · ${k.jobs.title}` : ""}
+            {k.customer_id ? <Link to={clientHref(k.customer_id)} data-testid="sjd-client-link" className="hover:underline">{k.customers?.name ?? "Client"}</Link> : (k.customers?.name ?? "Client")}
+            {k.jobs?.title ? <>{" · "}{k.job_id ? <Link to={jobHref(k.job_id)} data-testid="sjd-job-link" className="hover:underline">{k.jobs.title}</Link> : k.jobs.title}</> : ""}
             <button type="button" aria-label="Remove link" onClick={() => run(() => unlinkDoc(k.id))}><X className="h-3 w-3" /></button>
           </Badge>
         ))}

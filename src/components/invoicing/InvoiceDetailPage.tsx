@@ -1,4 +1,6 @@
-import { HOUSE_EMBED, invoiceHouseLabel } from "@/lib/invoiceHouse";
+import { Link } from "react-router-dom";
+import { HOUSE_EMBED, invoiceHouseLabel, invoiceHouseHref } from "@/lib/invoiceHouse";
+import { clientHref, jobHref } from "@/lib/recordLinks";
 import { DeliveredHint, useDeliveredSuggestions } from "@/components/invoicing/DeliveredCodes";
 import { BalanceDueBlock } from "@/components/invoicing/BalanceDueBlock";
 import FinalInvoiceSendDialog from "@/components/invoicing/FinalInvoiceSendDialog";
@@ -316,7 +318,10 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
       <div ref={headerRef} className="v8-navy flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="flex items-center gap-2">
           {/* One back arrow: the shared header BackButton (Johan 31 Oct). */}
-          <h1 className="text-lg font-bold">{invoiceHouseLabel(invoice as any) ? <><span data-testid="invoice-house">{invoiceHouseLabel(invoice as any)}</span> · Invoice {invoice.invoice_number}</> : "Invoice"}</h1>
+          <h1 className="text-lg font-bold">{invoiceHouseLabel(invoice as any) ? <>{invoiceHouseHref(invoice as any) ? <Link to={invoiceHouseHref(invoice as any)!} data-testid="invoice-house" className="text-[#1590D6] hover:underline">{invoiceHouseLabel(invoice as any)}</Link> : <span data-testid="invoice-house">{invoiceHouseLabel(invoice as any)}</span>} · Invoice {invoice.invoice_number}</> : "Invoice"}</h1>
+          {((invoice as any).customer_id || (invoice as any).job_id) && <div className="flex gap-3 text-xs" data-testid="invoice-record-links">
+            {(invoice as any).customer_id && <Link to={clientHref((invoice as any).customer_id)} className="underline opacity-90 hover:opacity-100">Client ↗</Link>}
+            {(invoice as any).job_id && <Link to={jobHref((invoice as any).job_id)} className="underline opacity-90 hover:opacity-100">Job ↗</Link>}</div>}
           {getStatusBadge(invoice.status)}<SentManuallyBadge doc={invoice as any} className="ml-1" />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1 min-w-0">

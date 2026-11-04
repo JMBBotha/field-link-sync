@@ -1,10 +1,10 @@
 // House / site label for project (estate) invoices, so the house is the first thing you read (Johan 3 Nov).
 // Source of truth: invoices.project_house_id -> project_houses.house_no. Fallback for unlinked invoices:
 // a "HOUSE 12" tag in the first line item or the first line of the notes. Display only; never touches totals.
-export const HOUSE_EMBED = "project_house:project_houses(house_no, project:projects(name))";
+export const HOUSE_EMBED = "project_house:project_houses(id, house_no, project_id, project:projects(name))";
 
 export interface HouseSource {
-  project_house?: { house_no?: string | null; project?: { name?: string | null } | null } | null;
+  project_house?: { id?: string | null; house_no?: string | null; project_id?: string | null; project?: { name?: string | null } | null } | null;
   notes?: string | null;
   line_items?: unknown;
 }
@@ -43,4 +43,10 @@ export function invoiceMatchesSearch(inv: HouseSource & { customer_name?: string
   if (!no) return false;
   const bare = s.replace(/^(house|h)\s*(no\.?|#)?\s*/, "");
   return bare === no || `house ${no}`.startsWith(s);
+}
+
+/** Link to the project house for a linked invoice (opens the house drawer), or null. */
+export function invoiceHouseHref(inv: HouseSource | null | undefined): string | null {
+  const h = inv?.project_house;
+  return h?.id && h.project_id ? `/admin/projects/${encodeURIComponent(h.project_id)}?house=${encodeURIComponent(h.id)}` : null;
 }
