@@ -5,7 +5,7 @@ import { Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { dueChip, shortDueLabel, STEP_LABEL, randShort, type DueRow } from "@/lib/invoiceDue";
-import { onCompletionLabel } from "@/lib/balanceDue";
+import { onCompletionLabel, fmtDay } from "@/lib/balanceDue";
 import { PaymentReminderDialog } from "@/components/invoicing/PaymentReminderDialog";
 
 const TONE: Record<string, string> = {
@@ -35,7 +35,7 @@ export function FollowupReview({ row, onDone }: { row: DueRow; onDone?: () => vo
   const refresh = () => { qc.invalidateQueries({ queryKey: ["invoice-due"] }); qc.invalidateQueries({ queryKey: ["payment-followups"] }); onDone?.(); };
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   if (row.waiting) return (
-    <div onClick={stop} className="mt-2 rounded-xl border bg-[#F3FAFE] p-3 text-sm text-muted-foreground">{row.on_completion ? onCompletionLabel(row.install_at) : `Due ${row.terms_days ?? 30} days after the job is completed`}. No reminders until then.</div>);
+    <div onClick={stop} className="mt-2 rounded-xl border bg-[#F3FAFE] p-3 text-sm text-muted-foreground">{row.expected_at ? `Expected ${fmtDay(row.expected_at)} · ${row.on_completion ? shortDueLabel(onCompletionLabel(row.install_at)) : "due after completion"}` : row.on_completion ? onCompletionLabel(row.install_at) : `Due ${row.terms_days ?? 30} days after the job is completed`}. No reminders until then.</div>);
   if (row.step === "plus14" && !row.followup_id) return (
     <div onClick={stop} className="mt-2 rounded-xl border border-[#F5C2C3] bg-[#FDECEC] p-3 text-sm text-[#8A1F23]">
       {row.days} days late · {randShort(row.amount_due)}. Owner to phone {row.customer_name || "the client"} personally. No more reminder emails are drafted.
