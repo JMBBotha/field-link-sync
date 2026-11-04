@@ -1,3 +1,5 @@
+-- MANUAL ROLLBACK - DO NOT RUN AS MIGRATION
+-- Moved out of supabase/migrations on 4 Nov 2026: run by hand only, after Johan approves.
 -- Restores admin_backfill_visit as in 20261030180000_admin_backfill.sql (md5 body 69bc499a...). Schedule rows already created stay; delete by notes like '%(added by admin)' if needed.
 CREATE OR REPLACE FUNCTION public.admin_backfill_visit(p_job uuid, p_tech uuid, p_date date, p_arrive time, p_leave time,
   p_completed boolean DEFAULT false, p_note text DEFAULT NULL)
