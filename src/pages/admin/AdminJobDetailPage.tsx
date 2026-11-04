@@ -393,7 +393,7 @@ const AdminJobDetailPage = () => {
 
         {/* Photos: Site / Before / After with counts (Johan 31 Oct) */}
         {j.lead_id && (
-          <Card className="rounded-2xl">
+          <Card className="rounded-2xl scroll-mt-20" id="job-photos">
             <CardContent className="p-4 md:p-5">
               <JobPhotosCard leadId={j.lead_id} addSlot={canAddJobPhotos(jobPerms, canAccessAdmin && !isSalesRep) ? <AddJobPhotosButton leadId={j.lead_id} defaultType={j.status === "completed" || j.status === "in_progress" ? "after" : "before"} /> : null} />
             </CardContent>

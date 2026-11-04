@@ -4,7 +4,7 @@ import { houseNum, type HouseStatus, type ProjectHouse } from "@/lib/projectTrac
 
 // Plot outlines traced from the AVEC phase plan photo (27 Oct). Crosses on the plan are
 // shown as hatching only ("marked on plan") and never set a status.
-const FILL: Record<HouseStatus, string> = { done: "#10b981", in_progress: "#f59e0b", due: "#ef4444", not_started: "#94a3b8" };
+const FILL: Record<HouseStatus, string> = { done: "#10b981", in_progress: "#f59e0b", due: "#ef4444", units_in: "#8b5cf6", not_started: "#94a3b8" };
 
 export default function SiteMap({ items, onOpen }: { items: { h: ProjectHouse; status: HouseStatus }[]; onOpen: (id: string) => void }) {
   const byNo = new Map(items.map((e) => [houseNum(e.h.house_no), e]));
