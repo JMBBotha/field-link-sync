@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { formatRand } from "@/utils/formatRand";
 import { useToast } from "@/hooks/use-toast";
 import { useProjectDetail, useInvalidateProject, clientName, db } from "@/hooks/useProjectTracker";
-import { houseStatus, houseReminders, primaryInvoice, phaseFor, phaseLabel, STATUS_META, STATUS_ORDER, STEP_SHORT, DEFAULT_STEPS, type HouseStatus, type HouseMoney, type ProjectHouse } from "@/lib/projectTracker";
+import { houseStatus, houseReminders, primaryInvoice, phaseFor, phaseLabel, STATUS_META, STATUS_ORDER, STEP_SHORT, DEFAULT_STEPS, type HouseStatus, type HouseMoney, type HousePhotos, type ProjectHouse } from "@/lib/projectTracker";
 import HouseDrawer from "./HouseDrawer";
 import PhaseEditor from "./PhaseEditor";
 import SiteMap from "./SiteMap";
@@ -96,17 +96,17 @@ export default function ProjectView({ projectId, backTo }: { projectId: string; 
           </div>) : null; })()}
         {shown.length === 0 ? <div className="rounded-2xl border p-8 text-center text-sm text-muted-foreground">No houses here yet.</div> : (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" data-testid="house-grid">
-            {shown.map(({ h, status, money }) => <HouseCard key={h.id} h={h} status={status} money={money} onOpen={() => setOpenHouse(h.id)} />)}
+            {shown.map(({ h, status, money }) => <HouseCard key={h.id} h={h} status={status} money={money} photos={data.photos?.[h.id]} onOpen={() => setOpenHouse(h.id)} />)}
           </div>)}
       </>)}
 
-      <HouseDrawer house={data.houses.find((h) => h.id === openHouse) || null} money={openHouse ? data.money[openHouse] : undefined}
+      <HouseDrawer house={data.houses.find((h) => h.id === openHouse) || null} money={openHouse ? data.money[openHouse] : undefined} photos={openHouse ? data.photos?.[openHouse] : undefined}
         phases={phases} onClose={() => setOpenHouse(null)} onSaved={() => invalidate(p.id)} />
     </div>
   );
 }
 
-function HouseCard({ h, status, money, onOpen }: { h: ProjectHouse; status: HouseStatus; money?: HouseMoney; onOpen: () => void }) {
+function HouseCard({ h, status, money, photos, onOpen }: { h: ProjectHouse; status: HouseStatus; money?: HouseMoney; photos?: HousePhotos; onOpen: () => void }) {
   const inv = primaryInvoice(money);
   const rem = houseReminders(h, money)[0];
   return (
@@ -121,6 +121,9 @@ function HouseCard({ h, status, money, onOpen }: { h: ProjectHouse; status: Hous
           <Link to={`/admin/invoices/${inv.id}`} onClick={(e) => e.stopPropagation()} data-testid="house-invoice-link" className="font-semibold text-[#1590D6] hover:underline">{inv.number || "draft"} ↗</Link>
         </div>) : <div className="mt-1 text-xs text-red-600">no invoice</div>}
       {money && <div className="truncate text-xs">{formatRand(money.paid)} / {formatRand(money.invoiced)} paid</div>}
+      {photos && photos.jobs.length > 0 && (
+        <Link to={`/admin/jobs/${(photos.jobs.find((j) => j.count) || photos.jobs[0]).id}#job-photos`} onClick={(e) => e.stopPropagation()} data-testid="house-photos-link"
+          className="mt-0.5 inline-block text-xs font-medium text-[#1590D6] hover:underline">📷 {photos.count} photo{photos.count === 1 ? "" : "s"}</Link>)}
       {rem && <div data-testid="house-reminder" className="mt-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-200">🔔 {rem.text}</div>}
       <div className="mt-1.5 grid grid-cols-4 gap-1">
         {h.steps.map((s) => (

@@ -30,10 +30,12 @@ const payments = [{ invoice_id: "i61", amount: TOT, status: "completed" }, { inv
 const tables: Record<string, unknown> = {
   projects: { id: "p1", company_id: "c1", customer_id: "cu1", name: "Example Estate (TEST DATA)", code: "EX", po_number: "TEST-PO-1", default_make: "Samsung", status: "active", notes: null, created_at: ago(200), customers: { company_name: "Example Developer" } },
   project_phases: [{ id: "ph3", name: "Phase 3", house_from: 61, house_to: 90, sort_order: 1 }],
-  project_houses: houses, invoices, payments,
+  project_houses: houses, invoices: invoices.map((i) => ({ ...i, lead_id: `L-${i.project_house_id}` })), payments,
+  jobs: ["h61", "h62", "h63", "h65", "h68", "h71"].map((h) => ({ id: `j-${h}`, title: `Example install House ${h.slice(1)}`, invoice_id: `i${h.slice(1)}`, lead_id: `L-${h}` })),
+  job_photos: [["h61", 14], ["h62", 9], ["h63", 6], ["h65", 3], ["h68", 11], ["h71", 2]].flatMap(([h, n]) => Array.from({ length: n as number }, () => ({ lead_id: `L-${h}` }))),
 };
 // Fake query builder: every chain resolves to the canned table.
-db.from = (t: string) => { const res = { data: tables[t] ?? [], error: null }; const q: Record<string, unknown> = {}; for (const m of ["select", "eq", "in", "order", "update", "insert"]) q[m] = () => q; q.maybeSingle = () => Promise.resolve(res); q.single = () => Promise.resolve(res); q.then = (r: (v: unknown) => unknown) => Promise.resolve(res).then(r); return q; };
+db.from = (t: string) => { const res = { data: tables[t] ?? [], error: null }; const q: Record<string, unknown> = {}; for (const m of ["select", "eq", "in", "order", "update", "insert", "or"]) q[m] = () => q; q.maybeSingle = () => Promise.resolve(res); q.single = () => Promise.resolve(res); q.then = (r: (v: unknown) => unknown) => Promise.resolve(res).then(r); return q; };
 
 const open = new URLSearchParams(location.search).get("house");
 createRoot(document.getElementById("root")!).render(

@@ -118,4 +118,28 @@ export function moneyByHouse(invoices: InvRow[], payments: PayRow[]): Record<str
   return out;
 }
 
+export interface HousePhotos { count: number; jobs: { id: string; title: string; count: number }[] }
+/** Job photos per house: house -> linked invoices -> jobs (by invoice_id or the invoice's lead) -> job_photos (by job lead). */
+export function photosByHouse(
+  invoices: { id: string; project_house_id: string | null; lead_id?: string | null }[],
+  jobs: { id: string; title: string | null; invoice_id: string | null; lead_id: string | null }[],
+  photos: { lead_id: string }[],
+): Record<string, HousePhotos> {
+  const perLead: Record<string, number> = {};
+  for (const p of photos) perLead[p.lead_id] = (perLead[p.lead_id] || 0) + 1;
+  const out: Record<string, HousePhotos> = {};
+  for (const i of invoices) {
+    if (!i.project_house_id) continue;
+    for (const j of jobs) {
+      if (j.invoice_id !== i.id && !(i.lead_id && j.lead_id === i.lead_id)) continue;
+      const h = (out[i.project_house_id] ||= { count: 0, jobs: [] });
+      if (h.jobs.some((x) => x.id === j.id)) continue;
+      const c = j.lead_id ? perLead[j.lead_id] || 0 : 0;
+      h.jobs.push({ id: j.id, title: j.title || "Job", count: c });
+      h.count += c;
+    }
+  }
+  return out;
+}
+
 export const stepsTotal = (steps: ProjectStep[]) => steps.reduce((a, s) => a + Number(s.rate || 0), 0);

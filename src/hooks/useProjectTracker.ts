@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { moneyByHouse, sortHouses, type ProjectHouse, type ProjectPhase, type HouseMoney } from "@/lib/projectTracker";
+import { moneyByHouse, photosByHouse, type HousePhotos, sortHouses, type ProjectHouse, type ProjectPhase, type HouseMoney } from "@/lib/projectTracker";
 
 // Tables are new (20261027130000_project_house_tracker.sql); typed loosely until types are regenerated.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- new tables not in generated types yet
@@ -35,14 +35,24 @@ export function useProjectDetail(projectId?: string) {
       const houses = sortHouses(((hs.data || []) as ProjectHouse[]).map((h) => ({ ...h, steps: [...(h.steps || [])].sort((a, b) => a.sort_order - b.sort_order) })));
       const ids = houses.map((h) => h.id);
       let money: Record<string, HouseMoney> = {};
+      let photos: Record<string, HousePhotos> = {};
       if (ids.length) {
-        const inv = await db.from("invoices").select("id, project_house_id, grand_total, status, invoice_number, archived_at, sent_at, issue_date").in("project_house_id", ids);
+        const inv = await db.from("invoices").select("id, project_house_id, grand_total, status, invoice_number, archived_at, sent_at, issue_date, lead_id").in("project_house_id", ids);
         if (inv.error) throw inv.error;
         const invIds = (inv.data || []).map((i: { id: string }) => i.id);
         const pay = invIds.length ? await db.from("payments").select("invoice_id, amount, status").in("invoice_id", invIds) : { data: [] };
         money = moneyByHouse(inv.data || [], pay.data || []);
+        // Job photos (display only): jobs linked to the house's invoices, by invoice or by the invoice's lead.
+        const leadIds = [...new Set((inv.data || []).map((i: { lead_id: string | null }) => i.lead_id).filter(Boolean))] as string[];
+        if (invIds.length) {
+          const jq = await db.from("jobs").select("id, title, invoice_id, lead_id").or([`invoice_id.in.(${invIds.join(",")})`, leadIds.length ? `lead_id.in.(${leadIds.join(",")})` : ""].filter(Boolean).join(","));
+          const jobs = jq.error ? [] : jq.data || [];
+          const jobLeads = [...new Set(jobs.map((j: { lead_id: string | null }) => j.lead_id).filter(Boolean))] as string[];
+          const ph = jobLeads.length ? await db.from("job_photos").select("lead_id").in("lead_id", jobLeads) : { data: [] };
+          photos = photosByHouse(inv.data || [], jobs, ph.error ? [] : ph.data || []);
+        }
       }
-      return { project: p.data as ProjectRow | null, phases: (ph.data || []) as ProjectPhase[], houses, money };
+      return { project: p.data as ProjectRow | null, phases: (ph.data || []) as ProjectPhase[], houses, money, photos };
     },
   });
 }

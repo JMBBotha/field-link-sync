@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { houseStatus, houseReminders, moneyByHouse, DEFAULT_STEPS, phaseFor, sortHouses, type ProjectStep } from "./projectTracker";
+import { houseStatus, houseReminders, moneyByHouse, photosByHouse, DEFAULT_STEPS, phaseFor, sortHouses, type ProjectStep } from "./projectTracker";
 
 const st = (k: string, done: boolean): ProjectStep => ({ id: k, step_key: k, label: k, rate: 0, sort_order: 0, done, paid: false });
 const all = (d: [boolean, boolean, boolean]) => [st("piping", d[0]), st("units", d[1]), st("commissioning", d[2])];
@@ -52,4 +52,16 @@ describe("phases", () => {
   const phases = [{ id: "p1", name: "P1", house_from: 1, house_to: 30, sort_order: 1 }, { id: "p4", name: "P4", house_from: 91, house_to: null, sort_order: 4 }];
   it("range lookup and open-ended", () => { expect(phaseFor({ phase_id: null, house_no: "12" }, phases)).toBe("p1"); expect(phaseFor({ phase_id: null, house_no: "94" }, phases)).toBe("p4"); expect(phaseFor({ phase_id: null, house_no: "50" }, phases)).toBeNull(); });
   it("sorts numerically", () => expect(sortHouses([{ house_no: "10" }, { house_no: "2" }, { house_no: "2A" }]).map((h) => h.house_no)).toEqual(["2", "2A", "10"]));
+});
+
+describe("photosByHouse", () => {
+  it("counts job photos via invoice -> job (invoice_id or lead) and skips unlinked", () => {
+    const r = photosByHouse(
+      [{ id: "i1", project_house_id: "h1", lead_id: "L1" }, { id: "i2", project_house_id: null, lead_id: "L9" }],
+      [{ id: "j1", title: "Install", invoice_id: "i1", lead_id: "L1" }, { id: "j2", title: "Commission", invoice_id: null, lead_id: "L1" }, { id: "j9", title: "Other", invoice_id: "i2", lead_id: "L9" }],
+      [{ lead_id: "L1" }, { lead_id: "L1" }, { lead_id: "L9" }]);
+    expect(r.h1.jobs.map((j) => j.id)).toEqual(["j1", "j2"]);
+    expect(r.h1.count).toBe(4);
+    expect(Object.keys(r)).toEqual(["h1"]);
+  });
 });

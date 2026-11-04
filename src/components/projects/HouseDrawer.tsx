@@ -11,11 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { formatRand } from "@/utils/formatRand";
 import { db } from "@/hooks/useProjectTracker";
-import { houseStatus, houseReminders, primaryInvoice, phaseLabel, STATUS_META, OVERRIDE_OK, FIRST_FIT_STEP, daysSince, type HouseMoney, type ProjectHouse, type ProjectPhase, type HouseStatus } from "@/lib/projectTracker";
+import { houseStatus, houseReminders, primaryInvoice, phaseLabel, STATUS_META, OVERRIDE_OK, FIRST_FIT_STEP, daysSince, type HouseMoney, type HousePhotos, type ProjectHouse, type ProjectPhase, type HouseStatus } from "@/lib/projectTracker";
 
 type Form = Pick<ProjectHouse, "house_no" | "phase_id" | "po_number" | "make" | "unit_sizes" | "units_ordered" | "units_received" | "ready_for_aircon" | "ready_for_aircon_at" | "status_override" | "notes">;
 
-export default function HouseDrawer({ house, money, phases, onClose, onSaved }: { house: ProjectHouse | null; money?: HouseMoney; phases: ProjectPhase[]; onClose: () => void; onSaved: () => void }) {
+export default function HouseDrawer({ house, money, photos, phases, onClose, onSaved }: { house: ProjectHouse | null; money?: HouseMoney; photos?: HousePhotos; phases: ProjectPhase[]; onClose: () => void; onSaved: () => void }) {
   const { toast } = useToast();
   const [f, setF] = useState<Form | null>(null);
   const [steps, setSteps] = useState(house?.steps || []);
@@ -81,6 +81,14 @@ export default function HouseDrawer({ house, money, phases, onClose, onSaved }: 
               <div className="flex justify-between font-medium"><span>Balance</span><span>{formatRand(money.invoiced - money.paid)}</span></div>
               {money.invoiceCount > 1 && <div className="mt-1 text-xs text-muted-foreground">Also linked: {money.invoiceNumbers.join(", ")}</div>}
             </>); })()}
+          </section>
+
+          <section className="rounded-xl border p-3 text-sm" data-testid="drawer-photos">
+            <div className="mb-1 font-semibold">Job photos</div>
+            {photos?.jobs.length ? photos.jobs.map((j) => (
+              <div key={j.id} className="flex justify-between gap-2"><span className="truncate">{j.title}</span>
+                <Link to={`/admin/jobs/${j.id}#job-photos`} className="shrink-0 font-semibold text-[#1590D6] hover:underline">📷 {j.count} photo{j.count === 1 ? "" : "s"} ↗</Link></div>))
+              : <div className="text-muted-foreground">No job linked to this house's invoice yet.</div>}
           </section>
 
           <div className="grid grid-cols-2 gap-3">
