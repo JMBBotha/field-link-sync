@@ -36,7 +36,7 @@ interface GlobalSearchDialogProps {
 
 const ROW_LIMIT = 500;
 /** Four bundled groups (Johan 4 Nov: as few links as possible, info under its natural home). */
-export const SEARCH_GROUPS: { key: string; label: string; types: SearchItem["type"][] }[] = [
+const SEARCH_GROUPS: { key: string; label: string; types: SearchItem["type"][] }[] = [
   { key: "clients", label: "Clients", types: ["customer"] },
   { key: "jobs", label: "Jobs & maintenance", types: ["lead", "maintenance"] },
   { key: "money", label: "Quotes & invoices", types: ["quote", "invoice", "proposal"] },
