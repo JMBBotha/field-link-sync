@@ -28,6 +28,7 @@ export function v8Primary(role: V8Role, opts?: { salary?: boolean }): V8Link[] {
     { path: "/admin", label: "Home", icon: "home" },
     { path: "/admin/jobs?tab=pipeline", label: "Pipeline", icon: "pipeline", match: ["/admin/jobs", "/admin/estimates", "/admin/quote-builder"] },
     { path: "/admin/schedule", label: "Schedule", icon: "calendar", match: ["/admin/dispatch"] },
+    { path: "/admin/map", label: "Live map", icon: "pin", match: ["/admin/jobs-map"] },
     { path: "/admin/customers", label: "Clients", icon: "users", match: ["/admin/calls"] },
     { path: "/admin/quotes", label: "Quotes", icon: "file" },
     { path: "/admin/invoices", label: "Invoices", icon: "wallet" },
@@ -36,7 +37,7 @@ export function v8Primary(role: V8Role, opts?: { salary?: boolean }): V8Link[] {
 
 /** Phone bottom tabs: max 4 + More. Quotes/Invoices sit at the top of the More drawer (pinned list) on phones. */
 export function v8Tabs(role: V8Role, opts?: { salary?: boolean }): V8Link[] {
-  return v8Primary(role, opts).filter((l) => l.label !== "Quotes" && l.label !== "Invoices").slice(0, 4);
+  return v8Primary(role, opts).filter((l) => l.label !== "Quotes" && l.label !== "Invoices" && l.label !== "Live map").slice(0, 4);
 }
 
 /** Personal links: name-card menu for admin/owner (Johan 19 Oct). */
@@ -84,7 +85,6 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
       { path: "/admin/unassigned-queue", label: "Unassigned queue", icon: "inbox" },
       { path: "/admin/change-requests", label: "Change requests", icon: "file" },
       { path: "/admin/maintenance", label: "Maintenance", icon: "calendar" },
-      { path: "/admin/map", label: "Live tracking", icon: "pin", match: ["/admin/jobs-map"] },
       { path: "/admin/calls", label: "Calls", icon: "phone" },
       { path: "/admin/templates", label: "Templates", icon: "file", match: ["/admin/proposals"] },
       { path: "/admin/agreements", label: "Agreements", icon: "file" },

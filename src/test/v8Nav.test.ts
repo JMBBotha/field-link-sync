@@ -10,7 +10,7 @@ describe("v8 Simple navigation", () => {
     expect(v8RoleOf({ isAdmin: true, isDispatcher: false, isFieldAgent: false, isSalesRep: false, isMainCo: false })).toBe("owner");
   });
   it("admin pins 6 areas incl. Quotes + Invoices; techs never see leads; owners no Platform", () => {
-    expect(v8Primary("admin").map((l) => l.label)).toEqual(["Home", "Pipeline", "Schedule", "Clients", "Quotes", "Invoices"]);
+    expect(v8Primary("admin").map((l) => l.label)).toEqual(["Home", "Pipeline", "Schedule", "Live map", "Clients", "Quotes", "Invoices"]);
     expect(v8Primary("sales").map((l) => l.label)).toEqual(["Home", "My pipeline", "My visits", "Clients", "Quotes", "Invoices"]);
     expect(all("tech").some((p) => /dispatch|leads|pipeline|customers/.test(p))).toBe(false);
     expect(v8More("owner").some((g) => g.title.startsWith("Platform"))).toBe(false);
@@ -44,6 +44,11 @@ describe("v8 Simple navigation", () => {
     const mgr = v8More("owner", { manager: true }).flatMap((x) => x.links).map((l) => l.path);
     expect(mgr).toContain("/admin/supplier-docs");
     expect(mgr).not.toContain("/admin/supplier-bills");
+  });
+  it("Live map is a main menu item for admin/managers only, not in a group and not a phone tab", () => {
+    expect(v8More("admin").flatMap((x) => x.links).some((l) => l.path === "/admin/map")).toBe(false);
+    expect(v8Primary("sales").some((l) => l.path === "/admin/map")).toBe(false);
+    expect(v8Tabs("admin").map((l) => l.label)).toEqual(["Home", "Pipeline", "Schedule", "Clients"]);
   });
   it("marks the active area", () => {
     const pipe = v8Primary("admin")[1];

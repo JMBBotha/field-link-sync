@@ -113,7 +113,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
           const Icon = V8_ICONS[l.icon] ?? Home;
           const active = v8IsActive(l, pathname, search);
           return (
-            <button key={l.label} type="button" onClick={() => go(l.path)} className={cn("v8-nav", active && "is-active")} aria-current={active ? "page" : undefined}>
+            <button key={l.label} type="button" onClick={() => go(l.path)} className={cn("v8-nav", active && "is-active")} style={l.path === "/admin/map" ? { fontWeight: 800 } : undefined} data-testid={l.path === "/admin/map" ? "v8-live-map" : undefined} aria-current={active ? "page" : undefined}>
               <Icon className="h-4 w-4" />{l.label}
               {l.path === "/admin/invoices" && !tech && due.overdue.count > 0 && (
                 <span className="ml-auto flex flex-col items-end leading-tight" data-testid="v8-invoices-overdue">
