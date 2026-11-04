@@ -25,6 +25,7 @@ interface NavItem {
   badge?: number;
   roles?: AppRole[]; // undefined = all authenticated
   children?: NavItem[];
+  bold?: boolean;
 }
 
 interface NavGroup {
@@ -105,11 +106,12 @@ const ClassicAdminSidebar = ({
             ...(isSalesRep ? [] : [{ path: "/admin/jobs?tab=dispatch", label: "Dispatch", icon: ClipboardList, roles: ["admin", "dispatcher", "viewer"] } as NavItem]),
           ],
         },
+        // Live map: bold main item (Johan 4 Nov 21:21). Same gating as before (hidden from sales; route RequireRole unchanged).
+        ...(isSalesRep ? [] : [{ path: "/admin/map", label: "Live map", icon: Navigation, bold: true } as NavItem]),
         ...(isSalesRep ? [{ path: "/admin/visits", label: "My visits", icon: MapPin } as NavItem] : []),
         ...(isSalesRep ? [{ path: "/admin/my-appointments", label: "My appointments", icon: CalendarDays } as NavItem] : []),
         { path: "/admin/my-commission", label: "My commission", icon: Wallet, roles: ["admin", "dispatcher"] },
         { path: "/field/earnings", label: "Tech earnings", icon: Wallet, roles: ["admin"] },
-        ...(isSalesRep ? [] : [{ path: "/admin/map", label: "Live Tracking", icon: Navigation } as NavItem]),
         {
           path: "/admin/catalog",
           label: "Items",
@@ -121,11 +123,12 @@ const ClassicAdminSidebar = ({
             ...(isSalesRep ? [] : [
               { path: "/admin/inventory", label: "Stock", icon: Package, badge: lowStockCount > 0 ? lowStockCount : undefined } as NavItem,
               { path: "/admin/suppliers", label: "Suppliers", icon: Building2 } as NavItem,
+              { path: "/admin/supplier-docs", label: "Supplier docs", icon: BookOpen } as NavItem,
               { path: "/admin/specials", label: "Specials", icon: Tag } as NavItem,
             ]),
+            { path: "/admin/price-lists", label: "Price lists", icon: BookOpen },
           ],
         },
-        { path: "/admin/price-lists", label: "Price lists", icon: BookOpen, roles: ["admin", "dispatcher"] },
         { path: "/admin/team", label: "Team", icon: Users, roles: ["admin"], badge: pendingApplicants > 0 ? pendingApplicants : undefined },
         ...(isSalesRep ? [] : [{
           path: "/admin/reports",
@@ -267,7 +270,7 @@ const ClassicAdminSidebar = ({
         )}
       >
         <item.icon className={cn("h-4 w-4 shrink-0", active ? "opacity-100" : "opacity-80")} strokeWidth={1.75} />
-        {!collapsed && <span className="truncate">{item.label}</span>}
+        {!collapsed && <span className={cn("truncate", item.bold && "font-bold")}>{item.label}</span>}
         {!collapsed && item.badge && item.badge > 0 ? (
           <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-xs">
             {item.badge > 99 ? "99+" : item.badge}

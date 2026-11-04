@@ -48,7 +48,7 @@ describe("company tools helpers", () => {
 
 describe("company tools wiring", () => {
   it("admin sidebar has Company tools under Catalogue & stock, hidden from managers; techs get My tools", () => {
-    const g = v8More("admin").find((x) => x.title === "Catalogue & stock")!;
+    const g = v8More("admin").find((x) => x.title === "Suppliers & stock")!;
     const i = g.links.findIndex((l) => l.path === "/admin/oss-extras");
     expect(g.links[i + 1]).toMatchObject({ path: "/admin/tools", label: "Company tools" });
     expect(v8More("admin", { manager: true }).flatMap((x) => x.links).some((l) => l.path === "/admin/tools")).toBe(false);
