@@ -4741,8 +4741,8 @@ export type Database = {
           discount_type: string | null
           discount_value: number | null
           due_date: string | null
-          due_date_source: string | null
           due_date_manual: boolean
+          due_date_source: string | null
           duplicated_from: string | null
           equipment_id: string | null
           expected_deposit_date: string | null
@@ -4801,8 +4801,8 @@ export type Database = {
           discount_type?: string | null
           discount_value?: number | null
           due_date?: string | null
-          due_date_source?: string | null
           due_date_manual?: boolean
+          due_date_source?: string | null
           duplicated_from?: string | null
           equipment_id?: string | null
           expected_deposit_date?: string | null
@@ -4861,8 +4861,8 @@ export type Database = {
           discount_type?: string | null
           discount_value?: number | null
           due_date?: string | null
-          due_date_source?: string | null
           due_date_manual?: boolean
+          due_date_source?: string | null
           duplicated_from?: string | null
           equipment_id?: string | null
           expected_deposit_date?: string | null
@@ -5285,6 +5285,63 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_delivered_units: {
+        Row: {
+          company_id: string
+          delivered_at: string
+          doc_number: string | null
+          document_line_id: string
+          half: string | null
+          id: string
+          job_id: string
+          product_id: string | null
+          qty: number
+          serial_no: string | null
+          supplier_code: string
+        }
+        Insert: {
+          company_id: string
+          delivered_at?: string
+          doc_number?: string | null
+          document_line_id: string
+          half?: string | null
+          id?: string
+          job_id: string
+          product_id?: string | null
+          qty?: number
+          serial_no?: string | null
+          supplier_code: string
+        }
+        Update: {
+          company_id?: string
+          delivered_at?: string
+          doc_number?: string | null
+          document_line_id?: string
+          half?: string | null
+          id?: string
+          job_id?: string
+          product_id?: string | null
+          qty?: number
+          serial_no?: string | null
+          supplier_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_delivered_units_document_line_id_fkey"
+            columns: ["document_line_id"]
+            isOneToOne: true
+            referencedRelation: "supplier_job_document_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_delivered_units_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -5836,6 +5893,59 @@ export type Database = {
           },
         ]
       }
+      job_type_change_requests: {
+        Row: {
+          company_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          from_type: string | null
+          id: string
+          job_id: string
+          reason: string
+          requested_by: string
+          status: string
+          to_type: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          from_type?: string | null
+          id?: string
+          job_id: string
+          reason: string
+          requested_by: string
+          status?: string
+          to_type: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          from_type?: string | null
+          id?: string
+          job_id?: string
+          reason?: string
+          requested_by?: string
+          status?: string
+          to_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_type_change_requests_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_unit_details: {
         Row: {
           brand: string | null
@@ -6109,6 +6219,7 @@ export type Database = {
         Row: {
           address: string | null
           awaiting_stock: boolean
+          call_out_excl_vat: number | null
           company_id: string
           completed_at: string | null
           created_at: string | null
@@ -6124,6 +6235,7 @@ export type Database = {
           lead_id: string | null
           lng: number | null
           location_id: string | null
+          outcome: string | null
           priority: string | null
           quote_id: string | null
           scheduled_for: string | null
@@ -6138,6 +6250,7 @@ export type Database = {
         Insert: {
           address?: string | null
           awaiting_stock?: boolean
+          call_out_excl_vat?: number | null
           company_id: string
           completed_at?: string | null
           created_at?: string | null
@@ -6153,6 +6266,7 @@ export type Database = {
           lead_id?: string | null
           lng?: number | null
           location_id?: string | null
+          outcome?: string | null
           priority?: string | null
           quote_id?: string | null
           scheduled_for?: string | null
@@ -6167,6 +6281,7 @@ export type Database = {
         Update: {
           address?: string | null
           awaiting_stock?: boolean
+          call_out_excl_vat?: number | null
           company_id?: string
           completed_at?: string | null
           created_at?: string | null
@@ -6182,6 +6297,7 @@ export type Database = {
           lead_id?: string | null
           lng?: number | null
           location_id?: string | null
+          outcome?: string | null
           priority?: string | null
           quote_id?: string | null
           scheduled_for?: string | null
@@ -6883,6 +6999,7 @@ export type Database = {
           primary_intent: Database["public"]["Enums"]["lead_intent"] | null
           priority: string
           quote_sla_breached_at: string | null
+          raised_by_tech: string | null
           raw_payload: Json | null
           scheduled_date: string | null
           scheduled_time: string | null
@@ -6890,6 +7007,7 @@ export type Database = {
           service_type: string
           sla_breached_at: string | null
           source: Database["public"]["Enums"]["lead_source"]
+          source_job_id: string | null
           stage2_done_at: string | null
           started_at: string | null
           status: string
@@ -6977,6 +7095,7 @@ export type Database = {
           primary_intent?: Database["public"]["Enums"]["lead_intent"] | null
           priority?: string
           quote_sla_breached_at?: string | null
+          raised_by_tech?: string | null
           raw_payload?: Json | null
           scheduled_date?: string | null
           scheduled_time?: string | null
@@ -6984,6 +7103,7 @@ export type Database = {
           service_type: string
           sla_breached_at?: string | null
           source?: Database["public"]["Enums"]["lead_source"]
+          source_job_id?: string | null
           stage2_done_at?: string | null
           started_at?: string | null
           status?: string
@@ -7071,6 +7191,7 @@ export type Database = {
           primary_intent?: Database["public"]["Enums"]["lead_intent"] | null
           priority?: string
           quote_sla_breached_at?: string | null
+          raised_by_tech?: string | null
           raw_payload?: Json | null
           scheduled_date?: string | null
           scheduled_time?: string | null
@@ -7078,6 +7199,7 @@ export type Database = {
           service_type?: string
           sla_breached_at?: string | null
           source?: Database["public"]["Enums"]["lead_source"]
+          source_job_id?: string | null
           stage2_done_at?: string | null
           started_at?: string | null
           status?: string
@@ -7148,6 +7270,13 @@ export type Database = {
             columns: ["second_visit_of"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_source_job_id_fkey"
+            columns: ["source_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
           {
@@ -12973,6 +13102,7 @@ export type Database = {
           receive_job_id: string | null
           received_at: string | null
           received_by: string | null
+          serial_no: string | null
           serial_number: string | null
           stock_item_id: string | null
           stock_qty: number | null
@@ -12997,6 +13127,7 @@ export type Database = {
           receive_job_id?: string | null
           received_at?: string | null
           received_by?: string | null
+          serial_no?: string | null
           serial_number?: string | null
           stock_item_id?: string | null
           stock_qty?: number | null
@@ -13021,6 +13152,7 @@ export type Database = {
           receive_job_id?: string | null
           received_at?: string | null
           received_by?: string | null
+          serial_no?: string | null
           serial_number?: string | null
           stock_item_id?: string | null
           stock_qty?: number | null
@@ -13347,6 +13479,63 @@ export type Database = {
             columns: ["pdf_upload_id"]
             isOneToOne: false
             referencedRelation: "pdf_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_product_code_aliases: {
+        Row: {
+          active: boolean
+          added_at: string
+          added_by: string | null
+          company_id: string
+          half: string | null
+          id: string
+          kind: string
+          note: string | null
+          product_id: string
+          supplier_code: string
+          supplier_name: string | null
+        }
+        Insert: {
+          active?: boolean
+          added_at?: string
+          added_by?: string | null
+          company_id: string
+          half?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          product_id: string
+          supplier_code: string
+          supplier_name?: string | null
+        }
+        Update: {
+          active?: boolean
+          added_at?: string
+          added_by?: string | null
+          company_id?: string
+          half?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          product_id?: string
+          supplier_code?: string
+          supplier_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_product_code_aliases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "live_supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_product_code_aliases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
             referencedColumns: ["id"]
           },
         ]
@@ -14019,6 +14208,177 @@ export type Database = {
           tech_id?: string
         }
         Relationships: []
+      }
+      tool_events: {
+        Row: {
+          company_id: string
+          done_by: string | null
+          done_by_name: string | null
+          event: Database["public"]["Enums"]["tool_event_kind"]
+          event_date: string
+          from_status: Database["public"]["Enums"]["tool_status"] | null
+          id: string
+          note: string | null
+          tech_id: string | null
+          tech_name: string | null
+          to_status: Database["public"]["Enums"]["tool_status"] | null
+          tool_id: string
+        }
+        Insert: {
+          company_id: string
+          done_by?: string | null
+          done_by_name?: string | null
+          event: Database["public"]["Enums"]["tool_event_kind"]
+          event_date?: string
+          from_status?: Database["public"]["Enums"]["tool_status"] | null
+          id?: string
+          note?: string | null
+          tech_id?: string | null
+          tech_name?: string | null
+          to_status?: Database["public"]["Enums"]["tool_status"] | null
+          tool_id: string
+        }
+        Update: {
+          company_id?: string
+          done_by?: string | null
+          done_by_name?: string | null
+          event?: Database["public"]["Enums"]["tool_event_kind"]
+          event_date?: string
+          from_status?: Database["public"]["Enums"]["tool_status"] | null
+          id?: string
+          note?: string | null
+          tech_id?: string | null
+          tech_name?: string | null
+          to_status?: Database["public"]["Enums"]["tool_status"] | null
+          tool_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tool_events_tool_id_fkey"
+            columns: ["tool_id"]
+            isOneToOne: false
+            referencedRelation: "tools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tool_types: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+        }
+        Relationships: []
+      }
+      tools: {
+        Row: {
+          assigned_tech_id: string | null
+          assigned_tech_name: string | null
+          company_id: string
+          cost_cents: number | null
+          cost_tbc: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_path: string | null
+          label: string
+          name: string
+          notes: string | null
+          purchase_batch_id: string | null
+          purchase_date: string | null
+          retired_date: string | null
+          status: Database["public"]["Enums"]["tool_status"]
+          status_date: string
+          supplier_id: string | null
+          supplier_name: string | null
+          tool_type_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_tech_id?: string | null
+          assigned_tech_name?: string | null
+          company_id: string
+          cost_cents?: number | null
+          cost_tbc?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_path?: string | null
+          label: string
+          name: string
+          notes?: string | null
+          purchase_batch_id?: string | null
+          purchase_date?: string | null
+          retired_date?: string | null
+          status?: Database["public"]["Enums"]["tool_status"]
+          status_date?: string
+          supplier_id?: string | null
+          supplier_name?: string | null
+          tool_type_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_tech_id?: string | null
+          assigned_tech_name?: string | null
+          company_id?: string
+          cost_cents?: number | null
+          cost_tbc?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_path?: string | null
+          label?: string
+          name?: string
+          notes?: string | null
+          purchase_batch_id?: string | null
+          purchase_date?: string | null
+          retired_date?: string | null
+          status?: Database["public"]["Enums"]["tool_status"]
+          status_date?: string
+          supplier_id?: string | null
+          supplier_name?: string | null
+          tool_type_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tools_assigned_tech_id_fkey"
+            columns: ["assigned_tech_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tools_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tools_tool_type_id_fkey"
+            columns: ["tool_type_id"]
+            isOneToOne: false
+            referencedRelation: "tool_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       unassigned_queue: {
         Row: {
@@ -15150,6 +15510,32 @@ export type Database = {
         }
         Relationships: []
       }
+      tool_type_stats: {
+        Row: {
+          avg_lifespan_days: number | null
+          broken: number | null
+          company_id: string | null
+          cost_tbc_count: number | null
+          in_store: number | null
+          in_use: number | null
+          lost: number | null
+          replacements_last_12m: number | null
+          retired: number | null
+          tool_type_id: string | null
+          total: number | null
+          total_spend_cents: number | null
+          type_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tools_tool_type_id_fkey"
+            columns: ["tool_type_id"]
+            isOneToOne: false
+            referencedRelation: "tool_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_accounts_aging: {
         Row: {
           aging_bucket: string | null
@@ -15265,6 +15651,15 @@ export type Database = {
         Returns: Record<string, unknown>
       }
       _bank_norm: { Args: { t: string }; Returns: string }
+      _booking_email: {
+        Args: {
+          p_company: string
+          p_first: string
+          p_kind: string
+          p_when: string
+        }
+        Returns: Json
+      }
       _bot_audit: {
         Args: {
           p_action: string
@@ -15485,6 +15880,15 @@ export type Database = {
         }
         Returns: Json
       }
+      _job_sales_lead: {
+        Args: {
+          p_by_tech: boolean
+          p_job: string
+          p_note: string
+          p_uid: string
+        }
+        Returns: string
+      }
       _job_stage: {
         Args: {
           j: Database["public"]["Tables"]["jobs"]["Row"]
@@ -15493,6 +15897,10 @@ export type Database = {
         Returns: string
       }
       _job_stock_ok: { Args: { p_job: string }; Returns: boolean }
+      _job_tech_ok: {
+        Args: { p_co: string; p_job: string; p_uid: string }
+        Returns: boolean
+      }
       _job_work_day: {
         Args: { p_company: string; p_date: string; p_profile: string }
         Returns: {
@@ -15960,6 +16368,24 @@ export type Database = {
           source: string
         }[]
       }
+      _tool_log: {
+        Args: {
+          p_event: Database["public"]["Enums"]["tool_event_kind"]
+          p_from: Database["public"]["Enums"]["tool_status"]
+          p_note: string
+          t: Database["public"]["Tables"]["tools"]["Row"]
+        }
+        Returns: undefined
+      }
+      _tool_me: { Args: never; Returns: string }
+      _tool_notify_lost: {
+        Args: {
+          p_note: string
+          t: Database["public"]["Tables"]["tools"]["Row"]
+        }
+        Returns: undefined
+      }
+      _tools_admin: { Args: { p_company: string }; Returns: boolean }
       _walda_co: { Args: never; Returns: string }
       accept_company_contract: {
         Args: {
@@ -15997,6 +16423,25 @@ export type Database = {
           sell_minus_list: number
           selling_price: number
         }[]
+      }
+      add_tool_type: {
+        Args: { p_company: string; p_name: string }
+        Returns: string
+      }
+      add_tools: {
+        Args: {
+          p_company: string
+          p_cost_tbc?: boolean
+          p_labels: string[]
+          p_name: string
+          p_notes?: string
+          p_purchase_date?: string
+          p_supplier_id?: string
+          p_supplier_name?: string
+          p_total_cents?: number
+          p_type: string
+        }
+        Returns: string[]
       }
       addauth: { Args: { "": string }; Returns: boolean }
       addgeometrycolumn:
@@ -16445,6 +16890,10 @@ export type Database = {
       }
       decide_client_revision: {
         Args: { p_approve: boolean; p_note?: string; p_revision_id: string }
+        Returns: Json
+      }
+      decide_job_type_change: {
+        Args: { p_approve: boolean; p_note?: string; p_request_id: string }
         Returns: Json
       }
       decline_install_offer: { Args: { p_offer_id: string }; Returns: Json }
@@ -17084,6 +17533,7 @@ export type Database = {
           primary_intent: Database["public"]["Enums"]["lead_intent"] | null
           priority: string
           quote_sla_breached_at: string | null
+          raised_by_tech: string | null
           raw_payload: Json | null
           scheduled_date: string | null
           scheduled_time: string | null
@@ -17091,6 +17541,7 @@ export type Database = {
           service_type: string
           sla_breached_at: string | null
           source: Database["public"]["Enums"]["lead_source"]
+          source_job_id: string | null
           stage2_done_at: string | null
           started_at: string | null
           status: string
@@ -17462,6 +17913,10 @@ export type Database = {
           p_reason?: string
         }
         Returns: string
+      }
+      issue_tool: {
+        Args: { p_note?: string; p_tech: string; p_tool: string }
+        Returns: undefined
       }
       job_add_day: {
         Args: { p_force?: boolean; p_job_id: string; p_reason?: string }
@@ -18110,6 +18565,14 @@ export type Database = {
         Args: { p_accuracy?: number; p_lat: number; p_lng: number }
         Returns: Json
       }
+      report_tool_issue: {
+        Args: {
+          p_kind: Database["public"]["Enums"]["tool_status"]
+          p_note?: string
+          p_tool: string
+        }
+        Returns: undefined
+      }
       request_add_keyword: {
         Args: {
           p_keyword: string
@@ -18131,6 +18594,10 @@ export type Database = {
           p_text: string
           p_type: Database["public"]["Enums"]["request_type"]
         }
+        Returns: Json
+      }
+      request_job_type_change: {
+        Args: { p_job_id: string; p_reason: string; p_to: string }
         Returns: Json
       }
       request_lead_reassignment: {
@@ -18175,6 +18642,10 @@ export type Database = {
         Returns: Json
       }
       restore_lead: { Args: { p_lead: string }; Returns: undefined }
+      return_tool: {
+        Args: { p_note?: string; p_tool: string }
+        Returns: undefined
+      }
       revenue_by_agent: {
         Args: never
         Returns: {
@@ -18385,6 +18856,10 @@ export type Database = {
               supplier_name: string
             }[]
           }
+      send_booking_confirmation: {
+        Args: { p_job_id: string; p_mode?: string; p_to?: string }
+        Returns: Json
+      }
       send_final_invoice_email: {
         Args: { p_invoice: string; p_mode?: string; p_to?: string }
         Returns: Json
@@ -18501,6 +18976,14 @@ export type Database = {
           p_reduction?: number
         }
         Returns: Json
+      }
+      set_tool_status: {
+        Args: {
+          p_note?: string
+          p_status: Database["public"]["Enums"]["tool_status"]
+          p_tool: string
+        }
+        Returns: undefined
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
@@ -19282,6 +19765,10 @@ export type Database = {
         }
         Returns: Json
       }
+      tech_flag_sales_lead: {
+        Args: { p_job_id: string; p_note?: string }
+        Returns: Json
+      }
       tech_offers: { Args: { p_profile?: string }; Returns: Json }
       tech_owns_lead: {
         Args: { _lead: string; _uid: string }
@@ -19290,6 +19777,10 @@ export type Database = {
       tech_set_job_status: {
         Args: { p_job_id: string; p_status: string }
         Returns: string
+      }
+      tech_unit_not_viable: {
+        Args: { p_job_id: string; p_note?: string }
+        Returns: Json
       }
       unconvert_lead: { Args: { p_lead_id: string }; Returns: undefined }
       ungroup_quote_option: { Args: { p_quote: string }; Returns: boolean }
@@ -19326,6 +19817,10 @@ export type Database = {
         Returns: Json
       }
       update_overdue_invoices: { Args: never; Returns: undefined }
+      update_tool: {
+        Args: { p_patch: Json; p_tool: string }
+        Returns: undefined
+      }
       updategeometrysrid: {
         Args: {
           catalogn_name: string
@@ -19463,6 +19958,15 @@ export type Database = {
         | "pack"
         | "custom"
       request_type: "new_sale" | "service" | "move" | "admin"
+      tool_event_kind:
+        | "added"
+        | "issued"
+        | "returned"
+        | "status_changed"
+        | "reported"
+        | "edited"
+        | "retired"
+      tool_status: "in_store" | "in_use" | "broken" | "lost" | "retired"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -19643,6 +20147,16 @@ export const Constants = {
         "custom",
       ],
       request_type: ["new_sale", "service", "move", "admin"],
+      tool_event_kind: [
+        "added",
+        "issued",
+        "returned",
+        "status_changed",
+        "reported",
+        "edited",
+        "retired",
+      ],
+      tool_status: ["in_store", "in_use", "broken", "lost", "retired"],
     },
   },
 } as const
