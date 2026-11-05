@@ -7,7 +7,7 @@ export function useIsSalaried(): boolean {
     queryKey: ["my-pay-type"],
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("get_my_pay_type");
+      const { data, error } = await supabase.rpc("get_my_pay_type");
       if (error) return "commission";
       return (data as string) ?? "commission";
     },

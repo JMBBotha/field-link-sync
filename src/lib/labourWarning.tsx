@@ -9,7 +9,7 @@ import { ToastAction } from "@/components/ui/toast";
 type ToastFn = (t: any) => unknown;
 
 export async function markLabourIncluded(quoteId: string, included = true) {
-  return (supabase.from("quotes") as any).update({ labour_included: included }).eq("id", quoteId);
+  return supabase.from("quotes").update({ labour_included: included }).eq("id", quoteId);
 }
 
 export function warnMissingLabour(toast: ToastFn, missing: { id: string; name: string }[], quoteId?: string | null, onIncluded?: () => void) {

@@ -42,7 +42,7 @@ const VisualPdfBundlePicker = ({ open, onOpenChange, onAddProduct, existingProdu
     queryKey: ["bundle-pdf-suppliers"],
     enabled: open,
     queryFn: async () => {
-      const { data } = await (supabase.from("supplier_pdf_pages") as any)
+      const { data } = await supabase.from("supplier_pdf_pages")
         .select("supplier_id")
         .neq("supplier_id", "")
         .order("supplier_id");
@@ -75,7 +75,7 @@ const VisualPdfBundlePicker = ({ open, onOpenChange, onAddProduct, existingProdu
     queryKey: ["bundle-pdf-pages", selectedSupplier],
     enabled: open,
     queryFn: async () => {
-      let query = (supabase.from("supplier_pdf_pages") as any)
+      let query = supabase.from("supplier_pdf_pages")
         .select("id, supplier_id, pdf_filename, page_number, page_image_url")
         .order("supplier_id")
         .order("pdf_filename")

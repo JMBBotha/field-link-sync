@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { renderBrandedEmail, finalInvoiceBodyHtml, brandedTransactionalFooter } from "@/lib/brandedEmail";
+import { renderBrandedEmail, finalInvoiceBodyHtml, brandedTransactionalFooter, type EmailBrand, type FinalInvoiceEmailData } from "@/lib/brandedEmail";
+import type { Json } from "@/integrations/supabase/types";
+import { jsonObject, jsonString } from "@/lib/jsonValue";
 import { CheckCircle2, Loader2, Mail, MessageCircle, Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,28 @@ import { finalSentLabel, finalInvoiceWhatsAppUrl } from "@/lib/invoiceMoney";
  * Email (Johan 30 Oct 20:29, the default): preview the email, press Send → server emails via
  * send-transactional-email (0800becool.co.za), logs who/when/where and shows "Emailed to … at …".
  */
+function emailBrand(value: Json | undefined): EmailBrand | null {
+  const row = jsonObject(value ?? null);
+  if (!row || typeof row.name !== "string") return null;
+  const topParts = Array.isArray(row.topParts) ? row.topParts.filter((part): part is string => typeof part === "string") : undefined;
+  return { name: row.name, logoUrl: jsonString(row.logoUrl), logoOnColour: row.logoOnColour === true, topParts };
+}
+
+function invoiceEmailData(value: Json | undefined): FinalInvoiceEmailData | null {
+  const row = jsonObject(value ?? null);
+  if (!row || typeof row.invoiceNumber !== "string" || typeof row.total !== "string" || typeof row.paid !== "string" || typeof row.balance !== "string") return null;
+  return {
+    invoiceNumber: row.invoiceNumber,
+    dueDate: jsonString(row.dueDate),
+    total: row.total,
+    paid: row.paid,
+    balance: row.balance,
+    link: jsonString(row.link),
+    companyLines: Array.isArray(row.companyLines) ? row.companyLines.filter((line): line is string => typeof line === "string") : undefined,
+    termsHtml: jsonString(row.termsHtml),
+  };
+}
+
 export default function FinalInvoiceSendDialog({ invoice, balance, autoOpen, onDone, reminder, open: openCtl, onOpenChange, hideTrigger }: {
   reminder?: boolean;
   /** Controlled use from the balance block / client tiles (Johan 2 Nov 17:00). */
@@ -39,36 +63,41 @@ export default function FinalInvoiceSendDialog({ invoice, balance, autoOpen, onD
   const reset = () => { setStep("choose"); setPreview(null); setEmailed(null); };
 
   const log = async (stage: "opened" | "confirmed", channel = "whatsapp") =>
-    (supabase.rpc as any)("log_final_invoice_send", { p_id: invoice.id, p_channel: channel, p_stage: stage });
+    supabase.rpc("log_final_invoice_send", { p_id: invoice.id, p_channel: channel, p_stage: stage });
 
   const confirm = async (channel: string) => {
     if (lock.current) return; lock.current = true; setBusy(true);
     const { data, error } = await log("confirmed", channel);
     setBusy(false); lock.current = false;
     if (error) { toast.error(error.message || "Could not record the send"); return; }
-    if (data?.duplicate) toast.message("Already recorded as sent a moment ago, nothing changed.");
+    const recorded = jsonObject(data);
+    if (recorded?.duplicate === true) toast.message("Already recorded as sent a moment ago, nothing changed.");
     else toast.success(`Final invoice ${invoice.invoice_number || ""} recorded as sent · ${channel === "whatsapp" ? "WhatsApp" : "Other"}`);
     setOpen(false); reset(); onDone?.();
   };
 
   const loadPreview = async () => {
     if (lock.current) return; lock.current = true; setBusy(true);
-    const { data, error } = await (supabase.rpc as any)("send_final_invoice_email", { p_invoice: invoice.id, p_to: to.trim() || null, p_mode: "preview" });
+    const { data, error } = await supabase.rpc("send_final_invoice_email", { p_invoice: invoice.id, p_to: to.trim() || null, p_mode: "preview" });
     setBusy(false); lock.current = false;
     if (error) { toast.error(error.message || "Could not build the email"); return; }
-    const lay = data.layout;
-    const html = lay?.template === "final_invoice" && lay.brand && lay.data
-      ? renderBrandedEmail({ brand: lay.brand, title: lay.title || data.subject, kicker: lay.kicker || "", greetingName: lay.greeting_name, bodyHtml: finalInvoiceBodyHtml(lay.data), footerHtml: brandedTransactionalFooter(lay.brand.name || "") })
-      : data.html;
-    setPreview({ to: data.to, subject: data.subject, html }); setStep("preview");
+    const body = jsonObject(data);
+    const lay = jsonObject(body?.layout);
+    const brand = emailBrand(lay?.brand);
+    const invoiceData = invoiceEmailData(lay?.data);
+    const html = lay?.template === "final_invoice" && brand && invoiceData
+      ? renderBrandedEmail({ brand, title: jsonString(lay.title) || jsonString(body?.subject) || "", kicker: jsonString(lay.kicker) || "", greetingName: jsonString(lay.greeting_name), bodyHtml: finalInvoiceBodyHtml(invoiceData), footerHtml: brandedTransactionalFooter(brand.name || "") })
+      : jsonString(body?.html) ?? "";
+    setPreview({ to: jsonString(body?.to) ?? "", subject: jsonString(body?.subject) ?? "", html }); setStep("preview");
   };
 
   const sendEmail = async () => {
     if (lock.current || !preview) return; lock.current = true; setBusy(true);
-    const { data, error } = await (supabase.rpc as any)("send_final_invoice_email", { p_invoice: invoice.id, p_to: preview.to, p_mode: "send" });
+    const { data, error } = await supabase.rpc("send_final_invoice_email", { p_invoice: invoice.id, p_to: preview.to, p_mode: "send" });
     setBusy(false); lock.current = false;
     if (error) { toast.error(error.message || "Email not sent"); return; }
-    setEmailed({ to: data.to || preview.to, at: data.final_sent_at || new Date().toISOString(), duplicate: !!data.duplicate });
+    const sent = jsonObject(data);
+    setEmailed({ to: jsonString(sent?.to) || preview.to, at: jsonString(sent?.final_sent_at) || new Date().toISOString(), duplicate: sent?.duplicate === true });
     setStep("emailed"); onDone?.();
   };
 

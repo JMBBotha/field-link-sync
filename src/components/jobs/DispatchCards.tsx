@@ -46,7 +46,7 @@ export default function DispatchCards() {
     refetchInterval: 30_000,
     queryFn: async () => {
       const next = todayInJohannesburg(new Date(new Date(`${day}T12:00:00+02:00`).getTime() + 86_400_000));
-      const { data, error } = await (supabase.from("jobs") as any)
+      const { data, error } = await supabase.from("jobs")
         .select("id, title, status, priority, scheduled_for, started_at, job_type, address, company_id, customer_id, invoice_id, customers(name, phone), customer_locations!jobs_location_id_fkey(address), assignments(id, profile_id, status, profiles!assignments_profile_id_fkey(full_name, phone))")
         .gte("scheduled_for", `${day}T00:00:00+02:00`).lt("scheduled_for", `${next}T00:00:00+02:00`)
         .order("scheduled_for", { ascending: true }).limit(300);
@@ -58,7 +58,7 @@ export default function DispatchCards() {
     queryKey: ["dispatch-cards-leads"],
     refetchInterval: 30_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("leads") as any).select("*")
+      const { data, error } = await supabase.from("leads").select("*")
         .eq("status", "pending").is("deleted_at", null).is("merged_into_id", null).order("created_at", { ascending: true }).limit(100);
       if (error) throw error;
       return (data || []) as any[];

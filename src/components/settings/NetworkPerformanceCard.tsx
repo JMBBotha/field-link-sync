@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { jsonNumber, jsonObject } from "@/lib/jsonValue";
 import { useCanWriteMasterCatalog } from "@/components/catalog/MasterCatalogGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,9 +21,27 @@ export default function NetworkPerformanceCard() {
     queryKey: ["network-performance", days],
     enabled: canWrite,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("network_performance", { p_days: days });
+      const { data, error } = await supabase.rpc("network_performance", { p_days: days });
       if (error) throw error;
-      return (data?.companies || []) as NetworkCompanyStats[];
+      const companies = jsonObject(data)?.companies;
+      return Array.isArray(companies) ? companies.flatMap((item) => {
+        const row = jsonObject(item);
+        if (!row || typeof row.company_id !== "string" || typeof row.name !== "string") return [];
+        const stats: NetworkCompanyStats = {
+          company_id: row.company_id,
+          name: row.name,
+          is_master: row.is_master === true,
+          leads_new: jsonNumber(row.leads_new) ?? 0,
+          leads_completed: jsonNumber(row.leads_completed) ?? 0,
+          quotes_sent: jsonNumber(row.quotes_sent) ?? 0,
+          quotes_accepted: jsonNumber(row.quotes_accepted) ?? 0,
+          accepted_value: jsonNumber(row.accepted_value) ?? 0,
+          jobs_booked: jsonNumber(row.jobs_booked) ?? 0,
+          people: jsonNumber(row.people) ?? 0,
+          win_rate: jsonNumber(row.win_rate),
+        };
+        return [stats];
+      }) : [];
     },
   });
   if (!canWrite) return null;

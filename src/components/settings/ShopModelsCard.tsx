@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { jsonNumber, jsonObject, jsonString } from "@/lib/jsonValue";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/useRole";
 import { useToast } from "@/hooks/use-toast";
@@ -44,11 +45,26 @@ export default function ShopModelsCard() {
     queryKey: ["shop-tier-map", user?.id],
     enabled: !!user?.id && !!isAdmin,
     queryFn: async () => {
-      const { data: p } = await (supabase.from("profiles") as any).select("company_id").eq("id", user!.id).maybeSingle();
+      const { data: p } = await supabase.from("profiles").select("company_id").eq("id", user!.id).maybeSingle();
       if (!p?.company_id) return null;
-      const { data: res, error } = await (supabase.rpc as any)("fl_shop_tier_map_admin", { p_company: p.company_id });
+      const { data: res, error } = await supabase.rpc("fl_shop_tier_map_admin", { p_company: p.company_id });
       if (error) return null; // not an admin of this company, or the shop isn't set up: show nothing
-      return { companyId: p.company_id as string, rows: (res?.rows ?? []) as Row[], candidates: (res?.candidates ?? []) as Cand[] };
+      const body = jsonObject(res);
+      const rows = Array.isArray(body?.rows) ? body.rows.flatMap((item): Row[] => {
+        const row = jsonObject(item);
+        if (!row || typeof row.product_id !== "string" || typeof row.code !== "string" || typeof row.name !== "string" || typeof row.tier !== "string") return [];
+        const btu = jsonNumber(row.btu);
+        if (btu == null) return [];
+        return [{ btu, tier: row.tier, product_id: row.product_id, code: row.code, name: row.name, sell_incl: jsonNumber(row.sell_incl) }];
+      }) : [];
+      const candidates = Array.isArray(body?.candidates) ? body.candidates.flatMap((item): Cand[] => {
+        const row = jsonObject(item);
+        if (!row || typeof row.product_id !== "string" || typeof row.code !== "string" || typeof row.name !== "string") return [];
+        const btu = jsonNumber(row.btu);
+        if (btu == null) return [];
+        return [{ product_id: row.product_id, btu, code: row.code, name: row.name, description: jsonString(row.description), sell_incl: jsonNumber(row.sell_incl) }];
+      }) : [];
+      return { companyId: p.company_id, rows, candidates };
     },
   });
   if (!isAdmin || !data) return null;
@@ -57,7 +73,7 @@ export default function ShopModelsCard() {
   const save = async (btu: number, tier: string, productId: string) => {
     const key = `${btu}-${tier}`;
     setSaving(key);
-    const { error } = await (supabase.rpc as any)("fl_shop_tier_map_set", {
+    const { error } = await supabase.rpc("fl_shop_tier_map_set", {
       p_company: data.companyId, p_btu: btu, p_tier: tier, p_product: productId || null,
     });
     setSaving(null);

@@ -1,4 +1,5 @@
 import { readPdfBasket, writePdfBasket, migrateDraftPdfBasket, pdfBasketKey, PDF_BASKET_EVENT } from "@/lib/pdfBasketStore";
+import type { Database } from "@/integrations/supabase/types";
 import QuoteTotalsBar from "@/components/quoting/QuoteTotalsBar";
 import { liveProducts } from "@/lib/liveProducts";
 import { resolveBundlesLive } from "@/lib/bundleResolve";
@@ -737,7 +738,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
       if (bErr) throw bErr;
       if (!bundleData || bundleData.length === 0) return [];
 
-      const { data: itemsData, error: iErr } = await (supabase.from("bundle_items") as any).
+      const { data: itemsData, error: iErr } = await supabase.from("bundle_items").
       select("id, bundle_id, supplier_product_id, quantity, length_metres, is_length_item, is_optional, sort_order, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, cost_price, default_markup_percent, supplier_discount_percent, markup_percent, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pack_qty, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, is_active, pdf_upload_id, suppliers(name))").
       order("sort_order");
       if (iErr) throw iErr;
@@ -1816,7 +1817,7 @@ function NewQuoteClientPicker({
       if (!companyId) throw new Error("Your account is not linked to a company.");
 
       const name = form.name.trim();
-      const payload: Record<string, unknown> = {
+      const payload: Database["public"]["Tables"]["customers"]["Insert"] = {
         name,
         first_name: name.split(" ")[0] || name,
         last_name: name.split(" ").slice(1).join(" ") || null,
@@ -1831,7 +1832,7 @@ function NewQuoteClientPicker({
         status: "lead",
       };
 
-      const { data, error } = await (supabase.from("customers") as any)
+      const { data, error } = await supabase.from("customers")
         .insert(payload)
         .select("id, name")
         .single();
@@ -2085,7 +2086,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         throw new Error("Your account is not linked to a company. Contact an admin.");
       }
 
-      const insertPayload: Record<string, unknown> = {
+      const insertPayload: Database["public"]["Tables"]["quotes"]["Insert"] = {
         sales_engineer_id: salesEngineerId,
         company_id: companyId,
         status: "draft",
@@ -2101,7 +2102,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
        
       console.log("[QuoteBuilder] Inserting draft payload:", insertPayload);
 
-      const { data, error } = await (supabase.from("quotes") as any)
+      const { data, error } = await supabase.from("quotes")
         .insert(insertPayload)
         .select("id")
         .single();
@@ -2113,7 +2114,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
 
 
       for (const oldId of toSupersede) {
-        await (supabase.from("quotes") as any)
+        await supabase.from("quotes")
           .update({ status: "superseded", superseded_by: data.id })
           .eq("id", oldId);
       }
@@ -2172,7 +2173,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         };
 
         const supersedeDraft = async (draftId: string, newQuoteId: string) => {
-          await (supabase.from("quotes") as any)
+          await supabase.from("quotes")
             .update({ status: "superseded", superseded_by: newQuoteId })
             .eq("id", draftId);
         };
@@ -2260,7 +2261,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
             if (drafts.some((d: any) => d.id === q.id)) continue;
             if (await draftHasRealData(q.id)) {
               // Adopt it onto this lead so it stays a single source of truth.
-              await (supabase.from("quotes") as any)
+              await supabase.from("quotes")
                 .update({ lead_id: paramLeadId })
                 .eq("id", q.id);
               openQuote(q.id);

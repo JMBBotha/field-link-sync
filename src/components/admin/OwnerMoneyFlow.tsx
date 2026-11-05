@@ -8,7 +8,7 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatRand } from "@/utils/formatRand";
-import { GROUPS, groupTotals, monthlyGroups, viewTotals, waterfall, type FlowView, type MoneyFlow } from "@/lib/moneyFlow";
+import { GROUPS, groupTotals, moneyFlowFromJson, monthlyGroups, viewTotals, waterfall, type FlowView } from "@/lib/moneyFlow";
 
 const VIEWS: { key: FlowView; label: string }[] = [
   { key: "earned", label: "Earned (paid in full)" },
@@ -23,9 +23,9 @@ export default function OwnerMoneyFlow() {
     queryKey: ["owner-money-flow"],
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("get_owner_money_flow", {});
+      const { data, error } = await supabase.rpc("get_owner_money_flow", {});
       if (error) return null;
-      return (data ?? null) as MoneyFlow | null;
+      return moneyFlowFromJson(data);
     },
   });
   if (!flow) return null;

@@ -190,7 +190,7 @@ const fetchPdfBlob = async (sourceUrl: string, fileName?: string) => {
  */
 async function deleteSinglePDF(pdf: PDFUploadRow) {
   if (pdf.id.startsWith("spp-")) return { success: true, productsDeleted: 0 };
-  const { data: products } = await (supabase.from("supplier_products") as any)
+  const { data: products } = await supabase.from("supplier_products")
     .select("id")
     .eq("pdf_upload_id", pdf.id)
     .or("archived.is.null,archived.eq.false");
@@ -294,13 +294,13 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
     setActivateWarning(null);
     setActivateLinkedCount(null);
     setActivateTarget(pdf);
-    void (supabase.from("supplier_products") as any)
+    void supabase.from("supplier_products")
       .select("id", { count: "exact", head: true })
       .eq("pdf_upload_id", pdf.id)
       .then(({ count }: any) => setActivateLinkedCount(count ?? 0));
     void runGate(pdf.id);
     try {
-      let siblings = (supabase.from("pdf_uploads") as any)
+      let siblings = supabase.from("pdf_uploads")
         .select("id")
         .eq("supplier_id", pdf.supplier_id)
         .neq("id", pdf.id);
@@ -309,14 +309,14 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       const sibIds = (sibRows || []).map((r: any) => r.id);
       if (!sibIds.length) return;
 
-      const { data: prods } = await (supabase.from("supplier_products") as any)
+      const { data: prods } = await supabase.from("supplier_products")
         .select("id")
         .in("pdf_upload_id", sibIds)
         .or("archived.is.null,archived.eq.false");
       const prodIds = (prods || []).map((r: any) => r.id);
       if (!prodIds.length) return;
 
-      const { data: lines } = await (supabase.from("quote_items") as any)
+      const { data: lines } = await supabase.from("quote_items")
         .select("quote_id, quotes!inner(status)")
         .in("product_id", prodIds)
         .eq("quotes.status", "draft");
@@ -353,7 +353,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
     }
     setActivating(true);
     try {
-      let deactivate = (supabase.from("pdf_uploads") as any)
+      let deactivate = supabase.from("pdf_uploads")
         .update({ is_active: false })
         .eq("supplier_id", activateTarget.supplier_id)
         .neq("id", activateTarget.id);
@@ -362,7 +362,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
         : deactivate.is("brand", null);
       await deactivate;
 
-      const { error } = await (supabase.from("pdf_uploads") as any)
+      const { error } = await supabase.from("pdf_uploads")
         .update({ is_active: true, activated_at: new Date().toISOString() })
         .eq("id", activateTarget.id);
       if (error) throw error;
@@ -370,7 +370,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       // ── Swap the live catalogue over to this book (soft only, never deletes):
       //    same supplier + same brand products that came from another book get
       //    archived, and the products on this book go live.
-      let archiveOthers = (supabase.from("supplier_products") as any)
+      let archiveOthers = supabase.from("supplier_products")
         .update({ archived: true, archived_at: new Date().toISOString() })
         .eq("supplier_id", activateTarget.supplier_id)
         .neq("pdf_upload_id", activateTarget.id)
@@ -380,7 +380,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
         : archiveOthers.is("brand", null);
       await archiveOthers;
 
-      await (supabase.from("supplier_products") as any)
+      await supabase.from("supplier_products")
         .update({ archived: false, archived_at: null, is_active: true })
         .eq("pdf_upload_id", activateTarget.id);
 
@@ -403,7 +403,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
     queryKey: ["pdf-uploads-manager"],
     queryFn: async () => {
       // Source 1: pdf_uploads table (legacy)
-      const { data: uploadsData } = await (supabase.from("pdf_uploads") as any)
+      const { data: uploadsData } = await supabase.from("pdf_uploads")
         .select(`id, file_name, file_path, storage_path, file_url, created_at, status, supplier_id, is_active, brand, category, suppliers ( id, name )`)
         .order("created_at", { ascending: false });
       const uploads = ((uploadsData || []) as PDFUploadRow[]).map((u) => ({
@@ -413,7 +413,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       }));
 
       // Source 2: supplier_pdf_pages table (used by import pipeline)
-      const { data: pagesData } = await (supabase.from("supplier_pdf_pages") as any)
+      const { data: pagesData } = await supabase.from("supplier_pdf_pages")
         .select("id, supplier_id, pdf_filename, page_number, page_image_url, uploaded_at, pdf_storage_path");
       const pages = pagesData || [];
 
@@ -483,7 +483,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       // Real pdf_upload_id counts
       const realIds = pdfUploads.filter(p => !p.id.startsWith("spp-")).map(p => p.id);
       if (realIds.length > 0) {
-        const { data } = await (supabase.from("supplier_products") as any)
+        const { data } = await supabase.from("supplier_products")
           .select("id, pdf_upload_id")
           .in("pdf_upload_id", realIds);
         for (const row of data || []) {
@@ -495,7 +495,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       const realEntries = pdfUploads.filter(p => !p.id.startsWith("spp-"));
       for (const entry of realEntries) {
         if (!counts[entry.id] && entry.supplier_id) {
-          const { count } = await (supabase.from("supplier_products") as any)
+          const { count } = await supabase.from("supplier_products")
             .select("id", { count: "exact", head: true })
             .eq("supplier_id", entry.supplier_id);
           counts[entry.id] = count || 0;
@@ -505,7 +505,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       // For synthetic entries, count products by supplier_id
       const syntheticEntries = pdfUploads.filter(p => p.id.startsWith("spp-"));
       for (const entry of syntheticEntries) {
-        const { count } = await (supabase.from("supplier_products") as any)
+        const { count } = await supabase.from("supplier_products")
           .select("id", { count: "exact", head: true })
           .eq("supplier_id", entry.supplier_id);
         counts[entry.id] = count || 0;
@@ -544,7 +544,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   const totalProducts = Object.values(productCounts).reduce((a, b) => a + b, 0);
 
   const handleDeleteClick = async (pdf: PDFUploadRow) => {
-    const { count } = await (supabase.from("supplier_products") as any)
+    const { count } = await supabase.from("supplier_products")
       .select("id", { count: "exact", head: true })
       .eq("pdf_upload_id", pdf.id);
     setDeleteProductCount(count ?? productCounts[pdf.id] ?? 0);
@@ -725,7 +725,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
           size="sm"
           onClick={async () => {
             const pdfIds = new Set(pdfUploads.map(p => p.id));
-            const { data: orphans } = await (supabase.from("supplier_products") as any)
+            const { data: orphans } = await supabase.from("supplier_products")
               .select("id, pdf_upload_id")
               .not("pdf_upload_id", "is", null)
               .or("archived.is.null,archived.eq.false");
@@ -818,7 +818,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
             onClick={async () => {
               const targets = filtered.filter((p) => selectedIds.has(p.id) && !p.id.startsWith("spp-"));
               const ids = targets.map((t) => t.id);
-              const { count } = ids.length ? await (supabase.from("supplier_products") as any).select("id", { count: "exact", head: true }).in("pdf_upload_id", ids).or("archived.is.null,archived.eq.false") : { count: 0 };
+              const { count } = ids.length ? await supabase.from("supplier_products").select("id", { count: "exact", head: true }).in("pdf_upload_id", ids).or("archived.is.null,archived.eq.false") : { count: 0 };
               setConfirmArchive({ title: "Archive selected price lists?", message: archiveMessage(count ?? 0, targets.length), label: `Archive ${count ?? 0} products`, run: handleBulkDelete });
             }}
             disabled={bulkDeleting}

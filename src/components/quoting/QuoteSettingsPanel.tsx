@@ -17,7 +17,7 @@ export default function QuoteSettingsPanel({ quoteId, status, unitCards, note, c
     queryKey: ["quote-payment-plan-name", quoteId],
     enabled: !!quoteId,
     queryFn: async () => {
-      const { data } = await (supabase.from("quotes") as any).select("payment_plan").eq("id", quoteId).maybeSingle();
+      const { data } = await supabase.from("quotes").select("payment_plan").eq("id", quoteId).maybeSingle();
       return isValidPlan(data?.payment_plan) ? (data.payment_plan.name as string) : null;
     },
   });

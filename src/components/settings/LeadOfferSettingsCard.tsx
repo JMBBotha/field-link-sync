@@ -49,12 +49,12 @@ export default function LeadOfferSettingsCard() {
   const { data } = useQuery({
     queryKey: ["lead-offer-settings", companyId], enabled: !!companyId,
     queryFn: async () => {
-      const { data } = await (supabase.from("lead_offer_settings" as any) as any).select("*").eq("company_id", companyId).maybeSingle();
+      const { data } = await supabase.from("lead_offer_settings").select("*").eq("company_id", companyId).maybeSingle();
       return { ...DEFAULT_LEAD_OFFERS, ...(data || {}) } as LeadOfferSettings;
     },
   });
   return <LeadOfferSettingsView value={data} onSave={async (v) => {
-    const { error } = await (supabase.from("lead_offer_settings" as any) as any).upsert({ company_id: companyId, ...v, updated_at: new Date().toISOString() }, { onConflict: "company_id" });
+    const { error } = await supabase.from("lead_offer_settings").upsert({ company_id: companyId, ...v, updated_at: new Date().toISOString() }, { onConflict: "company_id" });
     if (error) return void toast.error(error.message);
     toast.success("Offer settings saved"); qc.invalidateQueries({ queryKey: ["lead-offer-settings"] });
   }} />;

@@ -21,7 +21,7 @@ export default function JobPhotosCard({ leadId, addSlot }: { leadId: string; add
   const canManage = useQuery({
     queryKey: ["photo-lead-ok", leadId],
     enabled: !!leadId,
-    queryFn: async () => (await (supabase.rpc as any)("photo_lead_ok", { _lead: leadId })).data === true,
+    queryFn: async () => (await supabase.rpc("photo_lead_ok", { _lead: leadId })).data === true,
   }).data === true;
   const removeOpen = async () => {
     if (!open) return;
@@ -34,7 +34,7 @@ export default function JobPhotosCard({ leadId, addSlot }: { leadId: string; add
     queryKey: ["job-photos-typed", leadId],
     enabled: !!leadId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("job_photos") as any)
+      const { data, error } = await supabase.from("job_photos")
         .select("id, storage_path, annotated_path, caption, photo_type, created_at")
         .eq("lead_id", leadId).in("photo_type", ["site", "before", "after"]).order("created_at", { ascending: true });
       if (error) throw error;

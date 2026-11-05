@@ -3,6 +3,7 @@ import { useState } from "react";
 import { doneMessage } from "@/lib/doneToast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/useRole";
 import { useToast } from "@/hooks/use-toast";
@@ -50,7 +51,7 @@ export function useQuoteStaffActions(onChanged?: () => void, beforeAccept?: () =
     enabled: !!userId,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data } = await (supabase.from("profiles") as any).select("full_name, dispatch_role").eq("id", userId).maybeSingle();
+      const { data } = await supabase.from("profiles").select("full_name, dispatch_role").eq("id", userId).maybeSingle();
       return { name: (data?.full_name as string) || user?.email || "staff", dispatchRole: (data?.dispatch_role as string) ?? null };
     },
   });
@@ -66,10 +67,10 @@ export function useQuoteStaffActions(onChanged?: () => void, beforeAccept?: () =
   const pricedOrToast = async (id: string) => {
     try { await assertQuotePriced(id); return true; } catch (e: any) { toast({ title: "Price missing", description: e.message, variant: "destructive" }); return false; }
   };
-  const write = async (q: StaffQuote, patch: Record<string, unknown>, log: StatusLogRow) => {
-    const { error } = await (supabase.from("quotes") as any).update(patch).eq("id", q.id);
+  const write = async (q: StaffQuote, patch: Database["public"]["Tables"]["quotes"]["Update"], log: StatusLogRow) => {
+    const { error } = await supabase.from("quotes").update(patch).eq("id", q.id);
     if (error) throw error;
-    await (supabase.from("status_change_log") as any).insert(log); // audit; never blocks the change
+    await supabase.from("status_change_log").insert(log); // audit; never blocks the change
   };
 
   const runStatus = async (kind: "accept" | "decline", q: StaffQuote) => {
@@ -131,7 +132,7 @@ export function useQuoteStaffActions(onChanged?: () => void, beforeAccept?: () =
     queryKey: ["accept-siblings", pq?.id, pq?.customer_id],
     enabled: !!pq?.customer_id,
     queryFn: async () => {
-      const { data } = await (supabase.from("quotes") as any).select("id, quote_number, option_group_id")
+      const { data } = await supabase.from("quotes").select("id, quote_number, option_group_id")
         .eq("customer_id", pq!.customer_id).eq("status", "accepted").neq("id", pq!.id).is("archived_at", null).limit(5);
       return (data || []) as { id: string; quote_number: string | null; option_group_id: string | null }[];
     },

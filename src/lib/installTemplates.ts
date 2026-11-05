@@ -81,7 +81,7 @@ export const BRACKET_OPTIONS = [
 ];
 
 export async function fetchInstallTemplates(): Promise<InstallTemplate[]> {
-  const { data, error } = await (supabase.from("install_templates" as any) as any)
+  const { data, error } = await supabase.from("install_templates")
     .select("id, name, min_btu, max_btu, unit_kind, is_active, sort_order, install_template_items(id, role, bundle_id, product_code, default_qty, default_length_m, included, sort_order)")
     .order("sort_order");
   if (error) throw error;

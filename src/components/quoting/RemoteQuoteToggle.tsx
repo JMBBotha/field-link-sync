@@ -17,7 +17,7 @@ export default function RemoteQuoteToggle({ quoteId, value, source, onChanged }:
   const auto = value && source && !source.startsWith("manual");
   const set = async (next: boolean) => {
     setBusy(true);
-    const { error } = await (supabase.from("quotes") as any)
+    const { error } = await supabase.from("quotes")
       .update({ remote_quote: next, remote_quote_source: next ? "manual" : "manual_off" })
       .eq("id", quoteId);
     setBusy(false);

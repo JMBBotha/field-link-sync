@@ -331,7 +331,7 @@ export function useSyncQueue(isOnline: boolean) {
         case 'create_used_part': {
           // Offline-added job materials (no prices) -> job_used_parts, never invoices
           const { error } = await supabase
-            .from('job_used_parts' as any)
+            .from('job_used_parts')
             .insert(operation.data as any);
 
           if (error) throw error;

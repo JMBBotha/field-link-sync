@@ -29,8 +29,8 @@ export default function QuoteUnitCardsToggle({ quoteId, onChanged }: { quoteId: 
     (async () => {
       try {
         const [{ data: q }, { data: items }] = await Promise.all([
-          (supabase.from("quotes") as any).select("show_unit_cards").eq("id", quoteId).maybeSingle(),
-          (supabase.from("quote_items") as any)
+          supabase.from("quotes").select("show_unit_cards").eq("id", quoteId).maybeSingle(),
+          supabase.from("quote_items")
             .select("id, item_name, item_type, item_number, quantity, is_bundle, metadata, product_id, area_id, parent_item_id, supplier_products(category, brand, btu_rating, capacity_btu, kw, product_code)")
             .eq("quote_id", quoteId).is("parent_item_id", null),
         ]);
@@ -52,7 +52,7 @@ export default function QuoteUnitCardsToggle({ quoteId, onChanged }: { quoteId: 
 
   const toggle = async (v: boolean) => {
     setOn(v);
-    const { error } = await (supabase.from("quotes") as any).update({ show_unit_cards: v }).eq("id", quoteId);
+    const { error } = await supabase.from("quotes").update({ show_unit_cards: v }).eq("id", quoteId);
     if (error) setOn(!v); else onChanged?.();
   };
 

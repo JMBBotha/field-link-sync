@@ -9,10 +9,10 @@ export function useCatalogServices(companyId: string | null) {
     staleTime: 60_000,
     queryFn: async () => {
       const [svc, master] = await Promise.all([
-        (supabase.from("catalog_services") as any)
+        supabase.from("catalog_services")
           .select("id, name, description, sort_order, origin, owner_company_id, is_active, search_aliases")
           .eq("is_active", true),
-        (supabase.from("companies") as any).select("name").eq("is_master", true).maybeSingle(),
+        supabase.from("companies").select("name").eq("is_master", true).maybeSingle(),
       ]);
       if (svc.error) throw svc.error;
       return { rows: (svc.data || []) as CatalogService[], masterName: (master.data?.name as string) || "the main company" };

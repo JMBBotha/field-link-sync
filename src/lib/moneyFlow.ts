@@ -3,6 +3,9 @@
  * Segments are data-driven: Job 6 adds tech_held / company_tools as extra keys, no redesign.
  * Labour cost == tech share; it is never added as a separate cost.
  */
+import type { Json } from "@/integrations/supabase/types";
+import { jsonNumber, jsonObject, jsonString } from "@/lib/jsonValue";
+
 export type FlowGroup = "cost" | "sales" | "tech" | "company";
 export type FlowView = "earned" | "pending" | "all";
 export interface FlowSegmentDef { key: string; group: FlowGroup; label: string; order: number }
@@ -75,4 +78,68 @@ export function monthlyGroups(flow: MoneyFlow, view: FlowView): ({ month: string
     byMonth.set(m.month, acc);
   }
   return [...byMonth.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([month, segs]) => ({ month, ...groupTotals(flow.segments, segs) }));
+}
+
+function numberMap(value: Json | undefined): Record<string, number> {
+  const row = jsonObject(value ?? null);
+  const out: Record<string, number> = {};
+  if (!row) return out;
+  for (const [key, item] of Object.entries(row)) {
+    const n = jsonNumber(item);
+    if (n != null) out[key] = n;
+  }
+  return out;
+}
+
+function flowBucket(value: Json | undefined): FlowBucket | null {
+  const row = jsonObject(value ?? null);
+  if (!row) return null;
+  return { quotes: jsonNumber(row.quotes) ?? 0, revenue_ex_vat: jsonNumber(row.revenue_ex_vat) ?? 0, segments: numberMap(row.segments) };
+}
+
+/** Reads the jsonb from get_owner_money_flow. A payload that is not this contract becomes null (the card stays hidden). */
+export function moneyFlowFromJson(value: Json | null): MoneyFlow | null {
+  const row = jsonObject(value);
+  const version = jsonNumber(row?.api_version);
+  if (!row || version == null || typeof row.company_id !== "string") return null;
+  const totals = jsonObject(row.totals);
+  const earned = flowBucket(totals?.earned);
+  const pending = flowBucket(totals?.pending);
+  if (!earned || !pending) return null;
+  const segments: FlowSegmentDef[] = [];
+  if (Array.isArray(row.segments)) {
+    for (const item of row.segments) {
+      const seg = jsonObject(item);
+      const group = seg?.group;
+      if (!seg || typeof seg.key !== "string" || typeof seg.label !== "string") continue;
+      if (group !== "cost" && group !== "sales" && group !== "tech" && group !== "company") continue;
+      segments.push({ key: seg.key, group, label: seg.label, order: jsonNumber(seg.order) ?? 0 });
+    }
+  }
+  const months: FlowMonth[] = [];
+  if (Array.isArray(row.months)) {
+    for (const item of row.months) {
+      const month = jsonObject(item);
+      const bucket = month?.bucket;
+      if (!month || typeof month.month !== "string" || (bucket !== "earned" && bucket !== "pending")) continue;
+      months.push({ month: month.month, bucket, revenue_ex_vat: jsonNumber(month.revenue_ex_vat) ?? 0, segments: numberMap(month.segments) });
+    }
+  }
+  const people: FlowPerson[] = [];
+  if (Array.isArray(row.people)) {
+    for (const item of row.people) {
+      const person = jsonObject(item);
+      const role = person?.role;
+      if (!person || (role !== "sales" && role !== "tech")) continue;
+      people.push({
+        role,
+        profile_id: jsonString(person.profile_id),
+        name: jsonString(person.name) ?? "",
+        earned: jsonNumber(person.earned) ?? 0,
+        pending: jsonNumber(person.pending) ?? 0,
+        quotes: jsonNumber(person.quotes) ?? 0,
+      });
+    }
+  }
+  return { api_version: version, company_id: row.company_id, segments, totals: { earned, pending }, months, people };
 }

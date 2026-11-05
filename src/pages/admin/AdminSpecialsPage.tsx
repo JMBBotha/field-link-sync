@@ -33,7 +33,7 @@ export default function AdminSpecialsPage() {
   const { data: specials = [], isLoading } = useQuery({
     queryKey: ["supplier-specials-admin"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_specials" as any) as any).select("*").order("end_date", { ascending: false });
+      const { data, error } = await supabase.from("supplier_specials").select("*").order("end_date", { ascending: false });
       if (error) throw error;
       return (data ?? []) as SupplierSpecial[];
     },
@@ -94,7 +94,7 @@ export default function AdminSpecialsPage() {
       while_stocks_last: draft.while_stocks_last,
       units_left: draft.units_left.trim() === "" ? null : Math.max(0, parseInt(draft.units_left, 10) || 0),
     };
-    const q = (supabase.from("supplier_specials" as any) as any);
+    const q = supabase.from("supplier_specials");
     const { data, error } = draft.id ? await q.update(row).eq("id", draft.id).select("id") : await q.insert(row).select("id");
     setSaving(false);
     if (error || !data?.length) { toast({ title: "Couldn't save special", description: error?.message ?? "Not allowed", variant: "destructive" }); return; }
@@ -103,7 +103,7 @@ export default function AdminSpecialsPage() {
   };
 
   const setActive = async (s: SupplierSpecial, active: boolean) => {
-    const { data, error } = await (supabase.from("supplier_specials" as any) as any).update({ is_active: active }).eq("id", s.id).select("id");
+    const { data, error } = await supabase.from("supplier_specials").update({ is_active: active }).eq("id", s.id).select("id");
     if (error || !data?.length) { toast({ title: "Couldn't update", description: error?.message, variant: "destructive" }); return; }
     refresh();
   };
@@ -114,7 +114,7 @@ export default function AdminSpecialsPage() {
     const path = `${Date.now()}-${file.name.replace(/[^\w.-]+/g, "_")}`;
     const up = await supabase.storage.from("specials-pdfs").upload(path, file, { contentType: "application/pdf" });
     if (up.error) { setUploading(false); toast({ title: "Upload failed", description: up.error.message, variant: "destructive" }); return; }
-    const { data, error } = await (supabase.from("supplier_specials" as any) as any).update({ specials_pdf_path: path }).in("id", [...picked]).select("id");
+    const { data, error } = await supabase.from("supplier_specials").update({ specials_pdf_path: path }).in("id", [...picked]).select("id");
     setUploading(false);
     if (error) { toast({ title: "Couldn't attach PDF", description: error.message, variant: "destructive" }); return; }
     toast({ title: `PDF attached to ${data?.length ?? 0} special(s)` });

@@ -61,7 +61,7 @@ export default function AdminBackfillPanel({ jobId, leadId, companyId, defaultTe
     queryKey: ["backfill-stock", companyId],
     enabled: mode === "material",
     queryFn: async () => {
-      const { data } = await (supabase.from("cf_stock_items" as any) as any).select("id, item, model_code, qty_on_hand").eq("company_id", companyId).eq("active", true).order("item");
+      const { data } = await supabase.from("cf_stock_items").select("id, item, model_code, qty_on_hand").eq("company_id", companyId).eq("active", true).order("item");
       return (data ?? []) as { id: string; item: string; model_code: string | null; qty_on_hand: number }[];
     },
   });
@@ -77,7 +77,7 @@ export default function AdminBackfillPanel({ jobId, leadId, companyId, defaultTe
     queryKey: ["backfill-photos", leadId],
     enabled: !!leadId,
     queryFn: async () => {
-      const { data } = await (supabase.from("job_photos") as any).select("id, storage_path, photo_type, occurred_at, entered_by, on_behalf_of").eq("lead_id", leadId).not("on_behalf_of", "is", null).order("occurred_at", { ascending: false });
+      const { data } = await supabase.from("job_photos").select("id, storage_path, photo_type, occurred_at, entered_by, on_behalf_of").eq("lead_id", leadId).not("on_behalf_of", "is", null).order("occurred_at", { ascending: false });
       const rows = (data ?? []) as any[];
       const ids = Array.from(new Set(rows.flatMap((r) => [r.entered_by, r.on_behalf_of]).filter(Boolean)));
       const { data: ps } = ids.length ? await supabase.from("profiles").select("id, full_name").in("id", ids) : { data: [] as any[] };
@@ -114,7 +114,7 @@ export default function AdminBackfillPanel({ jobId, leadId, companyId, defaultTe
         const path = `${leadId}/backfill-${crypto.randomUUID()}.${ext}`;
         const up = await supabase.storage.from("job-photos").upload(path, f, { contentType: f.type || "image/jpeg" });
         if (up.error) throw up.error;
-        const { error } = await (supabase.from("job_photos") as any).insert({ lead_id: leadId, storage_path: path, uploaded_by: user?.id, photo_type: photoType, on_behalf_of: techId, occurred_at: occurred(), caption: `${photoType} photo` });
+        const { error } = await supabase.from("job_photos").insert({ lead_id: leadId, storage_path: path, uploaded_by: user?.id, photo_type: photoType, on_behalf_of: techId, occurred_at: occurred(), caption: `${photoType} photo` });
         if (error) { await supabase.storage.from("job-photos").remove([path]); throw error; }
       }
     }, `${files.length} photo${files.length > 1 ? "s" : ""} added`);

@@ -45,14 +45,14 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
 
   const handleDeleteSupplierPdf = useCallback(async (supplierId: string) => {
     try {
-      const { data: pagesToDelete } = await (supabase.from("supplier_pdf_pages") as any)
+      const { data: pagesToDelete } = await supabase.from("supplier_pdf_pages")
         .select("id, pdf_storage_path")
         .eq("supplier_id", supplierId);
       const storagePaths = (pagesToDelete || []).map((p: any) => p.pdf_storage_path).filter(Boolean);
       if (storagePaths.length > 0) {
         await supabase.storage.from("supplier-pdfs").remove(storagePaths);
       }
-      const { error } = await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierId);
+      const { error } = await supabase.from("supplier_pdf_pages").delete().eq("supplier_id", supplierId);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["visual-catalog-pages"] });
       queryClient.invalidateQueries({ queryKey: ["visual-catalog-suppliers"] });
@@ -67,7 +67,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
   const { data: suppliers = [] } = useQuery({
     queryKey: ["visual-catalog-suppliers"],
     queryFn: async () => {
-      const { data } = await (supabase.from("supplier_pdf_pages") as any)
+      const { data } = await supabase.from("supplier_pdf_pages")
         .select("supplier_id")
         .order("supplier_id");
       if (!data) return [];
@@ -81,7 +81,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
   const { data: pages = [], isLoading: pagesLoading } = useQuery<PdfPage[]>({
     queryKey: ["visual-catalog-pages", selectedSupplier],
     queryFn: async () => {
-      let query = (supabase.from("supplier_pdf_pages") as any)
+      let query = supabase.from("supplier_pdf_pages")
         .select("id, supplier_id, pdf_filename, page_number, page_image_url, pdf_upload_id")
         .order("supplier_id")
         .order("pdf_filename")
@@ -94,7 +94,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
       const { data, error } = await query.limit(100);
       if (error) throw error;
       // Exclude pages belonging to inactive pdf_uploads (null pdf_upload_id stays visible)
-      const { data: inactiveUploads } = await (supabase.from("pdf_uploads") as any)
+      const { data: inactiveUploads } = await supabase.from("pdf_uploads")
         .select("id").eq("is_active", false).limit(2000);
       const inactiveIds = new Set<string>((inactiveUploads || []).map((u: any) => u.id));
       return (data || []).filter((p: any) => !p.pdf_upload_id || !inactiveIds.has(p.pdf_upload_id));
@@ -108,7 +108,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
     queryKey: ["visual-catalog-regions", pageIds.join(",")],
     enabled: pageIds.length > 0,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("pdf_product_regions") as any)
+      const { data, error } = await supabase.from("pdf_product_regions")
         .select(
           "id, pdf_page_id, product_id, product_code, label, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, supplier_discount_percent, suppliers(name))"
         )

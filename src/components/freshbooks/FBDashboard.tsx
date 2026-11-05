@@ -54,7 +54,7 @@ const FBDashboard = () => {
       await supabase.from("fb_projects").delete().eq("company_id", companyId);
       await supabase.from("fb_expenses").delete().eq("company_id", companyId);
       await supabase.from("fb_estimates").delete().eq("company_id", companyId);
-      await supabase.from("company_invoices" as any).delete().eq("company_id", companyId);
+      await supabase.from("company_invoices").delete().eq("company_id", companyId);
       await supabase.from("fb_contacts").delete().eq("company_id", companyId);
 
       // 3 contacts
@@ -68,7 +68,7 @@ const FBDashboard = () => {
       const contactIds = contacts?.map(c => c.id) || [];
 
       // 5 invoices (company_invoices)
-      const { data: invoicesInserted, error: invErr } = await (supabase.from("company_invoices" as any).insert([
+      const { data: invoicesInserted, error: invErr } = await (supabase.from("company_invoices").insert([
         { company_id: companyId, invoice_number: "INV-DEMO-001", subtotal: 1200, vat_amount: 180, total_amount: 1380, tax: 180, status: "Draft", due_date: d(14), contact_id: contactIds[0] || null, items: [{ description: "AC Unit Service", qty: 1, rate: 1200 }] },
         { company_id: companyId, invoice_number: "INV-DEMO-002", subtotal: 3500, vat_amount: 525, total_amount: 4025, tax: 525, status: "Sent", due_date: d(7), contact_id: contactIds[1] || null, items: [{ description: "Split Unit Installation", qty: 1, rate: 3500 }] },
         { company_id: companyId, invoice_number: "INV-DEMO-003", subtotal: 2200, vat_amount: 330, total_amount: 2530, tax: 330, status: "Viewed", due_date: d(-3), contact_id: contactIds[2] || null, items: [{ description: "Duct Cleaning", qty: 2, rate: 1100 }] },
@@ -152,7 +152,7 @@ const FBDashboard = () => {
     queryKey: ["fb-dashboard-stats", companyId],
     queryFn: async () => {
       const [invRes, payRes, expRes] = await Promise.all([
-        supabase.from("company_invoices" as any).select("id, total_amount, status, due_date, invoice_number, created_at, contact_id").eq("company_id", companyId!) as any,
+        supabase.from("company_invoices").select("id, total_amount, status, due_date, invoice_number, created_at, contact_id").eq("company_id", companyId!) as any,
         supabase.from("fb_payments").select("id, amount, date, company_invoice_id, method").eq("company_id", companyId!).order("date", { ascending: false }),
         supabase.from("fb_expenses").select("id, amount, date, category").eq("company_id", companyId!),
       ]);

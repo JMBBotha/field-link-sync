@@ -9,9 +9,9 @@ describe("Tech catalogue lockdown (Johan 01:53)", () => {
       expect(src(f)).not.toMatch(/get_product_sell_options|sell_excl_vat/);
     }
     const opts = src("src/hooks/useProductOptions.ts");
-    expect(opts).toMatch(/techOnly\s*\n?\s*\? \(supabase\.rpc as any\)\("get_tech_catalogue"\)/);
+    expect(opts).toMatch(/techOnly\s*\n?\s*\? supabase\.rpc\("get_tech_catalogue"\)/);
     const used = src("src/components/UsedPartsSection.tsx");
-    expect(used).toMatch(/if \(showCost\) \{\s*const \{ data, error \} = await \(supabase\.rpc as any\)\("get_product_sell_options"\)/);
+    expect(used).toMatch(/if \(showCost\) \{\s*const \{ data, error \} = await supabase\.rpc\("get_product_sell_options"\)/);
     expect(used).toMatch(/get_tech_catalogue/);
   });
   it("DB: safe RPC returns only id/name/model/category/unit/length; priced RPC refuses techs", () => {

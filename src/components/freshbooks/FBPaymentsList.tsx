@@ -35,7 +35,7 @@ const FBPaymentsList = () => {
   const { data: invoices = [] } = useQuery({
     queryKey: ["company-invoices-for-payment", companyId],
     queryFn: async () => {
-      const { data } = await (supabase.from("company_invoices" as any).select("id, invoice_number, total_amount, status").eq("company_id", companyId!).neq("status", "Paid").neq("status", "Archived") as any);
+      const { data } = await (supabase.from("company_invoices").select("id, invoice_number, total_amount, status").eq("company_id", companyId!).neq("status", "Paid").neq("status", "Archived") as any);
       return (data || []) as any[];
     },
     enabled: !!companyId,
@@ -57,9 +57,9 @@ const FBPaymentsList = () => {
           const existingPayments = payments.filter((p: any) => p.company_invoice_id === form.invoice_id).reduce((s: number, p: any) => s + Number(p.amount), 0);
           const newTotal = existingPayments + Number(form.amount);
           if (newTotal >= Number(inv.total_amount)) {
-            await supabase.from("company_invoices" as any).update({ status: "Paid", amount_paid: newTotal }).eq("id", form.invoice_id);
+            await supabase.from("company_invoices").update({ status: "Paid", amount_paid: newTotal }).eq("id", form.invoice_id);
           } else {
-            await supabase.from("company_invoices" as any).update({ status: "Partial", amount_paid: newTotal }).eq("id", form.invoice_id);
+            await supabase.from("company_invoices").update({ status: "Partial", amount_paid: newTotal }).eq("id", form.invoice_id);
           }
         }
       }

@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { useLabourNorms } from "@/hooks/useLabourNorms";
 import { useCanWriteMasterCatalog } from "@/components/catalog/MasterCatalogGate";
@@ -14,8 +15,8 @@ export default function LabourNormsCard() {
   const { toast } = useToast();
   if (isLoading || !canWrite) return null;
 
-  const save = async (id: string, patch: Record<string, unknown>) => {
-    const { error } = await (supabase.from("labour_norms" as any) as any).update(patch).eq("id", id);
+  const save = async (id: string, patch: Database["public"]["Tables"]["labour_norms"]["Update"]) => {
+    const { error } = await supabase.from("labour_norms").update(patch).eq("id", id);
     if (error) toast({ title: "Couldn't save", description: error.message, variant: "destructive" });
     qc.invalidateQueries({ queryKey: ["labour-norms"] });
   };

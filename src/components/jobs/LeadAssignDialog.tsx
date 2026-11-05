@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TimeInput24 } from "@/components/ui/time-input-24";
 import { Loader2 } from "lucide-react";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
+import { rpcOk } from "@/lib/jsonValue";
 import SitePhotosSection from "@/components/photos/SitePhotosSection";
 import LinkedJobPhotos from "@/components/photos/LinkedJobPhotos";
 import LeadPhotoUploader from "@/components/jobs/LeadPhotoUploader";
@@ -54,7 +55,7 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
   const { data, isLoading } = useQuery({
     queryKey: ["lead-assign-options", leadId, inited === leadId ? date : null], enabled: !!leadId, placeholderData: (prev: any) => prev,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("lead_assign_options", { p_lead_id: leadId, p_date: inited === leadId ? date : null });
+      const { data, error } = await supabase.rpc("lead_assign_options", { p_lead_id: leadId, p_date: inited === leadId ? date : null });
       if (error) throw error;
       return data as Opts;
     },
@@ -79,9 +80,10 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
 
   const assign = useMutation({
     mutationFn: async () => {
-      const { data: r, error } = await (supabase.rpc as any)("assign_lead_to_tech", { p_lead_id: leadId, p_tech_id: tech, p_date: date, p_start: start, p_end: end, p_job_types: types, p_job_info: info });
+      const { data: r, error } = await supabase.rpc("assign_lead_to_tech", { p_lead_id: leadId, p_tech_id: tech, p_date: date, p_start: start, p_end: end, p_job_types: types, p_job_info: info });
       if (error) throw error;
-      if (!r?.ok) throw new Error(r?.message || "Not saved");
+      const result = rpcOk(r);
+      if (!result.ok) throw new Error(result.message || "Not saved");
     },
     onSuccess: () => {
       const name = data?.techs.find((t) => t.id === tech)?.full_name || "technician";
@@ -91,17 +93,19 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
   });
   const request = useMutation({
     mutationFn: async () => {
-      const { data: r, error } = await (supabase.rpc as any)("request_lead_reassignment", { p_lead_id: leadId, p_preferred_tech_id: tech || null, p_reason: reason });
+      const { data: r, error } = await supabase.rpc("request_lead_reassignment", { p_lead_id: leadId, p_preferred_tech_id: tech || null, p_reason: reason });
       if (error) throw error;
-      if (!r?.ok) throw new Error(r?.message || "Not saved");
+      const result = rpcOk(r);
+      if (!result.ok) throw new Error(result.message || "Not saved");
     },
     onSuccess: () => done("Reassignment requested. The office will decide."), onError: fail,
   });
   const decline = useMutation({
     mutationFn: async (id: string) => {
-      const { data: r, error } = await (supabase.rpc as any)("decline_lead_reassignment", { p_request_id: id });
+      const { data: r, error } = await supabase.rpc("decline_lead_reassignment", { p_request_id: id });
       if (error) throw error;
-      if (!r?.ok) throw new Error(r?.message || "Not saved");
+      const result = rpcOk(r);
+      if (!result.ok) throw new Error(result.message || "Not saved");
     },
     onSuccess: () => { toast({ title: "Request declined" }); qc.invalidateQueries({ queryKey: ["lead-assign-options"] }); qc.invalidateQueries({ queryKey: ["pending-reassign"] }); }, onError: fail,
   });

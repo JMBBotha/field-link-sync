@@ -48,7 +48,7 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
   const { data: jobs = [] } = useQuery({
     queryKey: ["jobs-calm", from, to], refetchInterval: 30_000, enabled: tab !== "pipeline",
     queryFn: async () => {
-      const { data, error } = await (supabase.from("jobs") as any).select(JOB_COLS)
+      const { data, error } = await supabase.from("jobs").select(JOB_COLS)
         .gte("scheduled_for", `${from}T00:00:00+02:00`).lt("scheduled_for", `${to}T00:00:00+02:00`).order("scheduled_for").limit(500);
       if (error) throw error;
       return (data || []) as Job[];
@@ -57,7 +57,7 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
   const { data: openJobs = [] } = useQuery({
     queryKey: ["jobs-calm-unassigned"], refetchInterval: 60_000, enabled: tab !== "pipeline",
     queryFn: async () => {
-      const { data, error } = await (supabase.from("jobs") as any).select(JOB_COLS)
+      const { data, error } = await supabase.from("jobs").select(JOB_COLS)
         .not("status", "in", `(${CLOSED.join(",")})`).order("created_at", { ascending: false }).limit(200);
       if (error) throw error;
       return ((data || []) as Job[]).filter((j) => !activeAssignee(j));
@@ -66,7 +66,7 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
   const { data: leads = [] } = useQuery({
     queryKey: ["dispatch-cards-leads"], refetchInterval: 30_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("leads") as any).select("*")
+      const { data, error } = await supabase.from("leads").select("*")
         .eq("status", "pending").is("deleted_at", null).is("merged_into_id", null).order("created_at", { ascending: true }).limit(100);
       if (error) throw error;
       return (data || []) as any[];

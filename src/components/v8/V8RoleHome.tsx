@@ -29,7 +29,7 @@ function useHomeOutstanding(ownQuoteIds: string[] | null) {
     queryKey: ["v8-home-outstanding", ownQuoteIds ? ownQuoteIds.join(",") : "all"],
     refetchInterval: 60_000,
     queryFn: async () => {
-      const { data: inv } = await (supabase.from("invoices") as any).select("id, quote_id, status, grand_total, notes, archived_at").not("status", "in", "(paid,void,cancelled,draft)").limit(2000);
+      const { data: inv } = await supabase.from("invoices").select("id, quote_id, status, grand_total, notes, archived_at").not("status", "in", "(paid,void,cancelled,draft)").limit(2000);
       const rows = ((inv || []) as any[]).filter((i) => !i.archived_at && (!ownQuoteIds || (i.quote_id && ownQuoteIds.includes(i.quote_id))));
       if (!rows.length) return { total: 0, count: 0, byQuote: {} as Record<string, number> };
       const ids = rows.map((r) => r.id);

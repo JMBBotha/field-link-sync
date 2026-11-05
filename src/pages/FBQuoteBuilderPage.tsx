@@ -88,7 +88,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
     if (!prefillCustomerId) { setLocations([]); return; }
     let cancelled = false;
     (async () => {
-      const { data } = await (supabase.from("customer_locations") as any)
+      const { data } = await supabase.from("customer_locations")
         .select("id, label, address")
         .eq("customer_id", prefillCustomerId)
         .order("is_primary", { ascending: false })
@@ -173,7 +173,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
       }));
       const { getUserCompanyId } = await import("@/lib/tenantUtils");
       const company_id = await getUserCompanyId(user?.id);
-      const { data, error } = await (supabase.from("quotes") as any).insert({
+      const { data, error } = await supabase.from("quotes").insert({
         sales_engineer_id: userId, status: "draft",
         subtotal,
         vat_rate: VAT_RATE,
