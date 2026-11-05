@@ -37,7 +37,7 @@ describe("Supplier code aliases", () => {
   });
   it("pairs halves, splits pair cost and passes the reconciliation with a warning note", () => {
     const rows = buildPreview("delivery_note", [L("AR24BSHCMWKN", 2, 1), L("AR24BSHCMWKX", 2, 2), L("BRAC01", 2, 3)], products, [], null, aliases)
-      .map((r) => ({ ...r, action: "reserve" as const, job_id: "job-1" }));
+      .map((r) => (r.match.product?.product_type === "ac_unit" ? { ...r, action: "reserve" as const, job_id: "job-1" } : r));
     expect(rows[0].unit_cost_pack).toBe(7500);
     expect(rows[0].notes.some((n) => n.startsWith("Code alias"))).toBe(true);
     const r = buildRecon(rows, [{ id: "job-1", label: "Test job" }], []);

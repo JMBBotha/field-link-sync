@@ -52,7 +52,7 @@ export function v8Me(role: V8Role): V8Link[] {
 
 export interface V8NavOpts { cashHealth?: boolean; manager?: boolean }
 /** Admin-only routes (RequireRole ["admin"] / owner): hidden from managers (dispatchers). Route guards stay the security. */
-const ADMIN_ONLY = ["/admin/supplier-bills", "/admin/cashflow", "/admin/cash-health", "/admin/money", "/admin/team", "/admin/areas", "/field/earnings", "/admin/notifications", "/admin/settings", "/admin/oss-extras", "/admin/tools"];
+const ADMIN_ONLY = ["/admin/supplier-bills", "/admin/cashflow", "/admin/cash-health", "/admin/money", "/admin/team", "/admin/areas", "/field/earnings", "/admin/notifications", "/admin/settings", "/admin/oss-extras", "/admin/tools", "/admin/stock-count"];
 
 /** Everything else, so every page stays one click away. Admin/owner: 4-5 collapsible groups. */
 export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
@@ -103,6 +103,7 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
     { title: "Suppliers & stock", links: [
       { path: "/admin/suppliers", label: "Suppliers", icon: "building" },
       { path: "/admin/supplier-docs", label: "Supplier docs", icon: "file" },
+      { path: "/admin/stock-count", label: "Stock count", icon: "box" },
       { path: "/admin/supplier-bills", label: "Supplier bills", icon: "wallet" },
       { path: "/admin/catalog", label: "Catalogue", icon: "bag", match: ["/admin/price-lists"] },
       { path: cash ? "/admin/cash-health?tab=stock" : "/admin/inventory", label: "Stock", icon: "box", match: ["/admin/inventory"] },

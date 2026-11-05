@@ -25,7 +25,7 @@ const lines = [
   { line_no: 4, description: "COPPER 1/4 15M", model_number: "CU-14-15", qty: 3, unit_price_excl: view === "dn" ? null : 610 },
   { line_no: 5, description: "TEST LITE MIDWALL 12000", model_number: "FCMI-L-12", qty: 1, unit_price_excl: view === "dn" ? null : 6200 },
 ];
-const jobs = [{ id: "j1", label: "Install 2×24K — Test Client A" }, { id: "j2", label: "Service — Test Client B" }];
+const jobs = [{ id: "j1", label: "Install · job j1" }, { id: "j2", label: "Service · job j2" }];
 const earlier = view === "inv" ? [{ product_id: "p1", normalised: normaliseModel("FCMI-24"), unit_cost_excl: 10434.09, receive_action: "reserve", receive_job_id: "j1" }] : [];
 const docType = view === "dn" ? "delivery_note" : "supplier_invoice";
 

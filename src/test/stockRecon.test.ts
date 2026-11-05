@@ -20,7 +20,7 @@ describe("receive reconciliation", () => {
     expect(r.ok).toBe(true);
     expect(r.jobs.find((j) => j.job_id === "job-a")!.cost).toBeCloseTo(10000);
     expect(r.jobs.find((j) => j.job_id === "job-b")!.cost).toBeCloseTo(10000);
-    expect(r.jobs.find((j) => j.label === "Stock")!.cost).toBeCloseTo(2260);
+    expect(r.jobs.find((j) => j.label === "Materials pool")!.cost).toBeCloseTo(2260);
     expect(r.total).toBeCloseTo(22260);
   });
   it("blocks: Lite look-alike unmatched, indoor without outdoor, qty vs quote, missing job", () => {
@@ -34,9 +34,12 @@ describe("receive reconciliation", () => {
     const none = buildRecon([{ ...rows[0], job_id: null }], jobs, quote);
     expect(none.problems.join()).toMatch(/No job chosen/);
   });
-  it("blocks a product that is not on the job's quote; skips the quote check for jobs without a quote", () => {
-    const rows = assign(buildPreview("delivery_note", [L(1, "G005")], products), { 0: "job-a" });
-    expect(buildRecon(rows, jobs, quote).problems.join()).toMatch(/not on this job's quote/);
-    expect(buildRecon(rows, [{ id: "job-a", label: "A", has_quote: false }], []).ok).toBe(true);
+  it("blocks a unit that is not on the job's quote; materials stay in the pool", () => {
+    const gas = assign(buildPreview("delivery_note", [L(1, "G005")], products), { 0: "job-a" });
+    expect(buildRecon(gas, jobs, quote).problems.join()).toMatch(/pool/);
+    const unit = assign(buildPreview("delivery_note", [L(1, "FCMI-12-P"), L(2, "FCMI-12X-P")], products), { 0: "job-a", 1: "job-a" });
+    expect(buildRecon(unit, jobs, quote).problems.join()).toMatch(/not on this job's quote/);
+    const reserved = buildPreview("delivery_note", [L(1, "FCMI-24-P"), L(2, "FCMI-24X-P")], products, [], "job-a");
+    expect(buildRecon(reserved, [{ id: "job-a", label: "A", has_quote: false }], []).ok).toBe(true);
   });
 });

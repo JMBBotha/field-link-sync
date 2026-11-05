@@ -47,10 +47,13 @@ describe("buildPreview", () => {
   ];
   it("delivery note: catalogue cost, no stock added, units can be reserved for a job", () => {
     const rows = buildPreview("delivery_note", lines, products, [], "job-test-1");
-    expect(rows[0]).toMatchObject({ action: "reserve", job_id: "job-test-1", cost_source: "catalogue", adds_stock: false, unit_cost_pack: 10434.09 / 2 });
+    expect(rows[0]).toMatchObject({ action: "reserve", job_id: "job-test-1", bucket: "job_unit", half: "indoor", cost_source: "catalogue", adds_stock: false, unit_cost_pack: 10434.09 / 2 });
+    expect(rows[1]).toMatchObject({ bucket: "job_unit", half: "outdoor" });
     expect(rows[1].unit_cost_pack).toBe(10434.09 / 2);
     expect(rows[0].stock_key).not.toBe(rows[1].stock_key);
-    expect(rows[2]).toMatchObject({ action: "stock", stock_qty: 22.6, cost_per_stock_unit: 200, adds_stock: false });
+    expect(rows[0].vat_amount).toBeCloseTo((10434.09 / 2) * 0.15, 1);
+    expect(rows[2]).toMatchObject({ action: "stock", bucket: "material_pool", stock_qty: 22.6, cost_per_stock_unit: 200, adds_stock: false });
+    expect(rows[2].vat_amount).toBeCloseTo(2260 * 2 * 0.15, 2);
     expect(rows[2].notes.join()).toMatch(/invoice/);
   });
   it("invoice: adds stock at invoice price, inherits job from the delivery note, flags price change", () => {
@@ -59,7 +62,8 @@ describe("buildPreview", () => {
       { product_id: "p-fcmi24", normalised: "FCMI24", unit_cost_excl: 10434.09, receive_action: "reserve", receive_job_id: "job-test-2" },
     ];
     const rows = buildPreview("supplier_invoice", inv, products, earlier);
-    expect(rows[0]).toMatchObject({ action: "reserve", job_id: "job-test-2", cost_source: "invoice", adds_stock: true });
+    expect(rows[0]).toMatchObject({ action: "reserve", job_id: "job-test-2", bucket: "job_unit", cost_source: "invoice", adds_stock: true });
+    expect(rows[2].bucket).toBe("material_pool");
     expect(rows[0].price.level).toBe("warn"); // pair 21000 vs 10434.09
     expect(rows[1].price.level).toBe("warn");
     expect(rows[0].price.text).toMatch(/^Pair/);
@@ -70,12 +74,16 @@ describe("buildPreview", () => {
     expect(rows[2].price.level).toBe("none");
     expect(canConfirm(rows)).toBe(true);
     const payload = toReceivePayload(rows, { 1: "l1", 2: "l2", 3: "l3" });
-    expect(payload[0]).toMatchObject({ line_id: "l1", action: "reserve", job_id: "job-test-2", model_code: "FCMI24", unit_cost_pack: 11000, price_flag: "warn" });
+    expect(payload[0]).toMatchObject({ line_id: "l1", action: "reserve", job_id: "job-test-2", bucket: "job_unit", model_code: "FCMI24", unit_cost_pack: 11000, price_flag: "warn", half: "indoor" });
+    expect(payload[2].bucket).toBe("material_pool");
+    expect(payload[2].vat_amount).toBeCloseTo(2260 * 2 * 0.15, 2);
     expect(payload[2]).toMatchObject({ stock_unit: "kg", pack_size: 11.3, qty_packs: 2 });
   });
-  it("cannot confirm a reserve without a job", () => {
+  it("cannot confirm a reserve without a job, and an unassigned unit is general stock", () => {
     const rows = buildPreview("delivery_note", lines.slice(0, 1), products);
+    expect(rows[0]).toMatchObject({ action: "stock", bucket: "general_unit", job_id: null });
     rows[0].action = "reserve";
+    rows[0].bucket = "job_unit";
     expect(canConfirm(rows)).toBe(false);
   });
 });

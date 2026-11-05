@@ -33,7 +33,7 @@ export function MaterialsCard({ rows, qty, onQty, onSave, saving, count }: { row
   return (
     <Card className="rounded-2xl">
       <CardContent className="p-4 md:p-5 space-y-3">
-        <div><h3 className="font-semibold">Materials used</h3><p className="text-xs text-muted-foreground">From the quote. Change anything you used more or less of, then save to take it off stock.</p></div>
+        <div><h3 className="font-semibold">Materials used</h3><p className="text-xs text-muted-foreground">From the quote. Change anything you used more or less of. When an install allowance is active, finishing the job applies that allowance. You do not enter prices.</p></div>
         <DrawdownTable rows={rows} qty={qty} onQty={onQty} />
         <div className="flex justify-end"><Button onClick={onSave} disabled={saving || !count}>{saving ? "Saving…" : `Take ${count} item${count === 1 ? "" : "s"} off stock`}</Button></div>
       </CardContent>
