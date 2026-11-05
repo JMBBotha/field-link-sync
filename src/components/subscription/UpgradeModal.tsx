@@ -38,7 +38,8 @@ const UpgradeModal = ({ open, onOpenChange, reason = "limit_reached" }: UpgradeM
   const handleUpgrade = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const user = (await waitForAuthSession())?.user ?? null;
       if (!user) throw new Error("Not authenticated");
 
       const { data, error } = await supabase.functions.invoke("create-checkout-session", {

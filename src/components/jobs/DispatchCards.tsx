@@ -82,7 +82,7 @@ export default function DispatchCards() {
 
   const shown = useMemo(
     () => sortDispatchJobs(jobs.filter((j) => lane === "all" || boardLane({ kind: "job", id: j.id, status: j.status ?? "", job: j }) === lane), day, new Date()),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [jobs, lane, day],
   );
   const cards = [

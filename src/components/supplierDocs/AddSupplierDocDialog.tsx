@@ -41,7 +41,7 @@ export default function AddSupplierDocDialog({ open, onOpenChange, companyId, jo
       if (error) throw error;
       const docId = data.document_id as string;
       if (file) {
-        const path = `${companyId}/${docId}/${Date.now()}-${file.name.replace(/[^\w.\-]+/g, "_")}`;
+        const path = `${companyId}/${docId}/${Date.now()}-${file.name.replace(/[^\w.-]+/g, "_")}`;
         const up = await sb.storage.from(SJD_BUCKET).upload(path, file, { upsert: false, contentType: file.type || undefined });
         if (up.error) throw up.error;
         const { error: e2 } = await sb.from("supplier_job_documents").update({ storage_path: path, updated_at: new Date().toISOString() }).eq("id", docId);

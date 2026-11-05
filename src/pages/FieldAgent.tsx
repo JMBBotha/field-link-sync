@@ -418,7 +418,8 @@ const FieldAgent = () => {
       setLocationEnabled(true);
       try { localStorage.setItem(LAST_POS_KEY, JSON.stringify({ lat: latitude, lng: longitude, t: Date.now() })); } catch { /* ignore */ }
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const user = (await waitForAuthSession())?.user ?? null;
       if (!user) return;
       await shareLocationIfAllowed(latitude, longitude);
     };
@@ -663,7 +664,8 @@ const FieldAgent = () => {
       const { latitude, longitude } = position.coords;
       setCurrentLocation({ lat: latitude, lng: longitude });
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const user = (await waitForAuthSession())?.user ?? null;
       if (user) await shareLocationIfAllowed(latitude, longitude);
 
       toast({

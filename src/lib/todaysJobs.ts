@@ -130,7 +130,8 @@ export async function loadEntries(opts: { date?: string; before?: string; from?:
   if (opts.before) lq = lq.lt("scheduled_date", opts.before);
   if (opts.from) lq = lq.gte("scheduled_date", opts.from);
   if (opts.agentId) lq = lq.eq("assigned_agent_id", opts.agentId);
-  let [s, l] = await Promise.all([build(`${SCHED}, day_index, day_count`), lq]);
+  const [firstSchedules, l] = await Promise.all([build(`${SCHED}, day_index, day_count`), lq]);
+  let s = firstSchedules;
   if (s.error && (s.error as { code?: string }).code === "42703") s = await build(SCHED);
   if (s.error) throw s.error;
   if (l.error) throw l.error;

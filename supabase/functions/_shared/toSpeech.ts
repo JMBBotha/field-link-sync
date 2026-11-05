@@ -11,9 +11,9 @@ import { spokenRand, numberToWords } from "./numberSpeech.ts";
  */
 export function toSpeech(text: string): string {
   let t = text;
-  t = t.replace(/R\s?(\d{1,3}(?:[  ,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/g, (_m, num: string) => {
+  t = t.replace(/R\s?(\d{1,3}(?:[ \u00A0,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/g, (_m, num: string) => {
     // Already formatted by the client speech pass (space-grouped thousands) → keep.
-    if (/[  ]/.test(num)) return _m;
+    if (/[ \u00A0]/.test(num)) return _m;
     let s = num;
     // "17,825.22" or "17825,22"
     if (/,\d{1,2}$/.test(s) && !/\.\d/.test(s)) s = s.replace(/,(\d{1,2})$/, ".$1");

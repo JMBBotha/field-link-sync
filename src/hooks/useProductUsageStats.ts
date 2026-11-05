@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function useProductUsageStats() {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [usageMap, setUsageMap] = useState<Record<string, number>>({});
-  const [userId, setUserId] = useState<string | null>(null);
   const mountedRef = useRef(true);
   // Mirror of the latest usageMap so trackUsage can compute correct counts
   // without depending on usageMap (avoids stale-closure double-write bug).
@@ -12,20 +14,13 @@ export function useProductUsageStats() {
   useEffect(() => { usageMapRef.current = usageMap; }, [usageMap]);
 
   useEffect(() => {
+    if (!userId) return;
     mountedRef.current = true;
     const load = async () => {
-      const { data: { user }, error: userErr } = await supabase.auth.getUser();
-      if (userErr) {
-        console.error("[USAGE] getUser error:", userErr);
-        return;
-      }
-      if (!user || !mountedRef.current) return;
-      setUserId(user.id);
-
       const { data, error } = await supabase
         .from("product_usage_stats")
         .select("product_id, usage_count")
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
 
       if (!mountedRef.current) return;
       if (error) {
@@ -40,7 +35,7 @@ export function useProductUsageStats() {
     };
     load().catch((err) => console.error("[USAGE] load failed:", err));
     return () => { mountedRef.current = false; };
-  }, []);
+  }, [userId]);
 
   const trackUsage = useCallback((productId: string) => {
     if (!userId) return;

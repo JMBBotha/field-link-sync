@@ -403,7 +403,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
       undefined,
       { type: meta?.discount_type, value: meta?.discount_value },
     ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [activeTab, displayState, ctxItems, ctxAreas, meta?.discount_type, meta?.discount_value],
   );
   // Build Area Quote Pricing / Review / footer: same totals as the header, split per area.
@@ -789,7 +789,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   const addProductToBasket = useCallback((basketId: string, product: PaletteProduct) => {
     setBaskets((prev) => {
       // Ensure at least one basket exists
-      let updated = prev.length > 0 ? [...prev] : [{ id: "basket-1", name: "Zone 1", items: [] }];
+      const updated = prev.length > 0 ? [...prev] : [{ id: "basket-1", name: "Zone 1", items: [] }];
       return updated.map((basket) => {
         if (basket.id !== basketId) return basket;
         const existing = basket.items.find((i) => i.product.id === product.id && canMergeRepick(i.product, product));
@@ -1152,7 +1152,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
       hasWrittenRef.current = true;
       baselineSigRef.current = sig;
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.error("[QuoteBuilder] auto-save failed", err);
       if (err instanceof QuoteChangedElsewhereError) return;
       if (Date.now() - lastSaveErrorToastRef.current > 15_000) {
@@ -1241,7 +1241,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
           new Set(latestRef.current.products.map((p) => p.id)),
         );
       } catch (err) {
-        // eslint-disable-next-line no-console
+         
         console.error("[QuoteBuilder] discard restore failed", err);
         if (err instanceof QuoteChangedElsewhereError) toast({ title: "Not discarded: the quote was changed elsewhere", variant: "destructive" });
         else toast({
@@ -1766,7 +1766,8 @@ function NewQuoteClientPicker({
       return;
     }
     const handle = setTimeout(async () => {
-      const { data: userData } = await supabase.auth.getUser();
+      const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const userData = { user: (await waitForAuthSession())?.user ?? null };
       const userId = userData?.user?.id;
       if (!userId) return;
       const { data: profile } = await supabase
@@ -1801,7 +1802,8 @@ function NewQuoteClientPicker({
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      const { data: userData } = await supabase.auth.getUser();
+      const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const userData = { user: (await waitForAuthSession())?.user ?? null };
       const userId = userData?.user?.id;
       if (!userId) throw new Error("You must be logged in.");
       const { data: profile, error: profileErr } = await supabase
@@ -2096,7 +2098,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
       if (paramLeadId) insertPayload.lead_id = paramLeadId;
       if (customerName && customerName.trim()) insertPayload.customer_name = customerName.trim();
 
-      // eslint-disable-next-line no-console
+       
       console.log("[QuoteBuilder] Inserting draft payload:", insertPayload);
 
       const { data, error } = await (supabase.from("quotes") as any)
@@ -2104,7 +2106,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         .select("id")
         .single();
       if (error) {
-        // eslint-disable-next-line no-console
+         
         console.error("[QuoteBuilder] Insert error:", error);
         throw error;
       }
@@ -2129,7 +2131,8 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
 
     (async () => {
       try {
-        const { data: userData } = await supabase.auth.getUser();
+        const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const userData = { user: (await waitForAuthSession())?.user ?? null };
         const userId = userData?.user?.id;
         if (!userId) {
           toast({ title: "You must be logged in", variant: "destructive" });
@@ -2323,7 +2326,8 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
       setNeedsClient(false);
       setCreating(true);
       try {
-        const { data: userData } = await supabase.auth.getUser();
+        const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const userData = { user: (await waitForAuthSession())?.user ?? null };
         const userId = userData?.user?.id;
         if (!userId) throw new Error("You must be logged in.");
         const newId = await createDraft(userId, customerId, pendingSupersedeRef.current, customerName);

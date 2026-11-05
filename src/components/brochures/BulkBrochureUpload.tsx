@@ -208,7 +208,7 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
           try {
             const buf = await file.arrayBuffer();
             pageCount = await getPageCount(buf);
-          } catch {}
+          } catch { /* page count is optional */ }
 
           updateRow(idx, { filePath, pageCount, status: "parsing" });
           completed++;

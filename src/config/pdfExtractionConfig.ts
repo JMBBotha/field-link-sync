@@ -79,7 +79,7 @@ export const VALIDATION_RULES = {
   /** Maximum price sanity check */
   maxPrice: 1_000_000,
   /** Product code pattern — alphanumeric, dashes, slashes, plus, parens, spaces (for multi-SKU bundle codes like "FFA25A9 + FFA50A9 (X2)") */
-  productCodePattern: /^[A-Za-z0-9][A-Za-z0-9\-\/\s_.+()×x*,]{0,120}$/,
+  productCodePattern: /^[A-Za-z0-9][A-Za-z0-9\-/\s_.+()×x*,]{0,120}$/,
   /** Maximum description length */
   maxDescriptionLength: 1000,
   /** Minimum product code length */

@@ -44,7 +44,7 @@ export default function AdminRequestsPage() {
   const [sp, setSp] = useSearchParams();
   const urlFilter = sp.get("filter");
   const [filter, setFilterState] = useState<Filter>(FILTER_KEYS.includes(urlFilter || "") ? (urlFilter as Filter) : "open");
-  const setFilter = (f: Filter) => { setFilterState(f); const n = new URLSearchParams(sp); f === "open" ? n.delete("filter") : n.set("filter", f); setSp(n, { replace: true }); };
+  const setFilter = (f: Filter) => { setFilterState(f); const n = new URLSearchParams(sp); if (f === "open") n.delete("filter"); else n.set("filter", f); setSp(n, { replace: true }); };
   const [assignLead, setAssignLead] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [changing, setChanging] = useState<string | null>(null);

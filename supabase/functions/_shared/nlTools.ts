@@ -950,7 +950,9 @@ export async function executeTool(
       }
       q = q.range(from, from + take - 1);
       if (args.category) q = q.ilike("category", `%${args.category}%`);
-      let { data, error } = await q;
+      const firstPage = await q;
+      let data = firstPage.data;
+      const error = firstPage.error;
       if (error) throw error;
       if (!data?.length && patterns.length > 1) {
         const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");

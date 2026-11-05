@@ -370,7 +370,8 @@ export default function QuoteQuickEditor({
   const saveCustomService = async () => {
     const name = customName.trim().slice(0, 120);
     if (!name || !companyId) return;
-    const { data: u } = await supabase.auth.getUser();
+    const { waitForAuthSession } = await import("@/contexts/AuthContext");
+    const u = { user: (await waitForAuthSession())?.user ?? null };
     const { data, error } = await (supabase.from("catalog_services") as any)
       .insert({ name, description: customDesc.trim().slice(0, 1000) || null, origin: "custom", owner_company_id: companyId, created_by: u.user?.id ?? null })
       .select("id, name, description, sort_order, origin, owner_company_id, is_active, search_aliases")

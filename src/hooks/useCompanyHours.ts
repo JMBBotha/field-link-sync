@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { getUserCompanyId } from "@/lib/tenantUtils";
 import { hhmm, toMinutes, WORK_DAYS, WORK_END, WORK_START } from "@/lib/schedulingDefaults";
 
@@ -33,12 +34,13 @@ export function toCompanyHours(row: { work_days?: number[] | null; work_start?: 
 
 /** Own company's working hours (company isolation: only the caller's company row is read). */
 export function useCompanyHours(): CompanyHoursInfo {
+  const { user } = useAuth();
   const { data } = useQuery({
-    queryKey: ["company-hours"],
+    queryKey: ["company-hours", user?.id],
+    enabled: !!user?.id,
     staleTime: 10 * 60 * 1000,
     queryFn: async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const cid = await getUserCompanyId(auth.user?.id);
+      const cid = await getUserCompanyId(user?.id);
       if (!cid) return null;
       const { data } = await supabase.from("companies").select("work_days, work_start, work_end").eq("id", cid).maybeSingle();
       return data ?? null;

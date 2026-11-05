@@ -43,7 +43,7 @@ export interface CleanBanking {
 /** Normalise company_settings.banking_details: trim, drop stray brackets/typos like "250 655]", default the account name. */
 export function cleanBanking(raw: any): CleanBanking {
   const b = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const s = (v: unknown) => String(v ?? "").replace(/[\[\]{}()]/g, "").replace(/\s+/g, " ").trim();
+  const s = (v: unknown) => String(v ?? "").replace(/[[\]{}()]/g, "").replace(/\s+/g, " ").trim();
   const type = s(b.account_type);
   return {
     account_name: s(b.account_name) || COMPANY.legalName,

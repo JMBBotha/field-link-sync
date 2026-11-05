@@ -63,7 +63,9 @@ export async function saveUnitMockup(modelKey: string, label: string, file: File
   const up = await supabase.storage.from("product-media").upload(path, blob, { contentType: "image/png", upsert: true });
   if (up.error) throw up.error;
   const url = supabase.storage.from("product-media").getPublicUrl(path).data.publicUrl;
-  const { data: { user } } = await supabase.auth.getUser();
+  const { waitForAuthSession } = await import("@/contexts/AuthContext");
+  const session = await waitForAuthSession();
+  const user = session?.user;
   const { error } = await (supabase.from("unit_mockups") as any).upsert(
     { company_id: cid, model_key: modelKey, label, image_url: url, storage_path: path, created_by: user?.id ?? null, updated_at: new Date().toISOString() },
     { onConflict: "company_id,model_key" },

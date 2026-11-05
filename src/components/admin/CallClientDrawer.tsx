@@ -24,7 +24,8 @@ const CallClientDrawer = ({ open, onClose, leadId, customerPhone }: Props) => {
   const [calling, setCalling] = useState(false);
 
   const logCall = async (method: "ai" | "manual") => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { waitForAuthSession } = await import("@/contexts/AuthContext");
+    const user = (await waitForAuthSession())?.user ?? null;
     if (!user || !ctx) return;
     await supabase.from("communication_log").insert({
       lead_id: ctx.lead.id,

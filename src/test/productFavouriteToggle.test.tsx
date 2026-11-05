@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor, render, fireEvent, screen, cleanup } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { useState, type ReactNode } from "react";
 import type { PdfSelectionState } from "@/types/pdfSelection";
 import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
@@ -9,7 +10,11 @@ import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 
 const db = vi.hoisted(() => ({ rows: ["samsung"], fail: false, writes: [] as unknown[] }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
-  auth: { getUser: async () => ({ data: { user: { id: "owner" } } }) },
+  auth: {
+    getUser: async () => ({ data: { user: { id: "owner" } } }),
+    getSession: async () => ({ data: { session: { user: { id: "owner" } } } }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+  },
   from: (table: string) => {
     expect(table).toBe("product_favorites");
     return {
@@ -33,7 +38,9 @@ vi.mock("@/lib/liveProducts", () => ({ filterLiveIds: async (ids: string[]) => n
 
 beforeEach(() => { cleanup(); db.rows = ["samsung"]; db.fail = false; db.writes = []; });
 const wrapper = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{children}</QueryClientProvider>
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <AuthProvider>{children}</AuthProvider>
+  </QueryClientProvider>
 );
 
 describe("personal favourite toggle", () => {

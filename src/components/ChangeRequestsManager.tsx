@@ -283,13 +283,14 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
         // Value is ISO string
         updates.completed_at = value;
         break;
-      case "adjust_duration":
+      case "adjust_duration": {
         // Value is "X minutes"
         const mins = parseInt(value.replace(" minutes", ""), 10);
         if (!isNaN(mins)) {
           updates.estimated_duration_minutes = mins;
         }
         break;
+      }
       case "adjust_job_times":
         // Parse ISO times from the reason field (after ---)
         try {

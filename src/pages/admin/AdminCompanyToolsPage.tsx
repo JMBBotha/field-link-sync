@@ -29,7 +29,7 @@ export default function AdminCompanyToolsPage() {
   const stats = useMemo(() => summarise(types, tools), [types, tools]);
   const shown = stats.filter((s) => s.owned || s.ended).concat(stats.filter((s) => !s.owned && !s.ended)).slice(0, 3);
   const attention = needsAttention(tools);
-  const setOpen = (id: string | null) => { const n = new URLSearchParams(sp); id ? n.set("tool", id) : n.delete("tool"); setSp(n, { replace: true }); };
+  const setOpen = (id: string | null) => { const n = new URLSearchParams(sp); if (id) n.set("tool", id); else n.delete("tool"); setSp(n, { replace: true }); };
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 p-4 md:p-6" data-testid="company-tools-page">

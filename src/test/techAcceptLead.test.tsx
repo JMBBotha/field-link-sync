@@ -5,7 +5,7 @@ const toast = vi.fn();
 const rpc = vi.fn();
 let updateRows: any[] = [];
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast }) }));
-vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "tech1" } }) }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "tech1" } }), useOptionalAuth: () => ({ user: { id: "tech1" } }) }));
 vi.mock("@/hooks/useUserCompanyId", () => ({ useUserCompanyId: () => ({ companyId: "co1" }) }));
 vi.mock("@/components/scheduling/ClashGuard", () => ({ useClashGuard: () => ({ confirmBooking: async () => true, dialog: null }) }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));

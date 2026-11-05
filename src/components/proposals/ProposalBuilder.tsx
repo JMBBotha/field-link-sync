@@ -424,8 +424,8 @@ const ProposalBuilder = ({
           .eq("id", existingId);
         if (error) throw error;
       } else {
-        const { data: auth } = await supabase.auth.getUser();
-        payload.created_by = auth.user?.id || null;
+        const { waitForAuthSession } = await import("@/contexts/AuthContext");
+        payload.created_by = (await waitForAuthSession())?.user?.id || null;
         const { data: inserted, error } = await supabase
           .from("proposals" as any)
           .insert(payload)
@@ -494,8 +494,8 @@ const ProposalBuilder = ({
       if (rpcErr) throw rpcErr;
 
       // Get agent id
-      const { data: auth } = await supabase.auth.getUser();
-      const agentId = auth.user?.id || "00000000-0000-0000-0000-000000000001";
+      const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const agentId = (await waitForAuthSession())?.user?.id || "00000000-0000-0000-0000-000000000001";
 
       // Create a lead for the invoice
       const { data: newLead, error: leadErr } = await supabase
