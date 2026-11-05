@@ -216,7 +216,7 @@ const ProposalBuilder = ({
     if (!proposalId) return;
     (async () => {
       const { data: p } = await supabase
-        .from("proposals" as any)
+        .from("proposals")
         .select("*")
         .eq("id", proposalId)
         .single();
@@ -235,7 +235,7 @@ const ProposalBuilder = ({
       if (proposal.discount_value > 0) setShowDiscount(true);
 
       const { data: items } = await supabase
-        .from("proposal_items" as any)
+        .from("proposal_items")
         .select("*")
         .eq("proposal_id", proposalId)
         .order("sort_order");
@@ -419,7 +419,7 @@ const ProposalBuilder = ({
 
       if (existingId) {
         const { error } = await supabase
-          .from("proposals" as any)
+          .from("proposals")
           .update(payload)
           .eq("id", existingId);
         if (error) throw error;
@@ -427,7 +427,7 @@ const ProposalBuilder = ({
         const { waitForAuthSession } = await import("@/contexts/AuthContext");
         payload.created_by = (await waitForAuthSession())?.user?.id || null;
         const { data: inserted, error } = await supabase
-          .from("proposals" as any)
+          .from("proposals")
           .insert(payload)
           .select("id")
           .single();
@@ -438,10 +438,10 @@ const ProposalBuilder = ({
 
       // Save line items
       if (savedId) {
-        await supabase.from("proposal_items" as any).delete().eq("proposal_id", savedId);
+        await supabase.from("proposal_items").delete().eq("proposal_id", savedId);
         const validItems = lineItems.filter((i) => i.description);
         if (validItems.length > 0) {
-          await supabase.from("proposal_items" as any).insert(
+          await supabase.from("proposal_items").insert(
             validItems.map((i, idx) => ({
               proposal_id: savedId,
               service_id: i.service_id || null,
@@ -478,7 +478,7 @@ const ProposalBuilder = ({
       await saveProposal("approved");
     } else {
       // Update status to accepted
-      await supabase.from("proposals" as any).update({ status: "accepted" }).eq("id", existingId);
+      await supabase.from("proposals").update({ status: "accepted" }).eq("id", existingId);
     }
 
     const proposalSavedId = existingId;

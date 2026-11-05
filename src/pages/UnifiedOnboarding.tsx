@@ -473,7 +473,7 @@ const UnifiedOnboarding = () => {
           }).eq("id", companyId);
         } else {
           // Create new company: one server-side step (approved founders only — Release A hold).
-          const { data: newId, error: companyErr } = await (supabase.rpc as any)("fl_found_company", {
+          const { data: newId, error: companyErr } = await supabase.rpc("fl_found_company", {
             p_name: adminForm.company_name,
             p_slug: slug,
             p_rate: adminForm.default_hourly_rate,

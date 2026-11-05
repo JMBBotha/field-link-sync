@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { toJson } from "@/lib/jsonValue";
 import { buildInhousePricebook, type BookItem } from "./pricebookPdf";
 
 /**
@@ -38,7 +39,7 @@ async function renderPagesToJpeg(bytes: Uint8Array): Promise<Blob[]> {
 }
 
 export async function nextInhouseVersion(supplierId: string): Promise<number> {
-  const { count, error } = await (supabase.from("pdf_uploads") as any)
+  const { count, error } = await supabase.from("pdf_uploads")
     .select("id", { count: "exact", head: true }).eq("supplier_id", supplierId).eq("price_list_type", "in_house");
   if (error) throw error;
   return (count ?? 0) + 1;
@@ -76,8 +77,8 @@ export async function publishInhouseBook(args: { supplierId: string; supplierNam
       page_number: l?.page_number ?? null, row_bbox: l?.row_bbox ?? null, price_bbox: l?.price_bbox ?? null,
     };
   });
-  const { data, error } = await (supabase.rpc as any)("publish_inhouse_book", {
-    p_supplier_id: supplierId, p_file_name: fileName, p_pdf_url: pdfUrl, p_storage_path: pdfPath, p_pages: pages, p_items: payload,
+  const { data, error } = await supabase.rpc("publish_inhouse_book", {
+    p_supplier_id: supplierId, p_file_name: fileName, p_pdf_url: pdfUrl, p_storage_path: pdfPath, p_pages: toJson(pages), p_items: toJson(payload),
   });
   if (error) throw new Error(error.message || "Save rejected");
   return { uploadId: data as string, version, pdfUrl };

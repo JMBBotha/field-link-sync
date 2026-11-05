@@ -181,7 +181,7 @@ const MaterialStar = memo(function MaterialStar({ product }: { product: PaletteP
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const { error } = await (supabase.from("supplier_products") as any)
+      const { error } = await supabase.from("supplier_products")
         .update({ is_material_favorite: !isFav })
         .eq("id", product.id);
       if (error) throw error;
@@ -401,7 +401,7 @@ const BundleStar = memo(function BundleStar({ bundle }: { bundle: Bundle }) {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const { error } = await (supabase.from("installation_bundles") as any)
+      const { error } = await supabase.from("installation_bundles")
         .update({ is_favorite: !isFav })
         .eq("id", bundle.id);
       if (error) throw error;

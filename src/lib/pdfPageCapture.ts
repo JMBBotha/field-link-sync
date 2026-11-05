@@ -145,7 +145,7 @@ export async function capturePdfPages(
   // ── INVARIANT 1: create the book FIRST. Abort all page writes if it fails.
   const safeNameForPath = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const bookStoragePath = `${supplierId}/${safeNameForPath}`;
-  const { data: bookRow, error: bookErr } = await (supabase.from("pdf_uploads") as any)
+  const { data: bookRow, error: bookErr } = await supabase.from("pdf_uploads")
     .insert({
       supplier_id: supplierId,
       brand: brand || null,
@@ -175,7 +175,7 @@ export async function capturePdfPages(
     const aliases = Array.from(
       new Set([supplierId, supplierName, supplierName?.trim(), supplierName?.toUpperCase()].filter(Boolean) as string[])
     );
-    const { data: stale } = await (supabase.from("supplier_pdf_pages") as any)
+    const { data: stale } = await supabase.from("supplier_pdf_pages")
       .select("id, page_image_url, pdf_storage_path, supplier_id, pdf_filename")
       .in("supplier_id", aliases)
       .eq("pdf_filename", file.name);
@@ -193,7 +193,7 @@ export async function capturePdfPages(
       if (paths.size > 0) {
         try { await supabase.storage.from("supplier-pdf-pages").remove(Array.from(paths)); } catch (e) { console.warn("[PDF Capture] storage cleanup warn", e); }
       }
-      await (supabase.from("supplier_pdf_pages") as any)
+      await supabase.from("supplier_pdf_pages")
         .delete()
         .in("id", rows.map((r) => r.id));
     }
@@ -260,7 +260,7 @@ export async function capturePdfPages(
         .getPublicUrl(storagePath);
 
       // Insert into supplier_pdf_pages — ALWAYS stamped with the book id.
-      const { error: insertError } = await (supabase.from("supplier_pdf_pages") as any).insert({
+      const { error: insertError } = await supabase.from("supplier_pdf_pages").insert({
         supplier_id: supplierId,
         pdf_upload_id: pdfUploadId,
         pdf_filename: file.name,
@@ -305,10 +305,10 @@ export async function capturePdfPages(
           .from("supplier-pdf-pages")
           .getPublicUrl(pdfStoragePath);
         // Update this book's page records with the PDF storage path
-        await (supabase.from("supplier_pdf_pages") as any)
+        await supabase.from("supplier_pdf_pages")
           .update({ pdf_storage_path: pdfUrlData.publicUrl })
           .eq("pdf_upload_id", pdfUploadId);
-        await (supabase.from("pdf_uploads") as any)
+        await supabase.from("pdf_uploads")
           .update({ file_url: pdfUrlData.publicUrl })
           .eq("id", pdfUploadId);
         console.log("[PDF Capture] Original PDF linked for live overlays");
@@ -320,7 +320,7 @@ export async function capturePdfPages(
     }
   }
 
-  await (supabase.from("pdf_uploads") as any)
+  await supabase.from("pdf_uploads")
     .update({ page_count: pagesStored, status: errors > 0 ? "partial" : "parsed" })
     .eq("id", pdfUploadId);
 
@@ -340,7 +340,7 @@ export async function matchProductsToPdfPages(
   if (productCodes.length === 0) return 0;
 
   // Get all pages for this PDF
-  const { data: pages } = await (supabase.from("supplier_pdf_pages") as any)
+  const { data: pages } = await supabase.from("supplier_pdf_pages")
     .select("id, page_number")
     .eq("supplier_id", supplierName)
     .eq("pdf_filename", pdfFilename)
@@ -349,7 +349,7 @@ export async function matchProductsToPdfPages(
   if (!pages || pages.length === 0) return 0;
 
   // Get products matching these codes
-  const { data: products } = await (supabase.from("supplier_products") as any)
+  const { data: products } = await supabase.from("supplier_products")
     .select("id, product_code")
     .in(
       "product_code",
@@ -364,7 +364,7 @@ export async function matchProductsToPdfPages(
   let matched = 0;
 
   for (const product of products) {
-    const { error } = await (supabase.from("pdf_product_regions") as any).insert({
+    const { error } = await supabase.from("pdf_product_regions").insert({
       pdf_page_id: firstPageId,
       product_id: product.id,
       product_code: product.product_code,

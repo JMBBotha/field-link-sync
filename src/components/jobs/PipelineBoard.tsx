@@ -43,12 +43,12 @@ export function usePipelineData() {
     refetchInterval: 60_000,
     queryFn: async () => {
       const [quotes, invoices, jobs, leads] = await Promise.all([
-        (supabase.from("quotes") as any)
+        supabase.from("quotes")
           .select("id, company_id, status, total, created_at, sent_at, viewed_at, accepted_at, accepted_by, declined_at, updated_at, valid_until, lead_id, sales_engineer_id, created_by, owner_id, customer_name, customer_id, quote_number, option_group_id, option_label, option_chosen_id, customers(name, area, city)")
           .neq("status", "superseded").is("archived_at", null).order("created_at", { ascending: false }).limit(1000),
         supabase.from("invoices").select("quote_id, status, notes, grand_total").not("quote_id", "is", null).limit(2000),
         supabase.from("jobs").select("quote_id, status, created_at").not("quote_id", "is", null).limit(2000),
-        (supabase.from("leads") as any)
+        supabase.from("leads")
           .select("id, customer_name, customer_address, primary_intent, service_type, created_at, first_contact_at, customer_phone, phone, source, notes, status, assigned_agent_id, contact_attempts, stage2_done_at, sla_breached_at, quote_sla_breached_at, call_summary, call_next_action")
           .eq("status", "pending").is("deleted_at", null).is("merged_into_id", null).order("created_at", { ascending: false }).limit(500),
       ]);
@@ -57,7 +57,7 @@ export function usePipelineData() {
       const linkedIds = [...new Set(qs.map((q) => q.lead_id).filter(Boolean))] as string[];
       const repIds = [...new Set(qs.map((q) => q.sales_engineer_id).filter(Boolean))] as string[];
       const [linked, reps] = await Promise.all([
-        linkedIds.length ? (supabase.from("leads") as any).select("id, primary_intent, service_type").in("id", linkedIds) : { data: [] },
+        linkedIds.length ? supabase.from("leads").select("id, primary_intent, service_type").in("id", linkedIds) : { data: [] },
         repIds.length ? supabase.from("profiles").select("id, full_name").in("id", repIds) : { data: [] },
       ]);
       const laneByLead: Record<string, LeadLane | null> = {};

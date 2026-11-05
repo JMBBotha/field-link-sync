@@ -151,7 +151,7 @@ export function LocationShareCard({ className, preview = false }: { className?: 
   const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
-    const { data, error: rpcError } = await (supabase.rpc as any)("ensure_my_availability_schedule");
+    const { data, error: rpcError } = await supabase.rpc("ensure_my_availability_schedule");
     if (rpcError) {
       setError("Hours could not be loaded yet. They will appear after the location update is applied.");
       setLoading(false);
@@ -193,7 +193,7 @@ export function LocationShareCard({ className, preview = false }: { className?: 
   const save = async () => {
     setSaving(true);
     setError(null);
-    const { data, error: rpcError } = await (supabase.rpc as any)("save_my_availability_schedule", {
+    const { data, error: rpcError } = await supabase.rpc("save_my_availability_schedule", {
       p_days: draft.days,
       p_start: draft.start,
       p_end: draft.end,

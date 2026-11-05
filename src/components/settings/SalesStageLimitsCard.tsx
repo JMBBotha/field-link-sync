@@ -14,14 +14,14 @@ export default function SalesStageLimitsCard() {
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["sales-stage-limits", companyId], enabled: !!companyId,
-    queryFn: async () => { const { data } = await (supabase.from("company_settings") as any).select("sales_stage_limits").eq("company_id", companyId).maybeSingle(); return toLimits(data?.sales_stage_limits); },
+    queryFn: async () => { const { data } = await supabase.from("company_settings").select("sales_stage_limits").eq("company_id", companyId).maybeSingle(); return toLimits(data?.sales_stage_limits); },
   });
   const [f, setF] = useState<HbLimits>(DEFAULT_LIMITS);
   const [saving, setSaving] = useState(false);
   useEffect(() => { if (data) setF(data); }, [data]);
   const save = async () => {
     setSaving(true);
-    const { error } = await (supabase.from("company_settings") as any).update({ sales_stage_limits: f }).eq("company_id", companyId);
+    const { error } = await supabase.from("company_settings").update({ sales_stage_limits: f }).eq("company_id", companyId);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Heartbeat limits saved"); qc.invalidateQueries({ queryKey: ["sales-stage-limits"] }); qc.invalidateQueries({ queryKey: ["company-settings"] });

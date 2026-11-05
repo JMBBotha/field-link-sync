@@ -8,7 +8,7 @@ export function useJobPermissions(jobId: string | undefined) {
     queryKey: ["job-perms", jobId],
     enabled: !!jobId,
     queryFn: async (): Promise<JobPerms> => {
-      const { data, error } = await (supabase.rpc as any)("my_job_permissions", { p_job: jobId });
+      const { data, error } = await supabase.rpc("my_job_permissions", { p_job: jobId });
       if (error) throw error;
       return (data ?? { admin: false, rep: false, tech: false }) as JobPerms;
     },

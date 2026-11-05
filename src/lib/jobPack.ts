@@ -23,7 +23,7 @@ export const loadJobSheet = (id: string) => withOfflineCache(`job.${id}`, async 
 });
 
 export const loadPackingList = (id: string) => withOfflineCache(`packing.${id}`, async () => {
-  const { data, error } = await (supabase.rpc as any)("get_job_packing_list", { p_job_id: id });
+  const { data, error } = await supabase.rpc("get_job_packing_list", { p_job_id: id });
   if (error) throw error;
   return (data || []) as PackingRow[];
 });

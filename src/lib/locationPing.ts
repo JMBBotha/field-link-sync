@@ -30,7 +30,7 @@ export function clearLocationShareSnapshot() {
 export async function shareLocationIfAllowed(lat: number, lng: number, at: Date = new Date()): Promise<boolean> {
   if (!mayShareLocation(snapshot, at)) return false;
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
-  const { error } = await (supabase.rpc as any)("record_my_location_ping", { p_lat: lat, p_lng: lng });
+  const { error } = await supabase.rpc("record_my_location_ping", { p_lat: lat, p_lng: lng });
   if (error) {
     console.error("[location] ping rejected", error.message);
     return false;

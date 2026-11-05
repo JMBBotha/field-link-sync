@@ -20,7 +20,7 @@ export function useMyTechEarnings() {
     queryKey: ["my-tech-earnings"],
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("get_my_tech_earnings");
+      const { data, error } = await supabase.rpc("get_my_tech_earnings");
       if (error) throw error;
       return (data ?? []) as MyEarningRow[];
     },

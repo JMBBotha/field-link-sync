@@ -7,7 +7,7 @@ export default function QuoteOptionChip({ quoteId, groupId }: { quoteId: string;
   const q = useQuery({
     queryKey: ["quote-option-siblings", groupId], enabled: !!groupId,
     queryFn: async () => {
-      const { data } = await (supabase.from("quotes") as any).select("id, quote_number").eq("option_group_id", groupId).neq("id", quoteId).order("created_at");
+      const { data } = await supabase.from("quotes").select("id, quote_number").eq("option_group_id", groupId).neq("id", quoteId).order("created_at");
       return (data || []) as { id: string; quote_number: string | null }[];
     },
   });

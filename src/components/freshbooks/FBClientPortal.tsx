@@ -14,7 +14,7 @@ const FBClientPortal = () => {
   const { data: invoices = [] } = useQuery({
     queryKey: ["company-portal-invoices", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("company_invoices" as any).select("*, fb_contacts(name)").eq("company_id", companyId!).neq("status", "Archived").order("created_at", { ascending: false });
+      const { data } = await supabase.from("company_invoices").select("*, fb_contacts(name)").eq("company_id", companyId!).neq("status", "Archived").order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!companyId,

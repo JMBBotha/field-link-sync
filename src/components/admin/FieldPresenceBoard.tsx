@@ -9,7 +9,7 @@ export default function FieldPresenceBoard() {
   const q = useQuery({
     queryKey: ["presence-board"],
     refetchInterval: 60_000,
-    queryFn: async () => ((await (supabase.rpc as any)("presence_board")).data || []) as Row[],
+    queryFn: async () => ((await supabase.rpc("presence_board")).data || []) as Row[],
   });
   const rows = q.data || [];
   if (!rows.length) return null;

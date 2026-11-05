@@ -20,7 +20,7 @@ import { formatRand } from "@/utils/formatRand";
 import { formatSastDate } from "@/lib/salesTracker";
 import {
   ACTION_LABEL, STATUS_INFO, actionsFor, netOf, summarize, techsOf,
-  type TechAction, type TechEarningRow, type TechEarnings,
+  techEarningsFromJson, type TechAction, type TechEarningRow,
 } from "@/lib/techEarnings";
 
 const money = (v: number | null | undefined) => formatRand(Number(v) || 0);
@@ -33,7 +33,7 @@ function ReducePanel({ row, onDone }: { row: TechEarningRow; onDone: () => void 
   const { data: jobs } = useQuery({
     queryKey: ["callback-jobs", row.job_id],
     queryFn: async () => {
-      const { data } = await (supabase.from("jobs") as any)
+      const { data } = await supabase.from("jobs")
         .select("id, title, job_type, created_at").neq("id", row.job_id).order("created_at", { ascending: false }).limit(50);
       return (data ?? []) as { id: string; title: string | null; job_type: string | null; created_at: string }[];
     },
@@ -45,7 +45,7 @@ function ReducePanel({ row, onDone }: { row: TechEarningRow; onDone: () => void 
       return;
     }
     setBusy(true);
-    const { error } = await (supabase.rpc as any)("set_tech_earning_status", {
+    const { error } = await supabase.rpc("set_tech_earning_status", {
       p_id: row.id, p_action: "reduce", p_callback_job_id: jobId, p_reduction: n,
     });
     setBusy(false);
@@ -92,9 +92,9 @@ function OwnerEarnings() {
     queryKey: ["tech-earnings"],
     staleTime: 30_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("get_tech_earnings", {});
+      const { data, error } = await supabase.rpc("get_tech_earnings", {});
       if (error) throw error;
-      return (data ?? null) as TechEarnings | null;
+      return techEarningsFromJson(data);
     },
   });
   const refresh = () => {
@@ -105,7 +105,7 @@ function OwnerEarnings() {
   const act = async (row: TechEarningRow, action: TechAction) => {
     if (action === "reduce") { setReducing(reducing === row.id ? null : row.id); return; }
     setBusy(row.id);
-    const { error } = await (supabase.rpc as any)("set_tech_earning_status", { p_id: row.id, p_action: action });
+    const { error } = await supabase.rpc("set_tech_earning_status", { p_id: row.id, p_action: action });
     setBusy(null);
     if (error) { toast({ title: "Could not update", description: error.message, variant: "destructive" }); return; }
     toast({ title: ACTION_LABEL[action] });

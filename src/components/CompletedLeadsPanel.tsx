@@ -61,6 +61,7 @@ const CompletedLeadsPanel = ({ cards, onOpenJob, onLeadClick, onPanelClose, onRe
         if (cancelled || !data) return;
         const map = new Map<string, InvoiceInfo>();
         data.forEach((inv) => {
+          if (!inv.lead_id) return;
           map.set(inv.lead_id, {
             id: inv.invoice_id,
             invoice_number: inv.invoice_number,

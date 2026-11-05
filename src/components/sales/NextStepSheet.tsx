@@ -18,9 +18,9 @@ async function loadSummary(row: NextStep): Promise<Summary | null> {
   const id = row.entity_id; const kind = recordKind(row);
   if (kind === "quote") {
     const [q, a, i] = await Promise.all([
-      (supabase.from("quotes") as any).select("quote_number, customer_name, total, status, sent_at, created_at").eq("id", id).maybeSingle(),
-      (supabase.from("quote_areas") as any).select("name, sort_order").eq("quote_id", id).order("sort_order", { nullsFirst: false }),
-      (supabase.from("quote_items") as any).select("item_name, sort_order").eq("quote_id", id).is("parent_item_id", null).order("sort_order").limit(6),
+      supabase.from("quotes").select("quote_number, customer_name, total, status, sent_at, created_at").eq("id", id).maybeSingle(),
+      supabase.from("quote_areas").select("name, sort_order").eq("quote_id", id).order("sort_order", { nullsFirst: false }),
+      supabase.from("quote_items").select("item_name, sort_order").eq("quote_id", id).is("parent_item_id", null).order("sort_order").limit(6),
     ]);
     if (!q.data) return null;
     return { number: q.data.quote_number, client: q.data.customer_name, total: q.data.total, status: q.data.status, sent: q.data.sent_at, created: q.data.created_at,
@@ -28,8 +28,8 @@ async function loadSummary(row: NextStep): Promise<Summary | null> {
   }
   if (kind === "invoice") {
     const [inv, it] = await Promise.all([
-      (supabase.from("invoices") as any).select("invoice_number, customer_name, grand_total, status, sent_at, created_at").eq("id", id).maybeSingle(),
-      (supabase.from("invoice_items") as any).select("line_name, description, room_label, sort_order").eq("invoice_id", id).order("sort_order").limit(8),
+      supabase.from("invoices").select("invoice_number, customer_name, grand_total, status, sent_at, created_at").eq("id", id).maybeSingle(),
+      supabase.from("invoice_items").select("line_name, description, room_label, sort_order").eq("invoice_id", id).order("sort_order").limit(8),
     ]);
     if (!inv.data) return null;
     const items = (it.data || []) as any[];
@@ -37,7 +37,7 @@ async function loadSummary(row: NextStep): Promise<Summary | null> {
       desc: shortDescription([...new Set(items.map((x) => x.room_label).filter(Boolean))] as string[], items.map((x) => x.line_name || x.description)) };
   }
   if (kind === "lead") {
-    const { data } = await (supabase.from("leads") as any).select("customer_name, customer_address, phone, customer_phone, service_type, scheduled_date, scheduled_time, status, created_at, notes").eq("id", id).maybeSingle();
+    const { data } = await supabase.from("leads").select("customer_name, customer_address, phone, customer_phone, service_type, scheduled_date, scheduled_time, status, created_at, notes").eq("id", id).maybeSingle();
     if (!data) return null;
     return { number: data.service_type || "Site visit", client: data.customer_name, total: null, status: data.status, sent: null, created: data.created_at,
       desc: (data.notes || "").split("\n")[0].slice(0, 140), when: data.scheduled_date ? `${D(data.scheduled_date)}${data.scheduled_time ? ` · ${String(data.scheduled_time).slice(0, 5)}` : ""}` : "Not booked",

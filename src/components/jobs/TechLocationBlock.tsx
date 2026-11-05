@@ -13,7 +13,7 @@ export default function TechLocationBlock({ jobId, compact = false }: { jobId: s
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("job_tech_location", { p_job_id: jobId });
+      const { data, error } = await supabase.rpc("job_tech_location", { p_job_id: jobId });
       if (error) throw error;
       return data as JobTechLocation;
     },

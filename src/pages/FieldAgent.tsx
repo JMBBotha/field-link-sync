@@ -1178,7 +1178,7 @@ const FieldAgent = () => {
       }
       if (!cancelled) setInstallQuoteByLead(quoteMap);
       const found: Record<string, DepositInvoiceLike> = {};
-      const { data: chips, error: chipErr } = await (supabase.rpc as any)("get_field_deposit_chips", { p_lead_ids: ids });
+      const { data: chips, error: chipErr } = await supabase.rpc("get_field_deposit_chips", { p_lead_ids: ids });
       if (chipErr) {
         if (!cancelled) setInstallInvoicesByLead({});
         return;

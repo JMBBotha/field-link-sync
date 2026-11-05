@@ -7,9 +7,9 @@ export type QuoteSitePhoto = { id: string; url: string; caption: string | null }
 
 /** Staff (RLS-scoped): the quote's lead photos switched to "Client sees this" — same rule as the public quote-site-photos function. */
 export async function loadQuoteSitePhotos(quoteId: string): Promise<QuoteSitePhoto[]> {
-  const { data: q } = await (supabase.from("quotes") as any).select("lead_id").eq("id", quoteId).maybeSingle();
+  const { data: q } = await supabase.from("quotes").select("lead_id").eq("id", quoteId).maybeSingle();
   if (!q?.lead_id) return [];
-  const { data } = await (supabase.from("job_photos") as any)
+  const { data } = await supabase.from("job_photos")
     .select("id, storage_path, annotated_path, caption")
     .eq("lead_id", q.lead_id).eq("client_visible", true).order("created_at", { ascending: true }).limit(40);
   const out: QuoteSitePhoto[] = [];
@@ -58,7 +58,7 @@ export function QuoteSitePhotosBlock({ photos }: { photos: QuoteSitePhoto[] }) {
 export function QuoteSitePhotosEditor({ quoteId }: { quoteId: string }) {
   const { data: leadId } = useQuery({
     queryKey: ["quote-lead-id", quoteId],
-    queryFn: async () => ((await (supabase.from("quotes") as any).select("lead_id").eq("id", quoteId).maybeSingle()).data?.lead_id as string | null) ?? null,
+    queryFn: async () => ((await supabase.from("quotes").select("lead_id").eq("id", quoteId).maybeSingle()).data?.lead_id as string | null) ?? null,
   });
   if (!leadId) return null;
   return (

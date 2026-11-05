@@ -882,8 +882,8 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     setV8Busy(true);
     const a = v8Ask;
     const { error } = a.kind === "cancel"
-      ? await (supabase.rpc as any)("fl_cancel_booking", { p_lead_id: a.leadId, p_reason: v8Reason.trim(), p_job_id: a.jobId, p_schedule_id: a.scheduleId })
-      : await (supabase.rpc as any)("fl_unschedule_booking", { p_lead_id: a.leadId, p_job_id: a.jobId, p_schedule_id: a.scheduleId, p_reason: a.kind === "resched" ? v8Reason.trim() : null });
+      ? await supabase.rpc("fl_cancel_booking", { p_lead_id: a.leadId, p_reason: v8Reason.trim(), p_job_id: a.jobId, p_schedule_id: a.scheduleId })
+      : await supabase.rpc("fl_unschedule_booking", { p_lead_id: a.leadId, p_job_id: a.jobId, p_schedule_id: a.scheduleId, p_reason: a.kind === "resched" ? v8Reason.trim() : null });
     setV8Busy(false);
     if (error) { toast({ title: a.kind === "cancel" ? "Could not cancel" : "Could not unschedule", description: error.message, variant: "destructive" }); return; }
     setV8Ask(null); v8Refresh();
@@ -900,7 +900,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
         supabase.from("profiles").select("company_id").eq("id", userId || "").maybeSingle(),
       ]);
       const cid = (p.data as any)?.company_id;
-      const c = cid ? await (supabase.from("companies") as any).select("work_days, work_start, work_end").eq("id", cid).maybeSingle() : { data: null };
+      const c = cid ? await supabase.from("companies").select("work_days, work_start, work_end").eq("id", cid).maybeSingle() : { data: null };
       return { rows: (h.data || []) as HoursRow[], company: (c.data || null) as CompanyHours };
     },
   });
@@ -909,9 +909,9 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     enabled: v8,
     queryFn: async () => {
       const [l, j, r] = await Promise.all([
-        (supabase.from("leads") as any).select("id, customer_name, service_type, scheduled_date, scheduled_time, assigned_agent_id, created_at").eq("status", "cancelled").is("deleted_at", null).order("created_at", { ascending: false }).limit(40),
-        (supabase.from("jobs") as any).select("id, lead_id, title, scheduled_for").eq("status", "cancelled").not("lead_id", "is", null).order("updated_at", { ascending: false }).limit(40),
-        (supabase.from("status_change_log") as any).select("entity_id, new_status, created_at").eq("field_name", "cancel_reason").order("created_at", { ascending: false }).limit(200),
+        supabase.from("leads").select("id, customer_name, service_type, scheduled_date, scheduled_time, assigned_agent_id, created_at").eq("status", "cancelled").is("deleted_at", null).order("created_at", { ascending: false }).limit(40),
+        supabase.from("jobs").select("id, lead_id, title, scheduled_for").eq("status", "cancelled").not("lead_id", "is", null).order("updated_at", { ascending: false }).limit(40),
+        supabase.from("status_change_log").select("entity_id, new_status, created_at").eq("field_name", "cancel_reason").order("created_at", { ascending: false }).limit(200),
       ]);
       const why = new Map<string, string>();
       ((r.data || []) as any[]).forEach(x => { if (!why.has(x.entity_id)) why.set(x.entity_id, x.new_status); });
@@ -922,7 +922,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     },
   });
   const v8Reopen = async (c: { leadId: string; jobId: string | null; name: string }) => {
-    const { error } = await (supabase.rpc as any)("fl_reopen_booking", { p_lead_id: c.leadId, p_job_id: c.jobId });
+    const { error } = await supabase.rpc("fl_reopen_booking", { p_lead_id: c.leadId, p_job_id: c.jobId });
     if (error) { toast({ title: "Could not reopen", description: error.message, variant: "destructive" }); return; }
     v8Refresh();
     toast({ title: `Reopened · ${c.name}`, description: c.jobId ? "Back on its old slot: drag it to a new day or person." : "Back in Unscheduled: drag it onto a day or use Assign." });

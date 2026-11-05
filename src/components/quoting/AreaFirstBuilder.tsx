@@ -22,7 +22,7 @@ export default function AreaFirstBuilder({ pdfBasket }: { pdfBasket?: PdfSelecte
     queryKey: ["quote-prepared-for", quoteId, m.customer_id ?? null],
     enabled: !!quoteId,
     queryFn: async () => {
-      const { data } = await (supabase.from("quotes") as any).select(`quote_number, customer_name, created_at, customers(${CUSTOMER_BILLTO_COLUMNS}), customer_locations!quotes_location_id_fkey(address), leads!quotes_lead_id_fkey(customer_address)`).eq("id", quoteId).maybeSingle();
+      const { data } = await supabase.from("quotes").select(`quote_number, customer_name, created_at, customers(${CUSTOMER_BILLTO_COLUMNS}), customer_locations!quotes_location_id_fkey(address), leads!quotes_lead_id_fkey(customer_address)`).eq("id", quoteId).maybeSingle();
       return data as any;
     },
   });

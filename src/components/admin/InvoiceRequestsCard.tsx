@@ -57,7 +57,7 @@ export default function InvoiceRequestsCard() {
 
   const approve = async (r: InvoiceRequestRow) => {
     setBusy(r.id);
-    const { data: invId, error } = await (supabase.rpc as any)("approve_invoice_request", { p_id: r.id });
+    const { data: invId, error } = await supabase.rpc("approve_invoice_request", { p_id: r.id });
     setBusy(null);
     if (error) { toast({ title: "Could not approve", description: error.message, variant: "destructive" }); return; }
     qc.invalidateQueries({ queryKey: ["invoice-requests"] });

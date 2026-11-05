@@ -1,5 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
+import { jsonBoolean, jsonNumber, jsonObject, jsonString } from "@/lib/jsonValue";
 
 /**
  * Lock state of a quote (Johan 2026-10-23): once accepted, reps/techs can't change it; once invoiced
@@ -30,11 +32,45 @@ export interface QuoteLockState {
 
 export const quoteLockKey = (quoteId: string | null | undefined) => ["quote-lock", quoteId ?? null] as const;
 
+const LOCK_STATES: QuoteLockStateName[] = ["open", "accepted_locked", "confirmed_locked", "accepted_unlocked", "invoiced"];
+
+function quoteLockFromJson(value: Json | null): QuoteLockState | null {
+  const row = jsonObject(value);
+  const state = row?.state;
+  if (!row || typeof state !== "string" || !LOCK_STATES.includes(state as QuoteLockStateName)) return null;
+  const unlock = jsonObject(row.last_unlock);
+  const parent = jsonObject(row.parent);
+  const variations = Array.isArray(row.variations) ? row.variations.flatMap((item) => {
+    const line = jsonObject(item);
+    if (!line || typeof line.id !== "string") return [];
+    return [{ id: line.id, quote_number: jsonString(line.quote_number), status: jsonString(line.status), total: jsonNumber(line.total) }];
+  }) : [];
+  return {
+    state: state as QuoteLockStateName,
+    status: jsonString(row.status),
+    locked_at: jsonString(row.locked_at),
+    locked_reason: jsonString(row.locked_reason),
+    invoice_number: jsonString(row.invoice_number),
+    invoice_status: jsonString(row.invoice_status),
+    is_admin: jsonBoolean(row.is_admin),
+    can_edit: jsonBoolean(row.can_edit),
+    can_unlock: jsonBoolean(row.can_unlock),
+    can_relock: jsonBoolean(row.can_relock),
+    can_variation: jsonBoolean(row.can_variation),
+    can_correct_client: jsonBoolean(row.can_correct_client),
+    last_unlock: unlock && typeof unlock.at === "string" ? { at: unlock.at, reason: jsonString(unlock.reason), by: jsonString(unlock.by) } : null,
+    variations,
+    parent: parent && typeof parent.id === "string" ? { id: parent.id, quote_number: jsonString(parent.quote_number) } : null,
+    is_variation: jsonBoolean(row.is_variation),
+    variation_kind: jsonString(row.variation_kind),
+  };
+}
+
 export async function fetchQuoteLockState(quoteId: string): Promise<QuoteLockState | null> {
-  const { data, error } = await (supabase.rpc as any)("quote_lock_state", { p_quote_id: quoteId });
+  const { data, error } = await supabase.rpc("quote_lock_state", { p_quote_id: quoteId });
   // Until 0029 is applied the RPC doesn't exist: behave exactly as before (no banner, editable).
   if (error) { console.warn("[quote-lock] state unavailable", error.message); return null; }
-  return (data as QuoteLockState) ?? null;
+  return quoteLockFromJson(data);
 }
 
 /** True when the UI should show the quote read-only. Unknown state (null) keeps the old behaviour. */

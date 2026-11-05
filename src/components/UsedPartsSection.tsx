@@ -69,7 +69,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
     queryKey: ["job-used-parts", leadId, showCost],
     queryFn: async () => {
       // Server RPC: returns cost fields only to non-technicians (techs get null).
-      const { data, error } = await (supabase.rpc as any)("get_job_used_parts", { p_lead_id: leadId });
+      const { data, error } = await supabase.rpc("get_job_used_parts", { p_lead_id: leadId });
       if (error) throw error;
       return ((data || []) as UsedPart[]).map((p) =>
         showCost ? p : { ...p, unit_cost: undefined, line_total: undefined }
@@ -83,12 +83,12 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
     queryKey: ["product-sell-options", showCost],
     queryFn: async () => {
       if (showCost) {
-        const { data, error } = await (supabase.rpc as any)("get_product_sell_options");
+        const { data, error } = await supabase.rpc("get_product_sell_options");
         if (error) throw error;
         return (data || []) as SellOption[];
       }
       // Techs: price-free catalogue (the server fills part cost on insert).
-      const { data, error } = await (supabase.rpc as any)("get_tech_catalogue");
+      const { data, error } = await supabase.rpc("get_tech_catalogue");
       if (error) throw error;
       return ((data || []) as { id: string; name: string | null; model: string | null; category: string | null }[])
         .map((r) => ({ id: r.id, product_code: r.model, short_name: r.name, description: r.name, category: r.category, is_pinned: false, sell_excl_vat: null })) as unknown as SellOption[];
@@ -150,7 +150,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
 
       if (isOnline) {
         const { error } = await supabase
-          .from("job_used_parts" as any)
+          .from("job_used_parts")
           .insert(partData as any);
         if (error) throw error;
         console.log("[Parts] Added part online:", product.product_code);
@@ -177,7 +177,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
   const deletePartMutation = useMutation({
     mutationFn: async (partId: string) => {
       if (isOnline) {
-        const { data: deleted, error } = await (supabase.rpc as any)("delete_job_used_part", { p_id: partId });
+        const { data: deleted, error } = await supabase.rpc("delete_job_used_part", { p_id: partId });
         if (error) throw error;
         if (!deleted) throw new Error("Part could not be removed");
         console.log("[Parts] Deleted part online:", partId.slice(0, 8));

@@ -43,7 +43,7 @@ const EMPTY: CatalogAllowlist = {
 /** Read the ids of the active Visual PDF books. Safe: failure returns an empty set. */
 export async function fetchActiveUploadIds(): Promise<Set<string>> {
   try {
-    const { data } = await (supabase.from("pdf_uploads") as any).select("id, is_active").limit(2000);
+    const { data } = await supabase.from("pdf_uploads").select("id, is_active").limit(2000);
     const out = new Set<string>();
     for (const u of (data || []) as any[]) {
       // Older rows predate the flag — treat missing as active.
@@ -60,7 +60,7 @@ export async function fetchActiveUploadIds(): Promise<Set<string>> {
 export async function fetchVisualCatalogAllowlist(): Promise<CatalogAllowlist> {
   try {
     const [regionsRes, activeUploadIds] = await Promise.all([
-      fetchAllPages<any>((from, to) => (supabase.from("pdf_product_regions") as any).select("product_id, product_code").order("id", { ascending: true }).range(from, to)),
+      fetchAllPages<any>((from, to) => supabase.from("pdf_product_regions").select("product_id, product_code").order("id", { ascending: true }).range(from, to)),
       fetchActiveUploadIds(),
     ]);
 

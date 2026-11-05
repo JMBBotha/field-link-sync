@@ -20,7 +20,7 @@ const BrandDiscountsSection = () => {
   const { data: brands = [] } = useQuery({
     queryKey: ["distinct-brands"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
+      const { data, error } = await supabase.from("supplier_products")
         .select("brand")
         .or("archived.is.null,archived.eq.false")
         .not("brand", "is", null);
@@ -34,7 +34,7 @@ const BrandDiscountsSection = () => {
   const { data: brandCounts = {} } = useQuery({
     queryKey: ["brand-product-counts"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
+      const { data, error } = await supabase.from("supplier_products")
         .select("brand")
         .or("archived.is.null,archived.eq.false")
         .not("brand", "is", null);
@@ -51,7 +51,7 @@ const BrandDiscountsSection = () => {
   const { data: activeDiscounts = [] } = useQuery({
     queryKey: ["brand-discounts"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("brand_discounts") as any)
+      const { data, error } = await supabase.from("brand_discounts")
         .select("*")
         .order("brand");
       if (error) throw error;
@@ -73,7 +73,7 @@ const BrandDiscountsSection = () => {
       if (!selectedBrand || parsedDiscount <= 0) throw new Error("Select brand and discount");
 
       // Get all products of this brand
-      const { data: products, error: fetchErr } = await (supabase.from("supplier_products") as any)
+      const { data: products, error: fetchErr } = await supabase.from("supplier_products")
         .select("id, cost_excl_vat, original_cost_excl_vat, default_markup_percent")
         .eq("brand", selectedBrand)
         .or("archived.is.null,archived.eq.false");
@@ -84,7 +84,7 @@ const BrandDiscountsSection = () => {
         const origCost = p.original_cost_excl_vat ?? p.cost_excl_vat;
         const newCostPrice = applyDiscount(origCost, parsedDiscount);
 
-        const { error } = await (supabase.from("supplier_products") as any)
+        const { error } = await supabase.from("supplier_products")
           .update({
             original_cost_excl_vat: origCost,
             cost_price: newCostPrice,
@@ -95,7 +95,7 @@ const BrandDiscountsSection = () => {
       }
 
       // Upsert brand_discounts record
-      const { error: upsertErr } = await (supabase.from("brand_discounts") as any)
+      const { error: upsertErr } = await supabase.from("brand_discounts")
         .upsert({
           brand: selectedBrand,
           discount_percentage: parsedDiscount,
@@ -117,14 +117,14 @@ const BrandDiscountsSection = () => {
   const revertMutation = useMutation({
     mutationFn: async (brand: string) => {
       // Get products with original cost
-      const { data: products, error: fetchErr } = await (supabase.from("supplier_products") as any)
+      const { data: products, error: fetchErr } = await supabase.from("supplier_products")
         .select("id, original_cost_excl_vat, default_markup_percent")
         .eq("brand", brand)
         .not("original_cost_excl_vat", "is", null);
       if (fetchErr) throw fetchErr;
 
       for (const p of (products || [])) {
-        const { error } = await (supabase.from("supplier_products") as any)
+        const { error } = await supabase.from("supplier_products")
           .update({
             cost_price: p.original_cost_excl_vat,
             cost_excl_vat: p.original_cost_excl_vat,
@@ -135,7 +135,7 @@ const BrandDiscountsSection = () => {
       }
 
       // Delete brand_discounts row
-      const { error: delErr } = await (supabase.from("brand_discounts") as any)
+      const { error: delErr } = await supabase.from("brand_discounts")
         .delete()
         .eq("brand", brand);
       if (delErr) throw delErr;

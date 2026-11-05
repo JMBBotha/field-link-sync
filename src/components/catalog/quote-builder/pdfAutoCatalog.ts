@@ -148,7 +148,7 @@ export async function autoCatalogFromRegions(
   console.log(`[autoCatalog] Resolved supplier UUID: ${supplierUuid} from "${supplierText}"`);
 
   // Brand comes from the price book, never from the supplier name.
-  const { data: bookRow } = await (supabase.from("pdf_uploads") as any)
+  const { data: bookRow } = await supabase.from("pdf_uploads")
     .select("brand")
     .eq("id", pdfUploadId)
     .maybeSingle();
@@ -157,7 +157,7 @@ export async function autoCatalogFromRegions(
   // Look up discount and markup from the suppliers table
   let supplierDiscountPercent = 0;
   let supplierMarkupPercent = 35; // default 35%
-  const { data: supplierData } = await (supabase.from("suppliers") as any)
+  const { data: supplierData } = await supabase.from("suppliers")
     .select("supplier_discount_percent, default_trade_discount, default_markup_percent")
     .eq("id", supplierUuid)
     .limit(1);
@@ -221,7 +221,7 @@ export async function autoCatalogFromRegions(
 
   // Check which SKUs already exist for this supplier
   // Check ALL products (including archived) to avoid unique constraint violations
-  const { data: existing } = await (supabase.from("supplier_products") as any)
+  const { data: existing } = await supabase.from("supplier_products")
     .select("product_code")
     .eq("supplier_id", supplierUuid);
 

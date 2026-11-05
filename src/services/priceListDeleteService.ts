@@ -11,7 +11,7 @@ export async function deletePriceListUpload(uploadId: string): Promise<{
   error?: string;
 }> {
   try {
-    const { data: upload, error: fetchErr } = await (supabase.from("price_list_uploads") as any)
+    const { data: upload, error: fetchErr } = await supabase.from("price_list_uploads")
       .select("id, supplier_id, file_name")
       .eq("id", uploadId)
       .maybeSingle();

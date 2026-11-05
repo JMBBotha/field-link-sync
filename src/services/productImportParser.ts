@@ -119,7 +119,7 @@ export type { PageReport };
 // ─── FETCH SUPPLIER SETTINGS ───
 
 export async function getSupplierPricingSettings(supplierId: string): Promise<SupplierPricingSettings> {
-  const { data: supplier } = await (supabase.from("suppliers") as any)
+  const { data: supplier } = await supabase.from("suppliers")
     .select("name, default_trade_discount, default_markup_percent, price_includes_vat")
     .eq("id", supplierId)
     .single();
@@ -306,7 +306,7 @@ async function parsePDFWithFullPipeline(
   try {
     let supplierType: string | null = null;
     try {
-      const { data: supRow } = await (supabase.from("suppliers") as any)
+      const { data: supRow } = await supabase.from("suppliers")
         .select("supplier_type").eq("id", supplierId).single();
       supplierType = supRow?.supplier_type || null;
     } catch { /* ignore */ }

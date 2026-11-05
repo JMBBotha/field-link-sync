@@ -209,7 +209,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     queryKey: ["supplier-config", supplierId],
     queryFn: async () => {
       const { data } = await supabase
-        .from("suppliers" as any)
+        .from("suppliers")
         .select("default_price_column, price_includes_vat, price_includes_markup, supplier_markup_percent, supplier_discount_percent, default_vat_rate")
         .eq("id", supplierId)
         .single();
@@ -223,7 +223,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     queryFn: async () => {
       // supplier_pdf_pages uses supplier name as supplier_id (text field)
       // supplier_pdf_pages.supplier_id is TEXT, so use ilike for flexible matching
-      const { data, error: fetchErr } = await (supabase.from("supplier_pdf_pages") as any)
+      const { data, error: fetchErr } = await supabase.from("supplier_pdf_pages")
         .select("id, supplier_id, pdf_filename, page_number, pdf_storage_path")
         .ilike("supplier_id", `%${supplierName}%`)
         .order("page_number");
@@ -597,7 +597,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     setAiMarkup(config.yourMarkupPercent);
 
     // Save config to supplier for next time
-    await supabase.from("suppliers" as any).update({
+    await supabase.from("suppliers").update({
       default_price_column: config.selectedPriceColumn,
       price_includes_vat: config.priceIncludesVat,
       price_includes_markup: config.priceIncludesMarkup,
@@ -706,7 +706,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           queryClient.invalidateQueries({ queryKey: ["stored-pdf-pages", supplierName] });
         }
         // Keep the book's pricing metadata in step with the import settings.
-        await (supabase.from("pdf_uploads") as any)
+        await supabase.from("pdf_uploads")
           .update({
             trade_discount_percent: tradeDiscount,
             markup_percent: aiMarkup,
@@ -860,11 +860,11 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       let imported = 0;
       for (let i = 0; i < rows.length; i += batchSize) {
         const batch = rows.slice(i, i + batchSize);
-        const { error: insertError } = await supabase.from("supplier_products" as any)
+        const { error: insertError } = await supabase.from("supplier_products")
           .upsert(batch as any, upsertOpts);
         if (insertError) {
           for (const row of batch) {
-            const { error: singleErr } = await supabase.from("supplier_products" as any)
+            const { error: singleErr } = await supabase.from("supplier_products")
               .upsert(row as any, upsertOpts);
             if (singleErr) errorCount++; else imported++;
           }

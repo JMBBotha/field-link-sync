@@ -5,6 +5,7 @@
  * parallel draft object. Returns the new quote id.
  */
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { getUserCompanyId } from "@/lib/tenantUtils";
 
 export async function createDraftQuoteForCustomer(
@@ -16,7 +17,7 @@ export async function createDraftQuoteForCustomer(
   const companyId = await getUserCompanyId(userId);
   if (!companyId) throw new Error("Your account is not linked to a company. Contact an admin.");
 
-  const payload: Record<string, unknown> = {
+  const payload: Database["public"]["Tables"]["quotes"]["Insert"] = {
     sales_engineer_id: userId,
     company_id: companyId,
     status: "draft",
@@ -28,7 +29,7 @@ export async function createDraftQuoteForCustomer(
   };
   if (customerName && customerName.trim()) payload.customer_name = customerName.trim();
 
-  const { data, error } = await (supabase.from("quotes") as any).insert(payload).select("id").single();
+  const { data, error } = await supabase.from("quotes").insert(payload).select("id").single();
   if (error) throw error;
   return data.id as string;
 }

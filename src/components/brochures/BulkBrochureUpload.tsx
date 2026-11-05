@@ -146,7 +146,7 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
     if (!open) return;
     setProductsLoading(true);
     (async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
+      const { data, error } = await supabase.from("supplier_products")
         .select("id, product_code, short_name, brand")
         .or("archived.is.null,archived.eq.false")
         .not("product_code", "like", "BRAC%")
@@ -378,13 +378,13 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
 
         if (row.matchedId) {
           const { error } = await supabase
-            .from("product_brochures" as any)
+            .from("product_brochures")
             .update(record)
             .eq("id", row.matchedId);
           if (error) throw error;
         } else {
           const { error } = await supabase
-            .from("product_brochures" as any)
+            .from("product_brochures")
             .insert(record);
           if (error) throw error;
         }

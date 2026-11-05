@@ -4,7 +4,33 @@ import { MapPin, Navigation } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PresenceTarget, presenceLabel, sastTime, canCancelTrip } from "@/lib/techLocation";
+import type { Json } from "@/integrations/supabase/types";
+import { jsonNumber, jsonObject, jsonString } from "@/lib/jsonValue";
 import { toast } from "sonner";
+
+function presenceTargets(value: Json | undefined): PresenceTarget[] {
+  if (!Array.isArray(value)) return [];
+  const out: PresenceTarget[] = [];
+  for (const item of value) {
+    const row = jsonObject(item);
+    const kind = row?.kind;
+    if (!row || (kind !== "job" && kind !== "sales_visit")) continue;
+    out.push({
+      kind,
+      title: jsonString(row.title),
+      distance_m: jsonNumber(row.distance_m),
+      id: jsonString(row.id) ?? undefined,
+      target: jsonString(row.target) ?? undefined,
+      en_route_at: jsonString(row.en_route_at),
+      arrived_at: jsonString(row.arrived_at),
+      left_at: jsonString(row.left_at),
+      window_end: jsonString(row.window_end),
+      en_route_source: jsonString(row.en_route_source),
+      nudge: row.nudge === true,
+    });
+  }
+  return out;
+}
 
 const MIN_SEND_MS = 30_000;   // throttle watchPosition fixes
 const TICK_MS = 45_000;       // foreground heartbeat (iPhone pauses watchPosition when idle)
@@ -20,7 +46,7 @@ export default function JobLocationShare() {
     refetchInterval: 5 * 60_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("my_presence_targets");
+      const { data, error } = await supabase.rpc("my_presence_targets");
       if (error) return [];
       return (data || []) as { kind: "job" | "sales_visit"; job_id: string | null; lead_id: string | null; title: string | null; window_end: string }[];
     },
@@ -34,10 +60,11 @@ export default function JobLocationShare() {
   const send = useCallback(async (pos: GeolocationPosition, force = false) => {
     if (!force && Date.now() - last.current < MIN_SEND_MS) return;
     last.current = Date.now();
-    const { data } = await (supabase.rpc as any)("report_presence", {
+    const { data } = await supabase.rpc("report_presence", {
       p_lat: pos.coords.latitude, p_lng: pos.coords.longitude, p_accuracy: Math.round(pos.coords.accuracy || 0),
     });
-    if (data?.targets) setState(data.targets);
+    const reported = jsonObject(data);
+    if (reported && "targets" in reported) setState(presenceTargets(reported.targets));
   }, []);
 
   useEffect(() => {
@@ -60,10 +87,10 @@ export default function JobLocationShare() {
   const [, setTick] = useState(0);
   useEffect(() => { const i = setInterval(() => setTick((n) => n + 1), 15_000); return () => clearInterval(i); }, []);
   const manual = async (kind: string, target: string, event: "start_trip" | "cancel_trip" | "arrived" | "left") => {
-    const { data, error } = await (supabase.rpc as any)("presence_manual", { p_kind: kind, p_target: target, p_event: event });
+    const { data, error } = await supabase.rpc("presence_manual", { p_kind: kind, p_target: target, p_event: event });
     if (error) { toast.error(error.message); return; }
     if (event === "start_trip") toast.success("Trip started. The office can see you're on the way.");
-    if (event === "cancel_trip" && data?.cancelled) toast("Trip cancelled");
+    if (event === "cancel_trip" && jsonObject(data)?.cancelled === true) toast("Trip cancelled");
     setState((st) => st.map((x) => x.target !== target ? x : event === "start_trip" ? { ...x, en_route_at: new Date().toISOString(), nudge: false }
       : event === "cancel_trip" ? { ...x, en_route_at: null } : event === "arrived" ? { ...x, arrived_at: new Date().toISOString() } : { ...x, left_at: new Date().toISOString() }));
     navigator.geolocation?.getCurrentPosition((p) => void send(p, true), () => {}, { timeout: 15_000 });

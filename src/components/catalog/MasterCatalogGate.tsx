@@ -11,7 +11,7 @@ export function useCanWriteMasterCatalog() {
     enabled: !!user?.id,
     staleTime: 300_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("can_write_master_catalog", { _uid: user!.id });
+      const { data, error } = await supabase.rpc("can_write_master_catalog", { _uid: user!.id });
       if (error) throw error;
       return !!data;
     },

@@ -10,7 +10,7 @@ export function useActiveSpecials() {
     queryKey: ["active-specials", today],
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_specials" as any) as any)
+      const { data, error } = await supabase.from("supplier_specials")
         .select("*").eq("is_active", true).lte("start_date", today).gte("end_date", today);
       if (error) return [] as SupplierSpecial[];
       return (data ?? []) as SupplierSpecial[];

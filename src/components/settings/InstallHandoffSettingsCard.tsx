@@ -12,7 +12,7 @@ export default function InstallHandoffSettingsCard() {
   const [mode, setMode] = useState<"manual" | "auto">("manual");
   useEffect(() => {
     if (!companyId) return;
-    (supabase.from("companies") as any).select("install_handoff_default").eq("id", companyId).maybeSingle()
+    supabase.from("companies").select("install_handoff_default").eq("id", companyId).maybeSingle()
       .then(({ data }: any) => data?.install_handoff_default && setMode(data.install_handoff_default));
   }, [companyId]);
   const save = async (v: "manual" | "auto") => {

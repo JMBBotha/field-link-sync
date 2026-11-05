@@ -31,7 +31,7 @@ export default function TellClientDialog({ open, onOpenChange, jobId, alertId, t
     if (!open) return;
     let cancelled = false;
     setLoading(true);
-    (supabase.rpc as any)("draft_client_job_message", { p_job_id: jobId, p_channel: channel, p_alert_id: alertId ?? null })
+    supabase.rpc("draft_client_job_message", { p_job_id: jobId, p_channel: channel, p_alert_id: alertId ?? null })
       .then(({ data, error }: any) => {
         if (cancelled) return;
         setLoading(false);
@@ -48,7 +48,7 @@ export default function TellClientDialog({ open, onOpenChange, jobId, alertId, t
   const approve = async () => {
     if (!draft) return;
     setSending(true);
-    const { error } = await (supabase.rpc as any)("approve_client_job_message", { p_id: draft.id, p_to: to, p_subject: channel === "email" ? subject : null, p_body: body });
+    const { error } = await supabase.rpc("approve_client_job_message", { p_id: draft.id, p_to: to, p_subject: channel === "email" ? subject : null, p_body: body });
     setSending(false);
     if (error) return toast.error(error.message);
     if (channel === "sms") {
@@ -60,7 +60,7 @@ export default function TellClientDialog({ open, onOpenChange, jobId, alertId, t
     onOpenChange(false);
   };
   const discard = async () => {
-    if (draft) await (supabase.rpc as any)("discard_client_job_message", { p_id: draft.id });
+    if (draft) await supabase.rpc("discard_client_job_message", { p_id: draft.id });
     onOpenChange(false);
   };
 

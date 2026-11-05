@@ -98,7 +98,7 @@ const ImportPreviewModal = ({
   const [existing, setExisting] = useState<ExistingProduct[]>([]);
   useEffect(() => {
     if (!supplierId) return;
-    (supabase.from("supplier_products" as any) as any)
+    supabase.from("supplier_products")
       .select("id, product_code, cost_price, description").eq("supplier_id", supplierId).limit(5000)
       .then(({ data }: any) => setExisting(data || []));
   }, [supplierId]);
