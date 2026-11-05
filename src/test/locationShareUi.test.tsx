@@ -35,8 +35,8 @@ describe("location share hours editor", () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ days: [2, 3, 4, 5] }));
     fireEvent.click(screen.getByTestId("schedule-day-6"));
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ days: [1, 2, 3, 4, 5, 6] }));
-    fireEvent.change(screen.getByTestId("schedule-start"), { target: { value: "08:00" } });
-    fireEvent.change(screen.getByTestId("schedule-end"), { target: { value: "16:00" } });
+    fireEvent.change(screen.getByLabelText("Start time hour"), { target: { value: "08" } });
+    fireEvent.change(screen.getByLabelText("End time hour"), { target: { value: "16" } });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ start: "08:00" }));
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ end: "16:00" }));
   });

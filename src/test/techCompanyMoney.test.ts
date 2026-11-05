@@ -22,7 +22,11 @@ describe("P9 tech company-settings money", () => {
   it("website intake uses the configured company only for website sources", () => {
     const rw = readFileSync("supabase/functions/receive-website-lead/index.ts", "utf8");
     const ing = readFileSync("supabase/functions/ingest-lead/index.ts", "utf8");
-    expect(rw).toContain("websiteLeadCompanyId(supabase)");
+    // 0800 website leads stay on Massair (Johan 2026-10-13). The configurable
+    // company lookup remains on ingest-lead, and only for a website form.
+    expect(rw).toContain("MASSAIR_COMPANY_ID");
+    expect(rw).not.toContain("websiteLeadCompanyId");
+    expect(ing).toContain("websiteLeadCompanyId(supabase)");
     expect(ing).toMatch(/!companyId && source === "website_form"/);
     for (const f of ["receive-vapi-lead", "twilio-inbound-call"]) {
       expect(readFileSync(`supabase/functions/${f}/index.ts`, "utf8")).not.toContain("websiteLeadCompanyId");

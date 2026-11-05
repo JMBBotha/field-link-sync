@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { MASSAIR_WEEK_TEMPLATE, toggleDay } from "@/lib/availabilitySchedule";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 
 export const POPIA_LOCATION_NOTICE =
   "You choose this. Location sharing stays off until you turn it on. Field Lynk shares your location only while you are signed in, marked Available, and inside the hours you set here. Your company uses the latest point for the Live Map, job arrival times, and nearby job offers. Colleagues do not see each other. Nothing new is recorded when you are Off, Busy, outside your hours, or after you turn this off. You can stop any time (POPIA: we process this location only because you opted in).";
@@ -102,24 +103,20 @@ export function ScheduleHoursForm({
       <div className="grid grid-cols-2 gap-3">
         <label className="text-sm font-medium">
           Start
-          <input
-            type="time"
+          <TimeInput24
             aria-label="Start time"
-            data-testid="schedule-start"
             value={draft.start}
             onChange={(e) => onChange({ ...draft, start: e.target.value })}
-            className="mt-1 flex h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+            className="mt-1 h-11"
           />
         </label>
         <label className="text-sm font-medium">
           End
-          <input
-            type="time"
+          <TimeInput24
             aria-label="End time"
-            data-testid="schedule-end"
             value={draft.end}
             onChange={(e) => onChange({ ...draft, end: e.target.value })}
-            className="mt-1 flex h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+            className="mt-1 h-11"
           />
         </label>
       </div>
