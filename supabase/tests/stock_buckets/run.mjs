@@ -25,6 +25,7 @@ await db.exec(fs.readFileSync(path.join(mig, "20261102210000_stock_receive.sql")
 await db.exec(fs.readFileSync(path.join(mig, "20261103080000_stock_pair_reserve_cost.sql"), "utf8"));
 await db.exec(fs.readFileSync(path.join(mig, "20261105140000_stock_three_buckets.sql"), "utf8"));
 await db.exec(fs.readFileSync(path.join(mig, "20261105150000_stock_doc_match.sql"), "utf8"));
+await db.exec(fs.readFileSync(path.join(mig, "20261105160000_stock_asof_returns.sql"), "utf8"));
 
 const co = "00000000-0000-0000-0000-0000000000c1";
 const job = "00000000-0000-0000-0000-0000000000b1";
@@ -187,6 +188,72 @@ INSERT INTO supplier_job_document_lines(id,document_id,company_id,line_no,model_
 await db.exec(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd30','[{"line_id":"00000000-0000-0000-0000-0000000000f1","action":"stock","model_code":"NOCOST1","item":"No cost","qty_packs":1,"bucket":"material_pool"}]')`);
 const noCost = await one(`SELECT m.unit_cost_excl IS NULL AS missing, l.cost_missing FROM stock_movements m JOIN supplier_job_document_lines l ON l.id=m.supplier_document_line_id WHERE l.id='00000000-0000-0000-0000-0000000000f1'`);
 if (!noCost?.missing || noCost.cost_missing !== true) fail("missing cost must stay null " + JSON.stringify(noCost));
+
+// As-of value stays awaiting until the delivery note's own timestamp.
+await db.exec(`
+INSERT INTO supplier_products(id,product_code,name,cost_price,product_type) VALUES ('00000000-0000-0000-0000-000000000f05','WIDGET-TEST','Widget',20,'consumable');
+INSERT INTO supplier_job_documents(id,company_id,doc_type,doc_number,po_number) VALUES
+ ('00000000-0000-0000-0000-00000000dd40','${co}','supplier_invoice','INV-W','PO-W'),
+ ('00000000-0000-0000-0000-00000000dd41','${co}','delivery_note','DN-W','PO-W');
+INSERT INTO supplier_job_document_lines(id,document_id,company_id,line_no,model_number,qty) VALUES
+ ('00000000-0000-0000-0000-0000000000aa','00000000-0000-0000-0000-00000000dd40','${co}',1,'WIDGET-TEST',3),
+ ('00000000-0000-0000-0000-0000000000ab','00000000-0000-0000-0000-00000000dd41','${co}',1,'WIDGET-TEST',3);
+`);
+await db.exec(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd40','[{"line_id":"00000000-0000-0000-0000-0000000000aa","action":"stock","product_id":"00000000-0000-0000-0000-000000000f05","model_code":"WIDGETTEST","qty_packs":3,"unit_cost_pack":20}]')`);
+await db.exec(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd41','[{"line_id":"00000000-0000-0000-0000-0000000000ab","action":"stock","product_id":"00000000-0000-0000-0000-000000000f05","model_code":"WIDGETTEST","qty_packs":3,"unit_cost_pack":20}]')`);
+await db.exec(`UPDATE supplier_job_document_lines SET received_at = clock_timestamp() + interval '2 hours' WHERE id='00000000-0000-0000-0000-0000000000ab'`);
+const histW = await one(`SELECT coalesce(sum(m.qty),0) AS q FROM stock_movements m JOIN cf_stock_items s ON s.id=m.stock_item_id WHERE s.model_code='WIDGETTEST' AND public.stock_qty_counts(m.kind,m.supplier_document_id,m.supplier_document_line_id, clock_timestamp())`);
+const laterW = await one(`SELECT coalesce(sum(m.qty),0) AS q FROM stock_movements m JOIN cf_stock_items s ON s.id=m.stock_item_id WHERE s.model_code='WIDGETTEST' AND public.stock_qty_counts(m.kind,m.supplier_document_id,m.supplier_document_line_id, clock_timestamp() + interval '3 hours')`);
+if (Number(histW.q) !== 0 || Number(laterW.q) !== 3) fail("as-of must stay awaiting until the delivery note timestamp " + JSON.stringify({ histW, laterW }));
+
+// Invoice variance is on the unit, and booking the unit out removes it from stock value.
+await db.exec(`
+INSERT INTO supplier_products(id,product_code,name,cost_price,product_type) VALUES ('00000000-0000-0000-0000-000000000f06','UNIT-VAR','Unit var',100,'ac_unit');
+INSERT INTO jobs(id,company_id,title,status,job_type) VALUES ('00000000-0000-0000-0000-0000000000b3','${co}','Variance job','scheduled','install');
+INSERT INTO supplier_job_documents(id,company_id,doc_type,doc_number,po_number) VALUES
+ ('00000000-0000-0000-0000-00000000dd50','${co}','delivery_note','DN-V','PO-V'),
+ ('00000000-0000-0000-0000-00000000dd51','${co}','supplier_invoice','INV-V','PO-V');
+INSERT INTO supplier_job_document_lines(id,document_id,company_id,line_no,model_number,qty) VALUES
+ ('00000000-0000-0000-0000-0000000000ba','00000000-0000-0000-0000-00000000dd50','${co}',1,'UNIT-VAR',1),
+ ('00000000-0000-0000-0000-0000000000bb','00000000-0000-0000-0000-00000000dd51','${co}',1,'UNIT-VAR',1);
+`);
+await db.exec(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd50','[{"line_id":"00000000-0000-0000-0000-0000000000ba","action":"reserve","job_id":"00000000-0000-0000-0000-0000000000b3","product_id":"00000000-0000-0000-0000-000000000f06","model_code":"UNITVAR","qty_packs":1,"unit_cost_pack":100,"bucket":"job_unit"}]')`);
+await db.exec(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd51','[{"line_id":"00000000-0000-0000-0000-0000000000bb","action":"reserve","job_id":"00000000-0000-0000-0000-0000000000b3","product_id":"00000000-0000-0000-0000-000000000f06","model_code":"UNITVAR","qty_packs":1,"unit_cost_pack":130,"bucket":"job_unit"}]')`);
+const varRow = await one(`SELECT unit_id IS NOT NULL AS on_unit, value_adjust FROM stock_movements WHERE reason='Invoice cost variance' AND supplier_document_line_id='00000000-0000-0000-0000-0000000000bb'`);
+if (!varRow?.on_unit || Number(varRow.value_adjust) !== 30) fail("variance must sit on the unit " + JSON.stringify(varRow));
+await db.exec(`SELECT job_book_out_units('00000000-0000-0000-0000-0000000000b3')`);
+const left = await one(`SELECT coalesce(sum(m.qty*coalesce(m.unit_cost_excl,0)+m.value_adjust),0) AS v, coalesce(sum(m.qty),0) AS q FROM stock_movements m JOIN cf_stock_items s ON s.id=m.stock_item_id WHERE s.model_code='UNITVAR' AND public.stock_qty_counts(m.kind,m.supplier_document_id,m.supplier_document_line_id)`);
+if (Number(left.q) !== 0 || Number(left.v) !== 0) fail("installed unit must leave no stock value " + JSON.stringify(left));
+
+let tooMuch = false;
+try {
+  await db.exec(`
+    INSERT INTO supplier_job_documents(id,company_id,doc_type,doc_number,po_number) VALUES ('00000000-0000-0000-0000-00000000dd14','${co}','credit_note','CN-BIG','PO-C');
+    INSERT INTO supplier_job_document_lines(id,document_id,company_id,line_no,model_number,qty) VALUES ('00000000-0000-0000-0000-0000000000c5','00000000-0000-0000-0000-00000000dd14','${co}',1,'COPPER-TEST',5);
+  `);
+  await db.query(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd14','[{"line_id":"00000000-0000-0000-0000-0000000000c5","action":"stock","product_id":"00000000-0000-0000-0000-000000000f03","model_code":"COPPERTEST","qty_packs":5,"unit_cost_pack":12}]')`);
+} catch (e) { tooMuch = /more than/.test(e.message); }
+if (!tooMuch) fail("credit larger than the open receipt must be rejected");
+
+await db.exec(`
+INSERT INTO supplier_products(id,product_code,name,cost_price,product_type) VALUES ('00000000-0000-0000-0000-000000000f07','UNIT-SER','Serial unit',50,'ac_unit');
+INSERT INTO supplier_job_documents(id,company_id,doc_type,doc_number,po_number) VALUES
+ ('00000000-0000-0000-0000-00000000dd60','${co}','delivery_note','DN-S','PO-S'),
+ ('00000000-0000-0000-0000-00000000dd61','${co}','credit_note','CN-S','PO-S'),
+ ('00000000-0000-0000-0000-00000000dd62','${co}','delivery_note','DN-S2','PO-S2');
+INSERT INTO supplier_job_document_lines(id,document_id,company_id,line_no,model_number,qty) VALUES
+ ('00000000-0000-0000-0000-0000000000ca','00000000-0000-0000-0000-00000000dd60','${co}',1,'UNIT-SER',2),
+ ('00000000-0000-0000-0000-0000000000cb','00000000-0000-0000-0000-00000000dd61','${co}',1,'UNIT-SER',1),
+ ('00000000-0000-0000-0000-0000000000cc','00000000-0000-0000-0000-00000000dd62','${co}',1,'UNIT-SER',1);
+`);
+await db.exec(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd60','[{"line_id":"00000000-0000-0000-0000-0000000000ca","action":"stock","product_id":"00000000-0000-0000-0000-000000000f07","model_code":"UNITSER","qty_packs":2,"unit_cost_pack":50,"bucket":"general_unit","serial_no":"SA,SB","delivered":true}]')`);
+await db.exec(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd61','[{"line_id":"00000000-0000-0000-0000-0000000000cb","action":"stock","product_id":"00000000-0000-0000-0000-000000000f07","model_code":"UNITSER","qty_packs":1,"unit_cost_pack":50,"serial_no":"SA"}]')`);
+const ret = await one(`SELECT count(*)::int AS n FROM stock_units WHERE supplier_code='UNITSER' AND serial_no='SA' AND returned_at IS NOT NULL`);
+const kept = await one(`SELECT count(*)::int AS n FROM stock_units WHERE supplier_code='UNITSER' AND serial_no='SB' AND returned_at IS NULL`);
+if (ret.n !== 1 || kept.n !== 1) fail("credit should return only serial SA " + JSON.stringify({ ret, kept }));
+await db.exec(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd62','[{"line_id":"00000000-0000-0000-0000-0000000000cc","action":"stock","product_id":"00000000-0000-0000-0000-000000000f07","model_code":"UNITSER","qty_packs":1,"unit_cost_pack":50,"bucket":"general_unit","serial_no":"SA","delivered":true}]')`);
+const againSa = await one(`SELECT count(*)::int AS live FROM stock_units WHERE supplier_code='UNITSER' AND serial_no='SA' AND returned_at IS NULL`);
+if (againSa.live !== 1) fail("returned serial SA must be receivable again");
 
 let stranger = false;
 await db.exec(`DELETE FROM okco`);

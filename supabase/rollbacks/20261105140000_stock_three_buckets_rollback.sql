@@ -257,6 +257,7 @@ DROP FUNCTION IF EXISTS public.job_book_out_units(uuid);
 DROP FUNCTION IF EXISTS public.stock_awaiting(uuid);
 DROP FUNCTION IF EXISTS public._sjd_match_line(uuid, text, text, text, uuid);
 DROP FUNCTION IF EXISTS public.stock_qty_counts(text, uuid, uuid);
+DROP FUNCTION IF EXISTS public.stock_qty_counts(text, uuid, uuid, timestamptz);
 DROP FUNCTION IF EXISTS public._stock_model_key(text);
 DROP FUNCTION IF EXISTS public._stock_move(uuid, text, text, uuid, uuid, text, numeric, numeric, numeric, uuid, uuid, uuid, text, uuid, text, uuid, uuid, uuid, numeric);
 DROP FUNCTION IF EXISTS public._stock_move(uuid, text, text, uuid, uuid, text, numeric, numeric, numeric, uuid, uuid, uuid, text, uuid, text, uuid, uuid, uuid);
