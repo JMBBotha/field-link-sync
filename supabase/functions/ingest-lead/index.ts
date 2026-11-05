@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { trustedCompanyId } from "../_shared/leadIntake.ts";
 import { websiteLeadCompanyId } from "../_shared/websiteIntake.ts";
+import { companyIsActive } from "../_shared/companyActive.ts";
 
 /**
  * ingest-lead — unified lead intake for Vapi calls, website forms,
@@ -352,8 +353,14 @@ Deno.serve(async (req) => {
     }
     if (!companyId) {
       const { data: firstCompany } = await supabase
-        .from("companies").select("id").order("created_at", { ascending: true }).limit(1).maybeSingle();
+        .from("companies").select("id, status").eq("status", "active").order("created_at", { ascending: true }).limit(1).maybeSingle();
       companyId = firstCompany?.id ?? null;
+    }
+    if (companyId && !(await companyIsActive(supabase, companyId))) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "company_archived" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // ---- classification -------------------------------------------------

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendAppointmentConfirmation } from "../_shared/appointmentConfirmation.ts";
+import { companyIsActive } from "../_shared/companyActive.ts";
 
 /**
  * book-appointment
@@ -240,6 +241,9 @@ serve(async (req) => {
     let leadId = openLeads?.[0]?.id || null;
     const isReschedule = !!openLeads?.[0]?.scheduled_date;
     let companyId = openLeads?.[0]?.company_id || customer.company_id || null;
+    if (companyId && !(await companyIsActive(supabase, companyId))) {
+      return fail("This company is archived. Say the office will phone back.");
+    }
 
     if (leadId) {
       const { error } = await supabase

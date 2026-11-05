@@ -14,6 +14,8 @@ interface Company {
   default_rate: number | null;
   services: string[] | null;
   onboarding_completed: boolean | null;
+  /** companies.status. 'archived' is dormant / history-only. */
+  status: string | null;
 }
 
 interface CompanyContextValue {
@@ -69,7 +71,7 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
       const col = isUUID(paramId) ? "id" : "slug";
       const { data, error } = await supabase
         .from("companies")
-        .select("id, name, slug, logo_url, vat_rate, services, onboarding_completed")
+        .select("id, name, slug, logo_url, vat_rate, services, onboarding_completed, status")
         .eq(col, paramId)
         .maybeSingle();
 
@@ -95,7 +97,7 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
         const { data: newCompany, error: insertError } = await supabase
           .from("companies")
           .insert(insertPayload)
-          .select("id, name, slug, logo_url, vat_rate, services, onboarding_completed")
+          .select("id, name, slug, logo_url, vat_rate, services, onboarding_completed, status")
           .single();
 
         if (!mountedRef.current || seq !== fetchSeqRef.current) return;

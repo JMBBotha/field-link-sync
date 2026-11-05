@@ -4,6 +4,7 @@ import { renderSignatureHtml, renderReminderSignatureHtml } from "../_shared/ema
 import { loadSignaturePerson, loadSignatureCompany, replyToFor } from "../_shared/signaturePerson.ts";
 import { renderBrandedEmail, finalInvoiceBodyHtml, brandedTransactionalFooter, type EmailBrand, type FinalInvoiceEmailData } from "../_shared/brandedEmail.ts";
 import { inlineEmailImages } from "../_shared/inlineEmailImages.ts";
+import { companyIsActive } from "../_shared/companyActive.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,6 +54,9 @@ serve(async (req) => {
     if (!coId && sender_user_id && signature_mode) {
       const { data: sp } = await supabase.from("profiles").select("company_id").eq("id", sender_user_id).maybeSingle();
       coId = sp?.company_id || null;
+    }
+    if (coId && !(await companyIsActive(supabase, coId))) {
+      return json(200, { success: true, skipped: true, reason: "company_archived" });
     }
     const sigCompany = signature_mode ? await loadSignatureCompany(supabase, coId) : null;
     const sigHtml = signature_mode === "reminder" ? renderReminderSignatureHtml(person, undefined, sigCompany) : renderSignatureHtml(person, undefined, sigCompany);

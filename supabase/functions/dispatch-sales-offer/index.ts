@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { admin, corsHeaders, createNextOffer, escalate, json, leadHasLocation, requireDispatcher, DEFAULT_RADIUS_KM } from "../_shared/dispatch.ts";
+import { companyIsActive } from "../_shared/companyActive.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -11,6 +12,11 @@ serve(async (req) => {
     if (!lead_id) return json({ error: "lead_id is required" }, 400);
 
     const db = admin();
+    const { data: leadCo } = await db.from("leads").select("company_id").eq("id", lead_id).maybeSingle();
+    if (!leadCo) return json({ error: "Lead not found" }, 404);
+    if (!(await companyIsActive(db, leadCo.company_id))) {
+      return json({ success: true, skipped: true, reason: "company_archived" });
+    }
 
     // Leads without a geo point can never be matched — queue instead of failing.
     if (!(await leadHasLocation(db, lead_id))) {

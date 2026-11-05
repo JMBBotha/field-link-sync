@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { companyIsActive } from "../_shared/companyActive.ts";
 import { trustedCompanyId } from "../_shared/leadIntake.ts";
 
 /**
@@ -124,6 +125,12 @@ serve(async (req) => {
       console.error("[receive-vapi-lead] No company route for this call; refusing to guess.");
       return new Response(JSON.stringify({ error: "No company is set up for this phone line." }), {
         status: 422,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!(await companyIsActive(supabase, resolvedCompanyId))) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "company_archived" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

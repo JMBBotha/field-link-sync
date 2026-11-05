@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireDispatcher } from "../_shared/dispatch.ts";
+import { companyIsActive } from "../_shared/companyActive.ts";
 
 /**
  * dispatch-job — Tiered assignment cascade
@@ -62,6 +63,13 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Job not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!(await companyIsActive(supabase, job.company_id))) {
+      return new Response(
+        JSON.stringify({ success: true, skipped: true, reason: "company_archived" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

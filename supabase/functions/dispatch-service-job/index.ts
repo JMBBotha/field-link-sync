@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { admin, corsHeaders, escalate, json, leadHasLocation, loadCandidates, requireDispatcher, DEFAULT_RADIUS_KM } from "../_shared/dispatch.ts";
+import { companyIsActive } from "../_shared/companyActive.ts";
 
 /**
  * dispatch-service-job — direct-assigns the nearest available technician
@@ -22,6 +23,9 @@ serve(async (req) => {
       .eq("id", lead_id)
       .maybeSingle();
     if (!lead) return json({ error: "Lead not found" }, 404);
+    if (!(await companyIsActive(db, lead.company_id))) {
+      return json({ success: true, skipped: true, reason: "company_archived" });
+    }
 
     if (lead.primary_intent && lead.primary_intent !== "service") {
       return json({ error: "Lead is not classified as a service request" }, 400);

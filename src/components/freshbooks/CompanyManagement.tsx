@@ -13,13 +13,14 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { DORMANT_BADGE } from "@/lib/companyStatus";
 
 type CompanyStatus = "active" | "on_hold" | "archived";
 
 const statusConfig: Record<CompanyStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className: string }> = {
   active: { label: "Active", variant: "default", className: "bg-[hsl(var(--success))]/15 text-[hsl(var(--success))] border-[hsl(var(--success))]/30" },
   on_hold: { label: "On Hold", variant: "secondary", className: "bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))] border-[hsl(var(--warning))]/30" },
-  archived: { label: "Archived", variant: "outline", className: "bg-muted text-muted-foreground border-border" },
+  archived: { label: DORMANT_BADGE, variant: "outline", className: "bg-amber-50 text-amber-950 border-amber-300" },
 };
 
 const CompanyManagement = () => {
@@ -36,7 +37,7 @@ const CompanyManagement = () => {
   const { data: companies = [], isLoading } = useQuery({
     queryKey: ["all-companies"],
     queryFn: async () => {
-      const { data } = await supabase.from("companies").select("id, name, slug, logo_url, status, created_at, updated_at, onboarding_completed, is_master, custom_service_limit, vat_rate, services").order("created_at", { ascending: false });
+      const { data } = await supabase.from("companies").select("id, name, slug, logo_url, status, dormant_payments_locked, created_at, updated_at, onboarding_completed, is_master, custom_service_limit, vat_rate, services").order("created_at", { ascending: false });
       return data || [];
     },
   });
@@ -79,6 +80,18 @@ const CompanyManagement = () => {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const lockPayments = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.rpc as any)("confirm_dormant_payment_lock", { p_company: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["all-companies"] });
+      toast({ title: "Payments locked", description: "This archived company is history only, including invoices that still have a balance." });
+    },
+    onError: (e: any) => toast({ title: "Couldn't lock payments", description: e.message, variant: "destructive" }),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("companies").delete().eq("id", id);
@@ -109,7 +122,7 @@ const CompanyManagement = () => {
 
   const confirmMessages: Record<string, { title: string; desc: string; buttonLabel: string; variant: "default" | "destructive" }> = {
     on_hold: { title: "Put Company On Hold", desc: "This company's users will still be able to log in but will see a notice. You can reactivate anytime.", buttonLabel: "Put On Hold", variant: "default" },
-    archived: { title: "Archive Company", desc: "This will hide the company from active views. Data is preserved and can be restored by reactivating.", buttonLabel: "Archive", variant: "destructive" },
+    archived: { title: "Archive company (dormant)", desc: "The company stays in this list for platform admins and is hidden from company switchers and the catalogue network. History stays readable. New quotes, jobs, dispatch and emails stop. Payments on invoices that still have a balance stay open until you lock them.", buttonLabel: "Archive", variant: "destructive" },
     active: { title: "Reactivate Company", desc: "This will restore the company to active status.", buttonLabel: "Reactivate", variant: "default" },
     delete: { title: "Delete Company Permanently", desc: "This will permanently delete this company and all associated data. This action cannot be undone.", buttonLabel: "Delete Forever", variant: "destructive" },
   };
@@ -197,6 +210,16 @@ const CompanyManagement = () => {
                       {status === "active" && (
                         <Button size="sm" variant="outline" onClick={() => navigate(`/client/${c.id}/dashboard`)}>
                           Enter <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                        </Button>
+                      )}
+                      {status === "archived" && (
+                        <Button size="sm" variant="outline" onClick={() => navigate(`/client/${c.id}/dashboard`)}>
+                          History
+                        </Button>
+                      )}
+                      {status === "archived" && !c.dormant_payments_locked && (
+                        <Button size="sm" variant="outline" disabled={lockPayments.isPending} onClick={() => lockPayments.mutate(c.id)}>
+                          Lock payments
                         </Button>
                       )}
                       <DropdownMenu>

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useCanWriteMasterCatalog } from "@/components/catalog/MasterCatalogGate";
+import { activeCompanies } from "@/lib/companyStatus";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,12 +26,12 @@ export default function NetworkMembersCard() {
     queryFn: async () => {
       const [c, m] = await Promise.all([
         // names only via the server (other companies' rows aren't readable directly any more)
-        (supabase.rpc as any)("network_company_names").then((r: any) => (r.error ? (supabase.from("companies") as any).select("id, name, is_master").order("name") : r)),
+        (supabase.rpc as any)("network_company_names").then((r: any) => (r.error ? (supabase.from("companies") as any).select("id, name, is_master, status").eq("status", "active").order("name") : r)),
         (supabase.from("company_network_members") as any).select("id, master_company_id, member_company_id, status, decided_at"),
       ]);
       if (c.error) throw c.error;
       if (m.error) throw m.error;
-      return { companies: (c.data || []) as { id: string; name: string; is_master: boolean }[], members: (m.data || []) as any[] };
+      return { companies: activeCompanies((c.data || []) as { id: string; name: string; is_master: boolean; status?: string | null }[]), members: (m.data || []) as any[] };
     },
   });
   if (!canWrite || !data) return null;
