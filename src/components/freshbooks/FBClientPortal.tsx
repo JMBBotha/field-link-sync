@@ -4,6 +4,7 @@ import { useCompany } from "@/providers/CompanyProvider";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, FileBarChart, CreditCard } from "lucide-react";
+import { ArchivedHistoryNote } from "@/components/company/CompanyHistorySimple";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
@@ -134,4 +135,8 @@ const FBClientPortal = () => {
   );
 };
 
-export default FBClientPortal;
+export default function FBClientPortalGate() {
+  const { company } = useCompany();
+  if (company?.status === "archived") return <ArchivedHistoryNote title="Client portal" body="Clients of this company use their own invoice links. This preview is the old empty copy, not the imported history." />;
+  return <FBClientPortal />;
+}

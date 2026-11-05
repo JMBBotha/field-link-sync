@@ -128,6 +128,7 @@ const FBClientPortal = lazyRetry(() => import("./components/freshbooks/FBClientP
 const FBProjectsList = lazyRetry(() => import("./components/freshbooks/FBProjectsList"));
 const CompanyManagement = lazyRetry(() => import("./components/freshbooks/CompanyManagement"));
 const FBCreateInvoicePage = lazyRetry(() => import("./pages/FBCreateInvoicePage"));
+const ClientShellAudit = lazyRetry(() => import("./components/company/ClientShellAudit"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -208,7 +209,7 @@ const App = () => (
                   <Route path="invoices/new" element={<FBCreateInvoicePage />} />
                   <Route path="estimates/new" element={<LegacyBuilderRedirect />} />
                   <Route path="portal" element={<FBClientPortal />} />
-                  <Route path="audit" element={<AuditLogViewer />} />
+                  <Route path="audit" element={<ClientShellAudit />} />
                 </Route>
 
                 {/* Full-page Quote Builder for client portal (outside FBLayout for full-bleed) */}

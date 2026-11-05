@@ -8,6 +8,7 @@ import { Plus, Search, User } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import CompanyHistorySimple from "@/components/company/CompanyHistorySimple";
 
 const FBContactsList = () => {
   const { companyId } = useCompany();
@@ -87,4 +88,12 @@ const FBContactsList = () => {
   );
 };
 
-export default FBContactsList;
+export default function FBContactsListGate() {
+  const { company, companyId } = useCompany();
+  if (company?.status === "archived" && companyId) {
+    return <CompanyHistorySimple companyId={companyId} title="Clients" rpc="company_history_customers" testId="history-clients" columns={[
+      { key: "name", label: "Client" }, { key: "status", label: "Status" }, { key: "email", label: "Email" }, { key: "phone", label: "Phone" },
+    ]} />;
+  }
+  return <FBContactsList />;
+}

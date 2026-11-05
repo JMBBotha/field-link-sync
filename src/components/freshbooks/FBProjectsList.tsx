@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
+import { ArchivedHistoryNote } from "@/components/company/CompanyHistorySimple";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -228,4 +229,8 @@ const FBProjectsList = () => {
   );
 };
 
-export default FBProjectsList;
+export default function FBProjectsListGate() {
+  const { company } = useCompany();
+  if (company?.status === "archived") return <ArchivedHistoryNote title="Projects" body="No projects were imported for this company. Nothing here can be added." />;
+  return <FBProjectsList />;
+}

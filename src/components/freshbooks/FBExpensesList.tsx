@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { ArchivedHistoryNote } from "@/components/company/CompanyHistorySimple";
 import { Badge } from "@/components/ui/badge";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -193,4 +194,8 @@ const FBExpensesList = () => {
   );
 };
 
-export default FBExpensesList;
+export default function FBExpensesListGate() {
+  const { company } = useCompany();
+  if (company?.status === "archived") return <ArchivedHistoryNote title="Expenses" body="Expenses were not part of this history import. Nothing here can be added." />;
+  return <FBExpensesList />;
+}
