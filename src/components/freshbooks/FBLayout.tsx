@@ -215,10 +215,16 @@ const FBLayout = () => {
         {/* Main content */}
         <main data-scroll-root className="flex-1 overflow-auto min-w-0 scroll-bounce scroll-room-sheet">
           <div className="p-4 md:p-6">
+            {company?.status === "archived" ? (
+              <div data-testid="fb-archived" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                Imported history for this company. Invoices, estimates, clients and payments here are not the live company&apos;s books.
+              </div>
+            ) : (
             <div data-testid="fb-archived" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               Archived area (admins only). Live invoices, payments and reports are in{" "}
               <NavLink to="/admin/invoices" className="font-semibold underline">Admin › Invoices</NavLink>.
             </div>
+            )}
             <Outlet />
           </div>
         </main>

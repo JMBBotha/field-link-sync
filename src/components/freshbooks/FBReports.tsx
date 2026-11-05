@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Download, FileText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import Papa from "papaparse";
+import { CompanyHistorySummary } from "@/components/company/CompanyHistorySimple";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 const COLORS = ["#2563EB", "#3B82F6", "#10B981", "#EF4444", "#8B5CF6"];
@@ -243,4 +244,8 @@ const FBReports = () => {
   );
 };
 
-export default FBReports;
+export default function FBReportsGate() {
+  const { company, companyId } = useCompany();
+  if (company?.status === "archived" && companyId) return <CompanyHistorySummary companyId={companyId} />;
+  return <FBReports />;
+}
