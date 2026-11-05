@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { r0Quote, r0Msg } from "@/lib/zeroPriceGuard";
 
 /**
@@ -16,7 +17,7 @@ export async function ensureQuoteReadyToSend(quoteId: string): Promise<void> {
     .maybeSingle();
   if (error) throw error;
 
-  const patch: Record<string, unknown> = {};
+  const patch: Database["public"]["Tables"]["quotes"]["Update"] = {};
   if (!q?.public_token) patch.public_token = crypto.randomUUID();
   if (q?.status === "draft") {
     patch.status = "sent";

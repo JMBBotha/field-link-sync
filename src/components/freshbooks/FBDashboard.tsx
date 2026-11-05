@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useState } from "react";
+import { CompanyHistorySummary } from "@/components/company/CompanyHistorySimple";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
@@ -351,4 +352,8 @@ const FBDashboard = () => {
   );
 };
 
-export default FBDashboard;
+export default function FBDashboardGate() {
+  const { company, companyId } = useCompany();
+  if (company?.status === "archived" && companyId) return <CompanyHistorySummary companyId={companyId} />;
+  return <FBDashboard />;
+}

@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { houseStatus, houseReminders, moneyByHouse, photosByHouse, DEFAULT_STEPS, phaseFor, sortHouses, showNoInvoice, stageLabel, type ProjectStep } from "./projectTracker";
+import { houseStatus, houseReminders, moneyByHouse, photosByHouse, DEFAULT_STEPS, phaseFor, sortHouses, showNoInvoice, stageLabel, type ProjectStep, type HouseMoney } from "./projectTracker";
 
 const st = (k: string, done: boolean): ProjectStep => ({ id: k, step_key: k, label: k, rate: 0, sort_order: 0, done, paid: false });
 const all = (d: [boolean, boolean, boolean]) => [st("piping", d[0]), st("units", d[1]), st("commissioning", d[2])];
 
 const four = (d: [boolean, boolean, boolean, boolean]) => [st("first_fit", d[0]), ...all([d[1], d[2], d[3]])];
-const inv = (sent: string | null, total = 100, paid = 0) => ({ invoiced: total, paid, invoiceCount: 1, invoiceNumbers: ["INV-T1"], invoices: [{ id: "i1", number: "INV-T1", total, paid, sent_at: sent }] });
+const inv = (sent: string | null, total = 100, paid = 0): HouseMoney => ({ invoiced: total, paid, invoiceCount: 1, invoiceNumbers: ["INV-T1"], invoices: [{ id: "i1", number: "INV-T1", total, paid, sent_at: sent }] });
 const H = (steps: ProjectStep[]) => ({ steps, status_override: null });
 const NOW = new Date("2026-12-01T10:00:00Z");
 

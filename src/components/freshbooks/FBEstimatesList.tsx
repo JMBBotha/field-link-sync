@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import CompanyHistorySimple from "@/components/company/CompanyHistorySimple";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
@@ -286,4 +287,12 @@ const FBEstimatesList = () => {
   );
 };
 
-export default FBEstimatesList;
+export default function FBEstimatesListGate() {
+  const { company, companyId } = useCompany();
+  if (company?.status === "archived" && companyId) {
+    return <CompanyHistorySimple companyId={companyId} title="Estimates" rpc="company_history_quotes" testId="history-quotes" columns={[
+      { key: "quote_number", label: "Estimate" }, { key: "customer_name", label: "Client" }, { key: "status", label: "Status" }, { key: "total", label: "Total" },
+    ]} />;
+  }
+  return <FBEstimatesList />;
+}

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { ArchivedHistoryNote } from "@/components/company/CompanyHistorySimple";
 import { Badge } from "@/components/ui/badge";
 
 const FBTimeTracking = () => {
@@ -201,4 +202,8 @@ const FBTimeTracking = () => {
   );
 };
 
-export default FBTimeTracking;
+export default function FBTimeTrackingGate() {
+  const { company } = useCompany();
+  if (company?.status === "archived") return <ArchivedHistoryNote title="Time tracking" body="No time records were imported for this company." />;
+  return <FBTimeTracking />;
+}

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import CompanyHistorySimple from "@/components/company/CompanyHistorySimple";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
@@ -179,4 +180,12 @@ const FBPaymentsList = () => {
   );
 };
 
-export default FBPaymentsList;
+export default function FBPaymentsListGate() {
+  const { company, companyId } = useCompany();
+  if (company?.status === "archived" && companyId) {
+    return <CompanyHistorySimple companyId={companyId} title="Payments" rpc="company_history_payments" testId="history-payments" columns={[
+      { key: "payment_date", label: "Date" }, { key: "invoice_number", label: "Invoice" }, { key: "amount", label: "Amount" }, { key: "status", label: "Status" }, { key: "reference", label: "Reference" },
+    ]} />;
+  }
+  return <FBPaymentsList />;
+}

@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+
+type LeadUpdate = Database["public"]["Tables"]["leads"]["Update"];
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -262,8 +265,8 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
   };
 
 
-  const getLeadUpdates = (request: ChangeRequest): Record<string, unknown> => {
-    const updates: Record<string, unknown> = {};
+  const getLeadUpdates = (request: ChangeRequest): LeadUpdate => {
+    const updates: LeadUpdate = {};
     const value = request.requested_value;
 
     switch (request.request_type) {

@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import CompanyHistoryInvoices from "@/components/company/CompanyHistoryInvoices";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
@@ -427,4 +428,8 @@ const FBInvoiceList = () => {
   );
 };
 
-export default FBInvoiceList;
+export default function FBInvoiceListGate() {
+  const { company, companyId } = useCompany();
+  if (company?.status === "archived" && companyId) return <CompanyHistoryInvoices companyId={companyId} />;
+  return <FBInvoiceList />;
+}

@@ -13,13 +13,15 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { DORMANT_BADGE } from "@/lib/companyStatus";
+import { COMPANY_MANAGEMENT_SELECT, rowsFromCompanyListQuery } from "@/lib/companyManagementList";
 
 type CompanyStatus = "active" | "on_hold" | "archived";
 
 const statusConfig: Record<CompanyStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className: string }> = {
   active: { label: "Active", variant: "default", className: "bg-[hsl(var(--success))]/15 text-[hsl(var(--success))] border-[hsl(var(--success))]/30" },
   on_hold: { label: "On Hold", variant: "secondary", className: "bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))] border-[hsl(var(--warning))]/30" },
-  archived: { label: "Archived", variant: "outline", className: "bg-muted text-muted-foreground border-border" },
+  archived: { label: DORMANT_BADGE, variant: "outline", className: "bg-amber-50 text-amber-950 border-amber-300" },
 };
 
 const CompanyManagement = () => {
@@ -33,11 +35,11 @@ const CompanyManagement = () => {
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  const { data: companies = [], isLoading } = useQuery({
+  const { data: companies = [], isLoading, isError, error } = useQuery({
     queryKey: ["all-companies"],
     queryFn: async () => {
-      const { data } = await supabase.from("companies").select("id, name, slug, logo_url, status, created_at, updated_at, onboarding_completed, is_master, custom_service_limit, vat_rate, services").order("created_at", { ascending: false });
-      return data || [];
+      const result = await supabase.from("companies").select(COMPANY_MANAGEMENT_SELECT).order("created_at", { ascending: false });
+      return rowsFromCompanyListQuery(result);
     },
   });
 
@@ -79,6 +81,18 @@ const CompanyManagement = () => {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const lockPayments = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.rpc as any)("confirm_dormant_payment_lock", { p_company: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["all-companies"] });
+      toast({ title: "Payments locked", description: "This archived company is history only, including invoices that still have a balance." });
+    },
+    onError: (e: any) => toast({ title: "Couldn't lock payments", description: e.message, variant: "destructive" }),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("companies").delete().eq("id", id);
@@ -109,7 +123,7 @@ const CompanyManagement = () => {
 
   const confirmMessages: Record<string, { title: string; desc: string; buttonLabel: string; variant: "default" | "destructive" }> = {
     on_hold: { title: "Put Company On Hold", desc: "This company's users will still be able to log in but will see a notice. You can reactivate anytime.", buttonLabel: "Put On Hold", variant: "default" },
-    archived: { title: "Archive Company", desc: "This will hide the company from active views. Data is preserved and can be restored by reactivating.", buttonLabel: "Archive", variant: "destructive" },
+    archived: { title: "Archive company (dormant)", desc: "The company stays in this list for platform admins and is hidden from company switchers and the catalogue network. History stays readable. New quotes, jobs, dispatch and emails stop. Payments on invoices that still have a balance stay open until you lock them.", buttonLabel: "Archive", variant: "destructive" },
     active: { title: "Reactivate Company", desc: "This will restore the company to active status.", buttonLabel: "Reactivate", variant: "default" },
     delete: { title: "Delete Company Permanently", desc: "This will permanently delete this company and all associated data. This action cannot be undone.", buttonLabel: "Delete Forever", variant: "destructive" },
   };
@@ -126,7 +140,7 @@ const CompanyManagement = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Company Management</h2>
-          <p className="text-sm text-muted-foreground">{companies.length} companies onboarded</p>
+          <p className="text-sm text-muted-foreground">{isError ? "Couldn't load companies" : `${companies.length} companies onboarded`}</p>
         </div>
         <Button onClick={() => setShowCreate(true)} className="bg-[hsl(211,100%,43%)] hover:bg-[hsl(211,100%,38%)]">
           <Plus className="h-4 w-4 mr-2" />Onboard Company
@@ -149,7 +163,7 @@ const CompanyManagement = () => {
               className={statusFilter === s ? "bg-primary" : ""}
             >
               {s === "all" ? "All" : s === "on_hold" ? "On Hold" : s.charAt(0).toUpperCase() + s.slice(1)}
-              <span className="ml-1.5 text-xs opacity-70">({counts[s]})</span>
+              <span className="ml-1.5 text-xs opacity-70">({isError ? "—" : counts[s]})</span>
             </Button>
           ))}
         </div>
@@ -170,6 +184,8 @@ const CompanyManagement = () => {
           <tbody>
             {isLoading ? (
               <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+            ) : isError ? (
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-destructive" role="alert" data-testid="company-list-error">{error instanceof Error ? error.message : "Couldn't load companies"}</td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No companies found</td></tr>
             ) : filtered.map((c: any) => {
@@ -197,6 +213,16 @@ const CompanyManagement = () => {
                       {status === "active" && (
                         <Button size="sm" variant="outline" onClick={() => navigate(`/client/${c.id}/dashboard`)}>
                           Enter <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                        </Button>
+                      )}
+                      {status === "archived" && (
+                        <Button size="sm" variant="outline" onClick={() => navigate(`/client/${c.id}/dashboard`)}>
+                          History
+                        </Button>
+                      )}
+                      {status === "archived" && !c.dormant_payments_locked && (
+                        <Button size="sm" variant="outline" disabled={lockPayments.isPending} onClick={() => lockPayments.mutate(c.id)}>
+                          Lock payments
                         </Button>
                       )}
                       <DropdownMenu>

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { companyIsActive } from "../_shared/companyActive.ts";
 
 /**
  * auto-assign-lead v2 — BROADCAST MODEL
@@ -113,6 +114,13 @@ serve(async (req) => {
     if (leadError || !lead) {
       return new Response(JSON.stringify({ error: "Lead not found" }), {
         status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!(await companyIsActive(supabase, lead.company_id))) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "company_archived" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

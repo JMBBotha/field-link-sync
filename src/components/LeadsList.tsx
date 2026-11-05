@@ -5,6 +5,7 @@ import { hasValidCoords } from "@/lib/leadCoords";
 import { leadStatusCategory } from "@/lib/leadStatusCategory";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -216,7 +217,7 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot, statusFilter }: Lead
   };
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
-    const updates: Record<string, any> = { status: newStatus };
+    const updates: Database["public"]["Tables"]["leads"]["Update"] = { status: newStatus };
     
     if (newStatus === "completed") {
       updates.completed_at = new Date().toISOString();

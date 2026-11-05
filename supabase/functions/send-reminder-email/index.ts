@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
 import { renderReminderSignatureHtml, renderSignatureText } from "../_shared/emailSignature.ts";
 import { loadSignaturePerson, loadSignatureCompany, replyToFor } from "../_shared/signaturePerson.ts";
+import { companyIsActive } from "../_shared/companyActive.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,6 +28,7 @@ serve(async (req: Request) => {
       const { data: f, error } = await userSb.rpc("pf_claim_send", { p_id: body.followup_id });
       if (error || !f) return J({ error: error?.message || "Not allowed" }, 400);
       const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      if (!(await companyIsActive(sb, f.company_id))) return J({ success: true, skipped: true, reason: "company_archived" });
       const me = await loadSignaturePerson(sb, auth.userId);
       const co = await loadSignatureCompany(sb, f.company_id);
       const mailbox = Deno.env.get("QUOTES_FROM_EMAIL") || "wcquotes@0800becool.co.za";
