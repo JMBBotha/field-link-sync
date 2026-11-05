@@ -11,14 +11,14 @@ export function useV8Notes() {
     queryKey: ["v8-notes"],
     staleTime: 30_000,
     queryFn: async () => {
-      const { data } = await (supabase.from("status_change_log") as any)
+      const { data } = await supabase.from("status_change_log")
         .select("entity_id, field_name, new_status, created_at").eq("entity_type", "quote")
         .in("field_name", [V8_PARK_FIELD, V8_LOST_FIELD]).order("created_at", { ascending: false }).limit(2000);
       return v8Notes((data || []) as V8NoteRow[]);
     },
   });
   const write = async (quote: { id: string; company_id: string }, field: string, value: string | null) => {
-    const { error } = await (supabase.from("status_change_log") as any).insert({
+    const { error } = await supabase.from("status_change_log").insert({
       entity_type: "quote", entity_id: quote.id, field_name: field, old_status: null, new_status: value, changed_by: user?.id, company_id: quote.company_id,
     });
     if (error) throw error;

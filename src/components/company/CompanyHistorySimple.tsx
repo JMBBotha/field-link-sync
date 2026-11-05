@@ -53,7 +53,7 @@ export function CompanyHistorySummary({ companyId }: { companyId: string }) {
   const q = useQuery({
     queryKey: ["company-history-invoices", companyId],
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("company_history_invoices", { p_company: companyId });
+      const { data, error } = await supabase.rpc("company_history_invoices", { p_company: companyId });
       if (error) throw new Error(error.message);
       return (data || []) as HistoryInvoice[];
     },

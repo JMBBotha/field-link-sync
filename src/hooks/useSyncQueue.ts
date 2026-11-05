@@ -245,7 +245,8 @@ export function useSyncQueue(isOnline: boolean) {
           console.log('[Conflict][Sync] Conflict detected, awaiting resolution...');
           
           // Log conflict to Supabase
-          const { data: { user } } = await supabase.auth.getUser();
+          const { waitForAuthSession } = await import("@/contexts/AuthContext");
+          const user = (await waitForAuthSession())?.user ?? null;
           if (user) {
             await supabase.from('sync_conflicts').insert({
               lead_id: operation.recordId,
@@ -330,7 +331,7 @@ export function useSyncQueue(isOnline: boolean) {
         case 'create_used_part': {
           // Offline-added job materials (no prices) -> job_used_parts, never invoices
           const { error } = await supabase
-            .from('job_used_parts' as any)
+            .from('job_used_parts')
             .insert(operation.data as any);
 
           if (error) throw error;

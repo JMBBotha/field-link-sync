@@ -9,7 +9,7 @@ export default function QuotePreviewRedirect() {
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
     (async () => {
-      const { data } = await (supabase.from("quotes") as any).select("public_token").eq("id", id).maybeSingle();
+      const { data } = await supabase.from("quotes").select("public_token").eq("id", id).maybeSingle();
       if (!data?.public_token) { setErr("This quote has no client link yet."); return; }
       navigate(`/quote/${encodeURIComponent(data.public_token)}?preview=1`, { replace: true });
     })();

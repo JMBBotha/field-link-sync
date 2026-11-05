@@ -31,7 +31,8 @@ serve(async (req) => {
       }
     }
     await db.from("push_outbox").update(err ? { attempts: j.attempts + 1, last_error: err } : { sent_at: new Date().toISOString() }).eq("id", j.id);
-    err ? failed++ : sent++;
+    if (err) failed++;
+    else sent++;
   }
   return new Response(JSON.stringify({ sent, failed }), { headers: { "Content-Type": "application/json" } });
 });

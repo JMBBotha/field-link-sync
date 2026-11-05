@@ -42,7 +42,7 @@ const PdfLinkButton = ({ pages }: PdfLinkButtonProps) => {
 
       // Update all page records for this PDF with the storage path
       const pageIds = pages.map((p) => p.id);
-      const { error: updateErr } = await (supabase.from("supplier_pdf_pages") as any)
+      const { error: updateErr } = await supabase.from("supplier_pdf_pages")
         .update({ pdf_storage_path: publicUrl })
         .in("id", pageIds);
 

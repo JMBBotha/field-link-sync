@@ -1,5 +1,5 @@
 // @ts-nocheck
-/* eslint-disable */
+ 
 // Vendored qrcode-generator 1.4.4 (MIT, Kazuhiko Arase) - no new npm dependency.
 //---------------------------------------------------------------------
 //

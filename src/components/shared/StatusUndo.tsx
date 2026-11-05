@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Undo2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
@@ -34,11 +34,13 @@ export function StatusUndoButton() {
   const { last } = useStatusUndo();
   const { run } = useUndoAction();
   const [confirm, setConfirm] = useState(false);
+  const { user } = useAuth();
+  const signedIn = useRef(false);
 
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") clearAllStacks(); });
-    return () => data.subscription.unsubscribe();
-  }, []);
+    if (user) signedIn.current = true;
+    else if (signedIn.current) clearAllStacks();
+  }, [user]);
 
   const label = last ? describeEntry(last) : "Undo last status change";
   return (

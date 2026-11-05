@@ -43,8 +43,8 @@ export default function CallRecordingPlayer({ callId, recordingUrl, className, s
     }
     setLoading(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
+      const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const token = (await waitForAuthSession())?.access_token;
       if (!token) {
         setUnavailable("Please sign in to play this recording");
         return;

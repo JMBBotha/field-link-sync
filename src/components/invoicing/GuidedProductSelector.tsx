@@ -71,7 +71,7 @@ const GuidedProductSelector = ({ open, onOpenChange, onAddItem }: GuidedProductS
     queryKey: ["catalog-products-guided"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("supplier_products" as any)
+        .from("supplier_products")
         .select("id, product_code, description, category, selling_price, cost_price, btu_rating, unit_type, capacity_btu, inverter, model_range, is_price_on_request")
         .eq("is_active", true)
         .order("description");

@@ -68,7 +68,7 @@ export function isSalesKind(kind?: string | null): boolean {
 }
 
 /** Flat 3h for jobs (install, repair, service, unknown), 1h for sales visits. `units` kept for callers; no longer multiplies. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 export function defaultMinutes(kind?: string | null, _units = 1): number {
   return isSalesKind(kind) ? DEFAULT_MINUTES.salesVisit : DEFAULT_JOB_MINUTES;
 }

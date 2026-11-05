@@ -80,7 +80,7 @@ export function CollapsibleBundleCard({
     const v = parseFloat(e.target.value);
     if (!isNaN(v)) {
       const clamped = Math.max(sliderMin, Math.min(sliderMax, v));
-      isBundleLength ? onUpdateLength(clamped) : onUpdateQuantity(clamped);
+      if (isBundleLength) onUpdateLength(clamped); else onUpdateQuantity(clamped);
     }
   };
 

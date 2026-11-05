@@ -58,7 +58,7 @@ describe("delete photo (Johan 2 Nov 07:27)", () => {
     expect(b).toContain("Delete this photo?");
     expect(b).toMatch(/min-h-\[44px\]|h-11 w-11/);
     const d = readFileSync("src/lib/photoDelete.ts", "utf8");
-    expect(d).toMatch(/from\("job_photos"\) as any\)\.delete\(\)\.eq\("id", id\)\.select/);
+    expect(d).toMatch(/from\("job_photos"\)\.delete\(\)\.eq\("id", id\)\.select/);
     expect(d).toContain('storage.from("job-photos").remove');
     expect(d).toContain('storage.from("quote-photos").remove');
     expect(readFileSync("src/components/jobs/JobPhotosCard.tsx", "utf8")).toContain('"photo_lead_ok"');

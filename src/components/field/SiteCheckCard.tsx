@@ -8,6 +8,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ClipboardCheck, Copy, Hourglass, Lock, Share2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
+import { jsonNumber, jsonObject, jsonString } from "@/lib/jsonValue";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,14 +28,50 @@ export interface SiteCheckInfo {
   variation: { status: string | null; client_token: string | null } | null;
 }
 
+function siteCheckFromJson(value: Json | null): SiteCheckInfo | null {
+  const row = jsonObject(value);
+  if (!row || typeof row.needs_check !== "boolean" || typeof row.has_install !== "boolean" || typeof row.remote_quote !== "boolean") return null;
+  const status: SiteCheckInfo["status"] | undefined = row.status === "confirmed" ? "confirmed"
+    : row.status === "awaiting_pricing" ? "awaiting_pricing"
+    : row.status === "awaiting_client" ? "awaiting_client"
+    : row.status === "declined" ? "declined"
+    : row.status === null ? null
+    : undefined;
+  if (status === undefined) return null;
+  const rooms = Array.isArray(row.rooms) ? row.rooms.flatMap((item) => {
+    const room = jsonObject(item);
+    if (!room || typeof room.name !== "string") return [];
+    return [{ area_id: jsonString(room.area_id), name: room.name, unit_name: jsonString(room.unit_name), btu: jsonNumber(room.btu) }];
+  }) : [];
+  const quick = Array.isArray(row.quick_adds) ? row.quick_adds.flatMap((item) => {
+    const add = jsonObject(item);
+    const unit: "m" | "each" | null = add?.unit === "m" ? "m" : add?.unit === "each" ? "each" : null;
+    if (!add || typeof add.code !== "string" || typeof add.label !== "string" || !unit) return [];
+    return [{ code: add.code, label: add.label, unit }];
+  }) : [];
+  const variation = jsonObject(row.variation);
+  return {
+    needs_check: row.needs_check,
+    has_install: row.has_install,
+    remote_quote: row.remote_quote,
+    status,
+    locked_at: jsonString(row.locked_at),
+    last_result: jsonString(row.last_result),
+    last_checked_at: jsonString(row.last_checked_at),
+    rooms,
+    quick_adds: quick,
+    variation: variation ? { status: jsonString(variation.status), client_token: jsonString(variation.client_token) } : null,
+  };
+}
+
 export const useSiteCheck = (jobId: string, key?: unknown) =>
   useQuery({
     queryKey: ["job-site-check", jobId, key],
     enabled: !!jobId,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("get_job_site_check", { p_job_id: jobId });
+      const { data, error } = await supabase.rpc("get_job_site_check", { p_job_id: jobId });
       if (error) throw error;
-      return data as SiteCheckInfo;
+      return siteCheckFromJson(data);
     },
   });
 
@@ -97,7 +135,7 @@ export default function SiteCheckCard({ jobId, leadId, info, onDone, survey }: {
     if (result === "as_quoted" && !window.confirm("Everything on site matches the quote? Costs will be confirmed and locked.")) return;
     setBusy(true);
     const checklist = { ...checks, rooms: sizing.map((s) => ({ area_id: s.r.area_id, name: s.r.name, quoted_btu: s.r.btu, ...room(s.r), recommended_btu: s.rec.btu, verdict: s.verdict })) };
-    const { data, error } = await (supabase.rpc as any)("submit_site_check", {
+    const { data, error } = await supabase.rpc("submit_site_check", {
       p_job_id: jobId, p_checklist: checklist, p_result: result, p_items: items, p_unit_swaps: swaps, p_notes: notes || null,
     });
     setBusy(false);

@@ -44,7 +44,7 @@ export function MarkSentManuallyButton({ kind, id, status, onDone, size = "sm", 
   if (status !== "draft" || !(anyRole || isAdmin || isDispatcher)) return null;
   const save = async () => {
     setBusy(true);
-    const { error } = await (supabase.rpc as any)("mark_document_sent", { p_kind: kind, p_id: id, p_channel: ch, p_note: note || null });
+    const { error } = await supabase.rpc("mark_document_sent", { p_kind: kind, p_id: id, p_channel: ch, p_note: note || null });
     setBusy(false);
     if (error) { toast.error(error.message || "Could not mark as sent"); return; }
     toast.success(`${kind === "quote" ? "Quote" : "Invoice"} marked as sent · ${channelLabel(ch)}`);

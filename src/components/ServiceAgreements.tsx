@@ -282,10 +282,11 @@ const ServiceAgreements = () => {
 
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const user = (await waitForAuthSession())?.user ?? null;
       
       // Calculate next service due date based on start date and frequency
-      let nextServiceDue = formData.start_date;
+      const nextServiceDue = formData.start_date;
       
       const { getUserCompanyId } = await import("@/lib/tenantUtils");
       const company_id = await getUserCompanyId(user?.id);

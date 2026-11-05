@@ -30,7 +30,7 @@ export default function VariationResponseCard({ token, status, summary, total, p
     if (approve && !name.trim()) { toast({ title: "Please enter your name", variant: "destructive" }); return; }
     if (!approve && !window.confirm("Decline the updated quote? The installation will be cancelled and your deposit refunded in full.")) return;
     setBusy(true);
-    const { data, error } = await (supabase.rpc as any)("respond_job_variation", { p_token: token, p_approve: approve, p_name: name.trim() || null });
+    const { data, error } = await supabase.rpc("respond_job_variation", { p_token: token, p_approve: approve, p_name: name.trim() || null });
     setBusy(false);
     if (error || !(data as any)?.ok) {
       toast({ title: "Couldn't save your answer", description: error?.message || "Please contact us.", variant: "destructive" });

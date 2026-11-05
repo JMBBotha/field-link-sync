@@ -58,7 +58,7 @@ async function readPlan(apply: boolean): Promise<Plan | null> {
     return null;
   }
   if (apply) {
-    const { data: plan, error: planError } = await (supabase.rpc as any)("my_availability_plan");
+    const { data: plan, error: planError } = await supabase.rpc("my_availability_plan");
     if (planError) return { status: typeof data === "string" ? data : undefined };
     return plan as Plan;
   }
@@ -106,7 +106,7 @@ export default function LocationShareRuntime() {
           const live = getLocationShareSnapshot();
           if (!mayShareLocation(live, at)) {
             void stopBackgroundLocation();
-            void (supabase.rpc as any)("apply_my_availability_schedule");
+            void supabase.rpc("apply_my_availability_schedule");
             return;
           }
           if (Date.now() - lastPing.current < LOCATION_PING_INTERVAL_MS) return;
@@ -138,22 +138,11 @@ export default function LocationShareRuntime() {
       if (!on) void stopBackgroundLocation();
       void refresh(false);
     };
-    const onAuth = (event: string, next: Session | null) => {
-      if (!next || event === "SIGNED_OUT") {
-        sessionRef.current = null;
-        publish(null, false);
-        void stopBackgroundLocation();
-        return;
-      }
-      if (event === "TOKEN_REFRESHED") void refreshBackgroundLocationHeaders();
-    };
-
     window.addEventListener("fl:availability-changed", onAvailability);
     window.addEventListener("fl:location-share-changed", onShare);
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, next) => onAuth(event, next));
     document.addEventListener("visibilitychange", onAvailability);
 
-    if (session) {
+    if (sessionRef.current) {
       void refresh(false).then(() => { if (!cancelled) void refresh(true); });
       timer = window.setInterval(() => { void refresh(true); }, 30_000);
     } else {
@@ -171,11 +160,18 @@ export default function LocationShareRuntime() {
       window.removeEventListener("fl:availability-changed", onAvailability);
       window.removeEventListener("fl:location-share-changed", onShare);
       document.removeEventListener("visibilitychange", onAvailability);
-      subscription.unsubscribe();
       void removeApp?.remove();
       void stopBackgroundLocation();
     };
   }, [session?.user?.id]);
+
+  const accessToken = session?.access_token ?? null;
+  const seenToken = useRef(accessToken);
+  useEffect(() => {
+    const previous = seenToken.current;
+    seenToken.current = accessToken;
+    if (previous && accessToken && previous !== accessToken) void refreshBackgroundLocationHeaders();
+  }, [accessToken]);
 
   return null;
 }

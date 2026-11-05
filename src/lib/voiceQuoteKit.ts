@@ -454,7 +454,7 @@ const AREA_CUE = new RegExp(
     `(${ROOM_WORDS})(?:\\s+(\\d{1,2}(?!\\d)|[a-d](?=\\s|$)))?\\b`,
   "i",
 );
-const EXPLICIT_AREA = /^(?:new\s+)?(?:area|section|zone)\s+(?:called |named )?([a-z0-9 '\-]+?)\s*$/i;
+const EXPLICIT_AREA = /^(?:new\s+)?(?:area|section|zone)\s+(?:called |named )?([a-z0-9 '-]+?)\s*$/i;
 
 const BRANDS = /\b(samsung|lg|daikin|midea|alliance|carrier|gree|hisense|jet[\s-]?air|jetair|mitsubishi|panasonic|york|fujitsu|toshiba|defy|aux|tcl|haier|whirlpool|kelvinator|goodman|sinclair|trane|lennox)\b/;
 const DESCRIPTORS = /\b(inverter|non[\s-]?inverter|fixed speed|fixed|cassette|ducted|mid ?wall|wall split|hi ?wall|high wall|floor standing|under ceiling|console|window unit|portable|wind ?free|heat pump)\b/g;

@@ -29,7 +29,7 @@ export function twilioEnvironment(): TwilioEnvironment {
 
 /** Normalise a South African / international number to E.164 with a leading +. */
 export function toE164(phone: string): string {
-  let cleaned = String(phone).replace(/[^\d+]/g, "").replace(/(?!^)\+/g, "");
+  const cleaned = String(phone).replace(/[^\d+]/g, "").replace(/(?!^)\+/g, "");
   if (cleaned.startsWith("+")) return cleaned;
   if (cleaned.startsWith("0")) return "+27" + cleaned.slice(1);
   if (cleaned.startsWith("27")) return "+" + cleaned;

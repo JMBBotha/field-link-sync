@@ -17,6 +17,7 @@ import { attachPaymentTotals, DepositInvoiceRow } from "@/lib/depositInvoice";
 import { getDepositChipState, depositChipLabel } from "@/components/shared/DepositPaymentChip";
 import { formatRand } from "@/utils/formatRand";
 import { fetchLeadBookings, bookingFromLead, formatBookingWhen, type BookingInfo } from "@/lib/leadBooking";
+import { clusterEaseTarget } from "@/lib/mapCluster";
 
 interface AgentLocation {
   agent_id: string;
@@ -784,14 +785,12 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           map.on("click", "clusters", (e) => {
             const features = map.queryRenderedFeatures(e.point, { layers: ["clusters"] });
             if (!features.length) return;
-            const clusterId = features[0].properties?.cluster_id;
+            const target = clusterEaseTarget(features[0]);
+            if (!target) return;
             const source = map.getSource("leads-cluster") as mapboxgl.GeoJSONSource;
-            source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-              if (err) return;
-              map.easeTo({
-                center: (features[0].geometry as any).coordinates,
-                zoom: zoom!,
-              });
+            source.getClusterExpansionZoom(target.clusterId, (err, zoom) => {
+              if (err || zoom == null) return;
+              map.easeTo({ center: target.center, zoom });
             });
           });
 
@@ -1366,7 +1365,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         // however we have the Badge appended. 
         // Let's just update the path fill which handles 90% of cases.
         // For the '$', we effectively need to manage that child div.
-        let contentEl = el.lastElementChild as HTMLElement; // Assuming last child might be text or badge
+        const contentEl = el.lastElementChild as HTMLElement; // Assuming last child might be text or badge
         // Detailed check involves looking for z-index 1 div we created in helper
         // Ideally we'd rebuild the element content completely if status changes type drastically
 

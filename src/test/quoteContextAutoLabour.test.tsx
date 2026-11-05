@@ -6,7 +6,7 @@ import { labourFields, isLabourItem } from "@/lib/labour";
 import { computeQuoteTotals } from "@/utils/quoteTransformers";
 import { buildClientRollup } from "@/lib/clientQuoteRollup";
 
-vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "memory-user" } }) }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "memory-user" } }), useOptionalAuth: () => ({ user: { id: "memory-user" } }) }));
 vi.mock("@/hooks/useCompanySettings", () => ({ useCompanySettings: () => ({ settings: { default_install_labour_hours: 3.5, default_hourly_rate: 680 } }) }));
 afterEach(cleanup);
 

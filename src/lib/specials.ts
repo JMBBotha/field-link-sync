@@ -61,7 +61,7 @@ export async function getActiveSpecial(
   key: { productId?: string | null; modelNumber?: string | null },
   date: string = todayIso(),
 ): Promise<SupplierSpecial | null> {
-  const { data, error } = await (supabase.from("supplier_specials" as any) as any)
+  const { data, error } = await supabase.from("supplier_specials")
     .select("*").eq("is_active", true).lte("start_date", date).gte("end_date", date);
   if (error || !data) return null;
   return pickActiveSpecial(data as SupplierSpecial[], key, date);

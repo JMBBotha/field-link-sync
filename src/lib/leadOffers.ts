@@ -1,3 +1,6 @@
+import type { Json } from "@/integrations/supabase/types";
+import { jsonNumber, jsonObject, jsonString } from "@/lib/jsonValue";
+
 /** Lead filtering (9 Oct): reps are only offered unassigned leads whose slot fits their day (DB: rep_offerable_leads). */
 export interface LeadOffer { lead_id: string; km: number | null; label: string | null }
 export interface LeadOfferFlag {
@@ -48,6 +51,28 @@ export interface TechOffer {
   minutes_source: "booking" | "quote" | "estimate" | string | null;
 }
 export interface TechOffersResult { applies: boolean; offers: TechOffer[] }
+
+export function techOffersFromJson(value: Json | null): TechOffersResult | null {
+  const row = jsonObject(value);
+  if (!row || typeof row.applies !== "boolean" || !Array.isArray(row.offers)) return null;
+  const offers: TechOffer[] = [];
+  for (const item of row.offers) {
+    const offer = jsonObject(item);
+    if (!offer || typeof offer.lead_id !== "string") continue;
+    offers.push({
+      lead_id: offer.lead_id,
+      fits: offer.fits === true,
+      km: jsonNumber(offer.km),
+      label: jsonString(offer.label),
+      reason: jsonString(offer.reason),
+      slot_date: jsonString(offer.slot_date),
+      slot_start: jsonString(offer.slot_start),
+      minutes: jsonNumber(offer.minutes),
+      minutes_source: jsonString(offer.minutes_source),
+    });
+  }
+  return { applies: row.applies, offers };
+}
 
 /** "≈ 3.5 h", "≈ 2 h", "≈ 45 min" */
 export function durationText(minutes: number | null | undefined): string {

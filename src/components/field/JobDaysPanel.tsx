@@ -315,7 +315,7 @@ export default function JobDaysPanel({ jobId, leadId: leadProp = null, onComplet
     queryKey: ["job-day-plan", jobId, today],
     enabled: isOnline && !!todayDay && !todayDay.en_route_at && !todayDay.checked_in_at,
     queryFn: async () => {
-      const { data } = await (supabase.rpc as any)("job_day_en_route_plan", { p_job_id: jobId, p_date: today });
+      const { data } = await supabase.rpc("job_day_en_route_plan", { p_job_id: jobId, p_date: today });
       return (data ?? null) as EnRoutePlan | null;
     },
   });

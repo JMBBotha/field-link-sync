@@ -42,7 +42,7 @@ export function BookedJobsTile() {
     refetchInterval: 60_000,
     queryFn: async () => {
       const r = fullRange(k, Date.now());
-      const { data: jobs, error } = await (supabase.from("jobs") as any)
+      const { data: jobs, error } = await supabase.from("jobs")
         .select("id, title, status, scheduled_for, customer_id, lead_id, address")
         .eq("company_id", companyId).neq("status", "cancelled")
         .gte("scheduled_for", new Date(r.start).toISOString()).lt("scheduled_for", new Date(r.end).toISOString())

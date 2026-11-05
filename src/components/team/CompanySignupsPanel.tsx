@@ -41,7 +41,7 @@ export default function CompanySignupsPanel() {
 
   const decide = useMutation({
     mutationFn: async (v: { id: string; approve: boolean; company?: string }) => {
-      const { data, error } = await (supabase.rpc as any)("approve_company_signup", {
+      const { data, error } = await supabase.rpc("approve_company_signup", {
         p_user: v.id, p_approve: v.approve, p_company: v.company ?? null,
       });
       if (error) throw error;

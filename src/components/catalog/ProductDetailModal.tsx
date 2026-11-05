@@ -50,7 +50,7 @@ const ProductDetailModal = ({ product, open, onOpenChange, onAddToQuote }: Produ
 
   const handleSaveShortName = async () => {
     const { error } = await supabase
-      .from("supplier_products" as any)
+      .from("supplier_products")
       .update({ short_name: shortNameValue.trim() || null } as any)
       .eq("id", product.id);
     if (error) {

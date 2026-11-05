@@ -1,3 +1,6 @@
+import type { Json } from "@/integrations/supabase/types";
+import { jsonNumber, jsonObject, jsonString } from "@/lib/jsonValue";
+
 /**
  * Sales rep "My commission" tracker (Job 5) — pure helpers over get_sales_tracker().
  * The RPC already scopes rows: a rep gets only their own quotes, the owner gets every rep, anyone else nothing.
@@ -24,6 +27,38 @@ export interface TrackerRow {
   paid_at: string | null;
 }
 export interface SalesTracker { api_version: number; user_id: string; is_owner: boolean; rows: TrackerRow[] }
+
+export function salesTrackerFromJson(value: Json | null): SalesTracker | null {
+  const row = jsonObject(value);
+  if (!row || typeof row.api_version !== "number" || typeof row.user_id !== "string" || typeof row.is_owner !== "boolean" || !Array.isArray(row.rows)) return null;
+  const rows: TrackerRow[] = [];
+  for (const item of row.rows) {
+    const line = jsonObject(item);
+    const grp = line?.grp;
+    if (!line || typeof line.quote_id !== "string" || typeof line.rep_id !== "string") continue;
+    if (grp !== "pipeline" && grp !== "earned" && grp !== "paid_out") continue;
+    rows.push({
+      grp,
+      frozen: line.frozen === true,
+      snapshot_id: jsonString(line.snapshot_id),
+      quote_id: line.quote_id,
+      quote_number: jsonString(line.quote_number),
+      rep_id: line.rep_id,
+      rep_name: jsonString(line.rep_name),
+      percent: jsonNumber(line.percent),
+      items_sell_ex_vat: jsonNumber(line.items_sell_ex_vat),
+      items_cost: jsonNumber(line.items_cost),
+      items_profit: jsonNumber(line.items_profit),
+      commission: jsonNumber(line.commission),
+      unknown_cost_count: jsonNumber(line.unknown_cost_count) ?? 0,
+      accepted_at: jsonString(line.accepted_at),
+      earned_at: jsonString(line.earned_at),
+      invoice_paid_date: jsonString(line.invoice_paid_date),
+      paid_at: jsonString(line.paid_at),
+    });
+  }
+  return { api_version: row.api_version, user_id: row.user_id, is_owner: row.is_owner, rows };
+}
 export interface GroupTotals { count: number; items_sell: number; items_cost: number; items_profit: number; commission: number }
 
 export const GROUP_ORDER: { key: TrackerGroup; label: string; hint: string }[] = [

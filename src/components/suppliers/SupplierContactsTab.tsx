@@ -79,7 +79,7 @@ const SupplierContactsTab = ({ supplierId }: SupplierContactsTabProps) => {
   const { data: locations = [] } = useQuery({
     queryKey: ["supplier-locations", supplierId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_locations") as any)
+      const { data, error } = await supabase.from("supplier_locations")
         .select("*")
         .eq("supplier_id", supplierId)
         .order("is_head_office", { ascending: false })
@@ -93,7 +93,7 @@ const SupplierContactsTab = ({ supplierId }: SupplierContactsTabProps) => {
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: ["supplier-contacts", supplierId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_contacts") as any)
+      const { data, error } = await supabase.from("supplier_contacts")
         .select("*")
         .eq("supplier_id", supplierId)
         .order("is_primary", { ascending: false })
@@ -161,10 +161,10 @@ const SupplierContactsTab = ({ supplierId }: SupplierContactsTabProps) => {
         direct_phone: form.direct_phone || null, extension: form.extension || null,
       };
       if (editing) {
-        const { error } = await (supabase.from("supplier_contacts") as any).update(payload).eq("id", editing.id);
+        const { error } = await supabase.from("supplier_contacts").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("supplier_contacts") as any).insert(payload);
+        const { error } = await supabase.from("supplier_contacts").insert(payload);
         if (error) throw error;
       }
     },
@@ -179,7 +179,7 @@ const SupplierContactsTab = ({ supplierId }: SupplierContactsTabProps) => {
 
   const deleteContactMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("supplier_contacts") as any).delete().eq("id", id);
+      const { error } = await supabase.from("supplier_contacts").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -199,10 +199,10 @@ const SupplierContactsTab = ({ supplierId }: SupplierContactsTabProps) => {
         is_head_office: locForm.is_head_office, notes: locForm.notes || null,
       };
       if (editingLocation) {
-        const { error } = await (supabase.from("supplier_locations") as any).update(payload).eq("id", editingLocation.id);
+        const { error } = await supabase.from("supplier_locations").update(payload).eq("id", editingLocation.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("supplier_locations") as any).insert(payload);
+        const { error } = await supabase.from("supplier_locations").insert(payload);
         if (error) throw error;
       }
     },
@@ -216,7 +216,7 @@ const SupplierContactsTab = ({ supplierId }: SupplierContactsTabProps) => {
 
   const deleteLocationMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("supplier_locations") as any).delete().eq("id", id);
+      const { error } = await supabase.from("supplier_locations").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {

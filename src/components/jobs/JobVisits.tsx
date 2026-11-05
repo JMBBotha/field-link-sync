@@ -9,7 +9,7 @@ import { TimeInput24 } from "@/components/ui/time-input-24";
 import { hoursLabel, nextVisit, sortVisits, totalVisitMinutes, visitDayLabel, visitMinutes, type JobVisit } from "@/lib/jobVisits";
 
 export async function loadJobVisits(jobId: string): Promise<JobVisit[]> {
-  const { data, error } = await (supabase.rpc as any)("job_visits", { p_job: jobId });
+  const { data, error } = await supabase.rpc("job_visits", { p_job: jobId });
   if (error) throw new Error(error.message);
   return sortVisits((data ?? []) as JobVisit[]);
 }

@@ -43,7 +43,7 @@ const FBInvoiceList = () => {
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["company-invoices", companyId],
     queryFn: async () => {
-      const { data } = await (supabase.from("company_invoices" as any).select("*, fb_contacts(name)").eq("company_id", companyId!).order("created_at", { ascending: false }) as any);
+      const { data } = await (supabase.from("company_invoices").select("*, fb_contacts(name)").eq("company_id", companyId!).order("created_at", { ascending: false }) as any);
       return (data || []) as any[];
     },
     enabled: !!companyId,
@@ -74,7 +74,7 @@ const FBInvoiceList = () => {
     const toOverdue = invoices.filter((i: any) => i.due_date && i.due_date < today && !["Paid", "Archived", "Overdue"].includes(i.status));
     if (toOverdue.length > 0) {
       const ids = toOverdue.map((i: any) => i.id);
-      supabase.from("company_invoices" as any).update({ status: "Overdue" }).in("id", ids).then(() => {
+      supabase.from("company_invoices").update({ status: "Overdue" }).in("id", ids).then(() => {
         if (ids.length > 0) qc.invalidateQueries({ queryKey: ["company-invoices"] });
       });
     }
@@ -99,10 +99,10 @@ const FBInvoiceList = () => {
         const nextDue = new Date(lastCreated.getTime() + intervalDays * 86400000);
         if (nextDue.toISOString().split("T")[0] <= today) {
           const newNum = inv.invoice_number + "-R";
-          const { data: existing } = await supabase.from("company_invoices" as any)
+          const { data: existing } = await supabase.from("company_invoices")
             .select("id").eq("company_id", companyId).like("invoice_number", `${newNum}%`).limit(1);
           if (!existing?.length) {
-            await supabase.from("company_invoices" as any).insert({
+            await supabase.from("company_invoices").insert({
               company_id: companyId, invoice_number: `${newNum}${today.replace(/-/g, "")}`,
               total_amount: inv.total_amount, subtotal: inv.subtotal, vat_amount: inv.vat_amount,
               tax: inv.tax, status: "Draft",
@@ -128,7 +128,7 @@ const FBInvoiceList = () => {
         : null;
       const amount = Number(form.amount);
       const tax = Number(form.tax);
-      const { error } = await supabase.from("company_invoices" as any).insert({
+      const { error } = await supabase.from("company_invoices").insert({
         company_id: companyId!, invoice_number: form.invoice_number,
         subtotal: amount, vat_amount: tax, total_amount: amount + tax, tax,
         status: form.status,
@@ -148,7 +148,7 @@ const FBInvoiceList = () => {
 
   const statusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("company_invoices" as any).update({ status }).eq("id", id);
+      const { error } = await supabase.from("company_invoices").update({ status }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["company-invoices"] }); toast({ title: "Status updated" }); },
@@ -166,9 +166,9 @@ const FBInvoiceList = () => {
       const inv = invoices.find((i: any) => i.id === showPayment);
       const totalPaid = getPaymentTotal(showPayment) + Number(paymentForm.amount);
       if (inv && totalPaid >= Number(inv.total_amount)) {
-        await supabase.from("company_invoices" as any).update({ status: "Paid", amount_paid: totalPaid }).eq("id", showPayment);
+        await supabase.from("company_invoices").update({ status: "Paid", amount_paid: totalPaid }).eq("id", showPayment);
       } else {
-        await supabase.from("company_invoices" as any).update({ status: "Partial", amount_paid: totalPaid }).eq("id", showPayment);
+        await supabase.from("company_invoices").update({ status: "Partial", amount_paid: totalPaid }).eq("id", showPayment);
       }
     },
     onSuccess: () => {
@@ -184,7 +184,7 @@ const FBInvoiceList = () => {
 
   const bulkSendMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("company_invoices" as any).update({ status: "Sent" }).in("id", Array.from(selectedIds));
+      const { error } = await supabase.from("company_invoices").update({ status: "Sent" }).in("id", Array.from(selectedIds));
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["company-invoices"] }); const c = selectedIds.size; setSelectedIds(new Set()); toast({ title: `${c} invoices marked as sent` }); },
@@ -193,7 +193,7 @@ const FBInvoiceList = () => {
   const bulkMarkPaidMutation = useMutation({
     mutationFn: async () => {
       const ids = Array.from(selectedIds);
-      const { error } = await supabase.from("company_invoices" as any).update({ status: "Paid" }).in("id", ids);
+      const { error } = await supabase.from("company_invoices").update({ status: "Paid" }).in("id", ids);
       if (error) throw error;
       const paidInvoices = invoices.filter((i: any) => ids.includes(i.id));
       for (const inv of paidInvoices) {
@@ -218,7 +218,7 @@ const FBInvoiceList = () => {
 
   const bulkArchiveMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("company_invoices" as any).update({ status: "Archived" }).in("id", Array.from(selectedIds));
+      const { error } = await supabase.from("company_invoices").update({ status: "Archived" }).in("id", Array.from(selectedIds));
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["company-invoices"] }); const c = selectedIds.size; setSelectedIds(new Set()); toast({ title: `${c} invoices archived` }); },
@@ -226,7 +226,7 @@ const FBInvoiceList = () => {
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("company_invoices" as any).delete().in("id", Array.from(selectedIds));
+      const { error } = await supabase.from("company_invoices").delete().in("id", Array.from(selectedIds));
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["company-invoices"] }); const c = selectedIds.size; setSelectedIds(new Set()); toast({ title: `${c} invoices deleted` }); },
@@ -240,7 +240,7 @@ const FBInvoiceList = () => {
   });
 
   const toggleSelect = (id: string) => {
-    setSelectedIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+    setSelectedIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   };
 
   const toggleAll = () => {

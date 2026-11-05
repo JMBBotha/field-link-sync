@@ -22,7 +22,7 @@ vi.mock("@/integrations/supabase/client", () => {
     ? (res: any) => res({ data: rows[t] ?? [], error: null }) : () => q(t) });
   return { supabase: { from: q, rpc: () => Promise.resolve({ data: null, error: null }) } };
 });
-vi.mock("@/contexts/AuthContext", () => { const v = { user: { id: "r1" }, session: {}, loading: false }; return { useAuth: () => v }; });
+vi.mock("@/contexts/AuthContext", () => { const v = { user: { id: "r1" }, session: {}, loading: false }; return { useAuth: () => v, useOptionalAuth: () => v }; });
 vi.mock("@/hooks/useRole", () => { const v = { roles: ["admin"], isAdmin: true, loading: false }; return { useRole: () => v }; });
 vi.mock("@/hooks/useSalesRep", () => ({ useSalesRep: () => ({ isSalesRep: actions.isSalesRep, loading: false }) }));
 vi.mock("@/components/leads/LeadCardV2", () => ({ default: ({ lead, density, onOpen, action }: any) => <div data-testid="lead-v2" data-density={density} onClick={onOpen}>{lead.customer_name}<span>no quote yet</span><div onClick={(e) => e.stopPropagation()}>{action}</div></div> }));

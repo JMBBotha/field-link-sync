@@ -16,13 +16,13 @@ type Detail = {
 };
 
 async function loadList(companyId: string): Promise<HistoryInvoice[]> {
-  const { data, error } = await (supabase.rpc as any)("company_history_invoices", { p_company: companyId });
+  const { data, error } = await supabase.rpc("company_history_invoices", { p_company: companyId });
   if (error) throw new Error(error.message);
   return (data || []) as HistoryInvoice[];
 }
 
 async function loadDetail(companyId: string, invoiceId: string): Promise<Detail> {
-  const { data, error } = await (supabase.rpc as any)("company_history_invoice", { p_company: companyId, p_invoice: invoiceId });
+  const { data, error } = await supabase.rpc("company_history_invoice", { p_company: companyId, p_invoice: invoiceId });
   if (error) throw new Error(error.message);
   return data as Detail;
 }

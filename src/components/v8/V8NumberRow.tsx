@@ -36,7 +36,7 @@ function useGoalsRow() {
       const { getUserCompanyId } = await import("@/lib/tenantUtils");
       const companyId = await getUserCompanyId(user?.id);
       if (!companyId) return null;
-      const { data } = await (supabase.from("company_settings") as any).select("id, dashboard_goals").eq("company_id", companyId)
+      const { data } = await supabase.from("company_settings").select("id, dashboard_goals").eq("company_id", companyId)
         .order("is_primary", { ascending: false }).order("updated_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
       return data ? { id: data.id as string, companyId, goals: goalsFrom(data.dashboard_goals) } : { id: null, companyId, goals: DEFAULT_GOALS };
     },
@@ -68,11 +68,11 @@ export default function V8NumberRow() {
       const iso = (d: Date) => d.toISOString();
       const ymd = (d: Date) => todayInJohannesburg(d);
       const [pays, done, jobsRes, entries, leads] = await Promise.all([
-        (supabase.from("payments") as any).select("amount, payment_date, status, gateway").eq("company_id", g!.companyId).gte("payment_date", ymd(lm0)),
-        (supabase.from("jobs") as any).select("completed_at").eq("company_id", g!.companyId).gte("completed_at", iso(lw0)),
+        supabase.from("payments").select("amount, payment_date, status, gateway").eq("company_id", g!.companyId).gte("payment_date", ymd(lm0)),
+        supabase.from("jobs").select("completed_at").eq("company_id", g!.companyId).gte("completed_at", iso(lw0)),
         supabase.from("jobs").select("id, status, scheduled_for, job_type, title, address, assignments(id, profile_id, status)").gte("scheduled_for", iso(lw0)),
         loadEntries({ from: ymd(lw0) }).catch(() => []),
-        (supabase.from("leads") as any).select("id, primary_intent, service_type, source, notes, created_at").gte("created_at", iso(yd0)),
+        supabase.from("leads").select("id, primary_intent, service_type, source, notes, created_at").gte("created_at", iso(yd0)),
       ]);
       const settled = ((pays.data as any[]) || []).filter(isSettledPayment);
       const sum = (from: Date, to: Date) => settled.filter((p) => p.payment_date >= ymd(from) && p.payment_date <= ymd(to)).reduce((s, p) => s + (Number(p.amount) || 0), 0);
@@ -159,7 +159,7 @@ function GoalsDialog({ id, goals, onClose, onSaved }: { id: string | null; goals
   const save = async () => {
     if (!id) { setErr("Company settings not found."); return; }
     setBusy(true);
-    const { error } = await (supabase.from("company_settings") as any).update({ dashboard_goals: goalsFrom(v) }).eq("id", id);
+    const { error } = await supabase.from("company_settings").update({ dashboard_goals: goalsFrom(v) }).eq("id", id);
     setBusy(false);
     if (error) setErr(error.message); else onSaved();
   };

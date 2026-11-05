@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { friendlyWhen } from "@/lib/friendlyWhen";
 import { isAssigned, assignedLabel, cardHref } from "@/lib/assignedLabel";
+import { jsonBoolean, jsonObject, jsonString } from "@/lib/jsonValue";
+import type { Json } from "@/integrations/supabase/types";
 
 /** An open lead that is (or is about to be) a booking — no job row yet. From client_bookings / pipeline_open_leads (RLS-equivalent scope). */
 export interface Booking {
@@ -22,19 +24,44 @@ export const bookingLine = (b: Booking) => {
   if (st === "assigned") return `With ${b.assigned_name || "a technician"} · not scheduled`;
   return STAGE_LABEL[st];
 };
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 export const bookingHref = (b: Booking, _salesRep?: boolean) => cardHref({ lead_id: b.id }) ?? `/admin/bookings/${b.id}`;
 const sast = (iso: string) => new Date(iso).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const SRC: Record<string, string> = { manual: "Added by hand", vapi_call: "Mandy call", website_form: "Website", whatsapp: "WhatsApp", phone: "Phone", email: "Email" };
 export const sourceText = (s?: string | null) => (s ? SRC[s] ?? s : "Added");
 
+function bookingsFromRpc(data: Json[] | null): Booking[] {
+  const out: Booking[] = [];
+  for (const item of data || []) {
+    const row = jsonObject(item);
+    if (!row || typeof row.id !== "string") continue;
+    out.push({
+      id: row.id,
+      customer_id: jsonString(row.customer_id),
+      customer_name: jsonString(row.customer_name),
+      address: jsonString(row.address),
+      intent: jsonString(row.intent),
+      service_type: jsonString(row.service_type),
+      source: jsonString(row.source),
+      created_at: jsonString(row.created_at) ?? "",
+      first_contact_at: jsonString(row.first_contact_at),
+      scheduled_date: jsonString(row.scheduled_date),
+      scheduled_time: jsonString(row.scheduled_time),
+      assigned_to: jsonString(row.assigned_to),
+      assigned_name: jsonString(row.assigned_name),
+      has_quote: jsonBoolean(row.has_quote),
+    });
+  }
+  return out;
+}
+
 export function useClientBookings(customerId?: string | null) {
   return useQuery({
     queryKey: ["client-bookings", customerId], enabled: !!customerId, refetchInterval: 60_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("client_bookings", { p_customer: customerId });
+      const { data, error } = await supabase.rpc("client_bookings", { p_customer: customerId });
       if (error) throw error;
-      return (data || []) as Booking[];
+      return bookingsFromRpc(data);
     },
   });
 }
@@ -42,9 +69,9 @@ export function usePipelineOpenLeads() {
   return useQuery({
     queryKey: ["pipeline-open-leads"], refetchInterval: 60_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("pipeline_open_leads");
+      const { data, error } = await supabase.rpc("pipeline_open_leads");
       if (error) throw error;
-      return (data || []) as Booking[];
+      return bookingsFromRpc(data);
     },
   });
 }

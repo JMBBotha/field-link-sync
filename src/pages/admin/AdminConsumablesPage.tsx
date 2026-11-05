@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toJson } from "@/lib/jsonValue";
 import { useRole } from "@/hooks/useRole";
 import { Navigate } from "react-router-dom";
 import { Search, Plus, Trash2, ChevronDown, ChevronRight, Package, Loader2 } from "lucide-react";
@@ -301,7 +302,7 @@ export default function AdminConsumablesPage() {
   const { data: acProducts = [], isLoading: loadingAC } = useQuery({
     queryKey: ["admin-ac-products-consumables"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
+      const { data, error } = await supabase.from("supplier_products")
         .select("id, product_code, short_name, brand, selling_price, suggested_consumables")
         .or("product_category.eq.Air Conditioning,category.ilike.%air conditioning%")
         .or("archived.is.null,archived.eq.false")
@@ -320,7 +321,7 @@ export default function AdminConsumablesPage() {
   const { data: consumableProducts = [] } = useQuery({
     queryKey: ["admin-consumable-products"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
+      const { data, error } = await supabase.from("supplier_products")
         .select("id, product_code, short_name, brand, selling_price, product_category")
         .or("archived.is.null,archived.eq.false")
         .order("short_name")
@@ -333,8 +334,8 @@ export default function AdminConsumablesPage() {
   // Mutation to update suggested_consumables
   const updateMutation = useMutation({
     mutationFn: async ({ productId, consumables }: { productId: string; consumables: SuggestedConsumable[] }) => {
-      const { error } = await (supabase.from("supplier_products") as any)
-        .update({ suggested_consumables: consumables })
+      const { error } = await supabase.from("supplier_products")
+        .update({ suggested_consumables: toJson(consumables) })
         .eq("id", productId);
       if (error) throw error;
     },

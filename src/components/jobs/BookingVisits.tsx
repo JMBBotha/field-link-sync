@@ -30,7 +30,7 @@ export function VisitsSheet({ open, onOpenChange, visits, perms, mode, companyId
   const techs = useQuery({
     queryKey: ["dispatchable-techs", companyId], enabled: open && perms.admin && !!companyId,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("dispatchable_technicians", { _company_id: companyId });
+      const { data, error } = await supabase.rpc("dispatchable_technicians", { _company_id: companyId });
       if (error) throw error;
       return ((data ?? []) as any[]).map((t) => ({ id: (t.id ?? t.profile_id) as string, name: (t.full_name ?? t.name ?? "Technician") as string }));
     },
@@ -101,7 +101,7 @@ export default function BookingVisitsCard({ leadId, perms, companyId, seed, onSa
   const q = useQuery({
     queryKey: ["booking-visits", leadId],
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("booking_visits", { p_lead: leadId });
+      const { data, error } = await supabase.rpc("booking_visits", { p_lead: leadId });
       if (error) throw error;
       return sortVisits((data ?? []) as JobVisit[]);
     },
@@ -125,7 +125,7 @@ export default function BookingVisitsCard({ leadId, perms, companyId, seed, onSa
         </CardContent></Card>
       )}
       {sheet && <VisitsSheet key={sheet} open onOpenChange={(o) => !o && setSheet(null)} visits={sheet === "edit" ? seeded : visits} perms={perms} mode={sheet} companyId={companyId}
-        save={async (p) => { const { error } = await (supabase.rpc as any)("set_booking_visits", { p_lead: leadId, p_visits: p }); return error?.message ?? null; }}
+        save={async (p) => { const { error } = await supabase.rpc("set_booking_visits", { p_lead: leadId, p_visits: p }); return error?.message ?? null; }}
         onSaved={() => { void q.refetch(); onSaved?.(); }} />}
     </>
   );
@@ -142,7 +142,7 @@ export function JobVisitsSection({ jobId, companyId, perms, onEdit }: { jobId: s
     <>
       <JobVisitsCardView visits={visits} actions={<VisitActions count={visits.length} canEdit={canEdit} onEdit={onEdit} onReturn={() => setRet(true)} />} />
       {ret && <VisitsSheet open onOpenChange={setRet} visits={visits} perms={perms} mode="return" companyId={companyId}
-        save={async (p) => { const { error } = await (supabase.rpc as any)("set_job_visits", { p_job: jobId, p_visits: p, p_note: null }); return error?.message ?? null; }}
+        save={async (p) => { const { error } = await supabase.rpc("set_job_visits", { p_job: jobId, p_visits: p, p_note: null }); return error?.message ?? null; }}
         onSaved={() => void q.refetch()} />}
     </>
   );

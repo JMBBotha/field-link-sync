@@ -37,7 +37,7 @@ export default function AdminExpensesPage() {
   const { data: rows = [], isLoading, error } = useQuery({
     queryKey: ["expenses", from, to],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("expenses" as any) as any).select("*").gte("expense_date", from).lte("expense_date", to).order("expense_date", { ascending: false }).order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("expenses").select("*").gte("expense_date", from).lte("expense_date", to).order("expense_date", { ascending: false }).order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as ExpenseRow[];
     },
@@ -87,7 +87,7 @@ export default function AdminExpensesPage() {
         job_id: form.job_id === NONE ? null : form.job_id,
         receipt_path: path,
       };
-      const t = supabase.from("expenses" as any) as any;
+      const t = supabase.from("expenses") as any;
       const res = form.id ? await t.update(payload).eq("id", form.id) : await t.insert({ ...payload, company_id: companyId });
       if (res.error) throw res.error;
       toast({ title: form.id ? "Expense updated" : "Expense recorded" });
@@ -100,7 +100,7 @@ export default function AdminExpensesPage() {
     }
   };
   const archive = async (r: ExpenseRow) => {
-    const { error } = await (supabase.from("expenses" as any) as any).update({ status: "archived" }).eq("id", r.id);
+    const { error } = await supabase.from("expenses").update({ status: "archived" }).eq("id", r.id);
     if (error) return toast({ title: "Could not archive", description: error.message, variant: "destructive" });
     toast({ title: "Expense archived" });
     qc.invalidateQueries({ queryKey: ["expenses"] });

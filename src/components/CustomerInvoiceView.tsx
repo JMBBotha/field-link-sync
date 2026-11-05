@@ -76,7 +76,7 @@ const CustomerInvoiceView = () => {
       setCustomerId(custId);
 
       // Read through the token (anon cannot read invoices directly).
-      const { data: invoicesData, error: invError } = await (supabase.rpc as any)("get_customer_invoices_public", { p_token: token });
+      const { data: invoicesData, error: invError } = await supabase.rpc("get_customer_invoices_public", { p_token: token });
       if (invError) throw invError;
 
       const parsedInvoices = ((invoicesData as any[]) || []).map((inv: any) => ({

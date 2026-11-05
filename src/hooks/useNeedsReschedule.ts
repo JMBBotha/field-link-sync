@@ -11,7 +11,7 @@ export function useNeedsReschedule(enabled = true) {
     enabled,
     refetchInterval: 60_000,
     queryFn: async (): Promise<NeedsResched[]> => {
-      const { data: logs } = await (supabase.from("status_change_log") as any)
+      const { data: logs } = await supabase.from("status_change_log")
         .select("entity_type, entity_id, new_status, created_at").eq("field_name", "needs_reschedule").order("created_at", { ascending: false }).limit(300);
       const latest = new Map<string, any>();
       ((logs || []) as any[]).forEach((r) => { if (!latest.has(r.entity_id)) latest.set(r.entity_id, r); });
@@ -19,8 +19,8 @@ export function useNeedsReschedule(enabled = true) {
       const jobIds = rows.filter((r) => r.entity_type === "job").map((r) => r.entity_id);
       const leadIds = rows.filter((r) => r.entity_type === "lead").map((r) => r.entity_id);
       const [j, l] = await Promise.all([
-        jobIds.length ? (supabase.from("jobs") as any).select("id, lead_id, title, status, scheduled_for").in("id", jobIds) : { data: [] },
-        leadIds.length ? (supabase.from("leads") as any).select("id, customer_name, status, scheduled_date, assigned_agent_id").in("id", leadIds) : { data: [] },
+        jobIds.length ? supabase.from("jobs").select("id, lead_id, title, status, scheduled_for").in("id", jobIds) : { data: [] },
+        leadIds.length ? supabase.from("leads").select("id, customer_name, status, scheduled_date, assigned_agent_id").in("id", leadIds) : { data: [] },
       ]);
       const out: NeedsResched[] = [];
       ((j.data || []) as any[]).forEach((x) => {

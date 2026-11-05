@@ -34,16 +34,16 @@ export default function AdminBookingDetailPage() {
   const q = useQuery({
     queryKey: ["booking-detail", leadId], enabled: !!leadId,
     queryFn: async () => {
-      const { data: l, error } = await (supabase.from("leads") as any)
+      const { data: l, error } = await supabase.from("leads")
         .select("id, customer_name, customer_phone, customer_address, customer_id, company_id, assigned_agent_id, scheduled_date, scheduled_time, service_type, job_types, job_info, status, lead_status, notes, latitude, longitude")
         .eq("id", leadId!).maybeSingle();
       if (error) throw error;
       if (!l) return null;
       const [{ data: sched }, { data: job }] = await Promise.all([
-        (supabase.from("job_schedules") as any).select("agent_id, scheduled_date, start_time").eq("lead_id", l.id).order("scheduled_date", { ascending: true }).limit(1),
-        (supabase.from("jobs") as any).select("id").eq("lead_id", l.id).not("status", "in", "(cancelled,canceled)").order("created_at", { ascending: false }).limit(1),
+        supabase.from("job_schedules").select("agent_id, scheduled_date, start_time").eq("lead_id", l.id).order("scheduled_date", { ascending: true }).limit(1),
+        supabase.from("jobs").select("id").eq("lead_id", l.id).not("status", "in", "(cancelled,canceled)").order("created_at", { ascending: false }).limit(1),
       ]);
-      const { data: perms } = await (supabase.rpc as any)("booking_edit_perms", { p_lead: l.id });
+      const { data: perms } = await supabase.rpc("booking_edit_perms", { p_lead: l.id });
       const s = sched?.[0];
       const techId = l.assigned_agent_id || s?.agent_id || null;
       let techName: string | null = null;

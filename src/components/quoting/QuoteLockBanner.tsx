@@ -26,7 +26,7 @@ export default function QuoteLockBanner({ quoteId, lockedAt, lockedReason, isVar
 
   const unlock = async (reason: string) => {
     setBusy(true);
-    const { error } = await (supabase.rpc as any)("unlock_quote", { p_quote_id: quoteId, p_reason: reason.trim() });
+    const { error } = await supabase.rpc("unlock_quote", { p_quote_id: quoteId, p_reason: reason.trim() });
     setBusy(false);
     if (error) { toast({ title: "Couldn't unlock", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Quote unlocked" });
@@ -35,7 +35,7 @@ export default function QuoteLockBanner({ quoteId, lockedAt, lockedReason, isVar
   };
   const finalise = async () => {
     setBusy(true);
-    const { data, error } = await (supabase.rpc as any)("finalise_variation_quote", { p_quote_id: quoteId });
+    const { data, error } = await supabase.rpc("finalise_variation_quote", { p_quote_id: quoteId });
     setBusy(false);
     if (error) { toast({ title: "Couldn't finalise", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Updated quote finalised", description: (data as any)?.summary_line || "Now send it to the client with Send." });

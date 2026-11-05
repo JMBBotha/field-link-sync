@@ -21,10 +21,10 @@ const AdminAreasPage = () => {
     queryKey: ["service-areas"],
     queryFn: async () => {
       const [a, s, p, m] = await Promise.all([
-        (supabase.from("service_areas" as any) as any).select("*").order("priority", { ascending: false }).order("name"),
-        (supabase.from("service_area_staff" as any) as any).select("area_id, profile_id"),
+        supabase.from("service_areas").select("*").order("priority", { ascending: false }).order("name"),
+        supabase.from("service_area_staff").select("area_id, profile_id"),
         supabase.from("profiles").select("id, full_name, company_id, dispatch_role").not("company_id", "is", null).is("archived_at", null).order("full_name"),
-        (supabase.from("companies") as any).select("id, is_master").eq("is_master", true),
+        supabase.from("companies").select("id, is_master").eq("is_master", true),
       ]);
       return { areas: (a.data || []) as ServiceArea[], staff: (s.data || []) as { area_id: string; profile_id: string }[], people: (p.data || []) as any[], isMaster: (m.data || []).length > 0 };
     },
@@ -35,7 +35,7 @@ const AdminAreasPage = () => {
   });
   const { data: log } = useQuery({
     queryKey: ["routing-log"],
-    queryFn: async () => ((await (supabase.from("lead_routing_log" as any) as any).select("id, lead_id, mode, reason, km, created_at").order("created_at", { ascending: false }).limit(15)).data || []) as any[],
+    queryFn: async () => ((await supabase.from("lead_routing_log").select("id, lead_id, mode, reason, km, created_at").order("created_at", { ascending: false }).limit(15)).data || []) as any[],
   });
 
   const [form, setForm] = useState({ name: "", address: "", lat: "", lng: "", radius: "25", priority: "0" });
@@ -54,22 +54,22 @@ const AdminAreasPage = () => {
     const lat = Number(form.lat), lng = Number(form.lng), radius = Number(form.radius);
     if (!form.name.trim() || !Number.isFinite(lat) || !Number.isFinite(lng) || !form.lat || !form.lng) return toast.error("Name and a location are required");
     setBusy(true);
-    const { error } = await (supabase.from("service_areas" as any) as any).insert({ name: form.name.trim(), center_lat: lat, center_lng: lng, radius_km: radius || 25, priority: Number(form.priority) || 0 });
+    const { error } = await supabase.from("service_areas").insert({ name: form.name.trim(), center_lat: lat, center_lng: lng, radius_km: radius || 25, priority: Number(form.priority) || 0 });
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Area added"); setForm({ name: "", address: "", lat: "", lng: "", radius: "25", priority: "0" }); refresh();
   };
   const patchArea = async (id: string, patch: Partial<ServiceArea>) => {
-    const { error } = await (supabase.from("service_areas" as any) as any).update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
+    const { error } = await supabase.from("service_areas").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
     if (error) toast.error(error.message); refresh();
   };
   const removeArea = async (id: string) => {
     if (!confirm("Remove this area?")) return;
-    const { error } = await (supabase.from("service_areas" as any) as any).delete().eq("id", id);
+    const { error } = await supabase.from("service_areas").delete().eq("id", id);
     if (error) toast.error(error.message); refresh();
   };
   const toggleStaff = async (areaId: string, profileId: string, on: boolean) => {
-    const t = supabase.from("service_area_staff" as any) as any;
+    const t = supabase.from("service_area_staff") as any;
     const { error } = on ? await t.insert({ area_id: areaId, profile_id: profileId }) : await t.delete().eq("area_id", areaId).eq("profile_id", profileId);
     if (error) toast.error(error.message); refresh();
   };

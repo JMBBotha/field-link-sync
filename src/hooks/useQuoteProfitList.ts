@@ -20,7 +20,7 @@ export function useQuoteProfitList(companyIds: string[]) {
     queryFn: async () => {
       const out: Record<string, QuoteProfitRow> = {};
       for (const id of ids) {
-        const { data: rows, error } = await (supabase.rpc as any)("get_company_quote_profit", { p_company_id: id });
+        const { data: rows, error } = await supabase.rpc("get_company_quote_profit", { p_company_id: id });
         if (error) continue;
         for (const r of (rows || []) as QuoteProfitRow[]) out[r.quote_id] = r;
       }

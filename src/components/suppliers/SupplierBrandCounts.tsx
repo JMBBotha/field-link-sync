@@ -36,12 +36,12 @@ export default function SupplierBrandCounts({ supplierId, enabled = true }: { su
     enabled: !!supplierId && enabled,
     queryFn: async () => {
       const [{ data: prods, error }, { data: books }] = await Promise.all([
-        (supabase.from("supplier_products") as any)
+        supabase.from("supplier_products")
           .select("brand, product_category, category")
           .eq("supplier_id", supplierId)
           .or("archived.is.null,archived.eq.false")
           .limit(5000),
-        (supabase.from("pdf_uploads") as any).select("brand").eq("supplier_id", supplierId).eq("is_active", true),
+        supabase.from("pdf_uploads").select("brand").eq("supplier_id", supplierId).eq("is_active", true),
       ]);
       if (error) throw error;
       return groupBrandCounts(prods || [], (books || []).map((b: any) => b.brand));

@@ -64,7 +64,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
   const { data: productCounts = {} } = useQuery({
     queryKey: ["supplier-product-counts"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
+      const { data, error } = await supabase.from("supplier_products")
         .select("supplier_id")
         .or("archived.is.null,archived.eq.false");
       if (error) throw error;

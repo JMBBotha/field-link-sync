@@ -65,23 +65,23 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
     enabled: !!quoteId,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data: quote } = await (supabase.from("quotes") as any)
+      const { data: quote } = await supabase.from("quotes")
         .select("sales_engineer_id").eq("id", quoteId).maybeSingle();
       let salespersonName: string | null = null;
       if (quote?.sales_engineer_id) {
-        const { data: salesperson } = await (supabase.from("profiles") as any)
+        const { data: salesperson } = await supabase.from("profiles")
           .select("full_name").eq("id", quote.sales_engineer_id).maybeSingle();
         salespersonName = salesperson?.full_name ?? null;
       }
 
-      const { data: jobs } = await (supabase.from("jobs") as any).select("id").eq("quote_id", quoteId);
+      const { data: jobs } = await supabase.from("jobs").select("id").eq("quote_id", quoteId);
       const jobIds = (jobs || []).map((job: any) => job.id).filter(Boolean);
       if (!jobIds.length) return { salespersonName, technicianNames: [] as string[] };
-      const { data: assignments } = await (supabase.from("assignments") as any)
+      const { data: assignments } = await supabase.from("assignments")
         .select("profile_id").in("job_id", jobIds);
       const profileIds = [...new Set((assignments || []).map((assignment: any) => assignment.profile_id).filter(Boolean))] as string[];
       if (!profileIds.length) return { salespersonName, technicianNames: [] as string[] };
-      const { data: technicians } = await (supabase.from("profiles") as any).select("id, full_name").in("id", profileIds);
+      const { data: technicians } = await supabase.from("profiles").select("id, full_name").in("id", profileIds);
       return {
         salespersonName,
         technicianNames: (technicians || []).map((profile: any) => profile.full_name).filter(Boolean) as string[],
@@ -93,14 +93,14 @@ export default function StaffMarginCard({ items, selectedId, areas, discount, se
     enabled: !!quoteId,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data } = await (supabase.from("job_overruns" as any) as any)
+      const { data } = await supabase.from("job_overruns")
         .select("actual_hours, extra_items, notes, created_at").eq("quote_id", quoteId).order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (!data) return null;
       const extras = parseExtras(data.extra_items);
       const ids = extras.map((e) => e.product_id).filter(Boolean) as string[];
       const costs = new Map<string, number>();
       if (ids.length) {
-        const { data: ps } = await (supabase.from("supplier_products") as any).select("id, cost_price, cost_excl_vat").in("id", ids);
+        const { data: ps } = await supabase.from("supplier_products").select("id, cost_price, cost_excl_vat").in("id", ids);
         for (const p of ps || []) costs.set(p.id, Number(p.cost_price || p.cost_excl_vat || 0));
       }
       return { actualHours: data.actual_hours == null ? null : Number(data.actual_hours), extras: extras.map((e) => ({ ...e, unitCost: e.product_id ? costs.get(e.product_id) ?? null : null })), notes: data.notes as string | null };

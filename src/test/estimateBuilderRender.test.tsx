@@ -25,7 +25,7 @@ vi.mock("@/integrations/supabase/client", () => {
   return { supabase: { from: q, rpc: () => Promise.resolve({ data: null, error: null }), channel: () => ch, removeChannel: async () => undefined,
     auth: { getSession: async () => ({ data: { session: null } }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) } } };
 });
-vi.mock("@/contexts/AuthContext", () => { const v = { user: { id: "u1" }, session: { user: { id: "u1" } }, loading: false }; return { useAuth: () => v, AuthProvider: ({ children }: any) => children }; });
+vi.mock("@/contexts/AuthContext", () => { const v = { user: { id: "u1" }, session: { user: { id: "u1" } }, loading: false }; return { useAuth: () => v, useOptionalAuth: () => v, waitForAuthSession: async () => v.session, AuthProvider: ({ children }: any) => children }; });
 vi.mock("@/hooks/useRole", () => { const v = { roles: ["admin"], isAdmin: true, isLoading: false, loading: false }; return { useRole: () => v }; });
 vi.mock("@/contexts/QuoteContext", () => ({ useQuoteContext: () => ctx, trackQuoteWrite: (p: any) => p, usePendingQuoteWrites: () => 0, waitForQuoteWrites: async () => true, QuoteProvider: ({ children }: any) => children }));
 

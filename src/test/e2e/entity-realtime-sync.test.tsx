@@ -44,6 +44,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ session: { user: { id: "user-1" } }, user: { id: "user-1" }, loading: false }),
+  useOptionalAuth: () => ({ session: { user: { id: "user-1" } }, user: { id: "user-1" }, loading: false }),
 }));
 
 const toast = vi.fn();

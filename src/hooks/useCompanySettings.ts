@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useOptionalAuth, waitForAuthSession } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -43,14 +44,17 @@ const defaultSettings: CompanySettings = {
 export const useCompanySettings = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const auth = useOptionalAuth();
+  const userId = auth?.user?.id;
 
   const { data: settings, isLoading } = useQuery({
-    queryKey: ["company-settings"],
+    queryKey: ["company-settings", userId ?? "session"],
+    enabled: auth ? !!userId : true,
     queryFn: async () => {
       // Own company's PRIMARY row only (no "newest row of any company" fallback, 12 Oct 2026).
-      const { data: auth } = await supabase.auth.getUser();
+      const id = userId ?? (await waitForAuthSession())?.user?.id;
       const { getUserCompanyId } = await import("@/lib/tenantUtils");
-      const companyId = await getUserCompanyId(auth.user?.id);
+      const companyId = await getUserCompanyId(id);
       if (!companyId) return null;
       const { data, error } = await supabase
         .from("company_settings")

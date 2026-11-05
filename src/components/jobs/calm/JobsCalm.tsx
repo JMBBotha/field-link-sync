@@ -6,22 +6,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { laneOf } from "@/lib/leadLane";
 import { type Person } from "@/lib/jobsBoard";
-import { jobToCard, visitToCard, visibleVisitEntries } from "@/lib/cardModel";
+import { jobToCard } from "@/lib/cardModel";
 import { loadEntries, todayInJohannesburg } from "@/lib/todaysJobs";
 import { activeAssignee, type DJob } from "@/lib/dispatchCards";
-import { blockKind, jhbMinutes, jhbIso, monthGrid, type ChipKey } from "@/lib/jobsCalm";
+import { jhbMinutes, jhbIso, monthGrid, type ChipKey } from "@/lib/jobsCalm";
+import { assembleScheduleBlocks } from "@/lib/bookingGlance";
 import AssignTechDialog from "@/components/jobs/AssignTechDialog";
 import LeadAssignDialog from "@/components/jobs/LeadAssignDialog";
 import ReassignRequestsBanner from "@/components/jobs/ReassignRequestsBanner";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import V8PipelineBoard from "@/components/v8/V8PipelineBoard";
 import { isAssigned } from "@/lib/assignedLabel";
-import JobsCalmView, { type CalmBlock, type CalmLead, type CalmPerson, type CalmTab, type CalmUnassigned } from "./JobsCalmView";
+import JobsCalmView, { type CalmLead, type CalmTab, type CalmUnassigned } from "./JobsCalmView";
 
 type Job = DJob & { address?: string | null; customer_id?: string | null; created_at?: string | null; customers?: { name?: string | null; phone?: string | null } | null; customer_locations?: { address?: string | null } | null };
-const JOB_COLS = "id, title, status, priority, scheduled_for, started_at, job_type, address, customer_id, created_at, customers(name, phone), customer_locations!jobs_location_id_fkey(address), assignments(id, profile_id, status, profiles!assignments_profile_id_fkey(full_name, phone, participant_type))";
+const JOB_COLS = "id, title, status, priority, scheduled_for, scheduled_until, estimated_duration, started_at, job_type, address, customer_id, created_at, customers(name, phone), customer_locations!jobs_location_id_fkey(address), assignments(id, profile_id, status, profiles!assignments_profile_id_fkey(full_name, phone, participant_type))";
 const CLOSED = ["completed", "cancelled", "canceled"];
-const PILL: Record<string, string> = { completed: "Done", in_progress: "On site", dispatched: "En route", scheduled: "Scheduled" };
 const plusDay = (d: string, n: number) => todayInJohannesburg(new Date(new Date(`${d}T12:00:00+02:00`).getTime() + n * 86_400_000));
 const ageLabel = (iso?: string | null) => { if (!iso) return null; const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return m >= 1440 ? `${Math.floor(m / 1440)}d` : m >= 60 ? `${Math.floor(m / 60)}h` : `${Math.max(0, m)}m`; };
 
@@ -48,7 +48,7 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
   const { data: jobs = [] } = useQuery({
     queryKey: ["jobs-calm", from, to], refetchInterval: 30_000, enabled: tab !== "pipeline",
     queryFn: async () => {
-      const { data, error } = await (supabase.from("jobs") as any).select(JOB_COLS)
+      const { data, error } = await supabase.from("jobs").select(JOB_COLS)
         .gte("scheduled_for", `${from}T00:00:00+02:00`).lt("scheduled_for", `${to}T00:00:00+02:00`).order("scheduled_for").limit(500);
       if (error) throw error;
       return (data || []) as Job[];
@@ -57,7 +57,7 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
   const { data: openJobs = [] } = useQuery({
     queryKey: ["jobs-calm-unassigned"], refetchInterval: 60_000, enabled: tab !== "pipeline",
     queryFn: async () => {
-      const { data, error } = await (supabase.from("jobs") as any).select(JOB_COLS)
+      const { data, error } = await supabase.from("jobs").select(JOB_COLS)
         .not("status", "in", `(${CLOSED.join(",")})`).order("created_at", { ascending: false }).limit(200);
       if (error) throw error;
       return ((data || []) as Job[]).filter((j) => !activeAssignee(j));
@@ -66,7 +66,7 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
   const { data: leads = [] } = useQuery({
     queryKey: ["dispatch-cards-leads"], refetchInterval: 30_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("leads") as any).select("*")
+      const { data, error } = await supabase.from("leads").select("*")
         .eq("status", "pending").is("deleted_at", null).is("merged_into_id", null).order("created_at", { ascending: true }).limit(100);
       if (error) throw error;
       return (data || []) as any[];
@@ -108,30 +108,7 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
     onError: (e: any) => toast({ title: "Couldn't move the job", description: e.message, variant: "destructive" }),
   });
 
-  const model = useMemo(() => {
-    const people: Record<string, CalmPerson & { lane: "sales" | "service" }> = {};
-    const blocks: CalmBlock[] = [];
-    jobs.filter((j) => !["cancelled", "canceled"].includes(String(j.status || "").toLowerCase())).forEach((j) => {
-      const c = jobToCard(j); const a = activeAssignee(j) as any; const s = String(j.status || "").toLowerCase();
-      const pid = a?.profile_id || null;
-      if (pid && !people[pid]) people[pid] = { id: pid, name: a?.profiles?.full_name || "Assigned", role: c.lane === "sales" ? "Sales" : "Tech", dot: "grey", lane: c.lane === "sales" ? "sales" : "service" };
-      if (pid && s === "in_progress") people[pid].dot = "green";
-      else if (pid && s === "dispatched" && people[pid].dot !== "green") people[pid].dot = "orange";
-      const late = c.urgency.key === "late";
-      blocks.push({ id: j.id, kind: "job", personId: pid, day: j.scheduled_for ? todayInJohannesburg(new Date(j.scheduled_for)) : today, start: jhbMinutes(j.scheduled_for), dur: 120,
-        title: `${j.job_type ? `${j.job_type[0].toUpperCase()}${j.job_type.slice(1)}` : ""}${j.job_type && j.title ? " · " : ""}${j.title || ""}` || "Job",
-        place: c.place, block: blockKind(c, j.job_type), pill: late ? null : PILL[s] || null, late, draggable: s !== "completed" && !!j.scheduled_for });
-    });
-    visibleVisitEntries(booked.entries).filter((e) => !e.job_id && e.lead_id && !["cancelled", "canceled", "resolved_before_visit"].includes(e.status || "")).forEach((e) => {
-      const c = visitToCard(e, booked.names); const pid = e.agent_id;
-      if (pid && !people[pid]) people[pid] = { id: pid, name: booked.names[pid]?.full_name || "Assigned", role: c.lane === "sales" ? "Sales" : "Tech", dot: "grey", lane: c.lane === "sales" ? "sales" : "service" };
-      const start = e.start_time ? Number(e.start_time.slice(0, 2)) * 60 + Number(e.start_time.slice(3, 5)) : null;
-      blocks.push({ id: `v-${e.key}`, kind: "visit", personId: pid, day: e.date, start, dur: 60, title: c.lane === "sales" ? `Sales visit · ${c.title}` : c.title,
-        place: c.place, block: blockKind(c), late: c.urgency.key === "late", pill: c.urgency.key === "done" ? "Done" : null });
-    });
-    Object.values(people).forEach((p) => { if (p.dot === "grey" && blocks.some((b) => b.personId === p.id && b.day === today && b.block !== "done")) p.dot = "blue"; });
-    return { people: Object.values(people).sort((a, b) => a.role.localeCompare(b.role) * -1 || a.name.localeCompare(b.name)), blocks };
-  }, [jobs, booked, today]);
+  const model = useMemo(() => assembleScheduleBlocks({ jobs, entries: booked.entries, names: booked.names, today }), [jobs, booked, today]);
 
   // Booked leads keep status "pending"; the rail is for leads nobody has yet (shared isAssigned rule).
   const rail = leads.filter((l) => !isAssigned(l)).sort((a, b) => Number(!!a.first_contact_at) - Number(!!b.first_contact_at) || String(a.created_at).localeCompare(String(b.created_at)));
@@ -167,7 +144,7 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
         chip={chip} onChip={setChip} counts={counts}
         onCallLead={() => {}} onAssignLead={(l) => setAssignLeadId(l.id)} onOpenLead={(l) => navigate(isAssigned(l as any) ? `/admin/bookings/${l.id}` : `/admin/dispatch?lead=${l.id}`)}
         onAssignJob={setAssignJobId} onOpenJob={(id) => navigate(`/admin/jobs/${id}`)}
-        onOpenBlock={(b) => b.kind === "job" ? navigate(`/admin/jobs/${b.id}`) : navigate(`/admin/dispatch?lead=${(booked.entries.find((e) => `v-${e.key}` === b.id)?.lead_id) || ""}`)}
+        onOpenBlock={(b) => { if (b.href) navigate(b.href); }}
         onMoveBlock={salesOnly ? undefined : (b, start) => { if (b.kind !== "job" || !b.draggable) return; const j = jobs.find((x) => x.id === b.id); move.mutate({ id: b.id, iso: jhbIso(b.day, start), prev: j?.scheduled_for || null }); }}
         pipeline={<V8PipelineBoard />} nowMin={sel === today ? jhbMinutes(new Date().toISOString()) : null} />
       <LeadAssignDialog leadId={assignLeadId} onClose={() => setAssignLeadId(null)} />

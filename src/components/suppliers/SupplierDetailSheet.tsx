@@ -48,7 +48,7 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit, initialTa
   const { data: productCount = 0 } = useQuery({
     queryKey: ["supplier-product-count", supplierId],
     queryFn: async () => {
-      const { count, error } = await (supabase.from("supplier_products") as any)
+      const { count, error } = await supabase.from("supplier_products")
         .select("*", { count: "exact", head: true })
         .eq("supplier_id", supplierId)
         .or("archived.is.null,archived.eq.false");
@@ -85,7 +85,7 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit, initialTa
     try {
       const isDiscount = priceListType === "list_price_with_discount";
       const isMarkup = priceListType === "list_price_with_markup";
-      const { error } = await (supabase.from("suppliers") as any)
+      const { error } = await supabase.from("suppliers")
         .update({
           // Legacy/display columns (still used to render the Pricing tab itself)
           price_list_type: priceListType,

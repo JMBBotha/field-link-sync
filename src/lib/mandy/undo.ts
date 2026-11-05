@@ -103,10 +103,11 @@ export interface SnapshotRow { id: string; action: string; label: string | null;
 const T = () => (supabase as any).from("mandy_undo_snapshots");
 
 export async function saveUndoSnapshot(r: { quoteId: string; action: string; label: string; snapshot: QuoteSnapshot; hashAfter: string; quoteUpdatedAtAfter?: string | null }) {
-  const { data: u } = await supabase.auth.getUser();
-  if (!u.user) return;
+  const { waitForAuthSession } = await import("@/contexts/AuthContext");
+  const session = await waitForAuthSession();
+  if (!session?.user) return;
   await T().insert({
-    quote_id: r.quoteId, user_id: u.user.id, action: r.action, label: r.label, snapshot: r.snapshot,
+    quote_id: r.quoteId, user_id: session.user.id, action: r.action, label: r.label, snapshot: r.snapshot,
     state_hash_after: r.hashAfter, quote_updated_at_after: r.quoteUpdatedAtAfter ?? new Date().toISOString(),
   });
 }

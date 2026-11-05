@@ -5,16 +5,16 @@ export type MockupUnit = { modelKey: string; label: string; url: string | null; 
 
 /** Units on the lead's latest quote, each with its picture for photo mockups: own uploaded cut-out first, else the approved catalogue photo. */
 export async function loadLeadMockupUnits(leadId: string): Promise<MockupUnit[]> {
-  const { data: q } = await (supabase.from("quotes") as any).select("id").eq("lead_id", leadId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const { data: q } = await supabase.from("quotes").select("id").eq("lead_id", leadId).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (!q) return [];
-  const { data: items } = await (supabase.from("quote_items") as any).select("item_name, item_type, item_number, product_code, is_bundle, metadata").eq("quote_id", q.id);
+  const { data: items } = await supabase.from("quote_items").select("item_name, item_type, item_number, product_code, is_bundle, metadata").eq("quote_id", q.id);
   const names = new Map<string, string>();
   for (const it of (items || []) as any[]) { const k = unitLineModelKey(it); if (k && !names.has(k)) names.set(k, String(it.item_name || k)); }
   const keys = [...names.keys()];
   if (!keys.length) return [];
   const [{ data: media }, { data: own }] = await Promise.all([
     (supabase.from("product_media" as never) as any).select("model_key, display_name, image_url, status").in("model_key", keys),
-    (supabase.from("unit_mockups") as any).select("model_key, image_url").in("model_key", keys),
+    supabase.from("unit_mockups").select("model_key, image_url").in("model_key", keys),
   ]);
   const m = new Map(((media || []) as any[]).map((x) => [x.model_key, x]));
   const o = new Map(((own || []) as any[]).map((x) => [x.model_key, x.image_url as string]));
@@ -56,15 +56,17 @@ export async function cutOutUnit(file: File): Promise<Blob> {
 
 /** Uploads a unit picture as this company's mockup cut-out for that model (reused on every photo/quote). */
 export async function saveUnitMockup(modelKey: string, label: string, file: File): Promise<string> {
-  const { data: cid, error: cErr } = await (supabase.rpc as any)("caller_company_id");
+  const { data: cid, error: cErr } = await supabase.rpc("caller_company_id");
   if (cErr || !cid) throw new Error("Couldn't work out your company");
   const blob = await cutOutUnit(file);
   const path = `mockups/${cid}/${modelKey.replace(/[^a-z0-9_-]/gi, "_")}-${Date.now()}.png`;
   const up = await supabase.storage.from("product-media").upload(path, blob, { contentType: "image/png", upsert: true });
   if (up.error) throw up.error;
   const url = supabase.storage.from("product-media").getPublicUrl(path).data.publicUrl;
-  const { data: { user } } = await supabase.auth.getUser();
-  const { error } = await (supabase.from("unit_mockups") as any).upsert(
+  const { waitForAuthSession } = await import("@/contexts/AuthContext");
+  const session = await waitForAuthSession();
+  const user = session?.user;
+  const { error } = await supabase.from("unit_mockups").upsert(
     { company_id: cid, model_key: modelKey, label, image_url: url, storage_path: path, created_by: user?.id ?? null, updated_at: new Date().toISOString() },
     { onConflict: "company_id,model_key" },
   );

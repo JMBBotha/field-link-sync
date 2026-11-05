@@ -98,7 +98,7 @@ const ImportPreviewModal = ({
   const [existing, setExisting] = useState<ExistingProduct[]>([]);
   useEffect(() => {
     if (!supplierId) return;
-    (supabase.from("supplier_products" as any) as any)
+    supabase.from("supplier_products")
       .select("id, product_code, cost_price, description").eq("supplier_id", supplierId).limit(5000)
       .then(({ data }: any) => setExisting(data || []));
   }, [supplierId]);
@@ -257,7 +257,7 @@ const ImportPreviewModal = ({
                     <span className="font-semibold">Page {pg}: 0 rows found</span>
                     {pageImages?.[pg - 1] && <a href={pageImages[pg - 1]!} target="_blank" rel="noreferrer" className="underline text-primary">View page</a>}
                     <Button size="sm" variant={ackPages.has(pg) ? "default" : "outline"} className="h-7 text-xs ml-auto"
-                      onClick={() => setAckPages((prev) => { const n = new Set(prev); n.has(pg) ? n.delete(pg) : n.add(pg); return n; })}>
+                      onClick={() => setAckPages((prev) => { const n = new Set(prev); if (n.has(pg)) n.delete(pg); else n.add(pg); return n; })}>
                       Acknowledged
                     </Button>
                   </div>

@@ -55,7 +55,7 @@ const AdminOssExtrasPage = () => {
   const { data: supplier } = useQuery({
     queryKey: ["oss-extras-supplier"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("suppliers") as any).select("id, name").eq("supplier_type", "consumables").ilike("name", "%one stop%").limit(1).maybeSingle();
+      const { data, error } = await supabase.from("suppliers").select("id, name").eq("supplier_type", "consumables").ilike("name", "%one stop%").limit(1).maybeSingle();
       if (error) throw error;
       return data as { id: string; name: string } | null;
     },
@@ -66,14 +66,14 @@ const AdminOssExtrasPage = () => {
     enabled: !!supplier?.id,
     queryFn: async () => {
       const [items, codes, skus, book] = await Promise.all([
-        (supabase.from("supplier_products") as any).select("id, product_code, short_name, description, category, cost_price, sold_in_length, unit_length, archived")
+        supabase.from("supplier_products").select("id, product_code, short_name, description, category, cost_price, sold_in_length, unit_length, archived")
           .eq("supplier_id", supplier!.id).contains("import_flags", ["in_house"]).order("product_code"),
-        (supabase.from("supplier_products") as any).select("product_code").eq("supplier_id", supplier!.id).limit(5000),
-        (supabase.from("supplier_sku_map" as any) as any).select("supplier_product_id, internal_skus(sku_code, family, type_code, size_code, variant)").eq("supplier_id", supplier!.id).is("active_to", null),
-        (supabase.from("pdf_uploads") as any).select("id, file_name, file_url, activated_at").eq("supplier_id", supplier!.id).eq("price_list_type", "in_house").eq("is_active", true).maybeSingle(),
+        supabase.from("supplier_products").select("product_code").eq("supplier_id", supplier!.id).limit(5000),
+        supabase.from("supplier_sku_map").select("supplier_product_id, internal_skus(sku_code, family, type_code, size_code, variant)").eq("supplier_id", supplier!.id).is("active_to", null),
+        supabase.from("pdf_uploads").select("id, file_name, file_url, activated_at").eq("supplier_id", supplier!.id).eq("price_list_type", "in_house").eq("is_active", true).maybeSingle(),
       ]);
       for (const r of [items, codes, skus, book]) if (r.error) throw r.error;
-      const allSkus = await (supabase.from("internal_skus" as any) as any).select("sku_code");
+      const allSkus = await supabase.from("internal_skus").select("sku_code");
       const skuBy: Record<string, any> = {};
       (skus.data || []).forEach((m: any) => { if (m.supplier_product_id) skuBy[m.supplier_product_id] = m.internal_skus; });
       const rows: Row[] = (items.data || []).map((r: any) => ({ ...r, sku: skuBy[r.id] || null }));

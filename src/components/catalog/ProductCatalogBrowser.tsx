@@ -181,7 +181,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
       const batchSize = 50;
       for (let i = 0; i < ids.length; i += batchSize) {
         const batch = ids.slice(i, i + batchSize);
-        const { error } = await supabase.from("supplier_products" as any)
+        const { error } = await supabase.from("supplier_products")
           .update(updates as any).in("id", batch);
         if (error) throw error;
       }
@@ -251,7 +251,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
     if (!t || t.length < 2) return;
     setSearchHistory(prev => {
       const deduped = [t, ...prev.filter(h => h.toLowerCase() !== t.toLowerCase())].slice(0, 10);
-      try { localStorage.setItem("hvacSearchHistory", JSON.stringify(deduped)); } catch {}
+      try { localStorage.setItem("hvacSearchHistory", JSON.stringify(deduped)); } catch { /* storage unavailable */ }
       return deduped;
     });
   }, []);
@@ -259,7 +259,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
   const removeFromHistory = useCallback((term: string) => {
     setSearchHistory(prev => {
       const updated = prev.filter(h => h !== term);
-      try { localStorage.setItem("hvacSearchHistory", JSON.stringify(updated)); } catch {}
+      try { localStorage.setItem("hvacSearchHistory", JSON.stringify(updated)); } catch { /* storage unavailable */ }
       return updated;
     });
   }, []);
@@ -276,7 +276,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
     queryKey: ["supplier-products-all", supplierId, showArchived],
     queryFn: async () => {
       try {
-        let query = (supabase.from("supplier_products") as any)
+        let query = supabase.from("supplier_products")
           .select("*, suppliers(name)");
         if (supplierId) query = query.eq("supplier_id", supplierId);
         // Default browse = live catalog only. Archive view keeps showing archived rows.
@@ -498,7 +498,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
 
   const unarchiveMutation = useMutation({
     mutationFn: async (productId: string) => {
-      const { error } = await supabase.from("supplier_products" as any)
+      const { error } = await supabase.from("supplier_products")
         .update({ archived: false, archived_at: null } as any).eq("id", productId);
       if (error) throw error;
     },
@@ -508,7 +508,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
   const togglePinMutation = useMutation({
     mutationFn: async ({ productId, isPinned }: { productId: string; isPinned: boolean }) => {
       const pinOrder = isPinned ? 0 : Math.floor(Date.now() / 1000) % 2000000000;
-      const { error } = await supabase.from("supplier_products" as any)
+      const { error } = await supabase.from("supplier_products")
         .update({ is_pinned: !isPinned, pin_order: pinOrder } as any).eq("id", productId);
       if (error) throw error;
     },
@@ -574,7 +574,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
       });
       if (error) throw error;
       if (!data?.enhanced_url) throw new Error("No enhanced URL returned");
-      const { error: updateErr } = await (supabase.from("supplier_products") as any)
+      const { error: updateErr } = await supabase.from("supplier_products")
         .update({ image_url: data.enhanced_url })
         .eq("id", productId);
       if (updateErr) throw updateErr;
@@ -602,7 +602,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
           body: { image_url: p.image_url },
         });
         if (error || !data?.enhanced_url) { failed++; continue; }
-        await (supabase.from("supplier_products") as any)
+        await supabase.from("supplier_products")
           .update({ image_url: data.enhanced_url })
           .eq("id", p.id);
         success++;
@@ -1043,7 +1043,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                               key={cat}
                               className={`w-full text-left text-xs px-2 py-1 rounded hover:bg-accent transition-colors ${product.product_category === cat ? "bg-accent font-medium" : ""}`}
                               onClick={() => {
-                                (supabase.from("supplier_products") as any)
+                                supabase.from("supplier_products")
                                   .update({ product_category: cat })
                                   .eq("id", product.id)
                                   .then(() => {

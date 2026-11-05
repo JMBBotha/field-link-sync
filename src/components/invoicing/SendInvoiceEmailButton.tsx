@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Loader2, Mail, Pencil, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { jsonObject, jsonString } from "@/lib/jsonValue";
 import { useToast } from "@/hooks/use-toast";
 import { invoiceMissingPrices } from "@/lib/invoicePriced";
 
@@ -27,10 +28,16 @@ export default function SendInvoiceEmailButton({ invoiceId, status, onEdit, onSe
     const missing = await invoiceMissingPrices(invoiceId);
     if (missing) { toast({ title: "Price missing", description: missing, variant: "destructive" }); return; }
     setOpen(true); setLoading(true); setPreview(null);
-    const { data, error } = await (supabase.rpc as any)("invoice_email_preview", { p_invoice_id: invoiceId });
+    const { data, error } = await supabase.rpc("invoice_email_preview", { p_invoice_id: invoiceId });
     setLoading(false);
     if (error) { toast({ title: "Could not build the email preview", description: error.message, variant: "destructive" }); setOpen(false); return; }
-    setPreview(data as Preview);
+    const row = jsonObject(data);
+    if (!row || typeof row.subject !== "string" || typeof row.html !== "string") {
+      toast({ title: "Could not build the email preview", description: "The email preview was not in the expected shape.", variant: "destructive" });
+      setOpen(false);
+      return;
+    }
+    setPreview({ to: jsonString(row.to), accounts_copy: jsonString(row.accounts_copy), subject: row.subject, html: row.html });
   };
 
   const send = async () => {
