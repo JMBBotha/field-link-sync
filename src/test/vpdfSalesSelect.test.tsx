@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor, render, fireEvent, screen, cleanup } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { readFileSync } from "node:fs";
@@ -34,7 +35,9 @@ import PdfPageOverlay from "@/components/catalog/quote-builder/PdfPageOverlay";
 import AdminPriceListsPage from "@/pages/admin/AdminPriceListsPage";
 
 const wrapper = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter>{children}</MemoryRouter></QueryClientProvider>
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <MemoryRouter><AuthProvider>{children}</AuthProvider></MemoryRouter>
+  </QueryClientProvider>
 );
 beforeEach(() => { cleanup(); env.user = "lisa"; env.insertError = null; env.writes = []; env.panelProps = null; env.nav.mockReset(); toast.mockReset(); localStorage.clear(); });
 

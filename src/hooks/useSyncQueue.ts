@@ -245,7 +245,8 @@ export function useSyncQueue(isOnline: boolean) {
           console.log('[Conflict][Sync] Conflict detected, awaiting resolution...');
           
           // Log conflict to Supabase
-          const { data: { user } } = await supabase.auth.getUser();
+          const { waitForAuthSession } = await import("@/contexts/AuthContext");
+          const user = (await waitForAuthSession())?.user ?? null;
           if (user) {
             await supabase.from('sync_conflicts').insert({
               lead_id: operation.recordId,

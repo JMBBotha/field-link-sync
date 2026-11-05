@@ -145,7 +145,7 @@ const BrochureManagement = () => {
       let pageCount = 1;
       try {
         pageCount = await getPageCount(arrayBuf);
-      } catch {}
+      } catch { /* page count is optional */ }
 
       const prefixArr = formPrefixes
         .split(",")

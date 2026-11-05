@@ -50,7 +50,8 @@ export const DaikinOverlayDiagnostic = ({ currentSupplierName, currentPageNumber
         .select("id").ilike("name", trimmed).maybeSingle();
       supplierUuid = s?.id ?? null;
     }
-    const { data: { user } } = await supabase.auth.getUser();
+    const { waitForAuthSession } = await import("@/contexts/AuthContext");
+    const user = (await waitForAuthSession())?.user ?? null;
     const { error } = await (supabase.from("overlay_mismatch_reports") as any).insert({
       supplier_name: trimmed || null,
       supplier_id: supplierUuid,

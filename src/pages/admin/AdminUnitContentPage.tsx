@@ -170,7 +170,7 @@ export default function AdminUnitContentPage() {
                 <label className="inline-flex cursor-pointer items-center rounded-md border px-3 text-sm"><Upload className="mr-1 h-4 w-4" />Cut-out PNG<input type="file" accept="image/png" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
                 {sel.status === "approved"
                   ? <Button size="sm" variant="outline" onClick={() => save({ status: "draft", approved_at: null } as any)}><Undo2 className="mr-1 h-4 w-4" />Back to draft</Button>
-                  : <Button size="sm" onClick={async () => { const { data } = await supabase.auth.getUser(); save({ status: "approved", approved_at: new Date().toISOString(), approved_by: data.user?.id } as any); }}><Check className="mr-1 h-4 w-4" />Approve</Button>}
+                  : <Button size="sm" onClick={async () => { const { waitForAuthSession } = await import("@/contexts/AuthContext"); const session = await waitForAuthSession(); save({ status: "approved", approved_at: new Date().toISOString(), approved_by: session?.user?.id } as any); }}><Check className="mr-1 h-4 w-4" />Approve</Button>}
               </div>
             </CardHeader>
             <CardContent className="space-y-4">

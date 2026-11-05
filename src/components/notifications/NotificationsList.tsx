@@ -337,7 +337,7 @@ const NotificationsList = ({
                               {notification.body.length > 110 && (
                                 <span role="button" tabIndex={0} data-testid="notif-more"
                                   className="mt-0.5 inline-block text-xs font-medium text-primary"
-                                  onClick={(e) => { e.stopPropagation(); setOpenBody((p) => { const x = new Set(p); x.has(notification.id) ? x.delete(notification.id) : x.add(notification.id); return x; }); }}>
+                                  onClick={(e) => { e.stopPropagation(); setOpenBody((p) => { const x = new Set(p); if (x.has(notification.id)) x.delete(notification.id); else x.add(notification.id); return x; }); }}>
                                   {openBody.has(notification.id) ? "Show less" : "Show more"}
                                 </span>
                               )}
@@ -490,8 +490,8 @@ const NotificationsList = ({
                 return (
                   <div key={g.key} data-testid="notif-group">
                     <div role="button" tabIndex={0} aria-expanded={isOpen}
-                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpanded((prev) => { const n = new Set(prev); n.has(g.key) ? n.delete(g.key) : n.add(g.key); return n; }); } }}
-                      onClick={() => setExpanded((prev) => { const n = new Set(prev); n.has(g.key) ? n.delete(g.key) : n.add(g.key); return n; })}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpanded((prev) => { const n = new Set(prev); if (n.has(g.key)) n.delete(g.key); else n.add(g.key); return n; }); } }}
+                      onClick={() => setExpanded((prev) => { const n = new Set(prev); if (n.has(g.key)) n.delete(g.key); else n.add(g.key); return n; })}
                       className={`relative w-full cursor-pointer text-left px-4 py-3 hover:bg-accent/50 transition-colors flex gap-3 ${unread ? "bg-primary/10" : ""}`}>
                       <div className="relative h-8 w-8 shrink-0">
                         <span className="absolute inset-0 translate-x-1 -translate-y-1 rounded-full bg-muted" />

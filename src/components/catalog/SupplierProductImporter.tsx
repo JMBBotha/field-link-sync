@@ -32,7 +32,7 @@ function sanitizeInt(val: any): number | null {
 function sanitizeFloat(val: any): number | null {
   if (val == null) return null;
   if (typeof val === "number") return isNaN(val) ? null : val;
-  const n = parseFloat(String(val).replace(/[^0-9.\-]/g, ""));
+  const n = parseFloat(String(val).replace(/[^0-9.-]/g, ""));
   return isNaN(n) ? null : n;
 }
 
@@ -62,7 +62,7 @@ function autoRepairCsv(text: string): string {
   const existingLines = text.split("\n").filter(l => l.trim());
   if (existingLines.length > 1) return text;
 
-  let t = text.replace(/(\d{2,}\.\d{2})([A-Z])/g, "$1,$2");
+  const t = text.replace(/(\d{2,}\.\d{2})([A-Z])/g, "$1,$2");
   const allValues: string[] = [];
   let current = "";
   let inQuotes = false;

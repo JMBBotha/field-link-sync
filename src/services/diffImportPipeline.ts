@@ -23,7 +23,7 @@ import { buildManualIndex, findManual, resolvePipeCols } from "@/lib/pipeLockCar
 function sanitizeInt(val: any): number | null {
   if (val == null) return null;
   if (typeof val === "number") return isNaN(val) ? null : Math.round(val);
-  const n = parseInt(String(val).replace(/[^0-9\-]/g, ""), 10);
+  const n = parseInt(String(val).replace(/[^0-9-]/g, ""), 10);
   return isNaN(n) ? null : n;
 }
 
@@ -436,7 +436,8 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
 
   // Record import history (best-effort, non-fatal)
   try {
-    const { data: userData } = await supabase.auth.getUser();
+    const { waitForAuthSession } = await import("@/contexts/AuthContext");
+    const session = await waitForAuthSession();
     await supabase.from("price_list_uploads" as any).insert({
       supplier_id: supplierId,
       file_name: fileName || "Diff Import",
@@ -446,7 +447,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       products_updated: updated,
       products_skipped: errors,
       products_archived: archived,
-      uploaded_by: userData?.user?.id || null,
+      uploaded_by: session?.user?.id || null,
     } as any);
   } catch (auditErr) {
     console.warn("[DiffImport] Failed to write price_list_uploads audit row (non-fatal):", auditErr);

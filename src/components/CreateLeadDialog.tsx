@@ -617,7 +617,7 @@ const CreateLeadDialog = ({ open, onOpenChange, customerId: prefillCustomerId }:
                 value={formData.customer_phone}
                 onChange={(e) => {
                   // Strip +27 or leading 0 if user pastes full number
-                  let value = e.target.value.replace(/^\+?27/, '').replace(/^0/, '');
+                  const value = e.target.value.replace(/^\+?27/, '').replace(/^0/, '');
                   setFormData({ ...formData, customer_phone: value });
                 }}
                 required

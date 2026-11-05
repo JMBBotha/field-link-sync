@@ -80,20 +80,20 @@ export async function extractSupplierInfoFromPDF(
 }
 
 function parseSupplierText(text: string): ExtractedSupplierInfo {
-  const allEmails = extractAllMatches(text, /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g);
+  const allEmails = extractAllMatches(text, /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
   const allPhones = extractAllMatches(
     text,
-    /(?:\+27|0)\s*\(?\d{2}\)?\s*[\d\s\-]{6,12}/g
+    /(?:\+27|0)\s*\(?\d{2}\)?\s*[\d\s-]{6,12}/g
   ).map((p) => p.replace(/\s+/g, " ").trim());
 
   return {
     companyName: extractPattern(text, /(?:Company|Supplier|Manufacturer)[:\s]+([A-Z][A-Za-z\s&()]+?)(?:\s{2,}|\n|$)/i),
     vatNumber: extractPattern(text, /VAT\s*(?:No\.?|Number|#)?[:\s]*(\d{10,15})/i),
-    registrationNumber: extractPattern(text, /(?:Reg(?:istration)?|CK|Co\.?\s*Reg)[:\s.]*(?:No\.?|Number|#)?[:\s]*([\d/\-]+)/i),
-    website: extractPattern(text, /((?:https?:\/\/)?(?:www\.)?[a-zA-Z0-9\-]+\.[a-zA-Z]{2,}(?:\.[a-zA-Z]{2,})?)/i),
+    registrationNumber: extractPattern(text, /(?:Reg(?:istration)?|CK|Co\.?\s*Reg)[:\s.]*(?:No\.?|Number|#)?[:\s]*([\d/-]+)/i),
+    website: extractPattern(text, /((?:https?:\/\/)?(?:www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\.[a-zA-Z]{2,})?)/i),
     mainPhone: allPhones[0] || null,
     mainEmail: allEmails.find((e) => /^info@|^enquir|^contact@|^admin@/i.test(e)) || allEmails[0] || null,
-    mainWhatsapp: extractPattern(text, /(?:WhatsApp|WA)[:\s]*((?:\+27|0)\s*\(?\d{2}\)?\s*[\d\s\-]{6,12})/i),
+    mainWhatsapp: extractPattern(text, /(?:WhatsApp|WA)[:\s]*((?:\+27|0)\s*\(?\d{2}\)?\s*[\d\s-]{6,12})/i),
     headOfficeAddress: extractPattern(
       text,
       /(?:Head\s*Office|Physical\s*Address|Address)[:\s]*([^\n]{10,120})/i
@@ -125,7 +125,7 @@ function extractDepartments(text: string, allEmails: string[]): ExtractedDepartm
     const contextMatches = text.match(deptRegex) || [];
     const deptPhones: string[] = [];
     for (const ctx of contextMatches) {
-      const phones = extractAllMatches(ctx, /(?:\+27|0)\s*\(?\d{2}\)?\s*[\d\s\-]{6,12}/g);
+      const phones = extractAllMatches(ctx, /(?:\+27|0)\s*\(?\d{2}\)?\s*[\d\s-]{6,12}/g);
       deptPhones.push(...phones);
     }
 
@@ -164,10 +164,10 @@ function extractLocations(text: string): ExtractedLocation[] {
     if (!matches) continue;
 
     const context = matches.join(" ");
-    const emails = extractAllMatches(context, /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g);
-    const phones = extractAllMatches(context, /(?:\+27|0)\s*\(?\d{2}\)?\s*[\d\s\-]{6,12}/g)
+    const emails = extractAllMatches(context, /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
+    const phones = extractAllMatches(context, /(?:\+27|0)\s*\(?\d{2}\)?\s*[\d\s-]{6,12}/g)
       .map((p) => p.replace(/\s+/g, " ").trim());
-    const whatsapp = extractPattern(context, /(?:WhatsApp|WA|Cell|Mobile)[:\s]*((?:\+27|0)\s*\(?\d{2}\)?\s*[\d\s\-]{6,12})/i);
+    const whatsapp = extractPattern(context, /(?:WhatsApp|WA|Cell|Mobile)[:\s]*((?:\+27|0)\s*\(?\d{2}\)?\s*[\d\s-]{6,12})/i);
 
     // Only add if we found contact info for this city
     if (emails.length > 0 || phones.length > 0) {

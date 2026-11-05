@@ -228,7 +228,7 @@ export async function capturePdfPages(
       }
 
       // Convert canvas to JPEG blob
-      let blob = await new Promise<Blob>((resolve) => {
+      const blob = await new Promise<Blob>((resolve) => {
         canvas.toBlob(
           (b) => resolve(b!),
           "image/jpeg",

@@ -88,9 +88,10 @@ async function waitForCaptureFrame() {
  */
 /** The signed-in user's own company (never another company's settings row). */
 async function callerCompanyId(): Promise<string | null> {
-  const { data } = await supabase.auth.getUser();
+  const { waitForAuthSession } = await import("@/contexts/AuthContext");
+  const session = await waitForAuthSession();
   const { getUserCompanyId } = await import("./tenantUtils");
-  return getUserCompanyId(data.user?.id);
+  return getUserCompanyId(session?.user?.id);
 }
 
 export async function fetchTermsCompanyInfo(fallbackName?: string): Promise<TermsCompanyInfo> {

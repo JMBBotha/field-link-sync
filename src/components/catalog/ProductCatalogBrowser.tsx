@@ -251,7 +251,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
     if (!t || t.length < 2) return;
     setSearchHistory(prev => {
       const deduped = [t, ...prev.filter(h => h.toLowerCase() !== t.toLowerCase())].slice(0, 10);
-      try { localStorage.setItem("hvacSearchHistory", JSON.stringify(deduped)); } catch {}
+      try { localStorage.setItem("hvacSearchHistory", JSON.stringify(deduped)); } catch { /* storage unavailable */ }
       return deduped;
     });
   }, []);
@@ -259,7 +259,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
   const removeFromHistory = useCallback((term: string) => {
     setSearchHistory(prev => {
       const updated = prev.filter(h => h !== term);
-      try { localStorage.setItem("hvacSearchHistory", JSON.stringify(updated)); } catch {}
+      try { localStorage.setItem("hvacSearchHistory", JSON.stringify(updated)); } catch { /* storage unavailable */ }
       return updated;
     });
   }, []);

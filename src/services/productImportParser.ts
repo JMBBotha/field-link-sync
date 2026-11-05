@@ -13,13 +13,13 @@ import { renderPDFToImages } from "@/utils/pdfEnhancer";
 function sanitizeInt(val: any): number | null {
   if (val == null) return null;
   if (typeof val === "number") return isNaN(val) ? null : Math.round(val);
-  const n = parseInt(String(val).replace(/[^0-9\-]/g, ""), 10);
+  const n = parseInt(String(val).replace(/[^0-9-]/g, ""), 10);
   return isNaN(n) ? null : n;
 }
 function sanitizeFloat(val: any): number | null {
   if (val == null) return null;
   if (typeof val === "number") return isNaN(val) ? null : val;
-  const n = parseFloat(String(val).replace(/[^0-9.\-]/g, ""));
+  const n = parseFloat(String(val).replace(/[^0-9.-]/g, ""));
   return isNaN(n) ? null : n;
 }
 
@@ -276,10 +276,10 @@ async function parsePDFWithFullPipeline(
 ): Promise<ImportPreview> {
   let pageReport: PageReport[] = [];
   let parseMethod: ImportPreview["parseMethod"] = "regex";
-  let detectedPriceColumns: string[] = [];
+  const detectedPriceColumns: string[] = [];
   let selectedPriceColumn: string | undefined;
   let grokDetectedInclVat = false;
-  let rawRows: Array<{
+  const rawRows: Array<{
     model: string; description: string; price: number; category: string;
     btu_rating?: number | null; pipe_size?: string | null; refrigerant_type?: string | null;
     phase?: string | null; speed_type?: string | null; kw?: number | null;
@@ -352,29 +352,12 @@ async function parsePDFWithFullPipeline(
     if (rawRows.length > 0) parseMethod = "grok_ai";
   } catch (err) { console.warn("[Import] Page-by-page AI failed:", err); }
 
-  // STAGE 4: Lovable AI fallback
   // parse-price-list writes supplier_products itself (no review) — never call it from preview.
-  if (false && rawRows.length === 0 && allText.trim().length > 50) {
-    onStage?.({ stage: "ai_extraction", detail: "Trying Lovable AI..." });
-    try {
-      const { data, error } = await supabase.functions.invoke("parse-price-list", {
-        body: { csv_text: allText.substring(0, 15000), supplier_id: supplierId, supplier_name: settings.supplierName },
-      });
-      if (!error) {
-        for (const p of (data?.products || (Array.isArray(data) ? data : []))) {
-          if ((p.cost_price || 0) > 0) {
-            rawRows.push({ model: p.product_code || "", description: p.description || "", price: p.cost_price, category: p.category || "Air Conditioning" });
-          }
-        }
-        if (rawRows.length > 0) { parseMethod = "lovable_ai"; }
-      }
-    } catch (err) { console.warn("[Import] Lovable AI failed:", err); }
-  }
 
   // STAGE 5: Regex fallback
   if (rawRows.length === 0) {
     onStage?.({ stage: "text_fallback", detail: "Using text extraction fallback..." });
-    const pricePattern = /([A-Z0-9][A-Z0-9\-\/]{4,29})\s+([A-Za-z0-9\s\-\/,\.]{10,80}?)\s+R?\s*([\d\s,]+\.?\d{0,2})/g;
+    const pricePattern = /([A-Z0-9][A-Z0-9\-/]{4,29})\s+([A-Za-z0-9\s\-/,.]{10,80}?)\s+R?\s*([\d\s,]+\.?\d{0,2})/g;
     let match;
     while ((match = pricePattern.exec(allText)) !== null) {
       const price = parsePrice(match[3]);
@@ -547,7 +530,7 @@ function extractSpecsFromText(model: string, description: string) {
   const pipeMatch = text.match(/(1\/[24]|3\/8|1\/2|5\/8|3\/4)\s*[X×&]\s*(1\/[24]|3\/8|1\/2|5\/8|3\/4)/i);
   if (pipeMatch) pipe_size = `${pipeMatch[1]} x ${pipeMatch[2]}`;
   if (!pipe_size) {
-    const mmPipe = text.match(/(6\.35|9\.52|12\.7|15\.88|19\.05)\s*[X×\/]\s*(6\.35|9\.52|12\.7|15\.88|19\.05)/);
+    const mmPipe = text.match(/(6\.35|9\.52|12\.7|15\.88|19\.05)\s*[X×/]\s*(6\.35|9\.52|12\.7|15\.88|19\.05)/);
     if (mmPipe) pipe_size = `${mmPipe[1]}/${mmPipe[2]}mm`;
   }
 
@@ -604,23 +587,6 @@ async function parseCSVFile(file: File, settings: SupplierPricingSettings, suppl
   const effectiveDiscount = discountDetection.confidence === "high" ? discountDetection.percent : settings.tradeDiscount;
 
   // parse-price-list writes supplier_products itself (no review) — never call it from preview.
-  if (false && supplierId) {
-    try {
-      const { data, error } = await supabase.functions.invoke("parse-price-list", {
-        body: { csv_text: text.substring(0, 15000), supplier_id: supplierId, supplier_name: settings.supplierName },
-      });
-      if (!error) {
-        const aiProducts = (data?.products || (Array.isArray(data) ? data : [])).filter((p: any) => (p.cost_price || 0) > 0);
-        if (aiProducts.length > 0) {
-          const products: ParsedProduct[] = aiProducts.map((p: any) => {
-            const calc = calculateImportPrices(p.cost_price, effectiveInclVat, effectiveDiscount, settings.markupPercent);
-            return buildParsedProduct(p.product_code || "", p.description || "", p.category || "Air Conditioning", p.cost_price, calc, effectiveInclVat, effectiveDiscount, settings.markupPercent, "high");
-          });
-          return buildPreview(products, effectiveInclVat, effectiveDiscount, settings, vatDetection, discountDetection, [], "lovable_ai");
-        }
-      }
-    } catch (err) { console.warn("[Import] Lovable AI CSV failed:", err); }
-  }
 
   // Local CSV parsing
   const columnMap: Record<string, string> = {};

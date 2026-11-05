@@ -41,7 +41,7 @@ export default function JobWatchdogPanel({ className }: { className?: string }) 
     const reason = window.prompt("What was done? (e.g. called tech, reassigned)");
     if (reason === null) return;
     const { error } = await (supabase.from("job_alerts" as any) as any)
-      .update({ resolved_at: new Date().toISOString(), resolved_by: (await supabase.auth.getUser()).data.user?.id ?? null, resolution: reason || "dismissed" }).eq("id", id);
+      .update({ resolved_at: new Date().toISOString(), resolved_by: (await (await import("@/contexts/AuthContext")).waitForAuthSession())?.user?.id ?? null, resolution: reason || "dismissed" }).eq("id", id);
     if (error) return toast.error("Could not dismiss: " + error.message);
     refetch();
   };
