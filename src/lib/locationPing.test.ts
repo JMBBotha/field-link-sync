@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const rpc = vi.fn(async () => ({ data: { ok: true }, error: null }));
+const rpc = vi.fn(async (..._args: unknown[]) => ({ data: { ok: true }, error: null }));
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { rpc: (...args: unknown[]) => rpc(...args) },
