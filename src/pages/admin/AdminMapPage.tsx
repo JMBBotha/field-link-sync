@@ -1,6 +1,6 @@
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { mapSpokenStatus } from "@/lib/mandy/mapStatus";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, LocateFixed, Maximize2, Minimize2, ExternalLink, Layers } from "lucide-react";
@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useRole } from "@/hooks/useRole";
 import { fetchJobPins } from "@/lib/jobPins";
+import { fetchCompletedMapJobs, withCompletedJobCount } from "@/lib/completedMapJobs";
 import JobPinsLayer from "@/components/map/JobPinsLayer";
 
 
@@ -42,6 +43,7 @@ interface Lead {
 }
 
 const AdminMapPage = () => {
+  const navigate = useNavigate();
   // Map is the hero on phone/tablet: leads panel starts closed below lg
   const [leadsCollapsed, setLeadsCollapsed] = useState(
     typeof window !== "undefined" ? window.innerWidth < 1024 : false
@@ -82,6 +84,14 @@ const AdminMapPage = () => {
   });
   const getMapInstance = useCallback(() => mapRef.current?.getMap() ?? null, []);
   const jobPath = useCallback((id: string) => (techOnly ? `/field/jobs/${id}` : `/admin/jobs/${id}`), [techOnly]);
+  const { data: completedCards = [], refetch: refetchCompleted, isError: completedError } = useQuery({
+    queryKey: ["map-completed-jobs", companyId, techOnly ? currentUserId : "all"],
+    enabled: !!companyId,
+    queryFn: () => fetchCompletedMapJobs({ companyId: companyId!, techId: techOnly ? currentUserId : null, jobHref: jobPath }),
+    refetchInterval: 60_000,
+  });
+  const completedLeadIds = useMemo(() => completedCards.flatMap((c) => (c.leadId ? [c.leadId] : [])), [completedCards]);
+  const chipCounts = withCompletedJobCount(statusState.counts, completedCards.length);
   const jobsChip = (
     <button
       type="button"
@@ -277,7 +287,7 @@ const AdminMapPage = () => {
             variant="quiet"
             className="w-max justify-start"
             activeFilters={statusState.filters}
-            counts={statusState.counts}
+            counts={chipCounts}
             onToggle={handleStatusToggle}
           />
         </div>
@@ -309,6 +319,8 @@ const AdminMapPage = () => {
               }}
 
               onLeadClick={handleLeadClick}
+              completedJobCount={completedCards.length}
+              completedLeadIds={completedLeadIds}
             />
             <JobPinsLayer getMap={getMapInstance} jobs={jobPins} visible={showJobs} jobPath={jobPath} />
           </div>
@@ -365,6 +377,10 @@ const AdminMapPage = () => {
             {!completedPanelCollapsed && showCompletedFilter && (
               <CompletedLeadsPanel
                 isVisible={!completedPanelCollapsed && showCompletedFilter}
+                cards={completedCards}
+                error={completedError ? "Couldn't load completed jobs" : null}
+                onRefresh={() => refetchCompleted()}
+                onOpenJob={(id) => navigate(jobPath(id))}
                 onLeadClick={(lat, lng, leadId) => {
                   if (mapRef.current) mapRef.current.panToLocationAndOpenPopup(lat, lng, leadId);
                 }}
@@ -409,7 +425,7 @@ const AdminMapPage = () => {
                         variant="quiet"
                         className="w-full flex-wrap justify-start gap-1"
                         activeFilters={statusState.filters}
-                        counts={statusState.counts}
+                        counts={chipCounts}
                         onToggle={handleStatusToggle}
                       />
                     </div>

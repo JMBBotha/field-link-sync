@@ -70,6 +70,10 @@ interface MapViewProps {
   hideStatusFilters?: boolean;
   /** Emits current filter selection + per-status counts so a parent can render the pills. */
   onStatusStateChange?: (state: MapStatusState) => void;
+  /** Finished-job count. When set, the Completed chip uses this instead of lead status. */
+  completedJobCount?: number | null;
+  /** Lead ids that belong to a finished job. When set, converted/open leads are not drawn as completed. */
+  completedLeadIds?: string[] | null;
 }
 
 
@@ -96,7 +100,7 @@ const escapeHtml = (text: string | null | undefined): string => {
   return div.innerHTML;
 };
 
-const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, hideChromeControls = false, hideStatusFilters = true, onStatusStateChange }, ref) => {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, hideChromeControls = false, hideStatusFilters = true, onStatusStateChange, completedJobCount = null, completedLeadIds = null }, ref) => {
   const MAP_CHROME_BOTTOM_OFFSET_PX = 64;
   const { user } = useAuth();
   const [agents, setAgents] = useState<AgentLocation[]>([]);
@@ -150,11 +154,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         pending: leads.filter((l) => leadStatusCategory(l.status) === "pending").length,
         accepted: leads.filter((l) => leadStatusCategory(l.status) === "accepted").length,
         in_progress: leads.filter((l) => leadStatusCategory(l.status) === "in_progress").length,
-        completed: leads.filter((l) => leadStatusCategory(l.status) === "completed").length,
+        completed: completedJobCount != null ? completedJobCount : leads.filter((l) => leadStatusCategory(l.status) === "completed").length,
         cancelled: leads.filter((l) => leadStatusCategory(l.status) === "cancelled").length,
       },
     });
-  }, [statusFilters, leads, onStatusStateChange]);
+  }, [statusFilters, leads, onStatusStateChange, completedJobCount]);
   const initialBoundsFitRef = useRef(false);
   const missingAgentCountsRef = useRef<Map<string, number>>(new Map());
   const missingLeadCountsRef = useRef<Map<string, number>>(new Map());
@@ -929,8 +933,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     if (!source) return;
 
     // Only cluster completed leads (active ones use individual markers)
+    const finishedLead = (id: string, status: string) =>
+      completedLeadIds ? completedLeadIds.includes(id) : leadStatusCategory(status) === "completed";
     const completedFeatures = leads
-      .filter((l) => leadStatusCategory(l.status) === "completed" && statusFilters.has("completed"))
+      .filter((l) => finishedLead(l.id, l.status) && statusFilters.has("completed"))
       .map((l) => ({
         type: "Feature" as const,
         geometry: { type: "Point" as const, coordinates: [l.longitude, l.latitude] },
@@ -938,7 +944,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       }));
 
     source.setData({ type: "FeatureCollection", features: completedFeatures });
-  }, [leads, statusFilters, mapLoaded]);
+  }, [leads, statusFilters, mapLoaded, completedLeadIds]);
 
   // Customer-location pins (multi-site). Rendered as small blue pins separate from leads.
   useEffect(() => {
@@ -1006,7 +1012,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     if (mapLoaded && mapInstanceRef.current && (agents.length > 0 || leads.length > 0)) {
       updateMarkers();
     }
-  }, [agents, leads, mapLoaded, statusFilters, onLeadClick, depositByLead, bookingByLead]);
+  }, [agents, leads, mapLoaded, statusFilters, onLeadClick, depositByLead, bookingByLead, completedLeadIds]);
 
   const updateMarkers = () => {
     const map = mapInstanceRef.current;
@@ -1218,7 +1224,12 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
     // Filter leads based on active status filters
     const shouldShowLead = (lead: Lead): boolean => {
-      return statusFilters.has(leadStatusCategory(lead.status));
+      const cat = leadStatusCategory(lead.status);
+      if (completedLeadIds) {
+        if (completedLeadIds.includes(lead.id)) return statusFilters.has("completed");
+        if (cat === "completed") return false;
+      }
+      return statusFilters.has(cat);
     };
 
     // Remove stale lead markers (be resilient to transient empty fetches)
@@ -1577,7 +1588,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
                   pending: leads.filter((l) => leadStatusCategory(l.status) === "pending").length,
                   accepted: leads.filter((l) => leadStatusCategory(l.status) === "accepted").length,
                   in_progress: leads.filter((l) => leadStatusCategory(l.status) === "in_progress").length,
-                  completed: leads.filter((l) => leadStatusCategory(l.status) === "completed").length,
+                  completed: completedJobCount != null ? completedJobCount : leads.filter((l) => leadStatusCategory(l.status) === "completed").length,
                   cancelled: leads.filter((l) => leadStatusCategory(l.status) === "cancelled").length,
                 }}
                 onToggle={(status) => {
