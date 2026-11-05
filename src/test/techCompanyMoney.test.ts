@@ -22,7 +22,9 @@ describe("P9 tech company-settings money", () => {
   it("website intake uses the configured company only for website sources", () => {
     const rw = readFileSync("supabase/functions/receive-website-lead/index.ts", "utf8");
     const ing = readFileSync("supabase/functions/ingest-lead/index.ts", "utf8");
-    expect(rw).toContain("websiteLeadCompanyId(supabase)");
+    // 13 Oct: the public website always belongs to Massair CT. Other sources still use the setting.
+    expect(rw).toContain('const MASSAIR_COMPANY_ID = "361bf031-9cdb-4d7f-9bde-9eb95fa4725e"');
+    expect(rw).not.toContain("websiteLeadCompanyId");
     expect(ing).toMatch(/!companyId && source === "website_form"/);
     for (const f of ["receive-vapi-lead", "twilio-inbound-call"]) {
       expect(readFileSync(`supabase/functions/${f}/index.ts`, "utf8")).not.toContain("websiteLeadCompanyId");
