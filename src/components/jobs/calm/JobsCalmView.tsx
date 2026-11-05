@@ -1,14 +1,14 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { BLOCK_STYLE, DAY_START, DAY_END, blockPos, dayProgress, needsYou, ageTone, snapStart, type BlockKind, type ChipKey } from "@/lib/jobsCalm";
+import { bookingAriaLabel, bookingChip, bookingHoverEnabled, bookingPopup, clampPopup, type CalmBlock, type ChipDensity } from "@/lib/bookingGlance";
+
+export type { CalmBlock };
 
 /** Presentational only (no queries) so it can be rendered from sample data. Calm Jobs page, Johan 20 Oct. No WhatsApp. */
 export type CalmTab = "today" | "week" | "month" | "pipeline";
 export type CalmLead = { id: string; name: string; place?: string | null; phone?: string | null; lane: "sales" | "service"; createdAt: string | null; contacted: boolean; tag?: string | null };
-export type CalmBlock = {
-  id: string; kind: "job" | "visit"; personId: string | null; day: string; start: number | null; dur: number;
-  title: string; sub?: string | null; place?: string | null; block: BlockKind; pill?: string | null; late?: boolean; draggable?: boolean;
-};
 export type CalmPerson = { id: string; name: string; role: string; dot: "green" | "orange" | "grey" | "blue" };
 export type CalmUnassigned = { id: string; title: string; sub?: string | null; age?: string | null; lane: "sales" | "service" };
 
@@ -60,30 +60,101 @@ function LeadCard({ l, now, onCall, onAssign, onOpen }: { l: CalmLead; now?: Dat
   );
 }
 
-function Block({ b, onOpen, onDrop, compact }: { b: CalmBlock; onOpen: () => void; onDrop?: (start: number) => void; compact?: boolean }) {
-  const pos = !compact && b.start !== null ? blockPos(b.start, b.dur) : null;
+function BookingEntry({ b, onOpen, onDrop, density }: { b: CalmBlock; onOpen: () => void; onDrop?: (start: number) => void; density: ChipDensity }) {
+  const chip = bookingChip(b, density);
+  const popup = bookingPopup(b);
+  const pos = density === "timeline" && b.start !== null ? blockPos(b.start, b.dur) : null;
   const ref = useRef<HTMLButtonElement>(null);
-  const body = (
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [at, setAt] = useState<{ top: number; left: number } | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const el = ref.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const card = cardRef.current?.getBoundingClientRect();
+      setAt(clampPopup(
+        { top: r.top, bottom: r.bottom, left: r.left },
+        { width: window.innerWidth, height: window.innerHeight },
+        { width: card?.width || 260, height: card?.height || 160 },
+      ));
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => { window.removeEventListener("resize", place); window.removeEventListener("scroll", place, true); };
+  }, [open, popup.heading, popup.lines.length]);
+  const show = (pointer?: string | null) => { if (!bookingHoverEnabled(pointer)) return; setOpen(true); };
+  // Native listeners run before the event reaches a day cell, so a booking tap is never also a day tap.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onClick = (e: MouseEvent) => { e.stopPropagation(); if (b.href) onOpen(); };
+    const stop = (e: Event) => e.stopPropagation();
+    el.addEventListener("click", onClick);
+    el.addEventListener("pointerdown", stop);
+    return () => { el.removeEventListener("click", onClick); el.removeEventListener("pointerdown", stop); };
+  }, [b.href, onOpen]);
+  const timeLine = chip.time
+    ? (density === "timeline" && b.end != null && b.end > (b.start ?? 0) ? `${chip.time}–${hhmm(b.end)}` : chip.time)
+    : "Any time";
+  const body = density === "month" ? (
+    <span className="flex w-full min-w-0 items-center gap-1">
+      {chip.time && <span className="shrink-0 font-semibold tabular-nums">{chip.time}</span>}
+      <span className="min-w-0 flex-1 truncate">{chip.identity}</span>
+      {chip.extra && <span className="shrink-0 tabular-nums opacity-80">{chip.extra}</span>}
+    </span>
+  ) : (
     <>
       <div className="flex items-center gap-1 truncate text-[12px] font-semibold">
-        {b.start !== null ? `${hhmm(b.start)}${b.dur >= 120 && !compact ? `–${hhmm(Math.min(DAY_END, b.start + b.dur))}` : ""}` : "Any time"}
+        <span className="shrink-0 tabular-nums">{timeLine}</span>
         {b.late && <span className="font-normal"> · Late</span>}
-        {b.pill && !compact && b.dur >= 120 && <span className="ml-1 rounded-full bg-white/80 px-1.5 text-[10px] font-semibold uppercase tracking-wide">{b.pill}</span>}
+        {b.pill && density === "timeline" && b.dur >= 120 && <span className="ml-1 rounded-full bg-white/80 px-1.5 text-[10px] font-semibold uppercase tracking-wide">{b.pill}</span>}
       </div>
-      <div className="truncate text-[12px]">{b.title}</div>
-      {b.place && <div className="truncate text-[11px] opacity-75">{b.place}</div>}
+      <div className="truncate text-[12px]">{chip.identity}</div>
+      {chip.extra && <div className="truncate text-[11px] opacity-75">{chip.extra}</div>}
     </>
   );
-  if (compact || !pos) {
-    return <button onClick={onOpen} className={cn("block w-full rounded-lg border px-2 py-1 text-left", BLOCK_STYLE[b.block])} data-calm-block>{body}</button>;
-  }
-  return (
-    <button ref={ref} onClick={onOpen} draggable={!!onDrop && b.draggable}
-      onDragStart={(e) => { e.dataTransfer.setData("text/calm-block", b.id); e.dataTransfer.effectAllowed = "move"; }}
-      title={onDrop && b.draggable ? "Drag to change the time" : undefined}
-      className={cn("absolute top-1.5 bottom-1.5 overflow-hidden rounded-lg border px-2 py-1 text-left shadow-[0_1px_0_rgba(15,23,42,.03)]", BLOCK_STYLE[b.block])}
-      style={{ left: `${pos.left}%`, width: `calc(${pos.width}% - 4px)` }} data-calm-block>{body}</button>
+  const button = (
+    <button ref={ref} type="button"
+      onPointerEnter={(e) => show(e.pointerType)} onPointerLeave={(e) => { if (e.pointerType !== "touch") setOpen(false); }}
+      onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}
+      onKeyDown={(e) => { if (e.key === "Escape") { setOpen(false); e.stopPropagation(); } }}
+      draggable={density === "timeline" && !!onDrop && !!b.draggable}
+      onDragStart={(e) => { setOpen(false); e.dataTransfer.setData("text/calm-block", b.id); e.dataTransfer.effectAllowed = "move"; }}
+      title={density === "timeline" && onDrop && b.draggable ? "Drag to change the time" : undefined}
+      aria-label={bookingAriaLabel(b)}
+      className={cn(
+        "text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1AA7EC]",
+        density === "month"
+          ? cn("block w-full min-w-0 overflow-hidden rounded-md border px-1.5 py-0.5 text-[11px]", BLOCK_STYLE[b.block])
+          : pos
+            ? cn("absolute top-1.5 bottom-1.5 min-w-[48px] overflow-hidden rounded-lg border px-2 py-1 shadow-[0_1px_0_rgba(15,23,42,.03)]", BLOCK_STYLE[b.block])
+            : cn("block w-full rounded-lg border px-2 py-1", BLOCK_STYLE[b.block]),
+      )}
+      style={pos ? { left: `${pos.left}%`, width: `max(48px, calc(${pos.width}% - 4px))` } : undefined}
+      data-calm-block data-booking-id={b.id} data-booking-kind={b.kind} data-booking-href={b.href || ""}>{body}</button>
   );
+  const card = open && typeof document !== "undefined" ? createPortal(
+    <div ref={cardRef} role="tooltip" data-calm-popup style={{ top: at?.top ?? -9999, left: at?.left ?? 8 }}
+      className="pointer-events-none fixed z-[80] w-[260px] max-w-[calc(100vw-16px)] rounded-xl bg-white p-3 text-slate-900 shadow-lg ring-1 ring-slate-200/80 dark:bg-card dark:text-slate-100 dark:ring-white/10">
+      <div className="truncate text-[14px] font-semibold">{popup.heading}</div>
+      {popup.lines.length > 0 && (
+        <dl className="mt-1.5 space-y-1">
+          {popup.lines.map((l) => (
+            <div key={l.label} className="flex gap-2 text-[12px] leading-snug">
+              <dt className="w-[4.5rem] shrink-0 text-slate-500 dark:text-slate-400">{l.label}</dt>
+              <dd className="min-w-0 font-medium">{l.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>,
+    document.body,
+  ) : null;
+  return <>{button}{card}</>;
 }
 
 export default function JobsCalmView(p: Props) {
@@ -111,9 +182,7 @@ export default function JobsCalmView(p: Props) {
                 <button onClick={() => p.onPickDay?.(c.day)} className={cn("grid h-6 w-6 place-items-center rounded-full text-[12px] font-semibold",
                   c.day === p.todayDay ? "bg-[#1AA7EC] text-white" : c.inMonth ? "text-slate-700 dark:text-slate-300 hover:bg-sky-50" : "text-slate-300")}>{Number(c.day.slice(8))}</button>
                 {bs.slice(0, 3).map((b) => (
-                  <button key={b.id} onClick={() => p.onOpenBlock(b)} className={cn("block w-full truncate rounded-md border px-1.5 py-0.5 text-left text-[11px]", BLOCK_STYLE[b.block])}>
-                    {b.start !== null && <span className="font-semibold">{hhmm(b.start)} </span>}{b.title}
-                  </button>
+                  <BookingEntry key={b.uid || b.id} b={b} density="month" onOpen={() => p.onOpenBlock(b)} />
                 ))}
                 {bs.length > 3 && <button onClick={() => p.onPickDay?.(c.day)} className="text-[11px] font-semibold text-[#1590D6]">+{bs.length - 3} more</button>}
               </div>
@@ -141,7 +210,7 @@ export default function JobsCalmView(p: Props) {
           <div className="space-y-1.5" data-calm-month-list>
             <h3 className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">{d ? new Date(`${d}T12:00:00+02:00`).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" }) : ""} · {bs.length} job{bs.length === 1 ? "" : "s"}</h3>
             {bs.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500 dark:text-slate-400">Nothing booked</div>
-              : bs.map((b) => <div key={b.id}><div className="mb-0.5 text-[11px] text-slate-500 dark:text-slate-400">{p.people.find((x) => x.id === b.personId)?.name || "Unassigned"}</div><Block b={b} compact onOpen={() => p.onOpenBlock(b)} /></div>)}
+              : bs.map((b) => <div key={b.uid || b.id}><div className="mb-0.5 text-[11px] text-slate-500 dark:text-slate-400">{p.people.find((x) => x.id === b.personId)?.name || "Unassigned"}</div><BookingEntry b={b} density="compact" onOpen={() => p.onOpenBlock(b)} /></div>)}
           </div>); })()}
       </div>
     </>
@@ -212,7 +281,7 @@ export default function JobsCalmView(p: Props) {
                     p.onMoveBlock(b, snapStart((e.clientX - r.left) / r.width));
                   }}>
                   {p.nowMin != null && p.nowMin > DAY_START && p.nowMin < DAY_END && <span className="absolute inset-y-0 w-px bg-red-400/70" style={{ left: `${((p.nowMin - DAY_START) / (DAY_END - DAY_START)) * 100}%` }} />}
-                  {bs.map((b) => <Block key={b.id} b={b} onOpen={() => p.onOpenBlock(b)} onDrop={p.onMoveBlock ? () => {} : undefined} />)}
+                  {bs.map((b) => <BookingEntry key={b.uid || b.id} b={b} density="timeline" onOpen={() => p.onOpenBlock(b)} onDrop={p.onMoveBlock ? () => 0 : undefined} />)}
                   {bs.filter((b) => b.start === null).length > 0 && <span className="absolute bottom-0 right-1 text-[10px] text-slate-400">+{bs.filter((b) => b.start === null).length} no time</span>}
                 </div>
               </div>
@@ -231,7 +300,7 @@ export default function JobsCalmView(p: Props) {
                 </div>
                 {p.weekDays.map((d) => (
                   <div key={d.day} className="space-y-1 border-l border-t border-slate-100 dark:border-white/10 p-1">
-                    {rowBlocks(per.id).filter((b) => b.day === d.day).sort((a, b) => (a.start ?? 9999) - (b.start ?? 9999)).map((b) => <Block key={b.id} b={b} compact onOpen={() => p.onOpenBlock(b)} />)}
+                    {rowBlocks(per.id).filter((b) => b.day === d.day).sort((a, b) => (a.start ?? 9999) - (b.start ?? 9999)).map((b) => <BookingEntry key={b.uid || b.id} b={b} density="compact" onOpen={() => p.onOpenBlock(b)} />)}
                   </div>
                 ))}
               </div>
@@ -253,7 +322,7 @@ export default function JobsCalmView(p: Props) {
             <span className="relative grid h-7 w-7 place-items-center rounded-full bg-sky-50 dark:bg-sky-500/15 text-[10px] font-semibold text-sky-700 dark:text-sky-300">{initials(per.name)}<span className={cn("absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white", DOT[per.dot])} /></span>
             <span className="text-[13px] font-semibold">{per.name}</span><span className="text-[11px] text-slate-500 dark:text-slate-400">{per.role}</span>
           </div>
-          <div className="space-y-1.5">{rowBlocks(per.id).sort((a, b) => a.day.localeCompare(b.day) || (a.start ?? 9999) - (b.start ?? 9999)).map((b) => <Block key={b.id} b={b} compact onOpen={() => p.onOpenBlock(b)} />)}</div>
+          <div className="space-y-1.5">{rowBlocks(per.id).sort((a, b) => a.day.localeCompare(b.day) || (a.start ?? 9999) - (b.start ?? 9999)).map((b) => <BookingEntry key={b.uid || b.id} b={b} density="compact" onOpen={() => p.onOpenBlock(b)} />)}</div>
         </div>
       ))}
     </div>
