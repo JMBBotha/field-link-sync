@@ -69,6 +69,7 @@ export const useAvailability = (userId: string | undefined): UseAvailabilityResu
       toast({ title: "Couldn't update availability", description: error.message, variant: "destructive" });
       return null;
     }
+    window.dispatchEvent(new CustomEvent("fl:availability-changed", { detail: data }));
     return (data as AvailabilityStatus) ?? null;
   }, [userId, toast]);
 

@@ -17,11 +17,13 @@ describe("Field Agent header declutter", () => {
     expect(fieldAgentSource).toContain("DropdownMenu");
   });
 
-  it("merges Online / Available now / toggle into one control and still writes agent_locations only", () => {
+  it("merges Online / Available now / toggle into one control and does not write a second availability table", () => {
     expect(fieldAgentSource).toContain('data-testid="availability-control"');
     expect(fieldAgentSource).toContain("hideLabel");
-    expect(fieldAgentSource).toMatch(/from\("agent_locations"\)[\s\S]{0,200}is_available/);
+    expect(fieldAgentSource).toContain("shareLocationIfAllowed");
+    expect(fieldAgentSource).toContain("LocationShareButton");
     expect(fieldAgentSource).not.toMatch(/from\("agent_availability"\)/);
+    expect(fieldAgentSource).not.toMatch(/from\("agent_locations"\)/);
   });
 
   it("IdentityBadge uses first name below xl so the name is never awkwardly truncated", () => {

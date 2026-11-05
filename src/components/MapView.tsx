@@ -63,6 +63,7 @@ export interface MapStatusState {
 interface MapViewProps {
   onStatusFiltersChange?: (filters: Set<LeadStatusFilter>) => void;
   onLeadClick?: (lead: Lead) => void;
+  /** Kept so existing callers compile. The map never shows another company's staff. */
   showAllAgents?: boolean;
   hideChromeControls?: boolean;
   /** Hide the floating in-canvas status filter bar (when rendered in the page header instead). */
@@ -95,7 +96,7 @@ const escapeHtml = (text: string | null | undefined): string => {
   return div.innerHTML;
 };
 
-const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, showAllAgents = false, hideChromeControls = false, hideStatusFilters = true, onStatusStateChange }, ref) => {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, hideChromeControls = false, hideStatusFilters = true, onStatusStateChange }, ref) => {
   const MAP_CHROME_BOTTOM_OFFSET_PX = 64;
   const { user } = useAuth();
   const [agents, setAgents] = useState<AgentLocation[]>([]);
@@ -517,10 +518,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         })
       );
 
-      // Admin view: show all agents. Company/field view: filter by company
-      const companyAgents = (!showAllAgents && companyId)
+      // Live Map is this company's staff. RLS enforces the same limit.
+      const companyAgents = companyId
         ? agentsWithProfiles.filter((a) => a.profileCompanyId === companyId)
-        : agentsWithProfiles;
+        : [];
 
       // Drop stale locations (older than 15 minutes or missing timestamp)
       const FRESHNESS_MS = 15 * 60 * 1000;
