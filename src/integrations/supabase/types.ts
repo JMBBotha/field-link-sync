@@ -38,6 +38,27 @@ export type Database = {
         }
         Relationships: []
       }
+      _indcc_golive_snapshots: {
+        Row: {
+          captured_at: string | null
+          id: number
+          payload: Json | null
+          phase: string | null
+        }
+        Insert: {
+          captured_at?: string | null
+          id?: number
+          payload?: Json | null
+          phase?: string | null
+        }
+        Update: {
+          captured_at?: string | null
+          id?: number
+          payload?: Json | null
+          phase?: string | null
+        }
+        Relationships: []
+      }
       admin_settings: {
         Row: {
           created_at: string
@@ -2211,6 +2232,7 @@ export type Database = {
           created_at: string
           custom_service_limit: number
           default_rate: number | null
+          dormant_payments_locked: boolean
           gp_target_percent: number
           id: string
           install_handoff_default: string
@@ -2237,7 +2259,6 @@ export type Database = {
           services: string[] | null
           slug: string
           status: string
-          dormant_payments_locked: boolean
           tech_holdback_days: number
           tech_holdback_pct: number
           tech_paid_on_completion_pct: number
@@ -2259,6 +2280,7 @@ export type Database = {
           created_at?: string
           custom_service_limit?: number
           default_rate?: number | null
+          dormant_payments_locked?: boolean
           gp_target_percent?: number
           id?: string
           install_handoff_default?: string
@@ -2285,7 +2307,6 @@ export type Database = {
           services?: string[] | null
           slug?: string
           status?: string
-          dormant_payments_locked?: boolean
           tech_holdback_days?: number
           tech_holdback_pct?: number
           tech_paid_on_completion_pct?: number
@@ -2307,6 +2328,7 @@ export type Database = {
           created_at?: string
           custom_service_limit?: number
           default_rate?: number | null
+          dormant_payments_locked?: boolean
           gp_target_percent?: number
           id?: string
           install_handoff_default?: string
@@ -2333,7 +2355,6 @@ export type Database = {
           services?: string[] | null
           slug?: string
           status?: string
-          dormant_payments_locked?: boolean
           tech_holdback_days?: number
           tech_holdback_pct?: number
           tech_paid_on_completion_pct?: number
@@ -17376,6 +17397,10 @@ export type Database = {
         Args: { p_archive?: boolean; p_invoice_id: string }
         Returns: boolean
       }
+      archived_invoice_payment_ok: {
+        Args: { p_company: string; p_invoice: string }
+        Returns: boolean
+      }
       area_slot_suggestions: {
         Args: { p_date: string; p_lead: string; p_minutes?: number }
         Returns: Json
@@ -17452,6 +17477,7 @@ export type Database = {
         Returns: number
       }
       caller_company_id: { Args: never; Returns: string }
+      caller_is_service_role: { Args: never; Returns: boolean }
       caller_sees_lead: { Args: { _lead: string }; Returns: boolean }
       can_access_receipt_folder: { Args: { _folder: string }; Returns: boolean }
       can_close_lead: { Args: { p_lead: string }; Returns: boolean }
@@ -17624,6 +17650,10 @@ export type Database = {
           p_target?: string
           p_vat_claimable?: boolean
         }
+        Returns: Json
+      }
+      confirm_dormant_payment_lock: {
+        Args: { p_company: string }
         Returns: Json
       }
       convert_lead_to_customer: { Args: { p_lead_id: string }; Returns: string }
@@ -18634,6 +18664,10 @@ export type Database = {
         }[]
       }
       invoice_email_preview: { Args: { p_invoice_id: string }; Returns: Json }
+      invoice_outstanding_amount: {
+        Args: { p_invoice: string }
+        Returns: number
+      }
       invoice_payment_schedule: {
         Args: { p_invoice: string }
         Returns: {
@@ -18676,6 +18710,7 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_company_writable: { Args: { cid: string }; Returns: boolean }
       is_field_tech_only: { Args: { _uid: string }; Returns: boolean }
       is_master_company_user: { Args: { _uid: string }; Returns: boolean }
       is_my_company_owner: { Args: never; Returns: boolean }
@@ -18963,6 +18998,7 @@ export type Database = {
           state: string
         }[]
       }
+      network_performance: { Args: { p_days?: number }; Returns: Json }
       next_invoice_number: { Args: { p_profile: string }; Returns: string }
       normalize_model_code: { Args: { p: string }; Returns: string }
       normalize_phone: { Args: { phone: string }; Returns: string }
@@ -19020,6 +19056,10 @@ export type Database = {
         }[]
       }
       payment_plan_ok: { Args: { p: Json }; Returns: boolean }
+      payment_write_ok: {
+        Args: { p_company: string; p_invoice: string }
+        Returns: boolean
+      }
       pending_reassign_requests: {
         Args: never
         Returns: {
