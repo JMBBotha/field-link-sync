@@ -30,7 +30,7 @@ describe("Done & paid houses do not chase an invoice", () => {
     expect(screen.getByTestId("stage-chip")).toHaveTextContent("Done & paid");
     expect(screen.queryByTestId("house-reminder")).toBeNull();
     expect(screen.queryByTestId("house-no-invoice")).toBeNull();
-    expect(houseReminders(house("done", [true, true, true, true]))).toEqual([]);
+    expect(houseReminders(house("done", [true, true, true, true]), undefined)).toEqual([]);
   });
 
   it("keeps no-invoice on a house that still needs one", () => {
