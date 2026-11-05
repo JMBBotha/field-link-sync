@@ -140,7 +140,11 @@ export function withBucket<T extends PreviewRow>(row: T): T {
   const bucket = bucketFor(action, row.match.product, row.map);
   if (bucket === "material_pool" && (action === "reserve" || action === "installed")) action = "stock";
   const job_id = bucket === "job_unit" ? row.job_id : null;
-  return { ...row, action, bucket, job_id };
+  const notes = row.notes.filter((n) => !n.startsWith("Materials pool:") && !n.startsWith("General stock:") && n !== "On site for this job");
+  if (bucket === "material_pool") notes.push("Materials pool: not reserved to a job. The install allowance costs the job when it is finished.");
+  else if (bucket === "general_unit") notes.push("General stock: not on a job until it is assigned.");
+  else if (bucket === "job_unit" && action === "installed") notes.push("On site for this job");
+  return { ...row, action, bucket, job_id, notes };
 }
 
 /**
