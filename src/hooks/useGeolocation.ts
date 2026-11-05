@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { shareLocationIfAllowed } from "@/lib/locationPing";
 import {
   isGeolocationSupported,
   checkLocationPermission,
@@ -67,30 +67,13 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
     return () => { mountedRef.current = false; };
   }, []);
 
-  // Update agent location in database
+  // Update agent location in database — refused unless opted in and Available.
   const updateAgentLocation = useCallback(
-    async (lat: number, lng: number, isAvailable: boolean = true) => {
+    async (lat: number, lng: number, _isAvailable: boolean = true) => {
+      void _isAvailable;
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { error } = await supabase.from("agent_locations").upsert(
-          {
-            agent_id: user.id,
-            latitude: lat,
-            longitude: lng,
-            is_available: isAvailable,
-            last_updated: new Date().toISOString(),
-          },
-          { onConflict: "agent_id" }
-        );
-        if (error) {
-          console.error("Error updating agent location:", error);
-          return;
-        }
-        lastUpdateRef.current = Date.now();
+        const wrote = await shareLocationIfAllowed(lat, lng);
+        if (wrote) lastUpdateRef.current = Date.now();
       } catch (error) {
         console.error("Error updating agent location:", error);
       }
@@ -256,27 +239,8 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
       intervalRef.current = null;
     }
 
-    // Update availability to false
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      const { lat, lng } = coordsRef.current;
-      if (user && lat !== null && lng !== null) {
-        await supabase.from("agent_locations").upsert(
-          {
-            agent_id: user.id,
-            latitude: lat,
-            longitude: lng,
-            is_available: false,
-            last_updated: new Date().toISOString(),
-          },
-          { onConflict: "agent_id" }
-        );
-      }
-    } catch (error) {
-      console.error("Error updating availability:", error);
-    }
+    // Do not write a fresh ping here. Going off must leave last_updated alone
+    // so the Live Map pin can go stale, and must not record a point while Off.
 
     if (mountedRef.current) {
       setState((prev) => ({ ...prev, isTracking: false }));

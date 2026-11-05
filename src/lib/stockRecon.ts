@@ -1,11 +1,11 @@
-import { samsungHalf, type PreviewRow } from "./stockReceive";
+import { bucketFor, samsungHalf, type PreviewRow } from "./stockReceive";
 
 /** One quote line on a job (quote_items via jobs.quote_id). A split AC quote line covers indoor + outdoor. */
 export interface JobQuoteLine { job_id: string; product_id: string | null; quantity: number }
 export interface JobRef { id: string; label: string; has_quote?: boolean }
 
 export type Half = "indoor" | "outdoor" | null;
-export interface ReconLine { index: number; item: string; model: string | null; qty: number; target: string; target_kind: "job" | "stock" | "installed" | "skip" | "none";
+export interface ReconLine { index: number; item: string; model: string | null; qty: number; target: string; target_kind: "job" | "general" | "pool" | "installed" | "skip" | "none";
   job_id: string | null; half: Half; line_cost: number | null; issue: string | null }
 export interface JobTotal { job_id: string | null; label: string; lines: number; cost: number; issues: string[] }
 export interface Recon { lines: ReconLine[]; jobs: JobTotal[]; total: number; problems: string[]; ok: boolean }
@@ -31,12 +31,19 @@ export function buildRecon(rows: PreviewRow[], jobs: JobRef[], quoteLines: JobQu
   const label = (id: string | null) => jobs.find((j) => j.id === id)?.label ?? (id ? id.slice(0, 8) : "—");
   const lines: ReconLine[] = rows.map((r, index) => {
     const p = r.match.product;
-    const needsJob = r.action === "reserve" || r.action === "installed";
+    const bucket = bucketFor(r.action, p, r.map);
+    const needsJob = bucket === "job_unit";
     let issue: string | null = null;
     if (!p) issue = r.match.lookalikes.length ? `Not matched (look-alike ${r.match.lookalikes.map((x) => x.product_code).join(", ")} is a different model)` : "Not matched to the catalogue";
+    else if (bucket === "material_pool" && (r.action === "reserve" || r.action === "installed")) issue = "Materials stay in the pool — they are not reserved to a job";
     else if (needsJob && !r.job_id) issue = "No job chosen";
-    const target_kind: ReconLine["target_kind"] = !p ? "none" : needsJob ? (r.job_id ? (r.action === "installed" ? "installed" : "job") : "none") : r.action === "stock" ? "stock" : "skip";
-    const target = target_kind === "job" ? label(r.job_id) : target_kind === "installed" ? `${label(r.job_id)} (installed)` : target_kind === "stock" ? "Stock" : target_kind === "skip" ? "Skipped" : "Unassigned";
+    const target_kind: ReconLine["target_kind"] = !p ? "none"
+      : bucket === "material_pool" && (r.action === "reserve" || r.action === "installed") ? "none"
+      : bucket === "job_unit" ? (r.job_id ? (r.action === "installed" ? "installed" : "job") : "none")
+      : bucket === "general_unit" ? "general"
+      : bucket === "material_pool" ? "pool"
+      : r.action === "skip" ? "skip" : "none";
+    const target = target_kind === "job" ? label(r.job_id) : target_kind === "installed" ? `${label(r.job_id)} (on site)` : target_kind === "general" ? "General stock" : target_kind === "pool" ? "Materials pool" : target_kind === "skip" ? "Skipped" : "Unassigned";
     return { index, item: p?.short_name || p?.name || r.line.description, model: r.line.model_number, qty: r.line.qty, target, target_kind,
       job_id: needsJob ? r.job_id : null, half: halfOf(r), line_cost: r.unit_cost_pack == null ? null : r.unit_cost_pack * r.line.qty, issue };
   });

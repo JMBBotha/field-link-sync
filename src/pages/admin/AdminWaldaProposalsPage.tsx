@@ -22,7 +22,7 @@ const ACTION_LABEL: Record<string, string> = {
   email_supplier: "Email a supplier", email_client: "Email a client", delete_record: "Delete a record", other: "Other",
 };
 // Approve on these only records the OK; the change itself is done by hand in the app.
-const MANUAL = new Set(["catalogue_price_change", "stock_adjust", "user_role_change", "email_supplier", "email_client", "delete_record", "other"]);
+const MANUAL = new Set(["catalogue_price_change", "user_role_change", "email_supplier", "email_client", "delete_record", "other"]);
 
 function ProposalCard({ p, onDone }: { p: Proposal; onDone: () => void }) {
   const [note, setNote] = useState("");

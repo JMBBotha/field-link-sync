@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { houseStatus, houseReminders, moneyByHouse, photosByHouse, DEFAULT_STEPS, phaseFor, sortHouses, type ProjectStep } from "./projectTracker";
+import { houseStatus, houseReminders, moneyByHouse, photosByHouse, DEFAULT_STEPS, phaseFor, sortHouses, showNoInvoice, stageLabel, type ProjectStep } from "./projectTracker";
 
 const st = (k: string, done: boolean): ProjectStep => ({ id: k, step_key: k, label: k, rate: 0, sort_order: 0, done, paid: false });
 const all = (d: [boolean, boolean, boolean]) => [st("piping", d[0]), st("units", d[1]), st("commissioning", d[2])];
@@ -13,14 +13,25 @@ describe("houseStatus (billing flow)", () => {
   it("grey when nothing started", () => expect(houseStatus(H(four([false, false, false, false])))).toBe("not_started"));
   it("first fit ticked -> first fit done (orange)", () => expect(houseStatus(H(four([true, false, false, false])))).toBe("in_progress"));
   it("draft (unsent) invoice stays at first fit", () => expect(houseStatus(H(four([true, false, false, false])), inv(null))).toBe("in_progress"));
-  it("invoice sent -> invoiced, 50% due (red)", () => expect(houseStatus(H(four([true, true, false, false])), inv("2026-10-01T08:00:00Z"))).toBe("due"));
-  it("units in -> final 50% due (same invoice)", () => expect(houseStatus(H(four([true, true, true, false])), inv("2026-10-01T08:00:00Z", 100, 50))).toBe("units_in"));
+  it("invoice sent -> first half (red), even when units are in", () => {
+    expect(houseStatus(H(four([true, true, false, false])), inv("2026-10-01T08:00:00Z"))).toBe("due");
+    expect(houseStatus(H(four([true, true, true, false])), inv("2026-10-01T08:00:00Z", 100, 50))).toBe("due");
+  });
+  it("final half only once commissioning is done and the balance is unpaid", () => {
+    expect(houseStatus(H(four([true, true, true, true])), inv("2026-10-01T08:00:00Z", 100, 50))).toBe("units_in");
+    expect(houseStatus(H(four([true, true, true, false])))).toBe("in_progress");
+  });
   it("green only when the full invoice is paid", () => {
     expect(houseStatus(H(four([true, true, true, true])), inv("2026-10-01T08:00:00Z", 100, 99))).toBe("units_in");
     expect(houseStatus(H(four([true, true, true, true])), inv("2026-10-01T08:00:00Z", 100, 100))).toBe("done");
   });
   it("no invoice is never green", () => expect(houseStatus(H(four([true, true, true, true])))).toBe("units_in"));
   it("override wins", () => expect(houseStatus({ steps: [], status_override: "done" })).toBe("done"));
+  it("names what is owed", () => {
+    expect(stageLabel("due", inv("2026-10-01T08:00:00Z", 100, 0))).toBe("Deposit 50% unpaid · invoice sent");
+    expect(stageLabel("due", inv("2026-10-01T08:00:00Z", 100, 50))).toBe("Deposit paid · balance due when the job is finished");
+    expect(stageLabel("units_in", inv("2026-10-01T08:00:00Z", 100, 50))).toBe("Job complete · final 50% unpaid");
+  });
 });
 
 describe("houseReminders (in-app only)", () => {
@@ -28,7 +39,38 @@ describe("houseReminders (in-app only)", () => {
   it("no reminder before 30 days", () => expect(houseReminders(H(four([true, false, false, false])), inv("2026-11-10T08:00:00Z"), NOW)).toEqual([]));
   it("30-day check", () => expect(houseReminders(H(four([true, false, false, false])), inv("2026-10-25T08:00:00Z"), NOW)[0].text).toMatch(/ready for units \(30-day/));
   it("60-day check", () => expect(houseReminders(H(four([true, false, false, false])), inv("2026-09-20T08:00:00Z"), NOW)[0].text).toMatch(/60-day/));
-  it("units in -> final 50% due on the same invoice", () => expect(houseReminders(H(four([true, true, true, false])), inv("2026-09-20T08:00:00Z", 100, 50), NOW)[0].text).toBe("Final 50% due on INV-T1"));
+  it("units in but the job still open does not ask for the final half", () => {
+    const r = houseReminders(H(four([true, true, true, false])), inv("2026-09-20T08:00:00Z", 100, 50), NOW);
+    expect(r.some((x) => x.kind === "final_due")).toBe(false);
+  });
+  it("job complete -> final half unpaid, with a stored expected date", () => {
+    const money = inv("2026-09-20T08:00:00Z", 100, 50);
+    money.invoices![0].expected_final_date = "2026-12-15";
+    expect(houseReminders(H(four([true, true, true, true])), money, NOW)[0].text).toBe("Final 50% still unpaid · job is complete on INV-T1 · expected 15 Dec 2026");
+  });
+  it("omits the date when none was stored, and ignores an automatic due date", () => {
+    const auto = inv("2026-09-20T08:00:00Z", 100, 50);
+    auto.invoices![0].due_date = "2026-10-12";
+    expect(houseReminders(H(four([true, true, true, true])), auto, NOW)[0].text).toBe("Final 50% still unpaid · job is complete on INV-T1");
+    const manual = inv("2026-09-20T08:00:00Z", 100, 50);
+    manual.invoices![0].due_date = "2026-12-01";
+    manual.invoices![0].due_date_source = "manual";
+    expect(houseReminders(H(four([true, true, true, true])), manual, NOW)[0].text).toContain("expected 1 Dec 2026");
+  });
+  it("done & paid, including a paid override with no invoice, raises no reminder and hides no-invoice", () => {
+    const paidOutside = { steps: four([true, true, true, true]), status_override: "done" as const };
+    expect(houseStatus(paidOutside)).toBe("done");
+    expect(houseReminders(paidOutside, undefined, NOW)).toEqual([]);
+    expect(showNoInvoice("done", undefined)).toBe(false);
+    expect(showNoInvoice("not_started", undefined)).toBe(true);
+    const money = inv("2026-10-01T08:00:00Z", 100, 100);
+    expect(houseReminders(H(four([true, true, true, true])), money, NOW)).toEqual([]);
+  });
+  it("puts a stored deposit date on the first-half chip", () => {
+    const money = inv("2026-11-10T08:00:00Z", 100, 0);
+    money.invoices![0].expected_deposit_date = "2026-11-20";
+    expect(stageLabel("due", money)).toBe("Deposit 50% unpaid · invoice sent · expected 20 Nov 2026");
+  });
 });
 
 describe("default steps", () => {

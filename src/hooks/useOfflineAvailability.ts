@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { offlineDb } from '@/lib/offlineDb';
 import { supabase } from '@/integrations/supabase/client';
+import { shareLocationIfAllowed } from '@/lib/locationPing';
 import { useToast } from '@/hooks/use-toast';
 
 interface UseOfflineAvailabilityResult {
@@ -63,16 +64,9 @@ export function useOfflineAvailability(): UseOfflineAvailabilityResult {
     try {
       // Update local state immediately (optimistic update)
       setIsAvailable(available);
+      void queueOperation;
 
-      // Prepare data
-      const availabilityData = {
-        is_available: available,
-        latitude: location?.lat || 0,
-        longitude: location?.lng || 0,
-        last_updated: new Date().toISOString(),
-      };
-
-      // Save to local cache
+      // Save to local cache. Coordinates are not queued for a later upsert.
       await offlineDb.saveAvailability({
         id: agentId,
         agentId,
@@ -83,29 +77,11 @@ export function useOfflineAvailability(): UseOfflineAvailabilityResult {
         synced: false,
       });
 
-      // If online, try to sync immediately
-      if (isOnline) {
-        const { error } = await supabase
-          .from('agent_locations')
-          .upsert({
-            agent_id: agentId,
-            ...availabilityData,
-          }, { onConflict: 'agent_id' });
-
-        if (error) {
-          throw error;
-        }
-
-        // Mark as synced
+      // If online and they are actually sharing, a ping may go out. Turning Off
+      // must not write a new coordinate (that would keep the map pin fresh).
+      if (isOnline && available && location) {
+        await shareLocationIfAllowed(location.lat, location.lng);
         await offlineDb.markAvailabilitySynced(agentId);
-      } else {
-        // Queue for later sync
-        await queueOperation(
-          'update_agent_location',
-          'agent_locations',
-          agentId,
-          availabilityData
-        );
       }
 
       toast({

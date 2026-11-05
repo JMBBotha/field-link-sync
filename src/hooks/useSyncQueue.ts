@@ -358,17 +358,8 @@ export function useSyncQueue(isOnline: boolean) {
         }
 
         case 'update_agent_location': {
-          const { error } = await supabase
-            .from('agent_locations')
-            .upsert({
-              agent_id: operation.recordId,
-              ...operation.data,
-              last_updated: new Date().toISOString(),
-            }, { onConflict: 'agent_id' });
-          
-          if (error) throw error;
-          
-          // Also mark local availability as synced
+          // Availability lives on profiles. Replaying a queued coordinate write
+          // would refresh the Live Map pin after the person is Off or has sharing off.
           await offlineDb.markAvailabilitySynced(operation.recordId);
           break;
         }

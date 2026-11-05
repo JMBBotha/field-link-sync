@@ -9,7 +9,7 @@ export default function ReceiveReconTable({ recon }: { recon: Recon }) {
       <div className="text-sm font-semibold">Check before confirming</div>
       <div className="rounded-xl border overflow-hidden text-sm">
         <div className="hidden sm:grid grid-cols-[1.7fr_.5fr_1.4fr_.9fr] gap-2 bg-muted/50 px-2 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-          <span>Note line → item</span><span className="text-right">Qty</span><span>Reserved for</span><span className="text-right">Line cost</span>
+          <span>Note line → item</span><span className="text-right">Qty</span><span>Bucket / job</span><span className="text-right">Cost excl</span>
         </div>
         {recon.lines.map((l) => (
           <div key={l.index} data-testid="recon-line" className={`grid grid-cols-[1fr_auto] sm:grid-cols-[1.7fr_.5fr_1.4fr_.9fr] gap-x-2 gap-y-0.5 px-2 py-1.5 border-t first:border-t-0 ${l.issue ? "bg-red-50 text-red-900" : ""}`}>

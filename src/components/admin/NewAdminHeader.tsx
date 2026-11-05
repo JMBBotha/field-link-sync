@@ -11,6 +11,7 @@ import { openMandyVoice } from "@/lib/mandy/registry";
 import { useRole } from "@/hooks/useRole";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { MyAvailabilitySwitch } from "@/components/availability/AvailabilitySwitch";
+import { LocationShareButton } from "@/components/availability/LocationShareCard";
 
 /** v7 header (NEW layout only; Classic keeps its own header in AdminLayout). Same actions, new arrangement:
  *  title · wide search (⌘K) · Ask Mandy · undo · bell · theme · orange "+ New" · who chip. */
@@ -36,7 +37,7 @@ export default function NewAdminHeader({ pageTitle, onMenu, onSearch, onCreateLe
         <Button variant="ghost" size="sm" onClick={() => openMandyVoice()} className={`hidden sm:inline-flex gap-1.5 ${ghost}`} title="Talk to the operations assistant">
           <Sparkle className="h-4 w-4" /><span className="text-xs">Ask Mandy</span>
         </Button>
-        {isSalesRep && <div className="hidden md:block"><MyAvailabilitySwitch /></div>}
+        {isSalesRep && <div className="hidden md:flex items-center gap-1"><MyAvailabilitySwitch /><LocationShareButton /></div>}
         <span className={twoRow ? "hidden md:contents" : "contents"}><StatusUndoButton /></span>
         <NotificationBell />
         <Button variant="ghost" size="icon" onClick={toggleTheme} className={`hidden sm:inline-flex h-9 w-9 ${ghost}`} title={resolvedTheme === "light" ? "Switch to dark mode" : "Switch to light mode"}>
@@ -74,6 +75,7 @@ export default function NewAdminHeader({ pageTitle, onMenu, onSearch, onCreateLe
         /* Phones only: second slim strip so row 1 (menu, logo, bell, avatar) never clips. */
         <div data-testid="v7-mobile-strip" className="md:hidden flex min-h-12 items-center gap-1.5 border-t border-white/15 px-2">
           <MyAvailabilitySwitch labelled className="flex-1 max-w-[260px]" />
+          <LocationShareButton />
           <div className="ml-auto flex items-center gap-0.5">
             <StatusUndoButton />
           </div>

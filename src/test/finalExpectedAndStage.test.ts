@@ -18,13 +18,15 @@ describe("expected final payment (House 88 / 0010006)", () => {
 });
 describe("install stage colours (PR #168 tile colours)", () => {
   const steps = (...k: string[]) => ["first_fit", "piping", "units", "commissioning"].map((s) => ({ step_key: s, done: k.includes(s) }));
-  it("purple when units/commissioning done and balance unpaid", () => {
-    expect(installStage(b, steps("first_fit", "piping", "units", "commissioning"))?.label).toBe("Installed · final 50% due");
+  it("purple only when the job is complete and the balance is unpaid", () => {
+    expect(installStage(b, steps("first_fit", "piping", "units", "commissioning"))?.label).toBe("Job complete · final 50% unpaid");
     expect(installStage({ ...b, job_done: "2026-11-04" }, [])?.key).toBe("installed");
+    expect(installStage(b, steps("first_fit", "piping", "units"))?.key).toBe("first_fit");
   });
   it("green paid, red deposit due, orange first fit, none otherwise", () => {
     expect(installStage({ ...b, balance: 0 }, [])?.key).toBe("paid");
-    expect(installStage({ ...b, deposit_paid: 0 }, steps("first_fit"))?.key).toBe("due");
+    expect(installStage({ ...b, deposit_paid: 0 }, steps("first_fit"))?.label).toBe("Deposit 50% unpaid · invoice sent");
+    expect(installStage({ ...b, deposit_paid: 0 }, steps("first_fit", "piping", "units"))?.key).toBe("due");
     expect(installStage(b, steps("first_fit"))?.key).toBe("first_fit");
     expect(installStage(b, [])).toBeNull();
   });

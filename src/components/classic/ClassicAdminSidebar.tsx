@@ -124,6 +124,7 @@ const ClassicAdminSidebar = ({
               { path: "/admin/inventory", label: "Stock", icon: Package, badge: lowStockCount > 0 ? lowStockCount : undefined } as NavItem,
               { path: "/admin/suppliers", label: "Suppliers", icon: Building2 } as NavItem,
               { path: "/admin/supplier-docs", label: "Supplier docs", icon: BookOpen } as NavItem,
+              { path: "/admin/stock-count", label: "Stock count", icon: Package, roles: ["admin"] } as NavItem,
               { path: "/admin/specials", label: "Specials", icon: Tag } as NavItem,
             ]),
             { path: "/admin/price-lists", label: "Price lists", icon: BookOpen },

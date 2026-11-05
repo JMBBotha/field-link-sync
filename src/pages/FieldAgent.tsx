@@ -24,6 +24,8 @@ import LeadCardProgress from "@/components/LeadCardProgress";
 import AvailabilityIndicator from "@/components/AvailabilityIndicator";
 import { formatElapsedTime } from "@/hooks/useJobTimer";
 import { AvailabilitySwitch } from "@/components/availability/AvailabilitySwitch";
+import { LocationShareButton } from "@/components/availability/LocationShareCard";
+import { shareLocationIfAllowed } from "@/lib/locationPing";
 import { useAvailability, type AvailabilityStatus } from "@/hooks/useAvailability";
 import { calculateDistanceKm, formatDistance } from "@/lib/geolocation";
 import { useOfflineContext } from "@/contexts/OfflineContext";
@@ -151,8 +153,6 @@ const FieldAgent = () => {
   const [showMapOnMobile, setShowMapOnMobile] = useState(false);
   // Starts OFF until the saved choice loads: signing in never makes a tech available.
   const [isAvailableForLeads, setIsAvailableForLeads] = useState(false);
-  const availableRef = useRef(false);
-  availableRef.current = isAvailableForLeads;
   const [locationUpdating, setLocationUpdating] = useState(false);
   const [homeBaseLat, setHomeBaseLat] = useState<number | null>(null);
   const [homeBaseLng, setHomeBaseLng] = useState<number | null>(null);
@@ -420,19 +420,7 @@ const FieldAgent = () => {
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      await supabase
-        .from("agent_locations")
-        .upsert(
-          {
-            agent_id: user.id,
-            latitude,
-            longitude,
-            // Never auto-available: a GPS fix keeps the tech's own Available/Off choice.
-            is_available: availableRef.current,
-            last_updated: new Date().toISOString(),
-          },
-          { onConflict: "agent_id" }
-        );
+      await shareLocationIfAllowed(latitude, longitude);
     };
 
     let fallbackTried = false;
@@ -648,6 +636,8 @@ const FieldAgent = () => {
 
   const handleSignOut = async () => {
     stopLocationTracking();
+    const { stopBackgroundLocation } = await import("@/lib/nativeBackgroundLocation");
+    await stopBackgroundLocation();
     await supabase.auth.signOut();
     navigate("/auth");
   };
@@ -674,15 +664,7 @@ const FieldAgent = () => {
       setCurrentLocation({ lat: latitude, lng: longitude });
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("agent_locations").upsert({
-          agent_id: user.id,
-          latitude,
-          longitude,
-          is_available: isAvailableForLeads,
-          last_updated: new Date().toISOString(),
-        }, { onConflict: "agent_id" });
-      }
+      if (user) await shareLocationIfAllowed(latitude, longitude);
 
       toast({
         title: "Location Updated 📍",
@@ -697,7 +679,7 @@ const FieldAgent = () => {
     } finally {
       setLocationUpdating(false);
     }
-  }, [isAvailableForLeads, toast]);
+  }, [toast]);
 
   const handleTokenSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -1304,7 +1286,7 @@ const FieldAgent = () => {
             <IdentityBadge />
             <NotificationBell />
             {/* One availability control: connection/sync state, schedule status dot, and the
-                "available for leads" switch (behaviour unchanged: writes agent_locations.is_available only). */}
+                Available / Busy / Off switch. Hours and location opt-in sit beside it. */}
             <div data-testid="availability-control" className="hidden md:flex h-8 shrink-0 items-center gap-1 rounded-full border border-white/25 bg-white/10 py-0 pl-1.5 pr-1">
               {(syncStatus.isSyncing || !isOnline || syncStatus.pendingCount > 0 || syncStatus.failedOperations > 0) && (
                 <OfflineIndicator
@@ -1325,6 +1307,7 @@ const FieldAgent = () => {
                 hideLabel
               />
               <AvailabilitySwitch status={availability.status} onChange={changeAvailability} className="border-0 bg-transparent p-0" />
+              <LocationShareButton />
             </div>
             {(roleIsAdmin || roleIsDispatcher || canOpenQuoteBuilder) && (
               <DropdownMenu>
@@ -1352,6 +1335,7 @@ const FieldAgent = () => {
         {/* Phones only: labelled availability strip under the header (row 1 keeps menu/logo/bell/avatar). */}
         <div data-testid="field-mobile-strip" className="v8-bar-hdr md:hidden flex h-11 shrink-0 items-center gap-1.5 border-b px-2 z-20" style={{ backgroundColor: 'var(--v8-bar)', borderColor: 'var(--v8-bar-bd)' }}>
           <AvailabilitySwitch labelled status={availability.status} onChange={changeAvailability} className="flex-1 max-w-[260px]" />
+          <LocationShareButton />
           <div className="ml-auto flex items-center">
             <AvailabilityIndicator status={availability.status} isInBufferWindow={availability.isInBufferWindow} nextAvailableText={availability.formatNextAvailable()} compact hideLabel />
           </div>

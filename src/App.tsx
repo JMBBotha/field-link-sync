@@ -26,6 +26,8 @@ import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
 import NotFound from "./pages/NotFound";
 import IdleLogoutGate from "@/components/IdleLogoutGate";
+import LocationShareRuntime from "@/components/availability/LocationShareRuntime";
+import { LocationShareCard } from "@/components/availability/LocationShareCard";
 
 
 // Admin layout + pages
@@ -103,6 +105,7 @@ const AdminTeamPage = lazyRetry(() => import("./pages/admin/AdminTeamPage"));
 const AdminAreasPage = lazyRetry(() => import("./pages/admin/AdminAreasPage"));
 const AdminSuppliersPage = lazyRetry(() => import("./pages/admin/AdminSuppliersPage"));
 const AdminSupplierDocsPage = lazyRetry(() => import("./pages/admin/AdminSupplierDocsPage"));
+const AdminStockCountPage = lazyRetry(() => import("./pages/admin/AdminStockCountPage"));
 const AdminCompanyToolsPage = lazyRetry(() => import("./pages/admin/AdminCompanyToolsPage"));
 const MyToolsPage = lazyRetry(() => import("./pages/field/MyToolsPage"));
 const AdminWaldaProposalsPage = lazyRetry(() => import("./pages/admin/AdminWaldaProposalsPage"));
@@ -164,6 +167,7 @@ const App = () => (
               <MandyDock />
               <ZoomableViewport />
               <IdleLogoutGate />
+              <LocationShareRuntime />
               <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>}>
               <Routes>
                 {/* Public routes */}
@@ -175,6 +179,9 @@ const App = () => (
                 <Route path="/signup/independent" element={<IndependentSignup />} />
                 <Route path="/set-password" element={<SetPassword />} />
                 <Route path="/pending-approval" element={<PendingApproval />} />
+                {import.meta.env.DEV && (
+                  <Route path="/dev/location-share" element={<div className="mx-auto max-w-lg p-4"><LocationShareCard preview /></div>} />
+                )}
 
                 {/* Customer Portal Routes */}
                 <Route path="/customer/:token" element={<CustomerPortal />} />
@@ -280,6 +287,7 @@ const App = () => (
                     <Route path="specials" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSpecialsPage /></RequireRole>} />
                     <Route path="suppliers" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSuppliersPage /></RequireRole>} />
                     <Route path="supplier-docs" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSupplierDocsPage /></RequireRole>} />
+                    <Route path="stock-count" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminStockCountPage /></RequireRole>} />
                     <Route path="walda-approvals" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminWaldaProposalsPage /></RequireRole>} />
                     <Route element={<V8SectionTabs section="extras" />}><Route path="tools" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminCompanyToolsPage /></RequireRole>} /></Route>
                     <Route element={<V8SectionTabs section="extras" />}><Route path="consumables" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminConsumablesPage /></RequireRole>} /></Route>

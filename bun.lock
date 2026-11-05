@@ -14,6 +14,7 @@
         "@capacitor/haptics": "^8.0.0",
         "@capacitor/ios": "^8.0.0",
         "@capacitor/push-notifications": "^8.0.0",
+        "@capgo/background-geolocation": "^8.5.2",
         "@dnd-kit/core": "^6.3.1",
         "@dnd-kit/sortable": "^10.0.0",
         "@dnd-kit/utilities": "^3.2.2",
@@ -156,6 +157,8 @@
     "@capacitor/push-notifications": ["@capacitor/push-notifications@8.0.0", "", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-xJWQLqAfC8b2ETqAPmwDnkKB4t/lVrbYc2D8VpA2fSu10JFSL/R722Vk0Lfl9Lo9WusmyIiQbVfILNQ3iFNGKw=="],
 
     "@capacitor/synapse": ["@capacitor/synapse@1.0.4", "", {}, "sha512-/C1FUo8/OkKuAT4nCIu/34ny9siNHr9qtFezu4kxm6GY1wNFxrCFWjfYx5C1tUhVGz3fxBABegupkpjXvjCHrw=="],
+
+    "@capgo/background-geolocation": ["@capgo/background-geolocation@8.5.2", "", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-Gk/7a2Wv2C9wlVhOIzE09KI4jAZD/lYMealj/2qrlKi/zi34mywn5zgky76xWAgGth4dg0s8NfWxQYwDuDkdyw=="],
 
     "@daily-co/daily-js": ["@daily-co/daily-js@0.87.0", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@daily-co/daily-js/-/daily-js-0.87.0.tgz", { "dependencies": { "@babel/runtime": "^7.12.5", "@sentry/browser": "^8.33.1", "bowser": "^2.8.1", "dequal": "^2.0.3", "events": "^3.1.0" } }, "sha512-hWHdBDvJwDeg8unz+XG9hD7xamuFi5Jmsk89ASATKL4fdTDHplpxi4PG9aaPXzBZYYLTjuxUje1K7B5uUR+gzw=="],
 
