@@ -210,6 +210,13 @@ const JobCompletionSheet = ({
         } else {
           doneToast(`Job for ${customerName || "client"} completed, sent to the office ${asQuoted ? "as quoted" : "with your extras"}`, { label: "Back to Today", onClick: () => { window.location.assign("/field"); } });
         }
+        if (effectiveJobId) {
+          // Idempotent. The job-status trigger posts the same allowance. No prices come back.
+          const applied = await (supabase.rpc as any)("job_apply_material_allowances", { p_job: effectiveJobId });
+          if (applied.error && !/not allowed|does not exist|schema cache/i.test(applied.error.message ?? "")) {
+            toast({ title: "Job completed", description: "The materials allowance could not be posted. The office can run it again.", variant: "destructive" });
+          }
+        }
       }
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       queryClient.invalidateQueries({ queryKey: ["my-invoice-requests"] });

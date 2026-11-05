@@ -9,7 +9,7 @@ import { sb, DOC_SELECT } from "@/components/supplierDocs/api";
 import SupplierDocCard from "@/components/supplierDocs/SupplierDocCard";
 import AddSupplierDocDialog from "@/components/supplierDocs/AddSupplierDocDialog";
 import BotLoginCard from "@/components/supplierDocs/BotLoginCard";
-import ReceiveSupplierDocDialog from "@/components/stock/ReceiveSupplierDocDialog";
+import ReceiveSupplierDocDialog, { type PendingDoc } from "@/components/stock/ReceiveSupplierDocDialog";
 import { PackagePlus } from "lucide-react";
 
 /** Office-only list: warranty search by model, serial, supplier, doc/PO number or client. */
@@ -27,6 +27,7 @@ export default function AdminSupplierDocsPage() {
   useEffect(() => { if (focusDoc) setTimeout(() => document.getElementById(`sjd-${focusDoc.id}`)?.scrollIntoView({ block: "center" }), 100); }, [focusDoc]);
   const [open, setOpen] = useState(false);
   const [recv, setRecv] = useState(false);
+  const [pending, setPending] = useState<PendingDoc | null>(null);
   const { data: companyId } = useQuery({
     queryKey: ["my-company-id", user?.id], enabled: !!user?.id,
     queryFn: async () => (await sb.rpc("caller_company_id")).data as string | null,
@@ -52,7 +53,7 @@ export default function AdminSupplierDocsPage() {
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-semibold flex items-center gap-2"><Lock className="h-5 w-5" /> Supplier documents</h1>
         <div className="flex gap-2">
-          {companyId && canReceive && <Button size="sm" variant="outline" onClick={() => setRecv(true)} data-testid="receive-stock"><PackagePlus className="h-4 w-4 mr-1" />Receive stock</Button>}
+          {companyId && canReceive && <Button size="sm" variant="outline" onClick={() => { setPending(null); setRecv(true); }} data-testid="receive-stock"><PackagePlus className="h-4 w-4 mr-1" />Receive stock</Button>}
           {companyId && <Button size="sm" onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />Add</Button>}
         </div>
       </div>
@@ -61,12 +62,12 @@ export default function AdminSupplierDocsPage() {
       <Input placeholder="Search model, serial, supplier, doc or PO number, client" value={q} onChange={(e) => setQ(e.target.value)} data-testid="sjd-search" />
       {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p>
         : (docs.length || focusDoc) ? <div className="space-y-2">
-            {focusDoc && <div id={`sjd-${focusDoc.id}`} data-testid="sjd-focus" className="rounded-xl ring-2 ring-[#1590D6]"><SupplierDocCard doc={focusDoc} onChanged={() => { refetch(); refetchFocus(); }} />
+            {focusDoc && <div id={`sjd-${focusDoc.id}`} data-testid="sjd-focus" className="rounded-xl ring-2 ring-[#1590D6]"><SupplierDocCard doc={focusDoc} canReceive={canReceive} onConfirm={(p) => { setPending(p); setRecv(true); }} onChanged={() => { refetch(); refetchFocus(); }} />
               <button type="button" className="px-3 pb-2 text-xs text-muted-foreground hover:underline" onClick={() => { const n = new URLSearchParams(params); n.delete("doc"); setParams(n, { replace: true }); }}>Show all documents</button></div>}
-            {docs.filter((d: any) => d.id !== focusDoc?.id).map((d: any) => <div key={d.id} id={`sjd-${d.id}`}><SupplierDocCard doc={d} onChanged={() => refetch()} /></div>)}</div>
+            {docs.filter((d: any) => d.id !== focusDoc?.id).map((d: any) => <div key={d.id} id={`sjd-${d.id}`}><SupplierDocCard doc={d} canReceive={canReceive} onConfirm={(p) => { setPending(p); setRecv(true); }} onChanged={() => refetch()} /></div>)}</div>
         : <p className="text-sm text-muted-foreground">No documents found.</p>}
       {companyId && <AddSupplierDocDialog open={open} onOpenChange={setOpen} companyId={companyId} onSaved={() => refetch()} />}
-      {companyId && canReceive && <ReceiveSupplierDocDialog open={recv} onOpenChange={setRecv} companyId={companyId} onSaved={() => refetch()} />}
+      {companyId && canReceive && <ReceiveSupplierDocDialog key={pending?.id ?? "upload"} open={recv} onOpenChange={(o) => { setRecv(o); if (!o) setPending(null); }} companyId={companyId} pending={pending} onSaved={() => refetch()} />}
     </div>
   );
 }

@@ -103,6 +103,7 @@ const AdminTeamPage = lazyRetry(() => import("./pages/admin/AdminTeamPage"));
 const AdminAreasPage = lazyRetry(() => import("./pages/admin/AdminAreasPage"));
 const AdminSuppliersPage = lazyRetry(() => import("./pages/admin/AdminSuppliersPage"));
 const AdminSupplierDocsPage = lazyRetry(() => import("./pages/admin/AdminSupplierDocsPage"));
+const AdminStockCountPage = lazyRetry(() => import("./pages/admin/AdminStockCountPage"));
 const AdminCompanyToolsPage = lazyRetry(() => import("./pages/admin/AdminCompanyToolsPage"));
 const MyToolsPage = lazyRetry(() => import("./pages/field/MyToolsPage"));
 const AdminWaldaProposalsPage = lazyRetry(() => import("./pages/admin/AdminWaldaProposalsPage"));
@@ -280,6 +281,7 @@ const App = () => (
                     <Route path="specials" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSpecialsPage /></RequireRole>} />
                     <Route path="suppliers" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSuppliersPage /></RequireRole>} />
                     <Route path="supplier-docs" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminSupplierDocsPage /></RequireRole>} />
+                    <Route path="stock-count" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminStockCountPage /></RequireRole>} />
                     <Route path="walda-approvals" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminWaldaProposalsPage /></RequireRole>} />
                     <Route element={<V8SectionTabs section="extras" />}><Route path="tools" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminCompanyToolsPage /></RequireRole>} /></Route>
                     <Route element={<V8SectionTabs section="extras" />}><Route path="consumables" element={<RequireRole allowedRoles={["admin", "dispatcher"]} denySalesRep><AdminConsumablesPage /></RequireRole>} /></Route>

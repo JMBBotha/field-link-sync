@@ -26,6 +26,7 @@ import JobDaysPanel, { useJobDays } from "@/components/field/JobDaysPanel";
 import JobCompletionSheet from "@/components/jobs/JobCompletionSheet";
 import { lastOpenCheckIn, type JobDays } from "@/lib/jobDays";
 import TechJobTypePanel from "@/components/field/TechJobTypePanel";
+import TechUnitSerials from "@/components/stock/TechUnitSerials";
 import { techJobTypeLabel } from "@/lib/jobTypeChoice";
 
 export default function FieldJobSheetPage() {
@@ -169,6 +170,8 @@ export default function FieldJobSheetPage() {
 
       {/* P2: salesperson's site photos for this job's lead (read-only, no money) */}
       {job.data?.lead_id && <SitePhotosReadOnly leadId={job.data.lead_id} />}
+
+      {id && <TechUnitSerials jobId={id} />}
 
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 font-semibold"><Package className="h-4 w-4" /> Packing list</h2>
