@@ -85,8 +85,11 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
       if (vErr) { toast({ title: "Couldn't save visits", description: vErr.message, variant: "destructive" }); return; }
       ["job-visits", "job-days"].forEach((k) => qc.invalidateQueries({ queryKey: [k, jobId] }));
     }
+    // Single-date jobs only. On the visits path `date` is leftover scheduledFor state and `at` is
+    // always null. Checking it after set_job_visits showed a false "Check the date and time" and
+    // skipped the note / job-tech update.
     const at = !useVisits && date ? jhbLocalToIso(date, time) : null;
-    if (date && !at) { toast({ title: "Check the date and time", variant: "destructive" }); return; }
+    if (!useVisits && date && !at) { toast({ title: "Check the date and time", variant: "destructive" }); return; }
     const changedUnits = f.units && units ? units.filter((u) => {
       const o = unitQ.data?.find((x) => x.id === u.id);
       return o && (["unit_label", "position", "brand", "model", "serial_number"] as const).some((k) => (o[k] ?? "") !== (u[k] ?? ""));
