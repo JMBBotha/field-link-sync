@@ -2,6 +2,8 @@ import { QuoteSitePhotosBlock, useQuoteSitePhotos } from "./QuoteSitePhotos";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { stringRecord } from "@/lib/jsonValue";
+import { isValidPlan } from "@/lib/paymentPlans";
 import EstimateDocument, { type EstimateDocLineItem } from "./EstimateDocument";
 import { QuoteUnitCardsView } from "./QuoteUnitCards";
 import { buildUnitCards, unitLineModelKey, type ProductMedia } from "@/lib/unitCards";
@@ -58,7 +60,7 @@ export default function LiveClientPreview(props: LiveClientPreviewProps) {
     enabled: productIds.length > 0,
     staleTime: 300_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
+      const { data, error } = await supabase.from("supplier_products")
         .select("id, image_url, category, brand, btu_rating, capacity_btu, kw, ai_sales_description, product_code")
         .in("id", productIds);
       if (error) throw error;
@@ -70,7 +72,7 @@ export default function LiveClientPreview(props: LiveClientPreviewProps) {
     staleTime: 15_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      const { data } = await (supabase.from("quotes") as any).select("payment_plan, show_unit_cards").eq("id", quoteId).maybeSingle();
+      const { data } = await supabase.from("quotes").select("payment_plan, show_unit_cards").eq("id", quoteId).maybeSingle();
       return data || null;
     },
   });
@@ -78,7 +80,7 @@ export default function LiveClientPreview(props: LiveClientPreviewProps) {
     queryKey: ["live-preview-company-settings"],
     staleTime: 300_000,
     queryFn: async () => {
-      const { data } = await (supabase.from("company_settings") as any)
+      const { data } = await supabase.from("company_settings")
         .select("company_name, physical_address, vat_number, banking_details, default_deposit_percentage, default_payment_terms_days")
         .order("updated_at", { ascending: false, nullsFirst: false })
         .order("id")
@@ -176,9 +178,16 @@ export default function LiveClientPreview(props: LiveClientPreviewProps) {
             termsText={props.termsText}
             discountAmount={discount.amount}
             discountLabel={discount.label}
-            companyOverride={company}
+            companyOverride={company ? {
+              company_name: company.company_name ?? undefined,
+              physical_address: company.physical_address ?? undefined,
+              vat_number: company.vat_number ?? undefined,
+              banking_details: stringRecord(company.banking_details),
+              default_deposit_percentage: company.default_deposit_percentage ?? undefined,
+              default_payment_terms_days: company.default_payment_terms_days ?? undefined,
+            } : null}
             companyId={props.companyId ?? null}
-            paymentPlan={quoteExtra?.payment_plan ?? null}
+            paymentPlan={isValidPlan(quoteExtra?.payment_plan) ? quoteExtra.payment_plan : null}
             remoteQuote={!!props.remoteQuote}
             remoteQuoteSource={props.remoteQuoteSource ?? null}
             quoteCreatedAt={props.quoteCreatedAt ?? null}

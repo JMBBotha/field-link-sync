@@ -22,7 +22,7 @@ export default function JobWatchSettingsCard() {
   const { data } = useQuery({
     queryKey: ["job-watch-settings", companyId], enabled: !!companyId,
     queryFn: async () => {
-      const { data } = await (supabase.from("job_watch_settings" as any) as any).select("*").eq("company_id", companyId).maybeSingle();
+      const { data } = await supabase.from("job_watch_settings").select("*").eq("company_id", companyId).maybeSingle();
       return { ...DEFAULT_JOB_WATCH, ...(data || {}) } as JobWatchSettings;
     },
   });
@@ -32,7 +32,7 @@ export default function JobWatchSettingsCard() {
   const save = async () => {
     setSaving(true);
     const row = { company_id: companyId, ...Object.fromEntries(FIELDS.map((f) => [f.key, clampWatch(f.key, v[f.key])])), updated_at: new Date().toISOString() };
-    const { error } = await (supabase.from("job_watch_settings" as any) as any).upsert(row, { onConflict: "company_id" });
+    const { error } = await supabase.from("job_watch_settings").upsert(row, { onConflict: "company_id" });
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Job alerts saved"); qc.invalidateQueries({ queryKey: ["job-watch-settings"] });

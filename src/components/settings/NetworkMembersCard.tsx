@@ -26,8 +26,8 @@ export default function NetworkMembersCard() {
     queryFn: async () => {
       const [c, m] = await Promise.all([
         // names only via the server (other companies' rows aren't readable directly any more)
-        (supabase.rpc as any)("network_company_names").then((r: any) => (r.error ? (supabase.from("companies") as any).select("id, name, is_master, status").eq("status", "active").order("name") : r)),
-        (supabase.from("company_network_members") as any).select("id, master_company_id, member_company_id, status, decided_at"),
+        (supabase.rpc as any)("network_company_names").then((r: any) => (r.error ? supabase.from("companies").select("id, name, is_master, status").eq("status", "active").order("name") : r)),
+        supabase.from("company_network_members").select("id, master_company_id, member_company_id, status, decided_at"),
       ]);
       if (c.error) throw c.error;
       if (m.error) throw m.error;
@@ -44,14 +44,14 @@ export default function NetworkMembersCard() {
   const fail = (e: any) => toast({ title: "Couldn't save", description: e.message, variant: "destructive" });
 
   const setStatus = async (id: string, status: Status) => {
-    const { error } = await (supabase.from("company_network_members") as any)
+    const { error } = await supabase.from("company_network_members")
       .update({ status, decided_at: new Date().toISOString(), decided_by: user?.id }).eq("id", id);
     if (error) return fail(error);
     refresh();
   };
   const add = async () => {
     if (!pick) return;
-    const { error } = await (supabase.from("company_network_members") as any).insert({
+    const { error } = await supabase.from("company_network_members").insert({
       master_company_id: master.id, member_company_id: pick, status: "approved",
       decided_at: new Date().toISOString(), decided_by: user?.id,
     });

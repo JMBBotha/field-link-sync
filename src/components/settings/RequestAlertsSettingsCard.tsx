@@ -44,12 +44,12 @@ export default function RequestAlertsSettingsCard() {
   const { data } = useQuery({
     queryKey: ["request-alert-settings", companyId], enabled: !!companyId,
     queryFn: async () => {
-      const { data } = await (supabase.from("request_alert_settings" as any) as any).select("*").eq("company_id", companyId).maybeSingle();
+      const { data } = await supabase.from("request_alert_settings").select("*").eq("company_id", companyId).maybeSingle();
       return { ...DEFAULT_REQUEST_ALERTS, ...(data || {}) } as RequestAlertSettings;
     },
   });
   return <RequestAlertsSettingsView value={data} onSave={async (v) => {
-    const { error } = await (supabase.from("request_alert_settings" as any) as any).upsert({ company_id: companyId, ...v, updated_at: new Date().toISOString() }, { onConflict: "company_id" });
+    const { error } = await supabase.from("request_alert_settings").upsert({ company_id: companyId, ...v, updated_at: new Date().toISOString() }, { onConflict: "company_id" });
     if (error) return void toast.error(error.message);
     toast.success("Request alerts saved"); qc.invalidateQueries({ queryKey: ["request-alert-settings"] });
   }} />;

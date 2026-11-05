@@ -20807,6 +20807,11 @@ export type Database = {
         Returns: Json
       }
       walda_sjd_confirm: { Args: { p_link_id: string }; Returns: string }
+      company_history_invoice: {
+        Args: { p_company: string; p_invoice: string }
+        Returns: Json
+      }
+      company_history_invoices: { Args: { p_company: string }; Returns: Json }
       walda_sjd_link: {
         Args: {
           p_customer_id?: string

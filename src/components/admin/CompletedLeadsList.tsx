@@ -81,7 +81,7 @@ const CompletedLeadsList = () => {
       const customerIds = completedLeads.map((l) => l.customer_id).filter(Boolean) as string[];
 
       const [invoiceRes, customerRes] = await Promise.all([
-        (supabase.from("lead_invoice_status" as any) as any)
+        supabase.from("lead_invoice_status")
           .select("lead_id, id:invoice_id, status:invoice_status, grand_total:invoice_total, invoice_number")
           .in("lead_id", leadIds)
           .not("invoice_id", "is", null),

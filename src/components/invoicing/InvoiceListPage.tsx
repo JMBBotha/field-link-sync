@@ -153,7 +153,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
 
   const archivedCount = invoices.filter((i: any) => i.archived_at).length;
   const archiveInvoice = async (inv: Invoice, archive: boolean) => {
-    const { error } = await (supabase.rpc as any)("archive_void_invoice", { p_invoice_id: inv.id, p_archive: archive });
+    const { error } = await supabase.rpc("archive_void_invoice", { p_invoice_id: inv.id, p_archive: archive });
     if (error) { toast({ title: "Could not update", description: error.message, variant: "destructive" }); return; }
     toast({ title: archive ? `${inv.invoice_number} archived` : `${inv.invoice_number} restored` });
     fetchInvoices();

@@ -61,7 +61,7 @@ export function useWorkflowMandyActions() {
     fetchInvoice: fetchQuoteInvoice,
     depositPercent: async () => {
       // Same deterministic latest company setting the RPC uses (fallback 70%).
-      const { data } = await (supabase.from("company_settings") as any)
+      const { data } = await supabase.from("company_settings")
         .select("default_deposit_percentage").order("updated_at", { ascending: false, nullsFirst: false }).order("id").limit(1).maybeSingle();
       const p = Number(data?.default_deposit_percentage) || 70;
       return p <= 0 || p > 100 ? 70 : p;

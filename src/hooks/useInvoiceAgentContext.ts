@@ -108,7 +108,7 @@ export const useInvoiceAgentContext = (leadId: string | null) => {
       // Bill-to = linked client's company record; the lead address is only the site.
       let billCustomer: any = null;
       if ((lead as any).customer_id) {
-        const { data } = await (supabase.from("customers") as any).select(CUSTOMER_BILLTO_COLUMNS).eq("id", (lead as any).customer_id).maybeSingle();
+        const { data } = await supabase.from("customers").select(CUSTOMER_BILLTO_COLUMNS).eq("id", (lead as any).customer_id).maybeSingle();
         billCustomer = data ?? null;
       }
       const billTo = resolveBillTo({ customer: billCustomer, fallbackName: lead.customer_name, fallbackAddress: lead.customer_address });

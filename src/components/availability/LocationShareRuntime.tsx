@@ -58,7 +58,7 @@ async function readPlan(apply: boolean): Promise<Plan | null> {
     return null;
   }
   if (apply) {
-    const { data: plan, error: planError } = await (supabase.rpc as any)("my_availability_plan");
+    const { data: plan, error: planError } = await supabase.rpc("my_availability_plan");
     if (planError) return { status: typeof data === "string" ? data : undefined };
     return plan as Plan;
   }
@@ -106,7 +106,7 @@ export default function LocationShareRuntime() {
           const live = getLocationShareSnapshot();
           if (!mayShareLocation(live, at)) {
             void stopBackgroundLocation();
-            void (supabase.rpc as any)("apply_my_availability_schedule");
+            void supabase.rpc("apply_my_availability_schedule");
             return;
           }
           if (Date.now() - lastPing.current < LOCATION_PING_INTERVAL_MS) return;

@@ -42,7 +42,7 @@ export function useSiteSurvey(leadId: string | undefined) {
         if (local && (local.rev > local.syncedRev || !server)) d = local;          // unsynced phone edits win
         else if (server) d = draftFromServer(server.survey, server.rooms, server.media);
         if (!d) {
-          const { data: lead, error: le } = await (supabase.from("leads") as any).select("company_id, latitude, longitude").eq("id", leadId).maybeSingle();
+          const { data: lead, error: le } = await supabase.from("leads").select("company_id, latitude, longitude").eq("id", leadId).maybeSingle();
           if (le) throw le;
           if (!lead?.company_id) throw new Error("This visit has no company linked yet.");
           d = { ...newDraft(leadId, lead.company_id, user.id), lat: lead.latitude ?? null, lng: lead.longitude ?? null };

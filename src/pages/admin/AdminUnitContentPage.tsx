@@ -108,7 +108,7 @@ export default function AdminUnitContentPage() {
 
   /** Bulk pre-fill: Samsung units on current price lists with no content yet, one at a time into DRAFT. */
   const prefillSamsung = async () => {
-    const { data } = await (supabase.from("supplier_products") as any)
+    const { data } = await supabase.from("supplier_products")
       .select("product_code").eq("brand", "Samsung").eq("product_type", "ac_unit").eq("is_active", true).or("archived.is.null,archived.eq.false");
     const have = new Set(rows.map((r) => r.model_key));
     const keys = [...new Set(((data || []) as any[]).map((r) => normalizeModelCode(r.product_code)).filter((k): k is string => !!k && !have.has(k)))];

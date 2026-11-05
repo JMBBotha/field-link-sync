@@ -25,10 +25,10 @@ export default function SetPinDialog({ open, onClose, leadId, lat, lng, notes, a
     if (!pin) return;
     setBusy(true);
     try {
-      const { error } = await (supabase.rpc as any)("set_booking_pin", { p_lead: leadId, p_lat: pin.lat, p_lng: pin.lng });
+      const { error } = await supabase.rpc("set_booking_pin", { p_lead: leadId, p_lat: pin.lat, p_lng: pin.lng });
       if (error) throw error;
       if (useAddr && suggest && canSetAddress) {
-        const { error: e2 } = await (supabase.rpc as any)("update_booking_details", { p_lead: leadId, p_address: suggest });
+        const { error: e2 } = await supabase.rpc("update_booking_details", { p_lead: leadId, p_address: suggest });
         if (e2) throw e2;
       }
       toast({ title: "Pin saved", description: "Map now opens the exact spot." });

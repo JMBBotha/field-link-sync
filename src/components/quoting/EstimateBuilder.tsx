@@ -230,7 +230,7 @@ export default function EstimateBuilder({
     enabled: productIds.length > 0,
     staleTime: 300_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
+      const { data, error } = await supabase.from("supplier_products")
         .select(`image_url, ${AC_PRODUCT_FIELDS}`)
         .in("id", productIds);
       if (error) throw error;

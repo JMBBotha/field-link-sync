@@ -14,7 +14,7 @@ export function useIsMainCompany() {
     enabled: !!user?.id,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data } = await (supabase.rpc as any)("is_master_company_user", { _uid: user!.id });
+      const { data } = await supabase.rpc("is_master_company_user", { _uid: user!.id });
       return data === true;
     },
   });

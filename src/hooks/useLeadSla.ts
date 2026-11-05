@@ -18,7 +18,7 @@ export function useLeadSla() {
     queryKey: ["lead-sla-settings"],
     staleTime: 300_000,
     queryFn: async () => {
-      const { data } = await (supabase.from("lead_sla_settings" as any) as any).select("*").limit(1).maybeSingle();
+      const { data } = await supabase.from("lead_sla_settings").select("*").limit(1).maybeSingle();
       return (data as any) ?? null;
     },
   });
@@ -41,6 +41,6 @@ export function useNow(): number {
 
 /** Log a contact: 'reached'/'sent' stops stage 1; 'no_answer' only counts an attempt. */
 export async function logLeadContact(leadId: string, channel: "call" | "whatsapp", outcome: "reached" | "no_answer" | "sent") {
-  const { error } = await (supabase.rpc as any)("log_lead_contact", { p_lead_id: leadId, p_channel: channel, p_outcome: outcome });
+  const { error } = await supabase.rpc("log_lead_contact", { p_lead_id: leadId, p_channel: channel, p_outcome: outcome });
   if (error) throw error;
 }

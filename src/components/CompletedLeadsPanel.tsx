@@ -94,7 +94,7 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
       // Fetch invoices for all completed leads
       const leadIds = data.map((l) => l.id);
       if (leadIds.length > 0) {
-        const { data: invoices } = await (supabase.from("lead_invoice_status" as any) as any)
+        const { data: invoices } = await supabase.from("lead_invoice_status")
           .select("lead_id, invoice_id, invoice_number, invoice_status, invoice_total, invoice_state")
           .in("lead_id", leadIds)
           .not("invoice_id", "is", null);

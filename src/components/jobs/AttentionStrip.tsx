@@ -28,7 +28,7 @@ export default function AttentionStrip({ className }: { className?: string }) {
     refetchInterval: 60_000,
     queryFn: async () => {
       const [leads, jobs, paid, accepted] = await Promise.all([
-        (supabase.from("leads") as any).select("id, customer_name, status, created_at, primary_intent, assigned_agent_id, first_contact_at, stage2_done_at")
+        supabase.from("leads").select("id, customer_name, status, created_at, primary_intent, assigned_agent_id, first_contact_at, stage2_done_at")
           .eq("status", "pending").is("deleted_at", null).is("merged_into_id", null).limit(500),
         supabase.from("jobs").select("id, title, status, scheduled_for").eq("status", "scheduled").lt("scheduled_for", new Date().toISOString()).limit(500),
         supabase.from("invoices").select("quote_id, customer_name").in("status", ["paid", "partially_paid"]).not("quote_id", "is", null).limit(1000),

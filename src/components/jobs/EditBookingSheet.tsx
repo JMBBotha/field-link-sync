@@ -27,7 +27,7 @@ export default function EditBookingSheet({ open, onOpenChange, booking, perms, o
       { date, time, notes, service, address });
     if (!Object.keys(patch).length) { onOpenChange(false); return; }
     setSaving(true);
-    const { error } = await (supabase.rpc as any)("update_booking_details", { p_lead: booking.id, ...patch });
+    const { error } = await supabase.rpc("update_booking_details", { p_lead: booking.id, ...patch });
     setSaving(false);
     if (error) { toast({ title: error.message || "Couldn't save", variant: "destructive" }); return; }
     toast({ title: "Saved" }); onSaved(); onOpenChange(false);

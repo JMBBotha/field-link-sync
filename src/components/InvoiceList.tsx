@@ -73,7 +73,7 @@ const InvoiceList = ({ agentId, onSelectInvoice }: InvoiceListProps) => {
     setLoading(true);
     
     const { data, error } = await supabase
-      .from("invoices" as any)
+      .from("invoices")
       .select("*")
       .order("created_at", { ascending: false });
 

@@ -78,7 +78,7 @@ export default function FieldJobSheetPage() {
     if (status === "completed" && j?.lead_id) { setFinish({ open: true, days: null }); return; }
     if (status === "completed" && !window.confirm("Mark this job as completed?")) return;
     setBusy(true);
-    const { error } = await (supabase.rpc as any)("tech_set_job_status", { p_job_id: id, p_status: status });
+    const { error } = await supabase.rpc("tech_set_job_status", { p_job_id: id, p_status: status });
     setBusy(false);
     if (error) {
       toast({ title: "Couldn't update the job", description: error.message, variant: "destructive" });

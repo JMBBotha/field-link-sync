@@ -13,7 +13,7 @@ const NotFound = () => {
     if (!id) { setState("404"); console.error("404 Error: User attempted to access non-existent route:", location.pathname); return; }
     let live = true;
     setState("checking");
-    (supabase.rpc as any)("resolve_public_link", { p_id: id }).then(({ data }: { data: string | null }) => {
+    supabase.rpc("resolve_public_link", { p_id: id }).then(({ data }: { data: string | null }) => {
       if (!live) return;
       if (data && data.startsWith("/")) navigate(data, { replace: true });
       else setState("none");

@@ -9,6 +9,7 @@ import { inclVatFromExcl } from "@/lib/pricing";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -68,6 +69,14 @@ interface VisualCatalogPanelProps {
   readOnly?: boolean;
   /** localStorage key to remember the chosen supplier (price lists page only). */
   rememberSupplierKey?: string;
+}
+
+function priceColumnBBox(value: Json): PdfPage["price_column_bbox"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const x = value.x_frac;
+  const w = value.w_frac;
+  if (typeof x !== "number" || typeof w !== "number") return null;
+  return { x_frac: x, w_frac: w };
 }
 
 interface PdfPage {
@@ -192,7 +201,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
       const aliasArr = Array.from(aliases);
 
       // Fetch matching rows
-      let selectQ = (supabase.from("supplier_pdf_pages") as any)
+      let selectQ = supabase.from("supplier_pdf_pages")
         .select("id, pdf_storage_path, page_image_url, pdf_filename, supplier_id")
         .in("supplier_id", aliasArr);
       if (opts?.filename) selectQ = selectQ.eq("pdf_filename", opts.filename);
@@ -212,7 +221,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
       }
 
       // Delete rows
-      let delQ = (supabase.from("supplier_pdf_pages") as any).delete().in("supplier_id", aliasArr);
+      let delQ = supabase.from("supplier_pdf_pages").delete().in("supplier_id", aliasArr);
       if (opts?.filename) delQ = delQ.eq("pdf_filename", opts.filename);
       const { error } = await delQ;
       if (error) throw error;
@@ -286,9 +295,9 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
     queryKey: ["visual-panel-suppliers"],
     enabled: open,
     queryFn: async () => {
-      const { data } = await (supabase.from("supplier_pdf_pages") as any).select("supplier_id, pdf_upload_id, pdf_filename, page_number").neq("supplier_id", "").order("supplier_id");
+      const { data } = await supabase.from("supplier_pdf_pages").select("supplier_id, pdf_upload_id, pdf_filename, page_number").neq("supplier_id", "").order("supplier_id");
       if (!data) return { ids: [] as string[], counts: {} as Record<string, number> };
-      const { data: inactiveUploads } = await (supabase.from("pdf_uploads") as any)
+      const { data: inactiveUploads } = await supabase.from("pdf_uploads")
         .select("id").eq("is_active", false).limit(2000);
       const inactiveIds = new Set<string>((inactiveUploads || []).map((u: any) => u.id));
       const counts = countLivePages(data as any[], inactiveIds);
@@ -338,20 +347,31 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
     queryKey: ["visual-panel-pages", selectedSupplier],
     enabled: open,
     queryFn: async () => {
-      let query = (supabase.from("supplier_pdf_pages") as any)
+      let query = supabase.from("supplier_pdf_pages")
         .select("id, supplier_id, pdf_filename, page_number, page_image_url, pdf_storage_path, price_column_bbox, pdf_upload_id, brand")
         .order("supplier_id").order("pdf_filename").order("page_number");
       if (selectedSupplier !== "all") query = query.eq("supplier_id", selectedSupplier);
       const { data, error } = await query.limit(500);
       if (error) throw error;
+      const pagesFromRows = (data || []).map((row): PdfPage => ({
+        id: row.id,
+        supplier_id: row.supplier_id,
+        pdf_filename: row.pdf_filename,
+        page_number: row.page_number,
+        page_image_url: row.page_image_url,
+        pdf_storage_path: row.pdf_storage_path,
+        pdf_upload_id: row.pdf_upload_id,
+        brand: row.brand,
+        price_column_bbox: priceColumnBBox(row.price_column_bbox),
+      }));
       // Exclude pages belonging to inactive pdf_uploads (null pdf_upload_id stays visible)
-      const { data: inactiveUploads } = await (supabase.from("pdf_uploads") as any)
+      const { data: inactiveUploads } = await supabase.from("pdf_uploads")
         .select("id").eq("is_active", false).limit(2000);
       const inactiveIds = new Set<string>((inactiveUploads || []).map((u: any) => u.id));
       // Deduplicate by (supplier_id, pdf_filename, page_number) – keep first occurrence
       const seen = new Set<string>();
-      const deduped: typeof data = [];
-      for (const row of (data || [])) {
+      const deduped: PdfPage[] = [];
+      for (const row of pagesFromRows) {
         if (row.pdf_upload_id && inactiveIds.has(row.pdf_upload_id)) continue;
         const key = `${row.supplier_id}|${row.pdf_filename}|${row.page_number}`;
         if (!seen.has(key)) {
@@ -458,7 +478,7 @@ const VisualCatalogPanel = ({ showCost = false, open, onClose, baskets, onAddPro
     setManualSaving(true);
     try {
       const priceVal = parseFloat(manualPrice) || 0;
-      const { data, error } = await (supabase.from("supplier_products") as any).insert({
+      const { data, error } = await supabase.from("supplier_products").insert({
         supplier_id: supplierId,
         product_code: manualCode.trim() || manualName.trim().substring(0, 20),
         short_name: manualName.trim(),
@@ -1289,7 +1309,7 @@ const LazyPdfPage = ({
     queryKey: ["visual-panel-stored-regions", page.id],
     enabled: isVisible && !hasPdfSource,
     queryFn: async () => {
-      const { data } = await (supabase.from("pdf_product_regions") as any)
+      const { data } = await supabase.from("pdf_product_regions")
         .select("id, product_id, product_code, region_x, region_y, region_width, region_height, label")
         .eq("pdf_page_id", page.id);
       return data || [];
@@ -1320,7 +1340,7 @@ const LazyPdfPage = ({
       let supplierUuid: string | undefined = isUuid ? supplierName : undefined;
       if (!supplierUuid) {
         // Use wildcards: legacy supplier names may have trailing whitespace in DB
-        const { data: supplierRow } = await (supabase.from("suppliers") as any)
+        const { data: supplierRow } = await supabase.from("suppliers")
           .select("id")
           .ilike("name", `%${supplierName}%`)
           .maybeSingle();
@@ -1356,7 +1376,7 @@ const LazyPdfPage = ({
     queryFn: async () => {
       const supplierName = (page.supplier_id || "").trim();
       if (!supplierName) return null;
-      const { data } = await (supabase.from("suppliers") as any)
+      const { data } = await supabase.from("suppliers")
         .select("supplier_discount_percent, default_trade_discount")
         .ilike("name", `%${supplierName}%`)
         .maybeSingle();

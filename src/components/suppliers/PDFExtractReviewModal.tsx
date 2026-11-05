@@ -64,7 +64,7 @@ const PDFExtractReviewModal = ({ open, onOpenChange, extractedData, supplierId }
           is_primary: dept === "Sales" || Object.keys(categorizedEmails!).length === 1,
         }));
         if (contacts.length > 0) {
-          await (supabase.from("supplier_contacts") as any).insert(contacts);
+          await supabase.from("supplier_contacts").insert(contacts);
         }
       }
     },

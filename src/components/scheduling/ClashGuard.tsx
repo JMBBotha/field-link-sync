@@ -35,7 +35,7 @@ export function useClashGuard() {
 
   const writeLog = useCallback(async (entity: { type: string; id: string }, summary: string, why: string) => {
     try {
-      await (supabase.from("status_change_log") as any).insert({
+      await supabase.from("status_change_log").insert({
         entity_type: entity.type, entity_id: entity.id, field_name: "clash_override",
         old_status: summary.slice(0, 300), new_status: why || "(no reason)",
         changed_by: user?.id ?? null, company_id: companyId ?? null,
@@ -57,7 +57,7 @@ export function useClashGuard() {
     if (!args.profileId || !args.date || !args.start || !args.end) return true;
     let rows: ClashRow[] = [];
     try {
-      const { data, error } = await (supabase.rpc as any)("booking_clashes", {
+      const { data, error } = await supabase.rpc("booking_clashes", {
         p_profile_id: args.profileId, p_date: args.date, p_start: hhmm(args.start), p_end: hhmm(args.end),
         p_exclude_job_id: args.excludeJobId ?? null, p_exclude_lead_id: args.excludeLeadId ?? null,
       });
@@ -72,7 +72,7 @@ export function useClashGuard() {
     let afterHours = isAfterHours(args.date, { start: args.start, end: args.end });
     let hoursText = `Mon–Fri ${WORK_START}–${WORK_END}`;
     try {
-      const { data, error } = await (supabase.rpc as any)("staff_work_window", { p_profile_id: args.profileId, p_date: args.date });
+      const { data, error } = await supabase.rpc("staff_work_window", { p_profile_id: args.profileId, p_date: args.date });
       const w = !error && Array.isArray(data) ? data[0] : null;
       if (w) {
         afterHours = !w.is_working || toMinutes(hhmm(args.start)) < toMinutes(hhmm(w.start_time)) || toMinutes(hhmm(args.end)) > toMinutes(hhmm(w.end_time));

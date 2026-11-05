@@ -56,12 +56,12 @@ export function useProductOptions() {
     let cancelled = false;
     Promise.all([
       supabase
-        .from("catalog_services" as any)
+        .from("catalog_services")
         .select("id, name, description, sort_order, origin")
         .eq("is_active", true)
         .order("sort_order", { nullsFirst: false }),
       techOnly
-        ? (supabase.rpc as any)("get_tech_catalogue") // techs: no prices from the server
+        ? supabase.rpc("get_tech_catalogue") // techs: no prices from the server
         : liveProducts()
         .select("id, product_code, short_name, description, cost_price, default_markup_percent, markup_percent, category, is_pinned")
         .eq("is_active", true)

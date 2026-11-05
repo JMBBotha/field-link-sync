@@ -48,7 +48,7 @@ export const suggestReason = (outstanding: number): CreditReason => (outstanding
 
 export async function fetchCreditNotes(invoiceIds: string[]): Promise<CreditNoteRow[]> {
   if (!invoiceIds.length) return [];
-  const { data, error } = await (supabase.from("credit_notes" as any) as any)
+  const { data, error } = await supabase.from("credit_notes")
     .select("id, invoice_id, credit_note_number, issue_date, reason, description, subtotal, tax_rate, tax_amount, total, status, void_reason")
     .in("invoice_id", invoiceIds)
     .order("created_at", { ascending: true });

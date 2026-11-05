@@ -46,13 +46,13 @@ export const DaikinOverlayDiagnostic = ({ currentSupplierName, currentPageNumber
     const trimmed = (currentSupplierName || "").trim();
     let supplierUuid: string | null = null;
     if (trimmed) {
-      const { data: s } = await (supabase.from("suppliers") as any)
+      const { data: s } = await supabase.from("suppliers")
         .select("id").ilike("name", trimmed).maybeSingle();
       supplierUuid = s?.id ?? null;
     }
     const { waitForAuthSession } = await import("@/contexts/AuthContext");
     const user = (await waitForAuthSession())?.user ?? null;
-    const { error } = await (supabase.from("overlay_mismatch_reports") as any).insert({
+    const { error } = await supabase.from("overlay_mismatch_reports").insert({
       supplier_name: trimmed || null,
       supplier_id: supplierUuid,
       product_code: code.trim() || null,
@@ -83,7 +83,7 @@ export const DaikinOverlayDiagnostic = ({ currentSupplierName, currentPageNumber
       out.push({ label: "Resolve supplier", ok: false, detail: "No current supplier selected" });
       setSteps(out); setRunning(false); return;
     }
-    const { data: supplierRow, error: sErr } = await (supabase.from("suppliers") as any)
+    const { data: supplierRow, error: sErr } = await supabase.from("suppliers")
       .select("id, name")
       .ilike("name", trimmed)
       .maybeSingle();
@@ -100,7 +100,7 @@ export const DaikinOverlayDiagnostic = ({ currentSupplierName, currentPageNumber
       out.push({ label: "Lookup product_code", ok: false, detail: "No product code entered" });
       setSteps(out); setRunning(false); return;
     }
-    const { data: prod } = await (supabase.from("supplier_products") as any)
+    const { data: prod } = await supabase.from("supplier_products")
       .select("id, product_code, short_name, page_number, row_bbox, price_bbox")
       .eq("supplier_id", supplierRow.id)
       .ilike("product_code", productCode)

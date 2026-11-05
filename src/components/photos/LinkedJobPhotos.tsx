@@ -8,11 +8,9 @@ export default function LinkedJobPhotos({ leadId }: { leadId: string }) {
     queryKey: ["linked-job-photos", leadId],
     enabled: !!leadId,
     queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: l } = await (supabase.from("leads") as any).select("source_job_id").eq("id", leadId).maybeSingle();
+      const { data: l } = await supabase.from("leads").select("source_job_id").eq("id", leadId).maybeSingle();
       if (!l?.source_job_id) return null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: j } = await (supabase.from("jobs") as any).select("lead_id").eq("id", l.source_job_id).maybeSingle();
+      const { data: j } = await supabase.from("jobs").select("lead_id").eq("id", l.source_job_id).maybeSingle();
       return (j?.lead_id as string | null) ?? null;
     },
   });

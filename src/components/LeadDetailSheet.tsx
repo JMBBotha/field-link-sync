@@ -192,7 +192,7 @@ const LeadDetailSheet = ({
         .maybeSingle();
       if (data || !invoiceTechOnly) return data;
       // Techs can't read invoice rows: show chip state + R remaining only.
-      const { data: chips } = await (supabase.rpc as any)('get_field_deposit_chips', { p_lead_ids: [lead.id] });
+      const { data: chips } = await supabase.rpc('get_field_deposit_chips', { p_lead_ids: [lead.id] });
       const c = (chips || [])[0];
       return c?.invoice_id
         ? { id: c.invoice_id, invoice_number: null, status: c.chip_state === 'paid' ? 'paid' : 'sent', grand_total: null, remaining: Number(c.remaining) }

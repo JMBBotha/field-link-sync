@@ -12,7 +12,7 @@ export async function loadAcProductInfo(ids: (string | null | undefined)[]): Pro
   const missing = want.filter((id) => !cache.has(id));
   if (missing.length) {
     try {
-      const { data, error } = await (supabase.from("supplier_products") as any).select(AC_PRODUCT_FIELDS).in("id", missing);
+      const { data, error } = await supabase.from("supplier_products").select(AC_PRODUCT_FIELDS).in("id", missing);
       if (!error) {
         for (const row of (data || []) as any[]) cache.set(row.id, row);
         for (const id of missing) if (!cache.has(id)) cache.set(id, null);

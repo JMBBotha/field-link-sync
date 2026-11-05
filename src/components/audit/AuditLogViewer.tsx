@@ -28,7 +28,7 @@ const AuditLogViewer = () => {
     queryKey: ["audit-log", search, tableFilter, actionFilter],
     queryFn: async () => {
       let query = supabase
-        .from("audit_log" as any)
+        .from("audit_log")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(200);

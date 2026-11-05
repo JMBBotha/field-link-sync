@@ -55,7 +55,7 @@ const SupplierInfoReviewModal = ({ open, onOpenChange, supplierId, supplierName,
     setSaving(true);
     try {
       // 1. Update supplier main info
-      await (supabase.from("suppliers") as any)
+      await supabase.from("suppliers")
         .update({
           vat_number: companyInfo.vatNumber || null,
           registration_number: companyInfo.registrationNumber || null,
@@ -70,7 +70,7 @@ const SupplierInfoReviewModal = ({ open, onOpenChange, supplierId, supplierName,
       // 2. Insert locations
       for (const loc of locations) {
         if (!loc.city) continue;
-        const { data: inserted } = await (supabase.from("supplier_locations") as any)
+        const { data: inserted } = await supabase.from("supplier_locations")
           .insert({
             supplier_id: supplierId,
             location_name: loc.city,
@@ -90,7 +90,7 @@ const SupplierInfoReviewModal = ({ open, onOpenChange, supplierId, supplierName,
               e.toLowerCase().includes(loc.city.toLowerCase().slice(0, 3))
             );
             if (deptEmailForLocation || dept.phones.length > 0) {
-              await (supabase.from("supplier_contacts") as any).insert({
+              await supabase.from("supplier_contacts").insert({
                 supplier_id: supplierId,
                 location_id: inserted.id,
                 department: dept.department,
@@ -111,7 +111,7 @@ const SupplierInfoReviewModal = ({ open, onOpenChange, supplierId, supplierName,
           dept.emails.some((e) => e.toLowerCase().includes(loc.city.toLowerCase().slice(0, 3)))
         );
         if (!hasLocContacts) {
-          await (supabase.from("supplier_contacts") as any).insert({
+          await supabase.from("supplier_contacts").insert({
             supplier_id: supplierId,
             department: dept.department,
             contact_name: dept.contactName || `${dept.department} Contact`,

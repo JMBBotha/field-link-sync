@@ -41,7 +41,7 @@ export function MarkCompletedDialog({ jobId, open, onOpenChange, suggestedAt }:
     const at = jhbLocalToIso(date, time);
     if (!at) { toast({ title: "Pick a date and time", variant: "destructive" }); return; }
     setBusy(true);
-    const { error } = await (supabase.rpc as any)("admin_mark_job_completed", { p_job: jobId, p_at: at, p_note: note || null });
+    const { error } = await supabase.rpc("admin_mark_job_completed", { p_job: jobId, p_at: at, p_note: note || null });
     setBusy(false);
     if (error) { toast({ title: "Couldn't mark completed", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Job marked completed", description: "No client or rep alerts were sent." });
@@ -79,7 +79,7 @@ export function ReopenJobDialog({ jobId, open, onOpenChange }: { jobId: string; 
   const [busy, setBusy] = useState(false);
   const save = async () => {
     setBusy(true);
-    const { error } = await (supabase.rpc as any)("admin_reopen_job", { p_job: jobId, p_status: status, p_note: note || null });
+    const { error } = await supabase.rpc("admin_reopen_job", { p_job: jobId, p_status: status, p_note: note || null });
     setBusy(false);
     if (error) { toast({ title: "Couldn't reopen", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Job reopened" });
