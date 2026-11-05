@@ -12,7 +12,7 @@ export function parseMultiEdit(text: string): PlanStep[] | null {
   let t = String(text || "").trim().replace(/[.!?]+$/, "");
   if (!t) return null;
   let area = "";
-  const pre = t.match(/^\s*([a-z][\w '\-]{0,40}?)\s*:\s*(.+)$/i);
+  const pre = t.match(/^\s*([a-z][\w '-]{0,40}?)\s*:\s*(.+)$/i);
   if (pre) { area = tidy(pre[1]); t = pre[2]; }
 
   const kitM = t.match(/(\d+(?:[.,]\d+)?)\s*(?:m|metres?|meters?)\b\s*(?:of\s+)?(?:piping\s+|pipe\s+)?kit\b/i)
@@ -33,7 +33,7 @@ export function parseMultiEdit(text: string): PlanStep[] | null {
     }
   }
   if (!area) {
-    const to = t.match(/\b(?:to|in|into|on)\s+(?:the\s+)?([a-z][\w '\-]*?)(?=\s+(?:with|and|plus)\b|,|$)/i);
+    const to = t.match(/\b(?:to|in|into|on)\s+(?:the\s+)?([a-z][\w '-]*?)(?=\s+(?:with|and|plus)\b|,|$)/i);
     if (to && !/\b(kit|labou?r|quote)\b/i.test(to[1])) area = tidy(to[1]);
   }
 

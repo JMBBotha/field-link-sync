@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useAvailability, type AvailabilityStatus } from "@/hooks/useAvailability";
 
 const OPTIONS: { value: AvailabilityStatus; label: string; dot: string; on: string }[] = [
@@ -65,12 +64,7 @@ export default AvailabilitySwitch;
 
 /** Self-contained header switch for the signed-in user (used in the sales header). */
 export function MyAvailabilitySwitch({ className, labelled }: { className?: string; labelled?: boolean }) {
-  const [uid, setUid] = useState<string | undefined>();
-  useEffect(() => {
-    let off = false;
-    supabase.auth.getSession().then(({ data }) => { if (!off) setUid(data.session?.user?.id); });
-    return () => { off = true; };
-  }, []);
+  const uid = useAuth().user?.id;
   const availability = useAvailability(uid);
   if (!uid) return null;
   return <AvailabilitySwitch status={availability.status} onChange={(s) => void availability.setManualStatus(s)} className={className} labelled={labelled} />;

@@ -15,7 +15,7 @@ const json = (body: unknown, status = 200) =>
 
 /** Did the customer's own words mention a different day at all? */
 const DAY_WORDS =
-  /\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next week|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}[\/\-]\d{1,2})\b/i;
+  /\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next week|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}[/-]\d{1,2})\b/i;
 
 /**
  * "2026-08-13 14:00" | "2026-08-13" | "14:00" -> { date, time }
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
 
     // ---- Apply the change -------------------------------------------------
     let appliedIso: string | null = null;
-    let applied = { lead: false, jobs: 0 };
+    const applied = { lead: false, jobs: 0 };
 
     if (action === "approve") {
       if (kind === "reschedule") {

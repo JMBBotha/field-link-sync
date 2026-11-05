@@ -13,7 +13,7 @@ vi.mock("@/integrations/supabase/client", () => {
   return { supabase: { from: q, rpc: (...a: any[]) => rpc(...a), channel: () => ch, removeChannel: async () => undefined,
     auth: { getSession: async () => ({ data: { session: null } }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) } } };
 });
-vi.mock("@/contexts/AuthContext", () => { const v = { user: { id: "u1" }, session: { user: { id: "u1" } }, loading: false }; return { useAuth: () => v, AuthProvider: ({ children }: any) => children }; });
+vi.mock("@/contexts/AuthContext", () => { const v = { user: { id: "u1" }, session: { user: { id: "u1" } }, loading: false }; return { useAuth: () => v, useOptionalAuth: () => v, waitForAuthSession: async () => v.session, AuthProvider: ({ children }: any) => children }; });
 vi.mock("@/hooks/useRole", () => { const v = { roles: ["admin"], isAdmin: true, isLoading: false, loading: false }; return { useRole: () => v }; });
 
 const unit = (id: string, area: string) => ({ id, area_id: area, item_name: "Samsung 12000 BTU inverter", item_type: "product", product_id: null, parent_item_id: null, quantity: 1, unit_price: 10000, total_price: 10000, sort_order: 1, metadata: {} });

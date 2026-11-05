@@ -22,7 +22,7 @@ export const bookingLine = (b: Booking) => {
   if (st === "assigned") return `With ${b.assigned_name || "a technician"} · not scheduled`;
   return STAGE_LABEL[st];
 };
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 export const bookingHref = (b: Booking, _salesRep?: boolean) => cardHref({ lead_id: b.id }) ?? `/admin/bookings/${b.id}`;
 const sast = (iso: string) => new Date(iso).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const SRC: Record<string, string> = { manual: "Added by hand", vapi_call: "Mandy call", website_form: "Website", whatsapp: "WhatsApp", phone: "Phone", email: "Email" };

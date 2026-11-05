@@ -219,7 +219,7 @@ const EditLeadDialog = ({ lead, open, onOpenChange, onSuccess }: EditLeadDialogP
                 placeholder="82 123 4567"
                 value={formData.customer_phone}
                 onChange={(e) => {
-                  let value = e.target.value.replace(/^\+?27/, '').replace(/^0/, '');
+                  const value = e.target.value.replace(/^\+?27/, '').replace(/^0/, '');
                   setFormData({ ...formData, customer_phone: value });
                 }}
                 required

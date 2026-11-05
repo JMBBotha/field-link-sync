@@ -29,12 +29,12 @@ export function clearDocumentCompanyProfileCache() {
 
 async function resolveCompanyId(companyId?: string | null): Promise<string | null> {
   if (companyId) return companyId;
-  // Same lookup as useCompanySettings (non-React loader, may run outside AuthProvider on public pages).
-  // eslint-disable-next-line local-auth/no-direct-auth
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth?.user?.id) return null;
+  // Public pages may have no provider; waitForAuthSession then reads the session once from AuthContext.
+  const { waitForAuthSession } = await import("@/contexts/AuthContext");
+  const session = await waitForAuthSession();
+  if (!session?.user?.id) return null;
   const { getUserCompanyId } = await import("@/lib/tenantUtils");
-  return getUserCompanyId(auth.user.id);
+  return getUserCompanyId(session.user.id);
 }
 
 export async function loadDocumentCompanyProfile(companyId?: string | null): Promise<CompanyProfile | null> {

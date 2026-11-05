@@ -15,7 +15,7 @@ export default function AssistantSettingsCard() {
 
   const save = async () => {
     if (!companyId) return;
-    const name = cfg.bot_name.replace(/[^\p{L}\p{N} '\-]/gu, "").trim().slice(0, 24) || "Mandy";
+    const name = cfg.bot_name.replace(/[^\p{L}\p{N} '-]/gu, "").trim().slice(0, 24) || "Mandy";
     setSaving(true);
     const { error } = await (supabase as any).from("company_assistant_config")
       .upsert({ company_id: companyId, bot_name: name, voice_id: cfg.voice_id }, { onConflict: "company_id" });

@@ -63,9 +63,9 @@ export default function MarginSettingsCard() {
     setLabour(data.labour_cost_per_hour == null ? "" : String(data.labour_cost_per_hour));
     setTarget(String(data.gp_target_percent ?? 20)); setComm(String(data.sales_commission_percent ?? 50));
   }, [data]);
+  const { isMain } = useIsMainCompany();
   if (!isAdmin || !data) return null;
 
-  const { isMain } = useIsMainCompany();
   const save = async () => {
     const t = Number(target), c = Number(comm), l = labour.trim() === "" ? null : Number(labour);
     const pp = Number(paidPct), hp = Number(heldPct), hd = Number(heldDays), tp = Number(toolsPct);

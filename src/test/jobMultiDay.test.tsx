@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("@/contexts/OfflineContext", () => ({ useOfflineContext: () => ({ isOnline: true, queueOperation: vi.fn(), syncPendingOperations: vi.fn() }) }));
-vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "t1" } }) }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "t1" } }), useOptionalAuth: () => ({ user: { id: "t1" } }) }));
 vi.mock("@/hooks/useSignedInIdentity", () => ({ useSignedInIdentity: () => ({ name: "Sipho", role: "tech", pending: false }) }));
 
 import {

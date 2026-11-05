@@ -1376,7 +1376,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         // however we have the Badge appended. 
         // Let's just update the path fill which handles 90% of cases.
         // For the '$', we effectively need to manage that child div.
-        let contentEl = el.lastElementChild as HTMLElement; // Assuming last child might be text or badge
+        const contentEl = el.lastElementChild as HTMLElement; // Assuming last child might be text or badge
         // Detailed check involves looking for z-index 1 div we created in helper
         // Ideally we'd rebuild the element content completely if status changes type drastically
 

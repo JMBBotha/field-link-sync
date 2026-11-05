@@ -56,7 +56,7 @@ const ScheduleCalendar = () => {
       setCurrentDate(new Date(`${dateParam}T12:00:00`));
       setCurrentView(Views.DAY);
     }
-  }, [dateParam]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dateParam]);  
   const [currentView, setCurrentView] = useState<(typeof Views)[keyof typeof Views]>(
     typeof window !== "undefined" && window.innerWidth < 640 ? Views.DAY : Views.WEEK
   );
@@ -106,7 +106,7 @@ const ScheduleCalendar = () => {
 
       // Fetch jobs linked to these leads to pull location labels
       const leadIds = [...new Set(data.map((s: any) => s.lead_id).filter(Boolean))];
-      let jobByLead = new Map<string, any>();
+      const jobByLead = new Map<string, any>();
       if (leadIds.length) {
         const { data: jobs } = await supabase
           .from("jobs")

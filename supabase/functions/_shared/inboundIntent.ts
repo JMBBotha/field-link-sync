@@ -182,7 +182,7 @@ export function parseRequestedWhen(body: string, now = new Date()): ParsedWhen {
     phrase = phrase ? `tomorrow ${phrase}` : "tomorrow";
   } else {
     // "13 August" / "August 13" / "13/08" / "13-08-2026"
-    const dmy = text.match(/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/);
+    const dmy = text.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/);
     const dMonth = text.match(
       new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${MONTHS.join("|")})\\b`),
     );

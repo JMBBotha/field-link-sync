@@ -97,7 +97,7 @@ export function parseKitSwapSizes(text: string): string[] | null {
 
 /* ─── Unit pipe sizes → kit ─────────────────────────────────────────────── */
 
-const MM_RE = /(\d+(?:[.,]\d+)?)\s*(?=[\/x&×]|\s|mm|$)/gi;
+const MM_RE = /(\d+(?:[.,]\d+)?)\s*(?=[/x&×]|\s|mm|$)/gi;
 
 /**
  * Two inch fractions in a pipe-size text → { liquid: smaller, gas: larger }.

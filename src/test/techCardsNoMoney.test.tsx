@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { readFileSync } from "node:fs";
 import { Navigation, Phone } from "lucide-react";
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
-vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "tech" } }) }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "tech" } }), useOptionalAuth: () => ({ user: { id: "tech" } }) }));
 vi.mock("@/hooks/useLeadSla", () => ({ useNow: () => new Date("2026-10-08T12:00:00+02:00"), useLeadSla: () => ({ sla: {} }), logLeadContact: vi.fn() }));
 vi.mock("@/hooks/useLaneStaff", () => ({ useLaneStaff: () => ({ staff: [], salesStaff: [], technicians: [] }) }));
 vi.mock("@/hooks/useLeadPhotoCount", () => ({ useSingleLeadPhotoCount: () => ({ count: 2 }) }));

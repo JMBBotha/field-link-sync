@@ -111,7 +111,7 @@ export default function AdminSpecialsPage() {
   const uploadPdf = async (file: File) => {
     if (!picked.size) return;
     setUploading(true);
-    const path = `${Date.now()}-${file.name.replace(/[^\w.\-]+/g, "_")}`;
+    const path = `${Date.now()}-${file.name.replace(/[^\w.-]+/g, "_")}`;
     const up = await supabase.storage.from("specials-pdfs").upload(path, file, { contentType: "application/pdf" });
     if (up.error) { setUploading(false); toast({ title: "Upload failed", description: up.error.message, variant: "destructive" }); return; }
     const { data, error } = await (supabase.from("supplier_specials" as any) as any).update({ specials_pdf_path: path }).in("id", [...picked]).select("id");
@@ -150,7 +150,7 @@ export default function AdminSpecialsPage() {
             const running = isSpecialRunning(s);
             return (
               <div key={s.id} className="flex flex-wrap items-center gap-3 p-3">
-                <Checkbox checked={picked.has(s.id)} onCheckedChange={(v) => setPicked((p) => { const n = new Set(p); v ? n.add(s.id) : n.delete(s.id); return n; })} aria-label="Select for PDF" />
+                <Checkbox checked={picked.has(s.id)} onCheckedChange={(v) => setPicked((p) => { const n = new Set(p); if (v) n.add(s.id); else n.delete(s.id); return n; })} aria-label="Select for PDF" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2 font-medium">
                     {s.model_number}

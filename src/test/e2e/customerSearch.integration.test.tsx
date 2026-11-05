@@ -14,6 +14,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { id: "user-1" } }),
+  useOptionalAuth: () => ({ user: { id: "user-1" } }),
 }));
 
 import CustomerSearchSelector from "@/components/customers/CustomerSearchSelector";

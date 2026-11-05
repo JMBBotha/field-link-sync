@@ -111,7 +111,6 @@ export function playOnElement(el: HTMLAudioElement, src: string, opts: { startTi
   const started = new Promise<boolean>((r) => { resolveStarted = r; });
   const ended = new Promise<void>((r) => { resolveEnded = r; });
   let startedDone = false, endedDone = false;
-  let startTimer: ReturnType<typeof setTimeout> | undefined;
   let capTimer: ReturnType<typeof setTimeout> | undefined;
 
   const cleanup = () => {
@@ -153,7 +152,7 @@ export function playOnElement(el: HTMLAudioElement, src: string, opts: { startTi
   el.addEventListener("timeupdate", onTime);
   el.addEventListener("ended", finish);
   el.addEventListener("error", onError);
-  startTimer = setTimeout(() => setStarted(false), startTimeoutMs);
+  const startTimer = setTimeout(() => setStarted(false), startTimeoutMs);
   try {
     el.src = src;
     // Setting src resets the rate, so apply it after.
