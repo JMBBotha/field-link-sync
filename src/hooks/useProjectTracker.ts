@@ -8,9 +8,10 @@ export const db = supabase as any;
 
 export interface ProjectRow { id: string; company_id: string; customer_id: string; name: string; code: string | null; po_number: string | null; default_make: string | null; status: string; notes: string | null; created_at: string; customers?: { company_name: string | null; first_name?: string | null; last_name?: string | null } | null }
 
-export function useProjects(customerId?: string) {
+export function useProjects(customerId?: string, enabled = true) {
   return useQuery({
     queryKey: ["projects", customerId ?? "all"],
+    enabled,
     queryFn: async () => {
       let q = db.from("projects").select("id, company_id, customer_id, name, code, po_number, default_make, status, notes, created_at, customers(company_name, first_name, last_name), project_houses(count)").order("created_at", { ascending: false });
       if (customerId) q = q.eq("customer_id", customerId);

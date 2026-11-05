@@ -15,6 +15,9 @@ import { DraftNeedsChip } from "@/components/quoting/DraftNeedsChip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import ProjectsList from "@/components/projects/ProjectsList";
+import ClientSectionNav from "@/components/customers/ClientSectionNav";
+import { clientTabChips, sumHouseCounts } from "@/lib/clientTabChips";
+import { useProjects } from "@/hooks/useProjectTracker";
 import ContractsList from "@/components/agreements/ContractsList";
 import CallHistoryPanel from "@/components/calls/CallHistoryPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -109,6 +112,9 @@ const AdminCustomerDetailPage = () => {
   const canArchiveClient = (isAdmin || isDispatcher) && !isSalesRep; // office only; DB enforces the same
   // Statements are company finance: office staff only (RPC enforces the same).
   const canSeeStatement = isAdmin && !isSalesRep;
+  const showProjects = isAdmin && !isSalesRep;
+  // Same projects query the Projects tab uses, so the chip can show the house count already on this client.
+  const { data: clientProjects = [] } = useProjects(id, !!id && showProjects);
   const [savingRep, setSavingRep] = useState(false);
 
   const { data: customer, isLoading } = useQuery({
@@ -430,7 +436,17 @@ const AdminCustomerDetailPage = () => {
   // profile card is never blank when an address is actually on file.
   const fullAddress = structuredAddress || (customer.address || "").trim();
 
-  const main: [string, string, number?][] = [["activity", "Activity"], ["quotes", "Quotes", quotes.length], ["invoices", "Invoices & Payments", activeInvRows.length], ["jobs", "Jobs", jobs.length + bookingsN], ["sites", "Sites", locations.length], ...(isAdmin && !isSalesRep ? [["projects", "Projects"] as [string, string]] : [])];
+  const sectionChips = clientTabChips({
+    quoteCount: quotes.length,
+    quoteOpenValue: quoteSummary.openValue,
+    invoiceCount: activeInvRows.length,
+    invoiceOutstanding: money.outstanding,
+    jobCount: jobs.length + bookingsN,
+    siteCount: locations.length,
+    showProjects,
+    projectCount: clientProjects.length,
+    houseCount: sumHouseCounts(clientProjects),
+  });
   const more: [string, string][] = [["details", "Client details"], ["contacts", "Contacts"], ["contracts", "Contracts"], ["notes", "Notes"], ...(canSeeStatement ? [["statement", "Statement"] as [string, string]] : []), ["calls", "Calls"], ["photos", "Photos"], ["documents", "Documents"], ...((isAdmin || isDispatcher) && !isSalesRep ? [["supplierdocs", "Supplier documents (private)"] as [string, string]] : []), ["history", "History"], ["credits", "Credits"], ["oldsites", `${sitesLabel((customer as any).client_type)} (old list)`], ["relationship", "Relationship"]];
   const moreLabel = more.find(([v]) => v === innerTab)?.[1];
   const phone = (customer as any).phone as string | null; const email = (customer as any).email as string | null;
@@ -516,6 +532,24 @@ const AdminCustomerDetailPage = () => {
         </div>
       </div>
 
+      {/* Section chips sit under the client header and stay pinned while the record scrolls (Johan 5 Nov). */}
+      <div className="sticky top-0 z-30 -mx-4 space-y-2 bg-background/70 px-4 py-1.5 backdrop-blur-md md:-mx-6 md:px-6" data-testid="client-section-tabs">
+        <ClientSectionNav
+          chips={sectionChips}
+          active={innerTab}
+          onSelect={setInnerTab}
+          more={more.map(([key, label]) => ({ key, label }))}
+          moreLabel={moreLabel}
+        />
+        {showSiteFilter && (
+          <div className="flex gap-1.5 flex-wrap items-center text-xs" data-testid="site-filter">
+            <span className="text-muted-foreground">Site:</span>
+            {[{ id: "all", label: "All" }, ...locations].map((l: any) => (
+              <button key={l.id} type="button" onClick={() => setSite(l.id)} className={cn("rounded-full px-2.5 py-1", site === l.id ? "bg-[#1590D6] text-white" : "bg-card border")}>{l.label || l.address || "Site"}</button>))}
+          </div>
+        )}
+      </div>
+
       {(invoices as any[]).filter((inv) => !inv.archived_at && Number(inv.deposit_amount) > 0 && !["paid", "void", "cancelled", "draft"].includes((inv.status || "").toLowerCase()) && (inv.deposit_type || "") !== "deposit_invoice")
         .map((inv) => <BalanceDueBlock key={inv.id} invoiceId={inv.id} onRecordPayment={() => openPay(unpaid.filter((u) => u.id === inv.id), inv.id)} />)}
       <SendReminderDialog open={remOpen} onOpenChange={setRemOpen} invoices={remList} onDone={() => qc.invalidateQueries()} />
@@ -523,29 +557,6 @@ const AdminCustomerDetailPage = () => {
       {sendQuote && <SendQuotesTogetherDialog open={sendOneOpen} onOpenChange={setSendOneOpen} quoteIds={[sendQuote.id]} onSent={() => qc.invalidateQueries()} />}
 
       <FinalInvoiceCTA step={finalInvoiceStep(invoices as any[], invPayments as any[], jobs as any[])} />
-
-      {/* Tabs */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1" role="tablist">
-        {main.map(([v, l, n]) => (
-          <button key={v} type="button" role="tab" aria-selected={innerTab === v} onClick={() => setInnerTab(v)}
-            className={cn("shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium", innerTab === v ? "bg-[#1590D6] text-white" : "bg-card border hover:border-[#1590D6]")}>
-            {l}{n ? <span className="ml-1 opacity-80">{n}</span> : null}
-          </button>))}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button type="button" data-testid="client-more-tabs" className={cn("shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium inline-flex items-center", moreLabel ? "bg-[#1590D6] text-white" : "bg-card border")}>
-              {moreLabel || "More"} <ChevronDown className="h-4 w-4 ml-1" /></button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">{more.map(([v, l]) => <DropdownMenuItem key={v} data-testid={`tab-${v}`} onClick={() => setInnerTab(v)}>{l}</DropdownMenuItem>)}</DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      {showSiteFilter && (
-        <div className="flex gap-1.5 flex-wrap items-center text-xs" data-testid="site-filter">
-          <span className="text-muted-foreground">Site:</span>
-          {[{ id: "all", label: "All" }, ...locations].map((l: any) => (
-            <button key={l.id} type="button" onClick={() => setSite(l.id)} className={cn("rounded-full px-2.5 py-1", site === l.id ? "bg-[#1590D6] text-white" : "bg-card border")}>{l.label || l.address || "Site"}</button>))}
-        </div>
-      )}
 
       <Tabs value={innerTab} onValueChange={setInnerTab}>
         <TabsContent value="activity" className="mt-0">
@@ -729,7 +740,7 @@ const AdminCustomerDetailPage = () => {
         </CardContent></Card></TabsContent>
 
         {(isAdmin || isDispatcher) && !isSalesRep && <TabsContent value="supplierdocs" className="mt-0"><SupplierDocsSection companyId={(customer as any).company_id} customerId={customer.id} /></TabsContent>}
-        {isAdmin && !isSalesRep && <TabsContent value="projects" className="mt-0"><Card className="rounded-2xl"><CardContent className="p-4"><ProjectsList customerId={customer.id} companyId={(customer as any).company_id} /></CardContent></Card></TabsContent>}
+        {showProjects && <TabsContent value="projects" className="mt-0"><Card className="rounded-2xl"><CardContent className="p-4"><ProjectsList customerId={customer.id} companyId={(customer as any).company_id} /></CardContent></Card></TabsContent>}
         <TabsContent value="sites" className="mt-0"><Card className="rounded-2xl"><CardContent className="p-4 space-y-4">
           <SitesOverview locations={locations} quotes={quotes as any[]} jobs={jobs as any[]} invoices={invoices as any[]} onPick={(lid) => { setSite(lid); setInnerTab("jobs"); }} />
           {customer.company_id ? <CustomerLocationsManager customerId={customer.id} companyId={customer.company_id} /> : <p className="text-sm text-muted-foreground">Customer is missing a company reference.</p>}
