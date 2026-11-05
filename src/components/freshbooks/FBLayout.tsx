@@ -17,6 +17,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import logo from "@/assets/logo.png";
+import ArchivedCompanyBanner from "@/components/company/ArchivedCompanyBanner";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
@@ -206,6 +207,7 @@ const FBLayout = () => {
             </div>
           </div>
         </header>
+        <ArchivedCompanyBanner status={company?.status} />
 
         {/* Gold accent line */}
         <div className="h-[3px] bg-[hsl(40,96%,53%)] shrink-0" />

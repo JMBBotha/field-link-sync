@@ -38,6 +38,8 @@ import IdentityBadge from "@/components/IdentityBadge";
 import RoleAccentStrip from "@/components/RoleAccentStrip";
 import HotLeadBanner from "@/components/heartbeat/HotLeadBanner";
 import InvoiceDueBanner from "@/components/invoiceDue/InvoiceDueBanner";
+import ArchivedCompanyBanner from "@/components/company/ArchivedCompanyBanner";
+import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useEventSounds } from "@/hooks/useEventSounds";
 import { withTimeout } from "@/lib/withTimeout";
 
@@ -54,6 +56,7 @@ const AdminLayout = () => {
 
 
   const { session, user, loading: authLoading } = useAuth();
+  const { companyId: myCompanyId } = useUserCompanyId();
   const currentUserId = user?.id ?? "";
 
   const navigate = useNavigate();
@@ -120,6 +123,15 @@ const AdminLayout = () => {
     location.pathname === "/admin" ||
     location.pathname === "/admin/map" ||
     location.pathname === "/admin/jobs-map";
+
+  const { data: myCompanyStatus } = useQuery({
+    queryKey: ["company-status", myCompanyId],
+    enabled: !!myCompanyId,
+    queryFn: async () => {
+      const { data } = await supabase.from("companies").select("status").eq("id", myCompanyId!).maybeSingle();
+      return data?.status ?? null;
+    },
+  });
 
   const { data: pendingRequestsCount = 0 } = useQuery({
     queryKey: ["pending-change-requests-count"],
@@ -310,6 +322,7 @@ const AdminLayout = () => {
         <RoleAccentStrip />
         <HotLeadBanner />
         <InvoiceDueBanner />
+        <ArchivedCompanyBanner status={myCompanyStatus} />
 
 
         {/* Mobile search lives in the header icon (GlobalSearchDialog) — no fat sticky strip */}

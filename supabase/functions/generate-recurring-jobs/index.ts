@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { companyIsActive } from "../_shared/companyActive.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -85,6 +86,7 @@ serve(async (req) => {
             .single();
           if (cust?.company_id) leadCompanyId = cust.company_id;
         }
+        if (!(await companyIsActive(supabase, leadCompanyId))) continue;
 
         const { data: lead, error: insertError } = await supabase
           .from("leads")

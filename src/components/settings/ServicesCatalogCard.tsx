@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { CatalogService } from "@/lib/catalogServices";
+import { isActiveCompany } from "@/lib/companyStatus";
 
 /** Master admins only: core services, every company's custom services, per-company limits. */
 export default function ServicesCatalogCard() {
@@ -20,7 +21,7 @@ export default function ServicesCatalogCard() {
     queryFn: async () => {
       const [s, c, m] = await Promise.all([
         (supabase.from("catalog_services") as any).select("id, name, description, sort_order, origin, owner_company_id, is_active").order("sort_order", { nullsFirst: false }),
-        (supabase.from("companies") as any).select("id, name, is_master, custom_service_limit"),
+        (supabase.from("companies") as any).select("id, name, is_master, custom_service_limit, status"),
         (supabase.from("company_network_members") as any).select("member_company_id"),
       ]);
       if (s.error) throw s.error;
@@ -89,7 +90,7 @@ export default function ServicesCatalogCard() {
 
         <div className="space-y-2 border-t border-border pt-3">
           <p className="font-medium">Custom service limit per company</p>
-          {data.companies.filter((c) => data.memberIds.has(c.id)).map((c) => (
+          {data.companies.filter((c) => data.memberIds.has(c.id) && isActiveCompany(c)).map((c) => (
             <div key={c.id} className="flex items-center justify-between gap-2">
               <span className="truncate">{c.name}</span>
               <Input type="number" min="0" className="h-8 w-20" defaultValue={c.custom_service_limit ?? 5} aria-label={`Custom limit for ${c.name}`}

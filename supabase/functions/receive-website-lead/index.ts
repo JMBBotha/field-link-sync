@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { timingLine } from "../_shared/websiteTiming.ts";
 import { corsFor, honeypotTripped, isForeignBrowserOrigin, rateLimitOk, withoutHoneypot } from "../_shared/websitePublic.ts";
 import { laneFor, mapServiceType, normaliseForm, requestedTimeLine } from "../_shared/websiteLeadMap.ts";
+import { companyIsActive } from "../_shared/companyActive.ts";
 
 /**
  * receive-website-lead
@@ -193,6 +194,12 @@ serve(async (req) => {
     // go to Massair, and customer matching only looks inside Massair. Never another company.
     const resolvedCompanyId: string = MASSAIR_COMPANY_ID;
     void bodyCompanyId;
+    if (!(await companyIsActive(supabase, resolvedCompanyId))) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "company_archived" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     let customerId: string | null = null;
     let isExistingCustomer = false;

@@ -6,6 +6,7 @@ import { loadSignaturePerson, loadSignatureCompany, replyToFor } from "../_share
 import { brandedTopStrip, brandedSummaryTable, brandedButton, renderBrandedEmail, type EmailBrand } from "../_shared/brandedEmail.ts";
 import { inlineEmailImages } from "../_shared/inlineEmailImages.ts";
 import { loadUnitCardsStripHtml } from "../_shared/unitCardsEmail.ts";
+import { companyIsActive } from "../_shared/companyActive.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -234,6 +235,9 @@ serve(async (req) => {
       }
       const me = await loadSignaturePerson(sb, auth.userId);
       const { data: myProf } = await sb.from("profiles").select("company_id").eq("id", auth.userId).maybeSingle();
+      if (!(await companyIsActive(sb, myProf?.company_id))) {
+        return J({ success: false, skipped: true, reason: "company_archived" }, 409);
+      }
       const myCo = await loadSignatureCompany(sb, myProf?.company_id);
       const mailbox = Deno.env.get("QUOTES_FROM_EMAIL") || "wcquotes@0800becool.co.za";
       const r = await fetch("https://api.resend.com/emails", {
@@ -310,6 +314,7 @@ serve(async (req) => {
       if (!sendId || !quoteId || !to) return J({ error: "sendId, quoteId and to are required" }, 400);
       const q = await loadQuoteForSend(sb, quoteId, auth.userId as string);
       if (!q) return J({ error: "Quote not found" }, 404);
+      if (!(await companyIsActive(sb, q.company_id))) return J({ success: false, skipped: true, reason: "company_archived" }, 409);
       const recipient = String(to).trim().toLowerCase();
       const kind = depositRequest ? "deposit" : "quote";
       if (reqBody.beginSend === true) {
@@ -487,6 +492,7 @@ serve(async (req) => {
     if (quoteId && sendId) {
       q = await loadQuoteForSend(supabase, quoteId, auth.userId as string);
       if (!q) return J({ error: "Quote not found" }, 404);
+      if (!(await companyIsActive(supabase, q.company_id))) return J({ success: false, skipped: true, reason: "company_archived" }, 409);
       const claim = await claimSend(supabase, { q, sendId, kind, recipient, cc: ccList, userId: auth.userId as string, retryOf, confirmResend, status: "sending" });
       if ("response" in claim) return claim.response;
       sendRow = claim.row;

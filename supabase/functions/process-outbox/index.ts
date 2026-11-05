@@ -2,6 +2,7 @@
 // Runs regardless of which popup made the change and survives the popup closing.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 import { sendWhatsApp, isWhatsAppConfigured, toE164 } from "../_shared/whatsapp.ts";
+import { companyIsActive } from "../_shared/companyActive.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -232,6 +233,15 @@ Deno.serve(async (req) => {
       if (!claimed) continue;
 
       try {
+        if (!(await companyIsActive(admin, ev.company_id))) {
+          await admin.from("entity_outbox").update({
+            status: "done",
+            processed_at: new Date().toISOString(),
+            last_error: "skipped: company not active",
+          }).eq("id", ev.id);
+          processed.push({ id: ev.id, event: ev.event_type, result: { skipped: "company_archived" } });
+          continue;
+        }
         const result = await handle(ev);
         await admin
           .from("entity_outbox")

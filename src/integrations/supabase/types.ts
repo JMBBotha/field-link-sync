@@ -2237,6 +2237,7 @@ export type Database = {
           services: string[] | null
           slug: string
           status: string
+          dormant_payments_locked: boolean
           tech_holdback_days: number
           tech_holdback_pct: number
           tech_paid_on_completion_pct: number
@@ -2284,6 +2285,7 @@ export type Database = {
           services?: string[] | null
           slug?: string
           status?: string
+          dormant_payments_locked?: boolean
           tech_holdback_days?: number
           tech_holdback_pct?: number
           tech_paid_on_completion_pct?: number
@@ -2331,6 +2333,7 @@ export type Database = {
           services?: string[] | null
           slug?: string
           status?: string
+          dormant_payments_locked?: boolean
           tech_holdback_days?: number
           tech_holdback_pct?: number
           tech_paid_on_completion_pct?: number

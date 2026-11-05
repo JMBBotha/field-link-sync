@@ -34,7 +34,7 @@ export default function CompanySignupsPanel() {
   const companies = useQuery({
     queryKey: ["signup-companies"],
     queryFn: async () => {
-      const { data } = await supabase.from("companies").select("id, name").order("name");
+      const { data } = await supabase.from("companies").select("id, name, status").eq("status", "active").order("name");
       return (data || []) as { id: string; name: string }[];
     },
   });
