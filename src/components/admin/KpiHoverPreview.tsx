@@ -164,8 +164,8 @@ const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) =
   const convertToJob = async (q: QuoteQuickAction) => {
     setBusy(`job-${q.id}`);
     try {
-      const { data: auth } = await supabase.auth.getUser();
-      const user = auth?.user;
+      const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const user = (await waitForAuthSession())?.user ?? null;
       if (!user) throw new Error("You must be signed in");
 
       // Don't duplicate an existing job for this quote

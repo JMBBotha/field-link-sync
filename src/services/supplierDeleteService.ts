@@ -34,7 +34,7 @@ async function deleteBatched(table: string, column: string, ids: string[]) {
 }
 
 async function getProductIds(supplierId: string): Promise<string[]> {
-  const { data } = await (supabase.from("supplier_products") as any)
+  const { data } = await supabase.from("supplier_products")
     .select("id")
     .eq("supplier_id", supplierId);
   return (data || []).map((p: any) => p.id);
@@ -78,7 +78,7 @@ async function purgeStorageFolder(bucket: string, supplierId: string) {
  * Remove specific storage files by extracting paths from page_image_url columns.
  */
 async function purgeSupplierPdfPageImages(supplierId: string) {
-  const { data: pages } = await (supabase.from("supplier_pdf_pages") as any)
+  const { data: pages } = await supabase.from("supplier_pdf_pages")
     .select("page_image_url, pdf_filename")
     .eq("supplier_id", supplierId);
 
@@ -110,7 +110,7 @@ async function purgeSupplierPdfPageImages(supplierId: string) {
  * Remove storage files referenced by supplier_documents rows.
  */
 async function purgeSupplierDocumentFiles(supplierId: string) {
-  const { data: docs } = await (supabase.from("supplier_documents") as any)
+  const { data: docs } = await supabase.from("supplier_documents")
     .select("storage_path")
     .eq("supplier_id", supplierId);
 
@@ -135,7 +135,7 @@ async function purgeProductImages(productIds: string[]) {
   if (productIds.length === 0) return;
 
   // Fetch image URLs from products
-  const { data: products } = await (supabase.from("supplier_products") as any)
+  const { data: products } = await supabase.from("supplier_products")
     .select("id, image_url")
     .in("id", productIds.slice(0, 500));
 
@@ -160,20 +160,20 @@ async function purgeProductImages(productIds: string[]) {
  * Pre-flight counts for confirmation dialogs.
  */
 export async function getSupplierDeleteCounts(supplierId: string) {
-  const { count: productCount } = await (supabase.from("supplier_products") as any)
+  const { count: productCount } = await supabase.from("supplier_products")
     .select("id", { count: "exact", head: true })
     .eq("supplier_id", supplierId);
 
-  const { count: pdfCount } = await (supabase.from("pdf_uploads") as any)
+  const { count: pdfCount } = await supabase.from("pdf_uploads")
     .select("id", { count: "exact", head: true })
     .eq("supplier_id", supplierId);
 
-  const { count: contactCount } = await (supabase.from("supplier_contacts") as any)
+  const { count: contactCount } = await supabase.from("supplier_contacts")
     .select("id", { count: "exact", head: true })
     .eq("supplier_id", supplierId);
 
   // Count PDF page images in storage
-  const { data: pdfPages } = await (supabase.from("supplier_pdf_pages") as any)
+  const { data: pdfPages } = await supabase.from("supplier_pdf_pages")
     .select("id", { count: "exact", head: true })
     .eq("supplier_id", supplierId);
 
@@ -204,7 +204,7 @@ export async function deleteSupplierProductsOnly(supplierId: string): Promise<{
  * (live or archived), because products are never hard-deleted.
  */
 export async function deleteSupplierCompletely(supplierId: string) {
-  const { count } = await (supabase.from("supplier_products") as any)
+  const { count } = await supabase.from("supplier_products")
     .select("id", { count: "exact", head: true })
     .eq("supplier_id", supplierId);
   if ((count ?? 0) > 0) {
@@ -212,7 +212,7 @@ export async function deleteSupplierCompletely(supplierId: string) {
       `This supplier has ${count} products. Products are never deleted — archive them instead. Existing quotes are not changed.`,
     );
   }
-  await (supabase.from("supplier_contacts") as any).delete().eq("supplier_id", supplierId);
+  await supabase.from("supplier_contacts").delete().eq("supplier_id", supplierId);
   const { error } = await supabase.from("suppliers").delete().eq("id", supplierId);
   if (error) throw error;
   return { success: true, deletedProducts: 0, deletedPdfPages: 0 };
@@ -270,12 +270,12 @@ export async function getOrphanProductCount(): Promise<number> {
   const supplierIds = (suppliers || []).map((s) => s.id);
 
   if (supplierIds.length === 0) {
-    const { count } = await (supabase.from("supplier_products") as any)
+    const { count } = await supabase.from("supplier_products")
       .select("id", { count: "exact", head: true });
     return count ?? 0;
   }
 
-  const { count } = await (supabase.from("supplier_products") as any)
+  const { count } = await supabase.from("supplier_products")
     .select("id", { count: "exact", head: true })
     .not("supplier_id", "in", `(${supplierIds.join(",")})`);
 
@@ -292,10 +292,10 @@ export async function cleanOrphanProducts(): Promise<number> {
   let orphanProducts: string[] = [];
 
   if (supplierIds.length === 0) {
-    const { data } = await (supabase.from("supplier_products") as any).select("id");
+    const { data } = await supabase.from("supplier_products").select("id");
     orphanProducts = (data || []).map((p: any) => p.id);
   } else {
-    const { data } = await (supabase.from("supplier_products") as any)
+    const { data } = await supabase.from("supplier_products")
       .select("id")
       .not("supplier_id", "in", `(${supplierIds.join(",")})`);
     orphanProducts = (data || []).map((p: any) => p.id);

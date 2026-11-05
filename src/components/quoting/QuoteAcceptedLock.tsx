@@ -100,7 +100,7 @@ export function ClientDetailsDialog({ open, onOpenChange, quoteId, lock, onDone 
   const nChanges = Object.keys(changes).length;
   const save = async () => {
     setBusy(true);
-    const { data, error } = await (supabase.rpc as any)("admin_correct_client_details", { p_quote_id: quoteId, p_changes: changes, p_reason: reason.trim() });
+    const { data, error } = await supabase.rpc("admin_correct_client_details", { p_quote_id: quoteId, p_changes: changes, p_reason: reason.trim() });
     setBusy(false);
     if (error) { toast({ title: "Couldn't save client details", description: error.message, variant: "destructive" }); return; }
     const issued = ((data as any)?.issued_invoices_unchanged || []) as { invoice_number: string; status: string }[];

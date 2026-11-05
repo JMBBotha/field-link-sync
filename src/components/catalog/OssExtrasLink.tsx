@@ -12,10 +12,10 @@ export default function OssExtrasLink() {
     staleTime: 300_000,
     retry: false,
     queryFn: async () => {
-      const { data: s } = await supabase.auth.getSession();
-      const uid = s?.session?.user?.id;
+      const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const uid = (await waitForAuthSession())?.user?.id;
       if (!uid || typeof (supabase as any).rpc !== "function") return false;
-      const { data, error } = await (supabase.rpc as any)("can_write_master_catalog", { _uid: uid });
+      const { data, error } = await supabase.rpc("can_write_master_catalog", { _uid: uid });
       return !error && !!data;
     },
   });

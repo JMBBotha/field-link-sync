@@ -104,9 +104,9 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     let off = false;
     (async () => {
       const [c, loc, lead] = await Promise.all([
-        invoice.customer_id ? (supabase.from("customers") as any).select(CUSTOMER_BILLTO_COLUMNS).eq("id", invoice.customer_id).maybeSingle() : Promise.resolve({ data: null }),
-        invoice.location_id ? (supabase.from("customer_locations") as any).select("address").eq("id", invoice.location_id).maybeSingle() : Promise.resolve({ data: null }),
-        invoice.lead_id ? (supabase.from("leads") as any).select("customer_address").eq("id", invoice.lead_id).maybeSingle() : Promise.resolve({ data: null }),
+        invoice.customer_id ? supabase.from("customers").select(CUSTOMER_BILLTO_COLUMNS).eq("id", invoice.customer_id).maybeSingle() : Promise.resolve({ data: null }),
+        invoice.location_id ? supabase.from("customer_locations").select("address").eq("id", invoice.location_id).maybeSingle() : Promise.resolve({ data: null }),
+        invoice.lead_id ? supabase.from("leads").select("customer_address").eq("id", invoice.lead_id).maybeSingle() : Promise.resolve({ data: null }),
       ]);
       if (off) return;
       const company = c.data ? resolveBillTo({ customer: c.data, fallbackName: invoice.customer_name }).company : null;
@@ -213,8 +213,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
 
   const handleDuplicate = async () => {
     setDuplicating(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("duplicate_invoice", { p_invoice: invoice.id });
+    const { data, error } = await supabase.rpc("duplicate_invoice", { p_invoice: invoice.id });
     setDuplicating(false);
     if (error || !data) {
       toast({ title: "Couldn't duplicate", description: error?.message || "Try again", variant: "destructive" });

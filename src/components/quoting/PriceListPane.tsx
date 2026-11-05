@@ -14,7 +14,7 @@ export default function PriceListPane({ heightClass = "h-[calc(100vh-9rem)]" }: 
     queryKey: ["quote-pricelist-pdfs"],
     staleTime: 300_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("pdf_uploads") as any)
+      const { data, error } = await supabase.from("pdf_uploads")
         .select("id, supplier_id, file_name, brand, file_path, storage_path, file_url, price_list_type")
         .eq("is_active", true)
         .order("file_name");

@@ -5,6 +5,7 @@ import { loadLeadMockupUnits } from "@/lib/unitMockups";
 import UnitMockupUploads from "./UnitMockupUploads";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { toJson } from "@/lib/jsonValue";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -49,7 +50,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
     queryKey: ["site-photos", leadId],
     enabled: !!leadId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("job_photos") as any)
+      const { data, error } = await supabase.from("job_photos")
         .select("id, storage_path, annotated_path, annotation, uploaded_by, created_at, caption, client_visible")
         .eq("lead_id", leadId).eq("photo_type", "site").order("created_at", { ascending: false });
       if (error) throw error;
@@ -73,8 +74,8 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
       const path = `${leadId}/${editing.id}-annotated.jpg`;
       const up = await supabase.storage.from("job-photos").upload(path, jpeg, { contentType: "image/jpeg", upsert: true });
       if (up.error) throw up.error;
-      const { error } = await (supabase.from("job_photos") as any)
-        .update({ annotation: serializeAnnotation(shapes), annotated_path: path }).eq("id", editing.id);
+      const { error } = await supabase.from("job_photos")
+        .update({ annotation: toJson(serializeAnnotation(shapes)), annotated_path: path }).eq("id", editing.id);
       if (error) throw error;
       toast({ title: "Annotation saved" });
       setEditing(null); setOpen(null);
@@ -89,7 +90,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
     queryKey: ["photo-lead-ok", leadId],
     enabled: !!leadId,
     queryFn: async () => {
-      const { data } = await (supabase.rpc as any)("photo_lead_ok", { _lead: leadId });
+      const { data } = await supabase.rpc("photo_lead_ok", { _lead: leadId });
       return data === true;
     },
   }).data === true;
@@ -110,7 +111,7 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
   const mockups = mockupUnits.filter((u) => u.url).map((u) => ({ label: u.label, url: u.url as string }));
 
   const updatePhoto = async (p: SitePhoto, patch: Partial<Pick<SitePhoto, "caption" | "client_visible">>) => {
-    const { error } = await (supabase.from("job_photos") as any).update(patch).eq("id", p.id);
+    const { error } = await supabase.from("job_photos").update(patch).eq("id", p.id);
     if (error) { toast({ title: "Couldn't save", description: error.message, variant: "destructive" }); return; }
     setOpen((o) => (o && o.id === p.id ? { ...o, ...patch } : o));
     { qc.invalidateQueries({ queryKey: ["site-photos", leadId] }); qc.invalidateQueries({ queryKey: ["quote-site-photos"] }); }

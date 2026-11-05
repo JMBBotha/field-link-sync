@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { describe, it, expect } from "vitest";
 import { isAcceptedQuote, leadServiceTypeFor, jobTypeFor, kindOfJobType, techJobTypeLabel, bookingSms, bookingEmail, validReason } from "./jobTypeChoice";
 import { laneFromServiceType } from "./leadLane";
@@ -34,7 +35,6 @@ describe("job type choice", () => {
 });
 
 describe("14:45 release additions", () => {
-  const fs = require("node:fs") as typeof import("node:fs");
   const mig = fs.readFileSync("supabase/migrations/20261103143000_job_type_choice.sql", "utf8");
   it("booking email goes through send-transactional-email with the R680 line for service only", () => {
     expect(mig).toContain("send_booking_confirmation");

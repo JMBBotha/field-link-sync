@@ -20,7 +20,7 @@ export default function InvoiceAutoSendCard() {
   const { data } = useQuery({
     queryKey: ["invoice-auto-send-minutes", companyId], enabled: !!companyId,
     queryFn: async () => {
-      const { data } = await (supabase.from("company_settings") as any).select("invoice_auto_send_minutes").eq("company_id", companyId).maybeSingle();
+      const { data } = await supabase.from("company_settings").select("invoice_auto_send_minutes").eq("company_id", companyId).maybeSingle();
       return data?.invoice_auto_send_minutes ?? DEFAULT_AUTO_SEND_MINUTES;
     },
   });
@@ -29,7 +29,7 @@ export default function InvoiceAutoSendCard() {
   useEffect(() => { if (data !== undefined) setM(data); }, [data]);
   const save = async () => {
     setSaving(true);
-    const { error } = await (supabase.from("company_settings") as any).update({ invoice_auto_send_minutes: clampMinutes(m) }).eq("company_id", companyId);
+    const { error } = await supabase.from("company_settings").update({ invoice_auto_send_minutes: clampMinutes(m) }).eq("company_id", companyId);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Invoice auto-send saved"); qc.invalidateQueries({ queryKey: ["invoice-auto-send-minutes"] });

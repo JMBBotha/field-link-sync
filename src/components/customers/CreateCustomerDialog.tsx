@@ -109,7 +109,7 @@ const CreateCustomerDialog = ({ open, onOpenChange, onCreated, initialName }: Cr
     }
   };
 
-  const useExisting = (match: DuplicateMatch) => {
+  const chooseExisting = (match: DuplicateMatch) => {
     onCreated({ id: match.id, first_name: match.first_name || "", last_name: match.last_name || "", phone: match.phone });
     onOpenChange(false);
     setDuplicates([]);
@@ -143,7 +143,7 @@ const CreateCustomerDialog = ({ open, onOpenChange, onCreated, initialName }: Cr
                 <Badge variant="outline" className="text-xs shrink-0">
                   {d.match_type === "exact_phone" ? "Phone match" : d.match_type === "exact_email" ? "Email match" : "Similar name"}
                 </Badge>
-                <Button size="sm" variant="outline" onClick={() => useExisting(d)}>
+                <Button size="sm" variant="outline" onClick={() => chooseExisting(d)}>
                   Use this
                 </Button>
               </div>

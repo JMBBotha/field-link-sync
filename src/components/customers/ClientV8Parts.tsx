@@ -73,7 +73,8 @@ export function ClientActivity({ customerId, companyId, quotes, jobs }: { custom
   const addNote = async () => {
     const body = note.trim(); if (!body || !companyId) return;
     setSaving(true);
-    const { data: u } = await supabase.auth.getUser();
+    const { waitForAuthSession } = await import("@/contexts/AuthContext");
+    const u = { user: (await waitForAuthSession())?.user ?? null };
     const { error } = await sb.from("customer_notes").insert({ customer_id: customerId, company_id: companyId, body, author_id: u.user?.id });
     setSaving(false);
     if (error) return toast.error(error.message);

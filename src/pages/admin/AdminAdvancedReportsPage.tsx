@@ -248,7 +248,7 @@ const AdminAdvancedReportsPage = () => {
   // ─── Export Handlers ───
   const handleCSVExport = (tab: string) => {
     let data: Record<string, any>[] = [];
-    let filename = `report-${tab}-${format(dateRange.from, "yyyyMMdd")}-${format(dateRange.to, "yyyyMMdd")}`;
+    const filename = `report-${tab}-${format(dateRange.from, "yyyyMMdd")}-${format(dateRange.to, "yyyyMMdd")}`;
 
     if (tab === "performance") {
       data = techPerformance.map(t => ({

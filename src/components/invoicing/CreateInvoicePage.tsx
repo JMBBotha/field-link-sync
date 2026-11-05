@@ -378,7 +378,7 @@ const CreateInvoicePage = ({
       setLeadId(i.lead_id || "");
       if (i.location_id || i.lead_id) {
         const site = i.location_id
-          ? (await (supabase.from("customer_locations") as any).select("address").eq("id", i.location_id).maybeSingle()).data?.address
+          ? (await supabase.from("customer_locations").select("address").eq("id", i.location_id).maybeSingle()).data?.address
           : (await supabase.from("leads").select("customer_address").eq("id", i.lead_id).maybeSingle()).data?.customer_address;
         if (site) setSiteAddress(site);
       }
@@ -632,8 +632,7 @@ const CreateInvoicePage = ({
         const { error: delErr } = await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
         if (delErr) throw delErr;
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: num, error: numErr } = await (supabase.rpc as any)("next_invoice_number", { p_profile: profileId });
+        const { data: num, error: numErr } = await supabase.rpc("next_invoice_number", { p_profile: profileId });
         if (numErr) throw numErr;
         finalNumber = num as string;
         setInvoiceNumber(finalNumber);
@@ -681,8 +680,7 @@ const CreateInvoicePage = ({
 
       if (status !== "draft") {
         // Explicit click only. The client notification below is the one message (same as before).
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: stErr } = await (supabase.rpc as any)("finalise_new_invoice", { p_invoice: invoiceId, p_status: status });
+        const { error: stErr } = await supabase.rpc("finalise_new_invoice", { p_invoice: invoiceId, p_status: status });
         if (stErr) throw stErr;
       }
 

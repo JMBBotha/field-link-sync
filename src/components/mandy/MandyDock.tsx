@@ -293,7 +293,7 @@ export default function MandyDock() {
       audit(name, args, r);
       return r;
     }
-  }, [registry]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [registry]);  
 
   /** Multi-step plan → ONE Confirm card with a dry-run preview. Nothing runs until Confirm. */
   const preparePlan = useCallback(async (steps: PlanStep[], confidence: number): Promise<string> => {

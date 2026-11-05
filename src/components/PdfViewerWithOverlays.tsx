@@ -9,6 +9,8 @@ import { resolveProductMarkupPercent } from "@/lib/pricing";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
+import { jsonNumber, jsonObject } from "@/lib/jsonValue";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +20,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, CircleDot, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatRand } from "@/utils/formatRand";
+
+function bboxOf(value: Json): BBox | null {
+  const row = jsonObject(value);
+  if (!row) return null;
+  const x = jsonNumber(row.x);
+  const y = jsonNumber(row.y);
+  const width = jsonNumber(row.width);
+  const height = jsonNumber(row.height);
+  if (x == null || y == null || width == null || height == null) return null;
+  const center = jsonNumber(row.center_x);
+  return center == null ? { x, y, width, height } : { x, y, width, height, center_x: center };
+}
 
 interface BBox {
   x: number;
@@ -63,7 +77,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
   useEffect(() => {
     async function loadData() {
       // Try to load page images from supplier_pdf_pages table first
-      const { data: pageRows } = await (supabase.from("supplier_pdf_pages") as any)
+      const { data: pageRows } = await supabase.from("supplier_pdf_pages")
         .select("page_image_url, page_number")
         .eq("supplier_id", supplierId)
         .order("page_number", { ascending: true });
@@ -111,7 +125,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
       }
 
       // Products with bbox data
-      const { data } = await (supabase.from("supplier_products") as any)
+      const { data } = await supabase.from("supplier_products")
         .select(
           "id, product_code, short_name, description, cost_price, cost_excl_vat, default_markup_percent, supplier_discount_percent, row_bbox, price_bbox, page_number"
         )
@@ -119,7 +133,24 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
         .not("page_number", "is", null)
         .not("price_bbox", "is", null);
 
-      setProducts((data as OverlayProduct[]) || []);
+      setProducts((data || []).flatMap((row): OverlayProduct[] => {
+        const rowBox = bboxOf(row.row_bbox);
+        const priceBox = bboxOf(row.price_bbox);
+        if (!priceBox) return [];
+        return [{
+          id: row.id,
+          product_code: row.product_code,
+          short_name: row.short_name,
+          description: row.description ?? "",
+          cost_price: row.cost_price ?? 0,
+          cost_excl_vat: row.cost_excl_vat ?? 0,
+          default_markup_percent: row.default_markup_percent ?? 0,
+          supplier_discount_percent: row.supplier_discount_percent ?? undefined,
+          row_bbox: rowBox,
+          price_bbox: priceBox,
+          page_number: row.page_number,
+        }];
+      }));
     }
 
     loadData();

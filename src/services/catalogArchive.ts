@@ -13,7 +13,7 @@ export const archivePatch = () => ({
 
 export async function archiveProductIds(ids: string[]): Promise<number> {
   for (let i = 0; i < ids.length; i += 500) {
-    const { error } = await (supabase.from("supplier_products") as any)
+    const { error } = await supabase.from("supplier_products")
       .update(archivePatch())
       .in("id", ids.slice(i, i + 500));
     if (error) throw error;
@@ -22,11 +22,11 @@ export async function archiveProductIds(ids: string[]): Promise<number> {
 }
 
 export async function archiveSupplierProducts(supplierId: string): Promise<number> {
-  const { count } = await (supabase.from("supplier_products") as any)
+  const { count } = await supabase.from("supplier_products")
     .select("id", { count: "exact", head: true })
     .eq("supplier_id", supplierId)
     .or("archived.is.null,archived.eq.false");
-  const { error } = await (supabase.from("supplier_products") as any)
+  const { error } = await supabase.from("supplier_products")
     .update(archivePatch())
     .eq("supplier_id", supplierId)
     .or("archived.is.null,archived.eq.false");
@@ -35,7 +35,7 @@ export async function archiveSupplierProducts(supplierId: string): Promise<numbe
 }
 
 export async function deactivatePdfUploads(filter: { id?: string; supplierId?: string; all?: boolean }): Promise<number> {
-  let q = (supabase.from("pdf_uploads") as any).update({ is_active: false }, { count: "exact" }).eq("is_active", true);
+  let q = supabase.from("pdf_uploads").update({ is_active: false }, { count: "exact" }).eq("is_active", true);
   if (filter.id) q = q.eq("id", filter.id);
   else if (filter.supplierId) q = q.eq("supplier_id", filter.supplierId);
   else if (!filter.all) return 0;
@@ -46,10 +46,10 @@ export async function deactivatePdfUploads(filter: { id?: string; supplierId?: s
 
 /** Counts for the confirm dialog: live products + active price lists. */
 export async function archiveCounts(supplierId?: string): Promise<{ products: number; books: number }> {
-  let p = (supabase.from("supplier_products") as any)
+  let p = supabase.from("supplier_products")
     .select("id", { count: "exact", head: true })
     .or("archived.is.null,archived.eq.false");
-  let b = (supabase.from("pdf_uploads") as any).select("id", { count: "exact", head: true }).eq("is_active", true);
+  let b = supabase.from("pdf_uploads").select("id", { count: "exact", head: true }).eq("is_active", true);
   if (supplierId) { p = p.eq("supplier_id", supplierId); b = b.eq("supplier_id", supplierId); }
   const [pr, br] = await Promise.all([p, b]);
   return { products: pr.count ?? 0, books: br.count ?? 0 };

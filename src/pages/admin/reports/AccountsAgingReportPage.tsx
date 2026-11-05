@@ -38,7 +38,7 @@ const AccountsAgingReportPage = () => {
     queryKey: ["v_accounts_aging"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_accounts_aging" as any)
+        .from("v_accounts_aging")
         .select("*")
         .order("customer_name", { ascending: true });
       if (error) throw error;

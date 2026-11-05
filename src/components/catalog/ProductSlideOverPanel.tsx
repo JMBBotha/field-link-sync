@@ -96,7 +96,7 @@ const ProductSlideOverPanel = ({
     if (!product) return;
     setSavingUnit(true);
     try {
-      const { error } = await (supabase.from("supplier_products") as any)
+      const { error } = await supabase.from("supplier_products")
         .update({
           unit_type: unit.unit_type,
           price_per_unit_qty: unit.price_per_unit_qty,
@@ -133,7 +133,7 @@ const ProductSlideOverPanel = ({
       if (uploadErr) throw uploadErr;
       const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
       const imageUrl = urlData.publicUrl;
-      await (supabase.from("supplier_products") as any)
+      await supabase.from("supplier_products")
         .update({ image_url: imageUrl })
         .eq("id", product.id);
       setLocalImageUrl(imageUrl);
@@ -235,7 +235,7 @@ const ProductSlideOverPanel = ({
                       });
                       if (error) throw error;
                       if (!data?.enhanced_url) throw new Error("No enhanced URL returned");
-                      await (supabase.from("supplier_products") as any)
+                      await supabase.from("supplier_products")
                         .update({ image_url: data.enhanced_url })
                         .eq("id", product.id);
                       setLocalImageUrl(data.enhanced_url);

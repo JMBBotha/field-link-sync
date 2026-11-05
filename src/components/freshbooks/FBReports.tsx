@@ -35,7 +35,7 @@ const FBReports = () => {
   const { data: invoices = [] } = useQuery({
     queryKey: ["company-invoices-reports", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("company_invoices" as any).select("*").eq("company_id", companyId!);
+      const { data } = await supabase.from("company_invoices").select("*").eq("company_id", companyId!);
       return data || [];
     },
     enabled: !!companyId,

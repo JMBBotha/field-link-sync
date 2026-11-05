@@ -111,7 +111,7 @@ const AdminSuppliersPage = () => {
   const { data: contactCounts = {} } = useQuery({
     queryKey: ["supplier-contact-counts"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_contacts") as any).select("supplier_id");
+      const { data, error } = await supabase.from("supplier_contacts").select("supplier_id");
       if (error) throw error;
       const counts: Record<string, number> = {};
       (data || []).forEach((r: any) => { counts[r.supplier_id] = (counts[r.supplier_id] || 0) + 1; });
@@ -122,7 +122,7 @@ const AdminSuppliersPage = () => {
   const { data: productCounts = {} } = useQuery({
     queryKey: ["supplier-product-counts"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
+      const { data, error } = await supabase.from("supplier_products")
         .select("supplier_id")
         .or("archived.is.null,archived.eq.false");
       if (error) throw error;
@@ -136,7 +136,7 @@ const AdminSuppliersPage = () => {
   const { data: lastImports = {} } = useQuery({
     queryKey: ["supplier-last-imports"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("import_audit_log") as any)
+      const { data, error } = await supabase.from("import_audit_log")
         .select("supplier_id, created_at, products_imported, file_name, action")
         .in("action", ["pdf_import", "csv_import"])
         .order("created_at", { ascending: false });
@@ -252,9 +252,9 @@ const AdminSuppliersPage = () => {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={async () => {
-            const { data: allContacts } = await (supabase.from("supplier_contacts") as any)
+            const { data: allContacts } = await supabase.from("supplier_contacts")
               .select("contact_name, department, email, phone, mobile, whatsapp, location_branch, role_title, supplier_id");
-            const { data: allLocations } = await (supabase.from("supplier_locations") as any)
+            const { data: allLocations } = await supabase.from("supplier_locations")
               .select("supplier_id, location_name, city, phone, email, whatsapp, address");
             const rows: string[] = ["Supplier,Location,Department,Contact Name,Email,Phone,WhatsApp,Role"];
             for (const s of suppliers) {

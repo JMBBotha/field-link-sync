@@ -1,3 +1,6 @@
+import type { Json } from "@/integrations/supabase/types";
+import { jsonNumber, jsonObject, jsonString } from "@/lib/jsonValue";
+
 /**
  * Tech "My earnings" tracker (Job 6) — pure helpers over get_tech_earnings().
  * The RPC already scopes rows: a tech gets only their own rows, the owner gets every tech, anyone else nothing.
@@ -28,6 +31,44 @@ export interface TechEarningRow {
   paid_at: string | null;
 }
 export interface TechEarnings { api_version: number; user_id: string; is_owner: boolean; today: string; rows: TechEarningRow[] }
+
+const BUCKETS: TechBucket[] = ["paid_on_completion", "holdback"];
+const STATUSES: TechStatus[] = ["accrued", "payable", "paid", "held", "released", "reduced"];
+
+export function techEarningsFromJson(value: Json | null): TechEarnings | null {
+  const row = jsonObject(value);
+  if (!row || typeof row.api_version !== "number" || typeof row.user_id !== "string" || typeof row.is_owner !== "boolean" || typeof row.today !== "string" || !Array.isArray(row.rows)) return null;
+  const rows: TechEarningRow[] = [];
+  for (const item of row.rows) {
+    const line = jsonObject(item);
+    const bucket = line?.bucket;
+    const status = line?.status;
+    if (!line || typeof line.tech_id !== "string") continue;
+    if (typeof bucket !== "string" || !BUCKETS.includes(bucket as TechBucket)) continue;
+    if (typeof status !== "string" || !STATUSES.includes(status as TechStatus)) continue;
+    rows.push({
+      id: jsonString(line.id),
+      frozen: line.frozen === true,
+      job_id: jsonString(line.job_id),
+      quote_id: jsonString(line.quote_id),
+      quote_number: jsonString(line.quote_number),
+      tech_id: line.tech_id,
+      tech_name: jsonString(line.tech_name),
+      bucket: bucket as TechBucket,
+      percent: jsonNumber(line.percent),
+      amount: jsonNumber(line.amount),
+      reduction_amount: jsonNumber(line.reduction_amount),
+      net_amount: jsonNumber(line.net_amount),
+      status: status as TechStatus,
+      completed_at: jsonString(line.completed_at),
+      release_after: jsonString(line.release_after),
+      releasable: line.releasable === true,
+      callback_job_id: jsonString(line.callback_job_id),
+      paid_at: jsonString(line.paid_at),
+    });
+  }
+  return { api_version: row.api_version, user_id: row.user_id, is_owner: row.is_owner, today: row.today, rows };
+}
 
 export const STATUS_INFO: Record<TechStatus, { label: string; hint: string }> = {
   accrued: { label: "Accrued", hint: "Job not completed yet" },

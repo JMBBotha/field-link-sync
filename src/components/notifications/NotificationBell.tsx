@@ -8,6 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ACCEPT_ALERT_TYPE, resultMessage, sendInvoiceNow } from "@/lib/invoiceSendApproval";
@@ -31,7 +32,7 @@ interface Notification {
 const NotificationBell = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const userId = useAuth().user?.id ?? null;
   const navigate = useNavigate();
   const navRef = useRef(navigate);
   const { isAdmin, isDispatcher, isFieldAgent } = useRole();
@@ -41,14 +42,6 @@ const NotificationBell = () => {
   const roleRef = useRef<"admin" | "sales" | "tech">("admin");
   roleRef.current = window.location.pathname.startsWith("/field") || techOnly ? "tech" : isSalesRep ? "sales" : "admin";
   const { canSee: hearsSounds } = useHeartbeatAudience();
-
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) setUserId(user.id);
-    };
-    getUser();
-  }, []);
 
   useEffect(() => {
     if (!userId) return;

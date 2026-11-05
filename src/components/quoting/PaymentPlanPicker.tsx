@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toJson } from "@/lib/jsonValue";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,7 @@ export default function PaymentPlanPicker({ quoteId, onSaved }: { quoteId: strin
     enabled: !!quoteId,
     queryFn: async () => {
       const [{ data: q }, { count }] = await Promise.all([
-        (supabase.from("quotes") as any).select("payment_plan").eq("id", quoteId).maybeSingle(),
+        supabase.from("quotes").select("payment_plan").eq("id", quoteId).maybeSingle(),
         supabase.from("invoices").select("id", { count: "exact", head: true }).eq("quote_id", quoteId),
       ]);
       return { plan: (isValidPlan(q?.payment_plan) ? q.payment_plan : null) as PaymentPlan | null, invoiced: (count ?? 0) > 0 };
@@ -44,7 +45,7 @@ export default function PaymentPlanPicker({ quoteId, onSaved }: { quoteId: strin
   };
 
   const save = async (next: PaymentPlan | null) => {
-    const { data: rows, error } = await (supabase.from("quotes") as any).update({ payment_plan: next }).eq("id", quoteId).select("id");
+    const { data: rows, error } = await supabase.from("quotes").update({ payment_plan: next ? toJson(next) : null }).eq("id", quoteId).select("id");
     if (error || !rows?.length) { toast({ title: "Could not save the payment plan", description: error?.message || "No permission", variant: "destructive" }); return; }
     qc.invalidateQueries({ queryKey: ["quote-payment-plan", quoteId] });
     qc.invalidateQueries({ queryKey: ["accepted-work-quote", quoteId] });

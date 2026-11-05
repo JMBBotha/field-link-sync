@@ -22,7 +22,7 @@ export default function JobWatchdogPanel({ className }: { className?: string }) 
     queryKey: ["job-alerts"],
     refetchInterval: 60_000,
     queryFn: async () => {
-      const { data: a } = await (supabase.from("job_alerts" as any) as any)
+      const { data: a } = await supabase.from("job_alerts")
         .select("*") // work_date (multi-day runs) arrives with the phase (b) migration
         .is("resolved_at", null).order("created_at", { ascending: false }).limit(50);
       const alerts = (a || []) as Alert[];
@@ -40,8 +40,8 @@ export default function JobWatchdogPanel({ className }: { className?: string }) 
   const dismiss = async (id: string) => {
     const reason = window.prompt("What was done? (e.g. called tech, reassigned)");
     if (reason === null) return;
-    const { error } = await (supabase.from("job_alerts" as any) as any)
-      .update({ resolved_at: new Date().toISOString(), resolved_by: (await supabase.auth.getUser()).data.user?.id ?? null, resolution: reason || "dismissed" }).eq("id", id);
+    const { error } = await supabase.from("job_alerts")
+      .update({ resolved_at: new Date().toISOString(), resolved_by: (await (await import("@/contexts/AuthContext")).waitForAuthSession())?.user?.id ?? null, resolution: reason || "dismissed" }).eq("id", id);
     if (error) return toast.error("Could not dismiss: " + error.message);
     refetch();
   };

@@ -52,7 +52,7 @@ const JobCompletionFlow = ({ leadId, customerId, open, onClose, onComplete }: Jo
     if (!customerId) return;
     
     const { data } = await supabase
-      .from("equipment" as any)
+      .from("equipment")
       .select("id, type, brand, model, location")
       .eq("customer_id", customerId);
 
@@ -93,7 +93,7 @@ const JobCompletionFlow = ({ leadId, customerId, open, onClose, onComplete }: Jo
 
     // Update last_service_date on the equipment
     await supabase
-      .from("equipment" as any)
+      .from("equipment")
       .update({ 
         last_service_date: new Date().toISOString().split("T")[0],
         updated_at: new Date().toISOString(),

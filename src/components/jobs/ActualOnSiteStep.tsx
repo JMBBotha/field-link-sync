@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toJson } from "@/lib/jsonValue";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ export default function ActualOnSiteStep({ value, onChange }: { value: ActualOnS
     enabled: term.length >= 2,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data } = await (supabase.rpc as any)("get_tech_catalogue"); // price-free
+      const { data } = await supabase.rpc("get_tech_catalogue"); // price-free
       return ((data || []) as { id: string; name: string | null; model: string | null }[])
         .map((r) => ({ id: r.id, product_code: r.model, short_name: r.name }));
     },
@@ -91,10 +92,10 @@ export async function saveActualOnSite(opts: { jobId: string | null | undefined;
   const { jobId, leadId, userId, value } = opts;
   if (!leadId || !hasActual(value)) return false;
   const h = Number(value.actualHours);
-  const { error } = await (supabase.from("job_overruns" as any) as any).insert({
+  const { error } = await supabase.from("job_overruns").insert({
     job_id: jobId || null, lead_id: leadId, created_by: userId,
     actual_hours: value.actualHours.trim() !== "" && Number.isFinite(h) && h >= 0 ? h : null,
-    extra_items: value.extras.filter((x) => x.qty > 0), notes: value.notes.trim() || null,
+    extra_items: toJson(value.extras.filter((x) => x.qty > 0)), notes: value.notes.trim() || null,
   });
   if (error) throw error;
   return true;

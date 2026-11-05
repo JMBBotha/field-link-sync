@@ -21,7 +21,7 @@ vi.mock("@/integrations/supabase/client", () => {
   const ch: any = { on: () => ch, subscribe: () => ch };
   return { supabase: { from: q, functions: { invoke: vi.fn() }, channel: () => ch, removeChannel: vi.fn() } };
 });
-vi.mock("@/contexts/AuthContext", () => { const v = { user: { id: "u1" } }; return { useAuth: () => v }; });
+vi.mock("@/contexts/AuthContext", () => { const v = { user: { id: "u1" } }; return { useAuth: () => v, useOptionalAuth: () => v }; });
 vi.mock("@/components/shared/StatusUndo", () => ({ useUndoAction: () => ({ record: () => null, action: () => undefined }) }));
 vi.mock("@/components/leads/LeadCardV2", () => ({ default: ({ lead }: any) => <div data-testid="lead-v2">{lead.customer_name}</div> }));
 vi.mock("@/components/jobs/AssignTechDialog", () => ({ default: () => null }));

@@ -9,7 +9,7 @@ export function useLabourNorms() {
     queryKey: ["labour-norms"],
     staleTime: 300_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("labour_norms" as any) as any).select("id, key, label, hours, sort_order").order("sort_order");
+      const { data, error } = await supabase.from("labour_norms").select("id, key, label, hours, sort_order").order("sort_order");
       if (error) throw error;
       return ((data || []) as any[]).map((r) => ({ ...r, hours: Number(r.hours) })) as LabourNormRow[];
     },

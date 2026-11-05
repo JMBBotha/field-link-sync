@@ -30,7 +30,7 @@ const RichTextBlock = ({ html, placeholder, onChange, themeColor = "#1B3A5C" }: 
     if (ref.current && ref.current.innerHTML !== html) {
       ref.current.innerHTML = html || "";
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [html]);
 
   const push = () => onChange(ref.current?.innerHTML || "");

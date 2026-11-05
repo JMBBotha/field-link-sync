@@ -36,7 +36,7 @@ export async function logImportAction(entry: {
   importSettings?: Record<string, any>;
 }) {
   try {
-    await (supabase.from("import_audit_log") as any).insert({
+    await supabase.from("import_audit_log").insert({
       supplier_id: entry.supplierId,
       action: entry.action,
       products_deleted: entry.productsDeleted || 0,

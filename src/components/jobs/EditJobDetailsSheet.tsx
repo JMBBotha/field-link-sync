@@ -53,7 +53,7 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
   const techs = useQuery({
     queryKey: ["dispatchable-techs", companyId], enabled: open && f.tech,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("dispatchable_technicians", { _company_id: companyId });
+      const { data, error } = await supabase.rpc("dispatchable_technicians", { _company_id: companyId });
       if (error) throw error;
       return ((data ?? []) as any[]).map((t) => ({ id: (t.id ?? t.profile_id) as string, name: (t.full_name ?? t.name ?? "Technician") as string }));
     },
@@ -61,7 +61,7 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
   const unitQ = useQuery({
     queryKey: ["job-units-edit", jobId], enabled: open && f.units,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("job_unit_details" as any) as any)
+      const { data, error } = await supabase.from("job_unit_details")
         .select("id, unit_label, position, brand, model, serial_number").eq("job_id", jobId).order("created_at");
       if (error) throw error;
       return (data ?? []) as UnitRow[];
@@ -76,7 +76,7 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
       const err = visitsError(visits!);
       if (err) { toast({ title: err, variant: "destructive" }); return; }
       setBusy(true);
-      const { error: vErr } = await (supabase.rpc as any)("set_job_visits", {
+      const { error: vErr } = await supabase.rpc("set_job_visits", {
         p_job: jobId,
         p_visits: visitsPayload(visits!, perms.admin),
         p_note: null,
@@ -95,7 +95,7 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
       return o && (["unit_label", "position", "brand", "model", "serial_number"] as const).some((k) => (o[k] ?? "") !== (u[k] ?? ""));
     }) : [];
     setBusy(true);
-    const { data, error } = await (supabase.rpc as any)("update_job_details", {
+    const { data, error } = await supabase.rpc("update_job_details", {
       p_job: jobId,
       p_scheduled_for: at && at !== (scheduledFor ? new Date(scheduledFor).toISOString() : null) ? at : null,
       p_tech: f.tech && tech && tech !== techId ? tech : null,

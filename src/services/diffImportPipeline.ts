@@ -23,7 +23,7 @@ import { buildManualIndex, findManual, resolvePipeCols } from "@/lib/pipeLockCar
 function sanitizeInt(val: any): number | null {
   if (val == null) return null;
   if (typeof val === "number") return isNaN(val) ? null : Math.round(val);
-  const n = parseInt(String(val).replace(/[^0-9\-]/g, ""), 10);
+  const n = parseInt(String(val).replace(/[^0-9-]/g, ""), 10);
   return isNaN(n) ? null : n;
 }
 
@@ -90,7 +90,7 @@ export async function buildProductDiff(
   incoming: DiffImportRow[]
 ): Promise<DiffRow[]> {
   const { data: existing, error: fetchErr } = await supabase
-    .from("supplier_products" as any)
+    .from("supplier_products")
     .select("id, product_code, cost_price, archived, description, brand, product_category, category, subcategory")
     .eq("supplier_id", supplierId)
     .limit(5000);
@@ -319,7 +319,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
   // Pipe sizes set by hand are never overwritten (or nulled) by an import.
   // Lookup includes ARCHIVED rows (no archived filter) and matches by normalised
   // code (lowercase, no spaces, no '~hist…' suffix), brand-scoped where known.
-  const { data: manualRows } = await (supabase.from("supplier_products" as any) as any)
+  const { data: manualRows } = await supabase.from("supplier_products")
     .select("id, product_code, brand, pipe_size, pipe_liquid, pipe_gas")
     .eq("supplier_id", supplierId).eq("pipe_sizes_manual", true);
   const manualIndex = buildManualIndex((manualRows as any[]) || []);
@@ -360,7 +360,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
     })).map((r: any) => ({ ...r, search_tags: deriveSearchTags(r) || null }));
 
 
-    const { error: err, data } = await (supabase.from("supplier_products" as any) as any)
+    const { error: err, data } = await supabase.from("supplier_products")
       .upsert(batchData as any, { onConflict: "supplier_id,product_code" })
       .select("id");
     if (err) {
@@ -400,7 +400,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       updateData.cost_excl_vat = row.cost_excl_vat;
       updateData.cost_incl_vat = row.cost_incl_vat;
     }
-    const { error: err } = await supabase.from("supplier_products" as any).update(updateData).eq("id", row.existing_id);
+    const { error: err } = await supabase.from("supplier_products").update(updateData).eq("id", row.existing_id);
     if (err) {
       const msg = `UPDATE failed for ${row.product_code}: ${err.message}`;
       console.error("[DiffImport]", msg, err);
@@ -419,7 +419,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
   } else {
     for (const row of archiveRows) {
       const { error: err } = await supabase
-        .from("supplier_products" as any)
+        .from("supplier_products")
         .update({ archived: true, archived_at: new Date().toISOString() } as any)
         .eq("id", row.existing_id);
       if (err) {
@@ -436,8 +436,9 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
 
   // Record import history (best-effort, non-fatal)
   try {
-    const { data: userData } = await supabase.auth.getUser();
-    await supabase.from("price_list_uploads" as any).insert({
+    const { waitForAuthSession } = await import("@/contexts/AuthContext");
+    const session = await waitForAuthSession();
+    await supabase.from("price_list_uploads").insert({
       supplier_id: supplierId,
       file_name: fileName || "Diff Import",
       file_type: "pdf",
@@ -446,7 +447,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
       products_updated: updated,
       products_skipped: errors,
       products_archived: archived,
-      uploaded_by: userData?.user?.id || null,
+      uploaded_by: session?.user?.id || null,
     } as any);
   } catch (auditErr) {
     console.warn("[DiffImport] Failed to write price_list_uploads audit row (non-fatal):", auditErr);

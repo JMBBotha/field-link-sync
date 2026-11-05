@@ -31,7 +31,7 @@ export type RecordData = {
 
 async function paidByInvoice(ids: string[]): Promise<Map<string, number> | null> {
   if (!ids.length) return new Map();
-  const { data, error } = await (supabase.from("payments") as any).select("invoice_id, amount, status").in("invoice_id", ids);
+  const { data, error } = await supabase.from("payments").select("invoice_id, amount, status").in("invoice_id", ids);
   if (error) return null; // not readable for this login: show status only
   const m = new Map<string, number>();
   (data || []).filter((p: any) => p.status === "paid").forEach((p: any) => m.set(p.invoice_id, (m.get(p.invoice_id) || 0) + Number(p.amount || 0)));
@@ -40,12 +40,13 @@ async function paidByInvoice(ids: string[]): Promise<Map<string, number> | null>
 
 export async function loadRecord(ref: Pick<RecordRef, "kind" | "id">): Promise<RecordData | null> {
   const IC = "id, invoice_number, status, grand_total, paid_date, created_at, sent_at, sent_channel, sent_method, notes";
+  const IC_CUSTOMER = "id, invoice_number, status, grand_total, paid_date, created_at, sent_at, sent_channel, sent_method, notes, customer_name";
   if (ref.kind === "quote") {
     const [q, a, i, inv] = await Promise.all([
-      (supabase.from("quotes") as any).select("id, quote_number, customer_name, total, status, created_at, sent_at, sent_channel, sent_method, viewed_at, accepted_at, declined_at, public_token").eq("id", ref.id).maybeSingle(),
-      (supabase.from("quote_areas") as any).select("name, sort_order").eq("quote_id", ref.id).order("sort_order", { nullsFirst: false }),
-      (supabase.from("quote_items") as any).select("item_name, sort_order").eq("quote_id", ref.id).is("parent_item_id", null).order("sort_order").limit(6),
-      (supabase.from("invoices") as any).select(IC).eq("quote_id", ref.id).neq("status", "void").order("created_at"),
+      supabase.from("quotes").select("id, quote_number, customer_name, total, status, created_at, sent_at, sent_channel, sent_method, viewed_at, accepted_at, declined_at, public_token").eq("id", ref.id).maybeSingle(),
+      supabase.from("quote_areas").select("name, sort_order").eq("quote_id", ref.id).order("sort_order", { nullsFirst: false }),
+      supabase.from("quote_items").select("item_name, sort_order").eq("quote_id", ref.id).is("parent_item_id", null).order("sort_order").limit(6),
+      supabase.from("invoices").select(IC).eq("quote_id", ref.id).neq("status", "void").order("created_at"),
     ]);
     if (!q.data) return null;
     const invs = (inv.data || []) as Inv[]; const paid = await paidByInvoice(invs.map((x) => x.id));
@@ -54,7 +55,7 @@ export async function loadRecord(ref: Pick<RecordRef, "kind" | "id">): Promise<R
       has_token: !!q.data.public_token, rooms: shortDescription((a.data || []).map((x: any) => x.name), (i.data || []).map((x: any) => x.item_name)),
       invoices: invs.map((x) => ({ ...x, paid: paid ? paid.get(x.id) ?? 0 : null })) };
   }
-  const { data } = await (supabase.from("invoices") as any).select(IC + ", customer_name").eq("id", ref.id).maybeSingle();
+  const { data } = await supabase.from("invoices").select(IC_CUSTOMER).eq("id", ref.id).maybeSingle();
   if (!data) return null;
   const paid = await paidByInvoice([data.id]);
   return { kind: "invoice", id: data.id, number: data.invoice_number, client: data.customer_name, total: data.grand_total, status: data.status, created_at: data.created_at,
@@ -136,11 +137,11 @@ export default function RecordSheet({ r, onClose, onChanged }: { r: RecordRef | 
   const body = <RecordBody r={r} d={q.data} loading={q.isLoading} onClose={onClose} onChanged={changed} onSnooze={r.snoozeRule ? () => setSnoozing(true) : undefined} />;
   const row = { rule: r.snoozeRule, entity_type: r.kind, entity_id: r.id, title: r.title, detail: q.data?.number || "" } as unknown as NextStep;
   const snooze = async (o: { until?: Date; dismiss?: boolean; reason: string }) => {
-    const { error } = await (supabase.rpc as any)("snooze_next_step", { p_rule: r.snoozeRule, p_entity_type: r.kind, p_entity_id: r.id, p_until: o.until?.toISOString() ?? null, p_dismiss: !!o.dismiss, p_reason: o.reason });
+    const { error } = await supabase.rpc("snooze_next_step", { p_rule: r.snoozeRule, p_entity_type: r.kind, p_entity_id: r.id, p_until: o.until?.toISOString() ?? null, p_dismiss: !!o.dismiss, p_reason: o.reason });
     if (error) throw error; changed(); onClose();
   };
   const group = async (other: string) => {
-    const { error } = await (supabase.rpc as any)("group_quote_option", { p_quote: r.id, p_other: other });
+    const { error } = await supabase.rpc("group_quote_option", { p_quote: r.id, p_other: other });
     if (error) throw error; changed();
   };
   return <>

@@ -11,7 +11,7 @@ export default function LeadOfferFlagsCard() {
   const { data } = useQuery({
     queryKey: ["lead-offer-flags"],
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("get_lead_offer_flags");
+      const { data, error } = await supabase.rpc("get_lead_offer_flags");
       if (error) throw error;
       return (data ?? []) as LeadOfferFlag[];
     },

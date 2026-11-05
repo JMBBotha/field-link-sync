@@ -37,7 +37,7 @@ const ReadyToInvoiceCard = ({ showEmpty = false, defaultOpen = false }: { showEm
     queryKey: ["ready-to-invoice"],
     refetchInterval: 60000,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("lead_invoice_status" as any) as any)
+      const { data, error } = await supabase.from("lead_invoice_status")
         .select("lead_id, customer_name, customer_id, customer_phone, customer_address, service_type, completed_at, quote_id, quote_number, quote_total, invoice_number, invoice_state")
         .neq("invoice_state", "invoiced")
         .order("completed_at", { ascending: true, nullsFirst: true })

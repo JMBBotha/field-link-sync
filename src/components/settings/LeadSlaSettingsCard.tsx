@@ -26,7 +26,7 @@ export default function LeadSlaSettingsCard() {
     const cid = row?.company_id || companyId;
     if (!cid) { toast.error("No company found for your profile"); return; }
     setSaving(true);
-    const { error } = await (supabase.from("lead_sla_settings" as any) as any).upsert({
+    const { error } = await supabase.from("lead_sla_settings").upsert({
       company_id: cid, enabled: f.enabled, contact_minutes: f.contactMinutes, work_days: f.workDays,
       open_time: f.open, close_time: f.close, quote_amber_time: f.amber, updated_at: new Date().toISOString(),
     }, { onConflict: "company_id" });

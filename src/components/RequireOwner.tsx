@@ -11,7 +11,7 @@ export default function RequireOwner({ children }: { children: ReactNode }) {
     queryKey: ["is-my-company-owner", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("is_my_company_owner");
+      const { data, error } = await supabase.rpc("is_my_company_owner");
       if (error) throw error;
       return data === true;
     },

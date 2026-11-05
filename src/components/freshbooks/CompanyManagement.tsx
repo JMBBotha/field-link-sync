@@ -83,7 +83,7 @@ const CompanyManagement = () => {
 
   const lockPayments = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.rpc as any)("confirm_dormant_payment_lock", { p_company: id });
+      const { error } = await supabase.rpc("confirm_dormant_payment_lock", { p_company: id });
       if (error) throw error;
     },
     onSuccess: () => {

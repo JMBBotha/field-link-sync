@@ -158,7 +158,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
       }));
       const { getUserCompanyId } = await import("@/lib/tenantUtils");
       const company_id = await getUserCompanyId(user?.id);
-      const { data, error } = await (supabase.from("quotes") as any).insert({
+      const { data, error } = await supabase.from("quotes").insert({
         sales_engineer_id: userId, status: "draft",
         subtotal,
         vat_rate: VAT_RATE,

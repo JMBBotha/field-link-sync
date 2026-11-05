@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useOptionalAuth, waitForAuthSession } from "@/contexts/AuthContext";
 import { roleColours, roleKindFromLabel, roleLabelFor, type RoleColours, type RoleKind } from "@/lib/roleColours";
 
 export type SignedInIdentity = { name: string; role: string; /** true while only the email-prefix placeholder is known */ pending?: boolean };
@@ -40,34 +41,38 @@ function lookupShared(userId: string, email: string | undefined) {
  * so a flaky Auth-server round-trip cannot leave the header blank.
  */
 export function useSignedInIdentity(): SignedInIdentity | null {
+  const auth = useOptionalAuth();
+  const hasProvider = auth !== null;
+  const [outsideUser, setOutsideUser] = useState<{ id: string; email?: string | null } | null>(null);
+  useEffect(() => {
+    if (hasProvider) return;
+    let mounted = true;
+    void waitForAuthSession().then((session) => {
+      if (mounted) setOutsideUser(session?.user ?? null);
+    });
+    return () => { mounted = false; };
+  }, [hasProvider]);
+  const user = auth ? auth.user : outsideUser;
+  const userId = user?.id;
+  const email = user?.email ?? undefined;
   const [info, setInfo] = useState<SignedInIdentity | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    const applySession = (session: { user?: { id: string; email?: string | null } } | null) => {
-      const user = session?.user;
-      if (!user) {
-        if (mounted) setInfo(null);
-        return;
-      }
-      // Show email prefix immediately so the header is never empty while profiles load.
-      const emailPrefix = (user.email || "").split("@")[0];
-      if (emailPrefix && mounted) setInfo((prev) => prev ?? { name: emailPrefix, role: "Office", pending: true });
-      void lookupShared(user.id, user.email || undefined).then((res) => {
-        if (mounted && res) setInfo(res);
-      });
-    };
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (mounted) applySession(session);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) applySession(session);
+    if (!userId) {
+      setInfo(null);
+      return;
+    }
+    // Show email prefix immediately so the header is never empty while profiles load.
+    const emailPrefix = (email || "").split("@")[0];
+    if (emailPrefix) setInfo((prev) => prev ?? { name: emailPrefix, role: "Office", pending: true });
+    void lookupShared(userId, email).then((res) => {
+      if (mounted && res) setInfo(res);
     });
     return () => {
       mounted = false;
-      subscription.unsubscribe();
     };
-  }, []);
+  }, [userId, email]);
 
   return info;
 }

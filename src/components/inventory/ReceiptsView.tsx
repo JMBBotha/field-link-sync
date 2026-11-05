@@ -37,7 +37,7 @@ const ReceiptsView = () => {
     queryKey: ["stock-receipts"],
     queryFn: async () => {
       const { data: recs, error } = await supabase
-        .from("stock_receipts" as any)
+        .from("stock_receipts")
         .select("id, supplier_id, receipt_date, items_received, notes, created_at")
         .order("created_at", { ascending: false })
         .limit(100);
@@ -47,7 +47,7 @@ const ReceiptsView = () => {
       const supplierMap = new Map((suppliers || []).map((s: any) => [s.id, s.name]));
 
       const { data: docs } = await supabase
-        .from("stock_documents" as any)
+        .from("stock_documents")
         .select("receipt_id");
 
       const docCounts = new Map<string, number>();
@@ -74,7 +74,7 @@ const ReceiptsView = () => {
     queryFn: async () => {
       if (!detailDialog) return [];
       const { data, error } = await supabase
-        .from("stock_documents" as any)
+        .from("stock_documents")
         .select("id, file_name, file_path, file_type")
         .eq("receipt_id", detailDialog);
       if (error) throw error;

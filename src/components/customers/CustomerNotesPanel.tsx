@@ -21,7 +21,7 @@ export default function CustomerNotesPanel({ customerId, companyId }: { customer
   const [showArchived, setShowArchived] = useState(false);
 
   const load = async () => {
-    const { data, error } = await (supabase.from("customer_notes" as any) as any)
+    const { data, error } = await supabase.from("customer_notes")
       .select("id, body, author_id, created_at, archived_at").eq("customer_id", customerId).order("created_at", { ascending: false });
     if (error) return;
     const rows = (data || []) as NoteRow[];
@@ -41,7 +41,7 @@ export default function CustomerNotesPanel({ customerId, companyId }: { customer
     const text = body.trim();
     if (!text || !companyId || !userId) return;
     setSaving(true);
-    const { error } = await (supabase.from("customer_notes" as any) as any).insert({ customer_id: customerId, company_id: companyId, body: text, author_id: userId });
+    const { error } = await supabase.from("customer_notes").insert({ customer_id: customerId, company_id: companyId, body: text, author_id: userId });
     setSaving(false);
     if (error) return toast({ title: "Could not save note", description: error.message, variant: "destructive" });
     setBody("");

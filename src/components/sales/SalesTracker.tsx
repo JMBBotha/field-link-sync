@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { formatRand } from "@/utils/formatRand";
-import { formatSastDate, groupTracker, repsOf, type SalesTracker as Tracker, type TrackerRow } from "@/lib/salesTracker";
+import { formatSastDate, groupTracker, repsOf, salesTrackerFromJson, type TrackerRow } from "@/lib/salesTracker";
 
 const money = (v: number | null | undefined) => formatRand(Number(v) || 0);
 
@@ -26,16 +26,16 @@ export default function SalesTracker() {
     queryKey: ["sales-tracker"],
     staleTime: 30_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("get_sales_tracker", {});
+      const { data, error } = await supabase.rpc("get_sales_tracker", {});
       if (error) throw error;
-      return (data ?? null) as Tracker | null;
+      return salesTrackerFromJson(data);
     },
   });
 
   const setPaid = async (row: TrackerRow, paid: boolean) => {
     if (!row.snapshot_id) return;
     setBusy(row.snapshot_id);
-    const { error } = await (supabase.rpc as any)("set_commission_paid", { p_snapshot_id: row.snapshot_id, p_paid: paid });
+    const { error } = await supabase.rpc("set_commission_paid", { p_snapshot_id: row.snapshot_id, p_paid: paid });
     setBusy(null);
     if (error) { toast({ title: "Could not update", description: error.message, variant: "destructive" }); return; }
     toast({ title: paid ? "Marked paid out" : "Moved back to earned" });

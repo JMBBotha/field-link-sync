@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { waitForAuthSession } from "@/contexts/AuthContext";
 
 /**
  * Fetches the overdue maintenance count.
@@ -10,8 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
  * instead of silently rendering a wrong count of 0.
  */
 export async function fetchOverdueMaintenanceCount(): Promise<number> {
-  const { data: sessionData } = await supabase.auth.getSession();
-  if (!sessionData.session) {
+  const session = await waitForAuthSession();
+  if (!session) {
     throw new Error("No active session for overdue maintenance count");
   }
 

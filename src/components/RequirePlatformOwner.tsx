@@ -12,7 +12,7 @@ export function usePlatformOwner() {
     enabled: !!user?.id,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("is_platform_owner");
+      const { data, error } = await supabase.rpc("is_platform_owner");
       if (error) return false; // fail closed
       return data === true;
     },

@@ -45,7 +45,7 @@ const AdminCatalogPage = () => {
     setScanning(true);
     try {
       // Fetch all products that don't yet have price_per_metre set
-      const { data: products, error } = await (supabase.from("supplier_products") as any)
+      const { data: products, error } = await supabase.from("supplier_products")
         .select("id, description, short_name, cost_excl_vat, cost_price, sold_in_length, price_per_metre, unit_length")
         .or("archived.is.null,archived.eq.false");
       if (error) throw error;
@@ -78,7 +78,7 @@ const AdminCatalogPage = () => {
             const cost = p.cost_excl_vat || p.cost_price || 0;
             const pricePerMetre = cost / rollLength;
             console.log(`[Scan] MATCH id=${p.id} length=${rollLength}m cost=${cost} ppm=${pricePerMetre.toFixed(2)} current_sil=${p.sold_in_length} current_ppm=${p.price_per_metre}`);
-            const { error: uErr } = await (supabase.from("supplier_products") as any)
+            const { error: uErr } = await supabase.from("supplier_products")
               .update({
                 sold_in_length: true,
                 price_per_metre: Math.round(pricePerMetre * 100) / 100,
@@ -122,7 +122,7 @@ const AdminCatalogPage = () => {
   const handleClearAllProducts = async () => {
     setClearing(true);
     try {
-      const { error } = await (supabase.from("supplier_products") as any)
+      const { error } = await supabase.from("supplier_products")
         .update(archivePatch())
         .or("archived.is.null,archived.eq.false");
       if (error) throw error;
@@ -157,7 +157,7 @@ const AdminCatalogPage = () => {
   const { data: categoryCounts = {} } = useQuery({
     queryKey: ["product-category-counts"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
+      const { data, error } = await supabase.from("supplier_products")
         .select("product_category")
         .or("archived.is.null,archived.eq.false");
       if (error) throw error;

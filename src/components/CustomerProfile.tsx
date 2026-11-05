@@ -163,7 +163,8 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
 
   const handleRenewAgreement = async (agreement: Agreement) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const user = (await waitForAuthSession())?.user ?? null;
       const newStartDate = new Date(agreement.end_date);
       const newEndDate = addYears(newStartDate, 1);
       

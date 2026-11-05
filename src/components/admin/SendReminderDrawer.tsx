@@ -76,7 +76,8 @@ const SendReminderDrawer = ({ open, onClose, leadId, customerEmail }: Props) => 
       if (error) throw error;
 
       // Log to communication_log
-      const { data: { user } } = await supabase.auth.getUser();
+      const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const user = (await waitForAuthSession())?.user ?? null;
       if (user && ctx) {
         await supabase.from("communication_log").insert({
           lead_id: ctx.lead.id,
