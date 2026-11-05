@@ -88,7 +88,6 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
       { path: "/admin/calls", label: "Calls", icon: "phone" },
       { path: "/admin/templates", label: "Templates", icon: "file", match: ["/admin/proposals"] },
       { path: "/admin/agreements", label: "Agreements", icon: "file" },
-      { path: "/admin/pdf-documents", label: "Brochures & PDFs", icon: "file", match: ["/admin/brochures", "/admin/unit-content"] },
     ] },
     { title: "Money", links: [
       cash ? { path: "/admin/cash-health", label: "Cash-flow health", icon: "chart", match: ["/admin/cashflow"] }
@@ -98,13 +97,15 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
       { path: "/admin/bank", label: "Bank (FNB)", icon: "wallet", match: ["/admin/billing"] },
       { path: "/admin/walda-approvals", label: "WALDA approvals", icon: "file" },
       { path: "/admin/money", label: "Money by lead", icon: "wallet" },
-      { path: "/admin/reports", label: "Reports", icon: "chart", match: ["/admin/analytics"] },
+      // Advanced reports stays at /admin/reports/advanced (reports tab strip, platform owners).
+      { path: "/admin/reports", label: "Reports", icon: "chart", match: ["/admin/analytics", "/admin/reports/advanced"] },
     ] },
     { title: "Suppliers & stock", links: [
       { path: "/admin/suppliers", label: "Suppliers", icon: "building" },
       { path: "/admin/supplier-docs", label: "Supplier docs", icon: "file" },
       { path: "/admin/supplier-bills", label: "Supplier bills", icon: "wallet" },
-      { path: "/admin/catalog", label: "Catalogue", icon: "bag", match: ["/admin/price-lists"] },
+      // Brochures & PDFs stay on their URLs (catalogue tab strip). Not a separate sidebar link.
+      { path: "/admin/catalog", label: "Catalogue", icon: "bag", match: ["/admin/price-lists", "/admin/pdf-documents", "/admin/brochures", "/admin/unit-content"] },
       { path: cash ? "/admin/cash-health?tab=stock" : "/admin/inventory", label: "Stock", icon: "box", match: ["/admin/inventory"] },
       { path: "/admin/specials", label: "Specials", icon: "tag" },
       { path: "/admin/oss-extras", label: "Extras & consumables", icon: "box", match: ["/admin/consumables"] },
@@ -127,7 +128,6 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
     { path: "/admin/company-plans", label: "Company plans", icon: "wallet" },
     { path: "/admin/audit", label: "Audit log", icon: "file" },
     { path: "/admin/import", label: "Import", icon: "upload" },
-    { path: "/admin/reports/advanced", label: "Advanced reports", icon: "chart" },
     { path: "/field", label: "Field agent view", icon: "users" },
   ] });
   return groups;

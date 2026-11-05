@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { v8RoleOf, v8Primary, v8More, v8IsActive, v8Tabs } from "@/components/v8/v8Nav";
+import { sectionTabs } from "@/components/v8/V8SectionTabs";
 
 const all = (r: any) => [...v8Primary(r), ...v8More(r).flatMap((g) => g.links)].map((l) => l.path);
 describe("v8 Simple navigation", () => {
@@ -28,7 +29,7 @@ describe("v8 Simple navigation", () => {
     const g = v8More("admin", { cashHealth: true });
     expect(g.map((x) => x.title)).toEqual(["Jobs & requests", "Money", "Suppliers & stock", "Team & settings", "Platform (Massair)"]);
     const paths = [...v8Primary("admin"), ...g.flatMap((x) => x.links)].map((l) => l.path);
-    for (const dead of ["/admin/payments", "/admin/projects", "/admin/portal", "/admin/whatsapp", "/admin/dispatch", "/admin/network-agents", "/admin/price-lists", "/admin/consumables", "/admin/brochures", "/admin/analytics", "/admin/cashflow"]) expect(paths).not.toContain(dead);
+    for (const dead of ["/admin/payments", "/admin/projects", "/admin/portal", "/admin/whatsapp", "/admin/dispatch", "/admin/network-agents", "/admin/price-lists", "/admin/consumables", "/admin/brochures", "/admin/pdf-documents", "/admin/unit-content", "/admin/analytics", "/admin/reports/advanced", "/admin/cashflow"]) expect(paths).not.toContain(dead);
     expect(new Set(paths.map((p) => p.split("?")[0] + (p.includes("tab=stock") ? "#stock" : ""))).size).toBe(paths.length);
     expect(v8Tabs("admin").length).toBeLessThanOrEqual(4);
     expect(v8Tabs("sales").length).toBeLessThanOrEqual(4);
@@ -49,6 +50,35 @@ describe("v8 Simple navigation", () => {
     expect(v8More("admin").flatMap((x) => x.links).some((l) => l.path === "/admin/map")).toBe(false);
     expect(v8Primary("sales").some((l) => l.path === "/admin/map")).toBe(false);
     expect(v8Tabs("admin").map((l) => l.label)).toEqual(["Home", "Pipeline", "Schedule", "Clients"]);
+  });
+  it("platform admin sidebar is 41 links; brochures and advanced reports are matches, not extra links", () => {
+    const links = [...v8Primary("admin"), ...v8More("admin").flatMap((g) => g.links)];
+    expect(links).toHaveLength(41);
+    expect(links.map((l) => l.label)).toEqual(expect.arrayContaining([
+      "Live map", "WALDA approvals", "Supplier docs", "Company tools", "Bank (FNB)", "Reports", "Catalogue", "Stock", "Team",
+    ]));
+    expect(links.map((l) => l.label)).not.toContain("Brochures & PDFs");
+    expect(links.map((l) => l.label)).not.toContain("Advanced reports");
+    const catalogue = v8More("admin").flatMap((g) => g.links).find((l) => l.label === "Catalogue")!;
+    for (const p of ["/admin/pdf-documents", "/admin/brochures", "/admin/unit-content", "/admin/price-lists"]) {
+      expect(catalogue.match).toContain(p);
+      expect(v8IsActive(catalogue, p)).toBe(true);
+    }
+    const reports = v8More("admin").flatMap((g) => g.links).find((l) => l.path === "/admin/reports")!;
+    expect(reports.match).toContain("/admin/reports/advanced");
+    expect(v8IsActive(reports, "/admin/reports/advanced")).toBe(true);
+    expect(v8More("admin").find((g) => g.title.startsWith("Platform"))!.links.map((l) => l.path)).not.toContain("/admin/reports/advanced");
+    const tools = v8More("admin").find((g) => g.title === "Suppliers & stock")!.links;
+    expect(tools.map((l) => l.label)).toContain("Company tools");
+    expect(v8More("tech").flatMap((g) => g.links).some((l) => l.path === "/field/my-tools")).toBe(true);
+    expect(sectionTabs("catalogue").map((t) => t.path)).toEqual([
+      "/admin/catalog", "/admin/price-lists", "/admin/pdf-documents", "/admin/brochures", "/admin/unit-content",
+    ]);
+    expect(sectionTabs("reports").map((t) => t.path)).toContain("/admin/reports/advanced");
+    const app = readFileSync("src/App.tsx", "utf8");
+    for (const leaf of ["pdf-documents", "brochures", "unit-content", "reports/advanced", "tools"]) {
+      expect(app).toContain(`path="${leaf}"`);
+    }
   });
   it("marks the active area", () => {
     const pipe = v8Primary("admin")[1];

@@ -262,7 +262,7 @@ const App = () => (
                     <Route path="projects/:projectId" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminProjectsPage /></RequireRole>} />
                     <Route path="inventory" element={<Navigate to="/admin/cash-health?tab=stock" replace />} />
                     <Route element={<V8SectionTabs section="reports" />}><Route path="reports" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} denySalesRep><ReportBuilder /></RequireRole>} /></Route>
-                    <Route path="reports/advanced" element={<RequireRole allowedRoles={["admin"]} denySalesRep><RequirePlatformOwner><AdminAdvancedReportsPage /></RequirePlatformOwner></RequireRole>} />
+                    <Route element={<V8SectionTabs section="reports" />}><Route path="reports/advanced" element={<RequireRole allowedRoles={["admin"]} denySalesRep><RequirePlatformOwner><AdminAdvancedReportsPage /></RequirePlatformOwner></RequireRole>} /></Route>
                     <Route element={<V8SectionTabs section="reports" />}><Route path="reports/aging" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} denySalesRep><AccountsAgingReportPage /></RequireRole>} /></Route>
                     <Route element={<V8SectionTabs section="reports" />}><Route path="reports/sales-by-client" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} denySalesRep><SalesByClientReportPage /></RequireRole>} /></Route>
                     <Route element={<V8SectionTabs section="reports" />}><Route path="reports/sales-by-product" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]} denySalesRep><SalesByProductReportPage /></RequireRole>} /></Route>
@@ -289,9 +289,9 @@ const App = () => (
                     <Route path="payments" element={<Navigate to="/admin/invoices" replace />} />
                     <Route path="portal" element={<Navigate to="/admin" replace />} />
                     <Route path="calls" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminCallsPage /></RequireRole>} />
-                    <Route element={<V8SectionTabs section="documents" />}><Route path="pdf-documents" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminPDFDocumentsPage /></RequireRole>} /></Route>
-                    <Route element={<V8SectionTabs section="documents" />}><Route path="brochures" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminBrochuresPage /></RequireRole>} /></Route>
-                    <Route element={<V8SectionTabs section="documents" />}><Route path="unit-content" element={<RequireRole allowedRoles={["admin"]} denySalesRep><RequirePlatformOwner><AdminUnitContentPage /></RequirePlatformOwner></RequireRole>} /></Route>
+                    <Route element={<V8SectionTabs section="catalogue" />}><Route path="pdf-documents" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminPDFDocumentsPage /></RequireRole>} /></Route>
+                    <Route element={<V8SectionTabs section="catalogue" />}><Route path="brochures" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminBrochuresPage /></RequireRole>} /></Route>
+                    <Route element={<V8SectionTabs section="catalogue" />}><Route path="unit-content" element={<RequireRole allowedRoles={["admin"]} denySalesRep><RequirePlatformOwner><AdminUnitContentPage /></RequirePlatformOwner></RequireRole>} /></Route>
                     <Route path="companies" element={<RequireRole allowedRoles={["admin"]}><RequirePlatformOwner><CompanyManagement /></RequirePlatformOwner></RequireRole>} />
                     <Route path="network-agents" element={<Navigate to="/admin/team?tab=applications" replace />} />
                   </Route>
