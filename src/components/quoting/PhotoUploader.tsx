@@ -83,7 +83,7 @@ const PhotoUploader = ({ quoteId, attachments, onAttachmentsChange }: PhotoUploa
   useEffect(() => {
     let live = true;
     if (!quoteId) { setQuoteOk(false); return; }
-    (supabase.rpc as any)("photo_quote_ok", { _quote: quoteId }).then(({ data }: any) => { if (live) setQuoteOk(data === true); });
+    supabase.rpc("photo_quote_ok", { _quote: quoteId }).then(({ data }: any) => { if (live) setQuoteOk(data === true); });
     return () => { live = false; };
   }, [quoteId]);
 

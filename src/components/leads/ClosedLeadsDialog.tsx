@@ -15,7 +15,7 @@ export default function ClosedLeadsDialog({ className }: { className?: string })
     queryKey: ["leads", "closed-list", companyId, tab],
     enabled: open && !!companyId,
     queryFn: async () => {
-      let qb = (supabase.from("leads") as any)
+      let qb = supabase.from("leads")
         .select("id, customer_name, customer_phone, created_at, dismissed_at, dismiss_reason, closed_at, close_outcome, close_reason, close_note, marketing_followup")
         .eq("company_id", companyId).is("deleted_at", null);
       qb = tab === "dismissed" ? qb.not("dismissed_at", "is", null).order("dismissed_at", { ascending: false })

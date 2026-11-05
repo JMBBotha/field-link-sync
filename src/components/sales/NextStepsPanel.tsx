@@ -34,9 +34,9 @@ function GroupPicker({ row, onPick, onBack }: { row: NextStep; onPick: (id: stri
   const q = useQuery({
     queryKey: ["group-candidates", row.entity_id],
     queryFn: async (): Promise<Cand[]> => {
-      const { data: me } = await (supabase.from("quotes") as any).select("customer_id, lead_id").eq("id", row.entity_id).maybeSingle();
+      const { data: me } = await supabase.from("quotes").select("customer_id, lead_id").eq("id", row.entity_id).maybeSingle();
       if (!me || (!me.customer_id && !me.lead_id)) return [];
-      let b = (supabase.from("quotes") as any).select("id, quote_number, total, sent_at, created_at, option_group_id")
+      let b = supabase.from("quotes").select("id, quote_number, total, sent_at, created_at, option_group_id")
         .in("status", ["draft", "sent", "viewed"]).is("archived_at", null).order("created_at", { ascending: false }).limit(30);
       b = me.customer_id ? b.eq("customer_id", me.customer_id) : b.eq("lead_id", me.lead_id).is("customer_id", null);
       const { data } = await b;
@@ -151,7 +151,7 @@ export default function NextStepsPanel({ className }: { className?: string }) {
   const owners = useQuery({
     queryKey: ["next-steps-owners"], enabled: !isSalesRep,
     queryFn: async () => {
-      const { data } = await (supabase.from("profiles") as any).select("id, full_name").in("dispatch_role", ["sales", "sales_engineer"]);
+      const { data } = await supabase.from("profiles").select("id, full_name").in("dispatch_role", ["sales", "sales_engineer"]);
       return (data || []) as { id: string; full_name: string | null }[];
     },
   });

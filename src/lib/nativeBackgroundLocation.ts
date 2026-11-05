@@ -41,8 +41,9 @@ function nativePingUrl(): string | null {
 }
 
 async function authHeaders(): Promise<Record<string, string>> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
+  const { waitForAuthSession } = await import("@/contexts/AuthContext");
+  const session = await waitForAuthSession();
+  const token = session?.access_token;
   const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;

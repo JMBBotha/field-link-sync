@@ -63,7 +63,7 @@ export const useAvailability = (userId: string | undefined): UseAvailabilityResu
   // A DB trigger mirrors it onto agent_locations.is_available.
   const updateProfileStatus = useCallback(async (newStatus: AvailabilityStatus | "restore", manual = true): Promise<AvailabilityStatus | null> => {
     if (!userId) return null;
-    const { data, error } = await (supabase.rpc as any)("set_my_availability", { p_status: newStatus, p_manual: manual });
+    const { data, error } = await supabase.rpc("set_my_availability", { p_status: newStatus, p_manual: manual });
     if (error) {
       console.error("[useAvailability] set_my_availability failed", error);
       toast({ title: "Couldn't update availability", description: error.message, variant: "destructive" });

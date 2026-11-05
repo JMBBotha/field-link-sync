@@ -14,7 +14,7 @@ export function useDoubleBookings() {
     queryFn: async () => {
       const from = todayInJohannesburg();
       const to = format(addDays(new Date(`${from}T12:00:00`), 30), "yyyy-MM-dd");
-      const { data, error } = await (supabase.rpc as any)("open_double_bookings", { p_from: from, p_to: to });
+      const { data, error } = await supabase.rpc("open_double_bookings", { p_from: from, p_to: to });
       if (error) { console.warn("[double-bookings]", error.message); return []; }
       return (data || []) as any[];
     },

@@ -740,7 +740,7 @@ async function createEstimate(db: any, member: CallerContext, params: any): Prom
   }
 
   let customerId = params.customer_id;
-  let customerName = params.customer_name;
+  const customerName = params.customer_name;
   let customerDisplayName = "";
 
   const custScope = await resolveScope(db, member.userId, member.companyId, member.roles, member.email);

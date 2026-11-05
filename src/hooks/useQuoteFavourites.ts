@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { filterLiveIds } from "@/lib/liveProducts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { isAirConditioningProduct } from "@/lib/mandy/quoteOps";
@@ -42,21 +43,8 @@ export function groupFavourites(favIds: Iterable<string>, liveProducts: PaletteP
 
 export function useQuoteFavourites() {
   const qc = useQueryClient();
-  const [userId, setUserId] = useState<string | null>(null);
-  useEffect(() => {
-    let off = false;
-    // getSession is local (no network); getUser is only the fallback. A failed
-    // /auth/v1/user call used to leave userId null and make every toggle a silent no-op.
-    const auth = supabase.auth as typeof supabase.auth & { getSession?: typeof supabase.auth.getSession };
-    const fromSession = auth.getSession
-      ? auth.getSession().then(({ data }) => data.session?.user?.id ?? null).catch(() => null)
-      : Promise.resolve(null);
-    fromSession
-      .then((id) => id ?? supabase.auth.getUser().then(({ data }) => data.user?.id ?? null).catch(() => null))
-      .then((id) => { if (!off) setUserId(id); });
-    const sub = auth.onAuthStateChange?.((_e, session) => { if (!off && session?.user?.id) setUserId(session.user.id); });
-    return () => { off = true; sub?.data?.subscription?.unsubscribe?.(); };
-  }, []);
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const key = ["quote-favourites", userId];
 
   const { data, isLoading } = useQuery({

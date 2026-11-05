@@ -7,7 +7,7 @@ export function pipePairFromText(s: string | null | undefined): { liquid: string
   const t = String(s);
   let found = [...t.matchAll(/(?<![0-9&])([1357])\s*\/\s*([248])(?![0-9])/g)].map((m) => `${m[1]}/${m[2]}`).filter((f) => FRACTIONS.includes(f));
   if (!found.length && /mm/i.test(t)) {
-    found = [...t.matchAll(/(\d+(?:[.,]\d+)?)\s*(?=[\/x&×]|\s|mm|$)/gi)].map((m) => Number(m[1].replace(",", ".")))
+    found = [...t.matchAll(/(\d+(?:[.,]\d+)?)\s*(?=[/x&×]|\s|mm|$)/gi)].map((m) => Number(m[1].replace(",", ".")))
       .map((mm) => FRACTIONS.find((f) => Math.abs(val(f) * 25.4 - mm) < 0.4)).filter(Boolean) as string[];
   }
   const uniq = [...new Set(found)].sort((a, b) => val(a) - val(b));

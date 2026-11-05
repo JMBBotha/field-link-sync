@@ -6,6 +6,7 @@
  * placeholder (never the old price, never silently skipped); the R0 guard blocks send.
  */
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { liveProducts } from "@/lib/liveProducts";
 import { resolveProductMarkupPercent } from "@/lib/pricing";
 import { fetchActiveUploadIds, isLiveCatalogProduct } from "@/lib/catalogSoT";
@@ -77,7 +78,7 @@ export async function loadLiveProducts(): Promise<LiveProductRow[]> {
 type ItemMeta = { id: string; model_number: string | null; supplier_product_id: string | null; match_status: string | null; supplier_id: string | null; linked_code: string | null };
 
 export async function loadBundleItemMeta(ids?: string[]): Promise<ItemMeta[]> {
-  let q: any = (supabase.from("bundle_items") as any).select("id, bundle_id, model_number, supplier_product_id, match_status, supplier_products(product_code, supplier_id)");
+  let q: any = supabase.from("bundle_items").select("id, bundle_id, model_number, supplier_product_id, match_status, supplier_products(product_code, supplier_id)");
   if (ids) q = q.in("id", ids);
   const { data } = await q;
   return ((data || []) as any[]).map((r) => ({
@@ -125,11 +126,11 @@ export async function checkAllBundles(): Promise<{ bundles: { id: string; name: 
         itemId: m.id, bundleId: b.id, found: !!hit, model, name, status,
         text: hit ? `Found ${name} (${model})` : `Could not find ${model || "an item with no model number"}`,
       });
-      const patch: Record<string, any> = {};
+      const patch: Database["public"]["Tables"]["bundle_items"]["Update"] = {};
       if (m.match_status !== status) patch.match_status = status;
       if (!m.model_number && model) patch.model_number = model;
       if (hit && hit.id !== m.supplier_product_id) patch.supplier_product_id = hit.id;
-      if (Object.keys(patch).length) await (supabase.from("bundle_items") as any).update(patch).eq("id", m.id);
+      if (Object.keys(patch).length) await supabase.from("bundle_items").update(patch).eq("id", m.id);
     }
     out.push({ id: b.id, name: b.name, lines });
   }
@@ -137,7 +138,7 @@ export async function checkAllBundles(): Promise<{ bundles: { id: string; name: 
 }
 
 export async function remapBundleItem(itemId: string, product: { id: string; product_code: string | null }) {
-  const { data, error } = await (supabase.from("bundle_items") as any)
+  const { data, error } = await supabase.from("bundle_items")
     .update({ supplier_product_id: product.id, model_number: product.product_code, match_status: "remapped" })
     .eq("id", itemId).select("id");
   if (error) throw error;

@@ -22,7 +22,7 @@ function JobPhotos({ leadId }: { leadId: string }) {
   const q = useQuery({
     queryKey: ["sales-job-photos", leadId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("job_photos") as any)
+      const { data, error } = await supabase.from("job_photos")
         .select("id, storage_path, annotated_path, photo_type").eq("lead_id", leadId).order("created_at", { ascending: true }).limit(60);
       if (error) throw error;
       return Promise.all(((data ?? []) as any[]).map(async (p) => ({ id: p.id, type: p.photo_type as string, url: await signedPhotoUrl(photoDisplayPath(p)) })));
@@ -48,7 +48,7 @@ export default function SalesMyJobs() {
   const q = useQuery({
     queryKey: ["sales-my-jobs"], refetchInterval: 60_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("sales_my_jobs", { p_limit: 50 });
+      const { data, error } = await supabase.rpc("sales_my_jobs", { p_limit: 50 });
       if (error) throw error;
       return (data ?? []) as MyJob[];
     },

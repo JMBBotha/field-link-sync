@@ -26,7 +26,7 @@ const SalesByClientReportPage = () => {
   const { data = [], isLoading } = useQuery({
     queryKey: ["v_sales_by_client"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("v_sales_by_client" as any).select("*");
+      const { data, error } = await supabase.from("v_sales_by_client").select("*");
       if (error) throw error;
       return (data || []) as unknown as ClientRow[];
     },

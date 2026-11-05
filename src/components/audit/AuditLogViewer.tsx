@@ -28,7 +28,7 @@ const AuditLogViewer = () => {
     queryKey: ["audit-log", search, tableFilter, actionFilter],
     queryFn: async () => {
       let query = supabase
-        .from("audit_log" as any)
+        .from("audit_log")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(200);
@@ -60,7 +60,7 @@ const AuditLogViewer = () => {
   const toggleRow = (id: string) => {
     setExpandedRows((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };

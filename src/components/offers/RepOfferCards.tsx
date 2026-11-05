@@ -36,7 +36,7 @@ export default function RepOfferCards() {
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(t); }, []);
   const { data = [] } = useQuery({
     queryKey: ["my-request-offers"], refetchInterval: 30000,
-    queryFn: async () => { const { data, error } = await (supabase.rpc as any)("my_request_offers"); if (error) return []; return (data || []) as RepOffer[]; },
+    queryFn: async () => { const { data, error } = await supabase.rpc("my_request_offers"); if (error) return []; return (data || []) as RepOffer[]; },
   });
   const shown = data.filter((o) => o.state === "open" || (o.state === "accepted" && now - new Date(o.offered_at).getTime() < 3600e3));
   if (!shown.length) return null;

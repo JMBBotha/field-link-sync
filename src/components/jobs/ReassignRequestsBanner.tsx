@@ -8,7 +8,7 @@ export default function ReassignRequestsBanner({ onOpen }: { onOpen: (leadId: st
   const { data = [] } = useQuery({
     queryKey: ["pending-reassign"], refetchInterval: 60_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("pending_reassign_requests");
+      const { data, error } = await supabase.rpc("pending_reassign_requests");
       if (error) return [] as Row[];
       return (data || []) as Row[];
     },

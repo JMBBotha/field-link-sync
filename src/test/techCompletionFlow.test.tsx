@@ -18,7 +18,7 @@ vi.mock("@/lib/afterPhotos", async (orig) => ({
   countAfterPhotos: async () => afterCount.n,
   flushAfterPhotos: async () => true,
 }));
-vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "tech-1" } }) }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "tech-1" } }), useOptionalAuth: () => ({ user: { id: "tech-1" } }) }));
 vi.mock("@/hooks/useJobPhotos", () => ({ useJobPhotos: () => ({ uploadPhoto: vi.fn(), uploading: false }) }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: vi.fn() }), toast: vi.fn() }));
 vi.mock("@/lib/completeLeadJobs", () => ({ findOpenJobIdsForLead: async () => ["job-1"] }));

@@ -86,7 +86,7 @@ const FBEstimatesList = () => {
     const invNum = estimate.estimate_number.replace("EST", "INV");
     const amount = Number(estimate.amount);
     const tax = Number(estimate.tax);
-    const { error } = await supabase.from("company_invoices" as any).insert({
+    const { error } = await supabase.from("company_invoices").insert({
       company_id: companyId!, invoice_number: invNum,
       subtotal: amount, vat_amount: tax, total_amount: amount + tax, tax,
       status: "Draft", contact_id: estimate.contact_id,
@@ -109,7 +109,7 @@ const FBEstimatesList = () => {
       const invNum = estimate.estimate_number.replace("EST", "INV");
       const amount = Number(estimate.amount);
       const tax = Number(estimate.tax);
-      const { data: invoiceData, error: invErr } = await (supabase.from("company_invoices") as any).insert({
+      const { data: invoiceData, error: invErr } = await supabase.from("company_invoices").insert({
         company_id: companyId!,
         invoice_number: invNum,
         subtotal: amount,
@@ -142,7 +142,7 @@ const FBEstimatesList = () => {
   });
 
   const toggleSelect = (id: string) => {
-    setSelectedIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+    setSelectedIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   };
 
   const toggleAll = () => {

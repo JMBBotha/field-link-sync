@@ -3,6 +3,7 @@ import { runBundleCheckAfterImport } from "@/lib/bundleResolve";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toJson } from "@/lib/jsonValue";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -102,7 +103,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["supplier-documents", supplierId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_documents") as any)
+      const { data, error } = await supabase.from("supplier_documents")
         .select("*")
         .eq("supplier_id", supplierId)
         .order("created_at", { ascending: false });
@@ -115,7 +116,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
   const { data: catalogInfo = { count: 0, uploadedAt: null, pdfFilename: null } } = useQuery({
     queryKey: ["supplier-catalog-pages", supplierId],
     queryFn: async () => {
-      const { data, count, error } = await (supabase.from("supplier_pdf_pages") as any)
+      const { data, count, error } = await supabase.from("supplier_pdf_pages")
         .select("uploaded_at, pdf_filename", { count: "exact" })
         .eq("supplier_id", supplierId)
         .order("page_number", { ascending: true })
@@ -134,7 +135,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
   const { data: liveBooks = [] } = useQuery({
     queryKey: ["supplier-live-books", supplierId],
     queryFn: async () => {
-      const { data } = await (supabase.from("pdf_uploads") as any)
+      const { data } = await supabase.from("pdf_uploads")
         .select("id, brand, category, page_count, file_name, file_url, created_at").eq("supplier_id", supplierId).eq("is_active", true)
         .or("price_list_type.is.null,price_list_type.neq.in_house")
         .order("created_at", { ascending: false });
@@ -149,7 +150,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
     queryFn: async () => {
       const out: Record<string, number> = {};
       await Promise.all(liveBooks.map(async (b) => {
-        const { count } = await (supabase.from("supplier_products") as any)
+        const { count } = await supabase.from("supplier_products")
           .select("id", { count: "exact", head: true }).eq("pdf_upload_id", b.id).eq("is_active", true);
         out[b.id] = count || 0;
       }));
@@ -161,7 +162,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
   const { data: activeProductCount = 0 } = useQuery({
     queryKey: ["supplier-active-product-count", supplierId],
     queryFn: async () => {
-      const { count, error } = await (supabase.from("supplier_products") as any)
+      const { count, error } = await supabase.from("supplier_products")
         .select("*", { count: "exact", head: true })
         .eq("supplier_id", supplierId)
         .or("archived.is.null,archived.eq.false");
@@ -174,7 +175,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
   const { data: importHistory = [] } = useQuery({
     queryKey: ["import-audit-log", supplierId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("import_audit_log") as any)
+      const { data, error } = await supabase.from("import_audit_log")
         .select("*")
         .eq("supplier_id", supplierId)
         .order("created_at", { ascending: false })
@@ -213,7 +214,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
         await cleanImportForSupplier(supplierId);
         await logImportAction({ supplierId, action: "clean_purge", productsDeleted: activeProductCount });
       } else {
-        const { error } = await (supabase.from("supplier_products") as any)
+        const { error } = await supabase.from("supplier_products")
           .update({ archived: true })
           .eq("supplier_id", supplierId)
           .or("archived.is.null,archived.eq.false");
@@ -246,7 +247,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
       }
       const aliasArr = Array.from(aliases);
 
-      const { data: pages } = await (supabase.from("supplier_pdf_pages") as any)
+      const { data: pages } = await supabase.from("supplier_pdf_pages")
         .select("page_image_url, pdf_filename, pdf_storage_path")
         .in("supplier_id", aliasArr);
 
@@ -269,7 +270,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
         }
       }
 
-      await (supabase.from("supplier_pdf_pages") as any).delete().in("supplier_id", aliasArr);
+      await supabase.from("supplier_pdf_pages").delete().in("supplier_id", aliasArr);
       invalidateAll();
       toast({ title: "PDF catalog deleted", description: `${pages?.length || 0} pages removed.` });
     } catch (err: any) {
@@ -315,7 +316,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
     queryKey: ["supplier-pdf-brands", supplierId],
     enabled: !!supplierId,
     queryFn: async () => {
-      const { data } = await (supabase.from("pdf_uploads") as any).select("brand").eq("supplier_id", supplierId);
+      const { data } = await supabase.from("pdf_uploads").select("brand").eq("supplier_id", supplierId);
       return Array.from(new Set(((data || []) as any[]).map((r) => r.brand).filter(Boolean))) as string[];
     },
   });
@@ -365,7 +366,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
 
       // Brand-scoped: only this supplier's pages for the SAME brand are replaced
       // (e.g. a Comfee list never touches the Samsung pages).
-      let oldPagesQ = (supabase.from("supplier_pdf_pages" as any) as any)
+      let oldPagesQ = supabase.from("supplier_pdf_pages")
         .select("page_image_url")
         .in("supplier_id", aliasArr);
       oldPagesQ = brand ? oldPagesQ.eq("brand", brand) : oldPagesQ.is("brand", null);
@@ -383,7 +384,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
         }
       }
       {
-        let delQ = (supabase.from("supplier_pdf_pages" as any) as any).delete().in("supplier_id", aliasArr);
+        let delQ = supabase.from("supplier_pdf_pages").delete().in("supplier_id", aliasArr);
         delQ = brand ? delQ.eq("brand", brand) : delQ.is("brand", null);
         await delQ;
       }
@@ -400,7 +401,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
       // ── Create the new pdf_uploads book row FIRST (inactive until pages are stored) ──
       const safeNameForPath = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const bookStoragePath = `${supplierId}/${safeNameForPath}`;
-      const { data: bookRow, error: bookErr } = await (supabase.from("pdf_uploads") as any)
+      const { data: bookRow, error: bookErr } = await supabase.from("pdf_uploads")
         .insert({
           supplier_id: supplierId,
           file_name: file.name,
@@ -467,7 +468,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
         });
 
         if (batchRows.length >= 10) {
-          await (supabase.from("supplier_pdf_pages") as any).insert(batchRows.splice(0, 10));
+          await supabase.from("supplier_pdf_pages").insert(batchRows.splice(0, 10));
         }
 
         canvas.width = 0;
@@ -475,7 +476,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
       }
 
       if (batchRows.length > 0) {
-        await (supabase.from("supplier_pdf_pages") as any).insert(batchRows);
+        await supabase.from("supplier_pdf_pages").insert(batchRows);
       }
 
       // Upload the source PDF
@@ -484,7 +485,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
       if (pdfUpErr) throw new Error(`Could not store the PDF file: ${pdfUpErr.message}`);
       const { data: pdfUrlData } = supabase.storage.from("supplier-pdfs").getPublicUrl(pdfStoragePath);
       if (pdfUrlData?.publicUrl) {
-        await (supabase.from("supplier_pdf_pages") as any)
+        await supabase.from("supplier_pdf_pages")
           .update({ pdf_storage_path: pdfUrlData.publicUrl })
           .eq("pdf_upload_id", newUploadId);
       }
@@ -494,7 +495,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
       // then flip the new book active so it can never end up archived.
       {
         // Same supplier + same brand only; other brands' lists stay active.
-        let archQ = (supabase.from("pdf_uploads") as any)
+        let archQ = supabase.from("pdf_uploads")
           .update({ is_active: false, status: "archived" })
           .eq("supplier_id", supplierId)
           .neq("id", newUploadId)
@@ -502,7 +503,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
         archQ = brand ? archQ.eq("brand", brand) : archQ.is("brand", null);
         await archQ;
       }
-      await (supabase.from("pdf_uploads") as any)
+      await supabase.from("pdf_uploads")
         .update({ is_active: true, status: "parsed", activated_at: new Date().toISOString() })
         .eq("id", newUploadId);
 
@@ -541,7 +542,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
         .upload(path, file);
       if (uploadError) throw uploadError;
 
-      const { error: dbError } = await (supabase.from("supplier_documents") as any).insert({
+      const { error: dbError } = await supabase.from("supplier_documents").insert({
         supplier_id: supplierId,
         file_name: file.name,
         storage_path: path,
@@ -579,7 +580,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
   const deleteMutation = useMutation({
     mutationFn: async (doc: SupplierDocument) => {
       await supabase.storage.from("supplier-documents").remove([doc.storage_path]);
-      const { error } = await (supabase.from("supplier_documents") as any).delete().eq("id", doc.id);
+      const { error } = await supabase.from("supplier_documents").delete().eq("id", doc.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -646,12 +647,12 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
     setImportAnalysing(true);
     try {
       // One live book per supplier+brand: import the chosen brand's book (or the newest live one).
-      let upQ = (supabase.from("pdf_uploads") as any)
+      let upQ = supabase.from("pdf_uploads")
         .select("id, file_name").eq("supplier_id", supplierId).eq("is_active", true);
       if (uploadId) upQ = upQ.eq("id", uploadId);
       const { data: up } = await upQ.order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (!up?.id) throw new Error("No active uploaded price list. Upload one first.");
-      const { data: pages, error } = await (supabase.from("supplier_pdf_pages") as any)
+      const { data: pages, error } = await supabase.from("supplier_pdf_pages")
         .select("page_number, page_image_url, pdf_storage_path, pdf_filename")
         .eq("pdf_upload_id", up.id).order("page_number");
       if (error) throw error;
@@ -725,12 +726,12 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
 
       // Record the review decisions (who, when, choices) — non-fatal.
       try {
-        await (supabase.from("import_audit_log") as any).insert({
+        await supabase.from("import_audit_log").insert({
           supplier_id: supplierId,
           action: "ai_import_review",
           products_imported: imported + updated,
           file_name: file?.name || "AI Import",
-          import_settings: { review, result: { imported, updated, archived, unchanged, errors }, pdf_upload_id: storedUploadIdRef.current, is_full_catalogue: isFullCatalogue },
+          import_settings: toJson({ review, result: { imported, updated, archived, unchanged, errors }, pdf_upload_id: storedUploadIdRef.current, is_full_catalogue: isFullCatalogue }),
         });
       } catch (e) { console.warn("[Import] review audit failed (non-fatal):", e); }
 
@@ -833,7 +834,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName, focusUpload = false }:
   const viewBook = async (b: LiveBook) => {
     let url = b.file_url;
     if (!url) {
-      const { data } = await (supabase.from("supplier_pdf_pages") as any)
+      const { data } = await supabase.from("supplier_pdf_pages")
         .select("pdf_storage_path, page_image_url").eq("pdf_upload_id", b.id).order("page_number").limit(1).maybeSingle();
       url = data?.pdf_storage_path || data?.page_image_url || null;
     }

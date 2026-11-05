@@ -18,7 +18,7 @@ export function useEnRoutePlan(jobId: string | null | undefined, enabled = true)
     staleTime: 60_000,
     retry: false,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("job_en_route_plan", { p_job_id: jobId });
+      const { data, error } = await supabase.rpc("job_en_route_plan", { p_job_id: jobId });
       if (error) return null; // plan is a hint only
       return (data ?? null) as EnRoutePlan | null;
     },
@@ -55,7 +55,7 @@ export default function EnRouteButton({ jobId, status, onDone, onPress, busy: ex
   const press = async () => {
     if (onPress) return onPress();
     setBusy(true); setErr(null);
-    const { error } = await (supabase.rpc as any)("tech_set_job_status", { p_job_id: jobId, p_status: "dispatched" });
+    const { error } = await supabase.rpc("tech_set_job_status", { p_job_id: jobId, p_status: "dispatched" });
     setBusy(false);
     if (error) return setErr(error.message);
     onDone?.();

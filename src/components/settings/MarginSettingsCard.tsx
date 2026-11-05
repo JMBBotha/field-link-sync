@@ -21,9 +21,9 @@ export default function MarginSettingsCard() {
     queryKey: ["margin-settings", user?.id],
     enabled: !!user?.id && !!isAdmin,
     queryFn: async () => {
-      const { data: p } = await (supabase.from("profiles") as any).select("company_id").eq("id", user!.id).maybeSingle();
+      const { data: p } = await supabase.from("profiles").select("company_id").eq("id", user!.id).maybeSingle();
       if (!p?.company_id) return null;
-      const { data: rows, error } = await (supabase.rpc as any)("get_company_margin_settings", { p_company_id: p.company_id });
+      const { data: rows, error } = await supabase.rpc("get_company_margin_settings", { p_company_id: p.company_id });
       if (error) throw error;
       const c = Array.isArray(rows) ? rows[0] : rows;
       return c ? { ...c, id: c.company_id } : null;
@@ -37,7 +37,7 @@ export default function MarginSettingsCard() {
     queryKey: ["tech-pay-settings", data?.id],
     enabled: !!data?.id,
     queryFn: async () => {
-      const { data: t, error } = await (supabase.rpc as any)("get_company_tech_pay_settings", { p_company_id: data!.id });
+      const { data: t, error } = await supabase.rpc("get_company_tech_pay_settings", { p_company_id: data!.id });
       if (error) throw error;
       return t as { tech_paid_on_completion_pct: number; tech_holdback_pct: number; tech_holdback_days: number; tools_retained_pct: number } | null;
     },
@@ -63,9 +63,9 @@ export default function MarginSettingsCard() {
     setLabour(data.labour_cost_per_hour == null ? "" : String(data.labour_cost_per_hour));
     setTarget(String(data.gp_target_percent ?? 20)); setComm(String(data.sales_commission_percent ?? 50));
   }, [data]);
+  const { isMain } = useIsMainCompany();
   if (!isAdmin || !data) return null;
 
-  const { isMain } = useIsMainCompany();
   const save = async () => {
     const t = Number(target), c = Number(comm), l = labour.trim() === "" ? null : Number(labour);
     const pp = Number(paidPct), hp = Number(heldPct), hd = Number(heldDays), tp = Number(toolsPct);
@@ -80,9 +80,9 @@ export default function MarginSettingsCard() {
       return;
     }
     setSaving(true);
-    const { error } = await (supabase.from("companies") as any)
+    const { error } = await supabase.from("companies")
       .update({ labour_cost_per_hour: l, gp_target_percent: t, sales_commission_percent: c, materials_waste_percent: w }).eq("id", data.id);
-    const { error: techErr } = error ? { error: null } : await (supabase.rpc as any)("set_company_tech_pay_settings", {
+    const { error: techErr } = error ? { error: null } : await supabase.rpc("set_company_tech_pay_settings", {
       p_company_id: data.id, p_paid_pct: pp, p_holdback_pct: hp, p_holdback_days: hd, p_tools_pct: tp,
     });
     setSaving(false);

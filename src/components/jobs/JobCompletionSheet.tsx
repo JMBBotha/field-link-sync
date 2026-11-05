@@ -20,6 +20,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { CheckCircle2, ChevronDown, Clock, Loader2, Minus, Plus, PackagePlus, Trash2, WifiOff } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toJson } from "@/lib/jsonValue";
 import { useToast } from "@/hooks/use-toast";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useJobCompletion } from "@/hooks/useJobCompletion";
@@ -128,7 +129,7 @@ const JobCompletionSheet = ({
     queryKey: ["completion-packing", effectiveJobId],
     enabled: open && !!effectiveJobId && isOnline && asQuoted === false,
     queryFn: async () => {
-      const { data } = await (supabase.rpc as any)("get_job_packing_list", { p_job_id: effectiveJobId });
+      const { data } = await supabase.rpc("get_job_packing_list", { p_job_id: effectiveJobId });
       const seen = new Set<string>();
       return ((data || []) as { item_code: string | null; item_name: string | null }[])
         .filter((r) => r.item_name && !seen.has(`${r.item_code}|${r.item_name}`) && seen.add(`${r.item_code}|${r.item_name}`))
@@ -143,7 +144,7 @@ const JobCompletionSheet = ({
     staleTime: 5 * 60_000,
     queryFn: async () => {
       // Price-free tech catalogue (id, name, model, category, unit, length) — the server never sends prices to techs.
-      const { data } = await (supabase.rpc as any)("get_tech_catalogue");
+      const { data } = await supabase.rpc("get_tech_catalogue");
       return ((data || []) as { id: string; name: string | null; model: string | null }[])
         .map((r) => ({ id: r.id, product_code: r.model, short_name: r.name }));
     },
@@ -196,10 +197,10 @@ const JobCompletionSheet = ({
         techSignoffName: techName.trim(),
       });
       if (!queued) {
-        const { error } = await (supabase.rpc as any)("submit_invoice_request", {
+        const { error } = await supabase.rpc("submit_invoice_request", {
           p_lead_id: leadId,
           p_job_id: effectiveJobId,
-          p_extra_items: asQuoted ? [] : extras.filter((x) => x.qty > 0),
+          p_extra_items: toJson(asQuoted ? [] : extras.filter((x) => x.qty > 0)),
           p_extra_hours: asQuoted || !(hours > 0) ? null : hours,
           p_note: note.trim() || null,
           p_started_at: start ? start.toISOString() : null,
@@ -212,7 +213,7 @@ const JobCompletionSheet = ({
         }
         if (effectiveJobId) {
           // Idempotent. The job-status trigger posts the same allowance. No prices come back.
-          const applied = await (supabase.rpc as any)("job_apply_material_allowances", { p_job: effectiveJobId });
+          const applied = await supabase.rpc("job_apply_material_allowances", { p_job: effectiveJobId });
           if (applied.error && !/not allowed|does not exist|schema cache/i.test(applied.error.message ?? "")) {
             toast({ title: "Job completed", description: "The materials allowance could not be posted. The office can run it again.", variant: "destructive" });
           }

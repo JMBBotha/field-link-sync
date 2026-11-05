@@ -65,7 +65,7 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
     const [areaRes, lineRes, modeRes] = await Promise.all([
       supabase.from("quote_areas").select("id, name").eq("quote_id", id).order("sort_order"),
       supabase.from("quote_items").select("id, area_id, parent_item_id, item_name, item_type, quantity, metadata, unit_price").eq("quote_id", id),
-      (supabase.from("quotes") as any).select("labour_mode, labour_included").eq("id", id).maybeSingle(),
+      supabase.from("quotes").select("labour_mode, labour_included").eq("id", id).maybeSingle(),
     ]);
     if (areaRes.error) throw areaRes.error;
     if (lineRes.error) throw lineRes.error;

@@ -44,8 +44,8 @@ const EXAMPLE = "Main bedroom 18K Samsung AR40 with 5 m piping and 2 trunking le
 
 async function logTurn(id: string, patch: Record<string, unknown>, insert = false) {
   try {
-    if (insert) await supabase.from("mandy_voice_logs" as any).insert({ id, ...patch } as any);
-    else await supabase.from("mandy_voice_logs" as any).update(patch as any).eq("id", id);
+    if (insert) await supabase.from("mandy_voice_logs").insert({ id, ...patch } as any);
+    else await supabase.from("mandy_voice_logs").update(patch as any).eq("id", id);
   } catch { /* logging never blocks the quote */ }
 }
 

@@ -84,7 +84,7 @@ export const safeVoice = (v: unknown): MandyVoice =>
   (MANDY_VOICES as readonly string[]).includes(String(v)) ? (String(v) as MandyVoice) : "liora";
 
 export const safeBotName = (n: unknown): string => {
-  const s = String(n ?? "").replace(/[^\p{L}\p{N} '\-]/gu, "").trim().slice(0, 24);
+  const s = String(n ?? "").replace(/[^\p{L}\p{N} '-]/gu, "").trim().slice(0, 24);
   return s || "Mandy";
 };
 

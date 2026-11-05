@@ -16,9 +16,10 @@ export default function StaffPreviewBar({ token }: { token: string }) {
   const q = useQuery({
     queryKey: ["staff-preview-quote", token],
     queryFn: async () => {
-      const { data: s } = await supabase.auth.getSession();
-      if (!s.session) return null;
-      const { data } = await (supabase.from("quotes") as any).select("id, quote_number, status, customer_id, customer_name").eq("public_token", token).maybeSingle();
+      const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const session = await waitForAuthSession();
+      if (!session) return null;
+      const { data } = await supabase.from("quotes").select("id, quote_number, status, customer_id, customer_name").eq("public_token", token).maybeSingle();
       return data ?? null;
     },
   });
@@ -47,11 +48,11 @@ export default function StaffPreviewBar({ token }: { token: string }) {
         row={{ rule: "followup", entity_type: "quote", entity_id: d.id, title: d.customer_name || "Quote", detail: d.quote_number || "" } as unknown as NextStep}
         onClose={() => setSheet(false)}
         onSave={async (o) => {
-          const { error } = await (supabase.rpc as any)("snooze_next_step", { p_rule: "followup", p_entity_type: "quote", p_entity_id: d.id, p_until: o.until?.toISOString() ?? null, p_dismiss: !!o.dismiss, p_reason: o.reason });
+          const { error } = await supabase.rpc("snooze_next_step", { p_rule: "followup", p_entity_type: "quote", p_entity_id: d.id, p_until: o.until?.toISOString() ?? null, p_dismiss: !!o.dismiss, p_reason: o.reason });
           if (error) throw error; qc.invalidateQueries({ queryKey: ["sales-next-steps"] }); setSheet(false);
         }}
         onGroup={async (other) => {
-          const { error } = await (supabase.rpc as any)("group_quote_option", { p_quote: d.id, p_other: other });
+          const { error } = await supabase.rpc("group_quote_option", { p_quote: d.id, p_other: other });
           if (error) throw error; qc.invalidateQueries({ queryKey: ["sales-next-steps"] });
         }} />}
     </div>

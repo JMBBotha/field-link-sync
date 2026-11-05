@@ -97,7 +97,7 @@ const BrochureManagement = () => {
     queryKey: ["product-brochures"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("product_brochures" as any)
+        .from("product_brochures")
         .select("*")
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -108,7 +108,7 @@ const BrochureManagement = () => {
   const toggleActive = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
       const { error } = await supabase
-        .from("product_brochures" as any)
+        .from("product_brochures")
         .update({ is_active } as any)
         .eq("id", id);
       if (error) throw error;
@@ -118,7 +118,7 @@ const BrochureManagement = () => {
 
   const deleteBrochure = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("product_brochures" as any).delete().eq("id", id);
+      const { error } = await supabase.from("product_brochures").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -145,14 +145,14 @@ const BrochureManagement = () => {
       let pageCount = 1;
       try {
         pageCount = await getPageCount(arrayBuf);
-      } catch {}
+      } catch { /* page count is optional */ }
 
       const prefixArr = formPrefixes
         .split(",")
         .map((p) => p.trim().toUpperCase())
         .filter(Boolean);
 
-      const { error: insertErr } = await supabase.from("product_brochures" as any).insert({
+      const { error: insertErr } = await supabase.from("product_brochures").insert({
         name: formName,
         brand: formBrand,
         category: formCategory || null,

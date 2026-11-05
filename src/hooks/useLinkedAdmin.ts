@@ -8,7 +8,7 @@ export function useLinkedAdmin() {
   return useQuery({
     queryKey: ["my-linked-admin", user?.id], enabled: !!user?.id, staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("my_linked_admin");
+      const { data, error } = await supabase.rpc("my_linked_admin");
       if (error) return null;
       return (data as string | null) ?? null;
     },

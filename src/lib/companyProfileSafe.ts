@@ -25,8 +25,7 @@ export const SAFE_PROFILE_KEYS: (keyof CompanyProfileSafe)[] = [
 
 export async function fetchCompanyProfileSafe(): Promise<CompanyProfileSafe | null> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("company_profile_safe");
+    const { data, error } = await supabase.rpc("company_profile_safe");
     if (error) return null;
     const row = Array.isArray(data) ? data[0] : data;
     return (row as CompanyProfileSafe) ?? null;

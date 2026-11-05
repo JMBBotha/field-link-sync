@@ -119,7 +119,7 @@ export async function convertQuoteToInvoice(quoteId: string, agentUserId: string
   const full = live.find((i) => !String(i.notes || "").startsWith("DEPOSIT"));
   if (full) return full.id;
   if (live.length > 0) {
-    const { data: balanceId, error: bErr } = await (supabase.rpc as any)("create_balance_invoice_for_quote", { p_quote_id: quoteId });
+    const { data: balanceId, error: bErr } = await supabase.rpc("create_balance_invoice_for_quote", { p_quote_id: quoteId });
     if (bErr) throw bErr;
     if (!balanceId) throw new Error("Nothing left to invoice on this quote.");
     return balanceId as string;

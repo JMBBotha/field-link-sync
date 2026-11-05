@@ -40,7 +40,7 @@ export default function AdminBankPage() {
   const { data: lines = [], isLoading } = useQuery({
     queryKey: ["bank-lines"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("bank_lines" as any) as any).select("*").order("txn_date", { ascending: false }).limit(1000);
+      const { data, error } = await supabase.from("bank_lines").select("*").order("txn_date", { ascending: false }).limit(1000);
       if (error) throw error;
       return (data || []) as Line[];
     },

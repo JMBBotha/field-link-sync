@@ -15,7 +15,7 @@ export function useInvoiceApprovals(enabled = true) {
     refetchInterval: 30_000,
     queryFn: async () => {
       const since = new Date(Date.now() - 14 * 864e5).toISOString();
-      const { data, error } = await (supabase.from("invoice_send_approvals" as any) as any)
+      const { data, error } = await supabase.from("invoice_send_approvals")
         .select("id, invoice_id, quote_id, client_name, quote_number, invoice_number, deposit_amount, status, due_at, decision, decided_by, decided_at, hold_reason, last_error, created_at")
         .in("status", ["pending", "held", "blocked"]).gte("created_at", since).limit(50);
       if (error) return [] as InvoiceSendApproval[];

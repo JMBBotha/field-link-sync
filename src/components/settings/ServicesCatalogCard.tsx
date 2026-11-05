@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useCanWriteMasterCatalog } from "@/components/catalog/MasterCatalogGate";
@@ -20,9 +21,9 @@ export default function ServicesCatalogCard() {
     enabled: canWrite,
     queryFn: async () => {
       const [s, c, m] = await Promise.all([
-        (supabase.from("catalog_services") as any).select("id, name, description, sort_order, origin, owner_company_id, is_active").order("sort_order", { nullsFirst: false }),
-        (supabase.from("companies") as any).select("id, name, is_master, custom_service_limit, status"),
-        (supabase.from("company_network_members") as any).select("member_company_id"),
+        supabase.from("catalog_services").select("id, name, description, sort_order, origin, owner_company_id, is_active").order("sort_order", { nullsFirst: false }),
+        supabase.from("companies").select("id, name, is_master, custom_service_limit, status"),
+        supabase.from("company_network_members").select("member_company_id"),
       ]);
       if (s.error) throw s.error;
       return { services: (s.data || []) as CatalogService[], companies: (c.data || []) as any[], memberIds: new Set<string>((m.data || []).map((r: any) => r.member_company_id)) };
@@ -37,7 +38,7 @@ export default function ServicesCatalogCard() {
     if (error) toast({ title: "Couldn't save", description: error.message, variant: "destructive" });
     refresh();
   };
-  const patch = (id: string, v: Record<string, unknown>) => run((supabase.from("catalog_services") as any).update(v).eq("id", id));
+  const patch = (id: string, v: Database["public"]["Tables"]["catalog_services"]["Update"]) => run(supabase.from("catalog_services").update(v).eq("id", id));
   const core = data.services.filter((s) => s.origin === "core" && s.is_active);
   const custom = data.services.filter((s) => s.origin === "custom" && s.is_active);
   const archived = data.services.filter((s) => !s.is_active);
@@ -94,7 +95,7 @@ export default function ServicesCatalogCard() {
             <div key={c.id} className="flex items-center justify-between gap-2">
               <span className="truncate">{c.name}</span>
               <Input type="number" min="0" className="h-8 w-20" defaultValue={c.custom_service_limit ?? 5} aria-label={`Custom limit for ${c.name}`}
-                onBlur={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0 && n !== c.custom_service_limit) void run((supabase.from("companies") as any).update({ custom_service_limit: n }).eq("id", c.id)); }} />
+                onBlur={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0 && n !== c.custom_service_limit) void run(supabase.from("companies").update({ custom_service_limit: n }).eq("id", c.id)); }} />
             </div>
           ))}
         </div>

@@ -22,7 +22,7 @@ export async function getMapboxToken(): Promise<string> {
   const buildToken = (import.meta as any).env?.VITE_MAPBOX_PUBLIC_TOKEN as string | undefined;
   if (buildToken && buildToken.startsWith("pk.")) {
     cached = buildToken;
-    try { localStorage.setItem(STORAGE_KEY, buildToken); } catch {}
+    try { localStorage.setItem(STORAGE_KEY, buildToken); } catch { /* storage unavailable */ }
     return buildToken;
   }
 
@@ -34,7 +34,7 @@ export async function getMapboxToken(): Promise<string> {
       const token = (data as any)?.token as string | undefined;
       if (!error && token && token.startsWith("pk.")) {
         cached = token;
-        try { localStorage.setItem(STORAGE_KEY, token); } catch {}
+        try { localStorage.setItem(STORAGE_KEY, token); } catch { /* storage unavailable */ }
         return token;
       }
     } catch {

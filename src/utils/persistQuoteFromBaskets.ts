@@ -38,7 +38,7 @@ const isKeptLabour = (r: any) => r.item_type === LABOUR_ITEM_TYPE && isLabourIte
 
 /** Stamp over the quote's non-labour lines (labour excluded exactly as persistOnce does). */
 export async function fetchQuoteLineStamp(quoteId: string): Promise<QuoteLineStamp> {
-  const { data, error } = await (supabase.from("quote_items") as any)
+  const { data, error } = await supabase.from("quote_items")
     .select("id, updated_at, item_type, metadata, parent_item_id").eq("quote_id", quoteId);
   if (error) throw error;
   return stampFromRows(((data || []) as any[]).filter((r) => !isKeptLabour(r)));
@@ -47,7 +47,7 @@ export async function fetchQuoteLineStamp(quoteId: string): Promise<QuoteLineSta
 /** Stamp over exactly these row ids. */
 export async function fetchStampForIds(ids: string[]): Promise<QuoteLineStamp> {
   if (!ids.length) return { ids: new Set(), maxUpdatedAt: null };
-  const { data, error } = await (supabase.from("quote_items") as any).select("id, updated_at").in("id", ids);
+  const { data, error } = await supabase.from("quote_items").select("id, updated_at").in("id", ids);
   if (error) throw error;
   return { ...stampFromRows((data || []) as any[]), ids: new Set(ids) };
 }

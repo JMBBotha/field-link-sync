@@ -31,7 +31,7 @@ const SalesByProductReportPage = () => {
     queryKey: ["v_sales_by_product"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_sales_by_product" as any)
+        .from("v_sales_by_product")
         .select("*")
         .order("total_sales", { ascending: false });
       if (error) throw error;
@@ -43,7 +43,7 @@ const SalesByProductReportPage = () => {
     queryKey: ["v_sales_by_product_detail", expanded],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_sales_by_product_detail" as any)
+        .from("v_sales_by_product_detail")
         .select("*")
         .eq("product_description", expanded!)
         .order("issue_date", { ascending: false });

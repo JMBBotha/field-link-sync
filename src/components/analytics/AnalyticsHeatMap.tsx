@@ -99,7 +99,7 @@ const AnalyticsHeatMap = () => {
     map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
 
     return () => {
-      try { map.remove(); } catch {}
+      try { map.remove(); } catch { /* map already removed */ }
       mapRef.current = null;
     };
   }, [mapboxToken, locations]);

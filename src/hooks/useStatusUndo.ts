@@ -37,7 +37,7 @@ export function useStatusUndo() {
     const { error: upErr } = await (supabase.from(table) as any).update(buildRevertPatch(e)).eq("id", e.entity_id);
     if (upErr) return { result: "error", message: upErr.message };
     const log = buildRevertLog({ ...e, company_id: e.company_id ?? data.company_id }, userId);
-    if (log) await (supabase.from("status_change_log") as any).insert(log);
+    if (log) await supabase.from("status_change_log").insert(log);
     dropEntry(userId, e.id);
     ["jobs", "jobs-dispatch", "job-detail", "quotes", "quote-document", "dispatch-leads"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
     return { result: "undone" };

@@ -9,14 +9,14 @@ export default function SalespersonHistoryLine({ quoteId }: { quoteId: string | 
     enabled: !!quoteId,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data } = await (supabase.from("status_change_log") as any)
+      const { data } = await supabase.from("status_change_log")
         .select("old_status, new_status, changed_by, created_at")
         .eq("entity_type", "quote").eq("entity_id", quoteId).eq("field_name", "sales_engineer_id")
         .order("created_at", { ascending: true });
       const changes = salespersonHistory((data ?? []) as SalespersonLogRow[]);
       if (!changes.length) return "";
       const ids = [...new Set(changes.flatMap((c) => [c.from, c.to, c.by]).filter(Boolean))] as string[];
-      const { data: people } = await (supabase.from("profiles") as any).select("id, full_name").in("id", ids);
+      const { data: people } = await supabase.from("profiles").select("id, full_name").in("id", ids);
       const names: Record<string, string> = {};
       for (const p of (people ?? []) as { id: string; full_name: string | null }[]) names[p.id] = p.full_name || "Unknown";
       return salespersonHistoryText(changes, names);

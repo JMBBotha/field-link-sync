@@ -70,25 +70,25 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
     (async () => {
       try {
         const [qRes, iRes, aRes, cRes, dRes] = await Promise.all([
-          (supabase.from("quotes") as any)
+          supabase.from("quotes")
             .select(
               "id, company_id, quote_number, subtotal, vat_rate, vat_amount, total, notes, valid_until, created_at, customer_name, terms_text, discount_type, discount_value, payment_plan, remote_quote, remote_quote_source, location_id, lead_id, customers(name, first_name, last_name, company_name, primary_address_line1, primary_address_line2, city, postal_code, address, email, phone, vat_number), customer_locations!quotes_location_id_fkey(address), leads!quotes_lead_id_fkey(customer_address)",
             )
             .eq("id", quoteId)
             .maybeSingle(),
-          (supabase.from("quote_items") as any)
+          supabase.from("quote_items")
             .select(
               "id, item_name, description, quantity, unit_price, total_price, sort_order, product_id, area_id, item_type, item_number, is_bundle, parent_item_id, supplier_products(image_url, category, brand, btu_rating, capacity_btu, kw, ai_sales_description, product_code)",
             )
             .eq("quote_id", quoteId)
             .is("parent_item_id", null)
             .order("sort_order"),
-          (supabase.from("quote_areas") as any)
+          supabase.from("quote_areas")
             .select("id, name, sort_order")
             .eq("quote_id", quoteId)
             .order("sort_order", { nullsFirst: false })
             .order("created_at"),
-          (supabase.from("company_settings") as any)
+          supabase.from("company_settings")
             .select("company_name, physical_address, vat_number, banking_details, default_deposit_percentage, default_payment_terms_days")
             // Same row as invoices/statements: the newest settings row.
             .order("updated_at", { ascending: false, nullsFirst: false })
@@ -96,7 +96,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
             .limit(1)
             .maybeSingle(),
           // Deposit % must match the deposit invoice: latest settings row (same order as create_deposit_invoice_for_quote).
-          (supabase.from("company_settings") as any)
+          supabase.from("company_settings")
             .select("default_deposit_percentage")
             .order("updated_at", { ascending: false, nullsFirst: false })
             .order("id")
@@ -140,7 +140,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
         // Unit cards (after totals, before terms): per-quote toggle, approved content only; never blocks the PDF.
         let unitCards: UnitCard[] = [];
         try {
-          const { data: flag } = await (supabase.from("quotes") as any).select("show_unit_cards").eq("id", quoteId).maybeSingle();
+          const { data: flag } = await supabase.from("quotes").select("show_unit_cards").eq("id", quoteId).maybeSingle();
           if (flag?.show_unit_cards !== false) {
             const keys = [...new Set(lines.map((l: any) => unitLineModelKey(l)).filter(Boolean))] as string[];
             if (keys.length) {
@@ -156,7 +156,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
         let brochureCompany: BrochureCompany | null = null;
         if (unitCards.some((c) => c.media?.status === "approved") && (qRes.data as any)?.company_id) {
           try {
-            const { data: b } = await (supabase.rpc as any)("public_unit_brochure", { p_model: unitCards[0].modelKey, p_company: (qRes.data as any).company_id });
+            const { data: b } = await supabase.rpc("public_unit_brochure", { p_model: unitCards[0].modelKey, p_company: (qRes.data as any).company_id });
             brochureCompany = (b as any)?.company ?? null;
           } catch { /* brochure pages fall back to neutral branding */ }
         }

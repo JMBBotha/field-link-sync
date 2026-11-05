@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
+import { jsonObject, jsonString } from "@/lib/jsonValue";
 import logoLight from "@/assets/brand/logo-light.png";
 import logoWhite from "@/assets/brand/logo-white.png";
 import { brochureSpecRows, brochureDimensionRows, type BrochureCompany } from "@/lib/unitBrochure";
@@ -13,6 +15,39 @@ import type { ProductMedia } from "@/lib/unitCards";
  * Light/Bold per the company's document_style, no outside links, no prices, E&OE footer, printable to A4 PDF.
  */
 export interface BrochureData { state: "approved" | "not_approved" | "not_found"; model_code: string; brand?: string | null; media: ProductMedia | null; company: BrochureCompany | null }
+
+function brochureFromJson(value: Json | null, modelKey: string): BrochureData | null {
+  const row = jsonObject(value);
+  const state = row?.state;
+  if (!row || (state !== "approved" && state !== "not_approved" && state !== "not_found")) return null;
+  const mediaRow = jsonObject(row.media);
+  const companyRow = jsonObject(row.company);
+  const specs = jsonObject(mediaRow?.specs);
+  const media: ProductMedia | null = mediaRow && typeof mediaRow.model_code === "string"
+    ? {
+        model_key: jsonString(mediaRow.model_key) ?? modelKey,
+        model_code: mediaRow.model_code,
+        brand: jsonString(mediaRow.brand),
+        display_name: jsonString(mediaRow.display_name),
+        image_url: jsonString(mediaRow.image_url),
+        specs: specs ? Object.fromEntries(Object.entries(specs).filter((entry): entry is [string, string] => typeof entry[1] === "string")) : null,
+      }
+    : null;
+  const company: BrochureCompany | null = companyRow && typeof companyRow.company_id === "string"
+    ? {
+        company_id: companyRow.company_id,
+        name: jsonString(companyRow.name),
+        legal_name: jsonString(companyRow.legal_name),
+        logo_url: jsonString(companyRow.logo_url),
+        phone: jsonString(companyRow.phone),
+        email: jsonString(companyRow.email),
+        website: jsonString(companyRow.website),
+        whatsapp: jsonString(companyRow.whatsapp),
+        document_style: jsonString(companyRow.document_style),
+      }
+    : null;
+  return { state, model_code: jsonString(row.model_code) ?? modelKey.toUpperCase(), brand: jsonString(row.brand), media, company };
+}
 
 const MASSAIR_ID = "361bf031-9cdb-4d7f-9bde-9eb95fa4725e";
 
@@ -138,8 +173,8 @@ export default function UnitBrochurePage() {
   useEffect(() => {
     let off = false;
     (async () => {
-      const { data: d } = await (supabase.rpc as any)("public_unit_brochure", { p_model: modelKey, p_company: companyId });
-      if (!off) setData((d as BrochureData) || { state: "not_found", model_code: modelKey.toUpperCase(), media: null, company: null });
+      const { data: d } = await supabase.rpc("public_unit_brochure", { p_model: modelKey, p_company: companyId });
+      if (!off) setData(brochureFromJson(d, modelKey) || { state: "not_found", model_code: modelKey.toUpperCase(), media: null, company: null });
     })().catch(() => !off && setData({ state: "not_found", model_code: modelKey.toUpperCase(), media: null, company: null }));
     return () => { off = true; };
   }, [modelKey, companyId]);

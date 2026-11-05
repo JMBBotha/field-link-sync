@@ -75,9 +75,8 @@ const CommunicationTimeline = ({
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { waitForAuthSession } = await import("@/contexts/AuthContext");
+      const user = (await waitForAuthSession())?.user ?? null;
       if (!user) throw new Error("Not authenticated");
 
       const { error } = await supabase.from("communication_log").insert({

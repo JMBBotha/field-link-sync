@@ -521,10 +521,10 @@ export function matchTextRowsToProducts(
   const sortedPrices = [...priceItems].sort((a, b) => a.y - b.y);
   const priceRows: { items: ExtractedTextItem[] }[] = sortedPrices.map((p) => ({ items: [p] }));
   // Model code regex - broad enough for Samsung, Daikin, Midea
-  const modelRegex = /^[A-Za-z0-9\-\/]{5,}$/;
+  const modelRegex = /^[A-Za-z0-9\-/]{5,}$/;
   // STEP 3: For each price row, gather context and build a region
-  let regions: ExtractedProductRegion[] = [];
-  let skippedCount = { noPrice: 0, ghost: 0, outOfBounds: 0 };
+  const regions: ExtractedProductRegion[] = [];
+  const skippedCount = { noPrice: 0, ghost: 0, outOfBounds: 0 };
   const assignedCodes = new Set<string>();
   const allProductCodes = [...byCode.keys()];
   for (const pRow of priceRows) {
@@ -632,7 +632,7 @@ export function matchTextRowsToProducts(
         const codeMatch = contextItems
           .map((it) => it.text)
           .join(" ")
-          .match(/\b([A-Za-z]{2,}\d+[A-Za-z0-9\-]*)\b/);
+          .match(/\b([A-Za-z]{2,}\d+[A-Za-z0-9-]*)\b/);
         return codeMatch ? codeMatch[1] : rowText.trim().substring(0, 80) + `@${detectedPrice}`;
       })();
     const anchorHeight = rightmost.height;
