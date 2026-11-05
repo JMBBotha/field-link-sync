@@ -31,7 +31,7 @@ export default function ClientSectionNav({
             data-weight={chip.weight}
             data-money={chip.money ? "true" : undefined}
             onClick={() => onSelect(chip.key)}
-            className={clientTabChipClass(selected, chip)}
+            className={cn(clientTabChipClass(selected, chip), "touch-manipulation")}
           >
             <span>{chip.label}</span>
             {chip.count ? <span className="tabular-nums">{chip.count}</span> : null}
@@ -45,7 +45,7 @@ export default function ClientSectionNav({
             type="button"
             data-testid="client-more-tabs"
             data-weight="quiet"
-            className={cn(clientTabChipClass(!!moreLabel, { weight: "quiet" }), "inline-flex")}
+            className={cn(clientTabChipClass(!!moreLabel, { weight: "quiet" }), "inline-flex touch-manipulation")}
           >
             {moreLabel || "More"} <ChevronDown className="h-4 w-4" />
           </button>
