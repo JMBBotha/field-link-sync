@@ -2384,6 +2384,45 @@ export type Database = {
           },
         ]
       }
+      company_availability_defaults: {
+        Row: {
+          company_id: string
+          days: number[]
+          end_time: string
+          start_time: string
+          timezone: string
+        }
+        Insert: {
+          company_id: string
+          days?: number[]
+          end_time?: string
+          start_time?: string
+          timezone?: string
+        }
+        Update: {
+          company_id?: string
+          days?: number[]
+          end_time?: string
+          start_time?: string
+          timezone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_availability_defaults_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_availability_defaults_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       company_contracts: {
         Row: {
           accepted_at: string
@@ -7513,6 +7552,83 @@ export type Database = {
         }
         Relationships: []
       }
+      material_allowances: {
+        Row: {
+          active: boolean
+          company_id: string
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          item_label: string
+          job_type: string | null
+          product_id: string | null
+          qty: number
+          rate_note: string | null
+          stock_unit: string
+          unit_size: string | null
+        }
+        Insert: {
+          active?: boolean
+          company_id: string
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          item_label: string
+          job_type?: string | null
+          product_id?: string | null
+          qty?: number
+          rate_note?: string | null
+          stock_unit?: string
+          unit_size?: string | null
+        }
+        Update: {
+          active?: boolean
+          company_id?: string
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          item_label?: string
+          job_type?: string | null
+          product_id?: string | null
+          qty?: number
+          rate_note?: string | null
+          stock_unit?: string
+          unit_size?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_allowances_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_allowances_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "material_allowances_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "live_supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_allowances_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       next_step_snoozes: {
         Row: {
           cleared_at: string | null
@@ -12478,6 +12594,50 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_availability_schedules: {
+        Row: {
+          days: number[]
+          enabled: boolean
+          end_time: string
+          override_status: string | null
+          override_until: string | null
+          profile_id: string
+          start_time: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          days?: number[]
+          enabled?: boolean
+          end_time?: string
+          override_status?: string | null
+          override_until?: string | null
+          profile_id: string
+          start_time?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          days?: number[]
+          enabled?: boolean
+          end_time?: string
+          override_status?: string | null
+          override_until?: string | null
+          profile_id?: string
+          start_time?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_availability_schedules_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_blocked_time: {
         Row: {
           archived_at: string | null
@@ -12672,6 +12832,122 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_count_lines: {
+        Row: {
+          bucket: string
+          company_id: string
+          count_id: string
+          counted_qty: number
+          id: string
+          movement_id: string | null
+          reason: string | null
+          stock_item_id: string
+          system_qty: number
+        }
+        Insert: {
+          bucket: string
+          company_id: string
+          count_id: string
+          counted_qty: number
+          id?: string
+          movement_id?: string | null
+          reason?: string | null
+          stock_item_id: string
+          system_qty: number
+        }
+        Update: {
+          bucket?: string
+          company_id?: string
+          count_id?: string
+          counted_qty?: number
+          id?: string
+          movement_id?: string | null
+          reason?: string | null
+          stock_item_id?: string
+          system_qty?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_count_lines_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_count_lines_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "stock_count_lines_count_id_fkey"
+            columns: ["count_id"]
+            isOneToOne: false
+            referencedRelation: "stock_counts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_count_lines_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "cf_stock_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_counts: {
+        Row: {
+          company_id: string
+          counted_on: string
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          posted_at: string | null
+          posted_by: string | null
+          status: string
+        }
+        Insert: {
+          company_id: string
+          counted_on?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          posted_at?: string | null
+          posted_by?: string | null
+          status?: string
+        }
+        Update: {
+          company_id?: string
+          counted_on?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          posted_at?: string | null
+          posted_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_counts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_counts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       stock_documents: {
         Row: {
           file_name: string
@@ -12703,6 +12979,159 @@ export type Database = {
             columns: ["receipt_id"]
             isOneToOne: false
             referencedRelation: "stock_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_movements: {
+        Row: {
+          allowance_id: string | null
+          bucket: string
+          company_id: string
+          count_line_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          item_label: string
+          job_id: string | null
+          kind: string
+          product_id: string | null
+          qty: number
+          reason: string | null
+          serial_no: string | null
+          stock_item_id: string | null
+          supplier_document_id: string | null
+          supplier_document_line_id: string | null
+          transfer_id: string | null
+          unit_cost_excl: number | null
+          unit_id: string | null
+          value_adjust: number
+          vat_amount: number | null
+        }
+        Insert: {
+          allowance_id?: string | null
+          bucket: string
+          company_id: string
+          count_line_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_label: string
+          job_id?: string | null
+          kind: string
+          product_id?: string | null
+          qty: number
+          reason?: string | null
+          serial_no?: string | null
+          stock_item_id?: string | null
+          supplier_document_id?: string | null
+          supplier_document_line_id?: string | null
+          transfer_id?: string | null
+          unit_cost_excl?: number | null
+          unit_id?: string | null
+          value_adjust?: number
+          vat_amount?: number | null
+        }
+        Update: {
+          allowance_id?: string | null
+          bucket?: string
+          company_id?: string
+          count_line_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_label?: string
+          job_id?: string | null
+          kind?: string
+          product_id?: string | null
+          qty?: number
+          reason?: string | null
+          serial_no?: string | null
+          stock_item_id?: string | null
+          supplier_document_id?: string | null
+          supplier_document_line_id?: string | null
+          transfer_id?: string | null
+          unit_cost_excl?: number | null
+          unit_id?: string | null
+          value_adjust?: number
+          vat_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_allowance_fkey"
+            columns: ["allowance_id"]
+            isOneToOne: false
+            referencedRelation: "material_allowances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_count_line_fkey"
+            columns: ["count_line_id"]
+            isOneToOne: false
+            referencedRelation: "stock_count_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "live_supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "cf_stock_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_supplier_document_id_fkey"
+            columns: ["supplier_document_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_job_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_supplier_document_line_id_fkey"
+            columns: ["supplier_document_line_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_job_document_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "stock_units"
             referencedColumns: ["id"]
           },
         ]
@@ -12741,6 +13170,117 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_units: {
+        Row: {
+          company_id: string
+          created_at: string
+          half: string | null
+          id: string
+          origin: string
+          product_id: string | null
+          received_job_id: string | null
+          returned_at: string | null
+          serial_no: string | null
+          stock_item_id: string
+          supplier_code: string | null
+          supplier_document_id: string | null
+          supplier_document_line_id: string | null
+          unit_cost_excl: number | null
+          vat_amount: number | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          half?: string | null
+          id?: string
+          origin: string
+          product_id?: string | null
+          received_job_id?: string | null
+          returned_at?: string | null
+          serial_no?: string | null
+          stock_item_id: string
+          supplier_code?: string | null
+          supplier_document_id?: string | null
+          supplier_document_line_id?: string | null
+          unit_cost_excl?: number | null
+          vat_amount?: number | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          half?: string | null
+          id?: string
+          origin?: string
+          product_id?: string | null
+          received_job_id?: string | null
+          returned_at?: string | null
+          serial_no?: string | null
+          stock_item_id?: string
+          supplier_code?: string | null
+          supplier_document_id?: string | null
+          supplier_document_line_id?: string | null
+          unit_cost_excl?: number | null
+          vat_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_units_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_units_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "stock_units_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "live_supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_units_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_units_received_job_id_fkey"
+            columns: ["received_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_units_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "cf_stock_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_units_supplier_document_id_fkey"
+            columns: ["supplier_document_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_job_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_units_supplier_document_line_id_fkey"
+            columns: ["supplier_document_line_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_job_document_lines"
             referencedColumns: ["id"]
           },
         ]
@@ -12987,6 +13527,68 @@ export type Database = {
           },
         ]
       }
+      supplier_doc_bank_links: {
+        Row: {
+          amount_excl: number | null
+          bank_line_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          supplier_document_id: string
+        }
+        Insert: {
+          amount_excl?: number | null
+          bank_line_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          supplier_document_id: string
+        }
+        Update: {
+          amount_excl?: number | null
+          bank_line_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          supplier_document_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_doc_bank_links_bank_line_fkey"
+            columns: ["bank_line_id"]
+            isOneToOne: false
+            referencedRelation: "bank_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_doc_bank_links_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_doc_bank_links_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "supplier_doc_bank_links_supplier_document_id_fkey"
+            columns: ["supplier_document_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_job_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_documents: {
         Row: {
           created_at: string
@@ -13086,19 +13688,25 @@ export type Database = {
       supplier_job_document_lines: {
         Row: {
           company_id: string
+          cost_missing: boolean
           cost_source: string | null
           created_at: string
+          credits_line_id: string | null
+          delivered_with_doc: boolean
           description: string | null
           document_id: string
           id: string
           job_id: string | null
           line_no: number | null
+          matched_line_id: string | null
           model_number: string | null
+          posts_qty: boolean | null
           price_flag: string | null
           price_note: string | null
           product_id: string | null
           qty: number | null
           receive_action: string | null
+          receive_bucket: string | null
           receive_job_id: string | null
           received_at: string | null
           received_by: string | null
@@ -13108,22 +13716,30 @@ export type Database = {
           stock_qty: number | null
           unit_cost_excl: number | null
           unit_detail_id: string | null
+          vat_amount: number | null
+          vat_rate: number | null
         }
         Insert: {
           company_id: string
+          cost_missing?: boolean
           cost_source?: string | null
           created_at?: string
+          credits_line_id?: string | null
+          delivered_with_doc?: boolean
           description?: string | null
           document_id: string
           id?: string
           job_id?: string | null
           line_no?: number | null
+          matched_line_id?: string | null
           model_number?: string | null
+          posts_qty?: boolean | null
           price_flag?: string | null
           price_note?: string | null
           product_id?: string | null
           qty?: number | null
           receive_action?: string | null
+          receive_bucket?: string | null
           receive_job_id?: string | null
           received_at?: string | null
           received_by?: string | null
@@ -13133,22 +13749,30 @@ export type Database = {
           stock_qty?: number | null
           unit_cost_excl?: number | null
           unit_detail_id?: string | null
+          vat_amount?: number | null
+          vat_rate?: number | null
         }
         Update: {
           company_id?: string
+          cost_missing?: boolean
           cost_source?: string | null
           created_at?: string
+          credits_line_id?: string | null
+          delivered_with_doc?: boolean
           description?: string | null
           document_id?: string
           id?: string
           job_id?: string | null
           line_no?: number | null
+          matched_line_id?: string | null
           model_number?: string | null
+          posts_qty?: boolean | null
           price_flag?: string | null
           price_note?: string | null
           product_id?: string | null
           qty?: number | null
           receive_action?: string | null
+          receive_bucket?: string | null
           receive_job_id?: string | null
           received_at?: string | null
           received_by?: string | null
@@ -13158,8 +13782,17 @@ export type Database = {
           stock_qty?: number | null
           unit_cost_excl?: number | null
           unit_detail_id?: string | null
+          vat_amount?: number | null
+          vat_rate?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "supplier_job_document_lines_credits_line_id_fkey"
+            columns: ["credits_line_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_job_document_lines"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "supplier_job_document_lines_document_id_fkey"
             columns: ["document_id"]
@@ -13172,6 +13805,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_job_document_lines_matched_line_id_fkey"
+            columns: ["matched_line_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_job_document_lines"
             referencedColumns: ["id"]
           },
           {
@@ -15193,6 +15833,37 @@ export type Database = {
         }
         Relationships: []
       }
+      job_stock_cost: {
+        Row: {
+          company_id: string | null
+          job_id: string | null
+          material_cost_excl: number | null
+          unit_cost_excl: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_invoice_status: {
         Row: {
           assigned_agent_id: string | null
@@ -15510,6 +16181,39 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_value_by_bucket: {
+        Row: {
+          bucket: string | null
+          company_id: string | null
+          item_label: string | null
+          qty: number | null
+          stock_item_id: string | null
+          value_excl: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "cf_stock_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tool_type_stats: {
         Row: {
           avg_lifespan_days: number | null
@@ -15646,6 +16350,7 @@ export type Database = {
         Returns: boolean
       }
       _apply_commission_snapshot: { Args: { e: Json }; Returns: Json }
+      _availability_staff: { Args: { p_uid: string }; Returns: boolean }
       _backfill_ctx: {
         Args: { p_job: string; p_tech: string }
         Returns: Record<string, unknown>
@@ -16191,6 +16896,16 @@ export type Database = {
         }
         Returns: string
       }
+      _sjd_match_line: {
+        Args: {
+          p_company: string
+          p_doc_type: string
+          p_explicit: string
+          p_model: string
+          p_po: string
+        }
+        Returns: string
+      }
       _slot_fits: {
         Args: {
           p_b: Json
@@ -16315,6 +17030,7 @@ export type Database = {
           reason: string
         }[]
       }
+      _stock_accounts_ok: { Args: { p_company: string }; Returns: boolean }
       _stock_item_for: {
         Args: {
           p_company: string
@@ -16348,6 +17064,56 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _stock_model_key: { Args: { p: string }; Returns: string }
+      _stock_move:
+        | {
+            Args: {
+              p_allowance: string
+              p_bucket: string
+              p_company: string
+              p_cost: number
+              p_count_line: string
+              p_doc: string
+              p_item: string
+              p_job: string
+              p_kind: string
+              p_label: string
+              p_line: string
+              p_product: string
+              p_qty: number
+              p_reason: string
+              p_serial: string
+              p_transfer: string
+              p_unit: string
+              p_vat: number
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_allowance: string
+              p_bucket: string
+              p_company: string
+              p_cost: number
+              p_count_line: string
+              p_doc: string
+              p_item: string
+              p_job: string
+              p_kind: string
+              p_label: string
+              p_line: string
+              p_product: string
+              p_qty: number
+              p_reason: string
+              p_serial: string
+              p_transfer: string
+              p_unit: string
+              p_value_adjust: number
+              p_vat: number
+            }
+            Returns: string
+          }
+      _stock_reject_bot: { Args: never; Returns: undefined }
       _tech_offer_fit: {
         Args: { p_lead: string; p_profile: string }
         Returns: {
@@ -16566,6 +17332,7 @@ export type Database = {
         }[]
       }
       agreement_frequency_label: { Args: { _f: string }; Returns: string }
+      apply_my_availability_schedule: { Args: never; Returns: string }
       apply_team_invite: {
         Args: { p_email: string; p_user: string }
         Returns: string
@@ -16621,6 +17388,26 @@ export type Database = {
           p_tech_id: string
         }
         Returns: Json
+      }
+      availability_in_window: {
+        Args: {
+          p_at?: string
+          p_days: number[]
+          p_end: string
+          p_start: string
+          p_tz: string
+        }
+        Returns: boolean
+      }
+      availability_next_boundary: {
+        Args: {
+          p_at?: string
+          p_days: number[]
+          p_end: string
+          p_start: string
+          p_tz: string
+        }
+        Returns: string
       }
       backfill_leads_to_customers: { Args: never; Returns: Json }
       bank_match_suggestions: { Args: { p_line: string }; Returns: Json }
@@ -16995,6 +17782,7 @@ export type Database = {
       earnings_sales_rule: { Args: { p_company_id: string }; Returns: Json }
       earnings_tech_rule: { Args: { p_company_id: string }; Returns: Json }
       enablelongtransactions: { Args: never; Returns: string }
+      ensure_my_availability_schedule: { Args: never; Returns: Json }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       expire_stale_quote_email_sends: {
         Args: { p_quote_id?: string }
@@ -17922,6 +18710,12 @@ export type Database = {
         Args: { p_force?: boolean; p_job_id: string; p_reason?: string }
         Returns: Json
       }
+      job_apply_material_allowances: { Args: { p_job: string }; Returns: Json }
+      job_book_out_units: { Args: { p_job: string }; Returns: Json }
+      job_confirm_unit_serial: {
+        Args: { p_serial: string; p_unit: string }
+        Returns: Json
+      }
       job_day_en_route_plan: {
         Args: { p_date: string; p_job_id: string }
         Returns: Json
@@ -17955,6 +18749,7 @@ export type Database = {
         }[]
       }
       job_tech_location: { Args: { p_job_id: string }; Returns: Json }
+      job_units_for_tech: { Args: { p_job: string }; Returns: Json }
       job_visits: { Args: { p_job: string }; Returns: Json }
       job_watch_cfg: {
         Args: { p_company_id: string }
@@ -18111,7 +18906,16 @@ export type Database = {
         Returns: Json
       }
       mark_overdue_maintenance: { Args: never; Returns: number }
+      material_allowance_seed_stubs: {
+        Args: { p_company: string }
+        Returns: number
+      }
+      material_avg_cost: {
+        Args: { p_as_of?: string; p_item: string }
+        Returns: number
+      }
       me_needs_password: { Args: never; Returns: boolean }
+      my_availability_plan: { Args: never; Returns: Json }
       my_company_contract_status: {
         Args: { p_company_id: string }
         Returns: {
@@ -18513,6 +19317,10 @@ export type Database = {
         }
         Returns: string
       }
+      record_my_location_ping: {
+        Args: { p_lat: number; p_lng: number }
+        Returns: Json
+      }
       relock_quote: { Args: { p_quote_id: string }; Returns: boolean }
       rep_can_see_customer: {
         Args: { _customer: string; _uid: string }
@@ -18708,6 +19516,16 @@ export type Database = {
       }
       save_lead_job_info: {
         Args: { p_job_info: string; p_job_types: string[]; p_lead_id: string }
+        Returns: Json
+      }
+      save_my_availability_schedule: {
+        Args: {
+          p_days: number[]
+          p_enabled?: boolean
+          p_end: string
+          p_start: string
+          p_timezone?: string
+        }
         Returns: Json
       }
       schedule_in_user_company: {
@@ -19664,6 +20482,54 @@ export type Database = {
           is_working: boolean
           source: string
           start_time: string
+        }[]
+      }
+      stock_assign_unit: {
+        Args: { p_job: string; p_unit: string }
+        Returns: Json
+      }
+      stock_awaiting: { Args: { p_company: string }; Returns: Json }
+      stock_count_post: { Args: { p_count: string }; Returns: Json }
+      stock_count_save: {
+        Args: { p_company: string; p_counted_on: string; p_lines: Json }
+        Returns: string
+      }
+      stock_general_units: { Args: { p_company: string }; Returns: Json }
+      stock_on_hand: { Args: { p_company: string }; Returns: Json }
+      stock_post_adjust: {
+        Args: {
+          p_bucket: string
+          p_company: string
+          p_count_line?: string
+          p_qty: number
+          p_reason: string
+          p_stock_item: string
+        }
+        Returns: string
+      }
+      stock_qty_counts:
+        | {
+            Args: { p_doc: string; p_kind: string; p_line: string }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              p_as_of: string
+              p_doc: string
+              p_kind: string
+              p_line: string
+            }
+            Returns: boolean
+          }
+      stock_unit_size_key: { Args: { p_code: string }; Returns: string }
+      stock_value_as_of: {
+        Args: { p_as_of?: string; p_company: string }
+        Returns: {
+          bucket: string
+          item_label: string
+          qty: number
+          stock_item_id: string
+          value_excl: number
         }[]
       }
       submit_client_revision: {

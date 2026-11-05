@@ -85,7 +85,7 @@ const sb = supabase as unknown as {
   from: (table: string) => unknown;
   auth: {
     getSession: () => Promise<{ data: { session: typeof session }; error: null }>;
-    onAuthStateChange: (cb: (event: string, session: typeof session) => void) => { data: { subscription: { unsubscribe: () => void } } };
+    onAuthStateChange: (cb: (event: string, s: typeof session) => void) => { data: { subscription: { unsubscribe: () => void } } };
   };
   functions: { invoke: (name: string) => Promise<{ data: null; error: { message: string } }> };
 };
