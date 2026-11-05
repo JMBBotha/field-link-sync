@@ -112,16 +112,19 @@ export function lineVat(unitExcl: number | null, qty: number, rate = 15) {
   return { vat_rate: rate, vat_amount, line_excl };
 }
 
-/** 9k–36k from a model code. Same rules as stock_unit_size_key in SQL. */
+/** 9k–36k from a model code. Same rules as stock_unit_size_key in SQL. Metres, kg and amps are not BTU. */
 export function stockUnitSizeKey(code: string | null | undefined): string | null {
-  const c = (code ?? "").toUpperCase();
-  if (!c.trim()) return null;
-  const hit = (n: string) => new RegExp(`(^|[^0-9])${n}([^0-9]|$)`).test(c);
-  if (hit("36000") || hit("36")) return "36000";
-  if (hit("24000") || hit("24")) return "24000";
-  if (hit("18000") || hit("18")) return "18000";
-  if (hit("12000") || hit("12")) return "12000";
-  if (hit("9000") || hit("9")) return "9000";
+  const c = (code ?? "").toUpperCase().replace(/\s+/g, "");
+  if (!c) return null;
+  const m = c.match(/(?:^|[^0-9])(36000|24000|18000|12000|9000|36|24|18|12|9)([^0-9]{1,3}|$)/);
+  if (!m) return null;
+  if (/^(MM|MTR|ML|KG|M|G|W|A)/.test(m[2] ?? "")) return null;
+  const n = m[1];
+  if (n === "36" || n === "36000") return "36000";
+  if (n === "24" || n === "24000") return "24000";
+  if (n === "18" || n === "18000") return "18000";
+  if (n === "12" || n === "12000") return "12000";
+  if (n === "9" || n === "9000") return "9000";
   return null;
 }
 
@@ -142,11 +145,13 @@ export function withBucket<T extends PreviewRow>(row: T): T {
 
 /**
  * Build the preview for one document.
- * - Invoice lines add stock at invoice price. Delivery notes record the catalogue cost but never add stock.
+ * - Quantity posts on the first of the delivery note or the invoice. The matching document changes cost only.
+ * - An invoice before the goods arrive does not count as on-hand stock. A credit note reverses qty and cost.
  * - An invoice line inherits reserve/installed + job from the earlier delivery note line for the same product (same PO).
  */
 export function buildPreview(docType: DocType, lines: ExtractedLine[], products: Product[], earlier: EarlierLine[] = [], defaultJobId: string | null = null, aliases: CodeAlias[] = []): PreviewRow[] {
   const isInvoice = docType === "supplier_invoice";
+  const isCredit = docType === "credit_note";
   // Indoor+outdoor halves that match one catalogue pair row (stockKey differs, product same).
   const halves = new Map<string, Set<string>>();
   for (const l of lines) { const m = matchProduct(l.model_number, products, aliases).product; if (m) { const k = halves.get(m.id) ?? new Set(); k.add(stockKey(l.model_number)); halves.set(m.id, k); } }
@@ -171,8 +176,9 @@ export function buildPreview(docType: DocType, lines: ExtractedLine[], products:
     else if (match.how === "normalised") notes.push(`Matched ${line.model_number} → ${p.product_code}`);
     else if (match.how === "alias") notes.push(`Code alias (check): ${line.model_number} → ${p.product_code}. Supplier code differs from the catalogue`);
     let unit_cost_pack: number | null = null; let cost_source: PreviewRow["cost_source"] = "none";
-    if (isInvoice && line.unit_price_excl != null) { unit_cost_pack = line.unit_price_excl; cost_source = "invoice"; }
-    else if (p?.cost_price != null) { unit_cost_pack = Number(p.cost_price) / (p && pairSum.has(p.id) ? 2 : 1); cost_source = "catalogue"; if (p && pairSum.has(p.id)) notes.push("Pair price split 50/50 between indoor and outdoor"); if (!isInvoice || line.unit_price_excl == null) notes.push("No price on document: catalogue cost used"); }
+    if ((isInvoice || isCredit) && line.unit_price_excl != null) { unit_cost_pack = line.unit_price_excl; cost_source = "invoice"; }
+    else if (p?.cost_price != null) { unit_cost_pack = Number(p.cost_price) / (p && pairSum.has(p.id) ? 2 : 1); cost_source = "catalogue"; if (p && pairSum.has(p.id)) notes.push("Pair price split 50/50 between indoor and outdoor"); if (line.unit_price_excl == null) notes.push("No price on document: catalogue cost used"); }
+    if (unit_cost_pack == null && p) notes.push("No cost: flagged, not treated as zero");
     const stock_qty = map ? toStockQty(line.qty, map) : line.qty;
     const cost_per_stock_unit = unit_cost_pack != null && map ? costPerStockUnit(unit_cost_pack, map) : unit_cost_pack;
     const expected = prev?.unit_cost_excl ?? (p?.cost_price != null ? Number(p.cost_price) : null);
@@ -189,12 +195,14 @@ export function buildPreview(docType: DocType, lines: ExtractedLine[], products:
       job_id = null;
       notes.push("General stock: not on a job until it is assigned.");
     } else if (bucket === "job_unit" && action === "installed") notes.push("On site for this job");
-    if (!isInvoice && action === "stock") notes.push("Delivery note: stock is added when the invoice is loaded");
+    if (isCredit) notes.push("Credit note reverses quantity and cost");
+    else if (!isInvoice) notes.push("Quantity is received on this delivery note when it is first. A later invoice changes the cost only.");
+    else notes.push("If the delivery note is already in, this invoice changes the cost only.");
     const vat = lineVat(unit_cost_pack, line.qty);
     const half = unitHalf(line.model_number, p);
     return { stock_key: stockKey(line.model_number) || (line.description ?? "").slice(0, 60).toUpperCase(), line, match, map, action, job_id, bucket, vat_rate: vat.vat_rate, vat_amount: vat.vat_amount,
       unit_cost_pack, cost_source, stock_qty, cost_per_stock_unit,
-      adds_stock: isInvoice && bucket != null && action !== "skip" && action !== "installed", price, notes, half };
+      adds_stock: !isCredit && bucket != null && action !== "skip" && action !== "installed", price, notes, half };
   });
 }
 

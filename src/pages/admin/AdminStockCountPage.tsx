@@ -49,6 +49,15 @@ export default function AdminStockCountPage() {
   const [reason, setReason] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [assignJob, setAssignJob] = useState<Record<string, string>>({});
+  const awaiting = useQuery({
+    queryKey: ["stock-awaiting", companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data, error } = await sb.rpc("stock_awaiting", { p_company: companyId });
+      if (error) return [];
+      return (data ?? []) as { item_label: string; qty: number; doc_number: string | null }[];
+    },
+  });
 
   const key = (r: HandRow) => `${r.bucket}:${r.stock_item_id}`;
   const post = async () => {
@@ -89,7 +98,13 @@ export default function AdminStockCountPage() {
         <h1 className="text-xl font-semibold">Stock count</h1>
         <Button size="sm" variant="outline" onClick={seed}>Add allowance stubs</Button>
       </div>
-      <p className="text-xs text-muted-foreground">System quantity comes from the movement ledger. Posting writes one adjustment per line that differs, with a reason. Past movements are not edited. Supplier costs stay on this admin screen.</p>
+      <p className="text-xs text-muted-foreground">System quantity is what is actually here. Invoiced goods that have not been delivered stay off this count. Posting writes one adjustment per line that differs, with a reason. Past movements are not edited.</p>
+      {(awaiting.data ?? []).length > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm">
+          <div className="font-medium">Awaiting delivery (not in the count)</div>
+          {(awaiting.data ?? []).map((a, i) => <div key={i} className="text-xs">{a.item_label} · {a.qty}{a.doc_number ? ` · ${a.doc_number}` : ""}</div>)}
+        </div>
+      )}
       {hand.isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : hand.error ? <p className="text-sm text-muted-foreground">Stock ledger is not available yet.</p> : !(hand.data ?? []).length ? <p className="text-sm text-muted-foreground">No stock movements yet.</p> : (
         <div className="space-y-2">
           {(hand.data ?? []).map((r) => (

@@ -10,7 +10,12 @@ describe("three buckets", () => {
     expect(stockUnitSizeKey("FCMI-24-P")).toBe("24000");
     expect(stockUnitSizeKey("FCMI24X")).toBe("24000");
     expect(stockUnitSizeKey("AR12")).toBe("12000");
+    expect(stockUnitSizeKey("AR40H12C1AMN")).toBe("12000");
     expect(stockUnitSizeKey("24000")).toBe("24000");
+    expect(stockUnitSizeKey("24K")).toBe("24000");
+    expect(stockUnitSizeKey("12M")).toBeNull();
+    expect(stockUnitSizeKey("12KG")).toBeNull();
+    expect(stockUnitSizeKey("15MTR")).toBeNull();
     expect(stockUnitSizeKey("FCMI-124")).toBeNull();
     expect(stockUnitSizeKey("")).toBeNull();
   });

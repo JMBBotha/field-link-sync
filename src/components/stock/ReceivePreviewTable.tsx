@@ -49,7 +49,7 @@ export default function ReceivePreviewTable({ rows, jobs, isInvoice, onChange }:
           </div>
         );
       })}
-      <p className="text-xs text-muted-foreground">{isInvoice ? "Confirming adds stock at the invoice price (excl VAT). Job-reserved units are booked to that job. General stock stays unassigned. Materials go to the pool." : "Delivery note: nothing is added to stock. Job-reserved units get a Projects line; stock arrives with the invoice."}</p>
+      <p className="text-xs text-muted-foreground">Quantity posts once, on whichever of the delivery note or the invoice is confirmed first. The matching document changes the cost only. An invoice for goods that are not here yet stays off the stock count until the delivery note is linked. A credit note reverses quantity and cost.</p>
     </div>
   );
 }

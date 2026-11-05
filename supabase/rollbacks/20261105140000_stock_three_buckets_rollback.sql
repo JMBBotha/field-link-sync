@@ -253,6 +253,12 @@ DROP FUNCTION IF EXISTS public.job_apply_material_allowances(uuid);
 DROP FUNCTION IF EXISTS public.stock_assign_unit(uuid, uuid);
 DROP FUNCTION IF EXISTS public.material_avg_cost(uuid, timestamptz);
 DROP FUNCTION IF EXISTS public.stock_unit_size_key(text);
+DROP FUNCTION IF EXISTS public.job_book_out_units(uuid);
+DROP FUNCTION IF EXISTS public.stock_awaiting(uuid);
+DROP FUNCTION IF EXISTS public._sjd_match_line(uuid, text, text, text, uuid);
+DROP FUNCTION IF EXISTS public.stock_qty_counts(text, uuid, uuid);
+DROP FUNCTION IF EXISTS public._stock_model_key(text);
+DROP FUNCTION IF EXISTS public._stock_move(uuid, text, text, uuid, uuid, text, numeric, numeric, numeric, uuid, uuid, uuid, text, uuid, text, uuid, uuid, uuid, numeric);
 DROP FUNCTION IF EXISTS public._stock_move(uuid, text, text, uuid, uuid, text, numeric, numeric, numeric, uuid, uuid, uuid, text, uuid, text, uuid, uuid, uuid);
 DROP FUNCTION IF EXISTS public._stock_reject_bot();
 DROP FUNCTION IF EXISTS public._stock_accounts_ok(uuid);
@@ -265,7 +271,14 @@ DROP TABLE IF EXISTS public.stock_units;
 DROP TABLE IF EXISTS public.supplier_doc_bank_links;
 
 ALTER TABLE public.supplier_job_document_lines DROP CONSTRAINT IF EXISTS supplier_job_document_lines_receive_bucket_chk;
+ALTER TABLE public.supplier_job_document_lines DROP CONSTRAINT IF EXISTS sjdl_one_match;
+DROP INDEX IF EXISTS public.sjdl_one_match;
 ALTER TABLE public.supplier_job_document_lines
+  DROP COLUMN IF EXISTS cost_missing,
+  DROP COLUMN IF EXISTS delivered_with_doc,
+  DROP COLUMN IF EXISTS posts_qty,
+  DROP COLUMN IF EXISTS credits_line_id,
+  DROP COLUMN IF EXISTS matched_line_id,
   DROP COLUMN IF EXISTS receive_bucket,
   DROP COLUMN IF EXISTS vat_amount,
   DROP COLUMN IF EXISTS vat_rate;

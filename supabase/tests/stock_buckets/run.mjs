@@ -24,6 +24,7 @@ await db.exec(ch.slice(ch.indexOf("CREATE OR REPLACE FUNCTION public.cf_allocate
 await db.exec(fs.readFileSync(path.join(mig, "20261102210000_stock_receive.sql"), "utf8"));
 await db.exec(fs.readFileSync(path.join(mig, "20261103080000_stock_pair_reserve_cost.sql"), "utf8"));
 await db.exec(fs.readFileSync(path.join(mig, "20261105140000_stock_three_buckets.sql"), "utf8"));
+await db.exec(fs.readFileSync(path.join(mig, "20261105150000_stock_doc_match.sql"), "utf8"));
 
 const co = "00000000-0000-0000-0000-0000000000c1";
 const job = "00000000-0000-0000-0000-0000000000b1";
@@ -54,20 +55,23 @@ INSERT INTO supplier_job_document_lines(id,document_id,company_id,line_no,descri
 `);
 
 const dn = await one(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd01','[{"line_id":"00000000-0000-0000-0000-0000000000a1","action":"reserve","job_id":"${job}","product_id":"${prod}","model_code":"FCMI24","qty_packs":1,"unit_cost_pack":10434.09,"cost_source":"catalogue","bucket":"job_unit","half":"indoor"}]') AS r`);
-if (Number(dn.r.reserved) !== 1) fail("delivery note should reserve without stock, got " + JSON.stringify(dn));
+if (Number(dn.r.reserved) !== 1 || Number(dn.r.stocked) !== 1) fail("delivery note should post quantity and reserve once, got " + JSON.stringify(dn));
 const movesAfterDn = await one(`SELECT count(*)::int n FROM stock_movements`);
-if (movesAfterDn.n !== 0) fail("delivery note must not write a movement");
+if (movesAfterDn.n !== 1) fail("delivery note must post the quantity, got " + movesAfterDn.n);
 
 const inv = await one(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd02','[
   {"line_id":"00000000-0000-0000-0000-0000000000a2","action":"reserve","job_id":"${job}","product_id":"${prod}","model_code":"FCMI24","item":"Test 24K","qty_packs":1,"unit_cost_pack":11000,"cost_source":"invoice","bucket":"job_unit","half":"indoor","vat_rate":15},
-  {"line_id":"00000000-0000-0000-0000-0000000000a3","action":"stock","product_id":"${gas}","model_code":"G005","item":"R410a","stock_unit":"kg","pack_size":11.3,"qty_packs":2,"unit_cost_pack":2260,"cost_source":"invoice","bucket":"material_pool","vat_rate":15}
+  {"line_id":"00000000-0000-0000-0000-0000000000a3","action":"stock","product_id":"${gas}","model_code":"G005","item":"R410a","stock_unit":"kg","pack_size":11.3,"qty_packs":2,"unit_cost_pack":2260,"cost_source":"invoice","bucket":"material_pool","vat_rate":15,"delivered":true}
 ]') AS r`);
-if (Number(inv.r.stocked) < 1) fail("invoice should add stock " + JSON.stringify(inv));
+if (Number(inv.r.cost_only) !== 1) fail("invoice matching the delivery note must not post quantity again " + JSON.stringify(inv));
+if (Number(inv.r.reserved) !== 0) fail("invoice must not reserve again " + JSON.stringify(inv));
+const reserves = await one(`SELECT count(*)::int n FROM cf_commitments WHERE job_id='${job}'`);
+if (reserves.n !== 1) fail("job should have one reservation, got " + reserves.n);
 
 const buckets = await q(`SELECT bucket, kind, qty, unit_cost_excl FROM stock_movements ORDER BY bucket, kind`);
 const jobRecv = buckets.filter((b) => b.bucket === "job_unit" && b.kind === "receive");
 const pool = buckets.filter((b) => b.bucket === "material_pool" && b.kind === "receive");
-if (jobRecv.length !== 1 || Number(jobRecv[0].unit_cost_excl) !== 11000) fail("job unit must keep actual cost 11000 " + JSON.stringify(jobRecv));
+if (jobRecv.length !== 1 || Number(jobRecv[0].qty) !== 1 || Number(jobRecv[0].unit_cost_excl) !== 10434.09) fail("job unit quantity stays the delivery receipt " + JSON.stringify(jobRecv));
 if (pool.length !== 1 || Number(pool[0].qty) !== 22.6) fail("gas must land in the materials pool " + JSON.stringify(pool));
 const allocOnJobUnit = await one(`SELECT count(*)::int n FROM stock_movements WHERE unit_id IN (SELECT id FROM stock_units WHERE origin='job_received') AND kind='allocate'`);
 if (allocOnJobUnit.n !== 0) fail("job-received unit must not also be allocated");
@@ -78,7 +82,7 @@ if (Number(vat.vat_amount) !== 678) fail("gas VAT should be 678, got " + vat.vat
 const again = await one(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd02','[{"line_id":"00000000-0000-0000-0000-0000000000a3","action":"stock","pack_size":11.3,"qty_packs":2}]') AS r`);
 if (Number(again.r.already_received) < 1) fail("second confirm must be idempotent");
 const moveCount = await one(`SELECT count(*)::int n FROM stock_movements`);
-if (moveCount.n !== 2) fail("idempotent confirm must not add movements, have " + moveCount.n);
+if (moveCount.n !== 3) fail("idempotent confirm must not add movements, have " + moveCount.n);
 
 let blocked = false;
 try {
@@ -87,7 +91,7 @@ try {
 } catch (e) { blocked = /cannot also be moved/.test(e.message); }
 if (!blocked) fail("assigning a job-received unit must fail");
 
-await db.exec(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd04','[{"line_id":"00000000-0000-0000-0000-0000000000a6","action":"stock","product_id":"${prod}","model_code":"FCMI24","item":"Test 24K","qty_packs":1,"unit_cost_pack":9000,"cost_source":"invoice","bucket":"general_unit","half":"indoor"}]')`);
+await db.exec(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd04','[{"line_id":"00000000-0000-0000-0000-0000000000a6","action":"stock","product_id":"${prod}","model_code":"FCMI24","item":"Test 24K","qty_packs":1,"unit_cost_pack":9000,"cost_source":"invoice","bucket":"general_unit","half":"indoor","delivered":true}]')`);
 const gen = await one(`SELECT id FROM stock_units WHERE origin='general_stock' LIMIT 1`);
 await db.query(`SELECT stock_assign_unit('${gen.id}','00000000-0000-0000-0000-0000000000b2')`);
 const legs = await q(`SELECT bucket, qty FROM stock_movements WHERE unit_id='${gen.id}' AND kind='allocate' ORDER BY qty`);
@@ -120,11 +124,69 @@ const post = await one(`SELECT stock_count_post('${countId.id}') AS r`);
 if (Number(post.r.posted) !== 1) fail("count should post one adjust " + JSON.stringify(post));
 const post2 = await one(`SELECT stock_count_post('${countId.id}') AS r`);
 if (post2.r.already !== true) fail("second post must not write another adjust");
-const adjusts = await one(`SELECT count(*)::int n FROM stock_movements WHERE kind='adjust'`);
-if (adjusts.n !== 1) fail("expected one adjust, got " + adjusts.n);
+const countAdjusts = await one(`SELECT count(*)::int n FROM stock_movements WHERE kind='adjust' AND count_line_id IS NOT NULL`);
+if (countAdjusts.n !== 1) fail("monthly count should post one adjust, got " + countAdjusts.n);
 let frozen = false;
 try { await db.query(`UPDATE stock_movements SET qty = 0 WHERE kind='adjust'`); } catch (e) { frozen = /append-only/.test(e.message); }
 if (!frozen) fail("movements must reject updates");
+
+// Delivered first, invoiced second: quantity once, cost moves to the invoice price.
+await db.exec(`
+INSERT INTO supplier_products(id,product_code,name,cost_price,product_type) VALUES ('00000000-0000-0000-0000-000000000f03','COPPER-TEST','Copper test',10,'consumable');
+INSERT INTO supplier_job_documents(id,company_id,doc_type,doc_number,supplier_name,po_number) VALUES
+ ('00000000-0000-0000-0000-00000000dd10','${co}','delivery_note','DN-C','Test Supplier','PO-C'),
+ ('00000000-0000-0000-0000-00000000dd11','${co}','supplier_invoice','INV-C','Test Supplier','PO-C'),
+ ('00000000-0000-0000-0000-00000000dd12','${co}','supplier_invoice','INV-C2','Test Supplier','PO-C'),
+ ('00000000-0000-0000-0000-00000000dd13','${co}','credit_note','CN-C','Test Supplier','PO-C');
+INSERT INTO supplier_job_document_lines(id,document_id,company_id,line_no,description,model_number,qty) VALUES
+ ('00000000-0000-0000-0000-0000000000c1','00000000-0000-0000-0000-00000000dd10','${co}',1,'Copper','COPPER-TEST',4),
+ ('00000000-0000-0000-0000-0000000000c2','00000000-0000-0000-0000-00000000dd11','${co}',1,'Copper','COPPER-TEST',4),
+ ('00000000-0000-0000-0000-0000000000c3','00000000-0000-0000-0000-00000000dd12','${co}',1,'Copper','COPPER-TEST',4),
+ ('00000000-0000-0000-0000-0000000000c4','00000000-0000-0000-0000-00000000dd13','${co}',1,'Copper','COPPER-TEST',1);
+`);
+await db.exec(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd10','[{"line_id":"00000000-0000-0000-0000-0000000000c1","action":"stock","product_id":"00000000-0000-0000-0000-000000000f03","model_code":"COPPERTEST","item":"Copper","qty_packs":4,"unit_cost_pack":10,"bucket":"material_pool"}]')`);
+const afterDnC = await one(`SELECT coalesce(sum(qty),0) AS q FROM stock_movements m JOIN cf_stock_items s ON s.id=m.stock_item_id WHERE s.model_code='COPPERTEST' AND public.stock_qty_counts(m.kind,m.supplier_document_id,m.supplier_document_line_id)`);
+if (Number(afterDnC.q) !== 4) fail("delivery before invoice should be in the count, got " + afterDnC.q);
+const invC = await one(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd11','[{"line_id":"00000000-0000-0000-0000-0000000000c2","action":"stock","product_id":"00000000-0000-0000-0000-000000000f03","model_code":"COPPERTEST","item":"Copper","qty_packs":4,"unit_cost_pack":12,"bucket":"material_pool"}]') AS r`);
+if (Number(invC.r.cost_only) !== 1 || Number(invC.r.stocked) !== 0) fail("second document must be cost only " + JSON.stringify(invC));
+const afterInvC = await one(`SELECT coalesce(sum(qty),0) AS q FROM stock_movements m JOIN cf_stock_items s ON s.id=m.stock_item_id WHERE s.model_code='COPPERTEST' AND public.stock_qty_counts(m.kind,m.supplier_document_id,m.supplier_document_line_id)`);
+if (Number(afterInvC.q) !== 4) fail("invoice must not add copper quantity, got " + afterInvC.q);
+const avgC = await one(`SELECT material_avg_cost(id, now()) AS a FROM cf_stock_items WHERE model_code='COPPERTEST'`);
+if (Number(avgC.a) !== 12) fail("average should move to the invoice price, got " + avgC.a);
+const invC2 = await one(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd12','[{"line_id":"00000000-0000-0000-0000-0000000000c3","action":"stock","product_id":"00000000-0000-0000-0000-000000000f03","model_code":"COPPERTEST","qty_packs":4,"unit_cost_pack":15}]') AS r`);
+if (Number(invC2.r.stocked) !== 0) fail("a second invoice must not post quantity " + JSON.stringify(invC2));
+const cn = await one(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd13','[{"line_id":"00000000-0000-0000-0000-0000000000c4","action":"stock","product_id":"00000000-0000-0000-0000-000000000f03","model_code":"COPPERTEST","qty_packs":1,"unit_cost_pack":12}]') AS r`);
+if (Number(cn.r.returned) !== 1) fail("credit note should reverse " + JSON.stringify(cn));
+const afterCn = await one(`SELECT coalesce(sum(m.qty),0) AS q FROM stock_movements m JOIN cf_stock_items s ON s.id=m.stock_item_id WHERE s.model_code='COPPERTEST' AND public.stock_qty_counts(m.kind,m.supplier_document_id,m.supplier_document_line_id)`);
+if (Number(afterCn.q) !== 3) fail("credit should leave 3, got " + JSON.stringify(afterCn));
+
+// Invoiced before delivery stays out of the count, then the delivery note releases the same quantity.
+await db.exec(`
+INSERT INTO supplier_products(id,product_code,name,cost_price,product_type) VALUES ('00000000-0000-0000-0000-000000000f04','PIPE-TEST','Pipe test',8,'consumable');
+INSERT INTO supplier_job_documents(id,company_id,doc_type,doc_number,po_number) VALUES
+ ('00000000-0000-0000-0000-00000000dd20','${co}','supplier_invoice','INV-P','PO-P'),
+ ('00000000-0000-0000-0000-00000000dd21','${co}','delivery_note','DN-P','PO-P');
+INSERT INTO supplier_job_document_lines(id,document_id,company_id,line_no,model_number,qty) VALUES
+ ('00000000-0000-0000-0000-0000000000e1','00000000-0000-0000-0000-00000000dd20','${co}',1,'PIPE-TEST',5),
+ ('00000000-0000-0000-0000-0000000000e2','00000000-0000-0000-0000-00000000dd21','${co}',1,'PIPE-TEST',5);
+`);
+await db.exec(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd20','[{"line_id":"00000000-0000-0000-0000-0000000000e1","action":"stock","product_id":"00000000-0000-0000-0000-000000000f04","model_code":"PIPETEST","qty_packs":5,"unit_cost_pack":8}]')`);
+const awaiting = await one(`SELECT coalesce(sum(qty),0) AS on_hand FROM stock_movements m JOIN cf_stock_items s ON s.id=m.stock_item_id WHERE s.model_code='PIPETEST' AND public.stock_qty_counts(m.kind,m.supplier_document_id,m.supplier_document_line_id)`);
+const waiting = await one(`SELECT coalesce(sum(qty),0) AS q FROM stock_movements m JOIN cf_stock_items s ON s.id=m.stock_item_id WHERE s.model_code='PIPETEST' AND NOT public.stock_qty_counts(m.kind,m.supplier_document_id,m.supplier_document_line_id)`);
+if (Number(awaiting.on_hand) !== 0 || Number(waiting.q) !== 5) fail("invoice before delivery must be awaiting, not on hand " + JSON.stringify({ awaiting, waiting }));
+await db.exec(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd21','[{"line_id":"00000000-0000-0000-0000-0000000000e2","action":"stock","product_id":"00000000-0000-0000-0000-000000000f04","model_code":"PIPETEST","qty_packs":5,"unit_cost_pack":8}]')`);
+const released = await one(`SELECT coalesce(sum(qty),0) AS q, count(*) FILTER (WHERE kind='receive')::int AS receives FROM stock_movements m JOIN cf_stock_items s ON s.id=m.stock_item_id WHERE s.model_code='PIPETEST' AND public.stock_qty_counts(m.kind,m.supplier_document_id,m.supplier_document_line_id)`);
+if (Number(released.q) !== 5 || Number(released.receives) !== 1) fail("delivery must release the same quantity once " + JSON.stringify(released));
+
+const sized = await one(`SELECT stock_unit_size_key('12M') AS m, stock_unit_size_key('24K') AS k, stock_unit_size_key('FCMI-24') AS u, stock_unit_size_key('12KG') AS kg, stock_unit_size_key('FCMI-124') AS long`);
+if (sized.m !== null || sized.kg !== null || sized.long !== null || sized.k !== "24000" || sized.u !== "24000") fail("size key " + JSON.stringify(sized));
+await db.exec(`
+INSERT INTO supplier_job_documents(id,company_id,doc_type,doc_number) VALUES ('00000000-0000-0000-0000-00000000dd30','${co}','delivery_note','DN-NC');
+INSERT INTO supplier_job_document_lines(id,document_id,company_id,line_no,model_number,qty) VALUES ('00000000-0000-0000-0000-0000000000f1','00000000-0000-0000-0000-00000000dd30','${co}',1,'NOCOST-1',1);
+`);
+await db.exec(`SELECT sjd_receive('00000000-0000-0000-0000-00000000dd30','[{"line_id":"00000000-0000-0000-0000-0000000000f1","action":"stock","model_code":"NOCOST1","item":"No cost","qty_packs":1,"bucket":"material_pool"}]')`);
+const noCost = await one(`SELECT m.unit_cost_excl IS NULL AS missing, l.cost_missing FROM stock_movements m JOIN supplier_job_document_lines l ON l.id=m.supplier_document_line_id WHERE l.id='00000000-0000-0000-0000-0000000000f1'`);
+if (!noCost?.missing || noCost.cost_missing !== true) fail("missing cost must stay null " + JSON.stringify(noCost));
 
 let stranger = false;
 await db.exec(`DELETE FROM okco`);

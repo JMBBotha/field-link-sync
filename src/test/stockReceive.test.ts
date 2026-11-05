@@ -45,14 +45,14 @@ describe("buildPreview", () => {
     { line_no: 2, description: "Outdoor 24K", model_number: "FCMI-24X-P", qty: 1, unit_price_excl: null },
     { line_no: 3, description: "R410 gas", model_number: "G005", qty: 2, unit_price_excl: null },
   ];
-  it("delivery note: catalogue cost, no stock added, units can be reserved for a job", () => {
+  it("delivery note: catalogue cost, quantity can post, units can be reserved for a job", () => {
     const rows = buildPreview("delivery_note", lines, products, [], "job-test-1");
-    expect(rows[0]).toMatchObject({ action: "reserve", job_id: "job-test-1", bucket: "job_unit", half: "indoor", cost_source: "catalogue", adds_stock: false, unit_cost_pack: 10434.09 / 2 });
+    expect(rows[0]).toMatchObject({ action: "reserve", job_id: "job-test-1", bucket: "job_unit", half: "indoor", cost_source: "catalogue", adds_stock: true, unit_cost_pack: 10434.09 / 2 });
     expect(rows[1]).toMatchObject({ bucket: "job_unit", half: "outdoor" });
     expect(rows[1].unit_cost_pack).toBe(10434.09 / 2);
     expect(rows[0].stock_key).not.toBe(rows[1].stock_key);
     expect(rows[0].vat_amount).toBeCloseTo((10434.09 / 2) * 0.15, 1);
-    expect(rows[2]).toMatchObject({ action: "stock", bucket: "material_pool", stock_qty: 22.6, cost_per_stock_unit: 200, adds_stock: false });
+    expect(rows[2]).toMatchObject({ action: "stock", bucket: "material_pool", stock_qty: 22.6, cost_per_stock_unit: 200, adds_stock: true });
     expect(rows[2].vat_amount).toBeCloseTo(2260 * 2 * 0.15, 2);
     expect(rows[2].notes.join()).toMatch(/invoice/);
   });
