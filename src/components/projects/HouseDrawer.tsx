@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatRand } from "@/utils/formatRand";
 import { db } from "@/hooks/useProjectTracker";
 import PanelErrorBoundary from "@/components/shared/PanelErrorBoundary";
-import { houseStatus, houseReminders, primaryInvoice, phaseLabel, STATUS_META, OVERRIDE_OK, FIRST_FIT_STEP, daysSince, type HouseMoney, type HousePhotos, type HouseDocs, type ProjectHouse, type ProjectPhase, type HouseStatus } from "@/lib/projectTracker";
+import { houseStatus, houseReminders, primaryInvoice, phaseLabel, stageLabel, STATUS_META, OVERRIDE_OK, FIRST_FIT_STEP, daysSince, type HouseMoney, type HousePhotos, type HouseDocs, type ProjectHouse, type ProjectPhase, type HouseStatus } from "@/lib/projectTracker";
 
 type Form = Pick<ProjectHouse, "house_no" | "phase_id" | "po_number" | "make" | "unit_sizes" | "units_ordered" | "units_received" | "ready_for_aircon" | "ready_for_aircon_at" | "status_override" | "notes">;
 /** Form values straight from the house row, so the drawer opens on the first tap (no wait for an effect). */
@@ -39,6 +39,7 @@ function HouseDrawerInner({ house, money, photos, docs, showDocs, phases, onClos
   if (!house || !f) return <Sheet open={false} onOpenChange={() => onClose()}><SheetContent /></Sheet>;
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF({ ...f, [k]: v });
   const computed = houseStatus({ ...house, ...f, status_override: null, steps }, money);
+  const shown = houseStatus({ ...house, ...f, steps }, money);
 
   const save = async () => {
     setSaving(true);
@@ -65,11 +66,11 @@ function HouseDrawerInner({ house, money, photos, docs, showDocs, phases, onClos
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md" data-testid="house-drawer">
         <SheetHeader>
           <SheetTitle>House {house.house_no}</SheetTitle>
-          <SheetDescription>Status now: {STATUS_META[f.status_override || computed].label}</SheetDescription>
+          <SheetDescription>Status now: {stageLabel(shown, money)}</SheetDescription>
         </SheetHeader>
         <PanelErrorBoundary panelName={`House ${house.house_no} details`}>
         <div className="mt-4 space-y-4">
-          {houseReminders({ ...house, steps, status_override: null }, money).map((x) => (
+          {houseReminders({ ...house, steps, status_override: f.status_override }, money).map((x) => (
             <div key={x.kind} data-testid="drawer-reminder" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-100">🔔 {x.text}</div>))}
           <section className="rounded-xl border p-3">
             <div className="mb-2 text-sm font-semibold">Done ticks</div>
@@ -81,7 +82,9 @@ function HouseDrawerInner({ house, money, photos, docs, showDocs, phases, onClos
 
           <section className="rounded-xl border p-3 text-sm">
             <div className="mb-1 font-semibold">Invoice (one per house)</div>
-            {(() => { const pi = primaryInvoice(money); if (!pi || !money) return <div className="text-red-600">No invoice linked yet. After first fit: send the estimate to get the PO, then invoice 50% of this house's quote.</div>;
+            {(() => { const pi = primaryInvoice(money); if (!pi || !money) return shown === "done"
+              ? <div className="text-muted-foreground">No invoice linked. This house is marked paid.</div>
+              : <div className="text-red-600">No invoice linked yet. After first fit: send the estimate to get the PO, then invoice 50% of this house's quote.</div>;
               const d = daysSince(pi.sent_at); return (<>
               <div className="flex justify-between"><span>Invoice</span><Link to={`/admin/invoices/${pi.id}`} className="font-semibold text-[#1590D6] hover:underline">{pi.number || "draft"} ↗</Link></div>
               <div className="flex justify-between"><span>Sent</span><span>{pi.sent_at ? `${pi.sent_at.slice(0, 10)} (${d} days ago)` : "not sent yet"}</span></div>

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { formatRand } from "@/utils/formatRand";
 import { useToast } from "@/hooks/use-toast";
 import { useProjectDetail, useInvalidateProject, clientName, db } from "@/hooks/useProjectTracker";
-import { houseStatus, houseReminders, primaryInvoice, phaseFor, phaseLabel, STATUS_META, STATUS_ORDER, STEP_SHORT, DEFAULT_STEPS, type HouseStatus, type HouseMoney, type HousePhotos, type HouseDocs, type ProjectHouse } from "@/lib/projectTracker";
+import { houseStatus, houseReminders, primaryInvoice, phaseFor, phaseLabel, stageLabel, showNoInvoice, STATUS_META, STATUS_ORDER, STEP_SHORT, DEFAULT_STEPS, type HouseStatus, type HouseMoney, type HousePhotos, type HouseDocs, type ProjectHouse } from "@/lib/projectTracker";
 import HouseDrawer from "./HouseDrawer";
 import { useRole } from "@/hooks/useRole";
 import PhaseEditor from "./PhaseEditor";
@@ -116,18 +116,19 @@ export default function ProjectView({ projectId, backTo }: { projectId: string; 
 export function HouseCard({ h, status, money, photos, docs, onOpen }: { h: ProjectHouse; status: HouseStatus; money?: HouseMoney; photos?: HousePhotos; docs?: HouseDocs; onOpen: () => void }) {
   const inv = primaryInvoice(money);
   const rem = houseReminders(h, money)[0];
+  const label = stageLabel(status, money);
   return (
-    <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} data-status={status} title={STATUS_META[status].label}
+    <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} data-status={status} title={label}
       style={{ touchAction: "manipulation" }} data-testid="house-card"
       className={cn("cursor-pointer select-none rounded-xl border-[3px] bg-card p-2.5 text-left shadow-sm transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1590D6]", STATUS_META[status].ring)}>
       <button type="button" data-testid="house-open" onClick={(e) => { e.stopPropagation(); onOpen(); }} className="block w-full text-left text-base font-semibold">House {h.house_no}</button>
       <div className="truncate text-xs text-muted-foreground">{[h.make, h.unit_sizes].filter(Boolean).join(" ") || "No units set"}</div>
-      <span data-testid="stage-chip" className={cn("mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-bold", STATUS_META[status].chip)}>{STATUS_META[status].label}</span>
+      <span data-testid="stage-chip" className={cn("mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-bold", STATUS_META[status].chip)}>{label}</span>
       {inv ? (
         <div className="mt-1 flex items-center justify-between gap-1 text-xs">
           <span className="text-muted-foreground">Invoice</span>
           <Link to={`/admin/invoices/${inv.id}`} onClick={(e) => e.stopPropagation()} data-testid="house-invoice-link" className="font-semibold text-[#1590D6] hover:underline">{inv.number || "draft"} ↗</Link>
-        </div>) : <div className="mt-1 text-xs text-red-600">no invoice</div>}
+        </div>) : showNoInvoice(status, money) ? <div className="mt-1 text-xs text-red-600" data-testid="house-no-invoice">no invoice</div> : null}
       {money && <div className="truncate text-xs">{formatRand(money.paid)} / {formatRand(money.invoiced)} paid</div>}
       {photos && photos.jobs.length > 0 && (
         <Link to={`/admin/jobs/${(photos.jobs.find((j) => j.count) || photos.jobs[0]).id}#job-photos`} onClick={(e) => e.stopPropagation()} data-testid="house-photos-link"

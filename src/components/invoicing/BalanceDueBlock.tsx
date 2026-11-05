@@ -24,8 +24,8 @@ function useBalanceExtras(invoiceId?: string | null) {
   return useQuery({
     queryKey: ["invoice-balance-extras", invoiceId], enabled: !!invoiceId,
     queryFn: async () => {
-      const { data } = await (supabase as any).from("invoices").select("due_date, due_date_source, project_house:project_houses(steps:project_house_steps(step_key, done))").eq("id", invoiceId).maybeSingle();
-      return (data ?? null) as { due_date: string | null; due_date_source: string | null; project_house?: { steps?: { step_key: string; done: boolean }[] } | null } | null;
+      const { data } = await (supabase as any).from("invoices").select("due_date, due_date_source, expected_deposit_date, expected_final_date, project_house:project_houses(steps:project_house_steps(step_key, done))").eq("id", invoiceId).maybeSingle();
+      return (data ?? null) as { due_date: string | null; due_date_source: string | null; expected_deposit_date?: string | null; expected_final_date?: string | null; project_house?: { steps?: { step_key: string; done: boolean }[] } | null } | null;
     },
   });
 }
@@ -45,6 +45,10 @@ export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment
   const final = finalPaymentLine(b);
   const expected = expectedFinal(b, extras);
   const stage = installStage(b, extras?.project_house?.steps);
+  const stageWhen = stage?.key === "installed"
+    ? (extras?.expected_final_date || expected || (!b.waiting && b.due) || null)
+    : stage?.key === "due" ? (extras?.expected_deposit_date || null) : null;
+  const stageText = stage ? (stageWhen ? `${stage.label} · expected ${fmtDay(stageWhen)}` : stage.label) : "";
   const canRemindBase = b.balance > 0.005 && !!(b.due || b.job_done);
   const closed = ["void", "cancelled", "paid"].includes(st) || b.balance <= 0.005;
   // Not chased before the job is done: balance is due on completion (Johan 2 Nov 17:49).
@@ -77,7 +81,7 @@ export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment
       </div>)}
     <div data-testid="balance-due-block" data-stage={stage?.key} className={cn("rounded-2xl border border-[#BFE3F8] bg-[#F3FAFE] p-3 dark:bg-sky-500/10", stage && cn("border-l-4", stage.edge), className)}>
       {!compact && <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-[#1590D6]"><CalendarClock className="h-4 w-4" />{house && <><span data-testid="balance-house" className="font-bold text-foreground">{house}</span> · </>}Payment &amp; installation · {b.invoice_number}</div>}
-      {stage && <div className="mb-2"><span data-testid="install-stage-tag" className={cn("inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold", stage.chip)}>{stage.label}</span></div>}
+      {stage && <div className="mb-2"><span data-testid="install-stage-tag" className={cn("inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold", stage.chip)}>{stageText}</span></div>}
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <div className={cell}><div className={lab}>Installation</div>
           <div className="text-sm font-semibold">{b.job_done ? `Completed ${fmtDay(b.job_done)}` : b.install_at ? fmtDayTime(b.install_at) : "Not booked"}
