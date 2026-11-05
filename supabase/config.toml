@@ -109,3 +109,6 @@ verify_jwt = false
 
 [functions.send-push]
 verify_jwt = false
+
+[functions.agent-location-ping]
+verify_jwt = true

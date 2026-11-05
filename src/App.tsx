@@ -26,6 +26,8 @@ import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
 import NotFound from "./pages/NotFound";
 import IdleLogoutGate from "@/components/IdleLogoutGate";
+import LocationShareRuntime from "@/components/availability/LocationShareRuntime";
+import { LocationShareCard } from "@/components/availability/LocationShareCard";
 
 
 // Admin layout + pages
@@ -165,6 +167,7 @@ const App = () => (
               <MandyDock />
               <ZoomableViewport />
               <IdleLogoutGate />
+              <LocationShareRuntime />
               <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>}>
               <Routes>
                 {/* Public routes */}
@@ -176,6 +179,9 @@ const App = () => (
                 <Route path="/signup/independent" element={<IndependentSignup />} />
                 <Route path="/set-password" element={<SetPassword />} />
                 <Route path="/pending-approval" element={<PendingApproval />} />
+                {import.meta.env.DEV && (
+                  <Route path="/dev/location-share" element={<div className="mx-auto max-w-lg p-4"><LocationShareCard preview /></div>} />
+                )}
 
                 {/* Customer Portal Routes */}
                 <Route path="/customer/:token" element={<CustomerPortal />} />
