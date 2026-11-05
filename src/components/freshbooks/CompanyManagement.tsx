@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { DORMANT_BADGE } from "@/lib/companyStatus";
+import { COMPANY_MANAGEMENT_SELECT, rowsFromCompanyListQuery } from "@/lib/companyManagementList";
 
 type CompanyStatus = "active" | "on_hold" | "archived";
 
@@ -34,11 +35,11 @@ const CompanyManagement = () => {
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  const { data: companies = [], isLoading } = useQuery({
+  const { data: companies = [], isLoading, isError, error } = useQuery({
     queryKey: ["all-companies"],
     queryFn: async () => {
-      const { data } = await supabase.from("companies").select("id, name, slug, logo_url, status, dormant_payments_locked, created_at, updated_at, onboarding_completed, is_master, custom_service_limit, vat_rate, services").order("created_at", { ascending: false });
-      return data || [];
+      const result = await supabase.from("companies").select(COMPANY_MANAGEMENT_SELECT).order("created_at", { ascending: false });
+      return rowsFromCompanyListQuery(result);
     },
   });
 
@@ -139,7 +140,7 @@ const CompanyManagement = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Company Management</h2>
-          <p className="text-sm text-muted-foreground">{companies.length} companies onboarded</p>
+          <p className="text-sm text-muted-foreground">{isError ? "Couldn't load companies" : `${companies.length} companies onboarded`}</p>
         </div>
         <Button onClick={() => setShowCreate(true)} className="bg-[hsl(211,100%,43%)] hover:bg-[hsl(211,100%,38%)]">
           <Plus className="h-4 w-4 mr-2" />Onboard Company
@@ -162,7 +163,7 @@ const CompanyManagement = () => {
               className={statusFilter === s ? "bg-primary" : ""}
             >
               {s === "all" ? "All" : s === "on_hold" ? "On Hold" : s.charAt(0).toUpperCase() + s.slice(1)}
-              <span className="ml-1.5 text-xs opacity-70">({counts[s]})</span>
+              <span className="ml-1.5 text-xs opacity-70">({isError ? "—" : counts[s]})</span>
             </Button>
           ))}
         </div>
@@ -183,6 +184,8 @@ const CompanyManagement = () => {
           <tbody>
             {isLoading ? (
               <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+            ) : isError ? (
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-destructive" role="alert" data-testid="company-list-error">{error instanceof Error ? error.message : "Couldn't load companies"}</td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No companies found</td></tr>
             ) : filtered.map((c: any) => {
