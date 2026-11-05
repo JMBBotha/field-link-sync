@@ -38,7 +38,7 @@ export function useProjectDetail(projectId?: string) {
       let photos: Record<string, HousePhotos> = {};
       let docs: Record<string, HouseDocs> = {};
       if (ids.length) {
-        const inv = await db.from("invoices").select("id, project_house_id, grand_total, status, invoice_number, archived_at, sent_at, issue_date, lead_id").in("project_house_id", ids);
+        const inv = await db.from("invoices").select("id, project_house_id, grand_total, status, invoice_number, archived_at, sent_at, issue_date, lead_id, expected_final_date, expected_deposit_date, due_date, due_date_source").in("project_house_id", ids);
         if (inv.error) throw inv.error;
         const invIds = (inv.data || []).map((i: { id: string }) => i.id);
         const pay = invIds.length ? await db.from("payments").select("invoice_id, amount, status").in("invoice_id", invIds) : { data: [] };

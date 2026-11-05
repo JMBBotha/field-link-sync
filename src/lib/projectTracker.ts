@@ -8,12 +8,18 @@ export interface ProjectHouse {
   units_ordered: number; units_received: number; ready_for_aircon: boolean; ready_for_aircon_at: string | null;
   status_override: HouseStatus | null; notes: string | null; steps: ProjectStep[];
 }
-export interface HouseInvoice { id: string; number: string | null; total: number; paid: number; sent_at: string | null; issue_date?: string | null }
+export interface HouseInvoice {
+  id: string; number: string | null; total: number; paid: number; sent_at: string | null; issue_date?: string | null;
+  /** Stored on the invoice. Never invented from the issue date. */
+  expected_final_date?: string | null; expected_deposit_date?: string | null; due_date?: string | null; due_date_source?: string | null;
+}
 export interface HouseMoney { invoiced: number; paid: number; invoiceCount: number; invoiceNumbers: string[]; invoices?: HouseInvoice[] }
 
 export const UNITS_STEP = "units";
 export const FIRST_FIT_STEP = "first_fit";
+export const COMMISSIONING_STEP = "commissioning";
 const DAY = 86_400_000;
+const SAST = "Africa/Johannesburg";
 
 /** The house's billing invoice: one invoice per house; first sent one wins, else the first one made. */
 export function primaryInvoice(money?: HouseMoney): HouseInvoice | null {
@@ -21,33 +27,91 @@ export function primaryInvoice(money?: HouseMoney): HouseInvoice | null {
   return [...inv].filter((i) => i.sent_at).sort((a, b) => a.sent_at!.localeCompare(b.sent_at!))[0] || inv[0] || null;
 }
 
-/** Status rule (Johan 4 Nov 20:40). Stage keys are kept compatible with the existing status_override CHECK:
- *  not_started -> in_progress ("First fit done", get PO) -> due ("Invoiced", 50% due)
- *  -> units_in ("Units installed", final 50% due) -> done (full invoice paid). Manual override always wins. */
+/** Commissioning ticked = the house job is marked complete. Units installed alone is not. */
+export function jobComplete(steps: { step_key: string; done: boolean }[] | null | undefined): boolean {
+  return (steps || []).some((s) => s.step_key === COMMISSIONING_STEP && s.done);
+}
+
+/** First half of the invoice received (about 50%). A missing invoice is not a settled deposit. */
+export function depositSettled(money?: HouseMoney): boolean {
+  return !!money && money.invoiced > 0 && money.paid + 0.005 >= money.invoiced * 0.5;
+}
+
+/** A date someone stored. Automatic issue-date dues are not an expected payment date. */
+export function expectedPaymentDate(money: HouseMoney | undefined, kind: "deposit" | "final"): string | null {
+  const inv = primaryInvoice(money);
+  if (!inv) return null;
+  if (kind === "deposit") return inv.expected_deposit_date || null;
+  if (inv.expected_final_date) return inv.expected_final_date;
+  if (inv.due_date_source === "manual" && inv.due_date) return inv.due_date;
+  return null;
+}
+
+export function formatExpectedDate(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? new Date(`${iso}T12:00:00+02:00`) : new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: SAST });
+}
+
+function withExpected(base: string, iso: string | null): string {
+  const pretty = formatExpectedDate(iso);
+  return pretty ? `${base} · expected ${pretty}` : base;
+}
+
+/** Status (Johan 4 Nov, clarified 5 Nov). Keys stay compatible with status_override.
+ *  Override wins. Fully paid → done.
+ *  Job complete (commissioning) and not fully paid → units_in: the final 50% is unpaid.
+ *  Invoice sent while the job is still open → due: the first half. The final half is not due yet.
+ *  Any step done → in_progress. Else not started. */
 export function houseStatus(h: Pick<ProjectHouse, "steps" | "status_override">, money?: HouseMoney): HouseStatus {
   if (h.status_override) return h.status_override;
   const steps = h.steps || [];
   const fullyPaid = !!money && money.invoiced > 0 && money.paid + 0.005 >= money.invoiced;
   if (fullyPaid) return "done";
-  if (steps.some((s) => s.step_key === UNITS_STEP && s.done)) return "units_in";
+  if (jobComplete(steps)) return "units_in";
   const inv = primaryInvoice(money);
   if (inv?.sent_at) return "due";
   if (steps.some((s) => s.done)) return "in_progress";
   return "not_started";
 }
 
-export interface HouseReminder { kind: "send_estimate" | "check_units" | "final_due"; text: string }
-/** In-app reminders, computed on the fly (nothing stored, nothing emailed). */
-export function houseReminders(h: Pick<ProjectHouse, "steps" | "status_override">, money: HouseMoney | undefined, now = new Date()): HouseReminder[] {
-  const st = houseStatus({ ...h, status_override: null }, money);
+/** Card wording. The legend keeps the short bucket name; the card says what is owed and why, plus a stored expected date. */
+export function stageLabel(status: HouseStatus, money?: HouseMoney): string {
+  if (status === "due") {
+    const base = depositSettled(money) ? "Deposit paid · balance due when the job is finished" : "Deposit 50% unpaid · invoice sent";
+    return withExpected(base, expectedPaymentDate(money, depositSettled(money) ? "final" : "deposit"));
+  }
+  if (status === "units_in") return withExpected("Job complete · final 50% unpaid", expectedPaymentDate(money, "final"));
+  return STATUS_META[status].label;
+}
+
+/** Red "no invoice" is for houses that still need a CT invoice. Done & paid (including a paid override) does not. */
+export function showNoInvoice(status: HouseStatus, money?: HouseMoney): boolean {
+  return status !== "done" && !primaryInvoice(money);
+}
+
+export function finalBalanceText(money?: HouseMoney): string {
   const inv = primaryInvoice(money);
-  if (st === "in_progress" && h.steps.some((s) => s.step_key === FIRST_FIT_STEP && s.done) && !inv?.sent_at)
+  const ref = inv?.number ? ` on ${inv.number}` : "";
+  return withExpected(`Final 50% still unpaid · job is complete${ref}`, expectedPaymentDate(money, "final"));
+}
+
+export interface HouseReminder { kind: "send_estimate" | "check_units" | "final_due"; text: string }
+/** In-app reminders, computed on the fly (nothing stored, nothing emailed).
+ *  Follows the same status as the chip, so Done & paid (money or status_override) raises none. */
+export function houseReminders(h: Pick<ProjectHouse, "steps" | "status_override">, money: HouseMoney | undefined, now = new Date()): HouseReminder[] {
+  const st = houseStatus(h, money);
+  if (st === "done") return [];
+  const inv = primaryInvoice(money);
+  const steps = h.steps || [];
+  if (st === "in_progress" && steps.some((s) => s.step_key === FIRST_FIT_STEP && s.done) && !inv?.sent_at)
     return [{ kind: "send_estimate", text: "Send estimate to get PO number" }];
-  if (st === "due" && inv?.sent_at) {
+  if (st === "due" && inv?.sent_at && !steps.some((s) => s.step_key === UNITS_STEP && s.done)) {
     const days = Math.floor((now.getTime() - new Date(inv.sent_at).getTime()) / DAY);
     if (days >= 30) return [{ kind: "check_units", text: `Check if house is ready for units (${days >= 60 ? "60" : "30"}-day check)` }];
   }
-  if (st === "units_in") return [{ kind: "final_due", text: `Final 50% due on ${inv?.number || "invoice"}` }];
+  if (st === "units_in") return [{ kind: "final_due", text: finalBalanceText(money) }];
   return [];
 }
 
@@ -58,8 +122,8 @@ export const STATUS_ORDER: HouseStatus[] = ["not_started", "in_progress", "due",
 export const STATUS_META: Record<HouseStatus, { label: string; ring: string; dot: string; chip: string }> = {
   not_started: { label: "Not started", ring: "border-slate-300 dark:border-slate-600", dot: "bg-slate-400", chip: "bg-slate-400 text-white" },
   in_progress: { label: "First fit done", ring: "border-amber-500", dot: "bg-amber-500", chip: "bg-amber-500 text-white" },
-  due: { label: "Invoiced · 50% due", ring: "border-red-500", dot: "bg-red-500", chip: "bg-red-500 text-white" },
-  units_in: { label: "Units in · final 50% due", ring: "border-violet-500", dot: "bg-violet-500", chip: "bg-violet-500 text-white" },
+  due: { label: "First 50% invoiced", ring: "border-red-500", dot: "bg-red-500", chip: "bg-red-500 text-white" },
+  units_in: { label: "Job complete · final 50% unpaid", ring: "border-violet-500", dot: "bg-violet-500", chip: "bg-violet-500 text-white" },
   done: { label: "Done & paid", ring: "border-emerald-500", dot: "bg-emerald-500", chip: "bg-emerald-500 text-white" },
 };
 /** Values the DB status_override CHECK accepts today (units_in is automatic only; no DB change needed). */
@@ -95,7 +159,10 @@ export const DEFAULT_STEPS = [
 ];
 export const STEP_SHORT: Record<string, string> = { first_fit: "1st fit", piping: "Pipe", units: "Units", commissioning: "Comm" };
 
-interface InvRow { id: string; sent_at?: string | null; issue_date?: string | null; project_house_id: string | null; grand_total: number | null; status: string | null; invoice_number: string | null; archived_at?: string | null }
+interface InvRow {
+  id: string; sent_at?: string | null; issue_date?: string | null; project_house_id: string | null; grand_total: number | null; status: string | null; invoice_number: string | null; archived_at?: string | null;
+  expected_final_date?: string | null; expected_deposit_date?: string | null; due_date?: string | null; due_date_source?: string | null;
+}
 interface PayRow { invoice_id: string; amount: number | null; status: string | null }
 
 const VOID = new Set(["void", "cancelled", "canceled", "credited"]);
@@ -111,7 +178,10 @@ export function moneyByHouse(invoices: InvRow[], payments: PayRow[]): Record<str
     const m = (out[i.project_house_id] ||= { invoiced: 0, paid: 0, invoiceCount: 0, invoiceNumbers: [] });
     m.invoiced += Number(i.grand_total || 0);
     m.paid += paidByInv[i.id] || 0;
-    (m.invoices ||= []).push({ id: i.id, number: i.invoice_number, total: Number(i.grand_total || 0), paid: paidByInv[i.id] || 0, sent_at: i.sent_at ?? null, issue_date: i.issue_date ?? null });
+    (m.invoices ||= []).push({
+      id: i.id, number: i.invoice_number, total: Number(i.grand_total || 0), paid: paidByInv[i.id] || 0, sent_at: i.sent_at ?? null, issue_date: i.issue_date ?? null,
+      expected_final_date: i.expected_final_date ?? null, expected_deposit_date: i.expected_deposit_date ?? null, due_date: i.due_date ?? null, due_date_source: i.due_date_source ?? null,
+    });
     m.invoiceCount += 1;
     if (i.invoice_number) m.invoiceNumbers.push(i.invoice_number);
   }

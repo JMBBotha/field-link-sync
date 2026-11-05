@@ -61,8 +61,9 @@ export function installStage(b: Pick<BalanceInfo, "balance" | "status" | "deposi
   if (st === "void" || st === "cancelled") return null;
   if ((Number(b.balance) || 0) <= 0.005) return { key: "paid", label: "Fully paid", edge: "border-l-emerald-500", chip: "bg-emerald-500 text-white" };
   const done = (k: string) => !!steps?.some((s) => s.step_key === k && s.done);
-  if (b.job_done || done("units") || done("commissioning")) return { key: "installed", label: "Installed · final 50% due", edge: "border-l-violet-500", chip: "bg-violet-500 text-white" };
-  if (b.deposit_amount > 0 && b.deposit_paid < b.deposit_amount - 0.005 && st !== "draft") return { key: "due", label: "Invoiced · 50% due", edge: "border-l-red-500", chip: "bg-red-500 text-white" };
+  // Final half only once the job is marked complete (completed job, or the house commissioning tick). Units on the wall is not enough.
+  if (b.job_done || done("commissioning")) return { key: "installed", label: "Job complete · final 50% unpaid", edge: "border-l-violet-500", chip: "bg-violet-500 text-white" };
+  if (b.deposit_amount > 0 && b.deposit_paid < b.deposit_amount - 0.005 && st !== "draft") return { key: "due", label: "Deposit 50% unpaid · invoice sent", edge: "border-l-red-500", chip: "bg-red-500 text-white" };
   if (done("first_fit")) return { key: "first_fit", label: "First fit done", edge: "border-l-amber-500", chip: "bg-amber-500 text-white" };
   return null;
 }
