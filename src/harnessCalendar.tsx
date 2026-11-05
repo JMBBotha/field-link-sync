@@ -13,7 +13,7 @@ const tab = (q.get("tab") || "month") as CalmTab;
 const today = "2026-11-05";
 
 const job = (over: Partial<CalmBlock>): CalmBlock => ({
-  id: "job-youssin", uid: "job-youssin", kind: "job", personId: "tech-1", day: "2026-11-03",
+  id: "job-youssin", kind: "job", personId: "tech-1", day: "2026-11-03",
   start: 11 * 60, dur: 120, end: 13 * 60, title: "Installation — 14 Oak Street",
   place: "14 Oak Street, Cape Town", block: "install", draggable: true, client: "Youssin Adams",
   jobType: "installation", assignee: "Innocent Mattienga", assigneeRole: "service", status: "scheduled",
