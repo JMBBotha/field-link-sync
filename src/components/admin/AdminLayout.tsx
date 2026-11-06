@@ -329,15 +329,25 @@ const AdminLayout = () => {
 
 
 
-        <main data-scroll-root data-no-bounce={isMapHeroPage ? "" : undefined} className={`app-surface flex-1 min-h-0 overflow-auto scroll-bounce ${isMapHeroPage ? "" : "scroll-room"}`}>
+        <main data-scroll-root data-no-bounce={isMapHeroPage ? "" : undefined} className={`app-surface flex-1 min-h-0 ${isMapHeroPage ? "flex flex-col overflow-hidden" : "overflow-auto scroll-bounce scroll-room"}`}>
 
+          {isMapHeroPage ? (
+            // Home and Live Map fill this flex column. h-full here resolved to 0 on
+            // iPhone Safari and clipped the dashboard. The fade motion also leaves a
+            // CSS transform, which stops Mapbox tiles painting on iOS.
+            <div key={location.pathname} data-testid="map-hero-frame" className="flex min-h-0 flex-1 flex-col">
+              <JobLocationShare />
+              <div className="flex min-h-0 flex-1 flex-col">
+                <ContractGate><Outlet /></ContractGate>
+              </div>
+            </div>
+          ) : (
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              // Map hero pages need a fixed full height; every other page must be
               // min-h-full so long content grows this box and main's bottom padding
               // (bottom nav + safe area) lands BELOW the last item instead of under it.
-              className={isMapHeroPage ? "h-full" : "min-h-full"}
+              className="min-h-full"
               // Fade only (Johan 23 Oct): a sideways slide made every page jump left/right on phones.
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -347,6 +357,7 @@ const AdminLayout = () => {
               <JobLocationShare /><ContractGate><Outlet /></ContractGate>
             </motion.div>
           </AnimatePresence>
+          )}
         </main>
 
         {/* Bottom nav owns the mobile footer area — avoid a double stack */}

@@ -35,7 +35,8 @@ export function v8Primary(role: V8Role, opts?: { salary?: boolean }): V8Link[] {
   ];
 }
 
-/** Phone bottom tabs: max 4 + More. Quotes/Invoices sit at the top of the More drawer (pinned list) on phones. */
+/** Phone bottom tabs: max 4 + More. Quotes/Invoices sit at the top of the More drawer (pinned list) on phones.
+ *  Live map is not a fifth tab. Admins open it from this primary list (the phone menu drawer) and from the Home "Live Map" button. Sales primary never includes it. */
 export function v8Tabs(role: V8Role, opts?: { salary?: boolean }): V8Link[] {
   return v8Primary(role, opts).filter((l) => l.label !== "Quotes" && l.label !== "Invoices" && l.label !== "Live map").slice(0, 4);
 }

@@ -12,6 +12,7 @@ import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilter
 import { leadStatusCategory } from "@/lib/leadStatusCategory";
 import { Switch } from "@/components/ui/switch";
 import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
+import { mapAvailabilityOf, mapFailureAction, mapFailureMessage, mapFillStyle, type MapAvailability } from "@/lib/phoneMapFrame";
 import { hasValidCoords, resolveLeadCoords } from "@/lib/leadCoords";
 import { attachPaymentTotals, DepositInvoiceRow } from "@/lib/depositInvoice";
 import { getDepositChipState, depositChipLabel } from "@/components/shared/DepositPaymentChip";
@@ -53,6 +54,8 @@ export interface MapViewHandle {
   setStatusFilters: (statuses: LeadStatusFilter[]) => void;
   /** Underlying Mapbox map (null until loaded) — used by overlay layers such as job pins. */
   getMap: () => mapboxgl.Map | null;
+  /** Rebuild the map after a visible failure. The canvas stays mounted so this can run. */
+  retry: () => void;
 }
 
 export interface MapStatusState {
@@ -70,6 +73,8 @@ interface MapViewProps {
   hideStatusFilters?: boolean;
   /** Emits current filter selection + per-status counts so a parent can render the pills. */
   onStatusStateChange?: (state: MapStatusState) => void;
+  /** Home renders this outside the map so a failure is not trapped under a wash. */
+  onAvailabilityChange?: (state: MapAvailability) => void;
 }
 
 
@@ -96,7 +101,7 @@ const escapeHtml = (text: string | null | undefined): string => {
   return div.innerHTML;
 };
 
-const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, hideChromeControls = false, hideStatusFilters = true, onStatusStateChange }, ref) => {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, hideChromeControls = false, hideStatusFilters = true, onStatusStateChange, onAvailabilityChange }, ref) => {
   const MAP_CHROME_BOTTOM_OFFSET_PX = 64;
   const { user } = useAuth();
   const [agents, setAgents] = useState<AgentLocation[]>([]);
@@ -117,6 +122,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   );
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
+  const styleLoadedRef = useRef(false);
+  const retryRef = useRef<() => void>(() => {});
   const agentMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const leadMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const customerLocationMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
@@ -224,15 +231,21 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     return () => timers.forEach((t) => window.clearTimeout(t));
   }, [mapLoaded, showTokenInput, applyMapChromeBottomOffset]);
 
-  // ResizeObserver to trigger map.resize() when container dimensions change (tab switches, panel toggles)
+  // ResizeObserver to trigger map.resize() when container dimensions change (tab switches, panel toggles).
+  // iOS Safari also changes the visual viewport when the URL bar or keyboard moves.
   useEffect(() => {
     const container = mapRef.current;
     if (!container || !mapInstanceRef.current) return;
-    const ro = new ResizeObserver(() => {
-      mapInstanceRef.current?.resize();
-    });
+    const resize = () => mapInstanceRef.current?.resize();
+    const ro = new ResizeObserver(resize);
     ro.observe(container);
-    return () => ro.disconnect();
+    window.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("resize", resize);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("resize", resize);
+    };
   }, [mapLoaded]);
 
   // Expose panToLocation and panToLocationAndOpenPopup methods via ref
@@ -383,6 +396,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     setTrafficEnabled: (enabled: boolean) => setTrafficEnabled(enabled),
     getTrafficEnabled: () => trafficEnabled,
     getMap: () => (mapLoaded ? mapInstanceRef.current : null),
+    retry: () => retryRef.current(),
     toggleStatusFilter: (status: LeadStatusFilter) => {
       setStatusFilters((prev) => {
         const next = new Set(prev);
@@ -641,7 +655,12 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     setMapFailed(false);
     const t = getMapboxTokenSync() || (await getMapboxToken());
     if (t) initializeMap(t);
+    else {
+      setMapFailed(true);
+      setLoadingStatus("Map token unavailable");
+    }
   };
+  retryRef.current = handleRetryMap;
 
   const initializeMap = (rawToken: string) => {
     if (!mapRef.current) return;
@@ -655,6 +674,13 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
     setLoadingStatus("Connecting to Mapbox...");
     setLoadingTimeout(false);
+    styleLoadedRef.current = false;
+
+    if (typeof mapboxgl.supported === "function" && !mapboxgl.supported()) {
+      setMapFailed(true);
+      setLoadingStatus("This browser can't draw the map.");
+      return;
+    }
 
     try {
       // Always set the token before creating the map
@@ -695,6 +721,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       
       // Offset the navigation control above the footer after map loads
       mapInstanceRef.current.on("load", () => {
+        styleLoadedRef.current = true;
         applyMapChromeBottomOffset();
         // Trigger resize so Mapbox recalculates container dimensions
         mapInstanceRef.current?.resize();
@@ -806,19 +833,15 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       });
 
       mapInstanceRef.current.on("error", (e) => {
-        console.error("[Mapbox] error event:", e?.error ?? e);
+        const raw = (e as { error?: { status?: number; message?: string; url?: string } })?.error;
+        console.error("[Mapbox] error event:", raw ?? e);
+        if (mapFailureAction(raw, styleLoadedRef.current) === "ignore") return;
         if (loadingTimeoutRef.current) {
           clearTimeout(loadingTimeoutRef.current);
         }
-        const status = (e as any)?.error?.status;
-        if (status === 401 || status === 403) {
-          setMapFailed(true);
-          setLoadingStatus("Map token rejected by Mapbox.");
-        } else {
-          setMapFailed(true);
-          setLoadingTimeout(true);
-          setLoadingStatus("Failed to load map. Check your connection.");
-        }
+        setMapFailed(true);
+        setLoadingTimeout(true);
+        setLoadingStatus(mapFailureMessage(raw));
       });
     } catch (error) {
       console.error("[Mapbox] initializeMap threw:", error);
@@ -1493,22 +1516,33 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     window.open("/admin/map", "_blank", "width=1400,height=900,noopener,noreferrer");
   };
 
+  useEffect(() => {
+    onAvailabilityChange?.(mapAvailabilityOf({
+      failed: mapFailed,
+      loaded: mapLoaded,
+      slow: loadingTimeout,
+      message: loadingStatus,
+    }));
+  }, [mapFailed, mapLoaded, loadingTimeout, loadingStatus, onAvailabilityChange]);
+
   return (
-    <div ref={containerRef} className="h-full relative bg-background">
-      {mapFailed ? (
-        <div className="absolute inset-0 bg-muted flex flex-col items-center justify-center p-6 text-center">
+    <div ref={containerRef} className="bg-background" style={mapFillStyle} data-testid="map-view">
+      {/* Inline position: mapbox-gl.css sets .mapboxgl-map{position:relative}, which collapsed the canvas to 0. */}
+      <div ref={mapRef} style={mapFillStyle} data-testid="map-canvas" />
+      {mapFailed && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-card p-6 text-center" data-testid="map-unavailable">
           <AlertCircle className="h-12 w-12 text-muted-foreground mb-3" />
           <h3 className="text-lg font-semibold text-foreground mb-1">Map Unavailable</h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-            Unable to load map tiles. Check your internet connection and try again.
+            {loadingStatus || "Unable to load map tiles. Check your internet connection and try again."}
           </p>
           <div className="flex gap-2">
             <Button size="sm" onClick={handleRetryMap}>Retry</Button>
           </div>
         </div>
-      ) : (
+      )}
+      {!mapFailed && (
         <>
-          <div ref={mapRef} className="w-full h-full" />
 
 
           {/* Map controls: traffic + route */}
@@ -1604,7 +1638,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           )}
 
           {!mapLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/40">
+            <div className="absolute inset-0 z-10 flex items-center justify-center" data-testid="map-loading" style={{ background: "hsl(var(--background) / 0.92)" }}>
               <div className="text-center space-y-3 p-6 bg-card rounded-lg border shadow-lg max-w-xs">
                 {loadingTimeout ? <AlertCircle className="h-8 w-8 text-destructive mx-auto" /> : <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />}
                 <div>

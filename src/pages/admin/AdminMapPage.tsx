@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRole } from "@/hooks/useRole";
 import { fetchJobPins } from "@/lib/jobPins";
 import JobPinsLayer from "@/components/map/JobPinsLayer";
+import { mapHeroShellClass, mapHeroStageClass, mapPhoneControlsClass } from "@/lib/phoneMapFrame";
 
 
 interface Lead {
@@ -214,7 +215,7 @@ const AdminMapPage = () => {
   };
 
   return (
-    <div ref={pageRef} className="h-full flex flex-col min-h-0 bg-background">
+    <div ref={pageRef} className={`${mapHeroShellClass} bg-background`}>
       {/* Compact chips float over the map on mobile; desktop keeps its denser toolbar. */}
       <div className="absolute inset-x-0 top-0 flex flex-wrap items-center gap-2 px-2 py-1.5 z-20 pointer-events-none lg:relative lg:shrink-0 lg:px-3 lg:border-b lg:bg-card/80 lg:backdrop-blur-sm">
         {/* Desktop-only toolbar */}
@@ -287,7 +288,7 @@ const AdminMapPage = () => {
 
 
       {/* Content */}
-      <div className="flex-1 relative">
+      <div className={mapHeroStageClass}>
         <>
           <div className="absolute inset-0">
             <MapView
@@ -314,7 +315,7 @@ const AdminMapPage = () => {
           </div>
 
           {/* On-map glass controls — mobile & tablet only */}
-          <div className="lg:hidden absolute bottom-4 left-3 z-20 flex flex-col gap-2">
+          <div className={mapPhoneControlsClass}>
             <Button
               variant="ghost"
               size="icon"
