@@ -21,6 +21,10 @@ type Props = {
   onCallLead: (l: CalmLead) => void; onAssignLead: (l: CalmLead) => void; onOpenLead: (l: CalmLead) => void;
   onAssignJob: (id: string) => void; onOpenJob: (id: string) => void; onOpenBlock: (b: CalmBlock) => void;
   onMoveBlock?: (b: CalmBlock, start: number) => void;
+  /** Replaces the empty diary copy (sales: loading, error, or Nothing booked). */
+  emptyJobsLabel?: string;
+  /** Per-job extra under a block. Sales uses it for the on-the-way map. */
+  renderJobExtra?: (b: CalmBlock) => ReactNode;
   pipeline?: ReactNode; now?: Date; nowMin?: number | null;
   /** Month view: Mon–Sun grid cells; picking a day opens it in Today. */
   monthCells?: { day: string; inMonth: boolean }[]; todayDay?: string; onPickDay?: (day: string) => void;
@@ -140,8 +144,8 @@ export default function JobsCalmView(p: Props) {
         {(() => { const d = phoneDay || p.todayDay || ""; const bs = dayBlocks(d); return (
           <div className="space-y-1.5" data-calm-month-list>
             <h3 className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">{d ? new Date(`${d}T12:00:00+02:00`).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" }) : ""} · {bs.length} job{bs.length === 1 ? "" : "s"}</h3>
-            {bs.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500 dark:text-slate-400">Nothing booked</div>
-              : bs.map((b) => <div key={b.id}><div className="mb-0.5 text-[11px] text-slate-500 dark:text-slate-400">{p.people.find((x) => x.id === b.personId)?.name || "Unassigned"}</div><Block b={b} compact onOpen={() => p.onOpenBlock(b)} /></div>)}
+            {bs.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500 dark:text-slate-400">{p.emptyJobsLabel || "Nothing booked"}</div>
+              : bs.map((b) => <div key={b.id}><div className="mb-0.5 text-[11px] text-slate-500 dark:text-slate-400">{p.people.find((x) => x.id === b.personId)?.name || "Unassigned"}</div><Block b={b} compact onOpen={() => p.onOpenBlock(b)} />{b.kind === "job" && p.renderJobExtra?.(b)}</div>)}
           </div>); })()}
       </div>
     </>
@@ -184,11 +188,12 @@ export default function JobsCalmView(p: Props) {
       {p.tab === "today" ? (
         <div>
           <div className="ml-[150px] flex justify-between text-[11px] text-slate-400">{hours.map((h) => <span key={h} className="w-0">{String(h).padStart(2, "0")}</span>)}</div>
-          {p.people.length === 0 && <div className="py-10 text-center text-[13px] text-slate-500 dark:text-slate-400">Nobody booked today</div>}
+          {p.people.length === 0 && <div className="py-10 text-center text-[13px] text-slate-500 dark:text-slate-400">{p.emptyJobsLabel || "Nobody booked today"}</div>}
           {p.people.map((per) => {
             const bs = rowBlocks(per.id);
             return (
-              <div key={per.id} className="flex items-stretch border-t border-slate-100 dark:border-white/10 py-1" data-calm-row>
+              <div key={per.id} className="border-t border-slate-100 dark:border-white/10" data-calm-row>
+              <div className="flex items-stretch py-1">
                 <div className="flex w-[150px] shrink-0 items-center gap-2 pr-2">
                   <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sky-50 dark:bg-sky-500/15 text-[11px] font-semibold text-sky-700 dark:text-sky-300">
                     {initials(per.name)}<span className={cn("absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white", DOT[per.dot])} />
@@ -216,6 +221,11 @@ export default function JobsCalmView(p: Props) {
                   {bs.filter((b) => b.start === null).length > 0 && <span className="absolute bottom-0 right-1 text-[10px] text-slate-400">+{bs.filter((b) => b.start === null).length} no time</span>}
                 </div>
               </div>
+              {bs.filter((b) => b.kind === "job").map((b) => {
+                const extra = p.renderJobExtra?.(b);
+                return extra ? <div key={`${b.id}-way`} className="mb-2 ml-[150px]">{extra}</div> : null;
+              })}
+              </div>
             );
           })}
         </div>
@@ -237,7 +247,7 @@ export default function JobsCalmView(p: Props) {
               </div>
             ))}
           </div>
-          {p.people.length === 0 && <div className="py-10 text-center text-[13px] text-slate-500 dark:text-slate-400">Nothing booked this week</div>}
+          {p.people.length === 0 && <div className="py-10 text-center text-[13px] text-slate-500 dark:text-slate-400">{p.emptyJobsLabel || "Nothing booked this week"}</div>}
         </div>
       )}
     </div>
@@ -246,14 +256,19 @@ export default function JobsCalmView(p: Props) {
   const phoneJobs = (
     <div className="space-y-3 md:hidden" data-calm-phone-jobs>
       <h3 className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">{p.tab === "week" ? "This week's jobs" : "Today's jobs"}</h3>
-      {p.people.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500 dark:text-slate-400">Nothing booked</div>}
+      {p.people.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500 dark:text-slate-400" data-testid="calm-empty-jobs">{p.emptyJobsLabel || "Nothing booked"}</div>}
       {p.people.map((per) => (
         <div key={per.id} className="rounded-2xl bg-white dark:bg-card p-3 shadow-sm ring-1 ring-slate-200/70 dark:ring-white/10">
           <div className="mb-2 flex items-center gap-2">
             <span className="relative grid h-7 w-7 place-items-center rounded-full bg-sky-50 dark:bg-sky-500/15 text-[10px] font-semibold text-sky-700 dark:text-sky-300">{initials(per.name)}<span className={cn("absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white", DOT[per.dot])} /></span>
             <span className="text-[13px] font-semibold">{per.name}</span><span className="text-[11px] text-slate-500 dark:text-slate-400">{per.role}</span>
           </div>
-          <div className="space-y-1.5">{rowBlocks(per.id).sort((a, b) => a.day.localeCompare(b.day) || (a.start ?? 9999) - (b.start ?? 9999)).map((b) => <Block key={b.id} b={b} compact onOpen={() => p.onOpenBlock(b)} />)}</div>
+          <div className="space-y-1.5">{rowBlocks(per.id).sort((a, b) => a.day.localeCompare(b.day) || (a.start ?? 9999) - (b.start ?? 9999)).map((b) => (
+            <div key={b.id} className="space-y-1.5">
+              <Block b={b} compact onOpen={() => p.onOpenBlock(b)} />
+              {b.kind === "job" && p.renderJobExtra?.(b)}
+            </div>
+          ))}</div>
         </div>
       ))}
     </div>

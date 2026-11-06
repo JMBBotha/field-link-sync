@@ -10,6 +10,8 @@ import { jobToCard, visitToCard, visibleVisitEntries } from "@/lib/cardModel";
 import { loadEntries, todayInJohannesburg } from "@/lib/todaysJobs";
 import { activeAssignee, type DJob } from "@/lib/dispatchCards";
 import { blockKind, jhbMinutes, jhbIso, monthGrid, type ChipKey } from "@/lib/jobsCalm";
+import { attachOwnUnassigned, scopeFromRpc } from "@/lib/salesJobVisibility";
+import TechLocationBlock from "@/components/jobs/TechLocationBlock";
 import AssignTechDialog from "@/components/jobs/AssignTechDialog";
 import LeadAssignDialog from "@/components/jobs/LeadAssignDialog";
 import ReassignRequestsBanner from "@/components/jobs/ReassignRequestsBanner";
@@ -45,6 +47,15 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
   const from = tab === "week" ? format(startOfWeek(new Date(`${sel}T12:00:00+02:00`), { weekStartsOn: 1 }), "yyyy-MM-dd") : tab === "month" ? cells[0].day : sel;
   const to = tab === "month" ? plusDay(cells[cells.length - 1].day, 1) : plusDay(from, tab === "week" ? 7 : 1);
 
+  const scopeQ = useQuery({
+    queryKey: ["sales-schedule-scope", from, to],
+    enabled: salesOnly && tab !== "pipeline",
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("sales_schedule_scope", { p_from: from, p_to: to });
+      if (error) throw error;
+      return scopeFromRpc(data);
+    },
+  });
   const { data: jobs = [] } = useQuery({
     queryKey: ["jobs-calm", from, to], refetchInterval: 30_000, enabled: tab !== "pipeline",
     queryFn: async () => {
@@ -55,7 +66,7 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
     },
   });
   const { data: openJobs = [] } = useQuery({
-    queryKey: ["jobs-calm-unassigned"], refetchInterval: 60_000, enabled: tab !== "pipeline",
+    queryKey: ["jobs-calm-unassigned"], refetchInterval: 60_000, enabled: tab !== "pipeline" && !salesOnly,
     queryFn: async () => {
       const { data, error } = await (supabase.from("jobs") as any).select(JOB_COLS)
         .not("status", "in", `(${CLOSED.join(",")})`).order("created_at", { ascending: false }).limit(200);
@@ -111,7 +122,12 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
   const model = useMemo(() => {
     const people: Record<string, CalmPerson & { lane: "sales" | "service" }> = {};
     const blocks: CalmBlock[] = [];
-    jobs.filter((j) => !["cancelled", "canceled"].includes(String(j.status || "").toLowerCase())).forEach((j) => {
+    const scope = salesOnly ? (scopeQ.data ?? { jobIds: new Set<string>(), leadIds: new Set<string>() }) : null;
+    const visibleJobs = scope ? jobs.filter((j) => scope.jobIds.has(j.id)) : jobs;
+    const visibleEntries = scope
+      ? booked.entries.filter((e) => (e.job_id ? scope.jobIds.has(e.job_id) : !!e.lead_id && scope.leadIds.has(e.lead_id)))
+      : booked.entries;
+    visibleJobs.filter((j) => !["cancelled", "canceled"].includes(String(j.status || "").toLowerCase())).forEach((j) => {
       const c = jobToCard(j); const a = activeAssignee(j) as any; const s = String(j.status || "").toLowerCase();
       const pid = a?.profile_id || null;
       if (pid && !people[pid]) people[pid] = { id: pid, name: a?.profiles?.full_name || "Assigned", role: c.lane === "sales" ? "Sales" : "Tech", dot: "grey", lane: c.lane === "sales" ? "sales" : "service" };
@@ -122,7 +138,20 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
         title: `${j.job_type ? `${j.job_type[0].toUpperCase()}${j.job_type.slice(1)}` : ""}${j.job_type && j.title ? " · " : ""}${j.title || ""}` || "Job",
         place: c.place, block: blockKind(c, j.job_type), pill: late ? null : PILL[s] || null, late, draggable: s !== "completed" && !!j.scheduled_for });
     });
-    visibleVisitEntries(booked.entries).filter((e) => !e.job_id && e.lead_id && !["cancelled", "canceled", "resolved_before_visit"].includes(e.status || "")).forEach((e) => {
+    // A visit dated today can belong to a job whose scheduled_for is another day. Sales still see that job.
+    if (scope) {
+      const seen = new Set(blocks.map((b) => b.id));
+      visibleEntries.filter((e) => e.job_id && !seen.has(e.job_id) && !["cancelled", "canceled"].includes(String(e.status || "").toLowerCase())).forEach((e) => {
+        const jobId = e.job_id;
+        if (!jobId) return;
+        const c = visitToCard(e, booked.names); const pid = e.agent_id;
+        if (pid && !people[pid]) people[pid] = { id: pid, name: booked.names[pid]?.full_name || "Assigned", role: c.lane === "sales" ? "Sales" : "Tech", dot: "grey", lane: c.lane === "sales" ? "sales" : "service" };
+        const start = e.start_time ? Number(e.start_time.slice(0, 2)) * 60 + Number(e.start_time.slice(3, 5)) : null;
+        blocks.push({ id: jobId, kind: "job", personId: pid, day: e.date, start, dur: 120, title: c.title, place: c.place, block: blockKind(c), late: c.urgency.key === "late", pill: null });
+        seen.add(jobId);
+      });
+    }
+    visibleVisitEntries(visibleEntries).filter((e) => !e.job_id && e.lead_id && !["cancelled", "canceled", "resolved_before_visit"].includes(e.status || "")).forEach((e) => {
       const c = visitToCard(e, booked.names); const pid = e.agent_id;
       if (pid && !people[pid]) people[pid] = { id: pid, name: booked.names[pid]?.full_name || "Assigned", role: c.lane === "sales" ? "Sales" : "Tech", dot: "grey", lane: c.lane === "sales" ? "sales" : "service" };
       const start = e.start_time ? Number(e.start_time.slice(0, 2)) * 60 + Number(e.start_time.slice(3, 5)) : null;
@@ -131,22 +160,32 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
     });
     Object.values(people).forEach((p) => { if (p.dot === "grey" && blocks.some((b) => b.personId === p.id && b.day === today && b.block !== "done")) p.dot = "blue"; });
     return { people: Object.values(people).sort((a, b) => a.role.localeCompare(b.role) * -1 || a.name.localeCompare(b.name)), blocks };
-  }, [jobs, booked, today]);
+  }, [jobs, booked, today, salesOnly, scopeQ.data]);
 
   // Booked leads keep status "pending"; the rail is for leads nobody has yet (shared isAssigned rule).
   const rail = leads.filter((l) => !isAssigned(l)).sort((a, b) => Number(!!a.first_contact_at) - Number(!!b.first_contact_at) || String(a.created_at).localeCompare(String(b.created_at)));
   const toLead = (l: any): CalmLead => ({ id: l.id, name: l.customer_name || "New lead", place: (l.call_area || (l.customer_address || "").split(",")[0] || "").trim() || null,
     phone: l.customer_phone || null, lane: (laneOf(l) || "sales") as "sales" | "service", createdAt: l.created_at, contacted: !!l.first_contact_at });
-  const lateBlocks = model.blocks.filter((b) => b.late && b.day === today);
   const unassigned: CalmUnassigned[] = openJobs.slice(0, 6).map((j) => {
     const c = jobToCard(j);
     return { id: j.id, title: j.customers?.name || j.title || "Job", sub: [c.place, j.title].filter(Boolean).join(" · "), age: ageLabel(j.created_at), lane: c.lane === "sales" ? "sales" : "service" };
   });
-  const counts = { leadsNotContacted: rail.filter((l) => !l.first_contact_at).length, late: salesOnly ? lateBlocks.filter((b) => b.block === "sales" || model.people.find((x) => x.id === b.personId)?.lane === "sales").length : lateBlocks.length, unassigned: salesOnly ? 0 : openJobs.length };
 
   let people = model.people; let blocks = model.blocks;
-  // Sales reps (dispatch lockdown 9 Oct): only the sales lane, no tech schedules, no unassigned jobs, no drag.
-  if (salesOnly) { people = people.filter((p) => p.lane === "sales"); blocks = blocks.filter((b) => people.some((p) => p.id === b.personId)); }
+  // Sales: jobs this person booked or is assigned to, including a technician's installation.
+  // Not the office tech board, not the company unassigned queue, no drag. Off does not hide them.
+  // Until the scope RPC answers, show nothing rather than every technician's diary.
+  if (salesOnly) {
+    if (!scopeQ.data) { people = []; blocks = []; }
+    else {
+      const mine: (typeof people)[number] = { id: "__mine_unassigned", name: "Not assigned yet", role: "Your booking", dot: "grey", lane: "service" };
+      const held = attachOwnUnassigned(people, blocks, mine);
+      people = held.people; blocks = held.blocks;
+    }
+  }
+  const lateBlocks = blocks.filter((b) => b.late && b.day === today);
+  const counts = { leadsNotContacted: rail.filter((l) => !l.first_contact_at).length, late: lateBlocks.length, unassigned: salesOnly ? 0 : openJobs.length };
+  const roster = people;
   if (who === "sales") people = people.filter((p) => p.lane === "sales");
   else if (who === "tech") people = people.filter((p) => p.lane !== "sales");
   else if (who !== "all") people = people.filter((p) => p.id === who);
@@ -163,7 +202,9 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
         people={people} blocks={blocks} unassigned={salesOnly ? [] : unassigned}
         monthCells={cells} todayDay={today} onPickDay={(d) => { setSel(d); setTab("today"); }} weekDays={weekDays}
         everyone={who} onEveryone={setWho}
-        everyoneOptions={[{ value: "all", label: "Everyone ▾" }, { value: "sales", label: "Sales" }, { value: "tech", label: "Technicians" }, ...model.people.filter((p) => !salesOnly || p.lane === "sales").map((p) => ({ value: p.id, label: p.name }))]}
+        everyoneOptions={[{ value: "all", label: "Everyone ▾" }, { value: "sales", label: "Sales" }, { value: "tech", label: "Technicians" }, ...roster.map((p) => ({ value: p.id, label: p.name }))]}
+        emptyJobsLabel={salesOnly ? (scopeQ.isError ? "Couldn't load your jobs" : scopeQ.isLoading ? "Loading your jobs…" : "Nothing booked") : undefined}
+        renderJobExtra={salesOnly ? (b) => <TechLocationBlock jobId={b.id} compact /> : undefined}
         chip={chip} onChip={setChip} counts={counts}
         onCallLead={() => {}} onAssignLead={(l) => setAssignLeadId(l.id)} onOpenLead={(l) => navigate(isAssigned(l as any) ? `/admin/bookings/${l.id}` : `/admin/dispatch?lead=${l.id}`)}
         onAssignJob={setAssignJobId} onOpenJob={(id) => navigate(`/admin/jobs/${id}`)}
