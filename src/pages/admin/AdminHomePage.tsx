@@ -4,7 +4,7 @@ import AdminHome from "@/components/AdminHome";
 import ClassicAdminHome from "@/components/classic/ClassicAdminHome";
 import { useLayoutVersion } from "@/hooks/useLayoutVersion";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
-import MapView from "@/components/MapView";
+import MapView, { type MapViewHandle } from "@/components/MapView";
 import OfferCards from "@/components/dispatch/OfferCards";
 import { Button } from "@/components/ui/button";
 import { useSalesRep } from "@/hooks/useSalesRep";
@@ -17,7 +17,8 @@ import RequestsTodayStrip from "@/components/requests/RequestsTodayStrip";
 import { useV8Role } from "@/components/v8/V8Sidebar";
 
 import { Map, ExternalLink, Maximize2, Minimize2, LayoutTemplate } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { homeMapNotice, homeOverlayClass, mapHeroShellClass, mapHeroStageClass, showPhoneLiveMapButton, type MapAvailability } from "@/lib/phoneMapFrame";
 
 const AdminHomePage = () => {
   const navigate = useNavigate();
@@ -27,7 +28,11 @@ const AdminHomePage = () => {
   const HomeC = isClassic ? ClassicAdminHome : AdminHome;
   const [showCreateLead, setShowCreateLead] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<MapViewHandle>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mapAvailability, setMapAvailability] = useState<MapAvailability>({ state: "loading", message: "Connecting to Mapbox…" });
+  const onMapAvailability = useCallback((s: MapAvailability) => setMapAvailability(s), []);
+  const mapNotice = homeMapNotice(mapAvailability);
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -64,8 +69,8 @@ const AdminHomePage = () => {
 
   return (
     <ErrorBoundary>
-      <div ref={pageRef} className="relative h-full min-h-0 flex flex-col bg-gradient-to-b from-[#F3FAFE] to-[#E8F6FE] dark:from-background dark:to-background">
-        {/* Desktop map controls; mobile navigation already exposes these destinations. */}
+      <div ref={pageRef} className={`${mapHeroShellClass} bg-gradient-to-b from-[#F3FAFE] to-[#E8F6FE] dark:from-background dark:to-background`}>
+        {/* Desktop map controls. Phones get a Live Map button in the overlay (the tab bar stays at four). */}
         <div className="hidden lg:flex shrink-0 flex-wrap items-center gap-2 px-3 py-2 border-b bg-card/80 backdrop-blur-sm z-20">
           <span aria-current="page" className="inline-flex items-center gap-1.5 rounded-md bg-primary text-primary-foreground px-3 h-8 text-xs font-medium">
             <Map className="h-3.5 w-3.5" />
@@ -92,16 +97,20 @@ const AdminHomePage = () => {
           </Button>
         </div>
 
-        {/* Live map background */}
-        <div className="relative flex-1 min-h-0">
-          {/* Live map behind both layouts (Johan 13 Oct 12:55: restore it on New). New gets a slightly stronger wash so the v7 panels stay readable. */}
-          <div className={isClassic ? "absolute inset-0 pointer-events-none opacity-70" : "absolute inset-0 pointer-events-none opacity-30"} aria-hidden="true">
-            <MapView showAllAgents hideChromeControls hideStatusFilters />
+        {/* Live map background. No opacity and no backdrop-filter on this layer: both leave the iOS canvas blank. */}
+        <div className={mapHeroStageClass}>
+          {/* Live map behind both layouts (Johan 13 Oct 12:55: restore it on New). A flat wash keeps the panels readable without hiding a failed map. */}
+          <div className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
+            <MapView ref={mapRef} showAllAgents hideChromeControls hideStatusFilters onAvailabilityChange={onMapAvailability} />
           </div>
-          <div className={isClassic ? "absolute inset-0 bg-background/40 pointer-events-none" : "absolute inset-0 bg-background/60 pointer-events-none"} aria-hidden="true" />
+          <div
+            className="pointer-events-none absolute inset-0 z-[1]"
+            style={{ background: `hsl(var(--background) / ${isClassic ? 0.35 : 0.55})` }}
+            aria-hidden="true"
+          />
 
-          {/* Dashboard content floating over the map */}
-          <div className="relative h-full overflow-y-auto overflow-x-hidden p-3 pb-20 md:p-4 md:pb-20 lg:pb-4 space-y-3">
+          {/* Dashboard content floating over the map. Absolute, not h-full: iOS clips h-full + overflow to 0. */}
+          <div className={homeOverlayClass} data-testid="home-dashboard">
             {/* Same-spot view switch on both layouts (Johan 13 Oct: no way back from Classic). */}
             {/* Hidden on phones (Johan 29 Oct): desktop keeps the switch. */}
             <div className="hidden md:flex justify-end">
@@ -110,6 +119,29 @@ const AdminHomePage = () => {
                 {isClassic ? "Switch to new view" : "Switch to classic view"}
               </Button>
             </div>
+            {showPhoneLiveMapButton(isSalesRep) && (
+              <div className="flex lg:hidden">
+                <Button size="sm" variant="outline" onClick={() => navigate("/admin/map")} data-testid="home-open-live-map" className="h-11 gap-1.5 bg-card text-sm shadow-sm">
+                  <Map className="h-3.5 w-3.5" />
+                  Live Map
+                </Button>
+              </div>
+            )}
+            {mapNotice && (
+              <div
+                role="status"
+                data-testid="home-map-notice"
+                data-tone={mapNotice.tone}
+                className={mapNotice.tone === "error"
+                  ? "flex items-center justify-between gap-2 rounded-xl border border-destructive/40 bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm"
+                  : "rounded-xl border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm"}
+              >
+                <span>{mapNotice.text}</span>
+                {mapNotice.tone === "error" && (
+                  <Button size="sm" variant="outline" className="h-8 shrink-0" onClick={() => mapRef.current?.retry()}>Retry</Button>
+                )}
+              </div>
+            )}
             {/* Next steps to-do on top for sales + admin (Johan 31 Oct 2026). */}
             {/* Admin home polish (Johan 2 Nov 17:51): next step, orange invoices waiting, requests today, then in order. */}
             {v8Role !== "tech" && <HomeFocus requests={<RequestsTodayStrip blue />} />}

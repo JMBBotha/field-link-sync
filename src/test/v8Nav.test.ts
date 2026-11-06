@@ -48,7 +48,14 @@ describe("v8 Simple navigation", () => {
   it("Live map is a main menu item for admin/managers only, not in a group and not a phone tab", () => {
     expect(v8More("admin").flatMap((x) => x.links).some((l) => l.path === "/admin/map")).toBe(false);
     expect(v8Primary("sales").some((l) => l.path === "/admin/map")).toBe(false);
+    expect(v8Primary("admin").some((l) => l.path === "/admin/map")).toBe(true);
+    expect(v8Primary("owner").some((l) => l.path === "/admin/map")).toBe(true);
     expect(v8Tabs("admin").map((l) => l.label)).toEqual(["Home", "Pipeline", "Schedule", "Clients"]);
+    expect(v8Tabs("admin").some((l) => l.path === "/admin/map")).toBe(false);
+    expect(v8Tabs("sales").some((l) => l.path === "/admin/map")).toBe(false);
+    // /admin/map must not light up Home. The phone tabs then show no selection, which is the blank-map screenshot.
+    expect(v8IsActive(v8Primary("admin")[0], "/admin/map")).toBe(false);
+    expect(v8IsActive(v8Primary("admin").find((l) => l.path === "/admin/map")!, "/admin/map")).toBe(true);
   });
   it("marks the active area", () => {
     const pipe = v8Primary("admin")[1];
