@@ -333,6 +333,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         </div>
       </div>
 
+      <PaymentSchedulePanel invoiceId={invoice.id} refreshKey={amountPaid} />
       <BalanceDueBlock ownerStrip invoiceId={invoice.id} onRecordPayment={() => {
         const box = document.getElementById("invoice-payment-recorder");
         const form = box?.querySelector<HTMLElement>('[data-testid="record-payment-form"]');
@@ -379,9 +380,6 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         depositLabel={invoice.deposit_type === "percent" ? `${Number(invoice.deposit_value)}% of total incl. VAT` : null}
       />
 
-
-      {/* Expected deposit / final payment dates (feeds cash flow) */}
-      <PaymentSchedulePanel invoiceId={invoice.id} refreshKey={amountPaid} />
 
       {/* Payments — record & history (auto-updates invoice status via DB trigger) */}
       <div className="flex items-center justify-end -mb-2">

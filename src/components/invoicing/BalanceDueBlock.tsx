@@ -43,7 +43,7 @@ export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment
   if (st === "draft" && !b.is_balance) return null;
   const refresh = () => { qc.invalidateQueries({ queryKey: ["invoice-balance"] }); qc.invalidateQueries({ queryKey: ["invoice-balance-extras"] }); qc.invalidateQueries({ queryKey: ["invoice-due"] }); qc.invalidateQueries({ queryKey: ["payment-followups"] }); };
   const final = finalPaymentLine(b);
-  const expected = expectedFinal(b, extras);
+  const expected = extras?.expected_final_date || expectedFinal(b, extras);
   const stage = installStage(b, extras?.project_house?.steps);
   const stageWhen = stage?.key === "installed"
     ? (extras?.expected_final_date || expected || (!b.waiting && b.due) || null)

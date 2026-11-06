@@ -12,6 +12,8 @@ import { V8_COLS, v8ColOf, type V8Col } from "@/lib/v8Flow";
 import { usePipelineData, nameOf } from "@/components/jobs/PipelineBoard";
 import type { V8Role } from "./v8Nav";
 import V8NumberRow from "./V8NumberRow";
+import AdminHomeCashFlowPie from "./AdminHomeCashFlowPie";
+import AdminHomeStockGlance from "./AdminHomeStockGlance";
 import SalesHeartbeat from "@/components/heartbeat/SalesHeartbeat";
 import { useHeartbeatAudience } from "@/hooks/useSalesHeartbeat";
 import { InvoiceApprovalHomeCard } from "@/components/invoicing/InvoiceApprovalPanel";
@@ -130,6 +132,12 @@ export default function V8RoleHome({ role, hideRequests }: { role: V8Role; hideR
           </>) : <div className="mt-2 text-sm text-muted-foreground">Nothing waiting. Nice.</div>}
         </div>}
       </div>
+      {(role === "owner" || role === "admin") && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2" data-testid="admin-home-glances">
+          <AdminHomeCashFlowPie />
+          <AdminHomeStockGlance />
+        </div>
+      )}
       <div className="rounded-2xl border bg-card p-3">
         <div className="mb-2 flex items-center justify-between"><span className="text-sm font-bold">The flow · all open deals, incl. VAT</span>
           <button className="text-xs font-semibold text-[#1590d6]" onClick={() => navigate("/admin/jobs?tab=pipeline")}>Open pipeline →</button></div>

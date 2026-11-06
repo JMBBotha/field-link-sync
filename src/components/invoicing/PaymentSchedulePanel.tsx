@@ -1,5 +1,5 @@
 /** Invoice payment dates (Johan 24 Oct): expected deposit + final payment, each with paid / outstanding derived from payments. */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
@@ -36,14 +36,21 @@ function Row({ label, amount, date, auto, paid, outstanding, status }: { label: 
   );
 }
 
-export default function PaymentSchedulePanel({ invoiceId, refreshKey }: { invoiceId: string; refreshKey?: unknown }) {
+export default function PaymentSchedulePanel({ invoiceId, refreshKey, preview }: { invoiceId: string; refreshKey?: unknown; /** Harness only: skip the live schedule read. */ preview?: PaySchedule | null }) {
   const qc = useQueryClient();
-  const { data: s, isLoading } = useQuery({
+  const query = useQuery({
     queryKey: ["invoice-pay-schedule", invoiceId, refreshKey],
+    enabled: !preview,
     queryFn: async () => { const { data, error } = await sb.rpc("invoice_payment_schedule", { p_invoice: invoiceId }); if (error) throw error; return ((data || [])[0] || null) as PaySchedule | null; },
   });
+  const s = preview ?? query.data;
+  const isLoading = preview ? false : query.isLoading;
   const [open, setOpen] = useState(false); const [busy, setBusy] = useState(false);
   const [dep, setDep] = useState(""); const [days, setDays] = useState<number>(30); const [custom, setCustom] = useState(false); const [unset, setUnset] = useState(false); const [fin, setFin] = useState("");
+  useEffect(() => {
+    if (typeof window === "undefined" || window.location.hash !== "#expected-final") return;
+    document.getElementById("expected-final")?.scrollIntoView({ block: "center" });
+  }, [s]);
   if (isLoading) return <div className="print:hidden p-2"><Loader2 className="h-4 w-4 animate-spin" /></div>;
   if (!s) return null; // no access (field tech) or invoice missing
 
@@ -58,11 +65,22 @@ export default function PaymentSchedulePanel({ invoiceId, refreshKey }: { invoic
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success(reset ? "Back to automatic dates" : "Payment dates saved"); setOpen(false);
-    qc.invalidateQueries({ queryKey: ["invoice-pay-schedule", invoiceId] }); qc.invalidateQueries({ queryKey: ["cashflow"] });
+    qc.invalidateQueries({ queryKey: ["invoice-pay-schedule", invoiceId] }); qc.invalidateQueries({ queryKey: ["cashflow"] }); qc.invalidateQueries({ queryKey: ["admin-home-cash-flow"] });
+  };
+  const saveFinalDate = async (value: string) => {
+    setBusy(true);
+    let { error } = await sb.rpc("set_invoice_payment_dates", {
+      p_invoice: invoiceId, p_deposit_date: s.deposit_date, p_final_after_days: s.final_after_days, p_final_date: value || null,
+    });
+    if (!error && s.has_deposit && !value) ({ error } = await sb.rpc("set_invoice_final_unscheduled", { p_invoice: invoiceId, p_on: true }));
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Expected final date saved. The invoice total is unchanged.");
+    qc.invalidateQueries({ queryKey: ["invoice-pay-schedule", invoiceId] }); qc.invalidateQueries({ queryKey: ["cashflow"] }); qc.invalidateQueries({ queryKey: ["admin-home-cash-flow"] }); qc.invalidateQueries({ queryKey: ["invoice-balance-extras"] });
   };
 
   return (
-    <Card className="print:hidden rounded-2xl" data-testid="payment-schedule">
+    <Card id="expected-final" className="print:hidden rounded-2xl" data-testid="payment-schedule">
       <CardContent className="p-4 space-y-2">
         <div className="flex items-center justify-between gap-2">
           <p className="flex items-center gap-2 text-sm font-semibold"><CalendarClock className="h-4 w-4 text-[#1590D6]" /> Expected payments</p>
@@ -70,6 +88,16 @@ export default function PaymentSchedulePanel({ invoiceId, refreshKey }: { invoic
         </div>
         {s.has_deposit && <Row label="Deposit" amount={s.deposit_amount} date={s.deposit_date} auto={s.deposit_date_auto} paid={s.deposit_paid} outstanding={s.deposit_outstanding} status={s.deposit_status} />}
         <Row label={s.has_deposit ? "Final" : "Payment"} amount={s.final_amount} date={s.final_date} auto={s.final_date_auto} paid={s.final_paid} outstanding={s.final_outstanding} status={s.final_status} />
+        <div data-testid="expected-final-control" className="rounded-xl border border-[#E8F6FE] bg-[#F3FAFE] p-3">
+          <p className="text-sm font-bold text-[#0F1B2A]" data-testid="expected-final-label">{s.final_date ? `Expected ${fmtDate(s.final_date)}` : "Date not set"}</p>
+          <p className="text-xs text-muted-foreground">Due on completion</p>
+          {s.can_edit && (
+            <label className="mt-2 block text-xs font-semibold text-muted-foreground">Expected final
+              <Input data-testid="expected-final-date" type="date" disabled={busy} value={s.final_date || ""} onChange={(e) => saveFinalDate(e.target.value)} className="mt-1 h-11 rounded-xl bg-white" />
+            </label>
+          )}
+          <p className="mt-1 text-xs text-muted-foreground">Dates only. The invoice amount does not change.</p>
+        </div>
         <p className="text-xs text-muted-foreground">Terms {s.terms_days} days after invoice{s.has_deposit ? (s.final_date ? `, final ${s.final_after_days} days after deposit` : ", final date not set yet") : ""}. Feeds cash flow. Dates only, amounts never change here.</p>
       </CardContent>
       <Dialog open={open} onOpenChange={setOpen}>
