@@ -21,7 +21,7 @@ import { formatRand } from "@/utils/formatRand";
 import CompanyBlock from "@/components/shared/CompanyBlock";
 import { cleanBanking, COMPANY } from "@/lib/companyIdentity";
 import QuoteTermsPage from "@/components/quoting/QuoteTermsPage";
-import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
+import { profileBanking, profileTermsInfo, type CompanyProfile } from "@/lib/companyProfiles";
 import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
 import { withEoe } from "@/lib/eoeClause";
 import { isPaidInFullRemote, usesLegacyPaymentTerms, withRemoteNotice } from "@/lib/remoteQuoteClause";
@@ -478,6 +478,9 @@ const EstimateDocument = ({
   const editorLogo = ((record as any)?.logo_url as string | undefined) || (isMassairProfile(record) ? logoLight : null);
   const accountType = bank.account_type;
   const cleanTerms = stripLegacyBanking(termsText);
+  // Same rule as invoices (profileTermsInfo): the issuing company's legal name.
+  // settings.company_name is only a fallback, and only when it is this quote's own row.
+  const termsCompanyName = profileTermsInfo(record)?.companyName || settings.company_name || COMPANY.legalName;
 
   // Client-facing (read-only) output = the Light/Bold document (Johan 2026-10-13). Staff editing keeps its own surface.
   if (!editing) {
@@ -524,7 +527,7 @@ const EstimateDocument = ({
         terms={terms}
         fullTermsPage={
           <QuoteTermsPage
-            companyName={settings.company_name || COMPANY.legalName}
+            companyName={termsCompanyName}
             bankName={bank.bank_name || undefined}
             accountName={bank.account_name}
             accountNumber={bank.account_number || undefined}
@@ -534,6 +537,7 @@ const EstimateDocument = ({
             remoteQuote={!!remoteQuote}
             legacyPayment={legacyPayment}
             remotePaidInFull={isPaidInFullRemote(remoteQuoteSource)}
+            rowFlow
           />
         }
       />
@@ -1150,7 +1154,7 @@ const EstimateDocument = ({
 
         {/* ── Full terms & conditions: own page, Bold design (Johan 15 Oct 2026) ── */}
         <QuoteTermsPage
-          companyName={settings.company_name || COMPANY.legalName}
+          companyName={termsCompanyName}
           bankName={bank.bank_name || undefined}
           accountName={bank.account_name}
           accountNumber={bank.account_number || undefined}
@@ -1160,6 +1164,7 @@ const EstimateDocument = ({
           remoteQuote={!!remoteQuote}
           legacyPayment={legacyPayment}
           remotePaidInFull={isPaidInFullRemote(remoteQuoteSource)}
+          rowFlow
         />
       </div>
     </div>

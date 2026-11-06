@@ -76,12 +76,36 @@ describe("QuoteTermsPage", () => {
     expect((html.match(/data-testid="terms-row"/g) || []).length).toBe(Math.ceil(n / 2));
     expect(html).toContain("Invoice<!-- --> <!-- -->INV-1");
     expect(html).toContain("fl-terms-compact");
+    expect(html).toContain("pb-6");
     const head = html.indexOf("Terms and conditions");
+    const keep = html.indexOf('data-testid="terms-heading-keep"');
     const firstRow = html.indexOf('data-testid="terms-row"');
-    expect(html.lastIndexOf("data-pdf-keep", head)).toBeGreaterThan(-1);
+    const secondRow = html.indexOf('data-testid="terms-row"', firstRow + 1);
+    expect(keep).toBeGreaterThan(-1);
+    expect(keep).toBeLessThan(head);
     expect(firstRow).toBeGreaterThan(head);
+    expect(secondRow).toBeGreaterThan(firstRow);
     expect(html.indexOf(">01<")).toBeLessThan(html.indexOf(">02<"));
     expect(html.indexOf(">02<")).toBeLessThan(html.indexOf(">03<"));
+  });
+  it("quote terms use the same row flow, so a column keep cannot orphan the heading", () => {
+    const doc = readFileSync("src/components/quoting/EstimateDocument.tsx", "utf8");
+    const termsPages = doc.split("<QuoteTermsPage").slice(1);
+    expect(termsPages).toHaveLength(2);
+    for (const block of termsPages) expect(block.slice(0, 600)).toContain("rowFlow");
+    const html = renderToString(<QuoteTermsPage companyName="Massair CT (Pty) Ltd" accountNumber="63226563591" quoteNumber="Q-2026-0053" rowFlow />);
+    const keepAt = html.indexOf('data-testid="terms-heading-keep"');
+    const firstRow = html.indexOf('data-testid="terms-row"');
+    const secondRow = html.indexOf('data-testid="terms-row"', firstRow + 1);
+    expect(keepAt).toBeGreaterThan(-1);
+    expect(keepAt).toBeLessThan(html.indexOf("Terms and conditions"));
+    expect(html.indexOf("Scope of Work")).toBeGreaterThan(firstRow);
+    expect(secondRow).toBeGreaterThan(firstRow);
+    // Half-column keeps are the Q-2026-0053 blank pages. Scope and Warranty must not share one keep.
+    const scopeKeepEnd = html.indexOf('data-testid="terms-row"', firstRow + 1);
+    expect(html.slice(keepAt, scopeKeepEnd)).toContain("Scope of Work");
+    expect(html.slice(keepAt, scopeKeepEnd)).not.toContain("Warranty");
+    expect(html).toContain("pb-6");
   });
   it("invoice document renders the two-column terms when termsCompany is given", () => {
     const inv = readFileSync("src/components/invoicing/InvoiceDocument.tsx", "utf8");

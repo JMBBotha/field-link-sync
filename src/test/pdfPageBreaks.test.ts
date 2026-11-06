@@ -60,3 +60,26 @@ describe("side-by-side keep blocks (invoice terms points, Johan 2 Nov 21:10)", (
     expect(keep.some(([a, b]) => a < cuts[0] && cuts[0] < b)).toBe(false);
   });
 });
+
+describe("quote terms pagination (Q-2026-0053)", () => {
+  it("staggered full-height columns leave a short page; aligned rows fill it", () => {
+    // Two columns whose section keeps do not share edges. The ideal cut is inside a keep
+    // that starts below the top fifth of the page, so the cutter walks up and the page
+    // holds only the short block above that keep.
+    const columns: [number, number][] = [[0, 150], [250, 900], [0, 140], [220, 1200]];
+    const sparse = computePageCuts(() => false, 3000, 1000, 0, [], 1, columns);
+    expect(sparse[0]).toBeLessThan(400);
+    expect(columns.some(([a, b]) => a < sparse[0] && sparse[0] < b)).toBe(false);
+
+    // The same page height with row-aligned keeps (01|02, then 03|04, …) cuts in the gap
+    // near the bottom of the page instead of abandoning the rest of it.
+    const rows: [number, number][] = [
+      [0, 150], [260, 700], [740, 980],
+      [0, 150], [260, 720], [740, 990],
+      [1020, 1400], [1020, 1500],
+    ];
+    const filled = computePageCuts(() => false, 3000, 1000, 0, [], 1, rows);
+    expect(filled[0]).toBeGreaterThanOrEqual(900);
+    expect(rows.some(([a, b]) => a < filled[0] && filled[0] < b)).toBe(false);
+  });
+});
