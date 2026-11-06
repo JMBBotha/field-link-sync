@@ -10,14 +10,98 @@ export type JobTechLocation = {
   scheduled_start?: string | null; job_lat?: number | null; job_lng?: number | null; techs?: TechLoc[];
 };
 
+const STATUSES = new Set(["on_site", "on_the_way", "not_started", "left_site"]);
+const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
+
+/** job_tech_location returns jsonb. Drop anything that is not that shape. */
+export function parseJobTechLocation(data: unknown): JobTechLocation | null {
+  let value = data;
+  if (typeof value === "string") {
+    try { value = JSON.parse(value) as unknown; } catch { return null; }
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.allowed !== "boolean") return null;
+  if (!row.allowed) return { allowed: false };
+  const techs = Array.isArray(row.techs) ? row.techs.flatMap((item): TechLoc[] => {
+    if (!item || typeof item !== "object") return [];
+    const t = item as Record<string, unknown>;
+    const status = typeof t.status === "string" && STATUSES.has(t.status) ? t.status as TechLoc["status"] : "not_started";
+    if (typeof t.tech_id !== "string" || typeof t.name !== "string") return [];
+    return [{
+      tech_id: t.tech_id, name: t.name, lat: num(t.lat), lng: num(t.lng),
+      last_updated: str(t.last_updated), distance_km: num(t.distance_km),
+      status, shared: t.shared === true,
+      arrived_at: str(t.arrived_at), left_at: str(t.left_at), en_route_at: str(t.en_route_at),
+    }];
+  }) : [];
+  return {
+    allowed: true,
+    in_window: row.in_window === true,
+    window_start: str(row.window_start),
+    window_end: str(row.window_end),
+    scheduled_start: str(row.scheduled_start),
+    job_lat: num(row.job_lat),
+    job_lng: num(row.job_lng),
+    techs,
+  };
+}
+
 export const STATUS_LABEL: Record<string, string> = {
   on_site: "On site", on_the_way: "On the way", not_started: "Not started", left_site: "Left site",
 };
 
 export function techStatusLabel(t: TechLoc): string {
   if (t.status === "left_site" || t.arrived_at) return STATUS_LABEL[t.status] || "On site";
+  if (t.status === "not_started") return "Not started";
   if (!t.shared) return "Location not shared";
   return STATUS_LABEL[t.status] || "Not started";
+}
+
+/** A pin is only drawn from a real shared coordinate. Never a guessed position. */
+export function showTechPin(t: Pick<TechLoc, "shared" | "lat" | "lng">): boolean {
+  return !!(t.shared && t.lat != null && t.lng != null);
+}
+
+/** Honest sentence for one technician. No location is invented. */
+export function wayDetail(t: TechLoc): string {
+  if (t.status === "not_started") return `${t.name} has not started the trip.`;
+  if (t.status === "left_site") return showTechPin(t) ? `${t.name} has left the site.` : `${t.name} has left the site. Location is not being shared.`;
+  if (!showTechPin(t)) {
+    if (t.status === "on_the_way") return `${t.name} is on the way, but is not sharing location. No pin to show.`;
+    if (t.status === "on_site") return `${t.name} is on site, but is not sharing location. No pin to show.`;
+    return `${t.name} is not sharing location. No pin to show.`;
+  }
+  if (t.status === "on_the_way") return `${t.name} is on the way.`;
+  if (t.status === "on_site") return `${t.name} is on site.`;
+  return t.name;
+}
+
+export const WAY_LATER = "On-the-way map opens 90 minutes before the visit. The technician's location is not shown yet.";
+
+/** Project the technician (and the job, when it has coordinates) into a small map box. */
+export function wayPinLayout(
+  tech: { lat: number; lng: number },
+  jobLat?: number | null,
+  jobLng?: number | null,
+  box = { w: 320, h: 150, pad: 18 },
+): { tech: { x: number; y: number }; job: { x: number; y: number } | null } {
+  const pts = [{ lat: tech.lat, lng: tech.lng }];
+  const hasJob = jobLat != null && jobLng != null;
+  if (hasJob) pts.push({ lat: jobLat as number, lng: jobLng as number });
+  let minLat = Math.min(...pts.map((p) => p.lat));
+  let maxLat = Math.max(...pts.map((p) => p.lat));
+  let minLng = Math.min(...pts.map((p) => p.lng));
+  let maxLng = Math.max(...pts.map((p) => p.lng));
+  if (maxLat - minLat < 0.01) { minLat -= 0.01; maxLat += 0.01; }
+  if (maxLng - minLng < 0.01) { minLng -= 0.01; maxLng += 0.01; }
+  const xOf = (lng: number) => box.pad + ((lng - minLng) / (maxLng - minLng)) * (box.w - box.pad * 2);
+  const yOf = (lat: number) => box.pad + ((maxLat - lat) / (maxLat - minLat)) * (box.h - box.pad * 2);
+  return {
+    tech: { x: xOf(tech.lng), y: yOf(tech.lat) },
+    job: hasJob ? { x: xOf(jobLng as number), y: yOf(jobLat as number) } : null,
+  };
 }
 
 export function friendlyAgo(iso: string | null | undefined, now: number = Date.now()): string {

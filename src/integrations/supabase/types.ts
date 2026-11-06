@@ -19531,6 +19531,7 @@ export type Database = {
         Returns: Json
       }
       sales_my_jobs: { Args: { p_limit?: number }; Returns: Json }
+      sales_schedule_scope: { Args: { p_from: string; p_to: string }; Returns: Json }
       sales_next_steps: {
         Args: { p_rep?: string }
         Returns: {
