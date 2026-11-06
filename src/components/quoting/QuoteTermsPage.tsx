@@ -46,9 +46,9 @@ export interface QuoteTermsPageProps {
   quoteNumber?: string;
   /** Label before the number in the heading ("Quote" by default; invoices pass "Invoice"). */
   docLabel?: string;
-  /** Invoices (Johan 2 Nov): the terms flow on under the closing cards and may span pages, so lay the two
-   *  columns out row by row (01 02 / 03 04 ...). Each row is one keep block, so a page break always lands
-   *  between rows and never slices a line in the other column; the heading stays with the first row. */
+  /** Quotes and invoices: lay the two columns out row by row (01 02 / 03 04 ...). A page break can land
+   *  between points, never through a line or through the other column. The "Terms and conditions" heading
+   *  stays with the first row, so it cannot sit alone above a blank page. */
   rowFlow?: boolean;
   /** Phone/online quote: adds section 12. */
   remoteQuote?: boolean;
@@ -132,10 +132,14 @@ export default function QuoteTermsPage(p: QuoteTermsPageProps) {
     );
     // pb-6: the terms are the last thing in the capture, and html2canvas draws text a few px lower than the
     // DOM box, so without room below the final line was clipped in half.
+    // The heading and the first row share one keep (Q-2026-0053): two full-height column keeps made the
+    // cutter walk up, leaving the heading alone and a short block at the top of each following page.
     return (
       <div data-pdf-terms-page data-paper data-testid="quote-terms-page" className="fl-terms-page fl-terms-compact mt-4 pt-2 pb-6">
-        <div data-pdf-keep>{heading}</div>
-        {rows.length > 0 && <div className="mt-4">{row(rows[0], 0)}</div>}
+        <div data-pdf-keep data-testid="terms-heading-keep">
+          {heading}
+          {rows.length > 0 && <div className="mt-4">{row(rows[0], 0)}</div>}
+        </div>
         {rows.length > 1 && <div className="mt-4 space-y-4">{rows.slice(1).map((r, i) => row(r, i + 1))}</div>}
       </div>
     );

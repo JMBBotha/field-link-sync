@@ -7,6 +7,7 @@ import { QuoteUnitCardsView } from "./QuoteUnitCards";
 import { buildUnitCards, unitLineModelKey, type ProductMedia } from "@/lib/unitCards";
 import { buildClientRollup, clientDiscount, lineQtyText, rollupLineFromRow } from "@/lib/clientQuoteRollup";
 import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
+import { fetchQuoteCompanySettings } from "@/lib/quoteCompanySettings";
 import { useDebounced } from "@/hooks/useLivePreviewPref";
 
 /**
@@ -75,17 +76,10 @@ export default function LiveClientPreview(props: LiveClientPreviewProps) {
     },
   });
   const { data: company } = useQuery({
-    queryKey: ["live-preview-company-settings"],
+    queryKey: ["live-preview-company-settings", props.companyId ?? null],
+    enabled: !!props.companyId,
     staleTime: 300_000,
-    queryFn: async () => {
-      const { data } = await (supabase.from("company_settings") as any)
-        .select("company_name, physical_address, vat_number, banking_details, default_deposit_percentage, default_payment_terms_days")
-        .order("updated_at", { ascending: false, nullsFirst: false })
-        .order("id")
-        .limit(1)
-        .maybeSingle();
-      return data || null;
-    },
+    queryFn: async () => (await fetchQuoteCompanySettings(props.companyId)) ?? null,
   });
   const record = useDocumentCompanyProfile(props.companyId ?? null, null, !!props.companyId);
 

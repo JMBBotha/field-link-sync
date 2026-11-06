@@ -7,6 +7,7 @@ import { QuoteUnitCardsView, ensureUnitContent } from "./QuoteUnitCards";
 import type { BrochureCompany } from "@/lib/unitBrochure";
 import { buildUnitCards, missingModelKeys, unitLineModelKey, type ProductMedia, type UnitCard } from "@/lib/unitCards";
 import { buildClientRollup, clientDiscount, lineQtyText, rollupLineFromRow, type ClientRollupArea } from "@/lib/clientQuoteRollup";
+import { fetchQuoteCompanySettings } from "@/lib/quoteCompanySettings";
 
 /**
  * Off-screen, client-facing render of ONE quote, used only for PDF capture
@@ -69,7 +70,7 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
     let cancelled = false;
     (async () => {
       try {
-        const [qRes, iRes, aRes, cRes, dRes] = await Promise.all([
+        const [qRes, iRes, aRes] = await Promise.all([
           (supabase.from("quotes") as any)
             .select(
               "id, company_id, quote_number, subtotal, vat_rate, vat_amount, total, notes, valid_until, created_at, customer_name, terms_text, discount_type, discount_value, payment_plan, remote_quote, remote_quote_source, location_id, lead_id, customers(name, first_name, last_name, company_name, primary_address_line1, primary_address_line2, city, postal_code, address, email, phone, vat_number), customer_locations!quotes_location_id_fkey(address), leads!quotes_lead_id_fkey(customer_address)",
@@ -88,20 +89,6 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
             .eq("quote_id", quoteId)
             .order("sort_order", { nullsFirst: false })
             .order("created_at"),
-          (supabase.from("company_settings") as any)
-            .select("company_name, physical_address, vat_number, banking_details, default_deposit_percentage, default_payment_terms_days")
-            // Same row as invoices/statements: the newest settings row.
-            .order("updated_at", { ascending: false, nullsFirst: false })
-            .order("id")
-            .limit(1)
-            .maybeSingle(),
-          // Deposit % must match the deposit invoice: latest settings row (same order as create_deposit_invoice_for_quote).
-          (supabase.from("company_settings") as any)
-            .select("default_deposit_percentage")
-            .order("updated_at", { ascending: false, nullsFirst: false })
-            .order("id")
-            .limit(1)
-            .maybeSingle(),
         ]);
         if (qRes.error) throw qRes.error;
         if (iRes.error) throw iRes.error;
@@ -162,7 +149,10 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
         }
         let sitePhotos: QuoteSitePhoto[] = [];
         try { sitePhotos = await loadQuoteSitePhotos(quoteId); } catch { /* optional section */ }
-        if (!cancelled) setDoc({ sitePhotos, unitCards, brochureCompany, quote: qRes.data, customer, siteAddress, company: cRes.data ? { ...cRes.data, default_deposit_percentage: dRes.data?.default_deposit_percentage ?? cRes.data.default_deposit_percentage } : null, items, areas: buildClientRollup(lines, areaRows, { targetSubtotal: Number(qRes.data.subtotal) }) });
+        // This quote's company only. A newer company_settings row from another company
+        // the caller can see (RLS) must not supply the name, banking or deposit %.
+        const company = await fetchQuoteCompanySettings((qRes.data as { company_id?: string | null }).company_id);
+        if (!cancelled) setDoc({ sitePhotos, unitCards, brochureCompany, quote: qRes.data, customer, siteAddress, company, items, areas: buildClientRollup(lines, areaRows, { targetSubtotal: Number(qRes.data.subtotal) }) });
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Could not load the quote for the PDF.");
       }
