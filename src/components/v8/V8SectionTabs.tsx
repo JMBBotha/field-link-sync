@@ -7,7 +7,7 @@ import { useCashHealthEnabled } from "@/hooks/useCashHealth";
 
 /** One sidebar link, several pages: a tab strip above sibling routes (Johan 19 Oct: merge duplicate links into tabs). Old URLs keep working. */
 type Gate = "all" | "admin" | "platform" | "cash";
-export type SectionKey = "money" | "catalogue" | "extras" | "documents" | "reports";
+export type SectionKey = "money" | "catalogue" | "extras" | "reports";
 const SECTIONS: Record<SectionKey, { path: string; label: string; gate?: Gate; search?: string }[]> = {
   money: [
     { path: "/admin/cash-health", label: "Cash-flow health", gate: "cash" },
@@ -16,16 +16,14 @@ const SECTIONS: Record<SectionKey, { path: string; label: string; gate?: Gate; s
   catalogue: [
     { path: "/admin/catalog", label: "Catalogue" },
     { path: "/admin/price-lists", label: "Price lists" },
+    { path: "/admin/pdf-documents", label: "PDF documents" },
+    { path: "/admin/brochures", label: "Brochures" },
+    { path: "/admin/unit-content", label: "Unit content", gate: "platform" },
   ],
   extras: [
     { path: "/admin/oss-extras", label: "Extras", gate: "admin" },
     { path: "/admin/consumables", label: "Consumables" },
     { path: "/admin/tools", label: "Company tools", gate: "admin" },
-  ],
-  documents: [
-    { path: "/admin/pdf-documents", label: "PDF documents" },
-    { path: "/admin/brochures", label: "Brochures" },
-    { path: "/admin/unit-content", label: "Unit content", gate: "platform" },
   ],
   reports: [
     { path: "/admin/reports", label: "Reports" },
@@ -34,6 +32,7 @@ const SECTIONS: Record<SectionKey, { path: string; label: string; gate?: Gate; s
     { path: "/admin/reports/sales-by-product", label: "Sales by product" },
     { path: "/admin/reports/vat", label: "VAT" },
     { path: "/admin/analytics", label: "Analytics" },
+    { path: "/admin/reports/advanced", label: "Advanced reports", gate: "platform" },
   ],
 };
 
