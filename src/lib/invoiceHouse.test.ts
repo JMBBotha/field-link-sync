@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { invoiceHouseNo, invoiceHouseLabel, invoiceMatchesSearch } from "./invoiceHouse";
+import { invoiceHouseNo, invoiceHouseLabel, invoiceMatchesSearch, linkedInvoiceHouseLabel } from "./invoiceHouse";
 
 describe("invoice house label", () => {
   it("prefers the linked project house", () => {
@@ -11,6 +11,14 @@ describe("invoice house label", () => {
     expect(invoiceHouseNo({ line_items: [{ description: "HOUSE 7 - ESTATE\nSupply units" }] })).toBe("7");
     expect(invoiceHouseNo({ notes: "House no. 31b - estate\nPO 1" })).toBe("31B");
     expect(invoiceHouseLabel({ notes: "Service at shop" })).toBeNull();
+  });
+  it("expected money in uses the linked house only", () => {
+    expect(linkedInvoiceHouseLabel({ project_house: { house_no: "86" }, notes: "HOUSE 99 - AVEC" })).toBe("House 86");
+    expect(linkedInvoiceHouseLabel({ project_house: { house_no: " 18 " }, line_items: [{ description: "HOUSE 1 - X" }] })).toBe("House 18");
+    expect(linkedInvoiceHouseLabel({ notes: "HOUSE 99 - AVEC", project_house: null })).toBeNull();
+    expect(linkedInvoiceHouseLabel({ notes: "HOUSE 18 - AVEC" })).toBeNull();
+    expect(linkedInvoiceHouseLabel({ project_house: { house_no: "   " } })).toBeNull();
+    expect(linkedInvoiceHouseLabel(null)).toBeNull();
   });
   it("does not read a later notes line or warehouse words", () => {
     expect(invoiceHouseNo({ notes: "Thanks\nHOUSE 5" })).toBeNull();

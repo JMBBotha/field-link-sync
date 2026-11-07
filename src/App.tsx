@@ -25,6 +25,7 @@ import Index from "./pages/Index";
 import RoleHomeHarness from "./pages/RoleHomeHarness";
 import ClientDetailsHarness from "./pages/ClientDetailsHarness";
 import AdminHomePreviewFixture from "./pages/AdminHomePreviewFixture";
+import CashHealthPreviewFixture from "./pages/CashHealthPreviewFixture";
 import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
 import NotFound from "./pages/NotFound";
@@ -194,6 +195,9 @@ const App = () => (
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/admin-home" element={<AdminHomePreviewFixture />} />
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev/cash-health" element={<CashHealthPreviewFixture />} />
                 )}
 
                 {/* Customer Portal Routes */}

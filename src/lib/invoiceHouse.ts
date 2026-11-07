@@ -34,6 +34,13 @@ export function invoiceHouseLabel(inv: HouseSource | null | undefined, withProje
   return proj ? `House ${no} · ${proj}` : `House ${no}`;
 }
 
+/** "House 12" only when the invoice is linked to project_houses.house_no.
+ *  Notes and line items are ignored, so an ordinary client is never given a guessed house. */
+export function linkedInvoiceHouseLabel(inv: HouseSource | null | undefined): string | null {
+  if (!inv?.project_house?.house_no?.trim()) return null;
+  return invoiceHouseLabel({ project_house: inv.project_house });
+}
+
 /** Search on client name, invoice number or house ("12", "house 12", "h12"). */
 export function invoiceMatchesSearch(inv: HouseSource & { customer_name?: string | null; invoice_number?: string | null }, q: string): boolean {
   const s = q.trim().toLowerCase();

@@ -2,10 +2,11 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronRight, Info, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { isoDate } from "@/lib/cashflow";
 import {
-  COMMIT_STATUS, PART_LABEL, inflowSeries, summary as buildSummary, alerts as buildAlerts, forecast as buildForecast, freeStock, latestBalances, projects as buildProjects, rand0, stillToPay, stockValue, unitCostIncl,
+  COMMIT_STATUS, PART_LABEL, applyStoredFinalDates, inflowSeries, summary as buildSummary, alerts as buildAlerts, forecast as buildForecast, freeStock, latestBalances, projects as buildProjects, rand0, stillToPay, stockValue, unitCostIncl,
   type Alert, type CashHealthData, type CommitStatus, type Commitment, type Forecast, type Overhead, type ProjectRow, type Receipt,
 } from "@/lib/cashHealth";
 import type { CashHealthActions } from "@/hooks/useCashHealth";
+import { linkedInvoiceHouseLabel } from "@/lib/invoiceHouse";
 import { cn } from "@/lib/utils";
 import { BalanceChart, FlowBars, InflowChart } from "./CashHealthChart";
 import { Btn, Card, Chip, Field, Pick, Stat } from "./cashHealthUi";
@@ -19,9 +20,11 @@ const fmtD = (s: string | null) => (s ? new Date(s.slice(0, 10) + "T00:00:00").t
 type Safe = (p: Promise<void>, ok?: string) => void;
 
 /** Cash-flow health: one screen, five tabs. Presentational; all writes go through `actions` (RLS: owner/management only). */
-export default function CashHealthView({ data, actions, companyName, tab: tabProp, onTab, today: todayProp, notify }: {
+export default function CashHealthView({ data: raw, actions, companyName, tab: tabProp, onTab, today: todayProp, notify }: {
   data: CashHealthData; actions: CashHealthActions; companyName?: string; tab?: CashTab; onTab?: (t: CashTab) => void; today?: Date; notify?: (msg: string, error?: boolean) => void;
 }) {
+  // Finals use the date the invoice list or house already stored (read only). Deposits are left as synced.
+  const data = useMemo(() => applyStoredFinalDates(raw), [raw]);
   // Live forecast start (cf_settings.forecast_start, Massair = 1 Nov 2026): until then the forecast runs from that date.
   const startIso = data.settings.forecast_start ?? null;
   const today = useMemo(() => {
@@ -232,6 +235,21 @@ function Inflows({ data, today }: { data: CashHealthData; today: Date }) {
   );
 }
 
+/** Invoice · client cell. A linked project house leads ("House 86 · 0010004 …"); everyone else stays "0010019 Client". */
+function ReceiptLabel({ r, house }: { r: Receipt; house: string | null }) {
+  return (
+    <div className="flex min-w-0 items-baseline gap-1 text-ink" data-testid="cash-receipt-label">
+      {house && (
+        <>
+          <span data-testid="cash-receipt-house" className="shrink-0 font-bold">{house}</span>
+          <span className="shrink-0 font-semibold text-ink-secondary" aria-hidden>·</span>
+        </>
+      )}
+      <span className="truncate font-semibold">{r.ref} <span className="font-normal text-ink-secondary">{r.client}</span></span>
+    </div>
+  );
+}
+
 function MoneyIn({ data, f, actions, safe, today }: { data: CashHealthData; f: Forecast; actions: CashHealthActions; safe: Safe; today: Date }) {
   const t = isoDate(today);
   const inv = new Map(data.invoices.map((i) => [i.id, i]));
@@ -245,7 +263,7 @@ function MoneyIn({ data, f, actions, safe, today }: { data: CashHealthData; f: F
     return (
       <div key={r.id} className="grid grid-cols-2 items-center gap-2 border-t border-border py-2 text-sm md:grid-cols-[1.6fr_.9fr_1fr_.7fr_.7fr_1fr_auto]" data-testid="cash-receipt-row">
         <div className="col-span-2 min-w-0 md:col-span-1">
-          <div className="truncate font-semibold text-ink">{r.ref} <span className="font-normal text-ink-secondary">{r.client}</span></div>
+          <ReceiptLabel r={r} house={linkedInvoiceHouseLabel(i)} />
           <div className="flex flex-wrap gap-1"><Chip tone="blue">{PART_LABEL[r.part]}</Chip>{i?.status === "draft" && <Chip tone="amber">Draft – not sent</Chip>}{r.source !== "field_lynk" && <Chip>Added by hand</Chip>}{late && <Chip tone="red">Overdue</Chip>}{r.status === "expected" && !r.expected_date && <Chip tone="amber">Unscheduled – date not set</Chip>}{r.note && <span className="text-xs text-ink-muted">{r.note}</span>}</div>
         </div>
         <div className="text-right font-semibold md:text-left">{rand0(r.amount_incl)}</div>

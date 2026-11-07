@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alerts, forecast, monthlyOverheads, overheadEvents, projects, stillToPay, vatPeriodFor, type CashHealthData, type Commitment, type Overhead, type Receipt } from "./cashHealth";
+import { alerts, applyStoredFinalDates, forecast, monthlyOverheads, overheadEvents, projects, stillToPay, storedFinalDate, vatPeriodFor, type CashHealthData, type Commitment, type Overhead, type Receipt } from "./cashHealth";
 
 const settings = { company_id: "c", enabled: true, buffer_mode: "overheads_month", buffer_amount: 0, unit_cost_factor: 0.8, default_leeway_days: 7, conf_sent: 90, conf_overdue: 70, conf_draft: 60,
   conf_final_before_install: 50, vat_number: "4630313080", vat_basis: "invoice", vat_period_months: 2, vat_period_end: "2026-10-31", vat_due_day: 25, vat_rate: 15 } as const;
@@ -52,6 +52,34 @@ describe("cash health", () => {
   it("green when nothing dips under the buffer", () => {
     const f = forecast(base({ overheads: [ov({ amount: 1000 })] }), today);
     expect(f.health).toBe("green");
+  });
+  it("a pencil expected final (due_date + manual) fills an unscheduled final, and a terms due date does not", () => {
+    expect(storedFinalDate({ due_date: "2026-12-01", due_date_source: "manual", expected_final_date: null })).toBe("2026-12-01");
+    expect(storedFinalDate({ due_date: "2026-10-12", due_date_source: "terms" })).toBeNull();
+    expect(storedFinalDate({ due_date: "2026-10-12", due_date_source: null })).toBeNull();
+    expect(storedFinalDate({ expected_final_date: "2027-03-01", due_date: "2026-10-12", due_date_source: "terms" })).toBe("2027-03-01");
+    const d = base({
+      receipts: [
+        rc({ id: "dep", part: "deposit", invoice_id: "i86", amount_incl: 1000, expected_date: "2026-11-01" }),
+        rc({ id: "fin", part: "final", invoice_id: "i86", ref: "FX-86", amount_incl: 38213, expected_date: null }),
+        rc({ id: "full", part: "full", invoice_id: "i21", ref: "FX-21", amount_incl: 5000, expected_date: null }),
+        rc({ id: "terms", part: "final", invoice_id: "iTerms", amount_incl: 800, expected_date: null }),
+      ],
+      invoices: [
+        { id: "i86", invoice_number: "FX-86", status: "sent", issue_date: "2026-10-12", tax_amount: 0, grand_total: 1, due_date: "2026-12-01", due_date_source: "manual", expected_final_date: null, final_unscheduled: true },
+        { id: "i21", invoice_number: "FX-21", status: "sent", issue_date: "2026-10-12", tax_amount: 0, grand_total: 1, due_date: "2026-12-01", due_date_source: "manual" },
+        { id: "iTerms", invoice_number: "T", status: "sent", issue_date: "2026-10-12", tax_amount: 0, grand_total: 1, due_date: "2026-10-19", due_date_source: "terms", final_unscheduled: true },
+      ],
+    });
+    const applied = applyStoredFinalDates(d);
+    const byId = new Map(applied.receipts.map((r) => [r.id, r.expected_date]));
+    expect(byId.get("dep")).toBe("2026-11-01");
+    expect(byId.get("fin")).toBe("2026-12-01");
+    expect(byId.get("full")).toBe("2026-12-01");
+    expect(byId.get("terms")).toBeNull();
+    const f = forecast(applied, today);
+    expect(f.unscheduled.count).toBe(1);
+    expect(f.weeks.find((w) => w.start === "2026-11-30")?.inExpected).toBe(43213);
   });
   it("projects: cover = deposit - still to buy", () => {
     const d = base({ receipts: [rc({ amount_incl: 38213.4 }), rc({ part: "final", amount_incl: 38213.39 })], commitments: [cm({ unit_cost_excl: 38335.82 })] });
