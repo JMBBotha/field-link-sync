@@ -165,34 +165,35 @@ export function AdminHomePies({ counts, onOpen }: { counts: AdminHomeCounts; onO
     { key: "final", label: "Final due", total: counts.finalDue.total, figure: counts.finalDue },
     { key: "paid", label: "Paid this month", total: counts.paid.total, figure: counts.paid },
   ] as const;
-  const openWork = (key: string) => {
+  const navigate = useNavigate();
+  const goWork = (key: string) => {
     const slice = counts.workSlices.find((s) => s.key === key as WorkKind);
-    onOpen(slice?.figure || counts.work);
+    navigate(slice?.figure.actionHref || counts.work.actionHref);
   };
-  const openMoney = (key: string) => onOpen(moneyOrder.find((m) => m.key === key)?.figure || counts.money);
+  const goMoney = (key: string) => navigate(moneyOrder.find((m) => m.key === key)?.figure.actionHref || counts.money.actionHref);
   return (
     <div data-testid="admin-home-pies" className="grid grid-cols-1 gap-3 md:grid-cols-2">
       <section className="rounded-2xl border bg-card p-3.5 shadow-sm">
         <div className="mb-2 flex items-center justify-between gap-2">
           <b className="text-sm">This month&apos;s work</b>
-          <button type="button" className="text-xs font-semibold text-[#1590d6]" onClick={() => onOpen(counts.work)}>Tap a slice</button>
+          <button type="button" className="text-xs font-semibold text-[#1590d6]" onClick={() => onOpen(counts.work)}>How this was counted</button>
         </div>
         <div className="flex items-center gap-2.5">
-          <Donut parts={counts.workSlices.map((s) => ({ key: s.key, value: s.figure.count }))} center={String(counts.work.count)} sub="jobs" onSlice={openWork} />
-          <Legend rows={workRows} onOpen={openWork} />
+          <Donut parts={counts.workSlices.map((s) => ({ key: s.key, value: s.figure.count }))} center={String(counts.work.count)} sub="jobs" onSlice={goWork} />
+          <Legend rows={workRows} onOpen={goWork} />
         </div>
       </section>
       <section className="rounded-2xl border bg-card p-3.5 shadow-sm">
         <div className="mb-2 flex items-center justify-between gap-2">
           <b className="text-sm">Where the money sits</b>
           <span className="inline-flex items-center text-xs font-semibold text-[#1590d6]">
-            <button type="button" onClick={() => onOpen(counts.money)}>incl. VAT</button>
+            <button type="button" onClick={() => navigate(counts.money.actionHref)}>incl. VAT</button>
             <InfoMark label="How the money total was counted" onClick={() => onOpen(counts.money)} />
           </span>
         </div>
         <div className="flex items-center gap-2.5">
-          <Donut parts={moneyOrder.map((m) => ({ key: m.key, value: m.total }))} center={fmtRandShort(counts.money.total)} sub="tracked" onSlice={openMoney} />
-          <Legend rows={moneyOrder.map((m, i) => ({ key: m.key, label: m.label, value: fmtHomeRand(m.total), colour: PIE_COLOURS[i] }))} onOpen={openMoney} />
+          <Donut parts={moneyOrder.map((m) => ({ key: m.key, value: m.total }))} center={fmtRandShort(counts.money.total)} sub="tracked" onSlice={goMoney} />
+          <Legend rows={moneyOrder.map((m, i) => ({ key: m.key, label: m.label, value: fmtHomeRand(m.total), colour: PIE_COLOURS[i] }))} onOpen={goMoney} />
         </div>
       </section>
     </div>

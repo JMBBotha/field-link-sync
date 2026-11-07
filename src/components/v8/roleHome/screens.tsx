@@ -3,7 +3,10 @@ import { Link } from "react-router-dom";
 import type { MaterialCheck, MaterialLine, StockLevel, StockOrder } from "@/lib/materialCheck";
 import { checkSummary } from "@/lib/materialCheck";
 import type { CashSlice } from "@/lib/roleHome";
+import { ADMIN_HOME_ROUTES } from "@/lib/roleHome";
 import { CashPie, Chip, Glass, IntroCard, InvoiceBanner, RowLink } from "./chrome";
+
+const quietLink = { color: "inherit", textDecoration: "none" } as const;
 
 export interface HomeJob {
   id: string;
@@ -305,7 +308,11 @@ export function SalesJobScreen(props: {
 }
 
 export function AdminHomeScreen({
-  eyebrow, title, invoice, crew, levels, orders, slices, onSlice, onReview, onInvoice,
+  eyebrow, title, invoice, crew, levels, orders, slices, onSlice, onSliceInfo, onReview, onInvoice,
+  jobsHref = ADMIN_HOME_ROUTES.jobs,
+  bookHref = ADMIN_HOME_ROUTES.bookJob,
+  mapHref = ADMIN_HOME_ROUTES.map,
+  stockHref = ADMIN_HOME_ROUTES.stock,
 }: {
   eyebrow: string;
   title: string;
@@ -315,17 +322,25 @@ export function AdminHomeScreen({
   orders: StockOrder[];
   slices: CashSlice[];
   onSlice: (s: CashSlice) => void;
+  onSliceInfo?: (s: CashSlice) => void;
   onReview: () => void;
   onInvoice: () => void;
+  jobsHref?: string;
+  bookHref?: string;
+  mapHref?: string;
+  stockHref?: string;
 }) {
   return (
     <div data-testid="role-admin-home">
       <IntroCard eyebrow={eyebrow} title={title} />
-      {invoice && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} />}
+      {invoice && invoice.count > 0 && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} />}
       <div className="rh-grid">
         <Glass>
-          <div className="rh-head"><h2>Jobs being done today</h2><span className="rh-count">{crew.length}</span></div>
-          <div className="rh-muted">{crew.length} on site · who is where</div>
+          <div className="rh-head">
+            <Link to={jobsHref} data-testid="today-jobs-heading" style={quietLink}><h2>Jobs being done today</h2></Link>
+            <span className="rh-count">{crew.length}</span>
+          </div>
+          <Link to={mapHref} className="rh-muted" data-testid="who-is-where" style={quietLink}>{crew.length} on site · who is where</Link>
           {crew.length === 0 && <p className="rh-muted">Nothing booked today.</p>}
           {crew.slice(0, 5).map((c) => (
             <RowLink key={c.id} to={c.href} testId="admin-today-job">
@@ -333,10 +348,11 @@ export function AdminHomeScreen({
               <div className="rh-muted">{c.where} · {c.client}</div>
             </RowLink>
           ))}
-          {crew.length > 5 && <Link to="/admin/schedule" className="rh-muted">View all {crew.length} jobs →</Link>}
+          {crew.length > 5 && <Link to={jobsHref} className="rh-muted">View all {crew.length} jobs →</Link>}
+          <Link to={bookHref} className="rh-btn" data-testid="book-today-job" style={{ marginTop: 12 }}>Book a job</Link>
         </Glass>
         <Glass testId="material-stock-levels">
-          <h2>Material &amp; stock levels</h2>
+          <Link to={stockHref} data-testid="stock-levels-heading" style={quietLink}><h2>Material &amp; stock levels</h2></Link>
           <div className="rh-muted">On hand against what this week’s checks need</div>
           {levels.length === 0 && <p className="rh-muted">No quoted materials to compare yet.</p>}
           {levels.slice(0, 6).map((l) => (
@@ -347,7 +363,10 @@ export function AdminHomeScreen({
           ))}
         </Glass>
         <Glass testId="stock-orders">
-          <div className="rh-head"><h2>Stock orders this week</h2><span className="rh-count">{orders.length}</span></div>
+          <div className="rh-head">
+            <Link to={stockHref} data-testid="stock-orders-heading" style={quietLink}><h2>Stock orders this week</h2></Link>
+            <span className="rh-count">{orders.length}</span>
+          </div>
           <div className="rh-muted">From upcoming job material checks</div>
           {orders.length === 0 && <p className="rh-muted">Nothing short against stock.</p>}
           {orders.map((o) => (
@@ -356,9 +375,9 @@ export function AdminHomeScreen({
               <span className="rh-arrow">›</span>
             </Link>
           ))}
-          {orders.length > 0 && <Link to="/admin/cash-health?tab=stock" className="rh-btn secondary" style={{ marginTop: 8 }}>Review {orders.length} item{orders.length === 1 ? "" : "s"} to order →</Link>}
+          {orders.length > 0 && <Link to={stockHref} className="rh-btn secondary" style={{ marginTop: 8 }} data-testid="stock-orders-review">Review {orders.length} item{orders.length === 1 ? "" : "s"} to order →</Link>}
         </Glass>
-        <CashPie slices={slices} onOpen={onSlice} />
+        <CashPie slices={slices} onOpen={onSlice} onInfo={onSliceInfo} />
       </div>
     </div>
   );

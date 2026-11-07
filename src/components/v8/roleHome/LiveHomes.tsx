@@ -5,10 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { HowCountedSheet } from "@/components/v8/AdminHomeFigures";
 import { parseMyJobs } from "@/components/jobs/SalesMyJobs";
 import { useMyAppointments } from "@/hooks/useMyAppointments";
+import { useSignedInIdentity } from "@/hooks/useSignedInIdentity";
 import { appointmentLinks } from "@/lib/appointments";
 import { cardHref } from "@/lib/assignedLabel";
 import { isFirstQuoteVisit } from "@/lib/materialCheck";
-import { areaFromAddress, cashProjectionSlices, durationAbout, greetingEyebrow, greetingTitle, jobTypeWord } from "@/lib/roleHome";
+import { ADMIN_HOME_ROUTES, areaFromAddress, cashProjectionSlices, durationAbout, greetingEyebrow, greetingTitle, jobTypeWord } from "@/lib/roleHome";
 import { checkKindOf } from "@/lib/materialCheck";
 import { useMaterialCheck } from "./data";
 import { SalesJobScreen } from "./screens";
@@ -18,8 +19,13 @@ import { formatRand } from "@/utils/formatRand";
 import { countsFor, useAdminRoleData } from "./data";
 import { AdminHomeScreen, SalesHomeScreen } from "./screens";
 
+function stockScreen(href: string): string {
+  return href.includes("/admin/cash-health") ? href : ADMIN_HOME_ROUTES.stock;
+}
+
 export function AdminLiveHome() {
   const navigate = useNavigate();
+  const identity = useSignedInIdentity();
   const { companyId, figures, crew, needs } = useAdminRoleData();
   const counts = countsFor(companyId, figures.source);
   const [open, setOpen] = useState<null | "waiting" | "deposit" | "final">(null);
@@ -30,14 +36,15 @@ export function AdminLiveHome() {
     <>
       <AdminHomeScreen
         eyebrow={greetingEyebrow(now)}
-        title={greetingTitle(now)}
-        invoice={counts ? { count: counts.waiting.count, total: formatRand(counts.waiting.total).replace(/^R\s/, "R") } : null}
+        title={greetingTitle(now, identity?.name)}
+        invoice={counts && counts.waiting.count > 0 ? { count: counts.waiting.count, total: formatRand(counts.waiting.total).replace(/^R\s/, "R") } : null}
         crew={(crew.data || []).map((c) => ({ ...c, type: jobTypeWord(c.type), where: areaFromAddress(c.where) }))}
-        levels={needs.data?.levels || []}
-        orders={needs.data?.orders || []}
+        levels={(needs.data?.levels || []).map((l) => ({ ...l, href: stockScreen(l.href) }))}
+        orders={(needs.data?.orders || []).map((o) => ({ ...o, href: ADMIN_HOME_ROUTES.stock }))}
         slices={slices}
-        onSlice={(s) => setOpen(s.key)}
-        onReview={() => navigate(counts?.waiting.actionHref || "/admin/invoices?state=draft")}
+        onSlice={(s) => navigate(s.figure.actionHref)}
+        onSliceInfo={(s) => setOpen(s.key)}
+        onReview={() => navigate(counts?.waiting.actionHref || ADMIN_HOME_ROUTES.reviewSend)}
         onInvoice={() => setOpen("waiting")}
       />
       {figure && <HowCountedSheet figure={figure} onClose={() => setOpen(null)} />}
@@ -56,6 +63,7 @@ export function SalesLiveHome() {
       return parseMyJobs(data);
     },
   });
+  const identity = useSignedInIdentity();
   const now = new Date();
   const appointments = (appts.data || []).filter((a) => a.scheduled_date === today).map((a) => {
     const visit = isFirstQuoteVisit({ serviceType: a.service_type, source: a.source });
@@ -72,7 +80,7 @@ export function SalesLiveHome() {
   return (
     <SalesHomeScreen
       eyebrow={greetingEyebrow(now)}
-      title={greetingTitle(now)}
+      title={greetingTitle(now, identity?.name)}
       appointments={appointments}
       booked={(booked.data || []).map((j) => ({
         id: j.job_id || j.lead_id || "job",

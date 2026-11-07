@@ -24,12 +24,34 @@ export function cashProjectionSlices(figures: { deposit: CountFigure; finalDue: 
   ];
 }
 
+/** Hour in Africa/Johannesburg, 0–23. The phone's local zone is not the calendar. */
+export function johannesburgHour(now: Date): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Johannesburg",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const raw = parts.find((p) => p.type === "hour")?.value ?? "0";
+  return Number(raw) % 24;
+}
+
 export function greetingTitle(now: Date, name?: string | null): string {
-  const h = now.getHours();
+  const h = johannesburgHour(now);
   const hello = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
   const first = (name || "").trim().split(/\s+/)[0];
   return first ? `${hello}, ${first}` : hello;
 }
+
+/** Where Admin Home controls go. Review opens the draft list; it does not send. */
+export const ADMIN_HOME_ROUTES = {
+  reviewSend: "/admin/invoices?state=draft",
+  jobs: "/admin/jobs",
+  bookJob: "/admin/jobs?new=1",
+  map: "/admin/map",
+  stock: "/admin/cash-health?tab=stock",
+  cash: "/admin/cash-health",
+  job: (id: string) => `/admin/jobs/${id}`,
+} as const;
 
 /** SATURDAY, 07 NOV — Johannesburg calendar day. */
 export function greetingEyebrow(now: Date): string {
