@@ -199,6 +199,8 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
   font-weight: 400;
   color: rgba(255,255,255,.94);
 }
-/* Full-width v8 bar sits on the halo. Same #3D9BEB, so the join has no darker rule. */
-.v8-bar-hdr.v8-bar-over-halo,
-.dark .v8-bar-hdr.v8-bar-over-halo { border-bottom-color: #3D9BEB !important; }
+/* Full-width v8 bar sits on the halo at lg+. Same #3D9BEB, so the join has no darker rule. Phones keep the existing bar edge. */
+@media (min-width: 1024px) {
+  .v8-bar-hdr.v8-bar-over-halo,
+  .dark .v8-bar-hdr.v8-bar-over-halo { border-bottom-color: #3D9BEB !important; }
+}
