@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useRole } from "@/hooks/useRole";
 import { useState, useEffect } from "react";
 import CommunicationTimeline from "./communication/CommunicationTimeline";
-import { X, Loader2, User, Phone, Mail, MapPin, Calendar, FileText, Wrench, Star, Edit, ChevronRight, RefreshCw, Clock } from "lucide-react";
+import { X, Loader2, User, Phone, Mail, MapPin, Calendar, FileText, Wrench, Star, Pencil, ChevronRight, RefreshCw, Clock } from "lucide-react";
 import RandSign from "@/components/icons/RandSign";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -244,13 +244,14 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
                   {canAccessAdmin && customerId && (
                     <Button
                       variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
+                      size="sm"
+                      className="h-9 shrink-0 gap-1.5 px-3 font-semibold"
+                      data-testid="edit-client-profile"
                       aria-label="Edit client"
                       title="Edit client"
-                      onClick={() => { onClose(); navigate(`/admin/customers/${customerId}`); }}
+                      onClick={() => { onClose(); navigate(`/admin/customers/${customerId}?tab=details`); }}
                     >
-                      <Edit className="h-4 w-4" />
+                      <Pencil className="h-4 w-4" /> Edit client
                     </Button>
                   )}
                 </div>

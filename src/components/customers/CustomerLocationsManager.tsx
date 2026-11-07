@@ -126,8 +126,8 @@ const CustomerLocationsManager = ({ customerId, companyId }: Props) => {
                         <Star className="h-3.5 w-3.5" />
                       </Button>
                     )}
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(loc)}>
-                      <Pencil className="h-3.5 w-3.5" />
+                    <Button type="button" size="icon" variant="outline" className="h-8 w-8" aria-label={`Edit ${loc.label}`} title={`Edit ${loc.label}`} onClick={() => openEdit(loc)}>
+                      <Pencil className="h-4 w-4" />
                     </Button>
                     {canDelete && (
                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive"

@@ -38,6 +38,8 @@ import {
 import {
   Search, Plus, MoreHorizontal, Mail, Phone, Loader2, Upload, Download, ChevronDown,
 } from "lucide-react";
+import { ClientRowEditButton } from "@/components/customers/EditClientButton";
+import { clientHeaderName, formatStoredAddress, locationsToCreate } from "@/lib/clientAddresses";
 import { cn } from "@/lib/utils";
 import { formatRand } from "@/utils/formatRand";
 import { LEAD_SOURCE_OPTIONS, DEFAULT_LEAD_SOURCE, toLeadSourceValue, leadSourceLabel } from "@/lib/leadSources";
@@ -61,10 +63,7 @@ const getInitials = (first?: string | null, last?: string | null, company?: stri
   return src.split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0]?.toUpperCase()).join("") || "?";
 };
 
-const displayName = (c: any) =>
-  c.is_company && c.company_name
-    ? c.company_name
-    : `${c.first_name || ""} ${c.last_name || ""}`.trim() || c.name || "Unnamed";
+const displayName = (c: any) => clientHeaderName(c);
 
 const LeadSourceBadge = ({ source }: { source?: string | null }) => {
   const key = toLeadSourceValue(source);
@@ -256,14 +255,14 @@ const AdminCustomersPage = () => {
         </div>
         {isLoading ? <div className="mt-3 space-y-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-12" />)}</div> : (
           <div className="mt-2">
-            <div className="hidden md:grid grid-cols-[2.2fr_1fr_.6fr_1.2fr_1.2fr_32px] gap-2 py-2 text-xs text-muted-foreground"><span>Client</span><span>Source</span><span>Sites</span><span>Outstanding</span><span>Last activity</span><span /></div>
+            <div className="hidden md:grid grid-cols-[2.2fr_1fr_.6fr_1.2fr_1.2fr_auto_32px] gap-2 py-2 text-xs text-muted-foreground"><span>Client</span><span>Source</span><span>Sites</span><span>Outstanding</span><span>Last activity</span><span /><span /></div>
             {filtered.map((c: any) => {
               const d = dueByCustomer.get(c.id); const st = statBy.get(c.id);
               const out = d ? d.amount : (outstandingByCustomer.get(c.id) || 0);
               const sub = [c.is_company && `${c.first_name || ""} ${c.last_name || ""}`.trim(), c.client_type && String(c.client_type).replace(/^./, (x: string) => x.toUpperCase()), c.city].filter(Boolean).join(" · ");
               return (
                 <div key={c.id} role="link" tabIndex={0} onClick={() => navigate(`/admin/customers/${c.id}`)} onKeyDown={(e) => e.key === "Enter" && navigate(`/admin/customers/${c.id}`)}
-                  className="grid cursor-pointer grid-cols-[1fr_auto] md:grid-cols-[2.2fr_1fr_.6fr_1.2fr_1.2fr_32px] items-center gap-2 border-t py-2.5 text-sm hover:bg-muted/40">
+                  className="grid cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] md:grid-cols-[2.2fr_1fr_.6fr_1.2fr_1.2fr_auto_32px] items-center gap-2 border-t py-2.5 text-sm hover:bg-muted/40">
                   <div className="min-w-0"><p className="font-semibold truncate">{displayName(c)}</p>{sub && <p className="text-xs text-muted-foreground truncate">{sub}</p>}</div>
                   <div className="hidden md:block"><LeadSourceBadge source={c.lead_source} /></div>
                   <div className="hidden md:block text-muted-foreground">{st?.sites ?? 0}</div>
@@ -273,6 +272,9 @@ const AdminCustomersPage = () => {
                       : d && d.waiting > 0 ? <span className="rounded-full bg-[#E8F6FE] px-2 text-[11px] font-semibold text-[#1590D6] dark:bg-sky-500/15 dark:text-sky-300">after completion</span> : null}
                   </div>
                   <div className="hidden md:block text-xs text-muted-foreground">{ago(st?.last_activity || c.updated_at)}</div>
+                  <div className="flex justify-end">
+                    <ClientRowEditButton name={displayName(c)} onClick={() => navigate(`/admin/customers/${c.id}?tab=details`)} />
+                  </div>
                   <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
                     <RowMenu items={[
                       { label: "Open", onSelect: () => navigate(`/admin/customers/${c.id}`) },
@@ -336,7 +338,7 @@ const CreateCustomerFBDialog = ({
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     first_name: "", last_name: "", company_name: "",
-    email: "", phone: "", address: "", city: "", postal_code: "",
+    email: "", phone: "", address: "", city: "", postal_code: "", home_address: "",
     vat_number: "", notes: "",
     status: "lead",
     lead_source: DEFAULT_LEAD_SOURCE as string,
@@ -346,7 +348,7 @@ const CreateCustomerFBDialog = ({
 
   const reset = () => setForm({
     first_name: "", last_name: "", company_name: "", email: "", phone: "",
-    address: "", city: "", postal_code: "", vat_number: "", notes: "",
+    address: "", city: "", postal_code: "", home_address: "", vat_number: "", notes: "",
     status: "lead", lead_source: DEFAULT_LEAD_SOURCE as string,
   });
 
@@ -363,8 +365,8 @@ const CreateCustomerFBDialog = ({
           first_name: form.first_name,
           last_name: form.last_name,
           name: `${form.first_name} ${form.last_name}`.trim(),
-          company_name: form.company_name || null,
-          is_company: !!form.company_name,
+          company_name: form.company_name.trim() || null,
+          is_company: !!form.company_name.trim(),
           email: form.email || null,
           phone: form.phone,
           primary_address_line1: form.address || null,
@@ -389,6 +391,18 @@ const CreateCustomerFBDialog = ({
           .single());
       }
       if (error) throw error;
+      if (company_id && data?.id) {
+        const rows = locationsToCreate({
+          customerId: data.id,
+          companyId: company_id,
+          homeAddress: form.home_address,
+          workAddress: formatStoredAddress({ line1: form.address, city: form.city, postal: form.postal_code }),
+        });
+        if (rows.length) {
+          const { error: locErr } = await supabase.from("customer_locations").insert(rows);
+          if (locErr) toast({ title: "Client saved", description: "Home or work could not be stored. Add it from Edit details.", variant: "destructive" });
+        }
+      }
       toast({ title: "Customer created ✅" });
       reset();
       onOpenChange(false);
@@ -409,15 +423,22 @@ const CreateCustomerFBDialog = ({
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-4">
+          <p className="col-span-2 text-sm font-semibold">Private details</p>
           <Field label="First Name *"><Input value={form.first_name} onChange={e => set("first_name", e.target.value)} /></Field>
           <Field label="Last Name"><Input value={form.last_name} onChange={e => set("last_name", e.target.value)} /></Field>
-          <Field label="Company Name" full><Input value={form.company_name} onChange={e => set("company_name", e.target.value)} /></Field>
           <Field label="Email"><Input type="email" value={form.email} onChange={e => set("email", e.target.value)} /></Field>
           <Field label="Phone *"><Input value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="082 123 4567" /></Field>
-          <Field label="Address" full><Input value={form.address} onChange={e => set("address", e.target.value)} /></Field>
+          <p className="col-span-2 text-sm font-semibold">Company details</p>
+          <p className="col-span-2 -mt-2 text-xs text-muted-foreground">Optional. Leave the company name blank for a private client.</p>
+          <Field label="Company Name" full><Input data-testid="new-client-company-name" value={form.company_name} onChange={e => set("company_name", e.target.value)} /></Field>
+          <Field label="VAT Number" full><Input value={form.vat_number} onChange={e => set("vat_number", e.target.value)} /></Field>
+          <p className="col-span-2 text-sm font-semibold">Work address</p>
+          <p className="col-span-2 -mt-2 text-xs text-muted-foreground">Invoices bill to this address, not the home address.</p>
+          <Field label="Work address" full><Input value={form.address} onChange={e => set("address", e.target.value)} /></Field>
           <Field label="City"><Input value={form.city} onChange={e => set("city", e.target.value)} /></Field>
           <Field label="Postal Code"><Input value={form.postal_code} onChange={e => set("postal_code", e.target.value)} /></Field>
-          <Field label="VAT Number" full><Input value={form.vat_number} onChange={e => set("vat_number", e.target.value)} /></Field>
+          <p className="col-span-2 text-sm font-semibold">Home address</p>
+          <Field label="Home address" full><Input value={form.home_address} onChange={e => set("home_address", e.target.value)} placeholder="Optional" /></Field>
 
           <Field label="Status">
             <Select value={form.status} onValueChange={(v) => set("status", v)}>

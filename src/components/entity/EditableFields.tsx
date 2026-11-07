@@ -58,10 +58,13 @@ export const EditableField = ({
   placeholder,
   className,
   format,
+  showPencil = false,
 }: BaseProps & {
   type?: string;
   placeholder?: string;
   format?: (v: any) => string;
+  /** Keep the pencil visible. Client details uses this so a phone user can see the field is editable. */
+  showPencil?: boolean;
 }) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? "");
@@ -149,7 +152,7 @@ export const EditableField = ({
       >
         <span className="truncate">{format ? format(value) : displayValue(value)}</span>
         {!disabled && (
-          <Pencil className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-60" />
+          <Pencil className={cn("h-3.5 w-3.5 shrink-0 text-[#1590D6]", showPencil ? "opacity-80" : "opacity-0 group-hover:opacity-60")} />
         )}
       </button>
     </Shell>
