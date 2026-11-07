@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import {
   homeMapNotice,
+  homeMapWash,
   homeOverlayClass,
   mapFailureAction,
   mapFailureMessage,
@@ -41,6 +42,7 @@ describe("iPhone home and live map frame", () => {
   });
 
   it("shows Live Map to an admin on the phone and not to a salesperson", () => {
+    const home = src("src/pages/admin/AdminHomePage.tsx");
     expect(showPhoneLiveMapButton(false)).toBe(true);
     expect(showPhoneLiveMapButton(true)).toBe(false);
     expect(v8More("admin").flatMap((g) => g.links).some((l) => l.path === "/admin/map")).toBe(true);
@@ -48,11 +50,14 @@ describe("iPhone home and live map frame", () => {
     expect(v8Primary("sales").some((l) => l.path === "/admin/map")).toBe(false);
     expect(v8Tabs("admin").some((l) => l.path === "/admin/map")).toBe(false);
     expect(v8More("sales").flatMap((g) => g.links).some((l) => l.path === "/admin/map")).toBe(false);
-    const home = src("src/pages/admin/AdminHomePage.tsx");
     expect(home).toContain('data-testid="home-open-live-map"');
-    expect(home).toContain("geographyOnly={!isClassic}");
     expect(home).toContain("showPhoneLiveMapButton(isSalesRep)");
     expect(home).toContain("homeOverlayClass");
+    expect(home).toContain("geographyOnly={!isClassic}");
+    expect(home).toContain("homeMapWash(isClassic)");
+    expect(home).not.toContain("0.55");
+    expect(homeMapWash(false)).toBeNull();
+    expect(homeMapWash(true)).toBe("hsl(var(--background) / 0.35)");
     expect(home).not.toContain("opacity-30");
     expect(home).not.toContain("opacity-70");
     expect(home).not.toContain("bg-background/60");
@@ -60,6 +65,30 @@ describe("iPhone home and live map frame", () => {
     const app = src("src/App.tsx");
     expect(app).toContain('path="map" element={<RequireRole allowedRoles={["admin","dispatcher","viewer","field_agent"]} denySalesRep>');
     expect(app).toContain('path="jobs-map" element={<RequireRole allowedRoles={["admin","dispatcher","viewer","field_agent"]} denySalesRep>');
+  });
+
+  it("ships a real geography map behind role homes, not a CSS wash", () => {
+    const frame = src("src/components/v8/roleHome/RoleMapFrame.tsx");
+    const map = src("src/components/MapView.tsx");
+    expect(frame).toContain("<MapView geographyOnly");
+    expect(frame).toContain('map ? "" : " rh-stage-fallback"');
+    expect(frame).not.toContain("map={false}");
+    for (const file of [
+      "src/pages/FieldTodayPage.tsx",
+      "src/pages/FieldJobSheetPage.tsx",
+      "src/components/v8/roleHome/LiveHomes.tsx",
+    ]) {
+      expect(src(file)).not.toContain("map={false}");
+      expect(src(file)).toContain("RoleMapFrame");
+    }
+    expect(src("src/pages/RoleHomeHarness.tsx")).toContain('map={sp.get("map") === "1"}');
+    expect(map).toContain("if (geographyOnlyRef.current) return;");
+    const geo = map.indexOf("geographyOnlyRef.current && navigator.geolocation");
+    const marker = map.indexOf("upsertUserLocationMarker(latitude, longitude)");
+    expect(geo).toBeGreaterThan(-1);
+    expect(marker).toBeGreaterThan(geo);
+    expect(map.slice(geo, marker)).not.toContain("upsertUserLocationMarker");
+    expect(map).toContain("!mapLoaded && !geographyOnly");
   });
 
   it("does not put map hero pages in a transformed h-full box", () => {

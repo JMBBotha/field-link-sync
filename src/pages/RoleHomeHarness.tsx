@@ -144,7 +144,7 @@ export default function RoleHomeHarness() {
       <div style={{ display: "flex", minHeight: "calc(100vh - 50px)" }}>
         {tablet && <Side items={view.startsWith("admin") ? ADMIN_NAV : SALES_NAV} />}
         <div style={{ flex: 1, minWidth: 0, maxWidth: phone ? 430 : undefined, margin: phone ? "0 auto" : undefined }}>
-          <RoleMapFrame map={false}>{body}</RoleMapFrame>
+          <RoleMapFrame map={sp.get("map") === "1"}>{body}</RoleMapFrame>
         </div>
       </div>
     </div>

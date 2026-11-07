@@ -22,6 +22,14 @@ export const mapHeroStageClass = "relative min-h-0 flex-1";
 export const homeOverlayClass =
   "absolute inset-0 z-10 overflow-y-auto overflow-x-hidden p-3 pb-24 md:p-4 md:pb-20 lg:pb-4 space-y-3";
 
+/**
+ * Classic home keeps a light wash so the old solid cards stay readable.
+ * The approved role homes do not: a wash over the whole stage hides the streets.
+ */
+export function homeMapWash(isClassic: boolean): string | null {
+  return isClassic ? "hsl(var(--background) / 0.35)" : null;
+}
+
 /** Wins over mapbox-gl.css .mapboxgl-map { position: relative }. */
 export const mapFillStyle: {
   position: "absolute";
