@@ -48,7 +48,17 @@ function App() {
         {bar.canReopen && <Button variant="outline" className="min-h-[48px] px-3">Reopen</Button>}
       </div></div>
       {(state === "edit" || state === "editrep") && <EditJobDetailsSheet open onOpenChange={() => {}} jobId="demo" companyId="co" scheduledFor="2026-11-03T07:30:00Z" techId="t1" perms={{ admin: state === "edit", rep: true }} />}
-      {state === "dialog" && <MarkCompletedDialog jobId="demo" open onOpenChange={() => {}} suggestedAt="2026-10-30T07:30:00Z" />}
+      {state === "dialog" && <MarkCompletedDialog jobId="demo" open onOpenChange={() => {}} suggestedAt="2026-11-03T09:00:00Z" materialsDefaultOpen={q.get("mat") === "1"}
+        seedVisits={[{ date: "2026-11-02", start: "08:00", end: "16:00" }, { date: "2026-11-03", start: "08:00", end: "12:00" }]}
+        fixtures={{
+          kind: "installation",
+          visits: [{ id: "v1", date: "2026-11-03", start: "14:00", end: "17:00" }, { id: "v2", date: "2026-11-04", start: "12:00", end: "14:00" }],
+          quote: [
+            { key: "u1", item: "Indoor cassette", qty: 1, unit: null, code: "FTXM35", kind: "unit" },
+            { key: "cu", item: "Copper pipe", qty: 15, unit: "m", code: "CU-14", stockItemId: "s-cu", quoteItemId: "qi-cu", kind: "material" },
+          ],
+          booked: [{ id: "m1", source: "used", item: "Copper pipe", qty: 6, unit: "m", drawnQty: 6, stockItemId: "s-cu", quoteItemId: "qi-cu" }],
+        }} />}
     </div>
   );
 }
