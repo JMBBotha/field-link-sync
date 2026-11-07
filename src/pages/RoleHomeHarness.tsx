@@ -1,8 +1,7 @@
 /** Dev-only shots of the approved role homes. Numbers here are harness rows, not Massair CT. */
 import { useSearchParams } from "react-router-dom";
-import { countAdminHome } from "@/lib/adminHomeCount";
 import { buildMaterialCheck, type SourceLine, type StockHand } from "@/lib/materialCheck";
-import { cashProjectionSlices } from "@/lib/roleHome";
+import { buildYardHome, type YardJob } from "@/lib/yardView";
 import RoleMapFrame from "@/components/v8/roleHome/RoleMapFrame";
 import { AdminHomeScreen, SalesHomeScreen, SalesJobScreen, TechHomeScreen, TechJobScreen } from "@/components/v8/roleHome/screens";
 
@@ -38,14 +37,40 @@ const service = buildMaterialCheck({
   stock: [hand("s-in", "Indoor cassette", 3, "p-in")],
 });
 
-const counts = countAdminHome({
+const HARNESS_NOW = new Date("2026-11-07T08:00:00+02:00");
+const harnessJob = (over: Partial<YardJob> & { id: string }): YardJob => ({
+  company_id: DEMO, status: "scheduled", title: "Install", job_type: "installation", customer_name: "Demo client", ...over,
+});
+const yard = buildYardHome({
   companyId: DEMO,
-  now: new Date("2026-11-07T08:00:00+02:00"),
+  now: HARNESS_NOW,
   invoices: [
     { id: "w", company_id: DEMO, status: "draft", grand_total: 1500, invoice_number: "DEMO-1", customer_name: "Harness client" },
-    { id: "d", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 800, notes: "DEPOSIT", invoice_number: "DEMO-D", customer_name: "Harness client" },
-    { id: "f", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 2200, notes: "Final", invoice_number: "DEMO-F", customer_name: "Harness client" },
+    { id: "d1", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 8000, notes: "DEPOSIT", invoice_number: "DEMO-D1", customer_name: "Demo client A", expected_deposit_date: "2026-11-12" },
+    { id: "d2", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 4500, notes: "DEPOSIT", invoice_number: "DEMO-D2", customer_name: "Demo client B", expected_deposit_date: "2026-11-19" },
+    { id: "f", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 22000, notes: "Final", invoice_number: "DEMO-F", customer_name: "Demo client C", expected_final_date: "2026-11-28" },
   ],
+  jobs: [
+    harnessJob({ id: "leave-1", customer_name: "Demo client A", scheduled_for: "2026-11-07T06:30:00+02:00", assignee_name: "Tech A" }),
+    harnessJob({ id: "leave-2", customer_name: "Demo client B", scheduled_for: "2026-11-07T08:00:00+02:00", assignee_name: "Tech B", job_type: "service", title: "Service" }),
+    harnessJob({ id: "road-1", customer_name: "Demo client C", status: "dispatched", en_route_at: "2026-11-07T07:10:00+02:00", scheduled_for: "2026-11-07T07:00:00+02:00", assignee_name: "Tech A" }),
+    harnessJob({ id: "done-1", customer_name: "Demo client D", status: "completed", completed_at: "2026-11-07T09:00:00+02:00", scheduled_for: "2026-11-07T05:00:00+02:00", assignee_name: "Tech B" }),
+  ],
+  leads: [
+    { id: "n1", company_id: DEMO, status: "pending", customer_name: "New demo", primary_intent: "sales" },
+    { id: "n2", company_id: DEMO, status: "pending", customer_name: "New demo 2", primary_intent: "sales" },
+  ],
+  quotes: [
+    { id: "qd", company_id: DEMO, status: "draft", total: 1000, created_at: "2026-11-01", customer_name: "Draft demo", quote_number: "D-1" },
+    { id: "qs", company_id: DEMO, status: "sent", total: 2000, created_at: "2026-11-01", sent_at: "2026-11-02", customer_name: "Sent demo", quote_number: "S-1" },
+  ],
+  bankState: "ready",
+  bank: {
+    accounts: [{ id: "a", label: "Demo current", account_ref: null, include: true, sort: 1 }],
+    balances: [{ id: "b", account_id: "a", balance: 12500, as_of: "2026-11-03", created_at: "2026-11-03T08:00:00Z" }],
+  },
+  booksState: "ready",
+  books: { receipts: [], commitments: [], allocations: [] },
 });
 
 const SALES_NAV = ["Home", "Pipeline", "Quotes", "Schedule", "Clients"];
@@ -118,21 +143,9 @@ export default function RoleHomeHarness() {
       <AdminHomeScreen
         eyebrow="SATURDAY, 07 NOV"
         title="Good morning"
-        invoice={{ count: counts.waiting.count, total: "R1 500,00" }}
-        crew={[
-          { id: "1", href: "/dev/role-homes?view=admin-home", who: "Tech A", type: "Installation", where: "Claremont", client: "Demo Client 7" },
-          { id: "2", href: "/dev/role-homes?view=admin-home", who: "Tech B", type: "Service", where: "Observatory", client: "Demo Client 4" },
-        ]}
-        levels={[
-          { key: "in", name: "Indoor cassettes", detail: "0 in stock · 1 needed this week", short: 1, href: "/dev/role-homes?view=admin-home" },
-          { key: "cu", name: "Copper pipe", detail: "12 in stock · 6 m needed this week", short: null, href: "/dev/role-homes?view=admin-home" },
-        ]}
-        orders={[
-          { key: "in", label: "1 × Indoor cassette", detail: "For booked installations", href: "/dev/role-homes?view=admin-home" },
-          { key: "out", label: "1 × Outdoor unit", detail: "For booked installations", href: "/dev/role-homes?view=admin-home" },
-        ]}
-        slices={cashProjectionSlices(counts)}
-        onSlice={() => undefined}
+        companyName="Demo company (Pty) Ltd"
+        invoice={yard.invoice}
+        model={yard}
         onReview={() => undefined}
         onInvoice={() => undefined}
       />
