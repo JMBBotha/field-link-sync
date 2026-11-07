@@ -136,8 +136,8 @@ export function InvoiceBanner({
   return (
     <section data-testid="jobs-ready-to-invoice" className="mb-[18px] flex flex-wrap items-center gap-3 rounded-xl bg-[#F97316] p-4 text-[#0F1B2A] shadow-sm">
       <div>
-        <div className="text-[13px] font-bold uppercase tracking-wide">
-          Jobs ready to invoice
+        <div className="flex items-center text-[13px] font-bold uppercase tracking-wide">
+          <span>Jobs ready to invoice</span>
           <InfoMark label="How jobs ready to invoice was counted" onClick={onOpen} />
         </div>
         <button type="button" className="whitespace-nowrap text-left text-[18px] font-extrabold leading-tight tabular-nums sm:text-[22px]" onClick={onReview} data-testid="jobs-ready-total">

@@ -13,14 +13,23 @@ import { cn } from "@/lib/utils";
 /** Soft V8 pastels from the approved sketch. Not bright RGB. */
 export const PIE_COLOURS = ["#7CC4F4", "#FDBA8C", "#86D9B5", "#C4B5FD"] as const;
 
+/**
+ * Small circular bold i.
+ * Phone buttons otherwise inherit the 44px touch minimum and draw as a tall capsule.
+ */
 export function InfoMark({ label, onClick, className }: { label: string; onClick: () => void; className?: string }) {
   return (
     <button
       type="button"
       aria-label={label}
+      data-no-min
       data-testid={`info-${label.toLowerCase().replace(/[^a-z]+/g, "-").replace(/^-|-$/g, "")}`}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      className={cn("ml-1 inline-flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full border border-current text-[10px] font-bold italic leading-none opacity-90", className)}
+      style={{ width: 18, height: 18, minWidth: 18, minHeight: 18, maxWidth: 18, maxHeight: 18 }}
+      className={cn(
+        "ml-1 inline-flex shrink-0 items-center justify-center self-center rounded-full border border-current p-0 align-middle text-[11px] font-bold not-italic leading-none",
+        className,
+      )}
     >
       i
     </button>
@@ -47,27 +56,27 @@ export function HowCountedSheet({ figure, onClose }: { figure: CountFigure; onCl
   return createPortal(
     <div className="fixed inset-0 z-[80]" data-testid="how-counted-sheet" role="dialog" aria-modal="true" aria-label="How this was counted">
       <button type="button" aria-label="Dimmed home" className="absolute inset-0 bg-[#0F1B2A]/45" onClick={onClose} />
-      <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white px-5 pb-6 pt-3 text-[#0F1B2A] shadow-[0_-6px_20px_rgba(0,0,0,.2)]">
-        <div className="mx-auto mb-3 h-[5px] w-11 rounded-full bg-[#CBD5E1]" />
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-extrabold">How this was counted</h2>
-          <button type="button" data-testid="how-counted-close" onClick={onClose} className="rounded-lg border border-[#E3E8EF] px-2.5 py-1.5 text-[13px] font-bold">✕ Close</button>
+      <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white px-4 pb-3 pt-2 text-[#0F1B2A] shadow-[0_-6px_20px_rgba(0,0,0,.2)]">
+        <div className="mx-auto mb-1.5 h-1 w-10 rounded-full bg-[#CBD5E1]" />
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <h2 className="text-base font-extrabold leading-tight">How this was counted</h2>
+          <button type="button" data-no-min data-testid="how-counted-close" onClick={onClose} className="h-8 shrink-0 rounded-lg border border-[#E3E8EF] px-2 text-[13px] font-bold leading-none">✕ Close</button>
         </div>
-        <div className="mb-3 rounded-lg border-l-4 border-[#F97316] bg-[#FFF7ED] px-3 py-2.5 text-sm leading-relaxed">
+        <div className="mb-1.5 rounded-lg border-l-4 border-[#F97316] bg-[#FFF7ED] px-2.5 py-1.5 text-[13px] leading-snug">
           <b>{figure.title}: {figureHeadline(figure)}</b>
           <div>{figure.rule}</div>
         </div>
         <ul>
           {figure.lines.map((line) => (
             <li key={line.id} className="border-b border-[#E3E8EF]">
-              <Link to={line.href} data-testid={`how-counted-line-${line.id}`} className="flex items-center justify-between gap-3 py-2.5 text-sm hover:text-[#1478C8]" onClick={onClose}>
+              <Link to={line.href} data-testid={`how-counted-line-${line.id}`} className="flex items-center justify-between gap-2 py-1.5 text-[13px] leading-snug hover:text-[#1478C8]" onClick={onClose}>
                 <span className="min-w-0 flex-1">{line.label}</span>
                 <b className="shrink-0 tabular-nums">{figure.unit === "jobs" ? "1" : moneyText(line.amount)}</b>
               </Link>
             </li>
           ))}
-          {figure.lines.length === 0 && <li className="py-2 text-sm text-[#5B6B7F]">Nothing in this figure.</li>}
-          <li className="flex items-center justify-between py-2.5 text-sm font-extrabold">
+          {figure.lines.length === 0 && <li className="py-1.5 text-[13px] text-[#5B6B7F]">Nothing in this figure.</li>}
+          <li className="flex items-center justify-between py-1.5 text-[13px] font-extrabold">
             <span>Total</span>
             <span className="tabular-nums">{figure.unit === "jobs" ? figure.count : moneyText(figure.total)}</span>
           </li>
@@ -76,7 +85,7 @@ export function HowCountedSheet({ figure, onClose }: { figure: CountFigure; onCl
           type="button"
           data-testid="how-counted-action"
           onClick={() => { onClose(); navigate(figure.actionHref); }}
-          className="mt-2 flex h-11 w-full items-center justify-center rounded-[10px] bg-[#C2410C] text-base font-bold text-white hover:bg-[#9A3412]"
+          className="mt-1.5 flex h-11 w-full items-center justify-center rounded-[10px] bg-[#C2410C] text-[15px] font-bold text-white hover:bg-[#9A3412]"
         >
           {figure.actionLabel}
         </button>
