@@ -53,6 +53,7 @@ import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { attachPaymentTotals } from "@/lib/depositInvoice";
 import { jobStatusPatch, formatJohannesburg } from "@/lib/jobTimes";
 import BookingConfirmationEmail from "@/components/jobs/BookingConfirmationEmail";
+import { SalesJobLook } from "@/components/v8/roleHome/LiveHomes";
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -209,7 +210,7 @@ const AdminJobDetailPage = () => {
   const location = j.customer_locations;
   const invoice = depositInvoice ?? j.invoices;
 
-  return (
+  const office = (
     <div className="pb-28 md:pb-24">
       <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4 has-sticky-action-bar">
         {/* Header */}
@@ -518,6 +519,18 @@ const AdminJobDetailPage = () => {
       <ReopenJobDialog key={`ro-${reopenOpen}`} jobId={j.id} open={reopenOpen} onOpenChange={setReopenOpen} />
     </div>
   );
+  if (isSalesRep) {
+    return (
+      <>
+        <SalesJobLook job={j} techName={assignedTech?.name || null} />
+        <details className="mx-auto max-w-3xl px-4 pb-28" data-testid="sales-job-more">
+          <summary className="cursor-pointer py-3 text-sm font-semibold">Office detail</summary>
+          {office}
+        </details>
+      </>
+    );
+  }
+  return office;
 };
 
 const AdminJobDetailPageGuarded = () => (

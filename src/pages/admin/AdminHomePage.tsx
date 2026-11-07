@@ -11,6 +11,7 @@ import { useSalesRep } from "@/hooks/useSalesRep";
 import FieldPresenceBoard from "@/components/admin/FieldPresenceBoard";
 import SalesMyJobs from "@/components/jobs/SalesMyJobs";
 import V8RoleHome from "@/components/v8/V8RoleHome";
+import { AdminLiveHome, SalesLiveHome } from "@/components/v8/roleHome/LiveHomes";
 import NextStepsPanel from "@/components/sales/NextStepsPanel";
 import HomeFocus from "@/components/home/HomeFocus";
 import RequestsTodayStrip from "@/components/requests/RequestsTodayStrip";
@@ -101,7 +102,7 @@ const AdminHomePage = () => {
         <div className={mapHeroStageClass}>
           {/* Live map behind both layouts (Johan 13 Oct 12:55: restore it on New). A flat wash keeps the panels readable without hiding a failed map. */}
           <div className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
-            <MapView ref={mapRef} showAllAgents hideChromeControls hideStatusFilters onAvailabilityChange={onMapAvailability} />
+            <MapView ref={mapRef} geographyOnly={!isClassic} showAllAgents hideChromeControls hideStatusFilters onAvailabilityChange={onMapAvailability} />
           </div>
           <div
             className="pointer-events-none absolute inset-0 z-[1]"
@@ -142,10 +143,10 @@ const AdminHomePage = () => {
                 )}
               </div>
             )}
-            {/* Next steps to-do on top for sales + admin (Johan 31 Oct 2026). */}
-            {/* Admin home polish (Johan 2 Nov 17:51): next step, orange invoices waiting, requests today, then in order. */}
+            {!isClassic && (v8Role === "sales" ? <SalesLiveHome /> : <AdminLiveHome />)}
+            {isClassic ? (
+            <div className="space-y-3">
             {v8Role !== "tech" && <HomeFocus requests={<RequestsTodayStrip blue />} />}
-            {!isClassic && v8Role !== "tech" && <V8RoleHome role={v8Role} hideRequests />}
             {v8Role !== "tech" && (
               <details className="v7-solid rounded-2xl border bg-card p-2" data-testid="home-all-next-steps"><summary className="cursor-pointer px-2 py-1 text-sm font-semibold">All next steps (filter, snooze)</summary>
                 <NextStepsPanel className="mt-2 border-0 p-1" /></details>
@@ -153,16 +154,25 @@ const AdminHomePage = () => {
             {!isSalesRep && <FieldPresenceBoard />}
             {isSalesRep && <SalesMyJobs />}
             <OfferCards />
-            {!isClassic && v8Role !== "tech" ? (
+            <HomeC onNavigate={(tab) => navigate(tabToRoute[tab] || "/admin")} onCreateLead={() => setShowCreateLead(true)} />
+            </div>
+            ) : (
+            <details className="rounded-2xl border bg-card/95 p-2" data-testid="home-earlier-detail">
+              <summary className="cursor-pointer px-2 py-1 text-sm font-semibold">Earlier home detail</summary>
+              <div className="space-y-3 pt-2">
+            {v8Role !== "tech" && <HomeFocus requests={<RequestsTodayStrip blue />} />}
+            {v8Role !== "tech" && <V8RoleHome role={v8Role} hideRequests />}
+            {v8Role !== "tech" && (
+              <details className="v7-solid rounded-2xl border bg-card p-2" data-testid="home-all-next-steps"><summary className="cursor-pointer px-2 py-1 text-sm font-semibold">All next steps (filter, snooze)</summary>
+                <NextStepsPanel className="mt-2 border-0 p-1" /></details>
+            )}
+            {!isSalesRep && <FieldPresenceBoard />}
+            {isSalesRep && <SalesMyJobs />}
+            <OfferCards />
             <details className="v7-solid rounded-2xl border bg-card p-2" data-testid="v8-home-details"><summary className="cursor-pointer px-2 py-1 text-sm font-semibold">More details (gauges, funnel, comparisons)</summary>
             <div className="space-y-3 pt-2"><HomeC onNavigate={(tab) => navigate(tabToRoute[tab] || "/admin")} onCreateLead={() => setShowCreateLead(true)} /></div></details>
-            ) : (
-            <div className={isClassic ? undefined : "v7-solid space-y-3"}>
-            <HomeC
-              onNavigate={(tab) => navigate(tabToRoute[tab] || "/admin")}
-              onCreateLead={() => setShowCreateLead(true)}
-            />
-            </div>
+              </div>
+            </details>
             )}
           </div>
 

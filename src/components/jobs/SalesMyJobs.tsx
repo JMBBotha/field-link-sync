@@ -17,7 +17,7 @@ type MyJob = {
 const STAGES = [["assigned", "Assigned"], ["en_route", "En route"], ["on_site", "On site"], ["completed", "Completed"]] as const;
 const STAG = new Set<string>(STAGES.map(([s]) => s));
 
-function parseMyJobs(data: unknown): MyJob[] {
+export function parseMyJobs(data: unknown): MyJob[] {
   let value = data;
   if (typeof value === "string") {
     try { value = JSON.parse(value) as unknown; } catch { return []; }

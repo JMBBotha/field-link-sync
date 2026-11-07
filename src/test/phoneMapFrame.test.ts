@@ -43,12 +43,14 @@ describe("iPhone home and live map frame", () => {
   it("shows Live Map to an admin on the phone and not to a salesperson", () => {
     expect(showPhoneLiveMapButton(false)).toBe(true);
     expect(showPhoneLiveMapButton(true)).toBe(false);
-    expect(v8Primary("admin").some((l) => l.path === "/admin/map")).toBe(true);
+    expect(v8More("admin").flatMap((g) => g.links).some((l) => l.path === "/admin/map")).toBe(true);
+    expect(v8Primary("admin").some((l) => l.path === "/admin/map")).toBe(false);
     expect(v8Primary("sales").some((l) => l.path === "/admin/map")).toBe(false);
     expect(v8Tabs("admin").some((l) => l.path === "/admin/map")).toBe(false);
     expect(v8More("sales").flatMap((g) => g.links).some((l) => l.path === "/admin/map")).toBe(false);
     const home = src("src/pages/admin/AdminHomePage.tsx");
     expect(home).toContain('data-testid="home-open-live-map"');
+    expect(home).toContain("geographyOnly={!isClassic}");
     expect(home).toContain("showPhoneLiveMapButton(isSalesRep)");
     expect(home).toContain("homeOverlayClass");
     expect(home).not.toContain("opacity-30");

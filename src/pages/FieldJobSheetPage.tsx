@@ -4,7 +4,7 @@
  */
 import LinkifiedText from "@/components/shared/LinkifiedText";
 import { storedPin, coordsFromText } from "@/lib/mapPin";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +28,12 @@ import { lastOpenCheckIn, type JobDays } from "@/lib/jobDays";
 import TechJobTypePanel from "@/components/field/TechJobTypePanel";
 import TechUnitSerials from "@/components/stock/TechUnitSerials";
 import { techJobTypeLabel } from "@/lib/jobTypeChoice";
+import { checkKindOf } from "@/lib/materialCheck";
+import { areaFromAddress, durationAbout, jobTypeWord } from "@/lib/roleHome";
+import { V8BarContext } from "@/components/v8/v8BarContext";
+import RoleMapFrame from "@/components/v8/roleHome/RoleMapFrame";
+import { TechJobScreen } from "@/components/v8/roleHome/screens";
+import { useMaterialCheck } from "@/components/v8/roleHome/data";
 
 export default function FieldJobSheetPage() {
   const { id = "" } = useParams();
@@ -74,6 +80,9 @@ export default function FieldJobSheetPage() {
   const days = useJobDays(id);
   const multiDay = !!days.data?.multi_day;
   const [finish, setFinish] = useState<{ open: boolean; days?: JobDays | null }>({ open: false });
+  const v8 = useContext(V8BarContext);
+  const kind = checkKindOf({ jobType: (job.data as { job_type?: string | null; title?: string | null } | undefined)?.job_type, title: (job.data as { title?: string | null } | undefined)?.title });
+  const mat = useMaterialCheck(id, job.data ? kind : "quote_visit", (job.data as { quote_id?: string | null } | undefined)?.quote_id, job.data?.lead_id);
   const setStatus = async (status: "in_progress" | "completed") => {
     if (status === "completed" && j?.lead_id) { setFinish({ open: true, days: null }); return; }
     if (status === "completed" && !window.confirm("Mark this job as completed?")) return;
@@ -89,9 +98,25 @@ export default function FieldJobSheetPage() {
   };
 
 
-  return (
-    <FieldShell title="Job sheet" back>
+  const sheet = (
       <div className="space-y-4">
+      {j && (
+        <TechJobScreen
+          type={jobTypeWord(j.job_type, j.title)}
+          client={j.customers?.name || "Client"}
+          area={areaFromAddress(siteAddress, j.title)}
+          when={j.scheduled_for ? new Date(j.scheduled_for).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" }) : "Time not set"}
+          duration={durationAbout((j as { estimated_duration?: string | null }).estimated_duration)}
+          phone={j.customers?.phone}
+          address={siteAddress}
+          navHref={siteAddress ? `https://www.google.com/maps/dir/?api=1&destination=${sitePin ? `${sitePin.lat},${sitePin.lng}` : encodeURIComponent(siteAddress)}` : null}
+          check={mat.data || { kind, show: true, lines: [], toPickCount: 0 }}
+          description={j.description}
+          onLogParts={() => document.getElementById("log-parts")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          onComplete={() => setStatus("completed")}
+          completeDisabled={busy || !!blocked}
+        />
+      )}
       {job.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading job…</p>
       ) : !j ? (
@@ -174,7 +199,7 @@ export default function FieldJobSheetPage() {
       {id && <TechUnitSerials jobId={id} />}
 
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 font-semibold"><Package className="h-4 w-4" /> Packing list</h2>
+        <h2 id="log-parts" className="flex items-center gap-2 font-semibold"><Package className="h-4 w-4" /> Packing list</h2>
         {total > 0 && <span className="text-sm text-muted-foreground">{done}/{total} packed</span>}
       </div>
       {list.isLoading ? (
@@ -203,6 +228,7 @@ export default function FieldJobSheetPage() {
         ))
       )}
       </div>
-    </FieldShell>
   );
+  if (v8) return <RoleMapFrame fill>{sheet}</RoleMapFrame>;
+  return <FieldShell title="Job sheet" back>{sheet}</FieldShell>;
 }

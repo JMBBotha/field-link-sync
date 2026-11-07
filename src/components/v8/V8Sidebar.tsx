@@ -73,7 +73,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
   const tech = role === "tech";
   const tone = tech ? null : inboxTone(leads as any[], Math.floor(now / 30_000) * 30_000, sla);
   const salary = useIsSalaried();
-  const primary = v8Primary(role, { salary });
+  const primary = v8Primary(role, { salary }).filter((l) => l.label !== "Stock" || isAdmin);
   const cashHealth = useCashHealthEnabled();
   const { isAdmin } = useRole();
   const { summary: due } = useInvoiceDue();

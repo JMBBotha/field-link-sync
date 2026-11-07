@@ -16,6 +16,7 @@ export default function V8FieldShell({ children }: { children: React.ReactNode }
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const mapHero = pathname === "/field" || /^\/field\/jobs\/[^/]+$/.test(pathname);
   if (isClassic || role !== "tech") return <>{children}</>;
   return (
     <div className="flex h-[100dvh] w-full overflow-hidden bg-background" data-testid="v8-field-shell">
@@ -26,7 +27,7 @@ export default function V8FieldShell({ children }: { children: React.ReactNode }
             <div className="flex h-12 items-center px-1"><BackButton /></div>
           </header>
         )}
-        <main data-scroll-root className="min-h-0 flex-1 overflow-auto scroll-bounce scroll-room"><V8BarContext.Provider value={true}>{children}</V8BarContext.Provider></main>
+        <main data-scroll-root data-testid={mapHero ? "map-hero-frame" : undefined} className={mapHero ? "flex min-h-0 flex-1 flex-col overflow-hidden" : "min-h-0 flex-1 overflow-auto scroll-bounce scroll-room"}><V8BarContext.Provider value={true}>{children}</V8BarContext.Provider></main>
         <V8BottomNav onOpenMenu={() => setOpen(true)} />
       </div>
     </div>
