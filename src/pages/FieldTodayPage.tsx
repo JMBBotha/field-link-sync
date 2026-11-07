@@ -2,96 +2,29 @@
  * /field (pure technicians): Today. One clear card per job today, next job opened up; tap through to the job pack.
  * No money anywhere. The full old field home is under More → Full field view (/field/all).
  */
-import { useEffect, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useContext, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { Briefcase, ChevronRight, MapPin, Navigation, Phone } from "lucide-react";
+import { Briefcase } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import FieldShell from "@/components/field/FieldShell";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { JobCardListSkeleton } from "@/components/ui/skeletons";
-import JobCard from "@/components/cards/JobCard";
-import { scheduleRowToCard } from "@/lib/cardModel";
 import { fetchTodaysJobs, todayInJohannesburg, type CalendarEntry } from "@/lib/todaysJobs";
-import { FrontPhoto, useSurveyPack } from "@/components/survey/SurveyPackSection";
-import { cachePackFiles, pipeSummary } from "@/lib/siteSurvey/pack";
 import { primeJobPack } from "@/lib/jobPack";
-import { dayBadge } from "@/lib/jobDays";
+import { V8BarContext } from "@/components/v8/v8BarContext";
+import RoleMapFrame from "@/components/v8/roleHome/RoleMapFrame";
+import { TechHomeScreen, type HomeJob } from "@/components/v8/roleHome/screens";
+import { loadMaterialCheck } from "@/components/v8/roleHome/data";
+import { checkKindOf, type MaterialCheck } from "@/lib/materialCheck";
+import { areaFromAddress, greetingEyebrow, greetingTitle, jobTypeWord } from "@/lib/roleHome";
+import { useSignedInIdentity } from "@/hooks/useSignedInIdentity";
 
 const CACHE = (uid: string) => `fls.today.${uid}`;
 
 type JobRow = { id: string; title: string | null; description: string | null; job_type: string | null; status: string | null; site_check_status: string | null; customers?: { phone?: string | null } | null };
 
-function statusPill(job: JobRow | undefined, survey: boolean) {
-  const st = job?.status ?? "";
-  if (st === "in_progress") return <Badge className="bg-primary">In progress</Badge>;
-  if (job?.site_check_status === "awaiting_pricing" || job?.site_check_status === "awaiting_client") return <Badge variant="outline" className="border-orange-300 dark:border-orange-400/30 text-orange-700 dark:text-orange-300">Variation waiting</Badge>;
-  if (job?.site_check_status === "confirmed") return <Badge variant="outline" className="border-green-300 dark:border-green-400/30 text-green-700 dark:text-green-300">Site checked</Badge>;
-  if (survey) return <Badge variant="outline" className="border-green-300 dark:border-green-400/30 text-green-700 dark:text-green-300">Survey done</Badge>;
-  return null;
-}
-
 const timeOf = (e: CalendarEntry) => (e.start_time ? e.start_time.slice(0, 5) : "Any time");
-const navLink = (addr: string | null) => (addr ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}` : null);
-
-function TodayCard({ e, job, open, index, total }: { e: CalendarEntry; job?: JobRow; open: boolean; index: number; total: number }) {
-  const navigate = useNavigate();
-  const pack = useSurveyPack(e.lead_id);
-  const survey = pack.data ?? null;
-  useEffect(() => { if (survey && navigator.onLine) void cachePackFiles(survey); }, [survey]);
-  useEffect(() => { if (e.job_id && navigator.onLine) void primeJobPack(e.job_id); }, [e.job_id]);
-  const pipes = pipeSummary(survey);
-  const href = e.job_id ? `/field/jobs/${e.job_id}` : e.lead_id ? `/field?lead=${e.lead_id}` : "/field/schedule";
-  const nav = navLink(e.customer_address);
-  const phone = job?.customers?.phone ?? null;
-  // Phase (b): day N of M of a multi-day run; the job pack has the day panel (check in / Done for today).
-  const multi = (e.day_count ?? 0) > 1;
-  const dayTag = multi ? `Day ${e.day_index} of ${e.day_count}` : null;
-  const dayPill = multi ? <Badge variant="outline" className="border-primary/40 text-primary" data-testid="today-day-badge">{dayBadge(e.day_index, e.day_count)}</Badge> : null;
-  if (!open) return (
-    <JobCard item={scheduleRowToCard(e)} audience="tech" density="compact" onOpen={() => navigate(href)} data-testid="today-row"
-      actions={(dayPill || statusPill(job, !!survey)) ? <span className="flex gap-1">{dayPill}{statusPill(job, !!survey)}</span> : undefined} />
-  );
-  return (
-    <div className="space-y-3 rounded-2xl border-2 border-[#C2410C] bg-white p-4" data-testid="today-next">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-bold uppercase tracking-wide text-[#C2410C]">Next job · {timeOf(e)}{dayTag ? ` · ${dayTag}` : ""}</span>
-        <span className="flex items-center gap-1 text-xs text-[#475569]">{statusPill(job, !!survey)}{index + 1} of {total}</span>
-      </div>
-      <div className="flex items-start gap-3">
-        {survey && <FrontPhoto survey={survey} className="h-16 w-16 shrink-0 rounded-lg object-cover" />}
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold">{e.customer_name || "Client"}</h2>
-          {e.customer_address && <p className="flex items-start gap-1 text-sm text-muted-foreground"><MapPin className="mt-0.5 h-4 w-4 shrink-0" />{e.customer_address}</p>}
-        </div>
-      </div>
-      {(job?.title || job?.description) && <p className="text-sm"><span className="font-semibold">{job?.title}</span>{job?.description ? <span className="block text-muted-foreground line-clamp-2">{job.description}</span> : null}</p>}
-      {pipes.length > 0 && (
-        <div className="grid grid-cols-2 gap-2">
-          {pipes.slice(0, 4).map((p) => (
-            <div key={p.name} className="rounded-lg bg-muted/50 px-3 py-2">
-              <div className="truncate text-xs uppercase tracking-wide text-muted-foreground">{p.name}</div>
-              <div className="font-semibold">{p.m != null ? `${p.m} m pipe` : "–"}</div>
-            </div>
-          ))}
-        </div>
-      )}
-      <button type="button" className="fl-btn-primary fl-phone w-full" style={{ minHeight: 52 }} onClick={() => navigate(href)} data-testid="today-open-pack">
-        {dayTag ? `${dayTag} · Check in` : "Check in · open job pack"}<ChevronRight className="ml-1 inline h-4 w-4" />
-      </button>
-      <div className="grid grid-cols-2 gap-2">
-        {nav ? <a className="fl-btn-text inline-flex items-center justify-center" style={{ minHeight: 48 }} href={nav} target="_blank" rel="noreferrer"><Navigation className="mr-1 h-4 w-4" />Navigate</a>
-          : <span className="inline-flex items-center justify-center text-sm text-muted-foreground" style={{ minHeight: 48 }}>No address</span>}
-        {phone ? <a className="fl-btn-text inline-flex items-center justify-center" style={{ minHeight: 48 }} href={`tel:${phone}`}><Phone className="mr-1 h-4 w-4" />Call client</a>
-          : <span className="inline-flex items-center justify-center text-sm text-muted-foreground" style={{ minHeight: 48 }}>No phone</span>}
-      </div>
-    </div>
-  );
-}
 
 export default function FieldTodayPage() {
   const { user } = useAuth();
@@ -133,43 +66,51 @@ export default function FieldTodayPage() {
     },
   });
   const byId = new Map((jobs.data ?? []).map((j) => [j.id, j]));
-  const tomorrow = useQuery({
-    queryKey: ["my-jobs", user?.id, "tomorrow-count"],
-    enabled: !!user && navigator.onLine,
-    queryFn: async () => {
-      const t = new Date(`${date}T12:00:00`); t.setDate(t.getDate() + 1);
-      const d = await fetchTodaysJobs({ date: format(t, "yyyy-MM-dd"), agentId: user!.id });
-      return d.open.length;
-    },
-  });
   useEffect(() => {
+    jobIds.forEach((id) => { if (navigator.onLine) void primeJobPack(id); });
     const ch = supabase.channel("field-today-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () => qc.invalidateQueries({ queryKey: ["my-jobs"] }))
       .on("postgres_changes", { event: "*", schema: "public", table: "job_schedules" }, () => qc.invalidateQueries({ queryKey: ["my-jobs"] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [qc]);
-  const nextIdx = Math.max(0, open.findIndex((e) => (byId.get(e.job_id ?? "")?.status ?? "") !== "completed"));
-  return (
-    <FieldShell title="Today">
-      <div className="space-y-3" data-testid="field-today">
-        <div>
-          <h1 className="text-[22px] font-semibold text-[#0F1B2A]">Today</h1>
-          <p className="text-sm text-muted-foreground">{format(new Date(`${date}T12:00:00`), "EEEE d MMMM")} · {open.length} job{open.length === 1 ? "" : "s"}{tomorrow.data != null ? ` · ${tomorrow.data} tomorrow` : ""}</p>
-        </div>
-        {day.isLoading ? <JobCardListSkeleton rows={2} /> : day.error ? (
-          <Card><CardContent className="p-4 text-sm">Couldn't load today's jobs. Pull to refresh when you have signal.</CardContent></Card>
-        ) : open.length === 0 ? (
-          <Card><CardContent className="space-y-1 p-6 text-center">
-            <p className="font-semibold">No jobs today</p>
-            <p className="text-sm text-muted-foreground">New job offers show under More → Job offers.</p>
-          </CardContent></Card>
-        ) : open.map((e, i) => <TodayCard key={e.key} e={e} job={e.job_id ? byId.get(e.job_id) : undefined} open={i === nextIdx} index={i} total={open.length} />)}
-        <div className="flex items-center justify-between gap-2 pt-1">
-          <Button asChild variant="outline" className="min-h-[48px]"><Link to="/admin/my-jobs"><Briefcase className="mr-1 h-4 w-4" />Job offers</Link></Button>
-          <Link to="/field/schedule" className="fl-btn-text inline-flex items-center" data-testid="today-week">See the week →</Link>
-        </div>
+  }, [qc, jobIds.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+  const identity = useSignedInIdentity();
+  const v8 = useContext(V8BarContext);
+  const checks = useQuery({
+    queryKey: ["today-material-checks", jobIds.join(","), (jobs.data || []).map((j) => `${j.id}:${j.job_type || ""}`).join(",")],
+    enabled: jobIds.length > 0 && !!jobs.data,
+    queryFn: async () => {
+      const out: Record<string, MaterialCheck> = {};
+      await Promise.all(jobIds.map(async (id) => {
+        const job = byId.get(id);
+        out[id] = await loadMaterialCheck(id, checkKindOf({ jobType: job?.job_type, title: job?.title }), null);
+      }));
+      return out;
+    },
+  });
+  const homeJobs: HomeJob[] = open.map((e) => ({
+    id: e.job_id || e.key,
+    href: e.job_id ? `/field/jobs/${e.job_id}` : e.lead_id ? `/field?lead=${e.lead_id}` : "/field/schedule",
+    time: timeOf(e) === "Any time" ? "Anytime" : timeOf(e),
+    type: jobTypeWord(e.job_id ? byId.get(e.job_id)?.job_type : null, e.job_id ? byId.get(e.job_id)?.title : null),
+    area: areaFromAddress(e.customer_address),
+    client: e.customer_name || "Client",
+    check: e.job_id ? checks.data?.[e.job_id] || null : null,
+  }));
+  const screen = (
+    <div data-testid="field-today">
+      {day.isLoading ? <p className="rh-muted">Loading today’s jobs…</p> : day.error ? (
+        <p className="rh-muted">Couldn’t load today’s jobs. Pull to refresh when you have signal.</p>
+      ) : (
+        <TechHomeScreen eyebrow={greetingEyebrow(new Date())} title={greetingTitle(new Date(), identity?.name)} jobs={homeJobs} />
+      )}
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <Button asChild variant="outline" className="min-h-[48px]"><Link to="/admin/my-jobs"><Briefcase className="mr-1 h-4 w-4" />Job offers</Link></Button>
+        <Link to="/field/schedule" className="fl-btn-text inline-flex items-center" data-testid="today-week">See the week →</Link>
       </div>
-    </FieldShell>
+    </div>
   );
+  const framed = <RoleMapFrame fill={v8}>{screen}</RoleMapFrame>;
+  if (v8) return framed;
+  return <FieldShell title="Today">{framed}</FieldShell>;
 }

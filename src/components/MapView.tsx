@@ -73,6 +73,8 @@ interface MapViewProps {
   hideStatusFilters?: boolean;
   /** Emits current filter selection + per-status counts so a parent can render the pills. */
   onStatusStateChange?: (state: MapStatusState) => void;
+  /** Home/job wash: streets only. No client panels, staff pins, or other markers. */
+  geographyOnly?: boolean;
   /** Home renders this outside the map so a failure is not trapped under a wash. */
   onAvailabilityChange?: (state: MapAvailability) => void;
 }
@@ -101,7 +103,7 @@ const escapeHtml = (text: string | null | undefined): string => {
   return div.innerHTML;
 };
 
-const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, hideChromeControls = false, hideStatusFilters = true, onStatusStateChange, onAvailabilityChange }, ref) => {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, hideChromeControls = false, hideStatusFilters = true, onStatusStateChange, onAvailabilityChange, geographyOnly = false }, ref) => {
   const MAP_CHROME_BOTTOM_OFFSET_PX = 64;
   const { user } = useAuth();
   const [agents, setAgents] = useState<AgentLocation[]>([]);
@@ -127,6 +129,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   const agentMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const leadMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const customerLocationMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
+  const geographyOnlyRef = useRef(geographyOnly);
+  geographyOnlyRef.current = geographyOnly;
   const [customerLocations, setCustomerLocations] = useState<any[]>([]);
   // Deposit truth per lead (lead_id -> deposit invoice with settled allocation totals)
   const [depositByLead, setDepositByLead] = useState<Map<string, DepositInvoiceRow>>(new Map());
@@ -415,8 +419,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
 
   useEffect(() => {
-    fetchData();
-    const cleanupSubscription = subscribeToUpdates();
+    if (!geographyOnlyRef.current) fetchData();
+    const cleanupSubscription = geographyOnlyRef.current ? () => {} : subscribeToUpdates();
 
     // Load Mapbox public token from shared source (env / edge function / cache)
     (async () => {
@@ -493,6 +497,12 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   };
 
   const fetchData = async () => {
+    if (geographyOnlyRef.current) {
+      setAgents([]);
+      setLeads([]);
+      setCustomerLocations([]);
+      return;
+    }
     // Get current user's company to scope data
     const currentUserId = user?.id;
     let companyId: string | null = null;

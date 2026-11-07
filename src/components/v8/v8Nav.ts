@@ -15,30 +15,37 @@ export function v8Primary(role: V8Role, opts?: { salary?: boolean }): V8Link[] {
     { path: "/field/schedule", label: "Schedule", icon: "calendar" },
     { path: "/field/earnings", label: "Earnings", icon: "wallet" },
   ].filter((l) => !(opts?.salary && l.path === "/field/earnings"));
-  // Quotes + Invoices pinned for management AND sales (Johan 19 Oct 08:49). Sales see only their own rows (RLS rh_rep_scope / quote scope).
   if (role === "sales") return [
     { path: "/admin", label: "Home", icon: "home" },
-    { path: "/admin/jobs?tab=pipeline", label: "My pipeline", icon: "pipeline", match: ["/admin/jobs", "/admin/estimates", "/admin/quote-builder"] },
-    { path: "/admin/visits", label: "My visits", icon: "calendar", match: ["/admin/my-appointments"] },
-    { path: "/admin/customers", label: "Clients", icon: "users" },
+    { path: "/admin/jobs?tab=pipeline", label: "Pipeline", icon: "pipeline", match: ["/admin/estimates", "/admin/quote-builder", "/admin/jobs"] },
     { path: "/admin/quotes", label: "Quotes", icon: "file" },
-    { path: "/admin/invoices", label: "Invoices", icon: "wallet" },
+    { path: "/admin/schedule", label: "Schedule", icon: "calendar", match: ["/admin/visits", "/admin/my-appointments"] },
+    { path: "/admin/customers", label: "Clients", icon: "users" },
   ];
   return [
     { path: "/admin", label: "Home", icon: "home" },
-    { path: "/admin/jobs?tab=pipeline", label: "Pipeline", icon: "pipeline", match: ["/admin/jobs", "/admin/estimates", "/admin/quote-builder"] },
-    { path: "/admin/schedule", label: "Schedule", icon: "calendar", match: ["/admin/dispatch"] },
-    { path: "/admin/map", label: "Live map", icon: "pin", match: ["/admin/jobs-map"] },
-    { path: "/admin/customers", label: "Clients", icon: "users", match: ["/admin/calls"] },
-    { path: "/admin/quotes", label: "Quotes", icon: "file" },
+    { path: "/admin/jobs", label: "Jobs", icon: "briefcase", match: ["/admin/jobs"] },
     { path: "/admin/invoices", label: "Invoices", icon: "wallet" },
+    { path: "/admin/cash-health?tab=stock", label: "Stock", icon: "box", match: ["/admin/inventory"] },
+    { path: "/admin/schedule", label: "Schedule", icon: "calendar", match: ["/admin/dispatch"] },
   ];
 }
 
-/** Phone bottom tabs: max 4 + More. Quotes/Invoices sit at the top of the More drawer (pinned list) on phones.
- *  Live map is not a fifth tab. Admins open it from this primary list (the phone menu drawer) and from the Home "Live Map" button. Sales primary never includes it. */
+/** Phone bottom tabs stay role-appropriate (max 4 + More). The tablet sidebars follow the approved homes. Live map is never a tab. */
 export function v8Tabs(role: V8Role, opts?: { salary?: boolean }): V8Link[] {
-  return v8Primary(role, opts).filter((l) => l.label !== "Quotes" && l.label !== "Invoices" && l.label !== "Live map").slice(0, 4);
+  if (role === "tech") return v8Primary(role, opts);
+  if (role === "sales") return [
+    { path: "/admin", label: "Home", icon: "home" },
+    { path: "/admin/jobs?tab=pipeline", label: "Pipeline", icon: "pipeline", match: ["/admin/estimates", "/admin/quote-builder", "/admin/jobs"] },
+    { path: "/admin/quotes", label: "Quotes", icon: "file" },
+    { path: "/admin/customers", label: "Clients", icon: "users" },
+  ];
+  return [
+    { path: "/admin", label: "Home", icon: "home" },
+    { path: "/admin/jobs", label: "Jobs", icon: "briefcase" },
+    { path: "/admin/invoices", label: "Invoices", icon: "wallet" },
+    { path: "/admin/schedule", label: "Schedule", icon: "calendar", match: ["/admin/dispatch"] },
+  ];
 }
 
 /** Personal links: name-card menu for admin/owner (Johan 19 Oct). */
@@ -72,6 +79,8 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
   ];
   if (role === "sales") return [
     { title: "Selling", links: [
+      { path: "/admin/invoices", label: "Invoices", icon: "wallet" },
+      { path: "/admin/visits", label: "My visits", icon: "calendar" },
       { path: "/admin/requests", label: "Requests", icon: "inbox" },
       { path: "/admin/my-appointments", label: "My appointments", icon: "calendar" },
       { path: "/admin/price-lists", label: "Price lists", icon: "book" },
@@ -82,6 +91,10 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
   const groups: V8Group[] = [
     // Menu cleanup (Johan 4 Nov 21:10): same things bundled, supplier pages together, quote paperwork together. Routes unchanged.
     { title: "Jobs & requests", links: [
+      { path: "/admin/jobs?tab=pipeline", label: "Pipeline", icon: "pipeline", match: ["/admin/estimates", "/admin/quote-builder"] },
+      { path: "/admin/map", label: "Live map", icon: "pin", match: ["/admin/jobs-map"] },
+      { path: "/admin/customers", label: "Clients", icon: "users", match: ["/admin/calls"] },
+      { path: "/admin/quotes", label: "Quotes", icon: "file" },
       { path: "/admin/requests", label: "Requests", icon: "inbox" },
       { path: "/admin/unassigned-queue", label: "Unassigned queue", icon: "inbox" },
       { path: "/admin/change-requests", label: "Change requests", icon: "file" },
@@ -107,7 +120,6 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
       { path: "/admin/stock-count", label: "Stock count", icon: "box" },
       { path: "/admin/supplier-bills", label: "Supplier bills", icon: "wallet" },
       { path: "/admin/catalog", label: "Catalogue", icon: "bag", match: ["/admin/price-lists"] },
-      { path: cash ? "/admin/cash-health?tab=stock" : "/admin/inventory", label: "Stock", icon: "box", match: ["/admin/inventory"] },
       { path: "/admin/specials", label: "Specials", icon: "tag" },
       { path: "/admin/oss-extras", label: "Extras & consumables", icon: "box", match: ["/admin/consumables"] },
       { path: "/admin/tools", label: "Company tools", icon: "box" },
@@ -138,12 +150,23 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
 export function v8IsActive(link: V8Link, pathname: string, search = ""): boolean {
   const [p, q] = link.path.split("?");
   if (p === "/admin/schedule" && pathname === "/admin/jobs") return search.includes("tab=dispatch");
-  if (q && p === "/admin/cash-health") return (pathname === p && search.includes(q)) || !!link.match?.some((m) => pathname === m);
+  if (q && p === "/admin/cash-health") return (pathname === p && search.includes(q)) || !!link.match?.some((m) => pathname === m || pathname.startsWith(m + "/"));
   if (!q && p === "/admin/cash-health" && pathname === p) return !search.includes("tab=stock");
-  const exact = p === "/admin" || p === "/field";
-  if (exact ? pathname === p : (pathname === p || pathname.startsWith(p + "/"))) {
-    if (q && p === "/admin/jobs") return !search.includes("tab=dispatch");
-    return true;
+  if (p === "/admin/jobs") {
+    const onHub = pathname === "/admin/jobs";
+    const onJob = pathname.startsWith("/admin/jobs/");
+    if (q?.includes("tab=pipeline")) {
+      if (onHub && search.includes("tab=pipeline")) return true;
+      if (onJob && link.match?.includes("/admin/jobs")) return true;
+      return !!link.match?.some((m) => m !== "/admin/jobs" && (pathname === m || pathname.startsWith(m + "/")));
+    }
+    if (!q) {
+      if (onJob) return true;
+      if (onHub) return !search.includes("tab=pipeline") && !search.includes("tab=dispatch");
+      return !!link.match?.some((m) => pathname === m || pathname.startsWith(m + "/"));
+    }
   }
+  const exact = p === "/admin" || p === "/field";
+  if (exact ? pathname === p : (pathname === p || pathname.startsWith(p + "/"))) return true;
   return !!link.match?.some((m) => pathname === m || pathname.startsWith(m + "/"));
 }
