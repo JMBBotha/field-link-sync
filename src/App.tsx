@@ -35,7 +35,7 @@ import { LocationShareCard } from "@/components/availability/LocationShareCard";
 
 
 // Admin layout + pages
-import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminEstimateDetailPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage, AdminHelpPage } from "./pages/admin";
+import { AdminHomePage, AdminYardPage, AdminMapPage, AdminQuotesPage, AdminEstimateDetailPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage, AdminHelpPage } from "./pages/admin";
 import AdminJobsHubPage, { JobsDispatchRedirect, DispatchCalendarRedirect } from "./pages/admin/AdminJobsHubPage";
 import { AdminVisitsPage, AdminVisitDetailPage } from "./pages/admin/AdminVisitsPage";
 
@@ -237,6 +237,7 @@ const App = () => (
                   {/* Admin layout with nested routes */}
                   <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<AdminHomePage />} />
+                    <Route path="yard" element={<RequireRole allowedRoles={["admin"]} denySalesRep><AdminYardPage /></RequireRole>} />
                     <Route path="map" element={<RequireRole allowedRoles={["admin","dispatcher","viewer","field_agent"]} denySalesRep><AdminMapPage /></RequireRole>} />
                     <Route path="jobs-map" element={<RequireRole allowedRoles={["admin","dispatcher","viewer","field_agent"]} denySalesRep><AdminJobsMapPage /></RequireRole>} />
                     {/* Dispatch calendar + old Schedule now live in Jobs → Dispatch · Calendar (hub role check applies); params kept. */}

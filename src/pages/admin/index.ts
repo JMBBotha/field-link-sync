@@ -1,4 +1,5 @@
 export { default as AdminHomePage } from "./AdminHomePage";
+export { default as AdminYardPage } from "./AdminYardPage";
 export { default as AdminMapPage } from "./AdminMapPage";
 export { default as AdminQuotesPage } from "./AdminQuotesPage";
 export { default as AdminEstimateDetailPage } from "./AdminEstimateDetailPage";

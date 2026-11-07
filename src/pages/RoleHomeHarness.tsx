@@ -1,10 +1,11 @@
 /** Dev-only shots of the approved role homes. Numbers here are harness rows, not Massair CT. */
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ADMIN_HOME_ROUTES } from "@/lib/roleHome";
+import { countAdminHome } from "@/lib/adminHomeCount";
+import { ADMIN_HOME_ROUTES, cashProjectionSlices } from "@/lib/roleHome";
 import { buildMaterialCheck, type SourceLine, type StockHand } from "@/lib/materialCheck";
 import { buildYardHome, type YardJob } from "@/lib/yardView";
 import RoleMapFrame from "@/components/v8/roleHome/RoleMapFrame";
-import { AdminHomeScreen, SalesHomeScreen, SalesJobScreen, TechHomeScreen, TechJobScreen } from "@/components/v8/roleHome/screens";
+import { AdminHomeScreen, SalesHomeScreen, SalesJobScreen, TechHomeScreen, TechJobScreen, YardViewScreen } from "@/components/v8/roleHome/screens";
 
 const DEMO = "00000000-0000-4000-8000-0000000000aa";
 const hand = (id: string, label: string, qty: number, productId: string): StockHand => ({ id, label, qty, productId });
@@ -39,18 +40,20 @@ const service = buildMaterialCheck({
 });
 
 const HARNESS_NOW = new Date("2026-11-07T08:00:00+02:00");
+const harnessInvoices = [
+  { id: "w", company_id: DEMO, status: "draft", grand_total: 1500, invoice_number: "DEMO-1", customer_name: "Harness client" },
+  { id: "d1", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 8000, notes: "DEPOSIT", invoice_number: "DEMO-D1", customer_name: "Demo client A", expected_deposit_date: "2026-11-12" },
+  { id: "d2", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 4500, notes: "DEPOSIT", invoice_number: "DEMO-D2", customer_name: "Demo client B", expected_deposit_date: "2026-11-19" },
+  { id: "f", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 22000, notes: "Final", invoice_number: "DEMO-F", customer_name: "Demo client C", expected_final_date: "2026-11-28" },
+];
+const harnessCounts = countAdminHome({ companyId: DEMO, now: HARNESS_NOW, invoices: harnessInvoices });
 const harnessJob = (over: Partial<YardJob> & { id: string }): YardJob => ({
   company_id: DEMO, status: "scheduled", title: "Install", job_type: "installation", customer_name: "Demo client", ...over,
 });
 const yard = buildYardHome({
   companyId: DEMO,
   now: HARNESS_NOW,
-  invoices: [
-    { id: "w", company_id: DEMO, status: "draft", grand_total: 1500, invoice_number: "DEMO-1", customer_name: "Harness client" },
-    { id: "d1", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 8000, notes: "DEPOSIT", invoice_number: "DEMO-D1", customer_name: "Demo client A", expected_deposit_date: "2026-11-12" },
-    { id: "d2", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 4500, notes: "DEPOSIT", invoice_number: "DEMO-D2", customer_name: "Demo client B", expected_deposit_date: "2026-11-19" },
-    { id: "f", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 22000, notes: "Final", invoice_number: "DEMO-F", customer_name: "Demo client C", expected_final_date: "2026-11-28" },
-  ],
+  invoices: harnessInvoices,
   jobs: [
     harnessJob({ id: "leave-1", customer_name: "Demo client A", scheduled_for: "2026-11-07T06:30:00+02:00", assignee_name: "Tech A" }),
     harnessJob({ id: "leave-2", customer_name: "Demo client B", scheduled_for: "2026-11-07T08:00:00+02:00", assignee_name: "Tech B", job_type: "service", title: "Service" }),
@@ -81,7 +84,7 @@ function Bar({ title }: { title: string }) {
   return (
     <header style={{ height: 50, background: "#3D9BEB", color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", fontWeight: 700 }}>
       <b>{title}</b>
-      <small style={{ fontWeight: 400, fontSize: 10 }}>Demo · harness, not live Massair CT totals</small>
+      <small style={{ fontWeight: 600, fontSize: 11 }}>Demo - harness, not live Massair CT totals</small>
     </header>
   );
 }
@@ -140,14 +143,41 @@ export default function RoleHomeHarness() {
     body = (
       <SalesJobScreen type="Installation" client="Demo Client 7" area="Claremont" when="Tue, 10 Nov · 12:00" duration="About 3 hours" tech="Tech A" phone="021 000 0000 · demo number" address="24 Demo Lane, Claremont, Cape Town · example address" navHref="#navigate" check={install} quoteHref="/dev/role-homes?view=sales-job" description="Install the indoor cassette and outdoor unit. Run copper pipe along the agreed route and test cooling." />
     );
-  } else {
+  } else if (view === "admin-yard" || view === "admin-yard-tablet") {
+    title = "Yard";
     body = (
-      <AdminHomeScreen
+      <YardViewScreen
         eyebrow="SATURDAY, 07 NOV"
         title="Good morning"
         companyName="Demo company (Pty) Ltd"
         invoice={yard.invoice.count > 0 ? yard.invoice : null}
         model={yard}
+        onReview={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
+        onInvoice={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
+      />
+    );
+  } else {
+    body = (
+      <AdminHomeScreen
+        eyebrow="SATURDAY, 07 NOV"
+        title="Good afternoon, Johan"
+        invoice={yard.invoice.count > 0 ? yard.invoice : null}
+        crew={[
+          { id: "1", href: "/admin/jobs/demo-1", who: "Tech A", type: "Installation", where: "Claremont", client: "Demo Client 7" },
+          { id: "2", href: "/admin/jobs/demo-2", who: "Tech B", type: "Service", where: "Observatory", client: "Demo Client 4" },
+        ]}
+        levels={[
+          { key: "in", name: "Indoor cassettes", detail: "0 in stock · 1 needed this week", short: 1, href: ADMIN_HOME_ROUTES.stock },
+          { key: "cu", name: "Copper pipe", detail: "12 in stock · 6 m needed this week", short: null, href: ADMIN_HOME_ROUTES.stock },
+        ]}
+        orders={[
+          { key: "in", label: "1 × Indoor cassette", detail: "For booked installations", href: ADMIN_HOME_ROUTES.stock },
+          { key: "out", label: "1 × Outdoor unit", detail: "For booked installations", href: ADMIN_HOME_ROUTES.stock },
+        ]}
+        slices={cashProjectionSlices(harnessCounts)}
+        money={[yard.cash, yard.liabilities, yard.deposits, yard.finals]}
+        onSlice={(s) => navigate(s.figure.actionHref)}
+        onSliceInfo={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
         onReview={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
         onInvoice={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
       />

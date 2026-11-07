@@ -11,23 +11,34 @@ import RoleMapFrame from "@/components/v8/roleHome/RoleMapFrame";
 import { HowCountedSheet } from "@/components/v8/AdminHomeFigures";
 import { countAdminHome } from "@/lib/adminHomeCount";
 import { ADMIN_HOME_ROUTES, cashProjectionSlices } from "@/lib/roleHome";
+import { buildYardHome } from "@/lib/yardView";
 import "@/components/v8/v8.css";
 
 const DEMO = "00000000-0000-4000-8000-0000000000aa";
-const counts = countAdminHome({
+const FIXTURE_NOW = new Date("2026-11-07T15:33:00Z");
+const fixtureInvoices = [
+  { id: "fixture-draft", company_id: DEMO, status: "draft", grand_total: 76426.79, invoice_number: "0010016", customer_name: "Fixture client" },
+  { id: "fixture-dep", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 12000, notes: "DEPOSIT", invoice_number: "D-1", customer_name: "Fixture client", expected_deposit_date: "2026-11-12" },
+  { id: "fixture-final", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 8000, notes: "Final", invoice_number: "F-1", customer_name: "Fixture client", expected_final_date: "2026-11-28" },
+];
+const counts = countAdminHome({ companyId: DEMO, now: FIXTURE_NOW, invoices: fixtureInvoices });
+const fixtureMoney = buildYardHome({
   companyId: DEMO,
-  now: new Date("2026-11-07T15:33:00Z"),
-  invoices: [
-    { id: "fixture-draft", company_id: DEMO, status: "draft", grand_total: 76426.79, invoice_number: "0010016", customer_name: "Fixture client" },
-    { id: "fixture-dep", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 12000, notes: "DEPOSIT", invoice_number: "D-1", customer_name: "Fixture client" },
-    { id: "fixture-final", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 8000, notes: "Final", invoice_number: "F-1", customer_name: "Fixture client" },
-  ],
+  now: FIXTURE_NOW,
+  invoices: fixtureInvoices,
+  bankState: "ready",
+  bank: {
+    accounts: [{ id: "fixture-bank", label: "Fixture current", account_ref: null, include: true, sort: 1 }],
+    balances: [{ id: "fixture-bal", account_id: "fixture-bank", balance: 12500, as_of: "2026-11-03", created_at: "2026-11-03T08:00:00Z" }],
+  },
+  booksState: "ready",
+  books: { receipts: [], commitments: [], allocations: [] },
 });
 
 function Banner() {
   return (
     <p data-testid="fixture-label" style={{ margin: "0 0 10px", padding: "8px 10px", borderRadius: 10, background: "#0F1B2A", color: "#fff", fontSize: 12, fontWeight: 700 }}>
-      FIXTURE · signed out · not live Massair CT records
+      FIXTURE · signed out · Demo - harness, not live Massair CT totals
     </p>
   );
 }
@@ -96,6 +107,7 @@ export default function AdminHomePreviewFixture() {
       levels={[{ key: "cu", name: "Copper pipe", detail: "12 in stock · 6 m needed this week", short: null, href: "/dev/admin-home?view=stock" }]}
       orders={[]}
       slices={cashProjectionSlices(counts)}
+      money={[fixtureMoney.cash, fixtureMoney.liabilities, fixtureMoney.deposits, fixtureMoney.finals]}
       onSlice={(s) => navigate(s.key === "waiting" ? "/dev/admin-home?view=review" : "/dev/admin-home?view=invoices")}
       onSliceInfo={() => setSheet(true)}
       onReview={() => navigate("/dev/admin-home?view=review")}

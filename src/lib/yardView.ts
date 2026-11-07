@@ -1,5 +1,6 @@
 /**
- * Admin home yard view. Counting stays pure so the picture and the tests share one rule.
+ * Yard view, on /admin/yard. Admin Home reuses the money tiles only.
+ * Counting stays pure so the picture and the tests share one rule.
  *
  * Work in motion follows public._job_stage (sales "My jobs"), narrowed to current work:
  * - Waiting to leave: scheduled today (Johannesburg), not started, not en route.

@@ -6,22 +6,57 @@ import { HowCountedSheet, useAdminHomeFigures } from "@/components/v8/AdminHomeF
 import { parseMyJobs } from "@/components/jobs/SalesMyJobs";
 import { useMyAppointments } from "@/hooks/useMyAppointments";
 import { useSignedInIdentity } from "@/hooks/useSignedInIdentity";
+import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { appointmentLinks } from "@/lib/appointments";
 import { cardHref } from "@/lib/assignedLabel";
 import { isFirstQuoteVisit } from "@/lib/materialCheck";
-import { countAdminHome } from "@/lib/adminHomeCount";
-import { ADMIN_HOME_ROUTES, areaFromAddress, durationAbout, greetingEyebrow, greetingTitle, jobTypeWord } from "@/lib/roleHome";
+import { ADMIN_HOME_ROUTES, areaFromAddress, cashProjectionSlices, durationAbout, greetingEyebrow, greetingTitle, jobTypeWord } from "@/lib/roleHome";
 import { checkKindOf } from "@/lib/materialCheck";
-import { useMaterialCheck } from "./data";
+import { countsFor, useAdminRoleData, useMaterialCheck } from "./data";
 import { SalesJobScreen } from "./screens";
 import RoleMapFrame from "./RoleMapFrame";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
 import { formatRand } from "@/utils/formatRand";
-import { useYardHome } from "./yardData";
-import { useUserCompanyId } from "@/hooks/useUserCompanyId";
-import { AdminHomeScreen, SalesHomeScreen } from "./screens";
+import { useHomeMoney, useYardHome } from "./yardData";
+import { AdminHomeScreen, SalesHomeScreen, YardViewScreen } from "./screens";
+
+function stockScreen(href: string): string {
+  return href.includes("/admin/cash-health") ? href : ADMIN_HOME_ROUTES.stock;
+}
 
 export function AdminLiveHome() {
+  const navigate = useNavigate();
+  const identity = useSignedInIdentity();
+  const { companyId, figures, crew, needs } = useAdminRoleData();
+  const money = useHomeMoney(companyId, figures.source, figures.isLoading);
+  const counts = countsFor(companyId, figures.source);
+  const [open, setOpen] = useState<null | "waiting" | "deposit" | "final">(null);
+  const now = new Date();
+  const slices = counts ? cashProjectionSlices(counts) : [];
+  const figure = open && counts ? (open === "waiting" ? counts.waiting : open === "deposit" ? counts.deposit : counts.finalDue) : null;
+  return (
+    <>
+      <AdminHomeScreen
+        eyebrow={greetingEyebrow(now)}
+        title={greetingTitle(now, identity?.name)}
+        invoice={counts && counts.waiting.count > 0 ? { count: counts.waiting.count, total: formatRand(counts.waiting.total).replace(/^R\s/, "R") } : null}
+        crew={(crew.data || []).map((c) => ({ ...c, type: jobTypeWord(c.type), where: areaFromAddress(c.where) }))}
+        levels={(needs.data?.levels || []).map((l) => ({ ...l, href: stockScreen(l.href) }))}
+        orders={(needs.data?.orders || []).map((o) => ({ ...o, href: ADMIN_HOME_ROUTES.stock }))}
+        slices={slices}
+        money={money.tiles}
+        moneyLoading={money.loading}
+        onSlice={(s) => navigate(s.figure.actionHref)}
+        onSliceInfo={(s) => setOpen(s.key)}
+        onReview={() => navigate(counts?.waiting.actionHref || ADMIN_HOME_ROUTES.reviewSend)}
+        onInvoice={() => setOpen("waiting")}
+      />
+      {figure && <HowCountedSheet figure={figure} onClose={() => setOpen(null)} />}
+    </>
+  );
+}
+
+export function YardLiveHome() {
   const navigate = useNavigate();
   const identity = useSignedInIdentity();
   const { companyId } = useUserCompanyId();
@@ -29,12 +64,10 @@ export function AdminLiveHome() {
   const yard = useYardHome(companyId, figures.source, figures.isLoading);
   const [open, setOpen] = useState(false);
   const now = new Date();
-  const counts = companyId && figures.source
-    ? countAdminHome({ companyId, invoices: figures.source.invoices, payments: figures.source.payments, credits: figures.source.credits, jobs: figures.source.jobs })
-    : null;
+  const counts = countsFor(companyId, figures.source);
   return (
     <>
-      <AdminHomeScreen
+      <YardViewScreen
         eyebrow={greetingEyebrow(now)}
         title={greetingTitle(now, identity?.name)}
         companyName={yard.companyName}
