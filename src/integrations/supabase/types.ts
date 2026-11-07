@@ -19719,11 +19719,11 @@ export type Database = {
             }[]
           }
       send_booking_confirmation: {
-        Args: { p_job_id: string; p_mode?: string; p_to?: string }
+        Args: { p_body?: string; p_job_id: string; p_mode?: string; p_subject?: string; p_to?: string }
         Returns: Json
       }
       send_final_invoice_email: {
-        Args: { p_invoice: string; p_mode?: string; p_to?: string }
+        Args: { p_invoice: string; p_message?: string; p_mode?: string; p_subject?: string; p_to?: string }
         Returns: Json
       }
       send_invoice_reminder: {
@@ -19745,6 +19745,10 @@ export type Database = {
           p_mode?: string
           p_subject?: string
         }
+        Returns: Json
+      }
+      send_reviewed_invoice_email: {
+        Args: { p_html: string; p_invoice: string; p_subject: string }
         Returns: Json
       }
       set_booking_pin: {

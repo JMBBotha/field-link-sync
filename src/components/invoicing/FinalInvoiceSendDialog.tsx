@@ -1,12 +1,28 @@
-import { useEffect, useRef, useState } from "react";
-import { renderBrandedEmail, finalInvoiceBodyHtml, brandedTransactionalFooter } from "@/lib/brandedEmail";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { renderBrandedEmail, finalInvoiceBodyHtml, brandedTransactionalFooter, FINAL_INVOICE_DEFAULT_MESSAGE } from "@/lib/brandedEmail";
 import { CheckCircle2, Loader2, Mail, MessageCircle, Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { finalSentLabel, finalInvoiceWhatsAppUrl } from "@/lib/invoiceMoney";
+import { canSendEditedEmail, finalInvoiceSendPayload } from "@/lib/sendPreviewEdit";
+
+export type FinalInvoicePreviewFixture = {
+  to: string;
+  subject: string;
+  message: string;
+  layout: {
+    template: string;
+    brand: { name: string; logoUrl?: string | null; logoOnColour?: boolean; topParts?: string[] };
+    title?: string;
+    kicker?: string;
+    greeting_name?: string | null;
+    data: Record<string, unknown>;
+  };
+};
 
 /**
  * Send final invoice (Johan 30 Oct 19:48: "pressed twice but no conf").
@@ -16,27 +32,55 @@ import { finalSentLabel, finalInvoiceWhatsAppUrl } from "@/lib/invoiceMoney";
  * Email (Johan 30 Oct 20:29, the default): preview the email, press Send → server emails via
  * send-transactional-email (0800becool.co.za), logs who/when/where and shows "Emailed to … at …".
  */
-export default function FinalInvoiceSendDialog({ invoice, balance, autoOpen, onDone, reminder, open: openCtl, onOpenChange, hideTrigger }: {
+export default function FinalInvoiceSendDialog({ invoice, balance, autoOpen, onDone, reminder, open: openCtl, onOpenChange, hideTrigger, fixture }: {
   reminder?: boolean;
   /** Controlled use from the balance block / client tiles (Johan 2 Nov 17:00). */
   open?: boolean; onOpenChange?: (o: boolean) => void; hideTrigger?: boolean;
+  /** Signed-out screenshot harness. Send does not call the server. */
+  fixture?: FinalInvoicePreviewFixture;
   invoice: { id: string; invoice_number?: string | null; customer_name?: string | null; customer_phone?: string | null; customer_email?: string | null; due_date?: string | null; pdf_url?: string | null; final_sent_at?: string | null; final_sent_channel?: string | null };
   balance: number; autoOpen?: boolean; onDone?: () => void;
 }) {
-  const [openSt, setOpenSt] = useState(!!autoOpen);
+  const [openSt, setOpenSt] = useState(!!autoOpen || !!fixture);
   const open = openCtl ?? openSt;
   const setOpen = (o: boolean) => { setOpenSt(o); onOpenChange?.(o); };
-  const [step, setStep] = useState<"choose" | "preview" | "emailed" | "confirm">("choose");
+  const [step, setStep] = useState<"choose" | "preview" | "emailed" | "confirm">(fixture ? "preview" : "choose");
   const [busy, setBusy] = useState(false);
   const [to, setTo] = useState(invoice.customer_email || "");
-  const [preview, setPreview] = useState<{ to: string; subject: string; html: string } | null>(null);
+  const [subject, setSubject] = useState(fixture?.subject || "");
+  const [message, setMessage] = useState(fixture?.message || "");
+  const [preview, setPreview] = useState<{ to: string; subject: string; html: string; layout: FinalInvoicePreviewFixture["layout"] | null } | null>(
+    fixture ? { to: fixture.to, subject: fixture.subject, html: "", layout: fixture.layout } : null,
+  );
   const [emailed, setEmailed] = useState<{ to: string; at: string; duplicate?: boolean } | null>(null);
   const lock = useRef(false);
   useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen]);
   useEffect(() => { setTo(invoice.customer_email || ""); }, [invoice.customer_email]);
   const wa = finalInvoiceWhatsAppUrl(invoice, balance);
   const sentLabel = finalSentLabel(invoice);
-  const reset = () => { setStep("choose"); setPreview(null); setEmailed(null); };
+  const reset = () => {
+    if (fixture) {
+      setStep("preview");
+      setSubject(fixture.subject);
+      setMessage(fixture.message);
+      setPreview({ to: fixture.to, subject: fixture.subject, html: "", layout: fixture.layout });
+      setEmailed(null);
+      return;
+    }
+    setStep("choose"); setPreview(null); setEmailed(null); setSubject(""); setMessage("");
+  };
+  const previewHtml = useMemo(() => {
+    const lay = preview?.layout;
+    if (lay?.template === "final_invoice" && lay.brand && lay.data) {
+      return renderBrandedEmail({
+        brand: lay.brand, title: subject || lay.title || preview?.subject || "", kicker: lay.kicker || "",
+        greetingName: lay.greeting_name, bodyHtml: finalInvoiceBodyHtml({ ...lay.data, message } as Parameters<typeof finalInvoiceBodyHtml>[0]),
+        footerHtml: brandedTransactionalFooter(lay.brand.name || ""),
+      });
+    }
+    return preview?.html || "";
+  }, [preview, subject, message]);
+  const wordingOk = canSendEditedEmail(subject, message);
 
   const log = async (stage: "opened" | "confirmed", channel = "whatsapp") =>
     (supabase.rpc as any)("log_final_invoice_send", { p_id: invoice.id, p_channel: channel, p_stage: stage });
@@ -53,19 +97,24 @@ export default function FinalInvoiceSendDialog({ invoice, balance, autoOpen, onD
 
   const loadPreview = async () => {
     if (lock.current) return; lock.current = true; setBusy(true);
-    const { data, error } = await (supabase.rpc as any)("send_final_invoice_email", { p_invoice: invoice.id, p_to: to.trim() || null, p_mode: "preview" });
+    const { data, error } = await (supabase.rpc as any)("send_final_invoice_email", { p_invoice: invoice.id, p_to: to.trim() || null, p_mode: "preview", p_subject: null, p_message: null });
     setBusy(false); lock.current = false;
     if (error) { toast.error(error.message || "Could not build the email"); return; }
     const lay = data.layout;
+    const nextSubject = String(data.subject || "");
+    const nextMessage = String(data.message || FINAL_INVOICE_DEFAULT_MESSAGE);
     const html = lay?.template === "final_invoice" && lay.brand && lay.data
-      ? renderBrandedEmail({ brand: lay.brand, title: lay.title || data.subject, kicker: lay.kicker || "", greetingName: lay.greeting_name, bodyHtml: finalInvoiceBodyHtml(lay.data), footerHtml: brandedTransactionalFooter(lay.brand.name || "") })
+      ? renderBrandedEmail({ brand: lay.brand, title: nextSubject || lay.title, kicker: lay.kicker || "", greetingName: lay.greeting_name, bodyHtml: finalInvoiceBodyHtml({ ...lay.data, message: nextMessage }), footerHtml: brandedTransactionalFooter(lay.brand.name || "") })
       : data.html;
-    setPreview({ to: data.to, subject: data.subject, html }); setStep("preview");
+    setSubject(nextSubject); setMessage(nextMessage);
+    setPreview({ to: data.to, subject: nextSubject, html, layout: lay || null }); setStep("preview");
   };
 
   const sendEmail = async () => {
-    if (lock.current || !preview) return; lock.current = true; setBusy(true);
-    const { data, error } = await (supabase.rpc as any)("send_final_invoice_email", { p_invoice: invoice.id, p_to: preview.to, p_mode: "send" });
+    if (lock.current || !preview || !wordingOk) return;
+    if (fixture) { toast.message("Preview fixture. Nothing was sent."); return; }
+    lock.current = true; setBusy(true);
+    const { data, error } = await (supabase.rpc as any)("send_final_invoice_email", finalInvoiceSendPayload(invoice.id, preview.to, subject, message));
     setBusy(false); lock.current = false;
     if (error) { toast.error(error.message || "Email not sent"); return; }
     setEmailed({ to: data.to || preview.to, at: data.final_sent_at || new Date().toISOString(), duplicate: !!data.duplicate });
@@ -88,7 +137,7 @@ export default function FinalInvoiceSendDialog({ invoice, balance, autoOpen, onD
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
               {step === "choose" && `${invoice.invoice_number || "Invoice"} · balance R ${balance.toFixed(2)} to ${invoice.customer_name || "the client"}.`}
-              {step === "preview" && "This is exactly what the client gets. Nothing is sent until you press Send."}
+              {step === "preview" && "Edit the subject or the message. The balance, pay button and bank details stay. Nothing is sent until you press Send."}
               {step === "emailed" && "The client has been emailed and it is logged on the invoice."}
               {step === "confirm" && `WhatsApp opened to ${invoice.customer_name || "the client"}. Only confirm once you pressed Send in WhatsApp. Nothing is sent by the app itself.`}
             </DialogDescription>
@@ -120,12 +169,19 @@ export default function FinalInvoiceSendDialog({ invoice, balance, autoOpen, onD
             <div className="space-y-3">
               <div className="rounded-lg border bg-muted/40 p-2 text-sm">
                 <p className="truncate"><span className="text-muted-foreground">To: </span><strong>{preview.to}</strong></p>
-                <p className="break-words"><span className="text-muted-foreground">Subject: </span>{preview.subject}</p>
               </div>
-              <iframe title="Email preview" data-testid="final-email-frame" srcDoc={preview.html} sandbox="" className="h-[46vh] w-full rounded-lg border bg-white" />
+              <div className="space-y-1.5">
+                <label htmlFor="final-email-subject" className="text-sm font-medium">Subject</label>
+                <Input id="final-email-subject" data-testid="final-email-subject" value={subject} onChange={(e) => setSubject(e.target.value)} className="h-11" />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="final-email-body" className="text-sm font-medium">Message</label>
+                <Textarea id="final-email-body" data-testid="final-email-body" value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className="text-sm" />
+              </div>
+              <iframe title="Email preview" data-testid="final-email-frame" srcDoc={previewHtml} sandbox="" className="h-[36vh] w-full rounded-lg border bg-white" />
               <DialogFooter className="flex-row gap-2 sm:gap-2">
                 <Button variant="outline" className="h-11 flex-1" disabled={busy} onClick={() => setStep("choose")}>Back</Button>
-                <Button data-testid="final-email-send" disabled={busy} className="h-11 flex-1 bg-orange-500 text-white hover:bg-orange-600" onClick={sendEmail}>
+                <Button data-testid="final-email-send" disabled={busy || !wordingOk} className="h-11 flex-1 bg-orange-500 text-white hover:bg-orange-600" onClick={sendEmail}>
                   {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}Send
                 </Button>
               </DialogFooter>

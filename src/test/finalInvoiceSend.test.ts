@@ -29,7 +29,8 @@ describe("final invoice email (Johan 30 Oct 20:29)", () => {
   const src = readFileSync("src/components/invoicing/FinalInvoiceSendDialog.tsx", "utf8");
   it("defaults to email with a preview step, WhatsApp stays", () => {
     expect(src).toContain('p_mode: "preview"');
-    expect(src).toContain('p_mode: "send"');
+    expect(src).toContain("finalInvoiceSendPayload");
+    expect(readFileSync("src/lib/sendPreviewEdit.ts", "utf8")).toContain('p_mode: "send"');
     expect(src).toContain("Send by WhatsApp instead");
     expect(src).toContain("Emailed to ${emailed.to} at");
   });

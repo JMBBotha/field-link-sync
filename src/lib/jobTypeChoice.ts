@@ -93,5 +93,6 @@ export const validReason = (r: string) => r.trim().length >= 3;
 
 // Booking confirmation by email (Johan 14:45): preview, then send through send-transactional-email.
 export interface BookingPreview { ok: boolean; to: string; subject: string; html: string; call_out: boolean }
-export const previewBookingEmail = (jobId: string) => rpc<BookingPreview>("send_booking_confirmation", { p_job_id: jobId, p_mode: "preview", p_to: null });
-export const sendBookingEmail = (jobId: string, to: string) => rpc<{ ok: boolean; to: string; subject: string }>("send_booking_confirmation", { p_job_id: jobId, p_mode: "send", p_to: to });
+export const previewBookingEmail = (jobId: string) => rpc<BookingPreview>("send_booking_confirmation", { p_job_id: jobId, p_mode: "preview", p_to: null, p_subject: null, p_body: null });
+export const sendBookingEmail = (jobId: string, to: string, edit?: { subject: string | null; body: string | null }) =>
+  rpc<{ ok: boolean; to: string; subject: string }>("send_booking_confirmation", { p_job_id: jobId, p_mode: "send", p_to: to, p_subject: edit?.subject ?? null, p_body: edit?.body ?? null });

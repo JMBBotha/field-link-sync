@@ -26,6 +26,12 @@ import {
   useQuoteEmailSendState, quoteEmailSendKey, readSendReply, waitForSendResult, sastTime,
   setLocalSendLock, clearLocalSendLock, getLocalSendLock, LOCAL_SEND_LOCK_EVENT, type SendReply,
 } from "@/lib/quoteEmailSend";
+import { quoteSendFields } from "@/lib/sendPreviewEdit";
+
+export type QuotePreviewFixture = {
+  subject: string; message: string; html: string; to: string;
+  onSend?: (fields: { subject: string; message?: string }) => void;
+};
 
 interface SendQuoteDialogProps {
   open: boolean;
@@ -34,6 +40,8 @@ interface SendQuoteDialogProps {
   quoteNumber: string;
   customerId: string | null;
   customerName: string;
+  /** Signed-out screenshot harness. Preview is shown immediately and Send does not email. */
+  previewFixture?: QuotePreviewFixture;
 }
 
 /**
@@ -81,15 +89,17 @@ const SendQuoteDialog = ({
   quoteNumber,
   customerId,
   customerName,
+  previewFixture,
 }: SendQuoteDialogProps) => {
   const { settings } = useCompanySettings();
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
+  const [email, setEmail] = useState(previewFixture?.to || "");
+  const [message, setMessage] = useState(previewFixture?.message || "");
+  const [subject, setSubject] = useState(previewFixture?.subject || `Your quote ${quoteNumber}`);
   const [extraEmails, setExtraEmails] = useState("");
   const [copyToCompany, setCopyToCompany] = useState(true);
   const [leadId, setLeadId] = useState<string | null>(null);
   const [busy, setBusy] = useState<"email" | "pdf" | "preview" | null>(null);
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(previewFixture?.html || null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [sent, setSent] = useState<{ email: boolean }>({ email: false });
   const [approved, setApproved] = useState({ terms: false, brochure: false, pricing: false });
@@ -103,7 +113,7 @@ const SendQuoteDialog = ({
   const [slow, setSlow] = useState(false);
   const [recentAsk, setRecentAsk] = useState<{ to: string; at: string } | null>(null);
   const [retryAsk, setRetryAsk] = useState(false);
-  const { data: sendState } = useQuoteEmailSendState(quoteId, open);
+  const { data: sendState } = useQuoteEmailSendState(previewFixture ? null : quoteId, open && !previewFixture);
   const [localLock, setLocalLock] = useState(() => (quoteId ? getLocalSendLock(quoteId) : null));
   useEffect(() => {
     const read = () => setLocalLock(quoteId ? getLocalSendLock(quoteId) : null);
@@ -158,7 +168,7 @@ const SendQuoteDialog = ({
       if (error) throw error;
       return data as any;
     },
-    enabled: open && !!quoteId,
+    enabled: open && !!quoteId && !previewFixture,
   });
 
   // Effect must sit below the quote query — it reads `quote` in its deps.
@@ -181,7 +191,7 @@ const SendQuoteDialog = ({
   const { data: items = [] } = useQuery({
     queryKey: ["send-quote-doc-items", quoteId, quote?.visual_sections],
     queryFn: () => buildQuoteLineItems(quoteId, quote?.visual_sections),
-    enabled: open && !!quoteId && !!quote,
+    enabled: open && !!quoteId && !!quote && !previewFixture,
   });
 
   const [clientPdf, setClientPdf] = useState(false);
@@ -267,24 +277,32 @@ const SendQuoteDialog = ({
 
   // Preview the exact email HTML (no PDF, nothing sent) so wording can be checked first.
   const handlePreview = async () => {
+    const fields = quoteSendFields(subject, message);
+    if (!fields.subject) {
+      toast({ title: "Add a subject", description: "The email needs a subject.", variant: "destructive" });
+      return;
+    }
+    if (previewFixture) { setPreviewHtml(previewFixture.html); return; }
     setBusy("preview");
     try {
       const { data, error } = await supabase.functions.invoke("send-quote-email", {
         body: {
           previewOnly: true,
           to: email.trim() || "client@example.com",
-          subject: `Your quote ${quoteNumber}`,
+          subject: fields.subject,
           quoteNumber,
           quoteId,
           customerId,
           quoteUrl: clientUrl,
           clientName: resolvedCustomerName,
           totalAmount: total,
-          message: message.trim() || undefined,
+          message: fields.message,
         },
       });
       if (error) throw new Error(await readInvokeError(error));
-      const html = (data as { html?: string } | null)?.html;
+      const html = (data as { html?: string; subject?: string } | null)?.html;
+      const returned = (data as { subject?: string } | null)?.subject?.trim();
+      if (returned && (returned === fields.subject || returned.startsWith(fields.subject))) setSubject(returned);
       if (!html) throw new Error("No preview came back — please try again.");
       setPreviewHtml(html);
     } catch (err) {
@@ -299,6 +317,16 @@ const SendQuoteDialog = ({
   };
 
   const handleEmail = async (opts: { confirmResend?: boolean; retryOf?: string } = {}) => {
+    const fields = quoteSendFields(subject, message);
+    if (!fields.subject) {
+      toast({ title: "Add a subject", description: "The email needs a subject before it can be sent.", variant: "destructive" });
+      return;
+    }
+    if (previewFixture) {
+      previewFixture.onSend?.(fields);
+      toast({ title: "Preview fixture", description: "Nothing was sent." });
+      return;
+    }
     if (!allApproved) return;
     // Two rapid taps fire once: the ref flips synchronously, before React re-renders.
     if (inFlightRef.current) return;
@@ -372,13 +400,13 @@ const SendQuoteDialog = ({
       const res = await supabase.functions.invoke("send-quote-email", {
         body: {
           ...common,
-          subject: `Your quote ${quoteNumber}`,
+          subject: fields.subject,
           quoteUrl: clientUrl,
           clientName: resolvedCustomerName,
           totalAmount: total,
           unsubscribeToken: crypto.randomUUID(),
           pdfBase64,
-          message: message.trim() || undefined,
+          message: fields.message,
           copyToCompany,
           cc: extraEmails.trim() || undefined,
         },
@@ -459,6 +487,14 @@ const SendQuoteDialog = ({
             </button>
             {moreOpen && (
               <div className="space-y-2.5" data-testid="send-more">
+                <Label htmlFor="send-quote-subject-more" className="fl-send-label pt-1">Subject</Label>
+                <Input
+                  id="send-quote-subject-more"
+                  data-testid="send-quote-subject-more"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="fl-send-field"
+                />
                 <Label htmlFor="send-quote-message" className="fl-send-label pt-1">Message to client (optional)</Label>
                 <Textarea
                   id="send-quote-message"
@@ -504,7 +540,7 @@ const SendQuoteDialog = ({
             testId="send-quote-email-button"
             className="fl-btn-primary w-full"
             icon={<Mail className="h-4 w-4" />}
-            disabled={busy !== null || sendLocked || emailUnavailable || !allApproved || emailState === "done" || emailState === "failed"}
+            disabled={!previewFixture && (busy !== null || sendLocked || emailUnavailable || !allApproved || emailState === "done" || emailState === "failed")}
             onClick={() => void handleEmail()}
             labels={{ idle: allApproved ? "Email quote" : `Email quote · tick ${3 - approvedCount} more check${3 - approvedCount === 1 ? "" : "s"}`, busy: "Email sending…", slow: "Still sending, please wait", done: "Email sent ✓", failed: "Not sent" }}
           />
@@ -582,9 +618,18 @@ const SendQuoteDialog = ({
             <div className="fl-send-eyebrow">Preview</div>
             <DialogTitle className="fl-send-title">Email preview</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              This is exactly what the client receives. Type your own wording below and tap Update preview.
+              This is exactly what the client receives. Edit the subject or the message, then tap Update preview.
             </DialogDescription>
           </DialogHeader>
+          <Label htmlFor="send-quote-subject" className="fl-send-label">Subject</Label>
+          <Input
+            id="send-quote-subject"
+            data-testid="send-quote-subject"
+            aria-label="Subject"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            className="fl-send-field"
+          />
           <Textarea
             aria-label="Message to client"
             value={message}

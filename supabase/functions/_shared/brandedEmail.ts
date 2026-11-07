@@ -96,14 +96,33 @@ export function renderBrandedEmail(o: BrandedEmailOptions): string {
 export interface FinalInvoiceEmailData {
   invoiceNumber: string; dueDate?: string | null; total: string; paid: string; balance: string;
   link?: string | null; companyLines?: string[]; termsHtml?: string | null;
+  /** Staff-edited wording. Empty keeps the approved sentence. The summary, pay button and bank lines stay. */
+  message?: string | null;
 }
+/** Approved wording when nobody has edited the final-invoice email. */
+export const FINAL_INVOICE_DEFAULT_MESSAGE = "Thank you, the work is done. Here is your final invoice for the balance. Use the button below to view and pay it.";
 /** Standard confidentiality footer used on transactional (non-marketing) client emails. */
 export function brandedTransactionalFooter(companyName: string, year = new Date().getFullYear()): string {
   return `This email and any attachments are confidential and intended solely for the addressee. Amounts are in South African Rand (ZAR) and include VAT at 15% where indicated. E&amp;OE. © ${year} ${escEmail(companyName)}.`;
 }
+/**
+ * Paragraphs for a staff-edited note. A short greeting line ("Hi Sam,") and a sign-off are left out
+ * because the layout already greets and signs. A note that starts with "Hi" and then the actual words
+ * on the same line is kept.
+ */
+export function editedMessageHtml(msg: string): string {
+  const trimmed = String(msg || "").replace(/\n+\s*(kind regards|regards|thank you),?[\s\S]*$/i, "").trim();
+  const lines = trimmed.split("\n");
+  if (lines.length > 1 && /^(hi|hello|dear)\b[^,]{0,40},?\s*$/i.test(lines[0])) lines.shift();
+  while (lines.length && !lines[0].trim()) lines.shift();
+  return lines.join("\n").trim().split(/\n{2,}/).filter(Boolean)
+    .map((p) => `<p style="margin:0 0 12px;">${escEmail(p).replace(/\n/g, "<br>")}</p>`).join("");
+}
 export function finalInvoiceBodyHtml(d: FinalInvoiceEmailData): string {
   const lines = (d.companyLines || []).filter(Boolean).map(escEmail).join("<br>");
-  return `Thank you, the work is done. Here is your final invoice for the balance. Use the button below to view and pay it.
+  const custom = String(d.message || "").trim();
+  const intro = custom && custom !== FINAL_INVOICE_DEFAULT_MESSAGE ? editedMessageHtml(custom) : FINAL_INVOICE_DEFAULT_MESSAGE;
+  return `${intro}
     ${brandedSummaryTable([["Invoice", `<b>${escEmail(d.invoiceNumber)}</b>`], ...(d.dueDate ? [["Due", escEmail(d.dueDate)] as [string, string]] : []), ["Invoice total", escEmail(d.total)], ["Already paid", escEmail(d.paid)]], ["Balance due incl. VAT", escEmail(d.balance)])}
     ${d.link ? brandedButton(d.link, "View &amp; pay invoice") : ""}
     ${lines ? `<p style="margin:18px 0 8px;font-size:12px;color:${EMAIL_BRAND.muted};">${lines}</p>` : ""}
