@@ -120,6 +120,7 @@ export function ClientDetailsDialog({ open, onOpenChange, quoteId, lock, onDone 
           <DialogDescription>
             Admin correction, saved in the log with your reason.
             {lock.invoice_number ? ` ${lock.invoice_number} (${lock.invoice_status}) already went out and will not change; draft invoices will.` : " Draft invoices pick up the change."}
+            {" "}This changes the bill-to on this quote. It does not open the client page, where private details, company, home and work are edited.
           </DialogDescription>
         </DialogHeader>
         {loading ? <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div> : (
@@ -197,7 +198,7 @@ export default function QuoteAcceptedLock({ quoteId, lock, onChanged, compact }:
               {lock.can_unlock && <Button size="sm" variant="outline" className={`${btn} bg-white`} disabled={busy} onClick={() => setDlg("unlock")}><Unlock className="h-3.5 w-3.5" /> Unlock to edit</Button>}
               {lock.can_relock && <Button size="sm" variant="outline" className={`${btn} bg-white`} disabled={busy} onClick={() => void relock()}><Lock className="h-3.5 w-3.5" /> Lock again</Button>}
               {lock.can_variation && <Button size="sm" className={btn} disabled={busy} onClick={() => setDlg("variation")}><FilePlus2 className="h-3.5 w-3.5" /> Create variation</Button>}
-              {lock.can_correct_client && <Button size="sm" variant="outline" className={`${btn} bg-white`} disabled={busy} onClick={() => setDlg("client")}><UserPen className="h-3.5 w-3.5" /> Edit client details</Button>}
+              {lock.can_correct_client && <Button size="sm" variant="outline" className={`${btn} bg-white`} disabled={busy} data-testid="quote-bill-to-edit" title="Changes this quote's bill-to only. It does not open the client record." onClick={() => setDlg("client")}><UserPen className="h-3.5 w-3.5" /> Edit client details</Button>}
             </div>
           )}
         </div>

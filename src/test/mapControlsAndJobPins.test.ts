@@ -39,6 +39,7 @@ describe("dead links/buttons", () => {
   it("no dead QR button, bell navigates, edit wired", () => {
     expect(src("src/pages/FBQuoteBuilderPage.tsx")).not.toContain("<QrCode");
     expect(src("src/components/freshbooks/FBLayout.tsx")).toContain('navigate("/admin/notifications")');
-    expect(src("src/components/CustomerProfile.tsx")).toContain("navigate(`/admin/customers/${customerId}`)");
+    expect(src("src/components/CustomerProfile.tsx")).toContain("navigate(`/admin/customers/${customerId}?tab=details`)");
+    expect(src("src/components/CustomerProfile.tsx")).toContain("Edit client");
   });
 });

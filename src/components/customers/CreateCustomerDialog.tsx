@@ -4,8 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { formatStoredAddress, locationsToCreate } from "@/lib/clientAddresses";
 import {
   Dialog,
   DialogContent,
@@ -38,7 +38,7 @@ const CreateCustomerDialog = ({ open, onOpenChange, onCreated, initialName }: Cr
     first_name: nameParts[0] || "",
     last_name: nameParts.slice(1).join(" ") || "",
     company_name: "",
-    is_company: false,
+    vat_number: "",
     phone: "",
     secondary_phone: "",
     email: "",
@@ -46,6 +46,7 @@ const CreateCustomerDialog = ({ open, onOpenChange, onCreated, initialName }: Cr
     primary_address_line2: "",
     city: "",
     postal_code: "",
+    home_address: "",
   });
 
   const handleCheckAndSave = async () => {
@@ -79,8 +80,9 @@ const CreateCustomerDialog = ({ open, onOpenChange, onCreated, initialName }: Cr
           company_id,
           last_name: form.last_name,
           name: `${form.first_name} ${form.last_name}`.trim(),
-          company_name: form.company_name || null,
-          is_company: form.is_company,
+          company_name: form.company_name.trim() || null,
+          is_company: !!form.company_name.trim(),
+          vat_number: form.vat_number.trim() || null,
           phone: form.phone,
           secondary_phone: form.secondary_phone || null,
           email: form.email || null,
@@ -95,11 +97,28 @@ const CreateCustomerDialog = ({ open, onOpenChange, onCreated, initialName }: Cr
         .single();
 
       if (error) throw error;
+      if (company_id && data?.id) {
+        const rows = locationsToCreate({
+          customerId: data.id,
+          companyId: company_id,
+          homeAddress: form.home_address,
+          workAddress: formatStoredAddress({
+            line1: form.primary_address_line1,
+            line2: form.primary_address_line2,
+            city: form.city,
+            postal: form.postal_code,
+          }),
+        });
+        if (rows.length) {
+          const { error: locErr } = await supabase.from("customer_locations").insert(rows);
+          if (locErr) toast({ title: "Client saved", description: "Home or work could not be stored. Add it from Edit details.", variant: "destructive" });
+        }
+      }
       toast({ title: "Customer Created ✅" });
       onCreated(data);
       onOpenChange(false);
       // Reset
-      setForm({ first_name: "", last_name: "", company_name: "", is_company: false, phone: "", secondary_phone: "", email: "", primary_address_line1: "", primary_address_line2: "", city: "", postal_code: "" });
+      setForm({ first_name: "", last_name: "", company_name: "", vat_number: "", phone: "", secondary_phone: "", email: "", primary_address_line1: "", primary_address_line2: "", city: "", postal_code: "", home_address: "" });
       setDuplicates([]);
       setShowDuplicates(false);
     } catch (err: any) {
@@ -155,19 +174,9 @@ const CreateCustomerDialog = ({ open, onOpenChange, onCreated, initialName }: Cr
         )}
 
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Switch checked={form.is_company} onCheckedChange={(v) => setForm(prev => ({ ...prev, is_company: v }))} />
-            <Label className="text-sm">This is a company</Label>
-          </div>
-
-          {form.is_company && (
-            <div className="space-y-2">
-              <Label>Company Name *</Label>
-              <Input value={form.company_name} onChange={(e) => setForm(prev => ({ ...prev, company_name: e.target.value }))} />
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-3">
+            <p className="text-sm font-semibold">Private details</p>
+            <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>First Name *</Label>
               <Input value={form.first_name} onChange={(e) => setForm(prev => ({ ...prev, first_name: e.target.value }))} />
@@ -193,24 +202,52 @@ const CreateCustomerDialog = ({ open, onOpenChange, onCreated, initialName }: Cr
             <Label>Email</Label>
             <Input type="email" value={form.email} onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))} />
           </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-semibold">Company details</p>
+              <p className="text-xs text-muted-foreground">Optional. Leave the company name blank for a private client. You can fill either side in later.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-company-name">Company name</Label>
+              <Input id="create-company-name" data-testid="create-company-name" value={form.company_name} onChange={(e) => setForm(prev => ({ ...prev, company_name: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-vat-number">VAT number</Label>
+              <Input id="create-vat-number" value={form.vat_number} onChange={(e) => setForm(prev => ({ ...prev, vat_number: e.target.value }))} />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-semibold">Work address</p>
+              <p className="text-xs text-muted-foreground">Invoices bill to this address, not the home address.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Address line 1</Label>
+              <Input value={form.primary_address_line1} onChange={(e) => setForm(prev => ({ ...prev, primary_address_line1: e.target.value }))} placeholder="123 Main Street" />
+            </div>
+            <div className="space-y-2">
+              <Label>Address line 2 (unit / flat)</Label>
+              <Input value={form.primary_address_line2} onChange={(e) => setForm(prev => ({ ...prev, primary_address_line2: e.target.value }))} placeholder="Flat 3, Block B" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>City</Label>
+                <Input value={form.city} onChange={(e) => setForm(prev => ({ ...prev, city: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Postal code</Label>
+                <Input value={form.postal_code} onChange={(e) => setForm(prev => ({ ...prev, postal_code: e.target.value }))} />
+              </div>
+            </div>
+          </div>
 
           <div className="space-y-2">
-            <Label>Address Line 1</Label>
-            <Input value={form.primary_address_line1} onChange={(e) => setForm(prev => ({ ...prev, primary_address_line1: e.target.value }))} placeholder="123 Main Street" />
-          </div>
-          <div className="space-y-2">
-            <Label>Address Line 2 (Unit/Flat)</Label>
-            <Input value={form.primary_address_line2} onChange={(e) => setForm(prev => ({ ...prev, primary_address_line2: e.target.value }))} placeholder="Flat 3, Block B" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>City</Label>
-              <Input value={form.city} onChange={(e) => setForm(prev => ({ ...prev, city: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Postal Code</Label>
-              <Input value={form.postal_code} onChange={(e) => setForm(prev => ({ ...prev, postal_code: e.target.value }))} />
-            </div>
+            <p className="text-sm font-semibold">Home address</p>
+            <Label htmlFor="create-home-address">Address</Label>
+            <Input id="create-home-address" value={form.home_address} onChange={(e) => setForm(prev => ({ ...prev, home_address: e.target.value }))} placeholder="Optional" />
           </div>
         </div>
 
