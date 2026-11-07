@@ -111,9 +111,9 @@
 .yard-bay { overflow: visible; background: none; border: 0; padding: 0; color: inherit; text-align: center; cursor: pointer; }
 .yard-bay[data-count="0"] { cursor: default; }
 .yard-place { display: block; min-height: 16px; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #6a879c; }
-.yard-art { position: relative; display: flex; align-items: flex-end; justify-content: center; height: 168px; overflow: visible; }
-.yard-building { position: absolute; left: 50%; bottom: 58px; width: 72%; max-width: 148px; height: auto; transform: translateX(-50%); z-index: 0; overflow: visible; }
-.yard-done-bay { bottom: 34px; }
+.yard-art { position: relative; display: flex; align-items: flex-end; justify-content: center; height: 156px; overflow: visible; }
+.yard-building { position: absolute; left: 50%; bottom: 8px; width: 84%; max-width: 176px; height: auto; transform: translateX(-50%); z-index: 0; overflow: visible; }
+.yard-done-bay { bottom: 14px; }
 .yard-bay img { position: relative; z-index: 1; }
 .yard-cap { display: block; margin-top: 2px; color: #1d3a54; font-size: 14px; }
 .yard-cap b { font-size: 22px; font-weight: 700; margin-right: 4px; }

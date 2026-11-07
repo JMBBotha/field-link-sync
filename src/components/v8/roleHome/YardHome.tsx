@@ -4,10 +4,12 @@ import brandedVan from "@/assets/branded-van.png";
 import type { YardHomeModel, YardMoneyTile, YardStage, YardStageView } from "@/lib/yardView";
 import { Glass } from "./chrome";
 
+/** Smaller than the bay, matching the sketch. The box is taller than the artwork so contain does not crop the tyres. */
 const VAN_STYLE = {
   display: "block",
-  width: "100%",
-  height: "112px",
+  width: "118px",
+  maxWidth: "70%",
+  height: "58px",
   objectFit: "contain" as const,
   objectPosition: "center bottom",
   background: "transparent",

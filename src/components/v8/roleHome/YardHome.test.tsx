@@ -53,7 +53,8 @@ describe("yard view vans and dated money", () => {
 
     const van = screen.getByTestId("yard-van-waiting") as HTMLImageElement;
     expect(van.style.objectFit).toBe("contain");
-    expect(van.style.height).toBe("112px");
+    expect(van.style.height).toBe("58px");
+    expect(van.style.width).toBe("118px");
     expect(van.style.overflow).toBe("visible");
     expect(screen.getByTestId("yard-bay-waiting")).toHaveStyle({ overflow: "visible" });
     expect(container.querySelectorAll("img.yard-van, img[data-testid^='yard-van-']").length).toBe(3);
