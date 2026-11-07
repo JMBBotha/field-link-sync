@@ -19,7 +19,7 @@ import { useV8Role } from "@/components/v8/V8Sidebar";
 
 import { Map, ExternalLink, Maximize2, Minimize2, LayoutTemplate } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { homeMapNotice, homeOverlayClass, mapHeroShellClass, mapHeroStageClass, showPhoneLiveMapButton, type MapAvailability } from "@/lib/phoneMapFrame";
+import { homeMapNotice, homeMapWash, homeOverlayClass, mapHeroShellClass, mapHeroStageClass, showPhoneLiveMapButton, type MapAvailability } from "@/lib/phoneMapFrame";
 
 const AdminHomePage = () => {
   const navigate = useNavigate();
@@ -34,6 +34,7 @@ const AdminHomePage = () => {
   const [mapAvailability, setMapAvailability] = useState<MapAvailability>({ state: "loading", message: "Connecting to Mapbox…" });
   const onMapAvailability = useCallback((s: MapAvailability) => setMapAvailability(s), []);
   const mapNotice = homeMapNotice(mapAvailability);
+  const mapWash = homeMapWash(isClassic);
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -104,11 +105,14 @@ const AdminHomePage = () => {
           <div className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
             <MapView ref={mapRef} geographyOnly={!isClassic} showAllAgents hideChromeControls hideStatusFilters onAvailabilityChange={onMapAvailability} />
           </div>
-          <div
-            className="pointer-events-none absolute inset-0 z-[1]"
-            style={{ background: `hsl(var(--background) / ${isClassic ? 0.35 : 0.55})` }}
-            aria-hidden="true"
-          />
+          {mapWash && (
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{ background: mapWash }}
+              data-testid="home-map-wash"
+              aria-hidden="true"
+            />
+          )}
 
           {/* Dashboard content floating over the map. Absolute, not h-full: iOS clips h-full + overflow to 0. */}
           <div className={homeOverlayClass} data-testid="home-dashboard">

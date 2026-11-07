@@ -739,8 +739,20 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           clearTimeout(loadingTimeoutRef.current);
         }
 
-        // Auto-center on the user's current geolocation when available + start live tracking
-        if (navigator.geolocation) {
+        // Decorative homes: no "you are here" pin and no live watch. A one-shot jump still shows local streets.
+        if (geographyOnlyRef.current && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              try {
+                mapInstanceRef.current?.jumpTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 12 });
+              } catch (e) {
+                console.warn("[MapView] geography jump failed", e);
+              }
+            },
+            () => {},
+            { maximumAge: 600_000, timeout: 4000 },
+          );
+        } else if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
               const { latitude, longitude } = pos.coords;
@@ -1043,6 +1055,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
   const updateMarkers = () => {
     const map = mapInstanceRef.current;
+    // Geography homes never draw staff or client pins.
+    if (geographyOnlyRef.current) return;
     // Guard against calling while map is being re-initialized.
     if (!map) return;
     if (typeof (map as any).getCanvasContainer === "function" && !(map as any).getCanvasContainer()) return;
@@ -1536,7 +1550,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   }, [mapFailed, mapLoaded, loadingTimeout, loadingStatus, onAvailabilityChange]);
 
   return (
-    <div ref={containerRef} className="bg-background" style={mapFillStyle} data-testid="map-view">
+    <div ref={containerRef} className={geographyOnly ? undefined : "bg-background"} style={geographyOnly ? { ...mapFillStyle, background: "transparent" } : mapFillStyle} data-testid="map-view" data-geography-only={geographyOnly ? "true" : undefined}>
       {/* Inline position: mapbox-gl.css sets .mapboxgl-map{position:relative}, which collapsed the canvas to 0. */}
       <div ref={mapRef} style={mapFillStyle} data-testid="map-canvas" />
       {mapFailed && (
@@ -1647,7 +1661,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
             </div>
           )}
 
-          {!mapLoaded && (
+          {!mapLoaded && !geographyOnly && (
             <div className="absolute inset-0 z-10 flex items-center justify-center" data-testid="map-loading" style={{ background: "hsl(var(--background) / 0.92)" }}>
               <div className="text-center space-y-3 p-6 bg-card rounded-lg border shadow-lg max-w-xs">
                 {loadingTimeout ? <AlertCircle className="h-8 w-8 text-destructive mx-auto" /> : <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />}

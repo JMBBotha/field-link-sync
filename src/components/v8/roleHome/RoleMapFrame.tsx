@@ -12,11 +12,11 @@ export default function RoleMapFrame({
   children: ReactNode;
   /** True inside the iPhone-safe flex frame (admin home, v8 field shell). */
   fill?: boolean;
-  /** Harness shots can skip Mapbox and keep the streets wash. */
+  /** Harness only. Live homes always mount Mapbox; the CSS wash is not a stand-in. */
   map?: boolean;
 }) {
   const shell = fill ? mapHeroShellClass : "relative min-h-[100dvh]";
-  const stage = fill ? `${mapHeroStageClass} rh-stage-fallback` : "relative min-h-[100dvh] rh-stage-fallback";
+  const stage = `${fill ? mapHeroStageClass : "relative min-h-[100dvh]"}${map ? "" : " rh-stage-fallback"}`;
   return (
     <div className={shell} data-testid="role-map-frame">
       <div className={stage}>
