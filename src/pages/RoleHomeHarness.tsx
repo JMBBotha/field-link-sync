@@ -62,11 +62,14 @@ function Bar({ title }: { title: string }) {
 
 function Side({ items }: { items: string[] }) {
   return (
-    <aside style={{ width: 156, flexShrink: 0, background: "rgba(255,255,255,.94)", padding: "16px 8px", borderRight: "1px solid rgba(150,190,220,.55)" }}>
-      <div style={{ fontWeight: 800, padding: "4px 10px 18px" }}>Field Lynk<small style={{ display: "block", letterSpacing: 1.5, fontSize: 9, color: "#64758b" }}>SYNC</small></div>
-      {items.map((label, i) => (
-        <div key={label} style={{ padding: "12px 10px", borderRadius: 13, marginBottom: 7, background: i === 0 ? "linear-gradient(105deg,#e8f7ff,#d9effe)" : "transparent", color: i === 0 ? "#0785d7" : "#445775", fontSize: 13 }}>{label}</div>
-      ))}
+    <aside className="v8-richer-halo v8-role-side" data-testid="role-side" aria-label="Side menu">
+      <div className="v8-mark">Field Lynk</div>
+      <div className="v8-mark-sync">SYNC</div>
+      <nav aria-label="Main">
+        {items.map((label, i) => (
+          <div key={label} className={i === 0 ? "v8-side-item is-active" : "v8-side-item"} aria-current={i === 0 ? "page" : undefined}>{label}</div>
+        ))}
+      </nav>
     </aside>
   );
 }
