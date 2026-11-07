@@ -44,6 +44,7 @@ function Home({ crew = [] as { id: string; href: string; who: string; type: stri
       orders={[{ key: "cu", label: "6 m × Copper pipe", detail: "For booked installations", href: ADMIN_HOME_ROUTES.stock }]}
       slices={cashProjectionSlices(counts)}
       onSlice={(s) => navigate(s.figure.actionHref)}
+      onSliceInfo={() => {}}
       onReview={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
       onInvoice={onInvoice}
     />
@@ -75,7 +76,19 @@ describe("admin home controls", () => {
     expect(screen.getByTestId("loc")).toHaveTextContent("/admin/invoices?state=draft");
     fireEvent.click(screen.getByTestId("jobs-ready-total"));
     expect(screen.getByTestId("loc")).toHaveTextContent("/admin/invoices?state=draft");
-    fireEvent.click(screen.getByRole("button", { name: "How jobs ready to invoice was counted" }));
+    const counted = screen.getByRole("button", { name: "How jobs ready to invoice was counted" });
+    expect(counted).toHaveAttribute("data-no-min");
+    expect(counted).toHaveStyle({ width: "18px", height: "18px", minHeight: "18px", maxHeight: "18px" });
+    expect(counted.className).toContain("rounded-full");
+    expect(counted.className).toContain("font-bold");
+    expect(counted.className.split(/\s+/)).not.toContain("italic");
+    for (const name of ["How Deposits due was counted", "How Finals due was counted", "How Waiting to send was counted"]) {
+      const mark = screen.getByRole("button", { name });
+      expect(mark).toHaveAttribute("data-no-min");
+      expect(mark).toHaveStyle({ width: "18px", height: "18px" });
+      expect(mark.className.split(/\s+/)).not.toContain("italic");
+    }
+    fireEvent.click(counted);
     expect(onInvoice).toHaveBeenCalledTimes(1);
     expect(supabase.from).not.toHaveBeenCalled();
   });
