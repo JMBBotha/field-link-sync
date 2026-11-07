@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { InfoMark } from "@/components/v8/AdminHomeFigures";
 import type { CashSlice } from "@/lib/roleHome";
+import { ADMIN_HOME_ROUTES } from "@/lib/roleHome";
 import "./roleHome.css";
 
 const BLUE = "#3D9BEB";
@@ -119,6 +121,7 @@ export function Chip({ children, tone = "ready" }: { children: ReactNode; tone?:
   return <span className={cls}>{children}</span>;
 }
 
+/** Same orange card as the lower "invoices waiting" notice: dark type, brown Review button. Opens the list; never sends. */
 export function InvoiceBanner({
   count,
   total,
@@ -131,19 +134,22 @@ export function InvoiceBanner({
   onOpen: () => void;
 }) {
   return (
-    <section className="rh-invoice" data-testid="jobs-ready-to-invoice">
+    <section data-testid="jobs-ready-to-invoice" className="mb-[18px] flex flex-wrap items-center gap-3 rounded-xl bg-[#F97316] p-4 text-[#0F1B2A] shadow-sm">
       <div>
-        <div className="rh-label">Jobs ready to invoice</div>
-        <button type="button" className="rh-big" onClick={onOpen} data-testid="jobs-ready-total">
-          {count} · {total} <span style={{ fontSize: 11, fontWeight: 400 }}>incl. VAT</span>
+        <div className="flex items-center text-[13px] font-bold uppercase tracking-wide">
+          <span>Jobs ready to invoice</span>
+          <InfoMark label="How jobs ready to invoice was counted" onClick={onOpen} />
+        </div>
+        <button type="button" className="whitespace-nowrap text-left text-[18px] font-extrabold leading-tight tabular-nums sm:text-[22px]" onClick={onReview} data-testid="jobs-ready-total">
+          {count} · {total} <span className="text-[13px] font-semibold">incl. VAT</span>
         </button>
       </div>
-      <button type="button" className="rh-go" onClick={onReview} data-testid="jobs-ready-review">Review &amp; send</button>
+      <button type="button" data-testid="jobs-ready-review" onClick={onReview} className="ml-auto min-h-[44px] rounded-[10px] bg-[#9A3412] px-5 text-[16px] font-bold text-white ring-2 ring-white/70 hover:bg-[#7C2D12]">Review &amp; send</button>
     </section>
   );
 }
 
-export function CashPie({ slices, onOpen }: { slices: CashSlice[]; onOpen: (s: CashSlice) => void }) {
+export function CashPie({ slices, onOpen, onInfo, cashHref = ADMIN_HOME_ROUTES.cash }: { slices: CashSlice[]; onOpen: (s: CashSlice) => void; onInfo?: (s: CashSlice) => void; cashHref?: string }) {
   const sum = slices.reduce((s, x) => s + Math.max(0, x.total), 0) || 1;
   let acc = 0;
   const stops = slices.map((s) => {
@@ -153,15 +159,18 @@ export function CashPie({ slices, onOpen }: { slices: CashSlice[]; onOpen: (s: C
   }).join(", ");
   return (
     <Glass testId="cash-flow-projection">
-      <h2>Cash flow projection</h2>
+      <Link to={cashHref} data-testid="cash-flow-heading" style={{ color: "inherit", textDecoration: "none" }}><h2>Cash flow projection</h2></Link>
       <div className="rh-muted" style={{ marginBottom: 8 }}>Expected collections · same rules as the money pies</div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ flex: 1 }}>
           {slices.map((s) => (
-            <button key={s.key} type="button" className="rh-cashrow" onClick={() => onOpen(s)} data-testid={`cash-slice-${s.key}`}>
-              <span><i className="rh-dot" style={{ background: s.colour }} />{s.label}</span>
-              <b>{s.display}</b>
-            </button>
+            <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <button type="button" className="rh-cashrow" style={{ flex: 1, width: "auto" }} onClick={() => onOpen(s)} data-testid={`cash-slice-${s.key}`}>
+                <span><i className="rh-dot" style={{ background: s.colour }} />{s.label}</span>
+                <b>{s.display}</b>
+              </button>
+              {onInfo && <InfoMark label={`How ${s.label} was counted`} onClick={() => onInfo(s)} />}
+            </div>
           ))}
         </div>
         <div className="rh-donut" style={{ background: `conic-gradient(${stops})`, borderRadius: "50%", display: "grid", placeItems: "center" }} aria-hidden>

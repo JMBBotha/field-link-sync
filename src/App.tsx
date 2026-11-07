@@ -23,6 +23,8 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import VersionBanner from "@/components/VersionBanner";
 import Index from "./pages/Index";
 import RoleHomeHarness from "./pages/RoleHomeHarness";
+import ClientDetailsHarness from "./pages/ClientDetailsHarness";
+import AdminHomePreviewFixture from "./pages/AdminHomePreviewFixture";
 import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
 import NotFound from "./pages/NotFound";
@@ -186,6 +188,12 @@ const App = () => (
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/role-homes" element={<RoleHomeHarness />} />
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev/client-details" element={<ClientDetailsHarness />} />
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev/admin-home" element={<AdminHomePreviewFixture />} />
                 )}
 
                 {/* Customer Portal Routes */}

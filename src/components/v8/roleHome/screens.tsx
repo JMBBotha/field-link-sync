@@ -323,7 +323,7 @@ export function AdminHomeScreen({
           </div>
         </div>
       </Glass>
-      {invoice && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} />}
+      {invoice && invoice.count > 0 && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} />}
       {model && <YardHome model={model} />}
       {!model && loading && <p className="rh-muted" data-testid="yard-loading">Loading the yard…</p>}
       {!model && error && <p className="rh-muted" data-testid="yard-error">The yard could not load.</p>}

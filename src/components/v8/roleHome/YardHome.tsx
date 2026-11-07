@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import brandedVan from "@/assets/branded-van.png";
 import type { YardHomeModel, YardMoneyTile, YardStage, YardStageView } from "@/lib/yardView";
+import { ADMIN_HOME_ROUTES } from "@/lib/roleHome";
 import { Glass } from "./chrome";
 
 /** Smaller than the bay, matching the sketch. The box is taller than the artwork so contain does not crop the tyres. */
@@ -166,7 +167,10 @@ export function YardHome({ model }: { model: YardHomeModel }) {
       <Glass testId="yard-work">
           <div className="yard-work-head">
             <h2>Work in motion</h2>
-            <span>Yard view</span>
+            <span className="yard-work-links">
+              <Link to={ADMIN_HOME_ROUTES.bookJob} data-testid="book-today-job">Book a job</Link>
+              <span>Yard view</span>
+            </span>
           </div>
           <div className="yard-scene" data-testid="yard-scene" style={{ overflow: "visible" }}>
             <svg className="yard-road" viewBox="0 0 1000 90" preserveAspectRatio="none" aria-hidden>

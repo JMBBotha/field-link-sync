@@ -105,6 +105,8 @@
 .yard-work-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .yard-work-head h2 { margin: 0; font-size: 18px; }
 .yard-work-head span { color: #4e6d86; font-size: 13px; }
+.yard-work-links { display: flex; align-items: center; gap: 12px; }
+.yard-work-links a { color: #168ad7; font-size: 13px; font-weight: 700; text-decoration: none; }
 .yard-scene { position: relative; margin-top: 6px; overflow: visible; }
 .yard-road { position: absolute; left: 2%; right: 2%; bottom: 46px; width: 96%; height: 78px; overflow: visible; pointer-events: none; }
 .yard-bays { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; overflow: visible; }

@@ -1,5 +1,6 @@
 /** Dev-only shots of the approved role homes. Numbers here are harness rows, not Massair CT. */
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ADMIN_HOME_ROUTES } from "@/lib/roleHome";
 import { buildMaterialCheck, type SourceLine, type StockHand } from "@/lib/materialCheck";
 import { buildYardHome, type YardJob } from "@/lib/yardView";
 import RoleMapFrame from "@/components/v8/roleHome/RoleMapFrame";
@@ -98,6 +99,7 @@ function Side({ items }: { items: string[] }) {
 
 export default function RoleHomeHarness() {
   const [sp] = useSearchParams();
+  const navigate = useNavigate();
   const view = sp.get("view") || "tech-home";
   const tablet = view.endsWith("tablet");
   const phone = !tablet;
@@ -144,10 +146,10 @@ export default function RoleHomeHarness() {
         eyebrow="SATURDAY, 07 NOV"
         title="Good morning"
         companyName="Demo company (Pty) Ltd"
-        invoice={yard.invoice}
+        invoice={yard.invoice.count > 0 ? yard.invoice : null}
         model={yard}
-        onReview={() => undefined}
-        onInvoice={() => undefined}
+        onReview={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
+        onInvoice={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
       />
     );
   }

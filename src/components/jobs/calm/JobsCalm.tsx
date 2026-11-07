@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, startOfWeek } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +41,16 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
   const [assignLeadId, setAssignLeadId] = useState<string | null>(initialAssign || null);
   useEffect(() => { if (initialAssign) setAssignLeadId(initialAssign); }, [initialAssign]);
   const [showCreate, setShowCreate] = useState(false);
+  const [sp, setSp] = useSearchParams();
+  useEffect(() => {
+    if (sp.get("new") !== "1") return;
+    setShowCreate(true);
+    setSp((p) => {
+      const n = new URLSearchParams(p);
+      n.delete("new");
+      return n;
+    }, { replace: true });
+  }, [sp, setSp]);
   const today = todayInJohannesburg();
   const [sel, setSel] = useState(initialDay || today);
   const cells = monthGrid(sel);

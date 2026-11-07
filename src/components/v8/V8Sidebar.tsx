@@ -73,9 +73,10 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
   const tech = role === "tech";
   const tone = tech ? null : inboxTone(leads as any[], Math.floor(now / 30_000) * 30_000, sla);
   const salary = useIsSalaried();
-  const primary = v8Primary(role, { salary }).filter((l) => l.label !== "Stock" || isAdmin);
   const cashHealth = useCashHealthEnabled();
+  // Declare isAdmin before the Stock filter. filter() reads it immediately; a later const is still in the temporal dead zone and iOS WebKit throws "Cannot access '$' before initialization", which the app error screen treats as the app not opening.
   const { isAdmin } = useRole();
+  const primary = v8Primary(role, { salary }).filter((l) => l.label !== "Stock" || isAdmin);
   const { summary: due } = useInvoiceDue();
   const mgmt = role === "admin" || role === "owner";
   const more = v8More(role, { cashHealth: cashHealth.enabled && mgmt && isAdmin, manager: mgmt && !isAdmin });

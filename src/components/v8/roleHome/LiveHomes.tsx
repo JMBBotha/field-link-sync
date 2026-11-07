@@ -5,12 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { HowCountedSheet, useAdminHomeFigures } from "@/components/v8/AdminHomeFigures";
 import { parseMyJobs } from "@/components/jobs/SalesMyJobs";
 import { useMyAppointments } from "@/hooks/useMyAppointments";
+import { useSignedInIdentity } from "@/hooks/useSignedInIdentity";
 import { appointmentLinks } from "@/lib/appointments";
 import { cardHref } from "@/lib/assignedLabel";
 import { isFirstQuoteVisit } from "@/lib/materialCheck";
 import { countAdminHome } from "@/lib/adminHomeCount";
-import { jhbGreetingTitle, YARD_LINKS } from "@/lib/yardView";
-import { areaFromAddress, durationAbout, greetingEyebrow, greetingTitle, jobTypeWord } from "@/lib/roleHome";
+import { ADMIN_HOME_ROUTES, areaFromAddress, durationAbout, greetingEyebrow, greetingTitle, jobTypeWord } from "@/lib/roleHome";
 import { checkKindOf } from "@/lib/materialCheck";
 import { useMaterialCheck } from "./data";
 import { SalesJobScreen } from "./screens";
@@ -23,6 +23,7 @@ import { AdminHomeScreen, SalesHomeScreen } from "./screens";
 
 export function AdminLiveHome() {
   const navigate = useNavigate();
+  const identity = useSignedInIdentity();
   const { companyId } = useUserCompanyId();
   const figures = useAdminHomeFigures(companyId);
   const yard = useYardHome(companyId, figures.source, figures.isLoading);
@@ -35,13 +36,13 @@ export function AdminLiveHome() {
     <>
       <AdminHomeScreen
         eyebrow={greetingEyebrow(now)}
-        title={jhbGreetingTitle(now)}
+        title={greetingTitle(now, identity?.name)}
         companyName={yard.companyName}
-        invoice={counts ? { count: counts.waiting.count, total: formatRand(counts.waiting.total).replace(/^R\s/, "R") } : null}
+        invoice={counts && counts.waiting.count > 0 ? { count: counts.waiting.count, total: formatRand(counts.waiting.total).replace(/^R\s/, "R") } : null}
         model={yard.model}
         loading={yard.loading}
         error={yard.error}
-        onReview={() => navigate(counts?.waiting.actionHref || YARD_LINKS.invoicesDraft)}
+        onReview={() => navigate(counts?.waiting.actionHref || ADMIN_HOME_ROUTES.reviewSend)}
         onInvoice={() => setOpen(true)}
       />
       {open && counts && <HowCountedSheet figure={counts.waiting} onClose={() => setOpen(false)} />}
@@ -60,6 +61,7 @@ export function SalesLiveHome() {
       return parseMyJobs(data);
     },
   });
+  const identity = useSignedInIdentity();
   const now = new Date();
   const appointments = (appts.data || []).filter((a) => a.scheduled_date === today).map((a) => {
     const visit = isFirstQuoteVisit({ serviceType: a.service_type, source: a.source });
@@ -76,7 +78,7 @@ export function SalesLiveHome() {
   return (
     <SalesHomeScreen
       eyebrow={greetingEyebrow(now)}
-      title={greetingTitle(now)}
+      title={greetingTitle(now, identity?.name)}
       appointments={appointments}
       booked={(booked.data || []).map((j) => ({
         id: j.job_id || j.lead_id || "job",

@@ -13,7 +13,7 @@ import { sendTogetherBlock } from "@/lib/quoteBundle";
 import { useDraftNeeds } from "@/hooks/useDraftNeeds";
 import { DraftNeedsChip } from "@/components/quoting/DraftNeedsChip";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import ProjectsList from "@/components/projects/ProjectsList";
 import ClientSectionNav from "@/components/customers/ClientSectionNav";
 import { clientTabChips, sumHouseCounts } from "@/lib/clientTabChips";
@@ -70,7 +70,9 @@ import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
 import { UpcomingLine, ClientBookingsList, BookingActivity, useClientBookings } from "@/components/bookings/Bookings";
 import { ClientActivity, PaymentTermsChip, SitesOverview } from "@/components/customers/ClientV8Parts";
 import { InvoiceTermsOverride } from "@/components/invoiceDue/InvoiceTermsOverride";
-import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
+import ClientDetailsEditor from "@/components/customers/ClientDetailsEditor";
+import { EditClientButton } from "@/components/customers/EditClientButton";
+import { clientHeaderName } from "@/lib/clientAddresses";
 import { useRegisterAssistantContext } from "@/hooks/useAssistantContextTracker";
 
 import { LEAD_SOURCE_BADGE } from "@/lib/leadSources";
@@ -94,7 +96,8 @@ const getInitials = (first?: string | null, last?: string | null, company?: stri
 
 const AdminCustomerDetailPage = () => {
   const { id } = useParams<{ id: string }>();
-  const [innerTab, setInnerTab] = useState("activity");
+  const [searchParams] = useSearchParams();
+  const [innerTab, setInnerTab] = useState(() => (searchParams.get("tab") === "details" ? "details" : "activity"));
   const { data: _bookings = [] } = useClientBookings(id);
   const bookingsN = _bookings.length;
   const [showArchivedInv, setShowArchivedInv] = useState(false);
@@ -425,10 +428,7 @@ const AdminCustomerDetailPage = () => {
   }
 
   const fullName = `${customer.first_name || ""} ${customer.last_name || ""}`.trim();
-  const headerName =
-    customer.is_company && customer.company_name
-      ? customer.company_name
-      : fullName || customer.name || "Unnamed";
+  const headerName = clientHeaderName(customer);
   const contactName = customer.is_company ? fullName : headerName;
   const structuredAddress = [customer.primary_address_line1, customer.primary_address_line2, customer.city, customer.postal_code]
     .filter(Boolean).join(", ");
@@ -491,6 +491,7 @@ const AdminCustomerDetailPage = () => {
             {phone && <a href={`tel:${phone}`} className="inline-flex items-center gap-1 rounded-xl bg-white/15 px-3 py-2 text-sm hover:bg-white/25"><Phone className="h-4 w-4" /> Call</a>}
             {email && <a href={`mailto:${email}`} className="inline-flex items-center gap-1 rounded-xl bg-white/15 px-3 py-2 text-sm hover:bg-white/25"><Mail className="h-4 w-4" /> Email</a>}
             {owing && <Button data-testid="client-add-payment" onClick={() => openPay(unpaid)} className="rounded-xl bg-[#F7941D] hover:bg-[#e08310] text-white"><Plus className="h-4 w-4 mr-1" /> Add payment</Button>}
+            <EditClientButton onClick={() => setInnerTab("details")} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button data-testid="client-new-quote" className={cn("rounded-xl text-white", owing ? "bg-white/15 hover:bg-white/25" : "bg-[#F7941D] hover:bg-[#e08310]")}><Plus className="h-4 w-4 mr-1" /> New quote <ChevronDown className="h-4 w-4 ml-1" /></Button>
@@ -511,7 +512,7 @@ const AdminCustomerDetailPage = () => {
               <DropdownMenuContent align="end">
                 {owing && <DropdownMenuItem data-testid="menu-add-payment" onClick={() => openPay(unpaid)}>Add payment</DropdownMenuItem>}
                 {sendQuote && <DropdownMenuItem data-testid="menu-send-quote" onClick={() => setSendOneOpen(true)}>{sendIsResend ? "Resend quote" : "Send quote"} {sendQuote.quote_number ? `(${sendQuote.quote_number})` : ""}</DropdownMenuItem>}
-                <DropdownMenuItem onClick={() => setInnerTab("details")}>Edit client details</DropdownMenuItem>
+                <DropdownMenuItem data-testid="menu-edit-client-details" onClick={() => setInnerTab("details")}>Edit client details</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate(`/admin/customers`)}>Back to list</DropdownMenuItem>
                 {canArchiveClient && (customer.status === "archived" ? (
                   <DropdownMenuItem disabled={removing} onClick={() => clientAction("restore")}>Restore client</DropdownMenuItem>
@@ -783,6 +784,7 @@ const AdminCustomerDetailPage = () => {
                       <SelectItem value="developer">Developer</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">Changing this does not hide private or company details.</p>
                 </div>
                 <div className="flex flex-col items-center text-center gap-3">
                   <Avatar className="h-20 w-20">
@@ -797,26 +799,11 @@ const AdminCustomerDetailPage = () => {
                     )}
                   </div>
                 </div>
-                {/* Always render every core field so it is immediately clear
-                    what is on file and what is still missing. */}
-                <EntityDetailsForm
-                  entityType="client"
-                  entityId={customer.id}
+                <ClientDetailsEditor
+                  customerId={customer.id}
+                  companyId={customer.company_id ?? null}
                   initialData={customer as any}
-                  visibleFields={[
-                    "name",
-                    "company_name",
-                    "phone",
-                    "secondary_phone",
-                    "email",
-                    "primary_address_line1",
-                    "city",
-                    "postal_code",
-                    "vat_number",
-                    "status",
-                    "notes",
-                  ]}
-                  className="grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4"
+                  locations={locations}
                 />
 
               </CardContent>

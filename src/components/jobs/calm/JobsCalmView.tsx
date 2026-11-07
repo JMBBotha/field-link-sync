@@ -64,7 +64,7 @@ function LeadCard({ l, now, onCall, onAssign, onOpen }: { l: CalmLead; now?: Dat
   );
 }
 
-function Block({ b, onOpen, onDrop, compact }: { b: CalmBlock; onOpen: () => void; onDrop?: (start: number) => void; compact?: boolean }) {
+function Block({ b, onOpen, onDrop, compact, showEdit }: { b: CalmBlock; onOpen: () => void; onDrop?: (start: number) => void; compact?: boolean; showEdit?: boolean }) {
   const pos = !compact && b.start !== null ? blockPos(b.start, b.dur) : null;
   const ref = useRef<HTMLButtonElement>(null);
   const body = (
@@ -76,6 +76,7 @@ function Block({ b, onOpen, onDrop, compact }: { b: CalmBlock; onOpen: () => voi
       </div>
       <div className="truncate text-[12px]">{b.title}</div>
       {b.place && <div className="truncate text-[11px] opacity-75">{b.place}</div>}
+      {showEdit && <div className="text-[11px] font-semibold text-[#1590D6]">Edit</div>}
     </>
   );
   if (compact || !pos) {
@@ -145,7 +146,7 @@ export default function JobsCalmView(p: Props) {
           <div className="space-y-1.5" data-calm-month-list>
             <h3 className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">{d ? new Date(`${d}T12:00:00+02:00`).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" }) : ""} · {bs.length} job{bs.length === 1 ? "" : "s"}</h3>
             {bs.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500 dark:text-slate-400">{p.emptyJobsLabel || "Nothing booked"}</div>
-              : bs.map((b) => <div key={b.id}><div className="mb-0.5 text-[11px] text-slate-500 dark:text-slate-400">{p.people.find((x) => x.id === b.personId)?.name || "Unassigned"}</div><Block b={b} compact onOpen={() => p.onOpenBlock(b)} />{b.kind === "job" && p.renderJobExtra?.(b)}</div>)}
+              : bs.map((b) => <div key={b.id}><div className="mb-0.5 text-[11px] text-slate-500 dark:text-slate-400">{p.people.find((x) => x.id === b.personId)?.name || "Unassigned"}</div><Block b={b} compact showEdit onOpen={() => p.onOpenBlock(b)} />{b.kind === "job" && p.renderJobExtra?.(b)}</div>)}
           </div>); })()}
       </div>
     </>
@@ -171,7 +172,10 @@ export default function JobsCalmView(p: Props) {
             {u.age && <span className="rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300">{u.age}</span>}</div>
           {u.sub && <div className="truncate text-[13px] text-slate-500 dark:text-slate-400">{u.sub}</div>}
           <div className="mt-1.5 flex gap-1"><span className="rounded bg-red-50 dark:bg-red-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-red-600 dark:text-red-300">Unassigned</span><LaneTag lane={u.lane} /></div>
-          <button onClick={(e) => { e.stopPropagation(); p.onAssignJob(u.id); }} className="mt-2.5 w-full rounded-full bg-sky-50 dark:bg-sky-500/15 py-1.5 text-[13px] font-semibold text-[#1590D6] hover:bg-sky-100 dark:text-sky-300 dark:hover:bg-sky-500/25">Assign</button>
+          <div className="mt-2.5 grid grid-cols-2 gap-2">
+            <button type="button" data-testid="jobs-edit" onClick={(e) => { e.stopPropagation(); p.onOpenJob(u.id); }} className="rounded-full bg-white py-1.5 text-[13px] font-semibold text-[#1590D6] ring-1 ring-sky-200">Edit</button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); p.onAssignJob(u.id); }} className="rounded-full bg-sky-50 dark:bg-sky-500/15 py-1.5 text-[13px] font-semibold text-[#1590D6] hover:bg-sky-100 dark:text-sky-300 dark:hover:bg-sky-500/25">Assign</button>
+          </div>
         </div>
       ))}
     </section>
@@ -188,7 +192,12 @@ export default function JobsCalmView(p: Props) {
       {p.tab === "today" ? (
         <div>
           <div className="ml-[150px] flex justify-between text-[11px] text-slate-400">{hours.map((h) => <span key={h} className="w-0">{String(h).padStart(2, "0")}</span>)}</div>
-          {p.people.length === 0 && <div className="py-10 text-center text-[13px] text-slate-500 dark:text-slate-400">{p.emptyJobsLabel || "Nobody booked today"}</div>}
+          {p.people.length === 0 && (
+            <div className="py-10 text-center text-[13px] text-slate-500 dark:text-slate-400">
+              {p.emptyJobsLabel || "Nobody booked today"}
+              <button type="button" onClick={p.onNew} className="mt-3 block w-full rounded-full bg-[#F7941D] px-4 py-2 text-[13px] font-semibold text-white">Add job</button>
+            </div>
+          )}
           {p.people.map((per) => {
             const bs = rowBlocks(per.id);
             return (
@@ -256,7 +265,12 @@ export default function JobsCalmView(p: Props) {
   const phoneJobs = (
     <div className="space-y-3 md:hidden" data-calm-phone-jobs>
       <h3 className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">{p.tab === "week" ? "This week's jobs" : "Today's jobs"}</h3>
-      {p.people.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500 dark:text-slate-400" data-testid="calm-empty-jobs">{p.emptyJobsLabel || "Nothing booked"}</div>}
+      {p.people.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-[13px] text-slate-500 dark:text-slate-400" data-testid="calm-empty-jobs">
+          {p.emptyJobsLabel || "Nothing booked"}
+          <button type="button" onClick={p.onNew} data-testid="jobs-add-empty" className="mt-3 block w-full rounded-full bg-[#F7941D] px-4 py-2 text-[13px] font-semibold text-white">Add job</button>
+        </div>
+      )}
       {p.people.map((per) => (
         <div key={per.id} className="rounded-2xl bg-white dark:bg-card p-3 shadow-sm ring-1 ring-slate-200/70 dark:ring-white/10">
           <div className="mb-2 flex items-center gap-2">
@@ -265,7 +279,7 @@ export default function JobsCalmView(p: Props) {
           </div>
           <div className="space-y-1.5">{rowBlocks(per.id).sort((a, b) => a.day.localeCompare(b.day) || (a.start ?? 9999) - (b.start ?? 9999)).map((b) => (
             <div key={b.id} className="space-y-1.5">
-              <Block b={b} compact onOpen={() => p.onOpenBlock(b)} />
+              <Block b={b} compact showEdit onOpen={() => p.onOpenBlock(b)} />
               {b.kind === "job" && p.renderJobExtra?.(b)}
             </div>
           ))}</div>
@@ -287,7 +301,7 @@ export default function JobsCalmView(p: Props) {
           ))}
         </div>
         <span className="hidden text-[13px] text-white/75 sm:inline">{p.dateLabel}</span>
-        <button onClick={p.onNew} data-testid="v8-next-step" className="ml-auto rounded-full bg-[#F7941D] px-4 py-1.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#e08310]">+ New</button>
+        <button onClick={p.onNew} data-testid="v8-next-step" aria-label="Add job" className="ml-auto rounded-full bg-[#F7941D] px-4 py-1.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#e08310]">Add job</button>
       </div>
       {p.tab !== "pipeline" && chips.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-2" data-calm-chips>
