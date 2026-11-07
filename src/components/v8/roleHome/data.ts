@@ -7,6 +7,7 @@ import { checkFromPackAndPlan, type MaterialsPlan } from "@/lib/materialCheckLoa
 import { checkKindOf, stockNeedsFromChecks, type CheckKind, type MaterialCheck, type SourceLine } from "@/lib/materialCheck";
 import type { PackingRow } from "@/lib/packingList";
 import { loadEntries, todayInJohannesburg } from "@/lib/todaysJobs";
+import { johannesburgDayBounds, mergeTodayCrew, type TodayJobRow } from "@/lib/todayCrew";
 import { useAdminHomeFigures, type AdminHomeSource } from "@/components/v8/AdminHomeFigures";
 
 async function recordedParts(leadId: string | null | undefined): Promise<SourceLine[]> {
@@ -58,34 +59,52 @@ export function useAdminRoleData() {
     queryKey: ["role-today-crew", companyId, today],
     enabled: !!companyId,
     queryFn: async () => {
+      const { start, end } = johannesburgDayBounds(today);
       const entries = await loadEntries({ date: today });
-      const jobIds = entries.map((e) => e.job_id).filter(Boolean) as string[];
+      const entryIds = [...new Set(entries.map((e) => e.job_id).filter(Boolean))] as string[];
       const agentIds = [...new Set(entries.map((e) => e.agent_id).filter(Boolean))] as string[];
-      const [jobsRes, peopleRes] = await Promise.all([
-        jobIds.length
-          ? supabase.from("jobs").select("id, job_type, title, company_id, status").in("id", jobIds)
-          : Promise.resolve({ data: [] as { id: string; job_type: string | null; title: string | null; company_id: string | null; status: string | null }[] }),
+      const cols = "id, job_type, title, company_id, status, scheduled_for, started_at, completed_at, address, customers(name)";
+      const window = (col: "scheduled_for" | "started_at" | "completed_at") =>
+        supabase.from("jobs").select(cols).eq("company_id", companyId as string).gte(col, start).lt(col, end).limit(200);
+      const [bySchedule, byStart, byDone, byEntry, peopleRes] = await Promise.all([
+        window("scheduled_for"),
+        window("started_at"),
+        window("completed_at"),
+        entryIds.length ? supabase.from("jobs").select(cols).in("id", entryIds) : Promise.resolve({ data: [] as TodayJobRow[], error: null }),
         agentIds.length
           ? supabase.from("profiles").select("id, full_name").in("id", agentIds)
           : Promise.resolve({ data: [] as { id: string; full_name: string | null }[] }),
       ]);
-      const jobs = new Map(((jobsRes.data || []) as { id: string; job_type: string | null; title: string | null; company_id: string | null; status: string | null }[])
-        .filter((j) => inSignedInCompany(j.company_id, companyId) && j.status !== "cancelled")
-        .map((j) => [j.id, j]));
+      const failed = bySchedule.error || byStart.error || byDone.error || byEntry.error;
+      if (failed) throw failed;
       const names = new Map(((peopleRes.data || []) as { id: string; full_name: string | null }[]).map((p) => [p.id, p.full_name || "Technician"]));
-      return entries
-        .filter((e) => e.job_id && jobs.has(e.job_id))
-        .map((e) => {
-          const job = jobs.get(e.job_id as string)!;
-          return {
-            id: e.job_id as string,
-            href: `/admin/jobs/${e.job_id}`,
-            who: (e.agent_id && names.get(e.agent_id)) || "Unassigned",
-            type: job.job_type || job.title || "Job",
-            where: e.customer_address || job.title || "Job",
-            client: e.customer_name || "Client",
-          };
-        });
+      const customerName = (row: { customers?: { name?: string | null } | { name?: string | null }[] | null }) => {
+        const c = row.customers;
+        return (Array.isArray(c) ? c[0]?.name : c?.name) || null;
+      };
+      const jobs = [...(bySchedule.data || []), ...(byStart.data || []), ...(byDone.data || []), ...(byEntry.data || [])].map((j) => ({
+        id: j.id as string,
+        company_id: j.company_id as string | null,
+        status: j.status as string | null,
+        job_type: j.job_type as string | null,
+        title: j.title as string | null,
+        scheduled_for: j.scheduled_for as string | null,
+        started_at: j.started_at as string | null,
+        completed_at: j.completed_at as string | null,
+        address: (j as { address?: string | null }).address || null,
+        customer_name: customerName(j as { customers?: { name?: string | null } | { name?: string | null }[] | null }),
+      }));
+      return mergeTodayCrew({
+        companyId: companyId as string,
+        day: today,
+        schedule: entries.filter((e) => e.job_id).map((e) => ({
+          jobId: e.job_id as string,
+          who: (e.agent_id && names.get(e.agent_id)) || "Unassigned",
+          where: e.customer_address,
+          client: e.customer_name,
+        })),
+        jobs,
+      });
     },
   });
   const needs = useQuery({

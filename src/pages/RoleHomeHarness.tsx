@@ -1,5 +1,5 @@
 /** Dev-only shots of the approved role homes. Numbers here are harness rows, not Massair CT. */
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { countAdminHome } from "@/lib/adminHomeCount";
 import { buildMaterialCheck, type SourceLine, type StockHand } from "@/lib/materialCheck";
 import { cashProjectionSlices } from "@/lib/roleHome";
@@ -73,6 +73,7 @@ function Side({ items }: { items: string[] }) {
 
 export default function RoleHomeHarness() {
   const [sp] = useSearchParams();
+  const navigate = useNavigate();
   const view = sp.get("view") || "tech-home";
   const tablet = view.endsWith("tablet");
   const phone = !tablet;
@@ -132,9 +133,9 @@ export default function RoleHomeHarness() {
           { key: "out", label: "1 × Outdoor unit", detail: "For booked installations", href: "/dev/role-homes?view=admin-home" },
         ]}
         slices={cashProjectionSlices(counts)}
-        onSlice={() => undefined}
-        onReview={() => undefined}
-        onInvoice={() => undefined}
+        onSlice={(s) => navigate(s.figure.actionHref)}
+        onReview={() => navigate("/admin/invoices?state=draft")}
+        onInvoice={() => navigate("/admin/invoices?state=draft")}
       />
     );
   }

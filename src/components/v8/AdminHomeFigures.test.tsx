@@ -47,10 +47,12 @@ describe("admin home pies and how-counted sheet", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("opens the money slice from its legend row", () => {
-    render(<MemoryRouter><Harness /></MemoryRouter>);
+  it("opens the draft invoice list from a money slice, and the sheet from how-counted", () => {
+    render(<MemoryRouter><Harness /><Probe /></MemoryRouter>);
     fireEvent.click(screen.getByRole("button", { name: /Waiting to send/ }));
-    expect(screen.getByRole("dialog")).toHaveTextContent("Invoices waiting to send");
+    expect(screen.getByTestId("loc")).toHaveTextContent("/admin/invoices?state=draft");
+    fireEvent.click(screen.getByRole("button", { name: "How the money total was counted" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("Where the money sits");
     fireEvent.click(screen.getByTestId("how-counted-close"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });

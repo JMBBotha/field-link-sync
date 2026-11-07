@@ -22,6 +22,7 @@ import { invoiceMoney } from "@/lib/moneySummary";
 import { isUnpaid } from "@/lib/unpaidBuckets";
 import { fetchCreditNotes } from "@/lib/creditNotes";
 import { countAdminHome, inSignedInCompany, monthChangePct, TEST_HVAC_ID, thenInOrderDetail, type CountFigure, type HomeQuote } from "@/lib/adminHomeCount";
+import { greetingTitle } from "@/lib/roleHome";
 import { AdminHomePies, HowCountedSheet, InfoMark, InvoicesWaitingCard, useAdminHomeFigures, type AdminHomeSource } from "./AdminHomeFigures";
 import { cn } from "@/lib/utils";
 import "./v8.css";
@@ -53,7 +54,7 @@ type Item = { id: string; title: string; sub: string; btn: string; to: string; t
 
 /** v8 Simple home (New layout only): hero · Next up · flow strip · New leads · Needs you today.
  *  Read-only over the existing pipeline + lead inbox queries; RLS scopes rows (company admins see only their company, sales only theirs). */
-export default function V8RoleHome({ role, hideRequests, companyId: companyIdProp, figureSource }: { role: V8Role; hideRequests?: boolean; companyId?: string | null; figureSource?: AdminHomeSource }) {
+export default function V8RoleHome({ role, hideRequests, companyId: companyIdProp, figureSource, hideGreeting, hideInvoiceBanner }: { role: V8Role; hideRequests?: boolean; companyId?: string | null; figureSource?: AdminHomeSource; hideGreeting?: boolean; hideInvoiceBanner?: boolean }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { settings } = useCompanySettings();
@@ -102,9 +103,7 @@ export default function V8RoleHome({ role, hideRequests, companyId: companyIdPro
     out.needs = [...accepted.slice(1, 3), ...viewed.slice(0, 2), ...unpaid.slice(0, 2)].slice(0, 5);
     return out;
   }, [data, own, user?.id, showFigures, companyId]);
-  const first = (identity?.name || "").split(/\s+/)[0];
-  const h = new Date().getHours();
-  const greet = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  const now = new Date();
   const ownIds = useMemo(() => (own && data ? data.quotes.filter((q) => q.sales_engineer_id === user?.id).map((q) => q.id) : null), [own, data, user?.id]);
   const out = useHomeOutstanding(ownIds, companyId);
   const outstanding = out.data?.total ?? 0;
@@ -140,12 +139,14 @@ export default function V8RoleHome({ role, hideRequests, companyId: companyIdPro
 
   return (
     <div className="space-y-4" data-testid={`v8-home-${role}`}>
-      <div>
-        <div className="text-xs font-bold uppercase tracking-wide text-[#1590d6]">{today}{role === "owner" && settings?.company_name ? ` · ${settings.company_name}` : ""}</div>
-        <h1 className="text-2xl font-extrabold">{greet}{first ? `, ${first}` : ""}</h1>
-      </div>
+      {!hideGreeting && (
+        <div>
+          <div className="text-xs font-bold uppercase tracking-wide text-[#1590d6]">{today}{role === "owner" && settings?.company_name ? ` · ${settings.company_name}` : ""}</div>
+          <h1 className="text-2xl font-extrabold" data-testid="v8-role-greeting">{greetingTitle(now, identity?.name)}</h1>
+        </div>
+      )}
       {role === "sales" && <InvoiceApprovalHomeCard />}
-      {showFigures && moneyReady && counts && counts.waiting.count > 0 && <InvoicesWaitingCard figure={counts.waiting} onOpen={() => openSheet(counts.waiting)} />}
+      {!hideInvoiceBanner && showFigures && moneyReady && counts && counts.waiting.count > 0 && <InvoicesWaitingCard figure={counts.waiting} onOpen={() => openSheet(counts.waiting)} />}
       {showFigures && (!moneyReady || !counts || counts.waiting.count === 0) && <InvoiceApprovalHomeCard />}
       {role !== "tech" && <SalesHeartbeat hideRequests={hideRequests} />}
       {(role === "owner" || role === "admin") && <V8NumberRow />}
@@ -155,27 +156,27 @@ export default function V8RoleHome({ role, hideRequests, companyId: companyIdPro
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <div className="text-sm opacity-90">
-                  <button type="button" onClick={() => openSheet(counts.accepted)}>Quotes accepted in {monthName} · incl. VAT</button>
+                  <button type="button" onClick={() => navigate(counts.accepted.actionHref)}>Quotes accepted in {monthName} · incl. VAT</button>
                   <InfoMark label="How quotes accepted was counted" onClick={() => openSheet(counts.accepted)} />
                 </div>
-                <button type="button" className="text-left text-[40px] font-extrabold leading-none tabular-nums" data-testid="hero-accepted" onClick={() => openSheet(counts.accepted)}>{fmtRandShort(acceptedMonth)}</button>
+                <button type="button" className="text-left text-[40px] font-extrabold leading-none tabular-nums" data-testid="hero-accepted" onClick={() => navigate(counts.accepted.actionHref)}>{fmtRandShort(acceptedMonth)}</button>
                 <div className="mt-1 text-xs opacity-80">{prevName}: {fmtRandShort(acceptedPrev)}{acceptedChange != null && <b className={acceptedChange >= 0 ? " text-[#86EFAC]" : " text-[#FECACA]"}>{acceptedChange >= 0 ? " ▲ " : " ▼ "}{Math.abs(acceptedChange)}%</b>}</div>
               </div>
               <div className="grid grid-cols-2 gap-3 md:flex md:flex-col md:items-end md:text-right">
                 <div data-testid="hero-open">
                   <div className="text-xs opacity-80">
-                    <button type="button" onClick={() => openSheet(counts.open)}>Open quotes</button>
+                    <button type="button" onClick={() => navigate(counts.open.actionHref)}>Open quotes</button>
                     <InfoMark label="How open quotes was counted" onClick={() => openSheet(counts.open)} />
                   </div>
-                  <button type="button" className="text-[26px] font-extrabold leading-none tabular-nums" onClick={() => openSheet(counts.open)}>{fmtRandShort(openTotal)}</button>
+                  <button type="button" className="text-[26px] font-extrabold leading-none tabular-nums" onClick={() => navigate(counts.open.actionHref)}>{fmtRandShort(openTotal)}</button>
                   {draftCount > 0 && <div className="text-xs opacity-80">Drafts not sent: {draftCount}</div>}
                 </div>
                 <div data-testid="hero-outstanding">
                   <div className="text-xs opacity-80">
-                    <button type="button" onClick={() => (moneyReady ? openSheet(counts.owed) : navigate("/admin/invoices?state=unpaid"))}>Owed on unpaid invoices</button>
+                    <button type="button" onClick={() => navigate(moneyReady ? counts.owed.actionHref : "/admin/invoices?state=unpaid")}>Owed on unpaid invoices</button>
                     <InfoMark label="How owed was counted" onClick={() => (moneyReady ? openSheet(counts.owed) : navigate("/admin/invoices?state=unpaid"))} />
                   </div>
-                  <button type="button" className="text-[26px] font-extrabold leading-none tabular-nums" onClick={() => (moneyReady ? openSheet(counts.owed) : navigate("/admin/invoices?state=unpaid"))}>{fmtRandShort(owedTotal)}</button>
+                  <button type="button" className="text-[26px] font-extrabold leading-none tabular-nums" onClick={() => navigate(moneyReady ? counts.owed.actionHref : "/admin/invoices?state=unpaid")}>{fmtRandShort(owedTotal)}</button>
                   <div className="text-xs opacity-80">{owedCount} invoice{owedCount === 1 ? "" : "s"} · all dates →</div>
                 </div>
               </div>
