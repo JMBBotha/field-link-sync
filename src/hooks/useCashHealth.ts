@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { isoDate } from "@/lib/cashflow";
+import { HOUSE_EMBED } from "@/lib/invoiceHouse";
 import { prevPeriod, vatPeriodFor, type CashHealthData, type CfSettings, type Commitment, type Overhead, type Receipt, type StockItem } from "@/lib/cashHealth";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -38,6 +39,23 @@ export type CashHealthActions = {
   resync: () => Promise<void>;
 };
 
+/** Keep the invoice-list Expected chip and the house date on the same day as Expected money in.
+ *  Setting uses the audited due-date call, then the columns the cash-health sync actually reads.
+ *  Clearing drops the manual date so the chip goes back to "on completion". */
+async function shareExpectedFinal(invoiceId: string, date: string | null) {
+  if (date) {
+    const rpc = await db.rpc("set_invoice_due_date", { p_invoice: invoiceId, p_due: date, p_reason: "Expected money in" });
+    if (rpc.error) throw rpc.error;
+    const upd = await db.from("invoices").update({ expected_final_date: date, final_unscheduled: false, due_date_manual: true }).eq("id", invoiceId);
+    if (upd.error) throw upd.error;
+  } else {
+    const upd = await db.from("invoices").update({
+      due_date: null, due_date_source: null, due_date_manual: false, expected_final_date: null, final_unscheduled: true,
+    }).eq("id", invoiceId);
+    if (upd.error) throw upd.error;
+  }
+}
+
 export function useCashHealth(companyId: string | null, enabled: boolean) {
   const qc = useQueryClient();
   const key = useMemo(() => ["cash-health", companyId], [companyId]);
@@ -60,7 +78,7 @@ export function useCashHealth(companyId: string | null, enabled: boolean) {
         eq("cf_overheads").order("sort").order("created_at"),
         eq("cf_bank_accounts").order("sort").order("created_at"),
         eq("cf_bank_balances").order("as_of", { ascending: false }).limit(200),
-        eq("invoices", "id, invoice_number, status, issue_date, tax_amount, grand_total").neq("status", "void"),
+        eq("invoices", `id, invoice_number, status, issue_date, tax_amount, grand_total, due_date, due_date_source, expected_final_date, final_unscheduled, ${HOUSE_EMBED}`).neq("status", "void"),
         db.rpc("cf_vat_actuals", { p_company: companyId, p_from: cur.start, p_to: isoDate(today) }),
         db.rpc("cf_vat_actuals", { p_company: companyId, p_from: prev.start, p_to: prev.end }),
       ]);
@@ -77,7 +95,15 @@ export function useCashHealth(companyId: string | null, enabled: boolean) {
     saveBalance: (account_id, balance, as_of) => run(db.from("cf_bank_balances").insert({ company_id: companyId, account_id, balance, as_of })),
     addAccount: (label, account_ref) => run(db.from("cf_bank_accounts").insert({ company_id: companyId, label, account_ref, sort: 10 })),
     updateAccount: (id, patch) => run(db.from("cf_bank_accounts").update(patch).eq("id", id)),
-    updateReceipt: (id, patch) => run(db.from("cf_receipts").update(patch).eq("id", id)),
+    updateReceipt: async (id, patch) => {
+      if (Object.prototype.hasOwnProperty.call(patch, "expected_date")) {
+        const cur = must(await db.from("cf_receipts").select("invoice_id, part, source").eq("id", id).maybeSingle()) as { invoice_id: string | null; part: string; source: string } | null;
+        if (cur?.invoice_id && cur.source === "field_lynk" && (cur.part === "final" || cur.part === "full")) {
+          await shareExpectedFinal(cur.invoice_id, patch.expected_date ? String(patch.expected_date).slice(0, 10) : null);
+        }
+      }
+      await run(db.from("cf_receipts").update(patch).eq("id", id));
+    },
     addReceipt: (row) => run(db.from("cf_receipts").insert({ ...row, company_id: companyId, source: "manual" })),
     deleteReceipt: (id) => run(db.from("cf_receipts").delete().eq("id", id).eq("source", "manual")),
     updateCommitment: (id, patch) => run(db.from("cf_commitments").update(patch).eq("id", id)),

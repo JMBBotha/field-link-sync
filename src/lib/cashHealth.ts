@@ -1,6 +1,7 @@
 /** Cash-flow health (phase 1): 13-week forecast, health light, runway, VAT periods, per-project cover, alerts.
  *  Pure functions; amounts incl VAT. Rows come from cf_* tables (owner/management only, RLS _cf_ok). */
 import { isoDate, mondayOf } from "@/lib/cashflow";
+import type { HouseSource } from "@/lib/invoiceHouse";
 
 export type CfSettings = {
   company_id: string; enabled: boolean; buffer_mode: "overheads_month" | "fixed"; buffer_amount: number; unit_cost_factor: number;
@@ -24,7 +25,13 @@ export type Allocation = { id: string; stock_item_id: string; commitment_id: str
 export type Overhead = { id: string; name: string; category: string; amount: number; frequency: "weekly" | "monthly" | "annual" | "once"; pay_day: number | null; pay_date: string | null; start_date: string | null; end_date: string | null; active: boolean; sort: number; note: string | null };
 export type BankAccount = { id: string; label: string; account_ref: string | null; include: boolean; sort: number };
 export type BankBalance = { id: string; account_id: string; balance: number; as_of: string; created_at: string };
-export type InvoiceLite = { id: string; invoice_number: string | null; status: string; issue_date: string | null; tax_amount: number; grand_total: number };
+export type InvoiceLite = {
+  id: string; invoice_number: string | null; status: string; issue_date: string | null; tax_amount: number; grand_total: number;
+  /** Embedded project house (invoices.project_house_id). Display only; absent on older callers. */
+  project_house?: HouseSource["project_house"];
+  /** Pencil / house expected final. due_date_source 'manual' is the invoice-list Expected chip. expected_final_date is the payment-schedule date. */
+  due_date?: string | null; due_date_source?: string | null; expected_final_date?: string | null; final_unscheduled?: boolean | null;
+};
 export type VatActuals = { output_invoice: number; output_payment: number; input: number };
 
 export type CashHealthData = {
@@ -35,6 +42,30 @@ export type CashHealthData = {
 
 export const COMMIT_STATUS: Record<CommitStatus, string> = { needed: "Needed", ordered_paid: "Ordered / paid", in_stock: "In stock", installed: "Installed" };
 export const PART_LABEL: Record<Receipt["part"], string> = { deposit: "Deposit", progress: "Progress", final: "Final", full: "Full" };
+
+const dayOnly = (s: string | null | undefined) => (s ? s.slice(0, 10) : null);
+
+/** Expected final already stored on the invoice. The list pencil writes due_date + due_date_source 'manual'.
+ *  The house and payment schedule write expected_final_date. A terms-filled due date is not one of these. */
+export function storedFinalDate(inv: Pick<InvoiceLite, "expected_final_date" | "due_date" | "due_date_source"> | null | undefined): string | null {
+  if (!inv) return null;
+  return dayOnly(inv.expected_final_date) || (inv.due_date_source === "manual" ? dayOnly(inv.due_date) : null);
+}
+
+/** Final and full rows use that stored date, so a final left unscheduled by cash-health sync still shows it.
+ *  Deposit rows keep their own date. Nothing is written. */
+export function applyStoredFinalDates(d: CashHealthData): CashHealthData {
+  const byId = new Map(d.invoices.map((i) => [i.id, i]));
+  let changed = false;
+  const receipts = d.receipts.map((r) => {
+    if (r.status !== "expected" || (r.part !== "final" && r.part !== "full") || !r.invoice_id) return r;
+    const date = storedFinalDate(byId.get(r.invoice_id));
+    if (!date || date === dayOnly(r.expected_date)) return r;
+    changed = true;
+    return { ...r, expected_date: date };
+  });
+  return changed ? { ...d, receipts } : d;
+}
 
 const DAY = 86400000;
 export const parseDate = (s: string) => { const [y, m, d] = s.slice(0, 10).split("-").map(Number); return new Date(y, m - 1, d); };
