@@ -10,8 +10,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { AdminHomeScreen } from "@/components/v8/roleHome/screens";
 import JobsCalmView from "@/components/jobs/calm/JobsCalmView";
-import { ADMIN_HOME_ROUTES, cashProjectionSlices } from "@/lib/roleHome";
-import { countAdminHome, MASSAIR_CT_ID } from "@/lib/adminHomeCount";
+import { ADMIN_HOME_ROUTES } from "@/lib/roleHome";
+import { MASSAIR_CT_ID } from "@/lib/adminHomeCount";
+import { buildYardHome, type YardJob } from "@/lib/yardView";
 import { supabase } from "@/integrations/supabase/client";
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -23,28 +24,43 @@ function Probe() {
   return <div data-testid="loc">{loc.pathname}{loc.search}</div>;
 }
 
-const counts = countAdminHome({
-  companyId: MASSAIR_CT_ID,
-  now: new Date("2026-11-07T15:33:00Z"),
-  invoices: [
-    { id: "draft-1", company_id: MASSAIR_CT_ID, status: "draft", grand_total: 76426.79, invoice_number: "0010016", customer_name: "Sample client" },
-    { id: "sent-1", company_id: MASSAIR_CT_ID, status: "sent", sent_at: "2026-11-01", grand_total: 800, notes: "DEPOSIT", invoice_number: "D", customer_name: "Sample client" },
-  ],
-});
+const NOW = new Date("2026-11-07T15:33:00Z");
 
-function Home({ crew = [] as { id: string; href: string; who: string; type: string; where: string; client: string }[], onInvoice = () => {} }: { crew?: { id: string; href: string; who: string; type: string; where: string; client: string }[]; onInvoice?: () => void }) {
+function job(over: Partial<YardJob> & { id: string }): YardJob {
+  return { company_id: MASSAIR_CT_ID, status: "scheduled", title: "Install", job_type: "installation", customer_name: "Fixture client", ...over };
+}
+
+function model(opts: { jobs?: boolean; invoices?: boolean } = {}) {
+  const withJobs = opts.jobs !== false;
+  const withInvoices = opts.invoices !== false;
+  return buildYardHome({
+    companyId: MASSAIR_CT_ID,
+    now: NOW,
+    invoices: withInvoices ? [
+      { id: "draft-1", company_id: MASSAIR_CT_ID, status: "draft", grand_total: 76426.79, invoice_number: "0010016", customer_name: "Sample client" },
+      { id: "sent-1", company_id: MASSAIR_CT_ID, status: "sent", sent_at: "2026-11-01", grand_total: 800, notes: "DEPOSIT", invoice_number: "D", customer_name: "Sample client", expected_deposit_date: "2026-11-12" },
+    ] : [],
+    jobs: withJobs ? [
+      job({ id: "job-1", scheduled_for: "2026-11-07T06:30:00+02:00", assignee_name: "Tech A" }),
+      job({ id: "done-1", status: "completed", completed_at: "2026-11-07T14:00:00+02:00", customer_name: "Finished today" }),
+    ] : [],
+    bankState: "ready",
+    bank: { accounts: [], balances: [] },
+    booksState: "ready",
+    books: { receipts: [], commitments: [], allocations: [] },
+  });
+}
+
+function Home({ jobs = true, invoices = true, onInvoice = () => {} }: { jobs?: boolean; invoices?: boolean; onInvoice?: () => void }) {
   const navigate = useNavigate();
+  const yard = model({ jobs, invoices });
   return (
     <AdminHomeScreen
       eyebrow="SATURDAY, 07 NOV"
       title="Good afternoon, Johan"
-      invoice={{ count: counts.waiting.count, total: "R76 426,79" }}
-      crew={crew}
-      levels={[{ key: "cu", name: "Copper pipe", detail: "12 in stock", short: null, href: ADMIN_HOME_ROUTES.stock }]}
-      orders={[{ key: "cu", label: "6 m × Copper pipe", detail: "For booked installations", href: ADMIN_HOME_ROUTES.stock }]}
-      slices={cashProjectionSlices(counts)}
-      onSlice={(s) => navigate(s.figure.actionHref)}
-      onSliceInfo={() => {}}
+      companyName="Massair CT (Pty) Ltd"
+      invoice={yard.invoice.count > 0 ? yard.invoice : null}
+      model={yard}
       onReview={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
       onInvoice={onInvoice}
     />
@@ -61,7 +77,17 @@ describe("admin home controls", () => {
     expect(screen.getAllByTestId("jobs-ready-to-invoice")).toHaveLength(1);
     expect(screen.queryByTestId("admin-invoices-waiting")).toBeNull();
     expect(screen.queryByTestId("v8-role-greeting")).toBeNull();
-    expect(screen.getByText("Nothing booked today.")).toBeInTheDocument();
+    expect(screen.getByTestId("yard-bay-on_site")).toHaveAttribute("data-count", "0");
+    expect(screen.getByTestId("yard-bay-on_site").querySelector("img")).toBeNull();
+    expect(screen.getByTestId("yard-van-done")).toBeInTheDocument();
+  });
+
+  it("shows no invoice banner and no vans when nothing is booked or ready", () => {
+    render(<MemoryRouter><Home jobs={false} invoices={false} /></MemoryRouter>);
+    expect(screen.queryByTestId("jobs-ready-to-invoice")).toBeNull();
+    expect(screen.queryByTestId("yard-van-waiting")).toBeNull();
+    expect(screen.queryByTestId("yard-van-on_site")).toBeNull();
+    expect(screen.getByTestId("yard-bay-waiting")).toHaveAttribute("data-count", "0");
   });
 
   it("sends Review & send to the draft list and does not send an invoice", () => {
@@ -81,39 +107,28 @@ describe("admin home controls", () => {
     expect(counted).toHaveStyle({ width: "18px", height: "18px", minHeight: "18px", maxHeight: "18px" });
     expect(counted.className).toContain("rounded-full");
     expect(counted.className).toContain("font-bold");
+    expect(counted.className).toContain("not-italic");
     expect(counted.className.split(/\s+/)).not.toContain("italic");
-    for (const name of ["How Deposits due was counted", "How Finals due was counted", "How Waiting to send was counted"]) {
-      const mark = screen.getByRole("button", { name });
-      expect(mark).toHaveAttribute("data-no-min");
-      expect(mark).toHaveStyle({ width: "18px", height: "18px" });
-      expect(mark.className.split(/\s+/)).not.toContain("italic");
-    }
     fireEvent.click(counted);
     expect(onInvoice).toHaveBeenCalledTimes(1);
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
-  it("opens jobs, the map, stock, and a booked job from the cards", () => {
+  it("opens the yard jobs, book-a-job, and the deposit invoices from the home", () => {
     render(
       <MemoryRouter>
-        <Home crew={[{ id: "job-1", href: "/admin/jobs/job-1", who: "Tech A", type: "Installation", where: "Claremont", client: "Fixture client" }]} />
+        <Home />
         <Probe />
       </MemoryRouter>,
     );
-    expect(screen.getByTestId("today-jobs-heading")).toHaveAttribute("href", "/admin/jobs");
-    expect(screen.getByTestId("who-is-where")).toHaveAttribute("href", "/admin/map");
     expect(screen.getByTestId("book-today-job")).toHaveAttribute("href", "/admin/jobs?new=1");
-    expect(screen.getByTestId("admin-today-job")).toHaveAttribute("href", "/admin/jobs/job-1");
-    expect(screen.getByTestId("stock-levels-heading")).toHaveAttribute("href", "/admin/cash-health?tab=stock");
-    expect(screen.getByTestId("stock-orders-heading")).toHaveAttribute("href", "/admin/cash-health?tab=stock");
-    expect(screen.getByTestId("stock-level")).toHaveAttribute("href", "/admin/cash-health?tab=stock");
-    expect(screen.getByTestId("stock-order")).toHaveAttribute("href", "/admin/cash-health?tab=stock");
-    expect(screen.getByTestId("cash-flow-heading")).toHaveAttribute("href", "/admin/cash-health");
-    expect(screen.getByTestId("cash-slice-waiting")).toBeInTheDocument();
-    expect(screen.getByTestId("cash-slice-deposit")).toBeInTheDocument();
-    expect(screen.getByTestId("cash-slice-final")).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("cash-slice-deposit"));
-    expect(screen.getByTestId("loc")).toHaveTextContent("/admin/invoices?money=deposits_due");
+    fireEvent.click(screen.getByTestId("yard-bay-waiting"));
+    expect(screen.getByTestId("yard-job-job-1")).toHaveAttribute("href", "/admin/jobs/job-1");
+    expect(screen.getByTestId("yard-job-job-1")).toHaveTextContent("Fixture client");
+    fireEvent.click(screen.getByTestId("money-deposits"));
+    expect(screen.getByTestId("yard-money-line-sent-1")).toHaveAttribute("href", "/admin/invoices/sent-1");
+    expect(screen.getByTestId("money-date-deposits")).toHaveTextContent("Expected 12 Nov");
+    expect(screen.getByTestId("yard-money-panel").querySelector("a[href='/admin/invoices?money=deposits_due']")).toBeTruthy();
   });
 });
 

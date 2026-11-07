@@ -240,7 +240,7 @@ export function useAdminHomeFigures(companyId: string | null | undefined) {
     queryFn: async (): Promise<AdminHomeSource> => {
       const start = jobQueryStart(new Date());
       const { data: invoices, error } = await (supabase.from("invoices") as any)
-        .select("id, company_id, status, grand_total, notes, sent_at, archived_at, customer_name, invoice_number, quote_id, created_at")
+        .select("id, company_id, status, grand_total, notes, sent_at, archived_at, customer_name, invoice_number, quote_id, created_at, due_date, due_date_manual, due_date_source, expected_deposit_date, expected_final_date, final_unscheduled, issue_date")
         .eq("company_id", companyId)
         .limit(2000);
       if (error) throw error;

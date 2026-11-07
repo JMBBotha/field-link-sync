@@ -89,6 +89,14 @@ export interface HomeInvoice {
   /** Present on some rows. Ignored: never subtracted. */
   call_out_excl_vat?: number | null;
   created_at?: string | null;
+  /** Stored payment dates. The yard view reads these; counting ignores them. */
+  due_date?: string | null;
+  due_date_manual?: boolean | null;
+  due_date_source?: string | null;
+  expected_deposit_date?: string | null;
+  expected_final_date?: string | null;
+  final_unscheduled?: boolean | null;
+  issue_date?: string | null;
 }
 
 export interface HomePayment {

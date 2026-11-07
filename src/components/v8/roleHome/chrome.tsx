@@ -144,7 +144,7 @@ export function InvoiceBanner({
           {count} · {total} <span className="text-[13px] font-semibold">incl. VAT</span>
         </button>
       </div>
-      <button type="button" data-testid="jobs-ready-review" onClick={onReview} className="min-h-[44px] rounded-[10px] bg-[#9A3412] px-5 text-[16px] font-bold text-white ring-2 ring-white/70 hover:bg-[#7C2D12]">Review &amp; send</button>
+      <button type="button" data-testid="jobs-ready-review" onClick={onReview} className="ml-auto min-h-[44px] rounded-[10px] bg-[#9A3412] px-5 text-[16px] font-bold text-white ring-2 ring-white/70 hover:bg-[#7C2D12]">Review &amp; send</button>
     </section>
   );
 }
