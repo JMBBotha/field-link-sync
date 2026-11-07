@@ -25,7 +25,7 @@ export default function NewAdminHeader({ pageTitle, onMenu, onSearch, onCreateLe
   const twoRow = isSalesRep; // sales gets the availability strip on phones
   const ghost = "text-white/90 hover:bg-white/10 hover:text-white";
   return (
-    <header data-testid="v7-header" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }} className="shrink-0 border-b z-20 v8-bar-hdr bg-[var(--v8-bar)] border-[var(--v8-bar-bd)] dark:bg-[#0b1a2e] dark:border-white/10">
+    <header data-testid="v7-header" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }} className="v8-bar-over-halo shrink-0 border-b z-20 v8-bar-hdr bg-[var(--v8-bar)] border-[var(--v8-bar-bd)] dark:bg-[#0b1a2e] dark:border-white/10">
       <div className="h-14 flex items-center gap-2 px-2 sm:px-4">
       <BackButton />
       <Button variant="ghost" size="icon" onClick={onMenu} className={`lg:hidden shrink-0 h-9 w-9 ${ghost}`} aria-label="Menu"><Menu className="h-5 w-5" /></Button>

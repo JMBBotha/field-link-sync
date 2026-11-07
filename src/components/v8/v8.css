@@ -130,3 +130,75 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 /* UI polish 3/5: 24px checkboxes in 44px rows (quote pop-up) */
 .fl-check-lg { min-height: 44px; align-items: center; }
 .fl-check-lg input[type="checkbox"] { width: 24px; height: 24px; flex-shrink: 0; accent-color: var(--fl-primary, #C2410C); }
+
+/* Approved richer-halo side menu (option 5). Opaque chrome blue under a luminous
+   inner-edge glow and a deeper bottom. The phone drawer does not use this class. */
+.v8-richer-halo {
+  background-color: #3D9BEB;
+  background-image: radial-gradient(ellipse 125px 500px at 100% 35%, rgba(255,255,255,.27), transparent 100%), linear-gradient(180deg, transparent, rgba(0,0,0,.13));
+  color: #fff;
+}
+.v8-richer-halo .v8-side { background: transparent; color: #fff; }
+.v8-halo-mark { display: none; }
+.v8-richer-halo .v8-halo-mark { display: block; padding: 7px 2px 12px; }
+.v8-richer-halo .v8-logo-light,
+.v8-richer-halo .v8-logo-dark,
+.dark .v8-richer-halo .v8-logo-light,
+.dark .v8-richer-halo .v8-logo-dark { display: none !important; }
+.v8-mark { font-size: 16px; line-height: 20px; font-weight: 700; color: #fff; }
+.v8-mark-sync { display: block; margin-top: 3px; font-size: 9px; line-height: 12px; letter-spacing: 2px; font-weight: 700; color: rgba(255,255,255,.72); }
+.v8-richer-halo .v8-nav {
+  min-height: 43px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(255,255,255,.94);
+  opacity: 1;
+}
+.v8-richer-halo .v8-nav:hover,
+.v8-richer-halo .v8-sub:hover,
+.v8-richer-halo .v8-group:hover { background: rgba(255,255,255,.12); color: #fff; opacity: 1; }
+.v8-richer-halo .v8-nav.is-active,
+.dark .v8-richer-halo .v8-nav.is-active,
+.v8-richer-halo .v8-side-item.is-active {
+  background: rgba(255,255,255,.26);
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 14px;
+  color: #fff;
+  font-weight: 500;
+  opacity: 1;
+}
+.v8-richer-halo .v8-sub,
+.v8-richer-halo .v8-group,
+.v8-richer-halo .v8-side-search { color: rgba(255,255,255,.94); opacity: 1; }
+.v8-richer-halo .v8-sub.is-active,
+.dark .v8-richer-halo .v8-sub.is-active,
+.v8-richer-halo .v8-group.has-active,
+.dark .v8-richer-halo .v8-group.has-active { color: #fff; font-weight: 500; background: rgba(255,255,255,.26); border-radius: 14px; }
+.v8-richer-halo .v8-eyebrow { color: rgba(255,255,255,.72); }
+.v8-richer-halo .v8-user { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.28); color: #fff; }
+.v8-richer-halo .v8-av { background: rgba(255,255,255,.26); color: #fff; }
+.v8-richer-halo .text-nav-muted { color: rgba(255,255,255,.84); }
+.v8-richer-halo kbd { color: #fff; border-color: rgba(255,255,255,.4); }
+.v8-side-search { color: var(--v8-mu); }
+/* Harness tablet menu: same halo, sketch spacing (155px, brand, then the nav). */
+.v8-role-side { width: 155px; flex-shrink: 0; min-height: 100%; position: relative; }
+.v8-role-side .v8-mark { position: absolute; left: 18px; top: 23px; }
+.v8-role-side .v8-mark-sync { position: absolute; left: 18px; top: 46px; margin-top: 0; }
+.v8-role-side nav { position: absolute; left: 8px; right: 8px; top: 76px; display: flex; flex-direction: column; gap: 8px; }
+.v8-side-item {
+  height: 43px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 400;
+  color: rgba(255,255,255,.94);
+}
+/* Full-width v8 bar sits on the halo. Same #3D9BEB, so the join has no darker rule. */
+.v8-bar-hdr.v8-bar-over-halo,
+.dark .v8-bar-hdr.v8-bar-over-halo { border-bottom-color: #3D9BEB !important; }
