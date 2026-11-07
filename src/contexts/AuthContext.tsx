@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useRef, ReactNode } fro
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { redirectIfPasswordMissing } from '@/lib/invitePassword';
+import { restoreStartupSession } from '@/lib/startupSession';
 
 interface AuthContextValue {
   session: Session | null;
@@ -22,13 +23,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializedRef.current = true;
 
     let isMounted = true;
+    const stillMounted = () => isMounted;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!isMounted) return;
+    const applySession = (session: Session | null) => {
+      if (!stillMounted()) return;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+    };
+
+    // Give up if storage or token refresh never settles, and leave this device unsigned.
+    // Do not call signOut: the default scope revokes every device, and signOut itself waits on the same startup.
+    const pending = supabase.auth.getSession();
+    void restoreStartupSession(() => pending).then((result) => {
+      if (!stillMounted()) return;
+      if (result.error) console.error("[auth] session restore failed:", result.error);
+      applySession(result.session);
     });
+    // A restore that finishes after the timeout still signs this device in. It does not touch other devices.
+    void pending.then(({ data: { session } }) => {
+      if (session) applySession(session);
+    }).catch(() => { /* restoreStartupSession already reported the rejection */ });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
@@ -36,11 +51,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (_event === "PASSWORD_RECOVERY" && window.location.pathname !== "/set-password") window.location.replace("/set-password");
         if (!session && _event !== "SIGNED_OUT" && _event !== "INITIAL_SESSION") {
           // No session without an explicit sign-out (e.g. mid token refresh): check again, don't log out
-          supabase.auth.getSession().then(({ data: { session: s } }) => {
-            if (!isMounted) return;
-            setSession(s);
-            setUser(s?.user ?? null);
-            setLoading(false);
+          void restoreStartupSession(() => supabase.auth.getSession()).then((result) => {
+            if (!stillMounted()) return;
+            applySession(result.session);
           });
           return;
         }

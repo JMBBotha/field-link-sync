@@ -46,9 +46,12 @@ export function useSalesHeartbeat(enabled = true) {
     },
   });
   // Live: new / changed leads refresh at once (realtime), everything else every minute.
+  // HotLeadBanner and SalesHeartbeat both subscribe. A shared topic is already
+  // joined by the first caller, and a second `.on()` after subscribe() throws
+  // and the home error screen replaces the page.
   useEffect(() => {
     if (!on) return;
-    const ch = supabase.channel("hb-leads").on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => qc.invalidateQueries({ queryKey: ["sales-heartbeat"] })).subscribe();
+    const ch = supabase.channel(`hb-leads-${Math.random().toString(36).slice(2)}`).on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => qc.invalidateQueries({ queryKey: ["sales-heartbeat"] })).subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [on, qc]);
   const [now, setNow] = useState(Date.now());
