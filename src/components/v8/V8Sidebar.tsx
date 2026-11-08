@@ -94,6 +94,10 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
   const body = (
     <div className="v8-side flex h-full flex-col" data-testid="v8-sidebar" data-role={role}>
       <div className="px-4 pt-4">
+        <div className="v8-halo-mark" data-testid="v8-halo-mark">
+          <div className="v8-mark">Field Lynk</div>
+          <div className="v8-mark-sync">SYNC</div>
+        </div>
         <img src={logoWhite} alt="0800-BE-COOL! AC Super Service" className="v8-logo-dark w-full max-w-[170px] h-auto" />
         <img src={logoCard} alt="0800-BE-COOL! AC Super Service" className="v8-logo-light w-full max-w-[170px] h-auto rounded-xl" />
         <div className="mt-2 truncate text-sm font-bold" data-testid="v8-company">{company}</div>
@@ -199,7 +203,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
         )}
         {onSearch && (
           <button type="button" data-testid="v8-side-search" onClick={() => { onSearch(); onMobileClose?.(); }}
-            className="v8-user mb-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm" style={{ color: "var(--v8-mu)" }}>
+            className="v8-user v8-side-search mb-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm">
             <Search className="h-4 w-4 shrink-0" /><span className="flex-1 truncate">Search clients, jobs, quotes…</span>
             <kbd className="hidden lg:inline rounded border px-1.5 text-[10px] v8-border">⌘K</kbd>
           </button>
@@ -212,7 +216,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
 
   return (
     <>
-      <aside className="hidden lg:block w-[232px] shrink-0 border-r v8-border">{body}</aside>
+      <aside className="v8-richer-halo hidden lg:block h-full w-[232px] shrink-0" data-testid="v8-sidebar-halo">{body}</aside>
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/35" onClick={onMobileClose} />

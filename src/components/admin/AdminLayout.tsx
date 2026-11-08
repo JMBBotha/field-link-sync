@@ -234,7 +234,11 @@ const AdminLayout = () => {
 
 
   return (
-    <div className="app-surface flex h-screen h-[100dvh] overflow-hidden">
+    <div className="app-surface flex h-screen h-[100dvh] flex-col overflow-hidden">
+      {!isClassic && (
+        <NewAdminHeader pageTitle={pageTitle} onMenu={() => setMobileMenuOpen(true)} onSearch={() => setSearchOpen(true)} onCreateLead={() => setShowCreateLead(true)} resolvedTheme={resolvedTheme} toggleTheme={toggleTheme} />
+      )}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
       <SidebarC
         onSearch={() => setSearchOpen(true)}
         onCreateLead={() => setShowCreateLead(true)}
@@ -245,9 +249,7 @@ const AdminLayout = () => {
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {!isClassic ? (
-          <NewAdminHeader pageTitle={pageTitle} onMenu={() => setMobileMenuOpen(true)} onSearch={() => setSearchOpen(true)} onCreateLead={() => setShowCreateLead(true)} resolvedTheme={resolvedTheme} toggleTheme={toggleTheme} />
-        ) : (
+        {isClassic && (
         <header style={{ paddingTop: "env(safe-area-inset-top, 0px)" }} className="v8-bar-hdr box-content shrink-0 h-14 border-b flex items-center justify-between px-2 sm:px-4 gap-2 z-20 bg-[var(--v8-bar)] dark:bg-gradient-to-r dark:from-[#070e1a] dark:via-[#153258]/90 dark:to-[#070e1a] border-[var(--v8-bar-bd)] dark:border-[#153258]">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <BackButton />
@@ -366,6 +368,7 @@ const AdminLayout = () => {
           <VanDriveBy />
         </div>
         <BottomNavC onOpenMenu={() => setMobileMenuOpen(true)} />
+      </div>
       </div>
 
 
