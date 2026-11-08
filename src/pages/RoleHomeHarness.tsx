@@ -55,19 +55,20 @@ const yard = buildYardHome({
   now: HARNESS_NOW,
   invoices: harnessInvoices,
   jobs: [
-    harnessJob({ id: "leave-1", customer_name: "Demo client A", scheduled_for: "2026-11-07T06:30:00+02:00", assignee_name: "Tech A" }),
-    harnessJob({ id: "leave-2", customer_name: "Demo client B", scheduled_for: "2026-11-07T08:00:00+02:00", assignee_name: "Tech B", job_type: "service", title: "Service" }),
-    harnessJob({ id: "road-1", customer_name: "Demo client C", status: "dispatched", en_route_at: "2026-11-07T07:10:00+02:00", scheduled_for: "2026-11-07T07:00:00+02:00", assignee_name: "Tech A" }),
-    harnessJob({ id: "done-1", customer_name: "Demo client D", status: "completed", completed_at: "2026-11-07T09:00:00+02:00", scheduled_for: "2026-11-07T05:00:00+02:00", assignee_name: "Tech B" }),
+    harnessJob({ id: "leave-1", customer_name: "Demo client A", scheduled_for: "2026-11-07T06:30:00+02:00", assignee_name: "Tech A", address: "24 Demo Lane, Claremont" }),
+    harnessJob({ id: "leave-2", customer_name: "Demo client B", scheduled_for: "2026-11-07T08:00:00+02:00", assignee_name: "Tech B", job_type: "service", title: "Service", address: "1 Demo Road, Observatory" }),
+    harnessJob({ id: "road-1", customer_name: "Demo client C", status: "dispatched", en_route_at: "2026-11-07T07:10:00+02:00", scheduled_for: "2026-11-07T07:00:00+02:00", assignee_name: "Tech A", address: "8 Demo Street, Sea Point" }),
+    harnessJob({ id: "done-1", customer_name: "Demo client D", status: "completed", completed_at: "2026-11-07T09:00:00+02:00", scheduled_for: "2026-11-07T05:00:00+02:00", assignee_name: "Tech B", address: "3 Demo Avenue, Wynberg" }),
   ],
   leads: [
-    { id: "n1", company_id: DEMO, status: "pending", customer_name: "New demo", primary_intent: "sales" },
-    { id: "n2", company_id: DEMO, status: "pending", customer_name: "New demo 2", primary_intent: "sales" },
+    { id: "n1", company_id: DEMO, status: "pending", customer_name: "Demo Client 1", primary_intent: "sales", service_type: "installation" },
+    { id: "n2", company_id: DEMO, status: "pending", customer_name: "Demo Client 2", primary_intent: "sales", service_type: "service" },
   ],
   quotes: [
-    { id: "qd", company_id: DEMO, status: "draft", total: 1000, created_at: "2026-11-01", customer_name: "Draft demo", quote_number: "D-1" },
-    { id: "qs", company_id: DEMO, status: "sent", total: 2000, created_at: "2026-11-01", sent_at: "2026-11-02", customer_name: "Sent demo", quote_number: "S-1" },
+    { id: "qd", company_id: DEMO, status: "draft", total: 1000, created_at: "2026-11-01", customer_name: "Demo Client 3", quote_number: "D-1", lead_id: "lead-3" },
+    { id: "qs", company_id: DEMO, status: "sent", total: 2000, created_at: "2026-11-01", sent_at: "2026-11-02", customer_name: "Demo Client 4", quote_number: "S-1", lead_id: "lead-4" },
   ],
+  leadService: { "lead-3": "installation", "lead-4": "repair" },
   bankState: "ready",
   bank: {
     accounts: [{ id: "a", label: "Demo current", account_ref: null, include: true, sort: 1 }],

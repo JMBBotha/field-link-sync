@@ -18,7 +18,7 @@ function customerName(row: { customers?: { name?: string | null } | { name?: str
   return name || null;
 }
 
-const JOB_COLS = "id, company_id, job_type, title, status, scheduled_for, started_at, completed_at, en_route_at, created_at, created_by, customers(name), assignments(status, created_at, profiles!assignments_profile_id_fkey(full_name))";
+const JOB_COLS = "id, company_id, job_type, title, status, scheduled_for, started_at, completed_at, en_route_at, created_at, created_by, address, customers(name), assignments(status, created_at, profiles!assignments_profile_id_fkey(full_name))";
 
 function asJob(row: Record<string, unknown>): YardJob {
   return {
@@ -33,6 +33,7 @@ function asJob(row: Record<string, unknown>): YardJob {
     en_route_at: (row.en_route_at as string | null) ?? null,
     created_at: (row.created_at as string | null) ?? null,
     created_by: (row.created_by as string | null) ?? null,
+    address: (row.address as string | null) ?? null,
     customer_name: customerName(row as { customers?: { name?: string | null } | null }),
     assignee_name: assigneeName(row.assignments as Parameters<typeof assigneeName>[0]),
   };
@@ -60,7 +61,7 @@ async function loadJobs(companyId: string): Promise<{ jobs: YardJob[]; presence:
   return { jobs: [...merged.values()], presence };
 }
 
-async function loadSales(companyId: string): Promise<{ leads: YardLead[]; quotes: HomeQuote[]; quoteJobs: { quote_id: string | null; status: string | null; company_id: string; created_at?: string | null }[]; leadIntent: Record<string, string | null> }> {
+async function loadSales(companyId: string): Promise<{ leads: YardLead[]; quotes: HomeQuote[]; quoteJobs: { quote_id: string | null; status: string | null; company_id: string; created_at?: string | null }[]; leadIntent: Record<string, string | null>; leadService: Record<string, string | null> }> {
   const [quotesRes, leadsRes, jobsRes] = await Promise.all([
     db.from("quotes").select("id, company_id, status, total, created_at, sent_at, viewed_at, accepted_at, declined_at, updated_at, valid_until, lead_id, quote_number, customer_name, archived_at, option_group_id, option_label, option_chosen_id").eq("company_id", companyId).is("archived_at", null).neq("status", "superseded").limit(1000),
     db.from("leads").select("id, company_id, status, customer_name, primary_intent, service_type, deleted_at, merged_into_id").eq("company_id", companyId).eq("status", "pending").is("deleted_at", null).is("merged_into_id", null).limit(1000),
@@ -72,16 +73,20 @@ async function loadSales(companyId: string): Promise<{ leads: YardLead[]; quotes
   const quotes = (quotesRes.data || []) as HomeQuote[];
   const leadIds = [...new Set(quotes.map((quote) => quote.lead_id).filter((id): id is string => !!id))];
   let leadIntent: Record<string, string | null> = {};
+  let leadService: Record<string, string | null> = {};
   if (leadIds.length) {
-    const intentRes = await db.from("leads").select("id, primary_intent, company_id").eq("company_id", companyId).in("id", leadIds);
+    const intentRes = await db.from("leads").select("id, primary_intent, service_type, company_id").eq("company_id", companyId).in("id", leadIds);
     if (intentRes.error) throw intentRes.error;
-    leadIntent = Object.fromEntries(((intentRes.data || []) as { id: string; primary_intent: string | null }[]).map((row) => [row.id, row.primary_intent]));
+    const rows = (intentRes.data || []) as { id: string; primary_intent: string | null; service_type: string | null }[];
+    leadIntent = Object.fromEntries(rows.map((row) => [row.id, row.primary_intent]));
+    leadService = Object.fromEntries(rows.map((row) => [row.id, row.service_type]));
   }
   return {
     leads: (leadsRes.data || []) as YardLead[],
     quotes,
     quoteJobs: (jobsRes.data || []) as { quote_id: string | null; status: string | null; company_id: string; created_at?: string | null }[],
     leadIntent,
+    leadService,
   };
 }
 
@@ -142,6 +147,7 @@ export function useYardHome(companyId: string | null | undefined, source: AdminH
       quotes: sales.data?.quotes || [],
       quoteJobs: sales.data?.quoteJobs || [],
       leadIntent: sales.data?.leadIntent || {},
+      leadService: sales.data?.leadService || {},
       bank: books.data ? { accounts: books.data.accounts, balances: books.data.balances } : null,
       bankState,
       books: books.data ? { receipts: books.data.receipts, commitments: books.data.commitments, allocations: books.data.allocations } : null,

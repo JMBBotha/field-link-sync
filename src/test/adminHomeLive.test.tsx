@@ -12,8 +12,8 @@ import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { AdminHomeScreen } from "@/components/v8/roleHome/screens";
 import JobsCalmView from "@/components/jobs/calm/JobsCalmView";
 import { ADMIN_HOME_ROUTES, cashProjectionSlices } from "@/lib/roleHome";
-import { countAdminHome, MASSAIR_CT_ID, type HomeInvoice } from "@/lib/adminHomeCount";
-import { buildYardHome, type YardJob } from "@/lib/yardView";
+import { countAdminHome, MASSAIR_CT_ID, type HomeInvoice, type HomeQuote } from "@/lib/adminHomeCount";
+import { buildYardHome, type YardJob, type YardLead } from "@/lib/yardView";
 import { supabase } from "@/integrations/supabase/client";
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -32,12 +32,14 @@ const draftAndDeposit: HomeInvoice[] = [
   { id: "sent-1", company_id: MASSAIR_CT_ID, status: "sent", sent_at: "2026-11-01", grand_total: 800, notes: "DEPOSIT", invoice_number: "D", customer_name: "Sample client", expected_deposit_date: "2026-11-12" },
 ];
 
-function moneyFor(invoices: HomeInvoice[], jobs: YardJob[] = []) {
+function moneyFor(invoices: HomeInvoice[], jobs: YardJob[] = [], leads: YardLead[] = [], quotes: HomeQuote[] = []) {
   return buildYardHome({
     companyId: MASSAIR_CT_ID,
     now: NOW,
     invoices,
     jobs,
+    leads,
+    quotes,
     bankState: "ready",
     bank: {
       accounts: [{ id: "a", label: "Current", account_ref: null, include: true, sort: 1 }],
@@ -52,16 +54,20 @@ function Home({
   crew = [] as { id: string; href: string; who: string; type: string; where: string; client: string }[],
   invoices = draftAndDeposit,
   jobs = [] as YardJob[],
+  leads = [] as YardLead[],
+  quotes = [] as HomeQuote[],
   onInvoice = () => {},
 }: {
   crew?: { id: string; href: string; who: string; type: string; where: string; client: string }[];
   invoices?: HomeInvoice[];
   jobs?: YardJob[];
+  leads?: YardLead[];
+  quotes?: HomeQuote[];
   onInvoice?: () => void;
 }) {
   const navigate = useNavigate();
   const counts = countAdminHome({ companyId: MASSAIR_CT_ID, now: NOW, invoices });
-  const yard = moneyFor(invoices, jobs);
+  const yard = moneyFor(invoices, jobs, leads, quotes);
   return (
     <AdminHomeScreen
       eyebrow="SATURDAY, 07 NOV"
@@ -108,6 +114,12 @@ describe("admin home controls", () => {
     expect(screen.queryByTestId("yard-van-waiting")).toBeNull();
     expect(screen.getByTestId("yard-bay-on_site")).toHaveAttribute("data-count", "0");
     expect(screen.getByTestId("yard-bay-on_site").querySelector("img")).toBeNull();
+    const leads = screen.getByTestId("open-leads-section");
+    const doing = screen.getByTestId("jobs-being-done-section");
+    expect(work.compareDocumentPosition(leads) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(leads.compareDocumentPosition(doing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId("open-leads-empty")).toHaveTextContent("There are no open leads.");
+    expect(screen.getByTestId("jobs-being-done-empty")).toHaveTextContent("There are no jobs being done today.");
     const homePage = readFileSync("src/pages/admin/AdminHomePage.tsx", "utf8");
     expect(homePage).not.toContain("dashboard-layout-switch");
     expect(homePage).not.toContain("Switch to classic view");
@@ -258,6 +270,40 @@ describe("admin home controls", () => {
     expect(van.style.width).toBe("118px");
     fireEvent.click(screen.getByTestId("yard-bay-waiting"));
     expect(screen.getByTestId("yard-job-leave")).toHaveAttribute("href", "/admin/jobs/leave");
+    const doing = screen.getByTestId("jobs-being-done-section");
+    expect(screen.getByTestId("work-in-motion").compareDocumentPosition(doing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(doing).toHaveTextContent("Harbour");
+    expect(doing).toHaveTextContent("Installation");
+    expect(doing).toHaveTextContent("Waiting to leave");
+    expect(screen.getByTestId("jobs-being-done-row")).toHaveAttribute("href", "/admin/jobs/leave");
+  });
+
+  it("lists open leads under the yard picture with stage, type, and quote", () => {
+    render(
+      <MemoryRouter>
+        <Home
+          leads={[
+            { id: "n1", company_id: MASSAIR_CT_ID, status: "pending", customer_name: "Demo Client 1", primary_intent: "sales", service_type: "installation" },
+          ]}
+          quotes={[
+            { id: "qd", company_id: MASSAIR_CT_ID, status: "draft", total: 1000, created_at: "2026-11-01", customer_name: "Demo Client 3", quote_number: "D-1", lead_id: "lead-3" },
+          ]}
+        />
+      </MemoryRouter>,
+    );
+    const section = screen.getByTestId("open-leads-section");
+    expect(screen.getByTestId("work-in-motion").compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId("open-leads-count")).toHaveTextContent("2");
+    const rows = screen.getAllByTestId("open-lead-row");
+    expect(rows[0]).toHaveTextContent("Demo Client 1");
+    expect(rows[0]).toHaveTextContent("New lead");
+    expect(rows[0]).toHaveTextContent("Installation");
+    expect(rows[0]).toHaveAttribute("href", "/admin/dispatch?lead=n1");
+    expect(rows[1]).toHaveTextContent("Demo Client 3");
+    expect(rows[1]).toHaveTextContent("Quoting");
+    expect(rows[1]).toHaveTextContent("D-1");
+    expect(rows[1]).toHaveTextContent("R1 000");
+    expect(rows[1]).toHaveAttribute("href", "/admin/estimates/qd");
   });
 });
 

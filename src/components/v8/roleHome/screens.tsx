@@ -326,6 +326,43 @@ function CompanyGreeting({ eyebrow, title, companyName }: { eyebrow: string; tit
   );
 }
 
+function FollowOnLists({ model }: { model: YardHomeModel }) {
+  const jobs = model.stages.flatMap((stage) => stage.jobs);
+  return (
+    <>
+      <Glass testId="open-leads-section">
+        <div className="rh-head">
+          <h2>Open leads</h2>
+          <span className="rh-count" data-testid="open-leads-count">{model.openLeadRows.length}</span>
+        </div>
+        {model.openLeadRows.length === 0 && <p className="rh-muted" data-testid="open-leads-empty">There are no open leads.</p>}
+        {model.openLeadRows.map((row) => (
+          <RowLink key={row.id} to={row.href} testId="open-lead-row">
+            <b>{row.customer}</b>
+            <div className="rh-muted">{row.stage}{row.typeLabel ? ` · ${row.typeLabel}` : ""}</div>
+            {(row.quoteRef || row.amountLabel) && <div className="rh-muted">{[row.quoteRef, row.amountLabel].filter(Boolean).join(" · ")}</div>}
+          </RowLink>
+        ))}
+      </Glass>
+      <Glass testId="jobs-being-done-section">
+        <div className="rh-head">
+          <h2>Jobs being done</h2>
+          <span className="rh-count" data-testid="jobs-being-done-count">{jobs.length}</span>
+        </div>
+        {jobs.length === 0 && <p className="rh-muted" data-testid="jobs-being-done-empty">There are no jobs being done today.</p>}
+        {jobs.map((job) => (
+          <RowLink key={job.id} to={job.href} testId="jobs-being-done-row">
+            <b>{job.customer} · {job.type}</b>
+            {job.area && <div className="rh-muted">{job.area}</div>}
+            <div className="rh-muted">{job.when} · {job.assignee}</div>
+            <div className="rh-muted">{job.status}</div>
+          </RowLink>
+        ))}
+      </Glass>
+    </>
+  );
+}
+
 function scrollToWork(event: { preventDefault: () => void }) {
   const el = document.getElementById("work-in-motion");
   if (!el) return;
@@ -415,6 +452,7 @@ export function AdminHomeScreen({
         <CashPie slices={slices} onOpen={onSlice} onInfo={onSliceInfo} />
       </div>
       {model && <YardWork model={model} yardPageHref={ADMIN_HOME_ROUTES.yard} />}
+      {model && <FollowOnLists model={model} />}
     </div>
   );
 }
