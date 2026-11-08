@@ -27,7 +27,7 @@ describe("admin home routes", () => {
     expect(counts.waiting.actionLabel).toBe("Review & send");
     expect(counts.waiting.actionHref).toBe(ADMIN_HOME_ROUTES.reviewSend);
     expect(ADMIN_HOME_ROUTES.reviewSend).toBe("/admin/invoices?state=draft");
-    for (const path of [ADMIN_HOME_ROUTES.jobs, ADMIN_HOME_ROUTES.map, "/admin/invoices", ADMIN_HOME_ROUTES.stock, ADMIN_HOME_ROUTES.cash, "/admin/schedule"]) {
+    for (const path of [ADMIN_HOME_ROUTES.jobs, ADMIN_HOME_ROUTES.map, "/admin/invoices", ADMIN_HOME_ROUTES.stock, ADMIN_HOME_ROUTES.cash, ADMIN_HOME_ROUTES.yard, "/admin/schedule"]) {
       const leaf = path.split("?")[0].replace(/^\/admin\//, "");
       expect(app.includes(`path="${path.split("?")[0]}"`) || app.includes(`path="${leaf}"`), path).toBe(true);
     }

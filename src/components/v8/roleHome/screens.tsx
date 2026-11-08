@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import type { MaterialCheck, MaterialLine } from "@/lib/materialCheck";
+import type { MaterialCheck, MaterialLine, StockLevel, StockOrder } from "@/lib/materialCheck";
 import { checkSummary } from "@/lib/materialCheck";
+import type { CashSlice } from "@/lib/roleHome";
+import { ADMIN_HOME_ROUTES } from "@/lib/roleHome";
 import type { YardHomeModel } from "@/lib/yardView";
-import { Chip, Glass, IntroCard, InvoiceBanner, RowLink } from "./chrome";
-import { YardHome } from "./YardHome";
+import { CashPie, Chip, Glass, IntroCard, InvoiceBanner, RowLink } from "./chrome";
+import { YardHome, YardMoneyStrip, YardWork } from "./YardHome";
+
+const quietLink = { color: "inherit", textDecoration: "none" } as const;
 
 export interface HomeJob {
   id: string;
@@ -33,6 +37,15 @@ export interface BookedJob {
   client: string;
   area: string;
   tech?: string | null;
+}
+
+export interface TodayCrew {
+  id: string;
+  href: string;
+  who: string;
+  type: string;
+  where: string;
+  client: string;
 }
 
 function SummaryChip({ check }: { check: MaterialCheck | null }) {
@@ -296,7 +309,156 @@ export function SalesJobScreen(props: {
   );
 }
 
+function CompanyGreeting({ eyebrow, title, companyName }: { eyebrow: string; title: string; companyName?: string | null }) {
+  return (
+    <Glass as="div" tone="warm" className="rh-intro" radius={17} testId="role-greeting">
+      <div className="yard-greet">
+        <div>
+          <div className="rh-eyebrow">{eyebrow}</div>
+          <h1>{title}</h1>
+        </div>
+        <div className="yard-co">
+          {companyName ? <b>{companyName}</b> : null}
+          <span>Company overview</span>
+        </div>
+      </div>
+    </Glass>
+  );
+}
+
+function FollowOnLists({ model }: { model: YardHomeModel }) {
+  const jobs = model.stages.flatMap((stage) => stage.jobs);
+  return (
+    <>
+      <Glass testId="open-leads-section">
+        <div className="rh-head">
+          <h2>Open leads</h2>
+          <span className="rh-count" data-testid="open-leads-count">{model.openLeadRows.length}</span>
+        </div>
+        {model.openLeadRows.length === 0 && <p className="rh-muted" data-testid="open-leads-empty">There are no open leads.</p>}
+        {model.openLeadRows.map((row) => (
+          <RowLink key={row.id} to={row.href} testId="open-lead-row">
+            <b>{row.customer}</b>
+            <div className="rh-muted">{row.stage}{row.typeLabel ? ` · ${row.typeLabel}` : ""}</div>
+            {(row.quoteRef || row.amountLabel) && <div className="rh-muted">{[row.quoteRef, row.amountLabel].filter(Boolean).join(" · ")}</div>}
+          </RowLink>
+        ))}
+      </Glass>
+      <Glass testId="jobs-being-done-section">
+        <div className="rh-head">
+          <h2>Jobs being done</h2>
+          <span className="rh-count" data-testid="jobs-being-done-count">{jobs.length}</span>
+        </div>
+        {jobs.length === 0 && <p className="rh-muted" data-testid="jobs-being-done-empty">There are no jobs being done today.</p>}
+        {jobs.map((job) => (
+          <RowLink key={job.id} to={job.href} testId="jobs-being-done-row">
+            <b>{job.customer} · {job.type}</b>
+            {job.area && <div className="rh-muted">{job.area}</div>}
+            <div className="rh-muted">{job.when} · {job.assignee}</div>
+            <div className="rh-muted">{job.status}</div>
+          </RowLink>
+        ))}
+      </Glass>
+    </>
+  );
+}
+
+function scrollToWork(event: { preventDefault: () => void }) {
+  const el = document.getElementById("work-in-motion");
+  if (!el) return;
+  event.preventDefault();
+  if (typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "start" });
+}
+
 export function AdminHomeScreen({
+  eyebrow, title, companyName, invoice, crew, levels, orders, slices, model, modelLoading, onSlice, onSliceInfo, onReview, onInvoice,
+  jobsHref = ADMIN_HOME_ROUTES.jobs,
+  bookHref = ADMIN_HOME_ROUTES.bookJob,
+  mapHref = ADMIN_HOME_ROUTES.map,
+  stockHref = ADMIN_HOME_ROUTES.stock,
+}: {
+  eyebrow: string;
+  title: string;
+  companyName?: string | null;
+  invoice: { count: number; total: string } | null;
+  crew: TodayCrew[];
+  levels: StockLevel[];
+  orders: StockOrder[];
+  slices: CashSlice[];
+  model: YardHomeModel | null;
+  modelLoading?: boolean;
+  onSlice: (s: CashSlice) => void;
+  onSliceInfo?: (s: CashSlice) => void;
+  onReview: () => void;
+  onInvoice: () => void;
+  jobsHref?: string;
+  bookHref?: string;
+  mapHref?: string;
+  stockHref?: string;
+}) {
+  return (
+    <div data-testid="role-admin-home" className="home-fit">
+      <CompanyGreeting eyebrow={eyebrow} title={title} companyName={companyName} />
+      {invoice && invoice.count > 0 && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} />}
+      {model ? <YardMoneyStrip model={model} /> : (
+        <p className="rh-muted" data-testid="home-money-loading">{modelLoading ? "Loading…" : "These figures could not be loaded."}</p>
+      )}
+      <div className="rh-grid">
+        <Glass>
+          <div className="rh-head">
+            <Link to={jobsHref} data-testid="today-jobs-heading" style={quietLink}><h2>Jobs being done today</h2></Link>
+            <span className="home-job-tools">
+              <a href="#work-in-motion" data-testid="open-yard-view" className="home-yard-link" onClick={scrollToWork}>Yard view</a>
+              <span className="rh-count">{crew.length}</span>
+            </span>
+          </div>
+          <Link to={mapHref} className="rh-muted" data-testid="who-is-where" style={quietLink}>{crew.length} on site · who is where</Link>
+          {crew.length === 0 && <p className="rh-muted">Nothing booked today.</p>}
+          {crew.slice(0, 5).map((c) => (
+            <RowLink key={c.id} to={c.href} testId="admin-today-job">
+              <b>{c.who} · {c.type}</b>
+              <div className="rh-muted">{c.where} · {c.client}</div>
+            </RowLink>
+          ))}
+          {crew.length > 5 && <Link to={jobsHref} className="rh-muted">View all {crew.length} jobs →</Link>}
+          <Link to={bookHref} className="rh-btn" data-testid="book-today-job" style={{ marginTop: 8 }}>Book a job</Link>
+        </Glass>
+        <Glass testId="material-stock-levels">
+          <Link to={stockHref} data-testid="stock-levels-heading" style={quietLink}><h2>Material &amp; stock levels</h2></Link>
+          <div className="rh-muted">On hand against what this week’s checks need</div>
+          {levels.length === 0 && <p className="rh-muted">No quoted materials to compare yet.</p>}
+          {levels.slice(0, 6).map((l) => (
+            <Link key={l.key} to={l.href} className="rh-material" data-testid="stock-level">
+              <span><b style={{ display: "block" }}>{l.name}</b><span className="rh-muted">{l.detail}</span></span>
+              {l.short != null && l.short > 0 && <Chip tone="warn">{l.short} short</Chip>}
+            </Link>
+          ))}
+        </Glass>
+        <Glass testId="stock-orders">
+          <div className="rh-head">
+            <Link to={stockHref} data-testid="stock-orders-heading" style={quietLink}><h2>Stock orders this week</h2></Link>
+            <span className="rh-count">{orders.length}</span>
+          </div>
+          <div className="rh-muted">From upcoming job material checks</div>
+          {orders.length === 0 && <p className="rh-muted">Nothing short against stock.</p>}
+          {orders.map((o) => (
+            <Link key={o.key} to={o.href} className="rh-material" data-testid="stock-order">
+              <span><b style={{ display: "block" }}>{o.label}</b><span className="rh-muted">{o.detail}</span></span>
+              <span className="rh-arrow">›</span>
+            </Link>
+          ))}
+          {orders.length > 0 && <Link to={stockHref} className="rh-btn secondary" style={{ marginTop: 8 }} data-testid="stock-orders-review">Review {orders.length} item{orders.length === 1 ? "" : "s"} to order →</Link>}
+        </Glass>
+        <CashPie slices={slices} onOpen={onSlice} onInfo={onSliceInfo} />
+      </div>
+      {model && <YardWork model={model} yardPageHref={ADMIN_HOME_ROUTES.yard} />}
+      {model && <FollowOnLists model={model} />}
+    </div>
+  );
+}
+
+/** The living picture that used to be admin Home. Its own page now. */
+export function YardViewScreen({
   eyebrow, title, companyName, invoice, model, loading, error, onReview, onInvoice,
 }: {
   eyebrow: string;
@@ -310,19 +472,8 @@ export function AdminHomeScreen({
   onInvoice: () => void;
 }) {
   return (
-    <div data-testid="role-admin-home">
-      <Glass as="div" tone="warm" className="rh-intro" radius={17} testId="role-greeting">
-        <div className="yard-greet">
-          <div>
-            <div className="rh-eyebrow">{eyebrow}</div>
-            <h1>{title}</h1>
-          </div>
-          <div className="yard-co">
-            {companyName ? <b>{companyName}</b> : null}
-            <span>Company overview</span>
-          </div>
-        </div>
-      </Glass>
+    <div data-testid="role-yard-view">
+      <CompanyGreeting eyebrow={eyebrow} title={title} companyName={companyName} />
       {invoice && invoice.count > 0 && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} />}
       {model && <YardHome model={model} />}
       {!model && loading && <p className="rh-muted" data-testid="yard-loading">Loading the yard…</p>}

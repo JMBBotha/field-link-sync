@@ -1,5 +1,6 @@
 /**
- * Admin home yard view. Counting stays pure so the picture and the tests share one rule.
+ * Yard view, on /admin/yard. Admin Home reuses the money tiles only.
+ * Counting stays pure so the picture and the tests share one rule.
  *
  * Work in motion follows public._job_stage (sales "My jobs"), narrowed to current work:
  * - Waiting to leave: scheduled today (Johannesburg), not started, not en route.
@@ -23,7 +24,7 @@ import { jobLiabilities, latestBalances, projects, startBalance, stillToPay, typ
 import { jhbDate } from "@/lib/drilldown";
 import { countAdminHome, fmtHomeRand, inSignedInCompany, jobWorkAt, type HomeInvoice, type HomeJob, type HomeQuote } from "@/lib/adminHomeCount";
 import { buildDeals, type PipeJob } from "@/lib/quotePipeline";
-import { jobTypeWord } from "@/lib/roleHome";
+import { areaFromAddress, jobTypeWord } from "@/lib/roleHome";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
 import { formatRand } from "@/utils/formatRand";
 
@@ -67,6 +68,7 @@ export interface YardPresence {
 export interface YardJob extends HomeJob {
   en_route_at?: string | null;
   assignee_name?: string | null;
+  address?: string | null;
   /** Ignored. Two Johans are not one person, and attribution is not rewritten here. */
   created_by?: string | null;
 }
@@ -181,6 +183,8 @@ export interface YardJobInfo {
   when: string;
   assignee: string;
   status: string;
+  /** Suburb from the job address. Empty when the job has no address. */
+  area: string | null;
 }
 
 export interface YardStageView {
@@ -207,6 +211,7 @@ export function groupYard(jobs: YardJob[], companyId: string, now = new Date(), 
       when: yardWhen(job),
       assignee: job.assignee_name || "Unassigned",
       status: yardStatusLine(job, stage),
+      area: job.address?.trim() ? areaFromAddress(job.address, job.title) : null,
     });
   }
   return YARD_STAGE_META.map((meta) => ({ ...meta, count: buckets[meta.key].length, jobs: buckets[meta.key] }));
@@ -433,6 +438,18 @@ export interface YardSalesBox {
   href: string;
 }
 
+export type OpenLeadStage = "New lead" | "Quoting" | "Waiting on customer" | "Accepted";
+
+export interface OpenLeadRow {
+  id: string;
+  customer: string;
+  stage: OpenLeadStage;
+  typeLabel: string | null;
+  quoteRef: string | null;
+  amountLabel: string | null;
+  href: string;
+}
+
 const SERVICE = "service";
 
 function usableLead(lead: YardLead, companyId: string): boolean {
@@ -448,7 +465,9 @@ export function countSales(input: {
   quoteJobs?: (PipeJob & { company_id?: string | null })[];
   /** primary_intent by lead id, including leads that are no longer pending. */
   leadIntent?: Record<string, string | null | undefined>;
-}): { boxes: YardSalesBox[]; openLeads: number } {
+  /** service_type by lead id, for leads that are no longer in the pending list. */
+  leadService?: Record<string, string | null | undefined>;
+}): { boxes: YardSalesBox[]; openLeads: number; openLeadRows: OpenLeadRow[] } {
   const companyId = input.companyId;
   const intent = { ...(input.leadIntent || {}) };
   const leads = (input.leads || []).filter((lead) => usableLead(lead, companyId));
@@ -464,8 +483,51 @@ export function countSales(input: {
   const waiting = n("sent") + n("viewed");
   const booked = n("booked");
   const accepted = n("accepted");
+  const serviceByLead: Record<string, string | null | undefined> = { ...(input.leadService || {}) };
+  for (const lead of leads) if (lead.service_type) serviceByLead[lead.id] = lead.service_type;
+  const typeOf = (raw?: string | null) => {
+    const text = (raw || "").trim();
+    return text ? jobTypeWord(text) : null;
+  };
+  const moneyOf = (quote: HomeQuote) => {
+    if (quote.total == null || quote.total === "" || !Number.isFinite(Number(quote.total))) return null;
+    return fmtHomeRand(Number(quote.total));
+  };
+  const stageLabel = (stage: string): OpenLeadStage | null => {
+    if (stage === "draft") return "Quoting";
+    if (stage === "sent" || stage === "viewed") return "Waiting on customer";
+    if (stage === "accepted") return "Accepted";
+    return null;
+  };
+  const freshRows: OpenLeadRow[] = [...fresh]
+    .sort((a, b) => (a.customer_name || "").localeCompare(b.customer_name || "") || a.id.localeCompare(b.id))
+    .map((lead) => ({
+      id: `lead:${lead.id}`,
+      customer: lead.customer_name || "Client",
+      stage: "New lead",
+      typeLabel: typeOf(lead.service_type),
+      quoteRef: null,
+      amountLabel: null,
+      href: `/admin/dispatch?lead=${lead.id}`,
+    }));
+  const stageRank: Record<OpenLeadStage, number> = { "New lead": 0, Quoting: 1, "Waiting on customer": 2, Accepted: 3 };
+  const dealRows: OpenLeadRow[] = deals
+    .map((deal) => ({ deal, stage: stageLabel(deal.stage) }))
+    .filter((row): row is { deal: typeof deals[number]; stage: OpenLeadStage } => !!row.stage)
+    .sort((a, b) => stageRank[a.stage] - stageRank[b.stage] || (a.deal.quote.customer_name || "").localeCompare(b.deal.quote.customer_name || "") || a.deal.quote.id.localeCompare(b.deal.quote.id))
+    .map(({ deal, stage }) => ({
+      id: `quote:${deal.quote.id}`,
+      customer: deal.quote.customer_name || "Client",
+      stage,
+      typeLabel: typeOf(deal.quote.lead_id ? serviceByLead[deal.quote.lead_id] : null),
+      quoteRef: (deal.quote.quote_number || "").trim() || null,
+      amountLabel: moneyOf(deal.quote),
+      href: stage === "Accepted" ? YARD_LINKS.openLeads : `/admin/estimates/${deal.quote.id}`,
+    }));
+  const openLeadRows = [...freshRows, ...dealRows];
   return {
-    openLeads: fresh.length + quoting + waiting + accepted,
+    openLeads: openLeadRows.length,
+    openLeadRows,
     boxes: [
       { key: "new", label: "New lead", count: fresh.length, href: YARD_LINKS.newLead },
       { key: "quoting", label: "Quoting", count: quoting, href: YARD_LINKS.quoting },
@@ -482,6 +544,7 @@ export interface YardHomeModel {
   deposits: YardMoneyTile;
   finals: YardMoneyTile;
   openLeads: { count: number; href: string };
+  openLeadRows: OpenLeadRow[];
   jobs: { today: number; week: number; month: number; todayHref: string; weekHref: string; monthHref: string };
   stages: YardStageView[];
   sales: YardSalesBox[];
@@ -499,6 +562,7 @@ export function buildYardHome(input: {
   quotes?: HomeQuote[];
   quoteJobs?: (PipeJob & { company_id?: string | null })[];
   leadIntent?: Record<string, string | null | undefined>;
+  leadService?: Record<string, string | null | undefined>;
   bank?: { accounts: BankAccount[]; balances: BankBalance[] } | null;
   bankState?: "ready" | "loading" | "error";
   books?: { receipts: Receipt[]; commitments: Commitment[]; allocations: Allocation[] } | null;
@@ -515,6 +579,7 @@ export function buildYardHome(input: {
     cash: cashTile(input.bank?.accounts ?? null, input.bank?.balances ?? null, input.bankState ?? (input.bank ? "ready" : "loading")),
     liabilities: liabilityTile(input.books?.receipts ?? null, input.books?.commitments ?? null, input.books?.allocations ?? null, input.booksState ?? (input.books ? "ready" : "loading")),
     openLeads: { count: sales.openLeads, href: YARD_LINKS.openLeads },
+    openLeadRows: sales.openLeadRows,
     jobs: { ...periods, todayHref: YARD_LINKS.jobsToday, weekHref: YARD_LINKS.jobsWeek, monthHref: YARD_LINKS.jobsMonth },
     stages: groupYard(input.jobs || [], input.companyId, now, input.presence),
     sales: sales.boxes,

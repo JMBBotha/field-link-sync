@@ -50,6 +50,7 @@ export const ADMIN_HOME_ROUTES = {
   map: "/admin/map",
   stock: "/admin/cash-health?tab=stock",
   cash: "/admin/cash-health",
+  yard: "/admin/yard",
   job: (id: string) => `/admin/jobs/${id}`,
 } as const;
 

@@ -204,6 +204,12 @@ describe("sales strip", () => {
       ["booked", 1],
     ]);
     expect(sales.openLeads).toBe(1 + 1 + 2 + 1);
+    expect(sales.openLeadRows).toHaveLength(sales.openLeads);
+    expect(sales.openLeadRows.map((row) => row.stage)).toEqual(["New lead", "Quoting", "Waiting on customer", "Waiting on customer", "Accepted"]);
+    expect(sales.openLeadRows.some((row) => row.id === "quote:q-book")).toBe(false);
+    expect(sales.openLeadRows.some((row) => row.id === "quote:q-svc" || row.id === "quote:q-ind" || row.id === "lead:svc")).toBe(false);
+    expect(sales.openLeadRows.find((row) => row.stage === "Accepted")?.href).toBe("/admin/jobs?tab=pipeline");
+    expect(sales.openLeadRows.find((row) => row.stage === "Quoting")?.href).toBe("/admin/estimates/q-draft");
     expect(sales.boxes[0].href).toBe("/admin/dispatch?inbox=1");
     expect(sales.boxes[2].href).toBe("/admin/quotes?status=sent,viewed&type=estimate");
   });

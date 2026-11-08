@@ -86,6 +86,20 @@
   .rh-invoice .rh-big { font-size: 20px; }
 }
 
+.home-job-tools { display: flex; align-items: center; gap: 10px; }
+.home-yard-link { color: #168ad7; font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+/* A little tighter so greeting, banner, money tiles and the four cards sit on a tablet. Vans stay below that block. */
+.home-fit .rh-intro { padding: 10px 14px 10px; margin-bottom: 8px; }
+.home-fit .rh-intro h1 { font-size: 23px; margin-top: 2px; }
+.home-fit .rh-card { padding: 10px 12px; margin-bottom: 8px; }
+.home-fit .rh-head { padding-bottom: 6px; margin-bottom: 2px; }
+.home-fit .rh-row { padding: 6px 0; }
+.home-fit .rh-material { padding: 6px 0; }
+.home-fit .rh-btn { min-height: 38px; padding: 7px 12px; }
+.home-fit .rh-cashrow { padding: 4px 0; }
+.home-fit [data-testid="jobs-ready-to-invoice"] { margin-bottom: 8px; padding: 10px 12px; }
+#work-in-motion { scroll-margin-top: 12px; }
+
 /* Admin yard view. Vans keep the full artwork: contain, and nothing clips the tyres. */
 .yard-greet { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
 .yard-co { text-align: right; }
