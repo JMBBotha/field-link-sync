@@ -28,6 +28,7 @@ export type VisitView = {
   leave: string;
   note: string;
   kinds: VisitKind[];
+  customLabel?: string | null;
 };
 
 export type Named = { id: string; name: string };
@@ -65,13 +66,14 @@ export function WorkIntent({ value, onChange }: { value: Doing; onChange: (d: Do
 }
 
 /** Dropdown that stays open so more than one kind can be ticked on the same visit. */
-export function VisitKindMenu({ value, onChange, open, onOpenChange }: {
-  value: VisitKind[]; onChange: (next: VisitKind[]) => void; open?: boolean; onOpenChange?: (open: boolean) => void;
+export function VisitKindMenu({ value, onChange, customLabel = "", onCustomLabel, open, onOpenChange }: {
+  value: VisitKind[]; onChange: (next: VisitKind[]) => void; customLabel?: string; onCustomLabel?: (text: string) => void;
+  open?: boolean; onOpenChange?: (open: boolean) => void;
 }) {
   const [localOpen, setLocalOpen] = useState(false);
   const shown = open ?? localOpen;
   const setShown = (next: boolean) => { onOpenChange?.(next); if (open === undefined) setLocalOpen(next); };
-  const summary = value.length ? kindsLabel(value) : "Choose the work on this visit";
+  const summary = value.length ? kindsLabel(value, customLabel) : "Choose the work on this visit";
   return (
     <div className={section} data-testid="visit-kinds">
       <SectionTitle n="3" title="What kind of work?" />
@@ -82,7 +84,7 @@ export function VisitKindMenu({ value, onChange, open, onOpenChange }: {
         <span aria-hidden className="text-[#3D9BEB]">{shown ? "▴" : "▾"}</span>
       </button>
       {shown && (
-        <div role="listbox" aria-multiselectable="true" aria-label="What kind of work?" data-testid="visit-kind-list" className="max-h-80 overflow-y-auto rounded-xl border bg-white p-1 shadow-sm">
+        <div role="listbox" aria-multiselectable="true" aria-label="What kind of work?" data-testid="visit-kind-list" className="rounded-xl border bg-white p-1 shadow-sm">
           {VISIT_KINDS.map((c) => {
             const on = value.includes(c.id);
             return (
@@ -93,6 +95,13 @@ export function VisitKindMenu({ value, onChange, open, onOpenChange }: {
             );
           })}
         </div>
+      )}
+      {value.includes("custom") && (
+        <label className="block text-sm">
+          <span className="text-muted-foreground">Custom work <span className="text-destructive">*</span></span>
+          <Input className="mt-1 h-11" data-testid="visit-custom" maxLength={80} placeholder="Name this work" value={customLabel}
+            onChange={(e) => onCustomLabel?.(e.target.value)} />
+        </label>
       )}
     </div>
   );
@@ -138,7 +147,7 @@ export function VisitList({ visits, correctId, onCorrect }: { visits: VisitView[
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Visits</p>
       {visits.map((v) => {
         const on = correctId === v.id;
-        const kindLabel = v.kinds?.length ? kindsLabel(v.kinds) : "Visit";
+        const kindLabel = v.kinds?.length ? kindsLabel(v.kinds, v.customLabel) : "Visit";
         const extra = v.note && v.note.trim().toLowerCase() !== kindLabel.toLowerCase() ? ` · ${v.note}` : "";
         const body = (
           <>
@@ -184,6 +193,8 @@ export function BookJobForm(props: {
   onJobKind: (k: JobKind) => void;
   visitKinds: VisitKind[];
   onVisitKinds: (next: VisitKind[]) => void;
+  customLabel?: string;
+  onCustomLabel?: (text: string) => void;
   kindsOpen?: boolean;
   onKindsOpen?: (open: boolean) => void;
   canLogPast: boolean;
@@ -249,7 +260,7 @@ export function BookJobForm(props: {
 
       {p.cards === "new_sale" && <JobTypeChoice value={p.jobKind} onChange={p.onJobKind} label="What does the client need?" />}
       {p.cards === "visit" && (
-        <VisitKindMenu value={p.visitKinds} onChange={p.onVisitKinds} open={p.kindsOpen} onOpenChange={p.onKindsOpen} />
+        <VisitKindMenu value={p.visitKinds} onChange={p.onVisitKinds} customLabel={p.customLabel} onCustomLabel={p.onCustomLabel} open={p.kindsOpen} onOpenChange={p.onKindsOpen} />
       )}
 
       {p.showHouseFit && <HouseFirstFitLine done={!!p.firstFitDone} inStep={!!p.firstFitInStep} />}

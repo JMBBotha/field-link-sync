@@ -32,6 +32,7 @@ function form(over: Partial<Parameters<typeof BookJobForm>[0]> = {}) {
       onJobKind={() => {}}
       visitKinds={over.visitKinds ?? []}
       onVisitKinds={() => {}}
+      customLabel={over.customLabel}
       kindsOpen={over.kindsOpen}
       canLogPast={over.canLogPast ?? true}
       techs={[{ id: "t1", name: "Tech A" }]}
@@ -70,13 +71,25 @@ describe("Book a job surfaces", () => {
       doing: "past", where: "project", projectId: "p", houseId: "h", attachedTitle: "Installation — Avec House 12",
       kindsOpen: true, visitKinds: ["first_fix", "piping"],
     });
-    for (const label of ["First fix", "Piping", "AC installation", "Commission", "Warranty visit", "Repair", "Service"]) {
+    for (const label of ["First fix", "Piping", "AC installation", "Commission", "Warranty visit", "Repair", "Service", "Custom"]) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
+    const labels = screen.getAllByTestId(/visit-kind-/).map((el) => el.textContent || "");
+    expect(labels[labels.length - 1]).toContain("Custom");
     expect(screen.getByTestId("visit-kind-first_fix").querySelector("input")).toBeChecked();
     expect(screen.getByTestId("visit-kind-piping").querySelector("input")).toBeChecked();
     expect(screen.getByTestId("visit-kind-repair").querySelector("input")).not.toBeChecked();
     expect(screen.getByTestId("visit-kind-menu")).toHaveTextContent("First fix + Piping");
+  });
+
+  it("asks for a name when Custom is ticked and shows that name in the summary", () => {
+    form({
+      doing: "past", where: "project", projectId: "p", houseId: "h", attachedTitle: "Installation — Avec House 12",
+      kindsOpen: true, visitKinds: ["first_fix", "custom"], customLabel: "Balcony drain",
+    });
+    expect(screen.getByTestId("visit-custom")).toHaveValue("Balcony drain");
+    expect(screen.getByTestId("visit-kind-menu")).toHaveTextContent("First fix + Balcony drain");
+    expect(screen.getByTestId("visit-kind-custom").querySelector("input")).toBeChecked();
   });
 
   it("shows the past-visit editor with today-or-earlier and finished off", () => {

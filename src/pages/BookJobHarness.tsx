@@ -48,7 +48,7 @@ function Frame({ width, title = "Book a job", children }: { width: number; title
 export default function BookJobHarness() {
   const [params] = useSearchParams();
   const shot = params.get("shot") || "default";
-  const tablet = shot === "tablet" || shot === "kinds-tablet";
+  const tablet = shot === "tablet" || shot === "kinds-tablet" || shot === "custom-tablet";
   const width = tablet ? 768 : 390;
   if (shot === "flow") return <Flow width={width} />;
   if (shot === "saved" || shot === "job") return <JobShot width={width} mode={shot} />;
@@ -68,11 +68,15 @@ function SettingsShot({ width }: { width: number }) {
 }
 
 function BookShot({ width, shot }: { width: number; shot: string }) {
-  const project = shot === "project" || shot === "past" || shot === "kinds" || shot === "combo" || shot === "kinds-tablet";
-  const doing: Doing = shot === "past" || shot === "kinds" || shot === "combo" || shot === "kinds-tablet" ? "past" : "upcoming";
+  const customShot = shot === "custom-list" || shot === "custom-typed" || shot === "custom-combo" || shot === "custom-tablet";
+  const project = shot === "project" || shot === "past" || shot === "kinds" || shot === "combo" || shot === "kinds-tablet" || customShot;
+  const doing: Doing = shot === "past" || shot === "kinds" || shot === "combo" || shot === "kinds-tablet" || customShot ? "past" : "upcoming";
   const attached = project ? houseAttachPlan({ id: "h12", house_no: "12" }, JOBS, "demo-client").job : null;
-  const visitKinds: VisitKind[] = shot === "past" || shot === "combo" || shot === "kinds-tablet" ? ["first_fix", "piping"] : [];
-  const kindsOpen = shot === "kinds" || shot === "kinds-tablet" || shot === "combo";
+  const visitKinds: VisitKind[] = shot === "custom-typed" ? ["custom"]
+    : shot === "custom-combo" || shot === "custom-tablet" ? ["first_fix", "custom"]
+    : shot === "past" || shot === "combo" || shot === "kinds-tablet" ? ["first_fix", "piping"] : [];
+  const customLabel = shot === "custom-list" ? "" : customShot ? "Balcony drain" : "";
+  const kindsOpen = shot === "kinds" || shot === "kinds-tablet" || shot === "combo" || customShot;
   const past: PastDraft = shot === "past" || shot === "combo"
     ? { techId: "t1", date: "2026-11-03", arrive: "08:00", leave: "11:30", note: "", completed: defaultCompleted([]) }
     : emptyPast();
@@ -81,7 +85,7 @@ function BookShot({ width, shot }: { width: number; shot: string }) {
       <div className="mb-3 rounded-2xl bg-white p-3 shadow-sm">
         <h1 className="text-lg font-extrabold">Book a job</h1>
         <p className="text-xs text-muted-foreground">Create New Job — new work, past work, projects, and later corrections.</p>
-        {project && <p className="mt-2 text-sm font-semibold">{titleDefault("Avec", "12", visitKinds)}</p>}
+        {project && <p className="mt-2 text-sm font-semibold">{titleDefault("Avec", "12", visitKinds, customLabel)}</p>}
       </div>
       <div className="rounded-2xl bg-white p-3 shadow-sm">
         <BookJobForm
@@ -103,6 +107,7 @@ function BookShot({ width, shot }: { width: number; shot: string }) {
           onJobKind={() => {}}
           visitKinds={visitKinds}
           onVisitKinds={() => {}}
+          customLabel={customLabel}
           kindsOpen={kindsOpen}
           canLogPast
           techs={TECHS}

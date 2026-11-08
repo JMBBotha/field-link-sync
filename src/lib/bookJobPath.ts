@@ -6,7 +6,7 @@ import { directJobsByHouse } from "@/lib/projectTracker";
 
 export type WhereMode = "single" | "project";
 export type Doing = "upcoming" | "past" | "correct";
-export type VisitKind = "first_fix" | "piping" | "ac_installation" | "commission" | "warranty" | "repair" | "service";
+export type VisitKind = "first_fix" | "piping" | "ac_installation" | "commission" | "warranty" | "repair" | "service" | "custom";
 
 export const DOING_CHOICES: { id: Doing; title: string; hint: string }[] = [
   { id: "upcoming", title: "Book upcoming work", hint: "Today's path. Schedule the visit." },
@@ -22,13 +22,14 @@ export const VISIT_KINDS: { id: VisitKind; title: string }[] = [
   { id: "warranty", title: "Warranty visit" },
   { id: "repair", title: "Repair" },
   { id: "service", title: "Service" },
+  { id: "custom", title: "Custom" },
 ];
 
 const KIND_ORDER = VISIT_KINDS.map((k) => k.id);
 const KIND_TITLE: Record<VisitKind, string> = Object.fromEntries(VISIT_KINDS.map((k) => [k.id, k.title])) as Record<VisitKind, string>;
 const LEGACY_KIND: Record<string, VisitKind> = {
   first_fix: "first_fix", later_install: "ac_installation", house_service: "service",
-  piping: "piping", ac_installation: "ac_installation", commission: "commission", warranty: "warranty", repair: "repair", service: "service",
+  piping: "piping", ac_installation: "ac_installation", commission: "commission", warranty: "warranty", repair: "repair", service: "service", custom: "custom",
 };
 
 /** One visit can be several kinds. Order follows the dropdown. */
@@ -51,8 +52,14 @@ export function includesFirstFix(kinds: Iterable<VisitKind> | null | undefined):
   return !!kinds && [...kinds].includes("first_fix");
 }
 
-export function kindsLabel(kinds: VisitKind[]): string {
-  return normaliseKinds(kinds).map((k) => KIND_TITLE[k]).join(" + ");
+export function kindsLabel(kinds: VisitKind[], customLabel?: string | null): string {
+  const named = customLabel?.trim();
+  return normaliseKinds(kinds).map((k) => (k === "custom" ? (named || "Custom") : KIND_TITLE[k])).join(" + ");
+}
+
+/** Custom is ticked but he has not named it yet. That save is not complete. */
+export function customLabelMissing(kinds: VisitKind[], customLabel?: string | null): boolean {
+  return kinds.includes("custom") && !customLabel?.trim();
 }
 
 export interface HouseJobRef {
@@ -76,6 +83,7 @@ export interface VisitRecord {
   note: string;
   completed: boolean;
   kinds: VisitKind[];
+  customLabel?: string | null;
 }
 
 /** Admin / owner gate already used by Add past visit. Sales logins are not admins. */
@@ -120,8 +128,8 @@ export function houseAttachPlan<J extends HouseJobRef>(house: { id: string; hous
   };
 }
 
-export function titleDefault(projectName: string, houseNo: string, kinds: VisitKind[]): string {
-  const what = kinds.length ? kindsLabel(kinds) : "Installation";
+export function titleDefault(projectName: string, houseNo: string, kinds: VisitKind[], customLabel?: string | null): string {
+  const what = kinds.length ? kindsLabel(kinds, customLabel) : "Installation";
   return `${what} — ${projectName} House ${houseNo}`;
 }
 
@@ -138,7 +146,7 @@ export function kindsFromStored(stored?: unknown, note?: string | null): VisitKi
 
 export interface LogPlan {
   ok: boolean;
-  reason?: "admin_only" | "date" | "visit" | "kind";
+  reason?: "admin_only" | "date" | "visit" | "kind" | "custom";
   createInstallationJob: boolean;
   jobType: "installation";
   quoteId: null;
@@ -157,6 +165,7 @@ export interface LogPlan {
 export function planPastSave(input: {
   doing: "past" | "correct";
   visitKinds: VisitKind[];
+  customLabel?: string | null;
   existingJobId: string | null;
   completed: boolean;
   date: string;
@@ -182,6 +191,7 @@ export function planPastSave(input: {
   };
   if (!input.role.isAdmin) return { ...plan, reason: "admin_only" };
   if (!input.visitKinds.length) return { ...plan, reason: "kind" };
+  if (customLabelMissing(input.visitKinds, input.customLabel)) return { ...plan, reason: "custom" };
   if (!pastDateAllowed(input.date, input.today)) return { ...plan, reason: "date" };
   if (input.doing === "correct" && !input.visitId) return { ...plan, reason: "visit" };
   return { ...plan, ok: true, writes: 1 };

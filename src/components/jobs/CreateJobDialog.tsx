@@ -11,7 +11,7 @@ import { useRole } from "@/hooks/useRole";
 import { useProjects, db as projectDb, clientName } from "@/hooks/useProjectTracker";
 import { mapDispatchCandidates } from "@/lib/teamGroups";
 import {
-  canLogPastWork, houseAttachPlan, includesFirstFix, johannesburgToday, kindsFromStored, pastDateAllowed, titleDefault, workCards,
+  canLogPastWork, customLabelMissing, houseAttachPlan, includesFirstFix, johannesburgToday, kindsFromStored, pastDateAllowed, titleDefault, workCards,
   type Doing, type HouseJobRef, type VisitKind, type WhereMode,
 } from "@/lib/bookJobPath";
 import { bookUpcomingOnJob, correctPastVisit, logPastVisit } from "@/lib/bookJobSave";
@@ -83,6 +83,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [projectId, setProjectId] = useState("");
   const [houseId, setHouseId] = useState("");
   const [visitKinds, setVisitKinds] = useState<VisitKind[]>([]);
+  const [customLabel, setCustomLabel] = useState("");
   const [titleTouched, setTitleTouched] = useState(false);
   const [addressTouched, setAddressTouched] = useState(false);
   const [past, setPast] = useState<PastDraft>({ techId: "", date: johannesburgToday(), arrive: "08:00", leave: "", note: "", completed: false });
@@ -102,6 +103,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setProjectId("");
     setHouseId("");
     setVisitKinds([]);
+    setCustomLabel("");
     setTitleTouched(false);
     setAddressTouched(false);
     setPast({ techId: "", date: johannesburgToday(), arrive: "08:00", leave: "", note: "", completed: false });
@@ -166,9 +168,9 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
 
   useEffect(() => {
     if (!open || where !== "project" || !project || !house) return;
-    if (!titleTouched) setTitle(titleDefault(project.name, house.house_no, visitKinds));
+    if (!titleTouched) setTitle(titleDefault(project.name, house.house_no, visitKinds, customLabel));
     if (!addressTouched) setAddress(`${project.name} House ${house.house_no}`);
-  }, [open, where, project, house, visitKinds, titleTouched, addressTouched]);
+  }, [open, where, project, house, visitKinds, customLabel, titleTouched, addressTouched]);
 
   const { data: pathTechs = [] } = useQuery({
     queryKey: ["dispatch-techs", companyId, "book-job"],
@@ -190,6 +192,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         id: v.id, techId: v.tech_id || "", tech: v.tech || "Tech", date: String(v.work_date || "").slice(0, 10),
         arrive: String(v.start || "").slice(0, 5), leave: String(v.end || "").slice(0, 5), note: v.notes || "",
         kinds: kindsFromStored(v.visit_kinds, v.notes),
+        customLabel: v.visit_custom || "",
       }));
     },
   });
@@ -421,6 +424,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setProjectId("");
     setHouseId("");
     setVisitKinds([]);
+    setCustomLabel("");
     setTitleTouched(false);
     setAddressTouched(false);
     setPast({ techId: "", date: johannesburgToday(), arrive: "08:00", leave: "", note: "", completed: false });
@@ -433,14 +437,14 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   };
 
   const savePast = async () => {
-    if (!canLog || !visitKinds.length || !companyId) return;
+    if (!canLog || !visitKinds.length || customLabelMissing(visitKinds, customLabel) || !companyId) return;
     setPathBusy(true);
     try {
       const other = pathVisits.filter((v) => v.id !== correctId).flatMap((v) => v.kinds);
       if (doing === "correct") {
         if (!correctId || !attached?.id) throw new Error("Pick the visit to correct");
         await correctPastVisit({
-          isAdmin: true, house: house ? { id: house.id } : null, visitId: correctId, jobId: attached.id, visitKinds,
+          isAdmin: true, house: house ? { id: house.id } : null, visitId: correctId, jobId: attached.id, visitKinds, customLabel,
           techId: past.techId, date: past.date, arrive: past.arrive, leave: past.leave, note: past.note, completed: past.completed, otherKinds: other,
         });
         toast({ title: "Visit updated" });
@@ -451,7 +455,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
           projectName: project?.name || "Job",
           house: house ? { id: house.id, house_no: house.house_no } : null,
           existingJob: attached ? { id: attached.id } : null,
-          visitKinds, techId: past.techId, date: past.date, arrive: past.arrive, leave: past.leave, note: past.note,
+          visitKinds, customLabel, techId: past.techId, date: past.date, arrive: past.arrive, leave: past.leave, note: past.note,
           completed: past.completed, title, address, otherKinds: other,
         });
         toast({ title: "Visit recorded" });
@@ -533,6 +537,8 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             jobKind={jobKind}
             onJobKind={setJobKind}
             visitKinds={visitKinds}
+            customLabel={customLabel}
+            onCustomLabel={setCustomLabel}
             onVisitKinds={(next) => {
               if (includesFirstFix(next) && !includesFirstFix(visitKinds)) setPast((p) => ({ ...p, completed: false }));
               setVisitKinds(next);
@@ -548,6 +554,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
               const v = pathVisits.find((x) => x.id === id);
               if (!v) return;
               if (v.kinds.length) setVisitKinds(v.kinds);
+              setCustomLabel(v.customLabel || "");
               setPast((p) => ({ ...p, techId: v.techId || p.techId, date: v.date || p.date, arrive: v.arrive || p.arrive, leave: v.leave, note: v.note, completed: false }));
             }}
             classic={doing !== "upcoming" ? null : (
@@ -664,7 +671,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
               if (!companyId || createMutation.isPending || pathBusy) return true;
               if (doing === "past" || doing === "correct") {
                 const today = johannesburgToday();
-                return !canLog || !visitKinds.length || !past.techId || !past.arrive || !pastDateAllowed(past.date, today)
+                return !canLog || !visitKinds.length || customLabelMissing(visitKinds, customLabel) || !past.techId || !past.arrive || !pastDateAllowed(past.date, today)
                   || (doing === "correct" && !correctId)
                   || (doing === "past" && where === "project" && !house)
                   || (doing === "past" && where === "single" && (!customerId || !address || !title));

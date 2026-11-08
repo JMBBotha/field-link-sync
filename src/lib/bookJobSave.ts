@@ -37,7 +37,7 @@ export async function syncHouseFirstFit(houseId: string, done: boolean): Promise
 }
 
 async function backfill(jobId: string, input: {
-  techId: string; date: string; arrive: string; leave: string; note: string; completed: boolean; visitKinds: VisitKind[];
+  techId: string; date: string; arrive: string; leave: string; note: string; completed: boolean; visitKinds: VisitKind[]; customLabel?: string | null;
 }): Promise<string> {
   const { data, error } = await (supabase.rpc as any)("admin_backfill_visit", {
     p_job: jobId,
@@ -48,6 +48,7 @@ async function backfill(jobId: string, input: {
     p_completed: input.completed,
     p_note: input.note || null,
     p_visit_kinds: input.visitKinds,
+    p_visit_custom: input.customLabel?.trim() || null,
   });
   if (error) throw error;
   return (data as { time_entry_id?: string } | null)?.time_entry_id || "";
@@ -62,6 +63,7 @@ export async function logPastVisit(input: {
   house: { id: string; house_no: string } | null;
   existingJob: { id: string } | null;
   visitKinds: VisitKind[];
+  customLabel?: string | null;
   techId: string;
   date: string;
   arrive: string;
@@ -75,6 +77,7 @@ export async function logPastVisit(input: {
   const plan = planPastSave({
     doing: "past",
     visitKinds: input.visitKinds,
+    customLabel: input.customLabel,
     existingJobId: input.existingJob?.id ?? null,
     completed: input.completed,
     date: input.date,
@@ -87,7 +90,7 @@ export async function logPastVisit(input: {
   const firstFitDone = includesFirstFix(input.visitKinds) || includesFirstFix(input.otherKinds);
   const result = await runPastSave(plan, input.existingJob?.id ?? null, {
     createJob: async () => {
-      const title = input.title.trim() || titleDefault(input.projectName || "Job", input.house?.house_no || "", input.visitKinds);
+      const title = input.title.trim() || titleDefault(input.projectName || "Job", input.house?.house_no || "", input.visitKinds, input.customLabel);
       const row = installationJobInsert({
         companyId: input.companyId,
         customerId: input.customerId,
@@ -117,6 +120,7 @@ export async function correctPastVisit(input: {
   visitId: string;
   jobId: string;
   visitKinds: VisitKind[];
+  customLabel?: string | null;
   techId: string;
   date: string;
   arrive: string;
@@ -129,6 +133,7 @@ export async function correctPastVisit(input: {
   const plan = planPastSave({
     doing: "correct",
     visitKinds: input.visitKinds,
+    customLabel: input.customLabel,
     existingJobId: input.jobId,
     completed: input.completed,
     date: input.date,
@@ -150,6 +155,7 @@ export async function correctPastVisit(input: {
         p_completed: input.completed,
         p_note: input.note || null,
         p_visit_kinds: input.visitKinds,
+        p_visit_custom: input.customLabel?.trim() || null,
       });
       if (error) throw error;
       const id = (data as { time_entry_id?: string } | null)?.time_entry_id || visitId;

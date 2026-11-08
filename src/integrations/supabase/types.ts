@@ -17310,6 +17310,7 @@ export type Database = {
           p_leave: string
           p_note?: string
           p_tech: string
+          p_visit_custom?: string
           p_visit_kinds?: string[]
         }
         Returns: Json
@@ -17323,6 +17324,7 @@ export type Database = {
           p_leave: string
           p_note?: string
           p_tech: string
+          p_visit_custom?: string
           p_visit_kinds?: string[]
         }
         Returns: Json

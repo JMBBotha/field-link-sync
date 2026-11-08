@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   applyCorrection, canLogPastWork, defaultCompleted, firstFitDoneFromVisits, firstFitInStep, houseAttachPlan,
-  includesFirstFix, installationJobForHouse, installationJobInsert, johannesburgToday, kindsFromStored, kindsLabel,
+  customLabelMissing, includesFirstFix, installationJobForHouse, installationJobInsert, johannesburgToday, kindsFromStored, kindsLabel,
   pastDateAllowed, planPastSave, runPastSave, titleDefault, toggleKind, withFirstFit, workCards, type VisitRecord,
 } from "./bookJobPath";
 
@@ -137,6 +137,25 @@ describe("Book a job path", () => {
     expect(planPastSave({ doing: "past", visitKinds: [], existingJobId: "j1", completed: false, date: today, today, role: { isAdmin: true } }).reason).toBe("kind");
   });
 
+  it("stores a typed custom label with the same visit and still follows First fix", () => {
+    const kinds = toggleKind(["first_fix"], "custom");
+    expect(kinds).toEqual(["first_fix", "custom"]);
+    expect(kindsLabel(kinds, "Balcony drain")).toBe("First fix + Balcony drain");
+    expect(titleDefault("Avec", "12", kinds, "Balcony drain")).toBe("First fix + Balcony drain — Avec House 12");
+    expect(customLabelMissing(["custom"], "  ")).toBe(true);
+    const missing = planPastSave({ doing: "past", visitKinds: ["custom"], customLabel: "  ", existingJobId: "j1", completed: false, date: "2026-11-03", today, role: { isAdmin: true } });
+    expect(missing.ok).toBe(false);
+    expect(missing.reason).toBe("custom");
+    expect(missing.writes).toBe(0);
+    const ok = planPastSave({ doing: "past", visitKinds: kinds, customLabel: "Balcony drain", existingJobId: "j1", completed: false, date: "2026-11-03", today, role: { isAdmin: true } });
+    expect(ok.ok).toBe(true);
+    expect(ok.writes).toBe(1);
+    expect(ok.markFirstFit).toBe(true);
+    expect(ok.newSale).toBe(false);
+    expect(ok.messageClient).toBe(false);
+    expect(kindsFromStored(["first_fix", "custom"])).toEqual(["first_fix", "custom"]);
+  });
+
   it("keeps the quiet admin backfill in SQL", () => {
     const sql = readFileSync("supabase/migrations/20261108103000_book_job_past_visit.sql", "utf8");
     expect(sql).toContain("app.backfill");
@@ -148,6 +167,9 @@ describe("Book a job path", () => {
     expect(sql).toContain("'piping'");
     expect(sql).toContain("'commission'");
     expect(sql).toContain("'warranty'");
+    expect(sql).toContain("visit_custom");
+    expect(sql).toContain("'custom'");
+    expect(sql).toContain("Name the custom work");
     expect(sql).not.toContain("later_install");
     expect(sql).not.toContain("send_booking_confirmation");
     expect(sql).not.toContain("INSERT INTO public.notifications");
