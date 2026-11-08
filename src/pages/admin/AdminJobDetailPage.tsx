@@ -46,6 +46,7 @@ import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import TechLocationBlock from "@/components/jobs/TechLocationBlock";
 import JobHeaderPills from "@/components/jobs/JobHeaderPills";
 import AdminBackfillPanel from "@/components/jobs/AdminBackfillPanel";
+import LoggedWorkPanel from "@/components/jobs/LoggedWorkPanel";
 import JobRunCard from "@/components/scheduling/JobRunCard";
 import { useJobVisits } from "@/components/jobs/JobVisits";
 import { JobVisitsSection } from "@/components/jobs/BookingVisits";
@@ -402,6 +403,15 @@ const AdminJobDetailPage = () => {
         )}
 
         {/* Private supplier documents (office only) */}
+
+        {/* Same book / log / correct choices as Book a job. Not only inside Add on behalf of tech. */}
+        {isAdmin && (
+          <Card className="rounded-2xl">
+            <CardContent className="p-4 md:p-5">
+              <LoggedWorkPanel surface="job" canLogPast job={{ id: j.id, title: j.title, leadId: j.lead_id ?? null, companyId: j.company_id, customerId: j.customer_id, jobType: j.job_type }} customerId={j.customer_id} companyId={j.company_id} />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Admin backfill on behalf of tech (Johan t1929u) */}
         {isAdmin && (
