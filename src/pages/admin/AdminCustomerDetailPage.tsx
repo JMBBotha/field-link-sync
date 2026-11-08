@@ -18,6 +18,7 @@ import ProjectsList from "@/components/projects/ProjectsList";
 import ClientSectionNav from "@/components/customers/ClientSectionNav";
 import { clientTabChips, sumHouseCounts } from "@/lib/clientTabChips";
 import { useProjects } from "@/hooks/useProjectTracker";
+import { useClientSectionSelect } from "@/lib/clientProjectsNav";
 import ContractsList from "@/components/agreements/ContractsList";
 import CallHistoryPanel from "@/components/calls/CallHistoryPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -116,8 +117,6 @@ const AdminCustomerDetailPage = () => {
   // Statements are company finance: office staff only (RPC enforces the same).
   const canSeeStatement = isAdmin && !isSalesRep;
   const showProjects = isAdmin && !isSalesRep;
-  // Same projects query the Projects tab uses, so the chip can show the house count already on this client.
-  const { data: clientProjects = [] } = useProjects(id, !!id && showProjects);
   const [savingRep, setSavingRep] = useState(false);
 
   const { data: customer, isLoading } = useQuery({
@@ -128,6 +127,18 @@ const AdminCustomerDetailPage = () => {
       if (error) throw error;
       return data;
     },
+  });
+  // Same projects query the Projects tab uses, so the chip can show the house count already on this client.
+  // Scoped to this client and, once known, this company — never the company-wide list.
+  const clientCompanyId = (customer as { company_id?: string | null } | null | undefined)?.company_id ?? null;
+  const projectsQuery = useProjects(id, !!id && showProjects, clientCompanyId);
+  const clientProjects = useMemo(() => projectsQuery.data ?? [], [projectsQuery.data]);
+  const selectSection = useClientSectionSelect({
+    customerId: id,
+    companyId: clientCompanyId,
+    projects: clientProjects,
+    ready: !showProjects || projectsQuery.isFetched || projectsQuery.isError,
+    setTab: setInnerTab,
   });
 
   const { data: salesReps = [] } = useQuery({
@@ -538,7 +549,7 @@ const AdminCustomerDetailPage = () => {
         <ClientSectionNav
           chips={sectionChips}
           active={innerTab}
-          onSelect={setInnerTab}
+          onSelect={selectSection}
           more={more.map(([key, label]) => ({ key, label }))}
           moreLabel={moreLabel}
         />
@@ -741,7 +752,7 @@ const AdminCustomerDetailPage = () => {
         </CardContent></Card></TabsContent>
 
         {(isAdmin || isDispatcher) && !isSalesRep && <TabsContent value="supplierdocs" className="mt-0"><SupplierDocsSection companyId={(customer as any).company_id} customerId={customer.id} /></TabsContent>}
-        {showProjects && <TabsContent value="projects" className="mt-0"><Card className="rounded-2xl"><CardContent className="p-4"><ProjectsList customerId={customer.id} companyId={(customer as any).company_id} /></CardContent></Card></TabsContent>}
+        {showProjects && <TabsContent value="projects" className="mt-0" id="client-projects"><Card className="rounded-2xl"><CardContent className="p-4"><ProjectsList customerId={customer.id} companyId={(customer as any).company_id} /></CardContent></Card></TabsContent>}
         <TabsContent value="sites" className="mt-0"><Card className="rounded-2xl"><CardContent className="p-4 space-y-4">
           <SitesOverview locations={locations} quotes={quotes as any[]} jobs={jobs as any[]} invoices={invoices as any[]} onPick={(lid) => { setSite(lid); setInnerTab("jobs"); }} />
           {customer.company_id ? <CustomerLocationsManager customerId={customer.id} companyId={customer.company_id} /> : <p className="text-sm text-muted-foreground">Customer is missing a company reference.</p>}
