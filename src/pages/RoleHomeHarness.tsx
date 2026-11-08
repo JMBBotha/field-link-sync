@@ -1,5 +1,8 @@
 /** Dev-only shots of the approved role homes. Numbers here are harness rows, not Massair CT. */
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import AdminHomeBlockLayout from "@/components/admin/AdminHomeBlockLayout";
+import { normalizeAdminHomeBlocks, writeAdminHomeBlocks } from "@/lib/adminHomeBlocks";
 import { countAdminHome } from "@/lib/adminHomeCount";
 import { ADMIN_HOME_ROUTES, cashProjectionSlices } from "@/lib/roleHome";
 import { buildMaterialCheck, type SourceLine, type StockHand } from "@/lib/materialCheck";
@@ -77,6 +80,65 @@ const yard = buildYardHome({
   booksState: "ready",
   books: { receipts: [], commitments: [], allocations: [] },
 });
+
+const HARNESS_BLOCKS_KEY = "fls.adminHome.blocks.harness";
+
+function DemoSectionCard({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-2xl border bg-white/95 p-3 text-sm shadow-sm">
+      <div className="text-[10px] font-bold uppercase tracking-wide text-[#1d6aa3]">Demo data · not live Massair CT</div>
+      <div className="font-semibold text-[#14324d]">{title}</div>
+      <p className="text-[#4e6d86]">{text}</p>
+    </div>
+  );
+}
+
+/** Real arrange / hide / pin controls. The words inside each section are sample copy. */
+function AdminHomeSectionsPreview({ arrange, pin, hide }: { arrange: boolean; pin: string | null; hide: string | null }) {
+  const [seeded] = useState(() => {
+    writeAdminHomeBlocks(HARNESS_BLOCKS_KEY, normalizeAdminHomeBlocks({
+      order: ["earlier", "next", "details"],
+      pinned: (pin || "").split(",").filter(Boolean),
+      hidden: (hide || "").split(",").filter(Boolean),
+    }));
+    return true;
+  });
+  void seeded;
+  useEffect(() => {
+    const go = () => {
+      const el = document.getElementById("admin-home-sections");
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY - 140;
+      window.scrollTo({ top: Math.max(0, top) });
+    };
+    go();
+    const timer = window.setTimeout(go, 400);
+    return () => window.clearTimeout(timer);
+  }, []);
+  return (
+    <div id="admin-home-sections" className="space-y-3">
+      <p data-testid="harness-blocks-label" className="rounded-xl bg-[#0F1B2A] px-3 py-2 text-xs font-bold text-white">
+        Demo harness · not live Massair CT data. These bars are the real home controls. The text inside is sample copy.
+      </p>
+      <AdminHomeBlockLayout
+        storageKey={HARNESS_BLOCKS_KEY}
+        startCustomizing={arrange}
+        earlier={(
+          <DemoSectionCard title="Focus, who is out, and offers" text="Sample stand-in for the earlier home detail. Not live company data." />
+        )}
+        nextSteps={(
+          <DemoSectionCard title="All next steps" text="Filter and snooze would sit in this collapsed section. Sample only." />
+        )}
+        nextStepsPinned={(
+          <DemoSectionCard title="All next steps" text="Pinned to the main page, so this stays open instead of a collapsed bar. Sample only." />
+        )}
+        moreDetails={(
+          <DemoSectionCard title="Gauges, funnel, and comparisons" text="Sample stand-in for more details. Not live company data." />
+        )}
+      />
+    </div>
+  );
+}
 
 const SALES_NAV = ["Home", "Pipeline", "Quotes", "Schedule", "Clients"];
 const ADMIN_NAV = ["Home", "Jobs", "Invoices", "Stock", "Schedule"];
@@ -162,6 +224,7 @@ export default function RoleHomeHarness() {
     );
   } else {
     body = (
+      <>
       <AdminHomeScreen
         eyebrow="SATURDAY, 07 NOV"
         title="Good afternoon, Johan"
@@ -186,6 +249,8 @@ export default function RoleHomeHarness() {
         onReview={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
         onInvoice={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
       />
+      <AdminHomeSectionsPreview arrange={sp.get("arrange") === "1"} pin={sp.get("pin")} hide={sp.get("hide")} />
+      </>
     );
   }
   return (
