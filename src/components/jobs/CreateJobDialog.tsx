@@ -11,7 +11,7 @@ import { useRole } from "@/hooks/useRole";
 import { useProjects, db as projectDb, clientName } from "@/hooks/useProjectTracker";
 import { mapDispatchCandidates } from "@/lib/teamGroups";
 import {
-  canLogPastWork, houseAttachPlan, johannesburgToday, kindFromStored, pastDateAllowed, titleDefault, workCards,
+  canLogPastWork, houseAttachPlan, includesFirstFix, johannesburgToday, kindsFromStored, pastDateAllowed, titleDefault, workCards,
   type Doing, type HouseJobRef, type VisitKind, type WhereMode,
 } from "@/lib/bookJobPath";
 import { bookUpcomingOnJob, correctPastVisit, logPastVisit } from "@/lib/bookJobSave";
@@ -82,7 +82,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [doing, setDoing] = useState<Doing>("upcoming");
   const [projectId, setProjectId] = useState("");
   const [houseId, setHouseId] = useState("");
-  const [visitKind, setVisitKind] = useState<VisitKind | null>(null);
+  const [visitKinds, setVisitKinds] = useState<VisitKind[]>([]);
   const [titleTouched, setTitleTouched] = useState(false);
   const [addressTouched, setAddressTouched] = useState(false);
   const [past, setPast] = useState<PastDraft>({ techId: "", date: johannesburgToday(), arrive: "08:00", leave: "", note: "", completed: false });
@@ -101,7 +101,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setDoing("upcoming");
     setProjectId("");
     setHouseId("");
-    setVisitKind(null);
+    setVisitKinds([]);
     setTitleTouched(false);
     setAddressTouched(false);
     setPast({ techId: "", date: johannesburgToday(), arrive: "08:00", leave: "", note: "", completed: false });
@@ -166,9 +166,9 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
 
   useEffect(() => {
     if (!open || where !== "project" || !project || !house) return;
-    if (!titleTouched) setTitle(titleDefault(project.name, house.house_no, visitKind));
+    if (!titleTouched) setTitle(titleDefault(project.name, house.house_no, visitKinds));
     if (!addressTouched) setAddress(`${project.name} House ${house.house_no}`);
-  }, [open, where, project, house, visitKind, titleTouched, addressTouched]);
+  }, [open, where, project, house, visitKinds, titleTouched, addressTouched]);
 
   const { data: pathTechs = [] } = useQuery({
     queryKey: ["dispatch-techs", companyId, "book-job"],
@@ -189,7 +189,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
       return rows.map((v): VisitView => ({
         id: v.id, techId: v.tech_id || "", tech: v.tech || "Tech", date: String(v.work_date || "").slice(0, 10),
         arrive: String(v.start || "").slice(0, 5), leave: String(v.end || "").slice(0, 5), note: v.notes || "",
-        kind: kindFromStored(v.visit_kind, v.notes),
+        kinds: kindsFromStored(v.visit_kinds, v.notes),
       }));
     },
   });
@@ -420,7 +420,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setDoing("upcoming");
     setProjectId("");
     setHouseId("");
-    setVisitKind(null);
+    setVisitKinds([]);
     setTitleTouched(false);
     setAddressTouched(false);
     setPast({ techId: "", date: johannesburgToday(), arrive: "08:00", leave: "", note: "", completed: false });
@@ -433,14 +433,14 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   };
 
   const savePast = async () => {
-    if (!canLog || !visitKind || !companyId) return;
+    if (!canLog || !visitKinds.length || !companyId) return;
     setPathBusy(true);
     try {
-      const other = pathVisits.filter((v) => v.id !== correctId).map((v) => v.kind).filter((k): k is VisitKind => !!k);
+      const other = pathVisits.filter((v) => v.id !== correctId).flatMap((v) => v.kinds);
       if (doing === "correct") {
         if (!correctId || !attached?.id) throw new Error("Pick the visit to correct");
         await correctPastVisit({
-          isAdmin: true, house: house ? { id: house.id } : null, visitId: correctId, jobId: attached.id, visitKind,
+          isAdmin: true, house: house ? { id: house.id } : null, visitId: correctId, jobId: attached.id, visitKinds,
           techId: past.techId, date: past.date, arrive: past.arrive, leave: past.leave, note: past.note, completed: past.completed, otherKinds: other,
         });
         toast({ title: "Visit updated" });
@@ -451,7 +451,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
           projectName: project?.name || "Job",
           house: house ? { id: house.id, house_no: house.house_no } : null,
           existingJob: attached ? { id: attached.id } : null,
-          visitKind, techId: past.techId, date: past.date, arrive: past.arrive, leave: past.leave, note: past.note,
+          visitKinds, techId: past.techId, date: past.date, arrive: past.arrive, leave: past.leave, note: past.note,
           completed: past.completed, title, address, otherKinds: other,
         });
         toast({ title: "Visit recorded" });
@@ -532,8 +532,11 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             cards={cards}
             jobKind={jobKind}
             onJobKind={setJobKind}
-            visitKind={visitKind}
-            onVisitKind={(k) => { setVisitKind(k); if (k === "first_fix") setPast((p) => ({ ...p, completed: false })); }}
+            visitKinds={visitKinds}
+            onVisitKinds={(next) => {
+              if (includesFirstFix(next) && !includesFirstFix(visitKinds)) setPast((p) => ({ ...p, completed: false }));
+              setVisitKinds(next);
+            }}
             canLogPast={canLog}
             techs={pathTechs}
             past={past}
@@ -544,7 +547,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
               setCorrectId(id);
               const v = pathVisits.find((x) => x.id === id);
               if (!v) return;
-              if (v.kind) setVisitKind(v.kind);
+              if (v.kinds.length) setVisitKinds(v.kinds);
               setPast((p) => ({ ...p, techId: v.techId || p.techId, date: v.date || p.date, arrive: v.arrive || p.arrive, leave: v.leave, note: v.note, completed: false }));
             }}
             classic={doing !== "upcoming" ? null : (
@@ -661,7 +664,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
               if (!companyId || createMutation.isPending || pathBusy) return true;
               if (doing === "past" || doing === "correct") {
                 const today = johannesburgToday();
-                return !canLog || !visitKind || !past.techId || !past.arrive || !pastDateAllowed(past.date, today)
+                return !canLog || !visitKinds.length || !past.techId || !past.arrive || !pastDateAllowed(past.date, today)
                   || (doing === "correct" && !correctId)
                   || (doing === "past" && where === "project" && !house)
                   || (doing === "past" && where === "single" && (!customerId || !address || !title));

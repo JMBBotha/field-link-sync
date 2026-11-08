@@ -6,8 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { mapDispatchCandidates } from "@/lib/teamGroups";
 import { Button } from "@/components/ui/button";
-import { WorkIntent, VisitKindCards, PastVisitFields, VisitList, HouseFirstFitLine, type PastDraft, type VisitView } from "@/components/jobs/BookJobForm";
-import { kindFromStored, workCards, installationJobForHouse, defaultCompleted, type Doing, type VisitKind, type HouseJobRef } from "@/lib/bookJobPath";
+import { WorkIntent, VisitKindMenu, PastVisitFields, VisitList, HouseFirstFitLine, type PastDraft, type VisitView } from "@/components/jobs/BookJobForm";
+import { kindsFromStored, includesFirstFix, workCards, installationJobForHouse, type Doing, type VisitKind, type HouseJobRef } from "@/lib/bookJobPath";
 import { logPastVisit, correctPastVisit } from "@/lib/bookJobSave";
 import { FIRST_FIT_STEP } from "@/lib/projectTracker";
 import { johannesburgToday } from "@/lib/bookJobPath";
@@ -32,7 +32,7 @@ export default function LoggedWorkPanel({ surface, canLogPast, job, house, proje
   const { toast } = useToast();
   const qc = useQueryClient();
   const [doing, setDoing] = useState<Doing>("upcoming");
-  const [visitKind, setVisitKind] = useState<VisitKind | null>(null);
+  const [visitKinds, setVisitKinds] = useState<VisitKind[]>([]);
   const [past, setPast] = useState<PastDraft>(emptyPast);
   const [correctId, setCorrectId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -76,36 +76,36 @@ export default function LoggedWorkPanel({ surface, canLogPast, job, house, proje
         arrive: String(v.start || "").slice(0, 5),
         leave: String(v.end || "").slice(0, 5),
         note: v.notes || "",
-        kind: kindFromStored(v.visit_kind, v.notes),
+        kinds: kindsFromStored(v.visit_kinds, v.notes),
       }));
     },
   });
   const visits = visitsQ.data || [];
   const fitDone = !!house?.steps?.some((s) => s.step_key === FIRST_FIT_STEP && s.done);
-  const fitVisit = visits.some((v) => v.kind === "first_fix");
+  const fitVisit = visits.some((v) => includesFirstFix(v.kinds));
 
-  const pickKind = (k: VisitKind) => {
-    setVisitKind(k);
-    if (k === "first_fix") setPast((p) => ({ ...p, completed: defaultCompleted(k) }));
+  const pickKinds = (next: VisitKind[]) => {
+    if (includesFirstFix(next) && !includesFirstFix(visitKinds)) setPast((p) => ({ ...p, completed: false }));
+    setVisitKinds(next);
   };
   const pickVisit = (id: string) => {
     setCorrectId(id);
     const v = visits.find((x) => x.id === id);
     if (!v) return;
-    if (v.kind) setVisitKind(v.kind);
+    if (v.kinds.length) setVisitKinds(v.kinds);
     setPast({ techId: v.techId || past.techId, date: v.date || past.date, arrive: v.arrive || "08:00", leave: v.leave, note: v.note, completed: false });
   };
 
   const save = async () => {
-    if (!canLogPast || !visitKind || !co) return;
+    if (!canLogPast || !visitKinds.length || !co) return;
     setBusy(true);
     try {
-      const other = visits.filter((v) => v.id !== correctId).map((v) => v.kind).filter((k): k is VisitKind => !!k);
+      const other = visits.filter((v) => v.id !== correctId).flatMap((v) => v.kinds);
       if (doing === "correct") {
         if (!correctId || !attached?.id) throw new Error("Pick the visit to correct");
         await correctPastVisit({
           isAdmin: true, house: house ? { id: house.id } : null, customerId: customerId || attached.customerId, jobTitle: attached.title,
-          visitId: correctId, jobId: attached.id, visitKind,
+          visitId: correctId, jobId: attached.id, visitKinds,
           techId: past.techId, date: past.date, arrive: past.arrive, leave: past.leave, note: past.note, completed: past.completed, otherKinds: other,
         });
         toast({ title: "Visit updated" });
@@ -113,7 +113,7 @@ export default function LoggedWorkPanel({ surface, canLogPast, job, house, proje
         await logPastVisit({
           isAdmin: true, companyId: co, userId: user?.id ?? null, customerId: customerId || attached?.customerId || "",
           projectName: projectName || "Job", house: house ? { id: house.id, house_no: house.house_no } : null,
-          existingJob: attached ? { id: attached.id } : null, visitKind, techId: past.techId, date: past.date, arrive: past.arrive,
+          existingJob: attached ? { id: attached.id } : null, visitKinds, techId: past.techId, date: past.date, arrive: past.arrive,
           leave: past.leave, note: past.note, completed: past.completed, title: attached?.title || "", address: "", otherKinds: other,
         });
         toast({ title: "Visit recorded" });
@@ -140,13 +140,13 @@ export default function LoggedWorkPanel({ surface, canLogPast, job, house, proje
       {house && <HouseFirstFitLine done={fitDone || fitVisit} inStep={fitDone && fitVisit} />}
       {attached && surface === "house" && <p className="text-sm" data-testid="attached-job">Attached to {attached.title || "the installation job"}. No new sale and no second job.</p>}
       {doing === "upcoming" && <p className="text-xs text-muted-foreground">Upcoming work uses this job's schedule. Logging a past visit or a correction is here, not only under Add on behalf of tech.</p>}
-      {doing !== "upcoming" && cards === "visit" && <VisitKindCards value={visitKind} onChange={pickKind} />}
+      {doing !== "upcoming" && cards === "visit" && <VisitKindMenu value={visitKinds} onChange={pickKinds} />}
       {doing !== "upcoming" && !canLogPast && <p data-testid="past-admin-only" className="text-sm text-amber-900">Only an admin can log or correct a past visit.</p>}
       {doing === "correct" && <VisitList visits={visits} correctId={correctId} onCorrect={pickVisit} />}
       {doing === "past" && visits.length > 0 && <VisitList visits={visits} />}
       {doing !== "upcoming" && canLogPast && <PastVisitFields techs={techs.data || []} value={past} onChange={setPast} />}
       {doing !== "upcoming" && (
-        <Button className="h-11 w-full bg-[#C2410C] text-white hover:bg-[#9A3412]" disabled={busy || !canLogPast || !visitKind || !past.techId || !past.date || !past.arrive} onClick={save} data-testid="logged-work-save">
+        <Button className="h-11 w-full bg-[#C2410C] text-white hover:bg-[#9A3412]" disabled={busy || !canLogPast || !visitKinds.length || !past.techId || !past.date || !past.arrive} onClick={save} data-testid="logged-work-save">
           {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{doing === "correct" ? "Save correction" : "Save visit"}
         </Button>
       )}

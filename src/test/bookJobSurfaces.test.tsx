@@ -6,7 +6,7 @@ import { defaultCompleted, workCards } from "@/lib/bookJobPath";
 import type { JobKind } from "@/lib/jobTypeChoice";
 
 const past = (over: Partial<PastDraft> = {}): PastDraft => ({
-  techId: "t1", date: "2026-11-03", arrive: "08:00", leave: "11:30", note: "", completed: defaultCompleted("first_fix"), ...over,
+  techId: "t1", date: "2026-11-03", arrive: "08:00", leave: "11:30", note: "", completed: defaultCompleted(["first_fix"]), ...over,
 });
 
 function form(over: Partial<Parameters<typeof BookJobForm>[0]> = {}) {
@@ -30,8 +30,9 @@ function form(over: Partial<Parameters<typeof BookJobForm>[0]> = {}) {
       cards={over.cards || workCards(doing, !!attached)}
       jobKind={(over.jobKind ?? null) as JobKind | null}
       onJobKind={() => {}}
-      visitKind={over.visitKind ?? null}
-      onVisitKind={() => {}}
+      visitKinds={over.visitKinds ?? []}
+      onVisitKinds={() => {}}
+      kindsOpen={over.kindsOpen}
       canLogPast={over.canLogPast ?? true}
       techs={[{ id: "t1", name: "Tech A" }]}
       past={over.past || past()}
@@ -61,11 +62,25 @@ describe("Book a job surfaces", () => {
     expect(screen.getByTestId("house-client")).toHaveTextContent("Demo client");
     expect(screen.getByTestId("open-house-link")).toHaveAttribute("target", "_blank");
     expect(screen.queryByTestId("job-kind-service")).toBeNull();
-    expect(screen.getByTestId("visit-kind-first_fix")).toBeInTheDocument();
+    expect(screen.getByTestId("visit-kind-menu")).toHaveTextContent("Choose the work");
+  });
+
+  it("opens a multi-select list and keeps a combination", () => {
+    form({
+      doing: "past", where: "project", projectId: "p", houseId: "h", attachedTitle: "Installation — Avec House 12",
+      kindsOpen: true, visitKinds: ["first_fix", "piping"],
+    });
+    for (const label of ["First fix", "Piping", "AC installation", "Commission", "Warranty visit", "Repair", "Service"]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+    expect(screen.getByTestId("visit-kind-first_fix").querySelector("input")).toBeChecked();
+    expect(screen.getByTestId("visit-kind-piping").querySelector("input")).toBeChecked();
+    expect(screen.getByTestId("visit-kind-repair").querySelector("input")).not.toBeChecked();
+    expect(screen.getByTestId("visit-kind-menu")).toHaveTextContent("First fix + Piping");
   });
 
   it("shows the past-visit editor with today-or-earlier and finished off", () => {
-    form({ doing: "past", visitKind: "first_fix", where: "project", projectId: "p", houseId: "h", attachedTitle: "Installation — Avec House 12" });
+    form({ doing: "past", visitKinds: ["first_fix", "piping"], where: "project", projectId: "p", houseId: "h", attachedTitle: "Installation — Avec House 12" });
     expect(screen.getByTestId("past-date")).toHaveAttribute("max");
     expect(screen.getByTestId("past-tech")).toBeInTheDocument();
     expect(screen.getByTestId("past-arrive")).toBeInTheDocument();

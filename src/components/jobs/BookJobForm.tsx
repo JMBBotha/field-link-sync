@@ -1,11 +1,11 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { JobTypeChoice } from "@/components/jobs/JobTypeChoice";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { TimeInput24 } from "@/components/ui/time-input-24";
 import { cn } from "@/lib/utils";
 import {
-  DOING_CHOICES, VISIT_KINDS, johannesburgToday,
+  DOING_CHOICES, VISIT_KINDS, johannesburgToday, kindsLabel, toggleKind,
   type Doing, type VisitKind, type WhereMode,
 } from "@/lib/bookJobPath";
 import type { JobKind } from "@/lib/jobTypeChoice";
@@ -27,7 +27,7 @@ export type VisitView = {
   arrive: string;
   leave: string;
   note: string;
-  kind: VisitKind | null;
+  kinds: VisitKind[];
 };
 
 export type Named = { id: string; name: string };
@@ -64,22 +64,36 @@ export function WorkIntent({ value, onChange }: { value: Doing; onChange: (d: Do
   );
 }
 
-export function VisitKindCards({ value, onChange }: { value: VisitKind | null; onChange: (k: VisitKind) => void }) {
+/** Dropdown that stays open so more than one kind can be ticked on the same visit. */
+export function VisitKindMenu({ value, onChange, open, onOpenChange }: {
+  value: VisitKind[]; onChange: (next: VisitKind[]) => void; open?: boolean; onOpenChange?: (open: boolean) => void;
+}) {
+  const [localOpen, setLocalOpen] = useState(false);
+  const shown = open ?? localOpen;
+  const setShown = (next: boolean) => { onOpenChange?.(next); if (open === undefined) setLocalOpen(next); };
+  const summary = value.length ? kindsLabel(value) : "Choose the work on this visit";
   return (
     <div className={section} data-testid="visit-kinds">
       <SectionTitle n="3" title="What kind of work?" />
-      <div role="radiogroup" aria-label="What kind of work?" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {VISIT_KINDS.map((c) => {
-          const on = value === c.id;
-          return (
-            <button key={c.id} type="button" role="radio" aria-checked={on} data-testid={`visit-kind-${c.id}`} onClick={() => onChange(c.id)}
-              className={cn("min-h-11 rounded-xl border-2 p-3 text-left", on ? "border-[#C2410C] bg-orange-50 ring-2 ring-orange-200" : "border-border bg-card")}>
-              <div className="font-semibold">{c.title}</div>
-              <div className="text-xs text-muted-foreground">{c.hint}</div>
-            </button>
-          );
-        })}
-      </div>
+      <p className="text-xs text-muted-foreground">Pick one or more. A visit can be a combination, for example First fix and Piping.</p>
+      <button type="button" data-testid="visit-kind-menu" aria-expanded={shown} aria-haspopup="listbox" onClick={() => setShown(!shown)}
+        className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border-2 border-[#3D9BEB]/50 bg-white px-3 py-2 text-left">
+        <span className={cn("font-semibold", !value.length && "text-muted-foreground")}>{summary}</span>
+        <span aria-hidden className="text-[#3D9BEB]">{shown ? "▴" : "▾"}</span>
+      </button>
+      {shown && (
+        <div role="listbox" aria-multiselectable="true" aria-label="What kind of work?" data-testid="visit-kind-list" className="max-h-80 overflow-y-auto rounded-xl border bg-white p-1 shadow-sm">
+          {VISIT_KINDS.map((c) => {
+            const on = value.includes(c.id);
+            return (
+              <label key={c.id} data-testid={`visit-kind-${c.id}`} className={cn("flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-2", on && "bg-orange-50")}>
+                <input type="checkbox" checked={on} onChange={() => onChange(toggleKind(value, c.id))} />
+                <span className="font-semibold">{c.title}</span>
+              </label>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -124,7 +138,7 @@ export function VisitList({ visits, correctId, onCorrect }: { visits: VisitView[
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Visits</p>
       {visits.map((v) => {
         const on = correctId === v.id;
-        const kindLabel = v.kind === "first_fix" ? "First fix" : v.kind === "later_install" ? "Later install visit" : v.kind === "house_service" ? "Service on this house" : "Visit";
+        const kindLabel = v.kinds?.length ? kindsLabel(v.kinds) : "Visit";
         const extra = v.note && v.note.trim().toLowerCase() !== kindLabel.toLowerCase() ? ` · ${v.note}` : "";
         const body = (
           <>
@@ -168,8 +182,10 @@ export function BookJobForm(props: {
   cards: "new_sale" | "visit";
   jobKind: JobKind | null;
   onJobKind: (k: JobKind) => void;
-  visitKind: VisitKind | null;
-  onVisitKind: (k: VisitKind) => void;
+  visitKinds: VisitKind[];
+  onVisitKinds: (next: VisitKind[]) => void;
+  kindsOpen?: boolean;
+  onKindsOpen?: (open: boolean) => void;
   canLogPast: boolean;
   techs: Named[];
   past: PastDraft;
@@ -232,8 +248,8 @@ export function BookJobForm(props: {
       <WorkIntent value={p.doing} onChange={p.onDoing} />
 
       {p.cards === "new_sale" && <JobTypeChoice value={p.jobKind} onChange={p.onJobKind} label="What does the client need?" />}
-      {p.cards === "visit" && p.doing !== "correct" && (
-        <VisitKindCards value={p.visitKind} onChange={p.onVisitKind} />
+      {p.cards === "visit" && (
+        <VisitKindMenu value={p.visitKinds} onChange={p.onVisitKinds} open={p.kindsOpen} onOpenChange={p.onKindsOpen} />
       )}
 
       {p.showHouseFit && <HouseFirstFitLine done={!!p.firstFitDone} inStep={!!p.firstFitInStep} />}

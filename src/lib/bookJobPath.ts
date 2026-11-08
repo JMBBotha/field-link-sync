@@ -6,7 +6,7 @@ import { directJobsByHouse } from "@/lib/projectTracker";
 
 export type WhereMode = "single" | "project";
 export type Doing = "upcoming" | "past" | "correct";
-export type VisitKind = "first_fix" | "later_install" | "house_service";
+export type VisitKind = "first_fix" | "piping" | "ac_installation" | "commission" | "warranty" | "repair" | "service";
 
 export const DOING_CHOICES: { id: Doing; title: string; hint: string }[] = [
   { id: "upcoming", title: "Book upcoming work", hint: "Today's path. Schedule the visit." },
@@ -14,17 +14,46 @@ export const DOING_CHOICES: { id: Doing; title: string; hint: string }[] = [
   { id: "correct", title: "Correct a visit later", hint: "Find the visit and edit the same record." },
 ];
 
-export const VISIT_KINDS: { id: VisitKind; title: string; hint: string }[] = [
-  { id: "first_fix", title: "First fix", hint: "A visit on this house's installation job. Not a new sale and not a call-out." },
-  { id: "later_install", title: "A later install visit", hint: "Another visit on the same installation job." },
-  { id: "house_service", title: "A service on that house", hint: "Service on this house, still on the installation job." },
+export const VISIT_KINDS: { id: VisitKind; title: string }[] = [
+  { id: "first_fix", title: "First fix" },
+  { id: "piping", title: "Piping" },
+  { id: "ac_installation", title: "AC installation" },
+  { id: "commission", title: "Commission" },
+  { id: "warranty", title: "Warranty visit" },
+  { id: "repair", title: "Repair" },
+  { id: "service", title: "Service" },
 ];
 
-const KIND_TITLE: Record<VisitKind, string> = {
-  first_fix: "First fix",
-  later_install: "Install visit",
-  house_service: "Service",
+const KIND_ORDER = VISIT_KINDS.map((k) => k.id);
+const KIND_TITLE: Record<VisitKind, string> = Object.fromEntries(VISIT_KINDS.map((k) => [k.id, k.title])) as Record<VisitKind, string>;
+const LEGACY_KIND: Record<string, VisitKind> = {
+  first_fix: "first_fix", later_install: "ac_installation", house_service: "service",
+  piping: "piping", ac_installation: "ac_installation", commission: "commission", warranty: "warranty", repair: "repair", service: "service",
 };
+
+/** One visit can be several kinds. Order follows the dropdown. */
+export function normaliseKinds(kinds: Iterable<VisitKind | string | null | undefined>): VisitKind[] {
+  const picked = new Set<VisitKind>();
+  for (const raw of kinds) {
+    const k = LEGACY_KIND[String(raw || "").trim()];
+    if (k) picked.add(k);
+  }
+  return KIND_ORDER.filter((k) => picked.has(k));
+}
+
+export function toggleKind(current: VisitKind[], id: VisitKind): VisitKind[] {
+  const next = new Set(current);
+  if (next.has(id)) next.delete(id); else next.add(id);
+  return normaliseKinds(next);
+}
+
+export function includesFirstFix(kinds: Iterable<VisitKind> | null | undefined): boolean {
+  return !!kinds && [...kinds].includes("first_fix");
+}
+
+export function kindsLabel(kinds: VisitKind[]): string {
+  return normaliseKinds(kinds).map((k) => KIND_TITLE[k]).join(" + ");
+}
 
 export interface HouseJobRef {
   id: string;
@@ -46,7 +75,7 @@ export interface VisitRecord {
   leave: string;
   note: string;
   completed: boolean;
-  kind: VisitKind | null;
+  kinds: VisitKind[];
 }
 
 /** Admin / owner gate already used by Add past visit. Sales logins are not admins. */
@@ -91,18 +120,20 @@ export function houseAttachPlan<J extends HouseJobRef>(house: { id: string; hous
   };
 }
 
-export function titleDefault(projectName: string, houseNo: string, kind: VisitKind | null): string {
-  const what = kind ? KIND_TITLE[kind] : "Installation";
+export function titleDefault(projectName: string, houseNo: string, kinds: VisitKind[]): string {
+  const what = kinds.length ? kindsLabel(kinds) : "Installation";
   return `${what} — ${projectName} House ${houseNo}`;
 }
 
 /** Whole job finished stays off unless someone turns it on. A first fix usually is not the whole install. */
-export const defaultCompleted = (_kind: VisitKind | null) => false;
+export const defaultCompleted = (_kinds: VisitKind[] = []) => false;
 
-export function kindFromStored(stored?: string | null, note?: string | null): VisitKind | null {
-  if (stored === "first_fix" || stored === "later_install" || stored === "house_service") return stored;
-  if (/first\s*fix/i.test(note || "")) return "first_fix";
-  return null;
+/** Stored set on the visit. A comma string or one old value still reads as a set. A note that says First fix counts. */
+export function kindsFromStored(stored?: unknown, note?: string | null): VisitKind[] {
+  const raw = Array.isArray(stored) ? stored : typeof stored === "string" ? stored.split(",") : [];
+  const kinds = normaliseKinds(raw as string[]);
+  if (!kinds.length && /first\s*fix/i.test(note || "")) return ["first_fix"];
+  return kinds;
 }
 
 export interface LogPlan {
@@ -125,7 +156,7 @@ export interface LogPlan {
 
 export function planPastSave(input: {
   doing: "past" | "correct";
-  visitKind: VisitKind | null;
+  visitKinds: VisitKind[];
   existingJobId: string | null;
   completed: boolean;
   date: string;
@@ -147,10 +178,10 @@ export function planPastSave(input: {
     completed: input.completed,
     rpc: input.doing === "correct" ? "admin_correct_visit" : "admin_backfill_visit",
     sameVisitId: input.doing === "correct" ? (input.visitId ?? null) : null,
-    markFirstFit: input.visitKind === "first_fix",
+    markFirstFit: includesFirstFix(input.visitKinds),
   };
   if (!input.role.isAdmin) return { ...plan, reason: "admin_only" };
-  if (!input.visitKind) return { ...plan, reason: "kind" };
+  if (!input.visitKinds.length) return { ...plan, reason: "kind" };
   if (!pastDateAllowed(input.date, input.today)) return { ...plan, reason: "date" };
   if (input.doing === "correct" && !input.visitId) return { ...plan, reason: "visit" };
   return { ...plan, ok: true, writes: 1 };
@@ -186,12 +217,12 @@ export function applyCorrection(visit: VisitRecord, patch: Partial<Omit<VisitRec
   return { ...visit, ...patch, id: visit.id, jobId: visit.jobId };
 }
 
-export function firstFitDoneFromVisits(visits: { kind: VisitKind | null }[]): boolean {
-  return visits.some((v) => v.kind === "first_fix");
+export function firstFitDoneFromVisits(visits: { kinds: VisitKind[] }[]): boolean {
+  return visits.some((v) => includesFirstFix(v.kinds));
 }
 
-/** The house First fit step follows the visits. Same truth, no second record. */
-export function withFirstFit<S extends { step_key: string; done: boolean }>(steps: S[], visits: { kind: VisitKind | null }[]): S[] {
+/** The house First fit step follows the visits. Same truth, no second record. First fix among other kinds still counts. */
+export function withFirstFit<S extends { step_key: string; done: boolean }>(steps: S[], visits: { kinds: VisitKind[] }[]): S[] {
   const done = firstFitDoneFromVisits(visits);
   if (steps.some((s) => s.step_key === "first_fit")) return steps.map((s) => (s.step_key === "first_fit" ? { ...s, done } : s));
   if (!done) return steps;
@@ -199,7 +230,7 @@ export function withFirstFit<S extends { step_key: string; done: boolean }>(step
   return [...steps, (seed ? { ...seed, step_key: "first_fit", done: true } : { step_key: "first_fit", done: true }) as S];
 }
 
-export function firstFitInStep(steps: { step_key: string; done: boolean }[], visits: { kind: VisitKind | null }[]): boolean {
+export function firstFitInStep(steps: { step_key: string; done: boolean }[], visits: { kinds: VisitKind[] }[]): boolean {
   const done = firstFitDoneFromVisits(visits);
   const step = steps.find((s) => s.step_key === "first_fit");
   return done === !!step?.done;

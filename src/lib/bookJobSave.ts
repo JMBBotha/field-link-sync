@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { db } from "@/hooks/useProjectTracker";
 import { FIRST_FIT_STEP, DEFAULT_STEPS, namesHouse } from "@/lib/projectTracker";
 import {
-  installationJobInsert, johannesburgToday, planPastSave, runPastSave, titleDefault, firstFitDoneFromVisits,
+  installationJobInsert, includesFirstFix, johannesburgToday, planPastSave, runPastSave, titleDefault,
   type VisitKind,
 } from "@/lib/bookJobPath";
 
@@ -37,7 +37,7 @@ export async function syncHouseFirstFit(houseId: string, done: boolean): Promise
 }
 
 async function backfill(jobId: string, input: {
-  techId: string; date: string; arrive: string; leave: string; note: string; completed: boolean; visitKind: VisitKind;
+  techId: string; date: string; arrive: string; leave: string; note: string; completed: boolean; visitKinds: VisitKind[];
 }): Promise<string> {
   const { data, error } = await (supabase.rpc as any)("admin_backfill_visit", {
     p_job: jobId,
@@ -47,7 +47,7 @@ async function backfill(jobId: string, input: {
     p_leave: input.leave || null,
     p_completed: input.completed,
     p_note: input.note || null,
-    p_visit_kind: input.visitKind,
+    p_visit_kinds: input.visitKinds,
   });
   if (error) throw error;
   return (data as { time_entry_id?: string } | null)?.time_entry_id || "";
@@ -61,7 +61,7 @@ export async function logPastVisit(input: {
   projectName: string;
   house: { id: string; house_no: string } | null;
   existingJob: { id: string } | null;
-  visitKind: VisitKind;
+  visitKinds: VisitKind[];
   techId: string;
   date: string;
   arrive: string;
@@ -74,7 +74,7 @@ export async function logPastVisit(input: {
 }): Promise<{ jobId: string; entryId: string; createdJob: boolean }> {
   const plan = planPastSave({
     doing: "past",
-    visitKind: input.visitKind,
+    visitKinds: input.visitKinds,
     existingJobId: input.existingJob?.id ?? null,
     completed: input.completed,
     date: input.date,
@@ -84,10 +84,10 @@ export async function logPastVisit(input: {
   const created = { job: false };
   const house = input.house || await houseForTitle(input.customerId, input.title, input.address);
   const knowsOther = input.otherKinds !== undefined;
-  const firstFitDone = input.visitKind === "first_fix" || (input.otherKinds || []).includes("first_fix");
+  const firstFitDone = includesFirstFix(input.visitKinds) || includesFirstFix(input.otherKinds);
   const result = await runPastSave(plan, input.existingJob?.id ?? null, {
     createJob: async () => {
-      const title = input.title.trim() || titleDefault(input.projectName || "Job", input.house?.house_no || "", input.visitKind);
+      const title = input.title.trim() || titleDefault(input.projectName || "Job", input.house?.house_no || "", input.visitKinds);
       const row = installationJobInsert({
         companyId: input.companyId,
         customerId: input.customerId,
@@ -103,7 +103,7 @@ export async function logPastVisit(input: {
     },
     backfill: (jobId) => backfill(jobId, input),
     correct: async () => { throw new Error("not a correction"); },
-    syncFirstFit: house && (input.visitKind === "first_fix" || knowsOther) ? (done) => syncHouseFirstFit(house.id, done) : undefined,
+    syncFirstFit: house && (includesFirstFix(input.visitKinds) || knowsOther) ? (done) => syncHouseFirstFit(house.id, done) : undefined,
     firstFitDone,
   });
   return { ...result, createdJob: created.job };
@@ -116,7 +116,7 @@ export async function correctPastVisit(input: {
   jobTitle?: string | null;
   visitId: string;
   jobId: string;
-  visitKind: VisitKind;
+  visitKinds: VisitKind[];
   techId: string;
   date: string;
   arrive: string;
@@ -128,7 +128,7 @@ export async function correctPastVisit(input: {
   const house = input.house || (input.customerId ? await houseForTitle(input.customerId, input.jobTitle || "", null) : null);
   const plan = planPastSave({
     doing: "correct",
-    visitKind: input.visitKind,
+    visitKinds: input.visitKinds,
     existingJobId: input.jobId,
     completed: input.completed,
     date: input.date,
@@ -136,10 +136,7 @@ export async function correctPastVisit(input: {
     role: { isAdmin: input.isAdmin },
     visitId: input.visitId,
   });
-  const firstFitDone = firstFitDoneFromVisits([
-    { kind: input.visitKind },
-    ...(input.otherKinds || []).map((kind) => ({ kind })),
-  ]);
+  const firstFitDone = includesFirstFix(input.visitKinds) || includesFirstFix(input.otherKinds);
   return runPastSave(plan, input.jobId, {
     createJob: async () => { throw new Error("correct does not create a job"); },
     backfill: async () => { throw new Error("correct does not copy the visit"); },
@@ -152,7 +149,7 @@ export async function correctPastVisit(input: {
         p_leave: input.leave || null,
         p_completed: input.completed,
         p_note: input.note || null,
-        p_visit_kind: input.visitKind,
+        p_visit_kinds: input.visitKinds,
       });
       if (error) throw error;
       const id = (data as { time_entry_id?: string } | null)?.time_entry_id || visitId;

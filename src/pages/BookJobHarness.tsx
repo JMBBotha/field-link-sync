@@ -2,7 +2,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { BookJobForm, HouseFirstFitLine, VisitList, WorkIntent, type PastDraft, type VisitView } from "@/components/jobs/BookJobForm";
-import { applyCorrection, defaultCompleted, houseAttachPlan, johannesburgToday, titleDefault, withFirstFit, workCards, type Doing, type VisitKind, type WhereMode } from "@/lib/bookJobPath";
+import { applyCorrection, defaultCompleted, houseAttachPlan, includesFirstFix, johannesburgToday, titleDefault, withFirstFit, workCards, type Doing, type VisitKind, type WhereMode } from "@/lib/bookJobPath";
 import type { JobKind } from "@/lib/jobTypeChoice";
 import { RequestAlertsSettingsView } from "@/components/settings/RequestAlertsSettingsCard";
 import { DEFAULT_REQUEST_ALERTS } from "@/lib/requestOffers";
@@ -11,10 +11,10 @@ const PROJECTS = [{ id: "p-avec", name: "Avec" }];
 const HOUSES = [{ id: "h12", house_no: "12" }, { id: "h13", house_no: "13" }];
 const TECHS = [{ id: "t1", name: "Tech A" }, { id: "t2", name: "Tech B" }];
 const JOBS = [{ id: "job-12", title: "Installation — Avec House 12", description: null, customer_id: "demo-client", job_type: "installation", quote_id: null, lead_id: null }];
-const SAVED: VisitView = { id: "v1", techId: "t1", tech: "Tech A", date: "2026-11-03", arrive: "08:00", leave: "11:30", note: "First fix", kind: "first_fix" };
+const SAVED: VisitView = { id: "v1", techId: "t1", tech: "Tech A", date: "2026-11-03", arrive: "08:00", leave: "11:30", note: "", kinds: ["first_fix", "piping"] };
 
 function emptyPast(): PastDraft {
-  return { techId: "", date: johannesburgToday(), arrive: "08:00", leave: "", note: "", completed: defaultCompleted("first_fix") };
+  return { techId: "", date: johannesburgToday(), arrive: "08:00", leave: "", note: "", completed: defaultCompleted([]) };
 }
 
 function DemoClassic() {
@@ -48,7 +48,7 @@ function Frame({ width, title = "Book a job", children }: { width: number; title
 export default function BookJobHarness() {
   const [params] = useSearchParams();
   const shot = params.get("shot") || "default";
-  const tablet = shot === "tablet";
+  const tablet = shot === "tablet" || shot === "kinds-tablet";
   const width = tablet ? 768 : 390;
   if (shot === "flow") return <Flow width={width} />;
   if (shot === "saved" || shot === "job") return <JobShot width={width} mode={shot} />;
@@ -68,19 +68,20 @@ function SettingsShot({ width }: { width: number }) {
 }
 
 function BookShot({ width, shot }: { width: number; shot: string }) {
-  const project = shot === "project" || shot === "past";
-  const doing: Doing = shot === "past" ? "past" : "upcoming";
+  const project = shot === "project" || shot === "past" || shot === "kinds" || shot === "combo" || shot === "kinds-tablet";
+  const doing: Doing = shot === "past" || shot === "kinds" || shot === "combo" || shot === "kinds-tablet" ? "past" : "upcoming";
   const attached = project ? houseAttachPlan({ id: "h12", house_no: "12" }, JOBS, "demo-client").job : null;
-  const visitKind: VisitKind | null = shot === "past" ? "first_fix" : null;
-  const past: PastDraft = shot === "past"
-    ? { techId: "t1", date: "2026-11-03", arrive: "08:00", leave: "11:30", note: "First fix", completed: defaultCompleted("first_fix") }
+  const visitKinds: VisitKind[] = shot === "past" || shot === "combo" || shot === "kinds-tablet" ? ["first_fix", "piping"] : [];
+  const kindsOpen = shot === "kinds" || shot === "kinds-tablet" || shot === "combo";
+  const past: PastDraft = shot === "past" || shot === "combo"
+    ? { techId: "t1", date: "2026-11-03", arrive: "08:00", leave: "11:30", note: "", completed: defaultCompleted([]) }
     : emptyPast();
   return (
     <Frame width={width}>
       <div className="mb-3 rounded-2xl bg-white p-3 shadow-sm">
         <h1 className="text-lg font-extrabold">Book a job</h1>
         <p className="text-xs text-muted-foreground">Create New Job — new work, past work, projects, and later corrections.</p>
-        {project && <p className="mt-2 text-sm font-semibold">{titleDefault("Avec", "12", visitKind)}</p>}
+        {project && <p className="mt-2 text-sm font-semibold">{titleDefault("Avec", "12", visitKinds)}</p>}
       </div>
       <div className="rounded-2xl bg-white p-3 shadow-sm">
         <BookJobForm
@@ -100,8 +101,9 @@ function BookShot({ width, shot }: { width: number; shot: string }) {
           cards={workCards(doing, !!attached)}
           jobKind={null}
           onJobKind={() => {}}
-          visitKind={visitKind}
-          onVisitKind={() => {}}
+          visitKinds={visitKinds}
+          onVisitKinds={() => {}}
+          kindsOpen={kindsOpen}
           canLogPast
           techs={TECHS}
           past={past}
@@ -167,21 +169,24 @@ function Flow({ width }: { width: number }) {
   const [projectId, setProjectId] = useState("");
   const [houseId, setHouseId] = useState("");
   const [jobKind, setJobKind] = useState<JobKind | null>(null);
-  const [visitKind, setVisitKind] = useState<VisitKind | null>(null);
+  const [visitKinds, setVisitKinds] = useState<VisitKind[]>([]);
   const [past, setPast] = useState<PastDraft>(emptyPast());
   const [visits, setVisits] = useState<VisitView[]>([]);
   const [saved, setSaved] = useState(false);
   const attached = where === "project" && houseId === "h12" ? houseAttachPlan({ id: "h12", house_no: "12" }, JOBS, "demo-client").job : null;
-  const onVisit = (k: VisitKind) => { setVisitKind(k); if (k === "first_fix") setPast((p) => ({ ...p, completed: false })); };
+  const onVisit = (next: VisitKind[]) => {
+    if (includesFirstFix(next) && !includesFirstFix(visitKinds)) setPast((p) => ({ ...p, completed: false }));
+    setVisitKinds(next);
+  };
   const save = () => {
     if (doing === "correct" && visits[0]) {
       const next = applyCorrection({
-        id: visits[0].id, jobId: "job-12", techId: past.techId, techName: "Tech A", date: past.date, arrive: past.arrive, leave: past.leave, note: past.note, completed: past.completed, kind: visitKind,
-      }, { note: past.note, date: past.date, kind: visitKind });
-      setVisits([{ ...visits[0], note: next.note, date: next.date, kind: next.kind }]);
+        id: visits[0].id, jobId: "job-12", techId: past.techId, techName: "Tech A", date: past.date, arrive: past.arrive, leave: past.leave, note: past.note, completed: past.completed, kinds: visitKinds,
+      }, { note: past.note, date: past.date, kinds: visitKinds });
+      setVisits([{ ...visits[0], note: next.note, date: next.date, kinds: next.kinds }]);
       return;
     }
-    const row: VisitView = { id: "v1", techId: past.techId, tech: TECHS.find((t) => t.id === past.techId)?.name || "Tech A", date: past.date, arrive: past.arrive, leave: past.leave, note: past.note || "First fix", kind: visitKind };
+    const row: VisitView = { id: "v1", techId: past.techId, tech: TECHS.find((t) => t.id === past.techId)?.name || "Tech A", date: past.date, arrive: past.arrive, leave: past.leave, note: past.note, kinds: visitKinds.length ? visitKinds : ["first_fix"] };
     setVisits([row]);
     setSaved(true);
   };
@@ -198,7 +203,7 @@ function Flow({ width }: { width: number }) {
           attachedTitle={attached?.title || null}
           cards={workCards(doing, !!attached)}
           jobKind={jobKind} onJobKind={setJobKind}
-          visitKind={visitKind} onVisitKind={onVisit}
+          visitKinds={visitKinds} onVisitKinds={onVisit}
           canLogPast techs={TECHS} past={past} onPast={setPast}
           visits={visits} correctId={null} onCorrect={() => {}}
           classic={doing === "upcoming" ? <DemoClassic /> : null}
