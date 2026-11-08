@@ -494,6 +494,24 @@ All colors MUST be HSL.
   .page-shell { @apply p-3 space-y-4; }
 }
 
+/* Sliding pill for every on/off. Must follow the 44px rule so a switch stays a capsule (wider than tall), never a circle. */
+button[role="switch"] {
+  box-sizing: border-box;
+  width: 52px;
+  min-width: 52px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  border-radius: 999px;
+  padding: 3px;
+}
+button[role="switch"] > span {
+  width: 22px;
+  height: 22px;
+  min-height: 0;
+  border-radius: 999px;
+}
+
 
 /* Refined skeleton shimmer */
 @keyframes shimmer {

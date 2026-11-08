@@ -4,6 +4,8 @@ import { useSearchParams } from "react-router-dom";
 import { BookJobForm, HouseFirstFitLine, VisitList, WorkIntent, type PastDraft, type VisitView } from "@/components/jobs/BookJobForm";
 import { applyCorrection, defaultCompleted, houseAttachPlan, johannesburgToday, titleDefault, withFirstFit, workCards, type Doing, type VisitKind, type WhereMode } from "@/lib/bookJobPath";
 import type { JobKind } from "@/lib/jobTypeChoice";
+import { RequestAlertsSettingsView } from "@/components/settings/RequestAlertsSettingsCard";
+import { DEFAULT_REQUEST_ALERTS } from "@/lib/requestOffers";
 
 const PROJECTS = [{ id: "p-avec", name: "Avec" }];
 const HOUSES = [{ id: "h12", house_no: "12" }, { id: "h13", house_no: "13" }];
@@ -31,11 +33,11 @@ function DemoClassic() {
   );
 }
 
-function Frame({ width, children }: { width: number; children: ReactNode }) {
+function Frame({ width, title = "Book a job", children }: { width: number; title?: string; children: ReactNode }) {
   return (
     <div className="min-h-screen bg-[#eef6fb] text-[#0F2A44]" data-testid="book-job-harness">
       <header className="flex items-center justify-between px-3 text-white" style={{ height: 48, background: "#3D9BEB" }}>
-        <b>Book a job</b>
+        <b>{title}</b>
         <small className="text-[11px] font-semibold">Demo — harness, not live client data</small>
       </header>
       <div className="mx-auto px-3 py-3" style={{ width, maxWidth: "100%" }}>{children}</div>
@@ -51,7 +53,18 @@ export default function BookJobHarness() {
   if (shot === "flow") return <Flow width={width} />;
   if (shot === "saved" || shot === "job") return <JobShot width={width} mode={shot} />;
   if (shot === "house") return <HouseShot width={width} />;
+  if (shot === "settings") return <SettingsShot width={width} />;
   return <BookShot width={width} shot={shot === "tablet" ? "project" : shot} />;
+}
+
+function SettingsShot({ width }: { width: number }) {
+  return (
+    <Frame width={width} title="Settings">
+      <p className="mb-1 text-xs text-muted-foreground">Requests alerts. Same switch as every other page. Demo harness, not live settings.</p>
+      <RequestAlertsSettingsView value={{ ...DEFAULT_REQUEST_ALERTS, enabled: true }} onSave={() => {}} />
+      <RequestAlertsSettingsView value={{ ...DEFAULT_REQUEST_ALERTS, enabled: false }} onSave={() => {}} />
+    </Frame>
+  );
 }
 
 function BookShot({ width, shot }: { width: number; shot: string }) {
