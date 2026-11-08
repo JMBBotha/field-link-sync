@@ -17310,6 +17310,22 @@ export type Database = {
           p_leave: string
           p_note?: string
           p_tech: string
+          p_visit_custom?: string
+          p_visit_kinds?: string[]
+        }
+        Returns: Json
+      }
+      admin_correct_visit: {
+        Args: {
+          p_arrive: string
+          p_completed?: boolean
+          p_date: string
+          p_entry: string
+          p_leave: string
+          p_note?: string
+          p_tech: string
+          p_visit_custom?: string
+          p_visit_kinds?: string[]
         }
         Returns: Json
       }

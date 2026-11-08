@@ -108,7 +108,8 @@ export default function ProjectView({ projectId, backTo }: { projectId: string; 
       </>)}
 
       <HouseDrawer house={data.houses.find((h) => h.id === openHouse) || null} money={openHouse ? data.money[openHouse] : undefined} photos={openHouse ? data.photos?.[openHouse] : undefined} docs={openHouse ? data.docs?.[openHouse] : undefined} showDocs={showDocs}
-        phases={phases} onClose={() => setOpenHouse(null)} onSaved={() => invalidate(p.id)} />
+        phases={phases} onClose={() => setOpenHouse(null)} onSaved={() => invalidate(p.id)}
+        projectName={data.project?.name} customerId={data.project?.customer_id} companyId={data.project?.company_id} canLogPast={isAdmin} />
     </div>
   );
 }

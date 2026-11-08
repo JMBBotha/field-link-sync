@@ -5,8 +5,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { JobTypeChoice } from "@/components/jobs/JobTypeChoice";
+import { BookJobForm, type PastDraft, type VisitView } from "@/components/jobs/BookJobForm";
 import { jobTypeFor, isAcceptedQuote, quoteStatus, type JobKind } from "@/lib/jobTypeChoice";
+import { useRole } from "@/hooks/useRole";
+import { useProjects, db as projectDb, clientName } from "@/hooks/useProjectTracker";
+import { mapDispatchCandidates } from "@/lib/teamGroups";
+import {
+  canLogPastWork, customLabelMissing, houseAttachPlan, includesFirstFix, johannesburgToday, kindsFromStored, pastDateAllowed, titleDefault, workCards,
+  type Doing, type HouseJobRef, type VisitKind, type WhereMode,
+} from "@/lib/bookJobPath";
+import { bookUpcomingOnJob, correctPastVisit, logPastVisit } from "@/lib/bookJobSave";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -34,6 +42,7 @@ interface Props {
 
 const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, defaultCustomerId }: Props) => {
   const { companyId } = useUserCompanyId();
+  const { isAdmin } = useRole();
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -69,6 +78,18 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [geocoding, setGeocoding] = useState(false);
   const [geoStatus, setGeoStatus] = useState<"idle" | "ok" | "failed" | "inherited" | "pinned">("idle");
   const [showPicker, setShowPicker] = useState(true);
+  const [where, setWhere] = useState<WhereMode>("single");
+  const [doing, setDoing] = useState<Doing>("upcoming");
+  const [projectId, setProjectId] = useState("");
+  const [houseId, setHouseId] = useState("");
+  const [visitKinds, setVisitKinds] = useState<VisitKind[]>([]);
+  const [customLabel, setCustomLabel] = useState("");
+  const [titleTouched, setTitleTouched] = useState(false);
+  const [addressTouched, setAddressTouched] = useState(false);
+  const [past, setPast] = useState<PastDraft>({ techId: "", date: johannesburgToday(), arrive: "08:00", leave: "", note: "", completed: false });
+  const [correctId, setCorrectId] = useState<string | null>(null);
+  const [pathBusy, setPathBusy] = useState(false);
+  const canLog = canLogPastWork(isAdmin);
 
   // Sync incoming defaults whenever the dialog opens (dialog is mounted once
   // and reused, so prop changes must be pushed into state here).
@@ -77,6 +98,16 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setCustomerId((prev) => prev || defaultCustomerId || "");
     setLeadId((prev) => prev || defaultLeadId || "");
     setQuoteId((prev) => prev || defaultQuoteId || "");
+    setWhere("single");
+    setDoing("upcoming");
+    setProjectId("");
+    setHouseId("");
+    setVisitKinds([]);
+    setCustomLabel("");
+    setTitleTouched(false);
+    setAddressTouched(false);
+    setPast({ techId: "", date: johannesburgToday(), arrive: "08:00", leave: "", note: "", completed: false });
+    setCorrectId(null);
   }, [open, defaultCustomerId, defaultLeadId, defaultQuoteId]);
 
   const { data: customers = [] } = useQuery({
@@ -92,6 +123,30 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     enabled: open && !!companyId,
   });
 
+  const { data: projects = [] } = useProjects(undefined, open && where === "project");
+  const project = projects.find((p) => p.id === projectId) || null;
+  const { data: houses = [] } = useQuery({
+    queryKey: ["book-job-houses", projectId],
+    enabled: open && where === "project" && !!projectId,
+    queryFn: async () => {
+      const { data, error } = await projectDb.from("project_houses").select("id, house_no").eq("project_id", projectId);
+      if (error) throw error;
+      return (data || []) as { id: string; house_no: string }[];
+    },
+  });
+  const house = houses.find((h) => h.id === houseId) || null;
+  const { data: houseJobs = [] } = useQuery({
+    queryKey: ["book-job-house-jobs", project?.customer_id],
+    enabled: open && where === "project" && !!project?.customer_id,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("jobs").select("id, title, description, customer_id, job_type, quote_id, lead_id").eq("customer_id", project!.customer_id).limit(500);
+      if (error) throw error;
+      return (data || []) as HouseJobRef[];
+    },
+  });
+  const attached = where === "project" && house && project ? houseAttachPlan(house, houseJobs, project.customer_id).job : null;
+  const cards = workCards(doing, !!attached);
+
   // Load this customer's saved locations
   const { data: customerLocations = [] } = useQuery({
     queryKey: ["job-customer-locations", customerId],
@@ -106,8 +161,45 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     },
   });
 
+  useEffect(() => {
+    if (!open || where !== "project" || !project?.customer_id) return;
+    setCustomerId(project.customer_id);
+  }, [open, where, project?.customer_id]);
+
+  useEffect(() => {
+    if (!open || where !== "project" || !project || !house) return;
+    if (!titleTouched) setTitle(titleDefault(project.name, house.house_no, visitKinds, customLabel));
+    if (!addressTouched) setAddress(`${project.name} House ${house.house_no}`);
+  }, [open, where, project, house, visitKinds, customLabel, titleTouched, addressTouched]);
+
+  const { data: pathTechs = [] } = useQuery({
+    queryKey: ["dispatch-techs", companyId, "book-job"],
+    enabled: open && !!companyId && canLog && (doing === "past" || doing === "correct"),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("dispatchable_technicians" as any, { _company_id: companyId });
+      if (error) throw error;
+      return mapDispatchCandidates(data as any).map((t) => ({ id: t.id, name: t.full_name || "Technician" }));
+    },
+  });
+  const { data: pathVisits = [] } = useQuery({
+    queryKey: ["backfill-list", attached?.id, "book-job"],
+    enabled: open && !!attached?.id && canLog,
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("admin_backfill_list", { p_job: attached!.id });
+      if (error) throw error;
+      const rows = ((data as { visits?: any[] } | null)?.visits || []) as any[];
+      return rows.map((v): VisitView => ({
+        id: v.id, techId: v.tech_id || "", tech: v.tech || "Tech", date: String(v.work_date || "").slice(0, 10),
+        arrive: String(v.start || "").slice(0, 5), leave: String(v.end || "").slice(0, 5), note: v.notes || "",
+        kinds: kindsFromStored(v.visit_kinds, v.notes),
+        customLabel: v.visit_custom || "",
+      }));
+    },
+  });
+
   // When customer changes or locations load, auto-pick primary
   useEffect(() => {
+    if (where === "project") return;
     if (!customerId || customerLocations.length === 0) return;
     if (locationId) return;
     const primary = customerLocations.find((l: any) => l.is_primary) || customerLocations[0];
@@ -121,7 +213,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         setGeoStatus("inherited");
       }
     }
-  }, [customerId, customerLocations]);
+  }, [customerId, customerLocations, where]);
 
   const applyLocation = (id: string) => {
     setLocationId(id);
@@ -162,6 +254,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
 
   // Auto-fill address + inherit geo when customer changes
   useEffect(() => {
+    if (where === "project") return;
     if (!customerId) return;
     const cust = customers.find((c: any) => c.id === customerId);
     if (!cust) return;
@@ -175,7 +268,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
       setLng(Number(cust.longitude));
       setGeoStatus("inherited");
     }
-  }, [customerId, customers]);
+  }, [customerId, customers, where]);
 
   // Debounced geocode on address change (if we don't already have inherited coords)
   useEffect(() => {
@@ -326,6 +419,79 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setLng(null);
     setGeoStatus("idle");
     setShowPicker(true);
+    setWhere("single");
+    setDoing("upcoming");
+    setProjectId("");
+    setHouseId("");
+    setVisitKinds([]);
+    setCustomLabel("");
+    setTitleTouched(false);
+    setAddressTouched(false);
+    setPast({ techId: "", date: johannesburgToday(), arrive: "08:00", leave: "", note: "", completed: false });
+    setCorrectId(null);
+  };
+
+  const refreshJobs = () => {
+    ["jobs-list", "jobs-dispatch", "my-jobs", "job-schedules", "dispatch-leads", "dispatch-schedules", "dispatch-agents", "admin-home-stats", "jobs-kpi-stats", "leads", "leads-map", "project-detail", "projects", "backfill-list", "house-install-job", "job-detail"]
+      .forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
+  };
+
+  const savePast = async () => {
+    if (!canLog || !visitKinds.length || customLabelMissing(visitKinds, customLabel) || !companyId) return;
+    setPathBusy(true);
+    try {
+      const other = pathVisits.filter((v) => v.id !== correctId).flatMap((v) => v.kinds);
+      if (doing === "correct") {
+        if (!correctId || !attached?.id) throw new Error("Pick the visit to correct");
+        await correctPastVisit({
+          isAdmin: true, house: house ? { id: house.id } : null, visitId: correctId, jobId: attached.id, visitKinds, customLabel,
+          techId: past.techId, date: past.date, arrive: past.arrive, leave: past.leave, note: past.note, completed: past.completed, otherKinds: other,
+        });
+        toast({ title: "Visit updated" });
+      } else {
+        await logPastVisit({
+          isAdmin: true, companyId, userId: user?.id ?? null,
+          customerId: where === "project" ? (project?.customer_id || customerId) : customerId,
+          projectName: project?.name || "Job",
+          house: house ? { id: house.id, house_no: house.house_no } : null,
+          existingJob: attached ? { id: attached.id } : null,
+          visitKinds, customLabel, techId: past.techId, date: past.date, arrive: past.arrive, leave: past.leave, note: past.note,
+          completed: past.completed, title, address, otherKinds: other,
+        });
+        toast({ title: "Visit recorded" });
+      }
+      refreshJobs();
+      onOpenChange(false);
+      resetForm();
+    } catch (e: any) {
+      toast({ title: "Couldn't save", description: e?.message, variant: "destructive" });
+    } finally { setPathBusy(false); }
+  };
+
+  const saveOnExisting = async () => {
+    if (!attached) return;
+    setPathBusy(true);
+    try {
+      if (appt.agentId && appt.date && appt.startTime) {
+        const ok = await confirmBooking({
+          profileId: appt.agentId, date: appt.date, start: appt.startTime,
+          end: fromMinutes(toMinutes(appt.startTime) + appt.durationMinutes),
+          entity: { type: "job", id: attached.id },
+        });
+        if (!ok) return;
+      }
+      await bookUpcomingOnJob({
+        jobId: attached.id, leadId: attached.lead_id ?? null, userId: user?.id ?? null, agentId: appt.agentId,
+        date: appt.date, start: appt.startTime, end: fromMinutes(toMinutes(appt.startTime) + appt.durationMinutes),
+      });
+      void flushOverride({ type: "job", id: attached.id });
+      toast({ title: "Booked on this house's job" });
+      refreshJobs();
+      onOpenChange(false);
+      resetForm();
+    } catch (e: any) {
+      toast({ title: "Couldn't book", description: e?.message, variant: "destructive" });
+    } finally { setPathBusy(false); }
   };
 
   const geoHint = () => {
@@ -341,103 +507,156 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Job</DialogTitle>
-          <DialogDescription>Fill in the job details below</DialogDescription>
+          <DialogTitle>Book a job</DialogTitle>
+          <DialogDescription>Create New Job — new work, past work, projects, and later corrections.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>
             <Label>Title *</Label>
-            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. AC Installation - Unit 3" />
+            <Input value={title} onChange={e => { setTitleTouched(true); setTitle(e.target.value); }} placeholder="e.g. First fix — Avec House 12" />
           </div>
           <div>
             <Label>Description</Label>
             <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Job details..." rows={3} />
           </div>
-          <JobTypeChoice value={jobKind} onChange={setJobKind} label="What does the client need?" />
-          <div>
-            <Label>Customer <span className="text-destructive">*</span></Label>
-            <Select value={customerId} onValueChange={(v) => { setCustomerId(v); setLocationId(""); setLat(null); setLng(null); setGeoStatus("idle"); }}>
-              <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
-              <SelectContent>
-                {customers.map((c: any) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {customerId && customerLocations.length > 0 && (
-            <div>
-              <Label>Location <span className="text-muted-foreground text-xs">(pick a saved site)</span></Label>
-              <Select value={locationId} onValueChange={applyLocation}>
-                <SelectTrigger><SelectValue placeholder="Choose a saved location" /></SelectTrigger>
-                <SelectContent>
-                  {customerLocations.map((l: any) => (
-                    <SelectItem key={l.id} value={l.id}>
-                      {l.label}{l.is_primary ? " ⭐" : ""} — {l.address}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Or type a new address below to save it as a new location for this customer.
-              </p>
-            </div>
-          )}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label>Address <span className="text-destructive">*</span></Label>
-              <Button type="button" size="sm" variant="ghost" className="h-6 text-xs gap-1" onClick={() => setShowPicker((v) => !v)}>
-                <MapPin className="h-3 w-3" /> {showPicker ? "Hide map" : "Pin on map"}
-              </Button>
-            </div>
-            <Input
-              value={address}
-              onChange={e => { setAddress(e.target.value); setLocationId(""); setGeoStatus("idle"); setLat(null); setLng(null); }}
-              placeholder="Job address"
-            />
-            {geoHint()}
-            {showPicker && (
-              <div className="mt-2">
-                <LocationPicker
-                  latitude={lat}
-                  longitude={lng}
-                  onLocationChange={(la, ln, addr) => {
-                    setLat(la); setLng(ln); setGeoStatus("pinned");
-                    if (addr) setAddress(addr);
-                  }}
-                />
+          <BookJobForm
+            where={where}
+            onWhere={(w) => { setWhere(w); if (w === "single") { setProjectId(""); setHouseId(""); } }}
+            doing={doing}
+            onDoing={setDoing}
+            projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+            projectId={projectId}
+            onProject={(id) => { setProjectId(id); setHouseId(""); }}
+            houses={houses}
+            houseId={houseId}
+            onHouse={setHouseId}
+            clientLabel={where === "project" && project ? clientName(project.customers) : null}
+            projectHref={project && house ? `/admin/projects/${project.id}?house=${house.id}` : null}
+            attachedTitle={attached ? (attached.title || "Installation job") : null}
+            cards={cards}
+            jobKind={jobKind}
+            onJobKind={setJobKind}
+            visitKinds={visitKinds}
+            customLabel={customLabel}
+            onCustomLabel={setCustomLabel}
+            onVisitKinds={(next) => {
+              if (includesFirstFix(next) && !includesFirstFix(visitKinds)) setPast((p) => ({ ...p, completed: false }));
+              setVisitKinds(next);
+            }}
+            canLogPast={canLog}
+            techs={pathTechs}
+            past={past}
+            onPast={setPast}
+            visits={pathVisits}
+            correctId={correctId}
+            onCorrect={(id) => {
+              setCorrectId(id);
+              const v = pathVisits.find((x) => x.id === id);
+              if (!v) return;
+              if (v.kinds.length) setVisitKinds(v.kinds);
+              setCustomLabel(v.customLabel || "");
+              setPast((p) => ({ ...p, techId: v.techId || p.techId, date: v.date || p.date, arrive: v.arrive || p.arrive, leave: v.leave, note: v.note, completed: false }));
+            }}
+            classic={doing !== "upcoming" ? null : (
+              <div className="space-y-4">
+                {where !== "project" && (
+                  <div>
+                    <Label>Customer <span className="text-destructive">*</span></Label>
+                    <Select value={customerId} onValueChange={(v) => { setCustomerId(v); setLocationId(""); setLat(null); setLng(null); setGeoStatus("idle"); }}>
+                      <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
+                      <SelectContent>
+                        {customers.map((c: any) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {!attached && customerId && customerLocations.length > 0 && (
+                  <div>
+                    <Label>Location <span className="text-muted-foreground text-xs">(pick a saved site)</span></Label>
+                    <Select value={locationId} onValueChange={applyLocation}>
+                      <SelectTrigger><SelectValue placeholder="Choose a saved location" /></SelectTrigger>
+                      <SelectContent>
+                        {customerLocations.map((l: any) => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.label}{l.is_primary ? " ⭐" : ""} — {l.address}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Or type a new address below to save it as a new location for this customer.
+                    </p>
+                  </div>
+                )}
+                {!attached && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label>Address <span className="text-destructive">*</span></Label>
+                      <Button type="button" size="sm" variant="ghost" className="h-6 text-xs gap-1" onClick={() => setShowPicker((v) => !v)}>
+                        <MapPin className="h-3 w-3" /> {showPicker ? "Hide map" : "Pin on map"}
+                      </Button>
+                    </div>
+                    <Input
+                      value={address}
+                      onChange={e => { setAddressTouched(true); setAddress(e.target.value); setLocationId(""); setGeoStatus("idle"); setLat(null); setLng(null); }}
+                      placeholder="Job address"
+                    />
+                    {geoHint()}
+                    {showPicker && (
+                      <div className="mt-2">
+                        <LocationPicker
+                          latitude={lat}
+                          longitude={lng}
+                          onLocationChange={(la, ln, addr) => {
+                            setAddressTouched(true);
+                            setLat(la); setLng(ln); setGeoStatus("pinned");
+                            if (addr) setAddress(addr);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm font-semibold">
+                      Schedule <span className="text-destructive">*</span>
+                    </Label>
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Date · Time · Technician
+                    </span>
+                  </div>
+                  <AppointmentPicker value={appt} onChange={(v) => { if (v.durationMinutes !== appt.durationMinutes) setDurationTouched(true); setAppt(v); }} lat={lat} lng={lng}
+                    durationHint={durationTouched ? null : quoteMinutes ? `From quote labour (${formatDuration(quoteMinutes)})` : jobType === "quote" ? "Sales visit 1 h" : "Default 3 h"} />
+                </div>
+                {!attached && (
+                  <div>
+                    <Label>Priority</Label>
+                    <Select value={priority} onValueChange={setPriority}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="urgent">Urgent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-          <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
-            <div className="flex items-center gap-2">
-              <Label className="text-sm font-semibold">
-                Schedule <span className="text-destructive">*</span>
-              </Label>
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                Date · Time · Technician
-              </span>
-            </div>
-            <AppointmentPicker value={appt} onChange={(v) => { if (v.durationMinutes !== appt.durationMinutes) setDurationTouched(true); setAppt(v); }} lat={lat} lng={lng}
-              durationHint={durationTouched ? null : quoteMinutes ? `From quote labour (${formatDuration(quoteMinutes)})` : jobType === "quote" ? "Sales visit 1 h" : "Default 3 h"} />
-          </div>
-          <div>
-            <Label>Priority</Label>
-            <Select value={priority} onValueChange={setPriority}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="normal">Normal</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
+            className="bg-[#C2410C] text-white hover:bg-[#9A3412]"
+            data-testid="book-job-save"
             onClick={async () => {
+              if (doing === "past" || doing === "correct") { await savePast(); return; }
+              if (attached) { await saveOnExisting(); return; }
               if (appt.agentId && appt.date && appt.startTime) {
                 const ok = await confirmBooking({
                   profileId: appt.agentId, date: appt.date, start: appt.startTime,
@@ -448,10 +667,21 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
               }
               createMutation.mutate();
             }}
-            disabled={!jobKind || !title || !customerId || !address || !appt.date || !appt.startTime || !companyId || createMutation.isPending}
+            disabled={(() => {
+              if (!companyId || createMutation.isPending || pathBusy) return true;
+              if (doing === "past" || doing === "correct") {
+                const today = johannesburgToday();
+                return !canLog || !visitKinds.length || customLabelMissing(visitKinds, customLabel) || !past.techId || !past.arrive || !pastDateAllowed(past.date, today)
+                  || (doing === "correct" && !correctId)
+                  || (doing === "past" && where === "project" && !house)
+                  || (doing === "past" && where === "single" && (!customerId || !address || !title));
+              }
+              if (attached) return !appt.date || !appt.startTime || !appt.agentId;
+              return !jobKind || !title || !customerId || !address || !appt.date || !appt.startTime;
+            })()}
           >
-            {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Create Job
+            {(createMutation.isPending || pathBusy) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {doing === "past" ? "Save visit" : doing === "correct" ? "Save correction" : attached ? "Book on this job" : "Create Job"}
           </Button>
         </DialogFooter>
       </DialogContent>
