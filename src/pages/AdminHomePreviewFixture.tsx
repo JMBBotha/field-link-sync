@@ -102,12 +102,13 @@ export default function AdminHomePreviewFixture() {
     <AdminHomeScreen
       eyebrow="SATURDAY, 07 NOV"
       title="Good afternoon, Johan"
+      companyName="Demo company (Pty) Ltd"
       invoice={{ count: counts.waiting.count, total: "R76 426,79" }}
       crew={withJob ? [{ id: "fixture-job", href: "/dev/admin-home?view=jobs", who: "Tech A", type: "Installation", where: "Claremont", client: "Fixture client" }] : []}
       levels={[{ key: "cu", name: "Copper pipe", detail: "12 in stock · 6 m needed this week", short: null, href: "/dev/admin-home?view=stock" }]}
       orders={[]}
       slices={cashProjectionSlices(counts)}
-      money={[fixtureMoney.cash, fixtureMoney.liabilities, fixtureMoney.deposits, fixtureMoney.finals]}
+      model={fixtureMoney}
       onSlice={(s) => navigate(s.key === "waiting" ? "/dev/admin-home?view=review" : "/dev/admin-home?view=invoices")}
       onSliceInfo={() => setSheet(true)}
       onReview={() => navigate("/dev/admin-home?view=review")}

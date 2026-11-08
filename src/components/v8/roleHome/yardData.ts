@@ -151,30 +151,3 @@ export function useYardHome(companyId: string | null | undefined, source: AdminH
   const error = !!jobs.error || !!sales.error;
   return { companyName, model, loading: figuresLoading || (!!enabled && !ready && !error), error };
 }
-
-/** Cash, liabilities, and expected payments for the restored admin Home. Same tiles as the yard view. */
-export function useHomeMoney(companyId: string | null | undefined, source: AdminHomeSource | undefined, figuresLoading: boolean) {
-  const enabled = !!companyId && companyId !== TEST_HVAC_ID;
-  const books = useQuery({
-    queryKey: ["yard-books", companyId],
-    enabled,
-    refetchInterval: 60_000,
-    queryFn: () => loadBooks(companyId as string),
-  });
-  const tiles = useMemo(() => {
-    if (!enabled || !companyId || !source) return null;
-    const bankState = books.isError ? "error" as const : books.data ? "ready" as const : "loading" as const;
-    const model = buildYardHome({
-      companyId,
-      invoices: source.invoices,
-      payments: source.payments,
-      credits: source.credits,
-      bank: books.data ? { accounts: books.data.accounts, balances: books.data.balances } : null,
-      bankState,
-      books: books.data ? { receipts: books.data.receipts, commitments: books.data.commitments, allocations: books.data.allocations } : null,
-      booksState: bankState,
-    });
-    return [model.cash, model.liabilities, model.deposits, model.finals];
-  }, [enabled, companyId, source, books.data, books.isError]);
-  return { tiles, loading: enabled && !tiles && (figuresLoading || books.isLoading) };
-}

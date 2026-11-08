@@ -17,7 +17,7 @@ import { SalesJobScreen } from "./screens";
 import RoleMapFrame from "./RoleMapFrame";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
 import { formatRand } from "@/utils/formatRand";
-import { useHomeMoney, useYardHome } from "./yardData";
+import { useYardHome } from "./yardData";
 import { AdminHomeScreen, SalesHomeScreen, YardViewScreen } from "./screens";
 
 function stockScreen(href: string): string {
@@ -28,7 +28,7 @@ export function AdminLiveHome() {
   const navigate = useNavigate();
   const identity = useSignedInIdentity();
   const { companyId, figures, crew, needs } = useAdminRoleData();
-  const money = useHomeMoney(companyId, figures.source, figures.isLoading);
+  const yard = useYardHome(companyId, figures.source, figures.isLoading);
   const counts = countsFor(companyId, figures.source);
   const [open, setOpen] = useState<null | "waiting" | "deposit" | "final">(null);
   const now = new Date();
@@ -39,13 +39,14 @@ export function AdminLiveHome() {
       <AdminHomeScreen
         eyebrow={greetingEyebrow(now)}
         title={greetingTitle(now, identity?.name)}
+        companyName={yard.companyName}
         invoice={counts && counts.waiting.count > 0 ? { count: counts.waiting.count, total: formatRand(counts.waiting.total).replace(/^R\s/, "R") } : null}
         crew={(crew.data || []).map((c) => ({ ...c, type: jobTypeWord(c.type), where: areaFromAddress(c.where) }))}
         levels={(needs.data?.levels || []).map((l) => ({ ...l, href: stockScreen(l.href) }))}
         orders={(needs.data?.orders || []).map((o) => ({ ...o, href: ADMIN_HOME_ROUTES.stock }))}
         slices={slices}
-        money={money.tiles}
-        moneyLoading={money.loading}
+        model={yard.model}
+        modelLoading={yard.loading}
         onSlice={(s) => navigate(s.figure.actionHref)}
         onSliceInfo={(s) => setOpen(s.key)}
         onReview={() => navigate(counts?.waiting.actionHref || ADMIN_HOME_ROUTES.reviewSend)}

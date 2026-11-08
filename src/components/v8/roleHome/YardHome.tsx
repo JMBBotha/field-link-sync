@@ -118,14 +118,11 @@ function Bay({ stage, onOpen }: { stage: YardStageView; onOpen: () => void }) {
   );
 }
 
-export function YardHome({ model }: { model: YardHomeModel }) {
+export function YardMoneyStrip({ model }: { model: YardHomeModel }) {
   const [money, setMoney] = useState<YardMoneyTile["key"] | null>(null);
-  const [stageKey, setStageKey] = useState<YardStage | null>(null);
   const tile = money ? [model.cash, model.liabilities, model.deposits, model.finals].find((row) => row.key === money) || null : null;
-  const stage = stageKey ? model.stages.find((row) => row.key === stageKey) || null : null;
   const openMoney = (key: YardMoneyTile["key"]) => setMoney((cur) => (cur === key ? null : key));
   return (
-    <>
       <Glass testId="yard-metrics">
         <div className="yard-metrics">
           <MoneyButton tile={model.cash} open={money === "cash"} onOpen={() => openMoney("cash")} />
@@ -163,13 +160,22 @@ export function YardHome({ model }: { model: YardHomeModel }) {
             </Detail>
         )}
       </Glass>
+  );
+}
 
+export function YardWork({ model, yardPageHref }: { model: YardHomeModel; yardPageHref?: string }) {
+  const [stageKey, setStageKey] = useState<YardStage | null>(null);
+  const stage = stageKey ? model.stages.find((row) => row.key === stageKey) || null : null;
+  return (
+    <div id="work-in-motion" data-testid="work-in-motion">
       <Glass testId="yard-work">
           <div className="yard-work-head">
             <h2>Work in motion</h2>
             <span className="yard-work-links">
               <Link to={ADMIN_HOME_ROUTES.bookJob} data-testid="book-today-job">Book a job</Link>
-              <span>Yard view</span>
+              {yardPageHref
+                ? <Link to={yardPageHref} data-testid="yard-page-link">Yard view</Link>
+                : <span>Yard view</span>}
             </span>
           </div>
           <div className="yard-scene" data-testid="yard-scene" style={{ overflow: "visible" }}>
@@ -208,6 +214,15 @@ export function YardHome({ model }: { model: YardHomeModel }) {
             ))}
           </div>
       </Glass>
+    </div>
+  );
+}
+
+export function YardHome({ model, yardPageHref }: { model: YardHomeModel; yardPageHref?: string }) {
+  return (
+    <>
+      <YardMoneyStrip model={model} />
+      <YardWork model={model} yardPageHref={yardPageHref} />
     </>
   );
 }

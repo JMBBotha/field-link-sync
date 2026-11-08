@@ -17,14 +17,14 @@ import HomeFocus from "@/components/home/HomeFocus";
 import RequestsTodayStrip from "@/components/requests/RequestsTodayStrip";
 import { useV8Role } from "@/components/v8/V8Sidebar";
 
-import { Map, ExternalLink, Maximize2, Minimize2, LayoutTemplate } from "lucide-react";
+import { Map, ExternalLink, Maximize2, Minimize2 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { homeMapNotice, homeMapWash, homeOverlayClass, mapHeroShellClass, mapHeroStageClass, showPhoneLiveMapButton, type MapAvailability } from "@/lib/phoneMapFrame";
 
 const AdminHomePage = () => {
   const navigate = useNavigate();
   const { isSalesRep } = useSalesRep();
-  const { isClassic, toggle: toggleLayout } = useLayoutVersion();
+  const { isClassic } = useLayoutVersion();
   const v8Role = useV8Role();
   const HomeC = isClassic ? ClassicAdminHome : AdminHome;
   const [showCreateLead, setShowCreateLead] = useState(false);
@@ -116,14 +116,6 @@ const AdminHomePage = () => {
 
           {/* Dashboard content floating over the map. Absolute, not h-full: iOS clips h-full + overflow to 0. */}
           <div className={homeOverlayClass} data-testid="home-dashboard">
-            {/* Same-spot view switch on both layouts (Johan 13 Oct: no way back from Classic). */}
-            {/* Hidden on phones (Johan 29 Oct): desktop keeps the switch. */}
-            <div className="hidden md:flex justify-end">
-              <Button size="sm" variant="outline" onClick={toggleLayout} data-testid="dashboard-layout-switch" className="gap-1.5 text-xs h-8 bg-card/90 backdrop-blur-sm shadow-sm">
-                <LayoutTemplate className="h-3.5 w-3.5" />
-                {isClassic ? "Switch to new view" : "Switch to classic view"}
-              </Button>
-            </div>
             {showPhoneLiveMapButton(isSalesRep) && (
               <div className="flex lg:hidden">
                 <Button size="sm" variant="outline" onClick={() => navigate("/admin/map")} data-testid="home-open-live-map" className="h-11 gap-1.5 bg-card text-sm shadow-sm">

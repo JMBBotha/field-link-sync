@@ -161,7 +161,9 @@ export default function RoleHomeHarness() {
       <AdminHomeScreen
         eyebrow="SATURDAY, 07 NOV"
         title="Good afternoon, Johan"
+        companyName="Demo company (Pty) Ltd"
         invoice={yard.invoice.count > 0 ? yard.invoice : null}
+        model={yard}
         crew={[
           { id: "1", href: "/admin/jobs/demo-1", who: "Tech A", type: "Installation", where: "Claremont", client: "Demo Client 7" },
           { id: "2", href: "/admin/jobs/demo-2", who: "Tech B", type: "Service", where: "Observatory", client: "Demo Client 4" },
@@ -175,7 +177,6 @@ export default function RoleHomeHarness() {
           { key: "out", label: "1 × Outdoor unit", detail: "For booked installations", href: ADMIN_HOME_ROUTES.stock },
         ]}
         slices={cashProjectionSlices(harnessCounts)}
-        money={[yard.cash, yard.liabilities, yard.deposits, yard.finals]}
         onSlice={(s) => navigate(s.figure.actionHref)}
         onSliceInfo={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
         onReview={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}

@@ -4,9 +4,9 @@ import type { MaterialCheck, MaterialLine, StockLevel, StockOrder } from "@/lib/
 import { checkSummary } from "@/lib/materialCheck";
 import type { CashSlice } from "@/lib/roleHome";
 import { ADMIN_HOME_ROUTES } from "@/lib/roleHome";
-import type { YardHomeModel, YardMoneyTile } from "@/lib/yardView";
+import type { YardHomeModel } from "@/lib/yardView";
 import { CashPie, Chip, Glass, IntroCard, InvoiceBanner, RowLink } from "./chrome";
-import { YardHome } from "./YardHome";
+import { YardHome, YardMoneyStrip, YardWork } from "./YardHome";
 
 const quietLink = { color: "inherit", textDecoration: "none" } as const;
 
@@ -309,52 +309,47 @@ export function SalesJobScreen(props: {
   );
 }
 
-const HOME_MONEY_ORDER: YardMoneyTile["key"][] = ["cash", "liabilities", "deposits", "finals"];
-
-function MoneyAccountBlock({ tiles, loading }: { tiles: YardMoneyTile[] | null; loading?: boolean }) {
-  const byKey = new Map((tiles || []).map((tile) => [tile.key, tile]));
-  const rows = HOME_MONEY_ORDER.map((key) => byKey.get(key)).filter((tile): tile is YardMoneyTile => !!tile);
+function CompanyGreeting({ eyebrow, title, companyName }: { eyebrow: string; title: string; companyName?: string | null }) {
   return (
-    <Glass testId="money-in-account">
-      <div className="rh-head">
-        <Link to={ADMIN_HOME_ROUTES.cash} data-testid="money-in-account-heading" style={quietLink}><h2>Money in account</h2></Link>
+    <Glass as="div" tone="warm" className="rh-intro" radius={17} testId="role-greeting">
+      <div className="yard-greet">
+        <div>
+          <div className="rh-eyebrow">{eyebrow}</div>
+          <h1>{title}</h1>
+        </div>
+        <div className="yard-co">
+          {companyName ? <b>{companyName}</b> : null}
+          <span>Company overview</span>
+        </div>
       </div>
-      <div className="rh-muted">Cash on hand, liabilities, and payments expected in</div>
-      {loading && rows.length === 0 && <p className="rh-muted" data-testid="money-in-account-loading">Loading…</p>}
-      {!loading && rows.length === 0 && <p className="rh-muted" data-testid="money-in-account-empty">These figures could not be loaded.</p>}
-      {rows.map((tile) => (
-        <Link key={tile.key} to={tile.href} className="rh-material home-money-row" data-testid={`home-money-${tile.key}`}>
-          <span>
-            <b style={{ display: "block" }}>{tile.label}</b>
-            <span className="rh-muted" data-testid={`home-money-date-${tile.key}`}>{tile.dateLine}</span>
-          </span>
-          <span className="home-money-side">
-            <b className="home-money-amt" data-testid={`home-money-amount-${tile.key}`}>{tile.amountLabel ?? "—"}</b>
-            <span className="rh-arrow">›</span>
-          </span>
-        </Link>
-      ))}
     </Glass>
   );
 }
 
+function scrollToWork(event: { preventDefault: () => void }) {
+  const el = document.getElementById("work-in-motion");
+  if (!el) return;
+  event.preventDefault();
+  if (typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "start" });
+}
+
 export function AdminHomeScreen({
-  eyebrow, title, invoice, crew, levels, orders, slices, money, moneyLoading, onSlice, onSliceInfo, onReview, onInvoice,
+  eyebrow, title, companyName, invoice, crew, levels, orders, slices, model, modelLoading, onSlice, onSliceInfo, onReview, onInvoice,
   jobsHref = ADMIN_HOME_ROUTES.jobs,
   bookHref = ADMIN_HOME_ROUTES.bookJob,
   mapHref = ADMIN_HOME_ROUTES.map,
   stockHref = ADMIN_HOME_ROUTES.stock,
-  yardHref = ADMIN_HOME_ROUTES.yard,
 }: {
   eyebrow: string;
   title: string;
+  companyName?: string | null;
   invoice: { count: number; total: string } | null;
   crew: TodayCrew[];
   levels: StockLevel[];
   orders: StockOrder[];
   slices: CashSlice[];
-  money: YardMoneyTile[] | null;
-  moneyLoading?: boolean;
+  model: YardHomeModel | null;
+  modelLoading?: boolean;
   onSlice: (s: CashSlice) => void;
   onSliceInfo?: (s: CashSlice) => void;
   onReview: () => void;
@@ -363,21 +358,20 @@ export function AdminHomeScreen({
   bookHref?: string;
   mapHref?: string;
   stockHref?: string;
-  yardHref?: string;
 }) {
   return (
-    <div data-testid="role-admin-home">
-      <IntroCard eyebrow={eyebrow} title={title} />
+    <div data-testid="role-admin-home" className="home-fit">
+      <CompanyGreeting eyebrow={eyebrow} title={title} companyName={companyName} />
       {invoice && invoice.count > 0 && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} />}
+      {model ? <YardMoneyStrip model={model} /> : (
+        <p className="rh-muted" data-testid="home-money-loading">{modelLoading ? "Loading…" : "These figures could not be loaded."}</p>
+      )}
       <div className="rh-grid">
-        <div className="rh-span">
-          <MoneyAccountBlock tiles={money} loading={moneyLoading} />
-        </div>
         <Glass>
           <div className="rh-head">
             <Link to={jobsHref} data-testid="today-jobs-heading" style={quietLink}><h2>Jobs being done today</h2></Link>
             <span className="home-job-tools">
-              <Link to={yardHref} data-testid="open-yard-view" className="home-yard-link">Yard view</Link>
+              <a href="#work-in-motion" data-testid="open-yard-view" className="home-yard-link" onClick={scrollToWork}>Yard view</a>
               <span className="rh-count">{crew.length}</span>
             </span>
           </div>
@@ -390,7 +384,7 @@ export function AdminHomeScreen({
             </RowLink>
           ))}
           {crew.length > 5 && <Link to={jobsHref} className="rh-muted">View all {crew.length} jobs →</Link>}
-          <Link to={bookHref} className="rh-btn" data-testid="book-today-job" style={{ marginTop: 12 }}>Book a job</Link>
+          <Link to={bookHref} className="rh-btn" data-testid="book-today-job" style={{ marginTop: 8 }}>Book a job</Link>
         </Glass>
         <Glass testId="material-stock-levels">
           <Link to={stockHref} data-testid="stock-levels-heading" style={quietLink}><h2>Material &amp; stock levels</h2></Link>
@@ -420,6 +414,7 @@ export function AdminHomeScreen({
         </Glass>
         <CashPie slices={slices} onOpen={onSlice} onInfo={onSliceInfo} />
       </div>
+      {model && <YardWork model={model} yardPageHref={ADMIN_HOME_ROUTES.yard} />}
     </div>
   );
 }
@@ -440,18 +435,7 @@ export function YardViewScreen({
 }) {
   return (
     <div data-testid="role-yard-view">
-      <Glass as="div" tone="warm" className="rh-intro" radius={17} testId="role-greeting">
-        <div className="yard-greet">
-          <div>
-            <div className="rh-eyebrow">{eyebrow}</div>
-            <h1>{title}</h1>
-          </div>
-          <div className="yard-co">
-            {companyName ? <b>{companyName}</b> : null}
-            <span>Company overview</span>
-          </div>
-        </div>
-      </Glass>
+      <CompanyGreeting eyebrow={eyebrow} title={title} companyName={companyName} />
       {invoice && invoice.count > 0 && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} />}
       {model && <YardHome model={model} />}
       {!model && loading && <p className="rh-muted" data-testid="yard-loading">Loading the yard…</p>}
