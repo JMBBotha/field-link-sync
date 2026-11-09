@@ -55,9 +55,9 @@ import SurveyReportChip from "@/components/survey/SurveyReportChip";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
 import LiveClientPreview from "@/components/quoting/LiveClientPreview";
 import PriceListPane from "@/components/quoting/PriceListPane";
+import PriceListSheet from "@/components/quoting/PriceListSheet";
 import { canSeePriceListPdfs } from "@/lib/priceListPdf";
 import { useRole } from "@/hooks/useRole";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import DocumentStyleSwitch from "@/components/quoting/DocumentStyleSwitch";
 import { useQuoteUnitCards } from "@/components/quoting/QuoteUnitCards";
 import { useLivePreviewPref, useIsWideScreen } from "@/hooks/useLivePreviewPref";
@@ -793,12 +793,7 @@ export default function EstimateBuilder({
                 </div>
               )}
               {canPriceList && (
-                <Sheet open={priceSheetOpen} onOpenChange={setPriceSheetOpen}>
-                  <SheetContent side="right" className={`${isPhone ? "w-full max-w-none" : "w-[60vw] max-w-[60vw] sm:max-w-[60vw]"} fl-builder p-3`} data-testid="pricelist-sheet">
-                    <SheetHeader><SheetTitle className="text-sm">Price list</SheetTitle></SheetHeader>
-                    <PriceListPane heightClass="h-[calc(100vh-8rem)]" />
-                  </SheetContent>
-                </Sheet>
+                <PriceListSheet open={priceSheetOpen} onOpenChange={setPriceSheetOpen} phone={isPhone} />
               )}
             </>
           )}
