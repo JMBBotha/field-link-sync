@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AdminHome from "@/components/AdminHome";
+import AdminHomeBlockLayout from "@/components/admin/AdminHomeBlockLayout";
 import ClassicAdminHome from "@/components/classic/ClassicAdminHome";
 import { useLayoutVersion } from "@/hooks/useLayoutVersion";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
@@ -152,6 +153,21 @@ const AdminHomePage = () => {
             <OfferCards />
             <HomeC onNavigate={(tab) => navigate(tabToRoute[tab] || "/admin")} onCreateLead={() => setShowCreateLead(true)} />
             </div>
+            ) : (v8Role === "admin" || v8Role === "owner") ? (
+            <AdminHomeBlockLayout
+              earlier={(
+                <>
+                  {v8Role !== "tech" && <HomeFocus requests={<RequestsTodayStrip blue />} />}
+                  {v8Role !== "tech" && <V8RoleHome role={v8Role} hideRequests hideGreeting hideInvoiceBanner={v8Role !== "sales"} />}
+                  {!isSalesRep && <FieldPresenceBoard />}
+                  {isSalesRep && <SalesMyJobs />}
+                  <OfferCards />
+                </>
+              )}
+              nextSteps={<NextStepsPanel className="mt-2 border-0 p-1" />}
+              nextStepsPinned={<NextStepsPanel />}
+              moreDetails={<HomeC onNavigate={(tab) => navigate(tabToRoute[tab] || "/admin")} onCreateLead={() => setShowCreateLead(true)} />}
+            />
             ) : (
             <details className="rounded-2xl border bg-card/95 p-2" data-testid="home-earlier-detail">
               <summary className="cursor-pointer px-2 py-1 text-sm font-semibold">Earlier home detail</summary>
