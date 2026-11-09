@@ -17349,7 +17349,15 @@ export type Database = {
         Returns: Json
       }
       admin_mark_job_completed: {
-        Args: { p_at: string; p_job: string; p_note?: string }
+        Args: {
+          p_at: string
+          p_job: string
+          p_materials?: Json
+          p_materials_mode?: string
+          p_note?: string
+          p_schedule_mode?: string
+          p_visits?: Json
+        }
         Returns: Json
       }
       admin_pending_proposal_count: { Args: never; Returns: number }
@@ -18785,6 +18793,7 @@ export type Database = {
           window_start: string
         }[]
       }
+      job_booked_materials: { Args: { p_job: string }; Returns: Json }
       job_materials_draw: {
         Args: { p_job: string; p_lines: Json }
         Returns: Json
