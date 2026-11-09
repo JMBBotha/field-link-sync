@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
+import { V8BarContext } from "@/components/v8/v8BarContext";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CloudOff, Home, Wallet, Wifi } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -21,6 +22,7 @@ export default function FieldShell({ title, back = false, children }: FieldShell
   const navigate = useNavigate();
   const { isOnline } = useOfflineContext();
   const salary = useIsSalaried();
+  const v8Bar = useContext(V8BarContext);
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-background px-3 pt-3">
@@ -28,7 +30,7 @@ export default function FieldShell({ title, back = false, children }: FieldShell
           {back && <Button variant="ghost" size="icon" aria-label="Back" title="Back" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>}
-          <CompanyLogo className="h-12 w-24 shrink-0 object-contain" />
+          {!v8Bar && <CompanyLogo className="h-14 w-auto max-w-[11rem] shrink-0 object-contain sm:h-16 sm:max-w-[14rem]" />}
           <span className="flex-1 sm:hidden" aria-hidden />
           <h1 className="order-last w-full min-w-0 break-words text-xl font-bold text-foreground sm:order-none sm:w-auto sm:flex-1">{title}</h1>
           {/* Desktop has no bottom nav: keep Field home and My earnings one click away (Johan 09:27). */}

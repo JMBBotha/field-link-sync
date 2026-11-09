@@ -1,5 +1,6 @@
 import JobLocationShare from "@/components/jobs/JobLocationShare";
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { V8BarContext } from "@/components/v8/v8BarContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useRole } from "@/hooks/useRole";
 import { supabase } from "@/integrations/supabase/client";
@@ -128,6 +129,7 @@ const getPriorityColor = (priority: string | undefined): string | null => {
 };
 
 const FieldAgent = () => {
+  const v8Bar = useContext(V8BarContext);
   const MAP_CHROME_BOTTOM_OFFSET_PX = 64;
   const [loading, setLoading] = useState(true);
   const [locationEnabled, setLocationEnabled] = useState(false);
@@ -1249,7 +1251,7 @@ const FieldAgent = () => {
           {/* Left: logo, office links (text at xl, icons at tablet, menu on phones), GPS state.
               The signed-in person is shown once, by the orange IdentityBadge on the right. */}
           <div className="flex min-w-0 items-center gap-1.5 md:gap-2 xl:gap-3">
-            <CompanyLogo className="h-8 w-auto max-w-[6.5rem] shrink-0 object-contain sm:max-w-none md:h-12 xl:h-[4.5rem]" />
+            {!v8Bar && <CompanyLogo className="h-14 w-auto max-w-[10rem] shrink-0 object-contain sm:max-w-[14rem] md:h-16 xl:h-[4.5rem]" />}
             <h1 className="sr-only">Field Agent{userName ? ` – ${userName}` : ""}</h1>
             {!canInvoice && !salaried && (
               <Button variant="ghost" size="sm" onClick={() => navigate("/field/earnings")} aria-label="My earnings" title="My earnings" data-testid="hdr-my-earnings"
