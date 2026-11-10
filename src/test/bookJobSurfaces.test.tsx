@@ -35,7 +35,8 @@ function form(over: Partial<Parameters<typeof BookJobForm>[0]> = {}) {
       customLabel={over.customLabel}
       kindsOpen={over.kindsOpen}
       canLogPast={over.canLogPast ?? true}
-      techs={[{ id: "t1", name: "Tech A" }]}
+      techs={over.techs || [{ id: "t1", name: "Tech A" }]}
+      techsOpen={over.techsOpen}
       past={over.past || past()}
       onPast={() => {}}
       visits={over.visits || []}
@@ -96,9 +97,25 @@ describe("Book a job surfaces", () => {
     form({ doing: "past", visitKinds: ["first_fix", "piping"], where: "project", projectId: "p", houseId: "h", attachedTitle: "Installation — Avec House 12" });
     expect(screen.getByTestId("past-date")).toHaveAttribute("max");
     expect(screen.getByTestId("past-tech")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Tech A" })).toBeInTheDocument();
     expect(screen.getByTestId("past-arrive")).toBeInTheDocument();
     expect(screen.getByTestId("past-leave")).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Whole job finished on this visit" })).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("shows every company technician in the past-work menu, including when the list is open", () => {
+    form({
+      doing: "past",
+      visitKinds: ["first_fix"],
+      techs: [{ id: "innocent", name: "Innocent Mattienga" }, { id: "t2", name: "Tech B" }],
+      techsOpen: true,
+      past: past({ techId: "" }),
+    });
+    const menu = screen.getByTestId("past-tech");
+    expect(menu).toHaveAttribute("size", "3");
+    expect(screen.getByRole("option", { name: "Choose technician…" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Innocent Mattienga" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Tech B" })).toBeInTheDocument();
   });
 
   it("offers the same three choices from Book a job, the job page, and the project house", () => {
