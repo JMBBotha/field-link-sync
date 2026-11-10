@@ -48,7 +48,7 @@ function Frame({ width, title = "Book a job", children }: { width: number; title
 export default function BookJobHarness() {
   const [params] = useSearchParams();
   const shot = params.get("shot") || "default";
-  const tablet = shot === "tablet" || shot === "kinds-tablet" || shot === "custom-tablet";
+  const tablet = shot === "tablet" || shot === "kinds-tablet" || shot === "custom-tablet" || shot === "techs-tablet";
   const width = tablet ? 768 : 390;
   if (shot === "flow") return <Flow width={width} />;
   if (shot === "saved" || shot === "job") return <JobShot width={width} mode={shot} />;
@@ -69,12 +69,14 @@ function SettingsShot({ width }: { width: number }) {
 
 function BookShot({ width, shot }: { width: number; shot: string }) {
   const customShot = shot === "custom-list" || shot === "custom-typed" || shot === "custom-combo" || shot === "custom-tablet";
+  const techsShot = shot === "techs" || shot === "techs-tablet";
   const project = shot === "project" || shot === "past" || shot === "kinds" || shot === "combo" || shot === "kinds-tablet" || customShot;
-  const doing: Doing = shot === "past" || shot === "kinds" || shot === "combo" || shot === "kinds-tablet" || customShot ? "past" : "upcoming";
+  const doing: Doing = shot === "past" || shot === "kinds" || shot === "combo" || shot === "kinds-tablet" || customShot || techsShot ? "past" : "upcoming";
   const attached = project ? houseAttachPlan({ id: "h12", house_no: "12" }, JOBS, "demo-client").job : null;
   const visitKinds: VisitKind[] = shot === "custom-typed" ? ["custom"]
     : shot === "custom-combo" || shot === "custom-tablet" ? ["first_fix", "custom"]
-    : shot === "past" || shot === "combo" || shot === "kinds-tablet" ? ["first_fix", "piping"] : [];
+    : shot === "past" || shot === "combo" || shot === "kinds-tablet" ? ["first_fix", "piping"]
+    : techsShot ? ["first_fix"] : [];
   const customLabel = shot === "custom-list" ? "" : customShot ? "Balcony drain" : "";
   const kindsOpen = shot === "kinds" || shot === "kinds-tablet" || shot === "combo" || customShot;
   const past: PastDraft = shot === "past" || shot === "combo"
@@ -111,6 +113,7 @@ function BookShot({ width, shot }: { width: number; shot: string }) {
           kindsOpen={kindsOpen}
           canLogPast
           techs={TECHS}
+          techsOpen={techsShot}
           past={past}
           onPast={() => {}}
           visits={[]}

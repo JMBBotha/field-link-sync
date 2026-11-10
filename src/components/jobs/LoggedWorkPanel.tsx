@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { mapDispatchCandidates } from "@/lib/teamGroups";
+import { useBookingTechnicians } from "@/hooks/useBookingTechnicians";
 import { Button } from "@/components/ui/button";
 import { WorkIntent, VisitKindMenu, PastVisitFields, VisitList, HouseFirstFitLine, type PastDraft, type VisitView } from "@/components/jobs/BookJobForm";
 import { kindsFromStored, includesFirstFix, customLabelMissing, workCards, installationJobForHouse, type Doing, type VisitKind, type HouseJobRef } from "@/lib/bookJobPath";
@@ -53,15 +53,7 @@ export default function LoggedWorkPanel({ surface, canLogPast, job, house, proje
   } : null;
   const co = companyId || job?.companyId || "";
 
-  const techs = useQuery({
-    queryKey: ["dispatch-techs", co],
-    enabled: !!co && canLogPast && doing !== "upcoming",
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("dispatchable_technicians" as any, { _company_id: co });
-      if (error) throw error;
-      return mapDispatchCandidates(data as any).map((t) => ({ id: t.id, name: t.full_name || "Technician" }));
-    },
-  });
+  const techs = useBookingTechnicians(co, !!co && canLogPast);
   const visitsQ = useQuery({
     queryKey: ["backfill-list", attached?.id],
     enabled: !!attached?.id && canLogPast,

@@ -107,8 +107,10 @@ export function VisitKindMenu({ value, onChange, customLabel = "", onCustomLabel
   );
 }
 
-export function PastVisitFields({ techs, value, onChange, maxDate }: {
+export function PastVisitFields({ techs, value, onChange, maxDate, techsOpen = false }: {
   techs: Named[]; value: PastDraft; onChange: (p: PastDraft) => void; maxDate?: string;
+  /** Harness only: show the options in the page so a screenshot can see them. */
+  techsOpen?: boolean;
 }) {
   const max = maxDate || johannesburgToday();
   const set = (patch: Partial<PastDraft>) => onChange({ ...value, ...patch });
@@ -116,7 +118,13 @@ export function PastVisitFields({ techs, value, onChange, maxDate }: {
     <div className="space-y-3" data-testid="past-visit-fields">
       <label className="block text-sm">
         <span className="text-muted-foreground">Technician</span>
-        <select className="mt-1 h-11 w-full rounded-lg border bg-background px-3" data-testid="past-tech" value={value.techId} onChange={(e) => set({ techId: e.target.value })}>
+        <select
+          className={cn("mt-1 w-full rounded-lg border bg-background px-3", techsOpen ? "py-1" : "h-11")}
+          data-testid="past-tech"
+          size={techsOpen ? techs.length + 1 : undefined}
+          value={value.techId}
+          onChange={(e) => set({ techId: e.target.value })}
+        >
           <option value="">Choose technician…</option>
           {techs.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
@@ -199,6 +207,7 @@ export function BookJobForm(props: {
   onKindsOpen?: (open: boolean) => void;
   canLogPast: boolean;
   techs: Named[];
+  techsOpen?: boolean;
   past: PastDraft;
   onPast: (p: PastDraft) => void;
   visits: VisitView[];
@@ -271,7 +280,7 @@ export function BookJobForm(props: {
         </p>
       )}
       {p.doing === "correct" && <VisitList visits={p.visits} correctId={p.correctId} onCorrect={p.onCorrect} />}
-      {logging && p.canLogPast && <PastVisitFields techs={p.techs} value={p.past} onChange={p.onPast} />}
+      {logging && p.canLogPast && <PastVisitFields techs={p.techs} value={p.past} onChange={p.onPast} techsOpen={p.techsOpen} />}
       {p.doing === "upcoming" && p.classic}
       {p.doing !== "correct" && p.visits.length > 0 && <VisitList visits={p.visits} />}
     </div>

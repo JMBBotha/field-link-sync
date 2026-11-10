@@ -9,7 +9,7 @@ import { BookJobForm, type PastDraft, type VisitView } from "@/components/jobs/B
 import { jobTypeFor, isAcceptedQuote, quoteStatus, type JobKind } from "@/lib/jobTypeChoice";
 import { useRole } from "@/hooks/useRole";
 import { useProjects, db as projectDb, clientName } from "@/hooks/useProjectTracker";
-import { mapDispatchCandidates } from "@/lib/teamGroups";
+import { useBookingTechnicians } from "@/hooks/useBookingTechnicians";
 import {
   canLogPastWork, customLabelMissing, houseAttachPlan, includesFirstFix, johannesburgToday, kindsFromStored, pastDateAllowed, titleDefault, workCards,
   type Doing, type HouseJobRef, type VisitKind, type WhereMode,
@@ -172,15 +172,9 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     if (!addressTouched) setAddress(`${project.name} House ${house.house_no}`);
   }, [open, where, project, house, visitKinds, customLabel, titleTouched, addressTouched]);
 
-  const { data: pathTechs = [] } = useQuery({
-    queryKey: ["dispatch-techs", companyId, "book-job"],
-    enabled: open && !!companyId && canLog && (doing === "past" || doing === "correct"),
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("dispatchable_technicians" as any, { _company_id: companyId });
-      if (error) throw error;
-      return mapDispatchCandidates(data as any).map((t) => ({ id: t.id, name: t.full_name || "Technician" }));
-    },
-  });
+  // Past and correct visits use the same technician lane as dispatch (AppointmentPicker / useLaneStaff).
+  // The live-offer list also requires Available right now, so an offline tech never appears.
+  const { data: pathTechs = [] } = useBookingTechnicians(companyId, open && canLog);
   const { data: pathVisits = [] } = useQuery({
     queryKey: ["backfill-list", attached?.id, "book-job"],
     enabled: open && !!attached?.id && canLog,
