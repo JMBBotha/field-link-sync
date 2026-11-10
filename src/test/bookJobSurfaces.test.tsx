@@ -52,7 +52,7 @@ describe("Book a job surfaces", () => {
     form({ classic: <div>Schedule</div> });
     expect(screen.getByTestId("doing-upcoming")).toHaveTextContent("Book upcoming work");
     expect(screen.getByTestId("doing-past")).toHaveTextContent("Log work that already happened");
-    expect(screen.getByTestId("doing-correct")).toHaveTextContent("Correct a visit later");
+    expect(screen.getByTestId("doing-correct")).toHaveTextContent("Update existing visit");
     expect(screen.getByTestId("job-kind-service")).toHaveTextContent("R680 excl. VAT");
     expect(screen.getByTestId("job-kind-installation")).toHaveTextContent("Free sales site visit");
     expect(screen.getByText("Schedule")).toBeInTheDocument();

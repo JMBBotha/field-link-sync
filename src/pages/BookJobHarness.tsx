@@ -86,7 +86,7 @@ function BookShot({ width, shot }: { width: number; shot: string }) {
     <Frame width={width}>
       <div className="mb-3 rounded-2xl bg-white p-3 shadow-sm">
         <h1 className="text-lg font-extrabold">Book a job</h1>
-        <p className="text-xs text-muted-foreground">Create New Job — new work, past work, projects, and later corrections.</p>
+        <p className="text-xs text-muted-foreground">Create New Job — new work, past work, projects, and updates to an existing visit.</p>
         {project && <p className="mt-2 text-sm font-semibold">{titleDefault("Avec", "12", visitKinds, customLabel)}</p>}
       </div>
       <div className="rounded-2xl bg-white p-3 shadow-sm">
@@ -137,7 +137,7 @@ function JobShot({ width, mode }: { width: number; mode: "saved" | "job" }) {
         <p className="text-sm text-[#CFE6F6]">Demo client · Avec House 12</p>
       </div>
       <div className="rounded-2xl bg-white p-3 shadow-sm" data-testid="job-work-shot">
-        <h2 className="text-sm font-semibold">Book, log, or correct</h2>
+        <h2 className="text-sm font-semibold">Book, log, or update</h2>
         <p className="mb-2 text-xs text-muted-foreground">Same choices as Book a job. Not only under Add on behalf of tech.</p>
         <WorkIntent value={doing} onChange={setDoing} />
         {mode === "saved" && <div className="mt-3"><VisitList visits={[SAVED]} /></div>}
@@ -162,7 +162,7 @@ function HouseShot({ width }: { width: number }) {
           <div className="mb-1 font-semibold">Done ticks</div>
           {steps.map((s) => <label key={s.step_key} className="flex items-center gap-2 py-1"><input type="checkbox" readOnly checked={s.done} /> {s.label}</label>)}
         </div>
-        <h2 className="text-sm font-semibold">Book, log, or correct</h2>
+        <h2 className="text-sm font-semibold">Book, log, or update</h2>
         <WorkIntent value="past" onChange={() => {}} />
         <p className="text-sm" data-testid="attached-job">Attached to Installation — Avec House 12. No new sale and no second job.</p>
         <VisitList visits={[SAVED]} />

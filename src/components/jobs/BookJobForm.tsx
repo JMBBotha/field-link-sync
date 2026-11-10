@@ -276,7 +276,7 @@ export function BookJobForm(props: {
 
       {logging && !p.canLogPast && (
         <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" data-testid="past-admin-only">
-          Only an admin can log or correct a past visit.
+          Only an admin can log or update a past visit.
         </p>
       )}
       {p.doing === "correct" && <VisitList visits={p.visits} correctId={p.correctId} onCorrect={p.onCorrect} />}
