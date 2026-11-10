@@ -6,6 +6,9 @@ import { buildMaterialCheck, type SourceLine, type StockHand } from "@/lib/mater
 import { buildYardHome, type YardJob } from "@/lib/yardView";
 import RoleMapFrame from "@/components/v8/roleHome/RoleMapFrame";
 import { AdminHomeScreen, SalesHomeScreen, SalesJobScreen, TechHomeScreen, TechJobScreen, YardViewScreen } from "@/components/v8/roleHome/screens";
+import NewAdminHeader from "@/components/admin/NewAdminHeader";
+import CompanyLogo from "@/components/shared/CompanyLogo";
+import { V8_HEADER_LOGO_CLASS, V8_HEADER_ROW_CLASS } from "@/components/shared/v8HeaderLogo";
 
 const DEMO = "00000000-0000-4000-8000-0000000000aa";
 const hand = (id: string, label: string, qty: number, productId: string): StockHand => ({ id, label, qty, productId });
@@ -81,18 +84,31 @@ const yard = buildYardHome({
 const SALES_NAV = ["Home", "Pipeline", "Quotes", "Schedule", "Clients"];
 const ADMIN_NAV = ["Home", "Jobs", "Invoices", "Stock", "Schedule"];
 
-function Bar({ title }: { title: string }) {
+function Bar({ title, tech }: { title: string; tech: boolean }) {
+  const note = <p style={{ margin: 0, padding: "4px 12px", background: "#0F1B2A", color: "#fff", fontSize: 11, fontWeight: 600 }}>Demo - harness, not live Massair CT totals</p>;
+  if (tech) {
+    return (
+      <div>
+        <header data-testid="v8-field-top-bar" className="v8-bar-hdr v8-bar-over-halo shrink-0 border-b" style={{ background: "#3D9BEB", color: "#fff" }}>
+          <div className={V8_HEADER_ROW_CLASS}>
+            <CompanyLogo data-testid="header-logo" className={V8_HEADER_LOGO_CLASS} />
+          </div>
+        </header>
+        {note}
+      </div>
+    );
+  }
   return (
-    <header style={{ height: 50, background: "#3D9BEB", color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", fontWeight: 700 }}>
-      <b>{title}</b>
-      <small style={{ fontWeight: 600, fontSize: 11 }}>Demo - harness, not live Massair CT totals</small>
-    </header>
+    <div>
+      <NewAdminHeader pageTitle={title} onMenu={() => undefined} onSearch={() => undefined} onCreateLead={() => undefined} resolvedTheme="light" toggleTheme={() => undefined} />
+      {note}
+    </div>
   );
 }
 
 function Side({ items }: { items: string[] }) {
   return (
-    <aside className="v8-richer-halo v8-role-side" data-testid="role-side" aria-label="Side menu" style={{ position: "sticky", top: 0, height: "calc(100vh - 50px)", alignSelf: "flex-start" }}>
+    <aside className="v8-richer-halo v8-role-side" data-testid="role-side" aria-label="Side menu" style={{ position: "sticky", top: 0, alignSelf: "stretch" }}>
       <div className="v8-mark">Field Lynk</div>
       <div className="v8-mark-sync">SYNC</div>
       <nav aria-label="Main">
@@ -112,7 +128,7 @@ export default function RoleHomeHarness() {
   const phone = !tablet;
   let body = null;
   let title = "Home";
-  if (view === "tech-home") {
+  if (view === "tech-home" || view === "tech-home-tablet") {
     body = (
       <TechHomeScreen eyebrow="SATURDAY, 07 NOV" title="Good morning, Tech A" jobs={[
         { id: "a", href: "/dev/role-homes?view=tech-service", time: "08:30", type: "Service", area: "Observatory", client: "Demo Client 4", check: service },
@@ -190,9 +206,9 @@ export default function RoleHomeHarness() {
   }
   return (
     <div style={{ minHeight: "100vh", background: "#e9e7e4" }} data-testid={`harness-${view}`}>
-      <Bar title={title} />
-      <div style={{ display: "flex", minHeight: "calc(100vh - 50px)" }}>
-        {tablet && <Side items={view.startsWith("admin") ? ADMIN_NAV : SALES_NAV} />}
+      <Bar title={title} tech={view.startsWith("tech")} />
+      <div style={{ display: "flex", minHeight: "calc(100vh - 4.5rem)" }}>
+        {tablet && <Side items={view.startsWith("admin") ? ADMIN_NAV : view.startsWith("tech") ? ["Today", "Schedule", "Earnings"] : SALES_NAV} />}
         <div style={{ flex: 1, minWidth: 0, maxWidth: phone ? 430 : undefined, margin: phone ? "0 auto" : undefined }}>
           <RoleMapFrame map={sp.get("map") === "1"}>{body}</RoleMapFrame>
         </div>
