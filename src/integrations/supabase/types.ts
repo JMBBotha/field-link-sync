@@ -5852,6 +5852,8 @@ export type Database = {
           start_time: string
           tech_signature_data_url: string | null
           travel_hours: number
+          visit_custom: string | null
+          visit_kinds: string[] | null
           work_date: string
         }
         Insert: {
@@ -5884,6 +5886,8 @@ export type Database = {
           start_time: string
           tech_signature_data_url?: string | null
           travel_hours?: number
+          visit_custom?: string | null
+          visit_kinds?: string[] | null
           work_date?: string
         }
         Update: {
@@ -5916,6 +5920,8 @@ export type Database = {
           start_time?: string
           tech_signature_data_url?: string | null
           travel_hours?: number
+          visit_custom?: string | null
+          visit_kinds?: string[] | null
           work_date?: string
         }
         Relationships: [
@@ -7431,6 +7437,81 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mandy_handoffs: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          entity_ids: Json
+          id: string
+          page: string | null
+          role: string | null
+          status: string
+          summary: string
+          transcript: string | null
+          user_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          entity_ids?: Json
+          id?: string
+          page?: string | null
+          role?: string | null
+          status?: string
+          summary: string
+          transcript?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          entity_ids?: Json
+          id?: string
+          page?: string | null
+          role?: string | null
+          status?: string
+          summary?: string
+          transcript?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      mandy_playbook: {
+        Row: {
+          active: boolean
+          allowed_roles: string[]
+          answer: string
+          company_id: string | null
+          id: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+          when_to_use: string
+        }
+        Insert: {
+          active?: boolean
+          allowed_roles?: string[]
+          answer: string
+          company_id?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+          when_to_use: string
+        }
+        Update: {
+          active?: boolean
+          allowed_roles?: string[]
+          answer?: string
+          company_id?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+          when_to_use?: string
+        }
+        Relationships: []
       }
       mandy_undo_snapshots: {
         Row: {
@@ -11951,7 +12032,36 @@ export type Database = {
           sales_rep_id?: string
           technician_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sales_rep_technicians_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_rep_technicians_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "sales_rep_technicians_sales_rep_id_fkey"
+            columns: ["sales_rep_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_rep_technicians_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_agreements: {
         Row: {
@@ -17342,20 +17452,6 @@ export type Database = {
         }
         Returns: Json
       }
-      admin_correct_visit: {
-        Args: {
-          p_arrive: string
-          p_completed?: boolean
-          p_date: string
-          p_entry: string
-          p_leave: string
-          p_note?: string
-          p_tech: string
-          p_visit_custom?: string
-          p_visit_kinds?: string[]
-        }
-        Returns: Json
-      }
       admin_bot_accounts: {
         Args: never
         Returns: {
@@ -17369,6 +17465,20 @@ export type Database = {
       }
       admin_correct_client_details: {
         Args: { p_changes: Json; p_quote_id: string; p_reason: string }
+        Returns: Json
+      }
+      admin_correct_visit: {
+        Args: {
+          p_arrive: string
+          p_completed?: boolean
+          p_date: string
+          p_entry: string
+          p_leave: string
+          p_note?: string
+          p_tech: string
+          p_visit_custom?: string
+          p_visit_kinds?: string[]
+        }
         Returns: Json
       }
       admin_create_quote_variation: {
@@ -17460,6 +17570,7 @@ export type Database = {
         }
         Returns: Json
       }
+      auth_user_id_for_email: { Args: { p_email: string }; Returns: string }
       availability_in_window: {
         Args: {
           p_at?: string
@@ -17558,6 +17669,10 @@ export type Database = {
         Args: { _company: string; _customer: string; _uid: string }
         Returns: boolean
       }
+      can_update_company: {
+        Args: { _company: string; _uid: string }
+        Returns: boolean
+      }
       can_view_company_overruns: {
         Args: { _job_id: string; _uid: string }
         Returns: boolean
@@ -17568,6 +17683,15 @@ export type Database = {
       }
       can_write_master_catalog: { Args: { _uid: string }; Returns: boolean }
       can_write_specials: { Args: { _uid: string }; Returns: boolean }
+      cancel_booking_visit: {
+        Args: {
+          p_job?: string
+          p_lead: string
+          p_note?: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       cashflow_data: { Args: { p_company: string }; Returns: Json }
       cf_allocate_stock: {
         Args: { p_commitment: string; p_qty: number; p_stock_item: string }
@@ -17668,6 +17792,14 @@ export type Database = {
         }
         Returns: string
       }
+      company_history_customers: { Args: { p_company: string }; Returns: Json }
+      company_history_invoice: {
+        Args: { p_company: string; p_invoice: string }
+        Returns: Json
+      }
+      company_history_invoices: { Args: { p_company: string }; Returns: Json }
+      company_history_payments: { Args: { p_company: string }; Returns: Json }
+      company_history_quotes: { Args: { p_company: string }; Returns: Json }
       company_profile_safe: {
         Args: never
         Returns: {
@@ -18625,6 +18757,7 @@ export type Database = {
         }[]
       }
       get_sales_tracker: { Args: { p_rep_id?: string }; Returns: Json }
+      get_signup_applicant: { Args: { _id: string }; Returns: Json }
       get_tech_catalogue: {
         Args: never
         Returns: {
@@ -19317,6 +19450,18 @@ export type Database = {
       }
       quote_auto_summary: { Args: { p_quote_id: string }; Returns: string }
       quote_bundle_preview: { Args: { p_quote_ids: string[] }; Returns: Json }
+      quote_client_invoice_lines: {
+        Args: { p_quote_id: string }
+        Returns: {
+          amount: number
+          description: string
+          line_name: string
+          quantity: number
+          room_label: string
+          sort_order: number
+          unit_price: number
+        }[]
+      }
       quote_conversion_funnel: {
         Args: never
         Returns: {
@@ -19408,6 +19553,14 @@ export type Database = {
         Returns: Json
       }
       relock_quote: { Args: { p_quote_id: string }; Returns: boolean }
+      rep_booked_or_assigned_job: {
+        Args: { _job: string; _uid: string }
+        Returns: boolean
+      }
+      rep_booked_or_assigned_lead: {
+        Args: { _lead: string; _uid: string }
+        Returns: boolean
+      }
       rep_can_see_customer: {
         Args: { _customer: string; _uid: string }
         Returns: boolean
@@ -19573,14 +19726,11 @@ export type Database = {
         Args: { p_apply?: boolean; p_lead: string }
         Returns: Json
       }
-      sales_may_book_tech: { Args: { _tech: string; _uid: string }; Returns: boolean }
-      sales_my_jobs: { Args: { p_limit?: number }; Returns: Json }
-      sales_profile_visible: { Args: { _profile: string }; Returns: boolean }
-      sales_schedule_row_visible: {
-        Args: { _agent: string; _job: string; _lead: string }
+      sales_may_book_tech: {
+        Args: { _tech: string; _uid: string }
         Returns: boolean
       }
-      sales_schedule_scope: { Args: { p_from: string; p_to: string }; Returns: Json }
+      sales_my_jobs: { Args: { p_limit?: number }; Returns: Json }
       sales_next_steps: {
         Args: { p_rep?: string }
         Returns: {
@@ -19596,6 +19746,15 @@ export type Database = {
           snoozable: boolean
           title: string
         }[]
+      }
+      sales_profile_visible: { Args: { _profile: string }; Returns: boolean }
+      sales_schedule_row_visible: {
+        Args: { _agent: string; _job: string; _lead: string }
+        Returns: boolean
+      }
+      sales_schedule_scope: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
       }
       sales_scope_own: { Args: { p_uid: string }; Returns: boolean }
       save_agreement_template: {
@@ -19864,6 +20023,10 @@ export type Database = {
         Args: { p_manual?: boolean; p_status: string }
         Returns: string
       }
+      set_quote_group_salesperson: {
+        Args: { p_quote: string; p_user: string }
+        Returns: Json
+      }
       set_quote_labour_mode: {
         Args: {
           p_area_units?: Json
@@ -19972,6 +20135,11 @@ export type Database = {
         }
         Returns: string
       }
+      srt_in_company: {
+        Args: { _company: string; _uid: string }
+        Returns: boolean
+      }
+      srt_service_lane: { Args: { _uid: string }; Returns: boolean }
       ss_can_write: { Args: { _survey: string }; Returns: boolean }
       ss_folder_ok: { Args: { _name: string }; Returns: boolean }
       ss_folder_survey: { Args: { _name: string }; Returns: string }
