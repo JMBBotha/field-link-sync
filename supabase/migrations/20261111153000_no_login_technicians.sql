@@ -175,19 +175,19 @@ CREATE TRIGGER trg_block_nologin_location
   BEFORE INSERT OR UPDATE ON public.agent_locations
   FOR EACH ROW EXECUTE FUNCTION public.block_nologin_location_write();
 
--- Candidate lists used by broadcast and dispatch-service-job. Manual assignment
--- (dispatchable_technicians / Book a job) does not use these functions.
-CREATE OR REPLACE FUNCTION public.find_dispatch_candidates(
-  p_lead_id uuid,
-  p_role text,
-  p_radius_km numeric DEFAULT 40,
-  p_skill text DEFAULT NULL
-)
-RETURNS TABLE(staff_id uuid, full_name text, distance_km numeric)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  WITH l AS (SELECT location, company_id FROM public.leads WHERE id = p_lead_id)
-  SELECT p.id,
-         p.full_name,
+-- Replaced functions below are the live bodies, plus one no_login predicate each.
+-- Grants are left as they are: CREATE OR REPLACE keeps them.
+CREATE OR REPLACE FUNCTION public.find_dispatch_candidates(p_lead_id uuid, p_role text, p_radius_km numeric DEFAULT 40, p_skill text DEFAULT NULL::text)
+ RETURNS TABLE(staff_id uuid, full_name text, distance_km numeric)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  WITH l AS (SELECT id, location, company_id, scheduled_date, scheduled_time,
+                    (scheduled_time + make_interval(mins => COALESCE(estimated_duration_minutes,
+                       public.default_booking_minutes(CASE WHEN primary_intent::text = 'sales' THEN 'sales' ELSE service_type END))))::time AS end_time
+             FROM public.leads WHERE id = p_lead_id AND public.rh_ops_ok(company_id) /*rh*/)
+  SELECT p.id, p.full_name,
          ROUND((ST_Distance(p.home_location, l.location) / 1000)::numeric, 2) AS distance_km
   FROM public.profiles p, l
   WHERE p.dispatch_active = true
@@ -205,27 +205,23 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
         AND a.start_time <= (now() AT TIME ZONE 'Africa/Johannesburg')::time
         AND a.end_time   >= (now() AT TIME ZONE 'Africa/Johannesburg')::time
     )
+    AND (l.scheduled_date IS NULL OR l.scheduled_time IS NULL OR NOT EXISTS (
+      SELECT 1 FROM public._person_bookings(p.id, l.scheduled_date) b
+      WHERE b.lead_id IS DISTINCT FROM l.id AND b.start_time < l.end_time AND b.end_time > l.scheduled_time))
   ORDER BY distance_km ASC;
-$$;
+$function$;
 
-REVOKE ALL ON FUNCTION public.find_dispatch_candidates(uuid,text,numeric,text) FROM public, anon;
-GRANT EXECUTE ON FUNCTION public.find_dispatch_candidates(uuid,text,numeric,text) TO authenticated, service_role;
-
-CREATE OR REPLACE FUNCTION public.find_dispatch_candidates_multi(
-  p_lead_id uuid,
-  p_role text,
-  p_radius_km numeric,
-  p_skills text[] DEFAULT NULL
-)
-RETURNS TABLE(staff_id uuid, full_name text, distance_km numeric)
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  WITH l AS (SELECT location, company_id FROM public.leads WHERE id = p_lead_id)
-  SELECT p.id,
-         p.full_name,
+CREATE OR REPLACE FUNCTION public.find_dispatch_candidates_multi(p_lead_id uuid, p_role text, p_radius_km numeric, p_skills text[] DEFAULT NULL::text[])
+ RETURNS TABLE(staff_id uuid, full_name text, distance_km numeric)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  WITH l AS (SELECT id, location, company_id, scheduled_date, scheduled_time,
+                    (scheduled_time + make_interval(mins => COALESCE(estimated_duration_minutes,
+                       public.default_booking_minutes(CASE WHEN primary_intent::text = 'sales' THEN 'sales' ELSE service_type END))))::time AS end_time
+             FROM public.leads WHERE id = p_lead_id AND public.rh_ops_ok(company_id) /*rh*/)
+  SELECT p.id, p.full_name,
          ROUND((ST_Distance(p.home_location, l.location) / 1000)::numeric, 2) AS distance_km
   FROM public.profiles p, l
   WHERE p.dispatch_active = true
@@ -235,11 +231,7 @@ AS $$
     AND l.location IS NOT NULL
     AND (l.company_id IS NULL OR p.company_id = l.company_id OR p.participant_type IN ('independent_sales','independent_tech'))
     AND ST_DWithin(p.home_location, l.location, p_radius_km * 1000)
-    AND (
-      p_skills IS NULL
-      OR array_length(p_skills, 1) IS NULL
-      OR COALESCE(p.skills, ARRAY[]::text[]) && p_skills
-    )
+    AND (p_skills IS NULL OR array_length(p_skills, 1) IS NULL OR COALESCE(p.skills, ARRAY[]::text[]) && p_skills)
     AND EXISTS (
       SELECT 1 FROM public.agent_availability a
       WHERE a.agent_id = p.id AND a.is_available = true
@@ -247,15 +239,14 @@ AS $$
         AND a.start_time <= (now() AT TIME ZONE 'Africa/Johannesburg')::time
         AND a.end_time   >= (now() AT TIME ZONE 'Africa/Johannesburg')::time
     )
+    AND (l.scheduled_date IS NULL OR l.scheduled_time IS NULL OR NOT EXISTS (
+      SELECT 1 FROM public._person_bookings(p.id, l.scheduled_date) b
+      WHERE b.lead_id IS DISTINCT FROM l.id AND b.start_time < l.end_time AND b.end_time > l.scheduled_time))
   ORDER BY distance_km ASC;
-$$;
+$function$;
 
-REVOKE ALL ON FUNCTION public.find_dispatch_candidates_multi(uuid, text, numeric, text[]) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.find_dispatch_candidates_multi(uuid, text, numeric, text[]) TO service_role;
-
--- Manual assign (job page Assign, backfill). No-login technicians are included even
--- when offline: the office books them, they have no phone to mark Available.
--- Live offers do not use this function.
+-- Manual assign still lists a no-login technician when they are offline.
+-- The office books them; they have no phone on which to mark Available.
 CREATE OR REPLACE FUNCTION public.dispatchable_technicians(_company_id uuid)
  RETURNS TABLE(profile_id uuid, full_name text, participant_type text, assignment_type text)
  LANGUAGE sql
@@ -263,7 +254,7 @@ CREATE OR REPLACE FUNCTION public.dispatchable_technicians(_company_id uuid)
  SET search_path TO 'public'
 AS $function$
   WITH allowed AS (
-    SELECT auth.uid() IS NULL
+    SELECT auth.uid() IS NULL                      -- service role (dispatch-job)
         OR public.is_company_member(auth.uid(), _company_id)
         OR public.has_role(auth.uid(), 'platform_super_admin'::app_role) AS ok
   ), techs AS (
@@ -283,10 +274,7 @@ AS $function$
   WHERE allowed.ok
     AND (SELECT p.archived_at FROM public.profiles p WHERE p.id = t.id) IS NULL
     AND COALESCE((SELECT p.dispatch_active FROM public.profiles p WHERE p.id = t.id), true)
-    AND (
-      public.staff_is_available(t.id)
-      OR COALESCE((SELECT p.no_login FROM public.profiles p WHERE p.id = t.id), false)
-    )
+    AND (public.staff_is_available(t.id) OR COALESCE((SELECT p.no_login FROM public.profiles p WHERE p.id = t.id), false))
     AND public.has_role(t.id, 'field_agent'::app_role)
     AND NOT public.has_role(t.id, 'admin'::app_role)
     AND NOT public.has_role(t.id, 'dispatcher'::app_role)
@@ -295,9 +283,12 @@ AS $function$
   ORDER BY t.id, t.pri;
 $function$;
 
--- Push hook: do not queue a device notification for a no-login technician.
 CREATE OR REPLACE FUNCTION public.fl_alert_deliver(p_user uuid, p_type text, p_title text, p_body text, p_related uuid, p_meta jsonb)
-RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 DECLARE v_id uuid;
 BEGIN
   IF nullif(p_meta->>'company_id', '') IS NOT NULL
@@ -314,14 +305,12 @@ BEGIN
     RETURN NULL;
   END IF;
   IF coalesce((p_meta->>'push')::boolean, false)
-     AND NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = p_user AND coalesce(p.no_login, false))
      AND EXISTS (SELECT 1 FROM public.push_subscriptions WHERE user_id = p_user) THEN
     INSERT INTO public.push_outbox(notification_id, user_id, title, body, url)
     SELECT v_id, p_user, t.title, t.body, t.url FROM public.fl_push_text(p_type, p_related) t;
   END IF;
   RETURN v_id;
-END $$;
-REVOKE ALL ON FUNCTION public.fl_alert_deliver(uuid, text, text, text, uuid, jsonb) FROM PUBLIC;
+END $function$;
 
 -- Service role only. Used when linking a real email onto the same auth user.
 CREATE OR REPLACE FUNCTION public.auth_user_id_for_email(p_email text)
@@ -363,7 +352,10 @@ CREATE TRIGGER trg_clear_no_login_after_sign_in
 -- app_metadata.provision. It does not notify platform admins and does not
 -- create a pending company application.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
- RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
 AS $function$
 DECLARE
   v_pt text := NEW.raw_user_meta_data->>'participant_type';
@@ -420,7 +412,7 @@ BEGIN
             CASE WHEN v_skills IS NULL THEN '{}'::text[] ELSE ARRAY[v_skills] END);
   ELSE
     IF v_sr IS NULL OR v_sr NOT IN ('company_new','company_tech','company_sales','massair_dual') THEN
-      v_sr := 'company_new';
+      v_sr := 'company_new'; -- direct/no-role sign-up: held as a new-company application
     END IF;
     INSERT INTO public.profiles (id, full_name, network_status, phone, signup_role, signup_company)
     VALUES (NEW.id, v_name, 'pending',

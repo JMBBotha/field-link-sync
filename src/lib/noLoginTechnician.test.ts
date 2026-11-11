@@ -86,6 +86,44 @@ describe("add technician without invite", () => {
     expect(sql).not.toContain("CREATE OR REPLACE FUNCTION public._p3_is_tech");
     expect(sql).toContain("OR COALESCE((SELECT p.no_login FROM public.profiles p WHERE p.id = t.id), false)");
     expect(sql).toContain("no_login_technician");
+    expect(sql).toContain("public.rh_ops_ok(company_id)");
+    expect(sql).toContain("public._person_bookings");
+  });
+
+  it("keeps every other line of the replaced live functions", () => {
+    const live = readFileSync(resolve(__dirname, "../test/fixtures/noLoginLiveFunctions.sql"), "utf8");
+    const grab = (src: string, name: string) => {
+      const match = src.match(new RegExp(`CREATE OR REPLACE FUNCTION public\\.${name}\\b[\\s\\S]*?\\$function\\$;`));
+      if (!match) throw new Error(`missing ${name}`);
+      return match[0];
+    };
+    const strip = (name: string, body: string) => {
+      if (name.startsWith("find_dispatch_candidates")) {
+        return body.replace("    AND coalesce(p.no_login, false) = false\n", "");
+      }
+      if (name === "dispatchable_technicians") {
+        return body.replace(
+          "    AND (public.staff_is_available(t.id) OR COALESCE((SELECT p.no_login FROM public.profiles p WHERE p.id = t.id), false))\n",
+          "    AND public.staff_is_available(t.id)\n",
+        );
+      }
+      if (name === "fl_alert_deliver") {
+        return body.replace(
+          "  IF EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = p_user AND coalesce(p.no_login, false)) THEN\n    RETURN NULL;\n  END IF;\n",
+          "",
+        );
+      }
+      return body.replace(/  IF coalesce\(NEW\.raw_app_meta_data->>'provision', ''\) = 'no_login_technician' THEN[\s\S]*?  END IF;\n\n/, "");
+    };
+    for (const name of [
+      "find_dispatch_candidates_multi",
+      "find_dispatch_candidates",
+      "dispatchable_technicians",
+      "fl_alert_deliver",
+      "handle_new_user",
+    ]) {
+      expect(strip(name, grab(sql, name)), name).toBe(grab(live, name));
+    }
   });
 
   it("creates one auth user with a non-deliverable email and no password, and links login onto that same id", () => {
