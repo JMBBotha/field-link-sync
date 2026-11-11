@@ -1,5 +1,6 @@
 import { MASSAIR_IND_ID, TEST_HVAC_ID } from "@/lib/adminHomeCount";
 import { resolveLane } from "@/hooks/useLaneStaff";
+import { bookableForCaller } from "@/lib/salesTechAccess";
 
 /** Companies that must never contribute a technician to Book a job. */
 export const EXCLUDED_TECH_COMPANY_IDS = [TEST_HVAC_ID, MASSAIR_IND_ID] as const;
@@ -32,6 +33,7 @@ export type BookingTechRow = {
 export function bookingTechnicians(
   rows: BookingTechRow[] | null | undefined,
   companyId: string | null | undefined,
+  scope?: { salesRep?: boolean; assignedIds?: readonly string[] | null },
 ): { id: string; name: string }[] {
   if (!companyId || (EXCLUDED_TECH_COMPANY_IDS as readonly string[]).includes(companyId)) return [];
   const seen = new Set<string>();
@@ -46,5 +48,6 @@ export function bookingTechnicians(
     out.push({ id: row.id, name: row.full_name?.trim() || "Technician" });
   }
   out.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+  if (scope?.salesRep) return bookableForCaller(out, true, scope.assignedIds);
   return out;
 }

@@ -10,6 +10,8 @@ import { jobTypeFor, isAcceptedQuote, quoteStatus, type JobKind } from "@/lib/jo
 import { useRole } from "@/hooks/useRole";
 import { useProjects, db as projectDb, clientName } from "@/hooks/useProjectTracker";
 import { useBookingTechnicians } from "@/hooks/useBookingTechnicians";
+import { useSalesRep } from "@/hooks/useSalesRep";
+import { NO_TECHS_ASSIGNED } from "@/lib/salesTechAccess";
 import {
   canLogPastWork, customLabelMissing, houseAttachPlan, includesFirstFix, johannesburgToday, kindsFromStored, pastDateAllowed, titleDefault, workCards,
   type Doing, type HouseJobRef, type VisitKind, type WhereMode,
@@ -176,7 +178,8 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
 
   // Past and correct visits use the same technician lane as dispatch (AppointmentPicker / useLaneStaff).
   // The live-offer list also requires Available right now, so an offline tech never appears.
-  const { data: pathTechs = [] } = useBookingTechnicians(companyId, open && canLog);
+  const { isSalesRep } = useSalesRep();
+  const { data: pathTechs = [], isFetched: techsFetched, isLoading: techsLoading } = useBookingTechnicians(companyId, open && canLog);
   const { data: pathVisits = [] } = useQuery({
     queryKey: ["backfill-list", attached?.id, "book-job"],
     enabled: open && !!attached?.id && canLog,
@@ -541,6 +544,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             }}
             canLogPast={canLog}
             techs={pathTechs}
+            techEmpty={isSalesRep && techsFetched && !techsLoading && pathTechs.length === 0 ? NO_TECHS_ASSIGNED : undefined}
             past={past}
             onPast={setPast}
             visits={pathVisits}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { Fragment, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +32,8 @@ import { resolveLane, type LaneStaffMember } from "@/hooks/useLaneStaff";
 import { LANE_META, UNKNOWN_LANE_META } from "@/lib/leadLane";
 import { inviteOptionKey } from "@/lib/invitePassword";
 import { AddTechnicianNoInviteDialog, NoLoginBadge, SendLoginInviteDialog } from "@/components/team/AddTechnicianNoInviteDialog";
+import { SalesTechChecklist } from "@/components/team/SalesTechChecklist";
+import { isSalespersonProfile, memberRoleBadge } from "@/lib/salesTechAccess";
 
 const ROLE_META: Record<string, { label: string; color: string; icon: React.ElementType; description: string }> = {
   admin: { label: "Admin", color: "bg-[#F7941D] text-white", icon: Shield, description: "Full access to all features" },
@@ -135,6 +137,55 @@ const AdminTeamPage = () => {
           joined: info.created_at,
         };
       });
+    },
+  });
+
+  const serviceTechs = useMemo(
+    () => members
+      .filter((m) => resolveLane({ dispatch_role: m.dispatch_role, participant_type: m.participant_type, roles: m.roles }) === "service")
+      .map((m) => ({ id: m.id, name: m.full_name, noLogin: m.no_login }))
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)),
+    [members],
+  );
+
+  const { data: techLinks = [] } = useQuery({
+    queryKey: ["sales-rep-technicians", companyId],
+    enabled: !!companyId && isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sales_rep_technicians")
+        .select("sales_rep_id, technician_id")
+        .eq("company_id", companyId!);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const toggleBookableTech = useMutation({
+    mutationFn: async ({ repId, techId, on }: { repId: string; techId: string; on: boolean }) => {
+      if (!companyId) throw new Error("No company");
+      if (on) {
+        const { error } = await supabase.from("sales_rep_technicians").insert({
+          company_id: companyId,
+          sales_rep_id: repId,
+          technician_id: techId,
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("sales_rep_technicians").delete()
+          .eq("company_id", companyId)
+          .eq("sales_rep_id", repId)
+          .eq("technician_id", techId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales-rep-technicians"] });
+      queryClient.invalidateQueries({ queryKey: ["lane-staff"] });
+      queryClient.invalidateQueries({ queryKey: ["booking-technicians"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Couldn't update technicians", description: err.message, variant: "destructive" });
     },
   });
 
@@ -519,8 +570,10 @@ const AdminTeamPage = () => {
               <TableBody className="divide-y divide-border/30">
                 {staff.map((member) => {
                   const isExpanded = expandedUser === member.id;
+                  const salesperson = isSalespersonProfile(member);
                   return (
-                    <Collapsible key={member.id} open={isExpanded} onOpenChange={(open) => setExpandedUser(open ? member.id : null)} asChild>
+                    <Fragment key={member.id}>
+                    <Collapsible open={isExpanded} onOpenChange={(open) => setExpandedUser(open ? member.id : null)} asChild>
                       <>
                         <TableRow className="hover:bg-muted/30 border-border/30">
                           <TableCell className="py-3">
@@ -543,7 +596,7 @@ const AdminTeamPage = () => {
                                 const meta = ROLE_META[r];
                                 return (
                                   <span key={r} className={`${meta?.color || "bg-muted text-muted-foreground"} text-xs px-2 py-0.5 rounded-full font-medium`}>
-                                    {meta?.label || r}
+                                    {memberRoleBadge(r, member.roles, member.dispatch_role, meta?.label || r)}
                                   </span>
                                 );
                               })}
@@ -720,6 +773,19 @@ const AdminTeamPage = () => {
                         </CollapsibleContent>
                       </>
                     </Collapsible>
+                    {isAdmin && salesperson && (
+                      <TableRow className="hover:bg-transparent border-border/30">
+                        <TableCell colSpan={8} className="bg-muted/20 p-4">
+                          <SalesTechChecklist
+                            techs={serviceTechs}
+                            assignedIds={techLinks.filter((link) => link.sales_rep_id === member.id).map((link) => link.technician_id)}
+                            disabled={toggleBookableTech.isPending}
+                            onToggle={(techId, on) => toggleBookableTech.mutate({ repId: member.id, techId, on })}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </Fragment>
                   );
                 })}
               </TableBody>

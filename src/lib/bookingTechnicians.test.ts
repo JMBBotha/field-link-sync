@@ -48,6 +48,20 @@ describe("booking technicians", () => {
     ]);
   });
 
+  it("keeps a salesperson to the technicians an admin assigned, including a no-login tech", () => {
+    const extra = [
+      ...rows,
+      row({ id: "abie", full_name: "Abie Croy", no_login: true }),
+    ];
+    expect(bookingTechnicians(extra, CT, { salesRep: true, assignedIds: ["innocent"] }).map((t) => t.id)).toEqual(["innocent"]);
+    expect(bookingTechnicians(extra, CT, { salesRep: true, assignedIds: ["abie", "free"] }).map((t) => t.name)).toEqual([
+      "Abie Croy",
+      "Freelance Tech",
+    ]);
+    expect(bookingTechnicians(extra, CT, { salesRep: true, assignedIds: [] })).toEqual([]);
+    expect(bookingTechnicians(extra, CT).map((t) => t.id)).toContain("free");
+  });
+
   it("drops Test HVAC and archived Massair Ind, including when that company is signed in", () => {
     expect(bookingTechnicians(rows, TEST_HVAC_ID)).toEqual([]);
     expect(bookingTechnicians(rows, MASSAIR_IND_ID)).toEqual([]);

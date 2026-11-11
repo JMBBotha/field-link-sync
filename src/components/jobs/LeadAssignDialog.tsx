@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { TimeInput24 } from "@/components/ui/time-input-24";
 import { Loader2 } from "lucide-react";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
+import { useMyBookableTechnicianIds } from "@/hooks/useMyBookableTechnicianIds";
+import { bookableForCaller, NO_TECHS_ASSIGNED } from "@/lib/salesTechAccess";
 import SitePhotosSection from "@/components/photos/SitePhotosSection";
 import LinkedJobPhotos from "@/components/photos/LinkedJobPhotos";
 import LeadPhotoUploader from "@/components/jobs/LeadPhotoUploader";
@@ -70,6 +72,15 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
     setStart(s); setEnd(plusMin(s, data.lead.minutes || 120));
   }, [data]);
 
+  const bookable = useMyBookableTechnicianIds();
+  const techOptions = useMemo(() => {
+    const rows = data?.techs || [];
+    if (!data?.ok || data.office || !bookable.isSalesRep) return rows;
+    if (bookable.loading) return rows;
+    return bookableForCaller(rows, true, bookable.failed ? [] : bookable.ids);
+  }, [data, bookable.isSalesRep, bookable.loading, bookable.failed, bookable.ids]);
+  const salesTechEmpty = !!data?.ok && !data.office && bookable.isSalesRep && !bookable.loading && techOptions.length === 0;
+
   const done = (msg: string, keepOpen = false) => {
     toast({ title: msg });
     ["lead-assign-options", "dispatch-cards-leads", "dispatch-leads", "dispatch-schedules", "jobs-calm-booked", "pending-reassign"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
@@ -84,7 +95,7 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
       if (!r?.ok) throw new Error(r?.message || "Not saved");
     },
     onSuccess: () => {
-      const name = data?.techs.find((t) => t.id === tech)?.full_name || "technician";
+      const name = techOptions.find((t) => t.id === tech)?.full_name || "technician";
       if (data?.office) return done(`Assigned to ${name}`);
       setPhotoStep(name); done(`Assigned to ${name}`, true);
     }, onError: fail,
@@ -158,11 +169,12 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
               <div className="space-y-2">
                 <Label htmlFor="lad-tech">{mode === "request" ? "Preferred technician (optional)" : "Technician"}</Label>
                 <select id="lad-tech" value={tech} onChange={(e) => setTech(e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
-                  <option value="">{data.techs.length ? (mode === "request" ? "No preference" : "Select technician") : "No technicians in your company yet"}</option>
-                  {data.techs.map((t) => <option key={t.id} value={t.id}>{techLabel(t)}{mode !== "request" ? (t.day_slots?.length ? ` · booked ${t.day_slots.join(", ")}` : " · free that day") : ""}</option>)}
+                  <option value="">{techOptions.length ? (mode === "request" ? "No preference" : "Select technician") : (salesTechEmpty ? "No technician assigned" : "No technicians in your company yet")}</option>
+                  {techOptions.map((t) => <option key={t.id} value={t.id}>{techLabel(t)}{mode !== "request" ? (t.day_slots?.length ? ` · booked ${t.day_slots.join(", ")}` : " · free that day") : ""}</option>)}
                 </select>
-                {mode !== "request" && tech && (() => { const t = data.techs.find((x) => x.id === tech); return t ? <p className="text-xs text-muted-foreground" data-testid="tech-day">{t.day_slots?.length ? `On ${date}: booked ${t.day_slots.join(", ")}` : `On ${date}: no bookings`}</p> : null; })()}
-                {data.techs.length > 0 && data.techs.every((t) => t.km == null) && <p className="text-xs text-muted-foreground">Distance shows once a technician has a saved location.</p>}
+                {salesTechEmpty && <p className="text-xs text-muted-foreground" data-testid="no-techs-assigned">{NO_TECHS_ASSIGNED}</p>}
+                {mode !== "request" && tech && (() => { const t = techOptions.find((x) => x.id === tech); return t ? <p className="text-xs text-muted-foreground" data-testid="tech-day">{t.day_slots?.length ? `On ${date}: booked ${t.day_slots.join(", ")}` : `On ${date}: no bookings`}</p> : null; })()}
+                {techOptions.length > 0 && techOptions.every((t) => t.km == null) && <p className="text-xs text-muted-foreground">Distance shows once a technician has a saved location.</p>}
               </div>
 
               {mode === "request" ? (
