@@ -35,6 +35,11 @@ describe("notificationHref", () => {
     expect(notificationHref("assignment_created", "j1", "tech")).toBe("/field/jobs/j1");
     expect(notificationHref("new_lead", L, "admin")).toBe(`/admin/dispatch?lead=${L}`);
   });
+  it("a team-invite notice opens Team → Staff, a public sign-up opens Applications", () => {
+    expect(notificationHref("network_applicant", "u1", "admin", { source: "team_invite" })).toBe("/admin/team?tab=staff");
+    expect(notificationHref("network_applicant", "u1", "admin", { source: "public_signup" })).toBe("/admin/team?tab=applications");
+    expect(notificationHref("network_applicant", "u1")).toBe("/admin/team?tab=applications");
+  });
   it("view all per role", () => {
     expect(viewAllHref("admin")).toBe("/admin/dispatch");
     expect(viewAllHref("sales")).toBe("/admin");

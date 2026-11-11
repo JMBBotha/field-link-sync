@@ -29,6 +29,7 @@ import CashHealthPreviewFixture from "./pages/CashHealthPreviewFixture";
 import BookJobHarness from "./pages/BookJobHarness";
 import TeamNoLoginHarness from "./pages/TeamNoLoginHarness";
 import PriceListSheetHarness from "./pages/PriceListSheetHarness";
+import SignupNoticeHarness from "./pages/SignupNoticeHarness";
 import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
 import NotFound from "./pages/NotFound";
@@ -210,6 +211,9 @@ const App = () => (
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/price-list-sheet" element={<PriceListSheetHarness />} />
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev/signup-notice" element={<SignupNoticeHarness />} />
                 )}
 
                 {/* Customer Portal Routes */}
