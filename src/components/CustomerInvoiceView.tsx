@@ -9,11 +9,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, FileText, Download, Clock, CheckCircle } from "lucide-react";
 import InvoiceStamps from "@/components/documents/InvoiceStamps";
 import { invoiceStamps } from "@/lib/invoiceStamps";
-import PayfastPayButton from "@/components/payments/PayfastPayButton";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
+import { amountDueNow, johannesburgToday, roundMoney } from "@/lib/amountDueNow";
 import { format } from "date-fns";
 import logo from "@/assets/logo.png";
-import { publicCustomerUrl } from "@/lib/publicAppUrl";
 import { documentProfile, profileBanking } from "@/lib/companyProfiles";
 import { formatRand } from "@/utils/formatRand";
 
@@ -140,8 +139,23 @@ const CustomerInvoiceView = () => {
     const bank = profileBanking(prof);
     const brand = prof?.trading_name || prof?.legal_name || null;
     const total = Number(inv.grand_total) || 0;
-    const due = inv.status === "paid" ? 0 : (inv.remaining ?? total);
-    const paidSoFar = Math.max(0, Math.round((total - due) * 100) / 100);
+    const paidSoFar = Math.max(0, roundMoney(Number(inv.amount_paid) || 0));
+    const staged = amountDueNow({
+      grandTotal: total,
+      amountPaid: paidSoFar,
+      depositAmount: inv.deposit_amount,
+      depositType: inv.deposit_type,
+      status: inv.status,
+      expectedDepositDate: inv.expected_deposit_date,
+      expectedFinalDate: inv.expected_final_date,
+      dueDate: inv.due_date,
+      dueDateManual: inv.due_date_manual,
+      jobDone: inv.job_done,
+      today: johannesburgToday(),
+    });
+    const due = inv.due_now == null ? staged.dueNow : roundMoney(inv.due_now);
+    const later = Math.max(0, roundMoney((inv.status === "paid" ? 0 : Math.max(0, roundMoney(total - paidSoFar))) - due));
+    const dueLabel = staged.depositStage || later > 0 ? "Amount due now" : "Amount due";
     const money = (n: number) => formatRand(Number(n) || 0);
     const dueDate = inv.due_date ? format(new Date(inv.due_date + "T00:00:00"), "d MMMM yyyy") : null;
     const overdue = inv.due_date && due > 0 && new Date(inv.due_date + "T23:59:59") < new Date();
@@ -165,9 +179,15 @@ const CustomerInvoiceView = () => {
           <section className="rounded-2xl bg-white p-5 shadow-sm text-center" data-testid="client-amount-due">
             <InvoiceStamps stamps={invoiceStamps(inv, inv.stamp_payments || [])} center />
             {due > 0 ? (<>
-              <p className="text-sm font-medium text-muted-foreground">Amount due</p>
-              <p className="mt-1 text-[40px] leading-tight font-extrabold tabular-nums text-ink">{money(due)}</p>
-              {dueDate && <p className={`mt-2 text-base font-semibold ${overdue ? "text-red-600" : "text-ink"}`} data-testid="client-due-date">{overdue ? "Overdue since" : "Due"} {dueDate}</p>}
+              <p className="text-sm font-medium text-muted-foreground">{dueLabel}</p>
+              <p className="mt-1 text-[40px] leading-tight font-extrabold tabular-nums text-ink" data-testid="client-due-figure">{money(due)}</p>
+              {later > 0 && <p className="mt-1 text-sm text-muted-foreground" data-testid="client-due-later">{money(later)} is due later, on completion. Invoice total {money(total)}.</p>}
+              {dueDate && later <= 0 && <p className={`mt-2 text-base font-semibold ${overdue ? "text-red-600" : "text-ink"}`} data-testid="client-due-date">{overdue ? "Overdue since" : "Due"} {dueDate}</p>}
+              {paidSoFar > 0 && <p className="mt-1 text-sm text-muted-foreground">{money(paidSoFar)} of {money(total)} already paid, thank you</p>}
+            </>) : later > 0 ? (<>
+              <p className="text-sm font-medium text-muted-foreground">Amount due now</p>
+              <p className="mt-1 text-[40px] leading-tight font-extrabold tabular-nums text-ink" data-testid="client-due-figure">{money(0)}</p>
+              <p className="mt-1 text-sm text-muted-foreground" data-testid="client-due-later">{money(later)} is due later, on completion. Invoice total {money(total)}.</p>
               {paidSoFar > 0 && <p className="mt-1 text-sm text-muted-foreground">{money(paidSoFar)} of {money(total)} already paid, thank you</p>}
             </>) : (
               <p className="flex items-center justify-center gap-2 text-xl font-bold text-green-600"><CheckCircle className="h-6 w-6" /> Paid in full, thank you</p>
@@ -177,9 +197,6 @@ const CustomerInvoiceView = () => {
           {due > 0 && (
             <section className="rounded-2xl bg-white p-5 shadow-sm space-y-3 print:hidden" data-testid="client-pay">
               <h2 className="text-base font-bold text-ink">How to pay</h2>
-              <PayfastPayButton invoiceId={inv.id} invoiceNumber={inv.invoice_number} amount={due} customerEmail={null} customerName={inv.customer_name}
-                returnUrl={token ? publicCustomerUrl(token, invoiceId ? `invoice/${invoiceId}` : "") : undefined}
-                cancelUrl={token ? publicCustomerUrl(token, invoiceId ? `invoice/${invoiceId}` : "") : undefined} />
               {bankRows.length > 0 && (
                 <div className="rounded-xl border bg-[#F8FAFC] p-3">
                   <p className="mb-2 text-sm font-semibold text-ink">Bank details (EFT)</p>
@@ -240,7 +257,8 @@ const CustomerInvoiceView = () => {
                 <div className="flex justify-between"><span className="text-muted-foreground">VAT ({inv.tax_rate}%)</span><span className="tabular-nums">{money(inv.tax_amount)}</span></div>
                 <div className="flex justify-between font-semibold"><span>Total</span><span className="tabular-nums">{money(total)}</span></div>
                 {paidSoFar > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Paid</span><span className="tabular-nums">−{money(paidSoFar)}</span></div>}
-                <div className="flex justify-between font-bold"><span>Amount due</span><span className="tabular-nums">{money(due)}</span></div>
+                <div className="flex justify-between font-bold"><span>{dueLabel}</span><span className="tabular-nums">{money(due)}</span></div>
+                {later > 0 && <div className="flex justify-between text-muted-foreground"><span>Due later</span><span className="tabular-nums">{money(later)}</span></div>}
               </div>
               {inv.notes && <div className="rounded-lg bg-muted p-3"><p className="text-xs text-muted-foreground mb-1">Notes</p><p>{inv.notes}</p></div>}
               <Button onClick={handlePrint} variant="outline" className="w-full print:hidden"><Download className="h-4 w-4 mr-2" />Download / Print</Button>

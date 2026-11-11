@@ -3,9 +3,6 @@ project_id = "rvzapfbifggovccebrjp"
 [functions.yoco-webhook]
 verify_jwt = false
 
-[functions.payfast-itn]
-verify_jwt = false
-
 [functions.ai-suggest-quote]
 verify_jwt = false
 

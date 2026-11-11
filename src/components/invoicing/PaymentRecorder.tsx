@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/hooks/useRole";
 import { invoiceBalance, isSettledPayment, recordInvoicePayment, sumSettled } from "@/lib/payments";
+import { PAYMENT_DUPLICATE_MESSAGE, PAYMENT_OVERPAY_MESSAGE, duplicatePaymentReference, paymentOverOutstanding } from "@/lib/paymentGuard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +50,9 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, credited = 0, onChange }: Pa
   const [reference, setReference] = useState("");
   const [paymentDate, setPaymentDate] = useState(toDateInput(new Date()));
   const [adding, setAdding] = useState(false);
+  const [allowOverpay, setAllowOverpay] = useState(false);
+  const [guard, setGuard] = useState<string | null>(null);
+  const idempotencyKey = useRef<string | null>(null);
   // Double-submit lock (Johan 3 Nov 07:09): a ref blocks a second tap before React re-renders the disabled button.
   const busy = useRef(false);
   const [saved, setSaved] = useState<string | null>(null);
@@ -101,6 +105,15 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, credited = 0, onChange }: Pa
   const addPayment = async () => {
     const amt = Number(amountValue);
     if (!amountValue || amt <= 0 || busy.current) return;
+    if (duplicatePaymentReference(payments as any[], reference, isSettledPayment)) {
+      setGuard(PAYMENT_DUPLICATE_MESSAGE);
+      return;
+    }
+    if (paymentOverOutstanding(amt, outstanding) && !allowOverpay) {
+      setGuard(PAYMENT_OVERPAY_MESSAGE);
+      return;
+    }
+    setGuard(null);
     const same = findLikelyDuplicate(payments as any[], amt, paymentDate);
     if (same && !window.confirm(`${formatPayR(amt)} on ${paymentDate} was already recorded on this invoice just now / on that date. Record it again?`)) return;
     busy.current = true;
@@ -153,13 +166,18 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, credited = 0, onChange }: Pa
 
     try {
       // RPC writes a settled manual payment (status=paid); the DB trigger derives invoice status.
+      if (!idempotencyKey.current) idempotencyKey.current = crypto.randomUUID();
       await recordInvoicePayment({
         invoiceId,
         amount: amt,
         method,
         reference: reference || null,
         paymentDate,
+        allowOverpay,
+        idempotencyKey: idempotencyKey.current,
       });
+      idempotencyKey.current = null;
+      setAllowOverpay(false);
 
       refresh();
       setSaved(`Saved: ${formatPayR(amt)} allocated to ${invNo || "invoice"} at ${new Date().toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit", hour12: false })}`);
@@ -424,7 +442,14 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, credited = 0, onChange }: Pa
                 />
               </div>
             </div>
-            <Button size="sm" onClick={addPayment} disabled={adding} className="w-full">
+            {paymentOverOutstanding(Number(amountValue) || 0, outstanding) && (
+              <label className="flex items-start gap-2 text-xs text-ink">
+                <input type="checkbox" className="mt-0.5" checked={allowOverpay} onChange={(e) => { setAllowOverpay(e.target.checked); setGuard(null); }} data-testid="allow-overpay" />
+                <span>Record it anyway. This is more than the balance still outstanding.</span>
+              </label>
+            )}
+            {guard && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800" data-testid="payment-guard" role="alert">{guard}</p>}
+            <Button size="sm" onClick={addPayment} disabled={adding} className="w-full bg-[#C2410C] text-white hover:bg-[#9A3412]">
               {adding ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
               {adding ? "Saving…" : "Record Payment"}
             </Button>

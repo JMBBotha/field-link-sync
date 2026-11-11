@@ -215,6 +215,15 @@ const JobCompletionSheet = ({
           const applied = await (supabase.rpc as any)("job_apply_material_allowances", { p_job: effectiveJobId });
           if (applied.error && !/not allowed|does not exist|schema cache/i.test(applied.error.message ?? "")) {
             toast({ title: "Job completed", description: "The materials allowance could not be posted. The office can run it again.", variant: "destructive" });
+          } else {
+            const shorts = Array.isArray(applied.data?.shortages) ? applied.data.shortages : [];
+            if (shorts.length) {
+              toast({
+                title: "Stock short",
+                description: shorts.map((s: { label?: string; shortfall?: number }) => `${s.label || "Material"} is short by ${s.shortfall}`).join(". ") + ". The office has been told.",
+                variant: "destructive",
+              });
+            }
           }
         }
       }
