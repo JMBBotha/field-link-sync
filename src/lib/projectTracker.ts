@@ -1,3 +1,5 @@
+import { sortHouseLabels } from "./houseOrder";
+
 // Project / development house tracker: one place for status colours, phase grouping and money.
 export type HouseStatus = "done" | "units_in" | "in_progress" | "due" | "not_started";
 
@@ -130,8 +132,7 @@ export const STATUS_META: Record<HouseStatus, { label: string; ring: string; dot
 export const OVERRIDE_OK: HouseStatus[] = ["not_started", "in_progress", "due", "done"];
 
 export const houseNum = (no: string) => { const m = /\d+/.exec(no || ""); return m ? parseInt(m[0], 10) : Number.MAX_SAFE_INTEGER; };
-export const sortHouses = <T extends { house_no: string }>(hs: T[]) =>
-  [...hs].sort((a, b) => houseNum(a.house_no) - houseNum(b.house_no) || a.house_no.localeCompare(b.house_no));
+export const sortHouses = <T extends { house_no: string }>(hs: T[]) => sortHouseLabels(hs, (h) => h.house_no);
 
 /** Phase for a house: explicit phase_id, else first phase whose range contains the number. */
 export function phaseFor(h: Pick<ProjectHouse, "phase_id" | "house_no">, phases: ProjectPhase[]): string | null {

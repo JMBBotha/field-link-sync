@@ -15,6 +15,7 @@ import {
   type Doing, type HouseJobRef, type VisitKind, type WhereMode,
 } from "@/lib/bookJobPath";
 import { bookUpcomingOnJob, correctPastVisit, logPastVisit } from "@/lib/bookJobSave";
+import { sortHouseLabels } from "@/lib/houseOrder";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -131,7 +132,8 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     queryFn: async () => {
       const { data, error } = await projectDb.from("project_houses").select("id, house_no").eq("project_id", projectId);
       if (error) throw error;
-      return (data || []) as { id: string; house_no: string }[];
+      // Postgres has no order here. Sort in the app so House 4 precedes House 21.
+      return sortHouseLabels((data || []) as { id: string; house_no: string }[], (h) => h.house_no);
     },
   });
   const house = houses.find((h) => h.id === houseId) || null;

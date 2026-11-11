@@ -9,6 +9,7 @@ import {
   type Doing, type VisitKind, type WhereMode,
 } from "@/lib/bookJobPath";
 import type { JobKind } from "@/lib/jobTypeChoice";
+import { sortHouseLabels } from "@/lib/houseOrder";
 
 export type PastDraft = {
   techId: string;
@@ -208,6 +209,8 @@ export function BookJobForm(props: {
   canLogPast: boolean;
   techs: Named[];
   techsOpen?: boolean;
+  /** Harness only: open the house list the same way as the technician menu. */
+  housesOpen?: boolean;
   past: PastDraft;
   onPast: (p: PastDraft) => void;
   visits: VisitView[];
@@ -219,6 +222,7 @@ export function BookJobForm(props: {
   firstFitInStep?: boolean;
 }) {
   const p = props;
+  const houses = sortHouseLabels(p.houses, (h) => h.house_no);
   const logging = p.doing === "past" || p.doing === "correct";
   return (
     <div className="space-y-4" data-testid="book-a-job">
@@ -243,9 +247,16 @@ export function BookJobForm(props: {
             </label>
             <label className="block text-sm">
               <span className="text-muted-foreground">House</span>
-              <select className="mt-1 h-11 w-full rounded-lg border bg-background px-3" data-testid="book-house" value={p.houseId} onChange={(e) => p.onHouse(e.target.value)} disabled={!p.projectId}>
+              <select
+                className={cn("mt-1 w-full rounded-lg border bg-background px-3", p.housesOpen ? "py-1" : "h-11")}
+                data-testid="book-house"
+                value={p.houseId}
+                onChange={(e) => p.onHouse(e.target.value)}
+                disabled={!p.projectId}
+                size={p.housesOpen ? houses.length + 1 : undefined}
+              >
                 <option value="">Choose house…</option>
-                {p.houses.map((h) => <option key={h.id} value={h.id}>House {h.house_no}</option>)}
+                {houses.map((h) => <option key={h.id} value={h.id}>House {h.house_no}</option>)}
               </select>
             </label>
           </div>
