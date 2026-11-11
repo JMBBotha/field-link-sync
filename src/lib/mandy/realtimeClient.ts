@@ -2,28 +2,47 @@
  * Dashboard Mandy speech-to-speech session.
  * Audio goes to wss://api.x.ai/v1/realtime with an ephemeral token from
  * mandy-realtime. Tools run through the dock's existing handlers.
+ *
+ * A dropped socket is not the 120-minute session cap. The client secret is
+ * separate, refresh used to run only while she was Listening, and a close
+ * used to end the call. Close code and reason are logged, then we reconnect
+ * with a fresh token and the recent turns.
+ * Phone Mandy (Vapi) does not use this module.
  */
 import type { MandyChoice, MandyResult } from "./actions";
+import { HANDOFF_LOGGED } from "./dayVoice";
 import { fallbackRoute } from "./honestFallback";
 import {
+  FILLER_FIRST_MS,
+  FILLER_SECOND_MS,
   REALTIME_SAMPLE_RATE,
+  TOOL_TIMEOUT_MS,
+  TOOL_TIMEOUT_SAY,
   appendAudioMessage,
   bargeIn,
   base64Pcm16ToFloat32,
+  closeTrace,
   downsampleFloat,
   floatToPcm16Base64,
-  shouldForwardMic,
   forceMessageItem,
   functionCallOutputMessage,
+  historySeedMessages,
   nextMandyPhase,
+  nextWorkingFiller,
   phaseAfterResponseDone,
   replyPlan,
+  responseCancelMessage,
   responseCreateMessage,
   rmsLevel,
   sessionUpdateMessage,
+  settleWithin,
+  shouldAutoReconnect,
+  shouldForwardMic,
+  spokenPanelLine,
   spokenToolText,
   truncatePlaybackMessage,
   userTextMessage,
+  workingStepLabel,
   type MandyPhase,
 } from "./realtimeTurn";
 
@@ -46,13 +65,20 @@ export interface RealtimeHandlers {
   listToolNames: () => string[];
   onPhase: (phase: MandyPhase) => void;
   onLevel: (level: number) => void;
-  onHeard: (text: string) => void;
+  onHeard: (text: string, final?: boolean) => void;
   onReply: (text: string) => void;
   onChoices: (choices: MandyChoice[]) => void;
   onConfirm: (confirm: ConfirmCard | null) => void;
   onFatal: (message: string) => void;
+  onWorking?: (step: string | null) => void;
+  onConnection?: (state: "live" | "disconnected") => void;
+  onTrace?: (kind: string, detail: Record<string, unknown>) => void;
   audioContext: () => AudioContext | null;
   mic: () => Promise<MediaStream>;
+}
+
+export interface RealtimeSessionOptions {
+  toolTimeoutMs?: number;
 }
 
 export class MandyRealtimeSession {
@@ -76,12 +102,33 @@ export class MandyRealtimeSession {
   private bargeLatched = false;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private opened = false;
+  /** Bumped by Stop so a late tool result is ignored. */
+  private generation = 0;
+  private ignoreAudio = false;
+  /** A working filler must not flip the status off Thinking. */
+  private holdThinking = false;
+  private activeTool: string | null = null;
+  private fillerTimers: ReturnType<typeof setTimeout>[] = [];
+  private fillersSpokenThisTurn: string[] = [];
+  private recentFillers: string[] = [];
+  private reconnects = 0;
+  private swapping = false;
+  private connecting = false;
+  private reconnecting = false;
+  private refreshing = false;
+  private pendingRefresh = false;
+  private memory: Array<{ role: "user" | "assistant"; text: string }> = [];
+  private speakWatch: ReturnType<typeof setTimeout> | null = null;
+  private readonly toolTimeoutMs: number;
 
-  constructor(private h: RealtimeHandlers) {}
+  constructor(private h: RealtimeHandlers, opts: RealtimeSessionOptions = {}) {
+    this.toolTimeoutMs = opts.toolTimeoutMs ?? TOOL_TIMEOUT_MS;
+  }
 
   async start(opts: { greeting?: string | null }) {
     this.stopped = false;
     this.starting = true;
+    this.connecting = true;
     this.setPhase(nextMandyPhase(this.phase, { type: "connect_start" }));
     try {
       const grant = await this.h.fetchGrant("session");
@@ -94,8 +141,10 @@ export class MandyRealtimeSession {
       this.send(sessionUpdateMessage(grant.session));
       await this.waitForSession();
       if (this.stopped) return;
+      this.h.onConnection?.("live");
       if (opts.greeting) {
         this.reply = opts.greeting;
+        this.remember("assistant", opts.greeting);
         this.h.onReply(opts.greeting);
         this.send(forceMessageItem(opts.greeting));
         this.setPhase("speaking");
@@ -104,19 +153,55 @@ export class MandyRealtimeSession {
       }
     } finally {
       this.starting = false;
+      this.connecting = false;
     }
   }
 
   stop() {
     this.stopped = true;
+    this.generation++;
+    this.clearFillers();
     if (this.refreshTimer) clearTimeout(this.refreshTimer);
     this.refreshTimer = null;
+    if (this.speakWatch) clearTimeout(this.speakWatch);
+    this.speakWatch = null;
     this.stopMic?.();
     this.stopMic = null;
     this.player?.stop();
+    this.swapping = true;
     try { this.ws?.close(); } catch { /* already closed */ }
+    this.swapping = false;
     this.ws = null;
     this.h.onLevel(0);
+    this.h.onWorking?.(null);
+  }
+
+  /**
+   * Stop the current response without hanging up. response.cancel, drop
+   * playback, abandon the in-flight tool, and ignore whatever comes back late.
+   */
+  interrupt() {
+    if (this.stopped || this.phase === "disconnected") return;
+    this.generation++;
+    this.ignoreAudio = true;
+    this.holdThinking = false;
+    this.clearFillers();
+    this.calls = [];
+    this.turnDone = false;
+    this.activeTool = null;
+    this.h.onWorking?.(null);
+    this.player?.stop();
+    this.send(responseCancelMessage());
+    this.bargeLatched = false;
+    if (this.speakWatch) clearTimeout(this.speakWatch);
+    this.speakWatch = null;
+    this.setPhase("listening");
+  }
+
+  /** Fresh token after a drop. Recent turns are written back into the new session. */
+  reconnect() {
+    this.reconnects = 0;
+    void this.reconnectWithToken();
   }
 
   quiet() {
@@ -125,27 +210,37 @@ export class MandyRealtimeSession {
   }
 
   speakLine(text: string) {
-    const t = text.trim();
-    if (!t || this.stopped) return;
-    this.reply = t;
-    this.h.onReply(t);
-    this.send(forceMessageItem(t));
-    this.setPhase("speaking");
+    this.speakForced(text);
   }
 
   sendUserText(text: string) {
     const t = text.trim();
     if (!t || this.stopped) return;
+    if (this.phase === "speaking" || this.phase === "thinking" || this.phase === "greeting") this.interrupt();
     this.heard = t;
-    this.h.onHeard(t);
+    this.remember("user", t);
+    this.h.onHeard(t, true);
     this.send(userTextMessage(t));
     this.send(responseCreateMessage());
     this.setPhase("thinking");
   }
 
   private setPhase(phase: MandyPhase) {
+    const prev = this.phase;
     this.phase = phase;
     this.h.onPhase(phase);
+    if (phase === "listening" && prev !== "listening" && this.pendingRefresh && !this.refreshing && !this.stopped) {
+      void this.refreshToken();
+    }
+  }
+
+  private remember(role: "user" | "assistant", text: string) {
+    const t = text.trim().slice(0, 300);
+    if (!t) return;
+    const last = this.memory[this.memory.length - 1];
+    if (last && last.role === role && last.text === t) return;
+    this.memory.push({ role, text: t });
+    while (this.memory.length > 8) this.memory.shift();
   }
 
   private rememberTools(session: { tools?: Array<{ name?: string }> }) {
@@ -154,6 +249,11 @@ export class MandyRealtimeSession {
 
   private send(msg: unknown) {
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
+  }
+
+  private trace(kind: string, detail: Record<string, unknown>) {
+    console.info("[mandy-realtime]", kind, detail);
+    this.h.onTrace?.(kind, detail);
   }
 
   private openSocket(grant: RealtimeGrant) {
@@ -181,34 +281,111 @@ export class MandyRealtimeSession {
         clearTimeout(timer);
         reject(new Error("Voice link failed."));
       };
-      ws.onclose = () => {
-        if (!this.stopped && this.opened && !this.starting && ws === this.ws) this.h.onFatal("Mandy's voice link dropped. Tap the mic to try again.");
+      ws.onclose = (ev: CloseEvent) => {
+        const info = closeTrace(
+          { code: ev.code, reason: String(ev.reason || ""), wasClean: ev.wasClean },
+          { phase: this.phase, tool: this.activeTool },
+        );
+        this.trace("socket_close", info);
+        if (this.stopped || this.swapping || this.connecting) return;
+        if (ws !== this.ws) return;
+        if (!this.opened && this.reconnects === 0) return;
+        if (shouldAutoReconnect({ userStopped: this.stopped, swapping: this.swapping, attempts: this.reconnects })) {
+          this.reconnects += 1;
+          void this.reconnectWithToken();
+          return;
+        }
+        this.failLink();
       };
       ws.onmessage = (ev) => this.onMessage(ev);
     });
   }
 
-  private armRefresh(expiresAt?: number) {
-    if (!expiresAt) return;
-    const ms = expiresAt * 1000 - Date.now() - 20_000;
-    if (ms < 5_000) return;
-    this.refreshTimer = setTimeout(() => { void this.refreshToken(); }, ms);
+  private failLink() {
+    this.clearFillers();
+    this.player?.stop();
+    this.activeTool = null;
+    this.h.onWorking?.(null);
+    this.h.onConnection?.("disconnected");
+    this.setPhase("disconnected");
   }
 
-  private async refreshToken() {
-    if (this.stopped || this.phase !== "listening") return;
+  private async reconnectWithToken() {
+    if (this.stopped || this.reconnecting) return;
+    this.reconnecting = true;
+    this.connecting = true;
+    this.opened = false;
+    this.clearFillers();
+    this.player?.stop();
+    this.h.onWorking?.(null);
+    this.h.onConnection?.("disconnected");
+    this.setPhase("disconnected");
     try {
       const grant = await this.h.fetchGrant("session");
-      if (this.stopped || !grant?.token) return;
-      this.opened = false;
-      try { this.ws?.close(); } catch { /* swapping */ }
+      if (this.stopped || !grant?.token) throw new Error("no token");
+      this.swapping = true;
+      try { this.ws?.close(); } catch { /* swap */ }
+      this.swapping = false;
       this.rememberTools(grant.session);
       await this.openSocket(grant);
       this.opened = true;
       this.send(sessionUpdateMessage(grant.session));
+      await this.waitForSession();
+      for (const msg of historySeedMessages(this.memory)) this.send(msg);
+      this.armRefresh(grant.expires_at);
+      this.reconnects = 0;
+      this.h.onConnection?.("live");
+      this.setPhase("listening");
+    } catch {
+      this.swapping = false;
+      if (!this.stopped) this.failLink();
+    } finally {
+      this.connecting = false;
+      this.reconnecting = false;
+    }
+  }
+
+  private armRefresh(expiresAt?: number) {
+    if (this.refreshTimer) clearTimeout(this.refreshTimer);
+    const ms = expiresAt && expiresAt * 1000 > Date.now()
+      ? expiresAt * 1000 - Date.now() - 20_000
+      : 280_000;
+    this.refreshTimer = setTimeout(() => { void this.refreshToken(); }, Math.max(5_000, ms));
+  }
+
+  private async refreshToken() {
+    if (this.stopped || this.refreshing || this.reconnecting) return;
+    if (this.executing) { this.pendingRefresh = true; return; }
+    if (this.phase !== "listening") {
+      this.pendingRefresh = true;
+      return;
+    }
+    this.refreshing = true;
+    this.pendingRefresh = false;
+    this.connecting = true;
+    try {
+      const grant = await this.h.fetchGrant("session");
+      if (this.stopped || !grant?.token) return;
+      if (this.phase !== "listening") {
+        this.pendingRefresh = true;
+        return;
+      }
+      this.swapping = true;
+      this.opened = false;
+      try { this.ws?.close(); } catch { /* swapping */ }
+      this.swapping = false;
+      this.rememberTools(grant.session);
+      await this.openSocket(grant);
+      this.opened = true;
+      this.send(sessionUpdateMessage(grant.session));
+      await this.waitForSession();
       this.armRefresh(grant.expires_at);
     } catch {
-      if (!this.stopped) this.h.onFatal("Mandy's voice link dropped. Tap the mic to try again.");
+      this.swapping = false;
+      if (!this.stopped) void this.reconnectWithToken();
+    } finally {
+      this.connecting = false;
+      this.refreshing = false;
     }
   }
 
@@ -225,6 +402,7 @@ export class MandyRealtimeSession {
     if (ctx.state === "suspended") await ctx.resume().catch(() => undefined);
     this.player = new PcmPlayer(ctx, REALTIME_SAMPLE_RATE, () => {
       if (this.stopped || this.executing || this.calls.length) return;
+      if (this.holdThinking) return;
       if (this.phase === "speaking" || this.phase === "greeting") this.setPhase(nextMandyPhase(this.phase, { type: "playback_ended" }));
     });
     const stream = await this.h.mic();
@@ -237,7 +415,7 @@ export class MandyRealtimeSession {
       const data = e.inputBuffer.getChannelData(0);
       const level = rmsLevel(data);
       this.h.onLevel(level);
-      const speaking = this.phase === "speaking" || this.phase === "greeting" || !!this.player?.pending;
+      const speaking = this.phase === "speaking" || this.phase === "greeting" || this.holdThinking || !!this.player?.pending;
       const gate = shouldForwardMic({ speaking, level, latched: this.bargeLatched });
       this.bargeLatched = gate.latched;
       if (!gate.forward) return;
@@ -269,13 +447,16 @@ export class MandyRealtimeSession {
       return;
     }
     if (type === "input_audio_buffer.speech_started") {
-      const b = bargeIn(this.phase);
-      if (b.stopPlayback) {
+      this.ignoreAudio = true;
+      this.clearFillers();
+      const b = bargeIn(this.phase === "thinking" && this.holdThinking ? "speaking" : this.phase);
+      if (b.stopPlayback || this.holdThinking || this.player?.pending) {
         const ms = this.player?.playedMs() ?? 0;
         this.player?.stop();
         if (this.itemId) this.send(truncatePlaybackMessage(this.itemId, ms));
       }
       this.hadAudio = false;
+      this.holdThinking = false;
       this.setPhase(b.phase);
       return;
     }
@@ -292,10 +473,16 @@ export class MandyRealtimeSession {
     }
     if (type === "conversation.item.input_audio_transcription.completed" || type === "conversation.item.input_audio_transcription.updated") {
       const text = String(event.transcript ?? "").trim();
-      if (text) { this.heard = text; this.h.onHeard(text); }
+      const final = type.endsWith("completed");
+      if (text) {
+        this.heard = text;
+        if (final) this.remember("user", text);
+        this.h.onHeard(text, final);
+      }
       return;
     }
     if (type === "response.created") {
+      this.ignoreAudio = false;
       this.hadAudio = false;
       this.reply = "";
       this.setPhase(nextMandyPhase(this.phase, { type: "response_created" }));
@@ -319,7 +506,11 @@ export class MandyRealtimeSession {
     }
     if (type === "response.output_audio_transcript.done") {
       const text = String(event.transcript ?? this.reply).trim();
-      if (text) { this.reply = text; this.h.onReply(text); }
+      if (text) {
+        this.reply = text;
+        this.remember("assistant", text);
+        this.h.onReply(text);
+      }
       return;
     }
     if (type === "response.function_call_arguments.done") {
@@ -343,13 +534,16 @@ export class MandyRealtimeSession {
     }
     if (type === "error") {
       const msg = String((event.error as { message?: string } | undefined)?.message ?? event.message ?? "").trim();
-      if (msg) this.h.onReply(msg.slice(0, 240));
+      this.trace("server_error", { message: msg.slice(0, 240) });
+      if (msg && !/cancel/i.test(msg)) this.h.onReply(msg.slice(0, 240));
     }
   }
 
   private playB64(b64: string) {
+    if (this.ignoreAudio) return;
     this.hadAudio = true;
     this.player?.pushBase64(b64);
+    if (this.holdThinking) return;
     this.setPhase(nextMandyPhase(this.phase, { type: "audio_out" }));
   }
 
@@ -359,32 +553,86 @@ export class MandyRealtimeSession {
     this.playB64(btoa(bin));
   }
 
+  private speakForced(text: string, opts?: { holdThinking?: boolean }) {
+    const t = text.trim();
+    if (!t || this.stopped) return;
+    this.ignoreAudio = false;
+    this.holdThinking = !!opts?.holdThinking;
+    this.reply = t;
+    this.remember("assistant", t);
+    this.h.onReply(t);
+    this.send(forceMessageItem(t));
+    if (this.speakWatch) clearTimeout(this.speakWatch);
+    if (opts?.holdThinking) return;
+    this.setPhase("speaking");
+    this.speakWatch = setTimeout(() => {
+      if (this.stopped || this.executing || this.holdThinking) return;
+      if (this.phase === "speaking" && !this.player?.pending) this.setPhase("listening");
+    }, 4000);
+  }
+
+  private clearFillers() {
+    for (const t of this.fillerTimers) clearTimeout(t);
+    this.fillerTimers = [];
+  }
+
+  /** One varied line at ~1.5s, then "Still on it…" at ~6s. Cleared by Stop and by a fast return. */
+  private armFillers(tool: string, args: Record<string, unknown>, gen: number, started: number) {
+    this.clearFillers();
+    this.fillersSpokenThisTurn = [];
+    const tick = () => {
+      if (gen !== this.generation || this.stopped) return;
+      const line = nextWorkingFiller({
+        tool,
+        args,
+        elapsedMs: Date.now() - started,
+        spokenThisTurn: this.fillersSpokenThisTurn,
+        recent: this.recentFillers,
+      });
+      if (!line) return;
+      this.fillersSpokenThisTurn.push(line);
+      this.recentFillers.push(line);
+      while (this.recentFillers.length > 6) this.recentFillers.shift();
+      this.speakForced(line, { holdThinking: true });
+    };
+    this.fillerTimers.push(setTimeout(tick, FILLER_FIRST_MS));
+    this.fillerTimers.push(setTimeout(tick, FILLER_SECOND_MS));
+  }
+
   private async finishTools() {
     if (this.executing || !this.turnDone || !this.calls.length) return;
+    const gen = this.generation;
     this.executing = true;
     const batch = this.calls.splice(0);
     this.turnDone = false;
     const results: MandyResult[] = [];
     try {
       for (const call of batch) {
-        const result = await this.runTool(call.name, call.args);
+        if (gen !== this.generation || this.stopped) return;
+        const result = await this.runTool(call, gen);
+        if (!result || gen !== this.generation || this.stopped) return;
         results.push(result);
+        if (result.choices?.length || result.confirm) {
+          this.player?.stop();
+          this.ignoreAudio = true;
+          this.send(responseCancelMessage());
+        }
         if (call.callId) this.send(functionCallOutputMessage(call.callId, result));
         if (result.choices?.length) this.h.onChoices(result.choices);
         if (result.confirm) this.h.onConfirm(result.confirm);
         if (OPEN_QUOTE.test(call.name) && result.ok) void this.refreshToolsAfterNavigation();
       }
+      if (gen !== this.generation || this.stopped) return;
       const plan = replyPlan(batch.map((c, i) => ({ action: c.name, result: results[i] })), this.heard);
       const say = spokenToolText(results);
       if (plan === "speak" && say) {
-        this.reply = say;
-        this.h.onReply(say);
-        this.send(forceMessageItem(say));
-        this.setPhase("speaking");
+        if (this.fillersSpokenThisTurn.length) this.player?.stop();
+        if (say !== this.reply) this.speakForced(say);
+        else if (!this.player?.pending) this.setPhase("listening");
       } else if (plan === "continue") {
         if (batch.some((c) => OPEN_QUOTE.test(c.name))) await this.refreshToolsAfterNavigation();
         await this.player?.whenDrained();
-        if (!this.stopped) {
+        if (!this.stopped && gen === this.generation) {
           this.send(responseCreateMessage());
           this.setPhase("thinking");
         }
@@ -392,16 +640,49 @@ export class MandyRealtimeSession {
         this.setPhase(phaseAfterResponseDone({ hadAudio: this.hadAudio, pendingTools: 0, playbackPending: !!this.player?.pending }));
       }
     } finally {
+      this.clearFillers();
+      this.holdThinking = false;
       this.executing = false;
-      if (this.turnDone && this.calls.length) void this.finishTools();
+      this.activeTool = null;
+      if (gen === this.generation) this.h.onWorking?.(null);
+      if (gen === this.generation && this.turnDone && this.calls.length && !this.stopped) void this.finishTools();
+      else if (gen === this.generation && this.phase === "listening" && this.pendingRefresh && !this.stopped) void this.refreshToken();
     }
   }
 
-  private async runTool(name: string, rawArgs: string): Promise<MandyResult> {
+  private async runTool(call: { name: string; callId: string; args: string }, gen: number): Promise<MandyResult | null> {
+    const started = Date.now();
+    this.activeTool = call.name;
+    this.trace("tool_start", { name: call.name });
+    this.h.onWorking?.(workingStepLabel(call.name));
+    let args: Record<string, unknown> = {};
+    try { args = JSON.parse(call.args || "{}"); } catch { args = {}; }
+    if (call.name === "report_problem" && gen === this.generation) this.speakForced(HANDOFF_LOGGED);
+    this.armFillers(call.name, args, gen, started);
+    const timeoutSay: MandyResult = { ok: false, message: TOOL_TIMEOUT_SAY };
+    const settled = await settleWithin(this.executeTool(call.name, call.args), this.toolTimeoutMs, timeoutSay);
+    this.clearFillers();
+    const ms = Date.now() - started;
+    if (gen !== this.generation || this.stopped) {
+      this.trace("tool_finish", { name: call.name, ms, abandoned: true });
+      return null;
+    }
+    let result = settled.value;
+    if (result.choices?.length || result.confirm) {
+      result = { ...result, message: spokenPanelLine(result.message, result.confirm ? "confirm" : "choices") };
+    }
+    this.trace("tool_finish", { name: call.name, ms, ok: result.ok, timedOut: settled.timedOut });
+    return result;
+  }
+
+  private async executeTool(name: string, rawArgs: string): Promise<MandyResult> {
     let args: Record<string, unknown> = {};
     try { args = JSON.parse(rawArgs || "{}"); } catch { args = {}; }
     if (!this.heard) {
-      for (let i = 0; i < 8 && !this.heard && !this.stopped; i++) await new Promise((r) => setTimeout(r, 100));
+      const gen = this.generation;
+      for (let i = 0; i < 8 && !this.heard && !this.stopped && gen === this.generation; i++) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
     }
     const registered = this.h.listToolNames();
     const available = this.allowed.size ? registered.filter((n) => this.allowed.has(n)) : registered;

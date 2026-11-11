@@ -17,8 +17,18 @@ export const MANDY_REALTIME_MODEL = "grok-voice-latest";
 /** Docs default is reasoning "high", which delays the first audio. Voice turns use none. */
 export const MANDY_REALTIME_REASONING = "none";
 export const MANDY_REALTIME_SAMPLE_RATE = 24000;
-/** Documented client-secret lifetime. The API rejects a session body on this call. */
-export const MANDY_CLIENT_SECRET_SECONDS = 300;
+/**
+ * Ephemeral client-secret lifetime. This is not the voice-session cap
+ * (the public model card allows 120 minutes). An open socket is meant to
+ * outlive the secret. Johan's call (20:59–21:03 SAST) died at about four
+ * minutes: we minted 300s, and refresh ran only while she was Listening.
+ * She was stuck after a tool, so the refresh bailed, the socket closed,
+ * and nothing reconnected. 600s is the documented default. A drop still
+ * reconnects with a fresh token. We do not set turn_detection.idle_timeout_ms,
+ * so the server idle timer is not a hang-up (that event is a check-in).
+ * The API rejects a session body on this call.
+ */
+export const MANDY_CLIENT_SECRET_SECONDS = 600;
 
 export function realtimeSocketUrl(conversationId?: string | null): string {
   const q = new URLSearchParams();
@@ -67,8 +77,11 @@ export function realtimeInstructions(p: {
     `Do the work only by calling a tool. Never say something happened unless that tool result says so.`,
     `When a result includes "say", speak that sentence and stop. Do not call another tool just to rephrase it.`,
     `Call another tool only when the request is still unfinished (they asked for a second action, or the result is not a finished sentence).`,
-    `If the result has choices or awaiting_tap, ask them to tap one on screen. Never guess.`,
-    `If the result has awaiting_confirmation, tell them to tap Confirm. It has not happened.`,
+    `If the result has choices or awaiting_tap, tell them to tap the buttons in your chat panel, or say the first one or the name. Say "the buttons in my chat panel". Never say "on the dashboard" or "scroll up". Never guess.`,
+    `If the result has awaiting_confirmation, tell them to tap the Confirm button in your chat panel, or say yes. It has not happened.`,
+    `If they say stop or Mandy stop, stop speaking. Do not keep working.`,
+    `After report_problem, the only sentence is "I've logged that for Field Lynk Prototyper to look into." Then carry on. You are not fixing it during the call.`,
+    `Do not fill silence yourself. A short working line is spoken for you when a tool is slow.`,
     `One short spoken sentence, two at most. Warm and brief. No "one moment", no "let me", no step-by-step narration.`,
     `Quote tools exist only while that quote's page is open. If they are not in your tool list, open the quote first.`,
     HONEST_TOOL_RULE,

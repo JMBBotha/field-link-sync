@@ -13,7 +13,7 @@ import { realtimeInstructions } from "../../supabase/functions/_shared/mandyReal
 
 describe("voice confirm before a write", () => {
   it("asks yes and only a yes runs the pending card", () => {
-    expect(confirmQuestion("Move Yaseen's lead from Johan to Almari")).toBe("Move Yaseen's lead from Johan to Almari, yes?");
+    expect(confirmQuestion("Move Yaseen's lead from Johan to Almari")).toBe("Move Yaseen's lead from Johan to Almari, yes? Tap the Confirm button in my chat panel.");
     expect(applyVoiceConfirm(true, "yes")).toBe("run");
     expect(applyVoiceConfirm(true, "yeah do it")).toBe("run");
     expect(applyVoiceConfirm(true, "no")).toBe("cancel");

@@ -2,12 +2,20 @@
  * Day-to-day Mandy: voice confirm before a write, and the words she may say
  * from read-only checks. Writes themselves go through the existing RPCs.
  */
+import { rankSpokenNames } from "./nameMatch";
 
 export const CANNOT_YET =
   'If no tool and no playbook entry covers the request, say "I can\'t do that yet, I\'ll pass it on" and call report_problem. Do not guess, and never edit company details.';
 
 const YES = /^(yes|yeah|yep|yup|ok|okay|confirm|do it|go ahead|please do|that's right|that is right)\b/i;
-const NO = /^(no|nope|cancel|stop|don't|do not|never mind|nevermind)\b/i;
+const NO = /^(no|nope|cancel|don't|do not|never mind|nevermind)\b/i;
+
+/** "stop" / "Mandy stop" cancels the turn. It is not a "no" on a confirm card. */
+export function isStopUtterance(utterance: string): boolean {
+  const t = String(utterance || "").trim().toLowerCase().replace(/[.!?]+$/g, "").replace(/\s+/g, " ");
+  if (!t || t.split(" ").length > 5) return false;
+  return /^(?:mandy[, ]+)?stop(?:\s+(?:it|that|talking|please|now))?$/.test(t) || /^stop\s+mandy$/.test(t);
+}
 
 export function isVoiceYes(utterance: string): boolean {
   return YES.test((utterance || "").trim());
@@ -26,7 +34,30 @@ export function applyVoiceConfirm(hasPending: boolean, utterance: string): "run"
 
 export function confirmQuestion(detail: string): string {
   const d = detail.replace(/[?.!]+$/, "").trim();
-  return `${d}, yes?`;
+  return `${d}, yes? Tap the Confirm button in my chat panel.`;
+}
+
+/** What she says the moment a problem is logged. She is not fixing it on the call. */
+export const HANDOFF_LOGGED = "I've logged that for Field Lynk Prototyper to look into.";
+
+/**
+ * Voice answer for a choice card: "the first one", "Cobus", "yes".
+ * "yes" picks the highlighted (first) button. Stop is not a choice.
+ */
+export function matchSpokenChoice(utterance: string, choices: { label: string }[]): number | null {
+  const t = String(utterance || "").trim().toLowerCase().replace(/[.!?]+$/g, "").replace(/\s+/g, " ");
+  if (!t || !choices.length || isStopUtterance(utterance)) return null;
+  if (/^(?:the\s+)?first(?:\s+one)?$/.test(t) || /^number one$/.test(t) || t === "1" || t === "option one") return 0;
+  if (/^(?:the\s+)?second(?:\s+one)?$/.test(t) || /^number two$/.test(t) || t === "2") return choices.length > 1 ? 1 : null;
+  if (/^(?:the\s+)?third(?:\s+one)?$/.test(t) || /^number three$/.test(t) || t === "3") return choices.length > 2 ? 2 : null;
+  if (isVoiceYes(utterance)) return 0;
+  const ranked = rankSpokenNames(t, choices.map((c, i) => ({ i, label: c.label })), (c) => c.label, 1);
+  if (ranked[0] && ranked[0].score >= 0.72) return ranked[0].item.i;
+  if (t.length >= 3) {
+    const hit = choices.findIndex((c) => c.label.toLowerCase().includes(t));
+    if (hit >= 0) return hit;
+  }
+  return null;
 }
 
 export interface LeadWait {
@@ -123,8 +154,8 @@ export const DAY_ACTION_SCHEMAS: Record<string, { description: string; parameter
     parameters: { type: "object", properties: { lead: s("Client or lead name"), date: s("New YYYY-MM-DD"), start: s("HH:MM"), end: s("HH:MM") }, required: ["lead", "date"], additionalProperties: false },
   },
   why_lead_waiting: {
-    description: "Read-only. Why a lead has not been accepted or offered. Uses the lead row, lead_offers, and get_lead_offer_flags.",
-    parameters: { type: "object", properties: { lead: s("Client or lead name") }, required: ["lead"], additionalProperties: false },
+    description: "Read-only. Why a lead has not been accepted or offered. Pass the name as heard. The app matches sounds-like and partial names and offers the closest leads instead of saying none were found.",
+    parameters: { type: "object", properties: { lead: s("Client or lead name, as heard") }, required: ["lead"], additionalProperties: false },
   },
   unpaid_for: {
     description: "Read-only. What is unpaid on a client or job. Lists invoices that are not paid, void, or draft.",
@@ -135,7 +166,7 @@ export const DAY_ACTION_SCHEMAS: Record<string, { description: string; parameter
     parameters: { type: "object", properties: { technician: s("Technician name; empty means the signed-in user") }, additionalProperties: false },
   },
   report_problem: {
-    description: "Pass something Mandy cannot do, or a bug, to the build team. Say you will pass it on, then call this. Does not change any record.",
-    parameters: { type: "object", properties: { summary: s("What to pass on, one or two sentences") }, required: ["summary"], additionalProperties: false },
+    description: "Log something Mandy cannot do, or a bug, for Field Lynk Prototyper. After it returns, say only \"I've logged that for Field Lynk Prototyper to look into.\" and carry on. Do not say you are fixing it, going to look, or will be right back. Does not change any business record.",
+    parameters: { type: "object", properties: { summary: s("What to log, one or two sentences") }, required: ["summary"], additionalProperties: false },
   },
 };

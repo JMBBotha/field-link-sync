@@ -45,7 +45,9 @@ Deno.serve(async (req) => {
 
   const hook = Deno.env.get("MANDY_HANDOFF_WEBHOOK_URL");
   if (hook) {
-    await fetch(hook, {
+    // Do not await. A slow webhook used to hold the tool call, so she stayed
+    // on Thinking after the hand-off row was already saved.
+    void fetch(hook, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: data?.id, company_id: companyId, role, page: row.page, summary }),
