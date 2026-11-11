@@ -112,3 +112,10 @@ verify_jwt = false
 
 [functions.agent-location-ping]
 verify_jwt = true
+
+# Company admin JWT. The function also checks the admin role and the caller's company.
+[functions.add-technician-no-invite]
+verify_jwt = true
+
+[functions.link-technician-login]
+verify_jwt = true

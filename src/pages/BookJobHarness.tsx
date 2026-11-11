@@ -6,6 +6,7 @@ import { applyCorrection, defaultCompleted, houseAttachPlan, includesFirstFix, j
 import type { JobKind } from "@/lib/jobTypeChoice";
 import { RequestAlertsSettingsView } from "@/components/settings/RequestAlertsSettingsCard";
 import { DEFAULT_REQUEST_ALERTS } from "@/lib/requestOffers";
+import { HARNESS_NO_LOGIN_TECHS } from "@/lib/noLoginTechnician";
 
 const PROJECTS = [{ id: "p-avec", name: "Avec" }];
 const HOUSES = [{ id: "h12", house_no: "12" }, { id: "h13", house_no: "13" }];
@@ -33,10 +34,10 @@ function DemoClassic() {
   );
 }
 
-function Frame({ width, title = "Book a job", children }: { width: number; title?: string; children: ReactNode }) {
+function Frame({ width, title = "Book a job", bar = "#3D9BEB", children }: { width: number; title?: string; bar?: string; children: ReactNode }) {
   return (
     <div className="min-h-screen bg-[#eef6fb] text-[#0F2A44]" data-testid="book-job-harness">
-      <header className="flex items-center justify-between px-3 text-white" style={{ height: 48, background: "#3D9BEB" }}>
+      <header className="flex items-center justify-between px-3 text-white" style={{ height: 48, background: bar }}>
         <b>{title}</b>
         <small className="text-[11px] font-semibold">Demo — harness, not live client data</small>
       </header>
@@ -49,13 +50,14 @@ export default function BookJobHarness() {
   const [params] = useSearchParams();
   const shot = params.get("shot") || "default";
   const tablet = shot === "tablet" || shot === "kinds-tablet" || shot === "custom-tablet" || shot === "techs-tablet";
-  const width = tablet ? 768 : 390;
+  const desktop = params.get("w") === "desktop";
+  const width = desktop ? 960 : tablet ? 768 : 390;
   if (shot === "flow") return <Flow width={width} />;
   if (shot === "saved" || shot === "job") return <JobShot width={width} mode={shot} />;
   if (shot === "house") return <HouseShot width={width} />;
   if (shot === "houses") return <HousesShot width={width} />;
   if (shot === "settings") return <SettingsShot width={width} />;
-  return <BookShot width={width} shot={shot === "tablet" ? "project" : shot} />;
+  return <BookShot width={width} shot={shot === "tablet" ? "project" : shot} bar={shot === "nologin" ? "#3D9BE8" : "#3D9BEB"} />;
 }
 
 function SettingsShot({ width }: { width: number }) {
@@ -68,9 +70,9 @@ function SettingsShot({ width }: { width: number }) {
   );
 }
 
-function BookShot({ width, shot }: { width: number; shot: string }) {
+function BookShot({ width, shot, bar }: { width: number; shot: string; bar?: string }) {
   const customShot = shot === "custom-list" || shot === "custom-typed" || shot === "custom-combo" || shot === "custom-tablet";
-  const techsShot = shot === "techs" || shot === "techs-tablet";
+  const techsShot = shot === "techs" || shot === "techs-tablet" || shot === "nologin";
   const project = shot === "project" || shot === "past" || shot === "kinds" || shot === "combo" || shot === "kinds-tablet" || customShot;
   const doing: Doing = shot === "past" || shot === "kinds" || shot === "combo" || shot === "kinds-tablet" || customShot || techsShot ? "past" : "upcoming";
   const attached = project ? houseAttachPlan({ id: "h12", house_no: "12" }, JOBS, "demo-client").job : null;
@@ -80,14 +82,19 @@ function BookShot({ width, shot }: { width: number; shot: string }) {
     : techsShot ? ["first_fix"] : [];
   const customLabel = shot === "custom-list" ? "" : customShot ? "Balcony drain" : "";
   const kindsOpen = shot === "kinds" || shot === "kinds-tablet" || shot === "combo" || customShot;
-  const past: PastDraft = shot === "past" || shot === "combo"
+  const past: PastDraft = shot === "nologin"
+    ? { techId: "fixture-abie-croy", date: "2026-11-03", arrive: "08:00", leave: "11:30", note: "", completed: false }
+    : shot === "past" || shot === "combo"
     ? { techId: "t1", date: "2026-11-03", arrive: "08:00", leave: "11:30", note: "", completed: defaultCompleted([]) }
     : emptyPast();
   return (
-    <Frame width={width}>
+    <Frame width={width} bar={bar}>
       <div className="mb-3 rounded-2xl bg-white p-3 shadow-sm">
         <h1 className="text-lg font-extrabold">Book a job</h1>
         <p className="text-xs text-muted-foreground">Create New Job — new work, past work, projects, and updates to an existing visit.</p>
+        {shot === "nologin" && (
+          <p className="mt-2 text-sm font-semibold" data-testid="nologin-techs">Fixture technicians: Abie Croy and George King. Same list for upcoming work, the job page, and the project house.</p>
+        )}
         {project && <p className="mt-2 text-sm font-semibold">{titleDefault("Avec", "12", visitKinds, customLabel)}</p>}
       </div>
       <div className="rounded-2xl bg-white p-3 shadow-sm">
@@ -113,7 +120,7 @@ function BookShot({ width, shot }: { width: number; shot: string }) {
           customLabel={customLabel}
           kindsOpen={kindsOpen}
           canLogPast
-          techs={TECHS}
+          techs={shot === "nologin" ? HARNESS_NO_LOGIN_TECHS.map((t) => ({ id: t.id, name: t.name })) : TECHS}
           techsOpen={techsShot}
           past={past}
           onPast={() => {}}

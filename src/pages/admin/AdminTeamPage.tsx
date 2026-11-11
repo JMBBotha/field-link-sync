@@ -31,6 +31,7 @@ import StaffBaseControls from "@/components/scheduling/StaffBaseControls";
 import { resolveLane, type LaneStaffMember } from "@/hooks/useLaneStaff";
 import { LANE_META, UNKNOWN_LANE_META } from "@/lib/leadLane";
 import { inviteOptionKey } from "@/lib/invitePassword";
+import { AddTechnicianNoInviteDialog, NoLoginBadge, SendLoginInviteDialog } from "@/components/team/AddTechnicianNoInviteDialog";
 
 const ROLE_META: Record<string, { label: string; color: string; icon: React.ElementType; description: string }> = {
   admin: { label: "Admin", color: "bg-[#F7941D] text-white", icon: Shield, description: "Full access to all features" },
@@ -50,6 +51,13 @@ const AdminTeamPage = () => {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<string>("field_agent");
+  const [addOpen, setAddOpen] = useState(false);
+  const [addName, setAddName] = useState("");
+  const [addPhone, setAddPhone] = useState("");
+  const [addDupes, setAddDupes] = useState<{ id: string; full_name: string }[]>([]);
+  const [addConfirm, setAddConfirm] = useState(false);
+  const [linkFor, setLinkFor] = useState<{ id: string; full_name: string } | null>(null);
+  const [linkEmail, setLinkEmail] = useState("");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [availabilityUser, setAvailabilityUser] = useState<string | null>(null);
   const { companyId } = useUserCompanyId();
@@ -75,7 +83,7 @@ const AdminTeamPage = () => {
 
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, full_name, phone, avatar_url, availability_status, updated_at, dispatch_role, participant_type, network_status, company_id, archived_at, pay_type")
+        .select("id, full_name, phone, avatar_url, availability_status, updated_at, dispatch_role, participant_type, network_status, company_id, archived_at, pay_type, no_login")
         .in("id", userIds);
       // Only people connected to this company: staff/members, or approved agents with an active affiliation
       const connected = new Set<string>();
@@ -121,6 +129,7 @@ const AdminTeamPage = () => {
           participant_type: (profile as any)?.participant_type || null,
           archived_at: (profile as any)?.archived_at || null,
           listed_as_staff: listed.has(userId),
+          no_login: !!(profile as { no_login?: boolean } | undefined)?.no_login,
           last_active: profile?.updated_at || "",
           roles: info.roles,
           joined: info.created_at,
@@ -266,6 +275,79 @@ const AdminTeamPage = () => {
     },
   });
 
+  const readInvokeError = async (error: any) => {
+    let parsed: { error?: string; code?: string; matches?: { id: string; full_name: string }[] } | null = null;
+    try {
+      parsed = await error?.context?.json?.();
+    } catch {
+      parsed = null;
+    }
+    return { message: parsed?.error || error?.message || "Request failed", body: parsed };
+  };
+
+  const addTechnicianMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("add-technician-no-invite", {
+        body: { full_name: addName, phone: addPhone, confirm_duplicate: addConfirm },
+      });
+      if (error) {
+        const read = await readInvokeError(error);
+        const err = Object.assign(new Error(read.message), { body: read.body });
+        throw err;
+      }
+      if (data?.error) {
+        const err = Object.assign(new Error(data.error), { body: data });
+        throw err;
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-members"] });
+      queryClient.invalidateQueries({ queryKey: ["booking-technicians"] });
+      setAddOpen(false);
+      setAddName("");
+      setAddPhone("");
+      setAddDupes([]);
+      setAddConfirm(false);
+      toast({ title: "Technician added", description: "No email was sent. They show as No login yet and can be booked." });
+    },
+    onError: (err: any) => {
+      if (err.body?.code === "duplicate_name") {
+        setAddDupes(err.body.matches || []);
+        setAddConfirm(false);
+        return;
+      }
+      toast({ title: "Could not add technician", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const linkLoginMutation = useMutation({
+    mutationFn: async ({ profileId, email }: { profileId: string; email: string }) => {
+      const clean = email.trim().toLowerCase();
+      const { data, error } = await supabase.functions.invoke("link-technician-login", {
+        body: { profile_id: profileId, email: clean },
+      });
+      if (error) throw new Error((await readInvokeError(error)).message);
+      if (data?.error) throw new Error(data.error);
+      if (data?.creates_user) throw new Error("Refusing to create a second account");
+      // Same sign-in email as Invite Member, but shouldCreateUser false so this id is reused.
+      const { error: otpErr } = await supabase.auth.signInWithOtp({
+        email: clean,
+        options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}/set-password` },
+      });
+      if (otpErr) throw otpErr;
+      return data;
+    },
+    onSuccess: () => {
+      setLinkFor(null);
+      setLinkEmail("");
+      toast({ title: "Login invite sent", description: "They open the link on this same person. Offers stay off until they sign in." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Could not send the login invite", description: err.message, variant: "destructive" });
+    },
+  });
+
   const staff = useMemo(
     () => staffOf(members, members.filter((m) => m.listed_as_staff).map((m) => ({ profile_id: m.id, status: "active", listed_as_staff: true }))),
     [members],
@@ -288,9 +370,10 @@ const AdminTeamPage = () => {
           <p className="text-sm text-muted-foreground mt-1">{staff.length} staff member{staff.length !== 1 ? "s" : ""}</p>
         </div>
 
-        {isAdmin && <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        {isAdmin && <div className="flex flex-wrap gap-2">
+        <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2 border-0 text-white hover:opacity-90" style={{ background: "#C2410C" }}>
               <UserPlus className="h-4 w-4" />
               Invite Member
             </Button>
@@ -328,7 +411,8 @@ const AdminTeamPage = () => {
                 </Select>
               </div>
               <Button
-                className="w-full"
+                className="w-full border-0 text-white hover:opacity-90"
+                style={{ background: "#C2410C" }}
                 onClick={() => inviteMutation.mutate({ email: inviteEmail, role: inviteRole })}
                 disabled={!inviteEmail || inviteMutation.isPending}
               >
@@ -337,7 +421,18 @@ const AdminTeamPage = () => {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>}
+        </Dialog>
+        <Button
+          type="button"
+          className="gap-2 border-0 text-white hover:opacity-90"
+          style={{ background: "#C2410C" }}
+          data-testid="add-technician-no-invite"
+          onClick={() => { setAddName(""); setAddPhone(""); setAddDupes([]); setAddConfirm(false); setAddOpen(true); }}
+        >
+          <Wrench className="h-4 w-4" />
+          Add technician (no invite)
+        </Button>
+        </div>}
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
@@ -435,7 +530,12 @@ const AdminTeamPage = () => {
                               </Button>
                             </CollapsibleTrigger>
                           </TableCell>
-                          <TableCell className="font-medium text-foreground">{member.full_name}</TableCell>
+                          <TableCell className="font-medium text-foreground">
+                            <span className="inline-flex flex-wrap items-center gap-1.5">
+                              {member.full_name}
+                              {member.no_login && <NoLoginBadge />}
+                            </span>
+                          </TableCell>
                           <TableCell className="text-muted-foreground">{member.phone || "—"}</TableCell>
                           <TableCell>
                             <div className="flex gap-1.5 flex-wrap">
@@ -459,7 +559,7 @@ const AdminTeamPage = () => {
                                     dispatchRole: v === "auto" ? null : v,
                                   })
                                 }
-                                disabled={!isAdmin || member.participant_type === "independent_tech"}
+                                disabled={!isAdmin || member.participant_type === "independent_tech" || member.no_login}
                               >
                                 <SelectTrigger className="h-8 w-[140px] text-xs">
                                   <SelectValue />
@@ -505,10 +605,14 @@ const AdminTeamPage = () => {
                           </TableCell>
 
                           <TableCell>
-                            <div className="flex items-center gap-1.5">
-                              <span className={`h-2 w-2 rounded-full ${member.availability === "available" ? "bg-emerald-500" : member.availability === "busy" ? "bg-amber-500" : "bg-muted-foreground/40"}`} />
-                              <span className="text-sm capitalize text-muted-foreground">{member.availability}</span>
-                            </div>
+                            {member.no_login ? (
+                              <span className="text-sm text-muted-foreground" data-testid="no-login-yet">No login yet</span>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <span className={`h-2 w-2 rounded-full ${member.availability === "available" ? "bg-emerald-500" : member.availability === "busy" ? "bg-amber-500" : "bg-muted-foreground/40"}`} />
+                                <span className="text-sm capitalize text-muted-foreground">{member.availability}</span>
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {member.last_active ? format(new Date(member.last_active), "dd MMM, HH:mm") : "—"}
@@ -516,6 +620,7 @@ const AdminTeamPage = () => {
                           <TableCell>
                             {isAdmin && <Select
                               value={member.roles[0]}
+                              disabled={member.no_login}
                               onValueChange={(newRole) => {
                                 if (newRole !== member.roles[0]) {
                                   changeRoleMutation.mutate({ userId: member.id, oldRole: member.roles[0], newRole });
@@ -566,7 +671,23 @@ const AdminTeamPage = () => {
                                   </div>
                                 )}
 
-                                <div className="mt-4 pt-3 border-t border-border/30 flex gap-2">
+                                {member.no_login && (
+                                  <p className="mt-3 text-sm text-muted-foreground">
+                                    No phone login, so job offers, push, location, and late or en-route alerts stay off. Book and log work as usual.
+                                  </p>
+                                )}
+                                <div className="mt-4 pt-3 border-t border-border/30 flex flex-wrap gap-2">
+                                  {member.no_login ? (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-xs"
+                                      data-testid="send-login-invite"
+                                      onClick={() => { setLinkFor({ id: member.id, full_name: member.full_name }); setLinkEmail(""); }}
+                                    >
+                                      <UserPlus className="h-3 w-3 mr-1" /> Send login invite
+                                    </Button>
+                                  ) : (
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -575,6 +696,7 @@ const AdminTeamPage = () => {
                                   >
                                     <Clock className="h-3 w-3 mr-1" /> Set Availability
                                   </Button>
+                                  )}
                                   {isAdmin && member.roles.map((r) => (
                                     <Button
                                       key={r}
@@ -607,6 +729,29 @@ const AdminTeamPage = () => {
       </Card>
         </TabsContent>
       </Tabs>
+
+      <AddTechnicianNoInviteDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        name={addName}
+        phone={addPhone}
+        onName={(value) => { setAddName(value); setAddDupes([]); setAddConfirm(false); }}
+        onPhone={setAddPhone}
+        pending={addTechnicianMutation.isPending}
+        duplicates={addDupes}
+        confirmDuplicate={addConfirm}
+        onConfirmDuplicate={setAddConfirm}
+        onSubmit={() => addTechnicianMutation.mutate()}
+      />
+      <SendLoginInviteDialog
+        open={!!linkFor}
+        onOpenChange={(open) => { if (!open) setLinkFor(null); }}
+        personName={linkFor?.full_name || ""}
+        email={linkEmail}
+        onEmail={setLinkEmail}
+        pending={linkLoginMutation.isPending}
+        onSubmit={() => { if (linkFor) linkLoginMutation.mutate({ profileId: linkFor.id, email: linkEmail }); }}
+      />
 
       {/* Availability Editor Dialog */}
       {availabilityUser && (

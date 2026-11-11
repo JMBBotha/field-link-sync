@@ -34,6 +34,20 @@ describe("booking technicians", () => {
     expect(bookingTechnicians(rows, CT).map((t) => t.name)).toEqual(["Freelance Tech", "Innocent Mattienga"]);
   });
 
+  it("includes no-login technicians so the office can book and log their work", () => {
+    const extra = [
+      ...rows,
+      row({ id: "abie", full_name: "Abie Croy", no_login: true, availability_status: "offline" }),
+      row({ id: "george", full_name: "George King", no_login: true, availability_status: "offline" }),
+    ];
+    expect(bookingTechnicians(extra, CT).map((t) => t.name)).toEqual([
+      "Abie Croy",
+      "Freelance Tech",
+      "George King",
+      "Innocent Mattienga",
+    ]);
+  });
+
   it("drops Test HVAC and archived Massair Ind, including when that company is signed in", () => {
     expect(bookingTechnicians(rows, TEST_HVAC_ID)).toEqual([]);
     expect(bookingTechnicians(rows, MASSAIR_IND_ID)).toEqual([]);
@@ -51,5 +65,9 @@ describe("booking technicians", () => {
     expect(read("src/components/scheduling/AppointmentPicker.tsx")).toContain("useLaneStaff");
     expect(read("src/hooks/useBookingTechnicians.ts")).toContain("bookingTechnicians");
     expect(read("src/hooks/useBookingTechnicians.ts")).not.toContain("availability_status");
+    expect(read("src/lib/bookingTechnicians.ts")).not.toMatch(/if \(row\.no_login\)/);
+    expect(read("src/hooks/useLaneStaff.ts")).not.toContain("no_login");
+    expect(read("src/pages/admin/AdminJobDetailPage.tsx")).toContain("LoggedWorkPanel");
+    expect(read("src/components/projects/HouseDrawer.tsx")).toContain("LoggedWorkPanel");
   });
 });
