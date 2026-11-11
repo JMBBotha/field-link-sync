@@ -5852,8 +5852,6 @@ export type Database = {
           start_time: string
           tech_signature_data_url: string | null
           travel_hours: number
-          visit_custom: string | null
-          visit_kinds: string[] | null
           work_date: string
         }
         Insert: {
@@ -5886,8 +5884,6 @@ export type Database = {
           start_time: string
           tech_signature_data_url?: string | null
           travel_hours?: number
-          visit_custom?: string | null
-          visit_kinds?: string[] | null
           work_date?: string
         }
         Update: {
@@ -5920,8 +5916,6 @@ export type Database = {
           start_time?: string
           tech_signature_data_url?: string | null
           travel_hours?: number
-          visit_custom?: string | null
-          visit_kinds?: string[] | null
           work_date?: string
         }
         Relationships: [
@@ -17324,6 +17318,20 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_correct_visit: {
+        Args: {
+          p_arrive: string
+          p_completed?: boolean
+          p_date: string
+          p_entry: string
+          p_leave: string
+          p_note?: string
+          p_tech: string
+          p_visit_custom?: string
+          p_visit_kinds?: string[]
+        }
+        Returns: Json
+      }
       admin_bot_accounts: {
         Args: never
         Returns: {
@@ -17337,20 +17345,6 @@ export type Database = {
       }
       admin_correct_client_details: {
         Args: { p_changes: Json; p_quote_id: string; p_reason: string }
-        Returns: Json
-      }
-      admin_correct_visit: {
-        Args: {
-          p_arrive: string
-          p_completed?: boolean
-          p_date: string
-          p_entry: string
-          p_leave: string
-          p_note?: string
-          p_tech: string
-          p_visit_custom?: string
-          p_visit_kinds?: string[]
-        }
         Returns: Json
       }
       admin_create_quote_variation: {
@@ -17442,7 +17436,6 @@ export type Database = {
         }
         Returns: Json
       }
-      auth_user_id_for_email: { Args: { p_email: string }; Returns: string }
       availability_in_window: {
         Args: {
           p_at?: string
@@ -17651,14 +17644,6 @@ export type Database = {
         }
         Returns: string
       }
-      company_history_customers: { Args: { p_company: string }; Returns: Json }
-      company_history_invoice: {
-        Args: { p_company: string; p_invoice: string }
-        Returns: Json
-      }
-      company_history_invoices: { Args: { p_company: string }; Returns: Json }
-      company_history_payments: { Args: { p_company: string }; Returns: Json }
-      company_history_quotes: { Args: { p_company: string }; Returns: Json }
       company_profile_safe: {
         Args: never
         Returns: {
@@ -19308,18 +19293,6 @@ export type Database = {
       }
       quote_auto_summary: { Args: { p_quote_id: string }; Returns: string }
       quote_bundle_preview: { Args: { p_quote_ids: string[] }; Returns: Json }
-      quote_client_invoice_lines: {
-        Args: { p_quote_id: string }
-        Returns: {
-          amount: number
-          description: string
-          line_name: string
-          quantity: number
-          room_label: string
-          sort_order: number
-          unit_price: number
-        }[]
-      }
       quote_conversion_funnel: {
         Args: never
         Returns: {
@@ -19411,14 +19384,6 @@ export type Database = {
         Returns: Json
       }
       relock_quote: { Args: { p_quote_id: string }; Returns: boolean }
-      rep_booked_or_assigned_job: {
-        Args: { _job: string; _uid: string }
-        Returns: boolean
-      }
-      rep_booked_or_assigned_lead: {
-        Args: { _lead: string; _uid: string }
-        Returns: boolean
-      }
       rep_can_see_customer: {
         Args: { _customer: string; _uid: string }
         Returns: boolean
@@ -19585,6 +19550,7 @@ export type Database = {
         Returns: Json
       }
       sales_my_jobs: { Args: { p_limit?: number }; Returns: Json }
+      sales_schedule_scope: { Args: { p_from: string; p_to: string }; Returns: Json }
       sales_next_steps: {
         Args: { p_rep?: string }
         Returns: {
@@ -19600,10 +19566,6 @@ export type Database = {
           snoozable: boolean
           title: string
         }[]
-      }
-      sales_schedule_scope: {
-        Args: { p_from: string; p_to: string }
-        Returns: Json
       }
       sales_scope_own: { Args: { p_uid: string }; Returns: boolean }
       save_agreement_template: {
