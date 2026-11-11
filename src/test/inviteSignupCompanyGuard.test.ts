@@ -209,6 +209,16 @@ describe("company onboarding guard", () => {
     expect(branch(newSql)).toBe(branch(oldSql));
     expect(newSql).toContain("NEW.email_confirmed_at IS NOT NULL /*q4b*/");
     expect(newSql).not.toContain("IF NEW.email_confirmed_at IS NOT NULL /*q4b*/ THEN\n    SELECT * INTO v_inv");
+    const harness = readFileSync(resolve(root, "src/pages/SignupNoticeHarness.tsx"), "utf8");
+    const list = readFileSync(resolve(root, "src/components/notifications/NotificationsList.tsx"), "utf8");
+    expect(harness).toContain("demo.invitee@example.test");
+    expect(harness).toContain("Demo — harness, not live sign-ups");
+    expect(harness).toContain("notificationHref");
+    expect(harness).not.toContain("supabase");
+    expect(list).toContain('data-testid="applicant-notice"');
+    expect(panel).toContain("previewRows");
+    expect(panel).toContain("Harness only. No live approval.");
+    expect(panel).toContain("isInviteeSignup");
   });
 });
 

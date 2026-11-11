@@ -9,18 +9,30 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { SIGNUP_ROLES } from "@/lib/signupRoles";
 import { isInviteeSignup, type SignupApplicant } from "@/lib/applicantNotice";
 
+/** Harness only. Real sign-ups still come from the database. */
+export type SignupPreviewRow = {
+  id: string;
+  full_name: string;
+  signup_role: string;
+  signup_company?: string | null;
+  phone?: string | null;
+  notice?: SignupApplicant | null;
+};
+
 /**
  * Step 2 of the two-step sign-up rule: Massair CT admins approve sign-ups made through
  * the main system (new companies, company techs/salespeople, Massair CT dual-role staff).
  * Server-side check lives in approve_company_signup(); other users simply see nothing here.
  */
-export default function CompanySignupsPanel() {
+export default function CompanySignupsPanel({ previewRows }: { previewRows?: SignupPreviewRow[] }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [pick, setPick] = useState<Record<string, string>>({});
+  const preview = previewRows != null;
 
   const q = useQuery({
     queryKey: ["company-signups"],
+    enabled: !preview,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
@@ -32,10 +44,10 @@ export default function CompanySignupsPanel() {
       return (data || []) as any[];
     },
   });
-  const rows = q.data || [];
+  const rows = previewRows ?? q.data ?? [];
   const details = useQuery({
     queryKey: ["signup-applicants", rows.map((p) => p.id).join(",")],
-    enabled: rows.length > 0,
+    enabled: !preview && rows.length > 0,
     queryFn: async () => {
       const out: Record<string, SignupApplicant | null> = {};
       await Promise.all(rows.map(async (p) => {
@@ -47,6 +59,7 @@ export default function CompanySignupsPanel() {
   });
   const companies = useQuery({
     queryKey: ["signup-companies"],
+    enabled: !preview,
     queryFn: async () => {
       const { data } = await supabase.from("companies").select("id, name, status").eq("status", "active").order("name");
       return (data || []) as { id: string; name: string }[];
@@ -55,6 +68,7 @@ export default function CompanySignupsPanel() {
 
   const decide = useMutation({
     mutationFn: async (v: { id: string; approve: boolean; company?: string; invitee?: boolean }) => {
+      if (preview) throw new Error("Harness only. No live approval.");
       if (v.invitee || isInviteeSignup(details.data?.[v.id])) {
         throw new Error("Invited staff join on Team → Staff. Approval here is not used.");
       }
@@ -82,7 +96,7 @@ export default function CompanySignupsPanel() {
       </p>
       <div className="space-y-2">
         {rows.map((p) => {
-          const notice = details.data?.[p.id];
+          const notice = preview ? p.notice : details.data?.[p.id];
           const invitee = isInviteeSignup(notice);
           const needsCo = !invitee && (p.signup_role === "company_tech" || p.signup_role === "company_sales");
           const lane = [notice?.invite_role, notice?.invite_lane].filter(Boolean).join(" / ");
@@ -92,6 +106,7 @@ export default function CompanySignupsPanel() {
                 <div className="font-medium">{notice?.full_name || p.full_name}</div>
                 <div className="text-xs text-muted-foreground">
                   {notice?.email ? <span data-testid="signup-email">{notice.email}</span> : null}
+                  {notice?.email && !invitee ? " · " : null}
                   {invitee ? (
                     <span data-testid="signup-invite"> · Invited {lane || "staff"} · They join on Team → Staff</span>
                   ) : (
