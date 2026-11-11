@@ -18,6 +18,7 @@ import { makeMapHandlers } from "@/lib/mandy/mapStatus";
 import type { MandyResult } from "@/lib/mandy/actions";
 import { fmtRand } from "@/lib/mandy/actions";
 import { makeWorkHandlers, makeParentHandlers } from "@/lib/mandy/workActions";
+import { makeDayHandlers } from "@/lib/mandy/dayHandlers";
 import { useIsParentOwner } from "@/hooks/useIsParentOwner";
 import { recordInvoicePayment } from "@/lib/payments";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
@@ -70,6 +71,11 @@ export function useWorkflowMandyActions() {
     onCreated: (quoteId) => { void qc.invalidateQueries({ queryKey: ["accepted-work-invoice", quoteId] }); },
   });
 
+  const day = makeDayHandlers({
+    db: supabase, navigate, userId: user?.id, today: todayInJohannesburg, fmtRand,
+    page: () => (typeof window !== "undefined" ? window.location.pathname : ""),
+  });
+
   const work = makeWorkHandlers({
     db: supabase, navigate, userId: user?.id, today: todayInJohannesburg,
     openWindow: () => (typeof window !== "undefined" ? window.open("about:blank", "_blank") : null),
@@ -82,6 +88,7 @@ export function useWorkflowMandyActions() {
 
   useRegisterMandyActions({
     ...(work as Record<string, (a: Record<string, unknown>) => Promise<MandyResult>>),
+    ...(day as Record<string, (a: Record<string, unknown>) => Promise<MandyResult>>),
     ...(parent as Record<string, (a: Record<string, unknown>) => Promise<MandyResult>>),
     open_invoice: async ({ ref, client, invoice_id }): Promise<MandyResult> => {
       const open = (inv: any): MandyResult => {

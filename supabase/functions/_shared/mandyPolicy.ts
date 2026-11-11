@@ -21,22 +21,26 @@ const QUOTE_WRITE = [
 const MONEY = ["open_invoice", "show_deposit_due", "create_deposit_invoice",
   "list_overdue_invoices", "record_payment", "whatsapp_invoice", "create_purchase_orders", "list_purchase_orders",
   "list_payment_followups", "open_payment_followups", "request_payment_followup", "send_approved_followup"];
-const JOBS = ["list_my_jobs", "open_job", "start_job"];
+const JOBS = ["list_my_jobs", "open_job", "start_job", "tech_day"];
+const DAY_ADMIN = ["set_owner_rep", "undo_owner_rep", "assign_lead_technician", "cancel_visit", "reschedule_visit", "why_lead_waiting", "unpaid_for", "report_problem"];
+const DAY_OFFICE = ["assign_lead_technician", "cancel_visit", "reschedule_visit", "why_lead_waiting", "unpaid_for", "report_problem"];
+const DAY_SALES = ["assign_lead_technician", "cancel_visit", "reschedule_visit", "why_lead_waiting", "unpaid_for", "tech_day", "report_problem"];
+const DAY_ANY = ["report_problem", "why_lead_waiting"];
 const OFFICE_JOBS = ["open_scheduler"];
 const SEND_QUOTE = ["whatsapp_quote"];
 /** Top-level (parent) Mandy: Massair owner only (server checks is_parent_owner). Read-only across companies. */
 export const PARENT_TOOLS: ReadonlySet<string> = new Set(["parent_overview", "parent_overdue", "parent_company_report"]);
 
 export const TIER_TOOLS: Record<MandyTier, ReadonlySet<string>> = {
-  admin: new Set([...NAV_READ, ...CLIENT_READ, ...QUOTE_WRITE, ...MONEY, ...JOBS, ...OFFICE_JOBS, ...SEND_QUOTE]),
-  office: new Set([...NAV_READ, ...CLIENT_READ, ...QUOTE_WRITE, ...MONEY, ...JOBS, ...OFFICE_JOBS, ...SEND_QUOTE]),
-  sales: new Set([...NAV_READ, ...CLIENT_READ, ...QUOTE_WRITE, ...SEND_QUOTE]),
-  tech: new Set([...NAV_READ, ...JOBS]),
-  viewer: new Set([...NAV_READ, ...CLIENT_READ, "list_my_jobs"]),
+  admin: new Set([...NAV_READ, ...CLIENT_READ, ...QUOTE_WRITE, ...MONEY, ...JOBS, ...OFFICE_JOBS, ...SEND_QUOTE, ...DAY_ADMIN]),
+  office: new Set([...NAV_READ, ...CLIENT_READ, ...QUOTE_WRITE, ...MONEY, ...JOBS, ...OFFICE_JOBS, ...SEND_QUOTE, ...DAY_OFFICE]),
+  sales: new Set([...NAV_READ, ...CLIENT_READ, ...QUOTE_WRITE, ...SEND_QUOTE, ...DAY_SALES]),
+  tech: new Set([...NAV_READ, ...JOBS, "report_problem"]),
+  viewer: new Set([...NAV_READ, ...CLIENT_READ, "list_my_jobs", ...DAY_ANY]),
 };
 
 /** Hard deny, whatever tier or future tool list says. */
-const SYSTEM_DENY = /(setting|pricing|price_rule|markup|margin|catalog|template|(^|_)users?($|_)|(^|_)roles?($|_)|permission|notification|labour_rate|subscription|plan_limit|migration|rls|signup)/i;
+const SYSTEM_DENY = /(setting|pricing|price_rule|markup|margin|catalog|template|(^|_)users?($|_)|(^|_)roles?($|_)|permission|notification|labour_rate|subscription|plan_limit|migration|rls|signup|company_detail|edit_company)/i;
 export const isSystemTool = (name: string) => SYSTEM_DENY.test(name);
 
 export function tierFor(roles: string[], flags: { salesRep?: boolean; techOnly?: boolean }): MandyTier {

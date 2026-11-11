@@ -56,6 +56,28 @@ async function loadCtx(userId: string | null, roles: string[]): Promise<MandyCtx
   }
 }
 
+/** Active playbook lines for this company and role. Missing table must not block a session. */
+async function loadPlaybook(companyId: string | null, tier: string): Promise<string> {
+  try {
+    const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+    const { data, error } = await db.from("mandy_playbook").select("title, answer, allowed_roles, company_id, active").eq("active", true).limit(20);
+    if (error || !data) return "";
+    const rows = (data as { title?: string; answer?: string; allowed_roles?: string[]; company_id?: string | null }[])
+      .filter((r) => (!r.company_id || r.company_id === companyId) && ((r.allowed_roles || []).includes("all") || (r.allowed_roles || []).includes(tier)));
+    let used = 0;
+    const parts: string[] = [];
+    for (const r of rows) {
+      const line = `${r.title}: ${String(r.answer || "").replace(/\s+/g, " ")}`.trim();
+      if (!line || used + line.length > 1600) break;
+      parts.push(line);
+      used += line.length + 1;
+    }
+    return parts.join("\n");
+  } catch {
+    return "";
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   const auth = await requireUser(req);
@@ -70,6 +92,7 @@ Deno.serve(async (req) => {
   if (mctx.off) return json({ off: true, text: MANDY_OFF_TEXT });
   if (clientBuildTooOld(body.client_build, MIN_CLIENT_BUILD)) return json({ stale_client: true, text: STALE_TEXT });
 
+  const playbook = await loadPlaybook(mctx.companyId, mctx.tier);
   const prepared = prepareRealtimeSession({
     tier: mctx.tier,
     parent: mctx.parent,
@@ -77,6 +100,7 @@ Deno.serve(async (req) => {
     companyName: mctx.companyName,
     tools: Array.isArray(body.tools) ? body.tools : [],
     context: body.context && typeof body.context === "object" ? body.context : {},
+    playbook,
   });
   // Company voice_id is kept for the legacy TTS path. Realtime is pinned to eve.
   void mctx.voice;

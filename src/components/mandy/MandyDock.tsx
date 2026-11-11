@@ -43,6 +43,7 @@ import { MandyRealtimeSession, type RealtimeGrant } from "@/lib/mandy/realtimeCl
 import { mandyRealtimeEnabled, type MandyPhase } from "@/lib/mandy/realtimeTurn";
 import { MandyDockView } from "@/components/mandy/MandyDockView";
 import { fallbackRoute } from "@/lib/mandy/honestFallback";
+import { applyVoiceConfirm, noteMandyTurn } from "@/lib/mandy/dayVoice";
 
 const MAX_STEPS = 4;
 type Phase = MandyPhase;
@@ -236,6 +237,7 @@ export default function MandyDock() {
   const [confirm, setConfirm] = useState<{ summary: string; lines?: string[]; danger?: boolean; run: () => Promise<MandyResult> } | null>(null);
   const confirmRef = useRef<typeof confirm>(null);
   confirmRef.current = confirm;
+  const runConfirmRef = useRef<() => Promise<void>>(async () => undefined);
   const { speak, cancel, setOnReplyEnded } = useSpeaker(muted);
 
   // Dock opens on an old build: reload now if nothing is unsaved, else ask to save first.
@@ -339,6 +341,15 @@ export default function MandyDock() {
   const runTurn = useCallback(async (text: string) => {
     const t = text.trim();
     if (!t || busyRef.current) return;
+    const voice = applyVoiceConfirm(!!confirmRef.current, t);
+    if (voice === "run") { await runConfirmRef.current(); return; }
+    if (voice === "cancel") {
+      setConfirm(null);
+      setReply("Cancelled — nothing was changed.");
+      setPhase("speaking");
+      await speak("Cancelled. Nothing was changed.");
+      return;
+    }
     busyRef.current = true;
     cancel();
     const hadPendingCard = !!confirmRef.current;
@@ -501,6 +512,7 @@ export default function MandyDock() {
     if (lastUnverified && !/confirm it on screen/i.test(final)) final = honestMessage({ ok: true, message: final, verified: false });
     final = formatReplyText(final);
     historyRef.current = [...historyRef.current, { role: "user", content: t }, { role: "assistant", content: final }].slice(-8);
+    noteMandyTurn(t, final);
     // One review row per turn: what the user said + what Mandy finally said (text-only answers included).
     audit("reply", { tools: results.length }, { ok: true, message: final }, final);
     setReply(final);
@@ -542,6 +554,7 @@ export default function MandyDock() {
     setPhase("speaking");
     await say(msg);
   };
+  runConfirmRef.current = runConfirm;
 
   /* ───────────── mic ───────────── */
   const stopListening = useCallback(async () => {
@@ -633,8 +646,14 @@ export default function MandyDock() {
       listToolNames: () => registry?.names() || [],
       onPhase: (p) => { if (openRef.current) setPhase(p); },
       onLevel: setLevel,
-      onHeard: (t) => { utterRef.current = t; setHeard(t); },
-      onReply: (t) => setReply(formatReplyText(t)),
+      onHeard: (text) => {
+        utterRef.current = text;
+        setHeard(text);
+        const voice = applyVoiceConfirm(!!confirmRef.current, text);
+        if (voice === "run") void runConfirmRef.current();
+        else if (voice === "cancel") { setConfirm(null); setReply("Cancelled — nothing was changed."); }
+      },
+      onReply: (text) => { const said = formatReplyText(text); setReply(said); noteMandyTurn(utterRef.current, said); },
       onChoices: setChoices,
       onConfirm: setConfirm,
       onFatal: (message) => {

@@ -58,6 +58,7 @@ export function realtimeInstructions(p: {
   parent: boolean;
   tier: string;
   context: unknown;
+  playbook?: string;
 }): string {
   const ctx = JSON.stringify(p.context ?? {}).slice(0, 1200);
   return [
@@ -74,6 +75,8 @@ export function realtimeInstructions(p: {
     MISHEAR_RULE,
     `Money is rand. VAT is 15% when the tool said so. Use metric units. Keep product names short.`,
     p.parent ? `Top-level Massair view is on. Across other companies you are read-only. Give the totals first, then the one or two companies that need attention.` : "",
+    p.playbook ? `Playbook (follow this, do not invent steps):\n${p.playbook}` : "",
+    `If no tool and no playbook entry covers the request, say "I can't do that yet, I'll pass it on" and call report_problem. Do not guess, and never edit company details.`,
     `Screen context (hint only): ${ctx}`,
   ].filter(Boolean).join("\n");
 }
@@ -98,6 +101,7 @@ export function prepareRealtimeSession(input: {
   companyName: string;
   tools: unknown[];
   context: unknown;
+  playbook?: string;
 }): { url: string; session: RealtimeSessionBody; dropped: string[] } {
   const { kept, dropped } = filterTools(input.tier, Array.isArray(input.tools) ? input.tools.slice(0, 60) : [], input.parent);
   const tools = kept.map(toRealtimeTool).filter((t): t is NonNullable<typeof t> => !!t);
