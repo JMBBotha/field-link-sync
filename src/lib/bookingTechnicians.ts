@@ -14,6 +14,11 @@ export type BookingTechRow = {
   archived_at?: string | null;
   /** Present on profiles. Ignored: a tech who is offline still did the visit. */
   availability_status?: string | null;
+  /**
+   * Admin-added technician with no sign-in. Ignored here: Book a job, the job
+   * page, and the project house still list them. Offers and device alerts do not.
+   */
+  no_login?: boolean | null;
 };
 
 /**
@@ -21,7 +26,8 @@ export type BookingTechRow = {
  * Same lane as dispatch / AppointmentPicker (`resolveLane` === service):
  * profiles.dispatch_role technician, or an independent tech. Not user_roles,
  * and not "Available right now" — that filter hides the only company tech
- * whenever they are offline.
+ * whenever they are offline. no_login does not remove them: the office books
+ * and logs their work. Live offers and device alerts exclude them in SQL.
  */
 export function bookingTechnicians(
   rows: BookingTechRow[] | null | undefined,

@@ -9090,6 +9090,7 @@ export type Database = {
           location_tracking_enabled: boolean | null
           max_travel_km: number | null
           network_status: string | null
+          no_login: boolean
           office_address: string | null
           office_lat: number | null
           office_lng: number | null
@@ -9141,6 +9142,7 @@ export type Database = {
           location_tracking_enabled?: boolean | null
           max_travel_km?: number | null
           network_status?: string | null
+          no_login?: boolean
           office_address?: string | null
           office_lat?: number | null
           office_lng?: number | null
@@ -9192,6 +9194,7 @@ export type Database = {
           location_tracking_enabled?: boolean | null
           max_travel_km?: number | null
           network_status?: string | null
+          no_login?: boolean
           office_address?: string | null
           office_lat?: number | null
           office_lng?: number | null
