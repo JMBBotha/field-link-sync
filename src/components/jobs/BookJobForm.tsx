@@ -107,13 +107,18 @@ export function VisitKindMenu({ value, onChange, customLabel = "", onCustomLabel
   );
 }
 
-export function PastVisitFields({ techs, value, onChange, maxDate, techsOpen = false }: {
+export function PastVisitFields({ techs, value, onChange, maxDate, techsOpen = false, techsStatus, onRetryTechs }: {
   techs: Named[]; value: PastDraft; onChange: (p: PastDraft) => void; maxDate?: string;
   /** Harness only: show the options in the page so a screenshot can see them. */
   techsOpen?: boolean;
+  /** loading / error / empty replace a silent placeholder. Omitted means the list is ready. */
+  techsStatus?: "loading" | "error" | "empty" | "ready";
+  onRetryTechs?: () => void;
 }) {
   const max = maxDate || johannesburgToday();
   const set = (patch: Partial<PastDraft>) => onChange({ ...value, ...patch });
+  const status = techsStatus || "ready";
+  const waiting = status === "loading" || status === "error";
   return (
     <div className="space-y-3" data-testid="past-visit-fields">
       <label className="block text-sm">
@@ -121,13 +126,22 @@ export function PastVisitFields({ techs, value, onChange, maxDate, techsOpen = f
         <select
           className={cn("mt-1 w-full rounded-lg border bg-background px-3", techsOpen ? "py-1" : "h-11")}
           data-testid="past-tech"
-          size={techsOpen ? techs.length + 1 : undefined}
+          size={techsOpen ? Math.max(techs.length, 0) + 1 : undefined}
           value={value.techId}
+          disabled={waiting}
           onChange={(e) => set({ techId: e.target.value })}
         >
-          <option value="">Choose technician…</option>
+          <option value="">{status === "loading" ? "Loading technicians…" : "Choose technician…"}</option>
           {techs.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
+        {status === "loading" && <p className="mt-1 text-xs text-muted-foreground" data-testid="past-tech-loading">Loading technicians…</p>}
+        {status === "error" && (
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-amber-800" data-testid="past-tech-error">
+            Couldn't load technicians.
+            <button type="button" className="font-semibold text-[#3D9BEB] underline" data-testid="past-tech-retry" onClick={onRetryTechs}>Retry</button>
+          </p>
+        )}
+        {status === "empty" && <p className="mt-1 text-xs text-muted-foreground" data-testid="past-tech-empty">No technician in this company.</p>}
       </label>
       <label className="block text-sm">
         <span className="text-muted-foreground">Date it happened</span>
@@ -206,8 +220,12 @@ export function BookJobForm(props: {
   kindsOpen?: boolean;
   onKindsOpen?: (open: boolean) => void;
   canLogPast: boolean;
+  /** True while we still don't know whether this person may log past work. */
+  pastAccessLoading?: boolean;
   techs: Named[];
   techsOpen?: boolean;
+  techsStatus?: "loading" | "error" | "empty" | "ready";
+  onRetryTechs?: () => void;
   past: PastDraft;
   onPast: (p: PastDraft) => void;
   visits: VisitView[];
@@ -274,13 +292,15 @@ export function BookJobForm(props: {
 
       {p.showHouseFit && <HouseFirstFitLine done={!!p.firstFitDone} inStep={!!p.firstFitInStep} />}
 
-      {logging && !p.canLogPast && (
+      {logging && !p.canLogPast && !p.pastAccessLoading && (
         <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" data-testid="past-admin-only">
           Only an admin can log or correct a past visit.
         </p>
       )}
       {p.doing === "correct" && <VisitList visits={p.visits} correctId={p.correctId} onCorrect={p.onCorrect} />}
-      {logging && p.canLogPast && <PastVisitFields techs={p.techs} value={p.past} onChange={p.onPast} techsOpen={p.techsOpen} />}
+      {logging && (p.canLogPast || p.pastAccessLoading) && (
+        <PastVisitFields techs={p.techs} value={p.past} onChange={p.onPast} techsOpen={p.techsOpen} techsStatus={p.pastAccessLoading ? "loading" : p.techsStatus} onRetryTechs={p.onRetryTechs} />
+      )}
       {p.doing === "upcoming" && p.classic}
       {p.doing !== "correct" && p.visits.length > 0 && <VisitList visits={p.visits} />}
     </div>

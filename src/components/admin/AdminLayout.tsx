@@ -42,6 +42,7 @@ import ArchivedCompanyBanner from "@/components/company/ArchivedCompanyBanner";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useEventSounds } from "@/hooks/useEventSounds";
 import { withTimeout } from "@/lib/withTimeout";
+import { authCheckHidesOutlet, authOutletPlan } from "@/lib/authOutlet";
 
 const AdminLayout = () => {
   useEventSounds();
@@ -147,6 +148,8 @@ const AdminLayout = () => {
   });
 
   const mountedRef = useRef(true);
+  const authorizedUserId = useRef<string | null>(null);
+  const checkGen = useRef(0);
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
@@ -155,13 +158,20 @@ const AdminLayout = () => {
   useEffect(() => {
     if (authLoading) return;
     if (!session || !user) return;
-    checkAuth();
+    const mode = authOutletPlan({ authorizedUserId: authorizedUserId.current, userId: user.id }).mode;
+    void checkAuth(mode === "background");
+    // Same-user token refresh changes access_token, not the user id. That re-checks
+    // access in the background. It must not depend on the session or user objects:
+    // those are new on every TOKEN_REFRESHED and used to unmount the outlet.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, session, user]);
+  }, [authLoading, user?.id, session?.access_token]);
 
-  const checkAuth = async () => {
-    setAuthError(null);
-    setLoading(true);
+  const checkAuth = async (background = false) => {
+    const gen = ++checkGen.current;
+    if (authCheckHidesOutlet(background ? "background" : "blocking")) {
+      setAuthError(null);
+      setLoading(true);
+    }
     try {
       if (!session || !user) { navigate("/login"); return; }
       const { data: roles, error: rolesErr } = await withTimeout(
@@ -170,11 +180,12 @@ const AdminLayout = () => {
         "Checking your access is taking too long.",
       );
       if (rolesErr) throw rolesErr;
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || gen !== checkGen.current) return;
       const userRoles = roles?.map(r => r.role) || [];
       const hasAdminAccess = userRoles.some(r => ["admin", "dispatcher", "viewer"].includes(r));
       if (!hasAdminAccess) {
         // Techs/sales who land here (e.g. after a slow first sign-in) just go to their own screen.
+        authorizedUserId.current = null;
         navigate("/field", { replace: true });
         return;
       }
@@ -185,17 +196,21 @@ const AdminLayout = () => {
         "Loading your profile is taking too long.",
       );
       if (profileErr) throw profileErr;
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || gen !== checkGen.current) return;
       if (!profile?.onboarding_completed) {
+        authorizedUserId.current = null;
         navigate("/onboarding");
         return;
       }
+      authorizedUserId.current = user.id;
       setIsAdmin(true);
     } catch (error: any) {
       console.error("Auth check error:", error);
-      if (mountedRef.current) setAuthError(error?.message || "Could not load your account.");
+      // A background refresh that fails keeps the page the person is already on.
+      // The first check, and a change of who is signed in, still surface the error.
+      if (!background && mountedRef.current && gen === checkGen.current) setAuthError(error?.message || "Could not load your account.");
     } finally {
-      if (mountedRef.current) setLoading(false);
+      if (!background && mountedRef.current && gen === checkGen.current) setLoading(false);
     }
   };
 

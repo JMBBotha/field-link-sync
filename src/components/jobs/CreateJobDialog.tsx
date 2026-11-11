@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { doneToast, doneMessage } from "@/lib/doneToast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,11 @@ import { jobTypeFor, isAcceptedQuote, quoteStatus, type JobKind } from "@/lib/jo
 import { useRole } from "@/hooks/useRole";
 import { useProjects, db as projectDb, clientName } from "@/hooks/useProjectTracker";
 import { useBookingTechnicians } from "@/hooks/useBookingTechnicians";
+import { bookingTechListState } from "@/lib/bookingTechnicians";
+import {
+  bookJobDraftKey, bookJobStorage, clearBookJobDraft, draftMatchesEntry, freshBookJobBody, readBookJobDraft, writeBookJobDraft,
+  type BookJobDraftBody,
+} from "@/lib/bookJobDraft";
 import {
   canLogPastWork, customLabelMissing, houseAttachPlan, includesFirstFix, johannesburgToday, kindsFromStored, pastDateAllowed, titleDefault, workCards,
   type Doing, type HouseJobRef, type VisitKind, type WhereMode,
@@ -38,11 +43,13 @@ interface Props {
   defaultLeadId?: string;
   defaultQuoteId?: string;
   defaultCustomerId?: string;
+  /** Separates drafts so Jobs, Home, and Dispatch do not restore each other. */
+  context?: string;
 }
 
-const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, defaultCustomerId }: Props) => {
-  const { companyId } = useUserCompanyId();
-  const { isAdmin } = useRole();
+const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, defaultCustomerId, context = "book-a-job" }: Props) => {
+  const { companyId, loading: companyLoading, reload: reloadCompany } = useUserCompanyId();
+  const { isAdmin, loading: roleLoading } = useRole();
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -90,25 +97,72 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [correctId, setCorrectId] = useState<string | null>(null);
   const [pathBusy, setPathBusy] = useState(false);
   const canLog = canLogPastWork(isAdmin);
+  const bootScope = useRef<string | null>(null);
+  const closing = useRef(false);
+  const scope = user?.id && companyId ? bookJobDraftKey(user.id, companyId, context) : null;
 
-  // Sync incoming defaults whenever the dialog opens (dialog is mounted once
-  // and reused, so prop changes must be pushed into state here).
+  const applyBody = (b: BookJobDraftBody) => {
+    setTitle(b.title);
+    setDescription(b.description);
+    setCustomerId(b.customerId);
+    setLeadId(b.leadId);
+    setQuoteId(b.quoteId);
+    setLocationId(b.locationId);
+    setAddress(b.address);
+    setAppt(b.appt);
+    setPriority(b.priority);
+    setJobKind(b.jobKind);
+    setDurationTouched(b.durationTouched);
+    setLat(b.lat);
+    setLng(b.lng);
+    setGeoStatus(b.geoStatus);
+    setShowPicker(b.showPicker);
+    setWhere(b.where);
+    setDoing(b.doing);
+    setProjectId(b.projectId);
+    setHouseId(b.houseId);
+    setVisitKinds(b.visitKinds);
+    setCustomLabel(b.customLabel);
+    setTitleTouched(b.titleTouched);
+    setAddressTouched(b.addressTouched);
+    setPast(b.past);
+    setCorrectId(b.correctId);
+  };
+
+  const snapshot = (): BookJobDraftBody => ({
+    title, description, customerId, leadId, quoteId, locationId, address, appt, priority, jobKind,
+    durationTouched, lat, lng, geoStatus, showPicker, where, doing, projectId, houseId, visitKinds,
+    customLabel, titleTouched, addressTouched, past, correctId,
+  });
+
+  // Persist runs before the restore effect. On the render that restores, bootScope is
+  // still the previous scope, so this write cannot stamp an empty form over the saved one.
   useEffect(() => {
-    if (!open) return;
-    setCustomerId((prev) => prev || defaultCustomerId || "");
-    setLeadId((prev) => prev || defaultLeadId || "");
-    setQuoteId((prev) => prev || defaultQuoteId || "");
-    setWhere("single");
-    setDoing("upcoming");
-    setProjectId("");
-    setHouseId("");
-    setVisitKinds([]);
-    setCustomLabel("");
-    setTitleTouched(false);
-    setAddressTouched(false);
-    setPast({ techId: "", date: johannesburgToday(), arrive: "08:00", leave: "", note: "", completed: false });
-    setCorrectId(null);
-  }, [open, defaultCustomerId, defaultLeadId, defaultQuoteId]);
+    if (closing.current || !open || !scope || bootScope.current !== scope || !user?.id || !companyId) return;
+    writeBookJobDraft(bookJobStorage(), {
+      version: 1, userId: user.id, companyId, context, open: true, body: snapshot(),
+    });
+  }, [open, scope, user?.id, companyId, context, title, description, customerId, leadId, quoteId, locationId, address, appt, priority, jobKind, durationTouched, lat, lng, geoStatus, showPicker, where, doing, projectId, houseId, visitKinds, customLabel, titleTouched, addressTouched, past, correctId]);
+
+  // Restore a draft for this user, company, and page before applying a fresh form.
+  // A later change to the default ids must not wipe a technician already chosen.
+  useEffect(() => {
+    if (!open) {
+      closing.current = false;
+      bootScope.current = null;
+      return;
+    }
+    if (closing.current || !user?.id || !companyId || !scope) return;
+    if (bootScope.current === scope) return;
+    const defaults = { customerId: defaultCustomerId, leadId: defaultLeadId, quoteId: defaultQuoteId };
+    const saved = readBookJobDraft(bookJobStorage(), user.id, companyId, context);
+    const next = saved?.open && draftMatchesEntry(saved.body, defaults) ? saved.body : freshBookJobBody(defaults);
+    applyBody(next);
+    bootScope.current = scope;
+    writeBookJobDraft(bookJobStorage(), {
+      version: 1, userId: user.id, companyId, context, open: true, body: next,
+    });
+  }, [open, scope, user?.id, companyId, context, defaultCustomerId, defaultLeadId, defaultQuoteId]);
 
   const { data: customers = [] } = useQuery({
     queryKey: ["job-customers", companyId],
@@ -173,8 +227,26 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   }, [open, where, project, house, visitKinds, customLabel, titleTouched, addressTouched]);
 
   // Past and correct visits use the same technician lane as dispatch (AppointmentPicker / useLaneStaff).
-  // The live-offer list also requires Available right now, so an offline tech never appears.
-  const { data: pathTechs = [] } = useBookingTechnicians(companyId, open && canLog);
+  // Offline technicians stay in the list. The menu shows loading, a failed read, or a real empty company
+  // instead of treating "no data yet" as "Choose technician…" with nobody under it.
+  const techQuery = useBookingTechnicians(companyId, open && canLog);
+  const pathTechs = techQuery.data ?? [];
+  const techState = bookingTechListState({
+    companyId,
+    companyLoading,
+    companyError: !companyLoading && !companyId,
+    accessLoading: roleLoading,
+    canLog,
+    queryEnabled: open && canLog,
+    isPending: techQuery.isPending,
+    isFetching: techQuery.isFetching,
+    isError: techQuery.isError,
+    count: pathTechs.length,
+  });
+  const retryTechs = () => {
+    if (!companyId) reloadCompany();
+    else void techQuery.refetch();
+  };
   const { data: pathVisits = [] } = useQuery({
     queryKey: ["backfill-list", attached?.id, "book-job"],
     enabled: open && !!attached?.id && canLog,
@@ -389,8 +461,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
       else toast({ title: doneMessage(what), description: "No map pin yet. Pin it from the Map view when possible.", variant: "destructive" });
       ["jobs-list","jobs-dispatch","my-jobs","job-schedules","dispatch-leads","dispatch-schedules","dispatch-agents","admin-home-stats","jobs-kpi-stats","leads","leads-map"]
         .forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
-      onOpenChange(false);
-      resetForm();
+      closeSaved();
     },
     onError: (err: any) => {
       toast({ title: "Failed to create job", description: err.message, variant: "destructive" });
@@ -425,6 +496,18 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setCorrectId(null);
   };
 
+  function closeSaved() {
+    closing.current = true;
+    bootScope.current = null;
+    if (user?.id && companyId) clearBookJobDraft(bookJobStorage(), user.id, companyId, context);
+    resetForm();
+    onOpenChange(false);
+  }
+
+  function discard() {
+    closeSaved();
+  }
+
   const refreshJobs = () => {
     ["jobs-list", "jobs-dispatch", "my-jobs", "job-schedules", "dispatch-leads", "dispatch-schedules", "dispatch-agents", "admin-home-stats", "jobs-kpi-stats", "leads", "leads-map", "project-detail", "projects", "backfill-list", "house-install-job", "job-detail"]
       .forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
@@ -455,8 +538,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         toast({ title: "Visit recorded" });
       }
       refreshJobs();
-      onOpenChange(false);
-      resetForm();
+      closeSaved();
     } catch (e: any) {
       toast({ title: "Couldn't save", description: e?.message, variant: "destructive" });
     } finally { setPathBusy(false); }
@@ -481,8 +563,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
       void flushOverride({ type: "job", id: attached.id });
       toast({ title: "Booked on this house's job" });
       refreshJobs();
-      onOpenChange(false);
-      resetForm();
+      closeSaved();
     } catch (e: any) {
       toast({ title: "Couldn't book", description: e?.message, variant: "destructive" });
     } finally { setPathBusy(false); }
@@ -498,7 +579,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) discard(); }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Book a job</DialogTitle>
@@ -538,7 +619,10 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
               setVisitKinds(next);
             }}
             canLogPast={canLog}
+            pastAccessLoading={roleLoading}
             techs={pathTechs}
+            techsStatus={techState === "hidden" ? "ready" : techState}
+            onRetryTechs={retryTechs}
             past={past}
             onPast={setPast}
             visits={pathVisits}
@@ -644,7 +728,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={discard}>Cancel</Button>
           <Button
             className="bg-[#C2410C] text-white hover:bg-[#9A3412]"
             data-testid="book-job-save"

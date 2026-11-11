@@ -1,8 +1,10 @@
 /** Demo shots for Book a job. Harness rows only — not live clients. */
 import { useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
-import { BookJobForm, HouseFirstFitLine, VisitList, WorkIntent, type PastDraft, type VisitView } from "@/components/jobs/BookJobForm";
+import { BookJobForm, HouseFirstFitLine, PastVisitFields, VisitList, WorkIntent, type PastDraft, type VisitView } from "@/components/jobs/BookJobForm";
 import { applyCorrection, defaultCompleted, houseAttachPlan, includesFirstFix, johannesburgToday, titleDefault, withFirstFit, workCards, type Doing, type VisitKind, type WhereMode } from "@/lib/bookJobPath";
+import { MASSAIR_CT_ID, MASSAIR_IND_ID } from "@/lib/adminHomeCount";
+import { bookingTechnicians, type BookingTechRow } from "@/lib/bookingTechnicians";
 import type { JobKind } from "@/lib/jobTypeChoice";
 import { RequestAlertsSettingsView } from "@/components/settings/RequestAlertsSettingsCard";
 import { DEFAULT_REQUEST_ALERTS } from "@/lib/requestOffers";
@@ -10,6 +12,15 @@ import { DEFAULT_REQUEST_ALERTS } from "@/lib/requestOffers";
 const PROJECTS = [{ id: "p-avec", name: "Avec" }];
 const HOUSES = [{ id: "h12", house_no: "12" }, { id: "h13", house_no: "13" }];
 const TECHS = [{ id: "t1", name: "Tech A" }, { id: "t2", name: "Tech B" }];
+/** Massair CT rows for the past-work menu. Innocent is offline and still belongs on the visit. */
+export const MASSAIR_TECH_FIXTURE: BookingTechRow[] = [
+  { id: "09a7f5af-2752-4835-8738-54f7b53083ea", full_name: "Innocent Mattienga", company_id: MASSAIR_CT_ID, dispatch_role: "technician", participant_type: "company_staff", dispatch_active: true, archived_at: null, availability_status: "offline" },
+  { id: "1e795a9b-f8bd-4af5-8f28-5e0426101daa", full_name: "Johan Admin", company_id: MASSAIR_CT_ID, dispatch_role: null, participant_type: "company_staff", dispatch_active: true, archived_at: null, availability_status: "available" },
+  { id: "420c7731", full_name: "Johan Sales", company_id: MASSAIR_CT_ID, dispatch_role: "sales", participant_type: "company_staff", dispatch_active: true, archived_at: null, availability_status: "available" },
+  { id: "archived-tech", full_name: "Archived Tech", company_id: MASSAIR_CT_ID, dispatch_role: "technician", participant_type: "company_staff", dispatch_active: true, archived_at: "2026-10-08T12:44:37Z", availability_status: "available" },
+  { id: "other-co", full_name: "Other Company Tech", company_id: MASSAIR_IND_ID, dispatch_role: "technician", participant_type: "company_staff", dispatch_active: true, archived_at: null, availability_status: "available" },
+];
+const MASSAIR_TECHS = bookingTechnicians(MASSAIR_TECH_FIXTURE, MASSAIR_CT_ID);
 const JOBS = [{ id: "job-12", title: "Installation — Avec House 12", description: null, customer_id: "demo-client", job_type: "installation", quote_id: null, lead_id: null }];
 const SAVED: VisitView = { id: "v1", techId: "t1", tech: "Tech A", date: "2026-11-03", arrive: "08:00", leave: "11:30", note: "", kinds: ["first_fix", "piping"] };
 
@@ -49,7 +60,10 @@ export default function BookJobHarness() {
   const [params] = useSearchParams();
   const shot = params.get("shot") || "default";
   const tablet = shot === "tablet" || shot === "kinds-tablet" || shot === "custom-tablet" || shot === "techs-tablet";
-  const width = tablet ? 768 : 390;
+  const desktop = shot === "massair-desktop" || shot === "massair-states-desktop";
+  const width = desktop ? 1280 : tablet ? 768 : 390;
+  if (shot === "massair" || shot === "massair-desktop") return <BookShot width={width} shot="massair" />;
+  if (shot === "massair-states" || shot === "massair-states-desktop") return <MassairStates width={width} />;
   if (shot === "flow") return <Flow width={width} />;
   if (shot === "saved" || shot === "job") return <JobShot width={width} mode={shot} />;
   if (shot === "house") return <HouseShot width={width} />;
@@ -70,18 +84,22 @@ function SettingsShot({ width }: { width: number }) {
 function BookShot({ width, shot }: { width: number; shot: string }) {
   const customShot = shot === "custom-list" || shot === "custom-typed" || shot === "custom-combo" || shot === "custom-tablet";
   const techsShot = shot === "techs" || shot === "techs-tablet";
+  const massair = shot === "massair";
   const project = shot === "project" || shot === "past" || shot === "kinds" || shot === "combo" || shot === "kinds-tablet" || customShot;
-  const doing: Doing = shot === "past" || shot === "kinds" || shot === "combo" || shot === "kinds-tablet" || customShot || techsShot ? "past" : "upcoming";
+  const doing: Doing = shot === "past" || shot === "kinds" || shot === "combo" || shot === "kinds-tablet" || customShot || techsShot || massair ? "past" : "upcoming";
   const attached = project ? houseAttachPlan({ id: "h12", house_no: "12" }, JOBS, "demo-client").job : null;
   const visitKinds: VisitKind[] = shot === "custom-typed" ? ["custom"]
     : shot === "custom-combo" || shot === "custom-tablet" ? ["first_fix", "custom"]
     : shot === "past" || shot === "combo" || shot === "kinds-tablet" ? ["first_fix", "piping"]
-    : techsShot ? ["first_fix"] : [];
+    : techsShot || massair ? ["first_fix"] : [];
   const customLabel = shot === "custom-list" ? "" : customShot ? "Balcony drain" : "";
   const kindsOpen = shot === "kinds" || shot === "kinds-tablet" || shot === "combo" || customShot;
   const past: PastDraft = shot === "past" || shot === "combo"
     ? { techId: "t1", date: "2026-11-03", arrive: "08:00", leave: "11:30", note: "", completed: defaultCompleted([]) }
+    : massair
+    ? { techId: "", date: "2026-11-11", arrive: "08:00", leave: "", note: "", completed: false }
     : emptyPast();
+  const techs = massair ? MASSAIR_TECHS : TECHS;
   return (
     <Frame width={width}>
       <div className="mb-3 rounded-2xl bg-white p-3 shadow-sm">
@@ -112,8 +130,9 @@ function BookShot({ width, shot }: { width: number; shot: string }) {
           customLabel={customLabel}
           kindsOpen={kindsOpen}
           canLogPast
-          techs={TECHS}
-          techsOpen={techsShot}
+          techs={techs}
+          techsOpen={techsShot || massair}
+          techsStatus="ready"
           past={past}
           onPast={() => {}}
           visits={[]}
@@ -122,6 +141,28 @@ function BookShot({ width, shot }: { width: number; shot: string }) {
           classic={doing !== "upcoming" ? null : attached ? <p className="text-sm text-muted-foreground">Next visit uses this job's schedule. No second job.</p> : <DemoClassic />}
         />
         {shot === "past" && <p className="mt-3 text-xs text-muted-foreground">Past dates are allowed. Saving writes one visit and does not message the client.</p>}
+        {massair && <p className="mt-3 text-xs text-muted-foreground">Massair CT fixture. Innocent is offline and still on this list. Demo harness, not a live query.</p>}
+      </div>
+    </Frame>
+  );
+}
+
+function MassairStates({ width }: { width: number }) {
+  const past: PastDraft = { techId: "", date: "2026-11-11", arrive: "08:00", leave: "", note: "", completed: false };
+  const block = (title: string, status: "loading" | "error" | "empty" | "ready", techs = MASSAIR_TECHS) => (
+    <div className="rounded-2xl bg-white p-3 shadow-sm">
+      <p className="mb-2 text-sm font-semibold">{title}</p>
+      <PastVisitFields techs={status === "ready" ? techs : []} value={past} onChange={() => {}} techsStatus={status} onRetryTechs={() => {}} techsOpen={status === "ready"} />
+    </div>
+  );
+  return (
+    <Frame width={width} title="Book a job">
+      <p className="mb-3 text-xs text-muted-foreground">Technician menu states. Massair CT fixture. Demo harness, not a live query.</p>
+      <div className="space-y-3">
+        {block("Loading", "loading")}
+        {block("Couldn't load", "error")}
+        {block("Nobody in this company", "empty")}
+        {block("Ready — offline tech included", "ready")}
       </div>
     </Frame>
   );

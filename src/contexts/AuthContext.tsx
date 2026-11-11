@@ -3,6 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { redirectIfPasswordMissing } from '@/lib/invitePassword';
 import { restoreStartupSession } from '@/lib/startupSession';
+import { clearAllBookJobDrafts, clearOtherUsersBookJobDrafts } from '@/lib/bookJobDraft';
 
 interface AuthContextValue {
   session: Session | null;
@@ -49,6 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (_event, session) => {
         if (!isMounted) return;
         if (_event === "PASSWORD_RECOVERY" && window.location.pathname !== "/set-password") window.location.replace("/set-password");
+        if (_event === "SIGNED_OUT") clearAllBookJobDrafts();
+        else if (session?.user?.id) clearOtherUsersBookJobDrafts(session.user.id);
         if (!session && _event !== "SIGNED_OUT" && _event !== "INITIAL_SESSION") {
           // No session without an explicit sign-out (e.g. mid token refresh): check again, don't log out
           void restoreStartupSession(() => supabase.auth.getSession()).then((result) => {

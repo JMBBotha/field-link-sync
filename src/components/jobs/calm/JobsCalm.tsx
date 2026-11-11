@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, startOfWeek } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserCompanyId } from "@/hooks/useUserCompanyId";
+import { readBookJobDraft, bookJobStorage } from "@/lib/bookJobDraft";
 import { laneOf } from "@/lib/leadLane";
 import { type Person } from "@/lib/jobsBoard";
 import { jobToCard, visitToCard, visibleVisitEntries } from "@/lib/cardModel";
@@ -40,7 +43,16 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
   // Lead Assign opens right here (29 Oct): the old /admin/dispatch?assign hop never mounted the dispatch page.
   const [assignLeadId, setAssignLeadId] = useState<string | null>(initialAssign || null);
   useEffect(() => { if (initialAssign) setAssignLeadId(initialAssign); }, [initialAssign]);
+  const { user } = useAuth();
+  const { companyId } = useUserCompanyId();
   const [showCreate, setShowCreate] = useState(false);
+  const draftBoot = useRef(false);
+  useEffect(() => {
+    if (draftBoot.current || !user?.id || !companyId) return;
+    draftBoot.current = true;
+    const saved = readBookJobDraft(bookJobStorage(), user.id, companyId, "jobs");
+    if (saved?.open) setShowCreate(true);
+  }, [user?.id, companyId]);
   const [sp, setSp] = useSearchParams();
   useEffect(() => {
     if (sp.get("new") !== "1") return;
@@ -223,7 +235,7 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
         pipeline={<V8PipelineBoard />} nowMin={sel === today ? jhbMinutes(new Date().toISOString()) : null} />
       <LeadAssignDialog leadId={assignLeadId} onClose={() => setAssignLeadId(null)} />
       <AssignTechDialog jobId={assignJobId} onClose={() => { setAssignJobId(null); refresh(); }} />
-      <CreateJobDialog open={showCreate} onOpenChange={setShowCreate} />
+      <CreateJobDialog open={showCreate} onOpenChange={setShowCreate} context="jobs" />
     </>
   );
 }

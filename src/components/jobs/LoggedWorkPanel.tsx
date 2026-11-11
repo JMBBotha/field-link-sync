@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useBookingTechnicians } from "@/hooks/useBookingTechnicians";
+import { bookingTechListState } from "@/lib/bookingTechnicians";
 import { Button } from "@/components/ui/button";
 import { WorkIntent, VisitKindMenu, PastVisitFields, VisitList, HouseFirstFitLine, type PastDraft, type VisitView } from "@/components/jobs/BookJobForm";
 import { kindsFromStored, includesFirstFix, customLabelMissing, workCards, installationJobForHouse, type Doing, type VisitKind, type HouseJobRef } from "@/lib/bookJobPath";
@@ -54,6 +55,18 @@ export default function LoggedWorkPanel({ surface, canLogPast, job, house, proje
   const co = companyId || job?.companyId || "";
 
   const techs = useBookingTechnicians(co, !!co && canLogPast);
+  const techState = bookingTechListState({
+    companyId: co || null,
+    companyLoading: false,
+    companyError: !co,
+    accessLoading: false,
+    canLog: canLogPast,
+    queryEnabled: !!co && canLogPast,
+    isPending: techs.isPending,
+    isFetching: techs.isFetching,
+    isError: techs.isError,
+    count: techs.data?.length ?? 0,
+  });
   const visitsQ = useQuery({
     queryKey: ["backfill-list", attached?.id],
     enabled: !!attached?.id && canLogPast,
@@ -139,7 +152,9 @@ export default function LoggedWorkPanel({ surface, canLogPast, job, house, proje
       {doing !== "upcoming" && !canLogPast && <p data-testid="past-admin-only" className="text-sm text-amber-900">Only an admin can log or correct a past visit.</p>}
       {doing === "correct" && <VisitList visits={visits} correctId={correctId} onCorrect={pickVisit} />}
       {doing === "past" && visits.length > 0 && <VisitList visits={visits} />}
-      {doing !== "upcoming" && canLogPast && <PastVisitFields techs={techs.data || []} value={past} onChange={setPast} />}
+      {doing !== "upcoming" && canLogPast && (
+        <PastVisitFields techs={techs.data || []} value={past} onChange={setPast} techsStatus={techState === "hidden" ? "ready" : techState} onRetryTechs={() => { void techs.refetch(); }} />
+      )}
       {doing !== "upcoming" && (
         <Button className="h-11 w-full bg-[#C2410C] text-white hover:bg-[#9A3412]" disabled={busy || !canLogPast || !visitKinds.length || customLabelMissing(visitKinds, customLabel) || !past.techId || !past.date || !past.arrive} onClick={save} data-testid="logged-work-save">
           {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{doing === "correct" ? "Save correction" : "Save visit"}

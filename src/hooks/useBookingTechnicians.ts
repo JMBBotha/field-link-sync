@@ -8,15 +8,19 @@ export function useBookingTechnicians(companyId: string | null | undefined, enab
   return useQuery({
     queryKey: ["booking-technicians", companyId],
     enabled: enabled && !blocked,
-    queryFn: async () => {
+    // The app default keeps a result fresh for 30s. An empty read (token not ready yet,
+    // or a cancelled first fetch) would then sit in the menu with no retry until focus.
+    staleTime: 0,
+    queryFn: async ({ queryKey }) => {
+      const id = String(queryKey[1] || "");
       const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name, company_id, dispatch_role, participant_type, dispatch_active, archived_at")
-        .eq("company_id", companyId!)
+        .eq("company_id", id)
         .eq("dispatch_active", true)
         .is("archived_at", null);
       if (error) throw error;
-      return bookingTechnicians((data || []) as BookingTechRow[], companyId);
+      return bookingTechnicians((data || []) as BookingTechRow[], id);
     },
   });
 }

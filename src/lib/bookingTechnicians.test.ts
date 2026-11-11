@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { MASSAIR_CT_ID, MASSAIR_IND_ID, TEST_HVAC_ID } from "@/lib/adminHomeCount";
-import { bookingTechnicians, type BookingTechRow } from "@/lib/bookingTechnicians";
+import { bookingTechnicians, bookingTechListState, type BookingTechRow } from "@/lib/bookingTechnicians";
 
 const CT = MASSAIR_CT_ID;
 
@@ -41,6 +41,23 @@ describe("booking technicians", () => {
     expect(bookingTechnicians(rows, "")).toEqual([]);
   });
 
+  it("tells a missing company and a failed read apart from a company with no technicians", () => {
+    const base = {
+      companyId: CT, companyLoading: false, companyError: false, accessLoading: false, canLog: true,
+      queryEnabled: true, isPending: false, isFetching: false, isError: false, count: 0,
+    };
+    expect(bookingTechListState({ ...base, companyId: null, companyLoading: true })).toBe("loading");
+    expect(bookingTechListState({ ...base, companyId: null, companyLoading: false, companyError: true })).toBe("error");
+    expect(bookingTechListState({ ...base, isPending: true, count: 0 })).toBe("loading");
+    expect(bookingTechListState({ ...base, isError: true })).toBe("error");
+    expect(bookingTechListState(base)).toBe("empty");
+    expect(bookingTechListState({ ...base, count: 1 })).toBe("ready");
+    expect(bookingTechListState({ ...base, canLog: false, accessLoading: true, isPending: true })).toBe("loading");
+    expect(bookingTechListState({ ...base, canLog: false, accessLoading: false })).toBe("hidden");
+    expect(bookingTechListState({ ...base, companyId: TEST_HVAC_ID, count: 3 })).toBe("empty");
+    expect(bookingTechListState({ ...base, queryEnabled: false, isPending: true })).toBe("empty");
+  });
+
   it("book a job, the job page, and the project house share this list", () => {
     const read = (p: string) => readFileSync(p, "utf8");
     for (const file of ["src/components/jobs/CreateJobDialog.tsx", "src/components/jobs/LoggedWorkPanel.tsx"]) {
@@ -51,5 +68,13 @@ describe("booking technicians", () => {
     expect(read("src/components/scheduling/AppointmentPicker.tsx")).toContain("useLaneStaff");
     expect(read("src/hooks/useBookingTechnicians.ts")).toContain("bookingTechnicians");
     expect(read("src/hooks/useBookingTechnicians.ts")).not.toContain("availability_status");
+    expect(read("src/hooks/useBookingTechnicians.ts")).toContain("staleTime: 0");
+    expect(read("src/pages/BookJobHarness.tsx")).toContain("bookingTechnicians");
+    expect(read("src/pages/BookJobHarness.tsx")).toContain("Innocent Mattienga");
+    expect(read("src/components/admin/AdminLayout.tsx")).toContain("authOutletPlan");
+    expect(read("src/components/admin/AdminLayout.tsx")).not.toContain("[authLoading, session, user]");
+    expect(read("src/components/jobs/calm/JobsCalm.tsx")).toContain('context="jobs"');
+    expect(read("src/components/jobs/calm/JobsCalm.tsx")).toContain("readBookJobDraft");
+    expect(read("src/contexts/AuthContext.tsx")).toContain('if (_event === "SIGNED_OUT") clearAllBookJobDrafts()');
   });
 });
