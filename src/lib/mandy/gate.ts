@@ -25,7 +25,7 @@ export const ALWAYS_CONFIRM = new Set([
 export const READ_ONLY = new Set([
   "open_last_quote", "open_latest_quote", "open_top_quote", "open_quote", "find_client", "open_client", "select_client", "add_new_client",
   "open_invoice", "show_deposit_due", "open_calendar_day", "list_todays_jobs", "open_live_map", "filter_map_by_status",
-  "read_quote_total", "read_labour", "read_install", "generate_quote_pdf",
+  "read_quote_total", "read_quote_line_images", "read_labour", "read_install", "generate_quote_pdf",
   "list_overdue_invoices", "list_purchase_orders", "list_my_jobs", "open_job", "open_scheduler", "list_payment_followups", "open_payment_followups",
 ]);
 /** Actions that change the open quote. */

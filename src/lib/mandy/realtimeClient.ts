@@ -4,6 +4,7 @@
  * mandy-realtime. Tools run through the dock's existing handlers.
  */
 import type { MandyChoice, MandyResult } from "./actions";
+import { fallbackRoute } from "./honestFallback";
 import {
   REALTIME_SAMPLE_RATE,
   appendAudioMessage,
@@ -11,6 +12,7 @@ import {
   base64Pcm16ToFloat32,
   downsampleFloat,
   floatToPcm16Base64,
+  shouldForwardMic,
   forceMessageItem,
   functionCallOutputMessage,
   nextMandyPhase,
@@ -70,6 +72,8 @@ export class MandyRealtimeSession {
   private conversationId: string | null = null;
   private sessionUpdated: (() => void) | null = null;
   private starting = false;
+  /** Loud speech during playback: keep forwarding after the first frame that clears the echo gate. */
+  private bargeLatched = false;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private opened = false;
 
@@ -231,7 +235,12 @@ export class MandyRealtimeSession {
     node.onaudioprocess = (e) => {
       if (this.stopped || this.ws?.readyState !== WebSocket.OPEN) return;
       const data = e.inputBuffer.getChannelData(0);
-      this.h.onLevel(rmsLevel(data));
+      const level = rmsLevel(data);
+      this.h.onLevel(level);
+      const speaking = this.phase === "speaking" || this.phase === "greeting" || !!this.player?.pending;
+      const gate = shouldForwardMic({ speaking, level, latched: this.bargeLatched });
+      this.bargeLatched = gate.latched;
+      if (!gate.forward) return;
       const down = downsampleFloat(data, ctx.sampleRate || 48000, REALTIME_SAMPLE_RATE);
       if (down.length) this.send(appendAudioMessage(floatToPcm16Base64(down)));
     };
@@ -391,11 +400,20 @@ export class MandyRealtimeSession {
   private async runTool(name: string, rawArgs: string): Promise<MandyResult> {
     let args: Record<string, unknown> = {};
     try { args = JSON.parse(rawArgs || "{}"); } catch { args = {}; }
-    if (this.allowed.size && !this.allowed.has(name)) return { ok: false, message: "I can't do that from your account." };
-    const ready = await this.h.ensureHandler(name);
+    if (!this.heard) {
+      for (let i = 0; i < 8 && !this.heard && !this.stopped; i++) await new Promise((r) => setTimeout(r, 100));
+    }
+    const registered = this.h.listToolNames();
+    const available = this.allowed.size ? registered.filter((n) => this.allowed.has(n)) : registered;
+    const fb = fallbackRoute({ transcript: this.heard, proposed: name, available });
+    if (fb.speak && !fb.action) return { ok: true, message: fb.speak };
+    const tool = fb.action || name;
+    const toolArgs = fb.action && fb.action !== name ? { ...args, ...fb.args } : args;
+    if (this.allowed.size && !this.allowed.has(tool)) return { ok: false, message: "I can't do that from your account." };
+    const ready = await this.h.ensureHandler(tool);
     if (!ready) return { ok: false, message: "I can't do that on this screen." };
     try {
-      return await this.h.execute(name, args);
+      return await this.h.execute(tool, toolArgs);
     } catch (e) {
       return { ok: false, message: e instanceof Error ? e.message : "That failed." };
     }

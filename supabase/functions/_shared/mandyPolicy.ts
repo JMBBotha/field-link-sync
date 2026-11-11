@@ -11,7 +11,7 @@ export type MandyTier = "admin" | "office" | "sales" | "tech" | "viewer";
 const NAV_READ = [
   "open_calendar_day", "list_todays_jobs", "open_live_map", "filter_map_by_status",
 ];
-const CLIENT_READ = ["find_client", "open_quote", "open_last_quote", "open_latest_quote", "open_top_quote", "read_quote_total", "read_install", "read_labour", "generate_quote_pdf"];
+const CLIENT_READ = ["find_client", "open_quote", "open_last_quote", "open_latest_quote", "open_top_quote", "read_quote_total", "read_quote_line_images", "read_install", "read_labour", "generate_quote_pdf"];
 const QUOTE_WRITE = [
   "create_quote_for_client", "add_area", "rename_area", "describe_area", "duplicate_area", "remove_area",
   "add_item_to_area", "set_qty", "set_line_price", "move_item", "edit_install", "set_kit_length",
