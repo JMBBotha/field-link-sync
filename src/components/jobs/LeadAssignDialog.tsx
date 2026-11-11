@@ -16,6 +16,7 @@ import { bookableForCaller, NO_TECHS_ASSIGNED } from "@/lib/salesTechAccess";
 import SitePhotosSection from "@/components/photos/SitePhotosSection";
 import LinkedJobPhotos from "@/components/photos/LinkedJobPhotos";
 import LeadPhotoUploader from "@/components/jobs/LeadPhotoUploader";
+import TechPickerMessage from "@/components/jobs/TechPickerMessage";
 
 export const JOB_TYPES = [{ v: "service", l: "Service" }, { v: "repair", l: "Repair" }, { v: "installation", l: "Installation" }] as const;
 
@@ -53,7 +54,7 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
   /** Sales: after assigning, stay open so they can add remote-quote photos (allowed once they assigned it). */
   const [photoStep, setPhotoStep] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isPending, isFetching, isError, refetch } = useQuery({
     queryKey: ["lead-assign-options", leadId, inited === leadId ? date : null], enabled: !!leadId, placeholderData: (prev: any) => prev,
     queryFn: async () => {
       const { data, error } = await (supabase.rpc as any)("lead_assign_options", { p_lead_id: leadId, p_date: inited === leadId ? date : null });
@@ -138,8 +139,10 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
             <LeadPhotoUploader leadId={leadId} />
             <p className="text-xs text-muted-foreground">Photos stay private to your company. The technician sees them on the job once assigned.</p>
           </div>
-        ) : isLoading ? <div className="flex justify-center p-6"><Loader2 className="h-5 w-5 animate-spin" /></div>
-          : !data?.ok ? <p className="text-sm text-muted-foreground">{data?.message || "Lead not found"}</p>
+        ) : !data && (isPending || isFetching) ? <TechPickerMessage phase="loading" />
+          : !data && isError ? <TechPickerMessage phase="error" onRetry={() => { void refetch(); }} />
+          : !data ? <TechPickerMessage phase="loading" />
+          : !data.ok ? <p className="text-sm text-muted-foreground">{data.message || "Lead not found"}</p>
           : notService ? (
             <div className="space-y-2 text-sm">
               <p>This is a sales lead. Technicians are assigned to service leads only.</p>

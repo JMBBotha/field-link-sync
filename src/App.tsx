@@ -27,9 +27,11 @@ import ClientDetailsHarness from "./pages/ClientDetailsHarness";
 import AdminHomePreviewFixture from "./pages/AdminHomePreviewFixture";
 import CashHealthPreviewFixture from "./pages/CashHealthPreviewFixture";
 import BookJobHarness from "./pages/BookJobHarness";
+import BookingDetailHarness from "./pages/BookingDetailHarness";
 import TeamNoLoginHarness from "./pages/TeamNoLoginHarness";
 import SalesTechHarness from "./pages/SalesTechHarness";
 import PriceListSheetHarness from "./pages/PriceListSheetHarness";
+import SignupNoticeHarness from "./pages/SignupNoticeHarness";
 import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
 import NotFound from "./pages/NotFound";
@@ -207,6 +209,9 @@ const App = () => (
                   <Route path="/dev/book-a-job" element={<BookJobHarness />} />
                 )}
                 {import.meta.env.DEV && (
+                  <Route path="/dev/booking-detail" element={<BookingDetailHarness />} />
+                )}
+                {import.meta.env.DEV && (
                   <Route path="/dev/team-no-login" element={<TeamNoLoginHarness />} />
                 )}
                 {import.meta.env.DEV && (
@@ -214,6 +219,9 @@ const App = () => (
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/price-list-sheet" element={<PriceListSheetHarness />} />
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev/signup-notice" element={<SignupNoticeHarness />} />
                 )}
 
                 {/* Customer Portal Routes */}

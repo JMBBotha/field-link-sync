@@ -13,6 +13,8 @@ import { jhbLocalToIso } from "@/lib/jobActionBar";
 import { editableJobFields, type UnitRow } from "@/lib/jobEdit";
 import { sortVisits, visitsChanged, visitsPayload, visitsError, type JobVisit } from "@/lib/jobVisits";
 import { useJobVisits, VisitsEditor } from "@/components/jobs/JobVisits";
+import { useDispatchTechnicians } from "@/hooks/useDispatchTechnicians";
+import TechPickerMessage from "@/components/jobs/TechPickerMessage";
 
 const jhb = (iso: string | null | undefined, kind: "date" | "time") => {
   if (!iso) return kind === "date" ? "" : "08:00";
@@ -50,14 +52,7 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
   // Admin and the client's rep both edit visits (a rep may add, including the first; only admin removes / picks techs).
   const useVisits = hasLead && !visitQ.isError && (perms.admin || perms.rep);
 
-  const techs = useQuery({
-    queryKey: ["dispatchable-techs", companyId], enabled: open && f.tech,
-    queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("dispatchable_technicians", { _company_id: companyId });
-      if (error) throw error;
-      return ((data ?? []) as any[]).map((t) => ({ id: (t.id ?? t.profile_id) as string, name: (t.full_name ?? t.name ?? "Technician") as string }));
-    },
-  });
+  const techs = useDispatchTechnicians(companyId, open && f.tech);
   const unitQ = useQuery({
     queryKey: ["job-units-edit", jobId], enabled: open && f.units,
     queryFn: async () => {
@@ -121,7 +116,7 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
         <div className="space-y-4 py-4">
           {useVisits ? (
             visitQ.isLoading ? <p className="text-sm text-muted-foreground">Loading visits…</p>
-              : <VisitsEditor visits={vRows} onChange={setVisits} admin={perms.admin} canAdd={perms.admin || perms.rep} canNote={perms.admin || perms.rep} techs={techs.data ?? []} today={today} />
+              : <VisitsEditor visits={vRows} onChange={setVisits} admin={perms.admin} canAdd={perms.admin || perms.rep} canNote={perms.admin || perms.rep} techs={techs.phase === "ready" ? (techs.data ?? []) : []} techPhase={perms.admin ? techs.phase : "ready"} onRetryTechs={() => { void techs.refetch(); }} today={today} />
           ) : (
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1"><Label className="block" htmlFor="ej-date">Installation date</Label><Input id="ej-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
@@ -131,10 +126,15 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
           {f.tech && (
             <div className="space-y-1">
               <Label className="block" htmlFor="ej-tech">{useVisits ? "Job technician (visits with their own tech keep it)" : "Technician"}</Label>
+              {techs.phase === "loading" || techs.phase === "error" ? (
+                <TechPickerMessage phase={techs.phase} onRetry={() => { void techs.refetch(); }} />
+              ) : (
               <select id="ej-tech" className="w-full min-h-[44px] rounded-md border bg-background px-3 text-sm" value={tech} onChange={(e) => setTech(e.target.value)} data-testid="edit-job-tech">
                 <option value="">{techId ? "Keep current tech" : "No tech yet"}</option>
                 {(techs.data ?? []).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
+              )}
+              {techs.phase === "empty" && <TechPickerMessage phase="empty" />}
             </div>
           )}
           {f.units && rows.length > 0 && (

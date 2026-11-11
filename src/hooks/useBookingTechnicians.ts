@@ -10,10 +10,12 @@ export function useBookingTechnicians(companyId: string | null | undefined, enab
   return useQuery({
     queryKey: ["booking-technicians", companyId, scope.isSalesRep, scope.failed, scope.ids],
     enabled: enabled && !blocked && !scope.loading,
+    // An empty read from a cancelled first fetch must not sit in the menu until focus.
+    staleTime: 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, company_id, dispatch_role, participant_type, dispatch_active, archived_at")
+        .select("id, full_name, company_id, dispatch_role, participant_type, dispatch_active, archived_at, no_login")
         .eq("company_id", companyId!)
         .eq("dispatch_active", true)
         .is("archived_at", null);

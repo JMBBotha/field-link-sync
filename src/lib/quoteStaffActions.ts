@@ -49,6 +49,18 @@ export function buildSalespersonPatch(userId: string | null) {
   return { sales_engineer_id: userId };
 }
 
+/** Changing salesperson on one option of a group moves every live option. A lone quote needs no confirm. */
+export function groupSalespersonPlan(
+  quote: { id: string; option_group_id?: string | null; quote_number?: string | null },
+  siblings: { id: string; quote_number?: string | null }[],
+): { count: number; numbers: string[] } | null {
+  if (!quote.option_group_id) return null;
+  const rows = siblings.filter((s) => s.id);
+  if (!rows.some((s) => s.id === quote.id)) rows.unshift({ id: quote.id, quote_number: quote.quote_number ?? null });
+  if (rows.length < 2) return null;
+  return { count: rows.length, numbers: rows.map((s) => s.quote_number || "Quote") };
+}
+
 export type StatusLogRow = {
   entity_type: "quote";
   entity_id: string;

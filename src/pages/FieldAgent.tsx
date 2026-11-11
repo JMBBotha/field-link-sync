@@ -340,7 +340,7 @@ const FieldAgent = () => {
       // Fetch user profile for name and home base
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name, home_base_lat, home_base_lng, onboarding_completed")
+        .select("full_name, home_base_lat, home_base_lng, onboarding_completed, company_id")
         .eq("id", session.user.id)
         .maybeSingle();
 
@@ -351,7 +351,7 @@ const FieldAgent = () => {
         setHomeBaseLat(profile.home_base_lat);
         setHomeBaseLng(profile.home_base_lng);
       }
-      if (!profile?.onboarding_completed) {
+      if (!profile?.onboarding_completed && !profile?.company_id) {
         navigate("/onboarding");
         return;
       }

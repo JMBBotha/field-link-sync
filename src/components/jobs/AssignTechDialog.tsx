@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Loader2, User } from "lucide-react";
 import { mapDispatchCandidates } from "@/lib/teamGroups";
+import TechPickerMessage from "@/components/jobs/TechPickerMessage";
+import { dispatchTechPhase } from "@/lib/techPicker";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { useMyBookableTechnicianIds } from "@/hooks/useMyBookableTechnicianIds";
 import { bookableForCaller, NO_TECHS_ASSIGNED } from "@/lib/salesTechAccess";
@@ -28,7 +30,7 @@ import { surveyDispatchBlock } from "@/lib/siteSurvey/dispatchGuard";
 const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {} }: {
   jobId: string | null; onClose: () => void; availableOnly?: boolean; dayCounts?: Record<string, number>;
 }) => {
-  const { companyId } = useUserCompanyId();
+  const { companyId, loading: companyLoading, error: companyError, reload: reloadCompany } = useUserCompanyId();
   const { user } = useAuth();
   const { isSalesRep } = useSalesRep();
   const bookable = useMyBookableTechnicianIds();
@@ -70,7 +72,7 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
     },
   });
   // Fetch available techs: internal staff + affiliated independents + network
-  const { data: techs = [] } = useQuery({
+  const techsQ = useQuery({
     queryKey: ["dispatch-techs", companyId],
     queryFn: async () => {
       // Only the people who may be offered a job (company + connected freelance technicians)
@@ -79,6 +81,17 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
       return mapDispatchCandidates(data as any) as any[];
     },
     enabled: !!companyId,
+    staleTime: 0,
+  });
+  const techs = techsQ.data ?? [];
+  const techPhase = dispatchTechPhase({
+    companyId,
+    companyLoading,
+    companyError: !!companyError,
+    isPending: techsQ.isPending,
+    isFetching: techsQ.isFetching,
+    isError: techsQ.isError,
+    count: techs.length,
   });
 
   // Fetch availability for all techs
@@ -185,6 +198,9 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
             </p>
           )}
           <div className="space-y-4">
+            {(techPhase === "loading" || techPhase === "error" || techPhase === "empty") && (
+              <TechPickerMessage phase={techPhase} onRetry={() => { reloadCompany(); void techsQ.refetch(); }} />
+            )}
             {salesTechEmpty && (
               <p className="text-sm text-muted-foreground" data-testid="no-techs-assigned">{NO_TECHS_ASSIGNED}</p>
             )}

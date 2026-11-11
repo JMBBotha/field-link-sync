@@ -180,13 +180,13 @@ const AdminLayout = () => {
       }
 
       const { data: profile, error: profileErr } = await withTimeout(
-        supabase.from("profiles").select("onboarding_completed").eq("id", session.user.id).maybeSingle(),
+        supabase.from("profiles").select("onboarding_completed, company_id").eq("id", session.user.id).maybeSingle(),
         8000,
         "Loading your profile is taking too long.",
       );
       if (profileErr) throw profileErr;
       if (!mountedRef.current) return;
-      if (!profile?.onboarding_completed) {
+      if (!profile?.onboarding_completed && !profile?.company_id) {
         navigate("/onboarding");
         return;
       }

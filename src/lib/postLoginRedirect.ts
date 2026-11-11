@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { withTimeout } from "@/lib/withTimeout";
 import { isAwaitingSignupApproval } from "@/lib/signupRoles";
+import { shouldSkipCompanyOnboarding } from "@/lib/companyOnboardingGuard";
 
 export const POST_LOGIN_TIMEOUT_MS = 8000;
 
@@ -30,6 +31,11 @@ export async function resolvePostLoginPath(
     // One retry: a cold first request after sign-in can be slow or fail once.
     const { profile, roles } = await attempt().catch(() => attempt());
     if (isAwaitingSignupApproval(profile)) return { path: "/pending-approval", error: null };
+    // Invited and existing staff already have a company. They never set it up again.
+    if (shouldSkipCompanyOnboarding(profile)) {
+      const hasOffice = roles?.some((r: { role: string }) => ["admin", "dispatcher", "viewer"].includes(r.role));
+      return { path: hasOffice ? "/admin" : "/field", error: null };
+    }
     if (!profile?.onboarding_completed) return { path: "/onboarding", error: null };
     const hasAdmin = roles?.some((r: { role: string }) => ["admin", "dispatcher", "viewer"].includes(r.role));
     return { path: hasAdmin ? "/admin" : "/field", error: null };
