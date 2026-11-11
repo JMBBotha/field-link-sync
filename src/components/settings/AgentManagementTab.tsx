@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, UserCheck, UserX } from "lucide-react";
 import { format } from "date-fns";
+import { memberRoleBadge } from "@/lib/salesTechAccess";
 
 const AgentManagementTab = () => {
   const { data: agents = [], isLoading } = useQuery({
@@ -20,7 +21,7 @@ const AgentManagementTab = () => {
 
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, full_name, phone, availability_status")
+        .select("id, full_name, phone, availability_status, dispatch_role")
         .in("id", userIds);
 
       const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
@@ -42,6 +43,7 @@ const AgentManagementTab = () => {
           full_name: profile?.full_name || "Unknown",
           phone: profile?.phone || "-",
           availability: profile?.availability_status || "offline",
+          dispatch_role: (profile as { dispatch_role?: string | null } | undefined)?.dispatch_role ?? null,
           roles: info.roles,
           joined: info.created_at,
         };
@@ -74,7 +76,7 @@ const AgentManagementTab = () => {
                   <TableCell>
                     <div className="flex gap-1">
                       {agent.roles.map((r) => (
-                        <Badge key={r} variant={r === "admin" ? "default" : "secondary"}>{r}</Badge>
+                        <Badge key={r} variant={r === "admin" ? "default" : "secondary"}>{memberRoleBadge(r, agent.roles, agent.dispatch_role, r)}</Badge>
                       ))}
                     </div>
                   </TableCell>

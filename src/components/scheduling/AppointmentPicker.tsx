@@ -9,7 +9,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
+import { useSalesRep } from "@/hooks/useSalesRep";
 import type { LeadLane } from "@/lib/leadLane";
+import { NO_TECHS_ASSIGNED } from "@/lib/salesTechAccess";
 import AvailabilityPicker from "./AvailabilityPicker";
 import DurationPicker from "./DurationPicker";
 import { endTimeFor } from "@/lib/schedulingDefaults";
@@ -64,8 +66,10 @@ const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignment
     return parse(value.date, "yyyy-MM-dd", new Date());
   }, [value.date]);
 
-  const { salesStaff, technicians } = useLaneStaff();
+  const { salesStaff, technicians, isLoading: laneLoading } = useLaneStaff();
+  const { isSalesRep } = useSalesRep();
   const agents = assignmentLane === "sales" ? salesStaff : technicians;
+  const salesTechEmpty = assignmentLane !== "sales" && isSalesRep && !laneLoading && agents.length === 0;
 
   // Fetch same-day schedules for conflict/availability display
   const { data: daySchedules = [] } = useQuery({
@@ -248,9 +252,11 @@ const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignment
             </Button>
           </div>
 
-          {agents.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic px-1">
-               No {assignmentLane === "sales" ? "sales staff" : "technicians"} available yet.
+          {laneLoading ? (
+            <p className="text-xs text-muted-foreground italic px-1">Checking technicians…</p>
+          ) : agents.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic px-1" data-testid={salesTechEmpty ? "no-techs-assigned" : undefined}>
+               {salesTechEmpty ? NO_TECHS_ASSIGNED : `No ${assignmentLane === "sales" ? "sales staff" : "technicians"} available yet.`}
             </p>
           ) : (
             <div className="space-y-1.5">

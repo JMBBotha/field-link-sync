@@ -11929,6 +11929,30 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_rep_technicians: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          sales_rep_id: string
+          technician_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          sales_rep_id: string
+          technician_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          sales_rep_id?: string
+          technician_id?: string
+        }
+        Relationships: []
+      }
       service_agreements: {
         Row: {
           attached_file_path: string | null
@@ -19549,7 +19573,13 @@ export type Database = {
         Args: { p_apply?: boolean; p_lead: string }
         Returns: Json
       }
+      sales_may_book_tech: { Args: { _tech: string; _uid: string }; Returns: boolean }
       sales_my_jobs: { Args: { p_limit?: number }; Returns: Json }
+      sales_profile_visible: { Args: { _profile: string }; Returns: boolean }
+      sales_schedule_row_visible: {
+        Args: { _agent: string; _job: string; _lead: string }
+        Returns: boolean
+      }
       sales_schedule_scope: { Args: { p_from: string; p_to: string }; Returns: Json }
       sales_next_steps: {
         Args: { p_rep?: string }

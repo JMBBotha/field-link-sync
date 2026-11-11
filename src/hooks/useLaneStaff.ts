@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeadLane } from "@/lib/leadLane";
+import { bookableForCaller } from "@/lib/salesTechAccess";
+import { useMyBookableTechnicianIds } from "@/hooks/useMyBookableTechnicianIds";
 
 export type DispatchRole = "sales" | "technician";
 
@@ -36,6 +38,7 @@ export function resolveLane(m: {
 
 /** Company-scoped staff with their lanes (RLS keeps this to the caller's company). */
 export function useLaneStaff() {
+  const scope = useMyBookableTechnicianIds();
   const query = useQuery({
     queryKey: ["lane-staff"],
     queryFn: async (): Promise<LaneStaffMember[]> => {
@@ -62,11 +65,16 @@ export function useLaneStaff() {
 
   const staff = useMemo(() => query.data || [], [query.data]);
   const salesStaff = useMemo(() => staff.filter((s) => s.lane === "sales"), [staff]);
-  const technicians = useMemo(() => staff.filter((s) => s.lane === "service"), [staff]);
+  const technicians = useMemo(() => {
+    const techs = staff.filter((s) => s.lane === "service");
+    if (scope.loading) return [];
+    if (!scope.isSalesRep) return techs;
+    return bookableForCaller(techs, true, scope.failed ? [] : scope.ids);
+  }, [staff, scope.loading, scope.isSalesRep, scope.failed, scope.ids]);
   const laneById = useMemo(
     () => new Map(staff.map((s) => [s.id, s.lane] as const)),
     [staff],
   );
 
-  return { staff, salesStaff, technicians, laneById, isLoading: query.isLoading };
+  return { staff, salesStaff, technicians, laneById, isLoading: query.isLoading || scope.loading };
 }

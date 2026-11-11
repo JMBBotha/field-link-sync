@@ -29,6 +29,7 @@ import CashHealthPreviewFixture from "./pages/CashHealthPreviewFixture";
 import BookJobHarness from "./pages/BookJobHarness";
 import BookingDetailHarness from "./pages/BookingDetailHarness";
 import TeamNoLoginHarness from "./pages/TeamNoLoginHarness";
+import SalesTechHarness from "./pages/SalesTechHarness";
 import PriceListSheetHarness from "./pages/PriceListSheetHarness";
 import SignupNoticeHarness from "./pages/SignupNoticeHarness";
 import Auth from "./pages/Auth";
@@ -212,6 +213,9 @@ const App = () => (
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/team-no-login" element={<TeamNoLoginHarness />} />
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev/sales-techs" element={<SalesTechHarness />} />
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/price-list-sheet" element={<PriceListSheetHarness />} />

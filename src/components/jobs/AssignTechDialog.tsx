@@ -12,6 +12,9 @@ import { Loader2, User } from "lucide-react";
 import { mapDispatchCandidates } from "@/lib/teamGroups";
 import TechPickerMessage from "@/components/jobs/TechPickerMessage";
 import { dispatchTechPhase } from "@/lib/techPicker";
+import { useSalesRep } from "@/hooks/useSalesRep";
+import { useMyBookableTechnicianIds } from "@/hooks/useMyBookableTechnicianIds";
+import { bookableForCaller, NO_TECHS_ASSIGNED } from "@/lib/salesTechAccess";
 import { useClashGuard } from "@/components/scheduling/ClashGuard";
 import { fromMinutes, jobMinutes, sastParts, toMinutes } from "@/lib/schedulingDefaults";
 import AvailabilityPicker from "@/components/scheduling/AvailabilityPicker";
@@ -29,6 +32,8 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
 }) => {
   const { companyId, loading: companyLoading, error: companyError, reload: reloadCompany } = useUserCompanyId();
   const { user } = useAuth();
+  const { isSalesRep } = useSalesRep();
+  const bookable = useMyBookableTechnicianIds();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedTechId, setSelectedTechId] = useState("");
@@ -165,13 +170,19 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
   });
 
   // Group techs for assign modal
+  const visibleTechs = useMemo(() => {
+    if (!isSalesRep) return techs;
+    if (bookable.loading) return [];
+    return bookableForCaller(techs, true, bookable.failed ? [] : bookable.ids);
+  }, [techs, isSalesRep, bookable.loading, bookable.failed, bookable.ids]);
   const techGroups = useMemo(() => {
     const filterFn = (t: any) => !showAvailableOnly || availability[t.id];
-    const internal = techs.filter((t: any) => t.assignment_type === "internal" && filterFn(t));
-    const affiliated = techs.filter((t: any) => t.assignment_type === "affiliated" && filterFn(t));
-    const network = techs.filter((t: any) => t.assignment_type === "network" && filterFn(t));
+    const internal = visibleTechs.filter((t: any) => t.assignment_type === "internal" && filterFn(t));
+    const affiliated = visibleTechs.filter((t: any) => t.assignment_type === "affiliated" && filterFn(t));
+    const network = visibleTechs.filter((t: any) => t.assignment_type === "network" && filterFn(t));
     return { internal, affiliated, network };
-  }, [techs, showAvailableOnly, availability]);
+  }, [visibleTechs, showAvailableOnly, availability]);
+  const salesTechEmpty = isSalesRep && !bookable.loading && visibleTechs.length === 0;
   return (
     <>
       {/* Assign Tech Modal */}
@@ -189,6 +200,9 @@ const AssignTechDialog = ({ jobId, onClose, availableOnly = false, dayCounts = {
           <div className="space-y-4">
             {(techPhase === "loading" || techPhase === "error" || techPhase === "empty") && (
               <TechPickerMessage phase={techPhase} onRetry={() => { reloadCompany(); void techsQ.refetch(); }} />
+            )}
+            {salesTechEmpty && (
+              <p className="text-sm text-muted-foreground" data-testid="no-techs-assigned">{NO_TECHS_ASSIGNED}</p>
             )}
             {assignJobId && jobSlot === null && (
               <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground">

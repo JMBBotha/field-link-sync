@@ -1,13 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { bookingTechnicians, EXCLUDED_TECH_COMPANY_IDS, type BookingTechRow } from "@/lib/bookingTechnicians";
+import { useMyBookableTechnicianIds } from "@/hooks/useMyBookableTechnicianIds";
 
-/** Company technicians for logging or booking a visit. Same people as the dispatch lane, including offline techs. */
+/** Company technicians for logging or booking a visit. Same people as the dispatch lane, including offline techs. Sales sees only the technicians an admin assigned. */
 export function useBookingTechnicians(companyId: string | null | undefined, enabled = true) {
   const blocked = !companyId || (EXCLUDED_TECH_COMPANY_IDS as readonly string[]).includes(companyId);
+  const scope = useMyBookableTechnicianIds();
   return useQuery({
-    queryKey: ["booking-technicians", companyId],
-    enabled: enabled && !blocked,
+    queryKey: ["booking-technicians", companyId, scope.isSalesRep, scope.failed, scope.ids],
+    enabled: enabled && !blocked && !scope.loading,
     // An empty read from a cancelled first fetch must not sit in the menu until focus.
     staleTime: 0,
     queryFn: async () => {
@@ -18,7 +20,11 @@ export function useBookingTechnicians(companyId: string | null | undefined, enab
         .eq("dispatch_active", true)
         .is("archived_at", null);
       if (error) throw error;
-      return bookingTechnicians((data || []) as BookingTechRow[], companyId);
+      return bookingTechnicians(
+        (data || []) as BookingTechRow[],
+        companyId,
+        scope.isSalesRep ? { salesRep: true, assignedIds: scope.failed ? [] : scope.ids } : undefined,
+      );
     },
   });
 }
