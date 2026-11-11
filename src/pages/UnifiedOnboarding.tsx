@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { isAwaitingSignupApproval } from "@/lib/signupRoles";
+import { mayUpdateExistingCompany, shouldSkipCompanyOnboarding, type CompanyUpdateAccess } from "@/lib/companyOnboardingGuard";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -295,6 +296,22 @@ const AgentCompleteStep = () => (
 
 // ─── Main component ──────────────────────────────────────────────────
 
+async function loadCompanyUpdateAccess(userId: string, companyId: string): Promise<CompanyUpdateAccess> {
+  const [{ data: member }, { data: roles }, platform] = await Promise.all([
+    supabase.from("company_members").select("role, is_owner").eq("user_id", userId).eq("company_id", companyId).maybeSingle(),
+    supabase.from("user_roles").select("role").eq("user_id", userId),
+    (supabase.rpc as any)("is_platform_owner"),
+  ]);
+  const appRoles = (roles ?? []).map((row) => row.role);
+  return {
+    companyId,
+    isOwner: !!member?.is_owner,
+    memberAdmin: member?.role === "admin",
+    adminRoleInCompany: !!member && appRoles.includes("admin"),
+    platformOwner: platform?.data === true,
+  };
+}
+
 const UnifiedOnboarding = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -348,24 +365,27 @@ const UnifiedOnboarding = () => {
       // before onboarding (so they can't self-assign a company or role).
       if (isAwaitingSignupApproval(profile)) { navigate("/pending-approval"); return; }
 
-      if (profile?.onboarding_completed) {
-        // Already onboarded — redirect by role
-        const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", uid);
-        const hasAdmin = roles?.some((r) => ["admin", "dispatcher", "viewer"].includes(r.role));
-        navigate(hasAdmin ? "/admin" : "/field");
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+      const office = roles?.some((r) => ["admin", "dispatcher", "viewer"].includes(r.role));
+
+      // Anyone who already belongs to a company skips company setup. Invited
+      // staff land here with company_id set; they must not edit that company.
+      if (shouldSkipCompanyOnboarding(profile)) {
+        await supabase.from("profiles").update({ onboarding_completed: true } as any).eq("id", uid);
+        navigate(office ? "/admin" : "/field");
         return;
       }
 
-      // Determine role
-      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", uid);
-      if (roles && roles.length > 0) {
-        const hasAdmin = roles.some((r) => ["admin", "dispatcher", "viewer"].includes(r.role));
-        setUserRole(hasAdmin ? "admin" : "field_agent");
-      } else {
-        // First user = admin (auto-assign)
-        await supabase.from("user_roles").insert({ user_id: uid, role: "admin" });
-        setUserRole("admin");
+      if (profile?.onboarding_completed) {
+        navigate(office ? "/admin" : "/field");
+        return;
       }
+
+      // Company wizard is only for an approved new-company founder. A dispatcher
+      // is not an admin. Do not insert an admin role from the browser.
+      const founder = profile?.signup_role === "company_new" && profile?.network_status === "approved" && !profile?.company_id;
+      if (roles?.some((r) => r.role === "admin") || founder) setUserRole("admin");
+      else setUserRole("field_agent");
 
       setLoading(false);
     };
@@ -443,49 +463,35 @@ const UnifiedOnboarding = () => {
     if (!userId) return;
     setSaving(true);
     try {
-      if (userRole === "admin") {
-        // 1. Create or find the company
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", userId)
+        .maybeSingle();
+
+      // Existing company: never rewrite name, rates, or services from this wizard.
+      // mayUpdateExistingCompany is the same rule as the database: owner or admin
+      // of that company may edit it in Settings. Invited staff may not, and this
+      // form does not write the company either way.
+      if (profile?.company_id) {
+        const access = await loadCompanyUpdateAccess(userId, profile.company_id);
+        if (!mayUpdateExistingCompany(access)) {
+          // Invited or approved staff. Profile flag only, below.
+        }
+      } else if (userRole === "admin") {
         const slug = adminForm.company_name
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-|-$/g, "")
           .slice(0, 60);
-
-        let companyId: string | null = null;
-
-        // Check if user already has a company linked
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("company_id")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (profile?.company_id) {
-          companyId = profile.company_id;
-          // Update existing company
-          await supabase.from("companies").update({
-            name: adminForm.company_name,
-            vat_rate: 0.15,
-            default_rate: adminForm.default_hourly_rate,
-            services: selectedServices,
-            onboarding_completed: true,
-            updated_at: new Date().toISOString(),
-          }).eq("id", companyId);
-        } else {
-          // Create new company: one server-side step (approved founders only — Release A hold).
-          const { data: newId, error: companyErr } = await (supabase.rpc as any)("fl_found_company", {
-            p_name: adminForm.company_name,
-            p_slug: slug,
-            p_rate: adminForm.default_hourly_rate,
-            p_services: selectedServices,
-          });
-          if (companyErr) throw companyErr;
-          companyId = newId as string;
-        }
-
-        // 2. Save company_settings (upsert) — kept for backward compat
-        // Scoped to THIS company (was unscoped -> orphan rows with company_id NULL).
-        // Deposit %, payment terms and rates are inherited from the main company by a DB trigger.
+        const { data: newId, error: companyErr } = await (supabase.rpc as any)("fl_found_company", {
+          p_name: adminForm.company_name,
+          p_slug: slug,
+          p_rate: adminForm.default_hourly_rate,
+          p_services: selectedServices,
+        });
+        if (companyErr) throw companyErr;
+        const companyId = newId as string;
         const { data: existing } = await supabase.from("company_settings").select("id")
           .eq("company_id", companyId).order("is_primary", { ascending: false }).limit(1).maybeSingle();
         if (existing) {

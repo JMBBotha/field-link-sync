@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { SIGNUP_ROLES } from "@/lib/signupRoles";
+import { isInviteeSignup, type SignupApplicant } from "@/lib/applicantNotice";
 
 /**
  * Step 2 of the two-step sign-up rule: Massair CT admins approve sign-ups made through
@@ -31,6 +32,19 @@ export default function CompanySignupsPanel() {
       return (data || []) as any[];
     },
   });
+  const rows = q.data || [];
+  const details = useQuery({
+    queryKey: ["signup-applicants", rows.map((p) => p.id).join(",")],
+    enabled: rows.length > 0,
+    queryFn: async () => {
+      const out: Record<string, SignupApplicant | null> = {};
+      await Promise.all(rows.map(async (p) => {
+        const { data } = await (supabase.rpc as any)("get_signup_applicant", { _id: p.id });
+        out[p.id] = (data as SignupApplicant | null) ?? null;
+      }));
+      return out;
+    },
+  });
   const companies = useQuery({
     queryKey: ["signup-companies"],
     queryFn: async () => {
@@ -40,7 +54,10 @@ export default function CompanySignupsPanel() {
   });
 
   const decide = useMutation({
-    mutationFn: async (v: { id: string; approve: boolean; company?: string }) => {
+    mutationFn: async (v: { id: string; approve: boolean; company?: string; invitee?: boolean }) => {
+      if (v.invitee || isInviteeSignup(details.data?.[v.id])) {
+        throw new Error("Invited staff join on Team → Staff. Approval here is not used.");
+      }
       const { data, error } = await (supabase.rpc as any)("approve_company_signup", {
         p_user: v.id, p_approve: v.approve, p_company: v.company ?? null,
       });
@@ -54,7 +71,6 @@ export default function CompanySignupsPanel() {
     onError: (e: any) => toast({ title: "Couldn't update", description: e.message, variant: "destructive" }),
   });
 
-  const rows = q.data || [];
   if (!rows.length) return null;
   const title = (r: string) => SIGNUP_ROLES.find((x) => x.id === r)?.title ?? r;
 
@@ -66,14 +82,24 @@ export default function CompanySignupsPanel() {
       </p>
       <div className="space-y-2">
         {rows.map((p) => {
-          const needsCo = p.signup_role === "company_tech" || p.signup_role === "company_sales";
+          const notice = details.data?.[p.id];
+          const invitee = isInviteeSignup(notice);
+          const needsCo = !invitee && (p.signup_role === "company_tech" || p.signup_role === "company_sales");
+          const lane = [notice?.invite_role, notice?.invite_lane].filter(Boolean).join(" / ");
           return (
             <div key={p.id} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
               <div className="flex-1 min-w-[180px]">
-                <div className="font-medium">{p.full_name}</div>
+                <div className="font-medium">{notice?.full_name || p.full_name}</div>
                 <div className="text-xs text-muted-foreground">
-                  <Badge variant="outline" className="mr-1">{title(p.signup_role)}</Badge>
-                  {p.signup_company ? `Company: ${p.signup_company}` : (p.signup_role === "company_new" ? "Company: not given" : "")}{p.phone ? ` · ${p.phone}` : ""}
+                  {notice?.email ? <span data-testid="signup-email">{notice.email}</span> : null}
+                  {invitee ? (
+                    <span data-testid="signup-invite"> · Invited {lane || "staff"} · They join on Team → Staff</span>
+                  ) : (
+                    <>
+                      <Badge variant="outline" className="mr-1">{title(p.signup_role)}</Badge>
+                      {p.signup_company ? `Company: ${p.signup_company}` : (p.signup_role === "company_new" ? "Company: not given" : "")}{p.phone ? ` · ${p.phone}` : ""}
+                    </>
+                  )}
                 </div>
               </div>
               {needsCo && (
@@ -84,14 +110,18 @@ export default function CompanySignupsPanel() {
                   </SelectContent>
                 </Select>
               )}
-              <Button size="sm" disabled={decide.isPending || (needsCo && !pick[p.id])}
-                onClick={() => decide.mutate({ id: p.id, approve: true, company: pick[p.id] })}>
-                <CheckCircle2 className="h-4 w-4 mr-1" />Approve
-              </Button>
-              <Button size="sm" variant="outline" disabled={decide.isPending}
-                onClick={() => decide.mutate({ id: p.id, approve: false })}>
-                <XCircle className="h-4 w-4 mr-1" />Reject
-              </Button>
+              {!invitee && (
+                <>
+                  <Button size="sm" disabled={decide.isPending || details.isLoading || (needsCo && !pick[p.id])}
+                    onClick={() => decide.mutate({ id: p.id, approve: true, company: pick[p.id], invitee })}>
+                    <CheckCircle2 className="h-4 w-4 mr-1" />Approve
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={decide.isPending || details.isLoading}
+                    onClick={() => decide.mutate({ id: p.id, approve: false, invitee })}>
+                    <XCircle className="h-4 w-4 mr-1" />Reject
+                  </Button>
+                </>
+              )}
             </div>
           );
         })}

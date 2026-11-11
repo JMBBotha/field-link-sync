@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import InvoiceApprovalActions from "@/components/invoicing/InvoiceApprovalAction
 import { ACCEPT_ALERT_TYPE, SEND_BLOCKED_TYPE } from "@/lib/invoiceSendApproval";
 import { groupNotifications } from "./groupNotifications";
 import { canMarkRead, getFollowUpIds, markFollowUpDone, requiresFollowUp } from "./notificationFollowUp";
+import { applicantNotice, type SignupApplicant } from "@/lib/applicantNotice";
 
 interface Notification {
   id: string;
@@ -109,7 +110,7 @@ const isLeadType = (t: string) => LEAD_ID_TYPES.has(t) || t.startsWith("lead_") 
 
 /** Target for a bell tap. `isTech` may be a boolean (old callers) or a role. Sales reps never land on the
  *  office dispatch board (hidden for them, so lead bells did nothing): lead/job bells open their My jobs item. */
-export const notificationHref = (type: string, relatedId?: string | null, isTech: boolean | NotifRole = false): string => {
+export const notificationHref = (type: string, relatedId?: string | null, isTech: boolean | NotifRole = false, metadata?: { source?: string | null } | null): string => {
   const t = (type || "").toLowerCase();
   const role: NotifRole = isTech === true ? "tech" : isTech === false ? "admin" : isTech;
   // B/C request alerts + offers: reps land on home (offer cards), office on the Requests inbox.
@@ -134,7 +135,10 @@ export const notificationHref = (type: string, relatedId?: string | null, isTech
   if (t === ACCEPT_ALERT_TYPE || t === SEND_BLOCKED_TYPE) return relatedId ? `/admin/invoices/${relatedId}` : "/admin/invoices";
   if (t === "deposit_paid") return relatedId ? `/admin/estimates/${relatedId}` : "/admin/quotes";
   if (isLeadType(t)) return relatedId ? `/admin/dispatch?lead=${relatedId}` : "/admin/dispatch";
-  if ((type || "").startsWith("network_")) return "/admin/team?tab=applications";
+  if ((type || "").startsWith("network_")) {
+    if (metadata?.source === "team_invite") return "/admin/team?tab=staff";
+    return "/admin/team?tab=applications";
+  }
   if (CHANGE_REQUEST_TYPES.has((type || "").toLowerCase())) return "/admin/change-requests";
   const category = categoryOf(type);
   if (category === "calls") return "/admin/calls";
@@ -169,13 +173,34 @@ export async function canOpenHref(href: string): Promise<boolean> {
 
 const NO_ACCESS = "You don't have access to this one.";
 
+/** Name, email, requested role, and time for a sign-up bell. Metadata first, then the admin RPC. */
+function ApplicantNotice({ notification }: { notification: Notification }) {
+  const meta = notification.metadata ?? {};
+  const [resolved, setResolved] = useState<SignupApplicant | null>(null);
+  const needsLookup = !meta.email || !meta.full_name || !(meta.signup_role || meta.invite_role);
+  useEffect(() => {
+    if (!needsLookup || !notification.related_id) return;
+    let cancel = false;
+    (supabase.rpc as any)("get_signup_applicant", { _id: notification.related_id }).then(({ data }: { data: SignupApplicant | null }) => {
+      if (!cancel) setResolved(data);
+    });
+    return () => { cancel = true; };
+  }, [needsLookup, notification.related_id]);
+  const notice = applicantNotice({ metadata: meta, resolved, createdAt: notification.created_at });
+  return (
+    <p data-testid="applicant-notice" className="text-[13px] leading-snug text-foreground/80 mt-0.5 break-words">
+      {notice.name} · {notice.email} · {notice.role} · {notice.when}
+    </p>
+  );
+}
+
 /** sales_nudge carries a lead OR a quote id (metadata.entity). */
 const effectiveType = (n: { type: string; metadata?: any }) =>
   n.type === "sales_nudge" ? (n.metadata?.entity === "quote" ? "quote_status_change" : "lead_assigned") : n.type;
 
 /** Final target for a tap: role-aware href, plus lead -> job lookup for techs. */
 export async function resolveHref(n: { type: string; related_id: string | null; metadata?: any }, role: NotifRole): Promise<string> {
-  const href = notificationHref(effectiveType(n), n.related_id, role);
+  const href = notificationHref(effectiveType(n), n.related_id, role, n.metadata);
   if (role === "tech" && n.related_id && LEAD_ID_TYPES.has((n.type || "").toLowerCase())) {
     const { data } = await (supabase.from as any)("jobs").select("id").eq("lead_id", n.related_id).order("created_at", { ascending: false }).limit(1);
     const id = (data as { id: string }[] | null)?.[0]?.id;
@@ -329,6 +354,7 @@ const NotificationsList = ({
                               <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />
                             )}
                           </div>
+                          {notification.type === "network_applicant" && <ApplicantNotice notification={notification} />}
                           {notification.body && (
                             <>
                               <p data-testid="notif-body" className={`text-[13px] leading-snug text-foreground/80 mt-0.5 break-words ${notification.type === "call_logged" ? "whitespace-pre-line" : ""} ${openBody.has(notification.id) ? "" : "line-clamp-3"}`}>
