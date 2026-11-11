@@ -55,6 +55,7 @@ export default function BookJobHarness() {
   if (shot === "flow") return <Flow width={width} />;
   if (shot === "saved" || shot === "job") return <JobShot width={width} mode={shot} />;
   if (shot === "house") return <HouseShot width={width} />;
+  if (shot === "houses") return <HousesShot width={width} />;
   if (shot === "settings") return <SettingsShot width={width} />;
   return <BookShot width={width} shot={shot === "tablet" ? "project" : shot} bar={shot === "nologin" ? "#3D9BE8" : "#3D9BEB"} />;
 }
@@ -90,7 +91,7 @@ function BookShot({ width, shot, bar }: { width: number; shot: string; bar?: str
     <Frame width={width} bar={bar}>
       <div className="mb-3 rounded-2xl bg-white p-3 shadow-sm">
         <h1 className="text-lg font-extrabold">Book a job</h1>
-        <p className="text-xs text-muted-foreground">Create New Job — new work, past work, projects, and later corrections.</p>
+        <p className="text-xs text-muted-foreground">Create New Job — new work, past work, projects, and updates to an existing visit.</p>
         {shot === "nologin" && (
           <p className="mt-2 text-sm font-semibold" data-testid="nologin-techs">Fixture technicians: Abie Croy and George King. Same list for upcoming work, the job page, and the project house.</p>
         )}
@@ -144,7 +145,7 @@ function JobShot({ width, mode }: { width: number; mode: "saved" | "job" }) {
         <p className="text-sm text-[#CFE6F6]">Demo client · Avec House 12</p>
       </div>
       <div className="rounded-2xl bg-white p-3 shadow-sm" data-testid="job-work-shot">
-        <h2 className="text-sm font-semibold">Book, log, or correct</h2>
+        <h2 className="text-sm font-semibold">Book, log, or update</h2>
         <p className="mb-2 text-xs text-muted-foreground">Same choices as Book a job. Not only under Add on behalf of tech.</p>
         <WorkIntent value={doing} onChange={setDoing} />
         {mode === "saved" && <div className="mt-3"><VisitList visits={[SAVED]} /></div>}
@@ -169,10 +170,56 @@ function HouseShot({ width }: { width: number }) {
           <div className="mb-1 font-semibold">Done ticks</div>
           {steps.map((s) => <label key={s.step_key} className="flex items-center gap-2 py-1"><input type="checkbox" readOnly checked={s.done} /> {s.label}</label>)}
         </div>
-        <h2 className="text-sm font-semibold">Book, log, or correct</h2>
+        <h2 className="text-sm font-semibold">Book, log, or update</h2>
         <WorkIntent value="past" onChange={() => {}} />
         <p className="text-sm" data-testid="attached-job">Attached to Installation — Avec House 12. No new sale and no second job.</p>
         <VisitList visits={[SAVED]} />
+      </div>
+    </Frame>
+  );
+}
+
+/** Stored order matches the unsorted project query (House 54, 55, 4, …). The form sorts it. */
+const AVI_HOUSES = [
+  { id: "h54", house_no: "54" }, { id: "h55", house_no: "55" }, { id: "h4", house_no: "4" }, { id: "h8", house_no: "8" },
+  { id: "h21", house_no: "21" }, { id: "h22", house_no: "22" }, { id: "h1", house_no: "1" }, { id: "h6", house_no: "6" },
+];
+
+function HousesShot({ width }: { width: number }) {
+  return (
+    <Frame width={width}>
+      <div className="mb-3 rounded-2xl bg-white p-3 shadow-sm">
+        <h1 className="text-lg font-extrabold">Book a job</h1>
+        <p className="text-xs text-muted-foreground">Create New Job — new work, past work, projects, and later corrections.</p>
+      </div>
+      <div className="rounded-2xl bg-white p-3 shadow-sm">
+        <BookJobForm
+          where="project"
+          onWhere={() => {}}
+          doing="upcoming"
+          onDoing={() => {}}
+          projects={[{ id: "p-avi", name: "AVI Estate" }]}
+          projectId="p-avi"
+          onProject={() => {}}
+          houses={AVI_HOUSES}
+          houseId=""
+          onHouse={() => {}}
+          housesOpen
+          clientLabel="Demo client"
+          cards="new_sale"
+          jobKind={null}
+          onJobKind={() => {}}
+          visitKinds={[]}
+          onVisitKinds={() => {}}
+          canLogPast
+          techs={TECHS}
+          past={emptyPast()}
+          onPast={() => {}}
+          visits={[]}
+          correctId={null}
+          onCorrect={() => {}}
+          classic={<DemoClassic />}
+        />
       </div>
     </Frame>
   );

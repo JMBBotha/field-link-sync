@@ -15,6 +15,7 @@ import {
   type Doing, type HouseJobRef, type VisitKind, type WhereMode,
 } from "@/lib/bookJobPath";
 import { bookUpcomingOnJob, correctPastVisit, logPastVisit } from "@/lib/bookJobSave";
+import { sortHouseLabels } from "@/lib/houseOrder";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -131,7 +132,8 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     queryFn: async () => {
       const { data, error } = await projectDb.from("project_houses").select("id, house_no").eq("project_id", projectId);
       if (error) throw error;
-      return (data || []) as { id: string; house_no: string }[];
+      // Postgres has no order here. Sort in the app so House 4 precedes House 21.
+      return sortHouseLabels((data || []) as { id: string; house_no: string }[], (h) => h.house_no);
     },
   });
   const house = houses.find((h) => h.id === houseId) || null;
@@ -436,7 +438,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     try {
       const other = pathVisits.filter((v) => v.id !== correctId).flatMap((v) => v.kinds);
       if (doing === "correct") {
-        if (!correctId || !attached?.id) throw new Error("Pick the visit to correct");
+        if (!correctId || !attached?.id) throw new Error("Pick the visit to update");
         await correctPastVisit({
           isAdmin: true, house: house ? { id: house.id } : null, visitId: correctId, jobId: attached.id, visitKinds, customLabel,
           techId: past.techId, date: past.date, arrive: past.arrive, leave: past.leave, note: past.note, completed: past.completed, otherKinds: other,
@@ -502,7 +504,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Book a job</DialogTitle>
-          <DialogDescription>Create New Job — new work, past work, projects, and later corrections.</DialogDescription>
+          <DialogDescription>Create New Job — new work, past work, projects, and updates to an existing visit.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>
@@ -675,7 +677,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             })()}
           >
             {(createMutation.isPending || pathBusy) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {doing === "past" ? "Save visit" : doing === "correct" ? "Save correction" : attached ? "Book on this job" : "Create Job"}
+            {doing === "past" ? "Save visit" : doing === "correct" ? "Update visit" : attached ? "Book on this job" : "Create Job"}
           </Button>
         </DialogFooter>
       </DialogContent>
