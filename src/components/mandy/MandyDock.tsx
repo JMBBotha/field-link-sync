@@ -34,16 +34,16 @@ import { formatForSpeech, formatReplyText } from "@/lib/mandy/speech";
 import { useWorkflowMandyActions } from "@/components/mandy/MandyWorkflowActions";
 import { greetThenListen } from "@/lib/mandy/greetThenListen";
 import { greetingFor } from "@/lib/mandy/greetingFor";
-import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
+import { clientDisplayName, isHighConfidence } from "@/lib/voiceClientMatch";
 import { createDraftQuoteForCustomer } from "@/lib/createDraftQuote";
-import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
 import { ADD_NEW_CLIENT_CHOICE, buildFindClientResult } from "@/lib/mandy/clientChoices";
+import { searchClientsForVoice } from "@/lib/mandy/clientLookup";
 import { latestQuoteQuery } from "@/lib/mandy/latestQuote";
 import { MandyRealtimeSession, type RealtimeGrant } from "@/lib/mandy/realtimeClient";
-import { mandyRealtimeEnabled, type MandyPhase } from "@/lib/mandy/realtimeTurn";
+import { mandyRealtimeEnabled, sayInChatPanel, spokenPanelLine, type MandyPhase } from "@/lib/mandy/realtimeTurn";
 import { MandyDockView } from "@/components/mandy/MandyDockView";
 import { fallbackRoute } from "@/lib/mandy/honestFallback";
-import { applyVoiceConfirm, noteMandyTurn } from "@/lib/mandy/dayVoice";
+import { applyVoiceConfirm, isStopUtterance, matchSpokenChoice, noteMandyTurn } from "@/lib/mandy/dayVoice";
 
 const MAX_STEPS = 4;
 type Phase = MandyPhase;
@@ -99,8 +99,16 @@ function useGlobalMandyActions() {
     find_client: async ({ query }) => {
       const q = String(query || "").trim();
       if (!q) return { ok: false, message: "No name given.", choices: [ADD_NEW_CLIENT_CHOICE] };
-      const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 10 });
-      const ranked = rankClientHits(q, (error ? [] : data || []) as CustomerSearchResult[]);
+      const ranked = await searchClientsForVoice(q, {
+        rpc: async (fn, args) => {
+          const { data, error } = await supabase.rpc(fn as "search_customers", args as { search_term: string; max_results: number });
+          return { data: data || [], error };
+        },
+        recentCustomers: async () => {
+          const { data, error } = await supabase.from("customers").select("id, first_name, last_name, company_name, is_company, phone, email, primary_address_line1, city, status").order("updated_at", { ascending: false }).limit(80);
+          return { data: data || [], error };
+        },
+      });
       const exact = ranked.length === 1 && isHighConfidence(q, ranked[0]);
       const res = buildFindClientResult(q, ranked.map((c) => ({ id: c.id, name: clientDisplayName(c) })), exact);
       if (res.openClientId) {
@@ -234,9 +242,12 @@ export default function MandyDock() {
   const [typed, setTyped] = useState("");
   const [muted, setMuted] = useState(false);
   const [choices, setChoices] = useState<MandyChoice[]>([]);
+  const [step, setStep] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ summary: string; lines?: string[]; danger?: boolean; run: () => Promise<MandyResult> } | null>(null);
   const confirmRef = useRef<typeof confirm>(null);
+  const choicesRef = useRef<MandyChoice[]>([]);
   confirmRef.current = confirm;
+  choicesRef.current = choices;
   const runConfirmRef = useRef<() => Promise<void>>(async () => undefined);
   const { speak, cancel, setOnReplyEnded } = useSpeaker(muted);
 
@@ -340,7 +351,20 @@ export default function MandyDock() {
 
   const runTurn = useCallback(async (text: string) => {
     const t = text.trim();
-    if (!t || busyRef.current) return;
+    if (!t) return;
+    if (isStopUtterance(t)) {
+      realtimeRef.current?.interrupt();
+      cancel();
+      stopSharedAudio();
+      busyRef.current = false;
+      setConfirm(null);
+      setChoices([]);
+      setStep(null);
+      setReply("Stopped.");
+      setPhase("idle");
+      return;
+    }
+    if (busyRef.current) return;
     const voice = applyVoiceConfirm(!!confirmRef.current, t);
     if (voice === "run") { await runConfirmRef.current(); return; }
     if (voice === "cancel") {
@@ -511,6 +535,9 @@ export default function MandyDock() {
     if (!planTurn) final = guardClaimedChange(final, results, writes);
     if (lastUnverified && !/confirm it on screen/i.test(final)) final = honestMessage({ ok: true, message: final, verified: false });
     final = formatReplyText(final);
+    final = sayInChatPanel(final);
+    if (results.some((r) => r.confirm) || /tap confirm/i.test(final)) final = spokenPanelLine(final, "confirm");
+    else if (results.some((r) => r.choices?.length) || /tap one|tap the plan/i.test(final)) final = spokenPanelLine(final, "choices");
     historyRef.current = [...historyRef.current, { role: "user", content: t }, { role: "assistant", content: final }].slice(-8);
     noteMandyTurn(t, final);
     // One review row per turn: what the user said + what Mandy finally said (text-only answers included).
@@ -536,7 +563,8 @@ export default function MandyDock() {
     const r = await execute(c.action, c.args);
     if (r.choices?.length) setChoices(r.choices);
     if (r.confirm) setConfirm(r.confirm);
-    const msg = formatReplyText(honestMessage(r));
+    const plain = formatReplyText(honestMessage(r));
+    const msg = r.confirm ? spokenPanelLine(plain, "confirm") : r.choices?.length ? spokenPanelLine(plain, "choices") : sayInChatPanel(plain);
     setReply(msg);
     setPhase("speaking");
     await say(msg);
@@ -646,23 +674,55 @@ export default function MandyDock() {
       listToolNames: () => registry?.names() || [],
       onPhase: (p) => { if (openRef.current) setPhase(p); },
       onLevel: setLevel,
-      onHeard: (text) => {
+      onHeard: (text, final) => {
         utterRef.current = text;
         setHeard(text);
-        const voice = applyVoiceConfirm(!!confirmRef.current, text);
-        if (voice === "run") void runConfirmRef.current();
-        else if (voice === "cancel") { setConfirm(null); setReply("Cancelled — nothing was changed."); }
+        if (!final) return;
+        if (isStopUtterance(text)) {
+          realtimeRef.current?.interrupt();
+          setConfirm(null);
+          setChoices([]);
+          setStep(null);
+          setReply("Stopped.");
+          return;
+        }
+        if (confirmRef.current) {
+          const voice = applyVoiceConfirm(true, text);
+          if (voice === "run") { void runConfirmRef.current(); return; }
+          if (voice === "cancel") { setConfirm(null); setReply("Cancelled — nothing was changed."); return; }
+        }
+        const pending = choicesRef.current;
+        if (pending.length) {
+          const idx = matchSpokenChoice(text, pending);
+          if (idx != null) { void pickChoice(pending[idx]); }
+        }
       },
-      onReply: (text) => { const said = formatReplyText(text); setReply(said); noteMandyTurn(utterRef.current, said); },
-      onChoices: setChoices,
-      onConfirm: setConfirm,
+      onReply: (text) => { const said = sayInChatPanel(formatReplyText(text)); setReply(said); noteMandyTurn(utterRef.current, said); },
+      onChoices: (c) => {
+        setChoices(c);
+        if (c.length) useMandyDock.getState().setOpen(true);
+      },
+      onConfirm: (c) => {
+        setConfirm(c);
+        if (c) useMandyDock.getState().setOpen(true);
+      },
+      onWorking: setStep,
+      onConnection: (state) => {
+        setLive(state === "live");
+        if (state === "disconnected") {
+          setStep(null);
+          setPhase("disconnected");
+        }
+      },
+      onTrace: (kind, detail) => {
+        audit(kind, detail, { ok: kind !== "socket_close", message: kind });
+      },
       onFatal: (message) => {
-        realtimeRef.current?.stop();
-        realtimeRef.current = null;
         setLive(false);
         setLevel(0);
+        setStep(null);
         setReply(message);
-        setPhase("idle");
+        setPhase("disconnected");
       },
       audioContext: getMandyAudioContext,
       mic: getMandyMicStream,
@@ -794,16 +854,40 @@ export default function MandyDock() {
       typed={typed}
       muted={muted}
       live={live}
+      step={step}
       onTyped={setTyped}
       onClose={() => setOpen(false)}
       onToggleMute={() => { setMuted((m) => !m); cancel(); realtimeRef.current?.quiet(); }}
-      onMic={() => {
+      onStop={() => {
+        setStep(null);
+        setConfirm(null);
         if (realtimeRef.current) {
-          realtimeRef.current.stop();
-          realtimeRef.current = null;
-          setLive(false);
-          setLevel(0);
-          setPhase("idle");
+          realtimeRef.current.interrupt();
+          setReply("Stopped.");
+          return;
+        }
+        cancel();
+        stopSharedAudio();
+        busyRef.current = false;
+        recRef.current?.cancel();
+        recRef.current = null;
+        setLevel(0);
+        setPhase("idle");
+        setReply("Stopped.");
+      }}
+      onReconnect={() => {
+        if (realtimeRef.current) realtimeRef.current.reconnect();
+        else void beginSession();
+      }}
+      onMic={() => {
+        const session = realtimeRef.current;
+        if (session) {
+          if (phase === "disconnected") { session.reconnect(); return; }
+          if (phase === "speaking" || phase === "greeting" || phase === "thinking" || phase === "working" || phase === "hearing") {
+            session.interrupt();
+            setStep(null);
+            return;
+          }
           return;
         }
         if (phase === "listening") void stopListening();

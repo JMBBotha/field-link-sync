@@ -18,11 +18,11 @@ export function buildFindClientResult(
     ADD_NEW_CLIENT_CHOICE,
   ];
   if (!hits.length) {
-    return { ok: true, message: `No client matching “${query}”. The user can tap Add new client.`, choices: chips };
+    return { ok: true, message: `No client matching “${query}”. Tap Add new client in my chat panel.`, choices: chips };
   }
   if (hits.length === 1 && exactSingle) {
     const c = hits[0];
     return { ok: true, message: `Opened ${c.name}.`, data: { client_id: c.id, name: c.name }, choices: chips, openClientId: c.id };
   }
-  return { ok: true, message: `${hits.length} clients match “${query}”. Waiting for the user to tap one.`, choices: chips };
+  return { ok: true, message: `${hits.length} clients match “${query}”. Tap the buttons in my chat panel, or say the first one or the name.`, choices: chips };
 }

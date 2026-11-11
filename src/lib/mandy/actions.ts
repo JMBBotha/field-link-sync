@@ -128,7 +128,7 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     parameters: { type: "object", properties: { ref: str("Quote number"), client: str("Client name") }, additionalProperties: false },
   },
   find_client: {
-    description: "Look up a client by name, phone or email.",
+    description: "Look up a client by name, phone or email. Pass the name as heard. The app fuzzy-matches sounds-like names and shows the closest buttons in the chat panel.",
     parameters: { type: "object", properties: { query: str("Name, phone or email") }, required: ["query"], additionalProperties: false },
   },
   create_quote_for_client: {

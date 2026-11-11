@@ -4,7 +4,7 @@
  */
 import type { MandyResult } from "./actions";
 
-export type MandyPhase = "idle" | "starting" | "greeting" | "listening" | "hearing" | "working" | "thinking" | "speaking";
+export type MandyPhase = "idle" | "starting" | "greeting" | "listening" | "hearing" | "working" | "thinking" | "speaking" | "disconnected";
 
 export type MandyTurnEvent =
   | { type: "connect_start" }
@@ -17,6 +17,7 @@ export type MandyTurnEvent =
   | { type: "response_done"; audioQueued: boolean }
   | { type: "playback_ended" }
   | { type: "session_closed" }
+  | { type: "session_dropped" }
   | { type: "legacy_hearing" }
   | { type: "legacy_thinking" };
 
@@ -36,6 +37,7 @@ export function mandyStatusLabel(phase: MandyPhase): string {
     case "hearing": return "Hearing you…";
     case "working":
     case "thinking": return "Thinking…";
+    case "disconnected": return "Mandy disconnected, tap to reconnect";
     case "idle": return "Ready";
   }
 }
@@ -60,6 +62,7 @@ export function nextMandyPhase(phase: MandyPhase, event: MandyTurnEvent): MandyP
     case "response_done": return event.audioQueued || phase === "speaking" ? "speaking" : "thinking";
     case "playback_ended": return "listening";
     case "session_closed": return "idle";
+    case "session_dropped": return "disconnected";
     case "legacy_hearing": return "hearing";
     case "legacy_thinking": return "thinking";
     default: return phase;
@@ -233,4 +236,211 @@ export function shouldForwardMic(input: { speaking: boolean; level: number; latc
   if (!input.speaking) return { forward: true, latched: false };
   if (input.latched || input.level >= BARGE_IN_LEVEL) return { forward: true, latched: true };
   return { forward: false, latched: false };
+}
+
+/** Manual cancel. Server VAD also interrupts, but Stop and "Mandy stop" send this. */
+export function responseCancelMessage() {
+  return { type: "response.cancel" as const };
+}
+
+export const TOOL_TIMEOUT_MS = 12_000;
+export const TOOL_TIMEOUT_SAY = "That took too long, so I stopped waiting. Ask me again if you still want it.";
+
+/** First spoken filler only after the tool has already taken this long. Fast answers stay quiet. */
+export const FILLER_FIRST_MS = 1_500;
+/** Second and last filler on a slow tool. */
+export const FILLER_SECOND_MS = 6_000;
+export const STILL_ON_IT = "Still on it…";
+
+const NO_FILLER_TOOLS = new Set(["report_problem"]);
+
+export function spokenFirstName(raw: unknown): string | null {
+  const tokens = String(raw ?? "")
+    .replace(/[^A-Za-z\s'-]/g, " ")
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 1 && !/^(de|van|der|den|du|le|la|the|of)$/i.test(t));
+  const first = tokens[0];
+  if (!first) return null;
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
+
+export function nameFromToolArgs(args: Record<string, unknown> | undefined): string | null {
+  if (!args) return null;
+  return spokenFirstName(args.lead ?? args.client ?? args.query ?? args.customer ?? args.technician ?? args.name ?? "");
+}
+
+/** Short lines for a slow tool. Varied so the next lookup does not repeat the last one. */
+export function fillerOptions(tool: string, name: string | null): string[] {
+  if (NO_FILLER_TOOLS.has(tool)) return [];
+  const n = name;
+  switch (tool) {
+    case "why_lead_waiting":
+      return n
+        ? [`Looking up ${n} now…`, `Checking why ${n} is waiting…`, `Finding ${n}'s lead…`]
+        : ["Looking up that lead…", "Checking why that lead is waiting…"];
+    case "find_client":
+    case "open_client":
+    case "select_client":
+    case "create_quote_for_client":
+      return n
+        ? [`Looking up ${n} now…`, `Searching for ${n}…`, `Checking ${n} on the list…`]
+        : ["Looking up that client…", "Searching the client list…"];
+    case "unpaid_for":
+      return n ? [`Checking what ${n} still owes…`, `Looking at ${n}'s invoices…`] : ["Checking what's unpaid…", "Looking at the invoices…"];
+    case "tech_day":
+      return ["Checking today's jobs…", "Looking at the day…"];
+    case "assign_lead_technician":
+    case "cancel_visit":
+    case "reschedule_visit":
+      return ["Checking his visits…", "Looking at the booking…", "Checking the schedule…"];
+    case "open_quote":
+    case "open_last_quote":
+    case "open_latest_quote":
+    case "open_top_quote":
+      return ["Opening that quote…", "Finding the quote…"];
+    default:
+      return ["Checking that now…", "Looking that up…", "Working on that…"];
+  }
+}
+
+export function pickVaried(options: string[], recent: string[]): string | null {
+  if (!options.length) return null;
+  const last = recent[recent.length - 1];
+  const fresh = options.filter((o) => !recent.includes(o));
+  const pool = fresh.length ? fresh : options.filter((o) => o !== last);
+  return pool[0] || options[0];
+}
+
+/**
+ * At most two fillers per turn: one specific line after ~1.5s, then
+ * "Still on it…" after ~6s. Nothing before 1.5s. report_problem is silent
+ * here because its own sentence is spoken as soon as the tool starts.
+ */
+export function nextWorkingFiller(input: {
+  tool: string;
+  args?: Record<string, unknown>;
+  elapsedMs: number;
+  spokenThisTurn: string[];
+  recent: string[];
+}): string | null {
+  if (input.spokenThisTurn.length >= 2) return null;
+  if (NO_FILLER_TOOLS.has(input.tool)) return null;
+  if (input.spokenThisTurn.length === 0) {
+    if (input.elapsedMs < FILLER_FIRST_MS) return null;
+    return pickVaried(fillerOptions(input.tool, nameFromToolArgs(input.args)), input.recent);
+  }
+  if (input.elapsedMs < FILLER_SECOND_MS) return null;
+  if (input.spokenThisTurn.includes(STILL_ON_IT)) return null;
+  return STILL_ON_IT;
+}
+
+/** Subtle label beside Thinking… while a tool is in flight. */
+export function workingStepLabel(tool: string): string {
+  switch (tool) {
+    case "find_client":
+    case "open_client":
+    case "select_client":
+    case "create_quote_for_client":
+      return "Looking up client…";
+    case "why_lead_waiting":
+      return "Looking up lead…";
+    case "unpaid_for":
+      return "Checking invoices…";
+    case "assign_lead_technician":
+    case "cancel_visit":
+    case "reschedule_visit":
+      return "Checking visits…";
+    case "tech_day":
+      return "Checking today's jobs…";
+    case "open_quote":
+    case "open_last_quote":
+    case "open_latest_quote":
+    case "open_top_quote":
+      return "Opening the quote…";
+    case "report_problem":
+      return "Logging that…";
+    default:
+      return "Working…";
+  }
+}
+
+export function settleWithin<T>(work: Promise<T>, ms: number, fallback: T): Promise<{ value: T; timedOut: boolean }> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value: T, timedOut: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ value, timedOut });
+    };
+    const timer = setTimeout(() => finish(fallback, true), ms);
+    work.then(
+      (value) => finish(value, false),
+      () => finish(fallback, true),
+    );
+  });
+}
+
+/** Late tool results after Stop are dropped when the generation has moved on. */
+export function takeIfCurrent<T>(generation: number, current: number, value: T): T | null {
+  return generation === current ? value : null;
+}
+
+/**
+ * A dropped socket reconnects with a fresh token. The user hanging up, or a
+ * socket we closed ourselves to swap tokens, does not.
+ */
+export function shouldAutoReconnect(input: { userStopped: boolean; swapping: boolean; attempts: number; maxAttempts?: number }): boolean {
+  if (input.userStopped || input.swapping) return false;
+  return input.attempts < (input.maxAttempts ?? 2);
+}
+
+export function closeTrace(
+  ev: { code: number; reason: string; wasClean: boolean },
+  extra: { phase: string; tool: string | null },
+) {
+  return {
+    kind: "socket_close" as const,
+    code: ev.code,
+    reason: ev.reason || "",
+    wasClean: ev.wasClean,
+    phase: extra.phase,
+    tool: extra.tool,
+  };
+}
+
+export function historySeedMessages(turns: Array<{ role: "user" | "assistant"; text: string }>) {
+  return turns
+    .filter((t) => t.text && t.text.trim())
+    .slice(-8)
+    .map((t) => t.role === "user"
+      ? userTextMessage(t.text.trim())
+      : {
+          type: "conversation.item.create" as const,
+          item: {
+            type: "message" as const,
+            role: "assistant" as const,
+            content: [{ type: "output_text" as const, text: t.text.trim() }],
+          },
+        });
+}
+
+export function sayInChatPanel(text: string): string {
+  return String(text || "")
+    .replace(/\bon the dashboard\b/gi, "in my chat panel")
+    .replace(/\bscroll up\b/gi, "look at the buttons in my chat panel");
+}
+
+/** Tool sentences she speaks must point at her chat panel, never the page around it. */
+export function spokenPanelLine(message: string, kind: "choices" | "confirm" | "plain"): string {
+  let m = sayInChatPanel(message || "").replace(/\s+/g, " ").trim();
+  if (kind === "choices" && !/chat panel/i.test(m)) {
+    m = m.replace(/waiting for the user to tap one\.?/gi, "").trim();
+    m = `${m} Tap the buttons in my chat panel, or say the first one or the name.`.replace(/\s+/g, " ").trim();
+  }
+  if (kind === "confirm" && !/chat panel/i.test(m)) {
+    m = `${m.replace(/[?.!]+$/, "").trim()}. Tap the Confirm button in my chat panel, or say yes.`;
+  }
+  return m;
 }

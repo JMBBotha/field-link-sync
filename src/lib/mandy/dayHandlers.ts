@@ -4,7 +4,8 @@
  * "yes" or the Confirm button runs that function.
  */
 import type { MandyResult } from "./actions";
-import { confirmQuestion, explainLeadWaiting, noteMandyTurn, recentMandyTurns, techDaySentence, unpaidSentence, type LeadWait } from "./dayVoice";
+import { confirmQuestion, explainLeadWaiting, HANDOFF_LOGGED, noteMandyTurn, recentMandyTurns, techDaySentence, unpaidSentence, type LeadWait } from "./dayVoice";
+import { clientSearchTerms, rankSpokenNames } from "./nameMatch";
 
 type Db = any;
 export interface DayDeps {
@@ -19,22 +20,70 @@ export interface DayDeps {
 let lastOwnerMove: { customerId: string; name: string; fromId: string | null; fromName: string; toId: string; toName: string } | null = null;
 
 const clean = (v: unknown) => String(v || "").trim().replace(/[%_]/g, "");
-const one = <T,>(rows: T[] | null | undefined, label: string): T | MandyResult => {
-  const list = rows || [];
-  if (!list.length) return { ok: false, message: `No ${label} found.` };
-  if (list.length > 1) {
-    const names = list.slice(0, 6).map((r: any) => r.name || r.customer_name || r.full_name || r.title).filter(Boolean);
-    return { ok: true, message: `${list.length} ${label}s match: ${names.join(", ")}. Say the full name.` };
-  }
-  return list[0];
-};
+const NAME_COL = { customers: "name", profiles: "full_name", leads: "customer_name" } as const;
 
-async function person(db: Db, table: "customers" | "profiles" | "leads", name: string, cols: string) {
+function labelOf(table: keyof typeof NAME_COL, row: any) {
+  return String(row?.[NAME_COL[table]] || "");
+}
+
+function leadQuery(db: Db, table: keyof typeof NAME_COL, cols: string) {
+  const query = db.from(table).select(cols);
+  return table === "leads" && typeof query.is === "function" ? query.is("deleted_at", null) : query;
+}
+
+async function rowsByName(db: Db, table: keyof typeof NAME_COL, cols: string, pattern: string) {
+  const { data, error } = await leadQuery(db, table, cols).ilike(NAME_COL[table], `%${pattern}%`).limit(8);
+  return { data: (data || []) as any[], error };
+}
+
+async function recentRows(db: Db, table: keyof typeof NAME_COL, cols: string) {
+  const { data, error } = await leadQuery(db, table, cols).order("created_at", { ascending: false }).limit(80);
+  if (error) return [] as any[];
+  return (data || []) as any[];
+}
+
+/**
+ * ILIKE of the whole misheard phrase returns nothing ("Quibus de York"
+ * is not inside "Cobus de Jager"). Search each word and a sounds-like stem,
+ * score a recent window, and offer the closest instead of "No lead found".
+ * A clear winner (score ≥ 0.9, ahead of the next) is used. Anything less
+ * comes back as chat-panel buttons.
+ */
+async function person(
+  db: Db,
+  table: keyof typeof NAME_COL,
+  name: string,
+  cols: string,
+  choice: { action: string; arg: string; noun: string; args: Record<string, unknown> },
+): Promise<any | MandyResult> {
   const q = clean(name);
-  if (!q) return { ok: false, message: "Who did you mean?" } as MandyResult;
-  const { data, error } = await db.from(table).select(cols).ilike(table === "profiles" ? "full_name" : table === "leads" ? "customer_name" : "name", `%${q}%`).limit(6);
-  if (error) return { ok: false, message: error.message } as MandyResult;
-  return one(data, table === "profiles" ? "person" : table === "leads" ? "lead" : "client");
+  if (!q) return { ok: false, message: "Who did you mean?" };
+  const terms = clientSearchTerms(q);
+  const [found, recent] = await Promise.all([
+    Promise.all(terms.map((term) => rowsByName(db, table, cols, term))),
+    recentRows(db, table, cols),
+  ]);
+  const byId = new Map<string, any>();
+  let firstError: string | null = null;
+  for (const res of found) {
+    if (res.error?.message && !firstError) firstError = res.error.message;
+    for (const row of res.data) if (row?.id) byId.set(row.id, row);
+  }
+  for (const row of recent) if (row?.id && !byId.has(row.id)) byId.set(row.id, row);
+  if (!byId.size && firstError) return { ok: false, message: firstError };
+  const ranked = rankSpokenNames(q, [...byId.values()], (row) => labelOf(table, row));
+  if (!ranked.length) return { ok: false, message: `No ${choice.noun} found close to “${q}”.` };
+  const best = ranked[0];
+  const second = ranked[1]?.score ?? 0;
+  if (best.score >= 0.9 && best.score - second >= 0.12) return best.item;
+  const names = ranked.map((r) => r.name);
+  return {
+    ok: true,
+    message: ranked.length === 1
+      ? `The closest ${choice.noun} is ${names[0]}. Tap the buttons in my chat panel, or say yes.`
+      : `The closest ${choice.noun}s are ${names.join(", ")}. Tap the buttons in my chat panel, or say the first one or the name.`,
+    choices: ranked.map((r) => ({ label: r.name, action: choice.action, args: { ...choice.args, [choice.arg]: r.name } })),
+  };
 }
 
 async function nameOf(db: Db, id: string | null) {
@@ -58,9 +107,9 @@ export function makeDayHandlers(d: DayDeps) {
 
   return {
     set_owner_rep: async ({ client, to_rep, reason }: Record<string, any>): Promise<MandyResult> => {
-      const customer = await person(d.db, "customers", client, "id, name, owner_rep_id");
+      const customer = await person(d.db, "customers", client, "id, name, owner_rep_id", { action: "set_owner_rep", arg: "client", noun: "client", args: { client, to_rep, reason } });
       if ("ok" in (customer as MandyResult)) return customer as MandyResult;
-      const rep = await person(d.db, "profiles", to_rep, "id, full_name");
+      const rep = await person(d.db, "profiles", to_rep, "id, full_name", { action: "set_owner_rep", arg: "to_rep", noun: "person", args: { client, to_rep, reason } });
       if ("ok" in (rep as MandyResult)) return rep as MandyResult;
       const c = customer as { id: string; name: string; owner_rep_id: string | null };
       const r = rep as { id: string; full_name: string };
@@ -88,9 +137,9 @@ export function makeDayHandlers(d: DayDeps) {
     },
 
     assign_lead_technician: async ({ lead, technician, date, start, end }: Record<string, any>): Promise<MandyResult> => {
-      const row = await person(d.db, "leads", lead, "id, customer_name, assigned_agent_id, primary_intent");
+      const row = await person(d.db, "leads", lead, "id, customer_name, assigned_agent_id, primary_intent", { action: "assign_lead_technician", arg: "lead", noun: "lead", args: { lead, technician, date, start, end } });
       if ("ok" in (row as MandyResult)) return row as MandyResult;
-      const tech = await person(d.db, "profiles", technician, "id, full_name");
+      const tech = await person(d.db, "profiles", technician, "id, full_name", { action: "assign_lead_technician", arg: "technician", noun: "person", args: { lead, technician, date, start, end } });
       if ("ok" in (tech as MandyResult)) return tech as MandyResult;
       const l = row as { id: string; customer_name: string };
       const t = tech as { id: string; full_name: string };
@@ -127,7 +176,7 @@ export function makeDayHandlers(d: DayDeps) {
     },
 
     cancel_visit: async ({ lead, reason, note }: Record<string, any>): Promise<MandyResult> => {
-      const row = await person(d.db, "leads", lead, "id, customer_name");
+      const row = await person(d.db, "leads", lead, "id, customer_name", { action: "cancel_visit", arg: "lead", noun: "lead", args: { lead, reason, note } });
       if ("ok" in (row as MandyResult)) return row as MandyResult;
       const l = row as { id: string; customer_name: string };
       const why = clean(reason);
@@ -141,7 +190,7 @@ export function makeDayHandlers(d: DayDeps) {
     },
 
     reschedule_visit: async ({ lead, date, start, end }: Record<string, any>): Promise<MandyResult> => {
-      const row = await person(d.db, "leads", lead, "id, customer_name");
+      const row = await person(d.db, "leads", lead, "id, customer_name", { action: "reschedule_visit", arg: "lead", noun: "lead", args: { lead, date, start, end } });
       if ("ok" in (row as MandyResult)) return row as MandyResult;
       const l = row as { id: string; customer_name: string };
       const day = String(date || "").slice(0, 10);
@@ -162,7 +211,7 @@ export function makeDayHandlers(d: DayDeps) {
     },
 
     why_lead_waiting: async ({ lead }: Record<string, any>): Promise<MandyResult> => {
-      const row = await person(d.db, "leads", lead, "id, customer_name, accepted_at, assigned_agent_id, offer_count");
+      const row = await person(d.db, "leads", lead, "id, customer_name, accepted_at, assigned_agent_id, offer_count", { action: "why_lead_waiting", arg: "lead", noun: "lead", args: { lead } });
       if ("ok" in (row as MandyResult)) return row as MandyResult;
       const l = row as { id: string; customer_name: string; accepted_at: string | null; assigned_agent_id: string | null; offer_count: number | null };
       const [{ data: offers }, { data: flags }] = await Promise.all([
@@ -197,7 +246,7 @@ export function makeDayHandlers(d: DayDeps) {
       let techId = d.userId || null;
       let techName = "You";
       if (clean(technician)) {
-        const tech = await person(d.db, "profiles", technician, "id, full_name");
+        const tech = await person(d.db, "profiles", technician, "id, full_name", { action: "tech_day", arg: "technician", noun: "person", args: { technician } });
         if ("ok" in (tech as MandyResult)) return tech as MandyResult;
         const t = tech as { id: string; full_name: string };
         techId = t.id;
@@ -225,13 +274,13 @@ export function makeDayHandlers(d: DayDeps) {
 
     report_problem: async ({ summary }: Record<string, any>): Promise<MandyResult> => {
       const text = clean(summary);
-      if (!text) return { ok: false, message: "What should I pass to the build team?" };
-      noteMandyTurn("", text);
+      if (!text) return { ok: false, message: "What should I log for Field Lynk Prototyper?" };
+      noteMandyTurn("", HANDOFF_LOGGED);
       const { data, error } = await d.db.functions.invoke("mandy-handoff", {
         body: { summary: text, page: d.page?.() || null, transcript: recentMandyTurns(), entity_ids: {} },
       });
-      if (error) return { ok: false, message: "I couldn't pass that on just now. Please try again." };
-      return { ok: true, message: "I'll pass that to the build team.", data: { handoff_id: (data as any)?.id || null } };
+      if (error) return { ok: false, message: "I couldn't log that just now. Please try again." };
+      return { ok: true, message: HANDOFF_LOGGED, data: { handoff_id: (data as any)?.id || null } };
     },
   };
 }
