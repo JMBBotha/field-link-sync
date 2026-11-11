@@ -119,3 +119,8 @@ verify_jwt = true
 
 [functions.link-technician-login]
 verify_jwt = true
+
+# Dashboard Mandy realtime token. requireUser checks the JWT inside the function.
+# The phone assistant does not call this.
+[functions.mandy-realtime]
+verify_jwt = false

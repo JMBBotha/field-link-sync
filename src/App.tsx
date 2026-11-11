@@ -30,6 +30,7 @@ import BookJobHarness from "./pages/BookJobHarness";
 import TeamNoLoginHarness from "./pages/TeamNoLoginHarness";
 import PriceListSheetHarness from "./pages/PriceListSheetHarness";
 import SignupNoticeHarness from "./pages/SignupNoticeHarness";
+import MandyDockHarness from "./pages/MandyDockHarness";
 import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
 import NotFound from "./pages/NotFound";
@@ -214,6 +215,9 @@ const App = () => (
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/signup-notice" element={<SignupNoticeHarness />} />
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev/mandy-dock" element={<MandyDockHarness />} />
                 )}
 
                 {/* Customer Portal Routes */}
