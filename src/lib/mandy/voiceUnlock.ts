@@ -8,9 +8,13 @@
  */
 
 const SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
-const MIC_CONSTRAINTS: MediaStreamConstraints = {
-  audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+/** One mic profile for the dock: cancel her own voice, then the local gate drops what remains. */
+export const MANDY_MIC_AUDIO: MediaTrackConstraints = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
 };
+const MIC_CONSTRAINTS: MediaStreamConstraints = { audio: MANDY_MIC_AUDIO };
 
 let ctx: AudioContext | null = null;
 let sharedEl: HTMLAudioElement | null = null;

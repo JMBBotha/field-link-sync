@@ -6,6 +6,12 @@
  */
 import { filterTools, toneBlock, type MandyTier } from "./mandyPolicy.ts";
 
+export const HONEST_TOOL_RULE =
+  "Never answer with an unrelated tool. A question about a photo, picture, image or brochure is read_quote_line_images, never the quote total. If no tool matches, say plainly what you cannot check and name one thing you can do.";
+
+export const MISHEAR_RULE =
+  'If you hear "slide" or "quilt" where the person means a quote (open the last slide, the quilt total, the photo on the slide), treat that word as "quote".';
+
 export const MANDY_REALTIME_VOICE = "eve";
 export const MANDY_REALTIME_MODEL = "grok-voice-latest";
 /** Docs default is reasoning "high", which delays the first audio. Voice turns use none. */
@@ -64,6 +70,8 @@ export function realtimeInstructions(p: {
     `If the result has awaiting_confirmation, tell them to tap Confirm. It has not happened.`,
     `One short spoken sentence, two at most. Warm and brief. No "one moment", no "let me", no step-by-step narration.`,
     `Quote tools exist only while that quote's page is open. If they are not in your tool list, open the quote first.`,
+    HONEST_TOOL_RULE,
+    MISHEAR_RULE,
     `Money is rand. VAT is 15% when the tool said so. Use metric units. Keep product names short.`,
     p.parent ? `Top-level Massair view is on. Across other companies you are read-only. Give the totals first, then the one or two companies that need attention.` : "",
     `Screen context (hint only): ${ctx}`,

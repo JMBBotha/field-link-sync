@@ -44,6 +44,8 @@ import { useInstallTemplates } from "@/hooks/useInstallTemplates";
 import { runInstallEdit, announceInstall, installContext, installLinesOf, readInstall } from "@/lib/mandy/installEdits";
 import { renameAreaDecision } from "@/lib/mandy/itemResolve";
 import type { QuoteArea, QuoteItem } from "@/types/quote";
+import { unitLineModelKey } from "@/lib/unitCards";
+import { quoteLineImageReport, type LineImageFact } from "@/lib/mandy/honestFallback";
 
 interface Props {
   vatRate: number;
@@ -633,6 +635,61 @@ export default function MandyQuoteActions({ vatRate, onPdf, onChanged, beforeWri
       const m = await onPdf();
       if (typeof m === "string") return { ok: true, message: `${m}${reminder}` };
       return { ok: true, message: `Generated the PDF for ${ctx.meta?.quote_number || "this quote"}.${reminder}` };
+    },
+
+    read_quote_line_images: async ({ focus }) => {
+      const items = S().items.filter((i) => !i.parent_item_id);
+      const areas = S().areas;
+      const productIds = [...new Set(items.map((i) => i.product_id).filter(Boolean))] as string[];
+      const { data: products, error: pErr } = productIds.length
+        ? await supabase.from("supplier_products").select("id, product_code, image_url, brand, category, btu_rating, capacity_btu, kw").in("id", productIds)
+        : { data: [], error: null };
+      if (pErr) return { ok: false, message: pErr.message };
+      const byId = new Map((products || []).map((p) => [p.id, p]));
+      const prelim = items.map((i) => {
+        const p = i.product_id ? byId.get(i.product_id) : undefined;
+        const area = areas.find((a) => a.id === i.area_id)?.name || null;
+        return {
+          name: i.item_name,
+          code: p?.product_code || i.item_number,
+          area,
+          catalogueImage: !!p?.image_url,
+          modelKey: unitLineModelKey({
+            item_name: i.item_name,
+            item_type: i.item_type,
+            item_number: i.item_number,
+            product_code: p?.product_code,
+            is_bundle: i.is_bundle,
+            metadata: i.metadata,
+            quantity: i.quantity,
+            area_name: area,
+            brand: p?.brand,
+            category: p?.category,
+            btu_rating: p?.btu_rating,
+            capacity_btu: p?.capacity_btu,
+            kw: p?.kw,
+          }),
+        };
+      });
+      const keys = [...new Set(prelim.map((l) => l.modelKey).filter(Boolean))] as string[];
+      const { data: media, error: mErr } = keys.length
+        ? await supabase.from("product_media").select("model_key, image_url, image_status, status").in("model_key", keys)
+        : { data: [], error: null };
+      if (mErr) return { ok: false, message: mErr.message };
+      const mediaByKey = new Map((media || []).map((m) => [m.model_key, m]));
+      const facts: LineImageFact[] = prelim.map((l) => {
+        const m = l.modelKey ? mediaByKey.get(l.modelKey) : undefined;
+        return {
+          name: l.name,
+          code: l.code,
+          area: l.area,
+          catalogueImage: l.catalogueImage,
+          cardPhoto: !!(m && m.image_status === "ready" && m.image_url),
+          imageStatus: m?.image_status ?? null,
+          brochure: m?.status === "approved",
+        };
+      });
+      return { ok: true, message: quoteLineImageReport(ctx.meta?.quote_number || "This quote", facts, String(focus || "")) };
     },
 
     read_quote_total: async () => {

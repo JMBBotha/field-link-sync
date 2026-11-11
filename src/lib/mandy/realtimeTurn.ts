@@ -222,3 +222,15 @@ export function base64Pcm16ToFloat32(b64: string): Float32Array {
 }
 
 export const REALTIME_SAMPLE_RATE = 24000;
+
+/**
+ * While she is speaking, mic frames quieter than this are playback echo and
+ * are not sent. rmsLevel() is 0–1 (raw RMS × 8). Normal speech sits above this.
+ */
+export const BARGE_IN_LEVEL = 0.2;
+
+export function shouldForwardMic(input: { speaking: boolean; level: number; latched: boolean }): { forward: boolean; latched: boolean } {
+  if (!input.speaking) return { forward: true, latched: false };
+  if (input.latched || input.level >= BARGE_IN_LEVEL) return { forward: true, latched: true };
+  return { forward: false, latched: false };
+}

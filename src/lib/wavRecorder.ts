@@ -7,6 +7,8 @@
  * recorder reports when speech starts and when the speaker has gone quiet, so
  * the UI can auto-stop and transcribe without a stop button.
  */
+import { MANDY_MIC_AUDIO } from "@/lib/mandy/voiceUnlock";
+
 export interface VadOptions {
   /** RMS level above which audio counts as speech (0–1). */
   threshold?: number;
@@ -39,9 +41,7 @@ export class WavRecorder {
     this.quietSince = null;
     this.extStream = !!opts?.stream;
     this.extCtx = !!opts?.context;
-    this.stream = opts?.stream ?? await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    });
+    this.stream = opts?.stream ?? await navigator.mediaDevices.getUserMedia({ audio: MANDY_MIC_AUDIO });
     if (opts?.context) {
       this.ctx = opts.context;
       if (this.ctx.state === "suspended") await this.ctx.resume().catch(() => undefined);
