@@ -11,7 +11,7 @@ export type VisitKind = "first_fix" | "piping" | "ac_installation" | "commission
 export const DOING_CHOICES: { id: Doing; title: string; hint: string }[] = [
   { id: "upcoming", title: "Book upcoming work", hint: "Today's path. Schedule the visit." },
   { id: "past", title: "Log work that already happened", hint: "Today or earlier. The client is not messaged and reps are not alerted." },
-  { id: "correct", title: "Correct a visit later", hint: "Find the visit and edit the same record." },
+  { id: "correct", title: "Update existing visit", hint: "Find the visit and edit the same record." },
 ];
 
 export const VISIT_KINDS: { id: VisitKind; title: string }[] = [

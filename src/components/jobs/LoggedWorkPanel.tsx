@@ -97,7 +97,7 @@ export default function LoggedWorkPanel({ surface, canLogPast, job, house, proje
     try {
       const other = visits.filter((v) => v.id !== correctId).flatMap((v) => v.kinds);
       if (doing === "correct") {
-        if (!correctId || !attached?.id) throw new Error("Pick the visit to correct");
+        if (!correctId || !attached?.id) throw new Error("Pick the visit to update");
         await correctPastVisit({
           isAdmin: true, house: house ? { id: house.id } : null, customerId: customerId || attached.customerId, jobTitle: attached.title,
           visitId: correctId, jobId: attached.id, visitKinds, customLabel,
@@ -128,21 +128,21 @@ export default function LoggedWorkPanel({ surface, canLogPast, job, house, proje
   return (
     <div className="space-y-3" data-testid="logged-work" data-surface={surface}>
       <div>
-        <h3 className="text-sm font-semibold">Book, log, or correct</h3>
+        <h3 className="text-sm font-semibold">Book, log, or update</h3>
         <p className="text-xs text-muted-foreground">Same choices as Book a job. Past visits stay on this {onJob ? "job" : "house"}.</p>
       </div>
       <WorkIntent value={doing} onChange={setDoing} />
       {house && <HouseFirstFitLine done={fitDone || fitVisit} inStep={fitDone && fitVisit} />}
       {attached && surface === "house" && <p className="text-sm" data-testid="attached-job">Attached to {attached.title || "the installation job"}. No new sale and no second job.</p>}
-      {doing === "upcoming" && <p className="text-xs text-muted-foreground">Upcoming work uses this job's schedule. Logging a past visit or a correction is here, not only under Add on behalf of tech.</p>}
+      {doing === "upcoming" && <p className="text-xs text-muted-foreground">Upcoming work uses this job's schedule. Logging a past visit or updating an existing one is here, not only under Add on behalf of tech.</p>}
       {doing !== "upcoming" && cards === "visit" && <VisitKindMenu value={visitKinds} onChange={pickKinds} customLabel={customLabel} onCustomLabel={setCustomLabel} />}
-      {doing !== "upcoming" && !canLogPast && <p data-testid="past-admin-only" className="text-sm text-amber-900">Only an admin can log or correct a past visit.</p>}
+      {doing !== "upcoming" && !canLogPast && <p data-testid="past-admin-only" className="text-sm text-amber-900">Only an admin can log or update a past visit.</p>}
       {doing === "correct" && <VisitList visits={visits} correctId={correctId} onCorrect={pickVisit} />}
       {doing === "past" && visits.length > 0 && <VisitList visits={visits} />}
       {doing !== "upcoming" && canLogPast && <PastVisitFields techs={techs.data || []} value={past} onChange={setPast} />}
       {doing !== "upcoming" && (
         <Button className="h-11 w-full bg-[#C2410C] text-white hover:bg-[#9A3412]" disabled={busy || !canLogPast || !visitKinds.length || customLabelMissing(visitKinds, customLabel) || !past.techId || !past.date || !past.arrive} onClick={save} data-testid="logged-work-save">
-          {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{doing === "correct" ? "Save correction" : "Save visit"}
+          {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{doing === "correct" ? "Update visit" : "Save visit"}
         </Button>
       )}
     </div>
