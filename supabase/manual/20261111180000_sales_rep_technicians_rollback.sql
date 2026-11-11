@@ -1,4 +1,5 @@
--- Preview only. Rolls back 20261111180000_sales_rep_technicians.sql.
+-- MANUAL ROLLBACK - DO NOT RUN AS MIGRATION
+-- Rolls back 20261111180000_sales_rep_technicians.sql. Do not apply this file as a migration.
 -- Restores the five replaced functions to the bodies from the previous migrations,
 -- then drops the assignment table, its policies, and the helpers added with it.
 -- Does not change dl_rep_assign_insert, dl_rep_sched_insert, agent_locations, or job_tech_location.
