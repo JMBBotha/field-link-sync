@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import type { RowMenuItem } from "@/components/shared/RowMenu";
 import {
   canMarkQuote, canChangeSalesperson, snapshotOf, buildAcceptPatch, buildDeclinePatch,
-  buildSalespersonPatch, buildLogRow, type StatusLogRow,
+  buildSalespersonPatch, buildLogRow, groupSalespersonPlan, type StatusLogRow,
 } from "@/lib/quoteStaffActions";
 
 export type StaffQuote = {
@@ -42,6 +42,7 @@ export function useQuoteStaffActions(onChanged?: () => void, beforeAccept?: () =
   const [pending, setPending] = useState<Pending>(null);
   const [salesFor, setSalesFor] = useState<StaffQuote | null>(null);
   const [salesPick, setSalesPick] = useState<string>("");
+  const [groupAsk, setGroupAsk] = useState<{ quote: StaffQuote; next: string; numbers: string[] } | null>(null);
   const userId = user?.id ?? null;
   const undo = useUndoAction();
 
@@ -92,6 +93,42 @@ export function useQuoteStaffActions(onChanged?: () => void, beforeAccept?: () =
     } catch (e: any) {
       toast({ title: "Could not update quote", description: e.message, variant: "destructive" });
     }
+  };
+
+  const runGroupSalesperson = async (q: StaffQuote, next: string) => {
+    if (!userId) return;
+    const prev = q.sales_engineer_id ?? null;
+    const { error } = await (supabase.rpc as any)("set_quote_group_salesperson", { p_quote: q.id, p_user: next });
+    if (error) throw error;
+    refresh();
+    const name = salesStaff.find((s) => s.id === next)?.full_name || "new salesperson";
+    toast({
+      title: `Salesperson on every option: ${name}`,
+      action: prev ? (
+        <ToastAction altText="Undo" onClick={async () => {
+          try {
+            const { error: undoError } = await (supabase.rpc as any)("set_quote_group_salesperson", { p_quote: q.id, p_user: prev });
+            if (undoError) throw undoError;
+            refresh();
+            toast({ title: "Undone" });
+          } catch (e: any) { toast({ title: "Undo failed", description: e.message, variant: "destructive" }); }
+        }}>Undo</ToastAction>
+      ) : undefined,
+    });
+  };
+
+  const startSalesperson = async (q: StaffQuote, next: string) => {
+    if (q.option_group_id) {
+      const { data, error } = await (supabase.from("quotes") as any)
+        .select("id, quote_number")
+        .eq("option_group_id", q.option_group_id)
+        .eq("company_id", q.company_id)
+        .is("archived_at", null);
+      if (error) { toast({ title: "Could not change salesperson", description: error.message, variant: "destructive" }); return; }
+      const plan = groupSalespersonPlan(q, (data || []) as { id: string; quote_number: string | null }[]);
+      if (plan) { setGroupAsk({ quote: q, next, numbers: plan.numbers }); return; }
+    }
+    await runSalesperson(q, next);
   };
 
   const runSalesperson = async (q: StaffQuote, next: string) => {
@@ -178,10 +215,30 @@ export function useQuoteStaffActions(onChanged?: () => void, beforeAccept?: () =
           </Select>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSalesFor(null)}>Cancel</Button>
-            <Button disabled={!salesPick} onClick={() => { const q = salesFor; setSalesFor(null); if (q && salesPick) void runSalesperson(q, salesPick); }}>Save</Button>
+            <Button disabled={!salesPick} onClick={() => { const q = salesFor; const next = salesPick; setSalesFor(null); if (q && next) void startSalesperson(q, next); }}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!groupAsk} onOpenChange={(o) => !o && setGroupAsk(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change the salesperson on every option?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {groupAsk ? `${groupAsk.numbers.join(", ")} are one option group. All ${groupAsk.numbers.length} quotes get this salesperson.` : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              const ask = groupAsk;
+              setGroupAsk(null);
+              if (!ask) return;
+              void runGroupSalesperson(ask.quote, ask.next).catch((e: any) => toast({ title: "Could not change salesperson", description: e.message, variant: "destructive" }));
+            }}>Change all options</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 

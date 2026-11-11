@@ -55,6 +55,11 @@ import { attachPaymentTotals } from "@/lib/depositInvoice";
 import { jobStatusPatch, formatJohannesburg } from "@/lib/jobTimes";
 import BookingConfirmationEmail from "@/components/jobs/BookingConfirmationEmail";
 import { SalesJobLook } from "@/components/v8/roleHome/LiveHomes";
+import StaffMoreMenu from "@/components/jobs/StaffMoreMenu";
+import CancelVisitDialog from "@/components/jobs/CancelVisitDialog";
+import CallNotes from "@/components/jobs/CallNotes";
+import { isCallDump } from "@/lib/callSummary";
+import type { CancelVisitReasonId } from "@/lib/cancelVisit";
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -85,6 +90,8 @@ const AdminJobDetailPage = () => {
   const [markOpen, setMarkOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
   const statusUndo = useUndoAction();
   const { canAccessAdmin, isAdmin } = useRole();
   const { isSalesRep } = useSalesRep();
@@ -206,6 +213,18 @@ const AdminJobDetailPage = () => {
   }
 
   const j: any = job;
+  const confirmJobCancel = async (reason: CancelVisitReasonId, note: string) => {
+    setCancelBusy(true);
+    const { error } = await (supabase.rpc as any)("cancel_booking_visit", {
+      p_lead: j.lead_id ?? null, p_reason: reason, p_note: note || null, p_job: j.id,
+    });
+    setCancelBusy(false);
+    if (error) { toast({ title: "Couldn't cancel the visit", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Visit cancelled", description: "No invoice was created." });
+    setCancelOpen(false);
+    qc.invalidateQueries({ queryKey: ["job-detail", id] });
+    qc.invalidateQueries({ queryKey: ["jobs"] });
+  };
   // Sales logins can't change status themselves (server trigger), unless assigned as the tech.
   const bar = jobActionBar(j.status, jobPerms, !isSalesRep || !!jobPerms?.tech);
   const location = j.customer_locations;
@@ -224,13 +243,17 @@ const AdminJobDetailPage = () => {
             {editableJobFields(jobPerms).any && (
               <Button variant="outline" size="sm" className="shrink-0" onClick={() => setEditOpen(true)} data-testid="job-edit">Edit</Button>
             )}
+            {(jobPerms?.admin || jobPerms?.rep || (canAccessAdmin && !isSalesRep)) && !["completed", "cancelled", "canceled"].includes(j.status) && (
+              <Button variant="outline" size="sm" className="shrink-0" onClick={() => setCancelOpen(true)} data-testid="job-cancel-visit">Cancel visit</Button>
+            )}
             {canAccessAdmin && !isSalesRep && (assignedTech ? (
-              <details className="relative shrink-0" data-testid="job-more">
-                <summary className="inline-flex h-9 cursor-pointer list-none items-center rounded-md border px-3 text-sm">More</summary>
-                <div className="absolute right-0 z-20 mt-1 flex w-44 flex-col rounded-xl border bg-card p-1 shadow-lg">
-                  <button onClick={() => setAssignOpen(true)} className="min-h-11 rounded-lg px-3 text-left text-[14px] hover:bg-muted" data-testid="job-reassign">Reassign tech</button>
-                </div>
-              </details>
+              <StaffMoreMenu
+                testId="job-more"
+                label="More"
+                align="end"
+                triggerClassName="inline-flex h-9 shrink-0 cursor-pointer list-none items-center rounded-md border px-3 text-sm"
+                items={[{ label: "Reassign tech", testId: "job-reassign", onSelect: () => setAssignOpen(true) }]}
+              />
             ) : (
               <Button variant="outline" size="sm" className="shrink-0" onClick={() => setAssignOpen(true)}>Assign tech</Button>
             ))}
@@ -267,9 +290,10 @@ const AdminJobDetailPage = () => {
                 "scheduled_for",
                 "estimated_duration",
                 "address",
-                "description",
+                ...(isCallDump(j.description) ? [] : ["description"]),
               ]}
             />
+            {isCallDump(j.description) && <CallNotes notes={j.description} />}
 
             <div className="grid gap-2 text-sm">
               {j.customers?.name && (
@@ -527,6 +551,7 @@ const AdminJobDetailPage = () => {
           scheduledFor={j.scheduled_for ?? null} techId={assignedTech?.profileId ?? null} perms={{ admin: !!jobPerms?.admin, rep: !!jobPerms?.rep }} hasLead={!!j.lead_id} />
       )}
       <ReopenJobDialog key={`ro-${reopenOpen}`} jobId={j.id} open={reopenOpen} onOpenChange={setReopenOpen} />
+      <CancelVisitDialog open={cancelOpen} onOpenChange={setCancelOpen} busy={cancelBusy} onConfirm={(reason, note) => { void confirmJobCancel(reason, note); }} />
     </div>
   );
   if (isSalesRep) {

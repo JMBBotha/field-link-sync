@@ -1,5 +1,5 @@
 /** Booking (lead without a job) edit rules. Mirrors update_booking_details server checks. */
-export type BookingPerms = { admin: boolean; rep: boolean; view?: boolean };
+export type BookingPerms = { admin: boolean; rep: boolean; view?: boolean; office?: boolean };
 export function editableBookingFields(p: BookingPerms | null | undefined) {
   const admin = !!p?.admin, rep = !!p?.rep;
   return { any: admin || rep, date: admin || rep, time: admin || rep, notes: admin || rep, service: admin, address: admin };
