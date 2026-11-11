@@ -7,6 +7,7 @@
  * session. No handler here writes prices — pricing lives in src/lib/pricing.ts.
  */
 import { WORK_ACTION_SCHEMAS } from "./workActions";
+import { DAY_ACTION_SCHEMAS, DAY_WRITES } from "./dayVoice";
 
 export interface MandyChoice {
   label: string;
@@ -30,7 +31,7 @@ export interface MandyResult {
 export type MandyHandler = (args: Record<string, any>) => Promise<MandyResult>;
 
 /** Never executed on voice alone — always an on-screen Confirm card. */
-export const CONFIRM_REQUIRED = new Set(["remove_item", "remove_note", "remove_labour", "clear_quote", "run_plan", "send_quote", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote", "create_deposit_invoice", "record_payment", "whatsapp_invoice", "create_purchase_orders", "start_job", "request_payment_followup", "send_approved_followup"]);
+export const CONFIRM_REQUIRED = new Set(["remove_item", "remove_note", "remove_labour", "clear_quote", "run_plan", "send_quote", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote", "create_deposit_invoice", "record_payment", "whatsapp_invoice", "create_purchase_orders", "start_job", "request_payment_followup", "send_approved_followup", ...DAY_WRITES]);
 
 const str = (description: string) => ({ type: "string", description });
 const num = (description: string) => ({ type: "number", description });
@@ -208,15 +209,19 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     parameters: { type: "object", properties: { status: str("Status as spoken") }, required: ["status"], additionalProperties: false },
   },
   read_quote_total: {
-    description: "Read the open quote's totals.",
+    description: "Read the open quote's totals. Never use this for a question about a photo, picture, image or brochure.",
     parameters: { type: "object", properties: {}, additionalProperties: false },
+  },
+  read_quote_line_images: {
+    description: "Read-only. Why a product photo or brochure is or isn't showing on the open quote ('why isn't the AR40 photo showing', 'does the Samsung have a brochure'). Lists lines and whether each has a catalogue image, a ready card photo (product_media image_status ready), and an approved brochure (product_media status approved). Never use read_quote_total for this.",
+    parameters: { type: "object", properties: { focus: str("Product or model the user named, e.g. AR40. Optional.") }, additionalProperties: false },
   },
 };
 
 export function toolsFor(names: string[]) {
   return names
-    .filter((n) => MANDY_ACTION_SCHEMAS[n] || WORK_ACTION_SCHEMAS[n])
-    .map((n) => ({ type: "function", function: { name: n, ...(MANDY_ACTION_SCHEMAS[n] || WORK_ACTION_SCHEMAS[n]) } }));
+    .filter((n) => MANDY_ACTION_SCHEMAS[n] || WORK_ACTION_SCHEMAS[n] || DAY_ACTION_SCHEMAS[n])
+    .map((n) => ({ type: "function", function: { name: n, ...(MANDY_ACTION_SCHEMAS[n] || WORK_ACTION_SCHEMAS[n] || DAY_ACTION_SCHEMAS[n]) } }));
 }
 
 export const fmtRand = (n: number) =>

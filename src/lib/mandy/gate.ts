@@ -20,12 +20,14 @@ export const PRICED_ACTIONS = new Set(["add_item_to_area", "add_unit", "add_kit"
 export const ALWAYS_CONFIRM = new Set([
   "remove_item", "remove_note", "remove_labour", "clear_quote", "create_deposit_invoice", "send_quote", "send_invoice", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote",
   "record_payment", "whatsapp_invoice", "create_purchase_orders", "start_job", "request_payment_followup", "send_approved_followup",
+  "set_owner_rep", "undo_owner_rep", "assign_lead_technician", "cancel_visit", "reschedule_visit",
 ]);
 /** Reads and navigation — allowed on any quote. */
 export const READ_ONLY = new Set([
   "open_last_quote", "open_latest_quote", "open_top_quote", "open_quote", "find_client", "open_client", "select_client", "add_new_client",
   "open_invoice", "show_deposit_due", "open_calendar_day", "list_todays_jobs", "open_live_map", "filter_map_by_status",
-  "read_quote_total", "read_labour", "read_install", "generate_quote_pdf",
+  "read_quote_total", "read_quote_line_images", "read_labour", "read_install", "generate_quote_pdf",
+  "why_lead_waiting", "unpaid_for", "tech_day", "report_problem",
   "list_overdue_invoices", "list_purchase_orders", "list_my_jobs", "open_job", "open_scheduler", "list_payment_followups", "open_payment_followups",
 ]);
 /** Actions that change the open quote. */

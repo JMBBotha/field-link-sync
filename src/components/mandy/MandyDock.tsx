@@ -1,19 +1,14 @@
 /**
- * Mandy dock — Grok tool-calling voice assistant.
+ * Mandy dock — dashboard voice assistant.
  *
- * Turn: mic (WavRecorder + VAD) → xAI STT (voice-quote-parse/transcribe) →
- * mandy-agent (Grok picks a tool) → browser runs the tool via the action
- * registry under the user's session → result back to Grok (max 4 steps) →
- * ONE spoken reply (xAI TTS, browser speech as fallback).
+ * Realtime (default): speech-to-speech on wss://api.x.ai/v1/realtime, voice eve,
+ * server VAD. The browser holds only an ephemeral token from mandy-realtime.
+ * A tool result that already has a sentence is spoken with force_message.
  *
- * Voice rules enforced here: silent while working (spinner only), exactly one
- * utterance per turn, one audio element, cancel before a new turn, dedupe.
+ * Legacy (VITE_MANDY_REALTIME=0, and quote mode): mic → voice-quote-parse →
+ * mandy-agent → one xAI TTS reply. Phone Mandy / Vapi is not this dock.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Loader2, Mic, MicOff, Send, Volume2, VolumeX, X, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { WavRecorder } from "@/lib/wavRecorder";
@@ -44,9 +39,14 @@ import { createDraftQuoteForCustomer } from "@/lib/createDraftQuote";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
 import { ADD_NEW_CLIENT_CHOICE, buildFindClientResult } from "@/lib/mandy/clientChoices";
 import { latestQuoteQuery } from "@/lib/mandy/latestQuote";
+import { MandyRealtimeSession, type RealtimeGrant } from "@/lib/mandy/realtimeClient";
+import { mandyRealtimeEnabled, type MandyPhase } from "@/lib/mandy/realtimeTurn";
+import { MandyDockView } from "@/components/mandy/MandyDockView";
+import { fallbackRoute } from "@/lib/mandy/honestFallback";
+import { applyVoiceConfirm, noteMandyTurn } from "@/lib/mandy/dayVoice";
 
 const MAX_STEPS = 4;
-type Phase = "idle" | "starting" | "greeting" | "listening" | "hearing" | "working";
+type Phase = MandyPhase;
 type Msg = Record<string, unknown>;
 
 const QUOTE_TOOLS_PROBE = "read_quote_total";
@@ -227,6 +227,8 @@ export default function MandyDock() {
   useWorkflowMandyActions();
 
   const [phase, setPhase] = useState<Phase>("idle");
+  const [level, setLevel] = useState(0);
+  const [live, setLive] = useState(false);
   const [heard, setHeard] = useState("");
   const [reply, setReply] = useState("");
   const [typed, setTyped] = useState("");
@@ -235,6 +237,7 @@ export default function MandyDock() {
   const [confirm, setConfirm] = useState<{ summary: string; lines?: string[]; danger?: boolean; run: () => Promise<MandyResult> } | null>(null);
   const confirmRef = useRef<typeof confirm>(null);
   confirmRef.current = confirm;
+  const runConfirmRef = useRef<() => Promise<void>>(async () => undefined);
   const { speak, cancel, setOnReplyEnded } = useSpeaker(muted);
 
   // Dock opens on an old build: reload now if nothing is unsaved, else ask to save first.
@@ -253,6 +256,8 @@ export default function MandyDock() {
   const busyRef = useRef(false);
   const recRef = useRef<WavRecorder | null>(null);
   const voiceModeRef = useRef(false);
+  const realtimeRef = useRef<MandyRealtimeSession | null>(null);
+  const executeRef = useRef<(name: string, args: Record<string, any>, opts?: { waitForQuoteTools?: boolean }) => Promise<MandyResult>>(async () => ({ ok: false, message: "" }));
 
   /** Raw transcript of the current turn (handlers read it when the model drops a number). */
   const utterRef = useRef("");
@@ -262,11 +267,11 @@ export default function MandyDock() {
     void supabase.functions.invoke("mandy-agent", { body: { action: "audit", client_build: BUILD_ID, tool, args: logArgs, result: { message: r.message, data: r.data ?? null }, ok: r.ok } });
   };
 
-  const execute = useCallback(async (name: string, args: Record<string, any>): Promise<MandyResult> => {
+  const execute = useCallback(async (name: string, args: Record<string, any>, opts?: { waitForQuoteTools?: boolean }): Promise<MandyResult> => {
     const h = registry?.get(name);
     if (!h) {
       const mapped = mapLabourTool(name, args || {});
-      if (mapped && registry?.get(mapped.action)) return execute(mapped.action, mapped.args);
+      if (mapped && registry?.get(mapped.action)) return execute(mapped.action, mapped.args, opts);
       return { ok: false, message: unknownToolMessage(name, !!registry?.get(QUOTE_TOOLS_PROBE)) };
     }
     if (UTTERANCE_TOOLS.has(name) && utterRef.current) args = { ...(args || {}), __utterance: utterRef.current };
@@ -283,8 +288,9 @@ export default function MandyDock() {
       }
       audit(name, args, r);
       if (r.ok && !r.choices && !r.confirm) setAssistantContext(touchedPatch(r.data));
-      if (/^(open_quote|open_last_quote|open_latest_quote|open_top_quote|create_quote_for_client)$/.test(name) && r.ok && !r.choices) {
-        // Wait for the opened page to register its quote actions.
+      if (opts?.waitForQuoteTools !== false && /^(open_quote|open_last_quote|open_latest_quote|open_top_quote|create_quote_for_client)$/.test(name) && r.ok && !r.choices) {
+        // Legacy turns wait so the next model step can see quote tools. Realtime passes false
+        // and only waits if a later tool in the same request still needs the page.
         for (let i = 0; i < 40 && !registry?.get(QUOTE_TOOLS_PROBE); i++) await sleep(100);
       }
       return r;
@@ -294,6 +300,7 @@ export default function MandyDock() {
       return r;
     }
   }, [registry]); // eslint-disable-line react-hooks/exhaustive-deps
+  executeRef.current = execute;
 
   /** Multi-step plan → ONE Confirm card with a dry-run preview. Nothing runs until Confirm. */
   const preparePlan = useCallback(async (steps: PlanStep[], confidence: number): Promise<string> => {
@@ -334,6 +341,15 @@ export default function MandyDock() {
   const runTurn = useCallback(async (text: string) => {
     const t = text.trim();
     if (!t || busyRef.current) return;
+    const voice = applyVoiceConfirm(!!confirmRef.current, t);
+    if (voice === "run") { await runConfirmRef.current(); return; }
+    if (voice === "cancel") {
+      setConfirm(null);
+      setReply("Cancelled — nothing was changed.");
+      setPhase("speaking");
+      await speak("Cancelled. Nothing was changed.");
+      return;
+    }
     busyRef.current = true;
     cancel();
     const hadPendingCard = !!confirmRef.current;
@@ -431,6 +447,15 @@ export default function MandyDock() {
         if (r0.stale) { useBuildStatus.getState().setLatest("server-newer"); final = r0.text || ""; break; }
         if (r0.error) { final = `Sorry, I couldn't reach my brain: ${r0.error}`; break; }
         if (r0.args && "__plan" in r0.args) delete (r0.args as any).__plan; // only the plan Confirm may set it
+        if (step === 0 && !r0.plan) {
+          const fb = fallbackRoute({ transcript: t, proposed: r0.action, available: registry?.names() || [] });
+          if (fb.speak && !fb.action) { final = fb.speak; break; }
+          if (fb.action && fb.action !== r0.action) {
+            r0.action = fb.action;
+            r0.args = { ...(r0.args || {}), ...fb.args };
+            r0.confidence = Math.max(r0.confidence || 0, 0.9);
+          }
+        }
         const staleMsg = staleWriteRefusal(r0.plan ? "run_plan" : r0.action, useBuildStatus.getState().stale || (r0.action && !import.meta.env.DEV ? await checkForNewBuild() : false));
         if (staleMsg) { final = staleMsg; break; }
         if (r0.plan) {
@@ -487,12 +512,18 @@ export default function MandyDock() {
     if (lastUnverified && !/confirm it on screen/i.test(final)) final = honestMessage({ ok: true, message: final, verified: false });
     final = formatReplyText(final);
     historyRef.current = [...historyRef.current, { role: "user", content: t }, { role: "assistant", content: final }].slice(-8);
+    noteMandyTurn(t, final);
     // One review row per turn: what the user said + what Mandy finally said (text-only answers included).
     audit("reply", { tools: results.length }, { ok: true, message: final }, final);
     setReply(final);
-    setPhase("idle");
-    await speak(final); // the ONE utterance of this turn
+    setPhase("speaking");
+    await speak(final); // stays on Speaking until playback actually ends
   }, [cancel, execute, preparePlan, registry, speak]);
+
+  const say = async (text: string) => {
+    if (realtimeRef.current) realtimeRef.current.speakLine(text);
+    else await speak(text);
+  };
 
   const pickChoice = async (c: MandyChoice) => {
     utterRef.current = "";
@@ -500,15 +531,15 @@ export default function MandyDock() {
     setPhase("working");
     if (c.action === "__plan") {
       const msg = formatReplyText(await preparePlan((c.args.steps as PlanStep[]) || [], 1));
-      setReply(msg); setPhase("idle"); await speak(msg); return;
+      setReply(msg); setPhase("speaking"); await say(msg); return;
     }
     const r = await execute(c.action, c.args);
     if (r.choices?.length) setChoices(r.choices);
     if (r.confirm) setConfirm(r.confirm);
     const msg = formatReplyText(honestMessage(r));
     setReply(msg);
-    setPhase("idle");
-    await speak(msg);
+    setPhase("speaking");
+    await say(msg);
   };
 
   const runConfirm = async () => {
@@ -520,15 +551,17 @@ export default function MandyDock() {
     audit("confirmed", { summary: c.summary }, r);
     const msg = formatReplyText(honestMessage(r));
     setReply(msg);
-    setPhase("idle");
-    await speak(msg);
+    setPhase("speaking");
+    await say(msg);
   };
+  runConfirmRef.current = runConfirm;
 
   /* ───────────── mic ───────────── */
   const stopListening = useCallback(async () => {
     const rec = recRef.current;
     if (!rec) return;
     recRef.current = null;
+    setLevel(0);
     setPhase("hearing");
     try {
       const { base64, bytes } = await rec.stop();
@@ -553,7 +586,7 @@ export default function MandyDock() {
       // Reuse the mic + AudioContext unlocked in the tap (iOS keeps a fresh context suspended).
       const stream = await getMandyMicStream();
       const context = getMandyAudioContext() ?? undefined;
-      await rec.start({ silenceMs: 1300, onSilence: () => void stopRef.current() }, { stream, context });
+      await rec.start({ silenceMs: 1300, onSilence: () => void stopRef.current(), onLevel: (n) => setLevel(n) }, { stream, context });
       if (!openRef.current) { rec.cancel(); return; }
       recRef.current = rec;
       voiceModeRef.current = true;
@@ -583,12 +616,91 @@ export default function MandyDock() {
     greetingRef2.current = resolved;
     return resolved;
   };
+
+  const fetchGrant = async (kind: "session" | "tools"): Promise<RealtimeGrant> => {
+    const { data, error } = await supabase.functions.invoke("mandy-realtime", {
+      body: { action: kind, tools: toolsFor(registry?.names() || []), context: getAssistantContext(), client_build: BUILD_ID },
+    });
+    const d = (data ?? {}) as RealtimeGrant & { error?: string; off?: boolean; stale_client?: boolean; text?: string };
+    if (d.off || d.stale_client) {
+      const err = new Error(String(d.text || "Mandy is unavailable.")) as Error & { handled?: boolean };
+      err.handled = true;
+      throw err;
+    }
+    if (error || d.error || !d.session || (kind === "session" && !d.token)) {
+      throw new Error(String(d.error || error?.message || "Voice link unavailable."));
+    }
+    return d;
+  };
+
+  const startRealtime = async (): Promise<boolean> => {
+    setPhase("starting");
+    const session = new MandyRealtimeSession({
+      fetchGrant,
+      execute: (name, args) => executeRef.current(name, args, { waitForQuoteTools: false }),
+      ensureHandler: async (name) => {
+        if (registry?.get(name)) return true;
+        for (let i = 0; i < 40 && !registry?.get(name); i++) await sleep(100);
+        return !!registry?.get(name);
+      },
+      listToolNames: () => registry?.names() || [],
+      onPhase: (p) => { if (openRef.current) setPhase(p); },
+      onLevel: setLevel,
+      onHeard: (text) => {
+        utterRef.current = text;
+        setHeard(text);
+        const voice = applyVoiceConfirm(!!confirmRef.current, text);
+        if (voice === "run") void runConfirmRef.current();
+        else if (voice === "cancel") { setConfirm(null); setReply("Cancelled — nothing was changed."); }
+      },
+      onReply: (text) => { const said = formatReplyText(text); setReply(said); noteMandyTurn(utterRef.current, said); },
+      onChoices: setChoices,
+      onConfirm: setConfirm,
+      onFatal: (message) => {
+        realtimeRef.current?.stop();
+        realtimeRef.current = null;
+        setLive(false);
+        setLevel(0);
+        setReply(message);
+        setPhase("idle");
+      },
+      audioContext: getMandyAudioContext,
+      mic: getMandyMicStream,
+    });
+    realtimeRef.current = session;
+    try {
+      const greeting = muted ? null : (await resolveGreeting()).text;
+      await session.start({ greeting });
+      if (!openRef.current) { session.stop(); realtimeRef.current = null; return true; }
+      setLive(true);
+      voiceModeRef.current = true;
+      return true;
+    } catch (e) {
+      session.stop();
+      if (realtimeRef.current === session) realtimeRef.current = null;
+      const handled = !!(e as { handled?: boolean }).handled;
+      const msg = e instanceof Error ? e.message : "";
+      // Missing function → old pipeline. A real refusal (plan off, stale tab, no key) is shown.
+      if (handled || /not configured|voice link|client secret|unavailable/i.test(msg)) {
+        setReply(msg || "Mandy is unavailable.");
+        setPhase("idle");
+        return true;
+      }
+      return false;
+    }
+  };
+
   const beginSession = async () => {
     unlockMandyVoiceFromTap(); // synchronous, inside the tap (idempotent)
-    if (greetingRef.current || recRef.current || busyRef.current) return; // double-start guard
+    if (greetingRef.current || recRef.current || busyRef.current || realtimeRef.current) return; // double-start guard
     greetingRef.current = true;
     const clearGreet = () => setPhase((p) => (p === "greeting" || p === "starting" ? "idle" : p));
+    const quoteMode = useMandyDock.getState().mode === "quote";
     try {
+      if (!quoteMode && mandyRealtimeEnabled(import.meta.env.VITE_MANDY_REALTIME)) {
+        const ok = await startRealtime();
+        if (ok) return;
+      }
       await greetThenListen({
         greeted: greetedRef,
         isCancelled: () => !openRef.current,
@@ -617,7 +729,7 @@ export default function MandyDock() {
       });
     } finally {
       greetingRef.current = false;
-      clearGreet();
+      if (!realtimeRef.current) clearGreet();
     }
   };
 
@@ -625,12 +737,14 @@ export default function MandyDock() {
   // the dock is open and the session is in voice mode.
   useEffect(() => {
     setOnReplyEnded(() => {
+      if (realtimeRef.current) return;
       if (openRef.current && voiceModeRef.current && !recRef.current && !busyRef.current) void startRef.current();
+      else setPhase((p) => (p === "speaking" ? "idle" : p));
     });
     return () => setOnReplyEnded(null);
   }, [setOnReplyEnded]);
 
-  useEffect(() => () => { recRef.current?.cancel(); cancel(); stopSharedAudio(); releaseMandyMic(); }, [cancel]);
+  useEffect(() => () => { recRef.current?.cancel(); realtimeRef.current?.stop(); cancel(); stopSharedAudio(); releaseMandyMic(); }, [cancel]);
   // "Ask Mandy" / ops-panel "Voice": open + greet once + listen.
   const listenRequest = useMandyDock((s) => s.listenRequest);
   const startRef = useRef(startListening);
@@ -640,11 +754,26 @@ export default function MandyDock() {
   useEffect(() => { if (listenRequest && open) void beginRef.current(); }, [listenRequest, open]);
   // Pages (quote-mode card Confirm) ask Mandy to speak a result.
   const speakRequest = useMandyDock((s) => s.speakRequest);
-  useEffect(() => { if (speakRequest && open) { setReply(speakRequest.text); void speak(speakRequest.text); } }, [speakRequest]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (speakRequest && open) {
+      setReply(speakRequest.text);
+      setPhase("speaking");
+      if (realtimeRef.current) realtimeRef.current.speakLine(speakRequest.text);
+      else void speak(speakRequest.text);
+    }
+  }, [speakRequest]); // eslint-disable-line react-hooks/exhaustive-deps
   const mode = useMandyDock((s) => s.mode);
   useEffect(() => {
-    if (open) { if (ttsReady()) void resolveGreeting().then((g) => prefetchGreeting(g.key, g.text)).catch(() => {}); return; }
-    recRef.current?.cancel(); recRef.current = null; cancel(); setPhase("idle");
+    if (open) {
+      const quoteMode = useMandyDock.getState().mode === "quote";
+      if (ttsReady() && (quoteMode || !mandyRealtimeEnabled(import.meta.env.VITE_MANDY_REALTIME))) {
+        void resolveGreeting().then((g) => prefetchGreeting(g.key, g.text)).catch(() => {});
+      }
+      return;
+    }
+    recRef.current?.cancel(); recRef.current = null;
+    realtimeRef.current?.stop(); realtimeRef.current = null;
+    cancel(); setPhase("idle"); setLive(false); setLevel(0);
     stopSharedAudio();
     releaseMandyMic();
     greetedRef.current = false; voiceModeRef.current = false;
@@ -652,83 +781,45 @@ export default function MandyDock() {
 
   if (!user || !open) return null;
 
-  const statusText = phase === "starting" ? "Starting…" : phase === "greeting" ? "Mandy is speaking…" : phase === "listening" ? "Listening… go ahead" : phase === "hearing" ? "Hearing…" : phase === "working" ? "Working…" : "Ready";
-
   return (
-    <div className="fixed bottom-4 right-4 z-[60] w-[300px] sm:w-[340px] rounded-xl border border-border bg-card/95 backdrop-blur-md shadow-lg print:hidden" data-testid="mandy-dock">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
-        <div className="flex items-center gap-2 text-xs">
-          <span className={`inline-flex h-2 w-2 rounded-full ${phase === "listening" ? "bg-destructive animate-pulse" : phase === "idle" ? "bg-primary" : "bg-primary animate-pulse"}`} />
-          <span className="font-medium text-foreground">{assistantCfg.bot_name || "Mandy"}</span>
-          {mode === "quote" && <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">Quote mode</span>}
-          <span className="text-muted-foreground">{statusText}</span>
-          {(phase === "working" || phase === "hearing") && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-        </div>
-        <div className="flex items-center">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setMuted((m) => !m); cancel(); }} aria-label={muted ? "Unmute" : "Mute"}>
-            {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(false)} aria-label="Close Mandy">
-            <X className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-2 px-3 py-2 text-sm">
-        {heard && <p className="text-xs text-muted-foreground">You: “{heard}”</p>}
-        {reply && <p className="text-foreground" data-testid="mandy-reply">{reply}</p>}
-        {!heard && !reply && <p className="text-xs text-muted-foreground">Tap the mic and ask — e.g. “open the last quote”, “add a Samsung 24000 inverter to Main bedroom”.</p>}
-
-        {choices.length > 0 && (
-          <div className="flex flex-wrap gap-1.5" data-testid="mandy-choices">
-            {choices.map((c, i) => (
-              <Button key={i} size="sm" variant="outline" className="h-auto whitespace-normal py-1 text-left text-xs" onClick={() => void pickChoice(c)}>
-                {c.label}
-              </Button>
-            ))}
-          </div>
-        )}
-
-        {confirm && (
-          <div className={confirm.danger ? "rounded-md border-2 border-destructive bg-destructive/15 p-2" : "rounded-md border border-destructive/40 bg-destructive/10 p-2"} data-testid={confirm.danger ? "mandy-danger-card" : undefined}>
-            <p className={confirm.danger ? "text-xs font-semibold text-destructive" : "text-xs text-foreground"}>{confirm.summary}</p>
-            {confirm.lines?.length ? (
-              <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground" data-testid="mandy-plan-lines">
-                {confirm.lines.map((l, i) => <li key={i}>{l}</li>)}
-              </ul>
-            ) : null}
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" variant="destructive" className="h-7 gap-1" onClick={() => void runConfirm()}><Check className="h-3 w-3" /> Confirm</Button>
-              <Button size="sm" variant="outline" className="h-7" onClick={() => { setConfirm(null); setReply("Cancelled — nothing was changed."); }}>Cancel</Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2 border-t border-border px-3 py-2">
-        <span className="relative inline-flex shrink-0">
-          {phase === "listening" && <span className="absolute inset-0 rounded-md bg-destructive/40 animate-ping" aria-hidden />}
-          <Button
-            size="icon"
-            variant={phase === "listening" ? "destructive" : "default"}
-            className="relative h-9 w-9 shrink-0"
-            disabled={phase === "hearing" || phase === "working" || phase === "greeting" || phase === "starting"}
-            onClick={() => {
-              if (phase === "listening") void stopListening();
-              else void beginSession();
-            }}
-            aria-label={phase === "listening" ? "Stop" : "Talk"}
-          >
-            {phase === "listening" ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-          </Button>
-        </span>
-        <form className="flex flex-1 items-center gap-1" onSubmit={(e) => { e.preventDefault(); const v = typed; setTyped(""); voiceModeRef.current = false; void runTurn(v); }}>
-          <Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Type instead…" className="h-9 text-sm" disabled={phase === "working"} data-testid="mandy-input" />
-          <Button type="submit" size="icon" variant="ghost" className="h-9 w-9" disabled={!typed.trim() || phase === "working"} aria-label="Send">
-            <Send className="h-4 w-4" />
-          </Button>
-        </form>
-      </div>
-    </div>
+    <MandyDockView
+      botName={assistantCfg.bot_name || "Mandy"}
+      mode={mode}
+      phase={phase}
+      level={level}
+      heard={heard}
+      reply={reply}
+      choices={choices}
+      confirm={confirm}
+      typed={typed}
+      muted={muted}
+      live={live}
+      onTyped={setTyped}
+      onClose={() => setOpen(false)}
+      onToggleMute={() => { setMuted((m) => !m); cancel(); realtimeRef.current?.quiet(); }}
+      onMic={() => {
+        if (realtimeRef.current) {
+          realtimeRef.current.stop();
+          realtimeRef.current = null;
+          setLive(false);
+          setLevel(0);
+          setPhase("idle");
+          return;
+        }
+        if (phase === "listening") void stopListening();
+        else void beginSession();
+      }}
+      onSend={() => {
+        const v = typed;
+        setTyped("");
+        if (!v.trim()) return;
+        if (realtimeRef.current) { realtimeRef.current.sendUserText(v); return; }
+        voiceModeRef.current = false;
+        void runTurn(v);
+      }}
+      onChoice={(c) => void pickChoice(c)}
+      onConfirm={() => void runConfirm()}
+      onCancelConfirm={() => { setConfirm(null); setReply("Cancelled — nothing was changed."); }}
+    />
   );
 }
