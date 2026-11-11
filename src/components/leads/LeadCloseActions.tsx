@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,11 @@ const rpc = (fn: string, args: Record<string, unknown>) => (supabase.rpc as any)
 export const V8_PRIMARY = "bg-[#1590D6] text-white hover:bg-[#127FBF] font-semibold";
 export const V8_OUTLINE = "border-[#D6E4EF] bg-white text-[#0F2A44] hover:bg-[#EEF6FC] hover:text-[#0F2A44]";
 
-export default function LeadCloseActions({ lead, compact, onDone, closeOnly, closeLabel }: { lead: any; compact?: boolean; onDone?: () => void; closeOnly?: boolean; closeLabel?: string }) {
+export default function LeadCloseActions({ lead, compact, onDone, closeOnly, closeLabel, forceOpen, hideTrigger, onForceClose }: {
+  lead: any; compact?: boolean; onDone?: () => void; closeOnly?: boolean; closeLabel?: string;
+  /** Open the close dialog from a menu. The menu owns the trigger. */
+  forceOpen?: boolean; hideTrigger?: boolean; onForceClose?: () => void;
+}) {
   const { isMain } = useIsMainCompany();
   const qc = useQueryClient();
   const canQ = useQuery({
@@ -35,13 +39,25 @@ export default function LeadCloseActions({ lead, compact, onDone, closeOnly, clo
     queryFn: async () => (await rpc("lead_lost_allowed", { p_lead: lead.id })).data === true,
   });
   const lostOk = lostQ.data === true;
-  if (!lead?.id || !staff) return null;
+  const open = (m: "dismiss" | "close") => { setMode(m); setOutcome("not_real_job"); setReason(""); setNote(""); };
+  useEffect(() => { if (forceOpen) open("close"); }, [forceOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!lead?.id) return null;
+  if (!staff && !forceOpen) return null;
+  if (!staff && forceOpen && !canQ.isLoading) {
+    return (
+      <Dialog open onOpenChange={(o) => { if (!o) onForceClose?.(); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Close lead</DialogTitle></DialogHeader>
+          <p className="text-sm">You can't close this lead.</p>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   const refresh = () => {
     ["lead-inbox", "sales-heartbeat", "leads", "lead", "lead-quote-followups"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
     onDone?.();
   };
-  const open = (m: "dismiss" | "close") => { setMode(m); setOutcome("not_real_job"); setReason(""); setNote(""); };
   const submit = async () => {
     const r = mode === "dismiss" && DISMISS_EXAMPLES.includes(reason) && note.trim() ? `${reason} – ${note.trim()}` : reason;
     setBusy(true);
@@ -51,7 +67,7 @@ export default function LeadCloseActions({ lead, compact, onDone, closeOnly, clo
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     toast.success(mode === "dismiss" ? "Lead dismissed" : outcome === "lost" ? "Lead closed · logged for learning" : "Lead closed · kept for follow-up");
-    setMode(null); refresh();
+    setMode(null); refresh(); onForceClose?.();
   };
   const restore = async () => {
     const { error } = await rpc("restore_lead", { p_lead: lead.id });
@@ -75,11 +91,11 @@ export default function LeadCloseActions({ lead, compact, onDone, closeOnly, clo
 
   return (
     <>
-      <div className={cn("flex flex-wrap gap-2", compact && "gap-1.5")} data-testid="lead-close-actions">
+      <div className={cn("flex flex-wrap gap-2", compact && "gap-1.5", hideTrigger && "hidden")} data-testid="lead-close-actions">
         {isMain && !closeOnly && <Button size={compact ? "sm" : "default"} variant="outline" className={V8_OUTLINE} onClick={() => open("dismiss")} data-testid="lead-dismiss">Dismiss</Button>}
         <Button size={compact ? "sm" : "default"} variant="outline" className={V8_OUTLINE} onClick={() => open("close")} data-testid="lead-close">{closeLabel ?? "Close lead"}</Button>
       </div>
-      <Dialog open={!!mode} onOpenChange={(o) => !o && setMode(null)}>
+      <Dialog open={!!mode} onOpenChange={(o) => { if (!o) { setMode(null); onForceClose?.(); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-[#0F2A44]">{mode === "dismiss" ? "Dismiss lead" : "Close lead"}</DialogTitle>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarPlus, Pencil, RotateCcw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useDispatchTechnicians } from "@/hooks/useDispatchTechnicians";
+import TechPickerMessage from "@/components/jobs/TechPickerMessage";
 import { JobVisitsCardView, VisitsEditor, useJobVisits } from "@/components/jobs/JobVisits";
 import {
   RETURN_REASONS, returnVisitDraft, returnVisitNote, sortVisits, visitsChanged, visitsError, visitsPayload,
@@ -27,14 +29,7 @@ export function VisitsSheet({ open, onOpenChange, visits, perms, mode, companyId
   const [reason, setReason] = useState<ReturnReason | "">("");
   const [other, setOther] = useState("");
   const [busy, setBusy] = useState(false);
-  const techs = useQuery({
-    queryKey: ["dispatchable-techs", companyId], enabled: open && perms.admin && !!companyId,
-    queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("dispatchable_technicians", { _company_id: companyId });
-      if (error) throw error;
-      return ((data ?? []) as any[]).map((t) => ({ id: (t.id ?? t.profile_id) as string, name: (t.full_name ?? t.name ?? "Technician") as string }));
-    },
-  });
+  const techs = useDispatchTechnicians(companyId, open && perms.admin);
   // The return visit is the one unsaved row we added; its note follows the reason picker.
   const final = mode === "return"
     ? rows.map((v, i) => (i === rows.length - 1 && !v.id ? { ...v, note: returnVisitNote(reason, other) } : v))
@@ -67,7 +62,7 @@ export function VisitsSheet({ open, onOpenChange, visits, perms, mode, companyId
           </div>
         )}
         <VisitsEditor visits={final} onChange={setRows} admin={perms.admin} canAdd={perms.admin || perms.rep} canNote={(perms.admin || perms.rep) && mode === "edit"}
-          techs={techs.data ?? []} today={todayJhb()} />
+          techs={techs.phase === "ready" ? (techs.data ?? []) : []} techPhase={perms.admin ? techs.phase : "ready"} onRetryTechs={() => { void techs.refetch(); }} today={todayJhb()} />
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="min-h-11 flex-1" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button className="min-h-11 flex-1" disabled={busy} onClick={submit} data-testid="visits-save">{busy ? "Saving…" : "Save"}</Button>
@@ -94,10 +89,13 @@ export function VisitActions({ count, canEdit, onEdit, onReturn }: { count: numb
 }
 
 /** Sales booking (lead, no job yet): its visits are job_schedules rows on the lead. */
-export default function BookingVisitsCard({ leadId, perms, companyId, seed, onSaved }: {
+export default function BookingVisitsCard({ leadId, perms, companyId, seed, onSaved, returnToken = 0 }: {
   leadId: string; perms: VisitPerms; companyId?: string | null; seed?: { date: string | null; time: string | null }; onSaved?: () => void;
+  /** Bumps when More → Return visit is chosen. */
+  returnToken?: number;
 }) {
   const [sheet, setSheet] = useState<null | "edit" | "return">(null);
+  useEffect(() => { if (returnToken) setSheet("return"); }, [returnToken]);
   const q = useQuery({
     queryKey: ["booking-visits", leadId],
     queryFn: async () => {

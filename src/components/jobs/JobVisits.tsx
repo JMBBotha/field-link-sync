@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TimeInput24 } from "@/components/ui/time-input-24";
 import { hoursLabel, nextVisit, sortVisits, totalVisitMinutes, visitDayLabel, visitMinutes, type JobVisit } from "@/lib/jobVisits";
+import TechPickerMessage from "@/components/jobs/TechPickerMessage";
+import type { TechPickerPhase } from "@/lib/techPicker";
 
 export async function loadJobVisits(jobId: string): Promise<JobVisit[]> {
   const { data, error } = await (supabase.rpc as any)("job_visits", { p_job: jobId });
@@ -52,10 +54,13 @@ export default function JobVisitsCard({ jobId }: { jobId: string }) {
 }
 
 /** Sheet editor. Admin: add / remove / tech / note. Rep: date + times only. */
-export function VisitsEditor({ visits, onChange, admin, techs, today, canAdd = admin, canNote = admin }: {
+export function VisitsEditor({ visits, onChange, admin, techs, today, canAdd = admin, canNote = admin, techPhase = "ready", onRetryTechs }: {
   visits: JobVisit[]; onChange: (v: JobVisit[]) => void; admin: boolean; techs: { id: string; name: string }[]; today: string;
   /** Client's rep may add visits and write notes (Johan 1 Nov); only admins remove saved visits or pick techs. */
   canAdd?: boolean; canNote?: boolean;
+  /** loading and error are not an empty roster. */
+  techPhase?: TechPickerPhase;
+  onRetryTechs?: () => void;
 }) {
   const set = (i: number, patch: Partial<JobVisit>) => onChange(visits.map((v, j) => (j === i ? { ...v, ...patch } : v)));
   return (
@@ -84,11 +89,16 @@ export function VisitsEditor({ visits, onChange, admin, techs, today, canAdd = a
           </div>
           {(admin || canNote) && (
             <div className="grid gap-2 md:grid-cols-2">
-              {admin && <select aria-label={`Day ${i + 1} technician`} data-testid="visit-tech" className="w-full min-h-[40px] rounded-md border bg-background px-2 text-sm" value={v.tech ?? ""} onChange={(e) => set(i, { tech: e.target.value || null })}>
+              {admin && (techPhase === "loading" || techPhase === "error" ? (
+                <TechPickerMessage phase={techPhase} onRetry={onRetryTechs} />
+              ) : (
+              <select aria-label={`Day ${i + 1} technician`} data-testid="visit-tech" className="w-full min-h-[40px] rounded-md border bg-background px-2 text-sm" value={v.tech ?? ""} onChange={(e) => set(i, { tech: e.target.value || null })}>
                 <option value="">Job's technician</option>
                 {techs.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 {v.tech && !techs.some((t) => t.id === v.tech) && <option value={v.tech}>{v.tech_name?.trim() || "Current tech"}</option>}
-              </select>}
+              </select>
+              ))}
+              {admin && techPhase === "empty" && <TechPickerMessage phase="empty" />}
               <Input aria-label={`Day ${i + 1} note`} placeholder="Visit note (optional)" maxLength={500} value={v.note ?? ""} onChange={(e) => set(i, { note: e.target.value })} />
             </div>
           )}

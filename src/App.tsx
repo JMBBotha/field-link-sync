@@ -27,6 +27,7 @@ import ClientDetailsHarness from "./pages/ClientDetailsHarness";
 import AdminHomePreviewFixture from "./pages/AdminHomePreviewFixture";
 import CashHealthPreviewFixture from "./pages/CashHealthPreviewFixture";
 import BookJobHarness from "./pages/BookJobHarness";
+import BookingDetailHarness from "./pages/BookingDetailHarness";
 import TeamNoLoginHarness from "./pages/TeamNoLoginHarness";
 import PriceListSheetHarness from "./pages/PriceListSheetHarness";
 import Auth from "./pages/Auth";
@@ -204,6 +205,9 @@ const App = () => (
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/book-a-job" element={<BookJobHarness />} />
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev/booking-detail" element={<BookingDetailHarness />} />
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/team-no-login" element={<TeamNoLoginHarness />} />
