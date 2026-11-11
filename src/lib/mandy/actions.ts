@@ -7,6 +7,7 @@
  * session. No handler here writes prices — pricing lives in src/lib/pricing.ts.
  */
 import { WORK_ACTION_SCHEMAS } from "./workActions";
+import { DAY_ACTION_SCHEMAS, DAY_WRITES } from "./dayVoice";
 
 export interface MandyChoice {
   label: string;
@@ -30,7 +31,7 @@ export interface MandyResult {
 export type MandyHandler = (args: Record<string, any>) => Promise<MandyResult>;
 
 /** Never executed on voice alone — always an on-screen Confirm card. */
-export const CONFIRM_REQUIRED = new Set(["remove_item", "remove_note", "remove_labour", "clear_quote", "run_plan", "send_quote", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote", "create_deposit_invoice", "record_payment", "whatsapp_invoice", "create_purchase_orders", "start_job", "request_payment_followup", "send_approved_followup"]);
+export const CONFIRM_REQUIRED = new Set(["remove_item", "remove_note", "remove_labour", "clear_quote", "run_plan", "send_quote", "email_quote", "whatsapp_quote", "delete_quote", "accept_quote", "create_deposit_invoice", "record_payment", "whatsapp_invoice", "create_purchase_orders", "start_job", "request_payment_followup", "send_approved_followup", ...DAY_WRITES]);
 
 const str = (description: string) => ({ type: "string", description });
 const num = (description: string) => ({ type: "number", description });
@@ -219,8 +220,8 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
 
 export function toolsFor(names: string[]) {
   return names
-    .filter((n) => MANDY_ACTION_SCHEMAS[n] || WORK_ACTION_SCHEMAS[n])
-    .map((n) => ({ type: "function", function: { name: n, ...(MANDY_ACTION_SCHEMAS[n] || WORK_ACTION_SCHEMAS[n]) } }));
+    .filter((n) => MANDY_ACTION_SCHEMAS[n] || WORK_ACTION_SCHEMAS[n] || DAY_ACTION_SCHEMAS[n])
+    .map((n) => ({ type: "function", function: { name: n, ...(MANDY_ACTION_SCHEMAS[n] || WORK_ACTION_SCHEMAS[n] || DAY_ACTION_SCHEMAS[n]) } }));
 }
 
 export const fmtRand = (n: number) =>

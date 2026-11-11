@@ -124,3 +124,7 @@ verify_jwt = true
 # The phone assistant does not call this.
 [functions.mandy-realtime]
 verify_jwt = false
+
+# Dashboard Mandy hand-off. requireUser checks the JWT. The phone assistant does not call this.
+[functions.mandy-handoff]
+verify_jwt = false
