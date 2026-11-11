@@ -21,7 +21,7 @@ function form(over: Partial<Parameters<typeof BookJobForm>[0]> = {}) {
       projects={[{ id: "p", name: "Avec" }]}
       projectId={over.projectId || ""}
       onProject={() => {}}
-      houses={[{ id: "h", house_no: "12" }]}
+      houses={over.houses || [{ id: "h", house_no: "12" }]}
       houseId={over.houseId || ""}
       onHouse={() => {}}
       clientLabel={over.clientLabel}
@@ -127,5 +127,26 @@ describe("Book a job surfaces", () => {
     expect(read("src/components/jobs/LoggedWorkPanel.tsx")).toContain("WorkIntent");
     expect(read("src/components/jobs/LoggedWorkPanel.tsx")).toContain("PastVisitFields");
     expect(read("src/pages/admin/AdminJobDetailPage.tsx")).toContain("AdminBackfillPanel");
+  });
+
+  it("lists project houses in natural numeric order", () => {
+    form({
+      where: "project",
+      projectId: "p",
+      houses: [
+        { id: "h54", house_no: "54" },
+        { id: "h55", house_no: "55" },
+        { id: "h4", house_no: "4" },
+        { id: "h8", house_no: "8" },
+        { id: "h21", house_no: "21" },
+        { id: "h22", house_no: "22" },
+        { id: "h1", house_no: "1" },
+        { id: "h6", house_no: "6" },
+      ],
+    });
+    const house = screen.getByTestId("book-house");
+    expect([...house.querySelectorAll("option")].map((o) => o.textContent)).toEqual([
+      "Choose house…", "House 1", "House 4", "House 6", "House 8", "House 21", "House 22", "House 54", "House 55",
+    ]);
   });
 });
