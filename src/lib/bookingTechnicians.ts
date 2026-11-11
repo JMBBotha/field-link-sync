@@ -42,3 +42,36 @@ export function bookingTechnicians(
   out.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   return out;
 }
+
+export type BookingTechListState = "hidden" | "loading" | "error" | "empty" | "ready";
+
+/**
+ * What the past-work technician menu should show.
+ * A disabled or in-flight query has no rows yet — that is loading, not an empty company.
+ * A missing company, or a failed read, is an error the user can retry. A finished read
+ * with nobody left after the company / archive / lane filters is the only empty state.
+ */
+export function bookingTechListState(args: {
+  companyId: string | null | undefined;
+  companyLoading: boolean;
+  companyError: boolean;
+  accessLoading: boolean;
+  canLog: boolean;
+  /** The menu asked for the list. False while the dialog is shut or the person cannot log. */
+  queryEnabled: boolean;
+  isPending: boolean;
+  isFetching: boolean;
+  isError: boolean;
+  count: number;
+}): BookingTechListState {
+  if (!args.canLog && !args.accessLoading) return "hidden";
+  if (args.accessLoading || args.companyLoading) return "loading";
+  if (!args.companyId || args.companyError) return "error";
+  if ((EXCLUDED_TECH_COMPANY_IDS as readonly string[]).includes(args.companyId)) return "empty";
+  // Pending covers the first paint, before the request's fetchStatus flips. A disabled
+  // query is also pending, so this only applies once the menu has actually asked.
+  if (args.queryEnabled && (args.isPending || (args.isFetching && args.count === 0))) return "loading";
+  if (args.isError) return "error";
+  if (args.count === 0) return "empty";
+  return "ready";
+}
