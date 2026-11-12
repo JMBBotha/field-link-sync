@@ -4,6 +4,7 @@ import type { MaterialCheck, MaterialLine, StockLevel, StockOrder } from "@/lib/
 import { checkSummary } from "@/lib/materialCheck";
 import type { CashSlice } from "@/lib/roleHome";
 import { ADMIN_HOME_ROUTES, SALES_HOME_ROUTES } from "@/lib/roleHome";
+import type { SalesHomeTile } from "@/lib/salesHomeTiles";
 import type { YardHomeModel } from "@/lib/yardView";
 import { CashPie, Chip, Glass, IntroCard, InvoiceBanner, RowLink } from "./chrome";
 import { YardHome, YardMoneyStrip, YardWork } from "./YardHome";
@@ -298,12 +299,13 @@ function SalesEmpty({ text, href, action, testId }: { text: string; href: string
 }
 
 export function SalesHomeScreen({
-  eyebrow, title, appointments, booked,
+  eyebrow, title, appointments, booked, tiles,
 }: {
   eyebrow: string;
   title: string;
   appointments: HomeAppointment[];
   booked: BookedJob[];
+  tiles: SalesHomeTile[];
 }) {
   return (
     <div data-testid="role-sales-home" className="rh-sales">
@@ -311,6 +313,17 @@ export function SalesHomeScreen({
         <p className="rh-eyebrow">{eyebrow}</p>
         <h1>{title}</h1>
       </header>
+      <div className="rh-sales-kpis" data-testid="sales-kpis">
+        {tiles.map((tile) => (
+          <Glass key={tile.key} className={tile.lead ? "rh-card rh-sales-kpi is-lead" : "rh-card rh-sales-kpi"} testId={`sales-kpi-${tile.key}`}>
+            <Link to={tile.href} className="rh-sales-kpi-link">
+              <span className="rh-sales-kpi-label">{tile.label}</span>
+              <span className="rh-sales-kpi-value">{tile.value}</span>
+              <span className="rh-muted">{tile.hint}</span>
+            </Link>
+          </Glass>
+        ))}
+      </div>
       <div className="rh-sales-pair">
         <Glass testId="sales-appointments">
           <div className="rh-head"><h2>Today’s appointments</h2><span className="rh-count">{appointments.length}</span></div>

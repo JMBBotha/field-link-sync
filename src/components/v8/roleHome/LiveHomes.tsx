@@ -3,8 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { HowCountedSheet, useAdminHomeFigures } from "@/components/v8/AdminHomeFigures";
+import { usePipelineData } from "@/components/jobs/PipelineBoard";
 import { parseMyJobs } from "@/components/jobs/SalesMyJobs";
+import { useAuth } from "@/contexts/AuthContext";
 import { useMyAppointments } from "@/hooks/useMyAppointments";
+import { useNextSteps } from "@/hooks/useNextSteps";
 import { useSignedInIdentity } from "@/hooks/useSignedInIdentity";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { appointmentLinks } from "@/lib/appointments";
@@ -16,6 +19,8 @@ import { countsFor, useAdminRoleData, useMaterialCheck } from "./data";
 import { SalesJobScreen } from "./screens";
 import RoleMapFrame from "./RoleMapFrame";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
+import { commissionThisMonth, draftsToSend, followUpsDue, jobsBeingDoneToday, salesHomeTiles } from "@/lib/salesHomeTiles";
+import type { SalesTracker } from "@/lib/salesTracker";
 import { formatRand } from "@/utils/formatRand";
 import { useYardHome } from "./yardData";
 import { AdminHomeScreen, SalesHomeScreen, YardViewScreen } from "./screens";
@@ -93,6 +98,7 @@ const BOOKED_STAGE: Record<string, string> = {
 
 export function SalesLiveHome() {
   const today = todayInJohannesburg();
+  const { user } = useAuth();
   const appts = useMyAppointments(14);
   const booked = useQuery({
     queryKey: ["sales-my-jobs"],
@@ -102,9 +108,29 @@ export function SalesLiveHome() {
       return parseMyJobs(data);
     },
   });
+  const tracker = useQuery({
+    queryKey: ["sales-tracker"],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("get_sales_tracker", {});
+      if (error) throw error;
+      return (data ?? null) as SalesTracker | null;
+    },
+  });
+  const steps = useNextSteps(null);
+  const pipe = usePipelineData();
   const identity = useSignedInIdentity();
   const now = new Date();
-  const appointments = (appts.data || []).filter((a) => a.scheduled_date === today).map((a) => {
+  const todayAppointments = (appts.data || []).filter((a) => a.scheduled_date === today);
+  const month = tracker.isSuccess ? commissionThisMonth(tracker.data?.rows ?? [], now) : null;
+  const tiles = salesHomeTiles({
+    earned: month ? month.earned : null,
+    pending: month ? month.pending : null,
+    followUps: steps.loading || steps.error ? null : followUpsDue(steps.rows),
+    jobsToday: appts.isSuccess && booked.isSuccess ? jobsBeingDoneToday(todayAppointments, booked.data || [], today) : null,
+    drafts: pipe.isSuccess ? draftsToSend(pipe.data?.quotes ?? [], user?.id ?? null) : null,
+  });
+  const appointments = todayAppointments.map((a) => {
     const visit = isFirstQuoteVisit({ serviceType: a.service_type, source: a.source });
     const links = appointmentLinks(a);
     const area = areaFromAddress(a.address);
@@ -142,6 +168,7 @@ export function SalesLiveHome() {
           ? (BOOKED_STAGE[j.stage] || "Assigned")
           : (j.stage && j.stage !== "assigned" ? BOOKED_STAGE[j.stage] : undefined),
       }))}
+      tiles={tiles}
     />
   );
 }

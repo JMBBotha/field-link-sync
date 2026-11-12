@@ -2,6 +2,7 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { countAdminHome } from "@/lib/adminHomeCount";
 import { ADMIN_HOME_ROUTES, cashProjectionSlices } from "@/lib/roleHome";
+import { salesHomeTiles } from "@/lib/salesHomeTiles";
 import { buildMaterialCheck, type SourceLine, type StockHand } from "@/lib/materialCheck";
 import { buildYardHome, type YardJob } from "@/lib/yardView";
 import RoleMapFrame from "@/components/v8/roleHome/RoleMapFrame";
@@ -119,10 +120,13 @@ const SALES_BOOKED: BookedJob[] = [
   { id: "j4", href: "/dev/role-homes?view=sales-job", when: "Fri", type: "Service", client: "Demo Client 7", area: "Rondebosch", tech: null },
 ];
 
-function SalesBoard({ eyebrow, title, appointments, booked }: { eyebrow: string; title: string; appointments: HomeAppointment[]; booked: BookedJob[] }) {
+const SALES_TILES_EMPTY = salesHomeTiles({ earned: 0, pending: 0, followUps: 0, jobsToday: 0, drafts: 0 });
+const SALES_TILES_DEMO = salesHomeTiles({ earned: 1840, pending: 620, followUps: 3, jobsToday: 2, drafts: 4 });
+
+function SalesBoard({ eyebrow, title, appointments, booked, tiles }: { eyebrow: string; title: string; appointments: HomeAppointment[]; booked: BookedJob[]; tiles: typeof SALES_TILES_DEMO }) {
   return (
     <>
-      <SalesHomeScreen eyebrow={eyebrow} title={title} appointments={appointments} booked={booked} />
+      <SalesHomeScreen eyebrow={eyebrow} title={title} appointments={appointments} booked={booked} tiles={tiles} />
       <details className="rh-sales-earlier" data-testid="harness-earlier-detail">
         <summary className="rh-sales-earlier-sum">Earlier home detail</summary>
       </details>
@@ -172,9 +176,9 @@ export default function RoleHomeHarness() {
       <TechJobScreen type="Service" client="Demo Client 4" area="Observatory" when="08:30" duration="About 1 hour" phone="021 000 0001 · demo number" address="1 Demo Road, Observatory" navHref="#navigate" check={service} description="Repair visit. Consumables such as refrigerant. No new-unit pack." onLogParts={() => undefined} onComplete={() => undefined} />
     );
   } else if (view === "sales-home" || view === "sales-tablet") {
-    body = <SalesBoard eyebrow="SATURDAY, 07 NOV" title="Good morning, Demo" appointments={SALES_APPOINTMENTS} booked={SALES_BOOKED} />;
+    body = <SalesBoard eyebrow="SATURDAY, 07 NOV" title="Good morning, Demo" appointments={SALES_APPOINTMENTS} booked={SALES_BOOKED} tiles={SALES_TILES_DEMO} />;
   } else if (view === "sales-empty" || view === "sales-empty-tablet") {
-    body = <SalesBoard eyebrow="WEDNESDAY, 11 NOV" title="Good evening, Demo" appointments={[]} booked={[]} />;
+    body = <SalesBoard eyebrow="WEDNESDAY, 11 NOV" title="Good evening, Demo" appointments={[]} booked={[]} tiles={SALES_TILES_EMPTY} />;
   } else if (view === "sales-job") {
     title = "Job";
     body = (
@@ -227,7 +231,7 @@ export default function RoleHomeHarness() {
       <div style={{ display: "flex", minHeight: "calc(100vh - 4.5rem)" }}>
         {tablet && <Side items={view.startsWith("admin") ? ADMIN_NAV : view.startsWith("tech") ? ["Today", "Schedule", "Earnings"] : SALES_NAV} />}
         <div style={{ flex: 1, minWidth: 0, maxWidth: phone ? 430 : undefined, margin: phone ? "0 auto" : undefined }}>
-          <RoleMapFrame map={sp.get("map") === "1"}>{body}</RoleMapFrame>
+          <RoleMapFrame map={sp.get("map") === "1" || salesBoard}>{body}</RoleMapFrame>
         </div>
       </div>
     </div>

@@ -54,10 +54,13 @@ export const ADMIN_HOME_ROUTES = {
   job: (id: string) => `/admin/jobs/${id}`,
 } as const;
 
-/** Sales Home empty-state actions. Same routes as the sales side menu. */
+/** Sales Home actions. Same routes the sales menu and quote list already understand. */
 export const SALES_HOME_ROUTES = {
   schedule: "/admin/schedule",
   pipeline: "/admin/jobs?tab=pipeline",
+  commission: "/admin/my-commission",
+  followUps: "/admin/quotes?status=sent,viewed&type=estimate",
+  drafts: "/admin/quotes?status=draft",
 } as const;
 
 /** SATURDAY, 07 NOV — Johannesburg calendar day. */
