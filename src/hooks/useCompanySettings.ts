@@ -14,8 +14,6 @@ export interface CompanySettings {
   default_install_labour_hours: number;
   default_deposit_percentage: number;
   default_payment_terms_days: number;
-  payfast_merchant_id: string;
-  payfast_merchant_key: string;
   banking_details: {
     bank_name?: string;
     account_name?: string;
@@ -35,8 +33,6 @@ const defaultSettings: CompanySettings = {
   default_install_labour_hours: 3.5,
   default_deposit_percentage: 70,
   default_payment_terms_days: 30,
-  payfast_merchant_id: "",
-  payfast_merchant_key: "",
   banking_details: {},
 };
 
@@ -75,8 +71,6 @@ export const useCompanySettings = () => {
         default_install_labour_hours: Number(data.default_install_labour_hours) || 3.5,
         default_deposit_percentage: Number(data.default_deposit_percentage) || 70,
         default_payment_terms_days: data.default_payment_terms_days ?? 30,
-        payfast_merchant_id: data.payfast_merchant_id || "",
-        payfast_merchant_key: data.payfast_merchant_key || "",
         banking_details: (data.banking_details as CompanySettings["banking_details"]) || {},
       } as CompanySettings;
     },
@@ -98,8 +92,6 @@ export const useCompanySettings = () => {
             default_install_labour_hours: updated.default_install_labour_hours,
             default_deposit_percentage: updated.default_deposit_percentage,
             default_payment_terms_days: updated.default_payment_terms_days,
-            payfast_merchant_id: updated.payfast_merchant_id,
-            payfast_merchant_key: updated.payfast_merchant_key,
             banking_details: updated.banking_details as unknown as Json,
             updated_at: new Date().toISOString(),
           })
@@ -116,8 +108,6 @@ export const useCompanySettings = () => {
           default_install_labour_hours: updated.default_install_labour_hours,
           default_deposit_percentage: updated.default_deposit_percentage,
           default_payment_terms_days: updated.default_payment_terms_days,
-          payfast_merchant_id: updated.payfast_merchant_id,
-          payfast_merchant_key: updated.payfast_merchant_key,
           banking_details: updated.banking_details as unknown as Json,
         });
         if (error) throw error;

@@ -1,6 +1,6 @@
 // Sales "Next steps" (Johan 31 Oct 2026). Rows come from the sales_next_steps() RPC; this file holds labels and grouping only.
 export type NextStepRule =
-  | "new_lead" | "no_quote" | "followup" | "cold" | "deposit_invoice" | "book_install" | "assign_tech" | "final_invoice" | "final_unpaid";
+  | "new_lead" | "no_quote" | "followup" | "cold" | "deposit_invoice" | "accepted_unbooked" | "book_install" | "assign_tech" | "final_invoice" | "final_unpaid";
 
 export type NextStep = {
   rule: NextStepRule; prio: number; entity_type: string; entity_id: string; title: string; detail: string | null;
@@ -53,6 +53,7 @@ export const RULES: Record<NextStepRule, { chip: (n: number) => string; action: 
   followup: { chip: (n) => `${n} follow-up${n === 1 ? "" : "s"}`, action: "Follow up", tone: "orange" },
   cold: { chip: (n) => `${n} cold quote${n === 1 ? "" : "s"}`, action: "Follow up now", tone: "orange" },
   deposit_invoice: { chip: (n) => `${n} deposit invoice${n === 1 ? "" : "s"}`, action: "Open deposit invoice", tone: "orange" },
+  accepted_unbooked: { chip: (n) => `${n} accepted, no job booked`, action: "Book the job", tone: "orange" },
   book_install: { chip: (n) => `${n} install date${n === 1 ? "" : "s"}`, action: "Book install", tone: "blue" },
   assign_tech: { chip: (n) => `${n} need${n === 1 ? "s" : ""} a technician`, action: "Assign technician", tone: "blue" },
   final_invoice: { chip: (n) => `${n} final invoice${n === 1 ? "" : "s"}`, action: "Final invoice", tone: "blue" },
@@ -93,6 +94,7 @@ export const URGENCY: Record<NextStepRule, { orange: number; red: number; note: 
   followup: { orange: 5 * D, red: 7 * D, note: "sent 0-5 days green, 5-7 orange, 7+ red" },
   cold: { orange: 0, red: 20 * D, note: "Cold is orange; red in the last 10 days before archive (50+ days)" },
   deposit_invoice: { orange: 4 * H, red: 1 * D, note: "accepted 0-4 h green, 4-24 h orange, 1+ day red" },
+  accepted_unbooked: { orange: 24 * H, red: 72 * H, note: "the row appears after 24 weekday hours; red once the weekend has passed" },
   book_install: { orange: 2 * D, red: 3 * D, note: "deposit paid 0-2 days green, 2-3 orange, 3+ red" },
   assign_tech: { orange: -3 * D, red: -1 * D, note: "install 3+ days away green, 1-3 days orange, under 1 day red" },
   final_invoice: { orange: 1 * D, red: 2 * D, note: "completion day green, day 1 orange, 2+ days red" },

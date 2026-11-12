@@ -9,7 +9,7 @@ import type { DueRow } from "@/lib/invoiceDue";
 
 const r = (n: number | null) => (n == null ? "" : "R " + Math.round(n).toLocaleString("en-ZA").replace(/,/g, " "));
 /** Johan 2 Nov 17:51: sales first, then deposit, then booking, then final payment. */
-const STAGE: Record<NextStepRule, number> = { new_lead: 0, no_quote: 0, followup: 0, cold: 0, deposit_invoice: 1, book_install: 2, assign_tech: 2, final_invoice: 3, final_unpaid: 3 };
+const STAGE: Record<NextStepRule, number> = { new_lead: 0, no_quote: 0, followup: 0, cold: 0, deposit_invoice: 1, accepted_unbooked: 2, book_install: 2, assign_tech: 2, final_invoice: 3, final_unpaid: 3 };
 const STAGE_LABEL = ["Sales", "Deposit", "Booking", "Final payment"];
 const URG = { red: 0, orange: 1, green: 2 } as const;
 const DOT = { green: "bg-[#22C55E]", orange: "bg-[#F59E0B]", red: "bg-[#EF4444]" };

@@ -140,6 +140,8 @@ async function persistOnce(
         : null;
     return {
       id: newIdOf.get(it.id)!,
+      // Previous row id. replace_quote_from_builder remaps install.unit_item_id from it.
+      old_id: it.id,
       quote_id: quoteId,
       area_id: it.area_id ? areaIdMap.get(it.area_id) ?? null : null,
       parent_item_id: null,

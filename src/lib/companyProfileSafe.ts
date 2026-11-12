@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Money-free company profile (P9). Techs (field-agent only) can no longer read
- * company_settings (rates, banking, PayFast keys); this server RPC returns only
+ * company_settings (rates and banking); this server RPC returns only
  * what they may see: name, VAT no., addresses, logo, deposit % and terms.
  */
 export interface CompanyProfileSafe {

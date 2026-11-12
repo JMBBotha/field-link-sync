@@ -18,12 +18,10 @@ import { Loader2, CheckCircle, Phone, MessageSquare } from "lucide-react";
 import ClientDepositActions from "@/components/client/ClientDepositActions";
 import { useToast } from "@/hooks/use-toast";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
-import PayfastPayButton from "@/components/payments/PayfastPayButton";
 import EstimateDocument, { type EstimateDocLineItem } from "@/components/quoting/EstimateDocument";
 import { lineQtyText, buildClientRollup, type ClientRollupArea } from "@/lib/clientQuoteRollup";
 import SignaturePad from "@/components/jobs/SignaturePad";
 import { fetchQuoteInvoiceByToken, type DepositInvoiceRow } from "@/lib/depositInvoice";
-import { isDepositCleared } from "@/components/shared/DepositPaymentChip";
 import logo from "@/assets/logo.png";
 import logoWhite from "@/assets/brand/logo-white.png";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
@@ -543,19 +541,6 @@ const ClientProposalView = () => {
               </p>
               <div className="flex flex-col items-center gap-3 pt-1">
                 <DepositPaymentChip invoice={depositInvoice} accepted />
-                {/* Online gateway only when one is actually configured for this company (PayFast is not connected). */}
-                {depositInvoice?.id && depositInvoice.gateway_enabled && !isDepositCleared(depositInvoice) && (
-                  <PayfastPayButton
-                    enabled
-                    invoiceId={depositInvoice.id}
-                    invoiceNumber={depositInvoice.invoice_number || "Deposit"}
-                    amount={Number(depositInvoice.deposit_amount ?? depositInvoice.grand_total) || 0}
-                    customerEmail={null}
-                    customerName={quote.accepted_by || "Customer"}
-                    returnUrl={token ? publicQuoteUrl(token) : undefined}
-                    cancelUrl={token ? publicQuoteUrl(token) : undefined}
-                  />
-                )}
                 {token && depositInvoice?.id && (
                   <ClientDepositActions invoice={depositInvoice} payUrl={publicQuoteUrl(token)} banking={company?.banking_details} profile={companyProfile} />
                 )}

@@ -19541,6 +19541,8 @@ export type Database = {
       record_invoice_payment: {
         Args: {
           p_amount: number
+          p_allow_overpay?: boolean
+          p_idempotency_key?: string
           p_invoice_id: string
           p_method: string
           p_payment_date?: string

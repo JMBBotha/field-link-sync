@@ -40,6 +40,19 @@ export const sumSettled = (payments: Array<{ amount: number | string; status?: s
 export const invoiceBalance = (grandTotal: number | string | null | undefined, amountPaid: number) =>
   Math.max(0, Math.round(((Number(grandTotal) || 0) - amountPaid) * 100) / 100);
 
+/**
+ * Same rule as reconcileInvoice and recalc_invoice_status: an invoice is paid
+ * only when settled money covers grand_total. A deposit does not clear it.
+ */
+export function invoiceStatusAfterPayment(grandTotal: number, settledPaid: number, current = ""): string {
+  const total = Number(grandTotal) || 0;
+  const paid = Number(settledPaid) || 0;
+  if (total > 0 && paid + 0.005 >= total) return "paid";
+  if (paid > 0) return "partially_paid";
+  if (current === "paid" || current === "partially_paid") return "sent";
+  return current;
+}
+
 export interface RecordPaymentInput {
   invoiceId: string;
   amount: number;
@@ -47,6 +60,10 @@ export interface RecordPaymentInput {
   reference?: string | null;
   /** YYYY-MM-DD; defaults to today on the server. */
   paymentDate?: string | null;
+  /** Server rejects amount above the outstanding balance unless this is set. */
+  allowOverpay?: boolean;
+  /** Same key on a retry returns the payment already recorded. */
+  idempotencyKey?: string | null;
 }
 
 /**
@@ -63,6 +80,8 @@ export async function recordInvoicePayment(input: RecordPaymentInput): Promise<s
     p_method: input.method,
     p_reference: input.reference || null,
     ...(input.paymentDate ? { p_payment_date: input.paymentDate } : {}),
+    ...(input.allowOverpay ? { p_allow_overpay: true } : {}),
+    ...(input.idempotencyKey ? { p_idempotency_key: input.idempotencyKey } : {}),
   } as any);
   if (error) throw error;
   // Every caller (invoice page, client dialog, Mandy, invoice form) refreshes all money screens via App's listener.
