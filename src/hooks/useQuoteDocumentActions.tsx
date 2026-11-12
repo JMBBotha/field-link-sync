@@ -10,12 +10,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
-import { generateDocumentPdfBlob } from "@/lib/documentPdf";
-import QuotePdfViewer, { isPhoneViewport } from "@/components/quoting/QuotePdfViewer";
+import QuotePdfViewer from "@/components/quoting/QuotePdfViewer";
 import { printPdfBlob } from "@/lib/printPdf";
-import { loadQuoteBrochuresForPdf } from "@/lib/quoteBrochuresForPdf";
-import ClientQuotePdfRoot, { waitForClientPdfRoot, clientBrochureSelector } from "@/components/quoting/ClientQuotePdfRoot";
+import { renderClientQuotePdfBlob } from "@/lib/renderClientQuotePdf";
+import ClientQuotePdfRoot from "@/components/quoting/ClientQuotePdfRoot";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { waitForQuoteWrites } from "@/contexts/QuoteContext";
@@ -143,48 +141,25 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
       // The whole export is capped: if anything stalls, the user gets the "PDF failed" toast
       // instead of a spinner that never ends (Cape Estates Q-2026-0052/0053, 28 Oct).
       await withTimeout((async () => {
-      const { data: q, error } = await supabase.from("quotes").select("*, customers(name, address, email)").eq("id", id).maybeSingle();
-      if (error || !q) throw error || new Error("Quote not found");
-      const c: any = (q as any).customers || {};
-      const items = await buildQuoteLineItems(id, (q as any).visual_sections);
+      // Mount the same off-screen client document the list's combined download uses.
       setClientPdf(true);
-      const extras = await loadQuoteBrochuresForPdf(id);
-      const captureSelector = await waitForClientPdfRoot(id);
-      const pdfOpts = {
-        ...extras,
-        docType: "Quote",
-        docNumber: q.quote_number || "DRAFT",
+      const { blob, quoteNumber } = await renderClientQuotePdfBlob({
+        quoteId: id,
         companyName: settings.company_name || "0800-BE-COOL",
         companyAddress: settings.physical_address,
         vatNumber: settings.vat_number,
-        customerName: c.name || q.customer_name || "Customer",
-        customerAddress: c.address || undefined,
-        customerEmail: c.email || undefined,
-        issueDate: q.created_at,
-        lineItems: items,
-        subtotal: Number(q.subtotal) || 0,
-        taxRate: Number(q.vat_rate) || 0.15,
-        taxAmount: Number(q.vat_amount) || 0,
-        total: Number(q.total) || 0,
-        notes: q.notes || undefined,
-        captureSelector,
-        extraPageSelector: clientBrochureSelector(id),
-        onWarning: (msg: string) => { if (!abandoned) toast({ title: "PDF made with a compromise", description: msg }); },
-      };
+        onWarning: (msg) => { if (!abandoned) toast({ title: "PDF made with a compromise", description: msg }); },
+      });
+      if (abandoned) return;
       if (mode === "print") {
         // Print = the same full PDF (quote + T&C pages), printed from a hidden frame (Johan 2026-10-12).
-        const blob = await generateDocumentPdfBlob(pdfOpts as any);
-        if (abandoned) return;
         logPdfActivity(id, "print");
         printPdfBlob(blob);
       } else {
         // All screens: open the finished PDF in the in-app viewer; its Download/Share buttons fire on a
         // fresh click, so browsers (esp. Safari / the preview frame) don't block the file after the long build.
-        const blob = await generateDocumentPdfBlob(pdfOpts as any);
-        if (abandoned) return;
         logPdfActivity(id, "download");
-        const num = q.quote_number || "DRAFT";
-        setPdfView({ url: URL.createObjectURL(blob), fileName: `Quote-${num}.pdf`, title: `Quote ${num}` });
+        setPdfView({ url: URL.createObjectURL(blob), fileName: `Quote-${quoteNumber}.pdf`, title: `Quote ${quoteNumber}` });
       }
       })(), 120000, "building the PDF");
     } catch (e: any) {

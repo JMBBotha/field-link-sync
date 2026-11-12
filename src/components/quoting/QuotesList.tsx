@@ -18,6 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import SendQuotesTogetherDialog from "@/components/quoting/SendQuotesTogetherDialog";
+import QuotePdfSelectionBar from "@/components/quoting/QuotePdfSelectionBar";
+import { useBulkQuotePdf } from "@/hooks/useBulkQuotePdf";
 import { sendTogetherBlock } from "@/lib/quoteBundle";
 import { useDraftNeeds } from "@/hooks/useDraftNeeds";
 import { DraftNeedsChip } from "@/components/quoting/DraftNeedsChip";
@@ -103,6 +105,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   // Invoicing a quote the client has not accepted: office only (admins + non-sales dispatchers). DB trigger enforces it too.
   const canInvoiceUnaccepted = (roleAdmin || roleDispatcher) && !roleSalesRep;
   const [dupQuote, setDupQuote] = useState<any | null>(null);
+  const bulkPdf = useBulkQuotePdf();
 
   const handleConvertToInvoice = async (quoteId: string) => {
     if (!user?.id) return;
@@ -251,6 +254,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const selectedDrafts = draftDocs.filter((d) => selected.includes(d.id));
   // Send together (Johan 13 Oct 14:58): non-draft quotes of one client, one email.
   const selectedDocs = docs.filter((d) => selected.includes(d.id));
+  const selectedEstimates = selectedDocs.filter((d) => d.kind === "estimate");
   // Red "Needs: …" chip per draft quote (Johan 27 Oct): what's left before it can be sent.
   const draftNeeds = useDraftNeeds(draftDocs.filter((d) => d.kind === "estimate").map((d) => ({ id: d.id, customer_id: d.raw?.customer_id })));
   const unitBriefs = useQuoteUnitBriefs(docs.filter((d) => d.kind === "estimate").map((d) => d.id));
@@ -425,15 +429,27 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
           ))}
         </div>
 
-        {selectedDocs.length >= 2 && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
-            <p className="text-sm text-muted-foreground min-w-0 break-words">
-              {selectedDocs.length} quotes selected{bundleBlock ? ` · ${bundleBlock}` : ""}
-            </p>
-            <Button size="sm" disabled={!!bundleBlock} onClick={() => setBundleOpen(true)} className="bg-[#F7941D] hover:bg-[#e08310] text-white">
-              <Mail className="mr-2 h-4 w-4" /> Send together
-            </Button>
-          </div>
+        {selectedDocs.length >= 1 && (
+          <QuotePdfSelectionBar
+            selectedCount={selectedDocs.length}
+            quoteCount={selectedEstimates.length}
+            proposalNote={selectedDocs.some((d) => d.kind !== "estimate") ? "Proposals are left out of the PDF" : null}
+            bundleBlock={selectedDocs.length >= 2 ? bundleBlock : null}
+            busy={bulkPdf.busy}
+            progress={bulkPdf.progress}
+            problem={bulkPdf.problem}
+            onDownload={() => void bulkPdf.download(selectedEstimates.map((d) => ({
+              id: d.id,
+              ref: d.ref || null,
+              customerName: d.clientName || d.raw?.customer_name || null,
+            })))}
+            onCancel={bulkPdf.cancel}
+            sendTogether={selectedDocs.length >= 2 ? (
+              <Button size="sm" disabled={!!bundleBlock || bulkPdf.busy} onClick={() => setBundleOpen(true)} className="min-h-11 bg-[#F7941D] hover:bg-[#e08310] text-white">
+                <Mail className="mr-2 h-4 w-4" /> Send together
+              </Button>
+            ) : null}
+          />
         )}
         <SendQuotesTogetherDialog open={bundleOpen} onOpenChange={setBundleOpen} quoteIds={selectedDocs.map((d) => d.id)} onSent={() => setSelected([])} />
 
@@ -519,6 +535,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
             {docs.map((doc) => (
               <div key={`${doc.kind}-${doc.id}`}>
               <ListCard onOpen={() => openDoc(doc)}
+                leading={<span className="flex h-11 w-11 items-center justify-center"><Checkbox checked={selected.includes(doc.id)} onCheckedChange={() => toggleOne(doc.id)} aria-label={`Select ${doc.ref || ""}`} /></span>}
                 title={doc.clientName || "No customer"}
                 chip={<span className="inline-flex flex-wrap items-center gap-1"><StatusPill status={doc.status} /><DraftNeedsChip needs={draftNeeds[doc.id]} /></span>}
                 amount={formatZAR(doc.total)}
@@ -720,6 +737,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
         )}
       </div>
 
+      {bulkPdf.portal}
       {staffActions.dialogs}
       {dupQuote && (
         <QuoteClientDialog open onOpenChange={(o) => !o && setDupQuote(null)} mode="duplicate"
