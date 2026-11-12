@@ -59,6 +59,24 @@ export type Database = {
         }
         Relationships: []
       }
+      accepted_unbooked_reminders: {
+        Row: {
+          company_id: string
+          notified_at: string
+          quote_id: string
+        }
+        Insert: {
+          company_id: string
+          notified_at?: string
+          quote_id: string
+        }
+        Update: {
+          company_id?: string
+          notified_at?: string
+          quote_id?: string
+        }
+        Relationships: []
+      }
       admin_settings: {
         Row: {
           created_at: string
@@ -8528,6 +8546,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency: string
+          dedupe_key: string | null
           environment: string
           gateway: string
           gateway_reference: string | null
@@ -8547,6 +8566,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          dedupe_key?: string | null
           environment?: string
           gateway?: string
           gateway_reference?: string | null
@@ -8566,6 +8586,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          dedupe_key?: string | null
           environment?: string
           gateway?: string
           gateway_reference?: string | null
@@ -13335,6 +13356,48 @@ export type Database = {
           },
         ]
       }
+      stock_shortages: {
+        Row: {
+          allowance_id: string | null
+          company_id: string
+          created_at: string
+          id: string
+          item_label: string | null
+          job_id: string
+          movement_id: string | null
+          needed: number
+          on_hand: number
+          shortfall: number
+          stock_item_id: string | null
+        }
+        Insert: {
+          allowance_id?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          item_label?: string | null
+          job_id: string
+          movement_id?: string | null
+          needed: number
+          on_hand: number
+          shortfall: number
+          stock_item_id?: string | null
+        }
+        Update: {
+          allowance_id?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          item_label?: string | null
+          job_id?: string
+          movement_id?: string | null
+          needed?: number
+          on_hand?: number
+          shortfall?: number
+          stock_item_id?: string | null
+        }
+        Relationships: []
+      }
       stock_units: {
         Row: {
           company_id: string
@@ -18027,6 +18090,7 @@ export type Database = {
           staff_id: string
         }[]
       }
+      fl_accepted_unbooked_tick: { Args: { p_now?: string }; Returns: number }
       fl_alert_deliver: {
         Args: {
           p_body: string
@@ -18256,6 +18320,10 @@ export type Database = {
           p_window_seconds: number
         }
         Returns: boolean
+      }
+      fl_weekday_hours: {
+        Args: { p_from: string; p_to: string }
+        Returns: number
       }
       fl_working_minutes: {
         Args: { p_from: string; p_to: string }
@@ -18814,6 +18882,7 @@ export type Database = {
       }
       invoice_amount_paid: { Args: { p_invoice_id: string }; Returns: number }
       invoice_balance_info: { Args: { p_invoice: string }; Returns: Json }
+      invoice_due_now: { Args: { p_invoice: string }; Returns: number }
       invoice_due_summary: {
         Args: never
         Returns: {
@@ -19540,8 +19609,8 @@ export type Database = {
       }
       record_invoice_payment: {
         Args: {
-          p_amount: number
           p_allow_overpay?: boolean
+          p_amount: number
           p_idempotency_key?: string
           p_invoice_id: string
           p_method: string
