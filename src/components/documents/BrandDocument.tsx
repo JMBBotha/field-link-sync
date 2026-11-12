@@ -299,7 +299,7 @@ export default function BrandDocument(p: BrandDocumentProps) {
         {!closing && p.collapseTerms && p.fullTermsPage ? (
           <>
             {p.afterTotals}
-            <details className="tdet" data-testid="doc-terms-expander">
+            <details open className="tdet" data-testid="doc-terms-expander">
               <summary>Full terms and conditions</summary>
               {p.fullTermsPage}
             </details>
@@ -322,7 +322,7 @@ export default function BrandDocument(p: BrandDocumentProps) {
         {closing && p.fullTermsPage && p.collapseTerms && (
           <>
             {p.afterTotals}
-            <details className="tdet" data-testid="doc-terms-expander">
+            <details open className="tdet" data-testid="doc-terms-expander">
               <summary>Full terms and conditions</summary>
               {p.fullTermsPage}
             </details>

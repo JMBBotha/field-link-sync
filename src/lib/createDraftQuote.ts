@@ -3,6 +3,8 @@
  * linked to a customer, company-scoped. Same payload shape the unified
  * builder writes; used by the voice entry point so voice never owns a
  * parallel draft object. Returns the new quote id.
+ * terms_text is filled by fl_quote_terms_guard from the company standard.
+ * Callers do not send their own wording.
  */
 import { supabase } from "@/integrations/supabase/client";
 import { getUserCompanyId } from "@/lib/tenantUtils";

@@ -5,6 +5,7 @@ import jsPDF from "jspdf";
 import { fetchCompanyProfileSafe } from "@/lib/companyProfileSafe";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
 import { buildTermsBlocks, type TermsCompanyInfo } from "./defaultTerms";
+import { ORIGINAL_TERMS_TEXT } from "./originalTerms";
 import { supabase } from "@/integrations/supabase/client";
 import { inlineCaptureImages } from "./captureImages";
 
@@ -144,8 +145,9 @@ const addTermsFooter = (doc: jsPDF, company: TermsCompanyInfo) => {
   doc.text(company.contactLine || COMPANY_CONTACT_LINE, pageWidth / 2, pageHeight - 13, { maxWidth: pageWidth - margin * 2, align: "center" });
 };
 
-/** Every document (quotes included) gets the drawn terms pages — the on-screen quote terms page
- * is excluded from capture (data-html2canvas-ignore), so it never prints twice or goes missing. */
+/** Drawn terms pages are the fallback when the capture has no styled terms page.
+ * When the styled page is in the capture it is the terms (do not append a second copy).
+ * That page must stay dark ink on white: dark mode used to paint the clauses white, so the PDF looked blank. */
 export function shouldAppendFixedTerms(_docType: string | undefined): boolean {
   return true;
 }
@@ -243,6 +245,36 @@ function appendTermsPages(doc: jsPDF, company: TermsCompanyInfo, reserve?: { top
   });
 
   pageFooter();
+}
+
+/** A one-document PDF of the standard terms, for tests and a guaranteed text rendering of the same copy. */
+export function standardTermsPdfBytes(company: TermsCompanyInfo): Uint8Array {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: false });
+  appendTermsPages(doc, company);
+  return new Uint8Array(doc.output("arraybuffer"));
+}
+
+/** PDF of the imported Massair CT wording, with a new page before a heading would sit alone at the bottom. */
+export function originalTermsPdfBytes(text: string = ORIGINAL_TERMS_TEXT): Uint8Array {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: false });
+  const margin = 18;
+  const width = doc.internal.pageSize.getWidth() - margin * 2;
+  const limit = doc.internal.pageSize.getHeight() - 16;
+  let y = 22;
+  const headingLine = (line: string) => line.endsWith(":") || /^importance of servicing ac units$/i.test(line) || /^for commercial air conditioning units,?$/i.test(line);
+  for (const raw of text.replace(/\r\n/g, "\n").split("\n")) {
+    const line = raw.trim();
+    if (!line) { y += 2.5; continue; }
+    const heading = headingLine(line);
+    doc.setFont("helvetica", heading ? "bold" : "normal");
+    doc.setFontSize(heading ? 11 : 9);
+    const lines: string[] = doc.splitTextToSize(line, width);
+    const h = lines.length * (heading ? 5 : 4.2) + (heading ? 1.5 : 0.4);
+    if (y + h > limit) { doc.addPage(); y = 22; }
+    doc.text(lines, margin, y);
+    y += h;
+  }
+  return new Uint8Array(doc.output("arraybuffer"));
 }
 
 /**

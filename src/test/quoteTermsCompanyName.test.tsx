@@ -144,7 +144,8 @@ describe("quote terms company name", () => {
       />,
     );
     const text = container.textContent || "";
-    expect(text).toContain(clause("Massair CT (Pty) Ltd"));
+    expect(text).toContain("1.1 Should you, the client");
+    expect(text).toContain("Massair CT (Pty) Ltd");
     expect(text).not.toContain("Massair Ind CC");
   });
 
@@ -168,7 +169,8 @@ describe("quote terms company name", () => {
       />,
     );
     const text = container.textContent || "";
-    expect(text).toContain(clause("Massair CT (Pty) Ltd"));
+    expect(text).toContain("1.1 Should you, the client");
+    expect(text).toContain("Massair CT (Pty) Ltd");
     expect(text).not.toContain("Massair Ind CC");
   });
 
@@ -211,7 +213,8 @@ describe("quote terms company name", () => {
       expect(container.textContent || "").toMatch(/63226563591|62326769075/);
     });
     const text = container.textContent || "";
-    expect(text).toContain(clause("Massair CT (Pty) Ltd"));
+    expect(text).toContain("1.1 Should you, the client");
+    expect(text).toContain("Massair CT (Pty) Ltd");
     expect(text).toContain("63226563591");
     expect(text).not.toContain("Massair Ind CC");
     expect(text).not.toContain("62326769075");
@@ -226,7 +229,8 @@ describe("quote terms company name", () => {
     const err = container.querySelector("[data-client-pdf-root]")?.getAttribute("data-error");
     expect(err).toBeFalsy();
     const text = container.textContent || "";
-    expect(text).toContain(clause("Massair CT (Pty) Ltd"));
+    expect(text).toContain("1.1 Should you, the client");
+    expect(text).toContain("Massair CT (Pty) Ltd");
     expect(text).toContain("63226563591");
     expect(text).not.toContain("Massair Ind CC");
     expect(text).not.toContain("62326769075");

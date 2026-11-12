@@ -1,4 +1,5 @@
 import { REMOTE_QUOTE_HEADING, remoteQuoteParagraphs } from "./remoteQuoteClause";
+import { ORIGINAL_TERMS_TEXT } from "./originalTerms";
 /**
  * Structured terms data for formatted PDF rendering.
  * Each block has a type that controls how it renders in the PDF:
@@ -184,11 +185,38 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
   ];
 };
 
+/** Plain text of the structured terms, same words the terms page prints. */
+export function standardTermsPlain(company: TermsCompanyInfo = {}): string {
+  return buildTermsBlocks(company)
+    .filter((b) => b.type !== "spacer" && b.text.trim())
+    .map((b) => b.text)
+    .join("\n\n");
+}
+
+/**
+ * Company-wide text stored on company_terms.standard_text for Massair CT.
+ * This is the imported quote wording (typos corrected), not the generated 11-section copy.
+ */
+export function standardTermsTemplate(): string {
+  return ORIGINAL_TERMS_TEXT;
+}
+
+/** Same replacements as fl_standard_terms_for_company. */
+export function fillStandardTerms(template: string, company: TermsCompanyInfo = {}): string {
+  const name = (company.companyName || "Our Company").trim() || "Our Company";
+  const map: Record<string, string> = {
+    "{company}": name,
+    "{account_name}": (company.accountName || name).trim(),
+    "{bank}": company.bankName || "",
+    "{account_type}": company.accountType || "",
+    "{account}": company.accountNumber || "",
+    "{branch}": company.branchCode || "",
+  };
+  return template.replace(/\{(?:company|account_name|bank|account_type|account|branch)\}/g, (token) => map[token] ?? token);
+}
+
 /** Legacy plain-text export for backwards compat (used in textarea defaults). Generic — not tied to any real company. */
-export const DEFAULT_TERMS = buildTermsBlocks({})
-  .filter((b) => b.type !== "spacer")
-  .map((b) => b.text)
-  .join("\n\n");
+export const DEFAULT_TERMS = standardTermsPlain({});
 
 /** @deprecated Use `buildTermsBlocks(company)` instead — this generic fallback has no real company/banking data. */
 export const TERMS_BLOCKS: TermsBlock[] = buildTermsBlocks({});
