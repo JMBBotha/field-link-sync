@@ -2,6 +2,7 @@
 import "./index.css";
 import { createRoot } from "react-dom/client";
 import QuoteTermsPage from "@/components/quoting/QuoteTermsPage";
+import { ORIGINAL_TERMS_TEXT } from "@/lib/originalTerms";
 import BrandDocument from "@/components/documents/BrandDocument";
 
 const CT = "361bf031-9cdb-4d7f-9bde-9eb95fa4725e";
@@ -52,12 +53,8 @@ function Page() {
           fullTermsPage={
             <QuoteTermsPage
               companyName="Massair CT (Pty) Ltd"
-              bankName="FNB"
-              accountName="Massair CT (Pty) Ltd"
-              accountNumber="63226563591"
-              branchCode="250 655"
-              accountType="Cheque"
               quoteNumber="Q-2026-0099"
+              sourceText={ORIGINAL_TERMS_TEXT}
               rowFlow
             />
           }

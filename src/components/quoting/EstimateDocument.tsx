@@ -21,6 +21,7 @@ import { formatRand } from "@/utils/formatRand";
 import CompanyBlock from "@/components/shared/CompanyBlock";
 import { cleanBanking, COMPANY } from "@/lib/companyIdentity";
 import QuoteTermsPage from "@/components/quoting/QuoteTermsPage";
+import { displayTermsText } from "@/lib/originalTerms";
 import { profileBanking, profileTermsInfo, type CompanyProfile } from "@/lib/companyProfiles";
 import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
 import { withEoe } from "@/lib/eoeClause";
@@ -481,6 +482,9 @@ const EstimateDocument = ({
   // Same rule as invoices (profileTermsInfo): the issuing company's legal name.
   // settings.company_name is only a fallback, and only when it is this quote's own row.
   const termsCompanyName = profileTermsInfo(record)?.companyName || settings.company_name || COMPANY.legalName;
+  // Massair CT quotes print the imported wording. Another company's quote keeps that company's own generated terms.
+  const massairCtTerms = (record?.company_id || companyId) === COMPANY.companyId || /massair ct/i.test(termsCompanyName);
+  const originalTerms = massairCtTerms ? displayTermsText(termsText) : undefined;
 
   // Client-facing (read-only) output = the Light/Bold document (Johan 2026-10-13). Staff editing keeps its own surface.
   if (!editing) {
@@ -537,6 +541,7 @@ const EstimateDocument = ({
             remoteQuote={!!remoteQuote}
             legacyPayment={legacyPayment}
             remotePaidInFull={isPaidInFullRemote(remoteQuoteSource)}
+            sourceText={originalTerms}
             rowFlow
           />
         }
@@ -1164,6 +1169,7 @@ const EstimateDocument = ({
           remoteQuote={!!remoteQuote}
           legacyPayment={legacyPayment}
           remotePaidInFull={isPaidInFullRemote(remoteQuoteSource)}
+          sourceText={originalTerms}
           rowFlow
         />
       </div>

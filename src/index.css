@@ -1304,6 +1304,8 @@ button[role="switch"] > span {
 @container (min-width: 600px){.fl-terms-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* Invoice terms (Johan 2 Nov): denser type so the full terms take fewer pages. */
 .fl-terms-compact p{font-size:11px;line-height:1.45}
+/* Original Massair CT wording: a little more air than the invoice compact pass, still not a loose page. */
+.fl-terms-original.fl-terms-compact p{font-size:12.5px;line-height:1.5}
 .fl-terms-compact .space-y-1\.5>:not([hidden])~:not([hidden]){margin-top:0.25rem}
 /* Invoice compact pass 2 (Johan 2 Nov 20:58): less white space between header, bill-to, lines, cards and terms. */
 .bd.invoice-document .pg{padding:26px 34px 0}

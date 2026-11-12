@@ -1,4 +1,5 @@
 import { REMOTE_QUOTE_HEADING, remoteQuoteParagraphs } from "./remoteQuoteClause";
+import { ORIGINAL_TERMS_TEXT } from "./originalTerms";
 /**
  * Structured terms data for formatted PDF rendering.
  * Each block has a type that controls how it renders in the PDF:
@@ -193,21 +194,11 @@ export function standardTermsPlain(company: TermsCompanyInfo = {}): string {
 }
 
 /**
- * Company-wide template stored on company_terms.standard_text.
- * Placeholders are filled per issuing company (name + banking) when a quote is created.
- * The on-screen / PDF terms page still uses buildTermsBlocks so the V8 layout stays.
+ * Company-wide text stored on company_terms.standard_text for Massair CT.
+ * This is the imported quote wording (typos corrected), not the generated 11-section copy.
  */
-export const STANDARD_TERMS_PLACEHOLDERS = ["{company}", "{account_name}", "{bank}", "{account_type}", "{account}", "{branch}"] as const;
-
 export function standardTermsTemplate(): string {
-  return standardTermsPlain({
-    companyName: "{company}",
-    accountName: "{account_name}",
-    bankName: "{bank}",
-    accountType: "{account_type}",
-    accountNumber: "{account}",
-    branchCode: "{branch}",
-  });
+  return ORIGINAL_TERMS_TEXT;
 }
 
 /** Same replacements as fl_standard_terms_for_company. */

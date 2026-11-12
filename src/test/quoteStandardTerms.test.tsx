@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "fs";
 import { renderToString } from "react-dom/server";
 import EstimateDocument from "@/components/quoting/EstimateDocument";
-import { fillStandardTerms, standardTermsPlain, standardTermsTemplate } from "@/lib/defaultTerms";
+import { standardTermsTemplate } from "@/lib/defaultTerms";
+import { ORIGINAL_TERMS_CORRECTIONS, ORIGINAL_TERMS_TEXT } from "@/lib/originalTerms";
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }), auth: { getUser: async () => ({ data: { user: null } }) } },
@@ -21,15 +22,6 @@ vi.mock("@/hooks/useDocumentCompanyProfile", () => ({
     account_type: "Cheque",
   }),
 }));
-
-const CT = {
-  companyName: "Massair CT (Pty) Ltd",
-  accountName: "Massair CT (Pty) Ltd",
-  bankName: "FNB",
-  accountType: "Cheque",
-  accountNumber: "63226563591",
-  branchCode: "250 655",
-};
 
 describe("Massair CT quote terms", () => {
   it("prints the standard terms page when the quote has no stored terms_text", () => {
@@ -50,9 +42,13 @@ describe("Massair CT quote terms", () => {
     );
     expect(html).toContain('data-testid="quote-terms-page"');
     expect(html).toContain("Terms and conditions");
-    expect(html).toContain("1.1 Thank you for considering Massair CT (Pty) Ltd");
+    expect(html).toContain("Should you, the client");
     expect(html).toContain("63226563591");
+    expect(html).toContain("FNB");
     expect(html).toContain("Q-2026-0099");
+    expect(html).not.toContain("Should u the client");
+    expect(html).not.toContain("Massair Ind");
+    expect(html).not.toContain("Thank you for considering");
   });
 
   it("keeps terms ink dark on the white paper so a dark theme cannot blank the PDF", () => {
@@ -62,29 +58,30 @@ describe("Massair CT quote terms", () => {
     expect(page).toContain("fl-terms-page");
   });
 
-  it("writes the Massair CT clause into a PDF", async () => {
-    const { standardTermsPdfBytes } = await import("@/lib/documentPdf");
-    const bytes = standardTermsPdfBytes(CT);
-    const raw = Buffer.from(bytes).toString("latin1");
-    expect(raw).toContain("Thank you for considering Massair CT");
+  it("writes the original Massair CT wording into a PDF", async () => {
+    const { originalTermsPdfBytes } = await import("@/lib/documentPdf");
+    const raw = Buffer.from(originalTermsPdfBytes()).toString("latin1");
+    expect(raw).toContain("Should you, the client");
     expect(raw).toContain("63226563591");
-    expect(raw).toContain("Consumer Protection Act");
+    expect(raw).toContain("FNB");
+    expect(raw).not.toContain("Should u the client");
+    expect(raw).not.toContain("Massair Ind");
   });
 
-  it("stores the same wording the terms page prints, with company placeholders", () => {
-    const template = standardTermsTemplate();
-    const filled = fillStandardTerms(template, CT);
-    expect(filled).toContain("1.1 Thank you for considering Massair CT (Pty) Ltd");
-    expect(filled).toContain("7.4 Account Number: 63226563591");
-    expect(filled).not.toContain("{company}");
-    expect(filled).not.toContain("{account}");
+  it("stores the imported wording, with only the listed corrections", () => {
+    expect(standardTermsTemplate()).toBe(ORIGINAL_TERMS_TEXT);
+    expect(ORIGINAL_TERMS_TEXT).toContain("1.1 Should you, the client");
+    expect(ORIGINAL_TERMS_TEXT).toContain("6.5 Branch Code: 250 655");
+    expect(ORIGINAL_TERMS_TEXT).toContain("Regular servicing plays a vital role");
+    expect(ORIGINAL_TERMS_TEXT).not.toContain("[250 655]");
+    expect(ORIGINAL_TERMS_CORRECTIONS).toHaveLength(3);
     const sql = readFileSync("supabase/migrations/20261112113000_quote_standard_terms.sql", "utf8");
-    expect(sql).toContain(template);
-    expect(sql).toContain("NEW.terms_text := public.fl_standard_terms_for_company(NEW.company_id)");
+    expect(sql).toContain(ORIGINAL_TERMS_TEXT);
+    expect(sql).toContain("fl_master_company_id()");
     const backfill = readFileSync("docs/db-releases/2026-11-12_draft_quote_terms_backfill.sql", "utf8");
     expect(backfill).toContain("status::text = 'draft'");
+    expect(backfill).toContain("fl_master_company_id()");
     expect(backfill).not.toMatch(/UPDATE public\.invoices/i);
     expect(backfill).toContain("terms_text IS NULL");
-    expect(standardTermsPlain(CT).length).toBeGreaterThan(5000);
   });
 });
