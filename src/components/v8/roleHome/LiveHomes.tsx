@@ -84,6 +84,13 @@ export function YardLiveHome() {
   );
 }
 
+const BOOKED_STAGE: Record<string, string> = {
+  assigned: "Assigned",
+  en_route: "En route",
+  on_site: "On site",
+  completed: "Completed",
+};
+
 export function SalesLiveHome() {
   const today = todayInJohannesburg();
   const appts = useMyAppointments(14);
@@ -100,12 +107,16 @@ export function SalesLiveHome() {
   const appointments = (appts.data || []).filter((a) => a.scheduled_date === today).map((a) => {
     const visit = isFirstQuoteVisit({ serviceType: a.service_type, source: a.source });
     const links = appointmentLinks(a);
+    const area = areaFromAddress(a.address);
+    const client = a.customer_name || "Client";
     return {
       id: `${a.lead_id}-${a.scheduled_date}`,
       href: links.lead,
       time: a.scheduled_time ? a.scheduled_time.slice(0, 5) : "Time TBC",
       type: visit ? "Quote visit" : jobTypeWord(a.service_type),
-      place: [areaFromAddress(a.address), a.customer_name || "Client"].filter(Boolean).join(" · "),
+      place: [area, client].filter(Boolean).join(" · "),
+      client,
+      area,
       chip: visit ? { label: "No technician yet" as const, tone: "neutral" as const } : null,
     };
   });
@@ -118,12 +129,18 @@ export function SalesLiveHome() {
         id: j.job_id || j.lead_id || "job",
         href: cardHref(j) || "/admin/jobs",
         when: j.scheduled_date
-          ? new Date(`${j.scheduled_date}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short" })
+          ? [
+              new Date(`${j.scheduled_date}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short" }),
+              j.scheduled_time ? j.scheduled_time.slice(0, 5) : null,
+            ].filter(Boolean).join(" ")
           : "Booked",
         type: jobTypeWord(j.job_types?.[0], j.title),
         client: j.customer || "Client",
         area: j.title || "Job",
         tech: j.tech_name,
+        status: j.tech_name
+          ? (BOOKED_STAGE[j.stage] || "Assigned")
+          : (j.stage && j.stage !== "assigned" ? BOOKED_STAGE[j.stage] : undefined),
       }))}
     />
   );

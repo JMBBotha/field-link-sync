@@ -54,6 +54,12 @@ export const ADMIN_HOME_ROUTES = {
   job: (id: string) => `/admin/jobs/${id}`,
 } as const;
 
+/** Sales Home empty-state actions. Same routes as the sales side menu. */
+export const SALES_HOME_ROUTES = {
+  schedule: "/admin/schedule",
+  pipeline: "/admin/jobs?tab=pipeline",
+} as const;
+
 /** SATURDAY, 07 NOV — Johannesburg calendar day. */
 export function greetingEyebrow(now: Date): string {
   const weekday = now.toLocaleDateString("en-GB", { weekday: "long", timeZone: "Africa/Johannesburg" }).toUpperCase();

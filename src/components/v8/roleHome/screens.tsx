@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import type { MaterialCheck, MaterialLine, StockLevel, StockOrder } from "@/lib/materialCheck";
 import { checkSummary } from "@/lib/materialCheck";
 import type { CashSlice } from "@/lib/roleHome";
-import { ADMIN_HOME_ROUTES } from "@/lib/roleHome";
+import { ADMIN_HOME_ROUTES, SALES_HOME_ROUTES } from "@/lib/roleHome";
 import type { YardHomeModel } from "@/lib/yardView";
 import { CashPie, Chip, Glass, IntroCard, InvoiceBanner, RowLink } from "./chrome";
 import { YardHome, YardMoneyStrip, YardWork } from "./YardHome";
@@ -26,6 +26,9 @@ export interface HomeAppointment {
   time: string;
   type: string;
   place: string;
+  /** Same client and area already joined into place. Optional so older callers still render. */
+  client?: string;
+  area?: string;
   chip?: { label: string; tone: "neutral" | "tech" } | null;
 }
 
@@ -37,6 +40,8 @@ export interface BookedJob {
   client: string;
   area: string;
   tech?: string | null;
+  /** Stage label already on the job (Assigned, En route, On site, Completed). */
+  status?: string | null;
 }
 
 export interface TodayCrew {
@@ -235,6 +240,63 @@ export function TechJobScreen(props: {
   );
 }
 
+function appointmentRow(a: HomeAppointment) {
+  const split = a.place.split(" · ").map((s) => s.trim()).filter(Boolean);
+  const area = a.area ?? (split.length > 1 ? split[0] : "");
+  const client = a.client ?? (split.length > 1 ? split.slice(1).join(" · ") : split[0] || a.place);
+  const status = a.chip?.label || a.type;
+  const kind = a.chip && a.type && a.type !== status ? a.type : "";
+  return { time: a.time, client, area, status, kind };
+}
+
+function bookedStatus(j: BookedJob): string {
+  const stage = (j.status || "").trim();
+  const tech = (j.tech || "").trim();
+  if (tech) return stage ? `${stage} · ${tech}` : tech;
+  if (stage && stage !== "Assigned") return stage;
+  return "No technician yet";
+}
+
+function bookedRow(j: BookedJob) {
+  const kind = j.type && j.type !== j.area ? j.type : "";
+  return { time: j.when, client: j.client, area: j.area, status: bookedStatus(j), kind };
+}
+
+function SalesRow({
+  href, testId, time, kind, client, area, status,
+}: {
+  href: string;
+  testId: string;
+  time: string;
+  kind: string;
+  client: string;
+  area: string;
+  status: string;
+}) {
+  return (
+    <Link to={href} className="rh-sales-row" data-testid={testId}>
+      <span className="rh-sales-time">
+        {time}
+        {kind ? <span className="rh-sales-kind">{kind}</span> : null}
+      </span>
+      <span className="rh-sales-main">
+        <b>{client}</b>
+        {area ? <span className="rh-muted">{area}</span> : null}
+      </span>
+      <span className="rh-sales-status">{status}</span>
+    </Link>
+  );
+}
+
+function SalesEmpty({ text, href, action, testId }: { text: string; href: string; action: string; testId: string }) {
+  return (
+    <div className="rh-sales-empty">
+      <p className="rh-muted">{text}</p>
+      <Link to={href} className="rh-btn rh-btn-fit" data-testid={testId}>{action}</Link>
+    </div>
+  );
+}
+
 export function SalesHomeScreen({
   eyebrow, title, appointments, booked,
 }: {
@@ -244,30 +306,37 @@ export function SalesHomeScreen({
   booked: BookedJob[];
 }) {
   return (
-    <div data-testid="role-sales-home">
-      <IntroCard eyebrow={eyebrow} title={title} />
-      <Glass>
-        <div className="rh-head"><h2>Today’s appointments</h2><span className="rh-count">{appointments.length}</span></div>
-        {appointments.length === 0 && <p className="rh-muted">No appointments today.</p>}
-        {appointments.map((a) => (
-          <RowLink key={a.id} to={a.href} testId="sales-appointment">
-            <b>{a.time} · {a.type}</b>
-            <div className="rh-muted">{a.place}</div>
-            {a.chip && <Chip tone={a.chip.tone}>{a.chip.label}</Chip>}
-          </RowLink>
-        ))}
-      </Glass>
-      <Glass>
-        <div className="rh-head"><h2>Jobs booked under your name</h2><span className="rh-count">{booked.length}</span></div>
-        {booked.length === 0 && <p className="rh-muted">Jobs you booked or are assigned to show here.</p>}
-        {booked.map((j) => (
-          <RowLink key={j.id} to={j.href} testId="sales-booked-job">
-            <b>{j.when} · {j.type}</b>
-            <div className="rh-muted">{j.client} · {j.area}</div>
-            <Chip tone="tech">{j.tech || "No technician yet"}</Chip>
-          </RowLink>
-        ))}
-      </Glass>
+    <div data-testid="role-sales-home" className="rh-sales">
+      <header className="rh-sales-greet" data-testid="role-greeting">
+        <p className="rh-eyebrow">{eyebrow}</p>
+        <h1>{title}</h1>
+      </header>
+      <div className="rh-sales-pair">
+        <Glass testId="sales-appointments">
+          <div className="rh-head"><h2>Today’s appointments</h2><span className="rh-count">{appointments.length}</span></div>
+          {appointments.length === 0 && (
+            <SalesEmpty
+              text="Nothing on your calendar today."
+              href={SALES_HOME_ROUTES.schedule}
+              action="Open schedule"
+              testId="sales-open-schedule"
+            />
+          )}
+          {appointments.map((a) => <SalesRow key={a.id} href={a.href} testId="sales-appointment" {...appointmentRow(a)} />)}
+        </Glass>
+        <Glass testId="sales-booked">
+          <div className="rh-head"><h2>Jobs booked under your name</h2><span className="rh-count">{booked.length}</span></div>
+          {booked.length === 0 && (
+            <SalesEmpty
+              text="No jobs under your name yet."
+              href={SALES_HOME_ROUTES.pipeline}
+              action="Open pipeline"
+              testId="sales-open-pipeline"
+            />
+          )}
+          {booked.map((j) => <SalesRow key={j.id} href={j.href} testId="sales-booked-job" {...bookedRow(j)} />)}
+        </Glass>
+      </div>
     </div>
   );
 }
