@@ -184,11 +184,48 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
   ];
 };
 
+/** Plain text of the structured terms, same words the terms page prints. */
+export function standardTermsPlain(company: TermsCompanyInfo = {}): string {
+  return buildTermsBlocks(company)
+    .filter((b) => b.type !== "spacer" && b.text.trim())
+    .map((b) => b.text)
+    .join("\n\n");
+}
+
+/**
+ * Company-wide template stored on company_terms.standard_text.
+ * Placeholders are filled per issuing company (name + banking) when a quote is created.
+ * The on-screen / PDF terms page still uses buildTermsBlocks so the V8 layout stays.
+ */
+export const STANDARD_TERMS_PLACEHOLDERS = ["{company}", "{account_name}", "{bank}", "{account_type}", "{account}", "{branch}"] as const;
+
+export function standardTermsTemplate(): string {
+  return standardTermsPlain({
+    companyName: "{company}",
+    accountName: "{account_name}",
+    bankName: "{bank}",
+    accountType: "{account_type}",
+    accountNumber: "{account}",
+    branchCode: "{branch}",
+  });
+}
+
+/** Same replacements as fl_standard_terms_for_company. */
+export function fillStandardTerms(template: string, company: TermsCompanyInfo = {}): string {
+  const name = (company.companyName || "Our Company").trim() || "Our Company";
+  const map: Record<string, string> = {
+    "{company}": name,
+    "{account_name}": (company.accountName || name).trim(),
+    "{bank}": company.bankName || "",
+    "{account_type}": company.accountType || "",
+    "{account}": company.accountNumber || "",
+    "{branch}": company.branchCode || "",
+  };
+  return template.replace(/\{(?:company|account_name|bank|account_type|account|branch)\}/g, (token) => map[token] ?? token);
+}
+
 /** Legacy plain-text export for backwards compat (used in textarea defaults). Generic — not tied to any real company. */
-export const DEFAULT_TERMS = buildTermsBlocks({})
-  .filter((b) => b.type !== "spacer")
-  .map((b) => b.text)
-  .join("\n\n");
+export const DEFAULT_TERMS = standardTermsPlain({});
 
 /** @deprecated Use `buildTermsBlocks(company)` instead — this generic fallback has no real company/banking data. */
 export const TERMS_BLOCKS: TermsBlock[] = buildTermsBlocks({});

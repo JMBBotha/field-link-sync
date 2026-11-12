@@ -144,8 +144,9 @@ const addTermsFooter = (doc: jsPDF, company: TermsCompanyInfo) => {
   doc.text(company.contactLine || COMPANY_CONTACT_LINE, pageWidth / 2, pageHeight - 13, { maxWidth: pageWidth - margin * 2, align: "center" });
 };
 
-/** Every document (quotes included) gets the drawn terms pages — the on-screen quote terms page
- * is excluded from capture (data-html2canvas-ignore), so it never prints twice or goes missing. */
+/** Drawn terms pages are the fallback when the capture has no styled terms page.
+ * When the styled page is in the capture it is the terms (do not append a second copy).
+ * That page must stay dark ink on white: dark mode used to paint the clauses white, so the PDF looked blank. */
 export function shouldAppendFixedTerms(_docType: string | undefined): boolean {
   return true;
 }
@@ -243,6 +244,13 @@ function appendTermsPages(doc: jsPDF, company: TermsCompanyInfo, reserve?: { top
   });
 
   pageFooter();
+}
+
+/** A one-document PDF of the standard terms, for tests and a guaranteed text rendering of the same copy. */
+export function standardTermsPdfBytes(company: TermsCompanyInfo): Uint8Array {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: false });
+  appendTermsPages(doc, company);
+  return new Uint8Array(doc.output("arraybuffer"));
 }
 
 /**

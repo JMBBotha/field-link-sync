@@ -1285,6 +1285,20 @@ button[role="switch"] > span {
 /* Ink tokens on the white area paper stay dark in dark mode (QA 2026-10-20). */
 .dark .option1-solid { --text-primary: 215 30% 18%; --text-secondary: 215 14% 45%; --text-muted: 220 9% 45%; }
 
+/* Quote/invoice paper is always dark ink on white, including the off-screen PDF capture.
+   text-ink follows --text-primary. In dark mode that token is near-white, so the terms
+   clauses were painted white on the white page and the PDF looked like it had no terms.
+   The variable is set on the paper itself, which beats the html.dark value for every
+   text-ink line inside the terms page and the client document. */
+.bd,
+.fl-terms-page{
+  --text-primary:215 30% 18%;
+  --text-secondary:215 14% 45%;
+  --text-muted:220 9% 45%;
+  color:#1d2a3a;
+  background-color:#fff;
+  color-scheme:light;
+}
 /* Quote terms page: two columns whenever the document itself is wide enough (PDF capture is always 820px). */
 .fl-terms-page{container-type:inline-size}
 @container (min-width: 600px){.fl-terms-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
