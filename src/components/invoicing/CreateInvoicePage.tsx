@@ -27,6 +27,8 @@ import {
   fetchCompanyProfiles, invoiceTotals, depositAmount as calcDeposit, depositDue, profileBanking,
   type CompanyProfile, type DepositType, VAT_PERCENT,
 } from "@/lib/companyProfiles";
+import { invoiceDepositCallout } from "@/lib/invoiceDepositCallout";
+import DepositDueBlock from "@/components/invoicing/DepositDueBlock";
 
 /* ────────── Types ────────── */
 
@@ -258,6 +260,15 @@ const CreateInvoicePage = ({
   const amountDue = grandTotal - amountPaid;
   const depositRequested = calcDeposit(grandTotal, depositType, depositValue);
   const depositOutstanding = depositDue(depositRequested, amountPaid);
+  // Same figure the save trigger stores (percent of the VAT-inclusive total, or the fixed rand). Display only.
+  const depositPreview = invoiceDepositCallout({
+    grandTotal,
+    depositAmount: depositRequested,
+    depositType,
+    depositValue,
+    amountPaid,
+    status: "draft",
+  });
 
   /* ─── Fetch data ─── */
   useEffect(() => {
@@ -763,6 +774,7 @@ const CreateInvoicePage = ({
           vatNumber={companySettings.vat_number}
           profile={profile}
         />
+        {depositPreview && <DepositDueBlock model={depositPreview} />}
 
         {/* ── ISSUING COMPANY ── */}
         {profiles.length > 1 && (

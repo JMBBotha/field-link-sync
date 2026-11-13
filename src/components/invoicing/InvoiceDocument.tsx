@@ -4,12 +4,13 @@ import { foldFlatLines } from "@/lib/clientQuoteRollup";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import InvoiceSignOff from "./InvoiceSignOff";
 import { cleanBanking } from "@/lib/companyIdentity";
-import { formatRand } from "@/utils/formatRand";
 import InvoiceStamps from "@/components/documents/InvoiceStamps";
 import type { InvoiceStamp } from "@/lib/invoiceStamps";
 import QuoteTermsPage from "@/components/quoting/QuoteTermsPage";
 import type { TermsCompanyInfo } from "@/lib/defaultTerms";
-import { profileBanking, depositDue, type CompanyProfile } from "@/lib/companyProfiles";
+import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
+import { invoiceDepositCallout } from "@/lib/invoiceDepositCallout";
+import DepositDueBlock from "@/components/invoicing/DepositDueBlock";
 
 export interface InvoiceDocLineItem {
   description: string;
@@ -50,8 +51,12 @@ export interface InvoiceDocumentProps {
   siteAddress?: string | null;
   customerCompany?: string | null;
   discountAmount?: number;
-  /** Requested deposit in rand (already worked out on the VAT-inclusive total). */
+  /** Stored deposit request in rand (invoices.deposit_amount, incl. VAT). Display only. */
   depositAmount?: number | null;
+  depositType?: string | null;
+  /** Stored percent or fixed value. The percent is shown; the rand amount is depositAmount. */
+  depositValue?: number | null;
+  /** @deprecated The block reads depositType and depositValue. Kept so older callers still compile. */
   depositLabel?: string | null;
   /** MAILED / DEPOSIT PAID / PAID IN FULL stamps (from invoiceStamps()). */
   stamps?: InvoiceStamp[];
@@ -59,12 +64,6 @@ export interface InvoiceDocumentProps {
    *  under the closing cards (Johan 2 Nov), so the PDF skips its single-column terms pages. */
   termsCompany?: TermsCompanyInfo | null;
 }
-
-const formatCurrency = (amount: number) => {
-  const n = Number(amount) || 0;
-  const safe = Object.is(n, -0) || n === 0 ? 0 : n;
-  return formatRand(safe);
-};
 
 /** Normalises a tax rate that may be stored as 0.15 or 15 into a display percentage. */
 const toPercent = (rate?: number | null) => {
@@ -105,14 +104,23 @@ const InvoiceDocument = ({
   customerCompany,
   discountAmount = 0,
   depositAmount,
-  depositLabel,
+  depositType,
+  depositValue,
   stamps = [],
   termsCompany,
 }: InvoiceDocumentProps) => {
   const { settings } = useCompanySettings();
   const bank = profileBanking(profile) || cleanBanking(settings.banking_details);
-  const deposit = Number(depositAmount) || 0;
-  const depositOutstanding = depositDue(deposit, (Number(amountPaid) || 0) + (Number(credited) || 0));
+  const depositCallout = invoiceDepositCallout({
+    grandTotal,
+    depositAmount,
+    depositType,
+    depositValue,
+    notes,
+    amountPaid,
+    credited,
+    status,
+  });
   const vatPercent = toPercent(taxRate);
   const accountType = bank.account_type;
   const amountDue = Math.max(0, (Number(grandTotal) || 0) - (Number(amountPaid) || 0) - (Number(credited) || 0));
@@ -150,6 +158,7 @@ const InvoiceDocument = ({
       title={isVoid ? "TAX INVOICE (VOID)" : "TAX INVOICE"}
       stamp={isVoid ? "VOID" : null}
       stampsRow={isVoid ? null : <InvoiceStamps stamps={stamps} />}
+      banner={depositCallout ? <DepositDueBlock model={depositCallout} /> : undefined}
       number={invoiceNumber}
       reference={reference}
       profile={profile}
@@ -170,12 +179,6 @@ const InvoiceDocument = ({
       ]}
       grandLabel={isVoid ? "VOID · nothing due (ZAR)" : "Amount due (ZAR)"}
       grandTotal={isVoid ? 0 : amountDue}
-      afterTotals={deposit > 0 ? (
-        <div data-testid="deposit-box" style={{ margin: "10px 0 0 auto", maxWidth: 300, border: "1px solid #F7941D", background: "#fff7ed", padding: 8, borderRadius: 6 }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}><span>Deposit requested{depositLabel ? ` (${depositLabel})` : ""}</span><span>{formatCurrency(deposit)}</span></div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: "#0B4FA8" }}><span>Deposit due</span><span>{formatCurrency(depositOutstanding)}</span></div>
-        </div>
-      ) : undefined}
       cards={[
         { title: "Payment", body: <p>Payment due within {settings.default_payment_terms_days || 7} days of invoice date. Please use the invoice number as your payment reference.</p> },
         { title: "Banking", body: <p data-testid="invoice-banking" style={{ fontWeight: 700, color: "#1B3A5C" }}>{bankLine || "—"}{bankLine ? <><br />Reference: {invoiceNumber}</> : null}</p> },

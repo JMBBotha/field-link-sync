@@ -11,6 +11,8 @@ import InvoiceStamps from "@/components/documents/InvoiceStamps";
 import { invoiceStamps } from "@/lib/invoiceStamps";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { amountDueNow, johannesburgToday, roundMoney } from "@/lib/amountDueNow";
+import { invoiceDepositCallout } from "@/lib/invoiceDepositCallout";
+import DepositDueBlock from "@/components/invoicing/DepositDueBlock";
 import { format } from "date-fns";
 import logo from "@/assets/logo.png";
 import { documentProfile, profileBanking } from "@/lib/companyProfiles";
@@ -156,6 +158,15 @@ const CustomerInvoiceView = () => {
     const due = inv.due_now == null ? staged.dueNow : roundMoney(inv.due_now);
     const later = Math.max(0, roundMoney((inv.status === "paid" ? 0 : Math.max(0, roundMoney(total - paidSoFar))) - due));
     const dueLabel = staged.depositStage || later > 0 ? "Amount due now" : "Amount due";
+    const depositCallout = invoiceDepositCallout({
+      grandTotal: total,
+      amountPaid: paidSoFar,
+      depositAmount: inv.deposit_amount,
+      depositType: inv.deposit_type,
+      depositValue: inv.deposit_value,
+      notes: inv.notes,
+      status: inv.status,
+    });
     const money = (n: number) => formatRand(Number(n) || 0);
     const dueDate = inv.due_date ? format(new Date(inv.due_date + "T00:00:00"), "d MMMM yyyy") : null;
     const overdue = inv.due_date && due > 0 && new Date(inv.due_date + "T23:59:59") < new Date();
@@ -177,6 +188,7 @@ const CustomerInvoiceView = () => {
 
         <main className="max-w-2xl mx-auto p-4 space-y-3">
           <section className="rounded-2xl bg-white p-5 shadow-sm text-center" data-testid="client-amount-due">
+            {depositCallout && <div className="mb-4 text-left"><DepositDueBlock model={depositCallout} /></div>}
             <InvoiceStamps stamps={invoiceStamps(inv, inv.stamp_payments || [])} center />
             {due > 0 ? (<>
               <p className="text-sm font-medium text-muted-foreground">{dueLabel}</p>
