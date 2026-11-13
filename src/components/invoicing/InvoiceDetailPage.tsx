@@ -374,9 +374,10 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         profile={docProfile}
         billedToVat={invoice.billed_to_vat_number}
         discountAmount={Number(invoice.discount_amount) || 0}
-        depositAmount={Number(invoice.deposit_amount) || 0}
+        depositAmount={invoice.deposit_amount}
+        depositType={invoice.deposit_type}
+        depositValue={invoice.deposit_value}
         stamps={invoiceStamps(invoice as any, payRows, creditedByInvoice(credits).get(invoice.id) || 0)}
-        depositLabel={invoice.deposit_type === "percent" ? `${Number(invoice.deposit_value)}% of total incl. VAT` : null}
       />
 
 

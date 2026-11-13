@@ -66,6 +66,8 @@ export interface BrandDocumentProps {
   stamp?: string | null;
   /** Rubber-stamp row (MAILED / DEPOSIT PAID / PAID IN FULL) under the header, in flow. */
   stampsRow?: ReactNode;
+  /** Callout under the header, above the bill-to block (invoice deposit request). Inside the PDF capture. */
+  banner?: ReactNode;
   /**
    * Invoice closing layout (Johan 14 Oct, AVEC La Terre invoices): the Payment / Banking /
    * Warranty block starts its own page, laid out full width; the Terms + logo/unit footer
@@ -248,6 +250,7 @@ export default function BrandDocument(p: BrandDocumentProps) {
         </div>
         <div className="accent" />
         {p.stampsRow}
+        {p.banner}
         <div className="parties">
           <div className="to">
             <h4>{p.partyLabel}</h4>
