@@ -28,6 +28,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import CreateContractDialog from "@/components/agreements/CreateContractDialog";
 import ContractEditorDialog from "@/components/agreements/ContractEditorDialog";
 import { sameClientCheck } from "@/lib/agreementTemplates/contracts";
+import { blobToBase64, bulkInvoiceEmailGate, combinedInvoicePdfName } from "@/lib/bulkInvoiceEmail";
+import { mergePdfBlobs } from "@/lib/bulkQuotePdf";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+import InvoiceEmailBar from "@/components/invoicing/InvoiceEmailBar";
+import BulkInvoiceEmailDialog from "@/components/invoicing/BulkInvoiceEmailDialog";
+import InvoicePdfRoot, { renderInvoicePdfBlob } from "@/components/invoicing/InvoicePdfRoot";
 import { useInvoiceDue } from "@/hooks/useInvoiceDue";
 import { InvoiceDueChip, FollowupReview } from "@/components/invoiceDue/InvoiceDueChip";
 import { dueChip } from "@/lib/invoiceDue";
@@ -92,6 +98,10 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   // Multi-select -> "Create service contract" (same client only, Johan 18 Oct 2026)
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailDidSend, setEmailDidSend] = useState(false);
+  const [pdfId, setPdfId] = useState<string | null>(null);
+  const { settings } = useCompanySettings();
   const [contractOpen, setContractOpen] = useState(false);
   const [openContractId, setOpenContractId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -379,17 +389,30 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
         </div>
 
         {selectMode && (() => {
-          const picked = invoices.filter((i) => selected.includes(i.id));
+          const picked = filteredInvoices.filter((i) => selected.includes(i.id));
           const check = sameClientCheck(picked.map((i) => ({ id: i.id, customer_id: (i as any).customer_id ?? null, label: i.invoice_number })));
+          const gate = bulkInvoiceEmailGate(picked.map((i) => ({
+            id: i.id,
+            invoice_number: i.invoice_number,
+            customer_id: (i as any).customer_id ?? null,
+            customer_name: i.customer_name,
+            customer_email: (i as any).customer_email ?? null,
+            status: i.status,
+            grand_total: i.grand_total,
+            amount_due: balOf(i),
+          })));
           return (
-            <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-xl border bg-background/95 p-2 shadow-sm backdrop-blur" data-testid="invoice-contract-bar">
-              <span className="text-sm font-medium">{selected.length} selected</span>
-              {selected.length > 0 && "reason" in check && <span className="text-xs text-destructive" data-testid="same-client-warning">{check.reason}</span>}
-              <div className="ml-auto flex gap-2">
-                <Button size="sm" variant="ghost" onClick={() => { setSelectMode(false); setSelected([]); }}>Cancel</Button>
-                <Button size="sm" variant="cta" disabled={!check.ok} onClick={() => setContractOpen(true)} data-testid="invoice-create-contract">Create service contract</Button>
-              </div>
-            </div>
+            <InvoiceEmailBar
+              selectedCount={selected.length}
+              sameClientReason={!check.ok && selected.length > 0 ? check.reason : null}
+              emailCount={gate.included.length}
+              emailEnabled={gate.ok}
+              emailReason={check.ok ? gate.reason : null}
+              contractEnabled={check.ok}
+              onCancel={() => { setSelectMode(false); setSelected([]); }}
+              onContract={() => setContractOpen(true)}
+              onEmail={() => setEmailOpen(true)}
+            />
           );
         })()}
         {filteredInvoices.length === 0 ? (
@@ -435,6 +458,48 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
         );
       })()}
       {openContractId && <ContractEditorDialog contractId={openContractId} onClose={() => setOpenContractId(null)} />}
+      {emailOpen && (() => {
+        const picked = filteredInvoices.filter((i) => selected.includes(i.id));
+        const rows = picked.map((i) => ({
+          id: i.id,
+          invoice_number: i.invoice_number,
+          customer_id: (i as any).customer_id ?? null,
+          customer_name: i.customer_name,
+          customer_email: (i as any).customer_email ?? null,
+          status: i.status,
+          grand_total: i.grand_total,
+          amount_due: balOf(i),
+        }));
+        const gate = bulkInvoiceEmailGate(rows);
+        return (
+          <BulkInvoiceEmailDialog
+            open
+            onOpenChange={(open) => {
+              setEmailOpen(open);
+              if (!open && emailDidSend) { setSelectMode(false); setSelected([]); setEmailDidSend(false); }
+            }}
+            rows={gate.included}
+            companyName={settings.company_name || "Field Lynk"}
+            excludedNote={gate.excluded.map((item) => item.reason).join(" ") || null}
+            onSent={() => { setEmailDidSend(true); fetchInvoices(); }}
+            buildAttachment={async (ids) => {
+              const blobs: Blob[] = [];
+              try {
+                for (const id of ids) {
+                  setPdfId(id);
+                  blobs.push(await renderInvoicePdfBlob(id));
+                }
+                const merged = await mergePdfBlobs(blobs);
+                const name = gate.included[0]?.customer_name || picked[0]?.customer_name;
+                return { filename: combinedInvoicePdfName(name), content: await blobToBase64(merged) };
+              } finally {
+                setPdfId(null);
+              }
+            }}
+          />
+        );
+      })()}
+      {pdfId && <InvoicePdfRoot key={pdfId} invoiceId={pdfId} />}
     </div>
   );
 };
